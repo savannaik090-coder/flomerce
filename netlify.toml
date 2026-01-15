@@ -11,5 +11,6 @@
 
 [[redirects]]
   from = "/*"
-  to = "/index.html"
+  to = "/.netlify/functions/site-router"
   status = 200
+  force = false
