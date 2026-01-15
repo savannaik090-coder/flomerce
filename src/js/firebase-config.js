@@ -1,12 +1,11 @@
-// Firebase Configuration for Kreavo SaaS Platform
 const firebaseConfig = {
-  apiKey: window.KREAVO_CONFIG?.FIREBASE_API_KEY,
-  authDomain: window.KREAVO_CONFIG?.FIREBASE_AUTH_DOMAIN,
-  projectId: window.KREAVO_CONFIG?.FIREBASE_PROJECT_ID,
-  storageBucket: window.KREAVO_CONFIG?.FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: window.KREAVO_CONFIG?.FIREBASE_MESSAGING_SENDER_ID,
-  appId: window.KREAVO_CONFIG?.FIREBASE_APP_ID,
-  measurementId: window.KREAVO_CONFIG?.FIREBASE_MEASUREMENT_ID
+  apiKey: "AIzaSyCrLCButDevLeILcBjrUCd9e7amXVjW-uI",
+  authDomain: "auric-a0c92.firebaseapp.com",
+  projectId: "auric-a0c92",
+  storageBucket: "auric-a0c92.firebasestorage.app",
+  messagingSenderId: "878979958342",
+  appId: "1:878979958342:web:e6092f7522488d21eaec47",
+  measurementId: "G-ZYZ750JHMB"
 };
 
 export default firebaseConfig;

@@ -1,4 +1,4 @@
-import firebaseConfig from '../firebase-config.js';
+import firebaseConfig from '../auth/firebase-config.js';
 
 class SiteService {
   constructor() {
@@ -11,32 +11,20 @@ class SiteService {
   async createSite(userId, siteData) {
     const { siteName, category, templateId } = siteData;
     const subdomain = siteName.toLowerCase().replace(/[^a-z0-9]/g, '-');
-    
-    // Check if subdomain exists
-    const existing = await this.db.collection('websites')
-      .where('subdomain', '==', subdomain)
-      .get();
-    
+    const existing = await this.db.collection('websites').where('subdomain', '==', subdomain).get();
     if (!existing.empty) {
       throw new Error("Subdomain already taken. Try another name.");
     }
-
     const docRef = await this.db.collection('websites').add({
-      userId,
-      siteName,
-      category,
-      subdomain,
-      templateId,
+      userId, siteName, category, subdomain, templateId,
       status: 'active',
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       settings: {
         title: siteName,
         description: `Professional ${category} website created on Kreavo.`,
-        contactEmail: '',
-        phoneNumber: ''
+        contactEmail: '', phoneNumber: ''
       }
     });
-
     return { id: docRef.id, subdomain };
   }
 
