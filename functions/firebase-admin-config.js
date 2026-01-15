@@ -27,14 +27,15 @@ bw5RUBfrW8ALzqET/Mwp4Q6Z/AEQMf9Sb9yzW7PtAoGAJilwi+vA0pNGNlOuKYLj
 8XPYZqktbxs99N0LFPbSIVsVeHwVhoi+KPKgMHuFrQZA22IYJ01acD/LYim3Fi+X
 UD//owCkNu22xWl2SNoBVO3htsGuwokolPBt/MA8mGG+SDR7JJbeDxesfzUWTxHb
 PNWi5ETLiI2OCy1JSmPGq9k=
------END PRIVATE KEY-----\n`;
+-----END PRIVATE KEY-----
+`;
 
 if (!admin.apps.length) {
   admin.initializeApp({
     credential: admin.credential.cert({
       projectId: "auric-a0c92",
       clientEmail: "firebase-adminsdk-p7p3f@auric-a0c92.iam.gserviceaccount.com",
-      privateKey: privateKey // No more manual replace/newline logic needed with template literal
+      privateKey: privateKey.trim()
     })
   });
 }
