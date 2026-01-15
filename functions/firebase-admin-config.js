@@ -27,7 +27,7 @@ bw5RUBfrW8ALzqET/Mwp4Q6Z/AEQMf9Sb9yzW7PtAoGAJilwi+vA0pNGNlOuKYLj
 8XPYZqktbxs99N0LFPbSIVsVeHwVhoi+KPKgMHuFrQZA22IYJ01acD/LYim3Fi+X
 UD//owCkNu22xWl2SNoBVO3htsGuwokolPBt/MA8mGG+SDR7JJbeDxesfzUWTxHb
 PNWi5ETLiI2OCy1JSmPGq9k=
------END PRIVATE KEY-----`;
+-----END PRIVATE KEY-----\n`;
 
 if (!admin.apps.length) {
   admin.initializeApp({
