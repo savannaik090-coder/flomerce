@@ -1,0 +1,1329 @@
+/* Responsive Navigation Bar Styles */
+
+/*Navbar Container */
+.navbar {
+    background: transparent;
+    border-bottom: none;
+    position: fixed;
+    width: 100%;
+    top: 40px;
+    z-index: 1000;
+    padding: 0 20px;
+}
+
+.nav-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 20px 5px 20px; /* Reduced bottom padding from 10px to 5px */
+    max-width: 1200px;
+    margin: 10px auto 0 auto;
+    height: 60px; /* Reduced navbar height from 65px to 60px */
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    border-radius: 30px;
+    background: rgba(255, 255, 255, 0.5);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Brand/Logo */
+.brand {
+    font-size: 28px!important;
+    font-weight: 500;
+    font-family: 'Playfair Display', serif;
+    color: #8B7355;
+    text-decoration: none;
+    margin-right: 20px;
+    margin-left: 15px;
+    margin-bottom: 0; /* Removed bottom margin */
+    margin-top: -8px; /* Move logo up slightly */
+    padding: 8px 0 3px 0; /* Reduced bottom padding for less height */
+    min-width: 150px;
+    order: 0;
+    position: relative;
+    transition: all 0.3s ease;
+    letter-spacing: 1px;
+    display: flex;
+    align-items: center;
+    text-shadow: none;
+}
+
+.brand-logo {
+    height: 52px;
+    width: auto;
+    max-width: 550px;
+    object-fit: contain;
+    transition: all 0.3s ease;
+}
+
+.brand:hover {
+    color: #b8905f;
+    transform: translateY(-1px);
+    text-shadow: none;
+}
+
+.brand:hover .brand-logo {
+    transform: scale(1.05);
+}
+
+/* Hamburger Menu - Font Awesome Icon */
+.hamburger {
+    display: none; /* Hidden by default, shown in media query */
+    cursor: pointer;
+    width: 30px;
+    height: 30px;
+    position: relative;
+    margin-right: 15px;
+    margin-top: -10px; /* Removed top margin */
+    background: transparent;
+    border: none;
+    padding: 8px 0 3px 0; /* Reduced bottom padding for less height */
+    z-index: 1000; /* Ensure it's above other elements */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.hamburger i {
+    font-size: 24px;
+    color: #fff;
+    transition: all 0.3s ease;
+    text-shadow: 1px 1px 3px rgba(0,0,0,0.7);
+}
+
+.hamburger:hover i {
+    color: #c59d5f;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+}
+
+/* Style for hamburger image to make it white */
+.hamburger img {
+    filter: brightness(0) invert(1); /* Make image white */
+    transition: all 0.3s ease;
+}
+
+.hamburger:hover img {
+    filter: brightness(0) invert(1) sepia(1) saturate(5) hue-rotate(35deg); /* Make it golden on hover */
+}
+
+/* Navigation Menu */
+.nav-menu {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+}
+
+.nav-list {
+    display: flex;
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+}
+
+.nav-item {
+    position: relative;
+    margin: 0 15px;
+}
+
+.nav-link {
+    color: #fff;
+    text-decoration: none;
+    font-size: 12px; /* Smaller font size for mobile */
+    font-weight: 600;
+    padding: 20px 5px; /* Reduced padding to work with reduced navbar height */
+    display: block;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: all 0.3s ease;
+    text-shadow: 1px 1px 3px rgba(0,0,0,0.7);
+}
+
+.nav-link:hover {
+    color: #c59d5f; /* Golden brown for jewelry */
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+}
+
+.dropdown-toggle i {
+    font-size: 10px;
+    margin-left: 5px;
+    transition: transform 0.3s ease;
+}
+
+.nav-item.active .dropdown-toggle i {
+    transform: rotate(180deg);
+}
+
+/* Dropdown Menu */
+.dropdown-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    min-width: 220px;
+    background: linear-gradient(145deg, #ffffff 0%, #fafafa 100%);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(15px) scale(0.95);
+    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    z-index: 100;
+    list-style-type: none;
+    margin: 0;
+    padding: 15px 0;
+    border-radius: 12px;
+    border: 1px solid rgba(196, 157, 95, 0.15);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+/* Dropdown Submenu Styles */
+.dropdown-submenu {
+    position: relative;
+}
+
+.dropdown-submenu > a {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.dropdown-submenu > a i {
+    font-size: 10px;
+    margin-left: 8px;
+    transition: transform 0.3s ease;
+}
+
+.dropdown-submenu-list {
+    position: absolute;
+    left: 100%;
+    top: 0;
+    min-width: 200px;
+    background: linear-gradient(145deg, #ffffff 0%, #fafafa 100%);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateX(10px) scale(0.95);
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    z-index: 101;
+    list-style-type: none;
+    margin: 0;
+    padding: 12px 0;
+    border-radius: 10px;
+    border: 1px solid rgba(196, 157, 95, 0.15);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+.dropdown-submenu:hover > .dropdown-submenu-list {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(0) scale(1);
+}
+
+.dropdown-submenu-list li {
+    margin: 0;
+}
+
+.dropdown-submenu-list a {
+    padding: 10px 20px;
+    color: #333;
+    font-size: 13px;
+    font-weight: 500;
+    display: block;
+    text-decoration: none;
+    text-transform: capitalize;
+    transition: all 0.3s ease;
+    border-radius: 6px;
+    margin: 2px 8px;
+}
+
+.dropdown-submenu-list a:hover {
+    background: linear-gradient(90deg, rgba(196, 157, 95, 0.1) 0%, rgba(196, 157, 95, 0.05) 100%);
+    color: #c59d5f;
+    transform: translateX(3px);
+}
+
+.dropdown:hover .dropdown-menu {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0) scale(1);
+}
+
+.dropdown-menu::before {
+    content: '';
+    position: absolute;
+    top: -8px;
+    left: 20px;
+    width: 16px;
+    height: 16px;
+    background: linear-gradient(145deg, #ffffff 0%, #fafafa 100%);
+    border: 1px solid rgba(196, 157, 95, 0.15);
+    border-bottom: none;
+    border-right: none;
+    transform: rotate(45deg);
+    z-index: -1;
+}
+
+.dropdown-menu li {
+    margin: 0;
+    position: relative;
+    overflow: hidden;
+}
+
+.dropdown-menu a {
+    padding: 14px 25px;
+    color: #333;
+    font-size: 14px;
+    font-weight: 500;
+    display: block;
+    text-decoration: none;
+    text-transform: capitalize;
+    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    letter-spacing: 0.3px;
+    position: relative;
+    border-radius: 8px;
+    margin: 2px 8px;
+}
+
+.dropdown-menu a::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 0;
+    height: 100%;
+    background: linear-gradient(90deg, rgba(196, 157, 95, 0.1) 0%, rgba(196, 157, 95, 0.05) 100%);
+    transition: width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    border-radius: 8px;
+    z-index: -1;
+}
+
+.dropdown-menu a:hover {
+    background: linear-gradient(90deg, rgba(196, 157, 95, 0.08) 0%, rgba(196, 157, 95, 0.03) 100%);
+    color: #c59d5f;
+    transform: translateX(4px);
+    box-shadow: 0 2px 8px rgba(196, 157, 95, 0.15);
+}
+
+.dropdown-menu a:hover::before {
+    width: 100%;
+}
+
+.dropdown-menu a:active {
+    transform: translateX(2px) scale(0.98);
+}
+
+/* Dropdown Toggle Icon */
+.dropdown-toggle i {
+    font-size: 10px;
+    margin-left: 5px;
+    transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    display: inline-block;
+}
+
+.dropdown:hover .dropdown-toggle i {
+    transform: rotate(180deg);
+}
+
+.dropdown-toggle {
+    position: relative;
+    transition: color 0.3s ease;
+}
+
+.dropdown:hover .dropdown-toggle {
+    color: #c59d5f;
+}
+
+/* Navigation Icons */
+.nav-icons {
+    display: flex;
+    align-items: center;
+}
+
+.icon-link {
+    color: #fff; /* White color for transparent navbar */
+    font-size: 22px; /* Consistent size across all pages */
+    margin-left: 20px; /* Consistent spacing between icons */
+    text-decoration: none;
+    transition: all 0.3s ease;
+    position: relative; /* For positioning badges/counts */
+    padding: 8px 0 3px 0; /* Reduced bottom padding for less height */
+    display: flex;
+    align-items: center;
+    text-shadow: 1px 1px 3px rgba(0,0,0,0.7);
+}
+
+.icon-link:hover {
+    color: #c59d5f; /* Golden hover color */
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+    transform: translateY(-1px);
+}
+
+/* Ensure Font Awesome icons are displayed properly */
+.icon-link i {
+    font-size: inherit;
+    color: inherit;
+    transition: all 0.3s ease;
+}
+
+/* Make all navigation icon images white (fallback for any remaining img tags) */
+.nav-icons img {
+    filter: brightness(0) invert(1); /* Make images white */
+    transition: all 0.3s ease;
+}
+
+.nav-icons .icon-link:hover img {
+    filter: brightness(0) invert(1) sepia(1) saturate(5) hue-rotate(35deg); /* Golden color on hover */
+}
+
+/* Cart and wishlist count styles */
+.wishlist-count, .cart-count {
+    position: absolute;
+    top: -1px;
+    right: -8px;
+    background-color: #c8a97e !important; /* Golden color to match cart badge */
+    color: #fff !important;
+    font-size: 11px;
+    width: 18px;
+    height: 18px;
+    min-width: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 500;
+    line-height: 1;
+    z-index: 999;
+    /* Always show the count badge, even when 0 */
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* Menu Overlay */
+.menu-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+}
+
+.menu-overlay.active {
+    display: block;
+}
+
+/* Responsive Design */
+
+/* Desktop Navigation - Show icons on large screens */
+@media (min-width: 992px) {
+    /* Add spacing from top and increase navbar height */
+    .navbar {
+        top: 40px;
+        width: 100%;
+        position: fixed;
+        z-index: 1000;
+        background: transparent;
+    }
+
+    .nav-container {
+        height: 80px; /* Increased from 60px for larger navbar */
+        padding: 15px 40px; /* Increased padding for better spacing */
+        max-width: 1200px;
+        margin: 10px auto 0 auto; /* Added top margin for spacing */
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border: 1px solid rgba(255, 255, 255, 0.4);
+        border-radius: 30px;
+        background: rgba(255, 255, 255, 0.5);
+        backdrop-filter: blur(15px);
+        -webkit-backdrop-filter: blur(15px);
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .nav-icons {
+        display: flex !important;
+        align-items: center;
+        order: 3; /* Ensure icons appear on the right */
+    }
+
+    .icon-link {
+        display: flex !important;
+        align-items: center;
+        color: #fff !important;
+        font-size: 22px !important;
+        margin-left: 20px !important;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        position: relative;
+        padding: 8px 0 3px 0;
+        text-shadow: 1px 1px 3px rgba(0,0,0,0.7);
+    }
+
+    .icon-link:hover {
+        color: #c59d5f !important;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        transform: translateY(-1px);
+    }
+
+    /* Hide mobile menu elements on desktop */
+    .hamburger {
+        display: none !important;
+    }
+
+    .mobile-account-links {
+        display: none !important;
+    }
+
+    .mobile-special {
+        display: none !important;
+    }
+
+    .nav-menu {
+        position: static !important;
+        transform: none !important;
+        display: flex !important;
+        flex-direction: row !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        width: auto !important;
+        height: auto !important;
+        left: auto !important;
+        flex: 1;
+        justify-content: center;
+    }
+
+    .nav-list {
+        display: flex !important;
+        flex-direction: row !important;
+        list-style-type: none;
+        margin: 0;
+        padding: 0;
+        justify-content: center; /* Center the navigation items */
+        align-items: center;
+    }
+
+    .nav-item {
+        position: relative;
+        margin: 0 15px;
+    }
+
+    .nav-link {
+        color: #fff !important;
+        text-decoration: none;
+        font-size: 14px; /* Increased from 12px for better readability */
+        font-weight: 600;
+        padding: 30px 8px; /* Increased padding to work with larger navbar height */
+        display: block;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        transition: all 0.3s ease;
+        text-shadow: 1px 1px 3px rgba(0,0,0,0.7);
+        border-bottom: none !important;
+        background: transparent !important;
+        width: auto !important;
+    }
+
+    .nav-link:hover {
+        color: #c59d5f !important;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        background-color: transparent !important;
+    }
+
+
+
+    .brand {
+        order: 0;
+        flex: 0 0 auto;
+        font-size: 18px; /* Increased font size for brand name */
+        padding: 12px 0; /* Increased padding to accommodate larger size */
+        margin-left: 0; /* Remove left margin to help with centering */
+        margin-top: -8px; /* Move logo up slightly */
+    }
+
+    .brand-logo {
+        height: 75px; /* Increased from 65px for larger logo image */
+        max-width: 650px; /* Increased max-width to accommodate larger logo */
+    }
+
+    .nav-menu {
+        order: 1;
+        flex: 1;
+        display: flex !important;
+        justify-content: center; /* Center the navigation menu */
+    }
+
+    .nav-icons {
+        order: 2;
+        flex: 0 0 auto;
+        display: flex !important;
+        align-items: center;
+        margin-right: 0; /* Remove extra right margin */
+    }
+}
+
+/* Large screens (1600px and above) - Adjust for very wide screens */
+@media (min-width: 1400px) and (max-width: 2500px) {
+    .nav-container {
+        max-width: 1400px; /* Increase max-width for larger screens */
+       padding: 15px 60px; /* More padding on very large screens */
+    }
+}
+@media (min-width: 1220px) and (max-width: 1399px) {
+    .nav-container {
+        max-width: 1400px; /* Increase max-width for larger screens */
+    }
+    .nav-link {
+        font-size: 14px!important; /* Slightly smaller font for more space */
+    }
+
+
+}
+@media  (min-width: 770px) and  (max-width: 1219px) {
+
+    .nav-link {
+        font-size:9px!important; /* Slightly smaller font for more space */
+    }
+
+
+}
+@media  (max-width: 769px) {
+    .nav-link {
+        font-size:13px!important; /* Slightly smaller font for more space */
+    }
+}
+/* Medium Large screens (1200px to 1599px) *
+@media (min-width: 1200px) and (max-width: 1599px) {
+   /* .nav-container {
+        max-width: 1200px;
+        padding: 15px 40px;
+    }*
+    .nav-container {
+        max-width: 900px; /* Increase max-width for larger screens *
+        padding: 15px 60px; /* More padding on very large screens *
+    }
+}
+
+/* Tablet to Small Desktop (992px to 1199px) - Ensure icons don't hide *
+@media (min-width: 992px) and (max-width: 1199px) {
+    .nav-container {
+        max-width: 100%;
+        padding: 15px 20px; /* Reduce padding to save space */
+    }
+
+    .nav-item {
+        margin: 0 8px; /* Reduce margins between nav items */
+    }
+
+    .nav-link {
+        font-size: 16px; /* Slightly smaller font for more space */
+      /*  padding: 30px 6px;*/
+    }
+
+    .icon-link {
+        margin-left: 15px; /* Reduce spacing between icons */
+        font-size: 20px; /* Slightly smaller icons */
+    }
+
+    .brand {
+        font-size: 36px; /* Slightly smaller logo */
+    }
+
+    .brand-logo {
+        height: 45px; /* Slightly smaller logo image */
+    }
+}
+
+/* Medium Desktop (1199px and below) *
+@media (max-width: 1199px) {
+    .nav-item {
+        margin: 0 10px; /* Reduce margins between items */
+    }
+
+    .nav-link {
+        padding: 20px 3px; /* Adjusted padding for 60px navbar */
+        font-size: 16px; /* Larger font size for medium screens */
+    }
+
+    .icon-link {
+        margin-left: 12px;
+        font-size: 240px; /* Reduce margin between icons */
+        padding: 8px 0 3px 0; /* Reduced bottom padding for less height */
+    }
+
+    .wishlist-count, .cart-count {
+        top: -2px;
+        right: -6px;
+        font-size: 10px;
+        width: 17px;
+        height: 17px;
+        min-width: 17px;
+        background-color: #c8a97e !important;
+    }
+
+    .brand {
+        font-size: 32px; /* Increased font size */
+        font-weight: 700; /* Increased font weight */
+        margin-right: 10px;
+        padding: 8px 0 3px 0; /* Reduced bottom padding for less height */
+    }
+}
+
+/* Close Button for Mobile Menu */
+.close-menu {
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    background: transparent;
+    border: none;
+    font-size: 80px!important;
+    color: #000;
+    cursor: pointer;
+    display: none; /* Hidden by default, shown in mobile view */
+    z-index: 1001;
+    font-weight: 300;
+    line-height: 0.8; /* Tighter line height */
+    padding: 0;
+    margin: 0;
+}
+
+/* Mobile menu close button styles moved to mobile-menu.css for better organization */
+
+/* Mobile menu special styling */
+.mobile-special {
+    border-top: 1px solid #f0f0f0;
+    margin-top: 15px;
+    padding-top: 10px;
+    display: none; /* Hidden by default on desktop */
+}
+
+/* Mobile account links styling */
+.mobile-account-links {
+    display: none; /* Hidden by default */
+}
+
+.mobile-account-link {
+    display: flex;
+    align-items: center;
+    padding: 12px 15px;
+    color: #333;
+    text-decoration: none;
+    font-size: 15px;
+    font-weight: 400;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.mobile-account-link:last-child {
+    border-bottom: none;
+}
+
+.mobile-account-link i {
+    margin-right: 15px;
+    width: 20px;
+    text-align: center;
+    font-size: 18px;
+}
+
+/* Tablet to Small Desktop */
+@media (max-width: 991px) {
+    /* Show mobile menu elements on smaller screens */
+    .mobile-special {
+        display: block;
+    }
+
+    .navbar {
+        top: 40px;
+    }
+
+    .nav-container {
+        margin: 10px auto 0 auto;
+    }
+
+    .hamburger {
+        display: block;
+        order: 0; /* First item on left side */
+        margin-right: 10px;
+    }
+
+    .brand {
+        order: 1; /* Comes after hamburger menu */
+        margin: -6px auto 0 12px; /* Move logo up slightly */
+        padding: 8px 0 3px 0; /* Reduced bottom padding for less height */
+        font-size: 36px; /* Increased font size */
+        font-weight: 600; /* Slightly reduced font weight */
+        text-align: left;
+    }
+
+    .brand-logo {
+        height: 70px; /* Increased size for tablet */
+        max-width: 550px; /* Increased max-width */
+    }
+
+    .nav-icons {
+        order: 2;
+        display: flex;
+        justify-content: flex-end;
+        min-width: 140px; /* Ensure enough space for icons */
+    }
+
+    .icon-link {
+        margin-left: 12px; /* Spacing between icons */
+        font-size: 22px; /* Larger icons */
+        padding: 8px 0 3px 0; /* Reduced bottom padding for less height */
+    }
+
+    .wishlist-count, .cart-count {
+        top: -2px;
+        right: -5px;
+        font-size: 10px;
+        width: 17px;
+        height: 17px;
+        min-width: 17px;
+        background-color: #c8a97e !important;
+    }
+
+    .close-menu {
+        display: block; /* Show close button on mobile */
+    }
+
+    /* Mobile Menu - Slide from left (like image) */
+    .nav-menu {
+        position: fixed;
+        top: 0;
+        left: -100%; /* Start from left instead of right */
+        width: 70%; /* Back to 70% width for mobile menu */
+        max-width: 380px; /* Standard max-width */
+        height: 100vh;
+        background-color: #fff;
+        z-index: 9999; /* Ensure it's above everything else */
+        transition: left 0.3s ease; /* Changed transition property */
+        box-shadow: 0 0 15px rgba(0, 0, 0, 0.15); /* Subtle shadow like in image */
+        overflow-y: auto;
+        padding: 0;
+        justify-content: flex-start;
+        display: flex;
+        flex-direction: column; /* Ensure vertical stacking */
+    }
+
+    .nav-menu.active {
+        left: 0; /* Slide in from left */
+    }
+
+    /* Mobile Menu Styling to Match Image */
+    .nav-list {
+        flex-direction: column;
+        width: 100%;
+        margin: 0;
+        padding: 50px 0 0 0; /* Added more top padding to match image */
+        display: flex; /* Ensure flex is applied */
+    }
+
+    .nav-item {
+        margin: 0;
+        border-bottom: 1px solid #eeeeee; /* Lighter border color to match image */
+        width: 100%;
+        position: relative;
+    }
+
+    .nav-link {
+        padding: 18px 20px;
+        width: 100%;
+        font-size: 16px; /* Larger font size for mobile menu */
+        text-transform: uppercase;
+        font-weight: 500;
+        letter-spacing: 0.8px; /* Consistent letter spacing */
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        color: #333; /* Consistent dark text color */
+        text-shadow: none; /* Remove shadow for mobile */
+        transition: all 0.3s ease;
+        font-family: 'Lato', sans-serif; /* Consistent font family */
+    }
+
+    /* Mobile nav link hover - no shadow since background is white */
+    .nav-link:hover {
+        color: #c59d5f;
+        background-color: rgba(196, 157, 95, 0.05);
+        text-shadow: none; /* Explicitly remove shadow on hover */
+    }
+
+    /* Style the dropdown toggle plus sign */
+    .dropdown-toggle i.fa-chevron-down {
+        display: none;
+    }
+
+    .dropdown-toggle:after {
+        content: '+';
+        position: absolute;
+        right: 20px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 24px;
+        font-weight: 300;
+        transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        color: #666;
+    }
+
+    .dropdown.active .dropdown-toggle:after {
+        content: '−';
+        transform: translateY(-50%);
+        color: #c59d5f;
+    }
+
+    /* Hide chevron-right icons in mobile dropdown submenus */
+    .dropdown-submenu > a i.fa-chevron-right {
+        display: none;
+    }
+
+    .dropdown-submenu > a:after {
+        content: '+';
+        position: absolute;
+        right: 20px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 20px;
+        font-weight: 300;
+        transition: all 0.3s ease;
+        color: #666;
+    }
+
+    .dropdown-submenu.active > a:after {
+        content: '−';
+        color: #c59d5f;
+    }
+
+    .dropdown-toggle:hover:after {
+        color: #c59d5f;
+        transform: translateY(-50%) scale(1.1);
+    }
+
+    .dropdown-menu {
+        position: static;
+        box-shadow: none;
+        opacity: 0;
+        visibility: hidden;
+        transform: none;
+        display: block;
+        max-height: 0;
+        overflow: hidden;
+        padding: 0 0 0 40px;
+        width: 100%;
+        background: linear-gradient(145deg, #f9f9f9 0%, #f5f5f5 100%);
+        border-top: 1px solid #eeeeee;
+        border: none;
+        transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        border-radius: 0 0 8px 8px;
+        margin-top: 5px;
+    }
+
+    .dropdown-submenu-list {
+        display: none;
+        position: static;
+        box-shadow: none;
+        opacity: 1;
+        visibility: visible;
+        transform: none;
+        width: 100%;
+        background: #f5f5f5;
+        padding: 0;
+        margin: 0;
+        border-radius: 0;
+        border: none;
+        list-style: none;
+        max-height: none;
+        overflow: visible;
+    }
+
+    .dropdown-submenu.active .dropdown-submenu-list {
+        display: block;
+        animation: slideDown 0.3s ease;
+    }
+
+    .dropdown-submenu:not(.active) .dropdown-submenu-list {
+        animation: slideUp 0.3s ease;
+    }
+
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            max-height: 0;
+        }
+        to {
+            opacity: 1;
+            max-height: 500px;
+        }
+    }
+
+    @keyframes slideUp {
+        from {
+            opacity: 1;
+            max-height: 500px;
+        }
+        to {
+            opacity: 0;
+            max-height: 0;
+        }
+    }
+
+    .dropdown-submenu-list li {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .dropdown-submenu-list a {
+        display: block;
+        padding: 12px 20px 12px 60px;
+        color: #555;
+        font-size: 14px;
+        text-decoration: none;
+        text-transform: capitalize;
+        transition: all 0.3s ease;
+        border-bottom: 1px solid #e8e8e8;
+    }
+
+    .dropdown-submenu-list a:hover {
+        background: rgba(196, 157, 95, 0.1);
+        color: #c59d5f;
+        padding-left: 65px;
+    }
+
+    .dropdown.active .dropdown-menu {
+        opacity: 1;
+        visibility: visible;
+        max-height: 1200px;
+        padding: 10px 0 10px 40px;
+    }
+
+    .dropdown-menu li {
+        padding: 0;
+        border-bottom: none;
+        transform: translateX(-20px);
+        opacity: 0;
+        transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
+
+    .dropdown.active .dropdown-menu li {
+        transform: translateX(0);
+        opacity: 1;
+    }
+
+    .dropdown.active .dropdown-menu li:nth-child(1) {
+        transition-delay: 0.1s;
+    }
+
+    .dropdown.active .dropdown-menu li:nth-child(2) {
+        transition-delay: 0.15s;
+    }
+
+    .dropdown.active .dropdown-menu li:nth-child(3) {
+        transition-delay: 0.2s;
+    }
+
+    .dropdown.active .dropdown-menu li:nth-child(4) {
+        transition-delay: 0.25s;
+    }
+
+    .dropdown-menu a {
+        font-size: 15px;
+        padding: 12px 0;
+        color: #555;
+        text-transform: capitalize;
+        font-weight: 400;
+        transition: all 0.3s ease;
+        border-radius: 4px;
+        margin: 2px 0;
+        position: relative;
+    }
+
+    .dropdown-menu a:hover {
+        color: #c59d5f;
+        background: rgba(196, 157, 95, 0.1);
+        padding-left: 8px;
+    }
+
+    /* Mobile Menu Bottom Account Links */
+    .mobile-account-links {
+        position: relative; /* Changed from absolute to better ensure visibility */
+        margin-top: 20px; /* Add some space above the links */
+        left: 0;
+        width: 100%;
+        padding: 0 20px;
+        display: none; /* Hidden by default on larger screens */
+        border-top: 1px solid #eee; /* Add a separator line */
+        padding-top: 15px; /* Add padding above the links */
+        flex-direction: column; /* Ensure vertical layout */
+    }
+
+    /* Ensure mobile links are displayed when menu is active */
+    .nav-menu.active .mobile-account-links {
+        display: flex; /* Use flex instead of block for better control */
+    }
+
+    .mobile-account-link {
+        display: flex;
+        align-items: center;
+        padding: 12px 0;
+        color: #000; /* Darker text to match image */
+        text-decoration: none;
+        font-size: 15px;
+        font-weight: 400;
+        border-bottom: 1px solid #f0f0f0; /* Add separator between links */
+        margin-bottom: 5px; /* Add space below each link */
+        transition: all 0.3s ease;
+    }
+
+    /* Mobile account link hover - no shadow since background is white */
+    .mobile-account-link:hover {
+        color: #c59d5f;
+        background-color: rgba(196, 157, 95, 0.05);
+        text-shadow: none; /* No shadow for mobile white background */
+    }
+
+    .mobile-account-link:last-child {
+        border-bottom: none; /* Remove separator from last item */
+        margin-bottom: 0;
+    }
+
+    .mobile-account-link i {
+        margin-right: 15px;
+        width: 20px;
+        text-align: center;
+        color: #000; /* Ensure icons are dark */
+        font-size: 18px; /* Larger icons */
+    }
+
+    /* No special styling for mobile wishlist count as it's just in parentheses */
+}
+
+/* Mobile Landscape (767px and below) */
+@media (max-width: 767px) {
+    .nav-container {
+        padding: 10px 15px 5px 15px; /* Reduced bottom padding */
+    }
+
+    .nav-icons {
+        min-width: 110px;
+    }
+
+    .icon-link {
+        margin-left: 8px;
+        font-size: 22px;
+        padding: 8px 0 3px 0; /* Reduced bottom padding for less height */
+    }
+
+    .wishlist-count, .cart-count {
+        top: -1px;
+        right: -6px;
+        font-size: 10px;
+        width: 16px;
+        height: 16px;
+        min-width: 16px;
+        background-color: #c8a97e !important;
+    }
+}
+
+/* Mobile Portrait */
+@media (max-width: 576px) {
+    .navbar {
+        top: 40px;
+    }
+
+    .nav-container {
+        padding: 10px 15px 5px 15px; /* Reduced bottom padding */
+        margin: 5px auto 0 auto;
+    }
+
+    .brand {
+        font-size: 28px !important; /* Increased font size for mobile */
+        font-weight: 600; /* Reduced font weight */
+        padding: 8px 5px 3px 5px; /* Reduced horizontal padding */
+        letter-spacing: 0.5px;
+        margin-top: -6px; /* Move logo up slightly */
+    }
+
+    .brand-logo {
+        height: 58px; /* Increased size for mobile */
+        max-width: 360px; /* Increased max-width */
+    }
+
+    .icon-link {
+        margin-left: 8px;
+        font-size: 20px; /* Larger icons on mobile */
+        padding: 8px 0 3px 0; /* Reduced bottom padding for less height */
+    }
+
+    .wishlist-count, .cart-count {
+        top: -1px;
+        right: -5px;
+        font-size: 9px;
+        width: 15px;
+        height: 15px;
+        min-width: 15px;
+        background-color: #c8a97e !important;
+    }
+
+    .nav-menu {
+        width: 70%;
+        left: -100%; /* Left-side menu */
+        right: auto; /* Override any right positioning */
+        padding: 50px 15px 15px;
+    }
+
+    .nav-link {
+        font-size: 12px;
+    }
+
+    .nav-icons {
+        min-width: 100px;
+    }
+}
+
+/* Added media query for very small devices */
+@media (max-width: 480px) {
+    .brand {
+        font-size: 22px !important; /* Increased font size for very small devices */
+        min-width: auto;
+        letter-spacing: 0.5px;
+        padding: 8px 5px 3px 5px; /* Reduced horizontal padding */
+        margin-top: -6px; /* Move logo up slightly */
+    }
+
+    .brand-logo {
+        height: 48px; /* Increased logo height */
+        max-width: 280px; /* Increased max-width */
+    }
+
+    .new-arrivals-edit {
+        padding: 5px 0;
+    }
+
+    .new-arrivals-container {
+        padding: 0 10px;
+    }
+
+    .new-arrivals-edit .arrivals-grid {
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        column-gap: 12px;
+        row-gap: 12px !important;
+        overflow-x: visible !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+}
+
+/* Large devices (desktops) - Hide mobile menu elements but show nav icons */
+@media (min-width: 992px) {
+    .hamburger {
+        display: none !important;
+    }
+
+    .nav-menu {
+        position: static !important;
+        left: auto !important;
+        width: auto !important;
+        max-width: none !important;
+        height: auto !important;
+        background-color: transparent !important;
+        box-shadow: none !important;
+        transform: none !important;
+        transition: none !important;
+        overflow: visible !important;
+        padding: 0 !important;
+        display: flex !important;
+        flex-direction: row !important;
+        justify-content: center !important;
+    }
+
+    .nav-list {
+        flex-direction: row !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    .nav-item {
+        border-bottom: none !important;
+        margin: 0 15px !important;
+    }
+
+    .nav-link {
+        padding: 20px 5px !important;
+        font-size: 18px; /* Largest font size for large desktop screens */
+        text-transform: uppercase !important;
+        font-weight: 600 !important;
+        letter-spacing: 0.5px !important;
+        display: block !important;
+        color: #fff !important;
+        text-shadow: 1px 1px 3px rgba(0,0,0,0.7) !important;
+    }
+
+    /* Force navigation icons to be visible on desktop */
+    .nav-icons {
+        display: flex !important;
+        align-items: center !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+    }
+
+    .icon-link {
+        display: flex !important;
+        align-items: center !important;
+        color: #fff !important;
+        font-size: 22px !important;
+        margin-left: 20px !important;
+        text-shadow: 1px 1px 3px rgba(0,0,0,0.7) !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+    }
+
+    /* Ensure individual icons are visible */
+    .search-icon,
+    .account-icon,
+    .wishlist-icon-container,
+    .cart-icon-container {
+        display: flex !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+    }
+
+    /* Force icon images to be visible */
+    .nav-icons img {
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        filter: brightness(0) invert(1) !important;
+    }
+
+    .close-menu {
+        display: none !important;
+    }
+
+    .mobile-special {
+        display: none !important;
+    }
+
+    .mobile-account-links {
+        display: none !important;
+    }
+}
+
+/* Extra Large devices */
+@media (min-width: 1200px) {
+    /* Some extra space in the menu for larger screens */
+    .menu-link, .submenu-link {
+        padding-left: 25px;
+        padding-right: 25px;
+    }
+
+    /* Larger menu width for very large screens */
+    .mobile-menu {
+        width: 400px;
+    }
+
+}

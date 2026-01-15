@@ -1,0 +1,1103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+    
+    <!-- SEO Meta Tags -->
+    <title>About Us - Royal Meenakari | Our Story & Heritage</title>
+    <meta name="description" content="Learn about Royal Meenakari's rich heritage in traditional Indian jewelry craftsmanship. Discover our story of preserving and celebrating the ancient art of Meenakari." />
+    <meta name="keywords" content="royal meenakari about, meenakari heritage, traditional jewelry craftsmanship, indian jewelry artisans" />
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="images/logos/royalmeenakari.png" />
+    <link rel="apple-touch-icon" href="images/logos/royalmeenakari.png" />
+    
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://royalmeenkari.in/about-us.html" />
+    <meta property="og:title" content="About Royal Meenakari - Our Story & Heritage" />
+    <meta property="og:description" content="Learn about Royal Meenakari's rich heritage in traditional Indian jewelry craftsmanship." />
+    <meta property="og:image" content="https://royalmeenkari.in/images/logos/royalmeenakari.png" />
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="/https://royalmeenkari.in/about-us" />
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v6.4.0/css/all.min.css" integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpLGCJKypKP/lX+/Pvw2DNA" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Flaticon CSS for bottom nav icons -->
+    <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/2.6.0/uicons-thin-straight/css/uicons-thin-straight.css'>
+    <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/2.6.0/uicons-solid-straight/css/uicons-solid-straight.css'>
+    <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/2.6.0/uicons-regular-straight/css/uicons-regular-straight.css'>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Lato:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.cdnfonts.com/css/futura-pt" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css?v=1.0.4">
+    <link rel="stylesheet" href="css/responsive.css?v=1.0.4">
+    <link rel="stylesheet" href="css/navbar.css?v=1.1.3">
+    <link rel="stylesheet" href="css/cart.css?v=1.0.2">
+    <link rel="stylesheet" href="css/shop.css?v=1.0.2">
+    <link rel="stylesheet" href="css/search.css">
+    <link rel="stylesheet" href="css/currency-converter.css?v=1.0.0">
+    <link rel="stylesheet" href="css/language-selector.css?v=1.0.0">
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
+
+    <!-- Unified Firebase Configuration -->
+    <script src="js/firebase-config.js"></script>
+    <script>
+      // Initialize Firebase with unified configuration
+      if (window.firebaseConfig) {
+        firebase.initializeApp(window.firebaseConfig);
+        firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+          .catch(error => {
+            console.error("Auth persistence error:", error);
+          });
+        console.log('✅ About Us page: Firebase initialized with unified config');
+      } else {
+        console.error('❌ About Us page: Firebase config not loaded');
+      }
+    </script>
+
+
+        <style>
+      /* Login page specific styles - Force black navigation elements */
+
+      /* Navigation links in desktop */
+      .nav-link {
+          color: #000 !important;
+      }
+
+      /* Navigation links hover state */
+      .nav-link:hover {
+          color: #333 !important;
+      }
+/* Dropdown arrow icons */
+      .dropdown-toggle i {
+          color: #000 !important;
+      }
+
+      /* Mobile menu close button */
+      .meenu-close {
+          color: #000 !important;
+      }
+
+      /* Mobile navigation links */
+      .mobile-account-link {
+          color: #000 !important;
+      }
+
+      /* Mobile navigation link text */
+      .mobile-account-links .mobile-account-link {
+          color: #000 !important;
+      }
+
+      /* Navigation icons - all icon images */
+      .nav-icons .icon-link img {
+          filter: brightness(0) !important;
+      }
+
+      /* Hamburger menu icon */
+      .hamburger img {
+          filter: brightness(0) !important;
+      }
+
+      /* Cart and wishlist count badges *
+      .cart-count,
+      .wishlist-count,
+      .mobile-cart-count,
+      .mobile-wishlist-count {
+background-color: #000 !important;
+          color: #fff !important;
+      }
+
+      /* Dropdown menu items */
+      .dropdown-menu li a {
+          color: #000 !important;
+      }
+
+      /* Dropdown menu items hover */
+      .dropdown-menu li a:hover {
+          color: #333 !important;
+          background-color: #f5f5f5 !important;
+      }
+
+      /* Mobile menu background text color */
+      .nav-menu {
+          color: #000 !important;
+      }
+
+      /* Ensure all text in mobile menu is black */
+      .nav-menu * {
+          color: #000 !important;
+      }
+
+      /* Mobile account links images */
+      .mobile-account-link img {
+          filter: brightness(0) !important;
+      }
+
+      /* Hide mobile menu close button on large devices */
+      @media (min-width: 769px) {
+          #closeMenu {
+              display: none !important;
+          }
+      }
+
+      /* Add top spacing to login section */
+      .auth-container {
+          margin-top: 200px !important;
+      }
+
+      /* Responsive spacing for different screen sizes */
+      @media (max-width: 768px) {
+          .auth-container {
+              margin-top: 120px !important;
+          }
+}
+
+      /* Remove shadow from navigation links on large devices */
+      @media (min-width: 769px) {
+          .nav-link {
+              text-shadow: none !important;
+              box-shadow: none !important;
+          }
+
+          .nav-link:hover {
+              text-shadow: none !important;
+              box-shadow: none !important;
+          }
+      }
+
+        /* Hide mobile menu close button on large devices */
+        @media (min-width: 769px) {
+            #closeMenu {
+                display: none !important;
+            }
+        }
+
+        /* Traditional About Page Styles */
+        .about-hero {
+            background: linear-gradient(135deg, #f9f5f0 0%, #ede5d8 100%);
+            padding: 120px 0 80px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .about-hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23d4af37' fill-opacity='0.05'%3E%3Ccircle cx='30' cy='30' r='4'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+            opacity: 0.3;
+        }
+
+        .about-hero-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        .about-hero h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 52px;
+            color: #5E2900;
+            margin-bottom: 20px;
+            font-weight: 700;
+            position: relative;
+        }
+
+        .about-hero h1::after {
+            content: '';
+            position: absolute;
+            bottom: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 3px;
+            background: linear-gradient(90deg, #d4af37, #b8941f);
+            border-radius: 2px;
+        }
+
+        .about-hero p {
+            font-family: 'Poppins', sans-serif;
+            max-width: 800px;
+            margin: 30px auto 0;
+            font-size: 20px;
+            color: #8a8a8a;
+            line-height: 1.7;
+            font-style: italic;
+        }
+
+        .founder-section {
+            padding: 100px 0;
+            background-color: #fff;
+            position: relative;
+        }
+
+        .founder-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #d4af37, transparent);
+        }
+
+        .founder-container {
+            display: flex;
+            align-items: center;
+            gap: 80px;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .founder-image {
+            flex: 1;
+            position: relative;
+        }
+
+        .founder-image::before {
+            content: '';
+            position: absolute;
+            top: -20px;
+            left: -20px;
+            right: 20px;
+            bottom: 20px;
+            background: linear-gradient(135deg, #d4af37, #b8941f);
+            border-radius: 8px;
+            z-index: 1;
+        }
+
+        .founder-image img {
+            width: 100%;
+            max-width: 450px;
+            border-radius: 8px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.15);
+            position: relative;
+            z-index: 2;
+        }
+
+        .founder-content {
+            flex: 1;
+        }
+
+        .founder-content h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: 42px;
+            margin-bottom: 10px;
+            color: #5E2900;
+            position: relative;
+        }
+
+        .founder-content .title {
+            font-family: 'Poppins', sans-serif;
+            font-size: 18px;
+            font-weight: 500;
+            color: #d4af37;
+            margin-bottom: 30px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .founder-content p {
+            font-family: 'Poppins', sans-serif;
+            font-size: 16px;
+            line-height: 1.8;
+            color: #444;
+            margin-bottom: 20px;
+        }
+
+        .values-section {
+            background: linear-gradient(135deg, #f9f5f0 0%, #ede5d8 100%);
+            padding: 100px 0;
+            position: relative;
+        }
+
+        .values-heading {
+            text-align: center;
+            margin-bottom: 80px;
+        }
+
+        .values-heading h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: 42px;
+            color: #5E2900;
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .values-heading h2::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60px;
+            height: 3px;
+            background: linear-gradient(90deg, #d4af37, #b8941f);
+            border-radius: 2px;
+        }
+
+        .values-heading p {
+            font-family: 'Poppins', sans-serif;
+            max-width: 700px;
+            margin: 0 auto;
+            color: #8a8a8a;
+            font-size: 18px;
+            line-height: 1.6;
+        }
+
+        .values-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 40px;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .value-card {
+            background-color: #fff;
+            padding: 50px 40px;
+            border-radius: 12px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.08);
+            text-align: center;
+            transition: all 0.4s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .value-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #d4af37, #b8941f);
+            transform: translateX(-100%);
+            transition: transform 0.4s ease;
+        }
+
+        .value-card:hover::before {
+            transform: translateX(0);
+        }
+
+        .value-card:hover {
+            transform: translateY(-15px);
+            box-shadow: 0 25px 50px rgba(0,0,0,0.15);
+        }
+
+        .value-icon {
+            font-size: 48px;
+            color: #d4af37;
+            margin-bottom: 25px;
+            transition: all 0.3s ease;
+        }
+
+        .value-card:hover .value-icon {
+            transform: scale(1.1);
+        }
+
+        .value-card h3 {
+            font-family: 'Playfair Display', serif;
+            font-size: 28px;
+            margin-bottom: 20px;
+            color: #5E2900;
+        }
+
+        .value-card p {
+            font-family: 'Poppins', sans-serif;
+            font-size: 15px;
+            line-height: 1.7;
+            color: #666;
+        }
+
+        .mission-section {
+            padding: 100px 0;
+            background-color: #5E2900;
+            color: #fff;
+            text-align: center;
+            position: relative;
+        }
+
+        .mission-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23d4af37' fill-opacity='0.1'%3E%3Cpath d='M20 20c0-11.046-8.954-20-20-20v20h20z'/%3E%3C/g%3E%3C/svg%3E");
+        }
+
+        .mission-content {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 0 20px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .mission-content h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: 42px;
+            margin-bottom: 30px;
+            color: #d4af37;
+        }
+
+        .mission-content p {
+            font-family: 'Poppins', sans-serif;
+            font-size: 18px;
+            line-height: 1.8;
+            margin-bottom: 25px;
+        }
+
+        @media (max-width: 991px) {
+            .founder-container {
+                flex-direction: column;
+                gap: 50px;
+            }
+
+            .founder-image, .founder-content {
+                width: 100%;
+            }
+
+            .values-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 767px) {
+            .about-hero {
+                padding: 80px 0 60px;
+            }
+
+            .about-hero h1 {
+                font-size: 36px;
+            }
+
+            .founder-content h2 {
+                font-size: 32px;
+            }
+
+            .values-heading h2 {
+                font-size: 32px;
+            }
+
+            .mission-content h2 {
+                font-size: 32px;
+            }
+        }
+    </style>
+
+    <!-- Nazakat Analytics Tracking - Load AFTER Firebase is ready -->
+    <script>
+        // Wait for Firebase to be fully initialized before loading analytics
+        function loadAnalyticsScript() {
+            if (typeof firebase !== 'undefined' && firebase.apps.length > 0) {
+                console.log('🔥 Firebase ready, loading analytics script...');
+                const script = document.createElement('script');
+                script.src = 'js/nazakat-analytics.js?v=1.0.1';
+                script.onload = function() {
+                    console.log('📊 Analytics script loaded successfully');
+                };
+                script.onerror = function() {
+                    console.error('❌ Failed to load analytics script');
+                };
+                document.head.appendChild(script);
+            } else {
+                console.log('⏳ Firebase not ready, retrying in 500ms...');
+                setTimeout(loadAnalyticsScript, 500);
+            }
+        }
+
+        // Start loading analytics after a brief delay to ensure Firebase init
+        setTimeout(loadAnalyticsScript, 1000);
+    </script>
+
+    <!-- WhatsApp Tooltip Script -->
+    <script src="js/whatsapp-tooltip.js"></script>
+</head>
+<body>
+<!-- Header -->
+    <header class="header">
+        <!-- Promo Banner -->
+        <div class="promo-banner">
+            <p class="banner-text"></p>
+        </div>
+
+        <!-- New Responsive Navigation -->
+        <nav class="navbar">
+            <div class="nav-container">
+                <!-- Logo -->
+                <a href="/index" class="brand">
+                    <img src="images/logos/royalmeenakari.png" alt="Royal Meenakari" class="brand-logo">
+                </a>
+
+
+                <!-- Mobile Toggle Button - Match RIDHI MEHRA design -->
+                <div class="hamburger" id="navToggle"><img src="images/icons/bars-staggered (2).png" alt="SP Jewellers"style="width: 25px; height: 25px;">
+                </div>
+
+                <!-- Navigation Icons - Exact match to RIDHI MEHRA design -->
+                <div class="nav-icons">
+                    <a href="#" class="icon-link search-icon">
+                        <img src="images/icons/search.png" alt="Cart" style="width: 20px; height: 20px;">
+                    </a>
+                    <a href="#" class="icon-link account-icon" id="user-icon">
+                        <img src="images/icons/user.png" alt="Cart" style="width: 25px; height: 25px;">
+
+                    </a>
+                    <a href="#" class="icon-link wishlist-icon-container wishlist-toggle">
+                        <img src="images/icons/heart.png" alt="Cart" style="width: 20px; height: 20px;">
+
+                        <div class="wishlist-count">0</div>
+                    </a>
+                    <a href="#" class="icon-link cart-icon-container cart-toggle" id="cartToggleButton">
+                        <img src="images/icons/cart-minus.png" alt="Cart" style="width: 20px; height: 20px;">
+                        <div class="cart-count">0</div>
+                    </a>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Navigation Links - Moved outside nav-container to avoid backdrop-filter containing block -->
+        <div class="nav-menu" id="navMenu">
+            <!-- Close button for mobile menu in the top right corner -->
+
+            <i id="closeMenu" class="fa-solid fa-xmark meenu-close" onclick="closeMobileMenu()" style="font-size: 24px; margin-left: 90%; color: #333;" ></i>
+
+
+          <!-- "  <button class="menu-close fa fa-times" ></button>-->
+
+            <ul class="nav-list">
+                <li class="nav-item"><a href="/new-arrivals" class="nav-link" data-translate="new_arrivals">New Arrivals</a></li>
+                <li class="nav-item dropdown">
+                    <a href="#" class="nav-link dropdown-toggle"><span data-translate="categories">Collections</span> <i class="fas fa-chevron-down"></i></a>
+                    <ul class="dropdown-menu">
+                        <li><a href="/all-collection" data-translate="all_collections">All Collection</a></li>
+                        <li><a href="/featured-collection" data-translate="featured">Featured Collection</a></li>
+                        <li class="dropdown-submenu">
+                            <a href="#"><span data-translate="necklaces">Necklace</span> <i class="fas fa-chevron-right"></i></a>
+                            <ul class="dropdown-submenu-list">
+                                <li><a href="/gold-necklace" data-translate-dynamic>Gold Necklace</a></li>
+                                <li><a href="/silver-necklace" data-translate-dynamic>Silver Necklace</a></li>
+                                <li><a href="/meenakari-necklace" data-translate-dynamic>Meenakari Necklace</a></li>
+                            </ul>
+                        </li>
+                        <li class="dropdown-submenu">
+                            <a href="#"><span data-translate="earrings">Earrings</span> <i class="fas fa-chevron-right"></i></a>
+                            <ul class="dropdown-submenu-list">
+                                <li><a href="/gold-earrings" data-translate-dynamic>Gold Earrings</a></li>
+                                <li><a href="/silver-earrings" data-translate-dynamic>Silver Earrings</a></li>
+                                <li><a href="/meenakari-earrings" data-translate-dynamic>Meenakari Earrings</a></li>
+                            </ul>
+                        </li>
+                        <li class="dropdown-submenu">
+                            <a href="#"><span data-translate="bangles">Bangles</span> <i class="fas fa-chevron-right"></i></a>
+                            <ul class="dropdown-submenu-list">
+                                <li><a href="/gold-bangles" data-translate-dynamic>Gold Bangles</a></li>
+                                <li><a href="/silver-bangles" data-translate-dynamic>Silver Bangles</a></li>
+                                <li><a href="/meenakari-bangles" data-translate-dynamic>Meenakari Bangles</a></li>
+                            </ul>
+                        </li>
+                        <li class="dropdown-submenu">
+                            <a href="#"><span data-translate="rings">Rings</span> <i class="fas fa-chevron-right"></i></a>
+                            <ul class="dropdown-submenu-list">
+                                <li><a href="/gold-rings" data-translate-dynamic>Gold Rings</a></li>
+                                <li><a href="/silver-rings" data-translate-dynamic>Silver Rings</a></li>
+                                <li><a href="/meenakari-rings" data-translate-dynamic>Meenakari Rings</a></li>
+                            </ul>
+                        </li>
+                    </ul>
+                </li>
+                <li class="nav-item"><a href="/about-us" class="nav-link" data-translate="about_us">About</a></li>
+                <li class="nav-item"><a href="#customer-reviews" class="nav-link" data-translate-dynamic>Testimonials</a></li>
+                <li class="nav-item"><a href="/book-appointment" class="nav-link" data-translate-dynamic>Book Appointment</a></li>
+                <li class="nav-item"><a href="#" class="nav-link" data-translate-dynamic>Order Track</a></li>
+                <li><a href="/contact-us" class="nav-link" data-translate="contact_us">Contact</a></li>
+            </ul>
+
+            <!-- Mobile account links in separate div after Contact -->
+            <div class="mobile-account-links mobile-special">
+                <a href="/login" class="mobile-account-link">
+                    <img src="images/icons/user.png" alt="Cart" style="width: 18px; height: 18px;">  &nbsp; <span data-translate="account">Account</span>
+                </a>
+                <a href="#" class="mobile-account-link wishlist-toggle">
+                    <img src="images/icons/heart.png" alt="Cart" style="width: 18px; height: 18px;"> &nbsp;   <span data-translate="wishlist">Wishlist</span> (<span class="mobile-wishlist-count">0</span>)
+                </a>
+                <a href="#" class="mobile-account-link mobile-cart-toggle">
+                    <img src="images/icons/cart-minus.png" alt="Cart" style="width:18px; height: 18px; vertical-align: middle;">  &nbsp; <span data-translate="shopping_bag">Shopping Bag</span> (<span class="mobile-cart-count">0</span>)
+                </a>
+
+            </div>
+        </div>
+    </header>
+
+    <!-- Overlay for menu background -->
+    <div class="menu-overlay" id="menuOverlay"></div>
+
+    <!-- About Hero Section -->
+    <section class="about-hero">
+        <div class="container">
+            <div class="about-hero-content">
+                <h1>About Royal Meenakari</h1>
+                <p>450 years of legacy in Jewellery - Gold | Polki | Jadau | Meenakari | uncut - National Award Winner - Jasthan Meenakar</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Founder Section -->
+    <section class="founder-section">
+        <div class="founder-container">
+            <div class="founder-image">
+                <img src="images/IMG_20251003_173236.jpg" alt="Sapna Jain - Founder of Nazakat" onerror="this.src='images/product-placeholder.jpg'">
+            </div>
+            <div class="founder-content">
+                <h2>Royal Meenakari Jewellers</h2>
+                <div class="title">450 Years of Heritage & Excellence</div>
+                <p>At Royal Meenakari, we carry forward a legacy of 450 years in the art of jewellery making. Based in Jaipur, Rajasthan, we are proud National Award Winners specializing in Gold, Polki, Jadau, Meenakari, and uncut diamonds.</p>
+                <p>Our commitment to authentic craftsmanship and traditional artistry has been passed down through generations, making us one of the most trusted names in heritage jewellery.</p>
+                <p>Every piece in our collection reflects centuries of expertise, artistic brilliance, and the timeless beauty of traditional Indian jewellery, crafted to perfection for discerning connoisseurs worldwide.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Values Section --
+    <section class="values-section">
+        <div class="container">
+            <div class="values-heading">
+                <h2>What We Offer</h2>
+                <p>From exquisite Polki necklaces to intricate Meenakari pieces, every jewel reflects our commitment to excellence and 450 years of heritage craftsmanship</p>
+            </div>
+
+            <div class="values-grid">
+                <div class="value-card">
+                    <div class="value-icon">
+                        <i class="fas fa-certificate"></i>
+                    </div>
+                    <h3>Authentic And Pure</h3>
+                    <p>Every product is crafted with original fabrics and handloom artistry. We guarantee authenticity and purity in every thread, ensuring that traditional craftsmanship is preserved and honored.</p>
+                </div>
+
+                <div class="value-card">
+                    <div class="value-icon">
+                        <i class="fas fa-globe-americas"></i>
+                    </div>
+                    <h3>Worldwide Shipping</h3>
+                    <p>We deliver happiness across borders with a smooth and timely shopping experience. Our global reach ensures that traditional Indian elegance reaches women worldwide.</p>
+                </div>
+
+                <div class="value-card">
+                    <div class="value-icon">
+                        <i class="fas fa-gem"></i>
+                    </div>
+                    <h3>Exclusive Designs</h3>
+                    <p>Unique collections that bring luxury and tradition together. Each design is carefully curated to offer something special - pieces that you won't find anywhere else.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Mission Section -->
+    <section class="mission-section">
+        <div class="mission-content">
+            <h2>Our Mission</h2>
+            <p>Royal Meenakari is more than just a jewellery brand – it is a custodian of 450 years of traditional Indian jewellery artistry, keeping heritage craft alive for future generations.</p>
+            <p>We aim to preserve and promote the finest traditions of Gold, Polki, Jadau, and Meenakari work, creating masterpieces that blend timeless elegance with contemporary appeal.</p>
+            <p>Our commitment extends beyond creating beautiful jewellery – we are dedicated to supporting traditional artisans, preserving ancient meenakari techniques, and ensuring that this priceless heritage continues to shine for centuries to come.</p>
+        </div>
+    </section>
+
+    <!-- WhatsApp Button -->
+
+
+    <!-- WhatsApp Tooltip Script -->
+    <script src="js/whatsapp-tooltip.js"></script>
+
+
+
+
+
+
+    <!-- Search Scripts -->
+    <script src="js/search-manager.js"></script>
+    <script src="js/search-ui.js"></script>
+
+    <!-- Core JS Files -->
+    <script src="js/navigation.js?v=1.0.4"></script>
+    <script src="js/banner-rotator.js?v=1.0.1"></script>
+    <script src="js/error-handler.js"></script>
+    <script src="js/firebase/firebase-auth.js"></script>
+    <script src="js/cart-local-storage.js?v=1.0.0"></script>
+    <script src="js/firebase/firebase-cart-manager.js?v=1.0.0"></script>
+    <script src="js/cart-manager.js?v=1.0.1"></script>
+    <script src="js/wishlist-local-storage.js?v=1.0.0"></script>
+    <script src="js/firebase/firebase-wishlist-manager.js?v=1.0.0"></script>
+    <script src="js/wishlist-manager.js?v=1.0.0"></script>
+    <script src="js/main.js"></script>
+
+    <!-- Initialize search after all scripts are loaded -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Ensure search functionality is working
+            setTimeout(() => {
+                if (typeof SearchManager !== 'undefined') {
+                    console.log('SearchManager available');
+                }
+                if (typeof SearchUI !== 'undefined') {
+                    console.log('SearchUI available');
+                }
+
+                // Manual search icon setup as backup
+                const searchIcon = document.querySelector('.search-icon');
+                if (searchIcon && !searchIcon.hasAttribute('data-search-attached')) {
+                    searchIcon.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        console.log('Manual search icon click handler triggered');
+                        if (typeof SearchUI !== 'undefined' && SearchUI.openSearch) {
+                            SearchUI.openSearch();
+                        }
+                    });
+                    searchIcon.setAttribute('data-search-attached', 'true');
+                    console.log('Manual search icon handler attached');
+                }
+            }, 500);
+        });
+    </script>
+
+    <!-- Firebase Authentication Check -->
+    <script>
+      const FirebaseAuth = window.FirebaseAuth;
+
+      function handleAuthentication() {
+        const FirebaseAuth = window.FirebaseAuth;
+
+        if (!FirebaseAuth) {
+          console.warn('FirebaseAuth module not yet available, retrying...');
+          setTimeout(handleAuthentication, 100);
+          return;
+        }
+
+        const userIcon = document.getElementById('user-icon');
+
+        if (userIcon) {
+          try {
+            const currentUser = firebase.auth().currentUser;
+
+            if (currentUser) {
+              console.log("Firebase user is logged in:", currentUser.uid);
+              userIcon.href = "profile.html";
+              userIcon.classList.add('logged-in');
+            } else {
+              if (FirebaseAuth.isLoggedIn()) {
+                console.log("User is logged in from session");
+                userIcon.href = "profile.html";
+                userIcon.classList.add('logged-in');
+              } else {
+                console.log("No user session found");
+                userIcon.href = "login.html";
+                userIcon.classList.remove('logged-in');
+              }
+            }
+          } catch (error) {
+            console.error('Error checking authentication state:', error);
+            userIcon.href = "login.html";
+            userIcon.classList.remove('logged-in');
+          }
+        }
+      }
+
+      document.addEventListener('DOMContentLoaded', handleAuthentication);
+
+      FirebaseAuth.observeAuthState((user) => {
+        const userIcon = document.getElementById('user-icon');
+
+        if (userIcon) {
+          if (user) {
+            console.log("Auth state: User is signed in:", user.uid);
+
+            FirebaseAuth.saveSession({
+              uid: user.uid,
+              email: user.email,
+              displayName: user.displayName || 'User',
+              photoURL: user.photoURL,
+              loggedIn: true
+            });
+
+            userIcon.href = "profile.html";
+            userIcon.classList.add('logged-in');
+          } else {
+            console.log("Auth state: User is signed out");
+            FirebaseAuth.clearSession();
+            userIcon.href = "login.html";
+            userIcon.classList.remove('logged-in');
+          }
+        }
+      });
+    </script>
+
+
+
+    <!-- Bottom Navigation Bar -->
+
+    <!-- Footer Toggle Script -->
+
+
+    <!-- Minimalist Collapsible Footer -->
+
+
+    <!-- Bottom Navigation Bar (Mobile Only) -->
+
+
+    <!-- Footer Toggle Script -->
+
+
+
+    <!-- Minimalist Collapsible Footer -->
+
+
+    <!-- Bottom Navigation Bar (Mobile Only) -->
+
+
+    <!-- Footer Toggle Script -->
+
+
+
+    <!-- Minimalist Collapsible Footer -->
+    <footer class="footer-minimalist">
+        <div class="container">
+            <!-- Info Section -->
+            <div class="footer-section">
+                <button class="footer-toggle" data-section="info-content">
+                    <span class="footer-title" data-translate="info">Info</span>
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+                <div class="footer-content" id="info-content">
+                    <ul>
+                        <li><a href="/about-us" data-translate="about_us">About Us</a></li>
+                        <li><a href="terms-conditions.html#shipping-and-delivery" data-translate-dynamic>Shipping Policy</a></li>
+                        <li><a href="terms-conditions.html#returns-and-refunds" data-translate-dynamic>Returns & Exchanges</a></li>
+                        <li><a href="/terms-conditions" data-translate-dynamic>Terms and Conditions</a></li>
+                        <li><a href="/privacy-policy" data-translate-dynamic>Privacy Policy</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Categories Section -->
+            <div class="footer-section">
+                <button class="footer-toggle" data-section="categories-content">
+                    <span class="footer-title" data-translate="categories">Categories</span>
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+                <div class="footer-content" id="categories-content">
+                    <ul>
+                        <li class="category-with-sub">
+                            <div class="category-item-header">
+                                <a href="#" data-translate="necklaces">Necklace</a>
+                                <i class="fas fa-plus category-toggle-icon"></i>
+                            </div>
+                            <ul class="subcategory-list">
+                                <li><a href="/gold-necklace" data-translate-dynamic>Gold Necklace</a></li>
+                                <li><a href="/silver-necklace" data-translate-dynamic>Silver Necklace</a></li>
+                                <li><a href="/meenakari-necklace" data-translate-dynamic>Meenakari Necklace</a></li>
+                            </ul>
+                        </li>
+                        <li class="category-with-sub">
+                            <div class="category-item-header">
+                                <a href="#" data-translate="earrings">Earrings</a>
+                                <i class="fas fa-plus category-toggle-icon"></i>
+                            </div>
+                            <ul class="subcategory-list">
+                                <li><a href="/gold-earrings" data-translate-dynamic>Gold Earrings</a></li>
+                                <li><a href="/silver-earrings" data-translate-dynamic>Silver Earrings</a></li>
+                                <li><a href="/meenakari-earrings" data-translate-dynamic>Meenakari Earrings</a></li>
+                            </ul>
+                        </li>
+                        <li class="category-with-sub">
+                            <div class="category-item-header">
+                                <a href="#" data-translate="bangles">Bangles</a>
+                                <i class="fas fa-plus category-toggle-icon"></i>
+                            </div>
+                            <ul class="subcategory-list">
+                                <li><a href="/gold-bangles" data-translate-dynamic>Gold Bangles</a></li>
+                                <li><a href="/silver-bangles" data-translate-dynamic>Silver Bangles</a></li>
+                                <li><a href="/meenakari-bangles" data-translate-dynamic>Meenakari Bangles</a></li>
+                            </ul>
+                        </li>
+                        <li class="category-with-sub">
+                            <div class="category-item-header">
+                                <a href="#" data-translate="rings">Rings</a>
+                                <i class="fas fa-plus category-toggle-icon"></i>
+                            </div>
+                            <ul class="subcategory-list">
+                                <li><a href="/gold-rings" data-translate-dynamic>Gold Rings</a></li>
+                                <li><a href="/silver-rings" data-translate-dynamic>Silver Rings</a></li>
+                                <li><a href="/meenakari-rings" data-translate-dynamic>Meenakari Rings</a></li>
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Collection Section -->
+            <div class="footer-section">
+                <button class="footer-toggle" data-section="collection-content">
+                    <span class="footer-title" data-translate-dynamic>Collection</span>
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+                <div class="footer-content" id="collection-content">
+                    <ul>
+                        <li><a href="/all-collection" data-translate="all_collections">All Collection</a></li>
+                        <li><a href="/featured-collection" data-translate="featured">Featured Collection</a></li>
+                        <li><a href="/new-arrivals" data-translate="new_arrivals">New Arrivals</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Exclusive Benefits Section -->
+            <div class="footer-section">
+                <button class="footer-toggle" data-section="benefits-content">
+                    <span class="footer-title" data-translate-dynamic>Exclusive benefits</span>
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+                <div class="footer-content" id="benefits-content">
+                    <ul>
+                        <li><a href="#" data-translate-dynamic>Personal Styling</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Social Media Icons Section -->
+            <div class="footer-social-section">
+                <h3 class="social-section-title" data-translate="follow_social">Follow us on social media</h3>
+                <div class="social-icons-container">
+                    <a href="https://www.instagram.com" target="_blank" class="social-icon-link">
+                        <i class="fab fa-instagram"></i>
+                    </a>
+                    <a href="https://www.facebook.com" target="_blank" class="social-icon-link">
+                        <i class="fab fa-facebook-f"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Download Our App Section -->
+            <div class="footer-app-section">
+                <h3 class="app-section-title" data-translate="download_app">Download Our App</h3>
+                <div class="app-buttons-container">
+                    <a href="#" class="app-store-button">
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/3/3c/Download_on_the_App_Store_Badge.svg" alt="Download on App Store">
+                    </a>
+                    <a href="#" class="google-play-button">
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg" alt="Get it on Google Play">
+                    </a>
+                </div>
+            </div>
+
+            <div class="footer-bottom">
+            <div class="container">
+                <div class="footer-info">
+                    <div class="copyright">
+                        <p data-translate-dynamic>&copy; 2025 Royal Meenakari. All rights reserved. | Developed by <a href="https://savannaik.netlify.app/" target="_blank" style="color: #9c7c38; text-decoration: none; font-weight: 500;">Savan Naik</a></p>
+                    </div>
+
+                    <div class="footer-links">
+                        <a href="/terms-conditions" data-translate-dynamic>Terms and Conditions</a>
+                        <a href="/privacy-policy" data-translate-dynamic>Privacy Policy</a>
+                    </div>
+
+                    <div class="payment-methods">
+                        <span><i class="fab fa-cc-amex"></i></span>
+                        <span><i class="fab fa-cc-discover"></i></span>
+                        <span><i class="fab fa-google-pay"></i></span>
+                        <span><i class="fab fa-cc-mastercard"></i></span>
+                        <span><i class="fab fa-cc-paypal"></i></span>
+                        <span class="union-pay">UP</span>
+                        <span><i class="fab fa-cc-visa"></i></span>
+                    </div>
+                </div>
+            </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bottom Navigation Bar -->
+    <nav class="bottom-nav">
+        <a href="/index" class="bottom-nav-item active">
+            <i class="fi fi-rs-home"></i>
+            <span data-translate="home">Home</span>
+        </a>
+        <a href="/all-collection" class="bottom-nav-item">
+            <i class="fi fi-rs-shop"></i>
+            <span data-translate="shop">Shop</span>
+        </a>
+        <a href="/login" class="bottom-nav-item">
+            <i class="fi fi-rs-user"></i>
+            <span data-translate="account">Account</span>
+        </a>
+        <div class="bottom-nav-item currency-selector-wrapper">
+            <span id="selected-currency-flag" class="currency-flag-display">🇮🇳</span>
+            <span id="selected-currency-code" class="currency-code-display">INR</span>
+            <select id="currency-selector" class="currency-select" onchange="CurrencyConverter.changeCurrency(this.value)">
+                <option value="INR">INR</option>
+                <option value="USD">USD</option>
+                <option value="EUR">EUR</option>
+                <option value="GBP">GBP</option>
+                <option value="AED">AED</option>
+                <option value="CAD">CAD</option>
+                <option value="AUD">AUD</option>
+            </select>
+        </div>
+        <div class="bottom-nav-item language-selector-wrapper">
+            <span id="selected-language-flag" class="language-flag-display">🇬🇧</span>
+            <span id="selected-language-code" class="language-code-display">EN</span>
+            <select id="language-selector" class="language-select" onchange="LanguageTranslator.changeLanguage(this.value)">
+                <option value="en">EN</option>
+                <option value="hi">HI</option>
+                <option value="es">ES</option>
+                <option value="fr">FR</option>
+                <option value="ar">AR</option>
+                <option value="de">DE</option>
+            </select>
+        </div>
+        <a href="#" class="bottom-nav-item" id="bottomNavCart">
+            <i class="fi fi-rs-shopping-bag"></i>
+            <span data-translate="bag">Bag</span>
+        </a>
+    </nav>
+
+    <!-- Footer Toggle Script -->
+    <script src="js/footer-toggle.js"></script>
+
+    <!-- Bottom Navigation Cart Handler Script -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const bottomNavCart = document.getElementById('bottomNavCart');
+            if (bottomNavCart) {
+                bottomNavCart.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    if (typeof openCart === 'function') {
+                        openCart();
+                    } else {
+                        window.location.href = 'checkout.html';
+                    }
+                });
+            }
+        });
+    </script>
+
+    <!-- Currency Converter -->
+    <script src="js/currency-converter.js?v=1.0.0"></script>
+
+    <!-- Language Translator -->
+    <script src="js/language-translator.js?v=1.0.0"></script>
+
+</body>
+</html>
