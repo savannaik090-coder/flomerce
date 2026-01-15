@@ -6,12 +6,12 @@ exports.handler = async (event) => {
   const host = event.headers.host || '';
   const subdomain = host.split('.')[0];
 
-  // Bypass for main domain and common prefixes
-  if (subdomain === 'kreavo' || subdomain === 'www' || subdomain === 'localhost' || !subdomain) {
+  // If visiting the main domain or a local environment, DO NOT route to template
+  if (subdomain === 'kreavo' || subdomain === 'www' || subdomain === 'localhost' || host.includes('netlify.app') || !subdomain) {
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'text/html' },
-      body: '<!-- MAIN_SITE_PLACEHOLDER -->'
+      body: '<!-- MAIN_SITE_PROXY -->' // This is a fallback
     };
   }
 
@@ -24,17 +24,14 @@ exports.handler = async (event) => {
     if (siteSnapshot.empty) {
       return {
         statusCode: 404,
-        body: '<h1>Site Not Found</h1><p>The subdomain you are looking for does not exist on our platform.</p>'
+        body: '<h1>Site Not Found</h1><p>Check the brand name and try again.</p>'
       };
     }
 
     const siteData = siteSnapshot.docs[0].data();
-    
-    // Load simple template
     const templatePath = path.resolve(__dirname, '../templates/simple/index.html');
     let html = fs.readFileSync(templatePath, 'utf8');
 
-    // Inject data
     html = html.replace(/\{\{SITE_TITLE\}\}/g, siteData.siteName || 'My Website')
                .replace(/\{\{BRAND_NAME\}\}/g, siteData.siteName || 'My Brand')
                .replace(/\{\{SITE_DESCRIPTION\}\}/g, siteData.settings?.description || 'Welcome to our professional website.')
@@ -46,10 +43,7 @@ exports.handler = async (event) => {
       body: html
     };
   } catch (error) {
-    console.error('Routing error:', error);
-    return {
-      statusCode: 500,
-      body: '<h1>Error Loading Site</h1><p>Please try again later.</p>'
-    };
+    console.error('Router error:', error);
+    return { statusCode: 500, body: 'Error loading site' };
   }
 };

@@ -9,6 +9,7 @@
   status = 200
   force = true
 
+# Route EVERYTHING to the site-router, but ONLY if it's NOT a static asset
 [[redirects]]
   from = "/*"
   to = "/.netlify/functions/site-router"
