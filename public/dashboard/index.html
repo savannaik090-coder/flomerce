@@ -1,0 +1,78 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kreavo SaaS - Dashboard</title>
+    <link rel="stylesheet" href="../../guide/css/styles.css">
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
+    <style>
+        .dashboard-container { padding: 40px; max-width: 1200px; margin: 0 auto; }
+        .site-card { border: 1px solid #ddd; padding: 20px; margin: 10px 0; border-radius: 8px; }
+        .create-btn { background: #c59d5f; color: white; padding: 10px 20px; border: none; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <h1>My Websites</h1>
+        <button class="create-btn" onclick="showCreateModal()">+ Create New Website</button>
+        <div id="sites-list">Loading...</div>
+    </div>
+
+    <script src="../js/auth/saas-auth.js"></script>
+    <script>
+        const sitesList = document.getElementById('sites-list');
+
+        SaaSAuth.onAuthStateChanged(async (user) => {
+            if (!user) {
+                window.location.href = '../login.html';
+                return;
+            }
+            loadSites(user.uid);
+        });
+
+        async function loadSites(uid) {
+            const db = firebase.firestore();
+            const snapshot = await db.collection('websites').where('userId', '==', uid).get();
+            sitesList.innerHTML = '';
+            if (snapshot.empty) {
+                sitesList.innerHTML = '<p>No websites yet.</p>';
+                return;
+            }
+            snapshot.forEach(doc => {
+                const site = doc.data();
+                sitesList.innerHTML += `
+                    <div class="site-card">
+                        <h3>${site.siteName}</h3>
+                        <p>URL: <a href="https://${site.subdomain}.kreavo.in" target="_blank">${site.subdomain}.kreavo.in</a></p>
+                        <p>Status: ${site.status}</p>
+                    </div>
+                `;
+            });
+        }
+
+        async function showCreateModal() {
+            const siteName = prompt("Enter Website Name:");
+            if (!siteName) return;
+            const subdomain = siteName.toLowerCase().replace(/[^a-z0-9]/g, '');
+            
+            const user = firebase.auth().currentUser;
+            const db = firebase.firestore();
+            
+            await db.collection('websites').add({
+                userId: user.uid,
+                siteName: siteName,
+                subdomain: subdomain,
+                templateId: 'template-1',
+                status: 'active',
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            
+            loadSites(user.uid);
+        }
+    </script>
+</body>
+</html>

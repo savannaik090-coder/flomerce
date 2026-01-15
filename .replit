@@ -34,6 +34,10 @@ args = "Server"
 task = "workflow.run"
 args = "SaaS Dev Server"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "SaaS Frontend"
+
 [[workflows.workflow]]
 name = "Start Website"
 author = 47556237
@@ -66,6 +70,18 @@ outputType = "webview"
 task = "shell.exec"
 args = "npx netlify-cli dev --dir . --port 5000"
 waitForPort = 5000
+
+[[workflows.workflow]]
+name = "SaaS Frontend"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npx http-server public -p 5000"
+waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"
 
 [agent]
 expertMode = true
