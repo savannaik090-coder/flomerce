@@ -31,9 +31,16 @@ class SiteService {
   async getUserSites(userId) {
     const snapshot = await this.db.collection('websites')
       .where('userId', '==', userId)
-      .orderBy('createdAt', 'desc')
       .get();
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    
+    // Sort manually to avoid index requirement for now
+    return snapshot.docs
+      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .sort((a, b) => {
+        const dateA = a.createdAt?.toDate() || 0;
+        const dateB = b.createdAt?.toDate() || 0;
+        return dateB - dateA;
+      });
   }
 
   async deleteSite(siteId) {
