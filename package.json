@@ -4,9 +4,10 @@
   "description": "Website Automation SaaS Platform",
   "main": "index.js",
   "dependencies": {
-    "firebase-admin": "^11.0.0",
-    "nodemailer": "^6.9.0",
-    "razorpay": "^2.8.0"
+    "dotenv": "^16.4.7",
+    "firebase-admin": "^12.7.0",
+    "nodemailer": "^6.9.16",
+    "razorpay": "^2.9.5"
   },
   "devDependencies": {
     "netlify-cli": "^12.0.0"

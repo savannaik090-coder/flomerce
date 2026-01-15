@@ -4,8 +4,16 @@
  * It exports a function that creates a Nodemailer transporter based on environment variables.
  */
 
+// Load environment variables from .env file for local development
+if (process.env.NODE_ENV !== 'production') {
+  try {
+    require('dotenv').config();
+  } catch (err) {
+    // dotenv might not be available in all environments, ignore if it fails
+  }
+}
+
 const nodemailer = require('nodemailer');
-require('dotenv').config();
 
 /**
  * Get the email transport configuration from environment variables

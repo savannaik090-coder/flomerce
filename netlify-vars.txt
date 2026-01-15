@@ -41,5 +41,5 @@ FIREBASE_CERT_URL=https://www.googleapis.com/robot/v1/metadata/x509/firebase-adm
 RAZORPAY_KEY_ID=rzp_test_qZWULE2MoPHZJv
 RAZORPAY_KEY_SECRET=dwhI00HuTIRk5T61AyUq1Bhh
 OWNER_EMAIL=sss.naik2007@gmail.com
-EMAIL_USER=REPLACE_WITH_YOUR_EMAIL
-EMAIL_PASS=REPLACE_WITH_YOUR_APP_PASSWORD
+EMAIL_USER=sss.naik2007@gmail.com
+EMAIL_PASS=inqfgicvbzxxiiwd
