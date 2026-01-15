@@ -28,14 +28,6 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Server"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "SaaS Dev Server"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
 args = "SaaS Frontend"
 
 [[workflows.workflow]]
@@ -48,40 +40,16 @@ task = "shell.exec"
 args = "node run-server.js"
 
 [[workflows.workflow]]
-name = "Server"
-author = "agent"
-
-[workflows.workflow.metadata]
-outputType = "webview"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "node guide/run-server.js"
-waitForPort = 5000
-
-[[workflows.workflow]]
-name = "SaaS Dev Server"
-author = "agent"
-
-[workflows.workflow.metadata]
-outputType = "webview"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npx netlify-cli dev --dir . --port 5000"
-waitForPort = 5000
-
-[[workflows.workflow]]
 name = "SaaS Frontend"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npx http-server public -p 5000"
-waitForPort = 5000
-
 [workflows.workflow.metadata]
 outputType = "webview"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npx http-server public -p 5000 --cors -a 0.0.0.0"
+waitForPort = 5000
 
 [agent]
 expertMode = true
