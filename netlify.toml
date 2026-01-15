@@ -4,14 +4,19 @@
   functions = "functions"
 
 [[redirects]]
+  from = "/s/*"
+  to = "/.netlify/functions/site-router"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/:splat"
   status = 200
   force = true
 
-# Route EVERYTHING to the site-router, but ONLY if it's NOT a static asset
 [[redirects]]
   from = "/*"
-  to = "/.netlify/functions/site-router"
+  to = "/index.html"
   status = 200
   force = false
