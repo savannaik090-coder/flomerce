@@ -1,0 +1,229 @@
+
+/* First Visit Banner Modal Styles */
+.first-visit-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    z-index: 9999;
+    justify-content: center;
+    align-items: center;
+    animation: fadeIn 0.3s ease;
+}
+
+.first-visit-modal.show {
+    display: flex;
+}
+
+.first-visit-modal-content {
+    background: white;
+    border-radius: 12px;
+    max-width: 600px;
+    width: 90%;
+    height: 85vh;
+    max-height: 85vh;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    animation: slideUp 0.4s ease;
+    display: flex;
+    flex-direction: column;
+}
+
+.first-visit-modal-close {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    width: 35px;
+    height: 35px;
+    background: rgba(255, 255, 255, 0.9);
+    border: none;
+    border-radius: 50%;
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    color: #333;
+}
+
+.first-visit-modal-close:hover {
+    background: white;
+    transform: rotate(90deg);
+}
+
+.first-visit-banner-image {
+    width: 100%;
+    height: 65%;
+    object-fit: cover;
+    display: block;
+    flex-shrink: 0;
+}
+
+.first-visit-banner-text {
+    padding: 20px;
+    text-align: center;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    overflow-y: auto;
+}
+
+.first-visit-banner-text h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 28px;
+    color: #333;
+    margin-bottom: 12px;
+}
+
+.first-visit-banner-text p {
+    font-size: 16px;
+    color: #666;
+    margin-bottom: 20px;
+    line-height: 1.6;
+}
+
+.first-visit-cta-button {
+    display: inline-block;
+    padding: 12px 30px;
+    background-color: #b3a681;
+    color: white;
+    text-decoration: none;
+    border-radius: 4px;
+    font-size: 15px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.first-visit-cta-button:hover {
+    background-color: #9c8a6b;
+    transform: translateY(-2px);
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .first-visit-modal-content {
+        max-width: 95%;
+        width: 95%;
+        height: 75vh;
+        max-height: 75vh;
+    }
+
+    .first-visit-banner-image {
+        height: 60%;
+        flex-shrink: 0;
+    }
+
+    .first-visit-banner-text {
+        padding: 18px;
+    }
+
+    .first-visit-banner-text h2 {
+        font-size: 22px;
+        margin-bottom: 10px;
+    }
+
+    .first-visit-banner-text p {
+        font-size: 14px;
+        margin-bottom: 15px;
+    }
+
+    .first-visit-modal-close {
+        width: 30px;
+        height: 30px;
+        font-size: 20px;
+        top: 10px;
+        right: 10px;
+    }
+}
+
+/* Extra small devices */
+@media (max-width: 480px) {
+    .first-visit-modal-content {
+        height: 65vh;
+        max-height: 65vh;
+    }
+
+    .first-visit-banner-image {
+        height: 55%;
+        flex-shrink: 0;
+    }
+
+    .first-visit-banner-text {
+        padding: 15px;
+    }
+
+    .first-visit-banner-text h2 {
+        font-size: 18px;
+        margin-bottom: 8px;
+    }
+
+    .first-visit-banner-text p {
+        font-size: 12px;
+        margin-bottom: 12px;
+    }
+
+    .first-visit-cta-button {
+        padding: 10px 20px;
+        font-size: 13px;
+    }
+}
+
+/* Landscape mode on small devices */
+@media (max-height: 600px) and (max-width: 768px) {
+    .first-visit-modal-content {
+        height: 55vh;
+        max-height: 55vh;
+    }
+
+    .first-visit-banner-image {
+        height: 50%;
+        flex-shrink: 0;
+    }
+
+    .first-visit-banner-text {
+        padding: 12px;
+    }
+
+    .first-visit-banner-text h2 {
+        font-size: 16px;
+        margin-bottom: 6px;
+    }
+
+    .first-visit-banner-text p {
+        font-size: 11px;
+        margin-bottom: 10px;
+    }
+
+    .first-visit-cta-button {
+        padding: 8px 16px;
+        font-size: 12px;
+    }
+}

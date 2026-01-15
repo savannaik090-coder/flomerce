@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clear Cache - Nazakat</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 40px;
+            max-width: 600px;
+            margin: 0 auto;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #1d4ed8;
+        }
+        .success {
+            color: #10b981;
+            margin-top: 20px;
+            padding: 10px;
+            background: #d1fae5;
+            border-radius: 4px;
+            display: none;
+        }
+        .info {
+            color: #6b7280;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 Clear Product Cache</h1>
+        <p class="info">Click the button below to clear all cached product data and force a fresh reload of products from Firebase.</p>
+        
+        <button onclick="clearAllCache()">Clear Cache & Reload</button>
+        <button onclick="goHome()">Go to Homepage</button>
+        
+        <div class="success" id="successMessage">
+            ✅ Cache cleared successfully! Redirecting to homepage...
+        </div>
+    </div>
+
+    <script>
+        function clearAllCache() {
+            // Clear localStorage
+            const keysToRemove = [
+                'featuredCollectionProducts',
+                'featuredCollectionProductsTime',
+                'featuredCollectionProductsETag',
+                'newArrivalsProducts',
+                'newArrivalsProductsTime',
+                'newArrivalsProductsETag',
+                'sareeCollectionProducts',
+                'sareeCollectionProductsTime',
+                'sareeCollectionProductsETag',
+                'bridalProducts',
+                'bridalProductsTime',
+                'bridalProductsETag',
+                'polkiProducts',
+                'polkiProductsTime',
+                'polkiProductsETag',
+                'lastProductUpdate'
+            ];
+            
+            keysToRemove.forEach(key => {
+                try {
+                    localStorage.removeItem(key);
+                    console.log(`Removed: ${key}`);
+                } catch (e) {
+                    console.error(`Error removing ${key}:`, e);
+                }
+            });
+            
+            // Show success message
+            document.getElementById('successMessage').style.display = 'block';
+            
+            // Redirect to homepage after 2 seconds
+            setTimeout(() => {
+                window.location.href = '/index.html';
+            }, 2000);
+        }
+        
+        function goHome() {
+            window.location.href = '/index.html';
+        }
+    </script>
+</body>
+</html>

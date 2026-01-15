@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Kreavo</title>
+    <script src="/env-config.js"></script>
+    <style>
+        body { font-family: sans-serif; margin: 0; background: #f4f7f6; display: flex; }
+        .sidebar { width: 250px; background: #1e293b; color: white; height: 100vh; padding: 20px; box-sizing: border-box; }
+        .main { flex: 1; padding: 40px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .site-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .btn { padding: 10px 20px; border-radius: 6px; cursor: pointer; border: none; font-weight: 600; }
+        .btn-primary { background: #2563eb; color: white; }
+        .logout { background: transparent; color: #94a3b8; cursor: pointer; border: none; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h2>KREAVO</h2>
+        <nav>
+            <p style="color: #64748b;">MENU</p>
+            <ul style="list-style: none; padding: 0;">
+                <li style="margin-bottom: 15px;"><a href="#" style="color: white; text-decoration: none;">My Websites</a></li>
+                <li style="margin-bottom: 15px;"><a href="#" style="color: #94a3b8; text-decoration: none;">Account</a></li>
+            </ul>
+        </nav>
+        <button id="logout-btn" class="logout" style="margin-top: 50px;">Logout</button>
+    </div>
+    <div class="main">
+        <div class="header">
+            <h1>My Websites</h1>
+            <button class="btn btn-primary" id="create-site-btn">+ Create New Site</button>
+        </div>
+        <div id="sites-list">
+            <p>Loading your websites...</p>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
+    <script type="module">
+        import { authService } from './src/js/auth/auth-service.js';
+        import { siteService } from './src/js/dashboard/site-service.js';
+        
+        authService.onAuthStateChanged((user) => {
+            if (!user) window.location.href = '/login.html';
+            else loadSites(user.uid);
+        });
+
+        document.getElementById('logout-btn').onclick = () => authService.logout();
+
+        async function loadSites(uid) {
+            const sitesList = document.getElementById('sites-list');
+            try {
+                const sites = await siteService.getUserSites(uid);
+                
+                if (sites.length === 0) {
+                    sitesList.innerHTML = '<div style="text-align:center; padding: 50px; background: white; border-radius: 8px;"><h3>No websites found.</h3><p>Click "Create New Site" to get started.</p></div>';
+                    return;
+                }
+
+                sitesList.innerHTML = '';
+                sites.forEach(site => {
+                    sitesList.innerHTML += `
+                        <div class="site-card">
+                            <div>
+                                <h3 style="margin:0;">${site.siteName}</h3>
+                                <a href="https://${site.subdomain}.kreavo.in" target="_blank" style="color: #2563eb; font-size: 14px;">${site.subdomain}.kreavo.in</a>
+                            </div>
+                            <div>
+                                <button class="btn" style="background: #f1f5f9; color: #475569; margin-right: 10px;">Manage</button>
+                                <button class="btn delete-btn" data-id="${site.id}" style="background: #fee2e2; color: #dc2626;">Delete</button>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                // Attach delete listeners
+                document.querySelectorAll('.delete-btn').forEach(btn => {
+                    btn.onclick = async () => {
+                        if(confirm('Are you sure?')) {
+                            await siteService.deleteSite(btn.dataset.id);
+                            loadSites(uid);
+                        }
+                    };
+                });
+            } catch (error) {
+                sitesList.innerHTML = `<p style="color:red">Error loading sites: ${error.message}</p>`;
+            }
+        }
+
+        document.getElementById('create-site-btn').onclick = async () => {
+            const name = prompt("Enter Website Name:");
+            if (!name) return;
+            const category = prompt("Enter Business Category (e.g. Jewellery, Bakery):", "Jewellery");
+            
+            try {
+                const user = firebase.auth().currentUser;
+                await siteService.createSite(user.uid, { siteName: name, category, templateId: 'template1' });
+                loadSites(user.uid);
+            } catch (error) {
+                alert(error.message);
+            }
+        };
+    </script>
+</body>
+</html>

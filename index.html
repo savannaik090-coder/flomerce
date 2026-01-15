@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kreavo - Website Automation SaaS</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <script src="/env-config.js"></script>
+    <style>
+        :root { --primary: #2563eb; --secondary: #1e293b; --text: #0f172a; }
+        body { font-family: 'Inter', sans-serif; margin: 0; color: var(--text); line-height: 1.5; }
+        .nav { display: flex; justify-content: space-between; padding: 20px 10%; align-items: center; border-bottom: 1px solid #e2e8f0; }
+        .logo { font-size: 24px; font-weight: 800; color: var(--primary); text-decoration: none; }
+        .hero { padding: 100px 10%; text-align: center; background: radial-gradient(circle at top right, #eff6ff, white); }
+        .hero h1 { font-size: 3.5rem; font-weight: 800; margin-bottom: 20px; color: var(--secondary); }
+        .hero p { font-size: 1.25rem; color: #64748b; max-width: 700px; margin: 0 auto 40px; }
+        .btn { padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block; transition: 0.2s; }
+        .btn-primary { background: var(--primary); color: white; box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2); }
+        .btn-outline { border: 2px solid #e2e8f0; color: var(--secondary); margin-left: 15px; }
+        .features { padding: 80px 10%; display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 30px; }
+        .feature-card { padding: 30px; border-radius: 12px; border: 1px solid #f1f5f9; background: white; }
+    </style>
+</head>
+<body>
+    <nav class="nav">
+        <a href="/" class="logo">KREAVO</a>
+        <div>
+            <a href="/login.html" style="text-decoration:none; color:var(--secondary); font-weight:500; margin-right:20px;">Login</a>
+            <a href="/signup.html" class="btn btn-primary">Start Building</a>
+        </div>
+    </nav>
+    <section class="hero">
+        <h1>Launch Your Website<br>in <span style="color:var(--primary);">60 Seconds.</span></h1>
+        <p>The ultimate platform for Indian businesses to automate their online presence. No code, no hosting, no hassle.</p>
+        <div style="margin-top:20px;">
+            <a href="/signup.html" class="btn btn-primary">Create My Site</a>
+            <a href="/admin-panel/index.html" class="btn btn-outline">Owner CRM</a>
+        </div>
+    </section>
+    <section class="features">
+        <div class="feature-card"><h3>🚀 Zero Config</h3><p>Your site is live instantly on a free kreavo.in subdomain.</p></div>
+        <div class="feature-card"><h3>💳 Payments Integrated</h3><p>Accept payments via Razorpay immediately.</p></div>
+        <div class="feature-card"><h3>📈 Business Focused</h3><p>Clean templates designed to convert visitors into customers.</p></div>
+    </section>
+</body>
+</html>

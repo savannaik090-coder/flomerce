@@ -1,0 +1,43 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Service Worker Cleanup</title>
+</head>
+<body>
+    <h1>Service Worker Cleanup</h1>
+    <div id="status">Cleaning up...</div>
+    <script>
+        async function cleanupServiceWorkers() {
+            const statusDiv = document.getElementById('status');
+            
+            try {
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                statusDiv.innerHTML += `<p>Found ${registrations.length} service worker(s)</p>`;
+                
+                for (let registration of registrations) {
+                    statusDiv.innerHTML += `<p>Unregistering: ${registration.scope}</p>`;
+                    await registration.unregister();
+                }
+                
+                statusDiv.innerHTML += `<p style="color: green;">✅ All service workers unregistered</p>`;
+                statusDiv.innerHTML += `<p>Clearing cache and localStorage...</p>`;
+                
+                localStorage.clear();
+                if ('caches' in window) {
+                    const cacheNames = await caches.keys();
+                    await Promise.all(cacheNames.map(name => caches.delete(name)));
+                }
+                
+                statusDiv.innerHTML += `<p style="color: green;">✅ Cache cleared</p>`;
+                statusDiv.innerHTML += `<p style="color: blue;">Please close ALL browser tabs and reopen to complete cleanup</p>`;
+                
+            } catch (error) {
+                statusDiv.innerHTML += `<p style="color: red;">Error: ${error.message}</p>`;
+            }
+        }
+        
+        cleanupServiceWorkers();
+    </script>
+</body>
+</html>

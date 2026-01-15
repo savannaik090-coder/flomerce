@@ -1,0 +1,26 @@
+
+{
+  "id": "TEST-MULTI-001",
+  "name": "Multi-Image Test Product",
+  "price": 25000,
+  "description": "This is a test product with multiple images to demonstrate the new multi-image gallery functionality.",
+  "category": "bridal",
+  "images": [
+    {
+      "url": "productImages/test-image-1.jpg",
+      "isMain": true,
+      "alt": "Main product view"
+    },
+    {
+      "url": "productImages/test-image-2.jpg", 
+      "isMain": false,
+      "alt": "Side view"
+    },
+    {
+      "url": "productImages/test-image-3.jpg",
+      "isMain": false,
+      "alt": "Detail view"
+    }
+  ],
+  "mainImage": "productImages/test-image-1.jpg"
+}

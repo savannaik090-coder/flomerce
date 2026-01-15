@@ -1,0 +1,272 @@
+/* Out of Stock Styles */
+.out-of-stock {
+    opacity: 0.75;
+    position: relative;
+    filter: grayscale(50%) brightness(0.85) contrast(85%);
+    cursor: not-allowed !important;
+    transition: all 0.3s ease;
+}
+
+.out-of-stock a,
+.out-of-stock button,
+.out-of-stock .product-link {
+    cursor: not-allowed !important;
+    pointer-events: none !important;
+}
+
+/* Allow Edit Stock buttons to be clickable in out-of-stock items */
+.out-of-stock .product-actions button,
+.product-card.out-of-stock .product-actions button {
+    cursor: pointer !important;
+    pointer-events: auto !important;
+}
+
+.out-of-stock a:hover,
+.out-of-stock button:hover {
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+.out-of-stock-badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: #dc2626;
+    color: white;
+    padding: 8px 14px;
+    border-radius: 25px;
+    font-weight: bold;
+    font-size: 12px;
+    z-index: 20;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4);
+    border: 2px solid white;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.out-of-stock-badge.low-stock {
+    background: rgba(245, 158, 11, 0.95);
+}
+
+.stock-indicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    margin-top: 8px;
+    padding: 4px 8px;
+    border-radius: 12px;
+}
+
+.stock-indicator.out-of-stock {
+    color: #dc2626;
+    background: rgba(220, 38, 38, 0.1);
+}
+
+/* Low stock indicators are not used - only out-of-stock indicators are shown */
+
+.stock-indicator.in-stock {
+    color: #16a34a;
+    background: rgba(22, 163, 74, 0.1);
+}
+
+/* Disabled add to cart buttons for out of stock products */
+.out-of-stock .add-to-cart-btn,
+.out-of-stock button[onclick*="addToCart"] {
+    opacity: 0.5;
+    cursor: not-allowed !important;
+    background-color: #ccc !important;
+    border-color: #ccc !important;
+}
+
+.out-of-stock .add-to-cart-btn:hover,
+.out-of-stock button[onclick*="addToCart"]:hover {
+    background-color: #ccc !important;
+    border-color: #ccc !important;
+    cursor: not-allowed !important;
+}
+
+/* Product image overlay for out of stock */
+.out-of-stock .product-image::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+   background: linear-gradient(45deg, transparent 46%, rgba(220, 38, 38, 0.08) 49%, rgba(220, 38, 38, 0.08) 51%, transparent 54%);
+    background-size: 20px 20px;
+    z-index: 2;
+    pointer-events: none;
+    border-radius: inherit;
+}
+
+.out-of-stock .product-image {
+    filter: grayscale(60%) brightness(0.9) contrast(90%);
+}
+
+/* Product grid adjustments for out of stock products */
+.product-grid .out-of-stock {
+    order: 999; /* Push out of stock products to the end */
+}
+
+/* Mobile responsiveness */
+@media (max-width: 640px) {
+    .out-of-stock-badge {
+        padding: 4px 8px;
+        font-size: 10px;
+        top: 8px;
+        left: 8px;
+    }
+
+    .stock-indicator {
+        font-size: 11px;
+        padding: 3px 6px;
+    }
+}
+
+/* Out of Stock Product Styles */
+
+/* Out of stock badge styling */
+.out-of-stock-badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: linear-gradient(135deg, #dc2626, #b91c1c);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    z-index: 10;
+    box-shadow: 0 2px 8px rgba(220, 38, 38, 0.4);
+    border: 2px solid rgba(255, 255, 255, 0.9);
+}
+
+/* Out of stock product container */
+.out-of-stock {
+    position: relative;
+    opacity: 0.8;
+    pointer-events: none;
+}
+
+/* Product image effects for out of stock */
+.out-of-stock .product-image,
+.out-of-stock .arrival-image {
+    position: relative;
+    filter: grayscale(60%) brightness(0.9) contrast(90%);
+    transition: all 0.3s ease;
+}
+
+/* Stock indicator styling */
+.stock-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    margin-top: 5px;
+}
+
+.stock-indicator.out-of-stock {
+    background: rgba(220, 38, 38, 0.1);
+    color: #dc2626;
+    border: 1px solid rgba(220, 38, 38, 0.3);
+}
+
+.stock-indicator.low-stock {
+    background: rgba(245, 158, 11, 0.1);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+/* Ensure relative positioning for product containers */
+.product-item,
+.arrival-item,
+.polki-card {
+    position: relative;
+}
+
+.product-image,
+.arrival-image {
+    position: relative;
+}
+
+/* Out of stock hover effects disabled */
+.out-of-stock:hover {
+    transform: none !important;
+    cursor: not-allowed !important;
+}
+
+.out-of-stock a {
+    pointer-events: none !important;
+    cursor: not-allowed !important;
+}
+
+/* Make sure the overlay shows on all product image containers */
+.out-of-stock .product-image::before,
+.out-of-stock .arrival-image::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.05);
+    z-index: 1;
+    border-radius: inherit;
+    pointer-events: none;
+}
+
+/* Main out-of-stock product styling */
+.product-item.out-of-stock,
+.arrival-item.out-of-stock {
+    position: relative;
+    opacity: 0.75;
+    filter: grayscale(60%) brightness(0.9) contrast(90%);
+    pointer-events: none;
+    cursor: not-allowed !important;
+}
+
+.product-item.out-of-stock *,
+.arrival-item.out-of-stock * {
+    pointer-events: none !important;
+    cursor: not-allowed !important;
+}
+
+/* Low stock products are treated as normal products - no special styling */
+
+/* Out of stock badge */
+.out-of-stock-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: linear-gradient(135deg, #dc2626, #b91c1c);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
+    z-index: 10;
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Low stock badges are not used - only out-of-stock badges are shown */
