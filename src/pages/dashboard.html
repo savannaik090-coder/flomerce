@@ -154,7 +154,7 @@
                 
                 // Check 7 days trial
                 if (plan === 'trial') {
-                    const startDate = currentUserData.trialStartDate.toDate();
+                    const startDate = currentUserData.trialStartDate ? currentUserData.trialStartDate.toDate() : new Date();
                     const diff = Math.floor((new Date() - startDate) / (1000 * 60 * 60 * 24));
                     if (diff > 7) {
                         await expirePlan(user.uid, "Your 7-day free trial has expired. Please upgrade to a paid plan to continue using the website.");
@@ -321,9 +321,9 @@
                     const plan = btn.dataset.plan;
                     const user = firebase.auth().currentUser;
                     try {
-                        const amount = overlay.querySelector(`.plan-price[data-monthly][data-plan-ref="${plan}"]`) ? 
-                                     overlay.querySelector(`.plan-price[data-monthly][data-plan-ref="${plan}"]`).dataset[selectedDuration] :
-                                     overlay.querySelectorAll('.plan-price')[['basic', 'premium', 'pro'].indexOf(plan)].dataset[selectedDuration];
+                        const durationBtns = overlay.querySelectorAll('.plan-price');
+                        const index = ['basic', 'premium', 'pro'].indexOf(plan);
+                        const amount = durationBtns[index].dataset[selectedDuration];
 
                         const order = await razorpayService.createOrder(plan, selectedDuration, amount);
                         const response = await razorpayService.openCheckout({
@@ -339,52 +339,6 @@
                             await firebase.firestore().collection('users').doc(user.uid).update({
                                 plan: plan,
                                 billingCycle: selectedDuration,
-                                lastPaymentId: response.razorpay_payment_id,
-                                status: 'active',
-                                trialStartDate: firebase.firestore.FieldValue.serverTimestamp()
-                            });
-                            overlay.remove();
-                            window.location.reload();
-                        }
-                    } catch (error) {
-                        alert('Payment failed: ' + error.message);
-                    }
-                };
-            });
-        }
-            document.body.appendChild(overlay);
-
-            // Handle Trial Start
-            overlay.querySelector('.start-trial-btn').onclick = async () => {
-                const user = firebase.auth().currentUser;
-                await firebase.firestore().collection('users').doc(user.uid).update({
-                    plan: 'trial',
-                    trialStartDate: firebase.firestore.FieldValue.serverTimestamp(),
-                    status: 'active'
-                });
-                overlay.remove();
-                window.location.reload();
-            };
-
-            // Handle Paid Plans
-            overlay.querySelectorAll('.selection-upgrade-btn').forEach(btn => {
-                btn.onclick = async () => {
-                    const plan = btn.dataset.plan;
-                    const user = firebase.auth().currentUser;
-                    try {
-                        const order = await razorpayService.createOrder(plan, 'monthly');
-                        const response = await razorpayService.openCheckout({
-                            amount: order.amount,
-                            currency: order.currency,
-                            planName: plan.charAt(0).toUpperCase() + plan.slice(1),
-                            billingCycle: 'Monthly',
-                            userName: user.displayName,
-                            userEmail: user.email
-                        });
-
-                        if (response.razorpay_payment_id) {
-                            await firebase.firestore().collection('users').doc(user.uid).update({
-                                plan: plan,
                                 lastPaymentId: response.razorpay_payment_id,
                                 status: 'active',
                                 trialStartDate: firebase.firestore.FieldValue.serverTimestamp()
@@ -578,8 +532,5 @@
             }
         }
     </script>
-</body>
-</html>
-
 </body>
 </html>
