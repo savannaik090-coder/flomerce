@@ -378,10 +378,11 @@
                             const planWeights = { 'basic': 1, 'premium': 2, 'pro': 3 };
                             const isUpgrade = planWeights[newPlan] > planWeights[currentPlan];
                             
-                            if (!isUpgrade && newPlan === currentPlan) {
+                            if (newPlan === currentPlan) {
                                 if (!confirm('You are already on this plan. Do you want to extend your subscription?')) return;
                             } else if (!isUpgrade) {
-                                if (!confirm(`You are currently on a ${currentPlan.toUpperCase()} plan. Upgrading to ${newPlan.toUpperCase()} will downgrade your account. Are you sure?`)) return;
+                                alert(`You are already on the ${currentPlan.toUpperCase()} plan. You cannot downgrade to the ${newPlan.toUpperCase()} plan while your current subscription is active.`);
+                                return;
                             }
                         }
 
@@ -489,15 +490,16 @@
                     const currentPlan = userData.plan || 'trial';
                     const currentStatus = userData.status;
                     
-                    // Logic to prevent accidental downgrades or overwriting active plans
+                    // Logic to prevent accidental overwriting active plans
                     if (currentStatus === 'active' && currentPlan !== 'trial') {
                         const planWeights = { 'basic': 1, 'premium': 2, 'pro': 3 };
                         const isUpgrade = planWeights[newPlan] > planWeights[currentPlan];
                         
-                        if (!isUpgrade && newPlan === currentPlan) {
+                        if (newPlan === currentPlan) {
                             if (!confirm('You are already on this plan. Do you want to extend your subscription?')) return;
                         } else if (!isUpgrade) {
-                            if (!confirm(`You are currently on a ${currentPlan.toUpperCase()} plan. Upgrading to ${newPlan.toUpperCase()} will downgrade your account. Are you sure?`)) return;
+                            alert(`You are already on the ${currentPlan.toUpperCase()} plan. You cannot downgrade to the ${newPlan.toUpperCase()} plan while your current subscription is active.`);
+                            return;
                         }
                     }
 
