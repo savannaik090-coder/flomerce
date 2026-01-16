@@ -1,7 +1,102 @@
-body { font-family: sans-serif; background: #f4f7f6; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-.auth-card { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
-.form-group { margin-bottom: 20px; }
-label { display: block; margin-bottom: 8px; font-weight: 600; }
-input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
-.btn { width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; }
-.error { color: #dc2626; font-size: 14px; margin-top: 10px; display: none; }
+body {
+  font-family: 'Inter', sans-serif;
+  background: #f4f7f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  margin: 0;
+}
+
+.auth-card {
+  background: white;
+  padding: 40px;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 400px;
+}
+
+.auth-card h2 {
+  text-align: center;
+  margin-bottom: 24px;
+  color: #1e293b;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #475569;
+}
+
+input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  box-sizing: border-box;
+  font-size: 16px;
+  transition: border-color 0.2s;
+}
+
+input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.btn {
+  width: 100%;
+  padding: 12px;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+
+.btn:hover {
+  background: #1d4ed8;
+}
+
+.error {
+  color: #dc2626;
+  font-size: 14px;
+  margin-top: 10px;
+  display: none;
+  text-align: center;
+  padding: 8px;
+  background: #fef2f2;
+  border-radius: 4px;
+}
+
+p {
+  text-align: center;
+  margin-top: 20px;
+  color: #64748b;
+}
+
+a {
+  color: #2563eb;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 480px) {
+  .auth-card {
+    padding: 24px;
+    margin: 20px;
+  }
+}
