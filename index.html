@@ -42,5 +42,30 @@
         <div class="feature-card"><h3>💳 Payments Integrated</h3><p>Accept payments via Razorpay immediately.</p></div>
         <div class="feature-card"><h3>📈 Business Focused</h3><p>Clean templates designed to convert visitors into customers.</p></div>
     </section>
+    <script>
+        // Subdomain resolution logic
+        (async function resolveSubdomain() {
+            const host = window.location.hostname;
+            const parts = host.split('.');
+            
+            // If it's a subdomain (e.g. fgt.kreavo.in)
+            if (parts.length >= 3 && parts[0] !== 'www' && parts[0] !== 'kreavo') {
+                const subdomain = parts[0];
+                try {
+                    const response = await fetch(`/.netlify/functions/resolve-subdomain`, {
+                        headers: { 'Host': host }
+                    });
+                    const data = await response.json();
+                    
+                    if (data && !data.isMainSite && data.siteData) {
+                        // Redirect to the site display logic or render it
+                        window.location.href = `/s/${subdomain}`;
+                    }
+                } catch (e) {
+                    console.error("Subdomain resolution failed", e);
+                }
+            }
+        })();
+    </script>
 </body>
 </html>
