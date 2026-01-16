@@ -40,48 +40,49 @@ class SiteService {
       throw new Error("Invalid website name. Please use letters and numbers.");
     }
 
-    // Reference to the global 'subdomains' registry
     const subdomainRegistryRef = this.db.collection('subdomains').doc(subdomain);
     const sitesRef = this.db.collection('sites');
 
-    console.log(`[SiteService] Attempting to create site: ${siteName} (${subdomain})`);
+    console.log(`[SiteService] Creating site: ${siteName} (${subdomain})`);
 
-    // Use a transaction to ensure we claim the subdomain AND create the site record together
-    return this.db.runTransaction(async (transaction) => {
-      // 1. Check if subdomain is already claimed
-      const subdomainDoc = await transaction.get(subdomainRegistryRef);
-      
-      if (subdomainDoc.exists) {
-        console.warn(`[SiteService] Subdomain collision: ${subdomain}`);
-        throw new Error(`The URL "${subdomain}.kreavo.in" is already taken. Please choose a different name.`);
-      }
+    try {
+      // Use transaction to ensure registry claim and site creation are atomic
+      const result = await this.db.runTransaction(async (transaction) => {
+        const subdomainDoc = await transaction.get(subdomainRegistryRef);
+        
+        if (subdomainDoc.exists) {
+          throw new Error(`The URL "${subdomain}.kreavo.in" is already taken.`);
+        }
 
-      // 2. Claim the subdomain in the registry
-      transaction.set(subdomainRegistryRef, {
-        ownerId: uid,
-        siteName: siteName,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        // Claim in registry
+        transaction.set(subdomainRegistryRef, {
+          ownerId: uid,
+          siteName: siteName,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        // Create site record
+        const siteUrl = `https://${subdomain}.kreavo.in`;
+        const newSiteRef = sitesRef.doc();
+        
+        transaction.set(newSiteRef, {
+          ...siteData,
+          siteName: siteName,
+          ownerId: uid,
+          subdomain: subdomain,
+          siteUrl: siteUrl,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        return { id: newSiteRef.id, subdomain: subdomain };
       });
-
-      // 3. Create the actual site record
-      const siteUrl = `https://${subdomain}.kreavo.in`;
-      const newSiteRef = sitesRef.doc();
       
-      const finalSiteData = {
-        ...siteData,
-        siteName: siteName,
-        ownerId: uid,
-        subdomain: subdomain,
-        siteUrl: siteUrl,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      };
-
-      transaction.set(newSiteRef, finalSiteData);
-      console.log(`[SiteService] Site created successfully: ${newSiteRef.id}`);
-
-      // Return ONLY the plain object to avoid potential serialization issues in the caller
-      return { id: newSiteRef.id, subdomain: subdomain };
-    });
+      console.log("[SiteService] Transaction successful:", result);
+      return result;
+    } catch (error) {
+      console.error("[SiteService] Transaction failed:", error);
+      throw error;
+    }
   }
 
   /**
