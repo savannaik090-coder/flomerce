@@ -2,6 +2,7 @@ const admin = require('firebase-admin');
 const fs = require('fs');
 const path = require('path');
 
+// Initialize Firebase Admin with credentials from environment variables
 if (!admin.apps.length) {
   admin.initializeApp({
     credential: admin.credential.cert({
@@ -15,21 +16,22 @@ if (!admin.apps.length) {
 const db = admin.firestore();
 
 exports.handler = async (event, context) => {
+  // Path is /s/subdomain
   const pathParts = event.path.split('/');
-  const subdomain = pathParts[2]; // /s/subdomain
+  const subdomain = pathParts[2];
 
   if (!subdomain) {
     return { statusCode: 400, body: "Subdomain required" };
   }
 
   try {
-    // Check both 'websites' (original) and 'sites' (new) collections for better compatibility
+    // Check 'sites' collection first
     let snapshot = await db.collection('sites')
       .where('subdomain', '==', subdomain)
       .limit(1)
       .get();
 
-    // Fallback to 'websites' collection if not found in 'sites'
+    // Fallback to 'websites' collection
     if (snapshot.empty) {
       snapshot = await db.collection('websites')
         .where('subdomain', '==', subdomain)
@@ -38,44 +40,64 @@ exports.handler = async (event, context) => {
     }
 
     if (snapshot.empty) {
-      return { statusCode: 404, body: "Website not found" };
+      return { statusCode: 404, body: "Website not found: " + subdomain };
     }
 
     const siteData = snapshot.docs[0].data();
     
-    // Determine which template to use
-    let templateType = 'simple'; // default
-    if (siteData.templateId === 'template1') {
-      templateType = 'clothing';
-    } else if (siteData.category?.toLowerCase() === 'clothing') {
+    // Determine template
+    let templateType = 'simple';
+    if (siteData.templateId === 'template1' || siteData.category?.toLowerCase() === 'clothing') {
       templateType = 'clothing';
     }
 
-    // Read the template file
-    const templatePath = path.resolve(__dirname, '../../templates/' + templateType + '/index.html');
-    
-    if (!fs.existsSync(templatePath)) {
-        return { 
-            statusCode: 500, 
-            body: "Template not found at: " + templatePath + ". Available templates: clothing, simple"
-        };
+    // RESOLVE TEMPLATE PATH
+    // In Netlify, the directory structure in production (/var/task) can be tricky.
+    // We try multiple possible locations.
+    const possiblePaths = [
+      path.join(process.cwd(), 'templates', templateType, 'index.html'),
+      path.join(__dirname, '..', '..', 'templates', templateType, 'index.html'),
+      path.join(__dirname, 'templates', templateType, 'index.html'),
+      path.join('/var/task', 'templates', templateType, 'index.html')
+    ];
+
+    let templatePath = '';
+    let html = '';
+
+    for (const p of possiblePaths) {
+      if (fs.existsSync(p)) {
+        templatePath = p;
+        html = fs.readFileSync(p, 'utf8');
+        break;
+      }
     }
 
-    let html = fs.readFileSync(templatePath, 'utf8');
+    if (!html) {
+      return { 
+        statusCode: 500, 
+        body: "CRITICAL ERROR: Template file not found. Checked paths: " + possiblePaths.join(', ') + ". CWD: " + process.cwd() + ". Dirname: " + __dirname
+      };
+    }
 
-    // Replacement logic for the template
+    // Simple replacement logic
     html = html.replace(/{{siteName}}/g, siteData.siteName || 'My Business');
     html = html.replace(/{{category}}/g, siteData.category || '');
     html = html.replace(/{{title}}/g, siteData.settings?.title || siteData.siteName || 'My Business');
-    html = html.replace(/{{description}}/g, siteData.settings?.description || 'Professional website created on Kreavo.');
+    html = html.replace(/{{description}}/g, siteData.settings?.description || 'Professional clothing website created on Kreavo.');
 
     return {
       statusCode: 200,
-      headers: { 'Content-Type': 'text/html' },
+      headers: { 
+        'Content-Type': 'text/html',
+        'Cache-Control': 'no-cache'
+      },
       body: html
     };
   } catch (error) {
     console.error("Router Error:", error);
-    return { statusCode: 500, body: "Internal Server Error: " + error.message };
+    return { 
+      statusCode: 500, 
+      body: "Internal Server Error: " + error.message + "\nStack: " + error.stack 
+    };
   }
 };
