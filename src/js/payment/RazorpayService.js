@@ -11,12 +11,8 @@ class RazorpayService {
       'pro': { monthly: 99900, '6months': 499900, yearly: 899900 }
     };
     
-    // Use customAmount if provided (from UI), otherwise fallback to map
+    // In a real app, this would be a backend call.
     const amount = (customAmount * 100) || amountMap[planId][billingCycle];
-    
-    // In a real app, this would be a backend call. 
-    // Since we are in Fast Mode, we'll simulate the order creation or assume a backend endpoint exists.
-    // For this implementation, we will use the Razorpay Checkout directly with a callback.
     return { amount, currency: 'INR', receipt: `receipt_${Date.now()}` };
   }
 
