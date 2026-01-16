@@ -43,33 +43,39 @@
         <div class="feature-card"><h3>📈 Business Focused</h3><p>Clean templates designed to convert visitors into customers.</p></div>
     </section>
     <script>
-        // Subdomain resolution logic
+        // COMPREHENSIVE SUBDOMAIN ROUTER
         (async function resolveSubdomain() {
             const host = window.location.hostname;
+            const path = window.location.pathname;
             
-            // Subdomain detection
+            // 1. Skip if already on a sub-path like /login or /dashboard
+            if (path !== '/' && !path.startsWith('/s/')) return;
+
+            // 2. Subdomain detection (works for both fgt.kreavo.in and fgt.localhost)
             const parts = host.split('.');
             const isLocalhost = host.includes('localhost');
-            
-            // For fgt.kreavo.in -> parts are ["fgt", "kreavo", "in"]
-            // For fgt.localhost -> parts are ["fgt", "localhost"]
             const isSubdomain = isLocalhost ? parts.length >= 2 : parts.length >= 3;
 
             if (isSubdomain && parts[0] !== 'www' && parts[0] !== 'kreavo') {
                 const subdomain = parts[0];
                 
-                if (window.location.pathname.startsWith('/s/')) return;
+                // Avoid infinite redirect loop
+                if (path.startsWith('/s/')) return;
 
                 try {
+                    // 3. Ask the API to verify this subdomain exists
                     const response = await fetch(`/.netlify/functions/resolve-subdomain?subdomain=${subdomain}`);
+                    if (!response.ok) throw new Error("Verification failed");
+                    
                     const data = await response.json();
                     
                     if (data && !data.isMainSite && data.siteData) {
-                        // Success - redirect to the path that Netlify's site-router handles
+                        // 4. FOUND SITE: Instantly replace the current URL with the site content path
+                        // Using replaceState so it doesn't clutter the history
                         window.location.replace(`/s/${subdomain}`);
                     }
                 } catch (e) {
-                    console.error("Subdomain resolution error:", e);
+                    console.error("Routing error:", e);
                 }
             }
         })();
