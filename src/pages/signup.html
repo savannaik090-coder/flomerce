@@ -48,6 +48,10 @@
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             const errorEl = document.getElementById('error-msg');
+            const btn = e.target.querySelector('button');
+
+            btn.innerText = 'Creating Account...';
+            btn.disabled = true;
 
             try {
                 await authService.signUp(name, email, password);
@@ -56,6 +60,8 @@
             } catch (error) {
                 errorEl.textContent = error.message;
                 errorEl.style.display = 'block';
+                btn.innerText = 'Create Account';
+                btn.disabled = false;
             }
         });
     </script>

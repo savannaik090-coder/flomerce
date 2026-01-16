@@ -35,13 +35,17 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
     <script type="module">
-        import { authService } from '/src/js/auth/auth-service.js';
+        import { authService } from '/src/js/auth/AuthService.js';
         
         document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             const errorEl = document.getElementById('error-msg');
+            const btn = e.target.querySelector('button');
+            
+            btn.innerText = 'Logging in...';
+            btn.disabled = true;
 
             try {
                 await authService.login(email, password);
@@ -49,6 +53,8 @@
             } catch (error) {
                 errorEl.textContent = error.message;
                 errorEl.style.display = 'block';
+                btn.innerText = 'Login';
+                btn.disabled = false;
             }
         });
     </script>
