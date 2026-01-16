@@ -18,7 +18,7 @@
         (function() {
             var host = window.location.hostname;
             var parts = host.split('.');
-            var isLocalhost = host.indexOf('localhost') !== -1;
+            var isLocalhost = host.indexOf('localhost') !== -1 || host.indexOf('replit.dev') !== -1;
             var isSubdomain = isLocalhost ? parts.length >= 2 : parts.length >= 3;
 
             if (isSubdomain && parts[0] !== 'www' && parts[0] !== 'kreavo') {
