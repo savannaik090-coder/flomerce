@@ -45,9 +45,13 @@ exports.handler = async (event, context) => {
 
     const siteData = snapshot.docs[0].data();
     
-    // Determine template
-    let templateType = 'simple';
-    if (siteData.templateId === 'template1' || siteData.category?.toLowerCase() === 'clothing') {
+    // Determine template type
+    // We strictly respect the templateId stored in the database.
+    // Falls back to 'simple' only if no templateId is present.
+    let templateType = siteData.templateId || 'simple';
+    
+    // Legacy support: if category is clothing, default to clothing template only if no ID set
+    if (!siteData.templateId && siteData.category?.toLowerCase() === 'clothing') {
       templateType = 'clothing';
     }
 
