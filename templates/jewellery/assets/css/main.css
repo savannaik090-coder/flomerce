@@ -1,0 +1,43 @@
+/* 
+ * Main Theme Styles
+ * Organized by Component
+ */
+
+/* 1. Variables & Base */
+:root {
+    --primary-color: #b3a681;
+    --secondary-color: #8B7355;
+    --accent-color: #d4af37;
+    --bg-color: #f8f8f5;
+    --text-color: #333;
+    --white: #ffffff;
+    --transition: all 0.3s ease;
+}
+
+/* 2. Global Resets */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Lato', 'Noto Sans', sans-serif;
+    color: var(--text-color);
+    background-color: var(--bg-color);
+    overflow-x: hidden;
+}
+
+/* 3. Utility Classes */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+.text-center { text-align: center; }
+
+/* 4. Imports for Components (to be moved to individual files) */
+@import 'navbar.css';
+@import 'hero-slider.css';
+@import 'responsive.css';
