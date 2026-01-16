@@ -33,7 +33,7 @@ class SiteService {
    */
   async createSite(uid, siteData) {
     const siteName = siteData.siteName.trim();
-    // Normalize subdomain to be alphanumeric with hyphens
+    // Normalize subdomain: lowercase, alphanumeric, hyphens only
     const subdomain = siteName.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
     
     if (!subdomain) {
@@ -44,34 +44,40 @@ class SiteService {
     const subdomainRegistryRef = this.db.collection('subdomains').doc(subdomain);
     const sitesRef = this.db.collection('sites');
 
+    console.log(`[SiteService] Attempting to create site: ${siteName} (${subdomain})`);
+
     // Use a transaction to ensure we claim the subdomain AND create the site record together
     return this.db.runTransaction(async (transaction) => {
+      // 1. Check if subdomain is already claimed
       const subdomainDoc = await transaction.get(subdomainRegistryRef);
       
-      // If the document exists in the 'subdomains' collection, the name is taken
       if (subdomainDoc.exists) {
+        console.warn(`[SiteService] Subdomain collision: ${subdomain}`);
         throw new Error(`The URL "${subdomain}.kreavo.in" is already taken. Please choose a different name.`);
       }
 
-      // Claim the subdomain in the registry
+      // 2. Claim the subdomain in the registry
       transaction.set(subdomainRegistryRef, {
         ownerId: uid,
         siteName: siteName,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
 
-      // Create the actual site record
+      // 3. Create the actual site record
       const siteUrl = `https://${subdomain}.kreavo.in`;
       const newSiteRef = sitesRef.doc();
       
-      transaction.set(newSiteRef, {
+      const finalSiteData = {
         ...siteData,
         siteName: siteName,
         ownerId: uid,
         subdomain: subdomain,
         siteUrl: siteUrl,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
+      };
+
+      transaction.set(newSiteRef, finalSiteData);
+      console.log(`[SiteService] Site created successfully: ${newSiteRef.id}`);
 
       return { id: newSiteRef.id, subdomain: subdomain };
     });
@@ -86,21 +92,28 @@ class SiteService {
    * @param {string} siteId - Document ID in Firestore.
    */
   async deleteSite(siteId) {
+    console.log(`[SiteService] Attempting to delete site: ${siteId}`);
     const siteDoc = await this.db.collection('sites').doc(siteId).get();
-    if (!siteDoc.exists) return;
+    if (!siteDoc.exists) {
+      console.warn(`[SiteService] Site not found for deletion: ${siteId}`);
+      return;
+    }
     
     const siteData = siteDoc.data();
     const subdomain = siteData.subdomain;
 
     const batch = this.db.batch();
-    // Delete from sites collection
+    // 1. Delete from sites collection
     batch.delete(this.db.collection('sites').doc(siteId));
-    // Release the subdomain from the registry
+    
+    // 2. Release the subdomain from the registry
     if (subdomain) {
+      console.log(`[SiteService] Releasing subdomain: ${subdomain}`);
       batch.delete(this.db.collection('subdomains').doc(subdomain));
     }
     
-    return batch.commit();
+    await batch.commit();
+    console.log(`[SiteService] Site and subdomain deleted successfully.`);
   }
 }
 
