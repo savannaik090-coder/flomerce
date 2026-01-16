@@ -46,7 +46,6 @@
         // Subdomain resolution logic
         (async function resolveSubdomain() {
             const host = window.location.hostname;
-            console.log("Current Host:", host);
             
             // Subdomain detection
             const parts = host.split('.');
@@ -58,22 +57,16 @@
 
             if (isSubdomain && parts[0] !== 'www' && parts[0] !== 'kreavo') {
                 const subdomain = parts[0];
-                console.log("Detected Subdomain:", subdomain);
                 
                 if (window.location.pathname.startsWith('/s/')) return;
 
                 try {
-                    // Call the function to check if this subdomain exists
-                    // We pass the subdomain explicitly to the function
                     const response = await fetch(`/.netlify/functions/resolve-subdomain?subdomain=${subdomain}`);
                     const data = await response.json();
                     
                     if (data && !data.isMainSite && data.siteData) {
-                        console.log("Valid site found, redirecting to display...");
-                        // This will trigger the site-router function
-                        window.location.href = `/s/${subdomain}`;
-                    } else {
-                        console.log("Not a registered user site.");
+                        // Success - redirect to the path that Netlify's site-router handles
+                        window.location.replace(`/s/${subdomain}`);
                     }
                 } catch (e) {
                     console.error("Subdomain resolution error:", e);
