@@ -438,6 +438,9 @@
                             } else if (!isUpgrade) {
                                 alert(`You are already on the ${currentPlan.toUpperCase()} plan. You cannot downgrade to the ${newPlan.toUpperCase()} plan while your current subscription is active.`);
                                 return;
+                            } else {
+                                // Upgrade message for converting days
+                                if (!confirm(`Don't worry, your remaining days of ${currentPlan.toUpperCase()} will be converted into your new ${newPlan.toUpperCase()} plan as a reward! Would you like to proceed with the upgrade?`)) return;
                             }
                         }
 
@@ -555,6 +558,9 @@
                         } else if (!isUpgrade) {
                             alert(`You are already on the ${currentPlan.toUpperCase()} plan. You cannot downgrade to the ${newPlan.toUpperCase()} plan while your current subscription is active.`);
                             return;
+                        } else {
+                            // Upgrade message for converting days
+                            if (!confirm(`Don't worry, your remaining days of ${currentPlan.toUpperCase()} will be converted into your new ${newPlan.toUpperCase()} plan as a reward! Would you like to proceed with the upgrade?`)) return;
                         }
                     }
 
@@ -575,7 +581,7 @@
                         const now = firebase.firestore.FieldValue.serverTimestamp();
                         let startDate = new Date();
                         
-                        // If current plan is active and not trial, we extend from the existing end date
+                        // If current plan is active and not trial, we convert remaining days into the new plan
                         if (currentStatus === 'active' && currentPlan !== 'trial' && userData.trialStartDate) {
                             const currentStart = userData.trialStartDate.toDate();
                             const currentCycle = userData.billingCycle || 'monthly';
@@ -586,11 +592,20 @@
                             const currentEnd = new Date(currentStart);
                             currentEnd.setDate(currentEnd.getDate() + currentDuration);
                             
-                            // Only extend if the plan hasn't actually expired yet
-                            if (currentEnd > new Date()) {
-                                startDate = currentEnd;
-                                // Add a courtesy message about the extension
-                                console.log("Extending subscription from existing end date:", currentEnd);
+                            const now = new Date();
+                            if (currentEnd > now) {
+                                const remainingDays = Math.floor((currentEnd - now) / (1000 * 60 * 60 * 24));
+                                // Start the new plan today
+                                startDate = now;
+                                // Add remaining days of the previous plan as a reward/conversion
+                                const newCycle = newBillingCycle;
+                                let newDuration = 30;
+                                if (newCycle === '6months') newDuration = 180;
+                                if (newCycle === 'yearly') newDuration = 365;
+                                
+                                // We adjust the duration by subtracting from the start date (effectively pushing end date out)
+                                startDate.setDate(startDate.getDate() - remainingDays);
+                                console.log(`Converting ${remainingDays} days of ${currentPlan} into ${newPlan} as a reward.`);
                             }
                         }
 
