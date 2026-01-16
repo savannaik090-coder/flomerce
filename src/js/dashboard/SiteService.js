@@ -28,8 +28,13 @@ class SiteService {
     const subdomain = siteData.siteName.trim().toLowerCase().replace(/\s+/g, '-');
     
     // Check for duplicate subdomain (case-insensitive and trimmed)
-    const existing = await this.db.collection('sites').where('subdomain', '==', subdomain).get();
-    if (!existing.empty) {
+    const snapshot = await this.db.collection('sites').get();
+    const isDuplicate = snapshot.docs.some(doc => {
+      const data = doc.data();
+      return data.subdomain === subdomain;
+    });
+
+    if (isDuplicate) {
       throw new Error(`The name "${siteData.siteName}" is already taken. Please choose another.`);
     }
 
