@@ -12,7 +12,7 @@ class RazorpayService {
     };
     
     // In a real app, this would be a backend call.
-    const amount = (customAmount * 100) || amountMap[planId][billingCycle];
+    const amount = amountMap[planId][billingCycle] || (customAmount * 100);
     return { amount, currency: 'INR', receipt: `receipt_${Date.now()}` };
   }
 
