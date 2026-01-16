@@ -17,7 +17,7 @@ export default {
         method: request.method,
         headers: request.headers,
         body: request.method === 'GET' ? null : request.body,
-        redirect: 'manual',
+        redirect: 'follow',
       })
 
       return fetch(newRequest)
@@ -32,7 +32,7 @@ export default {
         method: request.method,
         headers: request.headers,
         body: request.method === 'GET' ? null : request.body,
-        redirect: 'manual',
+        redirect: 'follow',
       })
     )
   },
