@@ -17,9 +17,23 @@
 <body>
     <div class="sidebar">
         <h2>KREAVO</h2>
-        <div id="user-plan-info" style="padding: 10px; background: #1e293b; border-radius: 8px; margin: 10px; font-size: 0.8rem; color: #94a3b8;">
-            Plan: <span id="current-plan-name" style="color: #fbbf24; font-weight: bold;">Loading...</span><br>
-            Status: <span id="plan-status">Active</span>
+        <div id="user-plan-info" style="padding: 15px; background: #1e293b; border-radius: 8px; margin: 10px; font-size: 0.85rem; color: #94a3b8; border: 1px solid #334155;">
+            <div style="margin-bottom: 8px;">
+                <span style="color: #64748b; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">Current Plan</span><br>
+                <span id="current-plan-name" style="color: #fbbf24; font-weight: bold; font-size: 1.1rem;">Loading...</span>
+            </div>
+            <div style="margin-bottom: 8px;">
+                <span style="color: #64748b; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">Status</span><br>
+                <span id="plan-status" style="font-weight: 500;">Active</span>
+            </div>
+            <div id="plan-dates" style="display: none; border-top: 1px solid #334155; pt: 8px; margin-top: 8px; font-size: 0.75rem;">
+                <div style="margin-bottom: 4px;">
+                    <span style="color: #64748b;">Started:</span> <span id="plan-start-date" style="color: #cbd5e1;">-</span>
+                </div>
+                <div>
+                    <span style="color: #64748b;">Ends:</span> <span id="plan-end-date" style="color: #cbd5e1;">-</span>
+                </div>
+            </div>
         </div>
         <nav>
             <p style="color: #64748b;">MENU</p>
@@ -159,10 +173,18 @@
 
                 document.getElementById('current-plan-name').innerText = plan.toUpperCase();
                 
+                const startDate = currentUserData.trialStartDate ? currentUserData.trialStartDate.toDate() : new Date();
+                const options = { year: 'numeric', month: 'short', day: 'numeric' };
+                document.getElementById('plan-dates').style.display = 'block';
+                document.getElementById('plan-start-date').innerText = startDate.toLocaleDateString(undefined, options);
+
                 // Check 7 days trial
                 if (plan === 'trial') {
-                    const startDate = currentUserData.trialStartDate ? currentUserData.trialStartDate.toDate() : new Date();
                     const diff = Math.floor((new Date() - startDate) / (1000 * 60 * 60 * 24));
+                    const endDate = new Date(startDate);
+                    endDate.setDate(endDate.getDate() + 7);
+                    document.getElementById('plan-end-date').innerText = endDate.toLocaleDateString(undefined, options);
+
                     if (diff > 7) {
                         await expirePlan(user.uid, "Your 7-day free trial has expired. Please upgrade to a paid plan to continue using the website.");
                     } else {
@@ -170,13 +192,16 @@
                     }
                 } else if (status === 'active') {
                     // Check paid plan expiration
-                    const paymentDate = currentUserData.trialStartDate ? currentUserData.trialStartDate.toDate() : new Date();
                     const now = new Date();
                     let durationDays = 30; // default monthly
                     if (billingCycle === '6months') durationDays = 180;
                     if (billingCycle === 'yearly') durationDays = 365;
 
-                    const daysUsed = Math.floor((now - paymentDate) / (1000 * 60 * 60 * 24));
+                    const endDate = new Date(startDate);
+                    endDate.setDate(endDate.getDate() + durationDays);
+                    document.getElementById('plan-end-date').innerText = endDate.toLocaleDateString(undefined, options);
+
+                    const daysUsed = Math.floor((now - startDate) / (1000 * 60 * 60 * 24));
                     if (daysUsed > durationDays) {
                         await expirePlan(user.uid, `Your ${billingCycle} plan has expired. Please renew your subscription to continue using your websites.`);
                     } else {
