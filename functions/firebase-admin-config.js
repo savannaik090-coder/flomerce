@@ -7,8 +7,8 @@ if (!admin.apps.length) {
     credential: admin.credential.cert({
       projectId: "auric-a0c92",
       clientEmail: "firebase-adminsdk-p7p3f@auric-a0c92.iam.gserviceaccount.com",
-      // Handle newline characters that might be escaped as "\\n" in env vars
-      privateKey: privateKey ? privateKey.replace(/\\n/g, '\n') : undefined
+      // Robust newline handling for environment variables
+      privateKey: privateKey ? privateKey.split(String.raw`\n`).join('\n') : undefined
     })
   });
 }
