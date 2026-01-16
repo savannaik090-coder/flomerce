@@ -202,10 +202,24 @@
                     document.getElementById('plan-end-date').innerText = endDate.toLocaleDateString(undefined, options);
 
                     const daysUsed = Math.floor((now - startDate) / (1000 * 60 * 60 * 24));
-                    if (daysUsed > durationDays) {
+                    const daysRemaining = durationDays - daysUsed;
+                    
+                    if (daysRemaining < 0) {
                         await expirePlan(user.uid, `Your ${billingCycle} plan has expired. Please renew your subscription to continue using your websites.`);
                     } else {
-                        document.getElementById('plan-status').innerText = `${durationDays - daysUsed} days left`;
+                        // Format status as months and days
+                        let statusText = "";
+                        if (daysRemaining >= 30) {
+                            const months = Math.floor(daysRemaining / 30);
+                            const days = daysRemaining % 30;
+                            statusText = `${months} ${months === 1 ? 'month' : 'months'}`;
+                            if (days > 0) statusText += ` and ${days} ${days === 1 ? 'day' : 'days'}`;
+                            statusText += " left";
+                        } else {
+                            statusText = `${daysRemaining} ${daysRemaining === 1 ? 'day' : 'days'} left`;
+                        }
+                        
+                        document.getElementById('plan-status').innerText = statusText;
                         document.getElementById('plan-status').style.color = '#22c55e';
                     }
                 } else if (status === 'expired') {
