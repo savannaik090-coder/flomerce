@@ -25,26 +25,24 @@ class SiteService {
    * @param {Object} siteData - Details of the site (name, category, templateId, etc).
    */
   async createSite(uid, siteData) {
-    const subdomain = siteData.siteName.trim().toLowerCase().replace(/\s+/g, '-');
+    const siteName = siteData.siteName.trim();
+    const subdomain = siteName.toLowerCase().replace(/\s+/g, '-');
     
     // Check for duplicate subdomain (case-insensitive and trimmed)
-    const snapshot = await this.db.collection('sites').get();
-    const isDuplicate = snapshot.docs.some(doc => {
-      const data = doc.data();
-      return data.subdomain === subdomain;
-    });
-
-    if (isDuplicate) {
-      throw new Error(`The name "${siteData.siteName}" is already taken. Please choose another.`);
+    // We query specifically for this subdomain to ensure uniqueness
+    const existing = await this.db.collection('sites').where('subdomain', '==', subdomain).get();
+    
+    if (!existing.empty) {
+      throw new Error(`The name "${siteName}" is already taken. Please choose another.`);
     }
 
     const siteUrl = `https://${subdomain}.kreavo.in`;
     return this.db.collection('sites').add({
       ...siteData,
-      siteName: siteData.siteName.trim(),
+      siteName: siteName,
       ownerId: uid,
-      subdomain,
-      siteUrl,
+      subdomain: subdomain,
+      siteUrl: siteUrl,
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
   }

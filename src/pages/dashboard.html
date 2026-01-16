@@ -240,22 +240,23 @@
         document.getElementById('close-modal-btn').onclick = () => modal.style.display = 'none';
 
         document.getElementById('confirm-create-btn').onclick = async () => {
-            const name = document.getElementById('site-name-input').value;
+            const nameInput = document.getElementById('site-name-input');
+            const name = nameInput.value.trim();
             const category = document.getElementById('site-category-input').value;
-            const templateId = document.getElementById('site-template-input').value; // Correctly getting value from dropdown
+            const templateId = document.getElementById('site-template-input').value; 
             
             if (!name) { alert("Please enter a website name"); return; }
 
             const btn = document.getElementById('confirm-create-btn');
-            btn.innerText = 'Creating...';
+            const originalText = btn.innerText;
+            btn.innerText = 'Verifying...';
             btn.disabled = true;
 
             try {
                 const user = firebase.auth().currentUser;
-                // Double check we are passing the templateId correctly
-                console.log("Creating site with template:", templateId); 
                 
-                const result = await siteService.createSite(user.uid, { 
+                // Call the service which now has strict duplicate checking
+                await siteService.createSite(user.uid, { 
                     siteName: name, 
                     category, 
                     templateId: templateId 
@@ -267,16 +268,16 @@
                 });
 
                 modal.style.display = 'none';
+                nameInput.value = ''; // Clear input
                 loadSites(user.uid);
                 
-                // Show Success Notification
                 const subdomain = name.toLowerCase().replace(/\s+/g, '-');
                 alert(`Website Created Successfully!\nYour Live URL: https://${subdomain}.kreavo.in`);
                 
             } catch (error) {
                 alert(error.message);
             } finally {
-                btn.innerText = 'Create Website';
+                btn.innerText = originalText;
                 btn.disabled = false;
             }
         };
