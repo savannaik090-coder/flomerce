@@ -26,30 +26,38 @@ class SiteService {
    */
   async createSite(uid, siteData) {
     const siteName = siteData.siteName.trim();
-    const subdomain = siteName.toLowerCase().replace(/\s+/g, '-');
+    // Normalize subdomain to be alphanumeric with hyphens
+    const subdomain = siteName.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
     
-    // Check for duplicate subdomain using a transaction for atomicity
+    if (!subdomain) {
+      throw new Error("Invalid website name. Please use letters and numbers.");
+    }
+
+    // Check for duplicate subdomain using a transaction for absolute atomicity
     return this.db.runTransaction(async (transaction) => {
-      const existingQuery = this.db.collection('sites').where('subdomain', '==', subdomain);
+      // Query specifically for the normalized subdomain across ALL sites
+      const sitesRef = this.db.collection('sites');
+      const existingQuery = sitesRef.where('subdomain', '==', subdomain);
       const snapshot = await transaction.get(existingQuery);
       
       if (!snapshot.empty) {
-        throw new Error(`The name "${siteName}" is already taken. Please choose another.`);
+        throw new Error(`The URL "${subdomain}.kreavo.in" is already taken. Please choose a different name.`);
       }
 
       const siteUrl = `https://${subdomain}.kreavo.in`;
-      const newSiteRef = this.db.collection('sites').doc();
+      const newSiteRef = sitesRef.doc();
       
-      transaction.set(newSiteRef, {
+      const finalData = {
         ...siteData,
         siteName: siteName,
         ownerId: uid,
         subdomain: subdomain,
         siteUrl: siteUrl,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
+      };
 
-      return newSiteRef;
+      transaction.set(newSiteRef, finalData);
+      return { id: newSiteRef.id, subdomain: subdomain };
     });
   }
 

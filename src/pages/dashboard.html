@@ -249,36 +249,38 @@
 
             const btn = document.getElementById('confirm-create-btn');
             const originalText = btn.innerText;
-            btn.innerText = 'Verifying...';
+            
+            // IMMEDIATE UI LOCK - Prevent any secondary clicks
             btn.disabled = true;
+            btn.innerText = 'Checking Availability...';
 
             try {
                 const user = firebase.auth().currentUser;
                 
-                // Call the service which now has strict duplicate checking
-                await siteService.createSite(user.uid, { 
+                // Transactional creation - will fail if subdomain exists
+                const result = await siteService.createSite(user.uid, { 
                     siteName: name, 
                     category, 
                     templateId: templateId 
                 });
                 
-                // Increment site count
+                // Only increment if creation was successful
                 await firebase.firestore().collection('users').doc(user.uid).update({
                     siteCount: firebase.firestore.FieldValue.increment(1)
                 });
 
                 modal.style.display = 'none';
-                nameInput.value = ''; // Clear input
+                nameInput.value = ''; 
                 loadSites(user.uid);
                 
-                const subdomain = name.toLowerCase().replace(/\s+/g, '-');
-                alert(`Website Created Successfully!\nYour Live URL: https://${subdomain}.kreavo.in`);
+                alert(`Website Created Successfully!\nYour Live URL: https://${result.subdomain}.kreavo.in`);
                 
             } catch (error) {
+                console.error("Creation Error:", error);
                 alert(error.message);
-            } finally {
-                btn.innerText = originalText;
+                // Re-enable only on error so user can try a different name
                 btn.disabled = false;
+                btn.innerText = originalText;
             }
         };
 
