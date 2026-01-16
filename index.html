@@ -17,9 +17,17 @@
         // SUBDOMAIN ROUTING LOGIC
         (function() {
             var host = window.location.hostname;
+            console.log("Current host:", host);
             var parts = host.split('.');
-            var isLocalhost = host.indexOf('localhost') !== -1 || host.indexOf('replit.dev') !== -1;
-            var isSubdomain = isLocalhost ? parts.length >= 2 : parts.length >= 3;
+            var isLocalhost = host.indexOf('localhost') !== -1 || host.indexOf('replit.dev') !== -1 || host.indexOf('replit.app') !== -1;
+            var isSubdomain = false;
+
+            if (isLocalhost) {
+                // On Replit, we don't want to trigger subdomain routing for the main workspace URL
+                isSubdomain = false;
+            } else {
+                isSubdomain = parts.length >= 3;
+            }
 
             if (isSubdomain && parts[0] !== 'www' && parts[0] !== 'kreavo') {
                 var subdomain = parts[0];
