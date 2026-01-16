@@ -26,14 +26,16 @@ export default {
     // Main domain → normal Netlify site
     const mainUrl = new URL(request.url)
     mainUrl.hostname = 'kreavo.netlify.app'
+    
+    // Add header to tell Netlify this is the root domain
+    const mainRequest = new Request(mainUrl.toString(), {
+      method: request.method,
+      headers: new Headers(request.headers),
+      body: request.method === 'GET' ? null : request.body,
+      redirect: 'follow',
+    })
+    mainRequest.headers.set('X-Forwarded-Host', hostname)
 
-    return fetch(
-      new Request(mainUrl.toString(), {
-        method: request.method,
-        headers: request.headers,
-        body: request.method === 'GET' ? null : request.body,
-        redirect: 'follow',
-      })
-    )
+    return fetch(mainRequest)
   },
 }
