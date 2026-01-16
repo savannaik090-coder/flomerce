@@ -11,12 +11,13 @@ class SiteService {
   async createSite(userId, siteData) {
     const { siteName, category, templateId } = siteData;
     const subdomain = siteName.toLowerCase().replace(/[^a-z0-9]/g, '-');
-    const existing = await this.db.collection('websites').where('subdomain', '==', subdomain).get();
-    if (!existing.empty) {
-      throw new Error("Subdomain already taken. Try another name.");
+    const fullDomain = `${subdomain}.kreavo.in`;
+    const existing = await this.db.collection('websites').doc(fullDomain).get();
+    if (existing.exists) {
+      throw new Error("Domain already taken. Try another name.");
     }
-    await this.db.collection('websites').doc(subdomain).set({
-      userId, siteName, category, subdomain, templateId,
+    await this.db.collection('websites').doc(fullDomain).set({
+      userId, siteName, category, subdomain, fullDomain, templateId,
       status: 'active',
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       settings: {
@@ -25,7 +26,7 @@ class SiteService {
         contactEmail: '', phoneNumber: ''
       }
     });
-    return { id: subdomain, subdomain };
+    return { id: fullDomain, subdomain: fullDomain };
   }
 
   async getUserSites(userId) {
