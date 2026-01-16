@@ -245,6 +245,8 @@
             const category = document.getElementById('site-category-input').value;
             const templateId = document.getElementById('site-template-input').value; 
             
+            console.log("Creation Debug - Selected Template:", templateId);
+            
             if (!name) { alert("Please enter a website name"); return; }
 
             const btn = document.getElementById('confirm-create-btn');
@@ -256,10 +258,10 @@
             try {
                 const user = firebase.auth().currentUser;
                 
-                // Call the service
+                // Call the service with captured templateId
                 const result = await siteService.createSite(user.uid, { 
                     siteName: name, 
-                    category, 
+                    category: category, 
                     templateId: templateId 
                 });
                 
