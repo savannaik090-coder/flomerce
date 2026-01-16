@@ -52,8 +52,6 @@ exports.handler = async (event, context) => {
     }
 
     // RESOLVE TEMPLATE PATH
-    // In Netlify, the templates must be explicitly included in the bundle.
-    // When using included_files in netlify.toml, they are placed relative to the function.
     const possiblePaths = [
       path.join(__dirname, 'templates', templateType, 'index.html'),
       path.join(__dirname, '..', '..', 'templates', templateType, 'index.html'),
@@ -62,12 +60,9 @@ exports.handler = async (event, context) => {
       path.join('/var/task', 'netlify/functions', 'templates', templateType, 'index.html')
     ];
 
-    let templatePath = '';
     let html = '';
-
     for (const p of possiblePaths) {
       if (fs.existsSync(p)) {
-        templatePath = p;
         html = fs.readFileSync(p, 'utf8');
         break;
       }
@@ -76,15 +71,27 @@ exports.handler = async (event, context) => {
     if (!html) {
       return { 
         statusCode: 500, 
-        body: "CRITICAL ERROR: Template file not found. Checked paths: " + possiblePaths.join(', ') + ". CWD: " + process.cwd() + ". Dirname: " + __dirname
+        body: "CRITICAL ERROR: Template file not found."
       };
     }
 
-    // Simple replacement logic
-    html = html.replace(/{{siteName}}/g, siteData.siteName || 'My Business');
-    html = html.replace(/{{category}}/g, siteData.category || '');
-    html = html.replace(/{{title}}/g, siteData.settings?.title || siteData.siteName || 'My Business');
-    html = html.replace(/{{description}}/g, siteData.settings?.description || 'Professional website created on Kreavo.');
+    // Replacement logic - Handles both Clothing and Classic template variables
+    const siteName = siteData.siteName || 'My Business';
+    const category = siteData.category || '';
+    const description = siteData.settings?.description || 'Professional business created on Kreavo.';
+    const title = siteData.settings?.title || siteName;
+
+    // Standard variables
+    html = html.replace(/{{siteName}}/g, siteName);
+    html = html.replace(/{{category}}/g, category);
+    html = html.replace(/{{title}}/g, title);
+    html = html.replace(/{{description}}/g, description);
+
+    // Classic template specific variables
+    html = html.replace(/{{BRAND_NAME}}/g, siteName);
+    html = html.replace(/{{SITE_DESCRIPTION}}/g, description);
+    html = html.replace(/{{SITE_TITLE}}/g, title);
+    html = html.replace(/{{CATEGORY}}/g, category);
 
     return {
       statusCode: 200,
@@ -98,7 +105,7 @@ exports.handler = async (event, context) => {
     console.error("Router Error:", error);
     return { 
       statusCode: 500, 
-      body: "Internal Server Error: " + error.message + "\nStack: " + error.stack 
+      body: "Internal Server Error: " + error.message
     };
   }
 };
