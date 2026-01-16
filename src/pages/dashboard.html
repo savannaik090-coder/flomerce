@@ -29,7 +29,13 @@
     <div class="main">
         <div class="header">
             <h1>My Websites</h1>
-            <button class="btn btn-primary" id="create-site-btn">+ Create New Site</button>
+            <div style="display:flex; gap:10px; align-items:center;">
+                <select id="template-select" class="btn" style="background: white; border: 1px solid #e2e8f0;">
+                    <option value="template1">Clothing Template (Modern)</option>
+                    <option value="default">Classic Template</option>
+                </select>
+                <button class="btn btn-primary" id="create-site-btn">+ Create New Site</button>
+            </div>
         </div>
         <div id="sites-list">
             <p>Loading your websites...</p>
@@ -95,10 +101,15 @@
             const name = prompt("Enter Website Name:");
             if (!name) return;
             const category = prompt("Enter Business Category (e.g. Jewellery, Bakery):", "Jewellery");
+            const templateId = document.getElementById('template-select').value;
             
             try {
                 const user = firebase.auth().currentUser;
-                await siteService.createSite(user.uid, { siteName: name, category, templateId: 'template1' });
+                await siteService.createSite(user.uid, { 
+                    siteName: name, 
+                    category, 
+                    templateId: templateId 
+                });
                 loadSites(user.uid);
             } catch (error) {
                 alert(error.message);

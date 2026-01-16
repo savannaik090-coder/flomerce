@@ -22,7 +22,7 @@ class SiteService {
   /**
    * Creates a new website entry for a user.
    * @param {string} uid - Owner User ID.
-   * @param {Object} siteData - Details of the site (name, category, etc).
+   * @param {Object} siteData - Details of the site (name, category, templateId, etc).
    */
   async createSite(uid, siteData) {
     const subdomain = siteData.siteName.toLowerCase().replace(/\s+/g, '-');
