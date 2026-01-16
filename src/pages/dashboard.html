@@ -203,10 +203,12 @@
                     endDate.setDate(endDate.getDate() + durationDays);
                     document.getElementById('plan-end-date').innerText = endDate.toLocaleDateString(undefined, options);
 
-                    const daysUsed = Math.floor((now - startDate) / (1000 * 60 * 60 * 24));
-                    const daysRemaining = durationDays - daysUsed;
+                    // FIX: Use ms for precise difference
+                    const msUsed = now.getTime() - startDate.getTime();
+                    const daysUsed = msUsed / (1000 * 60 * 60 * 24);
+                    const daysRemaining = Math.max(0, Math.ceil(durationDays - daysUsed));
                     
-                    if (daysRemaining < 0) {
+                    if (now > endDate) {
                         await expirePlan(user.uid, `Your ${billingCycle} plan has expired. Please renew your subscription to continue using your websites.`);
                     } else {
                         // Format status as months and days
