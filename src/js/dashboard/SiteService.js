@@ -24,6 +24,13 @@ class SiteService {
    * @param {string} uid - Owner User ID.
    * @param {Object} siteData - Details of the site (name, category, templateId, etc).
    */
+  /**
+   * Creates a new website entry for a user.
+   * Uses a dedicated 'subdomains' collection with document ID = subdomain
+   * to guarantee absolute uniqueness at the database level.
+   * @param {string} uid - Owner User ID.
+   * @param {Object} siteData - Details of the site (name, category, templateId, etc).
+   */
   async createSite(uid, siteData) {
     const siteName = siteData.siteName.trim();
     // Normalize subdomain to be alphanumeric with hyphens
@@ -33,30 +40,39 @@ class SiteService {
       throw new Error("Invalid website name. Please use letters and numbers.");
     }
 
-    // Check for duplicate subdomain using a transaction for absolute atomicity
+    // Reference to the global 'subdomains' registry
+    const subdomainRegistryRef = this.db.collection('subdomains').doc(subdomain);
+    const sitesRef = this.db.collection('sites');
+
+    // Use a transaction to ensure we claim the subdomain AND create the site record together
     return this.db.runTransaction(async (transaction) => {
-      // Query specifically for the normalized subdomain across ALL sites
-      const sitesRef = this.db.collection('sites');
-      const existingQuery = sitesRef.where('subdomain', '==', subdomain);
-      const snapshot = await transaction.get(existingQuery);
+      const subdomainDoc = await transaction.get(subdomainRegistryRef);
       
-      if (!snapshot.empty) {
+      // If the document exists in the 'subdomains' collection, the name is taken
+      if (subdomainDoc.exists) {
         throw new Error(`The URL "${subdomain}.kreavo.in" is already taken. Please choose a different name.`);
       }
 
+      // Claim the subdomain in the registry
+      transaction.set(subdomainRegistryRef, {
+        ownerId: uid,
+        siteName: siteName,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      // Create the actual site record
       const siteUrl = `https://${subdomain}.kreavo.in`;
       const newSiteRef = sitesRef.doc();
       
-      const finalData = {
+      transaction.set(newSiteRef, {
         ...siteData,
         siteName: siteName,
         ownerId: uid,
         subdomain: subdomain,
         siteUrl: siteUrl,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      };
+      });
 
-      transaction.set(newSiteRef, finalData);
       return { id: newSiteRef.id, subdomain: subdomain };
     });
   }
@@ -65,8 +81,26 @@ class SiteService {
    * Deletes a website entry.
    * @param {string} siteId - Document ID in Firestore.
    */
+  /**
+   * Deletes a website entry.
+   * @param {string} siteId - Document ID in Firestore.
+   */
   async deleteSite(siteId) {
-    return this.db.collection('sites').doc(siteId).delete();
+    const siteDoc = await this.db.collection('sites').doc(siteId).get();
+    if (!siteDoc.exists) return;
+    
+    const siteData = siteDoc.data();
+    const subdomain = siteData.subdomain;
+
+    const batch = this.db.batch();
+    // Delete from sites collection
+    batch.delete(this.db.collection('sites').doc(siteId));
+    // Release the subdomain from the registry
+    if (subdomain) {
+      batch.delete(this.db.collection('subdomains').doc(subdomain));
+    }
+    
+    return batch.commit();
   }
 }
 
