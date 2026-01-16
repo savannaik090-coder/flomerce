@@ -23,10 +23,19 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    const snapshot = await db.collection('websites')
+    // Check both 'websites' (original) and 'sites' (new) collections for better compatibility
+    let snapshot = await db.collection('sites')
       .where('subdomain', '==', subdomain)
       .limit(1)
       .get();
+
+    // Fallback to 'websites' collection if not found in 'sites'
+    if (snapshot.empty) {
+      snapshot = await db.collection('websites')
+        .where('subdomain', '==', subdomain)
+        .limit(1)
+        .get();
+    }
 
     if (snapshot.empty) {
       return { statusCode: 404, body: "Website not found" };
@@ -34,15 +43,31 @@ exports.handler = async (event, context) => {
 
     const siteData = snapshot.docs[0].data();
     
-    // Read the template file (you might want to handle multiple templates)
-    const templatePath = path.resolve(__dirname, '../../templates/simpletemplate1/index.html');
+    // Determine which template to use
+    let templateType = 'simple'; // default
+    if (siteData.templateId === 'template1') {
+      templateType = 'clothing';
+    } else if (siteData.category?.toLowerCase() === 'clothing') {
+      templateType = 'clothing';
+    }
+
+    // Read the template file
+    const templatePath = path.resolve(__dirname, '../../templates/' + templateType + '/index.html');
+    
+    if (!fs.existsSync(templatePath)) {
+        return { 
+            statusCode: 500, 
+            body: "Template not found at: " + templatePath + ". Available templates: clothing, simple"
+        };
+    }
+
     let html = fs.readFileSync(templatePath, 'utf8');
 
-    // Simple replacement logic for the template
-    html = html.replace(/{{siteName}}/g, siteData.siteName);
-    html = html.replace(/{{category}}/g, siteData.category);
-    html = html.replace(/{{title}}/g, siteData.settings?.title || siteData.siteName);
-    html = html.replace(/{{description}}/g, siteData.settings?.description || '');
+    // Replacement logic for the template
+    html = html.replace(/{{siteName}}/g, siteData.siteName || 'My Business');
+    html = html.replace(/{{category}}/g, siteData.category || '');
+    html = html.replace(/{{title}}/g, siteData.settings?.title || siteData.siteName || 'My Business');
+    html = html.replace(/{{description}}/g, siteData.settings?.description || 'Professional website created on Kreavo.');
 
     return {
       statusCode: 200,
@@ -50,6 +75,7 @@ exports.handler = async (event, context) => {
       body: html
     };
   } catch (error) {
-    return { statusCode: 500, body: error.message };
+    console.error("Router Error:", error);
+    return { statusCode: 500, body: "Internal Server Error: " + error.message };
   }
 };
