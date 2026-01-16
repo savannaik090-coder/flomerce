@@ -32,6 +32,12 @@
                 return;
             }
 
+            // Also skip if it's the main production domain (assuming it's not a subdomain of itself)
+            if (host === 'kreavo.in' || host === 'www.kreavo.in') {
+                console.log("Main production domain detected. Skipping subdomain routing.");
+                return;
+            }
+
             var parts = host.split('.');
             var isSubdomain = parts.length >= 3;
 
