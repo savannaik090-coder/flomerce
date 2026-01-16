@@ -140,6 +140,8 @@
             if (userDoc.exists) {
                 currentUserData = userDoc.data();
                 const plan = currentUserData.plan;
+                const billingCycle = currentUserData.billingCycle || 'monthly';
+                const status = currentUserData.status;
                 
                 // If no plan is selected yet, show the plan selection overlay
                 if (!plan) {
@@ -155,14 +157,40 @@
                     const startDate = currentUserData.trialStartDate.toDate();
                     const diff = Math.floor((new Date() - startDate) / (1000 * 60 * 60 * 24));
                     if (diff > 7) {
-                        document.getElementById('plan-status').innerText = 'Expired';
-                        document.getElementById('plan-status').style.color = '#ef4444';
-                        showOverlay("Your 7-day free trial has expired. Please upgrade to a paid plan to continue using the website.");
+                        await expirePlan(user.uid, "Your 7-day free trial has expired. Please upgrade to a paid plan to continue using the website.");
                     } else {
                         document.getElementById('plan-status').innerText = `${7 - diff} days left`;
                     }
+                } else if (status === 'active') {
+                    // Check paid plan expiration
+                    const paymentDate = currentUserData.trialStartDate ? currentUserData.trialStartDate.toDate() : new Date();
+                    const now = new Date();
+                    let durationDays = 30; // default monthly
+                    if (billingCycle === '6months') durationDays = 180;
+                    if (billingCycle === 'yearly') durationDays = 365;
+
+                    const daysUsed = Math.floor((now - paymentDate) / (1000 * 60 * 60 * 24));
+                    if (daysUsed > durationDays) {
+                        await expirePlan(user.uid, `Your ${billingCycle} plan has expired. Please renew your subscription to continue using your websites.`);
+                    } else {
+                        document.getElementById('plan-status').innerText = `${durationDays - daysUsed} days left`;
+                        document.getElementById('plan-status').style.color = '#22c55e';
+                    }
+                } else if (status === 'expired') {
+                    document.getElementById('plan-status').innerText = 'Expired';
+                    document.getElementById('plan-status').style.color = '#ef4444';
+                    showOverlay("Your subscription has expired. Please upgrade to a paid plan to continue using the website.");
                 }
             }
+        }
+
+        async function expirePlan(uid, message) {
+            await firebase.firestore().collection('users').doc(uid).update({
+                status: 'expired'
+            });
+            document.getElementById('plan-status').innerText = 'Expired';
+            document.getElementById('plan-status').style.color = '#ef4444';
+            showOverlay(message);
         }
 
         function showPlanSelectionOverlay(message) {
