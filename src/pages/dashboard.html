@@ -475,10 +475,21 @@
                                 
                                 if (currentEnd > now) {
                                     const remainingDays = Math.floor((currentEnd - now) / (1000 * 60 * 60 * 24));
-                                    // Set startDate to Today - RemainingDays so duration check includes reward days
-                                    const rewardStartDate = new Date(now);
-                                    rewardStartDate.setDate(rewardStartDate.getDate() - remainingDays);
-                                    startDate = rewardStartDate;
+                                    
+                                    // Calculate total days for the new plan
+                                    let newPlanDuration = 30;
+                                    if (newBillingCycle === '6months') newPlanDuration = 180;
+                                    if (newBillingCycle === 'yearly') newPlanDuration = 365;
+
+                                    // The new end date should be today + new plan duration + remaining days
+                                    const newEndDate = new Date(now);
+                                    newEndDate.setDate(newEndDate.getDate() + newPlanDuration + remainingDays);
+
+                                    // To keep the logic consistent with how we display (startDate + duration),
+                                    // we set trialStartDate to (newEndDate - newPlanDuration)
+                                    const adjustedStartDate = new Date(newEndDate);
+                                    adjustedStartDate.setDate(adjustedStartDate.getDate() - newPlanDuration);
+                                    startDate = adjustedStartDate;
                                 }
                             }
 
@@ -605,10 +616,20 @@
                             
                             if (currentEnd > now) {
                                 const remainingDays = Math.floor((currentEnd - now) / (1000 * 60 * 60 * 24));
-                                // Set startDate to Today - RemainingDays so duration check includes reward days
-                                const rewardStartDate = new Date(now);
-                                rewardStartDate.setDate(rewardStartDate.getDate() - remainingDays);
-                                startDate = rewardStartDate;
+                                // Calculate total days for the new plan
+                                let newPlanDuration = 30;
+                                if (newBillingCycle === '6months') newPlanDuration = 180;
+                                if (newBillingCycle === 'yearly') newPlanDuration = 365;
+
+                                // The new end date should be today + new plan duration + remaining days
+                                const newEndDate = new Date(now);
+                                newEndDate.setDate(newEndDate.getDate() + newPlanDuration + remainingDays);
+
+                                // To keep the logic consistent with how we display (startDate + duration),
+                                // we set trialStartDate to (newEndDate - newPlanDuration)
+                                const adjustedStartDate = new Date(newEndDate);
+                                adjustedStartDate.setDate(adjustedStartDate.getDate() - newPlanDuration);
+                                startDate = adjustedStartDate;
                             }
                         }
 
