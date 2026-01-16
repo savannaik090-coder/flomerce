@@ -15,7 +15,10 @@ const db = admin.firestore();
 
 exports.handler = async (event, context) => {
   const host = event.headers.host;
-  const subdomain = host.split('.')[0];
+  // Check if subdomain is passed in query, otherwise parse from host
+  const subdomain = event.queryStringParameters.subdomain || host.split('.')[0];
+  
+  console.log("Resolving subdomain:", subdomain);
   
   // Ignore 'www' or 'kreavo' (main domain)
   if (subdomain === 'www' || subdomain === 'kreavo' || subdomain === 'localhost' || subdomain.includes('netlify')) {
