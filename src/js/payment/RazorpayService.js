@@ -4,14 +4,15 @@ class RazorpayService {
     this.keyId = 'rzp_test_qZWULE2MoPHZJv'; // From env config provided in logs
   }
 
-  async createOrder(planId, billingCycle) {
+  async createOrder(planId, billingCycle, customAmount) {
     const amountMap = {
-      'basic': { monthly: 9900, yearly: 99900 },
-      'premium': { monthly: 29900, yearly: 299900 },
-      'pro': { monthly: 99900, yearly: 999900 }
+      'basic': { monthly: 9900, '6months': 49900, yearly: 89900 },
+      'premium': { monthly: 29900, '6months': 149900, yearly: 249900 },
+      'pro': { monthly: 99900, '6months': 499900, yearly: 899900 }
     };
     
-    const amount = amountMap[planId][billingCycle];
+    // Use customAmount if provided (from UI), otherwise fallback to map
+    const amount = (customAmount * 100) || amountMap[planId][billingCycle];
     
     // In a real app, this would be a backend call. 
     // Since we are in Fast Mode, we'll simulate the order creation or assume a backend endpoint exists.

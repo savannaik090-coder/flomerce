@@ -191,7 +191,13 @@
                     }
                 </style>
                 <h1 style="margin-bottom:10px; text-align:center;">Choose Your Plan</h1>
-                <p style="margin-bottom:30px; color:#94a3b8; text-align:center;">${message}</p>
+                <p style="margin-bottom:20px; color:#94a3b8; text-align:center;">${message}</p>
+                
+                <div id="duration-selector" style="display:flex; justify-content:center; gap:10px; margin-bottom:30px; background:#1e293b; padding:5px; border-radius:30px; border:1px solid #334155;">
+                    <button class="duration-btn active" data-duration="monthly" style="padding:8px 20px; border-radius:25px; border:none; background:#2563eb; color:white; cursor:pointer; font-weight:bold;">Monthly</button>
+                    <button class="duration-btn" data-duration="6months" style="padding:8px 20px; border-radius:25px; border:none; background:transparent; color:#94a3b8; cursor:pointer; font-weight:bold;">6 Months</button>
+                    <button class="duration-btn" data-duration="yearly" style="padding:8px 20px; border-radius:25px; border:none; background:transparent; color:#94a3b8; cursor:pointer; font-weight:bold;">Yearly</button>
+                </div>
                 
                 <div class="plans-container">
                     <!-- Trial Plan -->
@@ -209,7 +215,7 @@
                     <!-- Basic Plan -->
                     <div class="plan-card" style="background:#1e293b; padding:30px; border-radius:16px; border:1px solid #334155; text-align:center; display:flex; flex-direction:column;">
                         <h3 style="margin-top:0;">Basic</h3>
-                        <p style="font-size: 2rem; font-weight: bold; margin:15px 0;">₹99<span style="font-size:0.9rem; color:#94a3b8;">/mo</span></p>
+                        <p class="plan-price" data-monthly="99" data-6months="499" data-yearly="899" style="font-size: 2rem; font-weight: bold; margin:15px 0;">₹99<span class="price-suffix" style="font-size:0.9rem; color:#94a3b8;">/mo</span></p>
                         <ul style="list-style:none; padding:0; margin:20px 0; text-align:left; font-size:0.95rem; color:#cbd5e1; flex-grow:1;">
                             <li style="margin-bottom:10px;">✓ 1 Website</li>
                             <li style="margin-bottom:10px;">✓ Standard Templates</li>
@@ -222,7 +228,7 @@
                     <div class="plan-card" style="background:#1e293b; padding:30px; border-radius:16px; border:2px solid #2563eb; text-align:center; position:relative; display:flex; flex-direction:column;">
                         <span style="position:absolute; top:-12px; left:50%; transform:translateX(-50%); background:#2563eb; color:white; padding:4px 15px; border-radius:20px; font-size:0.8rem; font-weight:bold;">POPULAR</span>
                         <h3 style="margin-top:0;">Premium</h3>
-                        <p style="font-size: 2rem; font-weight: bold; margin:15px 0;">₹299<span style="font-size:0.9rem; color:#94a3b8;">/mo</span></p>
+                        <p class="plan-price" data-monthly="299" data-6months="1499" data-yearly="2499" style="font-size: 2rem; font-weight: bold; margin:15px 0;">₹299<span class="price-suffix" style="font-size:0.9rem; color:#94a3b8;">/mo</span></p>
                         <ul style="list-style:none; padding:0; margin:20px 0; text-align:left; font-size:0.95rem; color:#cbd5e1; flex-grow:1;">
                             <li style="margin-bottom:10px;">✓ 3 Websites</li>
                             <li style="margin-bottom:10px;">✓ All Templates</li>
@@ -234,7 +240,7 @@
                     <!-- Pro Plan -->
                     <div class="plan-card" style="background:#1e293b; padding:30px; border-radius:16px; border:1px solid #334155; text-align:center; display:flex; flex-direction:column;">
                         <h3 style="margin-top:0;">Pro</h3>
-                        <p style="font-size: 2rem; font-weight: bold; margin:15px 0;">₹999<span style="font-size:0.9rem; color:#94a3b8;">/mo</span></p>
+                        <p class="plan-price" data-monthly="999" data-6months="4999" data-yearly="8999" style="font-size: 2rem; font-weight: bold; margin:15px 0;">₹999<span class="price-suffix" style="font-size:0.9rem; color:#94a3b8;">/mo</span></p>
                         <ul style="list-style:none; padding:0; margin:20px 0; text-align:left; font-size:0.95rem; color:#cbd5e1; flex-grow:1;">
                             <li style="margin-bottom:10px;">✓ Unlimited Websites</li>
                             <li style="margin-bottom:10px;">✓ Custom Domain Ready</li>
@@ -244,6 +250,80 @@
                     </div>
                 </div>
             `;
+            document.body.appendChild(overlay);
+
+            // Handle Duration Selection
+            let selectedDuration = 'monthly';
+            overlay.querySelectorAll('.duration-btn').forEach(btn => {
+                btn.onclick = () => {
+                    selectedDuration = btn.dataset.duration;
+                    overlay.querySelectorAll('.duration-btn').forEach(b => {
+                        b.classList.remove('active');
+                        b.style.background = 'transparent';
+                        b.style.color = '#94a3b8';
+                    });
+                    btn.classList.add('active');
+                    btn.style.background = '#2563eb';
+                    btn.style.color = 'white';
+
+                    // Update Prices UI
+                    overlay.querySelectorAll('.plan-price').forEach(priceEl => {
+                        const amount = priceEl.dataset[selectedDuration];
+                        const suffix = selectedDuration === 'monthly' ? '/mo' : (selectedDuration === '6months' ? '/6mo' : '/yr');
+                        priceEl.innerHTML = `₹${amount}<span class="price-suffix" style="font-size:0.9rem; color:#94a3b8;">${suffix}</span>`;
+                    });
+                };
+            });
+
+            // Handle Trial Start
+            overlay.querySelector('.start-trial-btn').onclick = async () => {
+                const user = firebase.auth().currentUser;
+                await firebase.firestore().collection('users').doc(user.uid).update({
+                    plan: 'trial',
+                    trialStartDate: firebase.firestore.FieldValue.serverTimestamp(),
+                    status: 'active'
+                });
+                overlay.remove();
+                window.location.reload();
+            };
+
+            // Handle Paid Plans
+            overlay.querySelectorAll('.selection-upgrade-btn').forEach(btn => {
+                btn.onclick = async () => {
+                    const plan = btn.dataset.plan;
+                    const user = firebase.auth().currentUser;
+                    try {
+                        const amount = overlay.querySelector(`.plan-price[data-monthly][data-plan-ref="${plan}"]`) ? 
+                                     overlay.querySelector(`.plan-price[data-monthly][data-plan-ref="${plan}"]`).dataset[selectedDuration] :
+                                     overlay.querySelectorAll('.plan-price')[['basic', 'premium', 'pro'].indexOf(plan)].dataset[selectedDuration];
+
+                        const order = await razorpayService.createOrder(plan, selectedDuration, amount);
+                        const response = await razorpayService.openCheckout({
+                            amount: order.amount,
+                            currency: order.currency,
+                            planName: plan.charAt(0).toUpperCase() + plan.slice(1),
+                            billingCycle: selectedDuration.charAt(0).toUpperCase() + selectedDuration.slice(1),
+                            userName: user.displayName,
+                            userEmail: user.email
+                        });
+
+                        if (response.razorpay_payment_id) {
+                            await firebase.firestore().collection('users').doc(user.uid).update({
+                                plan: plan,
+                                billingCycle: selectedDuration,
+                                lastPaymentId: response.razorpay_payment_id,
+                                status: 'active',
+                                trialStartDate: firebase.firestore.FieldValue.serverTimestamp()
+                            });
+                            overlay.remove();
+                            window.location.reload();
+                        }
+                    } catch (error) {
+                        alert('Payment failed: ' + error.message);
+                    }
+                };
+            });
+        }
             document.body.appendChild(overlay);
 
             // Handle Trial Start
