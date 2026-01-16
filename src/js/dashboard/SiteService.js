@@ -26,6 +26,13 @@ class SiteService {
    */
   async createSite(uid, siteData) {
     const subdomain = siteData.siteName.toLowerCase().replace(/\s+/g, '-');
+    
+    // Check for duplicate subdomain
+    const existing = await this.db.collection('sites').where('subdomain', '==', subdomain).get();
+    if (!existing.empty) {
+      throw new Error(`The name "${siteData.siteName}" is already taken. Please choose another.`);
+    }
+
     const siteUrl = `https://${subdomain}.kreavo.in`;
     return this.db.collection('sites').add({
       ...siteData,

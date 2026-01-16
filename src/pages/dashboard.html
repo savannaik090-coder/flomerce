@@ -215,8 +215,12 @@
 
         // Modal Logic
         const modal = document.getElementById('create-site-modal');
-        document.getElementById('open-create-modal').onclick = () => {
-            // Plan limit checks
+        document.getElementById('open-create-modal').onclick = async () => {
+            // Refresh user data before check
+            const user = firebase.auth().currentUser;
+            const userDoc = await firebase.firestore().collection('users').doc(user.uid).get();
+            currentUserData = userDoc.data();
+
             const plan = currentUserData?.plan || 'trial';
             const count = currentUserData?.siteCount || 0;
             
