@@ -26,10 +26,12 @@ class SiteService {
    */
   async createSite(uid, siteData) {
     const subdomain = siteData.siteName.toLowerCase().replace(/\s+/g, '-');
+    const siteUrl = `https://${subdomain}.kreavo.in`;
     return this.db.collection('sites').add({
       ...siteData,
       ownerId: uid,
       subdomain,
+      siteUrl,
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
   }

@@ -30,13 +30,14 @@ class AuthService {
       const userCredential = await this.auth.createUserWithEmailAndPassword(email, password);
       const user = userCredential.user;
       await user.updateProfile({ displayName: name });
-      await this.db.collection('users').doc(email).set({
+      await this.db.collection('users').doc(user.uid).set({
         uid: user.uid,
         name: name,
         email: email,
-        plan: 'free',
-        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-        siteCount: 0
+        plan: 'trial',
+        trialStartDate: firebase.firestore.FieldValue.serverTimestamp(),
+        siteCount: 0,
+        status: 'active'
       });
       await user.sendEmailVerification();
       return { success: true, user: user };
