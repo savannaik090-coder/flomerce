@@ -139,7 +139,15 @@
             const userDoc = await firebase.firestore().collection('users').doc(user.uid).get();
             if (userDoc.exists) {
                 currentUserData = userDoc.data();
-                const plan = currentUserData.plan || 'trial';
+                const plan = currentUserData.plan;
+                
+                // If no plan is selected yet, show the plan selection overlay
+                if (!plan) {
+                    showPlanSelectionOverlay("Welcome! Please choose a plan to get started. You can also start with a 7-day free trial.");
+                    document.getElementById('current-plan-name').innerText = "NONE";
+                    return;
+                }
+
                 document.getElementById('current-plan-name').innerText = plan.toUpperCase();
                 
                 // Check 7 days trial
@@ -155,6 +163,113 @@
                     }
                 }
             }
+        }
+
+        function showPlanSelectionOverlay(message) {
+            const overlay = document.createElement('div');
+            overlay.id = 'plan-selection-overlay';
+            overlay.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15, 23, 42, 0.98); z-index:10000; display:flex; flex-direction:column; align-items:center; justify-content:center; color:white; overflow-y:auto; padding:40px 20px;';
+            
+            overlay.innerHTML = `
+                <h1 style="margin-bottom:10px;">Choose Your Plan</h1>
+                <p style="margin-bottom:30px; color:#94a3b8;">${message}</p>
+                
+                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:20px; width:100%; max-width:1100px;">
+                    <!-- Trial Plan -->
+                    <div class="plan-card" style="background:#1e293b; padding:30px; border-radius:16px; border:1px solid #334155; text-align:center;">
+                        <h3 style="color:#94a3b8;">Free Trial</h3>
+                        <p style="font-size: 2rem; font-weight: bold; margin:15px 0;">7 Days</p>
+                        <ul style="list-style:none; padding:0; margin:20px 0; text-align:left; font-size:0.95rem; color:#cbd5e1;">
+                            <li style="margin-bottom:10px;">✓ Full Platform Access</li>
+                            <li style="margin-bottom:10px;">✓ Create Unlimited Sites</li>
+                            <li style="margin-bottom:10px;">✓ Experience all features</li>
+                        </ul>
+                        <button class="btn btn-primary start-trial-btn" style="width:100%; padding:12px; background:#475569; border:none;">Start 7-Day Trial</button>
+                    </div>
+
+                    <!-- Basic Plan -->
+                    <div class="plan-card" style="background:#1e293b; padding:30px; border-radius:16px; border:1px solid #334155; text-align:center;">
+                        <h3>Basic</h3>
+                        <p style="font-size: 2rem; font-weight: bold; margin:15px 0;">₹99<span style="font-size:0.9rem; color:#94a3b8;">/mo</span></p>
+                        <ul style="list-style:none; padding:0; margin:20px 0; text-align:left; font-size:0.95rem; color:#cbd5e1;">
+                            <li style="margin-bottom:10px;">✓ 1 Website</li>
+                            <li style="margin-bottom:10px;">✓ Standard Templates</li>
+                            <li style="margin-bottom:10px;">✓ 24/7 Support</li>
+                        </ul>
+                        <button class="btn btn-primary selection-upgrade-btn" data-plan="basic" style="width:100%; padding:12px;">Choose Basic</button>
+                    </div>
+
+                    <!-- Premium Plan -->
+                    <div class="plan-card" style="background:#1e293b; padding:30px; border-radius:16px; border:2px solid #2563eb; text-align:center; position:relative;">
+                        <span style="position:absolute; top:-12px; left:50%; transform:translateX(-50%); background:#2563eb; color:white; padding:4px 15px; border-radius:20px; font-size:0.8rem; font-weight:bold;">POPULAR</span>
+                        <h3>Premium</h3>
+                        <p style="font-size: 2rem; font-weight: bold; margin:15px 0;">₹299<span style="font-size:0.9rem; color:#94a3b8;">/mo</span></p>
+                        <ul style="list-style:none; padding:0; margin:20px 0; text-align:left; font-size:0.95rem; color:#cbd5e1;">
+                            <li style="margin-bottom:10px;">✓ 3 Websites</li>
+                            <li style="margin-bottom:10px;">✓ All Templates</li>
+                            <li style="margin-bottom:10px;">✓ Priority Support</li>
+                        </ul>
+                        <button class="btn btn-primary selection-upgrade-btn" data-plan="premium" style="width:100%; padding:12px;">Choose Premium</button>
+                    </div>
+
+                    <!-- Pro Plan -->
+                    <div class="plan-card" style="background:#1e293b; padding:30px; border-radius:16px; border:1px solid #334155; text-align:center;">
+                        <h3>Pro</h3>
+                        <p style="font-size: 2rem; font-weight: bold; margin:15px 0;">₹999<span style="font-size:0.9rem; color:#94a3b8;">/mo</span></p>
+                        <ul style="list-style:none; padding:0; margin:20px 0; text-align:left; font-size:0.95rem; color:#cbd5e1;">
+                            <li style="margin-bottom:10px;">✓ Unlimited Websites</li>
+                            <li style="margin-bottom:10px;">✓ Custom Domain Ready</li>
+                            <li style="margin-bottom:10px;">✓ Dedicated Manager</li>
+                        </ul>
+                        <button class="btn btn-primary selection-upgrade-btn" data-plan="pro" style="width:100%; padding:12px;">Choose Pro</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+
+            // Handle Trial Start
+            overlay.querySelector('.start-trial-btn').onclick = async () => {
+                const user = firebase.auth().currentUser;
+                await firebase.firestore().collection('users').doc(user.uid).update({
+                    plan: 'trial',
+                    trialStartDate: firebase.firestore.FieldValue.serverTimestamp(),
+                    status: 'active'
+                });
+                overlay.remove();
+                window.location.reload();
+            };
+
+            // Handle Paid Plans
+            overlay.querySelectorAll('.selection-upgrade-btn').forEach(btn => {
+                btn.onclick = async () => {
+                    const plan = btn.dataset.plan;
+                    const user = firebase.auth().currentUser;
+                    try {
+                        const order = await razorpayService.createOrder(plan, 'monthly');
+                        const response = await razorpayService.openCheckout({
+                            amount: order.amount,
+                            currency: order.currency,
+                            planName: plan.charAt(0).toUpperCase() + plan.slice(1),
+                            billingCycle: 'Monthly',
+                            userName: user.displayName,
+                            userEmail: user.email
+                        });
+
+                        if (response.razorpay_payment_id) {
+                            await firebase.firestore().collection('users').doc(user.uid).update({
+                                plan: plan,
+                                lastPaymentId: response.razorpay_payment_id,
+                                status: 'active',
+                                trialStartDate: firebase.firestore.FieldValue.serverTimestamp()
+                            });
+                            overlay.remove();
+                            window.location.reload();
+                        }
+                    } catch (error) {
+                        alert('Payment failed: ' + error.message);
+                    }
+                };
+            });
         }
 
         function showOverlay(message) {

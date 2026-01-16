@@ -34,10 +34,10 @@ class AuthService {
         uid: user.uid,
         name: name,
         email: email,
-        plan: 'trial',
-        trialStartDate: firebase.firestore.FieldValue.serverTimestamp(),
+        plan: null, // Force selection on dashboard
+        trialStartDate: null,
         siteCount: 0,
-        status: 'active'
+        status: 'pending_plan'
       });
       await user.sendEmailVerification();
       return { success: true, user: user };
