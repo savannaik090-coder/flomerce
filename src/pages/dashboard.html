@@ -224,15 +224,13 @@
             const plan = currentUserData?.plan || 'trial';
             const count = currentUserData?.siteCount || 0;
             
-            if (plan === 'trial' && count >= 1) {
-                alert("Free trial allows only 1 website. Upgrade to create more!");
-                return;
-            }
-            if (plan === 'basic' && count >= 1) {
+            // On free trial the user can create as many as websites they want
+            if (plan === 'trial') {
+                // No restriction for trial as requested
+            } else if (plan === 'basic' && count >= 1) {
                 alert("Basic plan allows only 1 website. Upgrade to Premium for 3!");
                 return;
-            }
-            if (plan === 'premium' && count >= 3) {
+            } else if (plan === 'premium' && count >= 3) {
                 alert("Premium plan allows only 3 websites. Upgrade to Pro for unlimited!");
                 return;
             }
@@ -244,7 +242,7 @@
         document.getElementById('confirm-create-btn').onclick = async () => {
             const name = document.getElementById('site-name-input').value;
             const category = document.getElementById('site-category-input').value;
-            const templateId = document.getElementById('site-template-input').value;
+            const templateId = document.getElementById('site-template-input').value; // Correctly getting value from dropdown
             
             if (!name) { alert("Please enter a website name"); return; }
 
@@ -254,6 +252,9 @@
 
             try {
                 const user = firebase.auth().currentUser;
+                // Double check we are passing the templateId correctly
+                console.log("Creating site with template:", templateId); 
+                
                 const result = await siteService.createSite(user.uid, { 
                     siteName: name, 
                     category, 
