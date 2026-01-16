@@ -168,60 +168,79 @@
         function showPlanSelectionOverlay(message) {
             const overlay = document.createElement('div');
             overlay.id = 'plan-selection-overlay';
-            overlay.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15, 23, 42, 0.98); z-index:10000; display:flex; flex-direction:column; align-items:center; justify-content:center; color:white; overflow-y:auto; padding:40px 20px;';
+            overlay.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15, 23, 42, 0.98); z-index:10000; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; color:white; overflow-y:auto; padding:40px 20px; box-sizing:border-box;';
             
             overlay.innerHTML = `
-                <h1 style="margin-bottom:10px;">Choose Your Plan</h1>
-                <p style="margin-bottom:30px; color:#94a3b8;">${message}</p>
+                <style>
+                    #plan-selection-overlay::-webkit-scrollbar { width: 8px; }
+                    #plan-selection-overlay::-webkit-scrollbar-track { background: transparent; }
+                    #plan-selection-overlay::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+                    .plans-container {
+                        display: grid;
+                        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+                        gap: 20px;
+                        width: 100%;
+                        max-width: 1100px;
+                        margin-bottom: 40px;
+                    }
+                    @media (max-width: 768px) {
+                        .plans-container {
+                            grid-template-columns: 1fr;
+                        }
+                        #plan-selection-overlay h1 { font-size: 1.5rem; }
+                    }
+                </style>
+                <h1 style="margin-bottom:10px; text-align:center;">Choose Your Plan</h1>
+                <p style="margin-bottom:30px; color:#94a3b8; text-align:center;">${message}</p>
                 
-                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:20px; width:100%; max-width:1100px;">
+                <div class="plans-container">
                     <!-- Trial Plan -->
-                    <div class="plan-card" style="background:#1e293b; padding:30px; border-radius:16px; border:1px solid #334155; text-align:center;">
-                        <h3 style="color:#94a3b8;">Free Trial</h3>
+                    <div class="plan-card" style="background:#1e293b; padding:30px; border-radius:16px; border:1px solid #334155; text-align:center; display:flex; flex-direction:column;">
+                        <h3 style="color:#94a3b8; margin-top:0;">Free Trial</h3>
                         <p style="font-size: 2rem; font-weight: bold; margin:15px 0;">7 Days</p>
-                        <ul style="list-style:none; padding:0; margin:20px 0; text-align:left; font-size:0.95rem; color:#cbd5e1;">
+                        <ul style="list-style:none; padding:0; margin:20px 0; text-align:left; font-size:0.95rem; color:#cbd5e1; flex-grow:1;">
                             <li style="margin-bottom:10px;">✓ Full Platform Access</li>
                             <li style="margin-bottom:10px;">✓ Create Unlimited Sites</li>
                             <li style="margin-bottom:10px;">✓ Experience all features</li>
                         </ul>
-                        <button class="btn btn-primary start-trial-btn" style="width:100%; padding:12px; background:#475569; border:none;">Start 7-Day Trial</button>
+                        <button class="btn btn-primary start-trial-btn" style="width:100%; padding:12px; background:#475569; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">Start 7-Day Trial</button>
                     </div>
 
                     <!-- Basic Plan -->
-                    <div class="plan-card" style="background:#1e293b; padding:30px; border-radius:16px; border:1px solid #334155; text-align:center;">
-                        <h3>Basic</h3>
+                    <div class="plan-card" style="background:#1e293b; padding:30px; border-radius:16px; border:1px solid #334155; text-align:center; display:flex; flex-direction:column;">
+                        <h3 style="margin-top:0;">Basic</h3>
                         <p style="font-size: 2rem; font-weight: bold; margin:15px 0;">₹99<span style="font-size:0.9rem; color:#94a3b8;">/mo</span></p>
-                        <ul style="list-style:none; padding:0; margin:20px 0; text-align:left; font-size:0.95rem; color:#cbd5e1;">
+                        <ul style="list-style:none; padding:0; margin:20px 0; text-align:left; font-size:0.95rem; color:#cbd5e1; flex-grow:1;">
                             <li style="margin-bottom:10px;">✓ 1 Website</li>
                             <li style="margin-bottom:10px;">✓ Standard Templates</li>
                             <li style="margin-bottom:10px;">✓ 24/7 Support</li>
                         </ul>
-                        <button class="btn btn-primary selection-upgrade-btn" data-plan="basic" style="width:100%; padding:12px;">Choose Basic</button>
+                        <button class="btn btn-primary selection-upgrade-btn" data-plan="basic" style="width:100%; padding:12px; border-radius:8px; cursor:pointer; font-weight:bold;">Choose Basic</button>
                     </div>
 
                     <!-- Premium Plan -->
-                    <div class="plan-card" style="background:#1e293b; padding:30px; border-radius:16px; border:2px solid #2563eb; text-align:center; position:relative;">
+                    <div class="plan-card" style="background:#1e293b; padding:30px; border-radius:16px; border:2px solid #2563eb; text-align:center; position:relative; display:flex; flex-direction:column;">
                         <span style="position:absolute; top:-12px; left:50%; transform:translateX(-50%); background:#2563eb; color:white; padding:4px 15px; border-radius:20px; font-size:0.8rem; font-weight:bold;">POPULAR</span>
-                        <h3>Premium</h3>
+                        <h3 style="margin-top:0;">Premium</h3>
                         <p style="font-size: 2rem; font-weight: bold; margin:15px 0;">₹299<span style="font-size:0.9rem; color:#94a3b8;">/mo</span></p>
-                        <ul style="list-style:none; padding:0; margin:20px 0; text-align:left; font-size:0.95rem; color:#cbd5e1;">
+                        <ul style="list-style:none; padding:0; margin:20px 0; text-align:left; font-size:0.95rem; color:#cbd5e1; flex-grow:1;">
                             <li style="margin-bottom:10px;">✓ 3 Websites</li>
                             <li style="margin-bottom:10px;">✓ All Templates</li>
                             <li style="margin-bottom:10px;">✓ Priority Support</li>
                         </ul>
-                        <button class="btn btn-primary selection-upgrade-btn" data-plan="premium" style="width:100%; padding:12px;">Choose Premium</button>
+                        <button class="btn btn-primary selection-upgrade-btn" data-plan="premium" style="width:100%; padding:12px; border-radius:8px; cursor:pointer; font-weight:bold;">Choose Premium</button>
                     </div>
 
                     <!-- Pro Plan -->
-                    <div class="plan-card" style="background:#1e293b; padding:30px; border-radius:16px; border:1px solid #334155; text-align:center;">
-                        <h3>Pro</h3>
+                    <div class="plan-card" style="background:#1e293b; padding:30px; border-radius:16px; border:1px solid #334155; text-align:center; display:flex; flex-direction:column;">
+                        <h3 style="margin-top:0;">Pro</h3>
                         <p style="font-size: 2rem; font-weight: bold; margin:15px 0;">₹999<span style="font-size:0.9rem; color:#94a3b8;">/mo</span></p>
-                        <ul style="list-style:none; padding:0; margin:20px 0; text-align:left; font-size:0.95rem; color:#cbd5e1;">
+                        <ul style="list-style:none; padding:0; margin:20px 0; text-align:left; font-size:0.95rem; color:#cbd5e1; flex-grow:1;">
                             <li style="margin-bottom:10px;">✓ Unlimited Websites</li>
                             <li style="margin-bottom:10px;">✓ Custom Domain Ready</li>
                             <li style="margin-bottom:10px;">✓ Dedicated Manager</li>
                         </ul>
-                        <button class="btn btn-primary selection-upgrade-btn" data-plan="pro" style="width:100%; padding:12px;">Choose Pro</button>
+                        <button class="btn btn-primary selection-upgrade-btn" data-plan="pro" style="width:100%; padding:12px; border-radius:8px; cursor:pointer; font-weight:bold;">Choose Pro</button>
                     </div>
                 </div>
             `;
