@@ -4,6 +4,29 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kreavo - Website Automation SaaS</title>
+    <script>
+        // BLOCKING SUBDOMAIN ROUTER
+        (function() {
+            var host = window.location.hostname;
+            var parts = host.split('.');
+            var isLocalhost = host.indexOf('localhost') !== -1;
+            var isSubdomain = isLocalhost ? parts.length >= 2 : parts.length >= 3;
+
+            if (isSubdomain && parts[0] !== 'www' && parts[0] !== 'kreavo') {
+                var subdomain = parts[0];
+                if (!window.location.pathname.startsWith('/s/')) {
+                    // Create a blocking overlay so the home page is never seen
+                    document.write('<div id="blocking-loader" style="position:fixed;top:0;left:0;width:100%;height:100%;background:white;display:flex;justify-content:center;align-items:center;z-index:999999;font-family:sans-serif;">' +
+                                   '<div style="text-align:center;">' +
+                                   '<div style="width:40px;height:40px;border:4px solid #f3f3f3;border-top:4px solid #2563eb;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 20px;"></div>' +
+                                   '<p style="color:#1e293b;font-weight:600;">Loading your website...</p>' +
+                                   '</div></div>' +
+                                   '<style>@keyframes spin {0%{transform:rotate(0deg);}100%{transform:rotate(360deg);}}</style>');
+                    window.location.replace('/s/' + subdomain);
+                }
+            }
+        })();
+    </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <script src="/env-config.js"></script>
     <style>
@@ -42,22 +65,5 @@
         <div class="feature-card"><h3>💳 Payments Integrated</h3><p>Accept payments via Razorpay immediately.</p></div>
         <div class="feature-card"><h3>📈 Business Focused</h3><p>Clean templates designed to convert visitors into customers.</p></div>
     </section>
-    <script>
-        // ULTIMATE SUBDOMAIN ROUTER
-        (function() {
-            var host = window.location.hostname;
-            var parts = host.split('.');
-            var isLocalhost = host.indexOf('localhost') !== -1;
-            var isSubdomain = isLocalhost ? parts.length >= 2 : parts.length >= 3;
-
-            if (isSubdomain && parts[0] !== 'www' && parts[0] !== 'kreavo') {
-                var subdomain = parts[0];
-                if (!window.location.pathname.startsWith('/s/')) {
-                    // Force the browser to jump to the Netlify Function path immediately
-                    window.location.replace('/s/' + subdomain);
-                }
-            }
-        })();
-    </script>
 </body>
 </html>
