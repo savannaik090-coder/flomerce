@@ -589,6 +589,8 @@
                             // Only extend if the plan hasn't actually expired yet
                             if (currentEnd > new Date()) {
                                 startDate = currentEnd;
+                                // Add a courtesy message about the extension
+                                console.log("Extending subscription from existing end date:", currentEnd);
                             }
                         }
 
