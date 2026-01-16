@@ -79,6 +79,7 @@ class SiteService {
       transaction.set(newSiteRef, finalSiteData);
       console.log(`[SiteService] Site created successfully: ${newSiteRef.id}`);
 
+      // Return ONLY the plain object to avoid potential serialization issues in the caller
       return { id: newSiteRef.id, subdomain: subdomain };
     });
   }

@@ -250,21 +250,27 @@
             const btn = document.getElementById('confirm-create-btn');
             const originalText = btn.innerText;
             
-            // IMMEDIATE UI LOCK - Prevent any secondary clicks
+            // IMMEDIATE UI LOCK
             btn.disabled = true;
             btn.innerText = 'Checking Availability...';
 
             try {
                 const user = firebase.auth().currentUser;
                 
-                // Transactional creation - will fail if subdomain exists
+                // Call the service and capture the result
                 const result = await siteService.createSite(user.uid, { 
                     siteName: name, 
                     category, 
                     templateId: templateId 
                 });
                 
-                // Only increment if creation was successful
+                console.log("Creation Result:", result);
+
+                if (!result || !result.subdomain) {
+                    throw new Error("Failed to generate subdomain. Please try again.");
+                }
+
+                // Increment site count
                 await firebase.firestore().collection('users').doc(user.uid).update({
                     siteCount: firebase.firestore.FieldValue.increment(1)
                 });
@@ -278,7 +284,6 @@
             } catch (error) {
                 console.error("Creation Error:", error);
                 alert(error.message);
-                // Re-enable only on error so user can try a different name
                 btn.disabled = false;
                 btn.innerText = originalText;
             }
