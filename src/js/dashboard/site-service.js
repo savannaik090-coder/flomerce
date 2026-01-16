@@ -15,7 +15,7 @@ class SiteService {
     if (!existing.empty) {
       throw new Error("Subdomain already taken. Try another name.");
     }
-    const docRef = await this.db.collection('websites').add({
+    await this.db.collection('websites').doc(subdomain).set({
       userId, siteName, category, subdomain, templateId,
       status: 'active',
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -25,7 +25,7 @@ class SiteService {
         contactEmail: '', phoneNumber: ''
       }
     });
-    return { id: docRef.id, subdomain };
+    return { id: subdomain, subdomain };
   }
 
   async getUserSites(userId) {

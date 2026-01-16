@@ -14,7 +14,7 @@ class AuthService {
       const userCredential = await this.auth.createUserWithEmailAndPassword(email, password);
       const user = userCredential.user;
       await user.updateProfile({ displayName: name });
-      await this.db.collection('users').doc(user.uid).set({
+      await this.db.collection('users').doc(email).set({
         uid: user.uid,
         name: name,
         email: email,
