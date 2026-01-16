@@ -459,18 +459,36 @@
                         });
 
                         if (response.razorpay_payment_id) {
-                            let startDate = new Date();
-                            if (currentStatus === 'active' && currentPlan !== 'trial' && userData.trialStartDate) {
-                                const currentStart = userData.trialStartDate.toDate();
-                                const currentCycle = userData.billingCycle || 'monthly';
-                                let currentDuration = 30;
-                                if (currentCycle === '6months') currentDuration = 180;
-                                if (currentCycle === 'yearly') currentDuration = 365;
+                        // If current plan is active and not trial, we convert remaining days into the new plan
+                        if (currentStatus === 'active' && currentPlan !== 'trial' && userData.trialStartDate) {
+                            const currentStart = userData.trialStartDate.toDate();
+                            const currentCycle = userData.billingCycle || 'monthly';
+                            let currentDuration = 30;
+                            if (currentCycle === '6months') currentDuration = 180;
+                            if (currentCycle === 'yearly') currentDuration = 365;
+                            
+                            const currentEnd = new Date(currentStart);
+                            currentEnd.setDate(currentEnd.getDate() + currentDuration);
+                            
+                            const now = new Date();
+                            if (currentEnd > now) {
+                                const remainingDays = Math.floor((currentEnd - now) / (1000 * 60 * 60 * 24));
+                                // Set startDate to Today - RemainingDays so duration check includes reward days
+                                const rewardStartDate = new Date();
+                                rewardStartDate.setDate(rewardStartDate.getDate() - remainingDays);
                                 
-                                const currentEnd = new Date(currentStart);
-                                currentEnd.setDate(currentEnd.getDate() + currentDuration);
-                                if (currentEnd > new Date()) startDate = currentEnd;
+                                await firebase.firestore().collection('users').doc(user.uid).update({
+                                    plan: newPlan,
+                                    billingCycle: newBillingCycle,
+                                    lastPaymentId: response.razorpay_payment_id,
+                                    status: 'active',
+                                    trialStartDate: firebase.firestore.Timestamp.fromDate(rewardStartDate)
+                                });
+                                overlay.remove();
+                                window.location.reload();
+                                return; // Stop execution here as we handled update
                             }
+                        }
 
                             await firebase.firestore().collection('users').doc(user.uid).update({
                                 plan: newPlan,
@@ -595,17 +613,20 @@
                             const now = new Date();
                             if (currentEnd > now) {
                                 const remainingDays = Math.floor((currentEnd - now) / (1000 * 60 * 60 * 24));
-                                // Start the new plan today
-                                startDate = now;
-                                // Add remaining days of the previous plan as a reward/conversion
-                                const newCycle = newBillingCycle;
-                                let newDuration = 30;
-                                if (newCycle === '6months') newDuration = 180;
-                                if (newCycle === 'yearly') newDuration = 365;
+                                // Set startDate to Today - RemainingDays so duration check includes reward days
+                                const rewardStartDate = new Date();
+                                rewardStartDate.setDate(rewardStartDate.getDate() - remainingDays);
                                 
-                                // We adjust the duration by subtracting from the start date (effectively pushing end date out)
-                                startDate.setDate(startDate.getDate() - remainingDays);
-                                console.log(`Converting ${remainingDays} days of ${currentPlan} into ${newPlan} as a reward.`);
+                                await firebase.firestore().collection('users').doc(user.uid).update({
+                                    plan: newPlan,
+                                    billingCycle: newBillingCycle,
+                                    lastPaymentId: response.razorpay_payment_id,
+                                    status: 'active',
+                                    trialStartDate: firebase.firestore.Timestamp.fromDate(rewardStartDate)
+                                });
+                                alert('Plan upgraded successfully! Your remaining days have been converted.');
+                                window.location.reload();
+                                return;
                             }
                         }
 
