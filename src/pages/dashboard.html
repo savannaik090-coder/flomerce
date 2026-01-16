@@ -364,30 +364,61 @@
             // Handle Paid Plans
             overlay.querySelectorAll('.selection-upgrade-btn').forEach(btn => {
                 btn.onclick = async () => {
-                    const plan = btn.dataset.plan;
+                    const newPlan = btn.dataset.plan;
+                    const newBillingCycle = selectedDuration;
                     const user = firebase.auth().currentUser;
+                    
                     try {
-                        const durationBtns = overlay.querySelectorAll('.plan-price');
-                        const index = ['basic', 'premium', 'pro'].indexOf(plan);
-                        const amount = durationBtns[index].dataset[selectedDuration];
+                        const userDoc = await firebase.firestore().collection('users').doc(user.uid).get();
+                        const userData = userDoc.data();
+                        const currentPlan = userData.plan || 'trial';
+                        const currentStatus = userData.status;
 
-                        const order = await razorpayService.createOrder(plan, selectedDuration, amount);
+                        if (currentStatus === 'active' && currentPlan !== 'trial') {
+                            const planWeights = { 'basic': 1, 'premium': 2, 'pro': 3 };
+                            const isUpgrade = planWeights[newPlan] > planWeights[currentPlan];
+                            
+                            if (!isUpgrade && newPlan === currentPlan) {
+                                if (!confirm('You are already on this plan. Do you want to extend your subscription?')) return;
+                            } else if (!isUpgrade) {
+                                if (!confirm(`You are currently on a ${currentPlan.toUpperCase()} plan. Upgrading to ${newPlan.toUpperCase()} will downgrade your account. Are you sure?`)) return;
+                            }
+                        }
+
+                        const durationPrices = overlay.querySelectorAll('.plan-price');
+                        const index = ['basic', 'premium', 'pro'].indexOf(newPlan);
+                        const amount = durationPrices[index].dataset[newBillingCycle];
+
+                        const order = await razorpayService.createOrder(newPlan, newBillingCycle, amount);
                         const response = await razorpayService.openCheckout({
                             amount: order.amount,
                             currency: order.currency,
-                            planName: plan.charAt(0).toUpperCase() + plan.slice(1),
-                            billingCycle: selectedDuration.charAt(0).toUpperCase() + selectedDuration.slice(1),
+                            planName: newPlan.charAt(0).toUpperCase() + newPlan.slice(1),
+                            billingCycle: newBillingCycle.charAt(0).toUpperCase() + newBillingCycle.slice(1),
                             userName: user.displayName,
                             userEmail: user.email
                         });
 
                         if (response.razorpay_payment_id) {
+                            let startDate = new Date();
+                            if (currentStatus === 'active' && currentPlan !== 'trial' && userData.trialStartDate) {
+                                const currentStart = userData.trialStartDate.toDate();
+                                const currentCycle = userData.billingCycle || 'monthly';
+                                let currentDuration = 30;
+                                if (currentCycle === '6months') currentDuration = 180;
+                                if (currentCycle === 'yearly') currentDuration = 365;
+                                
+                                const currentEnd = new Date(currentStart);
+                                currentEnd.setDate(currentEnd.getDate() + currentDuration);
+                                if (currentEnd > new Date()) startDate = currentEnd;
+                            }
+
                             await firebase.firestore().collection('users').doc(user.uid).update({
-                                plan: plan,
-                                billingCycle: selectedDuration,
+                                plan: newPlan,
+                                billingCycle: newBillingCycle,
                                 lastPaymentId: response.razorpay_payment_id,
                                 status: 'active',
-                                trialStartDate: firebase.firestore.FieldValue.serverTimestamp()
+                                trialStartDate: firebase.firestore.Timestamp.fromDate(startDate)
                             });
                             overlay.remove();
                             window.location.reload();
@@ -447,32 +478,71 @@
         // Upgrade Logic
         document.querySelectorAll('.upgrade-btn').forEach(btn => {
             btn.onclick = async () => {
-                const plan = btn.dataset.plan;
+                const newPlan = btn.dataset.plan;
+                const newBillingCycle = selectedMainDuration;
+                
                 try {
-                    const planCard = btn.closest('.plan-card');
-                    const amount = planCard.querySelector('.display-price').dataset[selectedMainDuration];
-                    const order = await razorpayService.createOrder(plan, selectedMainDuration, amount);
                     const user = firebase.auth().currentUser;
+                    const userDoc = await firebase.firestore().collection('users').doc(user.uid).get();
+                    const userData = userDoc.data();
+                    
+                    const currentPlan = userData.plan || 'trial';
+                    const currentStatus = userData.status;
+                    
+                    // Logic to prevent accidental downgrades or overwriting active plans
+                    if (currentStatus === 'active' && currentPlan !== 'trial') {
+                        const planWeights = { 'basic': 1, 'premium': 2, 'pro': 3 };
+                        const isUpgrade = planWeights[newPlan] > planWeights[currentPlan];
+                        
+                        if (!isUpgrade && newPlan === currentPlan) {
+                            if (!confirm('You are already on this plan. Do you want to extend your subscription?')) return;
+                        } else if (!isUpgrade) {
+                            if (!confirm(`You are currently on a ${currentPlan.toUpperCase()} plan. Upgrading to ${newPlan.toUpperCase()} will downgrade your account. Are you sure?`)) return;
+                        }
+                    }
+
+                    const planCard = btn.closest('.plan-card');
+                    const amount = planCard.querySelector('.display-price').dataset[newBillingCycle];
+                    const order = await razorpayService.createOrder(newPlan, newBillingCycle, amount);
                     
                     const response = await razorpayService.openCheckout({
                         amount: order.amount,
                         currency: order.currency,
-                        planName: plan.charAt(0).toUpperCase() + plan.slice(1),
-                        billingCycle: selectedMainDuration.charAt(0).toUpperCase() + selectedMainDuration.slice(1),
+                        planName: newPlan.charAt(0).toUpperCase() + newPlan.slice(1),
+                        billingCycle: newBillingCycle.charAt(0).toUpperCase() + newBillingCycle.slice(1),
                         userName: user.displayName,
                         userEmail: user.email
                     });
 
                     if (response.razorpay_payment_id) {
-                        // Update Plan in Firebase
+                        const now = firebase.firestore.FieldValue.serverTimestamp();
+                        let startDate = new Date();
+                        
+                        // If current plan is active and not trial, we extend from the existing end date
+                        if (currentStatus === 'active' && currentPlan !== 'trial' && userData.trialStartDate) {
+                            const currentStart = userData.trialStartDate.toDate();
+                            const currentCycle = userData.billingCycle || 'monthly';
+                            let currentDuration = 30;
+                            if (currentCycle === '6months') currentDuration = 180;
+                            if (currentCycle === 'yearly') currentDuration = 365;
+                            
+                            const currentEnd = new Date(currentStart);
+                            currentEnd.setDate(currentEnd.getDate() + currentDuration);
+                            
+                            // Only extend if the plan hasn't actually expired yet
+                            if (currentEnd > new Date()) {
+                                startDate = currentEnd;
+                            }
+                        }
+
                         await firebase.firestore().collection('users').doc(user.uid).update({
-                            plan: plan,
-                            billingCycle: selectedMainDuration,
+                            plan: newPlan,
+                            billingCycle: newBillingCycle,
                             lastPaymentId: response.razorpay_payment_id,
                             status: 'active',
-                            trialStartDate: firebase.firestore.FieldValue.serverTimestamp()
+                            trialStartDate: firebase.firestore.Timestamp.fromDate(startDate)
                         });
-                        alert('Plan upgraded successfully!');
+                        alert('Plan updated successfully!');
                         window.location.reload();
                     }
                 } catch (error) {
