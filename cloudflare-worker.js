@@ -35,5 +35,5 @@ export default {
         redirect: 'manual',
       })
     )
-  },
+  }
 }
