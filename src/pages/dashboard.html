@@ -1,10 +1,17 @@
+<!--
+ * KREAVO SAAS PLATFORM - User Dashboard
+ * 
+ * Purpose: Central hub for users to manage their created websites and account settings.
+ * Security: Requires authentication to access. Redirects to login if not authenticated.
+ * Organization: Uses modular JS services for auth and site management.
+ -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - Kreavo</title>
-    <script src="/env-config.js"></script>
+    <script src="/src/common/env-config.js"></script>
     <style>
         body { font-family: sans-serif; margin: 0; background: #f4f7f6; display: flex; }
         .sidebar { width: 250px; background: #1e293b; color: white; height: 100vh; padding: 20px; box-sizing: border-box; }
@@ -42,11 +49,11 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
     <script type="module">
-        import { authService } from './src/js/auth/auth-service.js';
-        import { siteService } from './src/js/dashboard/site-service.js';
+        import { authService } from '/src/js/auth/auth-service.js';
+        import { siteService } from '/src/js/dashboard/site-service.js';
         
         authService.onAuthStateChanged((user) => {
-            if (!user) window.location.href = '/login.html';
+            if (!user) window.location.href = '/src/pages/login.html';
             else loadSites(user.uid);
         });
 

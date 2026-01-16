@@ -1,20 +1,21 @@
 # Kreavo SaaS Platform
 
 ## Architecture
-- **Frontend:** Plain HTML/JS (located at root)
+- **Frontend:** Plain HTML/JS (organized in `/src/pages` and `/src/js`)
 - **Backend:** Netlify Functions (located in `/netlify/functions`)
 - **Database:** Firebase Firestore
 - **Auth:** Firebase Authentication
 
 ## Security & Secrets
 - **IMPORTANT:** All sensitive keys must be stored as **Environment Variables** in Replit (Secrets tab).
-- **Public Keys:** `FIREBASE_API_KEY`, etc., are loaded via `/env-config.js` (which is excluded from Git).
+- **Public Keys:** `FIREBASE_API_KEY`, etc., are loaded via `/src/common/env-config.js` (which is excluded from Git).
 - **Private Keys:** `FIREBASE_PRIVATE_KEY`, `RAZORPAY_KEY_SECRET`, etc., are only accessible in Netlify Functions.
 
 ## Project Structure
-- `/index.html`: SaaS Landing Page.
-- `/signup.html`, `/login.html`: SaaS Auth pages.
-- `/dashboard.html`: User Dashboard.
+- `/src/pages/index.html`: SaaS Landing Page.
+- `/src/pages/signup.html`, `/src/pages/login.html`: SaaS Auth pages.
+- `/src/pages/dashboard.html`: User Dashboard.
+- `/src/js/`: JavaScript logic (auth-service.js, site-service.js, etc.)
 - `/admin-panel`: Original jewellery CRM code.
 - `/guide`: Reference original code.
 

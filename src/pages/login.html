@@ -1,10 +1,16 @@
+<!--
+ * KREAVO SAAS PLATFORM - User Login Page
+ * 
+ * Purpose: Authentication interface for returning users.
+ * Features: Email/Password login, error handling, redirect to signup.
+ -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Kreavo</title>
-    <script src="/env-config.js"></script>
+    <script src="/src/common/env-config.js"></script>
     <style>
         body { font-family: sans-serif; background: #f4f7f6; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
         .auth-card { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
@@ -30,14 +36,14 @@
             <button type="submit" class="btn">Login</button>
             <div id="error-msg" class="error"></div>
         </form>
-        <p style="text-align: center; margin-top: 20px;">New to Kreavo? <a href="/signup.html">Sign Up</a></p>
+        <p style="text-align: center; margin-top: 20px;">New to Kreavo? <a href="/src/pages/signup.html">Sign Up</a></p>
     </div>
 
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
     <script type="module">
-        import { authService } from './src/js/auth/auth-service.js';
+        import { authService } from '/src/js/auth/auth-service.js';
         
         document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -47,7 +53,7 @@
 
             try {
                 await authService.login(email, password);
-                window.location.href = '/dashboard.html';
+                window.location.href = '/src/pages/dashboard.html';
             } catch (error) {
                 errorEl.textContent = error.message;
                 errorEl.style.display = 'block';
