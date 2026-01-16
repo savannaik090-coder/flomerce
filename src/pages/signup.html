@@ -1,10 +1,17 @@
+<!--
+ * KREAVO SAAS PLATFORM - User Signup Page
+ * 
+ * Purpose: Account creation interface for new users.
+ * Features: User registration with name, email, and password. 
+ * Flow: Registers user, sends verification email, and redirects to login.
+ -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Signup - Kreavo</title>
-    <script src="/env-config.js"></script>
+    <script src="/src/common/EnvConfig.js"></script>
     <style>
         body { font-family: sans-serif; background: #f4f7f6; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
         .auth-card { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
@@ -34,14 +41,14 @@
             <button type="submit" class="btn">Create Account</button>
             <div id="error-msg" class="error"></div>
         </form>
-        <p style="text-align: center; margin-top: 20px;">Already have an account? <a href="/login.html">Login</a></p>
+        <p style="text-align: center; margin-top: 20px;">Already have an account? <a href="/src/pages/login.html">Login</a></p>
     </div>
 
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
     <script type="module">
-        import { authService } from './src/js/auth/auth-service.js';
+        import { authService } from '/src/js/auth/AuthService.js';
         
         document.getElementById('signup-form').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -53,7 +60,7 @@
             try {
                 await authService.signUp(name, email, password);
                 alert('Account created! Please check your email for verification.');
-                window.location.href = '/login.html';
+                window.location.href = '/src/pages/login.html';
             } catch (error) {
                 errorEl.textContent = error.message;
                 errorEl.style.display = 'block';
