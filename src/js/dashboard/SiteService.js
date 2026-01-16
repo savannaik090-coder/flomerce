@@ -33,7 +33,6 @@ class SiteService {
    */
   async createSite(uid, siteData) {
     const siteName = siteData.siteName.trim();
-    // Normalize subdomain: lowercase, alphanumeric, hyphens only
     const subdomain = siteName.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
     
     if (!subdomain) {
@@ -45,9 +44,10 @@ class SiteService {
 
     console.log(`[SiteService] Creating site: ${siteName} (${subdomain})`);
 
+    // Use a top-level try-catch to ensure we capture the actual error
     try {
-      // Use transaction to ensure registry claim and site creation are atomic
-      const result = await this.db.runTransaction(async (transaction) => {
+      // Return the result of runTransaction directly
+      const transactionResult = await this.db.runTransaction(async (transaction) => {
         const subdomainDoc = await transaction.get(subdomainRegistryRef);
         
         if (subdomainDoc.exists) {
@@ -74,13 +74,24 @@ class SiteService {
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
-        return { id: newSiteRef.id, subdomain: subdomain };
+        // This object MUST be returned from the transaction block
+        return { 
+          id: newSiteRef.id, 
+          subdomain: subdomain 
+        };
       });
       
-      console.log("[SiteService] Transaction successful:", result);
-      return result;
+      console.log("[SiteService] Transaction Result:", transactionResult);
+      
+      // Explicitly return the result to the caller
+      if (!transactionResult || !transactionResult.subdomain) {
+         console.error("[SiteService] Transaction completed but returned no subdomain data");
+         throw new Error("Internal Error: Subdomain registry failed.");
+      }
+      
+      return transactionResult;
     } catch (error) {
-      console.error("[SiteService] Transaction failed:", error);
+      console.error("[SiteService] Critical Creation Error:", error);
       throw error;
     }
   }
