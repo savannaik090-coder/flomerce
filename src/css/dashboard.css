@@ -3,7 +3,8 @@ body {
     margin: 0; 
     background: #f4f7f6; 
     display: flex;
-    min-width: 1200px; /* Force minimum width to prevent responsiveness */
+    flex-direction: row;
+    min-height: 100vh;
 }
 
 .sidebar { 
@@ -13,13 +14,15 @@ body {
     height: 100vh; 
     padding: 20px; 
     box-sizing: border-box; 
-    flex-shrink: 0; /* Prevent sidebar from shrinking */
+    flex-shrink: 0;
+    position: sticky;
+    top: 0;
 }
 
 .main { 
     flex: 1; 
     padding: 40px; 
-    min-width: 950px; /* Ensure main content area stays wide */
+    box-sizing: border-box;
 }
 
 .header { 
@@ -59,4 +62,34 @@ body {
     cursor: pointer; 
     border: none; 
     font-size: 14px; 
+}
+
+/* Responsive adjustments for smaller devices */
+@media (max-width: 768px) {
+    body {
+        flex-direction: column;
+    }
+    
+    .sidebar {
+        width: 100%;
+        height: auto;
+        position: relative;
+        padding: 15px;
+    }
+    
+    .main {
+        padding: 20px;
+    }
+    
+    .header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+    
+    .site-card {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
 }
