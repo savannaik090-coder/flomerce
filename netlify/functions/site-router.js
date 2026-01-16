@@ -52,13 +52,14 @@ exports.handler = async (event, context) => {
     }
 
     // RESOLVE TEMPLATE PATH
-    // In Netlify, the directory structure in production (/var/task) can be tricky.
-    // We try multiple possible locations.
+    // In Netlify, the templates must be explicitly included in the bundle.
+    // When using included_files in netlify.toml, they are placed relative to the function.
     const possiblePaths = [
-      path.join(process.cwd(), 'templates', templateType, 'index.html'),
-      path.join(__dirname, '..', '..', 'templates', templateType, 'index.html'),
       path.join(__dirname, 'templates', templateType, 'index.html'),
-      path.join('/var/task', 'templates', templateType, 'index.html')
+      path.join(__dirname, '..', '..', 'templates', templateType, 'index.html'),
+      path.join(process.cwd(), 'templates', templateType, 'index.html'),
+      path.join('/var/task', 'templates', templateType, 'index.html'),
+      path.join('/var/task', 'netlify/functions', 'templates', templateType, 'index.html')
     ];
 
     let templatePath = '';
@@ -83,7 +84,7 @@ exports.handler = async (event, context) => {
     html = html.replace(/{{siteName}}/g, siteData.siteName || 'My Business');
     html = html.replace(/{{category}}/g, siteData.category || '');
     html = html.replace(/{{title}}/g, siteData.settings?.title || siteData.siteName || 'My Business');
-    html = html.replace(/{{description}}/g, siteData.settings?.description || 'Professional clothing website created on Kreavo.');
+    html = html.replace(/{{description}}/g, siteData.settings?.description || 'Professional website created on Kreavo.');
 
     return {
       statusCode: 200,
