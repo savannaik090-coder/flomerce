@@ -43,39 +43,18 @@
         <div class="feature-card"><h3>📈 Business Focused</h3><p>Clean templates designed to convert visitors into customers.</p></div>
     </section>
     <script>
-        // COMPREHENSIVE SUBDOMAIN ROUTER
-        (async function resolveSubdomain() {
-            const host = window.location.hostname;
-            const path = window.location.pathname;
-            
-            // 1. Skip if already on a sub-path like /login or /dashboard
-            if (path !== '/' && !path.startsWith('/s/')) return;
-
-            // 2. Subdomain detection (works for both fgt.kreavo.in and fgt.localhost)
-            const parts = host.split('.');
-            const isLocalhost = host.includes('localhost');
-            const isSubdomain = isLocalhost ? parts.length >= 2 : parts.length >= 3;
+        // ULTIMATE SUBDOMAIN ROUTER
+        (function() {
+            var host = window.location.hostname;
+            var parts = host.split('.');
+            var isLocalhost = host.indexOf('localhost') !== -1;
+            var isSubdomain = isLocalhost ? parts.length >= 2 : parts.length >= 3;
 
             if (isSubdomain && parts[0] !== 'www' && parts[0] !== 'kreavo') {
-                const subdomain = parts[0];
-                
-                // Avoid infinite redirect loop
-                if (path.startsWith('/s/')) return;
-
-                try {
-                    // 3. Ask the API to verify this subdomain exists
-                    const response = await fetch(`/.netlify/functions/resolve-subdomain?subdomain=${subdomain}`);
-                    if (!response.ok) throw new Error("Verification failed");
-                    
-                    const data = await response.json();
-                    
-                    if (data && !data.isMainSite && data.siteData) {
-                        // 4. FOUND SITE: Instantly replace the current URL with the site content path
-                        // Using replaceState so it doesn't clutter the history
-                        window.location.replace(`/s/${subdomain}`);
-                    }
-                } catch (e) {
-                    console.error("Routing error:", e);
+                var subdomain = parts[0];
+                if (!window.location.pathname.startsWith('/s/')) {
+                    // Force the browser to jump to the Netlify Function path immediately
+                    window.location.replace('/s/' + subdomain);
                 }
             }
         })();
