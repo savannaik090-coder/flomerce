@@ -171,6 +171,8 @@
                     return;
                 }
 
+                updatePlansUI(plan);
+
                 document.getElementById('current-plan-name').innerText = plan.toUpperCase();
                 
                 const startDate = currentUserData.trialStartDate ? currentUserData.trialStartDate.toDate() : new Date();
@@ -228,6 +230,36 @@
                     showOverlay("Your subscription has expired. Please upgrade to a paid plan to continue using the website.");
                 }
             }
+        }
+
+        function updatePlansUI(currentPlan) {
+            if (!currentPlan || currentPlan === 'trial') return;
+            
+            const planWeights = { 'basic': 1, 'premium': 2, 'pro': 3 };
+            const currentWeight = planWeights[currentPlan];
+
+            document.querySelectorAll('.upgrade-btn').forEach(btn => {
+                const btnPlan = btn.dataset.plan;
+                const btnWeight = planWeights[btnPlan];
+                const card = btn.closest('.plan-card');
+
+                if (btnPlan === currentPlan) {
+                    // Current Plan
+                    btn.innerText = 'Extend';
+                    const badge = document.createElement('div');
+                    badge.innerText = 'CURRENT PLAN';
+                    badge.style.cssText = 'background:#22c55e; color:white; padding:2px 10px; border-radius:10px; font-size:0.7rem; margin-bottom:10px; display:inline-block; font-weight:bold;';
+                    card.prepend(badge);
+                    card.style.border = '2px solid #22c55e';
+                } else if (btnWeight < currentWeight) {
+                    // Lower Plan
+                    card.style.opacity = '0.5';
+                    btn.innerText = 'Lower Tier';
+                    btn.disabled = true;
+                    btn.style.background = '#94a3b8';
+                    btn.style.cursor = 'not-allowed';
+                }
+            });
         }
 
         async function expirePlan(uid, message) {
@@ -363,6 +395,29 @@
 
             // Handle Paid Plans
             overlay.querySelectorAll('.selection-upgrade-btn').forEach(btn => {
+                const btnPlan = btn.dataset.plan;
+                const currentPlan = currentUserData ? (currentUserData.plan || 'trial') : 'trial';
+                const planWeights = { 'trial': 0, 'basic': 1, 'premium': 2, 'pro': 3 };
+                const currentWeight = planWeights[currentPlan];
+                const btnWeight = planWeights[btnPlan];
+                const card = btn.closest('.plan-card');
+
+                if (currentPlan !== 'trial') {
+                    if (btnPlan === currentPlan) {
+                        btn.innerText = 'Extend';
+                        const badge = document.createElement('div');
+                        badge.innerText = 'CURRENT PLAN';
+                        badge.style.cssText = 'background:#22c55e; color:white; padding:2px 10px; border-radius:10px; font-size:0.7rem; margin-bottom:10px; display:inline-block; font-weight:bold;';
+                        card.prepend(badge);
+                    } else if (btnWeight < currentWeight) {
+                        card.style.opacity = '0.5';
+                        btn.innerText = 'Lower Tier';
+                        btn.disabled = true;
+                        btn.style.background = '#475569';
+                        btn.style.cursor = 'not-allowed';
+                    }
+                }
+
                 btn.onclick = async () => {
                     const newPlan = btn.dataset.plan;
                     const newBillingCycle = selectedDuration;
