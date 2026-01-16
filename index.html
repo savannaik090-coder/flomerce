@@ -46,23 +46,34 @@
         // Subdomain resolution logic
         (async function resolveSubdomain() {
             const host = window.location.hostname;
+            console.log("Current Host:", host);
             const parts = host.split('.');
             
-            // If it's a subdomain (e.g. fgt.kreavo.in)
-            if (parts.length >= 3 && parts[0] !== 'www' && parts[0] !== 'kreavo') {
+            // Subdomain if parts.length >= 3 (e.g., fgt.kreavo.in)
+            // Or parts.length >= 2 on localhost (e.g., fgt.localhost)
+            const isLocalhost = host.includes('localhost');
+            const isSubdomain = isLocalhost ? parts.length >= 2 : parts.length >= 3;
+
+            if (isSubdomain && parts[0] !== 'www' && parts[0] !== 'kreavo') {
                 const subdomain = parts[0];
+                console.log("Detected Subdomain:", subdomain);
+                
+                // If we are already on the site path, don't redirect again
+                if (window.location.pathname.startsWith('/s/')) return;
+
                 try {
-                    const response = await fetch(`/.netlify/functions/resolve-subdomain`, {
-                        headers: { 'Host': host }
-                    });
+                    // Check if this subdomain exists in our database
+                    const response = await fetch(`/.netlify/functions/resolve-subdomain`);
                     const data = await response.json();
                     
                     if (data && !data.isMainSite && data.siteData) {
-                        // Redirect to the site display logic or render it
+                        console.log("Valid site found, redirecting...");
                         window.location.href = `/s/${subdomain}`;
+                    } else {
+                        console.log("Not a valid user site.");
                     }
                 } catch (e) {
-                    console.error("Subdomain resolution failed", e);
+                    console.error("Subdomain resolution error:", e);
                 }
             }
         })();
