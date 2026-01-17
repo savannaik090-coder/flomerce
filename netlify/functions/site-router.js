@@ -82,7 +82,7 @@ exports.handler = async (event, context) => {
     // Replacement logic - Handles both Clothing and Classic template variables
     const siteName = siteData.siteName || 'My Business';
     const category = siteData.category || '';
-    const description = siteData.settings?.description || 'Professional business created on Kreavo.';
+    const description = siteData.settings?.description || 'Professional business created on Fluxe.';
     const title = siteData.settings?.title || siteName;
 
     // Standard variables

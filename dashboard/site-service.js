@@ -22,7 +22,7 @@ class SiteService {
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       settings: {
         title: siteName,
-        description: `Professional ${category} website created on Kreavo.`,
+        description: `Professional ${category} website created on Fluxe.`,
         contactEmail: '', phoneNumber: ''
       }
     });

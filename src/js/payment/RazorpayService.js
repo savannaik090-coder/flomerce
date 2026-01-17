@@ -35,7 +35,7 @@ class RazorpayService {
         key: this.keyId,
         amount: options.amount,
         currency: options.currency,
-        name: 'Kreavo',
+        name: 'Fluxe',
         description: `${options.planName} Plan - ${options.billingCycle}`,
         handler: function (response) {
           resolve(response);

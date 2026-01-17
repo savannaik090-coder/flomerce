@@ -15,7 +15,7 @@ exports.handler = async (event, context) => {
 
   try {
     await transporter.sendMail({
-      from: `"Kreavo Platform" <${process.env.EMAIL_USER}>`,
+      from: `"Fluxe Platform" <${process.env.EMAIL_USER}>`,
       to,
       subject,
       html,

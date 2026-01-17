@@ -1,4 +1,4 @@
-# Kreavo SaaS Platform
+# Fluxe SaaS Platform
 
 ## Architecture
 - **Frontend:** Plain HTML/JS (organized in `/src/pages` and `/src/js`)

@@ -20,7 +20,7 @@ exports.handler = async (event, context) => {
   
   console.log("Resolving subdomain:", subdomain);
   
-  // Ignore 'www' or 'kreavo' (main domain)
+  // Ignore 'www' or 'fluxe' (main domain)
   if (subdomain === 'www' || subdomain === 'fluxe' || subdomain === 'localhost' || subdomain.includes('netlify')) {
     return {
       statusCode: 200,
