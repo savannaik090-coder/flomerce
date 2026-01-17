@@ -11,7 +11,7 @@ class SiteService {
   async createSite(userId, siteData) {
     const { siteName, category, templateId } = siteData;
     const subdomain = siteName.toLowerCase().replace(/[^a-z0-9]/g, '-');
-    const fullDomain = `${subdomain}.kreavo.in`;
+    const fullDomain = `${subdomain}.fluxe.in`;
     const existing = await this.db.collection('websites').doc(fullDomain).get();
     if (existing.exists) {
       throw new Error("Domain already taken. Try another name.");

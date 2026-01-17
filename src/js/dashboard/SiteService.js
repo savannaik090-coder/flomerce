@@ -51,7 +51,7 @@ class SiteService {
         const subdomainDoc = await transaction.get(subdomainRegistryRef);
         
         if (subdomainDoc.exists) {
-          throw new Error(`The URL "${subdomain}.kreavo.in" is already taken.`);
+          throw new Error(`The URL "${subdomain}.fluxe.in" is already taken.`);
         }
 
         // Claim in registry
@@ -62,7 +62,7 @@ class SiteService {
         });
 
         // Create site record
-        const siteUrl = `https://${subdomain}.kreavo.in`;
+        const siteUrl = `https://${subdomain}.fluxe.in`;
         const newSiteRef = sitesRef.doc();
         
         transaction.set(newSiteRef, {

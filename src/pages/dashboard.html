@@ -712,7 +712,7 @@
                     modal.style.display = 'none';
                     nameInput.value = ''; 
                     loadSites(user.uid);
-                    alert(`Website Created Successfully!\nYour Live URL: https://${result.subdomain}.kreavo.in`);
+                    alert(`Website Created Successfully!\nYour Live URL: https://${result.subdomain}.fluxe.in`);
                 } else {
                     throw new Error("Creation failed: No subdomain returned.");
                 }
@@ -740,7 +740,7 @@
 
                 sitesList.innerHTML = '';
                 sites.forEach(site => {
-                    const displayDomain = site.fullDomain || `${site.subdomain}.kreavo.in`;
+                    const displayDomain = site.fullDomain || `${site.subdomain}.fluxe.in`;
                     sitesList.innerHTML += `
                         <div class="site-card" style="display:flex; justify-content:space-between; align-items:center; background:white; padding:20px; border-radius:12px; margin-bottom:15px; border:1px solid #e2e8f0;">
                             <div>

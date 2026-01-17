@@ -4,7 +4,7 @@ export default {
     const hostname = url.hostname
     const parts = hostname.split('.')
 
-    // Detect subdomain: mysite.kreavo.in
+    // Detect subdomain: mysite.fluxe.in
     if (parts.length >= 3 && parts[0] !== 'www' && parts[0] !== 'kreavo') {
       const subdomain = parts[0]
 
