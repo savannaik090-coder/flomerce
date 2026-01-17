@@ -21,7 +21,7 @@ exports.handler = async (event, context) => {
   console.log("Resolving subdomain:", subdomain);
   
   // Ignore 'www' or 'kreavo' (main domain)
-  if (subdomain === 'www' || subdomain === 'kreavo' || subdomain === 'localhost' || subdomain.includes('netlify')) {
+  if (subdomain === 'www' || subdomain === 'fluxe' || subdomain === 'localhost' || subdomain.includes('netlify')) {
     return {
       statusCode: 200,
       body: JSON.stringify({ isMainSite: true })

@@ -5,12 +5,12 @@ export default {
     const parts = hostname.split('.')
 
     // Detect subdomain: mysite.fluxe.in
-    if (parts.length >= 3 && parts[0] !== 'www' && parts[0] !== 'kreavo') {
+    if (parts.length >= 3 && parts[0] !== 'www' && parts[0] !== 'fluxe') {
       const subdomain = parts[0]
 
       // Rewrite to Netlify origin
       const targetUrl = new URL(request.url)
-      targetUrl.hostname = 'kreavo.netlify.app'
+      targetUrl.hostname = 'fluxee.netlify.app'
       targetUrl.pathname = `/s/${subdomain}${targetUrl.pathname}`
 
       const newRequest = new Request(targetUrl.toString(), {
@@ -25,7 +25,7 @@ export default {
 
     // Main domain → normal Netlify site
     const mainUrl = new URL(request.url)
-    mainUrl.hostname = 'kreavo.netlify.app'
+    mainUrl.hostname = 'fluxee.netlify.app'
     
     // Add header to tell Netlify this is the root domain
     const mainRequest = new Request(mainUrl.toString(), {
