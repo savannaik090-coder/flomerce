@@ -56,7 +56,7 @@ exports.handler = async (event, context) => {
     
     // Special handling for template1
     if (templateType === 'template1') {
-      templateUrl = `${baseUrl}/templates/template1/index.html`;
+      templateUrl = `${baseUrl}/templates/view/template1/index.html`;
     }
 
     console.log(`Fetching template from: ${templateUrl}`);
