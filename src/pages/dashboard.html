@@ -759,6 +759,105 @@
 
         document.getElementById('logout-btn').onclick = () => authService.logout();
 
+        // Create Site Modal Logic
+        const createSiteModal = document.getElementById('create-site-modal');
+        const openModalBtn = document.getElementById('open-create-modal');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+        const confirmTemplateBtn = document.getElementById('confirm-template-btn');
+        const step1 = document.getElementById('modal-step-1');
+        const step2 = document.getElementById('modal-step-2');
+        const templateOptions = document.querySelectorAll('.template-option');
+        const domainInput = document.getElementById('site-domain-input');
+        const domainStatus = document.getElementById('domain-status');
+        const confirmCreateBtn = document.getElementById('confirm-create-btn');
+        const backToStep1 = document.getElementById('back-to-step-1');
+
+        let selectedTemplate = null;
+
+        openModalBtn.onclick = () => {
+            createSiteModal.style.display = 'flex';
+            step1.style.display = 'block';
+            step2.style.display = 'none';
+        };
+
+        closeModalBtn.onclick = () => {
+            createSiteModal.style.display = 'none';
+        };
+
+        templateOptions.forEach(opt => {
+            opt.onclick = (e) => {
+                if (e.target.classList.contains('preview-btn')) {
+                    window.open(e.target.dataset.url, '_blank');
+                    return;
+                }
+                templateOptions.forEach(o => o.style.borderColor = '#e2e8f0');
+                opt.style.borderColor = '#2563eb';
+                selectedTemplate = opt.dataset.template;
+                confirmTemplateBtn.disabled = false;
+            };
+        });
+
+        confirmTemplateBtn.onclick = () => {
+            step1.style.display = 'none';
+            step2.style.display = 'block';
+        };
+
+        backToStep1.onclick = () => {
+            step2.style.display = 'none';
+            step1.style.display = 'block';
+        };
+
+        domainInput.oninput = async () => {
+            const domain = domainInput.value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-');
+            if (!domain) {
+                domainStatus.innerText = '';
+                return;
+            }
+            try {
+                const doc = await firebase.firestore().collection('subdomains').doc(domain).get();
+                if (doc.exists) {
+                    domainStatus.innerText = 'Not available';
+                    domainStatus.style.color = 'red';
+                } else {
+                    domainStatus.innerText = 'Available';
+                    domainStatus.style.color = 'green';
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        };
+
+        confirmCreateBtn.onclick = async () => {
+            const domain = domainInput.value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-');
+            const brandName = document.getElementById('site-brand-input').value.trim();
+            const logoFile = document.getElementById('site-logo-input').files[0];
+
+            if (!domain || !brandName) {
+                alert('Please fill in all required fields');
+                return;
+            }
+
+            confirmCreateBtn.disabled = true;
+            confirmCreateBtn.innerText = 'Creating...';
+
+            try {
+                const user = authService.getCurrentUser();
+                await siteService.createSite(user.uid, {
+                    siteName: brandName,
+                    templateId: selectedTemplate,
+                    domain: domain,
+                    brandName: brandName,
+                });
+                
+                alert('Website created successfully!');
+                location.reload();
+            } catch (err) {
+                alert(err.message);
+                confirmCreateBtn.disabled = false;
+                confirmCreateBtn.innerText = 'Confirm & Create';
+            }
+        };
+
         async function loadSites(uid) {
             const sitesList = document.getElementById('sites-list');
             try {
