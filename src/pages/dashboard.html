@@ -841,7 +841,11 @@
             confirmCreateBtn.innerText = 'Creating...';
 
             try {
-                const user = authService.getCurrentUser();
+                const user = firebase.auth().currentUser;
+                if (!user) {
+                    alert('You must be logged in to create a website.');
+                    return;
+                }
                 await siteService.createSite(user.uid, {
                     siteName: brandName,
                     templateId: selectedTemplate,
