@@ -1,0 +1,10 @@
+
+window.APP_CONFIG = {
+    FIREBASE_API_KEY: "AIzaSyCrLCButDevLeILcBjrUCd9e7amXVjW-uI",
+    FIREBASE_AUTH_DOMAIN: "auric-a0c92.firebaseapp.com",
+    FIREBASE_PROJECT_ID: "auric-a0c92",
+    FIREBASE_STORAGE_BUCKET: "auric-a0c92.firebasestorage.app",
+    FIREBASE_MESSAGING_SENDER_ID: "878979958342",
+    FIREBASE_APP_ID: "1:878979958342:web:e6092f7522488d21eaec47",
+    RAZORPAY_KEY_ID: "rzp_test_qZWULE2MoPHZJv"
+};

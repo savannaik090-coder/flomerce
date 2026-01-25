@@ -1,0 +1,576 @@
+/* Responsive Styles for Divas Mantra Website */
+
+/* Small devices (smartphones and small tablets) */
+@media (max-width: 680px) {
+    /* Mobile Menu takes 70% width on small screens as requested */
+    .mobile-menu {
+        width: 70%;
+    }
+
+    /* Menu Header adjustments */
+    .menu-header {
+        padding: 15px;
+    }
+
+    /* Menu items slightly smaller */
+    .menu-link {
+        padding: 12px 15px;
+        font-size: 14px;
+    }
+
+    .submenu-link {
+        padding: 10px 15px;
+        font-size: 13px;
+    }
+
+    /* Footer adjustments */
+    .menu-footer {
+        padding: 15px;
+    }
+
+    /* Product detail page for mobile - with proper navbar clearance */
+    .product-detail-container {
+        flex-direction: column;
+        padding: 15px;
+        margin-top: 110px !important; /* Promo banner (40px) + mobile navbar (50px) + clearance (20px) */
+    }
+
+    .product-detail-left,
+    .product-detail-right {
+        width: 100%;
+        padding: 0;
+    }
+
+    /* Override the default horizontal layout for mobile */
+    .product-details-horizontal {
+        flex-direction: column !important;
+        padding: 15px;
+        gap: 20px;
+        width: 100% !important;
+    }
+
+    .product-details-horizontal > div {
+        margin-bottom: 20px !important;
+        width: 100% !important; /* Full width on mobile, override desktop setting */
+        margin: 0 0 20px 0 !important;
+        box-sizing: border-box !important;
+        flex: none !important; /* Don't allow flex to override */
+        display: block !important; /* Ensure no flexbox issues */
+    }
+
+
+}
+
+/* Small-to-medium tablets (681px-767px) */
+@media (min-width: 681px) and (max-width: 767px) {
+    /* Menu width for smaller tablets */
+    .mobile-menu {
+        width: 70%;
+    }
+
+    /* Product detail page for small tablets */
+    .product-detail-container {
+        flex-direction: column;
+        padding: 15px;
+    }
+
+    .product-detail-left,
+    .product-detail-right {
+        width: 100%;
+        padding: 0;
+    }
+
+    /* Override the default horizontal layout for small tablets */
+    .product-details-horizontal {
+        flex-direction: column !important;
+        padding: 15px;
+        gap: 20px;
+        width: 100% !important;
+    }
+
+    .product-details-horizontal > div {
+        margin-bottom: 20px !important;
+        width: 100% !important;
+        margin: 0 0 20px 0 !important;
+        box-sizing: border-box !important;
+        flex: none !important;
+        display: block !important;
+    }
+
+
+}
+
+/* Medium devices (tablets) */
+@media (min-width: 768px) and (max-width: 991px) {
+    /* Menu width for tablets - 70% as requested */
+    .mobile-menu {
+        width: 70%;
+    }
+
+    /* Desktop navigation hidden on tablets */
+    .desktop-nav {
+        display: none !important;
+    }
+
+    /* Menu button visible */
+    .nav-icon.menu-icon {
+        display: flex;
+    }
+
+    /* Product detail page for tablets - with proper navbar clearance */
+    .product-detail-container {
+        padding: 20px;
+        margin-top: 130px !important; /* Promo banner (40px) + tablet navbar (70px) + clearance (20px) */
+    }
+
+    .product-detail-left,
+    .product-detail-right {
+        width: 50%;
+        padding: 0 10px;
+    }
+
+    .product-details-horizontal {
+        flex-direction: row;
+        padding: 20px;
+    }
+
+    .product-details-horizontal > div {
+        width: 33.33%;
+        flex: 1;
+        margin-bottom: 0;
+    }
+}
+
+/* Large devices (desktops) */
+@media (min-width: 992px) {
+    /* Main navigation styles */
+    .nav-container {
+        max-width: 1255500px;
+        margin: 0 auto;
+    }
+
+    /* Desktop navigation shown */
+    .desktop-nav {
+        display: flex;
+    }
+
+    /* Menu width for larger screens */
+    .mobile-menu {
+        width: 380px;
+        box-shadow: 0 0 20px rgba(0,0,0,0.15);
+    }
+
+    /* Product detail page for desktop - with proper navbar clearance */
+    .product-detail-container {
+        margin-top: 160px !important; /* Promo banner (40px) + desktop navbar (80px) + extra clearance (40px) */
+        max-width: 1200px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    /* Main menu links - desktop specific */
+    .menu-link {
+        padding: 18px 25px;
+    }
+
+    /* Allow body scroll when menu is open on desktop */
+    body.menu-open {
+        overflow: auto !important;
+    }
+
+    /* Desktop specific menu styling */
+    .submenu-view {
+        padding-top: 0;
+    }
+
+    /* Smoother transitions for desktop */
+    .mobile-menu {
+        transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
+
+    /* Enhanced submenu items for desktop */
+    .submenu-link {
+        padding: 15px 25px;
+        font-size: 14px;
+    }
+
+    /* More visible click targets in desktop */
+    .menu-close, 
+    .category-header,
+    .back-link {
+        cursor: pointer;
+    }
+}
+
+/* Extra Large devices */
+@media (min-width: 1200px) {
+    /* Some extra space in the menu for larger screens */
+    .menu-link, .submenu-link {
+        padding-left: 25px;
+        padding-right: 25px;
+    }
+
+    /* Larger menu width for very large screens */
+    .mobile-menu {
+        width: 400px;
+    }
+
+}
+
+/* Very small mobile devices - still 2 columns */
+@media (max-width: 360px) {
+    .polki-edit .arrivals-grid {
+        column-gap: 4px; /* Reduced gap from 10px to 4px */
+        row-gap: 4px !important; /* Reduced gap from 10px to 4px */
+        margin: 0 !important;
+    }
+
+    .polki-edit .arrival-item {
+        flex: none;
+        width: 100%;
+        margin-bottom: 0 !important;
+    }
+
+    .polki-edit .arrival-image {
+        height: 320px;
+    }
+
+    .polki-edit-header .section-title {
+        font-size: 1.6rem;
+    }
+
+    .polki-edit .arrival-details {
+        padding: 8px 5px 5px 5px;
+    }
+
+    .polki-edit .arrival-title {
+        font-family: 'Futura PT', 'Futura', 'Century Gothic', 'Avenir Next', 'Helvetica Neue', Arial, sans-serif;
+        font-size: 0.8rem;
+        font-weight: 400;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        line-height: 1.4;
+        margin-bottom: 5px;
+    }
+
+    .polki-edit .current-price {
+        font-family: 'Futura PT', 'Futura', 'Century Gothic', 'Avenir Next', 'Helvetica Neue', Arial, sans-serif;
+        font-size: 0.85rem;
+        font-weight: 400;
+        letter-spacing: 0.4px;
+        margin: 0;
+    }
+}
+
+/* ========================================
+   DELETE CONFIRMATION MODAL RESPONSIVE STYLES
+   ======================================== */
+
+/* Base modal styles for all devices - targeting actual modal classes */
+#deleteConfirmationModal,
+.delete-confirmation-modal,
+.custom-confirm-modal {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 10000 !important;
+    background: rgba(0, 0, 0, 0.5) !important;
+    display: flex !important;
+    align-items: flex-start !important;
+    justify-content: center !important;
+    padding: 20px 15px !important;
+    box-sizing: border-box !important;
+    overflow-y: auto !important;
+}
+
+#deleteConfirmationModal .custom-confirm-content,
+.delete-confirmation-content,
+.delete-product-modal {
+    background: white !important;
+    border-radius: 8px !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3) !important;
+    width: 100% !important;
+    max-width: 500px !important;
+    max-height: none !important;
+    overflow: visible !important;
+    position: relative !important;
+    animation: modalSlideIn 0.3s ease-out !important;
+    margin-top: 20px !important;
+    margin-bottom: 20px !important;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-50px) scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Mobile devices */
+@media (max-width: 480px) {
+    #deleteConfirmationModal,
+    .delete-confirmation-modal,
+    .custom-confirm-modal {
+        padding: 5px !important;
+        align-items: flex-start !important;
+    }
+
+    #deleteConfirmationModal .custom-confirm-content,
+    .delete-confirmation-content,
+    .delete-product-modal {
+        margin-top: 5px !important;
+        margin-bottom: 5px !important;
+        border-radius: 6px !important;
+        max-width: 100% !important;
+    }
+
+    /* Target all possible header classes */
+    #deleteConfirmationModal .delete-product-header,
+    #deleteConfirmationModal .modal-header,
+    .delete-confirmation-content .modal-header,
+    .delete-product-header {
+        padding: 8px !important;
+        font-size: 14px !important;
+        text-align: center !important;
+    }
+
+    /* Target all possible body classes */
+    #deleteConfirmationModal .delete-product-body,
+    #deleteConfirmationModal .modal-body,
+    .delete-confirmation-content .modal-body,
+    .delete-product-body {
+        padding: 8px !important;
+        font-size: 12px !important;
+        line-height: 1.3 !important;
+    }
+
+    /* Target product details */
+    #deleteConfirmationModal .delete-product-info,
+    #deleteConfirmationModal .product-details,
+    .delete-confirmation-content .product-details,
+    .delete-product-info {
+        font-size: 11px !important;
+        margin: 5px 0 !important;
+        padding: 6px !important;
+    }
+
+    /* Target warning boxes */
+    #deleteConfirmationModal .delete-warning-box,
+    #deleteConfirmationModal .warning-box,
+    .delete-confirmation-content .warning-box,
+    .delete-warning-box {
+        padding: 6px !important;
+        font-size: 10px !important;
+        margin: 5px 0 !important;
+    }
+
+    /* Target footer/actions */
+    #deleteConfirmationModal .delete-product-actions,
+    #deleteConfirmationModal .modal-footer,
+    .delete-confirmation-content .modal-footer,
+    .delete-product-actions {
+        padding: 8px !important;
+        gap: 6px !important;
+        flex-direction: row !important;
+    }
+
+    /* Target buttons */
+    #deleteConfirmationModal .delete-product-btn,
+    #deleteConfirmationModal .custom-confirm-btn,
+    #deleteConfirmationModal .btn,
+    .delete-confirmation-content .btn,
+    .delete-product-btn,
+    .custom-confirm-btn {
+        padding: 6px 10px !important;
+        font-size: 11px !important;
+        min-height: 32px !important;
+        flex: 1 !important;
+        min-width: auto !important;
+    }
+
+    /* Target title elements */
+    #deleteConfirmationModal .delete-product-title,
+    .delete-product-title {
+        font-size: 16px !important;
+        margin: 0 0 4px 0 !important;
+        line-height: 1.2 !important;
+    }
+
+    /* Target subtitle elements */
+    #deleteConfirmationModal .delete-product-subtitle,
+    .delete-product-subtitle {
+        font-size: 13px !important;
+        margin: 0 !important;
+    }
+
+    /* Target message elements */
+    #deleteConfirmationModal .delete-product-message,
+    .delete-product-message {
+        font-size: 12px !important;
+        margin: 0 0 8px 0 !important;
+        line-height: 1.4 !important;
+    }
+}
+
+/* Very small mobile devices */
+@media (max-width: 360px) {
+    #deleteConfirmationModal,
+    .delete-confirmation-modal,
+    .custom-confirm-modal {
+        padding: 3px !important;
+        align-items: flex-start !important;
+    }
+
+    #deleteConfirmationModal .custom-confirm-content,
+    .delete-confirmation-content,
+    .delete-product-modal {
+        margin-top: 3px !important;
+        margin-bottom: 3px !important;
+        border-radius: 4px !important;
+        max-width: 100% !important;
+    }
+
+    /* Headers - even smaller */
+    #deleteConfirmationModal .delete-product-header,
+    #deleteConfirmationModal .modal-header,
+    .delete-confirmation-content .modal-header,
+    .delete-product-header {
+        padding: 6px !important;
+        font-size: 13px !important;
+        text-align: center !important;
+    }
+
+    /* Body - even smaller */
+    #deleteConfirmationModal .delete-product-body,
+    #deleteConfirmationModal .modal-body,
+    .delete-confirmation-content .modal-body,
+    .delete-product-body {
+        padding: 6px !important;
+        font-size: 11px !important;
+        line-height: 1.2 !important;
+    }
+
+    /* Product details - even smaller */
+    #deleteConfirmationModal .delete-product-info,
+    #deleteConfirmationModal .product-details,
+    .delete-confirmation-content .product-details,
+    .delete-product-info {
+        font-size: 10px !important;
+        margin: 3px 0 !important;
+        padding: 4px !important;
+    }
+
+    /* Warning boxes - even smaller */
+    #deleteConfirmationModal .delete-warning-box,
+    #deleteConfirmationModal .warning-box,
+    .delete-confirmation-content .warning-box,
+    .delete-warning-box {
+        padding: 4px !important;
+        font-size: 9px !important;
+        margin: 3px 0 !important;
+    }
+
+    /* Footer - even smaller */
+    #deleteConfirmationModal .delete-product-actions,
+    #deleteConfirmationModal .modal-footer,
+    .delete-confirmation-content .modal-footer,
+    .delete-product-actions {
+        padding: 6px !important;
+        gap: 4px !important;
+        flex-direction: column !important;
+    }
+
+    /* Buttons - even smaller */
+    #deleteConfirmationModal .delete-product-btn,
+    #deleteConfirmationModal .custom-confirm-btn,
+    #deleteConfirmationModal .btn,
+    .delete-confirmation-content .btn,
+    .delete-product-btn,
+    .custom-confirm-btn {
+        padding: 5px 8px !important;
+        font-size: 10px !important;
+        min-height: 28px !important;
+        width: 100% !important;
+        min-width: auto !important;
+    }
+
+    /* Titles - even smaller */
+    #deleteConfirmationModal .delete-product-title,
+    .delete-product-title {
+        font-size: 14px !important;
+        margin: 0 0 2px 0 !important;
+        line-height: 1.1 !important;
+    }
+
+    /* Subtitles - even smaller */
+    #deleteConfirmationModal .delete-product-subtitle,
+    .delete-product-subtitle {
+        font-size: 11px !important;
+        margin: 0 !important;
+    }
+
+    /* Messages - even smaller */
+    #deleteConfirmationModal .delete-product-message,
+    .delete-product-message {
+        font-size: 10px !important;
+        margin: 0 0 6px 0 !important;
+        line-height: 1.3 !important;
+    }
+}
+
+/* Landscape orientation fix for very small devices */
+@media (max-width: 640px) and (max-height: 480px) and (orientation: landscape) {
+    #deleteConfirmationModal,
+    .delete-confirmation-modal,
+    .custom-confirm-modal {
+        align-items: flex-start !important;
+        padding: 2px !important;
+    }
+
+    #deleteConfirmationModal .custom-confirm-content,
+    .delete-confirmation-content,
+    .delete-product-modal {
+        margin-top: 2px !important;
+        margin-bottom: 2px !important;
+        max-height: none !important;
+    }
+
+    #deleteConfirmationModal .delete-product-header,
+    #deleteConfirmationModal .modal-header,
+    .delete-product-header {
+        padding: 4px 6px !important;
+        font-size: 12px !important;
+    }
+
+    #deleteConfirmationModal .delete-product-body,
+    #deleteConfirmationModal .modal-body,
+    .delete-product-body {
+        padding: 4px 6px !important;
+        font-size: 10px !important;
+    }
+
+    #deleteConfirmationModal .delete-product-actions,
+    #deleteConfirmationModal .modal-footer,
+    .delete-product-actions {
+        padding: 4px 6px !important;
+        flex-direction: row !important;
+        gap: 3px !important;
+    }
+
+    #deleteConfirmationModal .delete-product-btn,
+    #deleteConfirmationModal .custom-confirm-btn,
+    .delete-product-btn,
+    .custom-confirm-btn {
+        padding: 3px 6px !important;
+        font-size: 9px !important;
+        min-height: 24px !important;
+    }
+}

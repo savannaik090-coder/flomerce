@@ -1,0 +1,68 @@
+/* Product Loader Spinner */
+.product-loader {
+    display: none;
+    z-index: 10;
+    text-align: center;
+    width: 100%;
+    padding: 40px 20px;
+}
+
+.product-loader.show {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.product-loader-spinner {
+    border: 4px solid rgba(181, 166, 129, 0.2);
+    border-top: 4px solid #b5a681;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 15px;
+}
+
+.product-loader-text {
+    font-size: 14px;
+    color: #666;
+    font-weight: 500;
+}
+
+/* For subcategory page loaders that use .loader-spinner */
+.loader-spinner {
+    border: 4px solid rgba(181, 166, 129, 0.2);
+    border-top: 4px solid #b5a681;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 15px;
+}
+
+.loader-text {
+    font-size: 14px;
+    color: #666;
+    font-weight: 500;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+/* Container positioning for loaders */
+.new-arrivals-edit,
+.featured-collection-wrapper {
+    position: relative;
+}
+
+.product-scroll-container {
+    position: relative;
+    min-height: 200px;
+}

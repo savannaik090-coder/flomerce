@@ -1,0 +1,193 @@
+/**
+ * MAIN CONTENT & CRM COMPONENTS
+ * Contains styling for:
+ * - Main content layout and containers
+ * - Dashboard cards and grids
+ * - CRM Client Form and form group inputs
+ * - Action buttons (Save, Update, Delete)
+ * - Client record list and status-based card styling
+ * - Loading overlays and animations
+ */
+
+.main-content {
+    flex: 1;
+    margin-left: var(--sidebar-width);
+    padding: 2.5rem;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: calc(100% - var(--sidebar-width));
+    background: #f8fafc;
+    overflow-x: hidden;
+    position: relative;
+}
+
+.content-container {
+    width: 100%;
+    max-width: 1400px;
+    margin: 0 auto;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 1rem;
+}
+
+.card { 
+    background: white; 
+    padding: 2.5rem; 
+    border-radius: 1.5rem; 
+    border: 1px solid var(--gray-200); 
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+#client-form {
+    width: 100%;
+    max-width: 600px;
+}
+
+.client-list { 
+    display: flex; 
+    flex-direction: column; 
+    gap: 1rem; 
+    width: 100%;
+    max-width: 1200px;
+}
+
+.form-group { margin-bottom: 1.75rem; }
+.form-group label { 
+    display: block; 
+    margin-bottom: 0.6rem; 
+    font-weight: 700; 
+    font-size: 0.85rem; 
+    color: var(--gray-700);
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+.form-group input, .form-group select, .form-group textarea { 
+    width: 100%; 
+    padding: 0.875rem 1.25rem; 
+    border: 1px solid var(--gray-200); 
+    border-radius: 1rem; 
+    font-size: 1rem; 
+    background: #ffffff;
+    color: var(--gray-900);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+    transform: translateY(-1px);
+}
+
+.btn { 
+    border-radius: 1rem; 
+    font-weight: 700; 
+    cursor: pointer; 
+    display: inline-flex; 
+    align-items: center; 
+    justify-content: center; 
+    gap: 0.75rem; 
+    padding: 1rem 2rem; 
+    border: none; 
+    transition: all 0.2s;
+    font-size: 1rem;
+}
+
+.btn-primary { 
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark)); 
+    color: white;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(99, 102, 241, 0.35);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+}
+
+.duplicate-warning { 
+    display: none; 
+    background: #fff1f2; 
+    border: 2px solid #fecdd3; 
+    padding: 1.75rem; 
+    border-radius: 1.25rem; 
+    margin-bottom: 2rem; 
+    color: #9f1239;
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.trash-icon {
+    width: 14px;
+    height: 16px;
+    border: 2px solid currentColor;
+    border-bottom-left-radius: 2px;
+    border-bottom-right-radius: 2px;
+    position: relative;
+    display: block;
+}
+
+.trash-icon::before {
+    content: '';
+    position: absolute;
+    top: -4px;
+    left: -2px;
+    width: 18px;
+    height: 2px;
+    background: currentColor;
+    border-radius: 1px;
+}
+
+.trash-icon::after {
+    content: '';
+    position: absolute;
+    top: -7px;
+    left: 3px;
+    width: 8px;
+    height: 3px;
+    border: 2px solid currentColor;
+    border-bottom: none;
+    border-top-left-radius: 2px;
+    border-top-right-radius: 2px;
+}
+
+.crm-grid { display: grid; grid-template-columns: 1fr; gap: 2rem; width: 100%; box-sizing: border-box; }
+@media (min-width: 1280px) { .crm-grid { grid-template-columns: 450px 1fr; } }
+
+.client-card { 
+    width: 100%;
+    padding: 1.5rem; 
+    border-radius: 1.25rem; 
+    background: #fff; 
+    border: 1px solid var(--gray-200); 
+    cursor: pointer; 
+    transition: all 0.2s; 
+    border-left: 6px solid var(--gray-200);
+    box-sizing: border-box;
+}
+.client-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
+
+.status-newlead { border-left-color: #3b82f6; }
+.status-interested { border-left-color: #10b981; }
+.status-followupneeded { border-left-color: #f59e0b; }
+.status-converted { border-left-color: #8b5cf6; }
+.status-notinterested { border-left-color: #ef4444; }
+
+#loading-overlay { position: fixed; inset: 0; background: rgba(255,255,255,0.8); display: flex; align-items: center; justify-content: center; z-index: 9999; }

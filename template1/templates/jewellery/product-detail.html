@@ -1,0 +1,1403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- SEO Meta Tags -->
+    <title>Product Details - Royal Meenakari | Handcrafted Jewelry</title>
+    <meta name="description" content="View detailed information about this exquisite piece from Royal Meenakari's handcrafted jewelry collection." />
+    <meta name="keywords" content="meenakari jewelry details, handcrafted jewelry, royal meenakari products" />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="images/logos/royalmeenakari.png" />
+    <link rel="apple-touch-icon" href="images/logos/royalmeenakari.png" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="product" />
+    <meta property="og:url" content="https://royalmeenkari.in/product-detail.html" />
+    <meta property="og:title" content="Product Details - Royal Meenakari" />
+    <meta property="og:description" content="View detailed information about this exquisite piece from Royal Meenakari's collection." />
+    <meta property="og:image" content="https://royalmeenkari.in/images/logos/royalmeenakari.png" />
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Lato:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.cdnfonts.com/css/futura-pt" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css?v=1.0.4">
+    <link rel="stylesheet" href="css/responsive.css?v=1.0.4">
+    <link rel="stylesheet" href="css/navbar.css?v=1.1.3">
+    <link rel="stylesheet" href="css/cart.css?v=1.0.2">
+    <link rel="stylesheet" href="css/product-detail-gallery.css?v=1.0.0">
+    <link rel="stylesheet" href="css/search.css">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v6.4.0/css/all.min.css" integrity="sha384-iw3OoTErCYJB9mCa8LNS2hbsQ7M3C0EpLGCJKypKP/lLCgB9MlH/lX+/Pvw2DNA" crossorigin="anonymous">
+    <!-- Fallback font awesome icons if CDN fails -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;500;700&family=Lora:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/product-detail-fix.css">
+    <link rel="stylesheet" href="css/currency-converter.css?v=1.0.1">
+    <!-- Flaticon CSS for bottom navigation icons -->
+    <link rel="stylesheet" href="css/language-selector.css?v=1.0.0">
+    <!-- Flaticon CSS for bottom navigation icons -->
+    <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/2.6.0/uicons-regular-straight/css/uicons-regular-straight.css'>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage-compat.js"></script>
+
+    <!-- Unified Firebase Configuration -->
+    <script src="js/firebase-config.js"></script>
+    <script>
+        // Initialize Firebase with unified configuration
+        console.log('Initializing Firebase with unified config...');
+        try {
+            if (window.firebaseConfig) {
+                firebase.initializeApp(window.firebaseConfig);
+                console.log('Firebase initialized successfully with unified config');
+            } else {
+                console.error('Firebase config not loaded from firebase-config.js');
+            }
+        } catch (error) {
+            console.error('Error initializing Firebase:', error);
+        }
+    </script>
+
+    <!-- Nazakat Analytics Tracking -->
+    <script src="js/nazakat-analytics.js?v=1.0.0"></script>
+
+    <!-- Cart Persistence Script -->
+    <script>
+        // Modified cart check to never clear cart on page load
+        (function() {
+            console.log('Cart persistence enabled: Cart will not be cleared on page reload');
+
+            // Only check for this flag when explicitly navigating from checkout after order
+            function checkCartShouldBeCleared() {
+                // This will only be true if coming directly from checkout after order completion
+                // and ONLY if the global flag was set by checkout.js
+                return window.FORCE_CART_CLEAR_NEEDED === true;
+            }
+
+            // This will be false in normal navigation - preserving cart data
+            if (checkCartShouldBeCleared()) {
+                console.log('Cart clearing confirmed from recent order completion');
+            }
+        })();
+    </script>
+</head>
+    <style>
+      /* Login page specific styles - Force black navigation elements */
+
+      /* Navigation links in desktop */
+      .nav-link {
+          color: #000 !important;
+      }
+
+      /* Navigation links hover state */
+      .nav-link:hover {
+          color: #333 !important;
+      }
+/* Dropdown arrow icons */
+      .dropdown-toggle i {
+          color: #000 !important;
+      }
+
+      /* Mobile menu close button */
+      .meenu-close {
+          color: #000 !important;
+      }
+
+      /* Mobile navigation links */
+      .mobile-account-link {
+          color: #000 !important;
+      }
+
+      /* Mobile navigation link text */
+      .mobile-account-links .mobile-account-link {
+          color: #000 !important;
+      }
+
+      /* Navigation icons - all icon images */
+      .nav-icons .icon-link img {
+          filter: brightness(0) !important;
+      }
+
+      /* Hamburger menu icon */
+      .hamburger img {
+          filter: brightness(0) !important;
+      }
+
+      /* Cart and wishlist count badges *
+      .cart-count,
+      .wishlist-count,
+      .mobile-cart-count,
+      .mobile-wishlist-count {
+background-color: #000 !important;
+          color: #fff !important;
+      }
+
+      /* Dropdown menu items */
+      .dropdown-menu li a {
+          color: #000 !important;
+      }
+
+      /* Dropdown menu items hover */
+      .dropdown-menu li a:hover {
+          color: #333 !important;
+          background-color: #f5f5f5 !important;
+      }
+
+      /* Mobile menu background text color */
+      .nav-menu {
+          color: #000 !important;
+      }
+
+      /* Ensure all text in mobile menu is black */
+      .nav-menu * {
+          color: #000 !important;
+      }
+
+      /* Mobile account links images */
+      .mobile-account-link img {
+          filter: brightness(0) !important;
+      }
+
+      /* Hide mobile menu close button on large devices */
+      @media (min-width: 769px) {
+          #closeMenu {
+              display: none !important;
+          }
+      }
+
+      /* Add top spacing to login section */
+      .auth-container {
+          margin-top: 200px !important;
+      }
+
+      /* Responsive spacing for different screen sizes */
+      @media (max-width: 768px) {
+          .auth-container {
+              margin-top: 120px !important;
+          }
+}
+
+      /* Remove shadow from navigation links on large devices */
+      @media (min-width: 769px) {
+          .nav-link {
+              text-shadow: none !important;
+              box-shadow: none !important;
+          }
+
+          .nav-link:hover {
+              text-shadow: none !important;
+              box-shadow: none !important;
+          }
+      }
+              </style>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <!-- Promo Banner -->
+        <div class="promo-banner">
+            <p class="banner-text"></p>
+        </div>
+
+        <!-- New Responsive Navigation -->
+        <nav class="navbar">
+            <div class="nav-container">
+                <!-- Logo -->
+                <a href="index.html" class="brand">
+                    <img src="images/logos/royalmeenakari.png" alt="Royal Meenakari" class="brand-logo">
+                </a>
+
+
+                <!-- Mobile Toggle Button - Match RIDHI MEHRA design -->
+                <div class="hamburger" id="navToggle"><img src="images/icons/bars-staggered (2).png" alt="SP Jewellers"style="width: 25px; height: 25px;">
+                </div>
+
+                <!-- Navigation Icons - Exact match to RIDHI MEHRA design -->
+                <div class="nav-icons">
+                    <a href="#" class="icon-link search-icon">
+                        <img src="images/icons/search.png" alt="Cart" style="width: 20px; height: 20px;">
+                    </a>
+                    <a href="#" class="icon-link account-icon" id="user-icon">
+                        <img src="images/icons/user.png" alt="Cart" style="width: 25px; height: 25px;">
+
+                    </a>
+                    <a href="#" class="icon-link wishlist-icon-container wishlist-toggle">
+                        <img src="images/icons/heart.png" alt="Cart" style="width: 20px; height: 20px;">
+
+                        <div class="wishlist-count">0</div>
+                    </a>
+                    <a href="#" class="icon-link cart-icon-container cart-toggle" id="cartToggleButton">
+                        <img src="images/icons/cart-minus.png" alt="Cart" style="width: 20px; height: 20px;">
+                        <div class="cart-count">0</div>
+                    </a>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Navigation Links - Moved outside nav-container to avoid backdrop-filter containing block -->
+        <div class="nav-menu" id="navMenu">
+            <!-- Close button for mobile menu in the top right corner -->
+
+            <i id="closeMenu" class="fa-solid fa-xmark meenu-close" onclick="closeMobileMenu()" style="font-size: 24px; margin-left: 90%; color: #333;" ></i>
+
+
+          <!-- "  <button class="menu-close fa fa-times" ></button>-->
+
+            <ul class="nav-list">
+                <li class="nav-item"><a href="new-arrivals.html" class="nav-link" data-translate="new_arrivals">New Arrivals</a></li>
+                <li class="nav-item dropdown">
+                    <a href="#" class="nav-link dropdown-toggle"><span data-translate="categories">Collections</span> <i class="fas fa-chevron-down"></i></a>
+                    <ul class="dropdown-menu">
+                        <li><a href="all-collection.html" data-translate="all_collections">All Collection</a></li>
+                        <li><a href="featured-collection.html" data-translate="featured">Featured Collection</a></li>
+                        <li class="dropdown-submenu">
+                            <a href="#"><span data-translate="necklaces">Necklace</span> <i class="fas fa-chevron-right"></i></a>
+                            <ul class="dropdown-submenu-list">
+                                <li><a href="gold-necklace.html" data-translate-dynamic>Gold Necklace</a></li>
+                                <li><a href="silver-necklace.html" data-translate-dynamic>Silver Necklace</a></li>
+                                <li><a href="meenakari-necklace.html" data-translate-dynamic>Meenakari Necklace</a></li>
+                            </ul>
+                        </li>
+                        <li class="dropdown-submenu">
+                            <a href="#"><span data-translate="earrings">Earrings</span> <i class="fas fa-chevron-right"></i></a>
+                            <ul class="dropdown-submenu-list">
+                                <li><a href="gold-earrings.html" data-translate-dynamic>Gold Earrings</a></li>
+                                <li><a href="silver-earrings.html" data-translate-dynamic>Silver Earrings</a></li>
+                                <li><a href="meenakari-earrings.html" data-translate-dynamic>Meenakari Earrings</a></li>
+                            </ul>
+                        </li>
+                        <li class="dropdown-submenu">
+                            <a href="#"><span data-translate="bangles">Bangles</span> <i class="fas fa-chevron-right"></i></a>
+                            <ul class="dropdown-submenu-list">
+                                <li><a href="gold-bangles.html" data-translate-dynamic>Gold Bangles</a></li>
+                                <li><a href="silver-bangles.html" data-translate-dynamic>Silver Bangles</a></li>
+                                <li><a href="meenakari-bangles.html" data-translate-dynamic>Meenakari Bangles</a></li>
+                            </ul>
+                        </li>
+                        <li class="dropdown-submenu">
+                            <a href="#"><span data-translate="rings">Rings</span> <i class="fas fa-chevron-right"></i></a>
+                            <ul class="dropdown-submenu-list">
+                                <li><a href="gold-rings.html" data-translate-dynamic>Gold Rings</a></li>
+                                <li><a href="silver-rings.html" data-translate-dynamic>Silver Rings</a></li>
+                                <li><a href="meenakari-rings.html" data-translate-dynamic>Meenakari Rings</a></li>
+                            </ul>
+                        </li>
+                    </ul>
+                </li>
+                <li class="nav-item"><a href="about-us.html" class="nav-link" data-translate="about_us">About</a></li>
+                <li class="nav-item"><a href="#customer-reviews" class="nav-link" data-translate-dynamic>Testimonials</a></li>
+                <li class="nav-item"><a href="book-appointment.html" class="nav-link" data-translate-dynamic>Book Appointment</a></li>
+                <li class="nav-item"><a href="#" class="nav-link" data-translate-dynamic>Order Track</a></li>
+                <li><a href="contact-us.html" class="nav-link" data-translate="contact_us">Contact</a></li>
+            </ul>
+
+            <!-- Mobile account links in separate div after Contact -->
+            <div class="mobile-account-links mobile-special">
+                <a href="login.html" class="mobile-account-link">
+                    <img src="images/icons/user.png" alt="Cart" style="width: 18px; height: 18px;">  &nbsp; <span data-translate="account">Account</span>
+                </a>
+                <a href="#" class="mobile-account-link wishlist-toggle">
+                    <img src="images/icons/heart.png" alt="Cart" style="width: 18px; height: 18px;"> &nbsp;   <span data-translate="wishlist">Wishlist</span> (<span class="mobile-wishlist-count">0</span>)
+                </a>
+                <a href="#" class="mobile-account-link mobile-cart-toggle">
+                    <img src="images/icons/cart-minus.png" alt="Cart" style="width:18px; height: 18px; vertical-align: middle;">  &nbsp; <span data-translate="shopping_bag">Shopping Bag</span> (<span class="mobile-cart-count">0</span>)
+                </a>
+
+            </div>
+        </div>
+    </header>
+
+    <!-- Overlay for menu background -->
+    <div class="menu-overlay" id="menuOverlay"></div>
+
+
+    <main>
+        <div class="product-detail-container" data-product-id="EM-ST-2025">
+            <!-- Left side: Image gallery -->
+            <div class="product-detail-left">
+                <div class="main-image-container" style="height: 650px !important; min-height: 450px !important;">
+                    <img class="product-main-image" style="display: none;">
+                    <div class="image-zoom-overlay" style="display: none;">
+                        <img src="" alt="Zoomed Image" class="zoomed-image">
+                        <button class="zoom-close">&times;</button>
+                    </div>
+                </div>
+                <div class="product-detail-images">
+                    <div class="product-thumbnails">
+                        <!-- Thumbnails will be populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right side: Product info -->
+            <div class="product-detail-right">
+                <div class="product-detail-info">
+                    <h1 class="product-title">Loading Product...</h1>
+                    <div class="price">
+                        <span class="product-price price-value">₹0.00</span>
+                    </div>
+
+                    <div class="product-meta">
+                        <div class="meta-item">
+                            <span class="meta-label">Brand:</span>
+                            <span class="meta-value">Royal Meenakari</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Availability:</span>
+                            <span class="meta-value in-stock">In stock ✓</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">SKU:</span>
+                            <span class="meta-value">Loading...</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Category:</span>
+                            <span class="meta-value">Loading...</span>
+                        </div>
+                    </div>
+
+                    <div class="product-actions">
+                        <button class="add-to-cart-btn">ADD TO CART</button>
+                        <button class="buy-now-btn">BUY NOW</button>
+                        <button class="add-to-wishlist-btn"><i class="fas fa-heart"></i> ADD TO WISHLIST</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Product details in horizontal layout below -->
+        <div class="product-details-horizontal">
+            <div class="product-description">
+                <h3>Product Description</h3>
+                <p></p>
+            </div>
+        </div>
+
+        <!-- Product Reviews Section -->
+        <div class="product-reviews-section" style="display: none;">
+            <div class="container">
+                <h2 class="section-title">Customer Reviews</h2>
+                <div id="reviews-container">
+                    <!-- Reviews will be loaded here by JavaScript -->
+                </div>
+            </div>
+        </div>
+
+        <!-- You May Also Like Section -->
+        <section class="you-may-also-like full-width-section">
+            <div class="container">
+                <h2 class="section-title">You May Also Like</h2>
+            </div>
+            <div class="product-scroll-container" id="you-may-also-like-container">
+                <!-- Products will be loaded dynamically by JavaScript -->
+                <div class="loading-message">Loading related products...</div>
+            </div>
+
+                <!-- Product Item 5 --
+                <div class="product-item" data-product-id="GLBR-11">
+                    <div class="product-image">
+                        <img src="images/product-category/IMG_20250504_150322.jpg" alt="Gold Bracelet">
+                        <button class="add-to-wishlist" data-product-id="GLBR-11" data-product-name="Gold Bracelet" data-product-price="42999" data-product-image="images/product-category/IMG_20250504_150322.jpg"><i class="far fa-heart"></i></button>
+
+                    </div>
+                    <div class="product-details">
+                        <h3 class="product-name">Gold Bracelet</h3>
+                        <div class="product-pricing">
+                            <span class="current-price">₹42999.00</span>
+
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Product Item 6 --
+                <div class="product-item" data-product-id="SLAT-12">
+                    <div class="product-image">
+                        <img src="images/product-category/IMG_20250504_150336.jpg" alt="Silver Anklet">
+                        <button class="add-to-wishlist" data-product-id="SLAT-12" data-product-name="Silver Anklet" data-product-price="15499" data-product-image="images/product-category/IMG_20250504_150336.jpg"><i class="far fa-heart"></i></button>
+
+                    </div>
+                    <div class="product-details">
+                        <h3 class="product-name">Silver Anklet</h3>
+                        <div class="product-pricing">
+                            <span class="current-price">₹15499.00</span>
+
+                        </div>
+                    </div>
+                </div>-->
+            </div>
+        </section>
+    </main>
+
+    <!-- Minimalist Collapsible Footer -->
+    <footer class="footer-minimalist">
+        <div class="container">
+            <!-- Info Section -->
+            <div class="footer-section">
+                <button class="footer-toggle" data-section="info-content">
+                    <span class="footer-title" data-translate="info">Info</span>
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+                <div class="footer-content" id="info-content">
+                    <ul>
+                        <li><a href="about-us.html" data-translate="about_us">About Us</a></li>
+                        <li><a href="terms-conditions.html#shipping-and-delivery" data-translate-dynamic>Shipping Policy</a></li>
+                        <li><a href="terms-conditions.html#returns-and-refunds" data-translate-dynamic>Returns & Exchanges</a></li>
+                        <li><a href="terms-conditions.html" data-translate-dynamic>Terms and Conditions</a></li>
+                        <li><a href="privacy-policy.html" data-translate-dynamic>Privacy Policy</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Categories Section -->
+            <div class="footer-section">
+                <button class="footer-toggle" data-section="categories-content">
+                    <span class="footer-title" data-translate="categories">Categories</span>
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+                <div class="footer-content" id="categories-content">
+                    <ul>
+                        <li class="category-with-sub">
+                            <div class="category-item-header">
+                                <a href="#" data-translate="necklaces">Necklace</a>
+                                <i class="fas fa-plus category-toggle-icon"></i>
+                            </div>
+                            <ul class="subcategory-list">
+                                <li><a href="gold-necklace.html" data-translate-dynamic>Gold Necklace</a></li>
+                                <li><a href="silver-necklace.html" data-translate-dynamic>Silver Necklace</a></li>
+                                <li><a href="meenakari-necklace.html" data-translate-dynamic>Meenakari Necklace</a></li>
+                            </ul>
+                        </li>
+                        <li class="category-with-sub">
+                            <div class="category-item-header">
+                                <a href="#" data-translate="earrings">Earrings</a>
+                                <i class="fas fa-plus category-toggle-icon"></i>
+                            </div>
+                            <ul class="subcategory-list">
+                                <li><a href="gold-earrings.html" data-translate-dynamic>Gold Earrings</a></li>
+                                <li><a href="silver-earrings.html" data-translate-dynamic>Silver Earrings</a></li>
+                                <li><a href="meenakari-earrings.html" data-translate-dynamic>Meenakari Earrings</a></li>
+                            </ul>
+                        </li>
+                        <li class="category-with-sub">
+                            <div class="category-item-header">
+                                <a href="#" data-translate="bangles">Bangles</a>
+                                <i class="fas fa-plus category-toggle-icon"></i>
+                            </div>
+                            <ul class="subcategory-list">
+                                <li><a href="gold-bangles.html" data-translate-dynamic>Gold Bangles</a></li>
+                                <li><a href="silver-bangles.html" data-translate-dynamic>Silver Bangles</a></li>
+                                <li><a href="meenakari-bangles.html" data-translate-dynamic>Meenakari Bangles</a></li>
+                            </ul>
+                        </li>
+                        <li class="category-with-sub">
+                            <div class="category-item-header">
+                                <a href="#" data-translate="rings">Rings</a>
+                                <i class="fas fa-plus category-toggle-icon"></i>
+                            </div>
+                            <ul class="subcategory-list">
+                                <li><a href="gold-rings.html" data-translate-dynamic>Gold Rings</a></li>
+                                <li><a href="silver-rings.html" data-translate-dynamic>Silver Rings</a></li>
+                                <li><a href="meenakari-rings.html" data-translate-dynamic>Meenakari Rings</a></li>
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Collection Section -->
+            <div class="footer-section">
+                <button class="footer-toggle" data-section="collection-content">
+                    <span class="footer-title" data-translate-dynamic>Collection</span>
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+                <div class="footer-content" id="collection-content">
+                    <ul>
+                        <li><a href="all-collection.html" data-translate="all_collections">All Collection</a></li>
+                        <li><a href="featured-collection.html" data-translate="featured">Featured Collection</a></li>
+                        <li><a href="new-arrivals.html" data-translate="new_arrivals">New Arrivals</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Exclusive Benefits Section -->
+            <div class="footer-section">
+                <button class="footer-toggle" data-section="benefits-content">
+                    <span class="footer-title" data-translate-dynamic>Exclusive benefits</span>
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+                <div class="footer-content" id="benefits-content">
+                    <ul>
+                        <li><a href="#" data-translate-dynamic>Personal Styling</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Social Media Icons Section -->
+            <div class="footer-social-section">
+                <h3 class="social-section-title" data-translate="follow_social">Follow us on social media</h3>
+                <div class="social-icons-container">
+                    <a href="https://www.instagram.com/royal.meenakari?igsh=MXJxa2RoNnRtdDNscw==" target="_blank" class="social-icon-link">
+                        <i class="fab fa-instagram"></i>
+                    </a>
+                    <a href="https://www.facebook.com" target="_blank" class="social-icon-link">
+                        <i class="fab fa-facebook-f"></i>
+                    </a>
+
+                </div>
+            </div>
+
+            <!-- Download Our App Section -->
+            <div class="footer-app-section">
+                <h3 class="app-section-title" data-translate="download_app">Download Our App</h3>
+                <div class="app-buttons-container">
+                    <a href="#" class="app-store-button">
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/3/3c/Download_on_the_App_Store_Badge.svg" alt="Download on App Store">
+                    </a>
+                    <a href="#" class="google-play-button">
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg" alt="Get it on Google Play">
+                    </a>
+                </div>
+            </div>
+
+            <div class="footer-bottom">
+            <div class="container">
+                <div class="footer-info">
+                    <div class="copyright">
+                        <p data-translate-dynamic>&copy; 2025 Royal Meenakari. All rights reserved. | Developed by <a href="https://savannaik.netlify.app/" target="_blank" style="color: #9c7c38; text-decoration: none; font-weight: 500;">Savan Naik</a></p>
+                    </div>
+
+                    <div class="footer-links">
+                        <a href="terms-conditions.html" data-translate-dynamic>Terms and Conditions</a>
+                        <a href="privacy-policy.html" data-translate-dynamic>Privacy Policy</a>
+                    </div>
+
+                    <div class="payment-methods">
+                        <span><i class="fab fa-cc-amex"></i></span>
+                        <span><i class="fab fa-cc-discover"></i></span>
+                        <span><i class="fab fa-google-pay"></i></span>
+                        <span><i class="fab fa-cc-mastercard"></i></span>
+                        <span><i class="fab fa-cc-paypal"></i></span>
+                        <span class="union-pay">UP</span>
+                        <span><i class="fab fa-cc-visa"></i></span>
+                    </div>
+                </div>
+            </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- WhatsApp Button -->
+      <a href="https://wa.me/918963815289?text=Hi! I would like to know more about your services. Can you help me?" class="whatsapp-btn">
+          <i class="fab fa-whatsapp"></i>
+      </a>
+
+    <!-- Bottom Navigation Bar -->
+    <nav class="bottom-nav">
+        <a href="index.html" class="bottom-nav-item">
+            <i class="fi fi-rs-home"></i>
+            <span data-translate="home">Home</span>
+        </a>
+        <a href="all-collection.html" class="bottom-nav-item">
+            <i class="fi fi-rs-shop"></i>
+            <span data-translate="shop">Shop</span>
+        </a>
+        <a href="login.html" class="bottom-nav-item" id="bottomNavAccount">
+            <i class="fi fi-rs-user"></i>
+            <span data-translate="account">Account</span>
+        </a>
+        <div class="bottom-nav-item currency-selector-wrapper">
+            <span id="selected-currency-flag" class="currency-flag-display">🇮🇳</span>
+            <span id="selected-currency-code" class="currency-code-display">INR</span>
+            <select id="currency-selector" class="currency-select" onchange="CurrencyConverter.changeCurrency(this.value)">
+                <option value="INR">INR</option>
+                <option value="USD">USD</option>
+                <option value="EUR">EUR</option>
+                <option value="GBP">GBP</option>
+                <option value="AED">AED</option>
+                <option value="CAD">CAD</option>
+                <option value="AUD">AUD</option>
+            </select>
+        </div>
+        <div class="bottom-nav-item language-selector-wrapper">
+            <span id="selected-language-flag" class="language-flag-display">🇬🇧</span>
+            <span id="selected-language-code" class="language-code-display">EN</span>
+            <select id="language-selector" class="language-select" onchange="LanguageTranslator.changeLanguage(this.value)">
+                <option value="en">EN</option>
+                <option value="hi">HI</option>
+                <option value="es">ES</option>
+                <option value="fr">FR</option>
+                <option value="ar">AR</option>
+                <option value="de">DE</option>
+            </select>
+        </div>
+        <a href="#" class="bottom-nav-item" id="bottomNavCart">
+            <i class="fi fi-rs-shopping-bag"></i>
+            <span data-translate="bag">Bag</span>
+        </a>
+    </nav>
+
+    <!-- Bottom Navigation Cart Handler -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const bottomNavCart = document.getElementById('bottomNavCart');
+            const bottomNavAccount = document.getElementById('bottomNavAccount');
+
+            if (bottomNavCart) {
+                bottomNavCart.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    // Open cart panel
+                    if (typeof toggleCartDirectly === 'function') {
+                        toggleCartDirectly();
+                    } else if (typeof CartManager !== 'undefined' && CartManager.openCartPanel) {
+                        CartManager.openCartPanel();
+                    }
+                });
+            }
+
+            // Update account link based on login status
+            if (bottomNavAccount) {
+                function updateBottomNavAccount() {
+                    if (window.FirebaseAuth && typeof window.FirebaseAuth.isLoggedIn === 'function') {
+                        const isLoggedIn = window.FirebaseAuth.isLoggedIn();
+                        bottomNavAccount.href = isLoggedIn ? 'profile.html' : 'login.html';
+                    }
+                }
+
+                // Initial check
+                setTimeout(updateBottomNavAccount, 500);
+
+                // Listen for auth state changes
+                if (window.firebase && window.firebase.auth) {
+                    firebase.auth().onAuthStateChanged(updateBottomNavAccount);
+                }
+            }
+        });
+    </script>
+
+    <!-- Footer Toggle Script -->
+    <script src="js/footer-toggle.js"></script>
+
+    <!-- WhatsApp Tooltip Auto-Show -->
+    <script src="js/whatsapp-tooltip.js"></script>
+
+    <!-- Bottom Navigation Cart Handler -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const bottomNavCart = document.getElementById('bottomNavCart');
+            if (bottomNavCart) {
+                bottomNavCart.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    // Open cart panel (assuming the cart panel functionality exists)
+                    if (typeof openCart === 'function') {
+                        openCart();
+                    } else {
+                        // Fallback to cart page
+                        window.location.href = 'checkout.html';
+                    }
+                });
+            }
+        });
+    </script>
+
+    <!-- Simple Network Monitoring -->
+    <script>
+      // Network status monitoring
+      let isOnline = navigator.onLine;
+      window.addEventListener('online', () => {
+        console.log('Network connection restored');
+        isOnline = true;
+      });
+      window.addEventListener('offline', () => {
+        console.log('Network connection lost');
+        isOnline = false;
+      });
+    </script>
+
+    <!-- Search Scripts -->
+    <script src="js/search-manager.js"></script>
+    <script src="js/search-ui.js"></script>
+
+    <!-- Core JS Files -->
+    <script src="js/navigation.js?v=1.0.4"></script>
+    <script src="js/banner-rotator.js?v=1.0.1"></script>
+    <script src="js/error-handler.js"></script>
+
+    <!-- New Cart System -->
+    <script src="js/firebase/firebase-auth.js"></script>
+    <script src="js/cart-local-storage.js?v=1.0.0"></script>
+    <script src="js/firebase/firebase-cart-manager.js?v=1.0.0"></script>
+    <script src="js/cart-manager.js?v=1.0.1"></script>
+
+    <!-- Firebase Reviews Manager -->
+    <script src="js/firebase/firebase-reviews-manager.js"></script>
+
+    <!-- Wishlist Scripts -->
+    <script src="js/wishlist-local-storage.js?v=1.0.0"></script>
+    <script src="js/firebase/firebase-wishlist-manager.js?v=1.0.0"></script>
+    <script src="js/wishlist-manager.js?v=1.0.0"></script>
+    <script src="js/main.js"></script>
+
+    <!-- Initialize search after all scripts are loaded -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Ensure search functionality is working
+            setTimeout(() => {
+                if (typeof SearchManager !== 'undefined') {
+                    console.log('SearchManager available');
+                }
+                if (typeof SearchUI !== 'undefined') {
+                    console.log('SearchUI available');
+                }
+
+                // Manual search icon setup as backup
+                const searchIcon = document.querySelector('.search-icon');
+                if (searchIcon && !searchIcon.hasAttribute('data-search-attached')) {
+                    searchIcon.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        console.log('Manual search icon click handler triggered');
+                        if (typeof SearchUI !== 'undefined' && SearchUI.openSearch) {
+                            SearchUI.openSearch();
+                        }
+                    });
+                    searchIcon.setAttribute('data-search-attached', 'true');
+                    console.log('Manual search icon handler attached');
+                }
+            }, 500);
+        });
+    </script>
+
+    <!-- Product Detail Page Cart Integration -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Ensure Firebase is initialized before proceeding
+            // Wait for Firebase and product data to be properly initialized
+            setTimeout(function() {
+                console.log('Product detail page scripts initialized');
+
+                // Check if the product is already in the wishlist
+                // Keep this function but don't change the button appearance
+                function updateWishlistButtonState() {
+                    // We're keeping the function but not changing button appearance as requested
+                    console.log('Wishlist button will maintain its original appearance');
+                }
+
+                // Initial update of wishlist button state
+                updateWishlistButtonState();
+
+                // Get DOM elements
+                const addToCartBtn = document.querySelector('.add-to-cart-btn');
+                const addToWishlistBtn = document.querySelector('.add-to-wishlist-btn');
+                // Get Buy Now button
+                const buyNowBtn = document.querySelector('.buy-now-btn');
+
+                // Toast notification function
+                function showToast(message, type = 'success') {
+                    // Create toast container if it doesn't exist
+                    let toastContainer = document.querySelector('.toast-container');
+                    if (!toastContainer) {
+                        toastContainer = document.createElement('div');
+                        toastContainer.className = 'toast-container';
+                        document.body.appendChild(toastContainer);
+
+                        // Add style for toast container
+                        const style = document.createElement('style');
+                        style.textContent = `
+                            .toast-container {
+                                position: fixed;
+                                bottom: 20px;
+                                right: 20px;
+                                z-index: 9999;
+                            }
+                            .toast {
+                                padding: 12px 20px;
+                                color: white;
+                                border-radius: 4px;
+                                margin-bottom: 10px;
+                                min-width: 250px;
+                                box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+                                animation: fadein 0.5s, fadeout 0.5s 2.5s;
+                                opacity: 0;
+                                animation-fill-mode: forwards;
+                            }
+                            .toast.success {
+                                background-color: #4CAF50;
+                            }
+                            .toast.error {
+                                background-color: #F44336;
+                            }
+                            .toast.info {
+                                background-color: #2196F3;
+                            }
+                            @keyframes fadein {
+                                from {opacity: 0; transform: translateY(20px);}
+                                to {opacity: 1; transform: translateY(0);}
+                            }
+                            @keyframes fadeout {
+                                from {opacity: 1; transform: translateY(0);}
+                                to {opacity: 0; transform: translateY(-20px);}
+                            }
+                        `;
+                        document.head.appendChild(style);
+                    }
+
+                    // Create toast element
+                    const toast = document.createElement('div');
+                    toast.className = `toast ${type}`;
+                    toast.textContent = message;
+
+                    // Add to container
+                    toastContainer.appendChild(toast);
+
+                    // Remove after animation
+                    setTimeout(() => {
+                        toast.remove();
+                    }, 3000);
+                }
+
+                // We already have a reference to buy now button from above
+                // No need to declare buyNowBtn again
+
+                // Add to cart is now handled by cart-manager.js
+                // Remove duplicate handler to prevent conflicts
+                console.log('Add to cart will be handled by CartManager');
+
+                // Buy Now button click handler
+                if (buyNowBtn) {
+                    buyNowBtn.addEventListener('click', async function() {
+                        const quantity = 1;
+
+                        // Get current product details from DOM
+                        const currentProductDetails = getCurrentProductDetails();
+
+                        if (!currentProductDetails) {
+                            showToast('Please wait for product to load completely', 'error');
+                            return;
+                        }
+
+                        try {
+                            // Check if CartManager is available
+                            if (typeof CartManager !== 'undefined' && CartManager.addToCart) {
+                                console.log('Using CartManager to add product to cart for buy now');
+                                await CartManager.addToCart(currentProductDetails, quantity);
+
+                                // Redirect to checkout page
+                                console.log('Redirecting to checkout page');
+                                window.location.href = 'checkout.html';
+                            } else {
+                                console.error('CartManager not available for buy now');
+                                showToast('Error processing order. Please try again.', 'error');
+                            }
+                        } catch (error) {
+                            console.error('Error in buy now flow:', error);
+                            showToast('Error processing order. Please try again.', 'error');
+                        }
+                    });
+                }
+
+                // Helper function to get current product details from DOM
+                function getCurrentProductDetails() {
+                    const titleEl = document.querySelector('.product-title');
+                    const priceEl = document.querySelector('.price-value');
+                    const imageEl = document.querySelector('.product-main-image');
+                    const containerEl = document.querySelector('.product-detail-container');
+
+                    const name = titleEl ? titleEl.textContent.trim() : '';
+                    const priceText = priceEl ? priceEl.textContent.trim() : '';
+
+                    // Use global product details if available (most reliable - has original INR price)
+                    if (window.productDetails && window.productDetails.id) {
+                        console.log('✅ Using global product details with original INR price:', window.productDetails.price);
+                        return {
+                            id: window.productDetails.id,
+                            name: window.productDetails.name || name,
+                            price: window.productDetails.price,
+                            image: window.productDetails.image || (imageEl ? imageEl.src : '')
+                        };
+                    }
+
+                    // CRITICAL FIX: Check for data-original-price attribute FIRST (has original INR)
+                    let price = 0;
+                    if (priceEl && priceEl.dataset.originalPrice) {
+                        price = parseFloat(priceEl.dataset.originalPrice);
+                        console.log('✅ Using original INR price from data-original-price:', price);
+                    } else {
+                        // Fallback to global price cache
+                        const productId = containerEl ? containerEl.dataset.productId : '';
+                        if (window.PRODUCT_PRICES_CACHE && window.PRODUCT_PRICES_CACHE.has(productId)) {
+                            price = window.PRODUCT_PRICES_CACHE.get(productId);
+                            console.log('✅ Using original INR price from cache:', price);
+                        } else {
+                            // Last resort: parse DOM (but only for display, will show wrong currency!)
+                            price = parseFloat(priceText.replace(/[^0-9.]/g, ''));
+                            console.warn('⚠️ Parsing DOM text for price (may be converted):', price);
+                        }
+                    }
+
+                    const productId = containerEl ? containerEl.dataset.productId : '';
+                    const imageSrc = imageEl ? imageEl.src : '';
+
+                    // Validate we have minimum required data
+                    if (!name || !productId || isNaN(price) || price <= 0) {
+                        console.warn('Incomplete product data:', { name, productId, price });
+                        return null;
+                    }
+
+                    return {
+                        id: productId,
+                        name: name,
+                        price: price,
+                        image: imageSrc
+                    };
+                }
+
+                // NOTE: The wishlist button click handler is managed by WishlistManager.js
+                // We're removing the duplicate event listener here to prevent conflicts
+                // The button will still work through the centralized WishlistManager
+            }, 500); // 500ms delay to ensure Firebase is loaded
+        });
+    </script>
+    <!-- Updated layout version -->
+
+    <!-- Cart Panel -->
+    <div id="auricCartPanel" class="cart-panel">
+      <div class="cart-panel-header">
+        <h3>Your Shopping Bag</h3>
+        <button class="close-cart-btn">×</button>
+      </div>
+      <div class="cart-items">
+        <!-- Cart items will be inserted here by JavaScript -->
+        <div class="empty-cart-message">Your cart is empty</div>
+      </div>
+      <div class="cart-panel-footer">
+        <div class="cart-panel-subtotal">
+          <span>Subtotal:</span>
+          <span class="subtotal-amount">₹0.00</span>
+        </div>
+        <div class="cart-panel-buttons">
+          <button class="view-cart-btn continue-shopping-btn">Continue Shopping</button>
+          <a href="checkout.html" class="checkout-btn">Checkout</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ultra-direct Cart Overlay with ALL inline styles -->
+    <div id="auricCartOverlay" class="cart-panel-overlay"></div>
+        <!-- Fix for closeCartDirectly error -->
+    <script>
+      // Define the missing closeCartDirectly function
+      window.closeCartDirectly = function() {
+        // Call the regular closeCart function
+        if (window.closeCart) {
+          return window.closeCart();
+        }
+      };
+    </script>
+
+    <!-- You May Also Like Products Loader -->
+    <script>
+        // Function to load random products for "You May Also Like" section
+        async function loadYouMayAlsoLikeProducts() {
+            try {
+                console.log('Loading products for "You May Also Like" section...');
+
+                const container = document.getElementById('you-may-also-like-container');
+                if (!container) {
+                    console.log('Container not found for "You May Also Like" section');
+                    return;
+                }
+
+                // Get current product ID from URL or global variable
+                const urlParams = new URLSearchParams(window.location.search);
+                const currentProductId = urlParams.get('id') || (window.productDetails ? window.productDetails.id : null);
+
+                console.log('Current product ID:', currentProductId);
+
+                // Load all products from all collections using Netlify CDN
+                const categories = ['featured-collection', 'new-arrivals', 'saree-collection'];
+                let allProducts = [];
+
+                for (const category of categories) {
+                    try {
+                        const timestamp = Date.now();
+                        const response = await fetch(`/.netlify/functions/load-products?category=${category}&t=${timestamp}`);
+
+                        if (response.ok) {
+                            const data = await response.json();
+                            const products = data.products || [];
+                            console.log(`Loaded ${products.length} products from ${category} via Netlify CDN`);
+                            allProducts = allProducts.concat(products);
+                        } else {
+                            console.warn(`Failed to load products from ${category} via Netlify CDN:`, response.status);
+                        }
+                    } catch (error) {
+                        console.warn(`Error loading ${category} products via Netlify CDN:`, error);
+                    }
+                }
+
+                console.log(`Total products loaded: ${allProducts.length}`);
+
+                // Filter out the current product
+                const filteredProducts = allProducts.filter(product => product.id !== currentProductId);
+                console.log(`Products after filtering current product: ${filteredProducts.length}`);
+
+                // Shuffle the products array to get random order
+                const shuffledProducts = filteredProducts.sort(() => Math.random() - 0.5);
+
+                // Take first 6 products for display
+                const productsToShow = shuffledProducts.slice(0, 6);
+                console.log(`Products to display: ${productsToShow.length}`);
+
+                if (productsToShow.length === 0) {
+                    container.innerHTML = '<div class="no-products-message">No related products found</div>';
+                    return;
+                }
+
+                // Generate HTML for products
+                const productsHTML = productsToShow.map(product => {
+                    const formattedPrice = new Intl.NumberFormat('en-IN', {
+                        style: 'currency',
+                        currency: 'INR',
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 0
+                    }).format(product.price).replace('₹', '₹');
+
+                    // Handle different image structures between categories
+                    let imageUrl;
+                    if (product.mainImage) {
+                        // Featured collection uses mainImage
+                        imageUrl = product.mainImage;
+                    } else if (product.image) {
+                        // New arrivals and saree collection use image
+                        imageUrl = product.image;
+                    } else if (product.images && product.images.length > 0) {
+                        // Fallback to first image in images array
+                        imageUrl = product.images[0].url;
+                    } else {
+                        // Fallback placeholder
+                        imageUrl = '/images/placeholder-product.jpg';
+                    }
+
+                    console.log(`Product ${product.id} image URL:`, imageUrl);
+
+                    return `
+                        <div class="product-item" data-product-id="${product.id}" onclick="window.location.href='product-detail.html?id=${product.id}'">
+                            <div class="product-image">
+                                <img src="${imageUrl}" alt="${product.name}" loading="lazy" onerror="console.error('Image failed to load:', '${imageUrl}'); this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                <div class="image-fallback" style="display:none; background:#f5f5f5; height:100%; display:flex; align-items:center; justify-content:center; color:#999; font-size:12px; text-align:center; padding:10px;">${product.name}</div>
+                                <button class="add-to-wishlist" onclick="event.stopPropagation(); if(window.WishlistManager) WishlistManager.toggleWishlist('${product.id}'); return false;"><i class="far fa-heart"></i></button>
+                            </div>
+                            <div class="product-details">
+                                <h3 class="product-name">${product.name}</h3>
+                                <div class="product-pricing">
+                                    <span class="current-price">${formattedPrice}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                // Update the container with new products
+                container.innerHTML = productsHTML;
+
+                console.log('Successfully loaded "You May Also Like" products');
+
+                // Initialize wishlist for the new products
+                if (window.WishlistManager && window.WishlistManager.initializeWishlistButtons) {
+                    setTimeout(() => {
+                        window.WishlistManager.initializeWishlistButtons();
+                    }, 100);
+                }
+
+            } catch (error) {
+                console.error('Error loading "You May Also Like" products:', error);
+                console.error('Error stack:', error.stack);
+                console.error('Error message:', error.message);
+                console.error('Error name:', error.name);
+
+                const container = document.getElementById('you-may-also-like-container');
+                if (container) {
+                    container.innerHTML = `<div class="error-message">Unable to load related products<br><small>Error: ${error.message}</small></div>`;
+                }
+            }
+        }
+
+        // Load products when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            // Delay loading to ensure current product is loaded first
+            setTimeout(loadYouMayAlsoLikeProducts, 1000);
+        });
+
+        // Also load when product details are updated (in case of navigation)
+        window.addEventListener('productLoaded', function() {
+            setTimeout(loadYouMayAlsoLikeProducts, 500);
+        });
+    </script>
+
+    <!-- Product Detail Loader -->
+    <script src="js/product-detail-loader.js"></script>
+    <script src="js/product-gallery.js"></script>
+
+    <!-- Currency Converter -->
+    <script src="js/currency-converter.js?v=1.0.1"></script>
+
+    <!-- Language Translator -->
+    <script src="js/language-translator.js?v=1.0.0"></script>
+
+    <!-- Product Reviews Loader -->
+    <script>
+        async function loadProductReviews() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const productId = urlParams.get('id');
+
+            const reviewsSection = document.querySelector('.product-reviews-section');
+            const reviewsContainer = document.getElementById('reviews-container');
+
+            // ALWAYS hide the section initially to prevent "Loading reviews..." from showing
+            if (reviewsSection) {
+                reviewsSection.style.display = 'none';
+            }
+
+            if (!productId) {
+                console.warn('No product ID found in URL');
+                return;
+            }
+
+            try {
+                // Wait for FirebaseReviewsManager to be available
+                if (typeof FirebaseReviewsManager === 'undefined') {
+                    console.error('FirebaseReviewsManager not loaded');
+                    return;
+                }
+
+                console.log('Loading reviews for product:', productId);
+                const result = await FirebaseReviewsManager.loadProductReviews(productId);
+
+                console.log('Reviews loaded:', result);
+                console.log('Number of reviews:', result.reviews ? result.reviews.length : 0);
+
+                // ONLY show the section if there are actual reviews
+                if (result.success && result.reviews && result.reviews.length > 0) {
+                    const reviewsHTML = result.reviews.map(review => {
+                        console.log('Processing review:', review);
+                        console.log('Review images:', review.images);
+                        const stars = '★'.repeat(review.rating) + '☆'.repeat(5 - review.rating);
+                        const reviewDate = review.createdAt ? new Date(review.createdAt.toDate()).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                        }) : 'Recently';
+
+                        const verifiedBadge = review.verified ? '<span class="verified-purchase">✓ Verified Purchase</span>' : '';
+
+                        const imagesHTML = review.images && review.images.length > 0
+                            ? `<div class="review-images">
+                                ${review.images.map(imageUrl => `
+                                    <img src="${imageUrl}" alt="Review image" class="review-image" onclick="openReviewImageModal('${imageUrl}')">
+                                `).join('')}
+                               </div>`
+                            : '';
+
+                        return `
+                            <div class="review-item">
+                                <div class="review-header">
+                                    <div class="review-author">
+                                        <strong>${review.userName || 'Anonymous'}</strong>
+                                        ${verifiedBadge}
+                                    </div>
+                                    <div class="review-date">${reviewDate}</div>
+                                </div>
+                                <div class="review-rating">${stars}</div>
+                                ${review.comment ? `<div class="review-comment">${review.comment}</div>` : ''}
+                                ${imagesHTML}
+                            </div>
+                        `;
+                    }).join('');
+
+                    const summaryHTML = `
+                        <div class="reviews-summary">
+                            <div class="reviews-count">${result.reviews.length} Review${result.reviews.length !== 1 ? 's' : ''}</div>
+                        </div>
+                        <div class="reviews-list">
+                            ${reviewsHTML}
+                        </div>
+                    `;
+
+                    reviewsContainer.innerHTML = summaryHTML;
+                    reviewsSection.style.display = 'block';
+                    console.log('Reviews section displayed with', result.reviews.length, 'reviews');
+                } else {
+                    console.log('No reviews found - section remains hidden');
+                }
+            } catch (error) {
+                console.error('Error loading reviews:', error);
+                // Section already hidden, no need to hide again
+            }
+        }
+
+        // Review image modal
+        function openReviewImageModal(imageUrl) {
+            const modal = document.createElement('div');
+            modal.className = 'review-image-modal';
+            modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 99999; display: flex; align-items: center; justify-content: center; cursor: pointer;';
+
+            const img = document.createElement('img');
+            img.src = imageUrl;
+            img.style.cssText = 'max-width: 90%; max-height: 90%; border-radius: 8px;';
+
+            modal.appendChild(img);
+            document.body.appendChild(modal);
+            document.body.style.overflow = 'hidden';
+
+            modal.addEventListener('click', function() {
+                document.body.removeChild(modal);
+                document.body.style.overflow = 'auto';
+            });
+        }
+
+        window.openReviewImageModal = openReviewImageModal;
+
+        // Load reviews when page loads and after product is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(loadProductReviews, 1500);
+        });
+
+        window.addEventListener('productLoaded', function() {
+            setTimeout(loadProductReviews, 500);
+        });
+    </script>
+
+    <!-- Reviews Section Styles -->
+    <style>
+        .product-reviews-section {
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 30px 20px;
+            background-color: #fff;
+        }
+
+        .product-reviews-section .section-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 32px;
+            margin-bottom: 30px;
+            text-align: center;
+            color: #333;
+        }
+
+        .reviews-summary {
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .reviews-count {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .reviews-list {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        .review-item {
+            padding: 20px;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            background-color: #fafafa;
+        }
+
+        .review-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .review-author {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 16px;
+            color: #333;
+        }
+
+        .verified-purchase {
+            font-size: 12px;
+            color: #28a745;
+            font-weight: 600;
+            background-color: #d4edda;
+            padding: 2px 8px;
+            border-radius: 12px;
+        }
+
+        .review-date {
+            font-size: 14px;
+            color: #777;
+        }
+
+        .review-rating {
+            font-size: 20px;
+            color: #ffc107;
+            margin-bottom: 10px;
+        }
+
+        .review-comment {
+            font-size: 15px;
+            line-height: 1.6;
+            color: #555;
+            margin-bottom: 15px;
+        }
+
+        .review-images {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+
+        .review-image {
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border: 1px solid #ddd;
+        }
+
+        .review-image:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .no-reviews-message,
+        .loading-message {
+            text-align: center;
+            color: #777;
+            font-size: 16px;
+            padding: 40px 20px;
+            font-style: italic;
+        }
+
+        @media (max-width: 768px) {
+            .product-reviews-section {
+                padding: 20px 15px;
+            }
+
+            .product-reviews-section .section-title {
+                font-size: 24px;
+            }
+
+            .review-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 5px;
+            }
+        }
+    </style>
+</body>
+</html>
