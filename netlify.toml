@@ -6,12 +6,6 @@
 [functions]
   node_bundler = "esbuild"
 
-[functions.site-router]
-  included_files = ["templates/**"]
-
-[functions.resolve-subdomain]
-  included_files = ["templates/**"]
-
 [[redirects]]
   from = "/s/*"
   to = "/.netlify/functions/site-router"

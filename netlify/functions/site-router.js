@@ -1,6 +1,5 @@
 const admin = require('firebase-admin');
-const fs = require('fs');
-const path = require('path');
+const fetch = require('node-fetch');
 
 // Initialize Firebase Admin with credentials from environment variables
 if (!admin.apps.length) {
@@ -46,40 +45,28 @@ exports.handler = async (event, context) => {
     const siteData = snapshot.docs[0].data();
     
     // Determine template type
-    // We strictly respect the templateId stored in the database.
-    // Falls back to 'simple' only if no templateId is present.
     let templateType = siteData.templateId || 'simple';
-    
-    // Legacy support: if category is clothing, default to clothing template only if no ID set
     if (!siteData.templateId && siteData.category?.toLowerCase() === 'clothing') {
       templateType = 'clothing';
     }
 
-    // RESOLVE TEMPLATE PATH
-    const possiblePaths = [
-      path.join(__dirname, 'templates', templateType, 'index.html'),
-      path.join(__dirname, '..', '..', 'templates', templateType, 'index.html'),
-      path.join(process.cwd(), 'templates', templateType, 'index.html'),
-      path.join('/var/task', 'templates', templateType, 'index.html'),
-      path.join('/var/task', 'netlify/functions', 'templates', templateType, 'index.html')
-    ];
-
-    let html = '';
-    for (const p of possiblePaths) {
-      if (fs.existsSync(p)) {
-        html = fs.readFileSync(p, 'utf8');
-        break;
-      }
+    // Dynamic fetching of template from the static site URL
+    const baseUrl = `https://${event.headers.host}`;
+    let templateUrl = `${baseUrl}/templates/${templateType}/index.html`;
+    
+    // Special handling for template1
+    if (templateType === 'template1') {
+      templateUrl = `${baseUrl}/templates/view/template1/index.html`;
     }
 
-    if (!html) {
-      return { 
-        statusCode: 500, 
-        body: "CRITICAL ERROR: Template file not found."
-      };
+    console.log(`Fetching template from: ${templateUrl}`);
+    const response = await fetch(templateUrl);
+    if (!response.ok) {
+        throw new Error(`Failed to fetch template: ${response.statusText}`);
     }
+    let html = await response.text();
 
-    // Replacement logic - Handles both Clothing and Classic template variables
+    // Replacement logic
     const siteName = siteData.siteName || 'My Business';
     const category = siteData.category || '';
     const description = siteData.settings?.description || 'Professional business created on Fluxe.';
