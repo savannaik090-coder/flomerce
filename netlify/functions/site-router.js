@@ -66,6 +66,15 @@ exports.handler = async (event, context) => {
     }
     let html = await response.text();
 
+    // Fix relative paths (CSS, JS, Images)
+    // We assume the templates are always in /templates/ or /templates/view/
+    const templateBaseUrl = templateUrl.substring(0, templateUrl.lastIndexOf('/'));
+    
+    // Inject <base> tag to fix relative paths
+    if (!html.includes('<base')) {
+        html = html.replace('<head>', `<head>\n    <base href="${templateBaseUrl}/">`);
+    }
+
     // Replacement logic
     const siteName = siteData.siteName || 'My Business';
     const category = siteData.category || '';
