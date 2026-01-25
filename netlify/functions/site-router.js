@@ -76,13 +76,14 @@ exports.handler = async (event, context) => {
     }
 
     // Replacement logic
-    const siteName = siteData.siteName || 'My Business';
+    const siteName = siteData.brandName || siteData.siteName || 'My Business';
     const category = siteData.category || '';
     const description = siteData.settings?.description || 'Professional business created on Fluxe.';
     const title = siteData.settings?.title || siteName;
 
     // Standard variables
     html = html.replace(/{{siteName}}/g, siteName);
+    html = html.replace(/{{brandName}}/g, siteName);
     html = html.replace(/{{category}}/g, category);
     html = html.replace(/{{title}}/g, title);
     html = html.replace(/{{description}}/g, description);
