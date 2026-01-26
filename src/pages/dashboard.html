@@ -386,10 +386,157 @@
         }
 
         function showPlanSelectionOverlay(message) {
-            // Instead of showing an overlay, we navigate the user directly to the plans page
-            document.querySelector('[data-page="plans"]').click();
-            // We can show a simple toast or alert if needed, but per user request, we just open the plans section.
-            console.log("Forcing plan selection:", message);
+            const overlay = document.createElement('div');
+            overlay.id = 'plan-selection-overlay';
+            overlay.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15, 23, 42, 0.98); z-index:10000; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; color:white; overflow-y:auto; padding:40px 20px; box-sizing:border-box;';
+            
+            overlay.innerHTML = `
+                <style>
+                    #plan-selection-overlay::-webkit-scrollbar { width: 8px; }
+                    #plan-selection-overlay::-webkit-scrollbar-track { background: transparent; }
+                    #plan-selection-overlay::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+                    .plans-container {
+                        display: grid;
+                        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+                        gap: 20px;
+                        width: 100%;
+                        max-width: 1100px;
+                        margin-bottom: 40px;
+                    }
+                    @media (max-width: 768px) {
+                        .plans-container {
+                            grid-template-columns: 1fr;
+                        }
+                        #plan-selection-overlay h1 { font-size: 1.5rem; }
+                    }
+                </style>
+                <h1 style="margin-bottom:10px; text-align:center;">Choose Your Plan</h1>
+                <p style="margin-bottom:20px; color:#94a3b8; text-align:center;">${message}</p>
+                
+                <div id="duration-selector" style="display:flex; justify-content:center; gap:10px; margin-bottom:30px; background:#1e293b; padding:5px; border-radius:30px; border:1px solid #334155;">
+                    <button class="duration-btn active" data-duration="monthly" style="padding:8px 20px; border-radius:25px; border:none; background:#2563eb; color:white; cursor:pointer; font-weight:bold;">Monthly</button>
+                    <button class="duration-btn" data-duration="6months" style="padding:8px 20px; border-radius:25px; border:none; background:transparent; color:#94a3b8; cursor:pointer; font-weight:bold;">6 Months</button>
+                    <button class="duration-btn" data-duration="yearly" style="padding:8px 20px; border-radius:25px; border:none; background:transparent; color:#94a3b8; cursor:pointer; font-weight:bold;">Yearly</button>
+                </div>
+                
+                <div class="plans-container">
+                    <!-- Trial Plan -->
+                    <div class="plan-card" style="background:#1e293b; padding:30px; border-radius:16px; border:1px solid #334155; text-align:center; display:flex; flex-direction:column;">
+                        <h3 style="color:#94a3b8; margin-top:0;">Free Trial</h3>
+                        <p style="font-size: 2rem; font-weight: bold; margin:15px 0;">7 Days</p>
+                        <ul style="list-style:none; padding:0; margin:20px 0; text-align:left; font-size:0.95rem; color:#cbd5e1; flex-grow:1;">
+                            <li style="margin-bottom:10px;">✓ Full Platform Access</li>
+                            <li style="margin-bottom:10px;">✓ Create Unlimited Sites</li>
+                            <li style="margin-bottom:10px;">✓ Experience all features</li>
+                        </ul>
+                        <button class="btn btn-primary start-trial-btn" style="width:100%; padding:12px; background:#475569; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">Start 7-Day Trial</button>
+                    </div>
+
+                    <!-- Basic Plan -->
+                    <div class="plan-card" style="background:#1e293b; padding:30px; border-radius:16px; border:1px solid #334155; text-align:center; display:flex; flex-direction:column;">
+                        <h3 style="margin-top:0;">Basic</h3>
+                        <p class="plan-price" data-monthly="99" data-6months="499" data-yearly="899" style="font-size: 2rem; font-weight: bold; margin:15px 0;">₹99<span class="price-suffix" style="font-size:0.9rem; color:#94a3b8;">/mo</span></p>
+                        <ul style="list-style:none; padding:0; margin:20px 0; text-align:left; font-size:0.95rem; color:#cbd5e1; flex-grow:1;">
+                            <li style="margin-bottom:10px;">✓ 1 Website</li>
+                            <li style="margin-bottom:10px;">✓ Standard Templates</li>
+                            <li style="margin-bottom:10px;">✓ 24/7 Support</li>
+                        </ul>
+                        <button class="btn btn-primary selection-upgrade-btn" data-plan="basic" style="width:100%; padding:12px; border-radius:8px; cursor:pointer; font-weight:bold;">Choose Basic</button>
+                    </div>
+
+                    <!-- Premium Plan -->
+                    <div class="plan-card" style="background:#1e293b; padding:30px; border-radius:16px; border:2px solid #2563eb; text-align:center; position:relative; display:flex; flex-direction:column;">
+                        <span style="position:absolute; top:-12px; left:50%; transform:translateX(-50%); background:#2563eb; color:white; padding:4px 15px; border-radius:20px; font-size:0.8rem; font-weight:bold;">POPULAR</span>
+                        <h3 style="margin-top:0;">Premium</h3>
+                        <p class="plan-price" data-monthly="299" data-6months="1499" data-yearly="2499" style="font-size: 2rem; font-weight: bold; margin:15px 0;">₹299<span class="price-suffix" style="font-size:0.9rem; color:#94a3b8;">/mo</span></p>
+                        <ul style="list-style:none; padding:0; margin:20px 0; text-align:left; font-size:0.95rem; color:#cbd5e1; flex-grow:1;">
+                            <li style="margin-bottom:10px;">✓ 3 Websites</li>
+                            <li style="margin-bottom:10px;">✓ All Templates</li>
+                            <li style="margin-bottom:10px;">✓ Priority Support</li>
+                        </ul>
+                        <button class="btn btn-primary selection-upgrade-btn" data-plan="premium" style="width:100%; padding:12px; border-radius:8px; cursor:pointer; font-weight:bold;">Choose Premium</button>
+                    </div>
+
+                    <!-- Pro Plan -->
+                    <div class="plan-card" style="background:#1e293b; padding:30px; border-radius:16px; border:1px solid #334155; text-align:center; display:flex; flex-direction:column;">
+                        <h3 style="margin-top:0;">Pro</h3>
+                        <p class="plan-price" data-monthly="999" data-6months="4999" data-yearly="8999" style="font-size: 2rem; font-weight: bold; margin:15px 0;">₹999<span class="price-suffix" style="font-size:0.9rem; color:#94a3b8;">/mo</span></p>
+                        <ul style="list-style:none; padding:0; margin:20px 0; text-align:left; font-size:0.95rem; color:#cbd5e1; flex-grow:1;">
+                            <li style="margin-bottom:10px;">✓ Unlimited Websites</li>
+                            <li style="margin-bottom:10px;">✓ Custom Domain Ready</li>
+                            <li style="margin-bottom:10px;">✓ Dedicated Manager</li>
+                        </ul>
+                        <button class="btn btn-primary selection-upgrade-btn" data-plan="pro" style="width:100%; padding:12px; border-radius:8px; cursor:pointer; font-weight:bold;">Choose Pro</button>
+                    </div>
+                </div>
+                
+                <button id="logout-btn-selection" style="background:transparent; border:none; color:#94a3b8; cursor:pointer; text-decoration:underline; font-size:0.9rem;">Logout from Account</button>
+            `;
+            
+            document.body.appendChild(overlay);
+
+            // Add inner overlay event listeners
+            let selectedDuration = 'monthly';
+            const durationBtns = overlay.querySelectorAll('.duration-btn');
+            const priceEls = overlay.querySelectorAll('.plan-price');
+            const priceSuffix = overlay.querySelectorAll('.price-suffix');
+
+            durationBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    selectedDuration = btn.dataset.duration;
+                    durationBtns.forEach(b => {
+                        b.classList.remove('active');
+                        b.style.background = 'transparent';
+                        b.style.color = '#94a3b8';
+                    });
+                    btn.classList.add('active');
+                    btn.style.background = '#2563eb';
+                    btn.style.color = 'white';
+
+                    priceEls.forEach(p => {
+                        const amount = p.dataset[selectedDuration];
+                        p.innerHTML = `₹${amount}<span class="price-suffix" style="font-size:0.9rem; color:#94a3b8;">/${selectedDuration === 'monthly' ? 'mo' : selectedDuration}</span>`;
+                    });
+                });
+            });
+
+            overlay.querySelector('.start-trial-btn').addEventListener('click', async () => {
+                try {
+                    const user = authService.getCurrentUser();
+                    await firebase.firestore().collection('users').doc(user.uid).update({
+                        plan: 'trial',
+                        status: 'active',
+                        trialStartDate: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    location.reload();
+                } catch (e) { alert(e.message); }
+            });
+
+            overlay.querySelectorAll('.selection-upgrade-btn').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const planId = btn.dataset.plan;
+                    const user = authService.getCurrentUser();
+                    try {
+                        const order = await razorpayService.createOrder(planId, selectedDuration);
+                        await razorpayService.openCheckout({
+                            ...order,
+                            planName: planId.toUpperCase(),
+                            billingCycle: selectedDuration,
+                            userName: user.displayName || 'User',
+                            userEmail: user.email
+                        });
+                        await firebase.firestore().collection('users').doc(user.uid).update({
+                            plan: planId,
+                            billingCycle: selectedDuration,
+                            status: 'active',
+                            trialStartDate: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                        location.reload();
+                    } catch (e) { alert(e.message); }
+                });
+            });
+
+            overlay.querySelector('#logout-btn-selection').addEventListener('click', () => authService.logout());
         }
 
         async function expirePlan(uid, message) {
