@@ -98,8 +98,43 @@ body {
     transition: color 0.2s;
 }
 
-.mobile-nav-item.active {
-    color: #2563eb;
+.floating-create-btn {
+    position: fixed;
+    bottom: calc(env(safe-area-inset-bottom) + 5rem); /* Above bottom nav */
+    right: 1.5rem;
+    z-index: 900;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+    padding: 0;
+    transition: transform 0.2s;
+}
+
+.floating-create-btn:hover {
+    transform: scale(1.05);
+}
+
+.floating-create-btn span {
+    display: none;
+}
+
+@media (min-width: 769px) {
+    .floating-create-btn {
+        bottom: 2rem;
+        right: 2rem;
+        width: auto;
+        height: auto;
+        border-radius: 0.5rem;
+        padding: 0.75rem 1.5rem;
+    }
+    .floating-create-btn span {
+        display: inline;
+        margin-left: 0.5rem;
+    }
 }
 
 @media (max-width: 768px) {
