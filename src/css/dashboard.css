@@ -116,10 +116,15 @@ body {
 }
 
 .floating-create-btn.btn-plus {
-    width: 56px;
-    height: 56px;
+    width: 64px;
+    height: 64px;
     border-radius: 50%;
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+    box-shadow: 0 8px 16px rgba(37, 99, 235, 0.3);
+}
+
+.floating-create-btn.btn-plus svg {
+    width: 32px;
+    height: 32px;
 }
 
 .floating-create-btn.btn-full {
