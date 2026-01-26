@@ -658,14 +658,28 @@
         // Modal Logic
         const modal = document.getElementById('create-site-modal');
         const floatingBtn = document.getElementById('open-create-modal');
-        floatingBtn.addEventListener('click', () => { 
-            modal.style.display = 'flex'; 
+        
+        const openModal = () => {
+            modal.style.display = 'flex';
             floatingBtn.style.display = 'none';
+            setTimeout(() => modal.classList.add('active'), 10);
+        };
+
+        const closeModal = () => {
+            modal.classList.remove('active');
+            setTimeout(() => {
+                modal.style.display = 'none';
+                floatingBtn.style.display = 'flex';
+            }, 300);
+        };
+
+        floatingBtn.addEventListener('click', openModal);
+        document.getElementById('close-modal-btn').addEventListener('click', closeModal);
+        
+        window.addEventListener('click', (e) => {
+            if (e.target === modal) closeModal();
         });
-        document.getElementById('close-modal-btn').addEventListener('click', () => { 
-            modal.style.display = 'none'; 
-            floatingBtn.style.display = 'flex';
-        });
+
         document.querySelectorAll('.template-option').forEach(opt => {
             opt.addEventListener('click', (e) => {
                 if (e.target.classList.contains('preview-btn')) { window.open(e.target.dataset.url, '_blank'); return; }
@@ -675,14 +689,35 @@
                 document.getElementById('confirm-template-btn').disabled = false;
             });
         });
-        document.getElementById('confirm-template-btn').addEventListener('click', () => {
-            document.getElementById('modal-step-1').style.display = 'none';
-            document.getElementById('modal-step-2').style.display = 'block';
-        });
-        document.getElementById('back-to-step-1').addEventListener('click', () => {
-            document.getElementById('modal-step-1').style.display = 'block';
-            document.getElementById('modal-step-2').style.display = 'none';
-        });
+
+        const switchStep = (from, to) => {
+            const fromEl = document.getElementById(`modal-step-${from}`);
+            const toEl = document.getElementById(`modal-step-${to}`);
+            fromEl.style.opacity = '0';
+            fromEl.style.transform = 'translateX(-20px)';
+            setTimeout(() => {
+                fromEl.style.display = 'none';
+                toEl.style.display = 'block';
+                toEl.style.opacity = '0';
+                toEl.style.transform = 'translateX(20px)';
+                setTimeout(() => {
+                    toEl.style.opacity = '1';
+                    toEl.style.transform = 'translateX(0)';
+                }, 10);
+            }, 300);
+        };
+
+        document.getElementById('confirm-template-btn').addEventListener('click', () => switchStep(1, 2));
+        document.getElementById('back-to-step-1').addEventListener('click', () => switchStep(2, 1));
+
+        // Add step transition styles
+        const stepStyle = document.createElement('style');
+        stepStyle.textContent = `
+            #modal-step-1, #modal-step-2 {
+                transition: opacity 0.3s ease, transform 0.3s ease;
+            }
+        `;
+        document.head.appendChild(stepStyle);
         document.getElementById('confirm-create-btn').addEventListener('click', async () => {
             const domain = document.getElementById('site-domain-input').value;
             const brand = document.getElementById('site-brand-input').value;
