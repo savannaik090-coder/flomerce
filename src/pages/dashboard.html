@@ -251,6 +251,104 @@
             }
         }
 
+        // --- SUBSCRIPTION LOGIC ---
+        let currentDuration = 'monthly';
+        
+        document.querySelectorAll('.dur-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                currentDuration = btn.dataset.duration;
+                document.querySelectorAll('.dur-btn').forEach(b => {
+                    b.classList.remove('active');
+                    b.style.background = 'transparent';
+                    b.style.color = 'var(--text-muted)';
+                });
+                btn.classList.add('active');
+                btn.style.background = 'var(--primary)';
+                btn.style.color = 'white';
+                
+                updatePricingDisplay();
+            });
+        });
+
+        function updatePricingDisplay() {
+            document.querySelectorAll('.display-price').forEach(priceEl => {
+                const amount = priceEl.dataset[currentDuration];
+                priceEl.innerHTML = `₹${amount}<span style="font-size:0.875rem; color:var(--text-muted); font-weight: 500;">/${currentDuration === 'monthly' ? 'mo' : currentDuration}</span>`;
+            });
+        }
+
+        document.querySelectorAll('.upgrade-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const planId = btn.dataset.plan;
+                const user = authService.getCurrentUser();
+                
+                try {
+                    btn.disabled = true;
+                    btn.innerText = 'Processing...';
+                    
+                    const order = await razorpayService.createOrder(planId, currentDuration);
+                    const payment = await razorpayService.openCheckout({
+                        ...order,
+                        planName: planId.toUpperCase(),
+                        billingCycle: currentDuration,
+                        userName: user.displayName || 'User',
+                        userEmail: user.email
+                    });
+
+                    // Update Firestore after successful payment
+                    await firebase.firestore().collection('users').doc(user.uid).update({
+                        plan: planId,
+                        billingCycle: currentDuration,
+                        status: 'active',
+                        trialStartDate: firebase.firestore.FieldValue.serverTimestamp() // Resetting cycle start
+                    });
+
+                    alert('Subscription upgraded successfully!');
+                    window.location.reload();
+                } catch (error) {
+                    console.error('Payment failed:', error);
+                    alert('Payment failed: ' + error.message);
+                } finally {
+                    btn.disabled = false;
+                    btn.innerText = `Choose ${planId.charAt(0).toUpperCase() + planId.slice(1)}`;
+                }
+            });
+        });
+
+        function updatePlansUI(currentPlan) {
+            if (!currentPlan || currentPlan === 'trial') return;
+            const planWeights = { 'basic': 1, 'premium': 2, 'pro': 3 };
+            const currentWeight = planWeights[currentPlan];
+
+            document.querySelectorAll('.upgrade-btn').forEach(btn => {
+                const btnPlan = btn.dataset.plan;
+                const btnWeight = planWeights[btnPlan];
+                const card = btn.closest('.plan-card');
+
+                if (btnPlan === currentPlan) {
+                    btn.innerText = 'Current Plan';
+                    btn.disabled = true;
+                    card.style.borderColor = '#22c55e';
+                } else if (btnWeight < currentWeight) {
+                    btn.innerText = 'Lower Tier';
+                    btn.disabled = true;
+                    card.style.opacity = '0.6';
+                }
+            });
+        }
+
+        function showPlanSelectionOverlay(message) {
+            // Re-use the existing logic or force user to plans page
+            document.querySelector('[data-page="plans"]').click();
+            alert(message);
+        }
+
+        async function expirePlan(uid, message) {
+            await firebase.firestore().collection('users').doc(uid).update({ status: 'expired' });
+            alert(message);
+            window.location.reload();
+        }
+
         async function loadSites(uid) {
             const listEl = document.getElementById('sites-list');
             try {
