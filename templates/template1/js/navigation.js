@@ -224,7 +224,7 @@ document.addEventListener('DOMContentLoaded', function() {
             accountIconLink.classList.add('logged-in');
         } else {
             // User is not logged in or not verified, show login link
-            accountIconLink.href = 'login.html';
+            accountIconLink.href = '/login';
             accountIconLink.classList.remove('logged-in');
         }
     }
@@ -287,11 +287,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const isLoggedIn = typeof FirebaseAuth !== 'undefined' && FirebaseAuth.isLoggedIn();
 
         if (isLoggedIn) {
-            userIcon.href = "profile.html";
+            userIcon.href = "/profile";
             userIcon.classList.add('logged-in');
             console.log("Auth state changed in navigation:", "logged in");
         } else {
-            userIcon.href = "login.html";
+            userIcon.href = "/login";
             userIcon.classList.remove('logged-in');
             console.log("Auth state changed in navigation:", "logged out");
         }
@@ -302,12 +302,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (user) {
                     // User is signed in, update icon to go to profile
                     console.log("Auth state updated in navigation:", "logged in");
-                    userIcon.href = "profile.html";
+                    userIcon.href = "/profile";
                     userIcon.classList.add('logged-in');
                 } else {
                     // User is not signed in, update icon to go to login
                     console.log("Auth state updated in navigation:", "logged out");
-                    userIcon.href = "login.html";
+                    userIcon.href = "/login";
                     userIcon.classList.remove('logged-in');
                 }
             });

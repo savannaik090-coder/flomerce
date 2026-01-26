@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Banner content array
     const bannerContents = [
         'Free shipping on orders over ₹50,000',
-        'New arrivals for the festive season - <a href="new-arrivals.html">View Collection</a>'
+        'New arrivals for the festive season - <a href="/new-arrivals">View Collection</a>'
     ];
 
     // Function to get banner content with translation support
@@ -31,7 +31,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (translatedText) {
                     // For the second banner, add the link
                     if (index === 1) {
-                        return `${translatedText} - <a href="new-arrivals.html">View Collection</a>`;
+                        return `${translatedText} - <a href="/new-arrivals">View Collection</a>`;
                     }
                     return translatedText;
                 }

@@ -450,7 +450,7 @@ window.CartManager = (function() {
                         </div>
                         <div class="cart-panel-buttons">
                             <a href="#" class="view-cart-btn">Continue Shopping</a>
-                            <a href="checkout.html" class="checkout-btn">Checkout</a>
+                            <a href="/checkout" class="checkout-btn">Checkout</a>
                         </div>
                     </div>
                 </div>

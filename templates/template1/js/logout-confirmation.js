@@ -214,7 +214,7 @@ window.LogoutConfirmation = (function() {
       if (result.success) {
         closeModal();
         // Redirect to home page or login page
-        window.location.href = 'index.html';
+        window.location.href = '/';
       } else {
         alert('Logout failed. Please try again.');
         // Re-enable buttons

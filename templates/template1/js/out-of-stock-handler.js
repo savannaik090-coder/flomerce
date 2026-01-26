@@ -179,7 +179,7 @@ class OutOfStockHandler {
             
             // If no data-product-id, try to find it in nested elements
             if (!productId) {
-                const linkElement = card.querySelector('a[href*="product-detail.html"]');
+                const linkElement = card.querySelector('a[href*="/product-detail"]');
                 if (linkElement) {
                     const href = linkElement.getAttribute('href');
                     if (href && href.includes('?')) {
@@ -277,7 +277,7 @@ class OutOfStockHandler {
         });
         
         // Disable product links and add click handler for out-of-stock products
-        const productLinks = productCard.querySelectorAll('a[href*="product-detail.html"]');
+        const productLinks = productCard.querySelectorAll('a[href*="/product-detail"]');
         productLinks.forEach(link => {
             link.style.cursor = 'not-allowed';
             link.style.pointerEvents = 'none';
