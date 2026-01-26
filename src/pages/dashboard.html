@@ -24,6 +24,7 @@
                 </div>
                 <div class="plan-details" id="plan-dates" style="display: none; text-align: right; font-size: 0.75rem; color: #6b7280;">
                     <div><span id="plan-status-text">Active</span></div>
+                    <div>Started: <span id="plan-start-date">-</span></div>
                     <div>Ends: <span id="plan-end-date">-</span></div>
                 </div>
             </div>
@@ -258,29 +259,28 @@
                 
                 if (!plan) {
                     showPlanSelectionOverlay("Welcome! Please choose a plan to get started. You can also start with a 7-day free trial.");
-                    document.getElementById('current-plan-name').innerText = "NONE";
+                    if (document.getElementById('current-plan-name')) document.getElementById('current-plan-name').innerText = "NONE";
                     return;
                 }
 
                 updatePlansUI(plan);
-                document.getElementById('current-plan-name').innerText = plan.toUpperCase();
+                if (document.getElementById('current-plan-name')) document.getElementById('current-plan-name').innerText = plan.toUpperCase();
                 
                 const startDate = currentUserData.trialStartDate ? currentUserData.trialStartDate.toDate() : new Date();
                 const options = { year: 'numeric', month: 'short', day: 'numeric' };
-                document.getElementById('plan-dates').style.display = 'block';
-                document.getElementById('plan-start-date').innerText = startDate.toLocaleDateString(undefined, options);
+                if (document.getElementById('plan-dates')) document.getElementById('plan-dates').style.display = 'block';
 
                 if (plan === 'trial') {
                     const diff = Math.floor((new Date() - startDate) / (1000 * 60 * 60 * 24));
                     const endDate = new Date(startDate);
                     endDate.setDate(endDate.getDate() + 7);
-                    document.getElementById('plan-end-date').innerText = endDate.toLocaleDateString(undefined, options);
+                    if (document.getElementById('plan-end-date')) document.getElementById('plan-end-date').innerText = endDate.toLocaleDateString(undefined, options);
 
                     if (diff > 7) {
                         await expirePlan(user.uid, "Your 7-day free trial has expired. Please upgrade to a paid plan to continue using the website.");
                     } else {
-                        document.getElementById('plan-status').innerText = 'Active';
-                        document.getElementById('plan-status-text').innerText = `${7 - diff} days left`;
+                        if (document.getElementById('plan-status')) document.getElementById('plan-status').innerText = 'Active';
+                        if (document.getElementById('plan-status-text')) document.getElementById('plan-status-text').innerText = `${7 - diff} days left`;
                     }
                 } else if (status === 'active') {
                     const now = new Date();
@@ -290,7 +290,7 @@
 
                     const endDate = new Date(startDate);
                     endDate.setDate(endDate.getDate() + durationDays);
-                    document.getElementById('plan-end-date').innerText = endDate.toLocaleDateString(undefined, options);
+                    if (document.getElementById('plan-end-date')) document.getElementById('plan-end-date').innerText = endDate.toLocaleDateString(undefined, options);
 
                     const msUsed = now.getTime() - startDate.getTime();
                     const daysUsed = msUsed / (1000 * 60 * 60 * 24);
@@ -300,13 +300,15 @@
                         await expirePlan(user.uid, `Your ${billingCycle} plan has expired. Please renew your subscription to continue using your websites.`);
                     } else {
                         let statusText = daysRemaining >= 30 ? `${Math.floor(daysRemaining/30)} mo left` : `${daysRemaining} days left`;
-                        document.getElementById('plan-status').innerText = 'Active';
-                        document.getElementById('plan-status-text').innerText = statusText;
+                        if (document.getElementById('plan-status')) document.getElementById('plan-status').innerText = 'Active';
+                        if (document.getElementById('plan-status-text')) document.getElementById('plan-status-text').innerText = statusText;
                     }
                 } else if (status === 'expired') {
-                    document.getElementById('plan-status').innerText = 'Expired';
-                    document.getElementById('plan-status').className = 'plan-status-pill status-expired';
-                    document.getElementById('plan-status-text').innerText = 'Expired';
+                    if (document.getElementById('plan-status')) {
+                        document.getElementById('plan-status').innerText = 'Expired';
+                        document.getElementById('plan-status').className = 'plan-status-pill status-expired';
+                    }
+                    if (document.getElementById('plan-status-text')) document.getElementById('plan-status-text').innerText = 'Expired';
                     showOverlay("Your subscription has expired. Please upgrade to a paid plan to continue using the website.");
                 }
             }
@@ -314,6 +316,7 @@
 
         async function loadSites(uid) {
             const listEl = document.getElementById('sites-list');
+            if (!listEl) return;
             try {
                 const sites = await siteService.getUserSites(uid);
                 if (sites.length === 0) {
