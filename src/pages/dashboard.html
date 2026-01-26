@@ -774,7 +774,7 @@
                     document.getElementById('site-brand-input').value = '';
                     document.getElementById('site-logo-input').value = ''; // Clear file input
                     loadSites(user.uid);
-                    const liveUrl = `https://fluxe.in/s/${result.subdomain}`;
+                    const liveUrl = `https://${result.subdomain}.fluxe.in`;
                     alert(`Website Created Successfully!\nYour Live URL: ${liveUrl}`);
                 } else {
                     throw new Error("Creation failed: No subdomain returned.");
