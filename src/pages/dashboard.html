@@ -11,56 +11,54 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - Fluxe</title>
-    <script src="/src/common/env-config.js"></script>
-    <link rel="stylesheet" href="/src/css/dashboard.css">
+    <script src="/src/common/EnvConfig.js"></script>
+    <link rel="stylesheet" href="/src/css/index.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="sidebar">
-        <h2>FLUXE</h2>
-        <div id="user-plan-info" style="padding: 15px; background: #1e293b; border-radius: 8px; margin: 10px; font-size: 0.85rem; color: #94a3b8; border: 1px solid #334155;">
-            <div style="margin-bottom: 8px;">
-                <span style="color: #64748b; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">Current Plan</span><br>
-                <span id="current-plan-name" style="color: #fbbf24; font-weight: bold; font-size: 1.1rem;">Loading...</span>
+    <div class="dashboard-layout">
+        <aside class="sidebar">
+            <h2>FLUXE</h2>
+            
+            <div class="plan-badge">
+                <span class="plan-badge-label">Current Plan</span>
+                <div class="plan-badge-value" id="current-plan-name">Loading...</div>
+                <div id="plan-status" style="font-size: 0.875rem; color: var(--text-muted); margin-top: 0.25rem;">Active</div>
             </div>
-            <div style="margin-bottom: 8px;">
-                <span style="color: #64748b; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">Status</span><br>
-                <span id="plan-status" style="font-weight: 500;">Active</span>
-            </div>
-            <div id="plan-dates" style="display: none; border-top: 1px solid #334155; pt: 8px; margin-top: 8px; font-size: 0.75rem;">
-                <div style="margin-bottom: 4px;">
-                    <span style="color: #64748b;">Started:</span> <span id="plan-start-date" style="color: #cbd5e1;">-</span>
-                </div>
-                <div>
-                    <span style="color: #64748b;">Ends:</span> <span id="plan-end-date" style="color: #cbd5e1;">-</span>
-                </div>
-            </div>
-        </div>
-        <nav>
-            <p style="color: #64748b;">MENU</p>
-            <ul style="list-style: none; padding: 0;">
-                <li style="margin-bottom: 15px;"><a href="#" class="nav-link active" data-page="sites">My Websites</a></li>
-                <li style="margin-bottom: 15px;"><a href="#" class="nav-link" data-page="plans">Upgrade Plans</a></li>
-            </ul>
-        </nav>
-        <button id="logout-btn" class="logout" style="margin-top: 50px;">Logout</button>
-    </div>
-    <div class="main">
-        <div id="sites-page">
-            <div class="header">
-                <h1>My Websites</h1>
-                <div style="display:flex; gap:10px; align-items:center;">
-                    <button class="btn btn-primary" id="open-create-modal">+ Create New Site</button>
-                </div>
-            </div>
-            <div id="sites-list">
-                <p>Loading your websites...</p>
-            </div>
-        </div>
 
-        <div id="plans-page" style="display:none;">
-            <div class="header">
-                <h1>Subscription Plans</h1>
+            <nav>
+                <ul>
+                    <li><a href="#" class="nav-link active" data-page="sites">My Websites</a></li>
+                    <li><a href="#" class="nav-link" data-page="plans">Upgrade Plans</a></li>
+                </ul>
+            </nav>
+
+            <button id="logout-btn" class="btn btn-outline" style="width: 100%; margin-top: auto;">Logout</button>
+        </aside>
+
+        <main class="main-content">
+            <div id="sites-page">
+                <div class="header">
+                    <h1>My Websites</h1>
+                    <button class="btn btn-primary" id="open-create-modal">Create New Site</button>
+                </div>
+                
+                <div id="sites-list" class="sites-grid">
+                    <p>Loading your websites...</p>
+                </div>
             </div>
+
+            <div id="plans-page" style="display:none;">
+                <div class="header">
+                    <h1>Subscription Plans</h1>
+                </div>
+                
+                <div class="plans-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:1.5rem;">
+                    <!-- Plans will be rendered here or kept in HTML if needed -->
+                </div>
+            </div>
+        </main>
+    </div>
             
             <div id="plans-duration-selector" style="display:flex; justify-content:center; gap:10px; margin: 20px 0 30px 0; background:#f1f5f9; padding:5px; border-radius:30px; width: fit-content; margin-left: auto; margin-right: auto; border:1px solid #e2e8f0;">
                 <button class="dur-btn active" data-duration="monthly" style="padding:8px 20px; border-radius:25px; border:none; background:#2563eb; color:white; cursor:pointer; font-weight:bold;">Monthly</button>

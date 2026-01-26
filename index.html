@@ -1,73 +1,31 @@
-<!--
- * FLUXE SAAS PLATFORM - Main Landing Page
- * 
- * Purpose: Entry point for the SaaS platform, providing information and calls to action for users.
- * Scalability: This file serves as the root index. It is kept lightweight to ensure fast loading.
- * Architecture: Uses plain HTML/CSS for performance, with JS components loaded as needed.
- -->
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fluxe - Website Automation SaaS</title>
-    <script>
-        // REDIRECT PROTECTION
-        if (window.location.pathname.startsWith('/s/')) {
-            console.warn("Detected invalid redirect loop. Redirecting back to root.");
-            window.location.href = '/';
-        }
-    </script>
-    <script src="/src/common/EnvConfig.js"></script>
+    <title>Fluxe - Website Automation</title>
     <link rel="stylesheet" href="/src/css/index.css">
-    <script>
-        // SUBDOMAIN ROUTING LOGIC
-        (function() {
-            var host = window.location.hostname;
-            console.log("Current host:", host);
-            
-            // On Replit, we NEVER want to trigger subdomain routing for the workspace URL
-            if (host.includes('replit.dev') || host.includes('replit.app') || host.includes('localhost')) {
-                console.log("Development environment detected. Skipping subdomain routing.");
-                return;
-            }
-
-            // Also skip if it's the main production domain (assuming it's not a subdomain of itself)
-            if (host === 'fluxe.in' || host === 'www.fluxe.in') {
-                console.log("Main production domain detected. Skipping subdomain routing.");
-                return;
-            }
-
-            var parts = host.split('.');
-            var isSubdomain = parts.length >= 3;
-
-            if (isSubdomain && parts[0] !== 'www' && parts[0] !== 'fluxe') {
-                var subdomain = parts[0];
-                window.location.replace('/s/' + subdomain);
-            }
-        })();
-    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
-    <nav class="nav">
-        <a href="/" class="logo">FLUXE</a>
-        <div>
-            <a href="/src/pages/login.html" style="text-decoration:none; color:var(--secondary); font-weight:500; margin-right:20px;">Login</a>
-            <a href="/src/pages/signup.html" class="btn btn-primary">Start Building</a>
-        </div>
-    </nav>
-    <section class="hero">
-        <h1>Launch Your Website<br>in <span style="color:var(--primary);">60 Seconds.</span></h1>
-        <p>The ultimate platform for Indian businesses to automate their online presence. No code, no hosting, no hassle.</p>
-        <div style="margin-top:20px;">
-            <a href="/src/pages/signup.html" class="btn btn-primary">Create My Site</a>
-        </div>
-    </section>
-    <section class="features">
-        <div class="feature-card"><h3>🚀 Zero Config</h3><p>Your site is live instantly on a free fluxe.in subdomain.</p></div>
-        <div class="feature-card"><h3>💳 Payments Integrated</h3><p>Accept payments via Razorpay immediately.</p></div>
-        <div class="feature-card"><h3>📈 Business Focused</h3><p>Clean templates designed to convert visitors into customers.</p></div>
-    </section>
+    <div class="container">
+        <nav class="nav">
+            <a href="/" class="logo">FLUXE</a>
+            <div class="nav-links">
+                <a href="/src/pages/login.html" class="nav-link">Login</a>
+                <a href="/src/pages/signup.html" class="btn btn-primary">Get Started</a>
+            </div>
+        </nav>
+
+        <section class="hero">
+            <span class="hero-tag">Coming Soon</span>
+            <h1>Launch Your Website<br>in minutes.</h1>
+            <p>The high-end automation platform for Indian businesses. Focus on your growth while we handle your digital presence.</p>
+            <div style="display: flex; gap: 1rem; justify-content: center;">
+                <a href="/src/pages/signup.html" class="btn btn-primary">Start Building</a>
+                <a href="#learn-more" class="btn btn-outline">View Demo</a>
+            </div>
+        </section>
+    </div>
 </body>
 </html>
