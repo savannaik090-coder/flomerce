@@ -378,12 +378,23 @@
 
         async function loadSites(uid) {
             const listEl = document.getElementById('sites-list');
+            const createBtn = document.getElementById('open-create-modal');
             if (!listEl) return;
             try {
                 const sites = await siteService.getUserSites(uid);
+                
                 if (sites.length === 0) {
-                    listEl.innerHTML = '<p style="grid-column: 1/-1; text-align: center; padding: 3rem; background: white; border: 1px dashed var(--border); border-radius: 12px; color: var(--text-muted);">You haven\'t created any websites yet.</p>';
+                    listEl.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 40px; background: white; border-radius: 12px; border: 1px dashed var(--border);"><p style="color: var(--text-muted); margin-bottom: 20px;">You haven\'t created any websites yet.</p></div>';
+                    if (createBtn) {
+                        createBtn.classList.remove('btn-plus');
+                        createBtn.classList.add('btn-full');
+                    }
                     return;
+                }
+
+                if (createBtn) {
+                    createBtn.classList.remove('btn-full');
+                    createBtn.classList.add('btn-plus');
                 }
 
                 listEl.innerHTML = sites.map(site => `

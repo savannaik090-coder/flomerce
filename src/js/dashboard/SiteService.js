@@ -16,7 +16,12 @@ class SiteService {
    */
   async getUserSites(uid) {
     const snapshot = await this.db.collection('sites').where('ownerId', '==', uid).get();
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const sites = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    
+    // Dispatch event so dashboard can update UI
+    window.dispatchEvent(new CustomEvent('sitesLoaded', { detail: { count: sites.length } }));
+    
+    return sites;
   }
 
   /**
