@@ -657,8 +657,15 @@
 
         // Modal Logic
         const modal = document.getElementById('create-site-modal');
-        document.getElementById('open-create-modal').addEventListener('click', () => { modal.style.display = 'flex'; });
-        document.getElementById('close-modal-btn').addEventListener('click', () => { modal.style.display = 'none'; });
+        const floatingBtn = document.getElementById('open-create-modal');
+        floatingBtn.addEventListener('click', () => { 
+            modal.style.display = 'flex'; 
+            floatingBtn.style.display = 'none';
+        });
+        document.getElementById('close-modal-btn').addEventListener('click', () => { 
+            modal.style.display = 'none'; 
+            floatingBtn.style.display = 'flex';
+        });
         document.querySelectorAll('.template-option').forEach(opt => {
             opt.addEventListener('click', (e) => {
                 if (e.target.classList.contains('preview-btn')) { window.open(e.target.dataset.url, '_blank'); return; }
@@ -703,6 +710,7 @@
                 });
                 
                 modal.style.display = 'none';
+                floatingBtn.style.display = 'flex';
                 loadSites(authService.getCurrentUser().uid);
             } catch (error) { 
                 alert(error.message); 
