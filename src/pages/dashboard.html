@@ -769,10 +769,10 @@
                         siteCount: firebase.firestore.FieldValue.increment(1)
                     });
 
-                    createSiteModal.style.display = 'none';
-                    domainInput.value = ''; 
-                    brandNameInput.value = '';
-                    logoInput.value = ''; // Clear file input
+                    modal.style.display = 'none';
+                    document.getElementById('site-domain-input').value = ''; 
+                    document.getElementById('site-brand-input').value = '';
+                    document.getElementById('site-logo-input').value = ''; // Clear file input
                     loadSites(user.uid);
                     const liveUrl = `https://fluxe.in/s/${result.subdomain}`;
                     alert(`Website Created Successfully!\nYour Live URL: ${liveUrl}`);
@@ -859,40 +859,8 @@
             }
         };
 
-        confirmCreateBtn.onclick = async () => {
-            const domain = domainInput.value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-');
-            const brandName = document.getElementById('site-brand-input').value.trim();
-            const logoFile = document.getElementById('site-logo-input').files[0];
-
-            if (!domain || !brandName) {
-                alert('Please fill in all required fields');
-                return;
-            }
-
-            confirmCreateBtn.disabled = true;
-            confirmCreateBtn.innerText = 'Creating...';
-
-            try {
-                const user = firebase.auth().currentUser;
-                if (!user) {
-                    alert('You must be logged in to create a website.');
-                    return;
-                }
-                await siteService.createSite(user.uid, {
-                    siteName: brandName,
-                    templateId: selectedTemplate,
-                    domain: domain,
-                    brandName: brandName,
-                });
-                
-                alert('Website created successfully!');
-                location.reload();
-            } catch (err) {
-                alert(err.message);
-                confirmCreateBtn.disabled = false;
-                confirmCreateBtn.innerText = 'Confirm & Create';
-            }
-        };
+        // Note: The confirm-create-btn handler is already defined above (lines 712-790)
+        // with proper logo upload functionality. Do not duplicate it here.
 
         async function loadSites(uid) {
             const sitesList = document.getElementById('sites-list');
