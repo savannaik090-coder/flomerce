@@ -1,7 +1,7 @@
 body { 
-    font-family: sans-serif; 
+    font-family: 'Inter', sans-serif; 
     margin: 0; 
-    background: #f4f7f6; 
+    background: #f8fafc; 
     display: flex;
     flex-direction: row;
     min-height: 100vh;
@@ -11,157 +11,112 @@ body {
     display: flex;
     flex-direction: row;
     min-height: 100vh;
+    width: 100%;
 }
 
 .sidebar { 
-    width: 250px; 
-    background: #1e293b; 
-    color: white; 
+    width: 260px; 
+    background: white; 
+    color: #1e293b; 
     height: 100vh; 
-    padding: 20px; 
+    padding: 2rem 1.5rem; 
     box-sizing: border-box; 
     flex-shrink: 0;
     position: sticky;
     top: 0;
     display: flex;
     flex-direction: column;
+    border-right: 1px solid #e2e8f0;
 }
 
 .main-content { 
     flex: 1; 
-    padding: 40px; 
+    padding: 2.5rem; 
     box-sizing: border-box;
-    background: #f4f7f6;
+    background: #f8fafc;
+    min-width: 0;
 }
 
-.header { 
-    display: flex; 
-    justify-content: space-between; 
-    align-items: center; 
-    margin-bottom: 30px; 
-}
-
-.sites-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 1.5rem;
-}
-
-.site-card { 
-    background: white; 
-    padding: 1.5rem; 
-    border-radius: 12px; 
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1); 
-    border: 1px solid #e2e8f0;
+.logo {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: #0f172a;
+    margin-bottom: 2.5rem;
+    letter-spacing: -0.025em;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
 }
 
 .nav-link {
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
     padding: 0.75rem 1rem;
-    color: #94a3b8;
+    color: #64748b;
     text-decoration: none;
+    font-weight: 500;
     border-radius: 0.5rem;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.25rem;
     transition: all 0.2s;
 }
 
-.nav-link.active {
-    background: #334155;
-    color: white;
+.nav-link:hover {
+    background: #f1f5f9;
+    color: #0f172a;
 }
 
-/* Responsive adjustments */
-@media (max-width: 1024px) {
-    .plans-grid {
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)) !important;
-    }
+.nav-link.active {
+    background: #f1f5f9;
+    color: #2563eb;
+}
+
+.mobile-nav {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: white;
+    border-top: 1px solid #e2e8f0;
+    padding: 0.75rem 0;
+    z-index: 1000;
+    justify-content: space-around;
+    box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.mobile-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    color: #64748b;
+    text-decoration: none;
+    font-size: 0.7rem;
+    font-weight: 600;
+    flex: 1;
+    transition: color 0.2s;
+}
+
+.mobile-nav-item.active {
+    color: #2563eb;
 }
 
 @media (max-width: 768px) {
-    .dashboard-layout {
+    body {
         flex-direction: column;
     }
-    
     .sidebar {
-        width: 100%;
-        height: auto;
-        position: relative;
-        padding: 1rem;
-        flex-direction: row;
-        align-items: center;
-        justify-content: space-between;
-        flex-wrap: wrap;
-        gap: 1rem;
+        display: none;
     }
-
-    .sidebar .logo {
-        margin-bottom: 0 !important;
-    }
-
-    .sidebar nav {
-        width: 100%;
-        order: 3;
-    }
-
-    .sidebar nav ul {
-        display: flex;
-        gap: 0.5rem;
-        padding: 0;
-        margin: 0;
-    }
-
-    .sidebar nav ul li {
-        flex: 1;
-    }
-
-    .sidebar .nav-link {
-        text-align: center;
-        margin-bottom: 0;
-    }
-
-    .plan-badge {
-        order: 2;
-        margin-top: 0 !important;
-        padding: 0.5rem 1rem !important;
-    }
-
-    #logout-btn {
-        width: auto !important;
-        margin-top: 0 !important;
-        order: 4;
-    }
-    
     .main-content {
         padding: 1.5rem;
+        padding-bottom: 5rem; /* Space for mobile nav */
     }
-    
-    .header {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 1rem;
-        text-align: center;
+    .mobile-nav {
+        display: flex;
     }
-
-    .header h1 {
-        font-size: 1.5rem;
-    }
-    
     .sites-grid {
         grid-template-columns: 1fr;
-    }
-
-    #plans-duration-selector {
-        width: 100% !important;
-        box-sizing: border-box;
-    }
-
-    .modal-content {
-        width: 95% !important;
-        margin: 10px !important;
-        padding: 1.5rem !important;
-    }
-
-    #template-selection-container {
-        grid-template-columns: 1fr !important;
     }
 }
