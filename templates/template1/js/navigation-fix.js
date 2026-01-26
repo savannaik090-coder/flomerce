@@ -1,39 +1,44 @@
-// Navigation Fix Version 5 - Absolute Origin Locking
+// Navigation Fix Version 6 - Ultra-Safe for Menu Toggles and Subdomains
 (function() {
-    console.log("Navigation fix V5 initialized");
+    console.log("Navigation fix V6 initialized");
     
-    // Use the origin from the current window location
-    const currentOrigin = window.location.origin;
-    console.log("Current origin locked to:", currentOrigin);
-
     function handleNavigation(e) {
+        // Find the closest anchor tag
         const link = e.target.closest('a');
         if (!link) return;
 
         const href = link.getAttribute('href');
         
-        // Ignore hashes, externals, and special protocols
-        if (!href || href === '#' || href.startsWith('http') || href.startsWith('//') || href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('tel:')) {
+        // 1. CRITICAL: NEVER INTERCEPT MENU TOGGLES OR HASH LINKS
+        // If it starts with # or is just #, let the other scripts handle it
+        if (!href || href === '#' || href.startsWith('#')) {
             return;
         }
 
+        // 2. SKIP EXTERNAL LINKS
+        if (href.startsWith('http') || href.startsWith('//') || href.startsWith('mailto:') || href.startsWith('tel:')) {
+            return;
+        }
+
+        // 3. LOCK TO SUBDOMAIN
+        // If it's a relative path, force it to be absolute from the subdomain origin
         console.log("Processing link click:", href);
         
-        // Ensure path starts with /
         let path = href;
         if (!path.startsWith('/')) {
             path = '/' + path;
         }
 
-        // Create absolute URL using the locked origin
-        const finalUrl = currentOrigin + path;
-        console.log("Forcing navigation to:", finalUrl);
+        // Force browser to stay on current subdomain
+        const targetUrl = window.location.origin + path;
+        console.log("Redirecting to:", targetUrl);
         
         e.preventDefault();
-        e.stopImmediatePropagation();
-        window.location.href = finalUrl;
+        // Use assign to ensure a clean history state and bypass some router intercepts
+        window.location.assign(targetUrl);
     }
 
-    // Use capture phase (true) to intercept before other scripts
-    document.addEventListener('click', handleNavigation, true);
+    // Use bubbling phase (false) to allow specific button handlers (like menu toggle) 
+    // to stopPropagation if they need to, but we'll catch regular links.
+    document.addEventListener('click', handleNavigation, false);
 })();
