@@ -1,6 +1,6 @@
 // Enhanced Navigation Fix for Extensionless Paths and Subdomains
 (function() {
-    console.log("Navigation fix initialized");
+    console.log("Navigation fix initialized - improved for deep links");
     
     // Function to handle link clicks
     function handleNavigation(e) {
@@ -17,17 +17,21 @@
 
         console.log("Navigating to:", href);
         
-        // Force the browser to treat the path as a fresh navigation relative to the current subdomain root
-        if (href.startsWith('/')) {
-            e.preventDefault();
-            const targetUrl = window.location.origin + href;
-            console.log("Redirecting to:", targetUrl);
-            window.location.href = targetUrl;
+        // Handle path resolution
+        let targetPath = href;
+        if (!targetPath.startsWith('/')) {
+            // Convert relative path to absolute-like based on current origin root
+            // This prevents nesting like /about-us/new-arrivals
+            targetPath = '/' + targetPath;
         }
+
+        // Force navigation to stay within the current subdomain origin
+        e.preventDefault();
+        const targetUrl = window.location.origin + targetPath;
+        console.log("Redirecting to:", targetUrl);
+        window.location.href = targetUrl;
     }
 
     // Add click event listener to document
-    // Use true for capture phase to catch clicks before other handlers, 
-    // but we'll be careful about what we preventDefault()
     document.addEventListener('click', handleNavigation, true);
 })();
