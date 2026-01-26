@@ -739,16 +739,19 @@
                     const storageRef = storage.ref(`logos/${user.uid}/${Date.now()}_${file.name}`);
                     
                     try {
+                        console.log("Attempting storage put operation...");
                         const uploadTask = await storageRef.put(file);
+                        console.log("Upload task finished, state:", uploadTask.state);
                         logoUrl = await uploadTask.ref.getDownloadURL();
                         console.log("Logo upload complete. URL:", logoUrl);
                     } catch (uploadError) {
-                        console.error("Storage Upload Error:", uploadError);
+                        console.error("Storage Upload Error Details:", uploadError);
                         alert("Error uploading logo: " + uploadError.message);
                         // Continue without logo if upload fails
                     }
                 }
                 
+                console.log("Proceeding to createSite with logoUrl:", logoUrl);
                 // Call the service with captured templateId
                 const result = await siteService.createSite(user.uid, { 
                     siteName: domain, 
