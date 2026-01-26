@@ -89,10 +89,14 @@ exports.handler = async (event, context) => {
     html = html.replace(/{{title}}/g, title);
     html = html.replace(/{{description}}/g, description);
 
-    // Handle logo replacement if placeholder exists
+    // Handle logo replacement
     if (logoUrl) {
-      // Look for common logo patterns
+      // Replace BOTH the hardcoded path AND a potential placeholder
       html = html.replace(/images\/logos\/royalmeenakari\.png/g, logoUrl);
+      html = html.replace(/{{logoUrl}}/g, logoUrl);
+    } else {
+      // If no logo, ensure any {{logoUrl}} placeholder is cleared or set to empty
+      html = html.replace(/{{logoUrl}}/g, '');
     }
 
     // Classic template specific variables
