@@ -100,46 +100,59 @@ body {
 
 .floating-create-btn {
     position: fixed;
-    bottom: calc(env(safe-area-inset-bottom) + 6rem); /* Increased offset to sit clearly above nav */
+    bottom: calc(env(safe-area-inset-bottom) + 6rem);
     right: 1.5rem;
-    z-index: 1100; /* Higher than mobile-nav (1000) */
-    width: 56px;
-    height: 56px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
-    padding: 0;
-    transition: transform 0.2s, background-color 0.2s;
+    z-index: 1100;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     background-color: #2563eb;
     color: white;
     border: none;
     cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    white-space: nowrap;
 }
 
-.floating-create-btn:hover {
-    transform: scale(1.05);
+.floating-create-btn.btn-plus {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+}
+
+.floating-create-btn.btn-full {
+    width: 180px;
+    height: 48px;
+    border-radius: 24px;
+    padding: 0 1.5rem;
+    box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.2);
 }
 
 .floating-create-btn span {
-    display: none;
+    transition: opacity 0.2s, width 0.3s;
+}
+
+.floating-create-btn.btn-plus span {
+    opacity: 0;
+    width: 0;
+    margin-left: 0;
+}
+
+.floating-create-btn.btn-full span {
+    opacity: 1;
+    width: auto;
+    margin-left: 0.5rem;
 }
 
 @media (min-width: 769px) {
     .floating-create-btn {
         bottom: 2rem;
         right: 2rem;
-        width: auto;
-        height: auto;
-        border-radius: 0.5rem;
-        padding: 0.75rem 1.5rem;
-    }
-    .floating-create-btn span {
-        display: inline;
-        margin-left: 0.5rem;
     }
 }
+
 
 @media (max-width: 768px) {
     body {
