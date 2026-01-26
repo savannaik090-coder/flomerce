@@ -100,9 +100,9 @@ body {
 
 .floating-create-btn {
     position: fixed;
-    bottom: calc(env(safe-area-inset-bottom) + 5rem); /* Above bottom nav */
+    bottom: calc(env(safe-area-inset-bottom) + 6rem); /* Increased offset to sit clearly above nav */
     right: 1.5rem;
-    z-index: 900;
+    z-index: 1100; /* Higher than mobile-nav (1000) */
     width: 56px;
     height: 56px;
     border-radius: 50%;
@@ -111,7 +111,11 @@ body {
     justify-content: center;
     box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
     padding: 0;
-    transition: transform 0.2s;
+    transition: transform 0.2s, background-color 0.2s;
+    background-color: #2563eb;
+    color: white;
+    border: none;
+    cursor: pointer;
 }
 
 .floating-create-btn:hover {
