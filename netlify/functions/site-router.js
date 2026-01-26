@@ -80,6 +80,7 @@ exports.handler = async (event, context) => {
     const category = siteData.category || '';
     const description = siteData.settings?.description || 'Professional business created on Fluxe.';
     const title = siteData.settings?.title || siteName;
+    const logoUrl = siteData.logoUrl || '';
 
     // Standard variables
     html = html.replace(/{{siteName}}/g, siteName);
@@ -87,6 +88,12 @@ exports.handler = async (event, context) => {
     html = html.replace(/{{category}}/g, category);
     html = html.replace(/{{title}}/g, title);
     html = html.replace(/{{description}}/g, description);
+
+    // Handle logo replacement if placeholder exists
+    if (logoUrl) {
+      // Look for common logo patterns
+      html = html.replace(/images\/logos\/royalmeenakari\.png/g, logoUrl);
+    }
 
     // Classic template specific variables
     html = html.replace(/{{BRAND_NAME}}/g, siteName);

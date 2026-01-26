@@ -709,14 +709,13 @@
         document.getElementById('close-modal-btn').onclick = () => modal.style.display = 'none';
 
         document.getElementById('confirm-create-btn').onclick = async () => {
-            const nameInput = document.getElementById('site-name-input');
-            const name = nameInput.value.trim();
-            const category = document.getElementById('site-category-input').value;
-            const templateId = document.getElementById('site-template-input').value; 
+            const domainInput = document.getElementById('site-domain-input');
+            const domain = domainInput.value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-');
+            const brandName = document.getElementById('site-brand-input').value.trim();
+            const logoInput = document.getElementById('site-logo-input');
             
-            console.log("Creation Debug - Selected Template:", templateId);
-            
-            if (!name) { alert("Please enter a website name"); return; }
+            if (!domain) { alert("Please enter a domain name"); return; }
+            if (!brandName) { alert("Please enter a brand name"); return; }
 
             const btn = document.getElementById('confirm-create-btn');
             const originalText = btn.innerText;
@@ -727,11 +726,21 @@
             try {
                 const user = firebase.auth().currentUser;
                 
+                let logoUrl = '';
+                if (logoInput.files && logoInput.files[0]) {
+                    const file = logoInput.files[0];
+                    const storageRef = firebase.storage().ref(`logos/${user.uid}/${Date.now()}_${file.name}`);
+                    const uploadTask = await storageRef.put(file);
+                    logoUrl = await uploadTask.ref.getDownloadURL();
+                }
+                
                 // Call the service with captured templateId
                 const result = await siteService.createSite(user.uid, { 
-                    siteName: name, 
-                    category: category, 
-                    templateId: templateId 
+                    siteName: domain, 
+                    brandName: brandName,
+                    logoUrl: logoUrl,
+                    category: 'clothing', // Default for now
+                    templateId: selectedTemplate 
                 });
                 
                 if (result && result.subdomain) {
@@ -740,8 +749,9 @@
                         siteCount: firebase.firestore.FieldValue.increment(1)
                     });
 
-                    modal.style.display = 'none';
-                    nameInput.value = ''; 
+                    createSiteModal.style.display = 'none';
+                    domainInput.value = ''; 
+                    document.getElementById('site-brand-input').value = '';
                     loadSites(user.uid);
                     alert(`Website Created Successfully!\nYour Live URL: https://${result.subdomain}.fluxe.in`);
                 } else {
