@@ -12,27 +12,56 @@
 <body>
     <div class="dashboard-layout">
         <aside class="sidebar">
-            <h2 class="logo" style="margin-bottom: 2.5rem; display: block;">FLUXE</h2>
+            <h2 class="logo">FLUXE</h2>
             
-            <div class="plan-badge" id="user-plan-info" style="background: #334155; padding: 1rem; border-radius: 0.75rem; margin-bottom: 1.5rem;">
-                <span class="plan-badge-label" style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #94a3b8;">Current Plan</span>
-                <div class="plan-badge-value" id="current-plan-name" style="font-size: 1.125rem; font-weight: 700; color: white; margin-top: 0.25rem;">Loading...</div>
-                <div id="plan-status" style="font-size: 0.875rem; color: #94a3b8; margin-top: 0.25rem;">Active</div>
-                <div id="plan-dates" style="display: none; border-top: 1px solid #475569; margin-top: 0.75rem; padding-top: 0.75rem; font-size: 0.75rem; color: #94a3b8;">
-                    <div>Started: <span id="plan-start-date">-</span></div>
+            <div class="plan-badge" id="user-plan-info">
+                <div class="plan-info-group">
+                    <span class="plan-badge-label">Current Plan</span>
+                    <div class="plan-badge-value">
+                        <span id="current-plan-name">Loading...</span>
+                        <span id="plan-status" class="plan-status-pill status-active">Active</span>
+                    </div>
+                </div>
+                <div class="plan-details" id="plan-dates" style="display: none; text-align: right; font-size: 0.75rem; color: #6b7280;">
+                    <div><span id="plan-status-text">Active</span></div>
                     <div>Ends: <span id="plan-end-date">-</span></div>
                 </div>
             </div>
 
             <nav>
-                <ul style="list-style: none;">
-                    <li><a href="#" class="nav-link active" data-page="sites">My Websites</a></li>
-                    <li><a href="#" class="nav-link" data-page="plans">Upgrade Plans</a></li>
+                <ul>
+                    <li><a href="#" class="nav-link active" data-page="sites">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+                        My Websites
+                    </a></li>
+                    <li><a href="#" class="nav-link" data-page="plans">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                        Upgrade Plans
+                    </a></li>
                 </ul>
             </nav>
 
-            <button id="logout-btn" class="btn btn-outline" style="width: 100%; margin-top: auto;">Logout</button>
+            <button id="logout-btn" class="btn btn-outline" style="width: 100%; margin-top: auto; border: none; background: #f9fafb; color: #6b7280;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                Logout
+            </button>
         </aside>
+
+        <!-- Mobile Navigation Bar -->
+        <div class="mobile-nav">
+            <a href="#" class="mobile-nav-item active" data-page="sites">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+                <span>Sites</span>
+            </a>
+            <a href="#" class="mobile-nav-item" data-page="plans">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                <span>Plans</span>
+            </a>
+            <a href="#" class="mobile-nav-item" id="mobile-logout">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                <span>Logout</span>
+            </a>
+        </div>
 
         <main class="main-content">
             <!-- Sites Page -->
@@ -180,22 +209,34 @@
         let selectedTemplate = null;
 
         // Navigation
-        document.querySelectorAll('.nav-link').forEach(link => {
+        const updateActiveNav = (page) => {
+            document.querySelectorAll('.nav-link, .mobile-nav-item').forEach(link => {
+                if (link.dataset.page === page) {
+                    link.classList.add('active');
+                } else {
+                    link.classList.remove('active');
+                }
+            });
+
+            if (page === 'sites') {
+                document.getElementById('sites-page').style.display = 'block';
+                document.getElementById('plans-page').style.display = 'none';
+            } else {
+                document.getElementById('sites-page').style.display = 'none';
+                document.getElementById('plans-page').style.display = 'block';
+            }
+        };
+
+        document.querySelectorAll('.nav-link, .mobile-nav-item').forEach(link => {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
                 const page = link.dataset.page;
-                
-                document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-                link.classList.add('active');
-
-                if (page === 'sites') {
-                    document.getElementById('sites-page').style.display = 'block';
-                    document.getElementById('plans-page').style.display = 'none';
-                } else {
-                    document.getElementById('sites-page').style.display = 'none';
-                    document.getElementById('plans-page').style.display = 'block';
-                }
+                if (page) updateActiveNav(page);
             });
+        });
+
+        document.getElementById('mobile-logout')?.addEventListener('click', () => {
+            document.getElementById('logout-btn').click();
         });
 
         authService.onAuthStateChanged(async (user) => {
@@ -238,7 +279,8 @@
                     if (diff > 7) {
                         await expirePlan(user.uid, "Your 7-day free trial has expired. Please upgrade to a paid plan to continue using the website.");
                     } else {
-                        document.getElementById('plan-status').innerText = `${7 - diff} days left`;
+                        document.getElementById('plan-status').innerText = 'Active';
+                        document.getElementById('plan-status-text').innerText = `${7 - diff} days left`;
                     }
                 } else if (status === 'active') {
                     const now = new Date();
@@ -258,12 +300,13 @@
                         await expirePlan(user.uid, `Your ${billingCycle} plan has expired. Please renew your subscription to continue using your websites.`);
                     } else {
                         let statusText = daysRemaining >= 30 ? `${Math.floor(daysRemaining/30)} mo left` : `${daysRemaining} days left`;
-                        document.getElementById('plan-status').innerText = statusText;
-                        document.getElementById('plan-status').style.color = '#22c55e';
+                        document.getElementById('plan-status').innerText = 'Active';
+                        document.getElementById('plan-status-text').innerText = statusText;
                     }
                 } else if (status === 'expired') {
                     document.getElementById('plan-status').innerText = 'Expired';
-                    document.getElementById('plan-status').style.color = '#ef4444';
+                    document.getElementById('plan-status').className = 'plan-status-pill status-expired';
+                    document.getElementById('plan-status-text').innerText = 'Expired';
                     showOverlay("Your subscription has expired. Please upgrade to a paid plan to continue using the website.");
                 }
             }

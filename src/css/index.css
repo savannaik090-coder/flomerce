@@ -198,6 +198,7 @@ body {
 .dashboard-layout {
   display: flex;
   min-height: 100vh;
+  background-color: #f9fafb;
 }
 
 @media (max-width: 768px) {
@@ -207,37 +208,48 @@ body {
 }
 
 .sidebar {
-  width: 280px;
+  width: 260px;
   background: #ffffff;
-  border-right: 1px solid var(--border);
-  padding: 2rem 1.5rem;
+  border-right: 1px solid #f3f4f6;
+  padding: 1.5rem 1rem;
   display: flex;
   flex-direction: column;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  z-index: 40;
 }
 
 @media (max-width: 768px) {
   .sidebar {
     width: 100%;
+    height: auto;
+    position: sticky;
+    top: 0;
+    padding: 0.75rem 1rem;
     border-right: none;
-    border-bottom: 1px solid var(--border);
-    padding: 1rem;
+    border-bottom: 1px solid #f3f4f6;
     flex-direction: row;
     align-items: center;
     justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 1rem;
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(8px);
   }
 }
 
-.sidebar h2 {
+.sidebar h2.logo {
   font-size: 1.25rem;
-  font-weight: 700;
-  margin-bottom: 2.5rem;
+  font-weight: 800;
+  color: #111827;
+  letter-spacing: -0.05em;
+  margin-bottom: 2rem;
+  padding: 0 0.75rem;
 }
 
 @media (max-width: 768px) {
-  .sidebar h2 {
+  .sidebar h2.logo {
     margin-bottom: 0;
+    padding: 0;
   }
 }
 
@@ -247,22 +259,47 @@ body {
 
 @media (max-width: 768px) {
   .sidebar nav {
-    width: 100%;
-    order: 3;
+    display: none; /* Hide standard nav on mobile, use a mobile bar instead or toggle */
   }
   
-  .sidebar ul {
+  /* Mobile Bottom Navigation Bar */
+  .mobile-nav {
     display: flex;
-    gap: 0.5rem;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: white;
+    border-top: 1px solid #f3f4f6;
+    padding: 0.5rem;
+    justify-content: space-around;
+    z-index: 50;
+    box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.05);
   }
-  
-  .sidebar li {
+
+  .mobile-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    color: #6b7280;
+    text-decoration: none;
+    font-size: 0.7rem;
+    font-weight: 500;
+    padding: 0.5rem;
+    border-radius: 0.5rem;
     flex: 1;
-    margin-bottom: 0;
   }
-  
-  .sidebar .nav-link {
-    text-align: center;
+
+  .mobile-nav-item.active {
+    color: #2563eb;
+    background: #eff6ff;
+  }
+}
+
+@media (min-width: 769px) {
+  .mobile-nav {
+    display: none;
   }
 }
 
@@ -271,97 +308,123 @@ body {
 }
 
 .sidebar li {
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.25rem;
 }
 
 .sidebar .nav-link {
-  display: block;
-  padding: 0.75rem 1rem;
-  border-radius: 6px;
-  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 0.75rem;
+  border-radius: 0.5rem;
+  color: #4b5563;
   text-decoration: none;
   font-size: 0.875rem;
   font-weight: 500;
-  transition: all 0.2s;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.sidebar .nav-link:hover, .sidebar .nav-link.active {
-  background: #f4f4f5;
-  color: var(--text-main);
+.sidebar .nav-link:hover {
+  background: #f9fafb;
+  color: #111827;
+}
+
+.sidebar .nav-link.active {
+  background: #eff6ff;
+  color: #2563eb;
 }
 
 .main-content {
   flex-grow: 1;
-  background: #fafafa;
-  padding: 3rem;
+  padding: 2.5rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 @media (max-width: 768px) {
   .main-content {
     padding: 1.5rem;
+    padding-bottom: 5rem; /* Space for mobile nav */
   }
 }
 
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 3rem;
-}
-
-@media (max-width: 768px) {
-  .header {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 1rem;
-    margin-bottom: 2rem;
-  }
-  
-  .header h1 {
-    text-align: center;
-  }
-}
-
-.header h1 {
-  font-size: 1.875rem;
-  font-weight: 700;
-  letter-spacing: -0.025em;
-}
-
-/* Plan Info Badge */
+/* Modern Plan Badge */
 .plan-badge {
-  background: #f4f4f5;
-  border: 1px solid var(--border);
-  padding: 1.5rem;
-  border-radius: 12px;
-  margin-bottom: 2.5rem;
+  background: #ffffff;
+  border: 1px solid #f3f4f6;
+  padding: 1rem;
+  border-radius: 1rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
 }
 
 @media (max-width: 768px) {
   .plan-badge {
-    order: 2;
-    margin-bottom: 0;
-    padding: 0.75rem 1rem;
-    flex: 1;
+    padding: 0.75rem;
+    margin-bottom: 1.5rem;
+    border-radius: 0.75rem;
   }
   
-  .plan-badge #plan-dates {
-    display: none !important;
+  .plan-badge .plan-details {
+    display: none; /* Hide minor details on mobile header */
   }
+}
+
+.plan-info-group {
+  display: flex;
+  flex-direction: column;
 }
 
 .plan-badge-label {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 600;
-  color: var(--text-muted);
+  color: #6b7280;
   text-transform: uppercase;
-  margin-bottom: 0.5rem;
-  display: block;
+  letter-spacing: 0.025em;
 }
 
 .plan-badge-value {
-  font-size: 1.125rem;
+  font-size: 0.9375rem;
   font-weight: 700;
+  color: #111827;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.plan-status-pill {
+  font-size: 0.7rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  font-weight: 600;
+}
+
+.status-active {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+/* Header Adjustments */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+@media (max-width: 768px) {
+  .header {
+    margin-bottom: 1.5rem;
+  }
+  
+  .header h1 {
+    font-size: 1.5rem;
+  }
 }
 
 /* Sites List */
