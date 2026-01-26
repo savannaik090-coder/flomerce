@@ -7,18 +7,26 @@ export default {
     // Detect subdomain: mysite.fluxe.in
     if (parts.length >= 3 && parts[0] !== 'www' && parts[0] !== 'fluxe') {
       const subdomain = parts[0]
+      const originalPath = url.pathname === '/' ? '' : url.pathname
 
-      // Rewrite to Netlify origin
+      // Rewrite to Netlify origin with /w/ prefix for wildcard-router
       const targetUrl = new URL(request.url)
       targetUrl.hostname = 'fluxee.netlify.app'
-      targetUrl.pathname = `/s/${subdomain}${targetUrl.pathname}`
+      targetUrl.pathname = `/w/${subdomain}${originalPath}`
+
+      // Preserve query string
+      targetUrl.search = url.search
 
       const newRequest = new Request(targetUrl.toString(), {
         method: request.method,
-        headers: request.headers,
-        body: request.method === 'GET' ? null : request.body,
+        headers: new Headers(request.headers),
+        body: request.method !== 'GET' && request.method !== 'HEAD' ? request.body : null,
         redirect: 'follow',
       })
+
+      // Pass original host for reference
+      newRequest.headers.set('X-Original-Host', hostname)
+      newRequest.headers.set('X-Subdomain', subdomain)
 
       return fetch(newRequest)
     }
@@ -31,7 +39,7 @@ export default {
     const mainRequest = new Request(mainUrl.toString(), {
       method: request.method,
       headers: new Headers(request.headers),
-      body: request.method === 'GET' ? null : request.body,
+      body: request.method !== 'GET' && request.method !== 'HEAD' ? request.body : null,
       redirect: 'follow',
     })
     mainRequest.headers.set('X-Forwarded-Host', hostname)
