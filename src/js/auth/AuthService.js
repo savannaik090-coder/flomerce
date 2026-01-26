@@ -85,6 +85,14 @@ class AuthService {
   onAuthStateChanged(callback) {
     return this.auth.onAuthStateChanged(callback);
   }
+
+  /**
+   * Returns the currently authenticated user, or null if not logged in.
+   * @returns {Object|null} The current Firebase user object.
+   */
+  getCurrentUser() {
+    return this.auth.currentUser;
+  }
 }
 
 export const authService = new AuthService();
