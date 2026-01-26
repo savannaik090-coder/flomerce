@@ -102,6 +102,7 @@ body {
     position: fixed;
     bottom: calc(env(safe-area-inset-bottom) + 5rem); /* Above bottom nav */
     right: 1.5rem;
+    left: auto; /* Ensure it's not sticking to the left */
     z-index: 900;
     width: 56px;
     height: 56px;
@@ -111,7 +112,11 @@ body {
     justify-content: center;
     box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
     padding: 0;
-    transition: transform 0.2s;
+    transition: transform 0.2s, background-color 0.2s;
+    background-color: #2563eb;
+    color: white;
+    border: none;
+    cursor: pointer;
 }
 
 .floating-create-btn:hover {
