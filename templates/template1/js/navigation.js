@@ -176,8 +176,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // Close navMenu when clicking a nav link on mobile
     const navLinks = document.querySelectorAll('.nav-link:not(.dropdown-toggle)');
     navLinks.forEach(link => {
-        link.addEventListener('click', function() {
-            if (window.innerWidth <= 991) {
+        link.addEventListener('click', function(e) {
+            const href = this.getAttribute('href');
+            if (href && href.startsWith('#')) {
+                // It's an anchor link, let it stay on the same page
+            } else if (window.innerWidth <= 991) {
                 closeMobileMenu();
             }
         });
