@@ -420,12 +420,38 @@
         document.getElementById('confirm-create-btn').addEventListener('click', async () => {
             const domain = document.getElementById('site-domain-input').value;
             const brand = document.getElementById('site-brand-input').value;
+            const logoFile = document.getElementById('site-logo-input').files[0];
+
             if (!domain || !brand) { alert('Please fill in all details.'); return; }
+            
             try {
-                await siteService.createSite(authService.getCurrentUser().uid, { siteName: domain, brandName: brand, templateId: selectedTemplate });
+                const btn = document.getElementById('confirm-create-btn');
+                btn.disabled = true;
+                btn.innerText = 'Creating...';
+
+                let logoUrl = '';
+                if (logoFile) {
+                    const storageRef = firebase.storage().ref(`logos/${authService.getCurrentUser().uid}/${Date.now()}_${logoFile.name}`);
+                    const uploadTask = await storageRef.put(logoFile);
+                    logoUrl = await uploadTask.ref.getDownloadURL();
+                }
+
+                await siteService.createSite(authService.getCurrentUser().uid, { 
+                    siteName: domain, 
+                    brandName: brand, 
+                    templateId: selectedTemplate,
+                    logoUrl: logoUrl
+                });
+                
                 modal.style.display = 'none';
                 loadSites(authService.getCurrentUser().uid);
-            } catch (error) { alert(error.message); }
+            } catch (error) { 
+                alert(error.message); 
+            } finally {
+                const btn = document.getElementById('confirm-create-btn');
+                btn.disabled = false;
+                btn.innerText = 'Confirm & Create';
+            }
         });
 
         document.getElementById('logout-btn').addEventListener('click', () => authService.logout());
