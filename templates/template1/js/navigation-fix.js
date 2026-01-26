@@ -17,10 +17,12 @@
         console.log("Navigating to:", href);
         
         // Force the browser to treat the path as a fresh navigation relative to the current subdomain root
-        // This helps overcome any internal state that might be trying to append paths or strip subdomains
+        // Use an absolute path from the origin to ensure it works from any nesting level
         if (href.startsWith('/')) {
             e.preventDefault();
-            window.location.href = window.location.origin + href;
+            const targetUrl = window.location.origin + href;
+            console.log("Redirecting to:", targetUrl);
+            window.location.href = targetUrl;
         }
     }
 
