@@ -711,7 +711,8 @@
         document.getElementById('confirm-create-btn').onclick = async () => {
             const domainInput = document.getElementById('site-domain-input');
             const domain = domainInput.value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-');
-            const brandName = document.getElementById('site-brand-input').value.trim();
+            const brandNameInput = document.getElementById('site-brand-input');
+            const brandName = brandNameInput.value.trim();
             const logoInput = document.getElementById('site-logo-input');
             
             if (!domain) { alert("Please enter a domain name"); return; }
@@ -751,7 +752,8 @@
 
                     createSiteModal.style.display = 'none';
                     domainInput.value = ''; 
-                    document.getElementById('site-brand-input').value = '';
+                    brandNameInput.value = '';
+                    logoInput.value = ''; // Clear file input
                     loadSites(user.uid);
                     alert(`Website Created Successfully!\nYour Live URL: https://${result.subdomain}.fluxe.in`);
                 } else {
