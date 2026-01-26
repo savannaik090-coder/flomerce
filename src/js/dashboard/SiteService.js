@@ -68,6 +68,8 @@ class SiteService {
         transaction.set(newSiteRef, {
           ...siteData,
           siteName: siteName,
+          brandName: siteData.brandName || siteName,
+          logoUrl: siteData.logoUrl || '',
           ownerId: uid,
           subdomain: subdomain,
           siteUrl: siteUrl,

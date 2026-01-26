@@ -726,13 +726,16 @@
 
             try {
                 const user = firebase.auth().currentUser;
+                console.log("Creation Start - User:", user.uid);
                 
                 let logoUrl = '';
                 if (logoInput.files && logoInput.files[0]) {
                     const file = logoInput.files[0];
+                    console.log("Logo detected, starting upload:", file.name);
                     const storageRef = firebase.storage().ref(`logos/${user.uid}/${Date.now()}_${file.name}`);
                     const uploadTask = await storageRef.put(file);
                     logoUrl = await uploadTask.ref.getDownloadURL();
+                    console.log("Logo upload complete. URL:", logoUrl);
                 }
                 
                 // Call the service with captured templateId
@@ -744,6 +747,8 @@
                     templateId: selectedTemplate 
                 });
                 
+                console.log("Site created successfully. Result:", result);
+
                 if (result && result.subdomain) {
                     // Success - Update UI
                     await firebase.firestore().collection('users').doc(user.uid).update({
