@@ -479,6 +479,8 @@ body {
   background: white;
   width: 100%;
   max-width: 600px;
+  max-height: 85vh;
+  overflow-y: auto;
   border-radius: 16px;
   padding: 2.5rem;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
@@ -487,8 +489,10 @@ body {
 @media (max-width: 768px) {
   .modal-content {
     width: 95%;
+    max-height: 75vh;
     padding: 1.5rem;
     margin: 1rem;
+    margin-bottom: 5rem;
   }
   
   #template-selection-container {
