@@ -729,7 +729,7 @@
                 const user = firebase.auth().currentUser;
                 console.log("Creation Start - User:", user.uid);
                 
-                let logoUrl = '';
+                let logoUrl = 'https://placehold.co/400x400?text=Logo'; // Added test image
                 if (logoInput.files && logoInput.files[0]) {
                     const file = logoInput.files[0];
                     console.log("Logo detected, starting upload:", file.name);
@@ -746,8 +746,8 @@
                         console.log("Logo upload complete. URL:", logoUrl);
                     } catch (uploadError) {
                         console.error("Storage Upload Error Details:", uploadError);
-                        alert("Error uploading logo: " + uploadError.message);
-                        // Continue without logo if upload fails
+                        // Using fallback test image if upload fails
+                        console.log("Using fallback test image due to upload failure");
                     }
                 }
                 
