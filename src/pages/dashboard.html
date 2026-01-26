@@ -386,7 +386,10 @@
         }
 
         function showPlanSelectionOverlay(message) {
-            showOverlay(message);
+            // Instead of showing an overlay, we navigate the user directly to the plans page
+            document.querySelector('[data-page="plans"]').click();
+            // We can show a simple toast or alert if needed, but per user request, we just open the plans section.
+            console.log("Forcing plan selection:", message);
         }
 
         async function expirePlan(uid, message) {
