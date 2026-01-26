@@ -171,6 +171,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-storage-compat.js"></script>
     <script type="module">
         import { authService } from '/src/js/auth/AuthService.js';
         import { siteService } from '/src/js/dashboard/SiteService.js';
@@ -732,10 +733,20 @@
                 if (logoInput.files && logoInput.files[0]) {
                     const file = logoInput.files[0];
                     console.log("Logo detected, starting upload:", file.name);
-                    const storageRef = firebase.storage().ref(`logos/${user.uid}/${Date.now()}_${file.name}`);
-                    const uploadTask = await storageRef.put(file);
-                    logoUrl = await uploadTask.ref.getDownloadURL();
-                    console.log("Logo upload complete. URL:", logoUrl);
+                    
+                    // Explicitly initialize storage if not already
+                    const storage = firebase.storage();
+                    const storageRef = storage.ref(`logos/${user.uid}/${Date.now()}_${file.name}`);
+                    
+                    try {
+                        const uploadTask = await storageRef.put(file);
+                        logoUrl = await uploadTask.ref.getDownloadURL();
+                        console.log("Logo upload complete. URL:", logoUrl);
+                    } catch (uploadError) {
+                        console.error("Storage Upload Error:", uploadError);
+                        alert("Error uploading logo: " + uploadError.message);
+                        // Continue without logo if upload fails
+                    }
                 }
                 
                 // Call the service with captured templateId
