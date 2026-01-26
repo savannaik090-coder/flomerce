@@ -178,8 +178,8 @@ document.addEventListener('DOMContentLoaded', function() {
     navLinks.forEach(link => {
         link.addEventListener('click', function(e) {
             const href = this.getAttribute('href');
-            if (href && href.startsWith('#')) {
-                // It's an anchor link, let it stay on the same page
+            if (href && (href === '#' || href.startsWith('#'))) {
+                // It's an anchor or toggle link, let it stay on the same page
             } else if (window.innerWidth <= 991) {
                 closeMobileMenu();
             }
