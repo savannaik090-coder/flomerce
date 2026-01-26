@@ -1,35 +1,44 @@
-// Navigation Fix Version 7 - Subdomain Routing Optimization
+// Navigation Fix Version 6 - Ultra-Safe for Menu Toggles and Subdomains
 (function() {
-    console.log("Navigation fix V7 initialized");
+    console.log("Navigation fix V6 initialized");
     
-    // Set base path for all relative links
-    if (!document.querySelector('base')) {
-        const base = document.createElement('base');
-        base.href = '/';
-        document.head.prepend(base);
-    }
-
     function handleNavigation(e) {
+        // Find the closest anchor tag
         const link = e.target.closest('a');
         if (!link) return;
 
         const href = link.getAttribute('href');
         
-        // Ignore hashes and UI toggles
-        if (!href || href === '#' || href.startsWith('#')) return;
-        
-        // Skip external protocols and absolute URLs
-        if (href.startsWith('http') || href.startsWith('//') || href.startsWith('mailto:') || href.startsWith('tel:')) return;
+        // 1. CRITICAL: NEVER INTERCEPT MENU TOGGLES OR HASH LINKS
+        // If it starts with # or is just #, let the other scripts handle it
+        if (!href || href === '#' || href.startsWith('#')) {
+            return;
+        }
 
-        console.log("Processing internal link:", href);
+        // 2. SKIP EXTERNAL LINKS
+        if (href.startsWith('http') || href.startsWith('//') || href.startsWith('mailto:') || href.startsWith('tel:')) {
+            return;
+        }
+
+        // 3. LOCK TO SUBDOMAIN
+        // If it's a relative path, force it to be absolute from the subdomain origin
+        console.log("Processing link click:", href);
         
-        // Always resolve to the root of the current subdomain
-        const targetUrl = window.location.origin + (href.startsWith('/') ? href : '/' + href);
+        let path = href;
+        if (!path.startsWith('/')) {
+            path = '/' + path;
+        }
+
+        // Force browser to stay on current subdomain
+        const targetUrl = window.location.origin + path;
+        console.log("Redirecting to:", targetUrl);
         
-        console.log("Forcing navigation to:", targetUrl);
         e.preventDefault();
-        window.location.href = targetUrl;
+        // Use assign to ensure a clean history state and bypass some router intercepts
+        window.location.assign(targetUrl);
     }
 
+    // Use bubbling phase (false) to allow specific button handlers (like menu toggle) 
+    // to stopPropagation if they need to, but we'll catch regular links.
     document.addEventListener('click', handleNavigation, false);
 })();
