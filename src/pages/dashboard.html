@@ -755,9 +755,14 @@
                     logoUrl: logoUrl
                 });
                 
-                modal.style.display = 'none';
-                floatingBtn.style.display = 'flex';
+                closeModal(); // Use the standard close function for smooth transition
                 loadSites(authService.getCurrentUser().uid);
+                
+                // Reset form for next time
+                document.getElementById('site-domain-input').value = '';
+                document.getElementById('site-brand-input').value = '';
+                document.getElementById('site-logo-input').value = '';
+                switchStep(2, 1);
             } catch (error) { 
                 alert(error.message); 
             } finally {
