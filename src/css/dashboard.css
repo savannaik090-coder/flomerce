@@ -111,7 +111,7 @@ body {
     }
     .main-content {
         padding: 1.5rem;
-        padding-bottom: 5rem; /* Space for mobile nav */
+        padding-bottom: 8rem; /* Increased space for mobile nav and visibility */
     }
     .mobile-nav {
         display: flex;
