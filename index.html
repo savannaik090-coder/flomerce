@@ -14,15 +14,15 @@
             bottom: -100px;
             left: 0;
             right: 0;
-            background: #ffffff;
+            background: #000000;
             padding: 1rem;
-            box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.3);
             display: flex;
             align-items: center;
             justify-content: space-between;
             transition: bottom 0.5s cubic-bezier(0.4, 0, 0.2, 1);
             z-index: 1000;
-            border-top: 1px solid #e5e7eb;
+            border-top: 1px solid #333333;
         }
         .pwa-install-bar.show {
             bottom: 0;
@@ -35,18 +35,19 @@
         .pwa-logo {
             width: 40px;
             height: 40px;
-            border-radius: 8px;
+            border-radius: 50%;
+            object-fit: cover;
         }
         .pwa-text h4 {
             margin: 0;
             font-size: 0.9375rem;
             font-weight: 600;
-            color: #111827;
+            color: #ffffff;
         }
         .pwa-text p {
             margin: 0;
             font-size: 0.8125rem;
-            color: #6b7280;
+            color: #9ca3af;
         }
         .pwa-actions {
             display: flex;
