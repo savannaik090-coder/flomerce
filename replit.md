@@ -13,12 +13,6 @@ Fluxe is a SaaS platform that allows users to create their own e-commerce websit
 - **Auth:** Custom JWT-based authentication
 - **Payments:** Razorpay (unchanged)
 
-**Legacy Stack (being phased out):**
-- Netlify Functions → Cloudflare Workers
-- Firebase Firestore → Cloudflare D1
-- Firebase Storage → Cloudflare R2
-- Firebase Auth → Custom Auth with Workers
-
 ## Project Structure
 
 ```
@@ -26,7 +20,7 @@ Fluxe is a SaaS platform that allows users to create their own e-commerce websit
 ├── frontend/                      # Cloudflare Pages (static frontend)
 │   ├── index.html                 # Main SaaS landing page
 │   ├── src/
-│   │   ├── js/api/                # NEW: API services (replaces Firebase)
+│   │   ├── js/api/                # API services (replaces Firebase)
 │   │   │   ├── AuthService.js     # Authentication API
 │   │   │   ├── SiteService.js     # Site management API
 │   │   │   ├── ProductService.js  # Products API
@@ -40,9 +34,18 @@ Fluxe is a SaaS platform that allows users to create their own e-commerce websit
 │   │   └── pages/                 # SaaS pages (login, signup, dashboard)
 │   ├── templates/
 │   │   ├── template1/             # MAIN TEMPLATE (Jewellery)
+│   │   │   ├── category.html      # DYNAMIC - Single template for all categories
+│   │   │   ├── js/
+│   │   │   │   ├── category-loader.js  # Loads category based on URL slug
+│   │   │   │   ├── auth-service.js     # API-based authentication
+│   │   │   │   ├── api-cart-manager.js # API-based cart
+│   │   │   │   ├── api-wishlist-manager.js # API-based wishlist
+│   │   │   │   └── ... (other scripts)
+│   │   │   └── ... (other pages)
 │   │   └── clothing/              # Clothing template
 │   ├── admin-panel/               # Admin panel
-│   └── dashboard/                 # User dashboard
+│   ├── dashboard/                 # User dashboard
+│   └── public/                    # Static assets
 │
 ├── backend/                       # Cloudflare Workers (API)
 │   ├── workers/
@@ -62,22 +65,28 @@ Fluxe is a SaaS platform that allows users to create their own e-commerce websit
 │   │   └── auth.js                # JWT & password utilities
 │   ├── schema/
 │   │   └── d1-schema.sql          # D1 database schema
-│   ├── migrations/
-│   │   └── firebase-export.js     # Firebase data migration script
 │   ├── wrangler.toml              # Cloudflare Workers config
 │   └── package.json               # Backend dependencies
-│
-├── templates/view/                # Preview templates (NO MIGRATION NEEDED)
-│   └── template1/
-│
-├── guide/                         # User guide (NO MIGRATION NEEDED)
-│
-├── src/                           # LEGACY: Old SaaS platform files
-├── netlify/                       # LEGACY: Old Netlify functions
 │
 └── docs/
     └── MIGRATION_PLAN_FIREBASE_TO_CLOUDFLARE.md
 ```
+
+## Dynamic Category System
+
+The dynamic category system replaces all hardcoded category pages:
+
+- **Single Template**: `category.html` with `category-loader.js` handles ALL categories
+- **URL Structure**: `/category/{slug}` (e.g., `/category/gold-necklace`, `/category/new-arrivals`)
+- **User-Defined**: Categories are created by users during website setup
+- **Admin Management**: Users can add/edit/delete categories from their admin panel
+
+**Removed Files (Hardcoded Categories):**
+- new-arrivals.html, featured-collection.html, saree-collection.html, all-collection.html
+- gold-necklace.html, silver-necklace.html, meenakari-necklace.html
+- gold-earrings.html, silver-earrings.html, meenakari-earrings.html
+- gold-bangles.html, silver-bangles.html, meenakari-bangles.html
+- gold-rings.html, silver-rings.html, meenakari-rings.html
 
 ## API Endpoints (Cloudflare Workers)
 
@@ -93,8 +102,10 @@ Fluxe is a SaaS platform that allows users to create their own e-commerce websit
 | `/api/cart` | GET, POST, PUT, DELETE | Shopping cart |
 | `/api/wishlist` | GET, POST, DELETE | Wishlist management |
 | `/api/payments/*` | POST | Razorpay payment processing |
-| `/api/categories` | GET, POST | Dynamic categories |
+| `/api/categories` | GET, POST, PUT, DELETE | Dynamic categories |
 | `/api/email/*` | POST | Transactional emails |
+| `/api/notifications` | GET, POST | Admin notifications |
+| `/api/videos/watch-buy` | GET | Watch & Buy videos |
 | `/api/health` | GET | Health check |
 
 ## Database Schema (D1)
@@ -111,10 +122,6 @@ Main tables:
 
 ## Environment Variables Required
 
-**Cloudflare (Already Added):**
-- `CLOUDFLARE_ACCOUNT_ID` - Cloudflare account ID
-- `CLOUDFLARE_API_TOKEN` - API token for Wrangler
-
 **To Be Added:**
 - `JWT_SECRET` - Secret for JWT token signing
 - `RAZORPAY_KEY_ID` - Razorpay public key
@@ -122,76 +129,59 @@ Main tables:
 - `RESEND_API_KEY` or `SENDGRID_API_KEY` - Email service
 - `FROM_EMAIL` - Sender email address
 
-## Deployment
-
-### Backend (Cloudflare Workers)
-```bash
-cd backend
-npm install
-npm run db:create          # Create D1 database
-npm run db:migrate         # Apply schema
-npm run r2:create          # Create R2 bucket
-npm run deploy             # Deploy workers
-```
-
-### Frontend (Cloudflare Pages)
-```bash
-cd frontend
-# Connect to Cloudflare Pages via dashboard or wrangler
-wrangler pages deploy . --project-name=saas-frontend
-```
-
-## Features
-
-### Dynamic Category System (NEW)
-- Users can create/edit/delete their own categories
-- Categories are stored per-site in D1 database
-- Default categories created based on business type
-- Hierarchical categories with parent/child relationships
-
-### Multi-Tenant Architecture
-- Each site has unique subdomain
-- Data isolation via `site_id` in all tables
-- Subdomain routing handled by Workers
-
-### Authentication
-- JWT-based session management
-- Password hashing with PBKDF2
-- Email verification flow
-- Password reset flow
-
 ## Migration Status
 
+**Completed:**
 - [x] Backend folder structure created
 - [x] D1 database schema designed
 - [x] All Cloudflare Workers implemented
 - [x] Frontend API services created
-- [x] Data migration scripts prepared
 - [x] Dynamic category system with single template
-- [x] Firebase code removed from cart/wishlist/checkout
-- [x] Product loaders migrated to API-based
+- [x] Firebase code removed from cart-manager.js, wishlist-manager.js
+- [x] Firebase code removed from checkout-script-simplified.js
+- [x] Firebase code removed from order-track.js, testimonial-scroller.js
+- [x] Hardcoded collection pages removed (new-arrivals, featured-collection, saree-collection, all-collection)
+- [x] Collection-specific loaders removed
+- [x] Firebase documentation removed
+- [x] Duplicate admin-panel/js folder removed
 - [x] Legacy files removed (firebase.json, firestore.rules, netlify folder)
+
+**Pending (HTML Files - Needs Manual Update):**
+- [ ] product-detail.html - Firebase SDK script tags (non-functional, need removal)
+- [ ] verify-email.html - Firebase SDK script tags (non-functional)
+- [ ] reset-password.html - Firebase SDK script tags (non-functional)
+- [ ] contact-us.html - Firebase SDK script tags (non-functional)
+- [ ] profile.html - Inline Firebase Firestore code (needs refactor to API)
+- [ ] products-admin-panel.html - Extensive Firebase code (needs major refactor)
+- [ ] admin-panel.html - Firebase code (needs refactor)
+
+**Backend Deployment:**
 - [ ] D1 database created in Cloudflare
 - [ ] R2 bucket created
 - [ ] Firebase data exported and migrated
-- [ ] Admin panel category management UI
+- [ ] Workers deployed to Cloudflare
 - [ ] Testing and verification
-- [ ] Firebase decommissioning
 
 ## Recent Changes
 
-- **January 31, 2026**: Firebase cleanup and API migration
-  - Removed Firebase auth from cart-manager.js, wishlist-manager.js, checkout-script-simplified.js
-  - Updated product loaders (featured-collection, new-arrivals, saree-collection) to use API
-  - Created dynamic category.html template with category-loader.js
-  - Removed 12 hardcoded category HTML files (gold-necklace.html, etc.)
-  - Removed firebase.json, firestore.rules, netlify/ folder with 40+ functions
-  - Created auth-service.js, api-cart-manager.js, api-wishlist-manager.js for API integration
-  - Backend site-router.js handles dynamic /category/{slug} routing
-  - Categories API with full CRUD operations
+- **January 31, 2026**: Comprehensive Firebase cleanup
+  - Removed hardcoded collection HTML pages (new-arrivals, featured-collection, saree-collection, all-collection)
+  - Removed collection-specific JS loaders
+  - Updated order-track.js, checkout-script-simplified.js, testimonial-scroller.js to use API
+  - Removed duplicate admin-panel/js folder
+  - Removed Firebase documentation from frontend/src/docs/
+  - Removed old documents folder from template1
+
+- **Previous**: Firebase to Cloudflare migration foundation
+  - Created API services (auth, cart, wishlist, products, categories)
+  - Created dynamic category.html template
+  - Updated cart-manager.js, wishlist-manager.js to use API
+  - Updated product loaders to use API
+  - Backend workers structure created
 
 ## Notes
 
-- **DO NOT MIGRATE**: `templates/view/` and `guide/` folders
+- **HTML Files**: Still contain Firebase SDK script tags that reference non-existent files. These cause 404 errors but don't break functionality since JS uses API calls now.
+- **Admin Panels**: profile.html and products-admin-panel.html have extensive inline Firebase code that requires significant refactoring to migrate to API.
 - **Shiprocket Integration**: Skipped in migration (was non-functional)
 - **Push Notifications**: To be implemented later with Web Push
