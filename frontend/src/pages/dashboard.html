@@ -751,6 +751,12 @@
         const switchStep = (from, to) => {
             const fromEl = document.getElementById(`modal-step-${from}`);
             const toEl = document.getElementById(`modal-step-${to}`);
+            
+            // Clean up previous step
+            if (from === 3 && to === 2) {
+                // Keep data but just switch view
+            }
+
             fromEl.style.opacity = '0';
             fromEl.style.transform = 'translateX(-20px)';
             setTimeout(() => {
@@ -814,20 +820,27 @@
             try {
                 const btn = document.getElementById('confirm-create-btn');
                 btn.disabled = true;
+                const originalText = btn.innerText;
                 btn.innerText = 'Creating...';
 
                 let logoUrl = '';
                 if (logoFile) {
-                    const formData = new FormData();
-                    formData.append('file', logoFile);
-                    formData.append('path', `logos/${authService.getCurrentUser().uid}/${Date.now()}_${logoFile.name}`);
-                    
-                    const uploadRes = await fetch('/api/upload', {
-                        method: 'POST',
-                        body: formData
-                    });
-                    const uploadData = await uploadRes.json();
-                    logoUrl = uploadData.url;
+                    try {
+                        const formData = new FormData();
+                        formData.append('file', logoFile);
+                        formData.append('path', `logos/${authService.getCurrentUser()?.uid || 'guest'}/${Date.now()}_${logoFile.name}`);
+                        
+                        const uploadRes = await fetch('/api/upload', {
+                            method: 'POST',
+                            body: formData
+                        });
+                        if (uploadRes.ok) {
+                            const uploadData = await uploadRes.json();
+                            logoUrl = uploadData.url;
+                        }
+                    } catch (uploadErr) {
+                        console.error('Logo upload failed, continuing without logo:', uploadErr);
+                    }
                 }
 
                 await siteService.createSite({ 
@@ -837,6 +850,29 @@
                     logoUrl: logoUrl,
                     categories: categories
                 });
+                
+                closeModal();
+                loadSites();
+                
+                // Reset form
+                document.getElementById('site-domain-input').value = '';
+                document.getElementById('site-brand-input').value = '';
+                document.getElementById('site-logo-input').value = '';
+                document.getElementById('categories-container').innerHTML = `
+                    <div class="category-input-group" style="display: flex; gap: 0.5rem; align-items: center;">
+                        <input type="text" class="category-name-input" placeholder="Category Name (e.g. Rings)" style="flex: 1;">
+                        <button class="btn btn-outline remove-category-btn" style="padding: 0.5rem; border-color: #fecaca; color: #ef4444;" disabled>×</button>
+                    </div>
+                `;
+                switchStep(3, 1);
+            } catch (error) {
+                alert('Error creating website: ' + error.message);
+            } finally {
+                const btn = document.getElementById('confirm-create-btn');
+                btn.disabled = false;
+                btn.innerText = 'Create Website';
+            }
+        });
                 
                 closeModal(); // Use the standard close function for smooth transition
                 loadSites(authService.getCurrentUser().uid);

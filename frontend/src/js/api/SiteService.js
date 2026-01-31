@@ -26,6 +26,7 @@ class SiteService {
         body: JSON.stringify({
           brandName: siteData.brandName || siteData.siteName,
           category: siteData.category,
+          categories: siteData.categories || [], // Pass the dynamic categories list
           templateId: siteData.templateId || 'template1',
           logoUrl: siteData.logoUrl,
           phone: siteData.phone,
