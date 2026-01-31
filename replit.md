@@ -89,3 +89,35 @@ These need to be converted to a dynamic category system where users can create t
 
 ## Recent Changes
 - January 31, 2026: Created comprehensive migration plan documentation
+
+## Session Notes & Conversations
+
+### January 31, 2026 - Migration Planning Discussion
+
+**Discussion Summary:**
+- Reviewed the complete Firebase to Cloudflare migration plan (`docs/MIGRATION_PLAN_FIREBASE_TO_CLOUDFLARE.md`)
+- Discussed implementation approach and what credentials would be needed
+
+**Key Points Covered:**
+1. **Current Stack**: Firebase (Auth, Firestore, Storage, FCM) + Netlify (Hosting, Functions) + Razorpay
+2. **Target Stack**: Cloudflare (Pages, Workers, D1, R2) + Custom Auth or third-party + Razorpay
+3. **Migration is 8 phases over ~8 weeks**
+4. **Expected cost savings**: 70-85% reduction
+
+**Credentials Required for Cloudflare Migration:**
+The following will be needed from the user to implement the migration:
+- Cloudflare Account (user must create at cloudflare.com)
+- Cloudflare API Token (for Wrangler CLI access)
+- Cloudflare Account ID
+- Email service credentials (Resend, Mailgun, etc. for transactional emails)
+
+**Decisions Pending:**
+- [ ] Authentication approach: Custom build vs Clerk/Auth0?
+- [ ] Email service provider selection
+- [ ] Whether to rebuild Shiprocket integration or skip initially
+- [ ] Push notification strategy (self-managed Web Push or defer)
+
+**Next Steps:**
+1. User to create Cloudflare account and provide API credentials
+2. Set up Cloudflare infrastructure (Pages, D1, R2)
+3. Begin Phase 1: Infrastructure Setup
