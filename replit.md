@@ -146,8 +146,8 @@ Main tables:
 - [x] Core pages migrated: product-detail, contact-us, verify-email, reset-password, about-us, checkout, book-appointment
 
 **Pending (Admin Panels - Major Refactor):**
-- [ ] login.html - Still uses FirebaseAuth (partially works via alias)
-- [ ] signup.html - Still uses Firebase SDK directly
+- [x] login.html - Migrated to use auth-service.js (REST API)
+- [x] signup.html - Migrated to use auth-service.js (REST API)
 - [ ] profile.html - Extensive inline Firebase Firestore code
 - [ ] products-admin-panel.html - Thousands of lines of Firebase code
 - [ ] admin-panel.html - Extensive Firebase integration
@@ -160,6 +160,13 @@ Main tables:
 - [ ] Testing and verification
 
 ## Recent Changes
+
+- **January 31, 2026**: Login & Signup migration completed
+  - Migrated login.html to use REST API via auth-service.js
+  - Migrated signup.html to use REST API via auth-service.js
+  - Removed direct Firebase SDK calls from signup.html (Google Auth, Firebase checks)
+  - Updated error handling to work with API responses
+  - Both pages now fully use the FirebaseAuth alias backed by REST API
 
 - **January 31, 2026**: Comprehensive Firebase cleanup
   - Removed Firebase SDK script tags from: product-detail, contact-us, verify-email, reset-password, about-us, checkout, book-appointment
@@ -180,7 +187,8 @@ Main tables:
 ## Notes
 
 - **FirebaseAuth Alias**: auth-service.js provides a `window.FirebaseAuth` alias for backward compatibility with legacy code
-- **Admin Panels**: profile.html and products-admin-panel.html require significant refactoring (thousands of lines of Firebase code)
-- **Login/Signup**: These pages use FirebaseAuth methods which partially work via the alias but need full migration
+- **Admin Panels**: profile.html, products-admin-panel.html, and admin-panel.html require significant refactoring (thousands of lines of Firebase code)
+- **Login/Signup**: Fully migrated to use REST API via auth-service.js
+- **Google OAuth**: Requires backend OAuth setup - currently returns user-friendly message
 - **Shiprocket Integration**: Skipped in migration (was non-functional)
 - **Push Notifications**: Pending Web Push implementation
