@@ -1,0 +1,381 @@
+import { generateId, generateToken, getExpiryDate, validateEmail, sanitizeInput, jsonResponse, errorResponse, successResponse, handleCORS } from '../utils/helpers.js';
+import { hashPassword, verifyPassword, generateJWT, validateAuth } from '../utils/auth.js';
+
+export async function handleAuth(request, env, path) {
+  const corsResponse = handleCORS(request);
+  if (corsResponse) return corsResponse;
+
+  const method = request.method;
+  const action = path.split('/').pop();
+
+  switch (action) {
+    case 'signup':
+      return handleSignup(request, env);
+    case 'login':
+      return handleLogin(request, env);
+    case 'logout':
+      return handleLogout(request, env);
+    case 'verify-email':
+      return handleVerifyEmail(request, env);
+    case 'send-verification':
+      return handleSendVerification(request, env);
+    case 'reset-password':
+      return handleResetPassword(request, env);
+    case 'request-reset':
+      return handleRequestReset(request, env);
+    case 'me':
+      return handleGetCurrentUser(request, env);
+    case 'update-profile':
+      return handleUpdateProfile(request, env);
+    default:
+      return errorResponse('Not found', 404);
+  }
+}
+
+async function handleSignup(request, env) {
+  if (request.method !== 'POST') {
+    return errorResponse('Method not allowed', 405);
+  }
+
+  try {
+    const { name, email, password, phone } = await request.json();
+
+    if (!name || !email || !password) {
+      return errorResponse('Name, email and password are required');
+    }
+
+    if (!validateEmail(email)) {
+      return errorResponse('Invalid email format');
+    }
+
+    if (password.length < 8) {
+      return errorResponse('Password must be at least 8 characters');
+    }
+
+    const existingUser = await env.DB.prepare(
+      'SELECT id FROM users WHERE email = ?'
+    ).bind(email.toLowerCase()).first();
+
+    if (existingUser) {
+      return errorResponse('Email already registered', 400, 'EMAIL_EXISTS');
+    }
+
+    const userId = generateId();
+    const passwordHash = await hashPassword(password);
+    const verificationToken = generateToken();
+
+    await env.DB.prepare(
+      `INSERT INTO users (id, email, password_hash, name, phone, email_verified, created_at)
+       VALUES (?, ?, ?, ?, ?, 0, datetime('now'))`
+    ).bind(userId, email.toLowerCase(), passwordHash, sanitizeInput(name), phone || null).run();
+
+    await env.DB.prepare(
+      `INSERT INTO email_verifications (id, user_id, token, expires_at)
+       VALUES (?, ?, ?, ?)`
+    ).bind(generateId(), userId, verificationToken, getExpiryDate(24)).run();
+
+    const token = await generateJWT({ userId, email: email.toLowerCase() }, env.JWT_SECRET || 'your-secret-key');
+
+    return successResponse({
+      user: {
+        id: userId,
+        email: email.toLowerCase(),
+        name: sanitizeInput(name),
+        emailVerified: false,
+      },
+      token,
+      verificationToken,
+    }, 'Account created successfully');
+  } catch (error) {
+    console.error('Signup error:', error);
+    return errorResponse('Failed to create account', 500);
+  }
+}
+
+async function handleLogin(request, env) {
+  if (request.method !== 'POST') {
+    return errorResponse('Method not allowed', 405);
+  }
+
+  try {
+    const { email, password } = await request.json();
+
+    if (!email || !password) {
+      return errorResponse('Email and password are required');
+    }
+
+    const user = await env.DB.prepare(
+      'SELECT id, email, password_hash, name, email_verified FROM users WHERE email = ?'
+    ).bind(email.toLowerCase()).first();
+
+    if (!user) {
+      return errorResponse('Invalid email or password', 401, 'INVALID_CREDENTIALS');
+    }
+
+    const isValid = await verifyPassword(password, user.password_hash);
+
+    if (!isValid) {
+      return errorResponse('Invalid email or password', 401, 'INVALID_CREDENTIALS');
+    }
+
+    const token = await generateJWT({ userId: user.id, email: user.email }, env.JWT_SECRET || 'your-secret-key');
+
+    const sessionId = generateId();
+    await env.DB.prepare(
+      `INSERT INTO sessions (id, user_id, token, expires_at)
+       VALUES (?, ?, ?, ?)`
+    ).bind(sessionId, user.id, token, getExpiryDate(24 * 7)).run();
+
+    const response = successResponse({
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        emailVerified: !!user.email_verified,
+      },
+      token,
+    }, 'Login successful');
+
+    response.headers.set('Set-Cookie', `auth_token=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${60 * 60 * 24 * 7}`);
+
+    return response;
+  } catch (error) {
+    console.error('Login error:', error);
+    return errorResponse('Login failed', 500);
+  }
+}
+
+async function handleLogout(request, env) {
+  try {
+    const user = await validateAuth(request, env);
+
+    if (user) {
+      await env.DB.prepare(
+        'DELETE FROM sessions WHERE user_id = ?'
+      ).bind(user.id).run();
+    }
+
+    const response = successResponse(null, 'Logged out successfully');
+    response.headers.set('Set-Cookie', 'auth_token=; Path=/; HttpOnly; Max-Age=0');
+
+    return response;
+  } catch (error) {
+    return errorResponse('Logout failed', 500);
+  }
+}
+
+async function handleVerifyEmail(request, env) {
+  if (request.method !== 'POST') {
+    return errorResponse('Method not allowed', 405);
+  }
+
+  try {
+    const { token } = await request.json();
+
+    if (!token) {
+      return errorResponse('Verification token is required');
+    }
+
+    const verification = await env.DB.prepare(
+      `SELECT user_id, expires_at FROM email_verifications WHERE token = ?`
+    ).bind(token).first();
+
+    if (!verification) {
+      return errorResponse('Invalid verification token', 400, 'INVALID_TOKEN');
+    }
+
+    if (new Date(verification.expires_at) < new Date()) {
+      return errorResponse('Verification token has expired', 400, 'TOKEN_EXPIRED');
+    }
+
+    await env.DB.prepare(
+      'UPDATE users SET email_verified = 1, updated_at = datetime("now") WHERE id = ?'
+    ).bind(verification.user_id).run();
+
+    await env.DB.prepare(
+      'DELETE FROM email_verifications WHERE user_id = ?'
+    ).bind(verification.user_id).run();
+
+    return successResponse(null, 'Email verified successfully');
+  } catch (error) {
+    console.error('Verify email error:', error);
+    return errorResponse('Verification failed', 500);
+  }
+}
+
+async function handleSendVerification(request, env) {
+  if (request.method !== 'POST') {
+    return errorResponse('Method not allowed', 405);
+  }
+
+  try {
+    const user = await validateAuth(request, env);
+
+    if (!user) {
+      return errorResponse('Unauthorized', 401);
+    }
+
+    if (user.email_verified) {
+      return errorResponse('Email already verified', 400);
+    }
+
+    await env.DB.prepare(
+      'DELETE FROM email_verifications WHERE user_id = ?'
+    ).bind(user.id).run();
+
+    const verificationToken = generateToken();
+
+    await env.DB.prepare(
+      `INSERT INTO email_verifications (id, user_id, token, expires_at)
+       VALUES (?, ?, ?, ?)`
+    ).bind(generateId(), user.id, verificationToken, getExpiryDate(24)).run();
+
+    return successResponse({ verificationToken }, 'Verification email sent');
+  } catch (error) {
+    console.error('Send verification error:', error);
+    return errorResponse('Failed to send verification', 500);
+  }
+}
+
+async function handleRequestReset(request, env) {
+  if (request.method !== 'POST') {
+    return errorResponse('Method not allowed', 405);
+  }
+
+  try {
+    const { email } = await request.json();
+
+    if (!email) {
+      return errorResponse('Email is required');
+    }
+
+    const user = await env.DB.prepare(
+      'SELECT id FROM users WHERE email = ?'
+    ).bind(email.toLowerCase()).first();
+
+    if (!user) {
+      return successResponse(null, 'If email exists, reset link will be sent');
+    }
+
+    await env.DB.prepare(
+      'DELETE FROM password_resets WHERE user_id = ?'
+    ).bind(user.id).run();
+
+    const resetToken = generateToken();
+
+    await env.DB.prepare(
+      `INSERT INTO password_resets (id, user_id, token, expires_at)
+       VALUES (?, ?, ?, ?)`
+    ).bind(generateId(), user.id, resetToken, getExpiryDate(1)).run();
+
+    return successResponse({ resetToken }, 'Password reset link sent');
+  } catch (error) {
+    console.error('Request reset error:', error);
+    return errorResponse('Failed to process reset request', 500);
+  }
+}
+
+async function handleResetPassword(request, env) {
+  if (request.method !== 'POST') {
+    return errorResponse('Method not allowed', 405);
+  }
+
+  try {
+    const { token, newPassword } = await request.json();
+
+    if (!token || !newPassword) {
+      return errorResponse('Token and new password are required');
+    }
+
+    if (newPassword.length < 8) {
+      return errorResponse('Password must be at least 8 characters');
+    }
+
+    const reset = await env.DB.prepare(
+      `SELECT user_id, expires_at, used FROM password_resets WHERE token = ?`
+    ).bind(token).first();
+
+    if (!reset) {
+      return errorResponse('Invalid reset token', 400, 'INVALID_TOKEN');
+    }
+
+    if (reset.used) {
+      return errorResponse('Reset token already used', 400, 'TOKEN_USED');
+    }
+
+    if (new Date(reset.expires_at) < new Date()) {
+      return errorResponse('Reset token has expired', 400, 'TOKEN_EXPIRED');
+    }
+
+    const passwordHash = await hashPassword(newPassword);
+
+    await env.DB.prepare(
+      'UPDATE users SET password_hash = ?, updated_at = datetime("now") WHERE id = ?'
+    ).bind(passwordHash, reset.user_id).run();
+
+    await env.DB.prepare(
+      'UPDATE password_resets SET used = 1 WHERE token = ?'
+    ).bind(token).run();
+
+    await env.DB.prepare(
+      'DELETE FROM sessions WHERE user_id = ?'
+    ).bind(reset.user_id).run();
+
+    return successResponse(null, 'Password reset successfully');
+  } catch (error) {
+    console.error('Reset password error:', error);
+    return errorResponse('Failed to reset password', 500);
+  }
+}
+
+async function handleGetCurrentUser(request, env) {
+  try {
+    const user = await validateAuth(request, env);
+
+    if (!user) {
+      return errorResponse('Unauthorized', 401);
+    }
+
+    return successResponse({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      emailVerified: !!user.email_verified,
+    });
+  } catch (error) {
+    return errorResponse('Failed to get user', 500);
+  }
+}
+
+async function handleUpdateProfile(request, env) {
+  if (request.method !== 'PUT' && request.method !== 'POST') {
+    return errorResponse('Method not allowed', 405);
+  }
+
+  try {
+    const user = await validateAuth(request, env);
+
+    if (!user) {
+      return errorResponse('Unauthorized', 401);
+    }
+
+    const { name, phone } = await request.json();
+
+    await env.DB.prepare(
+      `UPDATE users SET 
+        name = COALESCE(?, name),
+        phone = COALESCE(?, phone),
+        updated_at = datetime('now')
+       WHERE id = ?`
+    ).bind(name ? sanitizeInput(name) : null, phone || null, user.id).run();
+
+    const updatedUser = await env.DB.prepare(
+      'SELECT id, email, name, phone, email_verified FROM users WHERE id = ?'
+    ).bind(user.id).first();
+
+    return successResponse(updatedUser, 'Profile updated successfully');
+  } catch (error) {
+    console.error('Update profile error:', error);
+    return errorResponse('Failed to update profile', 500);
+  }
+}
