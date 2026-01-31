@@ -231,7 +231,28 @@
                 </div>
                 <div style="display:flex; gap:1rem; margin-top:2rem;">
                     <button class="btn btn-outline" id="back-to-step-1" style="flex:1;">Back</button>
-                    <button class="btn btn-primary" id="confirm-create-btn" style="flex:1;">Confirm & Create</button>
+                    <button class="btn btn-primary" id="confirm-details-btn" style="flex:1;">Next: Categories</button>
+                </div>
+            </div>
+
+            <!-- Step 3: Categories selection -->
+            <div id="modal-step-3" style="display:none;">
+                <h2 style="margin-bottom: 0.5rem;">Product Categories</h2>
+                <p style="color: var(--text-muted); font-size: 0.875rem; margin-bottom: 1.5rem;">Add at least one category for your shop (e.g., Rings, Necklaces, etc.)</p>
+                
+                <div id="categories-container" style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1.5rem; max-height: 40vh; overflow-y: auto; padding: 0.5rem;">
+                    <!-- Initial category input -->
+                    <div class="category-input-group" style="display: flex; gap: 0.5rem; align-items: center;">
+                        <input type="text" class="category-name-input" placeholder="Category Name (e.g. Rings)" style="flex: 1;">
+                        <button class="btn btn-outline remove-category-btn" style="padding: 0.5rem; border-color: #fecaca; color: #ef4444;" disabled>×</button>
+                    </div>
+                </div>
+
+                <button class="btn btn-outline" id="add-category-field-btn" style="width: 100%; margin-bottom: 2rem; border-style: dashed;">+ Add Another Category</button>
+
+                <div style="display:flex; gap:1rem;">
+                    <button class="btn btn-outline" id="back-to-step-2" style="flex:1;">Back</button>
+                    <button class="btn btn-primary" id="confirm-create-btn" style="flex:1;">Create Website</button>
                 </div>
             </div>
         </div>
@@ -746,21 +767,49 @@
 
         document.getElementById('confirm-template-btn').addEventListener('click', () => switchStep(1, 2));
         document.getElementById('back-to-step-1').addEventListener('click', () => switchStep(2, 1));
+        document.getElementById('confirm-details-btn').addEventListener('click', () => switchStep(2, 3));
+        document.getElementById('back-to-step-2').addEventListener('click', () => switchStep(3, 2));
+
+        // Category management logic
+        const addCategoryField = () => {
+            const container = document.getElementById('categories-container');
+            const group = document.createElement('div');
+            group.className = 'category-input-group';
+            group.style.cssText = 'display: flex; gap: 0.5rem; align-items: center;';
+            group.innerHTML = `
+                <input type="text" class="category-name-input" placeholder="Category Name" style="flex: 1;">
+                <button class="btn btn-outline remove-category-btn" style="padding: 0.5rem; border-color: #fecaca; color: #ef4444;">×</button>
+            `;
+            container.appendChild(group);
+            
+            group.querySelector('.remove-category-btn').addEventListener('click', () => {
+                group.remove();
+            });
+        };
+
+        document.getElementById('add-category-field-btn').addEventListener('click', addCategoryField);
 
         // Add step transition styles
         const stepStyle = document.createElement('style');
         stepStyle.textContent = `
-            #modal-step-1, #modal-step-2 {
+            #modal-step-1, #modal-step-2, #modal-step-3 {
                 transition: opacity 0.3s ease, transform 0.3s ease;
             }
         `;
         document.head.appendChild(stepStyle);
+
         document.getElementById('confirm-create-btn').addEventListener('click', async () => {
             const domain = document.getElementById('site-domain-input').value;
             const brand = document.getElementById('site-brand-input').value;
             const logoFile = document.getElementById('site-logo-input').files[0];
+            
+            const categoryInputs = document.querySelectorAll('.category-name-input');
+            const categories = Array.from(categoryInputs)
+                .map(input => input.value.trim())
+                .filter(val => val !== '');
 
-            if (!domain || !brand) { alert('Please fill in all details.'); return; }
+            if (!domain || !brand) { alert('Please fill in domain and brand details.'); return; }
+            if (categories.length === 0) { alert('Please add at least one category.'); return; }
             
             try {
                 const btn = document.getElementById('confirm-create-btn');
@@ -785,7 +834,8 @@
                     siteName: domain, 
                     brandName: brand, 
                     templateId: selectedTemplate,
-                    logoUrl: logoUrl
+                    logoUrl: logoUrl,
+                    categories: categories
                 });
                 
                 closeModal(); // Use the standard close function for smooth transition
