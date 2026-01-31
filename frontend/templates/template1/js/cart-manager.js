@@ -44,85 +44,61 @@ window.CartManager = (function() {
 
     /**
      * Set up authentication state listener
-     * This handles switching between local storage and Firebase on login/logout
+     * This handles switching between local storage and API on login/logout
      */
     function setupAuthListener() {
         if (isAuthListenerSet) return;
 
-        // Only setup if Firebase is available
-        if (typeof firebase !== 'undefined' && firebase.auth) {
-            firebase.auth().onAuthStateChanged(async (user) => {
+        // Use AuthService if available (API-based auth)
+        if (typeof AuthService !== 'undefined') {
+            AuthService.onAuthStateChange(async (user) => {
                 if (user) {
-                    console.log('User logged in, switching to Firebase storage');
+                    console.log('User logged in, switching to API storage');
 
-                    // Make sure FirebaseCartManager is available
-                    if (typeof FirebaseCartManager === 'undefined') {
-                        console.warn('FirebaseCartManager not available, loading module dynamically');
-
+                    // Check if ApiCartManager is available
+                    if (typeof ApiCartManager !== 'undefined') {
                         try {
-                            // Dynamically load the Firebase cart manager if not already loaded
-                            const script = document.createElement('script');
-                            script.src = '/js/firebase/firebase-cart-manager.js';
-                            document.head.appendChild(script);
-
-                            // Wait for script to load
-                            await new Promise((resolve) => {
-                                script.onload = resolve;
-                                script.onerror = () => {
-                                    console.error('Failed to load FirebaseCartManager');
-                                    resolve();
-                                };
-                            });
-
-                            // Initialize if loaded
-                            if (typeof FirebaseCartManager !== 'undefined') {
-                                FirebaseCartManager.init();
-                            }
-                        } catch (error) {
-                            console.error('Error loading FirebaseCartManager:', error);
-                        }
-                    }
-
-                    // Check if FirebaseCartManager is now available
-                    if (typeof FirebaseCartManager !== 'undefined') {
-                        try {
-                            // First try to get items from Firebase
-                            const result = await FirebaseCartManager.getItems();
+                            // First try to get items from API
+                            const result = await ApiCartManager.getItems();
 
                             if (result.success) {
                                 // If user had items in local storage, we need to handle the merge
                                 const localItems = LocalStorageCart.getItems();
 
                                 if (localItems.length > 0 && result.items.length > 0) {
-                                    console.log('Merging local and Firebase carts');
+                                    console.log('Merging local and API carts');
                                     // Merge carts, preferring the higher quantity for duplicate items
                                     const mergedItems = mergeCartItems(localItems, result.items);
                                     cartItems = mergedItems;
 
-                                    // Save merged cart to Firebase (local storage will be cleared)
-                                    await FirebaseCartManager.saveItems(mergedItems);
+                                    // Sync merged cart to API
+                                    await ApiCartManager.syncCart(mergedItems);
                                 } else if (localItems.length > 0) {
-                                    console.log('Moving local cart to Firebase');
-                                    // User has items in local storage but not in Firebase
+                                    console.log('Moving local cart to API');
+                                    // User has items in local storage but not in API
                                     cartItems = localItems;
-                                    await FirebaseCartManager.saveItems(localItems);
+                                    await ApiCartManager.syncCart(localItems);
                                 } else {
-                                    console.log('Using existing Firebase cart');
-                                    // User has items in Firebase but not in local storage
+                                    console.log('Using existing API cart');
+                                    // User has items in API but not in local storage
                                     cartItems = result.items;
                                 }
 
-                                // Clear local storage as we're now using Firebase
+                                // Clear local storage as we're now using API
                                 LocalStorageCart.clearItems();
                             } else {
-                                console.warn('Failed to load cart from Firebase:', result.error);
+                                console.warn('Failed to load cart from API:', result.error);
+                                // Fall back to local storage
+                                cartItems = LocalStorageCart.getItems();
                             }
                         } catch (error) {
                             console.error('Error during cart synchronization:', error);
                             // Keep using local storage if sync fails
+                            cartItems = LocalStorageCart.getItems();
                         }
                     } else {
-                        console.warn('FirebaseCartManager still not available after loading attempt');
+                        console.warn('ApiCartManager not available, using local storage');
+                        cartItems = LocalStorageCart.getItems();
                     }
                 } else {
                     console.log('User logged out, switching to local storage');
@@ -135,6 +111,10 @@ window.CartManager = (function() {
             });
 
             isAuthListenerSet = true;
+        } else {
+            console.log('AuthService not available, using local storage only');
+            cartItems = LocalStorageCart.getItems();
+            updateCartUI();
         }
     }
 

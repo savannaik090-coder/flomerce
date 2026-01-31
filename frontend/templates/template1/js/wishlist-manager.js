@@ -175,85 +175,61 @@ const WishlistManager = (function() {
 
     /**
      * Set up authentication state listener
-     * This handles switching between local storage and Firebase on login/logout
+     * This handles switching between local storage and API on login/logout
      */
     function setupAuthListener() {
         if (isAuthListenerSet) return;
 
-        // Only setup if Firebase is available
-        if (typeof firebase !== 'undefined' && firebase.auth) {
-            firebase.auth().onAuthStateChanged(async (user) => {
+        // Use AuthService if available (API-based auth)
+        if (typeof AuthService !== 'undefined') {
+            AuthService.onAuthStateChange(async (user) => {
                 if (user) {
-                    console.log('User logged in, switching to Firebase storage for wishlist');
+                    console.log('User logged in, switching to API storage for wishlist');
 
-                    // Make sure FirebaseWishlistManager is available
-                    if (typeof FirebaseWishlistManager === 'undefined') {
-                        console.warn('FirebaseWishlistManager not available, loading module dynamically');
-
+                    // Check if ApiWishlistManager is available
+                    if (typeof ApiWishlistManager !== 'undefined') {
                         try {
-                            // Dynamically load the Firebase wishlist manager if not already loaded
-                            const script = document.createElement('script');
-                            script.src = '/js/firebase/firebase-wishlist-manager.js';
-                            document.head.appendChild(script);
-
-                            // Wait for script to load
-                            await new Promise((resolve) => {
-                                script.onload = resolve;
-                                script.onerror = () => {
-                                    console.error('Failed to load FirebaseWishlistManager');
-                                    resolve();
-                                };
-                            });
-
-                            // Initialize if loaded
-                            if (typeof FirebaseWishlistManager !== 'undefined') {
-                                FirebaseWishlistManager.init();
-                            }
-                        } catch (error) {
-                            console.error('Error loading FirebaseWishlistManager:', error);
-                        }
-                    }
-
-                    // Check if FirebaseWishlistManager is now available
-                    if (typeof FirebaseWishlistManager !== 'undefined') {
-                        try {
-                            // First try to get items from Firebase
-                            const result = await FirebaseWishlistManager.getItems();
+                            // First try to get items from API
+                            const result = await ApiWishlistManager.getItems();
 
                             if (result.success) {
                                 // If user had items in local storage, we need to handle the merge
                                 const localItems = LocalStorageWishlist.getItems();
 
                                 if (localItems.length > 0 && result.items.length > 0) {
-                                    console.log('Merging local and Firebase wishlists');
+                                    console.log('Merging local and API wishlists');
                                     // Merge wishlists, preserving all unique items from both sources
                                     const mergedItems = mergeWishlistItems(localItems, result.items);
                                     wishlistItems = mergedItems;
 
-                                    // Save merged wishlist to Firebase (local storage will be cleared)
-                                    await FirebaseWishlistManager.saveItems(mergedItems);
+                                    // Sync merged wishlist to API
+                                    await ApiWishlistManager.syncWishlist(mergedItems);
                                 } else if (localItems.length > 0) {
-                                    console.log('Moving local wishlist to Firebase');
-                                    // User has items in local storage but not in Firebase
+                                    console.log('Moving local wishlist to API');
+                                    // User has items in local storage but not in API
                                     wishlistItems = localItems;
-                                    await FirebaseWishlistManager.saveItems(localItems);
+                                    await ApiWishlistManager.syncWishlist(localItems);
                                 } else {
-                                    console.log('Using existing Firebase wishlist');
-                                    // User has items in Firebase but not in local storage
+                                    console.log('Using existing API wishlist');
+                                    // User has items in API but not in local storage
                                     wishlistItems = result.items;
                                 }
 
-                                // Clear local storage as we're now using Firebase
+                                // Clear local storage as we're now using API
                                 LocalStorageWishlist.clearItems();
                             } else {
-                                console.warn('Failed to load wishlist from Firebase:', result.error);
+                                console.warn('Failed to load wishlist from API:', result.error);
+                                // Fall back to local storage
+                                wishlistItems = LocalStorageWishlist.getItems();
                             }
                         } catch (error) {
                             console.error('Error during wishlist synchronization:', error);
                             // Keep using local storage if sync fails
+                            wishlistItems = LocalStorageWishlist.getItems();
                         }
                     } else {
-                        console.warn('FirebaseWishlistManager still not available after loading attempt');
+                        console.warn('ApiWishlistManager not available, using local storage');
+                        wishlistItems = LocalStorageWishlist.getItems();
                     }
                 } else {
                     console.log('User logged out, switching to local storage for wishlist');
@@ -266,6 +242,10 @@ const WishlistManager = (function() {
             });
 
             isAuthListenerSet = true;
+        } else {
+            console.log('AuthService not available, using local storage only for wishlist');
+            wishlistItems = LocalStorageWishlist.getItems();
+            updateWishlistUI();
         }
     }
 
@@ -418,9 +398,7 @@ const WishlistManager = (function() {
      * @returns {Boolean} True if user is logged in
      */
     function isUserLoggedIn() {
-        return typeof firebase !== 'undefined' && 
-               firebase.auth && 
-               firebase.auth().currentUser !== null;
+        return typeof AuthService !== 'undefined' && AuthService.isLoggedIn();
     }
 
     // ======================================================

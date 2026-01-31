@@ -32,9 +32,9 @@
         
         // Optional: identify the source of the rejection if possible
         console.error('Promise rejection source information:', {
-            firebase: typeof firebase !== 'undefined',
-            firestore: typeof firebase !== 'undefined' && typeof firebase.firestore === 'function',
-            auth: typeof firebase !== 'undefined' && typeof firebase.auth === 'function'
+            authService: typeof AuthService !== 'undefined',
+            apiCartManager: typeof ApiCartManager !== 'undefined',
+            apiWishlistManager: typeof ApiWishlistManager !== 'undefined'
         });
         
         // Prevent the error from showing in the console (optional)
