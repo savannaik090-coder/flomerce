@@ -58,13 +58,15 @@ The most complex template with full e-commerce features:
 - Wishlist management
 - Dynamic product loading from Firebase Storage
 - Checkout with Razorpay payments
-- Order management with Shiprocket shipping
+- Order management (guest + user orders)
 - User profiles with multiple addresses
 - Multi-currency support
 - Multi-language support
 - Push notifications
 - Admin panel for products/orders
 - Currently has HARDCODED category pages (to be made dynamic)
+
+**Note:** Shiprocket/DTDC shipping integration was built for testing but is not functional.
 
 ### Current Category Structure (Hardcoded)
 ```

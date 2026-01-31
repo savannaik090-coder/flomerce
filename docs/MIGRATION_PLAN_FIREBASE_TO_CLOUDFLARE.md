@@ -29,8 +29,9 @@
 - **File Storage**: Firebase Storage
 - **Authentication**: Firebase Auth
 - **Push Notifications**: Firebase Cloud Messaging (FCM)
-- **Payments**: Razorpay
-- **Shipping**: Shiprocket Integration
+- **Payments**: Razorpay (for subscriptions + e-commerce)
+
+**Note:** Shiprocket/DTDC shipping integration was built for testing but is not functional. Should be removed or rebuilt.
 
 ## Target Stack
 - **Frontend Hosting**: Cloudflare Pages (unlimited bandwidth)
@@ -89,6 +90,252 @@
 
 ---
 
+# Main SaaS Platform (src folder)
+
+The `src/` folder contains the core SaaS platform that users interact with before their websites are created.
+
+## Platform Structure
+```
+src/
+├── common/
+│   └── EnvConfig.js              # Environment configuration loader
+├── css/
+│   ├── index.css                 # Global styles
+│   ├── login.css                 # Login page styles
+│   ├── signup.css                # Signup page styles
+│   └── dashboard.css             # Dashboard styles
+├── js/
+│   ├── auth/
+│   │   ├── FirebaseConfig.js     # Firebase configuration
+│   │   └── AuthService.js        # Authentication service class
+│   ├── dashboard/
+│   │   └── SiteService.js        # Website CRUD operations
+│   ├── payment/
+│   │   └── RazorpayService.js    # Subscription payment handling
+│   └── firebase-config.js        # Firebase config (duplicate)
+├── pages/
+│   ├── login.html                # User login page
+│   ├── signup.html               # User registration page
+│   ├── dashboard.html            # Main user dashboard
+│   └── admin.html                # Admin page (if exists)
+└── cloudflare-worker.js          # Cloudflare worker template (unused)
+```
+
+## SaaS Platform Features
+
+### 1. User Authentication (AuthService.js)
+**Current Implementation:**
+- Uses Firebase Authentication
+- Email/password signup with email verification
+- Login with session persistence
+- Logout functionality
+- Auth state change listener
+
+**Migration to Cloudflare:**
+```javascript
+// Current (Firebase)
+await this.auth.createUserWithEmailAndPassword(email, password);
+
+// After Migration (Cloudflare Workers + D1)
+// POST /api/auth/signup
+const hashedPassword = await hashPassword(password);
+await env.DB.prepare(
+  'INSERT INTO users (id, email, password_hash, name) VALUES (?, ?, ?, ?)'
+).bind(generateId(), email, hashedPassword, name).run();
+// Send verification email via email service
+// Return JWT token
+```
+
+### 2. Website Management (SiteService.js)
+**Current Implementation:**
+- `getUserSites(uid)` - Fetch all websites owned by user
+- `createSite(uid, siteData)` - Create new website with subdomain
+- `deleteSite(siteId)` - Delete website and release subdomain
+- Uses Firestore transactions for subdomain uniqueness
+- Subdomain registry in separate collection
+
+**Migration to Cloudflare:**
+```javascript
+// Current (Firestore)
+await this.db.collection('sites').where('ownerId', '==', uid).get();
+
+// After Migration (D1)
+const sites = await env.DB.prepare(
+  'SELECT * FROM sites WHERE user_id = ?'
+).bind(uid).all();
+```
+
+**Subdomain Registry Migration:**
+```sql
+-- D1 approach: Use UNIQUE constraint instead of separate collection
+CREATE TABLE sites (
+  id TEXT PRIMARY KEY,
+  subdomain TEXT UNIQUE NOT NULL,  -- UNIQUE ensures no duplicates
+  ...
+);
+```
+
+### 3. Subscription Management (RazorpayService.js)
+**Current Implementation:**
+- Three plans: Basic (₹99), Premium (₹299), Pro (₹999)
+- Monthly, 6-month, and yearly billing cycles
+- Razorpay checkout integration
+- Client-side order creation (should be server-side)
+
+**Migration Notes:**
+- Razorpay integration stays the same
+- Move order creation to Cloudflare Workers (security)
+- Store subscription status in D1 database
+
+### 4. Dashboard (dashboard.html)
+**Current Features:**
+- View all user's websites
+- Create new website (name, category, template selection)
+- Subscription plan selection and upgrade
+- Account settings
+
+**Key Dashboard Sections:**
+1. **My Websites** - Grid of created sites with visit/edit/delete
+2. **Subscriptions** - Plan selection (Basic/Premium/Pro)
+3. **Settings** - Account management
+
+## SaaS Platform Migration Plan
+
+### Phase 1: Authentication Migration
+
+**Option A: Custom Auth (Recommended for cost)**
+```
+1. Create auth Workers endpoints:
+   - POST /api/auth/signup
+   - POST /api/auth/login
+   - POST /api/auth/logout
+   - POST /api/auth/verify-email
+   - POST /api/auth/reset-password
+
+2. Implement JWT session management:
+   - Generate JWT on login
+   - Store in httpOnly cookie
+   - Validate on each request
+
+3. Create D1 tables:
+   - users (id, email, password_hash, name, email_verified, ...)
+   - sessions (id, user_id, token, expires_at)
+   - email_verifications (id, user_id, token, expires_at)
+```
+
+**Option B: Third-Party Auth (Easier but adds cost)**
+- Clerk: $0.02/MAU after free tier
+- Auth0: Free up to 7,500 MAU
+- Better Auth: Open source, self-hosted
+
+### Phase 2: Site Service Migration
+
+```javascript
+// Cloudflare Worker: /api/sites
+
+export default {
+  async fetch(request, env) {
+    const url = new URL(request.url);
+    const user = await validateAuth(request, env);
+    
+    // GET /api/sites - List user's sites
+    if (request.method === 'GET') {
+      const sites = await env.DB.prepare(
+        'SELECT * FROM sites WHERE user_id = ? ORDER BY created_at DESC'
+      ).bind(user.id).all();
+      return Response.json(sites.results);
+    }
+    
+    // POST /api/sites - Create new site
+    if (request.method === 'POST') {
+      const { siteName, category, templateId, logoUrl } = await request.json();
+      const subdomain = generateSubdomain(siteName);
+      
+      try {
+        await env.DB.prepare(
+          `INSERT INTO sites (id, user_id, subdomain, brand_name, category, template_id, logo_url, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+        ).bind(generateId(), user.id, subdomain, siteName, category, templateId, logoUrl).run();
+        
+        return Response.json({ success: true, subdomain });
+      } catch (e) {
+        if (e.message.includes('UNIQUE constraint failed')) {
+          return Response.json({ error: 'Subdomain already taken' }, { status: 400 });
+        }
+        throw e;
+      }
+    }
+  }
+};
+```
+
+### Phase 3: Payment Integration
+
+```javascript
+// Cloudflare Worker: /api/payments/create-order
+
+export default {
+  async fetch(request, env) {
+    const { planId, billingCycle } = await request.json();
+    const user = await validateAuth(request, env);
+    
+    const amounts = {
+      basic: { monthly: 9900, '6months': 49900, yearly: 89900 },
+      premium: { monthly: 29900, '6months': 149900, yearly: 249900 },
+      pro: { monthly: 99900, '6months': 499900, yearly: 899900 }
+    };
+    
+    const amount = amounts[planId][billingCycle];
+    
+    // Create Razorpay order via their API
+    const response = await fetch('https://api.razorpay.com/v1/orders', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Basic ' + btoa(env.RAZORPAY_KEY_ID + ':' + env.RAZORPAY_KEY_SECRET),
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        amount,
+        currency: 'INR',
+        receipt: `sub_${user.id}_${Date.now()}`
+      })
+    });
+    
+    return Response.json(await response.json());
+  }
+};
+```
+
+### Phase 4: Frontend Updates
+
+**Changes needed in HTML/JS files:**
+
+```javascript
+// Before (Firebase)
+import { authService } from '/src/js/auth/AuthService.js';
+await authService.signUp(name, email, password);
+
+// After (Cloudflare API)
+const response = await fetch('/api/auth/signup', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ name, email, password })
+});
+const result = await response.json();
+```
+
+**Files to Update:**
+| File | Changes Needed |
+|------|----------------|
+| `src/pages/login.html` | Replace Firebase auth with fetch API calls |
+| `src/pages/signup.html` | Replace Firebase auth with fetch API calls |
+| `src/pages/dashboard.html` | Replace Firestore calls with fetch API calls |
+| `src/js/auth/AuthService.js` | Rewrite to use REST API instead of Firebase SDK |
+| `src/js/dashboard/SiteService.js` | Rewrite to use REST API instead of Firestore |
+| `src/js/payment/RazorpayService.js` | Update to call Worker endpoint for order creation |
+
+---
+
 # Template1 Features Analysis
 
 ## Template1 is the primary jewellery template with these features:
@@ -139,12 +386,13 @@
   - Order confirmation
 
 #### Order Management
-- **Files**: `js/firebase/firebase-orders.js`, `js/order-track.js`
+- **Files**: `js/firebase/firebase-orders.js`
 - **Features**:
   - Order creation and storage
   - Order history for users
-  - Order tracking (Shiprocket + DTDC)
-  - Guest order tracking
+  - Guest order support
+
+**Note:** Order tracking with Shiprocket/DTDC was implemented for testing purposes but is not functional. These functions should be removed or rebuilt during migration.
 
 #### User Profile
 - **Files**: `profile.html`, `js/firebase/firebase-address-manager.js`
@@ -380,16 +628,19 @@ Firebase Storage Bucket
 |----------|---------|------------|
 | `create-razorpay-order.js` | Create Razorpay orders | Low |
 
-### Shipping Functions (Shiprocket)
-| Function | Purpose | Complexity |
-|----------|---------|------------|
-| `shiprocket-create-order.js` | Create shipping orders | Low |
-| `shiprocket-track-order.js` | Track shipments | Low |
-| `shiprocket-generate-awb.js` | Generate AWB | Low |
-| `shiprocket-generate-label.js` | Generate shipping labels | Low |
-| `shiprocket-schedule-pickup.js` | Schedule pickup | Low |
-| `shiprocket-courier-services.js` | Get courier options | Low |
-| `dtdc-track-order.js` | DTDC tracking | Low |
+### Shipping Functions (Shiprocket) - TO BE REMOVED/REBUILT
+**Note:** These functions were for testing and are not functional. Consider removing during migration.
+
+| Function | Purpose | Status |
+|----------|---------|--------|
+| `shiprocket-create-order.js` | Create shipping orders | Not functional |
+| `shiprocket-track-order.js` | Track shipments | Not functional |
+| `shiprocket-generate-awb.js` | Generate AWB | Not functional |
+| `shiprocket-generate-label.js` | Generate shipping labels | Not functional |
+| `shiprocket-schedule-pickup.js` | Schedule pickup | Not functional |
+| `shiprocket-courier-services.js` | Get courier options | Not functional |
+| `dtdc-track-order.js` | DTDC tracking | Not functional |
+| `comprehensive-order-track.js` | Multi-carrier tracking | Not functional |
 
 ### Notification Functions
 | Function | Purpose | Complexity |
