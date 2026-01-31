@@ -5643,9 +5643,7 @@
         }
 
         // Navigation functions
-        // Notification System Logic
-        const notificationDb = firebase.firestore();
-        const notificationStorage = firebase.storage();
+        // Notification System Logic (using API-based approach)
         let uploadedImageUrl = "";
 
         document.getElementById("imageFile")?.addEventListener("change", async (e) => {
@@ -7807,24 +7805,18 @@
                 let order = allOrders.find(o => o.orderId === orderId && o.userId === userId);
 
                 if (!order) {
-                    // If not found in cache, try to load from Firebase
-                    console.log('Order not found in cache, loading from Firebase...');
+                    // If not found in cache, try to load via API
+                    console.log('Order not found in cache, loading via API...');
 
-                    if (typeof firebase !== 'undefined' && firebase.firestore) {
-                        const orderDoc = await firebase.firestore()
-                            .collection('users')
-                            .doc(userId)
-                            .collection('orders')
-                            .doc(orderId)
-                            .get();
+                    const orderResult = await AdminOrdersAPI.getOrder(orderId, false, userId);
 
-                        if (orderDoc.exists) {
-                            const orderData = orderDoc.data();
-                            order = {
-                                orderId: orderId,
-                                userId: userId,
-                                orderReference: orderData.orderReference || orderId,
-                                date: orderData.timestamp?.toDate() || new Date(orderData.orderDate) || new Date(),
+                    if (orderResult.success && orderResult.order) {
+                        const orderData = orderResult.order;
+                        order = {
+                            orderId: orderId,
+                            userId: userId,
+                            orderReference: orderData.orderReference || orderId,
+                            date: new Date(orderData.timestamp || orderData.orderDate || new Date()),
                                 amount: orderData.total || orderData.orderTotal || 0,
                                 customerName: extractCustomerName(orderData),
                                 customerEmail: extractCustomerEmail(orderData),
@@ -8997,7 +8989,7 @@
         // Visitor Tracking System
         function trackVisitor() {
             const visitorData = {
-                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                timestamp: new Date().toISOString(),
                 sessionId: generateSessionId(),
                 page: window.location.pathname,
                 referrer: document.referrer || 'direct',
@@ -9013,10 +9005,10 @@
                 visitorId: getOrCreateVisitorId()
             };
 
-            // Store visitor data in Firestore
-            db.collection('analytics_visits').add(visitorData)
-                .then(docRef => {
-                    console.log('Visitor tracked:', docRef.id);
+            // Store visitor data via API
+            AdminOrdersAPI.recordVisit(visitorData)
+                .then(result => {
+                    console.log('Visitor tracked via API:', result.success);
                 })
                 .catch(error => {
                     console.error('Error tracking visitor:', error);
@@ -9140,7 +9132,7 @@
                         visitTime.setHours(Math.floor(Math.random() * 24));
 
                         testData.push({
-                            timestamp: firebase.firestore.Timestamp.fromDate(visitTime),
+                            timestamp: visitTime.toISOString(),
                             visitorId: `test_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
                             sessionId: `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
                             page: ['/', '/product-detail.html', '/featured-collection.html'][Math.floor(Math.random() * 3)],
@@ -9152,14 +9144,10 @@
                 }
 
                 // Add to Firebase
-                let batch = db.batch();
-                testData.forEach((data, index) => {
-                    const docRef = db.collection('analytics_visits').doc();
-                    batch.set(docRef, data);
-                });
-
-                await batch.commit();
-                console.log(`✅ Added ${testData.length} test analytics records`);
+                // Add test data via API (batch)
+                const promises = testData.map(data => AdminOrdersAPI.recordVisit(data));
+                await Promise.all(promises);
+                console.log(`✅ Added ${testData.length} test analytics records via API`);
 
                 // Refresh the analytics display
                 setTimeout(() => loadAnalyticsData(), 1000);
@@ -9216,26 +9204,20 @@
 
         // Load Visitor Statistics
         function loadVisitorStats(startDate, endDate) {
-            // Convert JavaScript Date objects to Firebase Timestamps for proper comparison
-            const firebaseStartDate = firebase.firestore.Timestamp.fromDate(startDate);
-            const firebaseEndDate = firebase.firestore.Timestamp.fromDate(endDate);
-
             console.log(`🔍 [VISITOR STATS DEBUG] Querying analytics_visits for period:`, startDate.toISOString(), 'to', endDate.toISOString());
-            console.log(`🔍 [VISITOR STATS DEBUG] Firebase timestamps:`, firebaseStartDate, 'to', firebaseEndDate);
 
-            db.collection('analytics_visits')
-                .where('timestamp', '>=', firebaseStartDate)
-                .where('timestamp', '<=', firebaseEndDate)
-                .get()
-                .then(snapshot => {
-                    console.log(`🔍 [VISITOR STATS DEBUG] Found ${snapshot.size} analytics records`);
-                    const visits = snapshot.docs.map(doc => {
-                        const data = doc.data();
-                        // Convert Firebase timestamp back to JavaScript date for processing
-                        if (data.timestamp && data.timestamp.toDate) {
-                            data.timestamp = data.timestamp.toDate();
+            AdminOrdersAPI.queryVisits({
+                startDate: startDate.toISOString(),
+                endDate: endDate.toISOString()
+            }).then(result => {
+                    const visits = result.visits || [];
+                    console.log(`🔍 [VISITOR STATS DEBUG] Found ${visits.length} analytics records via API`);
+                    
+                    // Ensure timestamps are Date objects
+                    visits.forEach(visit => {
+                        if (typeof visit.timestamp === 'string') {
+                            visit.timestamp = new Date(visit.timestamp);
                         }
-                        return data;
                     });
 
                     console.log(`🔍 [VISITOR STATS DEBUG] Sample visit data:`, visits.length > 0 ? visits[0] : 'No visits found');
@@ -9314,16 +9296,11 @@
             const previousStartDate = new Date(startDate.getTime() - periodLength);
             const previousEndDate = new Date(startDate);
 
-            // Convert JavaScript Date objects to Firebase Timestamps for proper comparison
-            const firebasePrevStartDate = firebase.firestore.Timestamp.fromDate(previousStartDate);
-            const firebasePrevEndDate = firebase.firestore.Timestamp.fromDate(previousEndDate);
-
-            db.collection('analytics_visits')
-                .where('timestamp', '>=', firebasePrevStartDate)
-                .where('timestamp', '<', firebasePrevEndDate) // Use '<' for end date to avoid double counting
-                .get()
-                .then(snapshot => {
-                    const previousVisits = snapshot.docs.map(doc => doc.data());
+            AdminOrdersAPI.queryVisits({
+                startDate: previousStartDate.toISOString(),
+                endDate: previousEndDate.toISOString()
+            }).then(result => {
+                    const previousVisits = result.visits || [];
                     const previousVisitors = new Set(previousVisits.map(v => v.visitorId)).size;
                     const previousPageViews = previousVisits.length;
                     const previousBounceRate = calculateBounceRate(previousVisits);
@@ -9589,23 +9566,16 @@
 
             console.log('🔍 [VISITOR TRENDS DEBUG] Updating visitor trends chart for period:', startDate, 'to', endDate);
 
-            // Convert JavaScript Date objects to Firebase Timestamps for proper comparison
-            const firebaseStartDate = firebase.firestore.Timestamp.fromDate(startDate);
-            const firebaseEndDate = firebase.firestore.Timestamp.fromDate(endDate);
-
-            db.collection('analytics_visits')
-                .where('timestamp', '>=', firebaseStartDate)
-                .where('timestamp', '<=', firebaseEndDate)
-                .get()
-                .then(snapshot => {
-                    console.log('🔍 [VISITOR TRENDS DEBUG] Firestore query returned', snapshot.size, 'documents');
-
-                    const visits = snapshot.docs.map(doc => ({
-                        ...doc.data(),
-                        timestamp: doc.data().timestamp.toDate()
+            AdminOrdersAPI.queryVisits({
+                startDate: startDate.toISOString(),
+                endDate: endDate.toISOString()
+            }).then(result => {
+                    const visits = (result.visits || []).map(visit => ({
+                        ...visit,
+                        timestamp: typeof visit.timestamp === 'string' ? new Date(visit.timestamp) : visit.timestamp
                     }));
 
-                    console.log('🔍 [VISITOR TRENDS DEBUG] Processed visits:', visits.length);
+                    console.log('🔍 [VISITOR TRENDS DEBUG] API query returned', visits.length, 'documents');
 
                     const dailyData = groupVisitsByDay(visits);
 
@@ -9635,16 +9605,11 @@
                 return;
             }
 
-            // Convert JavaScript Date objects to Firebase Timestamps for proper comparison
-            const firebaseStartDate = firebase.firestore.Timestamp.fromDate(startDate);
-            const firebaseEndDate = firebase.firestore.Timestamp.fromDate(endDate);
-
-            db.collection('analytics_visits')
-                .where('timestamp', '>=', firebaseStartDate)
-                .where('timestamp', '<=', firebaseEndDate)
-                .get()
-                .then(snapshot => {
-                    const visits = snapshot.docs.map(doc => doc.data());
+            AdminOrdersAPI.queryVisits({
+                startDate: startDate.toISOString(),
+                endDate: endDate.toISOString()
+            }).then(result => {
+                    const visits = result.visits || [];
                     const trafficSources = {};
 
                     visits.forEach(visit => {
@@ -9808,16 +9773,11 @@
 
         // Load Top Pages
         function loadTopPages(startDate, endDate) {
-            // Convert JavaScript Date objects to Firebase Timestamps for proper comparison
-            const firebaseStartDate = firebase.firestore.Timestamp.fromDate(startDate);
-            const firebaseEndDate = firebase.firestore.Timestamp.fromDate(endDate);
-
-            db.collection('analytics_visits')
-                .where('timestamp', '>=', firebaseStartDate)
-                .where('timestamp', '<=', firebaseEndDate)
-                .get()
-                .then(snapshot => {
-                    const visits = snapshot.docs.map(doc => doc.data());
+            AdminOrdersAPI.queryVisits({
+                startDate: startDate.toISOString(),
+                endDate: endDate.toISOString()
+            }).then(result => {
+                    const visits = result.visits || [];
                     const pageStats = {};
 
                     visits.forEach(visit => {
@@ -9889,16 +9849,11 @@
                 return;
             }
 
-            // Convert JavaScript Date objects to Firebase Timestamps for proper comparison
-            const firebaseStartDate = firebase.firestore.Timestamp.fromDate(startDate);
-            const firebaseEndDate = firebase.firestore.Timestamp.fromDate(endDate);
-
-            db.collection('analytics_visits')
-                .where('timestamp', '>=', firebaseStartDate)
-                .where('timestamp', '<=', firebaseEndDate)
-                .get()
-                .then(snapshot => {
-                    const visits = snapshot.docs.map(doc => doc.data());
+            AdminOrdersAPI.queryVisits({
+                startDate: startDate.toISOString(),
+                endDate: endDate.toISOString()
+            }).then(result => {
+                    const visits = result.visits || [];
 
                     // Device data
                     const deviceData = { Desktop: 0, Mobile: 0, Tablet: 0 };
@@ -9964,18 +9919,13 @@
             const now = new Date();
             const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000);
 
-            // Convert JavaScript Date objects to Firebase Timestamps for proper comparison
-            const firebaseFiveMinutesAgo = firebase.firestore.Timestamp.fromDate(fiveMinutesAgo);
-            const firebaseNow = firebase.firestore.Timestamp.fromDate(now);
-
-            db.collection('analytics_visits')
-                .where('timestamp', '>=', firebaseFiveMinutesAgo)
-                .where('timestamp', '<=', firebaseNow) // Ensure we capture up to the current moment
-                .orderBy('timestamp', 'desc')
-                .limit(20)
-                .get()
-                .then(snapshot => {
-                    const recentVisits = snapshot.docs.map(doc => doc.data());
+            AdminOrdersAPI.queryVisits({
+                startDate: fiveMinutesAgo.toISOString(),
+                endDate: now.toISOString(),
+                orderBy: 'timestamp',
+                limit: 20
+            }).then(result => {
+                    const recentVisits = result.visits || [];
                     const uniqueVisitors = new Set(recentVisits.map(v => v.visitorId)).size;
 
                     // Update real-time counter
@@ -10092,16 +10042,14 @@
 
                 console.log(`🗓️ [LOCATION ANALYTICS] Querying visits from ${startDate.toISOString()} to ${now.toISOString()}`);
 
-                // Query analytics visits with proper timestamp handling
-                let query = db.collection('analytics_visits');
-
-                // Convert startDate to Firestore Timestamp for comparison
-                const firestoreStartDate = firebase.firestore.Timestamp.fromDate(startDate);
-                query = query.where('timestamp', '>=', firestoreStartDate);
-
-                const visitsSnapshot = await query.get();
-
-                console.log(`📊 [LOCATION ANALYTICS] Found ${visitsSnapshot.size} total visits in period`);
+                // Query analytics visits via API
+                const visitsResult = await AdminOrdersAPI.queryVisits({
+                    startDate: startDate.toISOString(),
+                    endDate: now.toISOString()
+                });
+                
+                const visitsData = visitsResult.visits || [];
+                console.log(`📊 [LOCATION ANALYTICS] Found ${visitsData.length} total visits in period`);
 
                 // Process location data - count UNIQUE VISITORS, not page views
                 const countryVisitors = {}; // Map of country -> Set of unique visitor IDs
@@ -10115,21 +10063,23 @@
                 let recordsUnknownCity = 0;
                 let recordsWithoutVisitorId = 0;
 
-                visitsSnapshot.forEach(doc => {
-                    const data = doc.data();
+                visitsData.forEach(data => {
                     totalRecords++;
 
                     // Handle timestamp validation
                     const timestamp = data.timestamp;
-                    if (timestamp && timestamp.toDate) {
-                        // Valid Firestore timestamp
-                        const visitDate = timestamp.toDate();
-                        if (visitDate < startDate) {
-                            console.warn('⚠️ Found visit outside date range:', visitDate);
-                            return; // Skip visits outside our date range
-                        }
-                    } else if (timestamp === null || timestamp === undefined) {
-                        console.warn('⚠️ Found visit with null timestamp, including in analysis');
+                    let visitDate;
+                    if (typeof timestamp === 'string') {
+                        visitDate = new Date(timestamp);
+                    } else if (timestamp && timestamp.toDate) {
+                        visitDate = timestamp.toDate();
+                    } else {
+                        visitDate = new Date();
+                    }
+                    
+                    if (visitDate < startDate) {
+                        console.warn('⚠️ Found visit outside date range:', visitDate);
+                        return; // Skip visits outside our date range
                     }
 
                     const visitorId = data.visitorId;
@@ -10139,7 +10089,7 @@
                     // Skip records without visitor ID
                     if (!visitorId) {
                         recordsWithoutVisitorId++;
-                        console.warn('⚠️ Found visit without visitorId:', doc.id);
+                        console.warn('⚠️ Found visit without visitorId');
                         return;
                     }
 
@@ -11182,27 +11132,17 @@
                 statusEl.style.display = 'block';
 
                 try {
-                    const timestamp = Date.now();
-                    const filename = `notifications/${timestamp}_${file.name}`;
-                    const storageRef = firebase.storage().ref(filename);
-                    const uploadTask = storageRef.put(file);
-
-                    uploadTask.on('state_changed',
-                        (snapshot) => {
-                            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                            statusEl.textContent = `⏳ Uploading... ${Math.round(progress)}%`;
-                        },
-                        (error) => {
-                            statusEl.textContent = '❌ Upload failed: ' + error.message;
-                            statusEl.style.color = '#dc2626';
-                        },
-                        async () => {
-                            uploadedImageUrl = await uploadTask.snapshot.ref.getDownloadURL();
-                            document.getElementById('imageUrl').value = uploadedImageUrl;
-                            statusEl.textContent = '✅ Image uploaded successfully!';
-                            statusEl.style.color = '#16a34a';
-                        }
-                    );
+                    // Upload image via API
+                    const uploadResult = await AdminProductsAPI.uploadImage(file, 'notification', 0, 1);
+                    
+                    if (uploadResult) {
+                        uploadedImageUrl = uploadResult;
+                        document.getElementById('imageUrl').value = uploadedImageUrl;
+                        statusEl.textContent = '✅ Image uploaded successfully!';
+                        statusEl.style.color = '#16a34a';
+                    } else {
+                        throw new Error('Upload failed - no URL returned');
+                    }
                 } catch (error) {
                     statusEl.textContent = '❌ Error: ' + error.message;
                     statusEl.style.color = '#dc2626';
