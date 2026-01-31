@@ -1,6 +1,6 @@
 # Firebase to Cloudflare Migration Plan
 
-## Document Version: 1.0
+## Document Version: 1.1
 ## Date: January 31, 2026
 
 ---
@@ -14,9 +14,12 @@
 5. [Netlify Functions Inventory](#netlify-functions-inventory)
 6. [Cloudflare Equivalents Mapping](#cloudflare-equivalents-mapping)
 7. [Dynamic Category System Design](#dynamic-category-system-design)
-8. [Migration Strategy](#migration-strategy)
-9. [Implementation Roadmap](#implementation-roadmap)
-10. [Risk Assessment](#risk-assessment)
+8. [Multi-Tenant Scalability Architecture](#multi-tenant-scalability-architecture)
+9. [Firebase Decommissioning & Cleanup](#firebase-decommissioning--cleanup)
+10. [Migration Strategy](#migration-strategy)
+11. [Implementation Roadmap](#implementation-roadmap)
+12. [Risk Assessment](#risk-assessment)
+13. [Coding Standards & Documentation](#coding-standards--documentation)
 
 ---
 
@@ -1031,6 +1034,46 @@ class CategoryLoader {
 
 ---
 
+# Multi-Tenant Scalability Architecture
+
+To ensure the platform can scale to thousands of independent stores, the following architectural patterns will be implemented:
+
+## 1. Database Isolation (Cloudflare D1)
+- **Tenant ID Pattern**: Every table (except system globals) must include a `tenant_id` (or `site_id`) column.
+- **Strict Filtering**: All Worker queries must include `WHERE tenant_id = ?` to prevent cross-tenant data leakage.
+- **Indexing**: Composite indexes on `(tenant_id, created_at)` or `(tenant_id, slug)` for performance.
+
+## 2. Resource Isolation (Cloudflare R2)
+- **Prefix-Based Namespacing**: Store files at `{tenant_id}/{resource_type}/{file_name}`.
+- **Signed URLs**: Use Workers to generate short-lived R2 pre-signed URLs for private assets (e.g., invoices).
+
+## 3. Worker Routing & Scalability
+- **Subdomain Routing**: Use the `site-router.js` logic in a Cloudflare Worker to resolve subdomains to `tenant_id` early in the request lifecycle.
+- **Edge Caching**: Leverage Cloudflare KV or Cache API for frequently accessed tenant configuration (logo, brand colors, etc.) to minimize D1 hits.
+
+---
+
+# Firebase Decommissioning & Cleanup
+
+Properly removing Firebase is critical to reducing technical debt and avoiding accidental billing.
+
+## 1. Code Removal Policy
+- **SDK Removal**: Remove all `firebase` and `firebase-admin` dependencies from `package.json`.
+- **File Deletion**:
+  - `src/js/auth/FirebaseConfig.js` (Delete)
+  - `src/js/firebase-config.js` (Delete)
+  - All files in `templates/template1/js/firebase/` (Delete after migration)
+- **Logic Replacement**: 
+  - Replace `AuthService.js` Firebase calls with REST fetch calls to the new Worker API.
+  - Replace `SiteService.js` Firestore calls with D1-backed Worker API calls.
+
+## 2. Environment Cleanup
+- Remove all `FIREBASE_*` environment variables from Replit/Cloudflare/Netlify secrets.
+- Revoke all Firebase Service Account JSON keys.
+- Delete Firebase projects once migration is confirmed 100% stable (post Phase 8).
+
+---
+
 # Migration Strategy
 
 ## Phase 1: Infrastructure Setup (Week 1)
@@ -1153,6 +1196,31 @@ class CategoryLoader {
 
 2. **Third-party Integrations**: Razorpay/Shiprocket should work unchanged
    - Mitigation: Testing in staging environment
+
+---
+
+# Coding Standards & Documentation
+
+To maintain high quality and scalability, all new code must adhere to these standards:
+
+## 1. JSDoc Requirements
+Every file and function must include JSDoc comments:
+```javascript
+/**
+ * Handles product retrieval for a specific tenant.
+ * @param {string} tenantId - The unique ID of the store.
+ * @param {object} env - Cloudflare environment bindings.
+ * @returns {Promise<Array>} List of products.
+ */
+async function getProducts(tenantId, env) { ... }
+```
+
+## 2. Error Handling
+- Use structured error responses (e.g., `{ success: false, error: "MESSAGE", code: "ENUM" }`).
+- Never expose raw SQL or system errors to the frontend.
+
+## 3. Modularization
+- Split utility logic (email, payments, validation) into separate modules/files to allow independent scaling and testing.
 
 ---
 
