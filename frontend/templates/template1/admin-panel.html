@@ -3490,11 +3490,9 @@
         </main>
     </div>
 
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
+    <!-- API-based Admin Services (replaces Firebase) -->
+    <script src="js/admin-orders-api.js"></script>
+    <script src="js/admin-products-api.js"></script>
 
     <!-- Chart.js for Analytics -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -3502,9 +3500,6 @@
     <!-- Stock Management System -->
     <script src="js/stock-manager.js"></script>
     <script src="js/out-of-stock-handler.js"></script>
-    
-    <!-- Firebase Orders Module - CRITICAL: Must load BEFORE loadOrders() is called -->
-    <script src="js/firebase/firebase-orders.js"></script>
 
     <!-- Verification Modal -->
     <div id="verificationModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); z-index: 20000; display: none; align-items: center; justify-content: center;">
@@ -3532,29 +3527,16 @@
     </div>
 
     <script>
-        // Firebase configuration - Auric project
-        const firebaseConfig = {
-            apiKey: "AIzaSyCrLCButDevLeILcBjrUCd9e7amXVjW-uI",
-            authDomain: "auric-a0c92.firebaseapp.com",
-            projectId: "auric-a0c92",
-            storageBucket: "auric-a0c92.firebasestorage.app",
-            messagingSenderId: "878979958342",
-            appId: "1:878979958342:web:e6092f7522488d21eaec47",
-            measurementId: "G-ZYZ750JHMB"
-        };
+        // API-based admin panel (replaces Firebase)
+        // AdminOrdersAPI and AdminProductsAPI are loaded from external JS files
 
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-        const auth = firebase.auth();
-        const storage = firebase.storage();
-
-        // Admin access without authentication (rules allow this)
+        // Admin access via JWT authentication
         let authInitialized = false;
         async function initializeAdminAuth() {
-            console.log('🔄 Admin dashboard using unauthenticated access (rules allow this)');
-            // Skip authentication entirely - Firestore rules now allow unauthenticated access
-            authInitialized = true;
-            return true;
+            console.log('🔄 Initializing admin authentication via API...');
+            const connected = await AdminOrdersAPI.testConnection();
+            authInitialized = connected;
+            return connected;
         }
 
         // Global variables - EXACT copy from working admin-dashboard.html
@@ -4047,21 +4029,25 @@
         // Load customers with UID and search functionality
         async function loadCustomers() {
             try {
-                console.log('Loading customers from Firestore...');
+                console.log('Loading customers via API...');
 
                 const customersLoading = document.getElementById('customers-loading');
                 const customersTable = document.getElementById('customers-table');
                 if (customersLoading) customersLoading.style.display = 'flex';
                 if (customersTable) customersTable.style.display = 'none';
 
-                const usersSnapshot = await db.collection('users').get();
+                const result = await AdminOrdersAPI.getUsers();
+                if (!result.success) {
+                    throw new Error(result.error || 'Failed to load users');
+                }
+                
+                const usersData = result.users;
                 allCustomers = [];
 
-                console.log(`Found ${usersSnapshot.size} registered customers in Firestore`);
+                console.log(`Found ${usersData.length} registered customers via API`);
 
-                for (const userDoc of usersSnapshot.docs) {
-                    const userData = userDoc.data();
-                    const userId = userDoc.id; // Get the UID
+                for (const userData of usersData) {
+                    const userId = userData.id || userData.uid; // Get the UID
 
                     // Get user's confirmed orders only
                     const userOrders = confirmedOrders.filter(order => order.userId === userId);
@@ -4287,31 +4273,26 @@
 
         // Debug function to test data loading
         async function testDataLoading() {
-            console.log('🐛 DEBUG: Testing all data loading...');
+            console.log('🐛 DEBUG: Testing all data loading via API...');
 
-            // Test Firestore connectivity
             try {
-                console.log('🐛 Testing Firestore connection...');
-                const testSnapshot = await db.collection('users').limit(1).get();
-                console.log(`🐛 Firestore connected. Found ${testSnapshot.size} users.`);
+                console.log('🐛 Testing API connection...');
+                const connected = await AdminOrdersAPI.testConnection();
+                console.log(`🐛 API connected: ${connected}`);
 
-                // Test orders collection
-                const ordersTest = await db.collection('users').get();
-                let totalOrders = 0;
-                for (const userDoc of ordersTest.docs) {
-                    const ordersSnapshot = await userDoc.ref.collection('orders').get();
-                    totalOrders += ordersSnapshot.size;
-                }
-                console.log(`🐛 Found ${totalOrders} total orders across all users.`);
+                // Test orders loading
+                const ordersResult = await AdminOrdersAPI.getOrders();
+                const totalOrders = ordersResult.orders?.length || 0;
+                console.log(`🐛 Found ${totalOrders} total orders via API.`);
 
                 if (totalOrders === 0) {
-                    console.log('ℹ️ No real orders found - this is why demo data is being used');
+                    console.log('ℹ️ No real orders found - demo data may be used');
                 } else {
                     console.log('✅ Real order data exists');
                 }
 
             } catch (error) {
-                console.error('🐛 Firestore connection error:', error);
+                console.error('🐛 API connection error:', error);
             }
         }
 
@@ -4789,29 +4770,19 @@
                 const isGuestOrder = order && order.isGuestOrder;
                 console.log(`Order is guest order: ${isGuestOrder}`);
 
-                let orderDocRef;
-                if (isGuestOrder) {
-                    // Guest orders are stored at root level
-                    orderDocRef = db.collection('guest-orders').doc(orderId);
-                } else {
-                    // Authenticated user orders are in subcollection
-                    orderDocRef = db.collection('users')
-                        .doc(userId)
-                        .collection('orders')
-                        .doc(orderId);
+                // Update order via API
+                const result = await AdminOrdersAPI.updateOrderStatus(orderId, 'confirmed', {
+                    adminConfirmed: true,
+                    confirmedAt: new Date().toISOString()
+                }, isGuestOrder, userId);
+
+                if (!result.success) {
+                    throw new Error(result.error || 'Failed to confirm order');
                 }
 
-                // Update order in Firebase
-                await orderDocRef.update({
-                    adminConfirmed: true,
-                    confirmedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                    status: 'confirmed',
-                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-
-                // Get order data for email
-                const orderDoc = await orderDocRef.get();
-                const orderData = orderDoc.data();
+                // Get updated order data
+                const orderResult = await AdminOrdersAPI.getOrder(orderId, isGuestOrder, userId);
+                const orderData = orderResult.order || order;
 
                 // Show success modal instead of alert
                 showSuccessModal({
@@ -4867,34 +4838,25 @@
                 const isGuestOrder = order && order.isGuestOrder;
                 console.log(`Order is guest order: ${isGuestOrder}`);
 
-                let orderDocRef;
-                if (isGuestOrder) {
-                    // Guest orders are stored at root level
-                    orderDocRef = db.collection('guest-orders').doc(orderId);
-                } else {
-                    // Authenticated user orders are in subcollection
-                    orderDocRef = db.collection('users')
-                        .doc(userId)
-                        .collection('orders')
-                        .doc(orderId);
+                // Update order status via API
+                const result = await AdminOrdersAPI.updateOrderStatus(orderId, 'cancelled', {
+                    cancelledBy: 'admin',
+                    cancelledAt: new Date().toISOString(),
+                    cancellationReason: cancellationData.reason,
+                    cancellationNote: cancellationData.note
+                }, isGuestOrder, userId);
+
+                if (!result.success) {
+                    throw new Error(result.error || 'Failed to cancel order');
                 }
 
-                // Get the order data first to use in the notification
-                const orderDoc = await orderDocRef.get();
-                const orderData = orderDoc.data();
+                // Get order data for email notification
+                const orderResult = await AdminOrdersAPI.getOrder(orderId, isGuestOrder, userId);
+                const orderData = orderResult.order || order;
 
-                if (!orderDoc.exists) {
+                if (!orderData) {
                     throw new Error("Order not found for cancellation.");
                 }
-
-                await orderDocRef.update({
-                    status: 'cancelled',
-                    cancelledAt: firebase.firestore.FieldValue.serverTimestamp(),
-                    cancelledBy: 'admin',
-                    cancellationReason: cancellationData.reason, // Store cancellation reason
-                    cancellationNote: cancellationData.note, // Store cancellation note
-                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
 
                 // Send cancellation email
                 try {
@@ -4990,34 +4952,24 @@
                 const isGuestOrder = order && order.isGuestOrder;
                 console.log(`Order is guest order: ${isGuestOrder}`);
 
-                // Build the correct document reference based on order type
-                let orderDocRef;
-                if (isGuestOrder) {
-                    // Guest orders are stored at root level
-                    orderDocRef = db.collection('guest-orders').doc(orderId);
-                } else {
-                    // Authenticated user orders are in subcollection
-                    orderDocRef = db.collection('users')
-                        .doc(userId)
-                        .collection('orders')
-                        .doc(orderId);
+                // Update order via API
+                const result = await AdminOrdersAPI.updateOrder(orderId, {
+                    deliveryStatus: 'delivered',
+                    deliveredAt: new Date().toISOString(),
+                    deliveredBy: 'admin'
+                }, isGuestOrder, userId);
+
+                if (!result.success) {
+                    throw new Error(result.error || 'Failed to update order');
                 }
 
-                // Get the current order data from Firebase
-                const orderSnapshot = await orderDocRef.get();
-                const orderData = orderSnapshot.data();
+                // Get order data for email
+                const orderResult = await AdminOrdersAPI.getOrder(orderId, isGuestOrder, userId);
+                const orderData = orderResult.order || order;
 
-                if (!orderSnapshot.exists) {
+                if (!orderData) {
                     throw new Error('Order not found');
                 }
-
-                // Update order in Firebase
-                await orderDocRef.update({
-                    deliveryStatus: 'delivered',
-                    deliveredAt: firebase.firestore.FieldValue.serverTimestamp(),
-                    deliveredBy: 'admin',
-                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
 
                 // Send delivery confirmation email
                 try {
@@ -5155,11 +5107,11 @@
             }
             
             try {
-                // Load video links from Firestore
-                const videoLinksDoc = await db.collection('settings').doc('watchBuyVideos').get();
+                // Load video links via API
+                const result = await AdminOrdersAPI.getVideoLinks();
                 
-                if (videoLinksDoc.exists) {
-                    const videoLinks = videoLinksDoc.data();
+                if (result.success && result.exists) {
+                    const videoLinks = result.videos;
                     console.log('Loaded video links:', videoLinks);
                     
                     // Populate each video's SKU and product name (non-blocking)
@@ -5319,14 +5271,15 @@
                     return;
                 }
                 
-                // Save to Firestore using the exact SKU (preserving case)
-                await db.collection('settings').doc('watchBuyVideos').set({
-                    [`video${videoNumber}`]: {
-                        productSKU: exactSku,
-                        productName: productFound.name,
-                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                    }
-                }, { merge: true });
+                // Save video link via API
+                const currentResult = await AdminOrdersAPI.getVideoLinks();
+                const currentVideos = currentResult.success && currentResult.videos ? currentResult.videos : {};
+                currentVideos[`video${videoNumber}`] = {
+                    productSKU: exactSku,
+                    productName: productFound.name,
+                    updatedAt: new Date().toISOString()
+                };
+                await AdminOrdersAPI.updateVideoLinks(currentVideos);
                 
                 // Update display
                 await fetchAndDisplayProductName(videoNumber, exactSku);
@@ -7485,21 +7438,21 @@
             notifications.unshift(notification);
             console.log('✅ New notification added:', notification);
 
-            // Save to Firebase Firestore first
+            // Save to API first
             try {
-                await db.collection('adminNotifications').doc(notification.id.toString()).set(notification);
-                console.log('✅ Notification saved to Firestore');
+                await AdminOrdersAPI.createNotification(notification);
+                console.log('✅ Notification saved via API');
 
-                // Save to localStorage only after Firebase success
+                // Save to localStorage as backup
                 try {
                     localStorage.setItem('adminNotifications', JSON.stringify(notifications));
                     console.log('✅ Notification saved to localStorage backup');
                 } catch (localError) {
                     console.warn('⚠️ Failed to save notification to localStorage backup:', localError);
                 }
-            } catch (firebaseError) {
-                console.error('❌ Failed to save notification to Firestore:', firebaseError);
-                // Still save to localStorage if Firebase fails
+            } catch (apiError) {
+                console.error('❌ Failed to save notification via API:', apiError);
+                // Still save to localStorage if API fails
                 try {
                     localStorage.setItem('adminNotifications', JSON.stringify(notifications));
                     console.log('✅ Notification saved to localStorage as fallback');
@@ -7519,23 +7472,21 @@
                 console.log(`Marking notification ${notificationId} as read...`);
                 notification.read = true;
 
-                // Update in Firebase first
+                // Update via API first
                 try {
-                    await db.collection('adminNotifications').doc(notificationId.toString()).update({
-                        read: true
-                    });
-                    console.log('✅ Notification marked as read in Firestore');
+                    await AdminOrdersAPI.markNotificationRead(notificationId.toString());
+                    console.log('✅ Notification marked as read via API');
 
-                    // Update in localStorage as backup only after Firebase success
+                    // Update in localStorage as backup only after API success
                     try {
                         localStorage.setItem('adminNotifications', JSON.stringify(notifications));
                         console.log('✅ Notification status updated in localStorage backup');
                     } catch (error) {
                         console.warn('⚠️ Failed to update localStorage backup:', error);
                     }
-                } catch (firebaseError) {
-                    console.error('❌ Failed to update notification in Firestore:', firebaseError);
-                    // Still update localStorage if Firebase fails
+                } catch (apiError) {
+                    console.error('❌ Failed to update notification via API:', apiError);
+                    // Still update localStorage if API fails
                     try {
                         localStorage.setItem('adminNotifications', JSON.stringify(notifications));
                         console.log('✅ Notification status updated in localStorage as fallback');
@@ -7650,13 +7601,11 @@
                 for (const notification of unreadNotifications) {
                     notification.read = true;
 
-                    // Update in Firebase
+                    // Update via API
                     try {
-                        await db.collection('adminNotifications').doc(notification.id.toString()).update({
-                            read: true
-                        });
-                    } catch (firebaseError) {
-                        console.warn(`Failed to update notification ${notification.id} in Firestore:`, firebaseError);
+                        await AdminOrdersAPI.markNotificationRead(notification.id.toString());
+                    } catch (apiError) {
+                        console.warn(`Failed to update notification ${notification.id} via API:`, apiError);
                     }
                 }
 
@@ -8101,12 +8050,12 @@
                 // Add to notifications array
                 notifications.unshift(statusNotification);
 
-                // Save to Firebase
+                // Save via API
                 try {
-                    await db.collection('adminNotifications').doc(statusNotification.id.toString()).set(statusNotification);
+                    await AdminOrdersAPI.createNotification(statusNotification);
                     console.log(`✅ Created notification for ${newStatus} on order ${orderId}`);
-                } catch (firebaseError) {
-                    console.warn(`⚠️ Failed to save notification to Firestore:`, firebaseError);
+                } catch (apiError) {
+                    console.warn(`⚠️ Failed to save notification via API:`, apiError);
                 }
 
                 // Update localStorage backup
@@ -8123,38 +8072,36 @@
             }
         }
 
-        // Load notifications from Firebase Firestore with localStorage backup
+        // Load notifications via API with localStorage backup
         async function loadNotifications() {
             const notificationsLoading = document.getElementById('notifications-loading');
             const notificationsList = document.getElementById('notifications-list');
 
-            console.log('🔄 Loading notifications from Firestore...');
+            console.log('🔄 Loading notifications via API...');
 
             if (notificationsLoading) notificationsLoading.style.display = 'block';
             if (notificationsList) notificationsList.style.display = 'none';
 
             try {
-                // Always try to load from Firebase first for deployed sites
-                const notificationsSnapshot = await db.collection('adminNotifications')
-                    .orderBy('timestamp', 'desc')
-                    .limit(50)
-                    .get();
-
+                // Load notifications via API
+                const result = await AdminOrdersAPI.getNotifications({ limit: 50 });
+                
                 notifications = [];
                 notificationIdCounter = 0;
 
-                notificationsSnapshot.forEach(doc => {
-                    const notificationData = doc.data();
-                    notifications.push({
-                        id: parseInt(doc.id) || notificationData.id,
-                        message: notificationData.message,
-                        timestamp: notificationData.timestamp,
-                        type: notificationData.type || 'info',
-                        read: notificationData.read || false,
-                        relatedData: notificationData.relatedData || null
+                if (result.success && result.notifications) {
+                    result.notifications.forEach(notificationData => {
+                        notifications.push({
+                            id: notificationData.id,
+                            message: notificationData.message,
+                            timestamp: notificationData.timestamp,
+                            type: notificationData.type || 'info',
+                            read: notificationData.read || false,
+                            relatedData: notificationData.relatedData || null
+                        });
+                        notificationIdCounter = Math.max(notificationIdCounter, parseInt(notificationData.id) || 0);
                     });
-                    notificationIdCounter = Math.max(notificationIdCounter, parseInt(doc.id) || notificationData.id || 0);
-                });
+                }
 
                 console.log(`✅ Successfully loaded ${notifications.length} notifications from Firestore`);
 
@@ -11265,16 +11212,17 @@
             // Load token statistics
             async function loadTokenStats() {
                 try {
-                    const db = firebase.firestore();
-                    const usersSnapshot = await db.collection('users').get();
+                    const usersResult = await AdminOrdersAPI.getUsers();
                     let userTokenCount = 0;
-                    usersSnapshot.forEach(doc => {
-                        const tokens = doc.data().pushTokens || [];
-                        userTokenCount += tokens.length;
-                    });
+                    if (usersResult.success && usersResult.users) {
+                        usersResult.users.forEach(user => {
+                            const tokens = user.pushTokens || [];
+                            userTokenCount += tokens.length;
+                        });
+                    }
 
-                    const guestTokensSnapshot = await db.collection('guest_tokens').get();
-                    const guestTokenCount = guestTokensSnapshot.size;
+                    const guestTokensResult = await AdminOrdersAPI.getGuestTokens();
+                    const guestTokenCount = guestTokensResult.tokens?.length || 0;
                     const totalCount = userTokenCount + guestTokenCount;
 
                     document.getElementById('userTokenCount').textContent = userTokenCount;
@@ -11391,8 +11339,8 @@
         // Load automatic notification preferences
         async function loadAutomaticNotificationPreferences() {
             try {
-                const settingsDoc = await db.collection('settings').doc('notifications').get();
-                const settings = settingsDoc.data() || {};
+                const result = await AdminOrdersAPI.getNotificationPreferences();
+                const settings = result.preferences || {};
 
                 document.getElementById('autoNotifyNewProduct').checked = settings.autoNotifyNewProduct !== false;
                 document.getElementById('autoNotifyPriceDrop').checked = settings.autoNotifyPriceDrop !== false;
@@ -11418,7 +11366,7 @@
                     updatedAt: new Date().toISOString()
                 };
 
-                await db.collection('settings').doc('notifications').set(preferences, { merge: true });
+                await AdminOrdersAPI.updateNotificationPreferences(preferences);
                 
                 msg.textContent = '✅ Preferences saved successfully!';
                 msg.style.color = '#10b981';
