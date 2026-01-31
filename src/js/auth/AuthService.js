@@ -1,25 +1,19 @@
 /**
  * @file AuthService.js
- * @description handles all user authentication logic using Firebase Auth and Firestore.
+ * @description handles all user authentication logic using Cloudflare API.
  * @module AuthService
  */
 
-import firebaseConfig from './FirebaseConfig.js';
-
 class AuthService {
   /**
-   * Initializes Firebase and the Auth/Firestore services.
+   * Initializes the Auth service.
    */
   constructor() {
-    if (!firebase.apps.length) {
-      firebase.initializeApp(firebaseConfig);
-    }
-    this.auth = firebase.auth();
-    this.db = firebase.firestore();
+    this.apiBase = '/api/auth';
   }
 
   /**
-   * Registers a new user and creates their profile in Firestore.
+   * Registers a new user.
    * @param {string} name - User's full name.
    * @param {string} email - User's email address.
    * @param {string} password - User's chosen password.
@@ -27,20 +21,14 @@ class AuthService {
    */
   async signUp(name, email, password) {
     try {
-      const userCredential = await this.auth.createUserWithEmailAndPassword(email, password);
-      const user = userCredential.user;
-      await user.updateProfile({ displayName: name });
-      await this.db.collection('users').doc(user.uid).set({
-        uid: user.uid,
-        name: name,
-        email: email,
-        plan: null, // Force selection on dashboard
-        trialStartDate: null,
-        siteCount: 0,
-        status: 'pending_plan'
+      const response = await fetch(`${this.apiBase}/signup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password })
       });
-      await user.sendEmailVerification();
-      return { success: true, user: user };
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Signup failed');
+      return { success: true, user: result.user };
     } catch (error) {
       console.error("Signup Error:", error);
       throw error;
@@ -55,15 +43,14 @@ class AuthService {
    */
   async login(email, password) {
     try {
-      await this.auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
-      const userCredential = await this.auth.signInWithEmailAndPassword(email, password);
-      const user = userCredential.user;
-      await user.reload();
-      const reloadedUser = this.auth.currentUser;
-      if (!reloadedUser.emailVerified) {
-        throw new Error("Please verify your email before logging in.");
-      }
-      return { success: true, user: reloadedUser };
+      const response = await fetch(`${this.apiBase}/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Login failed');
+      return { success: true, user: result.user };
     } catch (error) {
       console.error("Login Error:", error);
       throw error;
@@ -71,27 +58,36 @@ class AuthService {
   }
 
   /**
-   * Logs out the current user and redirects to the login page.
+   * Logs out the current user.
    */
   async logout() {
-    await this.auth.signOut();
-    window.location.href = '/src/pages/login.html';
+    try {
+      await fetch(`${this.apiBase}/logout`, { method: 'POST' });
+      window.location.href = '/src/pages/login.html';
+    } catch (error) {
+      console.error("Logout Error:", error);
+      window.location.href = '/src/pages/login.html';
+    }
   }
 
   /**
    * Sets up a listener for authentication state changes.
-   * @param {Function} callback - Function to call when auth state changes.
+   * (Simplified for JWT approach - might need actual session check)
    */
   onAuthStateChanged(callback) {
-    return this.auth.onAuthStateChanged(callback);
+    // In a JWT setup, we might check local storage or a 'me' endpoint
+    fetch(`${this.apiBase}/me`)
+      .then(res => res.ok ? res.json() : null)
+      .then(user => callback(user))
+      .catch(() => callback(null));
   }
 
   /**
-   * Returns the currently authenticated user, or null if not logged in.
-   * @returns {Object|null} The current Firebase user object.
+   * Returns the currently authenticated user.
    */
-  getCurrentUser() {
-    return this.auth.currentUser;
+  async getCurrentUser() {
+    const res = await fetch(`${this.apiBase}/me`);
+    return res.ok ? await res.json() : null;
   }
 }
 
