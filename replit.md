@@ -167,21 +167,28 @@ wrangler pages deploy . --project-name=saas-frontend
 - [x] All Cloudflare Workers implemented
 - [x] Frontend API services created
 - [x] Data migration scripts prepared
+- [x] Dynamic category system with single template
+- [x] Firebase code removed from cart/wishlist/checkout
+- [x] Product loaders migrated to API-based
+- [x] Legacy files removed (firebase.json, firestore.rules, netlify folder)
 - [ ] D1 database created in Cloudflare
 - [ ] R2 bucket created
 - [ ] Firebase data exported and migrated
-- [ ] Frontend pages updated to use new API
+- [ ] Admin panel category management UI
 - [ ] Testing and verification
 - [ ] Firebase decommissioning
 
 ## Recent Changes
 
-- **January 31, 2026**: Started migration implementation
-  - Created `/backend/` folder with complete Cloudflare Workers
-  - Created `/frontend/` folder with new API services
-  - D1 database schema with 15+ tables
-  - Dynamic category system implemented
-  - All workers: auth, sites, products, orders, cart, wishlist, payments, email, categories, site-router
+- **January 31, 2026**: Firebase cleanup and API migration
+  - Removed Firebase auth from cart-manager.js, wishlist-manager.js, checkout-script-simplified.js
+  - Updated product loaders (featured-collection, new-arrivals, saree-collection) to use API
+  - Created dynamic category.html template with category-loader.js
+  - Removed 12 hardcoded category HTML files (gold-necklace.html, etc.)
+  - Removed firebase.json, firestore.rules, netlify/ folder with 40+ functions
+  - Created auth-service.js, api-cart-manager.js, api-wishlist-manager.js for API integration
+  - Backend site-router.js handles dynamic /category/{slug} routing
+  - Categories API with full CRUD operations
 
 ## Notes
 

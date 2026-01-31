@@ -176,7 +176,7 @@ window.CartManager = (function() {
             // Try to load from sessionStorage cache first (contains Firebase data)
             let foundCachedData = false;
             try {
-                const cachedCart = sessionStorage.getItem('firebase_cart_cache');
+                const cachedCart = sessionStorage.getItem('api_cart_cache');
                 if (cachedCart) {
                     const cacheData = JSON.parse(cachedCart);
 
@@ -213,16 +213,16 @@ window.CartManager = (function() {
                         } else {
                             console.log('Cache is stale or for different user, ignoring');
                             // Clear stale cache
-                            sessionStorage.removeItem('firebase_cart_cache');
+                            sessionStorage.removeItem('api_cart_cache');
                         }
                     } else {
                         console.log('Invalid cache format, clearing');
-                        sessionStorage.removeItem('firebase_cart_cache');
+                        sessionStorage.removeItem('api_cart_cache');
                     }
                 }
             } catch (error) {
                 console.warn('Error loading cached cart data:', error);
-                sessionStorage.removeItem('firebase_cart_cache');
+                sessionStorage.removeItem('api_cart_cache');
             }
 
             // If no cached data found, load from local storage
@@ -270,9 +270,7 @@ window.CartManager = (function() {
      * @returns {Boolean} True if user is logged in
      */
     function isUserLoggedIn() {
-        return typeof firebase !== 'undefined' && 
-               firebase.auth && 
-               firebase.auth().currentUser !== null;
+        return typeof AuthService !== 'undefined' && AuthService.isLoggedIn();
     }
 
     // ======================================================

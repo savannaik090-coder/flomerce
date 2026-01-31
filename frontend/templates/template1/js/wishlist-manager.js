@@ -304,7 +304,7 @@ const WishlistManager = (function() {
             // Try to load from sessionStorage cache first (contains Firebase data)
             let foundCachedData = false;
             try {
-                const cachedWishlist = sessionStorage.getItem('firebase_wishlist_cache');
+                const cachedWishlist = sessionStorage.getItem('api_wishlist_cache');
                 if (cachedWishlist) {
                     const cacheData = JSON.parse(cachedWishlist);
 
@@ -341,16 +341,16 @@ const WishlistManager = (function() {
                         } else {
                             console.log('Cache is stale or for different user, ignoring');
                             // Clear stale cache
-                            sessionStorage.removeItem('firebase_wishlist_cache');
+                            sessionStorage.removeItem('api_wishlist_cache');
                         }
                     } else {
                         console.log('Invalid cache format, clearing');
-                        sessionStorage.removeItem('firebase_wishlist_cache');
+                        sessionStorage.removeItem('api_wishlist_cache');
                     }
                 }
             } catch (error) {
                 console.warn('Error loading cached wishlist data:', error);
-                sessionStorage.removeItem('firebase_wishlist_cache');
+                sessionStorage.removeItem('api_wishlist_cache');
             }
 
             // If no cached data found, load from local storage
