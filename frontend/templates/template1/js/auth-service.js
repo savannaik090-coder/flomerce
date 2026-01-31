@@ -145,9 +145,81 @@ const AuthService = (function() {
                 saveSession({ user: currentUser, token: getToken() });
             }
 
-            return { success: true };
+            return { success: true, message: result.message || 'Email verified successfully' };
         } catch (error) {
             console.error('Email verification error:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    /**
+     * Verify email with token and email (backward compatible)
+     */
+    async function verifyEmailWithToken(token, email) {
+        try {
+            const response = await fetch('/api/auth/verify-email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token, email })
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || 'Email verification failed');
+            }
+
+            return { success: true, message: result.message || 'Email verified successfully' };
+        } catch (error) {
+            console.error('Email verification error:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    /**
+     * Validate password reset token
+     */
+    async function validatePasswordResetToken(email, token) {
+        try {
+            const response = await fetch('/api/auth/validate-reset-token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, token })
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || 'Invalid reset token');
+            }
+
+            return { success: true, valid: true };
+        } catch (error) {
+            console.error('Token validation error:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    /**
+     * Reset password with token
+     */
+    async function resetPasswordWithToken(email, token, newPassword) {
+        try {
+            const response = await fetch('/api/auth/reset-password-confirm', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, token, newPassword })
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || 'Password reset failed');
+            }
+
+            return { success: true, message: 'Password reset successfully' };
+        } catch (error) {
+            console.error('Password reset error:', error);
             return { success: false, error: error.message };
         }
     }
@@ -345,6 +417,9 @@ const AuthService = (function() {
         logout,
         resetPassword,
         verifyEmail,
+        verifyEmailWithToken,
+        validatePasswordResetToken,
+        resetPasswordWithToken,
         getProfile,
         updateProfile,
         isLoggedIn,
@@ -367,4 +442,11 @@ window.APIAuth = {
     saveSession: (data) => AuthService.saveSession({ user: data }),
     login: (email, password) => AuthService.login(email, password),
     logout: () => AuthService.logout()
+};
+
+// Backward compatibility with FirebaseAuth (for legacy code)
+window.FirebaseAuth = {
+    verifyEmailWithToken: (token, email) => AuthService.verifyEmailWithToken(token, email),
+    validatePasswordResetToken: (email, token) => AuthService.validatePasswordResetToken(email, token),
+    resetPasswordWithToken: (email, token, password) => AuthService.resetPasswordWithToken(email, token, password)
 };

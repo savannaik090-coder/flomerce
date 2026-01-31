@@ -114,30 +114,8 @@
         </div>
     </div>
 
-    <!-- Firebase Scripts -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    
-    <!-- Firebase Configuration -->
-    <script>
-        // Firebase configuration - Auric project
-        const firebaseConfig = {
-            apiKey: "AIzaSyCrLCButDevLeILcBjrUCd9e7amXVjW-uI",
-            authDomain: "auric-a0c92.firebaseapp.com",
-            projectId: "auric-a0c92",
-            storageBucket: "auric-a0c92.firebasestorage.app",
-            messagingSenderId: "878979958342",
-            appId: "1:878979958342:web:e6092f7522488d21eaec47",
-            measurementId: "G-ZYZ750JHMB"
-        };
-        
-        // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
-    </script>
-    
-    <script src="js/firebase/firebase-init.js"></script>
-    <script src="js/firebase/firebase-auth.js"></script>
+    <!-- API-based Authentication -->
+    <script src="js/auth-service.js"></script>
 
     <script>
         // Get URL parameters

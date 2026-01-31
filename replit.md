@@ -10,7 +10,7 @@ Fluxe is a SaaS platform that allows users to create their own e-commerce websit
 - **Backend:** Cloudflare Workers (`/backend/workers/`)
 - **Database:** Cloudflare D1 (SQLite)
 - **File Storage:** Cloudflare R2
-- **Auth:** Custom JWT-based authentication
+- **Auth:** Custom JWT-based authentication via `auth-service.js`
 - **Payments:** Razorpay (unchanged)
 
 ## Project Structure
@@ -36,9 +36,9 @@ Fluxe is a SaaS platform that allows users to create their own e-commerce websit
 │   │   ├── template1/             # MAIN TEMPLATE (Jewellery)
 │   │   │   ├── category.html      # DYNAMIC - Single template for all categories
 │   │   │   ├── js/
-│   │   │   │   ├── category-loader.js  # Loads category based on URL slug
-│   │   │   │   ├── auth-service.js     # API-based authentication
-│   │   │   │   ├── api-cart-manager.js # API-based cart
+│   │   │   │   ├── category-loader.js     # Loads category based on URL slug
+│   │   │   │   ├── auth-service.js        # API-based authentication
+│   │   │   │   ├── api-cart-manager.js    # API-based cart
 │   │   │   │   ├── api-wishlist-manager.js # API-based wishlist
 │   │   │   │   └── ... (other scripts)
 │   │   │   └── ... (other pages)
@@ -137,23 +137,20 @@ Main tables:
 - [x] All Cloudflare Workers implemented
 - [x] Frontend API services created
 - [x] Dynamic category system with single template
-- [x] Firebase code removed from cart-manager.js, wishlist-manager.js
-- [x] Firebase code removed from checkout-script-simplified.js
-- [x] Firebase code removed from order-track.js, testimonial-scroller.js
-- [x] Hardcoded collection pages removed (new-arrivals, featured-collection, saree-collection, all-collection)
+- [x] All JS files migrated to API (no Firebase in /js/ folder)
+- [x] Hardcoded collection pages removed
 - [x] Collection-specific loaders removed
 - [x] Firebase documentation removed
 - [x] Duplicate admin-panel/js folder removed
 - [x] Legacy files removed (firebase.json, firestore.rules, netlify folder)
+- [x] Core pages migrated: product-detail, contact-us, verify-email, reset-password, about-us, checkout, book-appointment
 
-**Pending (HTML Files - Needs Manual Update):**
-- [ ] product-detail.html - Firebase SDK script tags (non-functional, need removal)
-- [ ] verify-email.html - Firebase SDK script tags (non-functional)
-- [ ] reset-password.html - Firebase SDK script tags (non-functional)
-- [ ] contact-us.html - Firebase SDK script tags (non-functional)
-- [ ] profile.html - Inline Firebase Firestore code (needs refactor to API)
-- [ ] products-admin-panel.html - Extensive Firebase code (needs major refactor)
-- [ ] admin-panel.html - Firebase code (needs refactor)
+**Pending (Admin Panels - Major Refactor):**
+- [ ] login.html - Still uses FirebaseAuth (partially works via alias)
+- [ ] signup.html - Still uses Firebase SDK directly
+- [ ] profile.html - Extensive inline Firebase Firestore code
+- [ ] products-admin-panel.html - Thousands of lines of Firebase code
+- [ ] admin-panel.html - Extensive Firebase integration
 
 **Backend Deployment:**
 - [ ] D1 database created in Cloudflare
@@ -165,12 +162,13 @@ Main tables:
 ## Recent Changes
 
 - **January 31, 2026**: Comprehensive Firebase cleanup
-  - Removed hardcoded collection HTML pages (new-arrivals, featured-collection, saree-collection, all-collection)
-  - Removed collection-specific JS loaders
-  - Updated order-track.js, checkout-script-simplified.js, testimonial-scroller.js to use API
-  - Removed duplicate admin-panel/js folder
-  - Removed Firebase documentation from frontend/src/docs/
+  - Removed Firebase SDK script tags from: product-detail, contact-us, verify-email, reset-password, about-us, checkout, book-appointment
+  - Updated all pages to use auth-service.js instead of firebase/*.js files
+  - Updated cart/wishlist references to use api-*.js files
+  - Added FirebaseAuth alias to auth-service.js for backward compatibility
   - Removed old documents folder from template1
+  - Removed Firebase documentation from frontend/src/docs/
+  - Cleaned up commented Firebase code in checkout.html
 
 - **Previous**: Firebase to Cloudflare migration foundation
   - Created API services (auth, cart, wishlist, products, categories)
@@ -181,7 +179,8 @@ Main tables:
 
 ## Notes
 
-- **HTML Files**: Still contain Firebase SDK script tags that reference non-existent files. These cause 404 errors but don't break functionality since JS uses API calls now.
-- **Admin Panels**: profile.html and products-admin-panel.html have extensive inline Firebase code that requires significant refactoring to migrate to API.
+- **FirebaseAuth Alias**: auth-service.js provides a `window.FirebaseAuth` alias for backward compatibility with legacy code
+- **Admin Panels**: profile.html and products-admin-panel.html require significant refactoring (thousands of lines of Firebase code)
+- **Login/Signup**: These pages use FirebaseAuth methods which partially work via the alias but need full migration
 - **Shiprocket Integration**: Skipped in migration (was non-functional)
-- **Push Notifications**: To be implemented later with Web Push
+- **Push Notifications**: Pending Web Push implementation

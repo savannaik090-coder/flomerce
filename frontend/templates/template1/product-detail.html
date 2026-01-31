@@ -38,28 +38,8 @@
     <!-- Flaticon CSS for bottom navigation icons -->
     <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/2.6.0/uicons-regular-straight/css/uicons-regular-straight.css'>
 
-    <!-- Firebase SDKs -->
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage-compat.js"></script>
-
-    <!-- Unified Firebase Configuration -->
-    <script src="js/firebase-config.js"></script>
-    <script>
-        // Initialize Firebase with unified configuration
-        console.log('Initializing Firebase with unified config...');
-        try {
-            if (window.firebaseConfig) {
-                firebase.initializeApp(window.firebaseConfig);
-                console.log('Firebase initialized successfully with unified config');
-            } else {
-                console.error('Firebase config not loaded from firebase-config.js');
-            }
-        } catch (error) {
-            console.error('Error initializing Firebase:', error);
-        }
-    </script>
+    <!-- API-based Authentication -->
+    <script src="js/auth-service.js"></script>
 
     <!-- Nazakat Analytics Tracking -->
     <script src="js/nazakat-analytics.js?v=1.0.0"></script>
@@ -726,18 +706,14 @@ background-color: #000 !important;
     <script src="js/banner-rotator.js?v=1.0.1"></script>
     <script src="js/error-handler.js"></script>
 
-    <!-- New Cart System -->
-    <script src="js/firebase/firebase-auth.js"></script>
+    <!-- Cart System -->
     <script src="js/cart-local-storage.js?v=1.0.0"></script>
-    <script src="js/firebase/firebase-cart-manager.js?v=1.0.0"></script>
+    <script src="js/api-cart-manager.js?v=1.0.0"></script>
     <script src="js/cart-manager.js?v=1.0.1"></script>
-
-    <!-- Firebase Reviews Manager -->
-    <script src="js/firebase/firebase-reviews-manager.js"></script>
 
     <!-- Wishlist Scripts -->
     <script src="js/wishlist-local-storage.js?v=1.0.0"></script>
-    <script src="js/firebase/firebase-wishlist-manager.js?v=1.0.0"></script>
+    <script src="js/api-wishlist-manager.js?v=1.0.0"></script>
     <script src="js/wishlist-manager.js?v=1.0.0"></script>
     <script src="js/main.js"></script>
 
