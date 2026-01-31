@@ -204,54 +204,29 @@ document.addEventListener('DOMContentLoaded', function() {
     /**
      * Update account icon based on login status
      */
-    function updateAccountIcon() {
+    async function updateAccountIcon() {
         const accountIconLink = document.querySelector('#user-icon');
         if (!accountIconLink) return;
 
-        // Check if user is logged in using the proper FirebaseAuth method
         let isLoggedIn = false;
-
-        if (window.FirebaseAuth && typeof window.FirebaseAuth.isLoggedIn === 'function') {
-            // Use the proper authentication check that includes email verification
-            isLoggedIn = window.FirebaseAuth.isLoggedIn();
-        } else if (window.firebase && window.firebase.auth && window.firebase.auth().currentUser) {
-            // Fallback to basic Firebase auth check (but this doesn't check email verification)
-            const user = window.firebase.auth().currentUser;
-            // For now, assume logged in if user exists (the login function handles verification)
-            isLoggedIn = !!user;
+        try {
+            const res = await fetch('/api/auth/me');
+            isLoggedIn = res.ok;
+        } catch (e) {
+            isLoggedIn = false;
         }
 
         if (isLoggedIn) {
-            // User is logged in and verified, show profile link
             accountIconLink.href = 'profile.html';
             accountIconLink.classList.add('logged-in');
         } else {
-            // User is not logged in or not verified, show login link
             accountIconLink.href = '/login';
             accountIconLink.classList.remove('logged-in');
         }
     }
 
-
-    // Wait for Firebase to initialize before checking auth state
-    function initializeAuthStateCheck() {
-        if (window.firebase && window.firebase.auth) {
-            // Initial check
-            updateAccountIcon();
-
-            // Set up auth state observer
-            firebase.auth().onAuthStateChanged((user) => {
-                console.log('Auth state changed in navigation:', user ? 'logged in' : 'logged out');
-                updateAccountIcon();
-            });
-        } else {
-            // Retry after a short delay if Firebase isn't ready
-            setTimeout(initializeAuthStateCheck, 200);
-        }
-    }
-
-    // Start initialization check
-    initializeAuthStateCheck();
+    // Initial check
+    updateAccountIcon();
 
     /**
      * Setup search functionality

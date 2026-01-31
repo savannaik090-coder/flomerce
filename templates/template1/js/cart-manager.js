@@ -286,13 +286,16 @@ window.CartManager = (function() {
     }
 
     /**
-     * Check if user is currently logged in
-     * @returns {Boolean} True if user is logged in
+     * Check if user is currently logged in via Cloudflare API
+     * @returns {Promise<Boolean>} True if user is logged in
      */
-    function isUserLoggedIn() {
-        return typeof firebase !== 'undefined' && 
-               firebase.auth && 
-               firebase.auth().currentUser !== null;
+    async function isUserLoggedIn() {
+        try {
+            const res = await fetch('/api/auth/me');
+            return res.ok;
+        } catch (e) {
+            return false;
+        }
     }
 
     // ======================================================

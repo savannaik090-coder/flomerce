@@ -92,137 +92,42 @@ document.addEventListener('DOMContentLoaded', function() {
     const continueToPaymentBtn = document.getElementById('continue-to-payment');
     const backToAddressBtn = document.getElementById('back-to-address');
 
-    // A simplified Firebase integration function that focuses on reliability
-    function initializeFirebaseIntegration() {
-        console.log('Initializing Firebase integration (simplified version)');
-
-        try {
-            // First try to access LocalStorageCart for reliable cart access
-            if (typeof LocalStorageCart !== 'undefined' && LocalStorageCart.getItems) {
-                console.log('Using LocalStorageCart module for checkout');
-            } else {
-                console.log('LocalStorageCart module not available');
-            }
-
-            // Try to use Firebase if available
-            if (typeof firebase !== 'undefined' && firebase.auth) {
-                // Just check if auth module exists - avoid deep integration to prevent errors
-                console.log('Firebase auth detected, will try to use Firebase cart if user is logged in');
-
-                // Create simple firebase module wrapper
-                if (typeof FirebaseCartManager !== 'undefined') {
-                    firebaseCartModule = {
-                        loadCartFromFirebase: async function() {
-                            try {
-                                console.log('Loading cart from Firebase...');
-                                const result = await FirebaseCartManager.getItems();
-                                return result;
-                            } catch (error) {
-                                console.error('Error loading cart from Firebase:', error);
-                                return { success: false, items: [] };
-                            }
-                        },
-                        saveCartToFirebase: async function(items) {
-                            try {
-                                console.log('Saving cart to Firebase...');
-                                const result = await FirebaseCartManager.saveItems(items);
-                                return result;
-                            } catch (error) {
-                                console.error('Error saving cart to Firebase:', error);
-                                return { success: false, error: error.message };
-                            }
-                        },
-                        clearFirebaseCart: async function() {
-                            try {
-                                console.log('Clearing Firebase cart...');
-                                const result = await FirebaseCartManager.clearItems();
-                                return result;
-                            } catch (error) {
-                                console.error('Error clearing Firebase cart:', error);
-                                return { success: false, error: error.message };
-                            }
-                        }
-                    };
-                    console.log('Firebase cart module initialized with all methods');
-                }
-
-                // Load Firebase Orders Module directly
-                const script = document.createElement('script');
-                script.src = '/js/firebase/firebase-orders.js?v=' + Date.now();
-                script.onload = function() {
-                    console.log('Firebase orders module loaded for checkout');
-                    if (window.firebaseOrdersModule) {
-                        console.log('Firebase Orders module functions available');
-                        // Check auth requirement and update UI correctly
-                        setTimeout(() => {
-                            updateCheckoutButtonState();
-                        }, 100);
-                    }
-                };
-                script.onerror = function() {
-                    console.error('Failed to load Firebase orders module script');
-                };
-                document.head.appendChild(script);
-            } else {
-                console.log('Firebase not available, using local storage only');
-            }
-        } catch (error) {
-            console.error('Error initializing Firebase integration:', error);
-        }
-    }
-
-    // Fallback to legacy module if needed
-    function loadLegacyFirebaseCartModule() {
-        // Load old Cart Module
-        import('/js/firebase/firebase-cart.js')
-            .then(module => {
-                console.log('Legacy Firebase cart module loaded for checkout');
-                firebaseCartModule = module;
-
-                // Check if user is logged in, if so, reload cart from Firebase
-                if (firebase.auth().currentUser) {
-                    loadCartFromFirebase();
-                }
-            })
-            .catch(err => {
-                console.error('Failed to load legacy Firebase cart module:', err);
-            });
+    // A simplified integration function that focuses on reliability
+    function initializeCloudflareIntegration() {
+        console.log('Initializing Cloudflare integration');
+        updateCheckoutButtonState();
     }
 
     /**
      * Update checkout button state based on authentication
      * Guest checkout is now enabled - button is always enabled for all users
      */
-    function updateCheckoutButtonState() {
+    async function updateCheckoutButtonState() {
         console.log('Updating checkout button state');
 
         const submitButton = checkoutForm?.querySelector('button[type="submit"]');
-        if (!submitButton) {
-            console.log('Submit button not found');
-            return;
-        }
+        if (!submitButton) return;
 
-        // Check if user is logged in
-        const isLoggedIn = firebase.auth && firebase.auth().currentUser;
+        // Check login status via API
+        let isLoggedIn = false;
+        try {
+            const res = await fetch('/api/auth/me');
+            isLoggedIn = res.ok;
+        } catch (e) {
+            isLoggedIn = false;
+        }
+        
         console.log('User authentication status:', isLoggedIn ? 'Logged in' : 'Not logged in');
 
         // GUEST CHECKOUT ENABLED - Always show "Place Order" button for all users
         submitButton.innerHTML = 'Place Order';
         submitButton.classList.remove('auth-required');
-        submitButton.removeEventListener('click', showAuthRequirementModal);
         submitButton.disabled = false;
-        submitButton.classList.remove('disabled');
 
-        // Make sure the form uses the standard submit handler
-        if (checkoutForm) {
-            checkoutForm.removeEventListener('submit', showAuthRequirementModal);
-            if (!checkoutForm._hasSubmitHandler) {
-                checkoutForm.addEventListener('submit', handleSubmit);
-                checkoutForm._hasSubmitHandler = true;
-            }
+        if (checkoutForm && !checkoutForm._hasSubmitHandler) {
+            checkoutForm.addEventListener('submit', handleSubmit);
+            checkoutForm._hasSubmitHandler = true;
         }
-
-        console.log('Button state updated - guest checkout enabled for all users');
     }
 
     // Show modal requiring authentication before order placement
