@@ -934,6 +934,23 @@ Step 4: Categories are saved to database with site_id
 Step 5: Category pages are generated dynamically
 ```
 
+## 5. Multi-Tenant Category Pre-population
+To support multiple business niches (Jewelry, Clothing, Electronics) without manual file creation:
+
+1. **Niche Templates Table**:
+   Create a system table `niche_defaults` that stores standard category structures for different business types.
+   - `niche_id`: 'jewellery', 'clothing'
+   - `default_categories`: JSON array of categories (e.g., `["Necklaces", "Earrings"]` for jewelry; `["Shirts", "Pants"]` for clothing)
+
+2. **Creation Logic**:
+   When a user creates their site and selects "Clothing":
+   - The system queries `niche_defaults`.
+   - It automatically inserts those default categories into the `categories` table linked to the new `site_id`.
+   - This makes the store "ready to use" with industry-standard categories immediately.
+
+3. **Universal Rendering**:
+   The `category.html` file uses data-attributes and the `CategoryLoader.js` to render niche-specific products based on the category ID, ensuring the same code works for both jewelry and clothing.
+
 #### Category Admin Panel Features:
 ```
 1. Add Category
