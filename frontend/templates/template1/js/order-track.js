@@ -64,50 +64,32 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Check Firebase for order data
+    // Check API for order data
     async function checkFirebaseOrder(orderId) {
         try {
-            if (!window.firebase || !firebase.auth().currentUser) {
-                console.log('🔒 User not authenticated, skipping Firebase order check');
-                return null;
+            const subdomain = getSubdomain();
+            const response = await fetch(`/api/orders/${orderId}?subdomain=${subdomain}`);
+            
+            if (response.ok) {
+                const result = await response.json();
+                console.log('✅ Found order by ID');
+                return result.data || result;
             }
 
-            console.log('🔍 Checking Firebase for order:', orderId);
-
-            const userOrdersRef = firebase.firestore()
-                .collection('users')
-                .doc(firebase.auth().currentUser.uid)
-                .collection('orders');
-
-            // Try to find order by document ID
-            try {
-                const orderDoc = await userOrdersRef.doc(orderId).get();
-                if (orderDoc.exists) {
-                    console.log('✅ Found Firebase order by ID');
-                    return { id: orderDoc.id, ...orderDoc.data() };
-                }
-            } catch (e) {
-                console.log('📝 Order ID not found as document ID, searching by order reference');
-            }
-
-            // Try to find by orderReference field
-            const orderQuery = await userOrdersRef
-                .where('orderReference', '==', orderId)
-                .limit(1)
-                .get();
-
-            if (!orderQuery.empty) {
-                console.log('✅ Found Firebase order by reference');
-                const doc = orderQuery.docs[0];
-                return { id: doc.id, ...doc.data() };
-            }
-
-            console.log('❌ No Firebase order found');
+            console.log('❌ No order found');
             return null;
         } catch (error) {
-            console.error('❌ Firebase order check failed:', error);
+            console.error('❌ Order check failed:', error);
             return null;
         }
+    }
+
+    // Get subdomain from current URL
+    function getSubdomain() {
+        const hostname = window.location.hostname;
+        const parts = hostname.split('.');
+        if (parts.length <= 2 || hostname === 'localhost') return 'demo';
+        return parts[0];
     }
 
     // Track with Shiprocket API

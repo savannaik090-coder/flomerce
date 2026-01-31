@@ -261,10 +261,6 @@
         </div>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-storage-compat.js"></script>
     <script type="module">
         import { authService } from '/src/js/auth/AuthService.js';
         import { siteService } from '/src/js/dashboard/SiteService.js';
@@ -315,48 +311,27 @@
                 window.location.href = '/src/pages/login.html';
                 return;
             }
-            await checkUserPlan(user);
-            loadSites(user.uid);
+            await loadUserData();
+            loadSites();
         });
 
-        async function checkUserPlan(user) {
-            const userDoc = await firebase.firestore().collection('users').doc(user.uid).get();
-            if (userDoc.exists) {
-                currentUserData = userDoc.data();
-                const plan = currentUserData.plan;
-                const billingCycle = currentUserData.billingCycle || 'monthly';
-                const status = currentUserData.status;
-                
-                // Set Account info
-                if (document.getElementById('user-display-name')) document.getElementById('user-display-name').innerText = user.displayName || 'No Name Set';
-                if (document.getElementById('user-display-email')) document.getElementById('user-display-email').innerText = user.email;
+        async function loadUserData() {
+            try {
+                const user = authService.getCurrentUser();
+                const response = await fetch(`/api/users/profile`);
+                if (response.ok) {
+                    currentUserData = await response.json();
+                    
+                    if (document.getElementById('user-display-name')) document.getElementById('user-display-name').innerText = currentUserData.name || 'No Name Set';
+                    if (document.getElementById('user-display-email')) document.getElementById('user-display-email').innerText = currentUserData.email;
 
-                if (!plan) {
-                    showPlanSelectionOverlay("Welcome! Please choose a plan to get started. You can also start with a 7-day free trial.");
-                    if (document.getElementById('account-plan-name')) document.getElementById('account-plan-name').innerText = "NONE";
-                    return;
+                    updatePlansUI(currentUserData.plan);
+                    if (document.getElementById('account-plan-name')) document.getElementById('account-plan-name').innerText = (currentUserData.plan || 'NONE').toUpperCase();
                 }
-
-                updatePlansUI(plan);
-                if (document.getElementById('account-plan-name')) document.getElementById('account-plan-name').innerText = plan.toUpperCase();
-                
-                const startDate = currentUserData.trialStartDate ? currentUserData.trialStartDate.toDate() : new Date();
-                const options = { year: 'numeric', month: 'short', day: 'numeric' };
-                if (document.getElementById('account-plan-start')) document.getElementById('account-plan-start').innerText = startDate.toLocaleDateString(undefined, options);
-
-                if (plan === 'trial') {
-                    const diff = Math.floor((new Date() - startDate) / (1000 * 60 * 60 * 24));
-                    const endDate = new Date(startDate);
-                    endDate.setDate(endDate.getDate() + 7);
-                    if (document.getElementById('account-plan-end')) document.getElementById('account-plan-end').innerText = endDate.toLocaleDateString(undefined, options);
-
-                    if (diff > 7) {
-                        await expirePlan(user.uid, "Your 7-day free trial has expired. Please upgrade to a paid plan to continue using the website.");
-                    } else {
-                        if (document.getElementById('account-plan-status')) document.getElementById('account-plan-status').innerText = 'Active';
-                        if (document.getElementById('account-plan-status-text')) document.getElementById('account-plan-status-text').innerText = `${7 - diff} days left (Trial)`;
-                    }
-                } else if (status === 'active') {
+            } catch (e) {
+                console.error('Error loading user data:', e);
+            }
+        }
                     const now = new Date();
                     let durationDays = 30;
                     if (billingCycle === '6months') durationDays = 180;

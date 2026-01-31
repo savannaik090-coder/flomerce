@@ -58,52 +58,48 @@
         </div>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
     <script type="module">
-        import firebaseConfig from './src/js/firebase-config.js';
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-
         async function loadAdminData() {
-            // Load Users
-            const usersSnap = await db.collection('users').get();
-            const usersTable = document.querySelector('#users-table tbody');
-            usersTable.innerHTML = '';
-            usersSnap.forEach(doc => {
-                const user = doc.data();
-                usersTable.innerHTML += `
-                    <tr>
-                        <td>${user.name}</td>
-                        <td>${user.email}</td>
-                        <td>${user.plan || 'free'}</td>
-                        <td>${user.createdAt?.toDate().toLocaleDateString() || 'N/A'}</td>
-                        <td><button class="btn-block">Block</button></td>
-                    </tr>
-                `;
-            });
+            try {
+                const response = await fetch('/api/admin/stats');
+                if (!response.ok) throw new Error('Unauthorized');
+                const data = await response.json();
+                
+                const usersTable = document.querySelector('#users-table tbody');
+                usersTable.innerHTML = '';
+                data.users.forEach(user => {
+                    usersTable.innerHTML += `
+                        <tr>
+                            <td>${user.name}</td>
+                            <td>${user.email}</td>
+                            <td>${user.plan || 'free'}</td>
+                            <td>${new Date(user.created_at).toLocaleDateString()}</td>
+                            <td><button class="btn-block">Block</button></td>
+                        </tr>
+                    `;
+                });
 
-            // Load Sites
-            const sitesSnap = await db.collection('websites').get();
-            const sitesTable = document.querySelector('#sites-table tbody');
-            sitesTable.innerHTML = '';
-            sitesSnap.forEach(doc => {
-                const site = doc.data();
-                sitesTable.innerHTML += `
-                    <tr>
-                        <td>${site.siteName}</td>
-                        <td>${site.subdomain}.fluxe.in</td>
-                        <td>${site.userId}</td>
-                        <td><span class="status-badge status-active">${site.status}</span></td>
-                    </tr>
-                `;
-            });
+                const sitesTable = document.querySelector('#sites-table tbody');
+                sitesTable.innerHTML = '';
+                data.sites.forEach(site => {
+                    sitesTable.innerHTML += `
+                        <tr>
+                            <td>${site.brand_name}</td>
+                            <td>${site.subdomain}.fluxe.in</td>
+                            <td>${site.user_id}</td>
+                            <td><span class="status-badge status-active">Active</span></td>
+                        </tr>
+                    `;
+                });
 
-            document.getElementById('stats').innerHTML = `
-                <p>Total Users: ${usersSnap.size}</p>
-                <p>Total Websites: ${sitesSnap.size}</p>
-            `;
+                document.getElementById('stats').innerHTML = `
+                    <p>Total Users: ${data.users.length}</p>
+                    <p>Total Websites: ${data.sites.length}</p>
+                `;
+            } catch (e) {
+                console.error('Error loading admin data:', e);
+                document.getElementById('stats').innerText = 'Error loading admin data. Please ensure you are logged in as admin.';
+            }
         }
 
         loadAdminData();
