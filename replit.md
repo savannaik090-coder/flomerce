@@ -148,7 +148,7 @@ Main tables:
 **Pending (Admin Panels - Major Refactor):**
 - [x] login.html - Migrated to use auth-service.js (REST API)
 - [x] signup.html - Migrated to use auth-service.js (REST API)
-- [ ] profile.html - Extensive inline Firebase Firestore code
+- [x] profile.html - Migrated to use REST API (auth, orders, file uploads)
 - [ ] products-admin-panel.html - Thousands of lines of Firebase code
 - [ ] admin-panel.html - Extensive Firebase integration
 
@@ -160,6 +160,13 @@ Main tables:
 - [ ] Testing and verification
 
 ## Recent Changes
+
+- **January 31, 2026**: Profile page migration completed
+  - Migrated profile.html to use REST API instead of Firebase SDK
+  - Replaced firebase.auth().currentUser with FirebaseAuth.getCurrentUser()
+  - Replaced firebase.firestore() calls with /api/auth/profile and /api/orders endpoints
+  - Replaced firebase.storage() uploads with /api/upload endpoint
+  - Removed all Firebase SDK references from profile.html
 
 - **January 31, 2026**: Login & Signup migration completed
   - Migrated login.html to use REST API via auth-service.js
@@ -187,7 +194,8 @@ Main tables:
 ## Notes
 
 - **FirebaseAuth Alias**: auth-service.js provides a `window.FirebaseAuth` alias for backward compatibility with legacy code
-- **Admin Panels**: profile.html, products-admin-panel.html, and admin-panel.html require significant refactoring (thousands of lines of Firebase code)
+- **Admin Panels**: products-admin-panel.html and admin-panel.html require significant refactoring (thousands of lines of Firebase code)
+- **Profile Page**: Fully migrated to use REST API for auth, orders, and file uploads
 - **Login/Signup**: Fully migrated to use REST API via auth-service.js
 - **Google OAuth**: Requires backend OAuth setup - currently returns user-friendly message
 - **Shiprocket Integration**: Skipped in migration (was non-functional)
