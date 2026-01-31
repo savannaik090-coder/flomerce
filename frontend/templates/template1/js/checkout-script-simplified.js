@@ -104,89 +104,64 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log('LocalStorageCart module not available');
             }
 
-            // Try to use Firebase if available
-            if (typeof firebase !== 'undefined' && firebase.auth) {
-                // Just check if auth module exists - avoid deep integration to prevent errors
-                console.log('Firebase auth detected, will try to use Firebase cart if user is logged in');
+            // Try to use API-based cart if available
+            if (typeof AuthService !== 'undefined' && typeof ApiCartManager !== 'undefined') {
+                console.log('AuthService detected, will try to use API cart if user is logged in');
 
-                // Create simple firebase module wrapper
-                if (typeof FirebaseCartManager !== 'undefined') {
-                    firebaseCartModule = {
-                        loadCartFromFirebase: async function() {
-                            try {
-                                console.log('Loading cart from Firebase...');
-                                const result = await FirebaseCartManager.getItems();
-                                return result;
-                            } catch (error) {
-                                console.error('Error loading cart from Firebase:', error);
-                                return { success: false, items: [] };
-                            }
-                        },
-                        saveCartToFirebase: async function(items) {
-                            try {
-                                console.log('Saving cart to Firebase...');
-                                const result = await FirebaseCartManager.saveItems(items);
-                                return result;
-                            } catch (error) {
-                                console.error('Error saving cart to Firebase:', error);
-                                return { success: false, error: error.message };
-                            }
-                        },
-                        clearFirebaseCart: async function() {
-                            try {
-                                console.log('Clearing Firebase cart...');
-                                const result = await FirebaseCartManager.clearItems();
-                                return result;
-                            } catch (error) {
-                                console.error('Error clearing Firebase cart:', error);
-                                return { success: false, error: error.message };
-                            }
+                // Create API cart module wrapper
+                firebaseCartModule = {
+                    loadCartFromFirebase: async function() {
+                        try {
+                            console.log('Loading cart from API...');
+                            const result = await ApiCartManager.getItems();
+                            return result;
+                        } catch (error) {
+                            console.error('Error loading cart from API:', error);
+                            return { success: false, items: [] };
                         }
-                    };
-                    console.log('Firebase cart module initialized with all methods');
-                }
-
-                // Load Firebase Orders Module directly
-                const script = document.createElement('script');
-                script.src = '/js/firebase/firebase-orders.js?v=' + Date.now();
-                script.onload = function() {
-                    console.log('Firebase orders module loaded for checkout');
-                    if (window.firebaseOrdersModule) {
-                        console.log('Firebase Orders module functions available');
-                        // Check auth requirement and update UI correctly
-                        setTimeout(() => {
-                            updateCheckoutButtonState();
-                        }, 100);
+                    },
+                    saveCartToFirebase: async function(items) {
+                        try {
+                            console.log('Saving cart to API...');
+                            const result = await ApiCartManager.syncCart(items);
+                            return result;
+                        } catch (error) {
+                            console.error('Error saving cart to API:', error);
+                            return { success: false, error: error.message };
+                        }
+                    },
+                    clearFirebaseCart: async function() {
+                        try {
+                            console.log('Clearing API cart...');
+                            const result = await ApiCartManager.clearCart();
+                            return result;
+                        } catch (error) {
+                            console.error('Error clearing API cart:', error);
+                            return { success: false, error: error.message };
+                        }
                     }
                 };
-                script.onerror = function() {
-                    console.error('Failed to load Firebase orders module script');
-                };
-                document.head.appendChild(script);
+                console.log('API cart module initialized with all methods');
+
+                // Update checkout button state
+                setTimeout(() => {
+                    updateCheckoutButtonState();
+                }, 100);
             } else {
-                console.log('Firebase not available, using local storage only');
+                console.log('AuthService not available, using local storage only');
             }
         } catch (error) {
             console.error('Error initializing Firebase integration:', error);
         }
     }
 
-    // Fallback to legacy module if needed
+    // Fallback to local storage if API not available
     function loadLegacyFirebaseCartModule() {
-        // Load old Cart Module
-        import('/js/firebase/firebase-cart.js')
-            .then(module => {
-                console.log('Legacy Firebase cart module loaded for checkout');
-                firebaseCartModule = module;
-
-                // Check if user is logged in, if so, reload cart from Firebase
-                if (firebase.auth().currentUser) {
-                    loadCartFromFirebase();
-                }
-            })
-            .catch(err => {
-                console.error('Failed to load legacy Firebase cart module:', err);
-            });
+        console.log('Using local storage for cart management');
+        // API-based cart will be used if AuthService and ApiCartManager are available
+        if (typeof AuthService !== 'undefined' && AuthService.isLoggedIn()) {
+            loadCartFromFirebase();
+        }
     }
 
     /**
@@ -203,7 +178,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         // Check if user is logged in
-        const isLoggedIn = firebase.auth && firebase.auth().currentUser;
+        const isLoggedIn = typeof AuthService !== 'undefined' && AuthService.isLoggedIn();
         console.log('User authentication status:', isLoggedIn ? 'Logged in' : 'Not logged in');
 
         // GUEST CHECKOUT ENABLED - Always show "Place Order" button for all users
@@ -239,8 +214,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Load cart items from Firebase for logged in users - WITH 5 SECOND TIMEOUT
     async function loadCartFromFirebase() {
         try {
-            if (!firebase.auth || !firebase.auth().currentUser) {
-                console.log('User not logged in for Firebase cart access');
+            if (typeof AuthService === 'undefined' || !AuthService.isLoggedIn()) {
+                console.log('User not logged in for API cart access');
                 return [];
             }
 
@@ -376,7 +351,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         try {
             // Check if user is logged in first
-            const isUserLoggedIn = firebase.auth && firebase.auth().currentUser;
+            const isUserLoggedIn = typeof AuthService !== 'undefined' && AuthService.isLoggedIn();
             console.log('User login status:', isUserLoggedIn ? 'Logged in' : 'Not logged in');
 
             // Update checkout button state based on login status
@@ -659,7 +634,7 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('💾 Quantity change saved to localStorage');
 
             // If user is logged in, AWAIT Firebase update
-            if (firebaseCartModule && firebase.auth && firebase.auth().currentUser) {
+            if (firebaseCartModule && typeof AuthService !== 'undefined' && AuthService.isLoggedIn()) {
                 console.log('🔄 Syncing to Firebase...');
                 try {
                     const result = await Promise.race([
@@ -773,7 +748,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             // If Firebase cart module is loaded and user is logged in, also save to Firebase
-            if (firebaseCartModule && firebase.auth && firebase.auth().currentUser) {
+            if (firebaseCartModule && typeof AuthService !== 'undefined' && AuthService.isLoggedIn()) {
                 firebaseCartModule.saveCartToFirebase(items)
                     .then(result => {
                         if (result.success) {
@@ -1222,7 +1197,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             // Clear Firebase cart if user is logged in
-            if (firebase.auth && firebase.auth().currentUser) {
+            if (typeof AuthService !== 'undefined' && AuthService.isLoggedIn()) {
                 console.log('Clearing Firebase cart...');
 
                 if (typeof FirebaseCartManager !== 'undefined' && typeof FirebaseCartManager.clearItems === 'function') {
@@ -1319,7 +1294,7 @@ document.addEventListener('DOMContentLoaded', function() {
     async function loadCartItemsFromStorage() {
         try {
             // Try to get cart from Firebase if user is logged in
-            if (firebaseCartModule && firebase.auth && firebase.auth().currentUser) {
+            if (firebaseCartModule && typeof AuthService !== 'undefined' && AuthService.isLoggedIn()) {
                 try {
                     const result = await firebaseCartModule.loadCartFromFirebase();
                     if (result.success && result.items.length > 0) {
@@ -1982,7 +1957,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             // Show guest notice for non-authenticated users
-            const isLoggedIn = firebase.auth && firebase.auth().currentUser;
+            const isLoggedIn = typeof AuthService !== 'undefined' && AuthService.isLoggedIn();
             const guestNotice = document.getElementById('guest-address-notice');
             if (!isLoggedIn && guestNotice) {
                 guestNotice.style.display = 'block';
@@ -2547,7 +2522,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Save to Firebase if user is authenticated and update order status
             let firebaseSaveResult = { success: false };
-            const user = firebase.auth().currentUser;
+            const user = AuthService?.getCurrentUser();
 
             if (user) {
                 console.log('User authenticated, attempting to update/save order in Firebase');
@@ -2805,7 +2780,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 read: false,
                 relatedData: {
                     orderId: orderId,
-                    userId: firebase.auth().currentUser?.uid || 'guest',
+                    userId: AuthService?.getCurrentUser()?.uid || 'guest',
                     orderReference: orderData.orderReference,
                     customerName: `${orderData.customer.firstName} ${orderData.customer.lastName}`,
                     customerEmail: orderData.customer.email,
@@ -2930,7 +2905,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Load saved addresses for both logged-in and guest users
     async function loadSavedAddresses() {
-        const user = firebase.auth().currentUser;
+        const user = AuthService?.getCurrentUser();
 
         if (user) {
             console.log('Loading saved addresses for logged-in user:', user.uid);
@@ -2943,7 +2918,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Load addresses from Firebase for logged-in users
     async function loadFirebaseAddresses() {
-        const user = firebase.auth().currentUser;
+        const user = AuthService?.getCurrentUser();
         if (!user) {
             console.log('User not logged in, cannot load Firebase addresses');
             return;
@@ -3129,7 +3104,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function selectSavedAddress(addressId, storageType) {
         // Default to Firebase if not specified
         if (!storageType) {
-            const user = firebase.auth && firebase.auth().currentUser;
+            const user = typeof AuthService !== 'undefined' && AuthService.isLoggedIn();
             storageType = user ? 'firebase' : 'local';
         }
         // Update radio button selection
@@ -3203,7 +3178,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const saveAddressOption = document.getElementById('save-address-option');
         if (saveAddressOption) {
             saveAddressOption.style.display = 'block';
-            const user = firebase.auth && firebase.auth().currentUser;
+            const user = typeof AuthService !== 'undefined' && AuthService.isLoggedIn();
             const label = saveAddressOption.querySelector('label');
             if (label) {
                 if (user) {
@@ -3269,7 +3244,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        const user = firebase.auth && firebase.auth().currentUser;
+        const user = typeof AuthService !== 'undefined' && AuthService.isLoggedIn();
 
         try {
             const addressData = {
