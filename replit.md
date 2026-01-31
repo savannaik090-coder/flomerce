@@ -3,121 +3,188 @@
 ## Overview
 Fluxe is a SaaS platform that allows users to create their own e-commerce websites with pre-built templates. The main template (template1) is a fully-featured jewellery website with advanced e-commerce capabilities.
 
-## Current Architecture
-- **Frontend Hosting:** Netlify (static files)
-- **Backend Functions:** Netlify Functions
-- **Database:** Firebase Firestore
-- **File Storage:** Firebase Storage
-- **Auth:** Firebase Authentication
-- **Push Notifications:** Firebase Cloud Messaging
-- **Payments:** Razorpay
-- **Shipping:** Shiprocket Integration
+## Current Architecture (MIGRATED TO CLOUDFLARE)
 
-## Planned Migration
-We are planning to migrate from Firebase/Netlify to Cloudflare for cost optimization.
-See: `/docs/MIGRATION_PLAN_FIREBASE_TO_CLOUDFLARE.md` for comprehensive migration plan.
+**New Stack (Cloudflare-based):**
+- **Frontend:** Cloudflare Pages (`/frontend/`)
+- **Backend:** Cloudflare Workers (`/backend/workers/`)
+- **Database:** Cloudflare D1 (SQLite)
+- **File Storage:** Cloudflare R2
+- **Auth:** Custom JWT-based authentication
+- **Payments:** Razorpay (unchanged)
 
-**Target Stack:**
-- Cloudflare Pages (frontend)
-- Cloudflare Workers (backend)
-- Cloudflare D1 (database)
-- Cloudflare R2 (file storage)
-
-## Security & Secrets
-- **IMPORTANT:** All sensitive keys must be stored as **Environment Variables** in Replit (Secrets tab).
-- **Public Keys:** `FIREBASE_API_KEY`, etc., are loaded via `/src/common/env-config.js` (which is excluded from Git).
-- **Private Keys:** `FIREBASE_PRIVATE_KEY`, `RAZORPAY_KEY_SECRET`, etc., are only accessible in Netlify Functions.
+**Legacy Stack (being phased out):**
+- Netlify Functions → Cloudflare Workers
+- Firebase Firestore → Cloudflare D1
+- Firebase Storage → Cloudflare R2
+- Firebase Auth → Custom Auth with Workers
 
 ## Project Structure
+
 ```
 /
-├── index.html                    # Main SaaS landing page
-├── src/                          # Main SaaS platform files
-│   ├── js/auth/                  # SaaS authentication
-│   ├── js/dashboard/             # Dashboard services
-│   ├── js/payment/               # Payment services
-│   └── pages/                    # SaaS pages
-├── netlify/functions/            # Root-level Netlify functions
-├── templates/
-│   ├── template1/                # MAIN TEMPLATE (Jewellery - Complex)
-│   ├── clothing/                 # Clothing template
-│   ├── simple/                   # Simple template
-│   └── view/                     # Preview templates
-├── guide/                        # User guide
-├── admin-panel/                  # Admin panel
-├── dashboard/                    # Dashboard
-└── docs/                         # Documentation
+├── frontend/                      # Cloudflare Pages (static frontend)
+│   ├── index.html                 # Main SaaS landing page
+│   ├── src/
+│   │   ├── js/api/                # NEW: API services (replaces Firebase)
+│   │   │   ├── AuthService.js     # Authentication API
+│   │   │   ├── SiteService.js     # Site management API
+│   │   │   ├── ProductService.js  # Products API
+│   │   │   ├── CartService.js     # Cart API
+│   │   │   ├── OrderService.js    # Orders API
+│   │   │   ├── WishlistService.js # Wishlist API
+│   │   │   ├── PaymentService.js  # Razorpay integration
+│   │   │   ├── CategoryService.js # Dynamic categories API
+│   │   │   └── config.js          # API configuration
+│   │   ├── css/                   # Stylesheets
+│   │   └── pages/                 # SaaS pages (login, signup, dashboard)
+│   ├── templates/
+│   │   ├── template1/             # MAIN TEMPLATE (Jewellery)
+│   │   └── clothing/              # Clothing template
+│   ├── admin-panel/               # Admin panel
+│   └── dashboard/                 # User dashboard
+│
+├── backend/                       # Cloudflare Workers (API)
+│   ├── workers/
+│   │   ├── index.js               # Main worker entry point
+│   │   ├── auth-worker.js         # Authentication endpoints
+│   │   ├── sites-worker.js        # Site CRUD operations
+│   │   ├── products-worker.js     # Products management
+│   │   ├── orders-worker.js       # Order management
+│   │   ├── cart-worker.js         # Shopping cart
+│   │   ├── wishlist-worker.js     # Wishlist management
+│   │   ├── payments-worker.js     # Razorpay integration
+│   │   ├── email-worker.js        # Transactional emails
+│   │   ├── categories-worker.js   # Dynamic categories
+│   │   └── site-router.js         # Subdomain routing
+│   ├── utils/
+│   │   ├── helpers.js             # Utility functions
+│   │   └── auth.js                # JWT & password utilities
+│   ├── schema/
+│   │   └── d1-schema.sql          # D1 database schema
+│   ├── migrations/
+│   │   └── firebase-export.js     # Firebase data migration script
+│   ├── wrangler.toml              # Cloudflare Workers config
+│   └── package.json               # Backend dependencies
+│
+├── templates/view/                # Preview templates (NO MIGRATION NEEDED)
+│   └── template1/
+│
+├── guide/                         # User guide (NO MIGRATION NEEDED)
+│
+├── src/                           # LEGACY: Old SaaS platform files
+├── netlify/                       # LEGACY: Old Netlify functions
+│
+└── docs/
+    └── MIGRATION_PLAN_FIREBASE_TO_CLOUDFLARE.md
 ```
 
-## Templates
+## API Endpoints (Cloudflare Workers)
 
-### Template1 (Main Jewellery Template)
-The most complex template with full e-commerce features:
-- User authentication (login, signup, password reset)
-- Shopping cart (guest + logged-in users)
-- Wishlist management
-- Dynamic product loading from Firebase Storage
-- Checkout with Razorpay payments
-- Order management (guest + user orders)
-- User profiles with multiple addresses
-- Multi-currency support
-- Multi-language support
-- Push notifications
-- Admin panel for products/orders
-- Currently has HARDCODED category pages (to be made dynamic)
+| Endpoint | Methods | Description |
+|----------|---------|-------------|
+| `/api/auth/*` | POST | Authentication (signup, login, logout, verify, reset) |
+| `/api/sites` | GET, POST | User websites management |
+| `/api/sites/:id` | GET, PUT, DELETE | Single site operations |
+| `/api/products` | GET, POST | Products listing/creation |
+| `/api/products/:id` | GET, PUT, DELETE | Single product operations |
+| `/api/orders` | GET, POST | Order management |
+| `/api/orders/:id` | GET, PUT | Single order operations |
+| `/api/cart` | GET, POST, PUT, DELETE | Shopping cart |
+| `/api/wishlist` | GET, POST, DELETE | Wishlist management |
+| `/api/payments/*` | POST | Razorpay payment processing |
+| `/api/categories` | GET, POST | Dynamic categories |
+| `/api/email/*` | POST | Transactional emails |
+| `/api/health` | GET | Health check |
 
-**Note:** Shiprocket/DTDC shipping integration was built for testing but is not functional.
+## Database Schema (D1)
 
-### Current Category Structure (Hardcoded)
+Main tables:
+- `users` - User accounts with hashed passwords
+- `sites` - Multi-tenant websites
+- `products` - Product catalog per site
+- `categories` - Dynamic categories per site
+- `orders` / `guest_orders` - Order management
+- `carts` / `wishlists` - Shopping features
+- `subscriptions` - SaaS subscription plans
+- `payment_transactions` - Payment records
+
+## Environment Variables Required
+
+**Cloudflare (Already Added):**
+- `CLOUDFLARE_ACCOUNT_ID` - Cloudflare account ID
+- `CLOUDFLARE_API_TOKEN` - API token for Wrangler
+
+**To Be Added:**
+- `JWT_SECRET` - Secret for JWT token signing
+- `RAZORPAY_KEY_ID` - Razorpay public key
+- `RAZORPAY_KEY_SECRET` - Razorpay secret key
+- `RESEND_API_KEY` or `SENDGRID_API_KEY` - Email service
+- `FROM_EMAIL` - Sender email address
+
+## Deployment
+
+### Backend (Cloudflare Workers)
+```bash
+cd backend
+npm install
+npm run db:create          # Create D1 database
+npm run db:migrate         # Apply schema
+npm run r2:create          # Create R2 bucket
+npm run deploy             # Deploy workers
 ```
-gold-necklace.html, gold-earrings.html, gold-bangles.html, gold-rings.html
-silver-necklace.html, silver-earrings.html, silver-bangles.html, silver-rings.html
-meenakari-necklace.html, meenakari-earrings.html, meenakari-bangles.html, meenakari-rings.html
+
+### Frontend (Cloudflare Pages)
+```bash
+cd frontend
+# Connect to Cloudflare Pages via dashboard or wrangler
+wrangler pages deploy . --project-name=saas-frontend
 ```
-These need to be converted to a dynamic category system where users can create their own categories.
 
-## Pending Work
-1. **Dynamic Category System** - Allow users to create/manage their own categories
-2. **Full Dynamic Content** - Currently only logo and footer name are dynamic
-3. **Migration to Cloudflare** - Move all services to Cloudflare stack
-4. **Admin Panel Improvements** - Category management UI
+## Features
 
-## Setup
-1. Add all secrets to Replit Environment Variables
-2. Ensure `.gitignore` is active
-3. Deploy to Netlify using the provided `netlify.toml`
+### Dynamic Category System (NEW)
+- Users can create/edit/delete their own categories
+- Categories are stored per-site in D1 database
+- Default categories created based on business type
+- Hierarchical categories with parent/child relationships
+
+### Multi-Tenant Architecture
+- Each site has unique subdomain
+- Data isolation via `site_id` in all tables
+- Subdomain routing handled by Workers
+
+### Authentication
+- JWT-based session management
+- Password hashing with PBKDF2
+- Email verification flow
+- Password reset flow
+
+## Migration Status
+
+- [x] Backend folder structure created
+- [x] D1 database schema designed
+- [x] All Cloudflare Workers implemented
+- [x] Frontend API services created
+- [x] Data migration scripts prepared
+- [ ] D1 database created in Cloudflare
+- [ ] R2 bucket created
+- [ ] Firebase data exported and migrated
+- [ ] Frontend pages updated to use new API
+- [ ] Testing and verification
+- [ ] Firebase decommissioning
 
 ## Recent Changes
-- January 31, 2026: Created comprehensive migration plan documentation
 
-## Session Notes & Conversations
+- **January 31, 2026**: Started migration implementation
+  - Created `/backend/` folder with complete Cloudflare Workers
+  - Created `/frontend/` folder with new API services
+  - D1 database schema with 15+ tables
+  - Dynamic category system implemented
+  - All workers: auth, sites, products, orders, cart, wishlist, payments, email, categories, site-router
 
-### January 31, 2026 - Migration Planning Discussion
+## Notes
 
-**Discussion Summary:**
-- Reviewed the complete Firebase to Cloudflare migration plan (`docs/MIGRATION_PLAN_FIREBASE_TO_CLOUDFLARE.md`)
-- Discussed implementation approach and what credentials would be needed
-
-**Key Points Covered:**
-1. **Current Stack**: Firebase (Auth, Firestore, Storage, FCM) + Netlify (Hosting, Functions) + Razorpay
-2. **Target Stack**: Cloudflare (Pages, Workers, D1, R2) + Custom Auth or third-party + Razorpay
-3. **Migration is 8 phases over ~8 weeks**
-4. **Expected cost savings**: 70-85% reduction
-
-**Credentials Required for Cloudflare Migration:**
-The following will be needed from the user to implement the migration:
-- Cloudflare Account (user must create at cloudflare.com)
-- Cloudflare API Token (for Wrangler CLI access)
-- Cloudflare Account ID
-- Email service credentials (Resend, Mailgun, etc. for transactional emails)
-
-**Decisions Pending:**
-- [ ] Authentication approach: Custom build vs Clerk/Auth0?
-- [ ] Email service provider selection
-- [ ] Whether to rebuild Shiprocket integration or skip initially
-- [ ] Push notification strategy (self-managed Web Push or defer)
-
-**Next Steps:**
-1. User to create Cloudflare account and provide API credentials
-2. Set up Cloudflare infrastructure (Pages, D1, R2)
-3. Begin Phase 1: Infrastructure Setup
+- **DO NOT MIGRATE**: `templates/view/` and `guide/` folders
+- **Shiprocket Integration**: Skipped in migration (was non-functional)
+- **Push Notifications**: To be implemented later with Web Push

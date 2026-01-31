@@ -1,0 +1,72 @@
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Users collection - users can only read/write their own data
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      // User's orders subcollection
+      match /orders/{orderId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+      
+      // User's addresses subcollection
+      match /addresses/{addressId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+      
+      // User's cart subcollection
+      match /carts/{cartId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+      
+      // User's wishlist subcollection
+      match /wishlist/{wishlistId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+    
+    // Products collection - everyone can read, authenticated users can write for reviews
+    match /products/{productId} {
+      allow read: if true;
+      allow create: if request.auth != null; // Allow creating product docs for reviews
+      allow update: if request.auth != null; // Allow updating product docs
+      
+      // Product reviews subcollection
+      match /reviews/{reviewId} {
+        allow read: if true; // Anyone can read reviews
+        allow create: if request.auth != null; // Only authenticated users can create reviews
+        allow update, delete: if request.auth != null && request.auth.uid == resource.data.userId; // Only author can edit/delete
+      }
+    }
+    
+    // Categories collection - public read, admin write
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if true; // For admin panel
+    }
+    
+    // Guest tokens collection - for push notification subscriptions
+    // Both guests and backend can write, backend can read for sending notifications
+    match /guest_tokens/{tokenId} {
+      allow read, write: if true;
+    }
+    
+    // Notification logs collection - backend logs notification sends
+    match /notification_logs/{logId} {
+      allow read, write: if true;
+    }
+    
+    // Admin collections - allow all for admin dashboard
+    match /admin/{document=**} {
+      allow read, write: if true;
+    }
+    
+    // Orders collection at root level (for admin access)
+    match /orders/{orderId} {
+      allow read, write: if true; // For admin dashboard
+    }
+  }
+}

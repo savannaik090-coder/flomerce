@@ -1,0 +1,1357 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+    
+    <!-- SEO Meta Tags -->
+    <title>Login - Royal Meenakari | Customer Account</title>
+    <meta name="description" content="Login to your Royal Meenakari account to view orders, manage wishlist, and enjoy personalized shopping." />
+    <meta name="robots" content="noindex, nofollow" />
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="images/logos/royalmeenakari.png" />
+    <link rel="apple-touch-icon" href="images/logos/royalmeenakari.png" />
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v6.4.0/css/all.min.css" integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpLGCJKypKP/lLCgB9MlH/lX+/Pvw2DNA" crossorigin="anonymous">
+    <!-- Fallback font awesome icons if CDN fails -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Lato:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.cdnfonts.com/css/futura-pt" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css?v=1.1.0">
+    <link rel="stylesheet" href="css/responsive.css?v=1.0.4">
+    <link rel="stylesheet" href="css/navbar.css?v=1.1.8">
+    <link rel="stylesheet" href="css/cart.css?v=1.0.2">
+    <link rel="stylesheet" href="css/auth.css">
+    <link rel="stylesheet" href="css/search.css">
+
+    <style>
+      /* Login page specific styles - Force black navigation elements */
+
+      /* Navigation links in desktop */
+      .nav-link {
+          color: #000 !important;
+      }
+
+      /* Navigation links hover state */
+      .nav-link:hover {
+          color: #333 !important;
+      }
+
+      /* Dropdown arrow icons */
+      .dropdown-toggle i {
+          color: #000 !important;
+      }
+
+      /* Mobile menu close button */
+      .meenu-close {
+          color: #000 !important;
+      }
+
+      /* Mobile navigation links */
+      .mobile-account-link {
+          color: #000 !important;
+      }
+
+      /* Mobile navigation link text */
+      .mobile-account-links .mobile-account-link {
+          color: #000 !important;
+      }
+
+      /* Navigation icons - all icon images */
+      .nav-icons .icon-link img {
+          filter: brightness(0) !important;
+      }
+
+      /* Hamburger menu icon */
+      .hamburger img {
+          filter: brightness(0) !important;
+      }
+
+      /* Cart and wishlist count badges *
+      .cart-count,
+      .wishlist-count,
+      .mobile-cart-count,
+      .mobile-wishlist-count {
+          background-color: #000 !important;
+          color: #fff !important;
+      }
+
+      /* Dropdown menu items */
+      .dropdown-menu li a {
+          color: #000 !important;
+      }
+
+      /* Dropdown menu items hover */
+      .dropdown-menu li a:hover {
+          color: #333 !important;
+          background-color: #f5f5f5 !important;
+      }
+
+      /* Mobile menu background text color */
+      .nav-menu {
+          color: #000 !important;
+      }
+
+      /* Ensure all text in mobile menu is black */
+      .nav-menu * {
+          color: #000 !important;
+      }
+
+      /* Mobile account links images */
+      .mobile-account-link img {
+          filter: brightness(0) !important;
+      }
+
+      /* Hide mobile menu close button on large devices */
+      @media (min-width: 769px) {
+          #closeMenu {
+              display: none !important;
+          }
+      }
+
+      /* Add top spacing to login section */
+      .auth-container {
+          margin-top: 200px !important;
+      }
+
+      /* Responsive spacing for different screen sizes */
+      @media (max-width: 768px) {
+          .auth-container {
+              margin-top: 120px !important;
+          }
+      }
+
+      /* Remove shadow from navigation links on large devices */
+      @media (min-width: 769px) {
+          .nav-link {
+              text-shadow: none !important;
+              box-shadow: none !important;
+          }
+
+          .nav-link:hover {
+              text-shadow: none !important;
+              box-shadow: none !important;
+          }
+      }
+    </style>
+
+    <!-- Flaticon CSS for bottom nav icons -->
+    <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/2.6.0/uicons-thin-straight/css/uicons-thin-straight.css'>
+    <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/2.6.0/uicons-solid-straight/css/uicons-solid-straight.css'>
+    <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/2.6.0/uicons-regular-straight/css/uicons-regular-straight.css'>
+
+    <!-- Currency and Language Selector CSS -->
+    <link rel="stylesheet" href="css/currency-converter.css?v=1.0.0">
+    <link rel="stylesheet" href="css/language-selector.css?v=1.0.0">
+
+    <!-- WhatsApp Tooltip Script -->
+    <script src="js/whatsapp-tooltip.js"></script>
+</head>
+  <body>
+    <!-- Header -->
+    <header class="header">
+        <!-- Promo Banner -->
+        <div class="promo-banner">
+            <p class="banner-text"></p>
+        </div>
+
+
+        <!-- New Responsive Navigation -->
+        <nav class="navbar">
+            <div class="nav-container">
+                <!-- Logo -->
+                <a href="/index" class="brand">
+                    <img src="images/logos/royalmeenakari.png" alt="Royal Meenakari" class="brand-logo">
+                </a>
+
+
+                <!-- Mobile Toggle Button - Match RIDHI MEHRA design -->
+                <div class="hamburger" id="navToggle"><img src="images/icons/bars-staggered (2).png" alt="SP Jewellers"style="width: 25px; height: 25px;">
+                </div>
+
+                <!-- Navigation Icons - Exact match to RIDHI MEHRA design -->
+                <div class="nav-icons">
+                    <a href="#" class="icon-link search-icon">
+                        <img src="images/icons/search.png" alt="Cart" style="width: 20px; height: 20px;">
+                    </a>
+                    <a href="#" class="icon-link account-icon" id="user-icon">
+                        <img src="images/icons/user.png" alt="Cart" style="width: 25px; height: 25px;">
+
+                    </a>
+                    <a href="#" class="icon-link wishlist-icon-container wishlist-toggle">
+                        <img src="images/icons/heart.png" alt="Cart" style="width: 20px; height: 20px;">
+
+                        <div class="wishlist-count">0</div>
+                    </a>
+                    <a href="#" class="icon-link cart-icon-container cart-toggle" id="cartToggleButton">
+                        <img src="images/icons/cart-minus.png" alt="Cart" style="width: 20px; height: 20px;">
+                        <div class="cart-count">0</div>
+                    </a>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Navigation Links - Moved outside nav-container to avoid backdrop-filter containing block -->
+        <div class="nav-menu" id="navMenu">
+            <!-- Close button for mobile menu in the top right corner -->
+
+            <i id="closeMenu" class="fa-solid fa-xmark meenu-close" onclick="closeMobileMenu()" style="font-size: 24px; margin-left: 90%; color: #333;" ></i>
+
+
+          <!-- "  <button class="menu-close fa fa-times" ></button>-->
+
+            <ul class="nav-list">
+                <li class="nav-item"><a href="/index" class="nav-link" data-translate="home">Home</a></li>
+                <li class="nav-item"><a href="/new-arrivals" class="nav-link" data-translate="new_arrivals">New Arrivals</a></li>
+                <li class="nav-item dropdown">
+                    <a href="#" class="nav-link dropdown-toggle"><span data-translate="categories">Collections</span> <i class="fas fa-chevron-down"></i></a>
+                    <ul class="dropdown-menu">
+                        <li><a href="/all-collection" data-translate="all_collections">All Collection</a></li>
+                        <li><a href="/featured-collection" data-translate="featured">Featured Collection</a></li>
+                        <li class="dropdown-submenu">
+                            <a href="#"><span data-translate="necklaces">Necklace</span> <i class="fas fa-chevron-right"></i></a>
+                            <ul class="dropdown-submenu-list">
+                                <li><a href="/gold-necklace" data-translate-dynamic>Gold Necklace</a></li>
+                                <li><a href="/silver-necklace" data-translate-dynamic>Silver Necklace</a></li>
+                                <li><a href="/meenakari-necklace" data-translate-dynamic>Meenakari Necklace</a></li>
+                            </ul>
+                        </li>
+                        <li class="dropdown-submenu">
+                            <a href="#"><span data-translate="earrings">Earrings</span> <i class="fas fa-chevron-right"></i></a>
+                            <ul class="dropdown-submenu-list">
+                                <li><a href="/gold-earrings" data-translate-dynamic>Gold Earrings</a></li>
+                                <li><a href="/silver-earrings" data-translate-dynamic>Silver Earrings</a></li>
+                                <li><a href="/meenakari-earrings" data-translate-dynamic>Meenakari Earrings</a></li>
+                            </ul>
+                        </li>
+                        <li class="dropdown-submenu">
+                            <a href="#"><span data-translate="bangles">Bangles</span> <i class="fas fa-chevron-right"></i></a>
+                            <ul class="dropdown-submenu-list">
+                                <li><a href="/gold-bangles" data-translate-dynamic>Gold Bangles</a></li>
+                                <li><a href="/silver-bangles" data-translate-dynamic>Silver Bangles</a></li>
+                                <li><a href="/meenakari-bangles" data-translate-dynamic>Meenakari Bangles</a></li>
+                            </ul>
+                        </li>
+                        <li class="dropdown-submenu">
+                            <a href="#"><span data-translate="rings">Rings</span> <i class="fas fa-chevron-right"></i></a>
+                            <ul class="dropdown-submenu-list">
+                                <li><a href="/gold-rings" data-translate-dynamic>Gold Rings</a></li>
+                                <li><a href="/silver-rings" data-translate-dynamic>Silver Rings</a></li>
+                                <li><a href="/meenakari-rings" data-translate-dynamic>Meenakari Rings</a></li>
+                            </ul>
+                        </li>
+                    </ul>
+                </li>
+                <li class="nav-item"><a href="/about-us" class="nav-link" data-translate="about_us">About</a></li>
+                <li class="nav-item"><a href="#customer-reviews" class="nav-link" data-translate-dynamic>Testimonials</a></li>
+                <li class="nav-item"><a href="/book-appointment" class="nav-link" data-translate-dynamic>Book Appointment</a></li>
+                <li class="nav-item"><a href="#" class="nav-link" data-translate-dynamic>Order Track</a></li>
+                <li><a href="/contact-us" class="nav-link" data-translate="contact_us">Contact</a></li>
+            </ul>
+
+            <!-- Mobile account links in separate div after Contact -->
+            <div class="mobile-account-links mobile-special">
+                <a href="/login" class="mobile-account-link">
+                    <img src="images/icons/user.png" alt="Cart" style="width: 18px; height: 18px;">  &nbsp; <span data-translate="account">Account</span>
+                </a>
+                <a href="#" class="mobile-account-link wishlist-toggle">
+                    <img src="images/icons/heart.png" alt="Cart" style="width: 18px; height: 18px;"> &nbsp;   <span data-translate="wishlist">Wishlist</span> (<span class="mobile-wishlist-count">0</span>)
+                </a>
+                <a href="#" class="mobile-account-link mobile-cart-toggle">
+                    <img src="images/icons/cart-minus.png" alt="Cart" style="width:18px; height: 18px; vertical-align: middle;">  &nbsp; <span data-translate="shopping_bag">Shopping Bag</span> (<span class="mobile-cart-count">0</span>)
+                </a>
+
+            </div>
+        </div>
+    </header>
+
+    <!-- Overlay for menu background -->
+    <div class="menu-overlay" id="menuOverlay"></div>
+
+    <!-- Login Section -->
+    <section class="auth-container">
+        <div class="auth-header">
+            <h2 class="auth-title">Login to Your Account</h2>
+            <p class="auth-subtitle">Welcome back, please enter your details</p>
+        </div>
+
+        <div id="error-message" class="error-message" style="display: none;"></div>
+        <div id="success-message" class="success-message" style="display: none;"></div>
+
+        <!-- Debug instructions for users, hidden by default -->
+        <div class="error-message" style="display: none;" id="debug-instructions">
+            <p>If you continue experiencing issues, please check your browser console for detailed error messages (press F12 and go to Console tab).</p>
+        </div>
+
+        <form id="login-form" class="auth-form">
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+
+            <div class="form-group" style="text-align: right; margin-bottom: 20px;">
+                <a href="#" id="forgot-password-link" style="color: #c59d5f; text-decoration: none; font-size: 14px;">Forgot Password?</a>
+            </div>
+
+            <button type="submit" class="auth-button" id="login-button">Login</button>
+        </form>
+
+        <div class="auth-divider">
+            <span>Or continue with</span>
+        </div>
+
+        <div class="social-login">
+            <button id="google-login" class="google-button">
+                <img src="https://cdn-icons-png.flaticon.com/128/300/300221.png" alt="Google">
+                Sign in with Google
+            </button>
+        </div>
+
+        <div class="auth-footer">
+            Don't have an account? <a href="/signup">Sign up</a>
+        </div>
+    </section>
+
+    <!-- Forgot Password Modal -->
+    <div id="forgot-password-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Reset Password</h3>
+                <span class="close-modal" id="close-forgot-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>Enter your email address and we'll send you a link to reset your password.</p>
+                <div class="form-group">
+                    <label for="reset-email">Email Address</label>
+                    <input type="email" id="reset-email" placeholder="Enter your email" required>
+                </div>
+                <div id="reset-error-message" class="error-message" style="display: none;"></div>
+                <div id="reset-success-message" class="success-message" style="display: none;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="auth-button" id="send-reset-button">Send Reset Email</button>
+                <button type="button" class="auth-button secondary" id="cancel-reset-button">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Email Verification Notice -->
+    <div id="verification-notice" class="verification-notice" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+        <div class="verification-content" style="background: white; padding: 30px; border-radius: 12px; max-width: 400px; margin: 20px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
+            <i class="fas fa-envelope-open" style="font-size: 48px; color: #2563eb; margin-bottom: 20px;"></i>
+            <h3 style="margin-bottom: 15px; color: #333;">Email Verification Required</h3>
+            <p style="margin-bottom: 20px; color: #666; line-height: 1.5;">Please verify your email address before logging in. Check your email inbox (and spam folder) for the verification link.</p>
+            <div style="margin: 20px 0;">
+                <button type="button" class="auth-button" id="resend-verification-button" style="margin-bottom: 10px;">Resend Verification Email</button>
+                <button type="button" class="auth-button secondary" onclick="document.getElementById('verification-notice').style.display='none'" style="background: #6b7280; margin-left: 10px;">Close</button>
+            </div>
+            <div id="verification-error-message" class="error-message" style="display: none;"></div>
+            <div id="verification-success-message" class="success-message" style="display: none;"></div>
+            <div style="font-size: 12px; color: #888; margin-top: 15px;">
+                <strong>Tip:</strong> If you don't receive the email, check your spam folder or contact support.
+            </div>
+        </div>
+    </div>
+
+
+      <!-- Minimalist Collapsible Footer -->
+
+    <!-- WhatsApp Button -->
+
+
+    <!-- Bottom Navigation Bar -->
+
+    <!-- Footer Toggle Script -->
+
+    <!-- Currency Converter -->
+
+
+    <!-- Language Translator -->
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
+
+    <!-- Initialize Firebase -->
+    <script>
+      // Firebase configuration - Auric project
+      const firebaseConfig = {
+        apiKey: "AIzaSyCrLCButDevLeILcBjrUCd9e7amXVjW-uI",
+        authDomain: "auric-a0c92.firebaseapp.com",
+        projectId: "auric-a0c92",
+        storageBucket: "auric-a0c92.firebasestorage.app",
+        messagingSenderId: "878979958342",
+        appId: "1:878979958342:web:e6092f7522488d21eaec47",
+        measurementId: "G-ZYZ750JHMB"
+      };
+
+      // Initialize Firebase
+      firebase.initializeApp(firebaseConfig);
+
+      // Enable session persistence
+      firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+        .catch(error => {
+          console.error("Auth persistence error:", error);
+        });
+    </script>
+
+    <!-- Search Scripts -->
+    <script src="js/search-manager.js"></script>
+    <script src="js/search-ui.js"></script>
+
+    <!-- Navigation script -->
+    <script src="js/navigation.js?v=1.0.4"></script>
+
+    <!-- Banner rotator script -->
+    <script src="js/banner-rotator.js?v=1.0.1"></script>
+
+    <!-- Firebase Auth Global Module -->
+    <script src="js/firebase/firebase-auth.js"></script>
+
+    <!-- Cart System -->
+    <script src="js/cart-local-storage.js?v=1.0.0"></script>
+    <script src="js/firebase/firebase-cart-manager.js?v=1.0.0"></script>
+    <script src="js/cart-manager.js?v=1.0.1"></script>
+
+    <!-- Wishlist Scripts -->
+    <script src="js/wishlist-local-storage.js?v=1.0.0"></script>
+    <script src="js/firebase/firebase-wishlist-manager.js?v=1.0.0"></script>
+    <script src="js/wishlist-manager.js?v=1.0.0"></script>
+    <script src="js/main.js"></script>
+
+    <!-- Initialize search after all scripts are loaded -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Ensure search functionality is working
+            setTimeout(() => {
+                if (typeof SearchManager !== 'undefined') {
+                    console.log('SearchManager available');
+                }
+                if (typeof SearchUI !== 'undefined') {
+                    console.log('SearchUI available');
+                }
+
+                // Manual search icon setup as backup
+                const searchIcon = document.querySelector('.search-icon');
+                if (searchIcon && !searchIcon.hasAttribute('data-search-attached')) {
+                    searchIcon.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        console.log('Manual search icon click handler triggered');
+                        if (typeof SearchUI !== 'undefined' && SearchUI.openSearch) {
+                            SearchUI.openSearch();
+                        }
+                    });
+                    searchIcon.setAttribute('data-search-attached', 'true');
+                    console.log('Manual search icon handler attached');
+                }
+            }, 500);
+        });
+    </script>
+
+
+
+    <!-- Login Script -->
+    <script>
+
+      // DOM elements for login page
+      const loginForm = document.getElementById('login-form');
+      const googleLoginBtn = document.getElementById('google-login');
+      const errorMessageEl = document.getElementById('error-message');
+      const successMessageEl = document.getElementById('success-message');
+      const loginButton = document.getElementById('login-button');
+      const emailInput = document.getElementById('email'); // Added for resend verification
+
+      // Prevent redirect loop on login page when already logged in
+      const checkInitialAuthState = async () => {
+        if (FirebaseAuth.isLoggedIn()) {
+          console.log("User is already logged in on login page");
+
+          // Only redirect if this is NOT a direct navigation (check referrer)
+          const referrer = document.referrer;
+          const isDirectNavigation = !referrer || referrer === '' || referrer === window.location.href;
+
+          if (!isDirectNavigation) {
+            console.log("User navigated from another page, redirecting to profile...");
+            window.location.replace('profile.html');
+          } else {
+            console.log("Direct navigation to login page while logged in, redirecting to home...");
+            window.location.replace('index.html');
+          }
+        }
+      };
+
+      // Run the check after a short delay to allow navigation.js to set the correct href
+      setTimeout(checkInitialAuthState, 100);
+
+
+      // Set up auth state observer to catch auth changes during login process
+      FirebaseAuth.observeAuthState(async (user) => {
+        if (user && !isProcessingLogin) {
+          console.log("Auth state changed - user is signed in:", user.uid);
+
+          // Add a small delay to ensure user is fully loaded
+          setTimeout(async () => {
+            try {
+              // Check if email is verified using comprehensive check (Firestore + Firebase Auth)
+              console.log("Checking email verification status...");
+              const emailVerified = await FirebaseAuth.isEmailVerified(user);
+              console.log("Email verification result:", emailVerified);
+
+              if (emailVerified) {
+                console.log("User email is verified, redirecting to profile page");
+                window.location.replace('profile.html');
+              } else {
+                console.log("User email not verified, signing out...");
+                // Store email for resend functionality
+                pendingVerificationEmail = user.email;
+                FirebaseAuth.logoutUser();
+              }
+            } catch (error) {
+              console.error("Error checking email verification:", error);
+              // If there's an error checking verification, redirect to profile
+              window.location.replace('profile.html');
+            }
+          }, 1000); // 1 second delay
+        } else {
+          console.log("Auth state changed - user is signed out");
+        }
+      });
+
+      // Handle regular email/password login
+      if (loginForm) {
+        loginForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+
+          const email = emailInput.value.trim();
+          const password = document.getElementById('password').value;
+
+          if (!email || !password) {
+            showError('Please enter both email and password');
+            return;
+          }
+
+          // Set loading state
+          setLoadingState(true);
+
+          try {
+            isProcessingLogin = true; // Set flag to prevent auth observer conflicts
+
+            // Attempt to sign in using our simplified auth module
+            const result = await FirebaseAuth.loginWithEmail(email, password);
+
+            if (result.success) {
+              isProcessingLogin = false; // Clear flag
+              showSuccess('Login successful!');
+
+              // Redirect to home page
+              setTimeout(() => {
+                window.location.href = 'index.html';
+              }, 1000);
+            } else {
+              isProcessingLogin = false; // Clear flag
+              // Handle error
+              console.error("Login failed:", result.error);
+
+              // Check if email verification is needed
+              if (result.code === 'auth/email-not-verified') {
+                // Store the email for resend functionality
+                pendingVerificationEmail = email;
+
+                // Show a clear, user-friendly message
+                showError('⏳ Email Verification Pending: Please check your email inbox (and spam folder) for the verification link to activate your account.');
+
+                // Show resend verification option
+                const resendVerificationSection = document.getElementById('verification-notice');
+                if (resendVerificationSection) {
+                  resendVerificationSection.style.display = 'flex';
+
+                  // Update the message in the verification notice
+                  const verificationMessage = resendVerificationSection.querySelector('p');
+                  if (verificationMessage) {
+                    verificationMessage.innerHTML = `📧 <strong>Verification Required:</strong> Your account exists but email verification is still pending.<br>Please check your email for the verification link or resend it below.`;
+                  }
+                }
+              } else {
+                handleAuthError(result);
+                // Hide resend verification option for other errors
+                const resendVerificationSection = document.getElementById('verification-notice');
+                if (resendVerificationSection) {
+                  resendVerificationSection.style.display = 'none';
+                }
+              }
+            }
+          } catch (error) {
+            isProcessingLogin = false; // Clear flag
+            console.error("Login error:", error);
+            showError('An unexpected error occurred. Please try again.');
+          } finally {
+            setLoadingState(false);
+          }
+        });
+      }
+
+      // Handle forgot password link
+      const forgotPasswordLink = document.getElementById('forgot-password-link');
+      const forgotPasswordModal = document.getElementById('forgot-password-modal');
+      const closeForgotModal = document.getElementById('close-forgot-modal');
+      const cancelResetButton = document.getElementById('cancel-reset-button');
+      const sendResetButton = document.getElementById('send-reset-button');
+      const resetEmailInput = document.getElementById('reset-email');
+
+      if (forgotPasswordLink && forgotPasswordModal) {
+        forgotPasswordLink.addEventListener('click', (e) => {
+          e.preventDefault();
+          forgotPasswordModal.style.display = 'flex';
+          resetEmailInput.focus();
+        });
+
+        // Close modal handlers
+        [closeForgotModal, cancelResetButton].forEach(btn => {
+          if (btn) {
+            btn.addEventListener('click', () => {
+              forgotPasswordModal.style.display = 'none';
+              resetEmailInput.value = '';
+              document.getElementById('reset-error-message').style.display = 'none';
+              document.getElementById('reset-success-message').style.display = 'none';
+            });
+          }
+        });
+
+        // Send reset email
+        if (sendResetButton) {
+          sendResetButton.addEventListener('click', async () => {
+            const email = resetEmailInput.value.trim();
+
+            if (!email) {
+              showResetError('Please enter your email address');
+              return;
+            }
+
+            // Clear previous messages
+            document.getElementById('reset-error-message').style.display = 'none';
+            document.getElementById('reset-success-message').style.display = 'none';
+
+            sendResetButton.disabled = true;
+            sendResetButton.textContent = 'Sending...';
+
+            try {
+              console.log('🔐 Frontend: Attempting password reset for:', email);
+              const result = await FirebaseAuth.sendPasswordResetEmail(email);
+
+              console.log('🔐 Frontend: Password reset result:', result);
+
+              if (result.success) {
+                showResetSuccess(result.message || 'Password reset email sent! Please check your email.');
+                setTimeout(() => {
+                  forgotPasswordModal.style.display = 'none';
+                  resetEmailInput.value = '';
+                }, 4000);
+              } else if (result.message) {
+                // Handle case where there's a message but success is false
+                showResetSuccess(result.message);
+                setTimeout(() => {
+                  forgotPasswordModal.style.display = 'none';
+                  resetEmailInput.value = '';
+                }, 4000);
+              } else {
+                console.error('🔐 Frontend: Password reset failed:', result.error);
+                showResetError(result.error || 'Failed to send reset email. Please try again.');
+              }
+            } catch (error) {
+              console.error('🔐 Frontend: Password reset exception:', error);
+              showResetError('Failed to send reset email. Please try again.');
+            } finally {
+              sendResetButton.disabled = false;
+              sendResetButton.textContent = 'Send Reset Email';
+            }
+          });
+        }
+      }
+
+      // Handle resend verification
+      const resendVerificationButton = document.getElementById('resend-verification-button');
+      if (resendVerificationButton) {
+        resendVerificationButton.addEventListener('click', async () => {
+          resendVerificationButton.disabled = true;
+          resendVerificationButton.textContent = 'Sending...';
+
+          try {
+            console.log('Resend verification clicked, using email:', pendingVerificationEmail);
+
+            // Use stored email if no current user, otherwise use current user
+            const result = await FirebaseAuth.resendEmailVerification(pendingVerificationEmail);
+
+            console.log('Resend verification result:', result);
+
+            if (result.success) {
+              showVerificationSuccess(result.message);
+            } else {
+              console.error('Resend verification failed:', result.error);
+              showVerificationError(result.error);
+            }
+          } catch (error) {
+            showVerificationError('Failed to send verification email. Please try again.');
+          } finally {
+            resendVerificationButton.disabled = false;
+            resendVerificationButton.textContent = 'Resend Verification Email';
+          }
+        });
+      }
+
+      // Handle Google sign-in
+      if (googleLoginBtn) {
+        googleLoginBtn.addEventListener('click', async function(e) {
+          e.preventDefault();
+
+          // Set Google button to loading state
+          googleLoginBtn.disabled = true;
+          googleLoginBtn.innerHTML = '<span class="spinner"></span> Connecting...';
+
+          try {
+            // Sign in with Google using our simplified auth module
+            const result = await FirebaseAuth.loginWithGoogle();
+
+            if (result.success) {
+              showSuccess('Google sign-in successful!');
+
+              // Redirect to home page
+              setTimeout(() => {
+                window.location.href = 'index.html';
+              }, 1000);
+            } else {
+              // Handle error
+              console.error("Google login failed:", result.error);
+              handleAuthError(result);
+            }
+          } catch (error) {
+            console.error("Google sign-in error:", error);
+            showError('An unexpected error occurred. Please try again.');
+          } finally {
+            // Reset Google button state
+            googleLoginBtn.disabled = false;
+            googleLoginBtn.innerHTML = '<img src="https://cdn-icons-png.flaticon.com/128/300/300221.png" alt="Google"> Sign in with Google';
+          }
+        });
+      }
+
+      // Helper functions
+      function setLoadingState(isLoading) {
+        if (loginButton) {
+          if (isLoading) {
+            loginButton.disabled = true;
+            loginButton.innerHTML = '<span class="spinner"></span> Logging in...';
+          } else {
+            loginButton.disabled = false;
+            loginButton.textContent = 'Login';
+          }
+        }
+      }
+
+      function handleAuthError(result) {
+        let errorMessage = 'Login failed. Please check your credentials and try again.';
+
+        if (result.code) {
+          switch(result.code) {
+            case 'auth/user-not-found':
+            case 'auth/wrong-password':
+              errorMessage = 'Incorrect email or password. Please try again.';
+              break;
+            case 'auth/invalid-email':
+              errorMessage = 'Invalid email address format.';
+              break;
+            case 'auth/too-many-requests':
+              errorMessage = 'Too many unsuccessful login attempts. Please try again later.';
+              break;
+            case 'auth/popup-closed-by-user':
+              errorMessage = 'Sign-in window was closed. Please try again.';
+              break;
+            case 'auth/unauthorized-domain':
+              errorMessage = 'Authentication not allowed from this domain.';
+              document.getElementById('debug-instructions').style.display = 'block';
+              break;
+            case 'auth/network-request-failed':
+              errorMessage = 'Network error. Please check your internet connection.';
+              document.getElementById('debug-instructions').style.display = 'block';
+              break;
+          }
+        }
+
+        showError(errorMessage);
+      }
+
+      function showError(message) {
+        if (errorMessageEl) {
+          errorMessageEl.textContent = message;
+          errorMessageEl.style.display = 'block';
+
+          if (successMessageEl) {
+            successMessageEl.style.display = 'none';
+          }
+
+          setTimeout(() => {
+            errorMessageEl.style.display = 'none';
+          }, 5000);
+        } else {
+          alert(message);
+        }
+      }
+
+      function showSuccess(message) {
+        if (successMessageEl) {
+          successMessageEl.textContent = message;
+          successMessageEl.style.display = 'block';
+
+          if (errorMessageEl) {
+            errorMessageEl.style.display = 'none';
+          }
+
+          setTimeout(() => {
+            successMessageEl.style.display = 'none';
+          }, 3000);
+        }
+      }
+
+      function showResetError(message) {
+        const resetErrorEl = document.getElementById('reset-error-message');
+        const resetSuccessEl = document.getElementById('reset-success-message');
+        if (resetErrorEl) {
+          resetErrorEl.textContent = message;
+          resetErrorEl.style.display = 'block';
+          if (resetSuccessEl) resetSuccessEl.style.display = 'none';
+        }
+      }
+
+      function showResetSuccess(message) {
+        const resetErrorEl = document.getElementById('reset-error-message');
+        const resetSuccessEl = document.getElementById('reset-success-message');
+        if (resetSuccessEl) {
+          resetSuccessEl.textContent = message;
+          resetSuccessEl.style.display = 'block';
+          if (resetErrorEl) resetErrorEl.style.display = 'none';
+        }
+      }
+
+      function showEmailVerificationNotice() {
+        const verificationNotice = document.getElementById('verification-notice');
+        if (verificationNotice) {
+          verificationNotice.style.display = 'flex';
+        }
+      }
+
+      function showVerificationError(message) {
+        const verificationErrorEl = document.getElementById('verification-error-message');
+        const verificationSuccessEl = document.getElementById('verification-success-message');
+        if (verificationErrorEl) {
+          verificationErrorEl.textContent = message;
+          verificationErrorEl.style.display = 'block';
+          if (verificationSuccessEl) verificationSuccessEl.style.display = 'none';
+        }
+      }
+
+      function showVerificationSuccess(message) {
+        const verificationErrorEl = document.getElementById('verification-error-message');
+        const verificationSuccessEl = document.getElementById('verification-success-message');
+        if (verificationSuccessEl) {
+          verificationSuccessEl.textContent = message;
+          verificationSuccessEl.style.display = 'block';
+          if (verificationErrorEl) verificationErrorEl.style.display = 'none';
+        }
+      }
+    </script>
+
+    <!-- Add spinner styles -->
+    <style>
+      .spinner {
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        border-top-color: #fff;
+        animation: spin 1s ease-in-out infinite;
+      }
+
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+
+      /* Modal styles */
+      .modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+      }
+
+      .modal-content {
+        background: white;
+        padding: 0;
+        border-radius: 8px;
+        max-width: 400px;
+        width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
+      }
+
+      .modal-header {
+        padding: 20px 20px 10px;
+        border-bottom: 1px solid #eee;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .modal-header h3 {
+        margin: 0;
+        color: #333;
+      }
+
+      .close-modal {
+        font-size: 24px;
+        cursor: pointer;
+        color: #999;
+        line-height: 1;
+      }
+
+      .close-modal:hover {
+        color: #333;
+      }
+
+      .modal-body {
+        padding: 20px;
+      }
+
+      .modal-footer {
+        padding: 10px 20px 20px;
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+      }
+
+      .auth-button.secondary {
+        background-color: #f5f5f5;
+        color: #333;
+      }
+
+      .auth-button.secondary:hover {
+        background-color: #e0e0e0;
+      }
+
+      /* Email verification notice */
+      .verification-notice {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+      }
+
+      .verification-content {
+        background: white;
+        padding: 30px;
+        border-radius: 8px;
+        max-width: 400px;
+        width: 90%;
+        text-align: center;
+      }
+
+      .verification-content h3 {
+        margin-bottom: 15px;
+        color: #333;
+      }
+
+      .verification-content p {
+        margin-bottom: 20px;
+        color: #666;
+        line-height: 1.5;
+      }
+
+      /* Login page specific styles - Make navigation elements black *
+
+
+      .nav-item {
+        color: #333 !important;
+        text-shadow: none !important;
+      }
+
+      .nav-link:hover {
+        color: #c59d5f !important;
+        text-shadow: none !important;
+      }
+
+      .icon-link {
+        color: #333 !important;
+        text-shadow: none !important;
+      }
+
+      .icon-link:hover {
+        color: #c59d5f !important;
+        text-shadow: none !important;
+      }
+
+      .dropdown-toggle {
+        color: #333 !important;
+        text-shadow: none !important;
+      }
+
+      .dropdown:hover .dropdown-toggle {
+        color: #c59d5f !important;
+        text-shadow: none !important;
+      }
+
+      /* Mobile menu styles *
+      .mobile-account-link {
+        color: #333 !important;
+      }
+
+      .mobile-account-link:hover {
+        color: #c59d5f !important;
+      }
+
+      .mobile-account-link i {
+        color: #333 !important;
+      }
+
+      /* Hamburger menu icon *
+      .hamburger {
+        color: #333 !important;
+      }
+
+      .hamburger:hover i {
+        color: #c59d5f !important;
+      }
+
+      /* Close menu button *
+      .close-menu {
+        color: #333 !important;
+      }
+
+      /* Brand/Logo color adjustment if needed *
+      .brand {
+        color: #8b704c !important;
+      }
+
+      .brand:hover {
+        color: #6b5339 !important;
+      }
+    </style>
+
+    <!-- Cart Panel -->
+    <div id="auricCartPanel" class="cart-panel">
+      <div class="cart-panel-header">
+        <h3>Your Shopping Bag</h3>
+        <button class="close-cart-btn">×</button>
+      </div>
+      <div class="cart-items">
+        <!-- Cart items will be inserted here by JavaScript -->
+        <div class="empty-cart-message">Your cart is empty</div>
+      </div>
+      <div class="cart-panel-footer">
+        <div class="cart-panel-subtotal">
+          <span>Subtotal:</span>
+          <span class="subtotal-amount">₹0.00</span>
+        </div>
+        <div class="cart-panel-buttons">
+          <button class="view-cart-btn continue-shopping-btn">Continue Shopping</button>
+          <a href="/checkout" class="checkout-btn">Checkout</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ultra-direct Cart Overlay with ALL inline styles -->
+    <div id="auricCartOverlay" class="cart-panel-overlay"></div>
+
+    <!-- WhatsApp Button -->
+
+
+    <script>
+        function openWhatsAppChat() {
+            // Open WhatsApp with pre-filled message
+            window.open('https://wa.me/919310250047?text=Hi! I need help with my account. Can you assist me?', '_blank');
+        }
+    </script>
+
+    <!-- Minimalist Collapsible Footer -->
+
+
+    <!-- Bottom Navigation Bar (Mobile Only) -->
+
+
+    <!-- Footer Toggle Script -->
+
+
+
+    <!-- Minimalist Collapsible Footer -->
+
+
+    <!-- Bottom Navigation Bar (Mobile Only) -->
+
+
+    <!-- Footer Toggle Script -->
+
+
+
+    <!-- Minimalist Collapsible Footer -->
+    <footer class="footer-minimalist">
+        <div class="container">
+            <!-- Info Section -->
+            <div class="footer-section">
+                <button class="footer-toggle" data-section="info-content">
+                    <span class="footer-title" data-translate="info">Info</span>
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+                <div class="footer-content" id="info-content">
+                    <ul>
+                        <li><a href="/about-us" data-translate="about_us">About Us</a></li>
+                        <li><a href="terms-conditions.html#shipping-and-delivery" data-translate-dynamic>Shipping Policy</a></li>
+                        <li><a href="terms-conditions.html#returns-and-refunds" data-translate-dynamic>Returns & Exchanges</a></li>
+                        <li><a href="/terms-conditions" data-translate-dynamic>Terms and Conditions</a></li>
+                        <li><a href="/privacy-policy" data-translate-dynamic>Privacy Policy</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Categories Section -->
+            <div class="footer-section">
+                <button class="footer-toggle" data-section="categories-content">
+                    <span class="footer-title" data-translate="categories">Categories</span>
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+                <div class="footer-content" id="categories-content">
+                    <ul>
+                        <li class="category-with-sub">
+                            <div class="category-item-header">
+                                <a href="#" data-translate="necklaces">Necklace</a>
+                                <i class="fas fa-plus category-toggle-icon"></i>
+                            </div>
+                            <ul class="subcategory-list">
+                                <li><a href="/gold-necklace" data-translate-dynamic>Gold Necklace</a></li>
+                                <li><a href="/silver-necklace" data-translate-dynamic>Silver Necklace</a></li>
+                                <li><a href="/meenakari-necklace" data-translate-dynamic>Meenakari Necklace</a></li>
+                            </ul>
+                        </li>
+                        <li class="category-with-sub">
+                            <div class="category-item-header">
+                                <a href="#" data-translate="earrings">Earrings</a>
+                                <i class="fas fa-plus category-toggle-icon"></i>
+                            </div>
+                            <ul class="subcategory-list">
+                                <li><a href="/gold-earrings" data-translate-dynamic>Gold Earrings</a></li>
+                                <li><a href="/silver-earrings" data-translate-dynamic>Silver Earrings</a></li>
+                                <li><a href="/meenakari-earrings" data-translate-dynamic>Meenakari Earrings</a></li>
+                            </ul>
+                        </li>
+                        <li class="category-with-sub">
+                            <div class="category-item-header">
+                                <a href="#" data-translate="bangles">Bangles</a>
+                                <i class="fas fa-plus category-toggle-icon"></i>
+                            </div>
+                            <ul class="subcategory-list">
+                                <li><a href="/gold-bangles" data-translate-dynamic>Gold Bangles</a></li>
+                                <li><a href="/silver-bangles" data-translate-dynamic>Silver Bangles</a></li>
+                                <li><a href="/meenakari-bangles" data-translate-dynamic>Meenakari Bangles</a></li>
+                            </ul>
+                        </li>
+                        <li class="category-with-sub">
+                            <div class="category-item-header">
+                                <a href="#" data-translate="rings">Rings</a>
+                                <i class="fas fa-plus category-toggle-icon"></i>
+                            </div>
+                            <ul class="subcategory-list">
+                                <li><a href="/gold-rings" data-translate-dynamic>Gold Rings</a></li>
+                                <li><a href="/silver-rings" data-translate-dynamic>Silver Rings</a></li>
+                                <li><a href="/meenakari-rings" data-translate-dynamic>Meenakari Rings</a></li>
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Collection Section -->
+            <div class="footer-section">
+                <button class="footer-toggle" data-section="collection-content">
+                    <span class="footer-title" data-translate-dynamic>Collection</span>
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+                <div class="footer-content" id="collection-content">
+                    <ul>
+                        <li><a href="/all-collection" data-translate="all_collections">All Collection</a></li>
+                        <li><a href="/featured-collection" data-translate="featured">Featured Collection</a></li>
+                        <li><a href="/new-arrivals" data-translate="new_arrivals">New Arrivals</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Exclusive Benefits Section -->
+            <div class="footer-section">
+                <button class="footer-toggle" data-section="benefits-content">
+                    <span class="footer-title" data-translate-dynamic>Exclusive benefits</span>
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+                <div class="footer-content" id="benefits-content">
+                    <ul>
+                        <li><a href="#" data-translate-dynamic>Personal Styling</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Social Media Icons Section -->
+            <div class="footer-social-section">
+                <h3 class="social-section-title" data-translate="follow_social">Follow us on social media</h3>
+                <div class="social-icons-container">
+                    <a href="https://www.instagram.com" target="_blank" class="social-icon-link">
+                        <i class="fab fa-instagram"></i>
+                    </a>
+                    <a href="https://www.facebook.com" target="_blank" class="social-icon-link">
+                        <i class="fab fa-facebook-f"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Download Our App Section -->
+            <div class="footer-app-section">
+                <h3 class="app-section-title" data-translate="download_app">Download Our App</h3>
+                <div class="app-buttons-container">
+                    <a href="#" class="app-store-button">
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/3/3c/Download_on_the_App_Store_Badge.svg" alt="Download on App Store">
+                    </a>
+                    <a href="#" class="google-play-button">
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg" alt="Get it on Google Play">
+                    </a>
+                </div>
+            </div>
+
+            <div class="footer-bottom">
+            <div class="container">
+                <div class="footer-info">
+                    <div class="copyright">
+                        <p data-translate-dynamic>&copy; 2025 Royal Meenakari. All rights reserved. | Developed by <a href="https://savannaik.netlify.app/" target="_blank" style="color: #9c7c38; text-decoration: none; font-weight: 500;">Savan Naik</a></p>
+                    </div>
+
+                    <div class="footer-links">
+                        <a href="/terms-conditions" data-translate-dynamic>Terms and Conditions</a>
+                        <a href="/privacy-policy" data-translate-dynamic>Privacy Policy</a>
+                    </div>
+
+                    <div class="payment-methods">
+                        <span><i class="fab fa-cc-amex"></i></span>
+                        <span><i class="fab fa-cc-discover"></i></span>
+                        <span><i class="fab fa-google-pay"></i></span>
+                        <span><i class="fab fa-cc-mastercard"></i></span>
+                        <span><i class="fab fa-cc-paypal"></i></span>
+                        <span class="union-pay">UP</span>
+                        <span><i class="fab fa-cc-visa"></i></span>
+                    </div>
+                </div>
+            </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- WhatsApp Button -->
+      <a href="https://wa.me/918963815289?text=Hi! I would like to know more about your services. Can you help me?" class="whatsapp-btn">
+          <i class="fab fa-whatsapp"></i>
+      </a>
+
+    <!-- Bottom Navigation Bar -->
+    <nav class="bottom-nav">
+        <a href="/index" class="bottom-nav-item active">
+            <i class="fi fi-rs-home"></i>
+            <span data-translate="home">Home</span>
+        </a>
+        <a href="/all-collection" class="bottom-nav-item">
+            <i class="fi fi-rs-shop"></i>
+            <span data-translate="shop">Shop</span>
+        </a>
+        <a href="/login" class="bottom-nav-item">
+            <i class="fi fi-rs-user"></i>
+            <span data-translate="account">Account</span>
+        </a>
+        <div class="bottom-nav-item currency-selector-wrapper">
+            <span id="selected-currency-flag" class="currency-flag-display">🇮🇳</span>
+            <span id="selected-currency-code" class="currency-code-display">INR</span>
+            <select id="currency-selector" class="currency-select" onchange="CurrencyConverter.changeCurrency(this.value)">
+                <option value="INR">INR</option>
+                <option value="USD">USD</option>
+                <option value="EUR">EUR</option>
+                <option value="GBP">GBP</option>
+                <option value="AED">AED</option>
+                <option value="CAD">CAD</option>
+                <option value="AUD">AUD</option>
+            </select>
+        </div>
+        <div class="bottom-nav-item language-selector-wrapper">
+            <span id="selected-language-flag" class="language-flag-display">🇬🇧</span>
+            <span id="selected-language-code" class="language-code-display">EN</span>
+            <select id="language-selector" class="language-select" onchange="LanguageTranslator.changeLanguage(this.value)">
+                <option value="en">EN</option>
+                <option value="hi">HI</option>
+                <option value="es">ES</option>
+                <option value="fr">FR</option>
+                <option value="ar">AR</option>
+                <option value="de">DE</option>
+            </select>
+        </div>
+        <a href="#" class="bottom-nav-item" id="bottomNavCart">
+            <i class="fi fi-rs-shopping-bag"></i>
+            <span data-translate="bag">Bag</span>
+        </a>
+    </nav>
+
+    <!-- Footer Toggle Script -->
+    <script src="js/footer-toggle.js"></script>
+
+    <!-- Bottom Navigation Cart Handler Script -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const bottomNavCart = document.getElementById('bottomNavCart');
+            if (bottomNavCart) {
+                bottomNavCart.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    if (typeof openCart === 'function') {
+                        openCart();
+                    } else {
+                        window.location.href = 'checkout.html';
+                    }
+                });
+            }
+        });
+    </script>
+
+    <!-- Currency Converter -->
+    <script src="js/currency-converter.js?v=1.0.0"></script>
+
+    <!-- Language Translator -->
+    <script src="js/language-translator.js?v=1.0.0"></script>
+
+    <!-- Navigation Fix for Subdomain Routing -->
+    <script src="js/navigation-fix.js"></script>
+</body>
+  <!-- Fix for closeCartDirectly error -->
+  <script>
+    // Define the missing closeCartDirectly function
+    window.closeCartDirectly = function() {
+      // Call the regular closeCart function
+      if (window.closeCart) {
+        return window.closeCart();
+      }
+    };
+  </script>
+</html>

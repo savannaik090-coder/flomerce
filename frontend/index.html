@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fluxe - Website Automation</title>
+    <link rel="icon" type="image/webp" href="/assets/images/logo.webp">
+    <link rel="stylesheet" href="/src/css/index.css">
+    <link rel="manifest" href="/manifest.json">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        .pwa-install-bar {
+            position: fixed;
+            bottom: -100px;
+            left: 0;
+            right: 0;
+            background: #000000;
+            padding: 1rem;
+            box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: bottom 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1000;
+            border-top: 1px solid #333333;
+        }
+        .pwa-install-bar.show {
+            bottom: 0;
+        }
+        .pwa-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .pwa-logo {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+        .pwa-text h4 {
+            margin: 0;
+            font-size: 0.9375rem;
+            font-weight: 600;
+            color: #ffffff;
+        }
+        .pwa-text p {
+            margin: 0;
+            font-size: 0.8125rem;
+            color: #9ca3af;
+        }
+        .pwa-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .btn-install {
+            background: #2563eb;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            border: none;
+            cursor: pointer;
+        }
+        .btn-close {
+            background: transparent;
+            color: #6b7280;
+            padding: 0.5rem;
+            border: none;
+            cursor: pointer;
+            font-size: 1.25rem;
+        }
+    </style>
+</head>
+<body>
+    <div id="pwa-bar" class="pwa-install-bar">
+        <div class="pwa-info">
+            <img src="/assets/images/logo.webp" alt="Logo" class="pwa-logo">
+            <div class="pwa-text">
+                <h4>Install Fluxe</h4>
+                <p>Add to home screen for better experience</p>
+            </div>
+        </div>
+        <div class="pwa-actions">
+            <button id="install-button" class="btn-install">Install</button>
+            <button id="close-pwa-bar" class="btn-close">&times;</button>
+        </div>
+    </div>
+    <div class="container">
+        <nav class="nav">
+            <a href="/" class="logo">FLUXE</a>
+            <div class="nav-links">
+                <a href="/src/pages/login.html" class="nav-link">Login</a>
+                <a href="/src/pages/signup.html" class="btn btn-primary">Get Started</a>
+            </div>
+        </nav>
+
+        <section class="hero">
+            <span class="hero-tag" style="font-size: 1.25rem; padding: 0.75rem 1.5rem; background: #eff6ff; color: #2563eb; border: 1px solid #dbeafe;">Coming Soon</span>
+            <h1>Launch Your Website<br>in minutes.</h1>
+            <p>A fully automated website platform that builds, manages, and scales websites without manual work.</p>
+            <div style="display: flex; gap: 1rem; justify-content: center;">
+                <a href="/src/pages/signup.html" class="btn btn-primary">Start Building</a>
+                <a href="#learn-more" class="btn btn-outline">View Demo</a>
+            </div>
+        </section>
+    </div>
+    <script>
+        // Register Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').catch(err => console.log('SW registration failed:', err));
+            });
+        }
+
+        let deferredPrompt;
+        const pwaBar = document.getElementById('pwa-bar');
+        const installBtn = document.getElementById('install-button');
+        const closeBtn = document.getElementById('close-pwa-bar');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            // Prevent Chrome 67 and earlier from automatically showing the prompt
+            e.preventDefault();
+            // Stash the event so it can be triggered later.
+            deferredPrompt = e;
+            // Update UI notify the user they can add to home screen
+            setTimeout(() => {
+                pwaBar.classList.add('show');
+            }, 2000);
+        });
+
+        installBtn.addEventListener('click', (e) => {
+            // hide our user interface that shows our A2HS button
+            pwaBar.classList.remove('show');
+            // Show the prompt
+            deferredPrompt.prompt();
+            // Wait for the user to respond to the prompt
+            deferredPrompt.userChoice.then((choiceResult) => {
+                if (choiceResult.outcome === 'accepted') {
+                    console.log('User accepted the A2HS prompt');
+                } else {
+                    console.log('User dismissed the A2HS prompt');
+                }
+                deferredPrompt = null;
+            });
+        });
+
+        closeBtn.addEventListener('click', () => {
+            pwaBar.classList.remove('show');
+        });
+
+        // For testing/mocking visual if browser doesn't trigger beforeinstallprompt (uncomment to test)
+        // setTimeout(() => pwaBar.classList.add('show'), 3000);
+    </script>
+</body>
+</html>
