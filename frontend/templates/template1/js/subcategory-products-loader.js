@@ -15,141 +15,24 @@ const SubcategoryProductsLoader = (function() {
     const SHORT_CACHE_DURATION = 4 * 60 * 60 * 1000; // 4 hours for localStorage to reduce bandwidth
 
     /**
-     * Initialize Firebase Storage connection
+     * Initialize connection
      */
     function init() {
-        try {
-            console.log('Initializing Subcategory Products Loader...');
-            
-            if (typeof firebase !== 'undefined') {
-                storage = firebase.storage();
-                isInitialized = true;
-                console.log('Subcategory Products Loader initialized successfully');
-                return true;
-            } else {
-                console.error('Firebase not available - make sure Firebase scripts are loaded');
-                return false;
-            }
-        } catch (error) {
-            console.error('Error initializing Subcategory Products Loader:', error);
-            return false;
-        }
+        console.log('Initializing Subcategory Products Loader...');
+        isInitialized = true;
+        return true;
     }
 
     /**
      * Load products for a specific subcategory
      */
     async function loadSubcategoryProducts(category, forceRefresh = false) {
-        if (!isInitialized) {
-            console.error('Subcategory Products Loader not initialized');
-            return [];
-        }
-
-        // Check cache invalidation
-        const lastProductUpdate = localStorage.getItem('lastProductUpdate');
-        let cacheInvalidated = false;
-
-        if (lastProductUpdate) {
-            const updateTime = parseInt(lastProductUpdate);
-            const cacheTime = parseInt(localStorage.getItem(`${category}ProductsTime`) || '0');
-
-            if (updateTime > cacheTime) {
-                console.log(`🚨 Cache invalidated for ${category}:`, new Date(updateTime));
-                cacheInvalidated = true;
-                forceRefresh = true;
-                localStorage.removeItem('lastProductUpdate');
-            }
-        }
-
-        // Check memory cache
-        const now = Date.now();
-        if (!forceRefresh && !cacheInvalidated && cachedProducts[category] && (now - (lastFetchTime[category] || 0)) < CACHE_DURATION) {
-            console.log(`Using memory cached ${category} products`);
-            return cachedProducts[category];
-        }
-
-        // Check localStorage cache
-        if (!forceRefresh && !cacheInvalidated) {
-            try {
-                const stored = localStorage.getItem(`${category}Products`);
-                const storedTime = localStorage.getItem(`${category}ProductsTime`);
-                
-                if (stored && storedTime && (now - parseInt(storedTime)) < SHORT_CACHE_DURATION) {
-                    console.log(`Using localStorage cached ${category} products`);
-                    cachedProducts[category] = JSON.parse(stored);
-                    lastFetchTime[category] = parseInt(storedTime);
-                    return cachedProducts[category];
-                }
-            } catch (e) {
-                console.warn('Error reading from localStorage cache:', e);
-            }
-        }
-
         try {
-            console.log(`Loading ${category} products from Cloud Storage...`);
-
-            // Only add cache busting when force refresh or cache invalidated (not always)
-            let netlifyEndpoint = `/.netlify/functions/load-products?category=${category}`;
-
-            if (forceRefresh || cacheInvalidated) {
-                const cacheBustTimestamp = Date.now();
-                netlifyEndpoint += `&cacheBust=${cacheBustTimestamp}`;
-                console.log('Force refresh enabled with timestamp:', cacheBustTimestamp);
-            }
-
-            const netlifyHeaders = {
-                'Content-Type': 'application/json'
-            };
-
-            if (forceRefresh || cacheInvalidated) {
-                netlifyHeaders['Cache-Control'] = 'no-cache, no-store, must-revalidate';
-                netlifyHeaders['Pragma'] = 'no-cache';
-                netlifyHeaders['Expires'] = '0';
-            }
-
-            const response = await fetch(netlifyEndpoint, {
-                method: 'GET',
-                headers: netlifyHeaders,
-                cache: (forceRefresh || cacheInvalidated) ? 'no-store' : 'default'
-            });
-
-            if (!response.ok) {
-                throw new Error(`Failed to load ${category}: ${response.status}`);
-            }
-
+            console.log(`Loading ${category} products from API...`);
+            const response = await fetch(`/api/products?category=${category}`);
+            if (!response.ok) throw new Error(`Failed to load ${category}`);
             const data = await response.json();
-            
-            if (!data.success) {
-                console.warn(`No products found for ${category}`);
-                return [];
-            }
-
-            let products = data.products || [];
-
-            // Validate and normalize products
-            products = products.map(product => {
-                if (!product.image && product.mainImage) {
-                    product.image = product.mainImage;
-                } else if (!product.image && product.images && product.images.length > 0) {
-                    product.image = product.images[0].url;
-                }
-                return product;
-            }).filter(product => product.name && product.price && product.image);
-
-            // Cache results
-            cachedProducts[category] = products;
-            lastFetchTime[category] = now;
-
-            try {
-                localStorage.setItem(`${category}Products`, JSON.stringify(products));
-                localStorage.setItem(`${category}ProductsTime`, now.toString());
-            } catch (e) {
-                console.warn('Error saving to localStorage:', e);
-            }
-
-            console.log(`Loaded ${products.length} ${category} products`);
-            return products;
-
+            return data.products || [];
         } catch (error) {
             console.error(`Error loading ${category} products:`, error);
             return [];
