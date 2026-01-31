@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+
+    <!-- Dynamic SEO Meta Tags - Will be updated by JavaScript -->
+    <title id="page-title">Category | Shop</title>
+    <meta name="description" id="page-description" content="Browse our collection of products." />
+    <meta name="keywords" id="page-keywords" content="products, shop, collection" />
+
+    <!-- Favicon - Dynamic -->
+    <link rel="icon" type="image/png" href="images/logos/royalmeenakari.png" id="page-favicon" />
+    <link rel="apple-touch-icon" href="images/logos/royalmeenakari.png" id="page-apple-icon" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" id="og-url" content="" />
+    <meta property="og:title" id="og-title" content="Category | Shop" />
+    <meta property="og:description" id="og-description" content="Browse our collection of products." />
+    <meta property="og:image" id="og-image" content="" />
+
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v6.4.0/css/all.min.css" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Lato:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.cdnfonts.com/css/futura-pt" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css?v=1.1.1">
+    <link rel="stylesheet" href="css/search.css">
+    <link rel="stylesheet" href="css/out-of-stock-styles.css?v=1.0.0">
+    <link rel="stylesheet" href="css/responsive.css?v=1.0.4">
+    <link rel="stylesheet" href="css/navbar.css?v=1.1.3">
+    <link rel="stylesheet" href="css/cart.css?v=1.0.2">
+    <link rel="stylesheet" href="css/shop.css?v=1.0.2">
+    <link rel="stylesheet" href="css/new-arrivals-grid.css?v=2.0.0">
+    <link rel="stylesheet" href="css/product-loader.css?v=1.0.0">
+
+    <style>
+        @media (min-width: 769px) {
+            #closeMenu {
+                display: none !important;
+            }
+        }
+    </style>
+
+    <!-- Flaticon CSS for bottom nav icons -->
+    <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/2.6.0/uicons-thin-straight/css/uicons-thin-straight.css'>
+    <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/2.6.0/uicons-solid-straight/css/uicons-solid-straight.css'>
+    <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/2.6.0/uicons-regular-straight/css/uicons-regular-straight.css'>
+
+    <!-- Currency and Language Selector CSS -->
+    <link rel="stylesheet" href="css/currency-converter.css?v=1.0.0">
+    <link rel="stylesheet" href="css/language-selector.css?v=1.0.0">
+</head>
+  <body>
+
+    <!-- Header -->
+    <header class="header">
+        <!-- Promo Banner -->
+        <div class="promo-banner">
+            <p class="banner-text"></p>
+        </div>
+
+        <!-- Navigation -->
+        <nav class="navbar">
+            <div class="nav-container">
+                <!-- Logo -->
+                <a href="/index" class="brand">
+                    <img src="images/logos/royalmeenakari.png" alt="Shop Logo" class="brand-logo" id="nav-logo">
+                </a>
+
+                <!-- Mobile Toggle Button -->
+                <div class="hamburger" id="navToggle">
+                    <img src="images/icons/bars-staggered (2).png" alt="Menu" style="width: 25px; height: 25px;">
+                </div>
+
+                <!-- Navigation Icons -->
+                <div class="nav-icons">
+                    <a href="#" class="icon-link search-icon">
+                        <img src="images/icons/search.png" alt="Search" style="width: 20px; height: 20px;">
+                    </a>
+                    <a href="#" class="icon-link account-icon" id="user-icon">
+                        <img src="images/icons/user.png" alt="Account" style="width: 25px; height: 25px;">
+                    </a>
+                    <a href="#" class="icon-link wishlist-icon-container wishlist-toggle">
+                        <img src="images/icons/heart.png" alt="Wishlist" style="width: 20px; height: 20px;">
+                        <div class="wishlist-count">0</div>
+                    </a>
+                    <a href="#" class="icon-link cart-icon-container cart-toggle" id="cartToggleButton">
+                        <img src="images/icons/cart-minus.png" alt="Cart" style="width: 20px; height: 20px;">
+                        <div class="cart-count">0</div>
+                    </a>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Navigation Links -->
+        <nav class="nav-links" id="navLinks">
+            <button class="close-menu" id="closeMenu">×</button>
+            <a href="/index" class="nav-link" data-translate="home">HOME</a>
+            <a href="/all-collection" class="nav-link" data-translate="shop">SHOP</a>
+            <a href="/new-arrivals" class="nav-link" data-translate="new_arrivals">NEW ARRIVALS</a>
+            <a href="/about-us" class="nav-link" data-translate="about">ABOUT</a>
+            <a href="/contact-us" class="nav-link" data-translate="contact">CONTACT</a>
+        </nav>
+    </header>
+
+    <!-- Search Overlay -->
+    <div class="search-overlay" id="searchOverlay">
+        <div class="search-container">
+            <div class="search-header">
+                <input type="text" id="searchInput" class="search-input" placeholder="Search products..." autocomplete="off">
+                <button class="close-search" id="closeSearch">×</button>
+            </div>
+            <div class="search-results" id="searchResults"></div>
+        </div>
+    </div>
+
+    <!-- Hero Section - Dynamic -->
+    <section class="hero-section" id="category-hero">
+        <div class="hero-overlay"></div>
+        <div class="hero-content">
+            <h1 class="hero-title" id="category-title">Loading...</h1>
+            <p class="hero-subtitle" id="category-subtitle">Discover our exquisite collection</p>
+        </div>
+    </section>
+
+    <!-- Product Grid Section -->
+    <section class="shop-products-section">
+        <!-- Filter and Sort Header -->
+        <div class="shop-filter-header">
+            <div class="filter-option" id="filterOption">FILTER</div>
+            <div class="sort-option" id="sortOption">
+                <span>SORT BY</span>
+                <i class="fas fa-chevron-down"></i>
+            </div>
+            <div class="sort-dropdown" id="sortDropdown">
+                <div class="sort-dropdown-option active" data-sort="price-low-high">Price: Low to High</div>
+                <div class="sort-dropdown-option" data-sort="price-high-low">Price: High to Low</div>
+            </div>
+        </div>
+
+        <div class="shop-products">
+            <!-- Product Loader -->
+            <div class="product-loader show" id="category-loader" style="margin: 40px auto;">
+                <div class="loader-spinner"></div>
+                <p class="loader-text" id="loader-text">Loading Products...</p>
+            </div>
+            <div class="products-grid" id="products-grid">
+                <!-- Products will be loaded here dynamically -->
+            </div>
+        </div>
+    </section>
+
+    <!-- Filter Modal -->
+    <div class="filter-modal" id="filterModal">
+        <div class="filter-modal-content">
+            <div class="filter-modal-header">
+                <h2>Filter Products</h2>
+                <button class="close-filter-modal" id="closeFilterModal">×</button>
+            </div>
+            <div class="filter-modal-body">
+                <div class="filter-section">
+                    <h3>Sort By</h3>
+                    <div class="filter-options">
+                        <label class="filter-option-label">
+                            <input type="radio" name="filter-sort" value="featured" checked> Featured
+                        </label>
+                        <label class="filter-option-label">
+                            <input type="radio" name="filter-sort" value="newest"> Newest
+                        </label>
+                    </div>
+                </div>
+                <div class="filter-section">
+                    <h3>Price Range</h3>
+                    <div class="filter-options">
+                        <label class="filter-option-label">
+                            <input type="radio" name="price-range" value="all" checked> All Prices
+                        </label>
+                        <label class="filter-option-label">
+                            <input type="radio" name="price-range" value="0-5000"> Under ₹5,000
+                        </label>
+                        <label class="filter-option-label">
+                            <input type="radio" name="price-range" value="5000-15000"> ₹5,000 - ₹15,000
+                        </label>
+                        <label class="filter-option-label">
+                            <input type="radio" name="price-range" value="15000+"> Above ₹15,000
+                        </label>
+                    </div>
+                </div>
+                <div class="filter-section">
+                    <h3>Availability</h3>
+                    <div class="filter-options">
+                        <label class="filter-option-label">
+                            <input type="checkbox" name="availability" value="in-stock"> In Stock
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="filter-modal-footer">
+                <button class="apply-filter-btn" id="applyFilterBtn">Apply Filters</button>
+                <button class="clear-filter-btn" id="clearFilterBtn">Clear All</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cart Panel -->
+    <div class="cart-panel">
+      <div class="cart-panel-header">
+        <h3>Your Shopping Bag</h3>
+        <button class="close-cart-btn">×</button>
+      </div>
+      <div class="cart-items">
+        <div class="empty-cart-message">Your cart is empty</div>
+      </div>
+      <div class="cart-panel-footer">
+        <div class="cart-panel-subtotal">
+          <span>Subtotal:</span>
+          <span class="subtotal-amount">₹0.00</span>
+        </div>
+        <div class="cart-panel-buttons">
+          <button class="view-cart-btn continue-shopping-btn">Continue Shopping</button>
+          <a href="/checkout" class="checkout-btn">Checkout</a>
+        </div>
+      </div>
+    </div>
+    <div class="cart-panel-overlay"></div>
+
+    <!-- Wishlist Panel -->
+    <div class="wishlist-panel">
+      <div class="wishlist-panel-header">
+        <h3 data-translate="wishlist">My Wishlist</h3>
+        <button class="close-wishlist-btn">×</button>
+      </div>
+      <div class="wishlist-items">
+        <div class="empty-wishlist-message" data-translate-dynamic>Your wishlist is empty</div>
+      </div>
+      <div class="wishlist-panel-footer">
+        <div class="wishlist-panel-actions">
+          <button class="clear-wishlist-btn" data-translate-dynamic>Clear Wishlist</button>
+        </div>
+      </div>
+    </div>
+    <div class="wishlist-overlay"></div>
+
+    <!-- WhatsApp Button -->
+    <a href="https://wa.me/918963815289" target="_blank" class="whatsapp-btn" aria-label="Chat on WhatsApp">
+        <i class="fab fa-whatsapp"></i>
+        <div class="whatsapp-tooltip" data-translate="how_can_help">How can I help you?</div>
+    </a>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-column footer-brand">
+                <h3 id="footer-brand-name">Shop</h3>
+                <p>Discover our exquisite collection of handcrafted products.</p>
+            </div>
+            <div class="footer-column">
+                <h3>Quick Links</h3>
+                <ul>
+                    <li><a href="/index">Home</a></li>
+                    <li><a href="/all-collection">Shop</a></li>
+                    <li><a href="/about-us">About Us</a></li>
+                    <li><a href="/contact-us">Contact</a></li>
+                </ul>
+            </div>
+            <div class="footer-column">
+                <h3>Customer Service</h3>
+                <ul>
+                    <li><a href="/terms-conditions">Terms & Conditions</a></li>
+                    <li><a href="/privacy-policy">Privacy Policy</a></li>
+                </ul>
+            </div>
+            <div class="footer-column">
+                <h3>Connect With Us</h3>
+                <div class="social-links">
+                    <a href="#" class="social-link"><i class="fab fa-facebook-f"></i></a>
+                    <a href="#" class="social-link"><i class="fab fa-instagram"></i></a>
+                    <a href="#" class="social-link"><i class="fab fa-twitter"></i></a>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; <span id="current-year">2026</span> <span id="footer-copyright-brand">Shop</span>. All Rights Reserved.</p>
+        </div>
+    </footer>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+        <a href="/index" class="bottom-nav-item">
+            <i class="fi fi-rs-home"></i>
+            <span data-translate="home">Home</span>
+        </a>
+        <a href="/all-collection" class="bottom-nav-item">
+            <i class="fi fi-rs-shop"></i>
+            <span data-translate="shop">Shop</span>
+        </a>
+        <a href="/login" class="bottom-nav-item">
+            <i class="fi fi-rs-user"></i>
+            <span data-translate="account">Account</span>
+        </a>
+        <div class="bottom-nav-item currency-selector-wrapper">
+            <span id="selected-currency-flag" class="currency-flag-display">🇮🇳</span>
+            <span id="selected-currency-code" class="currency-code-display">INR</span>
+            <select id="currency-selector" class="currency-select" onchange="CurrencyConverter.changeCurrency(this.value)">
+                <option value="INR">INR</option>
+                <option value="USD">USD</option>
+                <option value="EUR">EUR</option>
+                <option value="GBP">GBP</option>
+                <option value="AED">AED</option>
+                <option value="CAD">CAD</option>
+                <option value="AUD">AUD</option>
+            </select>
+        </div>
+        <div class="bottom-nav-item language-selector-wrapper">
+            <span id="selected-language-flag" class="language-flag-display">🇬🇧</span>
+            <span id="selected-language-code" class="language-code-display">EN</span>
+            <select id="language-selector" class="language-select" onchange="LanguageTranslator.changeLanguage(this.value)">
+                <option value="en">EN</option>
+                <option value="hi">HI</option>
+                <option value="es">ES</option>
+                <option value="fr">FR</option>
+                <option value="ar">AR</option>
+                <option value="de">DE</option>
+            </select>
+        </div>
+        <a href="#" class="bottom-nav-item" id="bottomNavCart">
+            <i class="fi fi-rs-shopping-bag"></i>
+            <span data-translate="bag">Bag</span>
+        </a>
+    </nav>
+
+    <!-- Scripts -->
+    <script src="js/footer-toggle.js"></script>
+    
+    <!-- Bottom Navigation Cart Handler -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const bottomNavCart = document.getElementById('bottomNavCart');
+            if (bottomNavCart) {
+                bottomNavCart.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    if (typeof openCart === 'function') {
+                        openCart();
+                    } else {
+                        window.location.href = 'checkout.html';
+                    }
+                });
+            }
+            document.getElementById('current-year').textContent = new Date().getFullYear();
+        });
+    </script>
+
+    <!-- Filter and Sort Handler -->
+    <script src="js/filter-sort-handler.js?v=1.0.0"></script>
+
+    <!-- Dynamic Category Loader -->
+    <script src="js/category-loader.js?v=1.0.0"></script>
+
+    <!-- Core JS Files -->
+    <script src="js/navigation.js?v=1.0.4"></script>
+    <script src="js/banner-rotator.js?v=1.0.1"></script>
+    <script src="js/error-handler.js"></script>
+    <script src="js/auth-service.js?v=1.0.0"></script>
+    <script src="js/cart-local-storage.js?v=1.0.0"></script>
+    <script src="js/api-cart-manager.js?v=1.0.0"></script>
+    <script src="js/cart-manager.js?v=1.0.1"></script>
+    <script src="js/wishlist-local-storage.js?v=1.0.0"></script>
+    <script src="js/api-wishlist-manager.js?v=1.0.0"></script>
+    <script src="js/wishlist-manager.js?v=1.0.0"></script>
+    <script src="js/main.js"></script>
+    <script src="js/search-manager.js"></script>
+    <script src="js/search-ui.js"></script>
+
+    <!-- Currency Converter -->
+    <script src="js/currency-converter.js?v=3.0.0"></script>
+
+    <!-- Language Translator -->
+    <script src="js/language-translator.js?v=1.0.0"></script>
+
+    <!-- Initialize Currency Converter -->
+    <script>
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function() {
+                if (typeof CurrencyConverter !== 'undefined') {
+                    CurrencyConverter.init();
+                }
+            });
+        } else {
+            if (typeof CurrencyConverter !== 'undefined') {
+                CurrencyConverter.init();
+            }
+        }
+    </script>
+
+    <!-- Navigation Fix for Subdomain Routing -->
+    <script src="js/navigation-fix.js"></script>
+</body>
+</html>
