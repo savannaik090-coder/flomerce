@@ -10,35 +10,33 @@
 console.log('🎬 testimonial-scroller.js loaded');
 
 /**
- * Load Watch & Buy videos from Firestore (dynamic unlimited version)
+ * Load Watch & Buy videos from API (dynamic unlimited version)
  */
 async function loadWatchBuyVideos() {
     const videoContainer = document.getElementById('dynamic-watch-buy-videos');
     if (!videoContainer) return;
 
     try {
-        // First try the collection used by admin panel
-        let snapshot = await db.collection('watch_buy_videos').orderBy('createdAt', 'desc').get();
+        // Get subdomain for API call
+        const hostname = window.location.hostname;
+        const parts = hostname.split('.');
+        const subdomain = (parts.length <= 2 || hostname === 'localhost') ? 'demo' : parts[0];
         
-        // If empty, try the other possible collection name
-        if (snapshot.empty) {
-            snapshot = await db.collection('watchBuyVideos').orderBy('uploadedAt', 'desc').get();
-        }
+        const response = await fetch(`/api/videos/watch-buy?subdomain=${subdomain}`);
+        const result = await response.json();
         
         const loadingSpinner = document.getElementById('watch-buy-loading-spinner');
         if (loadingSpinner) loadingSpinner.remove();
 
-        // Clear EVERYTHING inside the container before adding new items
-        // This ensures no hardcoded demo data from HTML remains
         videoContainer.innerHTML = '';
 
-        if (snapshot.empty) {
+        const videos = result.data || result.videos || [];
+        if (!videos.length) {
             videoContainer.innerHTML = '<div style="width: 100%; text-align: center; padding: 20px;">Coming soon...</div>';
             return;
         }
 
-        snapshot.forEach((doc, index) => {
-            const videoData = doc.data();
+        videos.forEach((videoData) => {
             const sku = videoData.productSKU || videoData.sku || '';
             const videoItem = document.createElement('div');
             videoItem.className = 'testimonial-item';
@@ -61,13 +59,11 @@ async function loadWatchBuyVideos() {
             `;
             videoContainer.appendChild(videoItem);
             
-            // Link product after adding to DOM
             if (sku) {
                 updateDynamicVideoProductLink(videoItem, sku);
             }
         });
 
-        // Re-initialize video controls for newly added elements
         initBuyAndWatchVideos();
 
     } catch (error) {

@@ -155,27 +155,19 @@ document.addEventListener('DOMContentLoaded', function() {
         // Try to find api order that matches this AWB
         let apiOrder = null;
 
-        if (window.api && api.auth().currentUser) {
-            try {
-                const userOrdersRef = api.firestore()
-                    .collection('users')
-                    .doc(api.auth().currentUser.uid)
-                    .collection('orders');
-
-                // Search for order with matching AWB
-                const orderQuery = await userOrdersRef
-                    .where('shiprocketData.awb_code', '==', awbNumber)
-                    .limit(1)
-                    .get();
-
-                if (!orderQuery.empty) {
-                    const doc = orderQuery.docs[0];
-                    apiOrder = { id: doc.id, ...doc.data() };
+        try {
+            const subdomain = getSubdomain();
+            const response = await fetch(`/api/orders/by-awb/${awbNumber}?subdomain=${subdomain}`);
+            
+            if (response.ok) {
+                const result = await response.json();
+                if (result.data) {
+                    apiOrder = result.data;
                     console.log('✅ Found matching api order for AWB');
                 }
-            } catch (e) {
-                console.log('❌ Could not find matching api order');
             }
+        } catch (e) {
+            console.log('❌ Could not find matching api order');
         }
 
         return {

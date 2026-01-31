@@ -2766,14 +2766,8 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             console.log('Creating admin notification for new order:', orderId);
 
-            // Check if api is available
-            if (typeof api === 'undefined' || !api.firestore) {
-                console.warn('api not available for notification creation');
-                return;
-            }
-
             const notificationData = {
-                id: Date.now(), // Simple ID generation
+                id: Date.now(),
                 message: `New order needs confirmation: ${orderData.customer.firstName} ${orderData.customer.lastName} - ₹${orderData.orderTotal.toLocaleString('en-IN')}`,
                 timestamp: new Date().toISOString(),
                 type: 'admin-order-pending',
@@ -2790,7 +2784,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     paymentMethod: orderData.paymentMethod,
                     orderDate: orderData.orderDate,
                     status: 'pending',
-                    deliveryStatus: orderData.deliveryStatus || 'pending', // Include delivery status
+                    deliveryStatus: orderData.deliveryStatus || 'pending',
                     products: orderData.products,
                     notes: orderData.notes,
                     orderDetails: {
@@ -2808,16 +2802,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 updatedAt: new Date().toISOString()
             };
 
-            // Save to api adminNotifications collection
-            await api.firestore()
-                .collection('adminNotifications')
-                .doc(notificationData.id.toString())
-                .set(notificationData);
+            // Save notification via API
+            const subdomain = getSubdomain();
+            await fetch(`/api/notifications`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ subdomain, notification: notificationData })
+            });
 
             console.log('✅ Admin notification created for new order:', orderId);
         } catch (error) {
             console.error('Error creating admin notification:', error);
-            // Don't throw error - notification creation should not fail order processing
         }
     }
 
