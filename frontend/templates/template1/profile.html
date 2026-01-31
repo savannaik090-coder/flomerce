@@ -884,51 +884,23 @@
       });
 
       function initializeProfile() {
-        // Check if Firebase is properly initialized
-        if (!window.firebase) {
-          console.error('Firebase not loaded');
+        // Check if AuthService is available
+        if (!window.FirebaseAuth && !window.AuthService) {
+          console.error('Auth Service not loaded');
           showError('Failed to initialize. Please refresh the page.');
           return;
         }
 
-        // Wait for Firebase auth to be ready with timeout handling
-        const authStateTimeout = setTimeout(() => {
-          console.warn("Firebase auth state taking too long, checking session");
-          const session = FirebaseAuth && FirebaseAuth.getSession();
-          if (session && session.uid && session.loggedIn) {
-            console.log("Using session data as fallback");
-            loadUserProfileFromSession(session);
-            setupProfilePage();
-          } else {
-            showError('Connection timeout. Please check your internet connection and try again.');
-            addRetryButton();
-          }
-        }, 10000); // 10 second timeout
-
-        firebase.auth().onAuthStateChanged((user) => {
-          clearTimeout(authStateTimeout);
-          if (user) {
-            console.log("Auth state: user is signed in:", user.uid);
-            loadUserProfile(user);
-            setupProfilePage();
-          } else {
-            console.log("Auth state: user is signed out");
-            // Check session as fallback
-            const session = FirebaseAuth && FirebaseAuth.getSession();
-            if (session && session.uid && session.loggedIn) {
-              console.log("Found user in session, attempting to restore auth");
-              // Try to restore auth state or redirect to login
-              setTimeout(() => {
-                if (!firebase.auth().currentUser) {
-                  window.location.href = "login.html";
-                }
-              }, 1000);
-            } else {
-              console.log("No authenticated user found, redirecting to login");
-              window.location.href = "login.html";
-            }
-          }
-        });
+        // Use session-based auth with API
+        const session = FirebaseAuth && FirebaseAuth.getSession();
+        if (session && session.uid && session.loggedIn) {
+          console.log("Auth state: user is signed in:", session.uid);
+          loadUserProfile(session);
+          setupProfilePage();
+        } else {
+          console.log("No authenticated user found, redirecting to login");
+          window.location.href = "login.html";
+        }
       }
 
       // Load user profile from session data (offline fallback)
@@ -958,12 +930,12 @@
         // Handle both user object and string userId
         if (typeof userOrUserId === 'string') {
           userId = userOrUserId;
-          currentUser = firebase.auth().currentUser;
+          currentUser = FirebaseAuth.getCurrentUser();
         } else if (userOrUserId && userOrUserId.uid) {
           userId = userOrUserId.uid;
           currentUser = userOrUserId;
         } else {
-          currentUser = firebase.auth().currentUser;
+          currentUser = FirebaseAuth.getCurrentUser();
           if (currentUser) {
             userId = currentUser.uid;
           }
@@ -979,12 +951,18 @@
         console.log("Loading profile for user:", userId);
 
         try {
-          // Try to get user profile directly from Firestore
-          const userDoc = await firebase.firestore().collection("users").doc(userId).get();
+          // Fetch user profile from API
+          const token = AuthService.getToken();
+          const response = await fetch('/api/auth/profile', {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
 
-          if (userDoc.exists) {
-            const userData = userDoc.data();
-            console.log("User profile loaded from Firestore:", userData);
+          if (response.ok) {
+            const result = await response.json();
+            const userData = result.data || result;
+            console.log("User profile loaded from API:", userData);
 
             // Display user information
             displayUserInfo(userData);
@@ -994,9 +972,9 @@
 
             // Display addresses
             displayUserAddresses(userData.addresses || []);
-          } else {
-            // Profile doesn't exist, create one
-            console.log("Creating new user profile in Firestore...");
+          } else if (response.status === 404) {
+            // Profile doesn't exist, create one using session data
+            console.log("Creating new user profile via API...");
 
             if (currentUser) {
               const nameFromEmail = currentUser.email ? currentUser.email.split('@')[0] : '';
@@ -1005,47 +983,54 @@
                 email: currentUser.email,
                 displayName: currentUser.displayName || nameFromEmail || 'User',
                 photoURL: currentUser.photoURL,
-                createdAt: firebase.firestore.Timestamp.now(),
-                updatedAt: firebase.firestore.Timestamp.now(),
                 addresses: [],
                 paymentMethods: []
               };
 
-              // Create user profile in Firestore
-              await firebase.firestore().collection("users").doc(currentUser.uid).set(userData);
+              // Create user profile via API
+              const createResponse = await fetch('/api/auth/profile', {
+                method: 'PUT',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(userData)
+              });
 
-              console.log("Successfully created user profile");
-              displayUserInfo(userData);
-              displayUserAddresses([]);
-              displayEmptyOrdersSection();
+              if (createResponse.ok) {
+                console.log("Successfully created user profile");
+                displayUserInfo(userData);
+                displayUserAddresses([]);
+                displayEmptyOrdersSection();
+              } else {
+                throw new Error('Failed to create profile');
+              }
             } else {
               console.error("No current user available for profile creation");
               showError("Session error. Please log in again.");
               setTimeout(() => window.location.href = "login.html", 2000);
             }
+          } else {
+            throw new Error(`API error: ${response.status}`);
           }
         } catch (error) {
           console.error("Error loading profile:", error);
 
-          // Handle permission denied errors specifically
-          if (error.code === 'permission-denied') {
+          // Handle API errors
+          if (error.message?.includes('401') || error.message?.includes('403')) {
             console.error("Permission denied - user may not be properly authenticated");
             showError("Access denied. Please log in again.");
-            // Clear any stale auth data and redirect
-            if (FirebaseAuth && FirebaseAuth.clearSession) {
-              FirebaseAuth.clearSession();
+            if (AuthService && AuthService.logout) {
+              AuthService.logout();
             }
             setTimeout(() => window.location.href = "login.html", 2000);
-          } else if (error.code === 'unavailable' || error.message?.includes('Backend didn\'t respond')) {
-            console.log("Firebase unavailable, attempting to use session data");
+          } else {
+            // Try to use session data as fallback
             const session = FirebaseAuth && FirebaseAuth.getSession();
             if (session && session.uid && session.loggedIn) {
               loadUserProfileFromSession(session);
               return;
             }
-            showError("Connection problem detected. Please check your internet connection.");
-            addRetryButton();
-          } else {
             showError("Failed to load profile. Please try again.");
             addRetryButton();
           }
@@ -1062,16 +1047,11 @@
             if (retryBtn) {
               retryBtn.addEventListener('click', () => {
                 errorMsg.style.display = 'none';
-                const currentUser = firebase.auth().currentUser;
-                if (currentUser) {
-                  loadUserProfile(currentUser);
+                const session = FirebaseAuth && FirebaseAuth.getSession();
+                if (session && session.uid && session.loggedIn) {
+                  loadUserProfile(session);
                 } else {
-                  const session = FirebaseAuth && FirebaseAuth.getSession();
-                  if (session && session.uid && session.loggedIn) {
-                    loadUserProfileFromSession(session);
-                  } else {
-                    window.location.reload();
-                  }
+                  window.location.reload();
                 }
               });
             }
@@ -1131,23 +1111,25 @@
         }
 
         try {
-          // Get orders from Firestore at path: users/{userId}/orders
-          const ordersSnapshot = await firebase.firestore()
-            .collection("users")
-            .doc(userId)
-            .collection("orders")
-            .orderBy("timestamp", "desc")
-            .get();
+          // Get orders from API
+          const token = AuthService.getToken();
+          const response = await fetch('/api/orders', {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
 
-          if (ordersSnapshot.empty) {
+          if (!response.ok) {
+            throw new Error(`API error: ${response.status}`);
+          }
+
+          const result = await response.json();
+          const orders = result.data || result.orders || [];
+
+          if (!orders || orders.length === 0) {
             displayEmptyOrdersSection();
             return;
           }
-
-          const orders = ordersSnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          }));
 
           console.log(`Loaded ${orders.length} orders for user`);
 
