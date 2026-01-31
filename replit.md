@@ -40,6 +40,8 @@ Fluxe is a SaaS platform that allows users to create their own e-commerce websit
 │   │   │   │   ├── auth-service.js        # API-based authentication
 │   │   │   │   ├── api-cart-manager.js    # API-based cart
 │   │   │   │   ├── api-wishlist-manager.js # API-based wishlist
+│   │   │   │   ├── admin-products-api.js  # Admin products management API
+│   │   │   │   ├── admin-orders-api.js    # Admin orders/users/analytics API
 │   │   │   │   └── ... (other scripts)
 │   │   │   └── ... (other pages)
 │   │   └── clothing/              # Clothing template
@@ -145,12 +147,12 @@ Main tables:
 - [x] Legacy files removed (firebase.json, firestore.rules, netlify folder)
 - [x] Core pages migrated: product-detail, contact-us, verify-email, reset-password, about-us, checkout, book-appointment
 
-**Pending (Admin Panels - Major Refactor):**
+**Completed (Admin Panels):**
 - [x] login.html - Migrated to use auth-service.js (REST API)
 - [x] signup.html - Migrated to use auth-service.js (REST API)
 - [x] profile.html - Migrated to use REST API (auth, orders, file uploads)
-- [ ] products-admin-panel.html - Thousands of lines of Firebase code
-- [ ] admin-panel.html - Extensive Firebase integration
+- [x] products-admin-panel.html - Migrated to use admin-products-api.js (2,382 lines, 0 Firebase ops)
+- [x] admin-panel.html - Migrated to use admin-orders-api.js (11,356 lines, 0 Firebase ops)
 
 **Backend Deployment:**
 - [ ] D1 database created in Cloudflare
@@ -160,6 +162,13 @@ Main tables:
 - [ ] Testing and verification
 
 ## Recent Changes
+
+- **January 31, 2026**: Admin panels fully migrated
+  - products-admin-panel.html: Reduced from 2,647 to 2,382 lines (0 Firebase operations)
+  - admin-panel.html: Reduced from 11,469 to 11,356 lines (0 Firebase operations, down from 149)
+  - Created admin-products-api.js: Product CRUD, image upload, notifications
+  - Created admin-orders-api.js: Orders, users, analytics, settings, video links
+  - All operations now use REST API endpoints at `/api/admin/*`
 
 - **January 31, 2026**: Profile page migration completed
   - Migrated profile.html to use REST API instead of Firebase SDK
