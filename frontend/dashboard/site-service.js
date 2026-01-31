@@ -1,51 +1,94 @@
-import firebaseConfig from '../auth/firebase-config.js';
-
 class SiteService {
   constructor() {
-    if (!firebase.apps.length) {
-      firebase.initializeApp(firebaseConfig);
+    this.apiBase = '/api';
+  }
+
+  async getAuthToken() {
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+      throw new Error('Not authenticated');
     }
-    this.db = firebase.firestore();
+    return token;
   }
 
   async createSite(userId, siteData) {
-    const { siteName, category, templateId } = siteData;
-    const subdomain = siteName.toLowerCase().replace(/[^a-z0-9]/g, '-');
-    const fullDomain = `${subdomain}.fluxe.in`;
-    const existing = await this.db.collection('websites').doc(fullDomain).get();
-    if (existing.exists) {
-      throw new Error("Domain already taken. Try another name.");
-    }
-    await this.db.collection('websites').doc(fullDomain).set({
-      userId, siteName, category, subdomain, fullDomain, templateId,
-      status: 'active',
-      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      settings: {
-        title: siteName,
-        description: `Professional ${category} website created on Fluxe.`,
-        contactEmail: '', phoneNumber: ''
-      }
+    const { siteName, category, templateId, categories } = siteData;
+    const token = await this.getAuthToken();
+    
+    const response = await fetch(`${this.apiBase}/sites`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        siteName,
+        category,
+        templateId,
+        categories: categories || []
+      })
     });
-    return { id: fullDomain, subdomain: fullDomain };
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Failed to create site');
+    }
+
+    return await response.json();
   }
 
   async getUserSites(userId) {
-    const snapshot = await this.db.collection('websites')
-      .where('userId', '==', userId)
-      .get();
+    const token = await this.getAuthToken();
     
-    // Sort manually to avoid index requirement for now
-    return snapshot.docs
-      .map(doc => ({ id: doc.id, ...doc.data() }))
-      .sort((a, b) => {
-        const dateA = a.createdAt?.toDate() || 0;
-        const dateB = b.createdAt?.toDate() || 0;
-        return dateB - dateA;
-      });
+    const response = await fetch(`${this.apiBase}/sites`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch sites');
+    }
+
+    const data = await response.json();
+    return data.sites || [];
   }
 
   async deleteSite(siteId) {
-    await this.db.collection('websites').doc(siteId).delete();
+    const token = await this.getAuthToken();
+    
+    const response = await fetch(`${this.apiBase}/sites/${siteId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to delete site');
+    }
+
+    return await response.json();
+  }
+
+  async updateSite(siteId, updates) {
+    const token = await this.getAuthToken();
+    
+    const response = await fetch(`${this.apiBase}/sites/${siteId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(updates)
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to update site');
+    }
+
+    return await response.json();
   }
 }
 

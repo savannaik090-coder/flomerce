@@ -43,55 +43,8 @@
     <!-- WhatsApp Tooltip Script -->
     <script src="js/whatsapp-tooltip.js"></script>
 </head>
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-storage-compat.js"></script>
-
-    <!-- Initialize Firebase -->
-    <script>
-      // Firebase configuration - UPDATED to use auric project
-      const firebaseConfig = {
-        apiKey: "AIzaSyCrLCButDevLeILcBjrUCd9e7amXVjW-uI",
-        authDomain: "auric-a0c92.firebaseapp.com",
-        projectId: "auric-a0c92",
-        storageBucket: "auric-a0c92.firebasestorage.app",
-        messagingSenderId: "878979958342",
-        appId: "1:878979958342:web:e6092f7522488d21eaec47",
-        measurementId: "G-ZYZ750JHMB"
-      };
-
-      // Make firebaseConfig available globally for analytics
-      window.firebaseConfig = firebaseConfig;
-
-      // Initialize Firebase directly (like in login.html)
-      if (!firebase.apps.length) {
-        firebase.initializeApp(firebaseConfig);
-      }
-
-      // Configure Firestore settings for better offline handling
-      firebase.firestore().settings({
-        cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED,
-        ignoreUndefinedProperties: true
-      });
-
-      // Enable offline persistence
-      firebase.firestore().enablePersistence({ synchronizeTabs: true })
-        .catch(err => {
-          if (err.code == 'failed-precondition') {
-            console.log('Multiple tabs open, persistence can only be enabled in one tab at a time.');
-          } else if (err.code == 'unimplemented') {
-            console.log('The current browser does not support all of the features required to enable persistence');
-          }
-        });
-
-      // Enable session persistence
-      firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL)
-        .catch(error => {
-          console.error("Auth persistence error:", error);
-        });
-    </script>
+    <!-- Auth Service -->
+    <script src="js/auth-service.js"></script>
 
     <style>
         /* Hide mobile menu close button on large devices */
@@ -102,28 +55,23 @@
         }
     </style>
 
-    <!-- Nazakat Analytics Tracking - Load AFTER Firebase is ready -->
+    <!-- Analytics Tracking -->
     <script>
-        // Wait for Firebase to be fully initialized before loading analytics
+        // Load analytics script
         function loadAnalyticsScript() {
-            if (typeof firebase !== 'undefined' && firebase.apps.length > 0) {
-                console.log('🔥 Firebase ready, loading analytics script...');
-                const script = document.createElement('script');
-                script.src = 'js/nazakat-analytics.js?v=1.0.1';
-                script.onload = function() {
-                    console.log('📊 Analytics script loaded successfully');
-                };
-                script.onerror = function() {
-                    console.error('❌ Failed to load analytics script');
-                };
-                document.head.appendChild(script);
-            } else {
-                console.log('⏳ Firebase not ready, retrying in 500ms...');
-                setTimeout(loadAnalyticsScript, 500);
-            }
+            console.log('Loading analytics script...');
+            const script = document.createElement('script');
+            script.src = 'js/nazakat-analytics.js?v=1.0.1';
+            script.onload = function() {
+                console.log('📊 Analytics script loaded successfully');
+            };
+            script.onerror = function() {
+                console.error('❌ Failed to load analytics script');
+            };
+            document.head.appendChild(script);
         }
 
-        // Start loading analytics after a brief delay to ensure Firebase init
+        // Start loading analytics after a brief delay
         setTimeout(loadAnalyticsScript, 1000);
     </script>
   </head>
@@ -435,12 +383,11 @@
     <script src="js/navigation.js?v=1.0.4"></script>
     <script src="js/banner-rotator.js?v=1.0.1"></script>
     <script src="js/error-handler.js"></script>
-    <script src="js/firebase/firebase-auth.js"></script>
     <script src="js/cart-local-storage.js?v=1.0.0"></script>
-    <script src="js/firebase/firebase-cart-manager.js?v=1.0.0"></script>
+    <script src="js/api-cart-manager.js?v=1.0.0"></script>
     <script src="js/cart-manager.js?v=1.0.1"></script>
     <script src="js/wishlist-local-storage.js?v=1.0.0"></script>
-    <script src="js/firebase/firebase-wishlist-manager.js?v=1.0.0"></script>
+    <script src="js/api-wishlist-manager.js?v=1.0.0"></script>
     <script src="js/wishlist-manager.js?v=1.0.0"></script>
     <script src="js/main.js"></script>
 

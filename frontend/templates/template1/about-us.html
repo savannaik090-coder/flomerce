@@ -40,26 +40,8 @@
     <link rel="stylesheet" href="css/search.css">
     <link rel="stylesheet" href="css/currency-converter.css?v=1.0.0">
     <link rel="stylesheet" href="css/language-selector.css?v=1.0.0">
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
-
-    <!-- Unified Firebase Configuration -->
-    <script src="js/firebase-config.js"></script>
-    <script>
-      // Initialize Firebase with unified configuration
-      if (window.firebaseConfig) {
-        firebase.initializeApp(window.firebaseConfig);
-        firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL)
-          .catch(error => {
-            console.error("Auth persistence error:", error);
-          });
-        console.log('✅ About Us page: Firebase initialized with unified config');
-      } else {
-        console.error('❌ About Us page: Firebase config not loaded');
-      }
-    </script>
+    <!-- Auth Service -->
+    <script src="js/auth-service.js"></script>
 
 
         <style>
@@ -499,28 +481,23 @@ background-color: #000 !important;
         }
     </style>
 
-    <!-- Nazakat Analytics Tracking - Load AFTER Firebase is ready -->
+    <!-- Analytics Tracking -->
     <script>
-        // Wait for Firebase to be fully initialized before loading analytics
+        // Load analytics script
         function loadAnalyticsScript() {
-            if (typeof firebase !== 'undefined' && firebase.apps.length > 0) {
-                console.log('🔥 Firebase ready, loading analytics script...');
-                const script = document.createElement('script');
-                script.src = 'js/nazakat-analytics.js?v=1.0.1';
-                script.onload = function() {
-                    console.log('📊 Analytics script loaded successfully');
-                };
-                script.onerror = function() {
-                    console.error('❌ Failed to load analytics script');
-                };
-                document.head.appendChild(script);
-            } else {
-                console.log('⏳ Firebase not ready, retrying in 500ms...');
-                setTimeout(loadAnalyticsScript, 500);
-            }
+            console.log('Loading analytics script...');
+            const script = document.createElement('script');
+            script.src = 'js/nazakat-analytics.js?v=1.0.1';
+            script.onload = function() {
+                console.log('📊 Analytics script loaded successfully');
+            };
+            script.onerror = function() {
+                console.error('❌ Failed to load analytics script');
+            };
+            document.head.appendChild(script);
         }
 
-        // Start loading analytics after a brief delay to ensure Firebase init
+        // Start loading analytics after a brief delay
         setTimeout(loadAnalyticsScript, 1000);
     </script>
 
