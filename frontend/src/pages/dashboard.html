@@ -873,25 +873,9 @@
                 btn.innerText = 'Create Website';
             }
         });
-                
-                closeModal(); // Use the standard close function for smooth transition
-                loadSites(authService.getCurrentUser().uid);
-                
-                // Reset form for next time
-                document.getElementById('site-domain-input').value = '';
-                document.getElementById('site-brand-input').value = '';
-                document.getElementById('site-logo-input').value = '';
-                switchStep(2, 1);
-            } catch (error) { 
-                alert(error.message); 
-            } finally {
-                const btn = document.getElementById('confirm-create-btn');
-                btn.disabled = false;
-                btn.innerText = 'Confirm & Create';
-            }
-        });
 
-        document.getElementById('logout-btn').addEventListener('click', () => authService.logout());
+        document.getElementById('mobile-logout')?.addEventListener('click', () => authService.logout());
+        document.getElementById('logout-btn-account')?.addEventListener('click', () => authService.logout());
     </script>
 </body>
 </html>
