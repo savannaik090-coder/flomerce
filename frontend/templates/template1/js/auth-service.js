@@ -446,6 +446,71 @@ window.APIAuth = {
 
 // Backward compatibility with FirebaseAuth (for legacy code)
 window.FirebaseAuth = {
+    // Auth state methods
+    isLoggedIn: () => AuthService.isLoggedIn(),
+    observeAuthState: (cb) => AuthService.onAuthStateChange(cb),
+    getCurrentUser: () => AuthService.getCurrentUser(),
+    
+    // Login methods
+    loginWithEmail: async (email, password) => {
+        const result = await AuthService.login(email, password);
+        if (result.success) {
+            return { success: true, user: result.user };
+        }
+        return { success: false, error: result.error, code: 'auth/invalid-credentials' };
+    },
+    loginWithGoogle: async () => {
+        // Google login would require OAuth - return friendly message
+        return { success: false, error: 'Google login requires OAuth setup. Please use email/password login.', code: 'auth/google-not-configured' };
+    },
+    
+    // Register method
+    registerWithEmail: async (email, password, options = {}) => {
+        const result = await AuthService.signUp(options.displayName || '', email, password);
+        if (result.success) {
+            return { success: true, user: result.user, needsVerification: true };
+        }
+        return { success: false, error: result.error, code: result.error?.includes('already') ? 'auth/email-already-in-use' : 'auth/signup-failed' };
+    },
+    
+    // Logout
+    logoutUser: () => AuthService.logout(),
+    
+    // Email verification
+    isEmailVerified: async (user) => {
+        if (!user) return false;
+        // Check via API if user email is verified
+        try {
+            const result = await AuthService.getProfile();
+            return result.success && result.user?.emailVerified;
+        } catch {
+            return user.emailVerified || false;
+        }
+    },
+    resendEmailVerification: async (email) => {
+        try {
+            const response = await fetch('/api/auth/resend-verification', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email })
+            });
+            const result = await response.json();
+            if (!response.ok) {
+                return { success: false, error: result.error || 'Failed to resend verification' };
+            }
+            return { success: true, message: 'Verification email sent' };
+        } catch (error) {
+            return { success: false, error: error.message };
+        }
+    },
+    
+    // Password reset
+    sendPasswordResetEmail: async (email) => {
+        const result = await AuthService.resetPassword(email);
+        return result;
+    },
+    
+    // Token verification (for backward compat)
     verifyEmailWithToken: (token, email) => AuthService.verifyEmailWithToken(token, email),
     validatePasswordResetToken: (email, token) => AuthService.validatePasswordResetToken(email, token),
     resetPasswordWithToken: (email, token, password) => AuthService.resetPasswordWithToken(email, token, password)
