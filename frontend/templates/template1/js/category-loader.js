@@ -133,10 +133,9 @@ const CategoryLoader = (function() {
 
         // Update title
         document.title = `${categoryName} - ${brandName}`;
-        document.getElementById('page-title')?.setAttribute('content', document.title);
         
         // Update meta description
-        const metaDesc = document.getElementById('page-description');
+        const metaDesc = document.querySelector('meta[name="description"]');
         if (metaDesc) metaDesc.setAttribute('content', description);
 
         // Update hero section
@@ -150,10 +149,6 @@ const CategoryLoader = (function() {
         const loaderText = document.getElementById('loader-text');
         if (loaderText) loaderText.textContent = `Loading ${categoryName}...`;
 
-        // Update Open Graph tags
-        document.getElementById('og-title')?.setAttribute('content', `${categoryName} - ${brandName}`);
-        document.getElementById('og-description')?.setAttribute('content', description);
-        
         // Update hero background if category has image
         if (categoryData.image_url) {
             const heroSection = document.getElementById('category-hero');

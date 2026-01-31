@@ -317,7 +317,6 @@
 
         async function loadUserData() {
             try {
-                const user = authService.getCurrentUser();
                 const response = await fetch(`/api/users/profile`);
                 if (response.ok) {
                     currentUserData = await response.json();
@@ -327,11 +326,14 @@
 
                     updatePlansUI(currentUserData.plan);
                     if (document.getElementById('account-plan-name')) document.getElementById('account-plan-name').innerText = (currentUserData.plan || 'NONE').toUpperCase();
-                }
-            } catch (e) {
-                console.error('Error loading user data:', e);
-            }
-        }
+
+                    const startDate = currentUserData.trialStartDate ? new Date(currentUserData.trialStartDate) : new Date();
+                    const options = { year: 'numeric', month: 'short', day: 'numeric' };
+                    if (document.getElementById('account-plan-start')) document.getElementById('account-plan-start').innerText = startDate.toLocaleDateString(undefined, options);
+
+                    const billingCycle = currentUserData.billingCycle || 'monthly';
+                    const status = currentUserData.status;
+
                     const now = new Date();
                     let durationDays = 30;
                     if (billingCycle === '6months') durationDays = 180;
@@ -346,13 +348,17 @@
                     const daysRemaining = Math.max(0, Math.ceil(durationDays - daysUsed));
                     
                     if (now > endDate) {
-                        await expirePlan(user.uid, `Your ${billingCycle} plan has expired. Please renew your subscription to continue using your websites.`);
+                        await expirePlan(authService.getCurrentUser().uid, `Your ${billingCycle} plan has expired. Please renew your subscription to continue using your websites.`);
                     } else {
                         let statusText = daysRemaining >= 30 ? `${Math.floor(daysRemaining/30)} mo left` : `${daysRemaining} days left`;
                         if (document.getElementById('account-plan-status')) document.getElementById('account-plan-status').innerText = 'Active';
                         if (document.getElementById('account-plan-status-text')) document.getElementById('account-plan-status-text').innerText = statusText;
                     }
-                } else if (status === 'expired') {
+                }
+            } catch (e) {
+                console.error('Error loading user data:', e);
+            }
+        }
                     if (document.getElementById('account-plan-status')) {
                         document.getElementById('account-plan-status').innerText = 'Expired';
                         document.getElementById('account-plan-status').className = 'plan-status-pill status-expired';
@@ -463,14 +469,18 @@
                         ...order,
                         planName: planId.toUpperCase(),
                         billingCycle: currentDuration,
-                        userName: user.displayName || 'User',
+                        userName: user.name || 'User',
                         userEmail: user.email
                     });
-                    await firebase.firestore().collection('users').doc(user.uid).update({
-                        plan: planId,
-                        billingCycle: currentDuration,
-                        status: 'active',
-                        trialStartDate: firebase.firestore.FieldValue.serverTimestamp()
+                    
+                    await fetch('/api/users/subscription', {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            plan: planId,
+                            billingCycle: currentDuration,
+                            status: 'active'
+                        })
                     });
                     alert('Subscription upgraded successfully!');
                     window.location.reload();
@@ -625,11 +635,13 @@
 
             overlay.querySelector('.start-trial-btn').addEventListener('click', async () => {
                 try {
-                    const user = authService.getCurrentUser();
-                    await firebase.firestore().collection('users').doc(user.uid).update({
-                        plan: 'trial',
-                        status: 'active',
-                        trialStartDate: firebase.firestore.FieldValue.serverTimestamp()
+                    await fetch('/api/users/subscription', {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            plan: 'trial',
+                            status: 'active'
+                        })
                     });
                     location.reload();
                 } catch (e) { alert(e.message); }
@@ -645,14 +657,17 @@
                             ...order,
                             planName: planId.toUpperCase(),
                             billingCycle: selectedDuration,
-                            userName: user.displayName || 'User',
+                            userName: user.name || 'User',
                             userEmail: user.email
                         });
-                        await firebase.firestore().collection('users').doc(user.uid).update({
-                            plan: planId,
-                            billingCycle: selectedDuration,
-                            status: 'active',
-                            trialStartDate: firebase.firestore.FieldValue.serverTimestamp()
+                        await fetch('/api/users/subscription', {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                plan: planId,
+                                billingCycle: selectedDuration,
+                                status: 'active'
+                            })
                         });
                         location.reload();
                     } catch (e) { alert(e.message); }
@@ -663,7 +678,11 @@
         }
 
         async function expirePlan(uid, message) {
-            await firebase.firestore().collection('users').doc(uid).update({ status: 'expired' });
+            await fetch('/api/users/subscription', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: 'expired' })
+            });
             showOverlay(message);
         }
 
@@ -746,12 +765,19 @@
 
                 let logoUrl = '';
                 if (logoFile) {
-                    const storageRef = firebase.storage().ref(`logos/${authService.getCurrentUser().uid}/${Date.now()}_${logoFile.name}`);
-                    const uploadTask = await storageRef.put(logoFile);
-                    logoUrl = await uploadTask.ref.getDownloadURL();
+                    const formData = new FormData();
+                    formData.append('file', logoFile);
+                    formData.append('path', `logos/${authService.getCurrentUser().uid}/${Date.now()}_${logoFile.name}`);
+                    
+                    const uploadRes = await fetch('/api/upload', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const uploadData = await uploadRes.json();
+                    logoUrl = uploadData.url;
                 }
 
-                await siteService.createSite(authService.getCurrentUser().uid, { 
+                await siteService.createSite({ 
                     siteName: domain, 
                     brandName: brand, 
                     templateId: selectedTemplate,
