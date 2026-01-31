@@ -1,6 +1,6 @@
 /**
  * API Cart Manager - REST API Based
- * Replaces Firebase Cart Manager with Cloudflare Workers API
+ * Replaces API Cart Manager with Cloudflare Workers API
  * Syncs cart between local storage and server for logged-in users
  */
 
@@ -230,8 +230,8 @@ const ApiCartManager = (function() {
 // Make available globally
 window.ApiCartManager = ApiCartManager;
 
-// Backward compatibility with FirebaseCartManager
-window.FirebaseCartManager = {
+// Backward compatibility with APICartManager
+window.APICartManager = {
     init: () => ApiCartManager.init(),
     getItems: () => ApiCartManager.getItems(),
     addItem: (product) => ApiCartManager.addItem(product),

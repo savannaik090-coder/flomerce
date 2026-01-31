@@ -208,8 +208,8 @@ window.LogoutConfirmation = (function() {
     logoutBtn.textContent = 'Logging out...';
 
     try {
-      // Use FirebaseAuth with skipConfirmation = true since we already confirmed
-      const result = await FirebaseAuth.logoutUser(true);
+      // Use APIAuth with skipConfirmation = true since we already confirmed
+      const result = await APIAuth.logoutUser(true);
       
       if (result.success) {
         closeModal();

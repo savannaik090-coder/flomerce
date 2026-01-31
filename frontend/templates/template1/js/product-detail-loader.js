@@ -1,6 +1,6 @@
 /**
  * Product Detail Loader
- * Loads individual product details from Firebase Storage
+ * Loads individual product details from API Storage
  */
 
 const ProductDetailLoader = (function() {

@@ -254,7 +254,7 @@ class ProductGallery {
              return `/.netlify/functions/image-proxy?path=${encodeURIComponent(imagePath.startsWith('/') ? imagePath.substring(1) : imagePath)}`;
         }
 
-        // Use image proxy for Firebase Storage images
+        // Use image proxy for API Storage images
         return `/.netlify/functions/image-proxy?path=${encodeURIComponent(imagePath)}`;
     }
 

@@ -1,11 +1,11 @@
 /**
  * Auric Cart Manager
  * 
- * A simplified cart management system that handles both local storage and Firebase.
+ * A simplified cart management system that handles both local storage and API.
  * - Uses local storage when user is not logged in
- * - Uses Firebase when user is logged in
+ * - Uses API when user is logged in
  * - Automatically switches between storage methods on login/logout
- * - Firebase cart data is stored at path: users/{userId}/carts/current
+ * - API cart data is stored at path: users/{userId}/carts/current
  */
 
 // Make the CartManager available as a global variable
@@ -147,33 +147,33 @@ window.CartManager = (function() {
 
     /**
      * Load cart data from the appropriate storage
-     * Uses Firebase if logged in, otherwise tries sessionStorage cache, then local storage
+     * Uses API if logged in, otherwise tries sessionStorage cache, then local storage
      */
     async function loadCart() {
         if (isUserLoggedIn()) {
-            console.log('User logged in, loading cart from Firebase');
+            console.log('User logged in, loading cart from API');
             try {
-                // Make sure FirebaseCartManager is loaded and initialized
-                if (typeof FirebaseCartManager !== 'undefined') {
-                    const result = await FirebaseCartManager.getItems();
+                // Make sure APICartManager is loaded and initialized
+                if (typeof APICartManager !== 'undefined') {
+                    const result = await APICartManager.getItems();
                     if (result.success) {
                         cartItems = result.items;
                     } else {
-                        console.warn('Failed to load cart from Firebase:', result.error);
+                        console.warn('Failed to load cart from API:', result.error);
                         cartItems = [];
                     }
                 } else {
-                    console.warn('FirebaseCartManager not available, falling back to local storage');
+                    console.warn('APICartManager not available, falling back to local storage');
                     cartItems = LocalStorageCart.getItems();
                 }
             } catch (error) {
-                console.error('Error loading cart from Firebase:', error);
+                console.error('Error loading cart from API:', error);
                 cartItems = [];
             }
         } else {
-            console.log('User not logged in, checking for cached Firebase data');
+            console.log('User not logged in, checking for cached API data');
 
-            // Try to load from sessionStorage cache first (contains Firebase data)
+            // Try to load from sessionStorage cache first (contains API data)
             let foundCachedData = false;
             try {
                 const cachedCart = sessionStorage.getItem('api_cart_cache');
@@ -204,7 +204,7 @@ window.CartManager = (function() {
                         if (cacheAge < maxCacheAge && 
                             (sessionUserId === cacheData.userId || !sessionUserId)) {
 
-                            console.log('Found cached Firebase cart data:', cacheData.items.length, 'items for user:', cacheData.userId);
+                            console.log('Found cached API cart data:', cacheData.items.length, 'items for user:', cacheData.userId);
                             cartItems = cacheData.items;
                             foundCachedData = true;
 
@@ -238,21 +238,21 @@ window.CartManager = (function() {
 
     /**
      * Save cart data to the appropriate storage
-     * Uses Firebase if logged in, otherwise local storage
+     * Uses API if logged in, otherwise local storage
      */
     async function saveCart() {
         if (isUserLoggedIn()) {
-            console.log('User logged in, saving cart to Firebase');
+            console.log('User logged in, saving cart to API');
             try {
-                // Make sure FirebaseCartManager is loaded and initialized
-                if (typeof FirebaseCartManager !== 'undefined') {
-                    await FirebaseCartManager.saveItems(cartItems);
+                // Make sure APICartManager is loaded and initialized
+                if (typeof APICartManager !== 'undefined') {
+                    await APICartManager.saveItems(cartItems);
                 } else {
-                    console.warn('FirebaseCartManager not available, saving to local storage only');
+                    console.warn('APICartManager not available, saving to local storage only');
                     LocalStorageCart.saveItems(cartItems);
                 }
             } catch (error) {
-                console.error('Error saving cart to Firebase:', error);
+                console.error('Error saving cart to API:', error);
                 // Fallback to local storage
                 LocalStorageCart.saveItems(cartItems);
             }

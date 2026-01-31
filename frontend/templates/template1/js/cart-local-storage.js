@@ -2,7 +2,7 @@
  * Auric Local Storage Cart Manager
  * 
  * This module handles cart functionality using browser's localStorage
- * It's used when the user is not logged in or Firebase is not available
+ * It's used when the user is not logged in or API is not available
  */
 
 const LocalStorageCart = (function() {

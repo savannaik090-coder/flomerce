@@ -1,6 +1,6 @@
 /**
  * API Wishlist Manager - REST API Based
- * Replaces Firebase Wishlist Manager with Cloudflare Workers API
+ * Replaces API Wishlist Manager with Cloudflare Workers API
  */
 
 const ApiWishlistManager = (function() {
@@ -216,8 +216,8 @@ const ApiWishlistManager = (function() {
 // Make available globally
 window.ApiWishlistManager = ApiWishlistManager;
 
-// Backward compatibility with FirebaseWishlistManager
-window.FirebaseWishlistManager = {
+// Backward compatibility with APIWishlistManager
+window.APIWishlistManager = {
     init: () => ApiWishlistManager.init(),
     getItems: () => ApiWishlistManager.getItems(),
     addItem: (product) => ApiWishlistManager.addItem(product),

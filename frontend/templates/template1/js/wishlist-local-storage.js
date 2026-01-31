@@ -2,7 +2,7 @@
  * Auric Local Storage Wishlist Manager
  * 
  * This module handles wishlist functionality using browser's localStorage
- * It's used when the user is not logged in or Firebase is not available
+ * It's used when the user is not logged in or API is not available
  */
 
 const LocalStorageWishlist = (function() {

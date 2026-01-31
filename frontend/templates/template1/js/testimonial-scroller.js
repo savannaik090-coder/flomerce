@@ -156,16 +156,16 @@ document.addEventListener('DOMContentLoaded', function() {
     initBuyAndWatchVideos();
     initCustomerTestimonialVideos();
     
-    let firebaseCheckAttempts = 0;
-    function waitForFirebaseAndLoad() {
-        if (typeof firebase !== 'undefined' && typeof db !== 'undefined') {
+    let apiCheckAttempts = 0;
+    function waitForapiAndLoad() {
+        if (typeof api !== 'undefined' && typeof db !== 'undefined') {
             loadWatchBuyVideos();
-        } else if (firebaseCheckAttempts < 20) {
-            firebaseCheckAttempts++;
-            setTimeout(waitForFirebaseAndLoad, 200);
+        } else if (apiCheckAttempts < 20) {
+            apiCheckAttempts++;
+            setTimeout(waitForapiAndLoad, 200);
         }
     }
-    waitForFirebaseAndLoad();
+    waitForapiAndLoad();
 });
 
 

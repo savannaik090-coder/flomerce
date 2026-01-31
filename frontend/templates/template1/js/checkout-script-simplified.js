@@ -1,10 +1,10 @@
 /**
  * Auric Checkout Script
  * Handles the checkout process, including:
- * - Loading cart items from local storage or Firebase (if user is logged in)
+ * - Loading cart items from local storage or api (if user is logged in)
  * - Displaying items in the order summary
  * - Authentication requirement for order placement
- * - Order storage in Firebase under users/{userId}/orders
+ * - Order storage in api under users/{userId}/orders
  * - Order form submission with Nodemailer email notifications via the server
  * - Stock management and inventory updates after order placement
  */
@@ -61,8 +61,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Constants
     const STORAGE_KEY = 'auric_cart_items';
-    let firebaseCartModule = null;
-    let firebaseOrdersModule = null;
+    let apiCartModule = null;
+    let apiOrdersModule = null;
     let isLoadingCart = false; // Flag to prevent multiple loading operations
 
     // DOM Elements for Order Summary and Form
@@ -92,9 +92,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const continueToPaymentBtn = document.getElementById('continue-to-payment');
     const backToAddressBtn = document.getElementById('back-to-address');
 
-    // A simplified Firebase integration function that focuses on reliability
-    function initializeFirebaseIntegration() {
-        console.log('Initializing Firebase integration (simplified version)');
+    // A simplified api integration function that focuses on reliability
+    function initializeapiIntegration() {
+        console.log('Initializing api integration (simplified version)');
 
         try {
             // First try to access LocalStorageCart for reliable cart access
@@ -109,8 +109,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log('AuthService detected, will try to use API cart if user is logged in');
 
                 // Create API cart module wrapper
-                firebaseCartModule = {
-                    loadCartFromFirebase: async function() {
+                apiCartModule = {
+                    loadCartFromapi: async function() {
                         try {
                             console.log('Loading cart from API...');
                             const result = await ApiCartManager.getItems();
@@ -120,7 +120,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             return { success: false, items: [] };
                         }
                     },
-                    saveCartToFirebase: async function(items) {
+                    saveCartToapi: async function(items) {
                         try {
                             console.log('Saving cart to API...');
                             const result = await ApiCartManager.syncCart(items);
@@ -130,7 +130,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             return { success: false, error: error.message };
                         }
                     },
-                    clearFirebaseCart: async function() {
+                    clearapiCart: async function() {
                         try {
                             console.log('Clearing API cart...');
                             const result = await ApiCartManager.clearCart();
@@ -151,16 +151,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log('AuthService not available, using local storage only');
             }
         } catch (error) {
-            console.error('Error initializing Firebase integration:', error);
+            console.error('Error initializing api integration:', error);
         }
     }
 
     // Fallback to local storage if API not available
-    function loadLegacyFirebaseCartModule() {
+    function loadLegacyapiCartModule() {
         console.log('Using local storage for cart management');
         // API-based cart will be used if AuthService and ApiCartManager are available
         if (typeof AuthService !== 'undefined' && AuthService.isLoggedIn()) {
-            loadCartFromFirebase();
+            loadCartFromapi();
         }
     }
 
@@ -211,82 +211,82 @@ document.addEventListener('DOMContentLoaded', function() {
         return false;
     }
 
-    // Load cart items from Firebase for logged in users - WITH 5 SECOND TIMEOUT
-    async function loadCartFromFirebase() {
+    // Load cart items from api for logged in users - WITH 5 SECOND TIMEOUT
+    async function loadCartFromapi() {
         try {
             if (typeof AuthService === 'undefined' || !AuthService.isLoggedIn()) {
                 console.log('User not logged in for API cart access');
                 return [];
             }
 
-            console.log('Loading cart from Firebase with 5-second timeout...');
+            console.log('Loading cart from api with 5-second timeout...');
 
             // Create a timeout promise that rejects after 5 seconds
             const timeoutPromise = new Promise((resolve, reject) => {
                 setTimeout(() => {
-                    reject(new Error('Firebase cart loading timed out after 5 seconds'));
+                    reject(new Error('api cart loading timed out after 5 seconds'));
                 }, 5000);
             });
 
-            // Try to use FirebaseCartManager directly if available
-            if (typeof FirebaseCartManager !== 'undefined' && typeof FirebaseCartManager.getItems === 'function') {
-                console.log('Using FirebaseCartManager directly with timeout protection');
+            // Try to use apiCartManager directly if available
+            if (typeof apiCartManager !== 'undefined' && typeof apiCartManager.getItems === 'function') {
+                console.log('Using apiCartManager directly with timeout protection');
                 try {
-                    // Race between Firebase call and timeout - whichever finishes first wins
+                    // Race between api call and timeout - whichever finishes first wins
                     const result = await Promise.race([
-                        FirebaseCartManager.getItems(),
+                        apiCartManager.getItems(),
                         timeoutPromise
                     ]);
-                    console.log('FirebaseCartManager result received within timeout:', result);
+                    console.log('apiCartManager result received within timeout:', result);
 
                     if (result && result.success && result.items) {
-                        console.log('✅ Firebase cart loaded successfully:', result.items.length, 'items');
+                        console.log('✅ api cart loaded successfully:', result.items.length, 'items');
                         return result.items;
                     } else if (result && result.items) {
                         // Handle case where success flag might be missing but items exist
-                        console.log('✅ Firebase cart loaded (no success flag):', result.items.length, 'items');
+                        console.log('✅ api cart loaded (no success flag):', result.items.length, 'items');
                         return result.items;
                     } else {
-                        console.log('Firebase cart is empty or failed to load');
+                        console.log('api cart is empty or failed to load');
                         return [];
                     }
                 } catch (timeoutError) {
                     if (timeoutError.message.includes('timed out')) {
-                        console.warn('⏱️ Firebase cart loading timed out after 5 seconds, falling back to localStorage');
+                        console.warn('⏱️ api cart loading timed out after 5 seconds, falling back to localStorage');
                         return []; // Will trigger fallback to localStorage in calling function
                     }
                     throw timeoutError;
                 }
             }
-            // Fallback to firebaseCartModule if available
-            else if (firebaseCartModule && firebaseCartModule.loadCartFromFirebase) {
-                console.log('Using firebaseCartModule wrapper with timeout protection');
+            // Fallback to apiCartModule if available
+            else if (apiCartModule && apiCartModule.loadCartFromapi) {
+                console.log('Using apiCartModule wrapper with timeout protection');
                 try {
                     const result = await Promise.race([
-                        firebaseCartModule.loadCartFromFirebase(),
+                        apiCartModule.loadCartFromapi(),
                         timeoutPromise
                     ]);
 
                     if (result && result.success && result.items) {
-                        console.log('✅ Cart loaded from Firebase using wrapper:', result.items.length, 'items');
+                        console.log('✅ Cart loaded from api using wrapper:', result.items.length, 'items');
                         return result.items;
                     } else {
-                        console.log('Firebase cart is empty (from wrapper)');
+                        console.log('api cart is empty (from wrapper)');
                         return [];
                     }
                 } catch (timeoutError) {
                     if (timeoutError.message.includes('timed out')) {
-                        console.warn('⏱️ Firebase cart wrapper timed out after 5 seconds, falling back to localStorage');
+                        console.warn('⏱️ api cart wrapper timed out after 5 seconds, falling back to localStorage');
                         return []; // Will trigger fallback to localStorage in calling function
                     }
                     throw timeoutError;
                 }
             } else {
-                console.log('No Firebase cart methods available');
+                console.log('No api cart methods available');
                 return [];
             }
         } catch (error) {
-            console.error('❌ Error in loadCartFromFirebase:', error.message);
+            console.error('❌ Error in loadCartFromapi:', error.message);
             console.log('📦 Will fallback to localStorage');
             return [];
         }
@@ -327,7 +327,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Load and display cart items - prioritizes Firebase if user is logged in
+    // Load and display cart items - prioritizes api if user is logged in
     async function loadCartItems() {
         console.log('Loading cart items for checkout display...');
 
@@ -346,8 +346,8 @@ document.addEventListener('DOMContentLoaded', function() {
         // Ensure loading state is visible for at least 500ms minimum
         const startTime = Date.now();
 
-        // Ensure Firebase integration is initialized
-        initializeFirebaseIntegration();
+        // Ensure api integration is initialized
+        initializeapiIntegration();
 
         try {
             // Check if user is logged in first
@@ -359,25 +359,25 @@ document.addEventListener('DOMContentLoaded', function() {
 
             let cartItems = [];
 
-            // Use Firebase if available and user is logged in, otherwise use local storage
+            // Use api if available and user is logged in, otherwise use local storage
             if (isUserLoggedIn) {
-                console.log('User is logged in, trying Firebase cart first');
+                console.log('User is logged in, trying api cart first');
                 try {
-                    // Wait for the Firebase cart to load
-                    console.log('Calling loadCartFromFirebase...');
-                    const items = await loadCartFromFirebase();
-                    console.log('Firebase cart items loaded:', items ? items.length : 0);
+                    // Wait for the api cart to load
+                    console.log('Calling loadCartFromapi...');
+                    const items = await loadCartFromapi();
+                    console.log('api cart items loaded:', items ? items.length : 0);
 
                     if (items && items.length > 0) {
                         cartItems = items;
-                        console.log('Using Firebase cart items:', cartItems.length);
+                        console.log('Using api cart items:', cartItems.length);
                     } else {
-                        console.log('Firebase cart empty, falling back to local storage');
+                        console.log('api cart empty, falling back to local storage');
                         cartItems = loadCartFromLocalStorage();
                         console.log('Local storage cart items:', cartItems.length);
                     }
-                } catch (firebaseError) {
-                    console.error('Error loading from Firebase, falling back to local storage:', firebaseError);
+                } catch (apiError) {
+                    console.error('Error loading from api, falling back to local storage:', apiError);
                     cartItems = loadCartFromLocalStorage();
                     console.log('Fallback local storage cart items:', cartItems.length);
                 }
@@ -597,7 +597,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Update the display
             updateQuantityDisplay(itemId, items[itemIndex]);
 
-            // Update BOTH localStorage and Firebase - MUST WAIT FOR FIREBASE
+            // Update BOTH localStorage and api - MUST WAIT FOR api
             await syncCartToStorage(items);
             
             // Update order total
@@ -617,7 +617,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Update the display
             updateQuantityDisplay(itemId, items[itemIndex]);
 
-            // Update BOTH localStorage and Firebase - MUST WAIT FOR FIREBASE
+            // Update BOTH localStorage and api - MUST WAIT FOR api
             await syncCartToStorage(items);
             
             // Update order total
@@ -625,7 +625,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Sync cart to both localStorage and Firebase (AWAITABLE)
+    // Sync cart to both localStorage and api (AWAITABLE)
     // This ensures quantity changes are persisted before user navigates away
     async function syncCartToStorage(items) {
         try {
@@ -633,24 +633,24 @@ document.addEventListener('DOMContentLoaded', function() {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
             console.log('💾 Quantity change saved to localStorage');
 
-            // If user is logged in, AWAIT Firebase update
-            if (firebaseCartModule && typeof AuthService !== 'undefined' && AuthService.isLoggedIn()) {
-                console.log('🔄 Syncing to Firebase...');
+            // If user is logged in, AWAIT api update
+            if (apiCartModule && typeof AuthService !== 'undefined' && AuthService.isLoggedIn()) {
+                console.log('🔄 Syncing to api...');
                 try {
                     const result = await Promise.race([
-                        firebaseCartModule.saveCartToFirebase(items),
+                        apiCartModule.saveCartToapi(items),
                         new Promise((_, reject) => 
-                            setTimeout(() => reject(new Error('Firebase timeout')), 5000)
+                            setTimeout(() => reject(new Error('api timeout')), 5000)
                         )
                     ]);
                     
                     if (result && result.success) {
-                        console.log('☁️ ✅ Quantity change confirmed in Firebase');
+                        console.log('☁️ ✅ Quantity change confirmed in api');
                     } else {
-                        console.warn('⚠️ Firebase save did not confirm success');
+                        console.warn('⚠️ api save did not confirm success');
                     }
                 } catch (err) {
-                    console.error('❌ Firebase save failed:', err.message, '- but localStorage persisted');
+                    console.error('❌ api save failed:', err.message, '- but localStorage persisted');
                 }
             } else {
                 console.log('📱 Guest user - quantity saved to localStorage only');
@@ -732,7 +732,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Update localStorage with current cart items
-    // Also syncs with Firebase if user is logged in
+    // Also syncs with api if user is logged in
     function updateLocalStorage(items) {
         try {
             // ALWAYS use direct localStorage for immediate persistence
@@ -747,18 +747,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log('📦 Cart also updated using LocalStorageCart module');
             }
 
-            // If Firebase cart module is loaded and user is logged in, also save to Firebase
-            if (firebaseCartModule && typeof AuthService !== 'undefined' && AuthService.isLoggedIn()) {
-                firebaseCartModule.saveCartToFirebase(items)
+            // If api cart module is loaded and user is logged in, also save to api
+            if (apiCartModule && typeof AuthService !== 'undefined' && AuthService.isLoggedIn()) {
+                apiCartModule.saveCartToapi(items)
                     .then(result => {
                         if (result.success) {
-                            console.log('☁️ Cart updated in Firebase from checkout page');
+                            console.log('☁️ Cart updated in api from checkout page');
                         } else {
-                            console.warn('⚠️ Failed to update cart in Firebase:', result.error);
+                            console.warn('⚠️ Failed to update cart in api:', result.error);
                         }
                     })
                     .catch(err => {
-                        console.error('❌ Error updating Firebase cart:', err);
+                        console.error('❌ Error updating api cart:', err);
                     });
             }
         } catch (error) {
@@ -963,18 +963,18 @@ document.addEventListener('DOMContentLoaded', function() {
             // Only continue with the rest of the flow for non-Razorpay payment methods
             // or if Razorpay processing fails
 
-            // Save order to Firebase if the module is loaded and user is logged in
-            if (window.firebaseOrdersModule && typeof window.firebaseOrdersModule.saveOrderToFirebase === 'function') {
-                console.log('Saving order to Firebase...');
+            // Save order to api if the module is loaded and user is logged in
+            if (window.apiOrdersModule && typeof window.apiOrdersModule.saveOrderToapi === 'function') {
+                console.log('Saving order to api...');
                 try {
                     // Initialize deliveryStatus for the order
                     orderData.deliveryStatus = 'pending'; // Default status for new orders
 
-                    const firebaseResult = await window.firebaseOrdersModule.saveOrderToFirebase(orderData);
+                    const apiResult = await window.apiOrdersModule.saveOrderToapi(orderData);
 
-                    if (firebaseResult.success) {
-                        console.log('Order saved to Firebase successfully:', firebaseResult.orderId);
-                        orderData.firebaseOrderId = firebaseResult.orderId;
+                    if (apiResult.success) {
+                        console.log('Order saved to api successfully:', apiResult.orderId);
+                        orderData.apiOrderId = apiResult.orderId;
 
                         // Update stock for all products in the order
                         if (window.StockManager && window.StockManager.updateStockAfterOrder) {
@@ -998,7 +998,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                         // Create admin notification for new pending order
                         try {
-                            await createNewOrderNotification(orderData, firebaseResult.orderId);
+                            await createNewOrderNotification(orderData, apiResult.orderId);
                         } catch (notificationError) {
                             console.warn('Failed to create admin notification:', notificationError);
                             // Don't fail the order if notification creation fails
@@ -1006,19 +1006,19 @@ document.addEventListener('DOMContentLoaded', function() {
 
                         // Create shipment automatically after order is saved
                         await createShipmentAfterOrder(orderData);
-                    } else if (firebaseResult.requiresAuth) {
-                        console.log('Authentication required for Firebase order save');
-                        // Continue without Firebase save for guest users
+                    } else if (apiResult.requiresAuth) {
+                        console.log('Authentication required for api order save');
+                        // Continue without api save for guest users
                     } else {
-                        console.error('Failed to save order to Firebase:', firebaseResult.error);
-                        // Continue with order processing if Firebase save fails
+                        console.error('Failed to save order to api:', apiResult.error);
+                        // Continue with order processing if api save fails
                     }
                 } catch (error) {
-                    console.error('Error saving order to Firebase:', error);
-                    // Continue with order processing if Firebase save fails
+                    console.error('Error saving order to api:', error);
+                    // Continue with order processing if api save fails
                 }
             } else {
-                console.log('Firebase Orders module not available or saveOrderToFirebase function missing');
+                console.log('api Orders module not available or saveOrderToapi function missing');
             }
 
             // Send order confirmation email for COD orders
@@ -1139,7 +1139,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Clear cart from both localStorage and Firebase
+    // Clear cart from both localStorage and api
     function clearCart() {
         try {
             console.log('Clearing cart after successful order');
@@ -1173,7 +1173,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }, 500);
             }
 
-            // First try to use cart-manager.js if available (handles both local and Firebase)
+            // First try to use cart-manager.js if available (handles both local and api)
             if (typeof CartManager !== 'undefined' && typeof CartManager.clearCart === 'function') {
                 // Use CartManager to clear cart in all storage
                 CartManager.clearCart().then(() => {
@@ -1196,31 +1196,31 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log('Cart cleared using direct localStorage access');
             }
 
-            // Clear Firebase cart if user is logged in
+            // Clear api cart if user is logged in
             if (typeof AuthService !== 'undefined' && AuthService.isLoggedIn()) {
-                console.log('Clearing Firebase cart...');
+                console.log('Clearing api cart...');
 
-                if (typeof FirebaseCartManager !== 'undefined' && typeof FirebaseCartManager.clearItems === 'function') {
-                    // Use direct FirebaseCartManager if available
-                    FirebaseCartManager.clearItems()
+                if (typeof apiCartManager !== 'undefined' && typeof apiCartManager.clearItems === 'function') {
+                    // Use direct apiCartManager if available
+                    apiCartManager.clearItems()
                         .then(() => {
-                            console.log('Cart cleared from Firebase using FirebaseCartManager.clearItems()');
+                            console.log('Cart cleared from api using apiCartManager.clearItems()');
                         })
                         .catch(err => {
-                            console.error('Error clearing Firebase cart:', err);
+                            console.error('Error clearing api cart:', err);
                         });
-                } else if (firebaseCartModule && firebaseCartModule.clearFirebaseCart) {
+                } else if (apiCartModule && apiCartModule.clearapiCart) {
                     // Use module wrapper
-                    firebaseCartModule.clearFirebaseCart()
+                    apiCartModule.clearapiCart()
                         .then(result => {
                             if (result && result.success) {
-                                console.log('Cart cleared from Firebase after order submission');
+                                console.log('Cart cleared from api after order submission');
                             } else {
-                                console.warn('Failed to clear Firebase cart:', result ? result.error : 'unknown error');
+                                console.warn('Failed to clear api cart:', result ? result.error : 'unknown error');
                             }
                         })
                         .catch(err => {
-                            console.error('Error clearing Firebase cart:', err);
+                            console.error('Error clearing api cart:', err);
                         });
                 }
             }
@@ -1290,19 +1290,19 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Load cart items from storage (utility function)
-    // Checks Firebase first if user is logged in, then falls back to localStorage
+    // Checks api first if user is logged in, then falls back to localStorage
     async function loadCartItemsFromStorage() {
         try {
-            // Try to get cart from Firebase if user is logged in
-            if (firebaseCartModule && typeof AuthService !== 'undefined' && AuthService.isLoggedIn()) {
+            // Try to get cart from api if user is logged in
+            if (apiCartModule && typeof AuthService !== 'undefined' && AuthService.isLoggedIn()) {
                 try {
-                    const result = await firebaseCartModule.loadCartFromFirebase();
+                    const result = await apiCartModule.loadCartFromapi();
                     if (result.success && result.items.length > 0) {
-                        console.log('Cart loaded from Firebase for order processing');
+                        console.log('Cart loaded from api for order processing');
                         return result.items;
                     }
-                } catch (firebaseError) {
-                    console.error('Error loading cart from Firebase:', firebaseError);
+                } catch (apiError) {
+                    console.error('Error loading cart from api:', apiError);
                     // Fall back to local storage
                 }
             }
@@ -1774,8 +1774,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 }
 
-                // Use FirebaseAddressManager validation if available for other fields
-                if (window.FirebaseAddressManager && window.FirebaseAddressManager.validateAddressData) {
+                // Use apiAddressManager validation if available for other fields
+                if (window.apiAddressManager && window.apiAddressManager.validateAddressData) {
                     const addressData = {
                         firstName: document.getElementById('firstName').value,
                         lastName: document.getElementById('lastName').value,
@@ -1788,7 +1788,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         roadName: document.getElementById('roadName').value
                     };
 
-                    const validation = window.FirebaseAddressManager.validateAddressData(addressData);
+                    const validation = window.apiAddressManager.validateAddressData(addressData);
                     if (!validation.isValid) {
                         showErrorModal('Please fix the following issues: ' + validation.errors.join('. '));
                         return;
@@ -1892,8 +1892,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
         try {
             // Set up auth state listener to handle login changes
-            if (typeof firebase !== 'undefined' && firebase.auth) {
-                firebase.auth().onAuthStateChanged(function(user) {
+            if (typeof api !== 'undefined' && api.auth) {
+                api.auth().onAuthStateChanged(function(user) {
                     console.log('Auth state changed on checkout page:', user ? 'Logged in' : 'Not logged in');
 
                     // Update checkout button state based on login status
@@ -2279,16 +2279,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 submitButton.innerHTML = 'Opening Payment Gateway...';
             }
 
-            // Save order to Firebase first with pending status
+            // Save order to api first with pending status
             if (orderData.paymentMethod !== 'Cash on Delivery') { // Only save pending if not COD
-                if (firebaseOrdersModule) {
-                    console.log('Saving order to Firebase with pending payment status...');
+                if (apiOrdersModule) {
+                    console.log('Saving order to api with pending payment status...');
                     orderData.paymentStatus = 'pending';
                     orderData.razorpayOrderId = result.order.id;
                     orderData.paymentMethod = 'razorpay';
                     orderData.deliveryStatus = 'pending'; // Initialize delivery status
 
-                    const saveResult = await firebaseOrdersModule.saveOrderToFirebase(orderData);
+                    const saveResult = await apiOrdersModule.saveOrderToapi(orderData);
 
                     if (!saveResult.success) {
                         if (saveResult.requiresAuth) {
@@ -2302,16 +2302,16 @@ document.addEventListener('DOMContentLoaded', function() {
                             submitButton.innerHTML = 'Place Order';
                             return;
                         } else {
-                            console.warn('Failed to save order to Firebase:', saveResult.error);
+                            console.warn('Failed to save order to api:', saveResult.error);
                             // Continue with payment processing
                         }
                     } else {
-                        // Store the Firebase order ID
+                        // Store the api order ID
                         orderData.orderId = saveResult.orderId;
-                        console.log('Order saved to Firebase with ID:', orderData.orderId);
+                        console.log('Order saved to api with ID:', orderData.orderId);
                     }
                 } else {
-                    console.log('Firebase Orders module not available for Razorpay payment, proceeding without Firebase save');
+                    console.log('api Orders module not available for Razorpay payment, proceeding without api save');
                 }
             } else {
                 // If COD, proceed directly to saving the order (handled in handleSubmit)
@@ -2520,18 +2520,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 razorpayOrderCreated: true // Flag to indicate Razorpay order was initiated
             };
 
-            // Save to Firebase if user is authenticated and update order status
-            let firebaseSaveResult = { success: false };
+            // Save to api if user is authenticated and update order status
+            let apiSaveResult = { success: false };
             const user = AuthService?.getCurrentUser();
 
             if (user) {
-                console.log('User authenticated, attempting to update/save order in Firebase');
+                console.log('User authenticated, attempting to update/save order in api');
                 try {
-                    // Check if order already exists in Firebase (e.g., from pending state)
+                    // Check if order already exists in api (e.g., from pending state)
                     if (orderData.orderId) {
                         // Update existing order
-                        console.log('Updating existing order in Firebase with payment details...');
-                        const updateResult = await window.firebaseOrdersModule.updateOrderPaymentStatus(orderData.orderId, {
+                        console.log('Updating existing order in api with payment details...');
+                        const updateResult = await window.apiOrdersModule.updateOrderPaymentStatus(orderData.orderId, {
                             paymentStatus: 'paid',
                             paymentId: response.razorpay_payment_id,
                             razorpayOrderId: response.razorpay_order_id,
@@ -2539,9 +2539,9 @@ document.addEventListener('DOMContentLoaded', function() {
                             paymentCompletedAt: updatedOrderData.paymentCompletedAt,
                             deliveryStatus: 'pending' // Ensure delivery status is set
                         });
-                        firebaseSaveResult = updateResult;
+                        apiSaveResult = updateResult;
                         if (updateResult.success) {
-                            console.log('Order payment status updated in Firebase successfully');
+                            console.log('Order payment status updated in api successfully');
 
                             // Update stock for all products in the order
                             if (window.StockManager && window.StockManager.updateStockAfterOrder) {
@@ -2558,16 +2558,16 @@ document.addEventListener('DOMContentLoaded', function() {
                                 }
                             }
                         } else {
-                            console.warn('Failed to update order in Firebase:', updateResult.error);
+                            console.warn('Failed to update order in api:', updateResult.error);
                         }
                     } else {
                         // Save new order with completed payment status
-                        console.log('Saving completed order to Firebase...');
+                        console.log('Saving completed order to api...');
                         updatedOrderData.deliveryStatus = 'pending'; // Set initial delivery status
-                        firebaseSaveResult = await window.firebaseOrdersModule.saveOrderToFirebase(updatedOrderData);
-                        if (firebaseSaveResult.success) {
-                            console.log('Order saved to Firebase with ID:', firebaseSaveResult.orderId);
-                            updatedOrderData.firebaseOrderId = firebaseSaveResult.orderId; // Update local data
+                        apiSaveResult = await window.apiOrdersModule.saveOrderToapi(updatedOrderData);
+                        if (apiSaveResult.success) {
+                            console.log('Order saved to api with ID:', apiSaveResult.orderId);
+                            updatedOrderData.apiOrderId = apiSaveResult.orderId; // Update local data
 
                             // Update stock for all products in the order
                             if (window.StockManager && window.StockManager.updateStockAfterOrder) {
@@ -2587,23 +2587,23 @@ document.addEventListener('DOMContentLoaded', function() {
                             // Create shipment automatically after Razorpay payment
                             await createShipmentAfterOrder(updatedOrderData);
                         } else {
-                            console.warn('Failed to save order to Firebase:', firebaseSaveResult.error);
+                            console.warn('Failed to save order to api:', apiSaveResult.error);
                         }
                     }
-                } catch (firebaseError) {
-                    console.error('Firebase operation threw an error:', firebaseError);
+                } catch (apiError) {
+                    console.error('api operation threw an error:', apiError);
                     // Don't throw error here, continue with email processing
                 }
             } else {
-                console.log('User not authenticated, attempting to save order without Firebase auth context');
+                console.log('User not authenticated, attempting to save order without api auth context');
                 // If user is not logged in, still try to save the order with payment details
-                // This might be for guest checkouts or if Firebase auth state is delayed
+                // This might be for guest checkouts or if api auth state is delayed
                 try {
                     updatedOrderData.deliveryStatus = 'pending'; // Set initial delivery status for guest orders
-                    firebaseSaveResult = await window.firebaseOrdersModule.saveOrderToFirebase(updatedOrderData);
-                    if (firebaseSaveResult.success) {
-                        console.log('Order saved to Firebase without user context:', firebaseSaveResult.orderId);
-                        updatedOrderData.firebaseOrderId = firebaseSaveResult.orderId;
+                    apiSaveResult = await window.apiOrdersModule.saveOrderToapi(updatedOrderData);
+                    if (apiSaveResult.success) {
+                        console.log('Order saved to api without user context:', apiSaveResult.orderId);
+                        updatedOrderData.apiOrderId = apiSaveResult.orderId;
 
                         // Update stock for all products in the order (Razorpay guest order)
                         if (window.StockManager && window.StockManager.updateStockAfterOrder) {
@@ -2623,10 +2623,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         // Create shipment automatically for guest orders
                         await createShipmentAfterOrder(updatedOrderData);
                     } else {
-                        console.warn('Failed to save order to Firebase without user context:', firebaseSaveResult.error);
+                        console.warn('Failed to save order to api without user context:', apiSaveResult.error);
                     }
-                } catch (firebaseError) {
-                    console.error('Firebase save without user context threw an error:', firebaseError);
+                } catch (apiError) {
+                    console.error('api save without user context threw an error:', apiError);
                 }
             }
 
@@ -2766,9 +2766,9 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             console.log('Creating admin notification for new order:', orderId);
 
-            // Check if Firebase is available
-            if (typeof firebase === 'undefined' || !firebase.firestore) {
-                console.warn('Firebase not available for notification creation');
+            // Check if api is available
+            if (typeof api === 'undefined' || !api.firestore) {
+                console.warn('api not available for notification creation');
                 return;
             }
 
@@ -2808,8 +2808,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 updatedAt: new Date().toISOString()
             };
 
-            // Save to Firebase adminNotifications collection
-            await firebase.firestore()
+            // Save to api adminNotifications collection
+            await api.firestore()
                 .collection('adminNotifications')
                 .doc(notificationData.id.toString())
                 .set(notificationData);
@@ -2909,22 +2909,22 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (user) {
             console.log('Loading saved addresses for logged-in user:', user.uid);
-            await loadFirebaseAddresses();
+            await loadapiAddresses();
         } else {
             console.log('Loading saved addresses for guest user from localStorage');
             await loadLocalAddresses();
         }
     }
 
-    // Load addresses from Firebase for logged-in users
-    async function loadFirebaseAddresses() {
+    // Load addresses from api for logged-in users
+    async function loadapiAddresses() {
         const user = AuthService?.getCurrentUser();
         if (!user) {
-            console.log('User not logged in, cannot load Firebase addresses');
+            console.log('User not logged in, cannot load api addresses');
             return;
         }
 
-        console.log('Loading Firebase addresses for user:', user.uid);
+        console.log('Loading api addresses for user:', user.uid);
 
         const savedAddressesSection = document.getElementById('saved-addresses-section');
         const saveAddressOption = document.getElementById('save-address-option');
@@ -2950,7 +2950,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Show loading state
             addressContainer.innerHTML = '<div class="loading-addresses">Loading your saved addresses...</div>';
 
-            const result = await FirebaseAddressManager.loadUserAddresses();
+            const result = await apiAddressManager.loadUserAddresses();
 
             if (result.success && result.addresses.length > 0) {
                 console.log('Loaded', result.addresses.length, 'saved addresses');
@@ -3100,12 +3100,12 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Select a saved address (works for both Firebase and localStorage)
+    // Select a saved address (works for both api and localStorage)
     function selectSavedAddress(addressId, storageType) {
-        // Default to Firebase if not specified
+        // Default to api if not specified
         if (!storageType) {
             const user = typeof AuthService !== 'undefined' && AuthService.isLoggedIn();
-            storageType = user ? 'firebase' : 'local';
+            storageType = user ? 'api' : 'local';
         }
         // Update radio button selection
         const radios = document.querySelectorAll('input[name="savedAddress"]');
@@ -3129,7 +3129,7 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Selected saved address:', addressId, 'from', storageType);
     }
 
-    // Load address data into form (supports both Firebase and localStorage)
+    // Load address data into form (supports both api and localStorage)
     async function loadAddressIntoForm(addressId, storageType) {
         try {
             let address = null;
@@ -3140,8 +3140,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     address = LocalAddressManager.getAddressById(addressId);
                 }
             } else {
-                // Load from Firebase
-                const result = await FirebaseAddressManager.loadUserAddresses();
+                // Load from api
+                const result = await apiAddressManager.loadUserAddresses();
                 if (result.success) {
                     address = result.addresses.find(addr => addr.id === addressId);
                 }
@@ -3229,7 +3229,7 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Manual address form hidden');
     }
 
-    // Save address during checkout if requested (supports both Firebase and localStorage)
+    // Save address during checkout if requested (supports both api and localStorage)
     async function saveAddressIfRequested() {
         const saveAddressCheckbox = document.getElementById('saveAddress');
         if (!saveAddressCheckbox || !saveAddressCheckbox.checked) {
@@ -3263,12 +3263,12 @@ document.addEventListener('DOMContentLoaded', function() {
             };
 
             if (user) {
-                // Save to Firebase for logged-in users
-                const result = await FirebaseAddressManager.saveAddress(addressData);
+                // Save to api for logged-in users
+                const result = await apiAddressManager.saveAddress(addressData);
                 if (result.success) {
-                    console.log('✅ Address saved to Firebase successfully for future orders');
+                    console.log('✅ Address saved to api successfully for future orders');
                 } else {
-                    console.warn('Failed to save address to Firebase:', result.error);
+                    console.warn('Failed to save address to api:', result.error);
                 }
             } else {
                 // Save to localStorage for guest users

@@ -39,6 +39,10 @@ author = "agent"
 task = "workflow.run"
 args = "Migrated SaaS Frontend"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Migrated SaaS Frontend (Clean)"
+
 [[workflows.workflow]]
 name = "Migrated SaaS Frontend"
 author = "agent"
@@ -46,6 +50,18 @@ author = "agent"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "cd frontend && python3 -m http.server 5000"
+waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
+[[workflows.workflow]]
+name = "Migrated SaaS Frontend (Clean)"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npx serve -s frontend -p 5000"
 waitForPort = 5000
 
 [workflows.workflow.metadata]

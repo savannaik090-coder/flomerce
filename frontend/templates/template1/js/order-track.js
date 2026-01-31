@@ -2,7 +2,7 @@
  * Auric Comprehensive Order Tracking System
  * 
  * This script handles advanced order tracking with real Shiprocket integration,
- * Firebase order correlation, and comprehensive status updates
+ * api order correlation, and comprehensive status updates
  */
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -32,25 +32,25 @@ document.addEventListener('DOMContentLoaded', function() {
             showLoadingModal('🔍 Searching for your order...');
             console.log('🔍 Starting comprehensive tracking for:', trackingId);
 
-            // Step 1: Check if it's a Firebase order ID first
-            const firebaseOrder = await checkFirebaseOrder(trackingId);
+            // Step 1: Check if it's a api order ID first
+            const apiOrder = await checkapiOrder(trackingId);
 
             // Step 2: Try Shiprocket tracking (works for AWB numbers)
             const shiprocketResult = await trackWithShiprocket(trackingId);
 
-            // Step 3: If we have Firebase order but no Shiprocket data, try to find AWB
+            // Step 3: If we have api order but no Shiprocket data, try to find AWB
             let combinedResult = null;
-            if (firebaseOrder && !shiprocketResult.success) {
-                combinedResult = await trackFirebaseOrderWithShipment(firebaseOrder, trackingId);
+            if (apiOrder && !shiprocketResult.success) {
+                combinedResult = await trackapiOrderWithShipment(apiOrder, trackingId);
             } else if (shiprocketResult.success) {
-                combinedResult = await enrichShiprocketWithFirebase(shiprocketResult.data, trackingId);
+                combinedResult = await enrichShiprocketWithapi(shiprocketResult.data, trackingId);
             }
 
             // Display results based on what we found
             if (combinedResult) {
                 displayComprehensiveResults(combinedResult, trackingId);
-            } else if (firebaseOrder) {
-                displayFirebaseOrderOnly(firebaseOrder, trackingId);
+            } else if (apiOrder) {
+                displayapiOrderOnly(apiOrder, trackingId);
             } else if (shiprocketResult.success) {
                 displayShiprocketOnly(shiprocketResult.data, trackingId);
             } else {
@@ -65,7 +65,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Check API for order data
-    async function checkFirebaseOrder(orderId) {
+    async function checkapiOrder(orderId) {
         try {
             const subdomain = getSubdomain();
             const response = await fetch(`/api/orders/${orderId}?subdomain=${subdomain}`);
@@ -119,21 +119,21 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Combine Firebase order with shipment tracking
-    async function trackFirebaseOrderWithShipment(firebaseOrder, orderId) {
-        console.log('🔗 Combining Firebase order with shipment data');
+    // Combine api order with shipment tracking
+    async function trackapiOrderWithShipment(apiOrder, orderId) {
+        console.log('🔗 Combining api order with shipment data');
 
-        // Look for AWB in Firebase order data
+        // Look for AWB in api order data
         let awbNumber = null;
-        if (firebaseOrder.shiprocketData?.awb_code) {
-            awbNumber = firebaseOrder.shiprocketData.awb_code;
-        } else if (firebaseOrder.awbNumber) {
-            awbNumber = firebaseOrder.awbNumber;
+        if (apiOrder.shiprocketData?.awb_code) {
+            awbNumber = apiOrder.shiprocketData.awb_code;
+        } else if (apiOrder.awbNumber) {
+            awbNumber = apiOrder.awbNumber;
         }
 
         let shiprocketData = null;
         if (awbNumber) {
-            console.log('📋 Found AWB in Firebase order, tracking:', awbNumber);
+            console.log('📋 Found AWB in api order, tracking:', awbNumber);
             const shiprocketResult = await trackWithShiprocket(awbNumber);
             if (shiprocketResult.success) {
                 shiprocketData = shiprocketResult.data;
@@ -142,24 +142,24 @@ document.addEventListener('DOMContentLoaded', function() {
 
         return {
             type: 'combined',
-            firebaseOrder,
+            apiOrder,
             shiprocketData,
             awbNumber
         };
     }
 
-    // Enrich Shiprocket data with Firebase order info
-    async function enrichShiprocketWithFirebase(shiprocketData, awbNumber) {
-        console.log('💎 Enriching Shiprocket data with Firebase order info');
+    // Enrich Shiprocket data with api order info
+    async function enrichShiprocketWithapi(shiprocketData, awbNumber) {
+        console.log('💎 Enriching Shiprocket data with api order info');
 
-        // Try to find Firebase order that matches this AWB
-        let firebaseOrder = null;
+        // Try to find api order that matches this AWB
+        let apiOrder = null;
 
-        if (window.firebase && firebase.auth().currentUser) {
+        if (window.api && api.auth().currentUser) {
             try {
-                const userOrdersRef = firebase.firestore()
+                const userOrdersRef = api.firestore()
                     .collection('users')
-                    .doc(firebase.auth().currentUser.uid)
+                    .doc(api.auth().currentUser.uid)
                     .collection('orders');
 
                 // Search for order with matching AWB
@@ -170,37 +170,37 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 if (!orderQuery.empty) {
                     const doc = orderQuery.docs[0];
-                    firebaseOrder = { id: doc.id, ...doc.data() };
-                    console.log('✅ Found matching Firebase order for AWB');
+                    apiOrder = { id: doc.id, ...doc.data() };
+                    console.log('✅ Found matching api order for AWB');
                 }
             } catch (e) {
-                console.log('❌ Could not find matching Firebase order');
+                console.log('❌ Could not find matching api order');
             }
         }
 
         return {
             type: 'enriched',
             shiprocketData,
-            firebaseOrder,
+            apiOrder,
             awbNumber
         };
     }
 
     // Display comprehensive results
     function displayComprehensiveResults(combinedData, trackingId) {
-        const { type, firebaseOrder, shiprocketData, awbNumber } = combinedData;
+        const { type, apiOrder, shiprocketData, awbNumber } = combinedData;
 
         let orderInfo = '';
         let trackingInfo = '';
         let statusBadge = '';
 
         // Order Information Section
-        if (firebaseOrder) {
-            const orderDate = firebaseOrder.timestamp ? 
-                new Date(firebaseOrder.timestamp.seconds * 1000).toLocaleDateString() : 
-                new Date(firebaseOrder.createdAt).toLocaleDateString();
+        if (apiOrder) {
+            const orderDate = apiOrder.timestamp ? 
+                new Date(apiOrder.timestamp.seconds * 1000).toLocaleDateString() : 
+                new Date(apiOrder.createdAt).toLocaleDateString();
 
-            statusBadge = getOrderStatusBadge(firebaseOrder, shiprocketData);
+            statusBadge = getOrderStatusBadge(apiOrder, shiprocketData);
 
             orderInfo = `
                 <div style="background: #f8fafc; padding: 20px; border-radius: 12px; margin-bottom: 20px;">
@@ -211,7 +211,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
                         <div>
                             <strong>Order ID:</strong><br>
-                            <code style="background: #e2e8f0; padding: 2px 6px; border-radius: 4px;">${firebaseOrder.orderReference || trackingId}</code>
+                            <code style="background: #e2e8f0; padding: 2px 6px; border-radius: 4px;">${apiOrder.orderReference || trackingId}</code>
                         </div>
                         <div>
                             <strong>Order Date:</strong><br>
@@ -219,11 +219,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         </div>
                         <div>
                             <strong>Total Amount:</strong><br>
-                            ₹${firebaseOrder.totalAmount || 'N/A'}
+                            ₹${apiOrder.totalAmount || 'N/A'}
                         </div>
                         <div>
                             <strong>Payment:</strong><br>
-                            ${firebaseOrder.paymentMethod || 'N/A'} - ${firebaseOrder.paymentStatus || 'Unknown'}
+                            ${apiOrder.paymentMethod || 'N/A'} - ${apiOrder.paymentStatus || 'Unknown'}
                         </div>
                     </div>
                     ${awbNumber ? `
@@ -257,7 +257,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     ${generateTrackingTimeline(trackingData.shipment_track || [])}
                 </div>
             `;
-        } else if (firebaseOrder && !shiprocketData) {
+        } else if (apiOrder && !shiprocketData) {
             // Order exists but no shipping data yet
             trackingInfo = `
                 <div style="background: #fef3c7; padding: 20px; border-radius: 12px; margin-bottom: 20px; text-align: center;">
@@ -286,11 +286,11 @@ document.addEventListener('DOMContentLoaded', function() {
         `);
     }
 
-    // Display Firebase order only
-    function displayFirebaseOrderOnly(firebaseOrder, trackingId) {
-        const orderDate = firebaseOrder.timestamp ? 
-            new Date(firebaseOrder.timestamp.seconds * 1000).toLocaleDateString() : 
-            new Date(firebaseOrder.createdAt).toLocaleDateString();
+    // Display api order only
+    function displayapiOrderOnly(apiOrder, trackingId) {
+        const orderDate = apiOrder.timestamp ? 
+            new Date(apiOrder.timestamp.seconds * 1000).toLocaleDateString() : 
+            new Date(apiOrder.createdAt).toLocaleDateString();
 
         showResultModal('📋 Order Found', `
             <div style="padding: 20px;">
@@ -303,9 +303,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     <h4 style="margin: 0 0 15px 0; color: #1e293b;">Order Details</h4>
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
                         <div><strong>Order Date:</strong><br>${orderDate}</div>
-                        <div><strong>Total Amount:</strong><br>₹${firebaseOrder.totalAmount || 'N/A'}</div>
-                        <div><strong>Payment:</strong><br>${firebaseOrder.paymentMethod || 'N/A'}</div>
-                        <div><strong>Status:</strong><br>${firebaseOrder.paymentStatus || 'Processing'}</div>
+                        <div><strong>Total Amount:</strong><br>₹${apiOrder.totalAmount || 'N/A'}</div>
+                        <div><strong>Payment:</strong><br>${apiOrder.paymentMethod || 'N/A'}</div>
+                        <div><strong>Status:</strong><br>${apiOrder.paymentStatus || 'Processing'}</div>
                     </div>
                 </div>
 
@@ -346,7 +346,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Generate order status badge
-    function getOrderStatusBadge(firebaseOrder, shiprocketData) {
+    function getOrderStatusBadge(apiOrder, shiprocketData) {
         let status = 'Processing';
         let bgColor = '#f59e0b';
         let textColor = 'white';
@@ -360,7 +360,7 @@ document.addEventListener('DOMContentLoaded', function() {
         } else if (shiprocketData?.tracking_data?.track_status >= 1) {
             status = 'Shipped';
             bgColor = '#8b5cf6';
-        } else if (firebaseOrder.paymentStatus === 'completed') {
+        } else if (apiOrder.paymentStatus === 'completed') {
             status = 'Confirmed';
             bgColor = '#06b6d4';
         }

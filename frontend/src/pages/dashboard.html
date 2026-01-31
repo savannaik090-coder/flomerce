@@ -348,7 +348,7 @@
                     const daysRemaining = Math.max(0, Math.ceil(durationDays - daysUsed));
                     
                     if (now > endDate) {
-                        await expirePlan(authService.getCurrentUser().uid, `Your ${billingCycle} plan has expired. Please renew your subscription to continue using your websites.`);
+                        await expirePlan(authService.getCurrentUser()?.uid, `Your ${billingCycle} plan has expired. Please renew your subscription to continue using your websites.`);
                     } else {
                         let statusText = daysRemaining >= 30 ? `${Math.floor(daysRemaining/30)} mo left` : `${daysRemaining} days left`;
                         if (document.getElementById('account-plan-status')) document.getElementById('account-plan-status').innerText = 'Active';
@@ -359,13 +359,17 @@
                 console.error('Error loading user data:', e);
             }
         }
-                    if (document.getElementById('account-plan-status')) {
-                        document.getElementById('account-plan-status').innerText = 'Expired';
-                        document.getElementById('account-plan-status').className = 'plan-status-pill status-expired';
-                    }
-                    if (document.getElementById('account-plan-status-text')) document.getElementById('account-plan-status-text').innerText = 'Subscription Expired';
-                    showOverlay("Your subscription has expired. Please upgrade to a paid plan to continue using the website.");
-                }
+
+        async function expirePlan(uid, message) {
+            try {
+                await fetch('/api/users/subscription', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: 'expired' })
+                });
+                showOverlay(message);
+            } catch (e) {
+                console.error('Error expiring plan:', e);
             }
         }
 

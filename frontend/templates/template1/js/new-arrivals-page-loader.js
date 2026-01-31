@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     console.log('Found products grid element:', productsGrid);
 
     try {
-        // Load products directly from Firebase without depending on external loaders
+        // Load products directly from API without depending on external loaders
         const products = await loadNewArrivalsProductsDirect();
 
         console.log('Raw products received:', products);
@@ -101,7 +101,7 @@ function sortProducts(products, sortBy) {
 }
 
 /**
- * Load new arrivals products directly from Firebase (without external dependencies)
+ * Load new arrivals products directly from API (without external dependencies)
  */
 async function loadNewArrivalsProductsDirect() {
     try {
@@ -239,7 +239,7 @@ function createProductHTML(product) {
         `₹${product.price}`;
 
     // Use the image URL directly as provided by the backend
-    // The backend already processes Firebase Storage URLs and provides CDN-optimized proxy URLs
+    // The backend already processes API Storage URLs and provides CDN-optimized proxy URLs
     let imageUrl = product.image || product.imageUrl || '';
 
     return `

@@ -141,7 +141,7 @@ window.StockManager = (function() {
             products[productIndex].stock = newStock;
             products[productIndex].updatedAt = new Date().toISOString();
 
-            // Save updated products back to Firebase
+            // Save updated products back to API
             const updateResponse = await fetch('/.netlify/functions/update-product-stock', {
                 method: 'POST',
                 headers: {
@@ -213,7 +213,7 @@ window.StockManager = (function() {
 
         console.log('🔍 Determining search categories for product ID:', productId);
 
-        // Check product ID prefix to prioritize search order (ACTUAL prefixes used in Firebase data)
+        // Check product ID prefix to prioritize search order (ACTUAL prefixes used in API data)
         if (productId.startsWith('FEA-')) {
             console.log('📂 Product is from Featured Collection');
             return ['featured-collection', ...allCategories.filter(c => c !== 'featured-collection')];

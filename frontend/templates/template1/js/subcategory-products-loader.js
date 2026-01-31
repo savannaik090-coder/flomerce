@@ -1,7 +1,7 @@
 
 /**
  * Subcategory Products Loader
- * Dynamically loads products from Firebase Cloud Storage for subcategory pages
+ * Dynamically loads products from API Cloud Storage for subcategory pages
  * (gold-necklace, silver-earrings, etc.)
  */
 
@@ -238,7 +238,7 @@ const SubcategoryProductsLoader = (function() {
     function autoLoadForCurrentPage() {
         const pageName = window.location.pathname.split('/').pop().replace('.html', '');
         
-        // Map of page names to their Firebase Storage category names
+        // Map of page names to their API Storage category names
         const categoryMap = {
             'gold-necklace': 'gold-necklace',
             'silver-necklace': 'silver-necklace',

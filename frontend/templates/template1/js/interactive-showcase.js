@@ -22,12 +22,12 @@ const InteractiveShowcase = (function () {
     }
 
     /**
-     * Load showcase products from Firebase by produc
+     * Load showcase products from API by produc
      *
      * t IDs
      */
     async function setupSampleProducts() {
-        console.log("Loading showcase products from Firebase...");
+        console.log("Loading showcase products from API...");
 
         const showcaseProductIds = ["FEA-002", "NEW-003", "FEA-005"];
 
@@ -57,7 +57,7 @@ const InteractiveShowcase = (function () {
             console.log(
                 "Loaded",
                 allProducts.length,
-                "total products from Firebase",
+                "total products from API",
             );
 
             // Find the showcase products by ID

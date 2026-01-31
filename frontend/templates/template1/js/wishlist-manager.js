@@ -9,11 +9,11 @@ window.PRODUCT_PRICES_CACHE = window.PRODUCT_PRICES_CACHE || new Map();
 /**
  * Auric Wishlist Manager
  * 
- * A wishlist management system that handles both local storage and Firebase.
+ * A wishlist management system that handles both local storage and API.
  * - Uses local storage when user is not logged in
- * - Uses Firebase when user is logged in
+ * - Uses API when user is logged in
  * - Automatically switches between storage methods on login/logout
- * - Firebase wishlist data is stored at path: users/{userId}/wishlist/current
+ * - API wishlist data is stored at path: users/{userId}/wishlist/current
  */
 
 const WishlistManager = (function() {
@@ -275,33 +275,33 @@ const WishlistManager = (function() {
 
     /**
      * Load wishlist data from the appropriate storage
-     * Uses Firebase if logged in, otherwise tries sessionStorage cache, then local storage
+     * Uses API if logged in, otherwise tries sessionStorage cache, then local storage
      */
     async function loadWishlist() {
         if (isUserLoggedIn()) {
-            console.log('User logged in, loading wishlist from Firebase');
+            console.log('User logged in, loading wishlist from API');
             try {
-                // Make sure FirebaseWishlistManager is loaded and initialized
-                if (typeof FirebaseWishlistManager !== 'undefined') {
-                    const result = await FirebaseWishlistManager.getItems();
+                // Make sure APIWishlistManager is loaded and initialized
+                if (typeof APIWishlistManager !== 'undefined') {
+                    const result = await APIWishlistManager.getItems();
                     if (result.success) {
                         wishlistItems = result.items;
                     } else {
-                        console.warn('Failed to load wishlist from Firebase:', result.error);
+                        console.warn('Failed to load wishlist from API:', result.error);
                         wishlistItems = [];
                     }
                 } else {
-                    console.warn('FirebaseWishlistManager not available, falling back to local storage');
+                    console.warn('APIWishlistManager not available, falling back to local storage');
                     wishlistItems = LocalStorageWishlist.getItems();
                 }
             } catch (error) {
-                console.error('Error loading wishlist from Firebase:', error);
+                console.error('Error loading wishlist from API:', error);
                 wishlistItems = [];
             }
         } else {
-            console.log('User not logged in, checking for cached Firebase data');
+            console.log('User not logged in, checking for cached API data');
 
-            // Try to load from sessionStorage cache first (contains Firebase data)
+            // Try to load from sessionStorage cache first (contains API data)
             let foundCachedData = false;
             try {
                 const cachedWishlist = sessionStorage.getItem('api_wishlist_cache');
@@ -332,7 +332,7 @@ const WishlistManager = (function() {
                         if (cacheAge < maxCacheAge && 
                             (sessionUserId === cacheData.userId || !sessionUserId)) {
 
-                            console.log('Found cached Firebase wishlist data:', cacheData.items.length, 'items for user:', cacheData.userId);
+                            console.log('Found cached API wishlist data:', cacheData.items.length, 'items for user:', cacheData.userId);
                             wishlistItems = cacheData.items;
                             foundCachedData = true;
 
@@ -366,21 +366,21 @@ const WishlistManager = (function() {
 
     /**
      * Save wishlist data to the appropriate storage
-     * Uses Firebase if logged in, otherwise local storage
+     * Uses API if logged in, otherwise local storage
      */
     async function saveWishlist() {
         if (isUserLoggedIn()) {
-            console.log('User logged in, saving wishlist to Firebase');
+            console.log('User logged in, saving wishlist to API');
             try {
-                // Make sure FirebaseWishlistManager is loaded and initialized
-                if (typeof FirebaseWishlistManager !== 'undefined') {
-                    await FirebaseWishlistManager.saveItems(wishlistItems);
+                // Make sure APIWishlistManager is loaded and initialized
+                if (typeof APIWishlistManager !== 'undefined') {
+                    await APIWishlistManager.saveItems(wishlistItems);
                 } else {
-                    console.warn('FirebaseWishlistManager not available, saving to local storage only');
+                    console.warn('APIWishlistManager not available, saving to local storage only');
                     LocalStorageWishlist.saveItems(wishlistItems);
                 }
             } catch (error) {
-                console.error('Error saving wishlist to Firebase:', error);
+                console.error('Error saving wishlist to API:', error);
                 // Fallback to local storage
                 LocalStorageWishlist.saveItems(wishlistItems);
             }

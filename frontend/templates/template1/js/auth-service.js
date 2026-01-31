@@ -1,6 +1,6 @@
 /**
  * Auth Service - REST API Based
- * Replaces Firebase Authentication with Cloudflare Workers API
+ * Replaces API Authentication with Cloudflare Workers API
  */
 
 const AuthService = (function() {
@@ -359,8 +359,8 @@ const AuthService = (function() {
 // Make available globally
 window.AuthService = AuthService;
 
-// Backward compatibility with FirebaseAuth
-window.FirebaseAuth = {
+// Backward compatibility with APIAuth
+window.APIAuth = {
     isLoggedIn: () => AuthService.isLoggedIn(),
     getCurrentUser: () => AuthService.getCurrentUser(),
     observeAuthState: (cb) => AuthService.onAuthStateChange(cb),

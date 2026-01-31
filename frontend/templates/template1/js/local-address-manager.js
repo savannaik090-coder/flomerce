@@ -1,7 +1,7 @@
 /**
  * Local Address Manager
  * Manages shipping addresses in localStorage for guest users
- * Provides similar API to FirebaseAddressManager but for local storage
+ * Provides similar API to APIAddressManager but for local storage
  */
 
 const LocalAddressManager = (function() {
