@@ -896,12 +896,12 @@ Currently, category pages (gold-necklace.html, silver-earrings.html, etc.) are:
 ## The Solution (Proposed Architecture)
 
 ### 1. Single Dynamic Category Page
-Create ONE template file that handles ALL categories dynamically:
+Create ONE template file that handles ALL categories dynamically within the main template folder:
 
-**File: `category.html`** (replaces all individual category files)
+**File: `templates/template1/category.html`** (replaces all individual category files like `gold-necklace.html`, `silver-earrings.html`, etc.)
 ```html
 <!-- Dynamic category page that loads based on URL parameter -->
-<!-- URL: /category/gold-necklace or /c/gold-necklace -->
+<!-- Location: templates/template1/category.html -->
 ```
 
 ### 2. URL Routing
