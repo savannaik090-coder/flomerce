@@ -1,8 +1,9 @@
 ## Migration Status (Update: Jan 31, 2026)
-- [x] Cleanup: Removed old Firebase/Netlify files from `src/` and `templates/template1/`.
-- [x] Refactor: Updated `src/js/auth/AuthService.js` and `src/js/dashboard/SiteService.js` to use REST API fetch instead of Firebase SDK.
-- [ ] Backend: Ensure Cloudflare Workers are correctly handling `/api/auth` and `/api/sites` endpoints.
-- [ ] Template1: Update JS files in `templates/template1/js/` to use REST API instead of Firebase.
+- [x] Cleanup: Removed redundant root directories (src, templates, admin-panel, dashboard, netlify).
+- [x] Project Structure: Project is now organized into `frontend/` and `backend/`.
+- [x] Frontend: Updated SaaS platform services to use REST API.
+- [ ] Backend: Configure Cloudflare Workers in `backend/` to handle API requests.
+- [ ] Template1: Complete refactoring of `frontend/templates/template1/js/` to use REST API.
 
 ---
 

@@ -1,8 +1,0 @@
-name = "fluxe-subdomain-router"
-main = "src/cloudflare-worker.js"
-compatibility_date = "2024-01-01"
-
-[triggers]
-routes = [
-  { pattern = "*.fluxe.in/*", zone_name = "fluxe.in" }
-]
