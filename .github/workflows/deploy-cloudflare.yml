@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - master
+      - fluxe
   workflow_dispatch:
     inputs:
       setup_resources:
