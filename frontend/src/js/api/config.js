@@ -1,6 +1,6 @@
 const API_BASE_URL = window.location.hostname === 'localhost' 
   ? 'http://localhost:8787'
-  : 'https://saas-platform.savannaik090-coder.workers.dev';
+  : 'https://saas-platform.savannaik090.workers.dev';
 
 export const config = {
   apiBaseUrl: API_BASE_URL,
