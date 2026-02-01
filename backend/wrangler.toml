@@ -2,6 +2,7 @@
 # Firebase to Cloudflare Migration
 # Version: 1.2
 
+
 name = "saas-platform"
 main = "workers/index.js"
 compatibility_date = "2024-01-01"
