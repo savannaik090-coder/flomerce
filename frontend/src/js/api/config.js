@@ -71,8 +71,6 @@ export async function apiRequest(endpoint, options = {}) {
     const response = await fetch(url, {
       ...options,
       headers,
-      mode: 'cors',
-      credentials: 'omit',
     });
     
     const data = await response.json();
