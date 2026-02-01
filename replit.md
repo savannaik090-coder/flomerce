@@ -170,6 +170,13 @@ Main tables:
 
 ## Recent Changes
 
+- **February 1, 2026**: Custom domain setup guide created
+  - Created comprehensive `docs/CUSTOM_DOMAIN_SETUP.md` for fluxe.in setup
+  - Covers wildcard subdomain configuration for user-created websites
+  - Includes Cloudflare DNS, Pages, and Workers configuration steps
+  - Fixed signup redirect to go to SaaS dashboard (not admin-panel)
+  - Disabled email verification - users are verified by default
+
 - **January 31, 2026**: Admin panels fully migrated
   - products-admin-panel.html: Reduced from 2,647 to 2,382 lines (0 Firebase operations)
   - admin-panel.html: Reduced from 11,469 to 11,356 lines (0 Firebase operations, down from 149)
