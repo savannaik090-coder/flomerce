@@ -69,7 +69,7 @@ async function handleSignup(request, env) {
        VALUES (?, ?, ?, ?, ?, 1, datetime('now'))`
     ).bind(userId, email.toLowerCase(), passwordHash, sanitizeInput(name), phone || null).run();
 
-    // Skip sending verification email for now
+    // Skip verification for now
     /*
     await env.DB.prepare(
       `INSERT INTO email_verifications (id, user_id, token, expires_at)
@@ -87,7 +87,6 @@ async function handleSignup(request, env) {
         emailVerified: true,
       },
       token,
-      verificationToken,
     }, 'Account created successfully');
   } catch (error) {
     console.error('Signup error:', error);
@@ -112,14 +111,23 @@ async function handleLogin(request, env) {
     ).bind(email.toLowerCase()).first();
 
     if (!user) {
+      console.error('Login: User not found:', email.toLowerCase());
       return errorResponse('Invalid email or password', 401, 'INVALID_CREDENTIALS');
     }
 
     const isValid = await verifyPassword(password, user.password_hash);
 
     if (!isValid) {
+      console.error('Login: Invalid password for:', email.toLowerCase());
       return errorResponse('Invalid email or password', 401, 'INVALID_CREDENTIALS');
     }
+
+    // Temporarily bypass verification check if it's still blocking
+    /*
+    if (!user.email_verified) {
+       return errorResponse('Please verify your email', 401, 'EMAIL_NOT_VERIFIED');
+    }
+    */
 
     const token = await generateJWT({ userId: user.id, email: user.email }, env.JWT_SECRET || 'your-secret-key');
 

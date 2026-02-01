@@ -9,6 +9,7 @@ workers_dev = true
 
 [vars]
 ENVIRONMENT = "production"
+SKIP_EMAIL_VERIFICATION = "true"
 
 # D1 Database Configuration
 # Database: saas-platform-db
