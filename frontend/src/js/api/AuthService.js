@@ -34,19 +34,20 @@ class AuthService {
         body: JSON.stringify({ name, email, password }),
       });
 
-      if (response.success) {
+      if (response.success && response.data) {
         setAuthToken(response.data.token);
         this.currentUser = response.data.user;
         this.notifyListeners(this.currentUser);
         
-        await this.sendVerificationEmail();
+        // Don't await verification email to speed up UI response
+        this.sendVerificationEmail().catch(err => console.error('Verification email failed:', err));
         
         return { success: true, user: this.currentUser };
       }
       
-      return { success: false, error: response.error };
+      throw new Error(response.message || response.error || 'Signup failed');
     } catch (error) {
-      return { success: false, error: error.message };
+      throw error;
     }
   }
 
@@ -57,7 +58,7 @@ class AuthService {
         body: JSON.stringify({ email, password }),
       });
 
-      if (response.success) {
+      if (response.success && response.data) {
         setAuthToken(response.data.token);
         this.currentUser = response.data.user;
         this.notifyListeners(this.currentUser);
@@ -65,12 +66,12 @@ class AuthService {
         return { success: true, user: this.currentUser };
       }
       
-      return { success: false, error: response.error };
+      throw new Error(response.message || response.error || 'Login failed');
     } catch (error) {
       if (error.code === 'INVALID_CREDENTIALS') {
-        return { success: false, error: 'Invalid email or password' };
+        throw new Error('Invalid email or password');
       }
-      return { success: false, error: error.message };
+      throw error;
     }
   }
 

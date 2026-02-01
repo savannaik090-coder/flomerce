@@ -58,9 +58,13 @@
             btn.disabled = true;
 
             try {
-                await authService.signUp(name, email, password);
-                alert('Account created! Please check your email for verification.');
-                window.location.href = '/src/pages/login.html';
+                const result = await authService.signUp(name, email, password);
+                if (result.success) {
+                    alert('Account created! Please check your email for verification.');
+                    window.location.href = '/src/pages/login.html';
+                } else {
+                    throw new Error(result.error || 'Signup failed');
+                }
             } catch (error) {
                 errorEl.textContent = error.message;
                 errorEl.style.display = 'block';
