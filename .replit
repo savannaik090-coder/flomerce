@@ -39,10 +39,6 @@ author = "agent"
 task = "workflow.run"
 args = "Fluxe SaaS Frontend (Production)"
 
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "Fluxe SaaS Frontend (Python Fallback)"
-
 [[workflows.workflow]]
 name = "Fluxe SaaS Frontend (Production)"
 author = "agent"
@@ -52,20 +48,8 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "npx serve -s frontend -p 5000 --cors"
+args = "npx -y serve -s frontend -p 5000 --cors"
 waitForPort = 5000
-
-[[workflows.workflow]]
-name = "Fluxe SaaS Frontend (Python Fallback)"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "python3 -m http.server 5000 --directory frontend"
-waitForPort = 5000
-
-[workflows.workflow.metadata]
-outputType = "webview"
 
 [agent]
 expertMode = true
@@ -89,3 +73,4 @@ FIREBASE_MEASUREMENT_ID = "G-ZYZ750JHMB"
 RAZORPAY_KEY_ID = "rzp_test_qZWULE2MoPHZJv"
 RAZORPAY_KEY_SECRET = "dwhI00HuTIRk5T61AyUq1Bhh"
 OWNER_EMAIL = "sss.naik2007@gmail.com"
+JWT_SECRET = "2f7522488d21eaec47e6092f7522488d21eaec47e6092f7522488d21eaec47"
