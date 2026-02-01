@@ -66,13 +66,16 @@ async function handleSignup(request, env) {
 
     await env.DB.prepare(
       `INSERT INTO users (id, email, password_hash, name, phone, email_verified, created_at)
-       VALUES (?, ?, ?, ?, ?, 0, datetime('now'))`
+       VALUES (?, ?, ?, ?, ?, 1, datetime('now'))`
     ).bind(userId, email.toLowerCase(), passwordHash, sanitizeInput(name), phone || null).run();
 
+    // Skip sending verification email for now
+    /*
     await env.DB.prepare(
       `INSERT INTO email_verifications (id, user_id, token, expires_at)
        VALUES (?, ?, ?, ?)`
     ).bind(generateId(), userId, verificationToken, getExpiryDate(24)).run();
+    */
 
     const token = await generateJWT({ userId, email: email.toLowerCase() }, env.JWT_SECRET || 'your-secret-key');
 
@@ -81,7 +84,7 @@ async function handleSignup(request, env) {
         id: userId,
         email: email.toLowerCase(),
         name: sanitizeInput(name),
-        emailVerified: false,
+        emailVerified: true,
       },
       token,
       verificationToken,
