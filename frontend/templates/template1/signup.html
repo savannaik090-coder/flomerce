@@ -734,19 +734,11 @@
             setLoading(false);
 
             if (result.success) {
-              if (result.needsVerification) {
-                // Show the verification success popup
-                verificationPopup.style.display = 'flex';
-
-                // Clear the form
-                signupForm.reset();
-              } else {
-                // Fallback - shouldn't happen with new flow
-                showSuccess('Account created successfully! Redirecting...');
-                setTimeout(() => {
-                  window.location.href = 'index.html';
-                }, 2000);
-              }
+              // Account created and logged in - redirect directly
+              showSuccess('Account created successfully! Redirecting...');
+              setTimeout(() => {
+                window.location.href = 'index.html';
+              }, 1500);
             } else {
               // Handle error from our auth module
               if (result.code === 'auth/email-already-in-use') {

@@ -468,7 +468,7 @@ window.FirebaseAuth = {
     registerWithEmail: async (email, password, options = {}) => {
         const result = await AuthService.signUp(options.displayName || '', email, password);
         if (result.success) {
-            return { success: true, user: result.user, needsVerification: true };
+            return { success: true, user: result.user, needsVerification: false };
         }
         return { success: false, error: result.error, code: result.error?.includes('already') ? 'auth/email-already-in-use' : 'auth/signup-failed' };
     },

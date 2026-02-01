@@ -60,8 +60,8 @@
             try {
                 const result = await authService.signUp(name, email, password);
                 if (result.success) {
-                    alert('Account created! Please check your email for verification.');
-                    window.location.href = '/src/pages/login.html';
+                    alert('Account created successfully! You are now logged in.');
+                    window.location.href = '/admin-panel/index.html';
                 } else {
                     throw new Error(result.error || 'Signup failed');
                 }

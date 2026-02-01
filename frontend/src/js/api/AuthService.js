@@ -39,8 +39,7 @@ class AuthService {
         this.currentUser = response.data.user;
         this.notifyListeners(this.currentUser);
         
-        // Don't await verification email to speed up UI response
-        this.sendVerificationEmail().catch(err => console.error('Verification email failed:', err));
+        // Email verification is disabled - users are verified by default
         
         return { success: true, user: this.currentUser };
       }
