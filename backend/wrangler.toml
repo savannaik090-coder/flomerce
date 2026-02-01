@@ -12,9 +12,9 @@ ENVIRONMENT = "production"
 [[d1_databases]]
 binding = "DB"
 database_name = "saas-platform-db"
-database_id = "REPLACE_WITH_D1_ID"
+database_id = "bbddf99e-dd63-4ace-b9d2-274c42404d65"
 migrations_dir = "migrations"
 
 [[r2_buckets]]
 binding = "STORAGE"
-bucket_name = "saas-platform-storage"
+bucket_name = "saas-platform-s"
