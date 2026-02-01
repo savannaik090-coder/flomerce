@@ -251,11 +251,11 @@ class ProductGallery {
         
         // Check if it's a relative path starting with /productImages/
         if (imagePath.startsWith('/productImages/') || imagePath.startsWith('productImages/')) {
-             return `/.netlify/functions/image-proxy?path=${encodeURIComponent(imagePath.startsWith('/') ? imagePath.substring(1) : imagePath)}`;
+             return `/api/images?path=${encodeURIComponent(imagePath.startsWith('/') ? imagePath.substring(1) : imagePath)}`;
         }
 
         // Use image proxy for API Storage images
-        return `/.netlify/functions/image-proxy?path=${encodeURIComponent(imagePath)}`;
+        return `/api/images?path=${encodeURIComponent(imagePath)}`;
     }
 
     updateGallery() {

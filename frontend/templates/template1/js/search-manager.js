@@ -82,7 +82,7 @@ const SearchManager = (function() {
      */
     async function loadProductsFromCategory(category) {
         try {
-            const response = await fetch(`/.netlify/functions/load-products?category=${category}&cacheBust=${Date.now()}`);
+            const response = await fetch(`/api/products?category=${category}&cacheBust=${Date.now()}`);
             
             if (!response.ok) {
                 console.warn(`Failed to load ${category} products:`, response.status);

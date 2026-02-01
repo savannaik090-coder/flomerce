@@ -1,37 +1,30 @@
 /**
- * Netlify Functions Helper
+ * API Helpers
  * 
- * This file provides utility functions for working with Netlify Functions
+ * This file provides utility functions for working with the REST API
  * in both local development and production environments.
  */
 
-// Determine if we're running in production (Netlify) or development (localhost)
+// Determine if we're running in production or development
 const isProduction = !window.location.hostname.includes('localhost') && 
                      !window.location.hostname.includes('127.0.0.1');
 
 /**
- * Get the base URL for API requests to Netlify Functions
+ * Get the base URL for API requests
  * @returns {string} The base URL to use for API requests
  */
 function getApiBaseUrl() {
-  // Always use /.netlify/functions directly in production
-  // This ensures we're accessing the functions directly without relying on redirects
-  if (isProduction) {
-    return '/.netlify/functions';
-  }
-
-  // In development, use the redirects from netlify.toml to map /api/ to /.netlify/functions/
   return '/api';
 }
 
 /**
- * Make an API request to a Netlify Function
+ * Make an API request
  * 
- * @param {string} endpoint - The function name/endpoint (without leading slash)
+ * @param {string} endpoint - The API endpoint (without leading slash)
  * @param {Object} options - Fetch API options (method, headers, body, etc.)
  * @returns {Promise<Object>} - Promise resolving to the JSON response
  */
-async function callNetlifyFunction(endpoint, options = {}) {
+async function callApiFunction(endpoint, options = {}) {
   // Ensure we have default headers
   if (!options.headers) {
     options.headers = {};
@@ -47,7 +40,7 @@ async function callNetlifyFunction(endpoint, options = {}) {
   const url = `${baseUrl}/${endpoint}`;
 
   try {
-    console.log(`Calling Netlify Function: ${url}`, options);
+    console.log(`Calling API: ${url}`, options);
 
     // Add a timeout to the fetch call
     const controller = new AbortController();
@@ -63,7 +56,7 @@ async function callNetlifyFunction(endpoint, options = {}) {
     clearTimeout(timeoutId);
 
     // Log response status
-    console.log(`Netlify Function response: ${response.status} ${response.statusText}`);
+    console.log(`API response: ${response.status} ${response.statusText}`);
 
     // Try to parse the JSON response
     let data;
@@ -72,9 +65,9 @@ async function callNetlifyFunction(endpoint, options = {}) {
     } catch (parseError) {
       console.error('Failed to parse JSON response:', parseError);
 
-      // Special handling for 404 errors (function not found)
+      // Special handling for 404 errors (endpoint not found)
       if (response.status === 404) {
-        console.warn(`Netlify function not found: ${endpoint}`);
+        console.warn(`API endpoint not found: ${endpoint}`);
         return { 
           success: false, 
           message: 'Service temporarily unavailable',
@@ -93,13 +86,13 @@ async function callNetlifyFunction(endpoint, options = {}) {
 
     return data;
   } catch (error) {
-    console.error(`Error calling Netlify Function ${endpoint}:`, error);
+    console.error(`Error calling API ${endpoint}:`, error);
     console.error(`Request URL: ${url}`);
     console.error(`Request options:`, options);
 
     // Check if it's a 404 error
     if (error.message && error.message.includes('404')) {
-      console.error(`Netlify function not found: ${endpoint}`);
+      console.error(`API endpoint not found: ${endpoint}`);
       throw new Error(`Service temporarily unavailable`);
     }
 
@@ -107,9 +100,16 @@ async function callNetlifyFunction(endpoint, options = {}) {
   }
 }
 
-// Export the helper functions
+// Export the helper functions (keeping backward compatibility)
 window.netlifyHelpers = {
   getApiBaseUrl,
-  callNetlifyFunction,
+  callNetlifyFunction: callApiFunction,
+  callApiFunction,
+  isProduction
+};
+
+window.apiHelpers = {
+  getApiBaseUrl,
+  callApiFunction,
   isProduction
 };

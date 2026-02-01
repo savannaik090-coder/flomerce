@@ -97,7 +97,7 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             console.log('🚚 Checking Shiprocket for AWB:', trackingId);
 
-            const response = await fetch(`/.netlify/functions/shiprocket-track-order/${trackingId}`);
+            const response = await fetch(`/api/shipping/track/${trackingId}`);
             const result = await response.json();
 
             if (result.success && !result.isTestData) {

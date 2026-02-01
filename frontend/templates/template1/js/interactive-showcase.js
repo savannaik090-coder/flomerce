@@ -45,7 +45,7 @@ const InteractiveShowcase = (function () {
 
             for (const category of categories) {
                 const response = await fetch(
-                    `/.netlify/functions/load-products?category=${category}`,
+                    `/api/products?category=${category}`,
                 );
                 const data = await response.json();
 
