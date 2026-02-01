@@ -31,8 +31,8 @@ const AuthService = (function() {
 
             const result = await response.json();
 
-            if (!response.ok) {
-                throw new Error(result.error || 'Signup failed');
+            if (!response.ok || !result.success) {
+                throw new Error(result.message || result.error || 'Signup failed');
             }
 
             // Save session
@@ -59,8 +59,8 @@ const AuthService = (function() {
 
             const result = await response.json();
 
-            if (!response.ok) {
-                throw new Error(result.error || 'Login failed');
+            if (!response.ok || !result.success) {
+                throw new Error(result.message || result.error || 'Login failed');
             }
 
             // Save session
