@@ -61,7 +61,7 @@
                 const result = await authService.signUp(name, email, password);
                 if (result.success) {
                     alert('Account created successfully! You are now logged in.');
-                    window.location.href = '/admin-panel/index.html';
+                    window.location.href = '/src/pages/dashboard.html';
                 } else {
                     throw new Error(result.error || 'Signup failed');
                 }
