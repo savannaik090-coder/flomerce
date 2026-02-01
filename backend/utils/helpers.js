@@ -29,9 +29,10 @@ export function jsonResponse(data, status = 200) {
     status,
     headers: {
       'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Origin': 'https://fluxe-8x1.pages.dev',
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Session-ID',
+      'Access-Control-Allow-Credentials': 'true',
     },
   });
 }
@@ -44,17 +45,19 @@ export function successResponse(data, message = 'Success') {
   return jsonResponse({ success: true, message, data });
 }
 
-export function corsHeaders() {
+export function corsHeaders(request) {
+  const origin = request ? request.headers.get('Origin') : 'https://fluxe-8x1.pages.dev';
   return {
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': origin || 'https://fluxe-8x1.pages.dev',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Session-ID',
+    'Access-Control-Allow-Credentials': 'true',
   };
 }
 
 export function handleCORS(request) {
   if (request.method === 'OPTIONS') {
-    return new Response(null, { status: 204, headers: corsHeaders() });
+    return new Response(null, { status: 204, headers: corsHeaders(request) });
   }
   return null;
 }
