@@ -9,30 +9,28 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    name: Deploy Workers
     steps:
       - uses: actions/checkout@v4
 
       - name: Install Dependencies
         run: cd backend && npm install
 
-      - name: Deploy Auth Worker
+      - name: Deploy Backend
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           workingDirectory: 'backend'
-          command: deploy workers/auth-worker.js --name auth-worker
+          command: deploy
 
-      - name: Deploy Products Worker
+      - name: Deploy Frontend
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          workingDirectory: 'backend'
-          command: deploy workers/products-worker.js --name products-worker
+          command: pages deploy frontend --project-name=saas-platform-frontend
 
       - name: Apply D1 Migrations
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           workingDirectory: 'backend'
-          command: d1 migrations apply fluxe-db --remote --batch
+          command: d1 migrations apply saas-platform-db --remote --batch
