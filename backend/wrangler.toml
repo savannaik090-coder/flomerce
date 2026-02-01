@@ -1,31 +1,20 @@
 # Cloudflare Workers Configuration
 # Firebase to Cloudflare Migration
-# Version: 1.0
+# Version: 1.1
 
 name = "saas-platform"
 main = "workers/index.js"
 compatibility_date = "2024-01-01"
 
 [vars]
-ENVIRONMENT = "development"
+ENVIRONMENT = "production"
 
 [[d1_databases]]
 binding = "DB"
 database_name = "saas-platform-db"
-database_id = "TO_BE_CREATED"
+database_id = "REPLACE_WITH_D1_ID"
+migrations_dir = "migrations"
 
 [[r2_buckets]]
-binding = "STORAGE"
-bucket_name = "saas-platform-storage"
-
-[env.production]
-vars = { ENVIRONMENT = "production" }
-
-[[env.production.d1_databases]]
-binding = "DB"
-database_name = "saas-platform-db"
-database_id = "TO_BE_CREATED"
-
-[[env.production.r2_buckets]]
 binding = "STORAGE"
 bucket_name = "saas-platform-storage"
