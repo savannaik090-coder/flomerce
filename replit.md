@@ -131,7 +131,14 @@ Main tables:
 - `RESEND_API_KEY` or `SENDGRID_API_KEY` - Email service
 - `FROM_EMAIL` - Sender email address
 
-## Migration Status
+## Git & Deployment Strategy
+
+- **Git Remote**: `git@github.com:savannaik090-coder/Fluxein.git`
+- **Branch**: `fluxe`
+- **Deployment**:
+  - **Backend**: Cloudflare Workers (via `backend/wrangler.toml`)
+  - **Frontend**: Cloudflare Pages (via manual GitHub connection in Cloudflare Dashboard)
+- **Note**: The user preferred using SSH keys over the native GitHub connector. The SSH public key from Replit must be added to GitHub account settings for persistent access.
 
 **Completed:**
 - [x] Backend folder structure created
