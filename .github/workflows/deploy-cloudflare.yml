@@ -7,17 +7,11 @@ on:
       - master
       - fluxe
   workflow_dispatch:
-    inputs:
-      setup_resources:
-        description: 'Create D1 database and R2 bucket if they do not exist'
-        required: false
-        default: 'false'
-        type: boolean
 
 jobs:
-  setup-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
-    name: Setup Cloudflare Resources & Deploy
+    name: Deploy to Cloudflare Workers
     
     steps:
       - name: Checkout repository
@@ -28,78 +22,19 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install Wrangler
-        run: npm install -g wrangler
-
-      - name: Check/Create D1 Database
-        id: d1_setup
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - name: Install Dependencies
         run: |
           cd backend
-          
-          echo "Checking for existing D1 database..."
-          DB_LIST=$(wrangler d1 list --json 2>/dev/null || echo "[]")
-          
-          DB_ID=$(echo "$DB_LIST" | jq -r '.[] | select(.name=="saas-platform-db") | .uuid' 2>/dev/null || echo "")
-          
-          if [ -z "$DB_ID" ] || [ "$DB_ID" == "null" ]; then
-            echo "Creating D1 database: saas-platform-db"
-            CREATE_OUTPUT=$(wrangler d1 create saas-platform-db --json 2>&1)
-            DB_ID=$(echo "$CREATE_OUTPUT" | jq -r '.uuid' 2>/dev/null || echo "")
-            
-            if [ -z "$DB_ID" ] || [ "$DB_ID" == "null" ]; then
-              DB_ID=$(echo "$CREATE_OUTPUT" | grep -oP 'uuid["\s:]+\K[a-f0-9-]+' | head -1)
-            fi
-            echo "Created D1 database with ID: $DB_ID"
-          else
-            echo "D1 database already exists with ID: $DB_ID"
-          fi
-          
-          echo "d1_id=$DB_ID" >> $GITHUB_OUTPUT
-
-      - name: Check/Create R2 Bucket
-        id: r2_setup
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: |
-          cd backend
-          
-          echo "Checking for existing R2 bucket..."
-          BUCKET_LIST=$(wrangler r2 bucket list --json 2>/dev/null || echo "[]")
-          
-          BUCKET_EXISTS=$(echo "$BUCKET_LIST" | jq -r '.[] | select(.name=="saas-platform-storage") | .name' 2>/dev/null || echo "")
-          
-          if [ -z "$BUCKET_EXISTS" ] || [ "$BUCKET_EXISTS" == "null" ]; then
-            echo "Creating R2 bucket: saas-platform-storage"
-            wrangler r2 bucket create saas-platform-storage
-            echo "Created R2 bucket: saas-platform-storage"
-          else
-            echo "R2 bucket already exists: saas-platform-storage"
-          fi
-
-      - name: Update wrangler.toml with D1 ID
-        env:
-          D1_DATABASE_ID: ${{ steps.d1_setup.outputs.d1_id }}
-        run: |
-          cd backend
-          if [ -n "$D1_DATABASE_ID" ] && [ "$D1_DATABASE_ID" != "null" ]; then
-            sed -i "s/database_id = \"REPLACE_WITH_D1_ID\"/database_id = \"$D1_DATABASE_ID\"/" wrangler.toml
-            sed -i "s/database_id = \"[a-f0-9-]*\"/database_id = \"$D1_DATABASE_ID\"/" wrangler.toml
-            echo "Updated wrangler.toml with D1 ID: $D1_DATABASE_ID"
-            cat wrangler.toml
-          fi
+          npm install
 
       - name: Run D1 Migrations
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: |
-          cd backend
-          echo "Running D1 migrations..."
-          wrangler d1 migrations apply DB --remote || echo "Migrations may have already been applied"
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: 'backend'
+          command: d1 migrations apply DB --remote
+        continue-on-error: true
 
       - name: Deploy Cloudflare Worker
         uses: cloudflare/wrangler-action@v3
@@ -107,23 +42,17 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: 'backend'
-          secrets: |
-            RAZORPAY_KEY_ID
-            RAZORPAY_KEY_SECRET
-            JWT_SECRET
-            EMAIL_API_KEY
+          command: deploy
         env:
-          RAZORPAY_KEY_ID: ${{ secrets.RAZORPAY_KEY_ID }}
-          RAZORPAY_KEY_SECRET: ${{ secrets.RAZORPAY_KEY_SECRET }}
-          JWT_SECRET: ${{ secrets.JWT_SECRET }}
-          EMAIL_API_KEY: ${{ secrets.EMAIL_API_KEY }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 
       - name: Deployment Summary
         run: |
           echo "============================================"
           echo "Deployment Complete!"
           echo "============================================"
-          echo "D1 Database ID: ${{ steps.d1_setup.outputs.d1_id }}"
-          echo "R2 Bucket: saas-platform-storage"
+          echo "D1 Database: saas-platform-db"
+          echo "D1 Database ID: bbddf99e-dd63-4ace-b9d2-274c42404d65"
+          echo "R2 Bucket: saas-platform-s"
           echo "Worker: saas-platform"
           echo "============================================"
