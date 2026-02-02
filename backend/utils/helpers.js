@@ -24,17 +24,30 @@ export function generateSubdomain(brandName) {
     .substring(0, 30);
 }
 
-export function jsonResponse(data, status = 200) {
+export function jsonResponse(data, status = 200, request = null) {
+  const origin = request ? request.headers.get('Origin') : null;
+  const allowedOrigin = getAllowedOrigin(origin);
+  
   return new Response(JSON.stringify(data), {
     status,
     headers: {
       'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': 'https://fluxe-8x1.pages.dev',
+      'Access-Control-Allow-Origin': allowedOrigin,
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Session-ID',
       'Access-Control-Allow-Credentials': 'true',
     },
   });
+}
+
+function getAllowedOrigin(origin) {
+  if (!origin) return 'https://fluxe.in';
+  if (origin === 'https://fluxe.in') return origin;
+  if (origin.endsWith('.fluxe.in')) return origin;
+  if (origin === 'https://fluxe-8x1.pages.dev') return origin;
+  if (origin.endsWith('.pages.dev')) return origin;
+  if (origin.includes('localhost')) return origin;
+  return 'https://fluxe.in';
 }
 
 export function errorResponse(message, status = 400, code = 'ERROR') {
@@ -46,9 +59,10 @@ export function successResponse(data, message = 'Success') {
 }
 
 export function corsHeaders(request) {
-  const origin = request ? request.headers.get('Origin') : 'https://fluxe-8x1.pages.dev';
+  const origin = request ? request.headers.get('Origin') : null;
+  const allowedOrigin = getAllowedOrigin(origin);
   return {
-    'Access-Control-Allow-Origin': origin || 'https://fluxe-8x1.pages.dev',
+    'Access-Control-Allow-Origin': allowedOrigin,
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Session-ID',
     'Access-Control-Allow-Credentials': 'true',

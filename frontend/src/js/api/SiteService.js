@@ -95,8 +95,7 @@ class SiteService {
   }
 
   getSiteUrl(subdomain) {
-    const baseHost = window.location.hostname.split('.').slice(-2).join('.');
-    return `https://${subdomain}.${baseHost}`;
+    return `https://${subdomain}.fluxe.in`;
   }
 }
 
