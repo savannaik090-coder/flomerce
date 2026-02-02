@@ -1,6 +1,7 @@
-# Cloudflare Workers Configuratio
-# Firebase to Cloudflare Migratio
+# Cloudflare Workers Configuration
+# Firebase to Cloudflare Migration
 # Version: 1.3
+
 
 name = "saas-platform"
 main = "workers/index.js"
