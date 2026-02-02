@@ -186,6 +186,14 @@ Main tables:
 
 ## Recent Changes
 
+- **February 2, 2026**: Dashboard plan popup and dynamic categories fix
+  - Created `backend/workers/users-worker.js` for `/api/users/profile` and `/api/users/subscription` endpoints
+  - Added `/api/users` route to `backend/workers/index.js`
+  - Fixed `dashboard.html` to show plan selection overlay when user has no active subscription
+  - Updated `sites-worker.js` to accept dynamic categories array from frontend during site creation
+  - Added `createUserCategories()` function to process user-defined category names with proper slugs
+  - Generated SSH deploy key at `~/.ssh/github_deploy_key` for GitHub access
+
 - **February 2, 2026**: Cloudflare custom domain migration completed
   - Updated API base URL in `frontend/src/js/api/config.js` to use `https://fluxe.in`
   - Updated CORS settings in `backend/utils/helpers.js` to allow fluxe.in and subdomains
