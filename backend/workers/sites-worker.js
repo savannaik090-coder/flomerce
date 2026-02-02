@@ -68,10 +68,10 @@ async function getSite(env, user, siteId) {
 
 async function createSite(request, env, user) {
   try {
-    const { brandName, category, templateId, logoUrl, phone, email, address, primaryColor, secondaryColor } = await request.json();
+    const { brandName, category, categories, templateId, logoUrl, phone, email, address, primaryColor, secondaryColor } = await request.json();
 
-    if (!brandName || !category) {
-      return errorResponse('Brand name and category are required');
+    if (!brandName) {
+      return errorResponse('Brand name is required');
     }
 
     const subdomain = generateSubdomain(brandName);
@@ -124,7 +124,11 @@ async function createSite(request, env, user) {
       secondaryColor || '#ffffff'
     ).run();
 
-    await createDefaultCategories(env, siteId, category);
+    if (categories && categories.length > 0) {
+      await createUserCategories(env, siteId, categories);
+    } else if (category) {
+      await createDefaultCategories(env, siteId, category);
+    }
 
     return successResponse({ id: siteId, subdomain }, 'Site created successfully');
   } catch (error) {
@@ -175,6 +179,23 @@ async function createDefaultCategories(env, siteId, businessCategory) {
          VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`
       ).bind(generateId(), siteId, childName, childSlug, parentId, order++).run();
     }
+  }
+}
+
+async function createUserCategories(env, siteId, categoryNames) {
+  let order = 0;
+  for (const categoryName of categoryNames) {
+    const slug = categoryName
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-');
+    
+    await env.DB.prepare(
+      `INSERT INTO categories (id, site_id, name, slug, display_order, created_at)
+       VALUES (?, ?, ?, ?, ?, datetime('now'))`
+    ).bind(generateId(), siteId, categoryName, slug, order++).run();
   }
 }
 

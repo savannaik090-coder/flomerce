@@ -341,38 +341,50 @@
 
         async function loadUserData() {
             try {
-                const response = await fetch(`/api/users/profile`);
+                const token = localStorage.getItem('auth_token');
+                const response = await fetch(`/api/users/profile`, {
+                    headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+                });
                 if (response.ok) {
-                    currentUserData = await response.json();
+                    const result = await response.json();
+                    currentUserData = result.data || result;
                     
                     if (document.getElementById('user-display-name')) document.getElementById('user-display-name').innerText = currentUserData.name || 'No Name Set';
                     if (document.getElementById('user-display-email')) document.getElementById('user-display-email').innerText = currentUserData.email;
 
-                    updatePlansUI(currentUserData.plan);
-                    if (document.getElementById('account-plan-name')) document.getElementById('account-plan-name').innerText = (currentUserData.plan || 'NONE').toUpperCase();
+                    const plan = currentUserData.plan;
+                    const status = currentUserData.status;
+                    
+                    if (!plan || status === 'none' || status === 'expired') {
+                        showPlanSelectionOverlay('Select a plan to start creating websites');
+                        return;
+                    }
+
+                    updatePlansUI(plan);
+                    if (document.getElementById('account-plan-name')) document.getElementById('account-plan-name').innerText = (plan || 'NONE').toUpperCase();
 
                     const startDate = currentUserData.trialStartDate ? new Date(currentUserData.trialStartDate) : new Date();
                     const options = { year: 'numeric', month: 'short', day: 'numeric' };
                     if (document.getElementById('account-plan-start')) document.getElementById('account-plan-start').innerText = startDate.toLocaleDateString(undefined, options);
 
                     const billingCycle = currentUserData.billingCycle || 'monthly';
-                    const status = currentUserData.status;
 
                     const now = new Date();
                     let durationDays = 30;
+                    if (plan === 'trial') durationDays = 7;
                     if (billingCycle === '6months') durationDays = 180;
                     if (billingCycle === 'yearly') durationDays = 365;
 
-                    const endDate = new Date(startDate);
-                    endDate.setDate(endDate.getDate() + durationDays);
+                    const endDate = currentUserData.trialEndDate ? new Date(currentUserData.trialEndDate) : new Date(startDate.getTime() + durationDays * 24 * 60 * 60 * 1000);
                     if (document.getElementById('account-plan-end')) document.getElementById('account-plan-end').innerText = endDate.toLocaleDateString(undefined, options);
 
                     const msUsed = now.getTime() - startDate.getTime();
                     const daysUsed = msUsed / (1000 * 60 * 60 * 24);
-                    const daysRemaining = Math.max(0, Math.ceil(durationDays - daysUsed));
+                    const daysRemaining = Math.max(0, Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
                     
                     if (now > endDate) {
-                        await expirePlan(authService.getCurrentUser()?.uid, `Your ${billingCycle} plan has expired. Please renew your subscription to continue using your websites.`);
+                        await expirePlan(authService.getCurrentUser()?.id, `Your ${plan === 'trial' ? '7-day trial' : billingCycle + ' plan'} has expired. Please renew your subscription to continue using your websites.`);
+                        showPlanSelectionOverlay('Your plan has expired. Please choose a new plan to continue.');
                     } else {
                         let statusText = daysRemaining >= 30 ? `${Math.floor(daysRemaining/30)} mo left` : `${daysRemaining} days left`;
                         if (document.getElementById('account-plan-status')) document.getElementById('account-plan-status').innerText = 'Active';
