@@ -514,20 +514,54 @@
                 <style>
                     #plan-selection-overlay::-webkit-scrollbar { width: 8px; }
                     #plan-selection-overlay::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
-                    .plans-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; width: 100%; max-width: 1100px; margin-bottom: 40px; }
+                    .plans-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; width: 100%; max-width: 1200px; margin-bottom: 40px; }
+                    .plan-card-overlay { background:#1e293b; padding:30px; border-radius:16px; border:1px solid #334155; text-align:center; display:flex; flex-direction:column; }
+                    .plan-card-overlay.popular { border-color: #6366f1; position: relative; }
+                    .popular-badge { position:absolute; top:-12px; left:50%; transform:translateX(-50%); background:#6366f1; color:white; padding:2px 12px; border-radius:12px; font-size:0.75rem; font-weight:700; }
                 </style>
                 <h1 style="margin-bottom:10px; text-align:center;">Choose Your Plan</h1>
-                <p style="margin-bottom:20px; color:#94a3b8; text-align:center;">${message}</p>
+                <p style="margin-bottom:30px; color:#94a3b8; text-align:center;">${message}</p>
                 <div class="plans-container">
-                    <div class="plan-card" style="background:#1e293b; padding:30px; border-radius:16px; border:1px solid #334155; text-align:center; display:flex; flex-direction:column;">
-                        <h3 style="color:#94a3b8;">Free Trial</h3>
+                    <div class="plan-card-overlay">
+                        <h3 style="color:#94a3b8; margin-bottom:10px;">Free Trial</h3>
                         <p style="font-size: 2rem; font-weight: bold; margin:15px 0;">7 Days</p>
-                        <button class="btn btn-primary start-trial-btn" style="width:100%; padding:12px; background:#475569; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">Start 7-Day Trial</button>
+                        <ul style="list-style:none; padding:0; margin-bottom:20px; text-align:left; font-size:0.875rem; color:#94a3b8;">
+                            <li style="margin-bottom:0.5rem;">✓ 1 Website</li>
+                            <li style="margin-bottom:0.5rem;">✓ Basic Templates</li>
+                            <li>✓ Email Support</li>
+                        </ul>
+                        <button class="btn start-trial-btn" style="width:100%; padding:12px; background:#475569; border:none; border-radius:8px; cursor:pointer; font-weight:bold; color:white; margin-top:auto;">Start Free Trial</button>
                     </div>
-                    <div class="plan-card" style="background:#1e293b; padding:30px; border-radius:16px; border:1px solid #334155; text-align:center; display:flex; flex-direction:column;">
-                        <h3>Basic</h3>
+                    <div class="plan-card-overlay">
+                        <h3 style="margin-bottom:10px;">Basic</h3>
                         <p style="font-size: 2rem; font-weight: bold; margin:15px 0;">₹99<span style="font-size:0.9rem; color:#94a3b8;">/mo</span></p>
-                        <button class="btn btn-primary selection-upgrade-btn" data-plan="basic" style="width:100%; padding:12px; border-radius:8px; cursor:pointer; font-weight:bold;">Choose Basic</button>
+                        <ul style="list-style:none; padding:0; margin-bottom:20px; text-align:left; font-size:0.875rem; color:#94a3b8;">
+                            <li style="margin-bottom:0.5rem;">✓ 1 Website</li>
+                            <li style="margin-bottom:0.5rem;">✓ Standard Templates</li>
+                            <li>✓ 24/7 Support</li>
+                        </ul>
+                        <button class="btn btn-primary selection-upgrade-btn" data-plan="basic" style="width:100%; padding:12px; border-radius:8px; cursor:pointer; font-weight:bold; margin-top:auto;">Choose Basic</button>
+                    </div>
+                    <div class="plan-card-overlay popular">
+                        <span class="popular-badge">POPULAR</span>
+                        <h3 style="margin-bottom:10px;">Premium</h3>
+                        <p style="font-size: 2rem; font-weight: bold; margin:15px 0;">₹299<span style="font-size:0.9rem; color:#94a3b8;">/mo</span></p>
+                        <ul style="list-style:none; padding:0; margin-bottom:20px; text-align:left; font-size:0.875rem; color:#94a3b8;">
+                            <li style="margin-bottom:0.5rem;">✓ 3 Websites</li>
+                            <li style="margin-bottom:0.5rem;">✓ All Templates</li>
+                            <li>✓ Priority Support</li>
+                        </ul>
+                        <button class="btn btn-primary selection-upgrade-btn" data-plan="premium" style="width:100%; padding:12px; border-radius:8px; cursor:pointer; font-weight:bold; margin-top:auto;">Choose Premium</button>
+                    </div>
+                    <div class="plan-card-overlay">
+                        <h3 style="margin-bottom:10px;">Pro</h3>
+                        <p style="font-size: 2rem; font-weight: bold; margin:15px 0;">₹999<span style="font-size:0.9rem; color:#94a3b8;">/mo</span></p>
+                        <ul style="list-style:none; padding:0; margin-bottom:20px; text-align:left; font-size:0.875rem; color:#94a3b8;">
+                            <li style="margin-bottom:0.5rem;">✓ Unlimited Websites</li>
+                            <li style="margin-bottom:0.5rem;">✓ Custom Domain Ready</li>
+                            <li>✓ Dedicated Manager</li>
+                        </ul>
+                        <button class="btn btn-primary selection-upgrade-btn" data-plan="pro" style="width:100%; padding:12px; border-radius:8px; cursor:pointer; font-weight:bold; margin-top:auto;">Choose Pro</button>
                     </div>
                 </div>
                 <button id="logout-btn-selection" style="background:transparent; border:none; color:#94a3b8; cursor:pointer; text-decoration:underline; font-size:0.9rem;">Logout from Account</button>
@@ -597,6 +631,57 @@
             const res = await siteService.createSite(siteData);
             if (res.success) { closeModal(); loadSites(); }
             else alert(res.error);
+        });
+
+        // Duration selector logic for billing section
+        let selectedDuration = 'monthly';
+        document.querySelectorAll('.dur-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                selectedDuration = btn.dataset.duration;
+                document.querySelectorAll('.dur-btn').forEach(b => {
+                    b.classList.remove('active');
+                    b.style.background = 'transparent';
+                    b.style.color = 'var(--text-muted)';
+                });
+                btn.classList.add('active');
+                btn.style.background = 'var(--primary)';
+                btn.style.color = 'white';
+                
+                document.querySelectorAll('.display-price').forEach(priceEl => {
+                    const price = priceEl.dataset[selectedDuration];
+                    let suffix = '/mo';
+                    if (selectedDuration === '6months') suffix = '/6mo';
+                    if (selectedDuration === 'yearly') suffix = '/yr';
+                    priceEl.innerHTML = `₹${price}<span style="font-size:0.875rem; color:var(--text-muted); font-weight: 500;">${suffix}</span>`;
+                });
+            });
+        });
+
+        // Upgrade buttons in billing section
+        document.querySelectorAll('.upgrade-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                if (btn.disabled) return;
+                const plan = btn.dataset.plan;
+                console.log('Upgrading to:', plan, 'with duration:', selectedDuration);
+                try {
+                    const res = await paymentService.initiateSubscriptionPayment(plan, selectedDuration, { 
+                        userName: currentUserData?.name || 'User', 
+                        userEmail: currentUserData?.email || '' 
+                    });
+                    if (res.success) {
+                        await apiRequest('/api/users/subscription', { 
+                            method: 'PATCH', 
+                            body: JSON.stringify({ plan, billingCycle: selectedDuration, status: 'active' }) 
+                        });
+                        location.reload();
+                    } else if (res.error) {
+                        alert('Payment failed: ' + res.error);
+                    }
+                } catch (e) {
+                    console.error('Upgrade error:', e);
+                    alert('Failed to process upgrade. Please try again.');
+                }
+            });
         });
     </script>
 </body>
