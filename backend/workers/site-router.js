@@ -4,13 +4,25 @@ export async function handleSiteRouting(request, env) {
   const url = new URL(request.url);
   const hostname = url.hostname;
 
+  // Split hostname to identify subdomain
+  // Case 1: <subdomain>.fluxe.in -> [subdomain, fluxe, in]
+  // Case 2: fluxe.in -> [fluxe, in]
+  // Case 3: <subdomain>.fluxe-8x1.pages.dev -> [subdomain, fluxe-8x1, pages, dev]
   const hostParts = hostname.split('.');
   let subdomain = null;
 
-  if (hostParts.length >= 3 && hostParts[0] !== 'www') {
-    subdomain = hostParts[0];
+  // Detect subdomain for fluxe.in or pages.dev
+  if (hostname.endsWith('fluxe.in')) {
+    if (hostParts.length >= 3 && hostParts[0] !== 'www') {
+      subdomain = hostParts[0];
+    }
+  } else if (hostname.endsWith('pages.dev')) {
+    if (hostParts.length >= 4) {
+      subdomain = hostParts[0];
+    }
   }
 
+  // Fallback to query param for manual preview
   const subdomainParam = url.searchParams.get('subdomain');
   if (subdomainParam) {
     subdomain = subdomainParam;
@@ -201,13 +213,22 @@ export async function resolveSiteFromRequest(request, env) {
   const url = new URL(request.url);
   const hostname = url.hostname;
 
+  // Split hostname to identify subdomain
   const hostParts = hostname.split('.');
   let subdomain = null;
 
-  if (hostParts.length >= 3 && hostParts[0] !== 'www') {
-    subdomain = hostParts[0];
+  // Detect subdomain for fluxe.in or pages.dev
+  if (hostname.endsWith('fluxe.in')) {
+    if (hostParts.length >= 3 && hostParts[0] !== 'www') {
+      subdomain = hostParts[0];
+    }
+  } else if (hostname.endsWith('pages.dev')) {
+    if (hostParts.length >= 4) {
+      subdomain = hostParts[0];
+    }
   }
 
+  // Fallback to query param for manual preview
   const subdomainParam = url.searchParams.get('subdomain');
   if (subdomainParam) {
     subdomain = subdomainParam;
