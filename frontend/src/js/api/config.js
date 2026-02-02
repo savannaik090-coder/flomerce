@@ -1,4 +1,4 @@
-const API_BASE_URL = '';
+const API_BASE_URL = 'https://fluxe.in';
 
 export const config = {
   apiBaseUrl: API_BASE_URL,

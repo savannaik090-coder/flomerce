@@ -81,10 +81,11 @@ async function createSite(request, env, user) {
       'SELECT id FROM sites WHERE subdomain = ?'
     ).bind(subdomain).first();
 
-    let finalSubdomain = subdomain;
     if (existingSubdomain) {
-      finalSubdomain = `${subdomain}-${Date.now().toString(36)}`;
+      return errorResponse('This subdomain is already taken. Please choose a different brand name.', 400, 'SUBDOMAIN_TAKEN');
     }
+
+    const finalSubdomain = subdomain;
 
     const siteId = generateId();
     await env.DB.prepare(
