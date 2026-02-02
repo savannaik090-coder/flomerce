@@ -131,6 +131,22 @@ Main tables:
 - `RESEND_API_KEY` or `SENDGRID_API_KEY` - Email service
 - `FROM_EMAIL` - Sender email address
 
+## Custom Domain Configuration
+
+**Production Domains:**
+- **Main Frontend**: `https://fluxe.in`
+- **Backend API**: `https://fluxe.in/api/*`
+- **User Subdomains**: `https://*.fluxe.in/*` (e.g., `nazakat.fluxe.in`)
+
+**Cloudflare URLs:**
+- Frontend (Pages): `https://fluxe-8x1.pages.dev`
+- Backend (Workers): `https://saas-platform.savannaik090.workers.dev`
+
+**Routing:**
+- All `/api/*` requests → Cloudflare Workers
+- Wildcard subdomains → Workers site-router.js
+- Main domain → Cloudflare Pages static frontend
+
 ## Git & Deployment Strategy
 
 - **Git Remote**: `git@github.com:savannaik090-coder/Fluxein.git`
@@ -138,7 +154,7 @@ Main tables:
 - **Deployment**:
   - **Backend**: Cloudflare Workers (via `backend/wrangler.toml`)
   - **Frontend**: Cloudflare Pages (via manual GitHub connection in Cloudflare Dashboard)
-- **Note**: The user preferred using SSH keys over the native GitHub connector. The SSH public key from Replit must be added to GitHub account settings for persistent access.
+- **Note**: SSH key configured at `~/.ssh/id_ed25519_github`. Add the public key to GitHub account settings for push access.
 
 **Completed:**
 - [x] Backend folder structure created
@@ -169,6 +185,14 @@ Main tables:
 - [ ] Testing and verification
 
 ## Recent Changes
+
+- **February 2, 2026**: Cloudflare custom domain migration completed
+  - Updated API base URL in `frontend/src/js/api/config.js` to use `https://fluxe.in`
+  - Updated CORS settings in `backend/utils/helpers.js` to allow fluxe.in and subdomains
+  - Replaced all `.netlify/functions` references with `/api` endpoints
+  - Updated site URL generation to use `*.fluxe.in` for user subdomains
+  - Added custom domain routes in `backend/wrangler.toml`
+  - Generated SSH key for GitHub push access
 
 - **February 1, 2026**: Custom domain setup guide created
   - Created comprehensive `docs/CUSTOM_DOMAIN_SETUP.md` for fluxe.in setup
