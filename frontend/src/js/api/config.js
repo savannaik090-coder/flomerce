@@ -1,36 +1,4 @@
-function getAPIBaseURL() {
-  const hostname = window.location.hostname;
-  
-  // Local development
-  if (hostname === 'localhost' || hostname === '127.0.0.1') {
-    return 'http://localhost:8787';
-  }
-  
-  // Replit development environment
-  if (hostname.includes('replit.dev') || hostname.includes('repl.co')) {
-    return '';
-  }
-  
-  // Production: Main domain fluxe.in
-  if (hostname === 'fluxe.in') {
-    return 'https://fluxe.in';
-  }
-  
-  // Production: Subdomains like nazakat.fluxe.in
-  if (hostname.endsWith('.fluxe.in')) {
-    return 'https://fluxe.in';
-  }
-  
-  // Cloudflare Pages default URL
-  if (hostname.includes('pages.dev')) {
-    return 'https://saas-platform.savannaik090.workers.dev';
-  }
-  
-  // Fallback - use relative (same origin)
-  return '';
-}
-
-const API_BASE_URL = getAPIBaseURL();
+const API_BASE_URL = '';
 
 export const config = {
   apiBaseUrl: API_BASE_URL,

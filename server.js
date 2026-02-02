@@ -730,6 +730,203 @@ app.get('/api/health', (req, res) => {
   }
 });
 
+app.get('/api/site', (req, res) => {
+  try {
+    const subdomain = req.query.subdomain;
+    if (!subdomain) {
+      return errorResponse(res, 'Subdomain is required');
+    }
+
+    const site = db.prepare(`
+      SELECT s.*, u.email as owner_email 
+      FROM sites s 
+      JOIN users u ON s.user_id = u.id 
+      WHERE s.subdomain = ? AND s.is_active = 1
+    `).get(subdomain);
+
+    if (!site) {
+      return errorResponse(res, 'Site not found', 404);
+    }
+
+    const categories = db.prepare(
+      'SELECT * FROM categories WHERE site_id = ? ORDER BY display_order'
+    ).all(site.id);
+
+    successResponse(res, {
+      id: site.id,
+      subdomain: site.subdomain,
+      brandName: site.brand_name,
+      category: site.category,
+      templateId: site.template_id,
+      logoUrl: site.logo_url,
+      faviconUrl: site.favicon_url,
+      primaryColor: site.primary_color,
+      secondaryColor: site.secondary_color,
+      phone: site.phone,
+      email: site.email,
+      address: site.address,
+      socialLinks: site.social_links ? JSON.parse(site.social_links) : {},
+      settings: site.settings ? JSON.parse(site.settings) : {},
+      categories: categories,
+    });
+  } catch (error) {
+    console.error('Get site info error:', error);
+    errorResponse(res, 'Failed to fetch site info', 500);
+  }
+});
+
+function replacePlaceholders(html, siteData) {
+  const replacements = {
+    '{{brandName}}': siteData.brandName || '',
+    '{{logoUrl}}': siteData.logoUrl || '/images/logo.png',
+    '{{faviconUrl}}': siteData.faviconUrl || '/favicon.ico',
+    '{{primaryColor}}': siteData.primaryColor || '#000000',
+    '{{secondaryColor}}': siteData.secondaryColor || '#ffffff',
+    '{{phone}}': siteData.phone || '',
+    '{{email}}': siteData.email || '',
+    '{{address}}': siteData.address || '',
+    '{{siteId}}': siteData.id || '',
+    '{{subdomain}}': siteData.subdomain || '',
+    '{{whatsappNumber}}': siteData.phone ? siteData.phone.replace(/\D/g, '') : '',
+    '{{instagramUrl}}': siteData.socialLinks?.instagram || '#',
+    '{{facebookUrl}}': siteData.socialLinks?.facebook || '#',
+    '{{twitterUrl}}': siteData.socialLinks?.twitter || '#',
+    '{{youtubeUrl}}': siteData.socialLinks?.youtube || '#',
+  };
+
+  let result = html;
+  for (const [placeholder, value] of Object.entries(replacements)) {
+    result = result.split(placeholder).join(value);
+  }
+
+  if (siteData.categories && siteData.categories.length > 0) {
+    const navCategories = siteData.categories
+      .filter(c => !c.parent_id)
+      .map(c => `<li><a href="/site/${siteData.subdomain}/category/${c.slug}">${c.name}</a></li>`)
+      .join('');
+    result = result.replace('{{navigationCategories}}', navCategories);
+  } else {
+    result = result.replace('{{navigationCategories}}', '');
+  }
+
+  result = result.replace(/\{\{siteData\}\}/g, JSON.stringify(siteData));
+
+  return result;
+}
+
+app.get('/site/:subdomain', (req, res) => {
+  try {
+    const { subdomain } = req.params;
+    
+    const site = db.prepare(`
+      SELECT * FROM sites WHERE subdomain = ? AND is_active = 1
+    `).get(subdomain);
+
+    if (!site) {
+      return res.status(404).send('<h1>Site not found</h1><p>The requested site does not exist.</p>');
+    }
+
+    const categories = db.prepare(
+      'SELECT * FROM categories WHERE site_id = ? ORDER BY display_order'
+    ).all(site.id);
+
+    const siteData = {
+      id: site.id,
+      subdomain: site.subdomain,
+      brandName: site.brand_name,
+      category: site.category,
+      templateId: site.template_id || 'template1',
+      logoUrl: site.logo_url,
+      faviconUrl: site.favicon_url,
+      primaryColor: site.primary_color,
+      secondaryColor: site.secondary_color,
+      phone: site.phone,
+      email: site.email,
+      address: site.address,
+      socialLinks: site.social_links ? JSON.parse(site.social_links) : {},
+      settings: site.settings ? JSON.parse(site.settings) : {},
+      categories: categories,
+    };
+
+    const templatePath = path.join(__dirname, 'frontend', 'templates', siteData.templateId, 'index.html');
+    
+    if (!fs.existsSync(templatePath)) {
+      return res.status(404).send('<h1>Template not found</h1>');
+    }
+
+    let html = fs.readFileSync(templatePath, 'utf8');
+    html = replacePlaceholders(html, siteData);
+
+    res.setHeader('Content-Type', 'text/html');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.send(html);
+  } catch (error) {
+    console.error('Site preview error:', error);
+    res.status(500).send('<h1>Internal Server Error</h1><p>Failed to load site.</p>');
+  }
+});
+
+app.get('/site/:subdomain/*', (req, res) => {
+  try {
+    const { subdomain } = req.params;
+    const pagePath = req.params[0] || 'index.html';
+    
+    const site = db.prepare(`
+      SELECT * FROM sites WHERE subdomain = ? AND is_active = 1
+    `).get(subdomain);
+
+    if (!site) {
+      return res.status(404).send('<h1>Site not found</h1>');
+    }
+
+    const categories = db.prepare(
+      'SELECT * FROM categories WHERE site_id = ? ORDER BY display_order'
+    ).all(site.id);
+
+    const siteData = {
+      id: site.id,
+      subdomain: site.subdomain,
+      brandName: site.brand_name,
+      category: site.category,
+      templateId: site.template_id || 'template1',
+      logoUrl: site.logo_url,
+      faviconUrl: site.favicon_url,
+      primaryColor: site.primary_color,
+      secondaryColor: site.secondary_color,
+      phone: site.phone,
+      email: site.email,
+      address: site.address,
+      socialLinks: site.social_links ? JSON.parse(site.social_links) : {},
+      settings: site.settings ? JSON.parse(site.settings) : {},
+      categories: categories,
+    };
+
+    const templateDir = path.join(__dirname, 'frontend', 'templates', siteData.templateId);
+    let filePath = path.join(templateDir, pagePath);
+    
+    if (!filePath.endsWith('.html') && !path.extname(filePath)) {
+      filePath += '.html';
+    }
+
+    if (filePath.endsWith('.html') && fs.existsSync(filePath)) {
+      let html = fs.readFileSync(filePath, 'utf8');
+      html = replacePlaceholders(html, siteData);
+      res.setHeader('Content-Type', 'text/html');
+      res.setHeader('Cache-Control', 'no-cache');
+      return res.send(html);
+    }
+
+    if (fs.existsSync(filePath)) {
+      return res.sendFile(filePath);
+    }
+
+    res.status(404).send('<h1>Page not found</h1>');
+  } catch (error) {
+    console.error('Site page error:', error);
+    res.status(500).send('<h1>Internal Server Error</h1>');
+  }
+});
+
 app.use(express.static(path.join(__dirname, 'frontend'), {
   setHeaders: (res) => {
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
@@ -737,7 +934,7 @@ app.use(express.static(path.join(__dirname, 'frontend'), {
 }));
 
 app.get('*', (req, res) => {
-  if (!req.path.startsWith('/api/')) {
+  if (!req.path.startsWith('/api/') && !req.path.startsWith('/site/')) {
     res.sendFile(path.join(__dirname, 'frontend', 'index.html'));
   }
 });
