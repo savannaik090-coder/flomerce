@@ -52,7 +52,27 @@ The D1 database schema includes tables for `users`, `sites`, `products`, `catego
 
 ## Recent Changes (February 2026)
 
-### Site Preview & Production Fixes (Feb 2 - Latest)
+### Static Asset Routing Fix for Subdomains (Feb 2 - Latest)
+**Issue:** When users created subdomain sites (e.g., `shop-name.fluxe.in`), the CSS, JS, and image files weren't loading because the paths weren't being rewritten to the template folder.
+
+**Root Cause:** The HTML templates use relative paths like `css/styles.css` and `js/main.js`. When a subdomain loads these files, the browser requests `shop-name.fluxe.in/css/styles.css`, but the worker wasn't routing these requests to `/templates/template1/css/styles.css`.
+
+**Fix Applied (`backend/workers/site-router.js`):**
+1. Added `isStaticAsset()` function to detect CSS, JS, images, fonts, and data files
+2. Added `getContentType()` function to return proper MIME types for all file types
+3. Added `serveStaticAsset()` function that rewrites paths to `/templates/{templateId}/...`
+4. Modified `handleSiteRouting()` to intercept static asset requests and serve them from the correct template folder
+
+**Supported Asset Types:**
+- CSS: `.css`
+- JavaScript: `.js`, `.map`
+- Images: `.png`, `.jpg`, `.jpeg`, `.gif`, `.svg`, `.webp`, `.ico`
+- Fonts: `.woff`, `.woff2`, `.ttf`, `.eot`, `.otf`
+- Data: `.json`
+
+**REQUIRES DEPLOYMENT:** Run `wrangler deploy` in the backend folder to apply changes to production.
+
+### Site Preview & Production Fixes (Feb 2)
 **Fixed Issues:**
 1. **Site Preview Routes**: Added `/site/:subdomain` routes to server.js for previewing user-created websites
 2. **Template Static Assets**: Fixed CSS/JS/image serving for template sites with proper URL rewriting
