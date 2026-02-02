@@ -1,4 +1,5 @@
 # Fluxe SaaS Platform
+
 ## Overview
 Fluxe is a SaaS platform that allows users to create their own e-commerce websites with pre-built templates. The main template (template1) is a fully-featured jewellery website with advanced e-commerce capabilities.
 
