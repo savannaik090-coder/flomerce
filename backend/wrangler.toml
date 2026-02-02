@@ -21,6 +21,12 @@ ENVIRONMENT = "production"
 SKIP_EMAIL_VERIFICATION = "true"
 DOMAIN = "fluxe.in"
 
+# IMPORTANT: JWT_SECRET must be set as a secret, not a var!
+# Run this command in the backend folder to set it:
+# wrangler secret put JWT_SECRET
+# Then enter a strong random string (32+ characters)
+# Without JWT_SECRET, user authentication will fail!
+
 # D1 Database Configuration
 # Database: saas-platform-db
 # ID: bbddf99e-dd63-4ace-b9d2-274c42404d65

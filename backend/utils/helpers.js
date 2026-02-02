@@ -42,11 +42,27 @@ export function jsonResponse(data, status = 200, request = null) {
 
 function getAllowedOrigin(origin) {
   if (!origin) return 'https://fluxe.in';
+  
+  // Main production domain
   if (origin === 'https://fluxe.in') return origin;
-  if (origin.endsWith('.fluxe.in')) return origin;
+  
+  // All subdomains of fluxe.in (e.g., https://nazakat.fluxe.in)
+  if (origin.endsWith('.fluxe.in') && origin.startsWith('https://')) return origin;
+  
+  // Cloudflare Pages default URLs
   if (origin === 'https://fluxe-8x1.pages.dev') return origin;
   if (origin.endsWith('.pages.dev')) return origin;
+  
+  // Cloudflare Workers default URL
+  if (origin === 'https://saas-platform.savannaik090.workers.dev') return origin;
+  if (origin.endsWith('.workers.dev')) return origin;
+  
+  // Local development
   if (origin.includes('localhost')) return origin;
+  
+  // Replit development
+  if (origin.includes('replit.dev') || origin.includes('repl.co')) return origin;
+  
   return 'https://fluxe.in';
 }
 

@@ -1,14 +1,32 @@
 function getAPIBaseURL() {
   const hostname = window.location.hostname;
+  
+  // Local development
   if (hostname === 'localhost' || hostname === '127.0.0.1') {
     return 'http://localhost:8787';
   }
-  // For production and subdomains, always use the main domain for API
-  // This ensures that api calls from nazakat.fluxe.in go to fluxe.in/api
+  
+  // Replit development environment
+  if (hostname.includes('replit.dev') || hostname.includes('repl.co')) {
+    return '';
+  }
+  
+  // Production: Main domain fluxe.in
+  if (hostname === 'fluxe.in') {
+    return 'https://fluxe.in';
+  }
+  
+  // Production: Subdomains like nazakat.fluxe.in
   if (hostname.endsWith('.fluxe.in')) {
     return 'https://fluxe.in';
   }
-  // Otherwise use relative (works for fluxe.in and pages.dev)
+  
+  // Cloudflare Pages default URL
+  if (hostname.includes('pages.dev')) {
+    return 'https://saas-platform.savannaik090.workers.dev';
+  }
+  
+  // Fallback - use relative (same origin)
   return '';
 }
 
