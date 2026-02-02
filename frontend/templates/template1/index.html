@@ -522,37 +522,60 @@ background-color: #000 !important;
     <script>
       // Load Dynamic Categories
       if (window.FLUXE_SITE_DATA && window.FLUXE_SITE_DATA.id) {
-        fetch('/api/sites/' + window.FLUXE_SITE_DATA.id)
-          .then(res => res.json())
-          .then(data => {
-            if (data.success && data.data.categories) {
-              const nav = document.getElementById('dynamic-categories-nav');
-              const wrapper = document.getElementById('dynamic-categories-circles');
-              
-              data.data.categories.forEach(cat => {
-                // Add to nav
-                if (nav) {
-                  const li = document.createElement('li');
-                  li.innerHTML = `<a href="/category/${cat.slug}">${cat.name}</a>`;
-                  nav.appendChild(li);
-                }
-                
-                // Add to circles
-                if (wrapper) {
-                  const a = document.createElement('a');
-                  a.href = `/category/${cat.slug}`;
-                  a.className = 'category-circle-item';
-                  a.innerHTML = `
-                    <div class="category-circle">
-                      <img src="${cat.image_url || '/templates/template1/images/product-placeholder.jpg'}" alt="${cat.name}">
-                    </div>
-                    <span class="category-circle-label">${cat.name}</span>
-                  `;
-                  wrapper.appendChild(a);
-                }
-              });
-            }
-          });
+        // First, check if categories are already in window.FLUXE_SITE_DATA
+        if (window.FLUXE_SITE_DATA.categories && window.FLUXE_SITE_DATA.categories.length > 0) {
+          renderDynamicCategories(window.FLUXE_SITE_DATA.categories);
+        } else {
+          // Fallback to API if not present in injected data
+          fetch('/api/sites/' + window.FLUXE_SITE_DATA.id)
+            .then(res => res.json())
+            .then(data => {
+              if (data.success && data.data.categories) {
+                renderDynamicCategories(data.data.categories);
+              }
+            });
+        }
+      }
+
+      function renderDynamicCategories(categories) {
+        const nav = document.getElementById('dynamic-categories-nav');
+        const wrapper = document.getElementById('dynamic-categories-circles');
+        
+        // Only clear if we have dynamic categories to add
+        if (categories.length > 0 && nav) {
+          nav.innerHTML = '';
+        }
+
+        categories.forEach(cat => {
+          // Add to nav
+          if (nav) {
+            const li = document.createElement('li');
+            li.innerHTML = `<a href="/category/${cat.slug}">${cat.name}</a>`;
+            nav.appendChild(li);
+          }
+          
+          // Add to circles
+          if (wrapper) {
+            const a = document.createElement('a');
+            a.href = `/category/${cat.slug}`;
+            a.className = 'category-circle-item';
+            a.innerHTML = `
+              <div class="category-circle">
+                <img src="${cat.image_url || '/templates/template1/images/product-placeholder.jpg'}" alt="${cat.name}">
+              </div>
+              <span class="category-circle-label">${cat.name}</span>
+            `;
+            wrapper.appendChild(a);
+          }
+        });
+
+        // Add default links if nav is still empty or to supplement
+        if (nav && nav.children.length === 0) {
+          nav.innerHTML = `
+            <li><a href="/all-collection" data-translate="all_collections">All Collection</a></li>
+            <li><a href="/featured-collection" data-translate="featured">Featured Collection</a></li>
+          `;
+        }
       }
     </script>
 
