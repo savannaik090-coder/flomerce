@@ -49,3 +49,48 @@ The D1 database schema includes tables for `users`, `sites`, `products`, `catego
 - **Razorpay:** For payment gateway integration.
 - **Resend/SendGrid:** For transactional email services (API keys are required).
 - **GitHub:** For version control and deployment via Cloudflare's integrations.
+
+## Recent Changes (February 2026)
+
+### Production Configuration Fixes
+1. **API URL Configuration** (`frontend/src/js/api/config.js`):
+   - Fixed API base URL handling for all environments (local, Replit, production, subdomains)
+   - Added proper handling for fluxe.in main domain
+   - Added support for Replit development environment
+   - Added fallback for Cloudflare Pages default URLs
+
+2. **CORS Configuration** (`backend/utils/helpers.js`):
+   - Updated `getAllowedOrigin` to properly handle:
+     - Main domain (fluxe.in)
+     - All subdomains (*.fluxe.in)
+     - Cloudflare Pages URLs
+     - Cloudflare Workers URLs
+     - Replit development environment
+
+3. **JWT_SECRET Requirement** (`backend/wrangler.toml`):
+   - Added documentation for setting JWT_SECRET as a Cloudflare secret
+   - This is critical for production authentication to work!
+
+## Deployment Checklist for Production
+
+### Required Secrets (set via `wrangler secret put`)
+Run these commands in the `backend` folder:
+```bash
+wrangler secret put JWT_SECRET      # Required: 32+ character random string
+wrangler secret put RAZORPAY_KEY_ID
+wrangler secret put RAZORPAY_KEY_SECRET
+```
+
+### SSH Key for GitHub
+SSH key has been configured at `~/.ssh/github_key`. To push code:
+1. Add the public key to GitHub (Settings > SSH Keys)
+2. Use `git push` to deploy
+
+## Local Development vs Production
+
+| Feature | Local (Replit) | Production (Cloudflare) |
+|---------|---------------|------------------------|
+| Database | SQLite (better-sqlite3) | Cloudflare D1 |
+| Server | Express.js (server.js) | Cloudflare Workers |
+| Port | 5000 | N/A (edge) |
+| API URL | Relative paths | https://fluxe.in/api/* |
