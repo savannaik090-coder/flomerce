@@ -52,21 +52,7 @@ The D1 database schema includes tables for `users`, `sites`, `products`, `catego
 
 ## Recent Changes (February 2026)
 
-### Dynamic Content & Page Routing Fixes (Feb 2 - Latest)
-**Fixed Issues:**
-1. **Logo Display**: Site logos now render correctly via `{{logo}}` placeholder replacement
-2. **Dynamic Categories**: Categories now load dynamically from `window.FLUXE_SITE_DATA` object
-3. **Page Routing**: Added page mapping to handle hyphenated URLs (about-us → about-us.html)
-
-**Implementation:**
-- All template files now have `window.FLUXE_SITE_DATA = {{siteData}};` injected after `<body>` tag
-- Templates with this feature: index, category, about-us, contact-us, checkout, login, signup, profile
-- Site router replaces `{{siteData}}` with JSON containing site info, categories, and settings
-- Page mapper handles URL-to-file mapping for consistent routing
-
-**REQUIRES DEPLOYMENT:** Run `wrangler deploy` in the backend folder to apply changes to production.
-
-### Static Asset Routing Fix for Subdomains (Feb 2)
+### Static Asset Routing Fix for Subdomains (Feb 2 - Latest)
 **Issue:** When users created subdomain sites (e.g., `shop-name.fluxe.in`), the CSS, JS, and image files weren't loading because the paths weren't being rewritten to the template folder.
 
 **Root Cause:** The HTML templates use relative paths like `css/styles.css` and `js/main.js`. When a subdomain loads these files, the browser requests `shop-name.fluxe.in/css/styles.css`, but the worker wasn't routing these requests to `/templates/template1/css/styles.css`.
