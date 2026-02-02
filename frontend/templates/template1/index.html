@@ -430,7 +430,7 @@ background-color: #000 !important;
     <header class="header">
         <!-- Promo Banner -->
         <div class="promo-banner">
-            <p class="banner-text"></p>
+            <p class="banner-text">Welcome to ${window.FLUXE_SITE_DATA?.brand_name || 'Our Store'}</p>
         </div>
 
 
@@ -485,41 +485,9 @@ background-color: #000 !important;
                 <li class="nav-item"><a href="/new-arrivals" class="nav-link" data-translate="new_arrivals">New Arrivals</a></li>
                 <li class="nav-item dropdown">
                     <a href="#" class="nav-link dropdown-toggle"><span data-translate="categories">Collections</span> <i class="fas fa-chevron-down"></i></a>
-                    <ul class="dropdown-menu">
+                    <ul class="dropdown-menu" id="dynamic-categories-nav">
                         <li><a href="/all-collection" data-translate="all_collections">All Collection</a></li>
                         <li><a href="/featured-collection" data-translate="featured">Featured Collection</a></li>
-                        <li class="dropdown-submenu">
-                            <a href="#"><span data-translate="necklaces">Necklace</span> <i class="fas fa-chevron-right"></i></a>
-                            <ul class="dropdown-submenu-list">
-                                <li><a href="/gold-necklace" data-translate-dynamic>Gold Necklace</a></li>
-                                <li><a href="/silver-necklace" data-translate-dynamic>Silver Necklace</a></li>
-                                <li><a href="/meenakari-necklace" data-translate-dynamic>Meenakari Necklace</a></li>
-                            </ul>
-                        </li>
-                        <li class="dropdown-submenu">
-                            <a href="#"><span data-translate="earrings">Earrings</span> <i class="fas fa-chevron-right"></i></a>
-                            <ul class="dropdown-submenu-list">
-                                <li><a href="/gold-earrings" data-translate-dynamic>Gold Earrings</a></li>
-                                <li><a href="/silver-earrings" data-translate-dynamic>Silver Earrings</a></li>
-                                <li><a href="/meenakari-earrings" data-translate-dynamic>Meenakari Earrings</a></li>
-                            </ul>
-                        </li>
-                        <li class="dropdown-submenu">
-                            <a href="#"><span data-translate="bangles">Bangles</span> <i class="fas fa-chevron-right"></i></a>
-                            <ul class="dropdown-submenu-list">
-                                <li><a href="/gold-bangles" data-translate-dynamic>Gold Bangles</a></li>
-                                <li><a href="/silver-bangles" data-translate-dynamic>Silver Bangles</a></li>
-                                <li><a href="/meenakari-bangles" data-translate-dynamic>Meenakari Bangles</a></li>
-                            </ul>
-                        </li>
-                        <li class="dropdown-submenu">
-                            <a href="#"><span data-translate="rings">Rings</span> <i class="fas fa-chevron-right"></i></a>
-                            <ul class="dropdown-submenu-list">
-                                <li><a href="/gold-rings" data-translate-dynamic>Gold Rings</a></li>
-                                <li><a href="/silver-rings" data-translate-dynamic>Silver Rings</a></li>
-                                <li><a href="/meenakari-rings" data-translate-dynamic>Meenakari Rings</a></li>
-                            </ul>
-                        </li>
                     </ul>
                 </li>
                 <li class="nav-item"><a href="/about-us" class="nav-link" data-translate="about_us">About</a></li>
@@ -548,44 +516,47 @@ background-color: #000 !important;
     <!-- Overlay for menu background -->
     <div class="menu-overlay" id="menuOverlay"></div>
 
+    <script>
+      // Load Dynamic Categories
+      if (window.FLUXE_SITE_DATA && window.FLUXE_SITE_DATA.id) {
+        fetch('/api/sites/' + window.FLUXE_SITE_DATA.id)
+          .then(res => res.json())
+          .then(data => {
+            if (data.success && data.data.categories) {
+              const nav = document.getElementById('dynamic-categories-nav');
+              const wrapper = document.getElementById('dynamic-categories-circles');
+              
+              data.data.categories.forEach(cat => {
+                // Add to nav
+                if (nav) {
+                  const li = document.createElement('li');
+                  li.innerHTML = `<a href="/category/${cat.slug}">${cat.name}</a>`;
+                  nav.appendChild(li);
+                }
+                
+                // Add to circles
+                if (wrapper) {
+                  const a = document.createElement('a');
+                  a.href = `/category/${cat.slug}`;
+                  a.className = 'category-circle-item';
+                  a.innerHTML = `
+                    <div class="category-circle">
+                      <img src="${cat.image_url || '/templates/template1/images/product-placeholder.jpg'}" alt="${cat.name}">
+                    </div>
+                    <span class="category-circle-label">${cat.name}</span>
+                  `;
+                  wrapper.appendChild(a);
+                }
+              });
+            }
+          });
+      }
+    </script>
+
     <!-- Circular Category Section -->
       <section class="category-circles-section">
           <div class="category-circles-container">
-              <div class="category-circles-wrapper">
-                  <a href="/meenakari-necklace" class="category-circle-item">
-                      <div class="category-circle">
-                          <img src="images/IMG_20251013_071814.jpg" alt="Meenakari Necklace">
-                      </div>
-                      <span class="category-circle-label" data-translate="meenakari_necklace">MEENAKARI NECKLACE </span>
-                  </a>
-
-                  <a href="/gold-rings" class="category-circle-item">
-                      <div class="category-circle">
-                          <img src="images/184a6988b0aad9761ad955871def07d5.jpg" alt="Gold Rings">
-                      </div>
-                      <span class="category-circle-label" data-translate="gold_rings">GOLD RINGS</span>
-                  </a>
-
-                  <a href="/silver-bangles" class="category-circle-item">
-                      <div class="category-circle">
-                          <img src="images/35eae29ac6c8bdf21b53e1ff49216f29.jpg" alt="Silver Bangles">
-                      </div>
-                      <span class="category-circle-label" data-translate="silver_bangles">SILVER BANGLES</span>
-                  </a>
-
-                  <a href="/meenakari-earrings" class="category-circle-item">
-                      <div class="category-circle">
-                          <img src="images/IMG_20251013_071923.jpg" alt="Meenakari Earrings">
-                      </div>
-                      <span class="category-circle-label" data-translate="meenakari_earrings">MEENAKARI ERRINGS</span>
-                  </a>
-
-                  <a href="/gold-necklace" class="category-circle-item">
-                      <div class="category-circle">
-                          <img src="images/a6eaec1d891d0dd5968cc21bded81c10.jpg" alt="Gold Necklace">
-                      </div>
-                      <span class="category-circle-label" data-translate="gold_necklace">GOLD NECKLACE</span>
-                  </a>
+              <div class="category-circles-wrapper" id="dynamic-categories-circles">
               </div>
           </div>
       </section>

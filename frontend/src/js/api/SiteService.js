@@ -96,11 +96,19 @@ class SiteService {
 
   getSiteUrl(subdomain) {
     // Check if we're in production or development
-    if (window.location.hostname.includes('fluxe.in')) {
+    const hostname = window.location.hostname;
+    if (hostname.includes('fluxe.in')) {
       return `https://${subdomain}.fluxe.in`;
     }
     // For local development on port 5000
-    return `http://${subdomain}.localhost:5000`;
+    // Use the current host but replace the subdomain part
+    const parts = window.location.host.split('.');
+    if (parts.length >= 2) {
+      // If we are already on a subdomain like dashboard.fluxe.in
+      const domain = parts.slice(1).join('.');
+      return `${window.location.protocol}//${subdomain}.${domain}`;
+    }
+    return `${window.location.protocol}//${subdomain}.localhost:5000`;
   }
 }
 

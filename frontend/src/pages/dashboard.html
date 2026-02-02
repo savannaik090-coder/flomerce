@@ -451,15 +451,14 @@
 
                 listEl.innerHTML = sites.map(site => {
                     const siteName = site.brand_name || site.brandName || site.subdomain;
-                    const productionUrl = `https://${site.subdomain}.fluxe.in`;
+                    const siteUrl = siteService.getSiteUrl(site.subdomain);
                     const previewUrl = `/site/${site.subdomain}`;
-                    const displayUrl = `${site.subdomain}.fluxe.in`;
                     return `
                         <div class="site-card">
                             <h3 style="margin-bottom: 0.5rem;">${siteName}</h3>
-                            <p style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 1rem;">${displayUrl}</p>
+                            <p style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 1rem;">${siteUrl}</p>
                             <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                                <a href="${productionUrl}" target="_blank" class="btn btn-primary" style="flex: 1; font-size: 0.75rem;">Visit Site</a>
+                                <a href="${siteUrl}" target="_blank" class="btn btn-primary" style="flex: 1; font-size: 0.75rem;">Visit Site</a>
                                 <a href="${previewUrl}" target="_blank" class="btn btn-outline" style="flex: 1; font-size: 0.75rem;">Preview</a>
                             </div>
                             <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">

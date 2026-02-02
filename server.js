@@ -134,8 +134,14 @@ app.use(async (req, res, next) => {
   const hostname = parts[0];
   const hostParts = hostname.split('.');
 
-  if (hostParts.length >= 2 && !['www', 'fluxe', 'localhost'].includes(hostParts[0])) {
+  if (hostParts.length >= 2) {
     const subdomain = hostParts[0];
+    
+    // Ignore system subdomains
+    if (['www', 'fluxe', 'api'].includes(subdomain)) {
+      return next();
+    }
+
     try {
       const site = db.prepare('SELECT * FROM sites WHERE subdomain = ? AND is_active = 1').get(subdomain);
       if (site) {
@@ -154,9 +160,11 @@ app.use(async (req, res, next) => {
           const siteDataScript = `<script>window.FLUXE_SITE_DATA = ${JSON.stringify(site)};</script>`;
           html = html.replace('</head>', `${siteDataScript}</head>`);
           
-          // Adjust asset paths to be absolute from the root
+          // Adjust asset paths to be absolute from the template directory
+          // Only adjust relative paths that don't start with / or http
           html = html.replace(/(src|href)="(?!\/|http|https)([^"]+)"/g, `$1="/templates/${templateId}/$2"`);
           
+          res.setHeader('Content-Type', 'text/html');
           return res.send(html);
         }
       }
@@ -495,7 +503,7 @@ app.post('/api/sites', (req, res) => {
     
     const existing = db.prepare('SELECT id FROM sites WHERE subdomain = ?').get(subdomain);
     if (existing) {
-      subdomain = `${subdomain}-${Date.now().toString(36)}`;
+      subdomain = `${subdomain}-${Math.random().toString(36).substring(2, 7)}`;
     }
     
     const siteId = generateId();
@@ -517,21 +525,22 @@ app.post('/api/sites', (req, res) => {
       secondaryColor || '#ffffff'
     );
     
-    if (categories && categories.length > 0) {
-      let order = 0;
-      for (const categoryName of categories) {
-        const slug = categoryName
-          .toLowerCase()
-          .trim()
-          .replace(/[^a-z0-9\s-]/g, '')
-          .replace(/\s+/g, '-')
-          .replace(/-+/g, '-');
-        
-        db.prepare(`
-          INSERT INTO categories (id, site_id, name, slug, display_order, created_at)
-          VALUES (?, ?, ?, ?, ?, datetime('now'))
-        `).run(generateId(), siteId, categoryName, slug, order++);
-      }
+    // Auto-create initial categories if none provided
+    const finalCategories = (categories && categories.length > 0) ? categories : ['All Collection', 'New Arrivals'];
+    
+    let order = 0;
+    for (const categoryName of finalCategories) {
+      const slug = categoryName
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-');
+      
+      db.prepare(`
+        INSERT INTO categories (id, site_id, name, slug, display_order, created_at)
+        VALUES (?, ?, ?, ?, ?, datetime('now'))
+      `).run(generateId(), siteId, categoryName, slug, order++);
     }
     
     successResponse(res, { id: siteId, subdomain }, 'Site created successfully');
