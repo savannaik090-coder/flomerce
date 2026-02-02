@@ -52,7 +52,25 @@ The D1 database schema includes tables for `users`, `sites`, `products`, `catego
 
 ## Recent Changes (February 2026)
 
-### Dashboard & API Fixes (Feb 2 - Latest)
+### Site Preview & Production Fixes (Feb 2 - Latest)
+**Fixed Issues:**
+1. **Site Preview Routes**: Added `/site/:subdomain` routes to server.js for previewing user-created websites
+2. **Template Static Assets**: Fixed CSS/JS/image serving for template sites with proper URL rewriting
+3. **API Configuration Simplified**: Removed all local development environment checks from config.js - now uses relative URLs everywhere
+4. **Dashboard Site URLs**: Updated to use `/site/subdomain` format for visiting created websites
+5. **Removed Confusing Files**: Deleted `backend/dev-server.js` which was causing confusion between environments
+
+**New API Endpoints:**
+- `GET /api/site?subdomain=xxx` - Fetch site info by subdomain with categories
+- `GET /site/:subdomain` - Serve the site homepage with template
+- `GET /site/:subdomain/*` - Serve site pages and static assets
+
+**Architecture Notes:**
+- Currently using Replit's server.js + SQLite for all operations
+- Site previews work via `/site/subdomain` path instead of actual subdomains
+- For production Cloudflare deployment, data needs to be synced to D1 database
+
+### Dashboard & API Fixes (Feb 2)
 **Fixed Issues:**
 1. **Plan Selection Overlay**: Now displays all 4 plans (Trial, Basic, Premium, Pro) in a 2x2 grid layout
 2. **Duration Selector**: Added working Monthly/6 Months/Yearly buttons that update plan prices dynamically
