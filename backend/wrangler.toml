@@ -1,15 +1,25 @@
 # Cloudflare Workers Configuration
-# Firebase to Cloudflare Migrati
-# Version: 1.2
+# Firebase to Cloudflare Migration
+# Version: 1.3
 
 name = "saas-platform"
 main = "workers/index.js"
 compatibility_date = "2024-01-01"
 workers_dev = true
 
+# Custom Domain Routes
+# Frontend: fluxe.in
+# Backend API: fluxe.in/api/*
+# Wildcard subdomains: *.fluxe.in/*
+routes = [
+  { pattern = "fluxe.in/api/*", zone_name = "fluxe.in" },
+  { pattern = "*.fluxe.in/*", zone_name = "fluxe.in" }
+]
+
 [vars]
 ENVIRONMENT = "production"
 SKIP_EMAIL_VERIFICATION = "true"
+DOMAIN = "fluxe.in"
 
 # D1 Database Configuration
 # Database: saas-platform-db
