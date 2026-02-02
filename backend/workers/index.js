@@ -7,6 +7,7 @@ import { handleWishlist } from './wishlist-worker.js';
 import { handlePayments, activateSubscription } from './payments-worker.js';
 import { handleEmail } from './email-worker.js';
 import { handleCategories } from './categories-worker.js';
+import { handleUsers } from './users-worker.js';
 import { handleSiteRouting, resolveSiteFromRequest } from './site-router.js';
 import { jsonResponse, errorResponse, corsHeaders, handleCORS } from '../utils/helpers.js';
 
@@ -76,6 +77,9 @@ async function handleAPI(request, env, path) {
 
     case 'categories':
       return handleCategories(request, env, path);
+
+    case 'users':
+      return handleUsers(request, env, path);
 
     case 'health':
       return handleHealth(env);
