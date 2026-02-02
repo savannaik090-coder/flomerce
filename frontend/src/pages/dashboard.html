@@ -451,15 +451,19 @@
 
                 listEl.innerHTML = sites.map(site => {
                     const siteName = site.brand_name || site.brandName || site.subdomain;
-                    const siteUrl = `/site/${site.subdomain}`;
+                    const productionUrl = `https://${site.subdomain}.fluxe.in`;
+                    const previewUrl = `/site/${site.subdomain}`;
                     const displayUrl = `${site.subdomain}.fluxe.in`;
                     return `
                         <div class="site-card">
                             <h3 style="margin-bottom: 0.5rem;">${siteName}</h3>
-                            <p style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 1.5rem;">${displayUrl}</p>
-                            <div style="display: flex; gap: 0.5rem;">
-                                <a href="${siteUrl}" target="_blank" class="btn btn-outline" style="flex: 1; font-size: 0.75rem;">Visit</a>
-                                <button class="btn btn-primary" onclick="showComingSoon()" style="flex: 1; font-size: 0.75rem;">Manage</button>
+                            <p style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 1rem;">${displayUrl}</p>
+                            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                <a href="${productionUrl}" target="_blank" class="btn btn-primary" style="flex: 1; font-size: 0.75rem;">Visit Site</a>
+                                <a href="${previewUrl}" target="_blank" class="btn btn-outline" style="flex: 1; font-size: 0.75rem;">Preview</a>
+                            </div>
+                            <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+                                <button class="btn btn-outline" onclick="showComingSoon()" style="flex: 1; font-size: 0.75rem;">Manage</button>
                                 <button class="btn btn-outline delete-site" data-id="${site.id}" style="color: #ef4444; border-color: #fecaca; font-size: 0.75rem;">Delete</button>
                             </div>
                         </div>
