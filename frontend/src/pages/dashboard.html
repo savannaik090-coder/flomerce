@@ -445,7 +445,17 @@
 
                 listEl.innerHTML = sites.map(site => {
                     const siteName = site.brand_name || site.brandName || site.subdomain;
-                    const siteUrl = `https://${site.subdomain}.fluxe.in`;
+                    // Dynamically determine the base domain for the site URL
+                    const hostname = window.location.hostname;
+                    let baseDomain = 'fluxe.in';
+                    
+                    if (hostname.includes('replit.dev')) {
+                        baseDomain = hostname.split('.').slice(-3).join('.');
+                    } else if (hostname.includes('pages.dev')) {
+                        baseDomain = 'pages.dev';
+                    }
+                    
+                    const siteUrl = `https://${site.subdomain}.${baseDomain}`;
                     return `
                         <div class="site-card">
                             <h3 style="margin-bottom: 0.5rem;">${siteName}</h3>
