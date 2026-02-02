@@ -719,6 +719,11 @@
     <script src="js/nazakat-analytics.js?v=1.0.0"></script>
 </head>
 <body>
+    <!-- Inject Site Data for Dynamic Content -->
+    <script>
+      window.FLUXE_SITE_DATA = {{siteData}};
+    </script>
+
     <!-- Simple Header -->
     <header class="simple-header py-3 border-bottom">
         <div class="container d-flex justify-content-between align-items-center">
