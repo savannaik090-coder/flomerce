@@ -3,10 +3,8 @@ function getAPIBaseURL() {
   if (hostname === 'localhost' || hostname === '127.0.0.1') {
     return 'http://localhost:8787';
   }
-  if (hostname.includes('replit.dev') || hostname.includes('repl.co')) {
-    return '';
-  }
-  return 'https://fluxe.in';
+  // Use relative URL for both Replit and production domain
+  return '';
 }
 
 const API_BASE_URL = getAPIBaseURL();
