@@ -425,7 +425,7 @@ app.post('/api/sites', (req, res) => {
       return errorResponse(res, 'Brand name is required');
     }
     
-    let subdomain = generateSubdomain(brandName);
+    let subdomain = req.body.subdomain || generateSubdomain(brandName);
     
     const existing = db.prepare('SELECT id FROM sites WHERE subdomain = ?').get(subdomain);
     if (existing) {

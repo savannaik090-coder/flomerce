@@ -68,41 +68,22 @@ async function getSite(env, user, siteId) {
 
 async function createSite(request, env, user) {
   try {
-    const { brandName, category, categories, templateId, logoUrl, phone, email, address, primaryColor, secondaryColor } = await request.json();
+    const body = await request.json();
+    const { brandName, categories, templateId, logoUrl, phone, email, address, primaryColor, secondaryColor } = body;
+    const category = body.category || 'general';
+    const subdomain = body.subdomain || generateSubdomain(brandName);
 
     if (!brandName) {
       return errorResponse('Brand name is required');
     }
 
-    const subdomain = generateSubdomain(brandName);
-
     const existingSubdomain = await env.DB.prepare(
       'SELECT id FROM sites WHERE subdomain = ?'
     ).bind(subdomain).first();
 
+    let finalSubdomain = subdomain;
     if (existingSubdomain) {
-      const uniqueSubdomain = `${subdomain}-${Date.now().toString(36)}`;
-      
-      const siteId = generateId();
-      await env.DB.prepare(
-        `INSERT INTO sites (id, user_id, subdomain, brand_name, category, template_id, logo_url, phone, email, address, primary_color, secondary_color, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
-      ).bind(
-        siteId, 
-        user.id, 
-        uniqueSubdomain, 
-        sanitizeInput(brandName), 
-        category, 
-        templateId || 'template1',
-        logoUrl || null,
-        phone || null,
-        email || null,
-        address || null,
-        primaryColor || '#000000',
-        secondaryColor || '#ffffff'
-      ).run();
-
-      return successResponse({ id: siteId, subdomain: uniqueSubdomain }, 'Site created with modified subdomain');
+      finalSubdomain = `${subdomain}-${Date.now().toString(36)}`;
     }
 
     const siteId = generateId();
@@ -112,7 +93,7 @@ async function createSite(request, env, user) {
     ).bind(
       siteId, 
       user.id, 
-      subdomain, 
+      finalSubdomain, 
       sanitizeInput(brandName), 
       category, 
       templateId || 'template1',
