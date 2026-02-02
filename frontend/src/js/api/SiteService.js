@@ -21,6 +21,7 @@ class SiteService {
 
   async createSite(siteData) {
     try {
+      console.log('Sending site creation request:', siteData);
       const response = await apiRequest(config.endpoints.sites, {
         method: 'POST',
         body: JSON.stringify({
@@ -37,16 +38,19 @@ class SiteService {
         }),
       });
 
+      console.log('Site creation response:', response);
       return { 
         success: true, 
         site: response.data,
         subdomain: response.data.subdomain 
       };
     } catch (error) {
-      if (error.code === 'SUBDOMAIN_TAKEN') {
+      console.error('SiteService createSite error:', error);
+      // Backend returns "This subdomain is already taken..." in message
+      if (error.message && error.message.includes('already taken')) {
         return { success: false, error: 'This subdomain is already taken. Please choose a different name.' };
       }
-      return { success: false, error: error.message };
+      return { success: false, error: error.message || 'Failed to create website' };
     }
   }
 

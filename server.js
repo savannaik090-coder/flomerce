@@ -129,63 +129,79 @@ app.use(async (req, res, next) => {
   const host = req.get('host');
   if (!host) return next();
 
-  // Handle local development (e.g., savan.localhost:5000)
-  const parts = host.split(':');
-  const hostname = parts[0];
-  const hostParts = hostname.split('.');
-
-  // In Replit/local, subdomains are hostParts[0] when hostParts.length >= 2
-  // But we need to be careful with domain suffixes.
-  if (hostParts.length >= 2) {
-    const subdomain = hostParts[0];
-    
-    // Ignore system subdomains and common suffixes
-    if (['www', 'fluxe', 'api', 'localhost'].includes(subdomain)) {
-      return next();
+  // Enhanced Subdomain Detection for Replit, Localhost, and Production
+  let subdomain = null;
+  
+  // Replit environment detection
+  if (hostname.endsWith('.replit.dev')) {
+    // Replit URLs look like: my-site.user.replit.dev or user.replit.dev
+    // If it has 3 or more parts, the first part might be the subdomain
+    if (hostParts.length >= 3) {
+      subdomain = hostParts[0];
     }
+  } else if (hostname === 'localhost' || hostname.endsWith('.localhost')) {
+    if (hostParts.length >= 2) {
+      subdomain = hostParts[0];
+    }
+  } else if (hostname.endsWith('fluxe.in')) {
+    if (hostParts.length >= 3) {
+      subdomain = hostParts[0];
+    }
+  }
 
+  // If we found a subdomain, validate it's not a reserved keyword
+  if (subdomain) {
+    const reserved = ['www', 'fluxe', 'api', 'localhost', 'dashboard', 'static', 'assets', 'templates'];
+    if (reserved.includes(subdomain.toLowerCase())) {
+      subdomain = null;
+    }
+  }
+
+  if (subdomain) {
     try {
-      // Precise query to avoid ambiguity
+      console.log(`[Routing] Looking up subdomain: "${subdomain}" for host: "${host}"`);
       const site = db.prepare('SELECT * FROM sites WHERE subdomain = ?').get(subdomain);
       
       if (site) {
-        console.log(`[Routing] Found site for subdomain "${subdomain}": ${site.brand_name}`);
+        console.log(`[Routing] Found site: ${site.brand_name} (ID: ${site.id})`);
         const templateId = site.template_id || 'template1';
         const templatePath = path.join(__dirname, 'frontend', 'templates', templateId, 'index.html');
         
         if (fs.existsSync(templatePath)) {
           let html = fs.readFileSync(templatePath, 'utf8');
           
-          // Basic Dynamic Injection
+          // Dynamic Injection
           html = html.replace(/{{brandName}}/g, site.brand_name || '');
           html = html.replace(/{{logoUrl}}/g, site.logo_url || '');
           html = html.replace(/{{primaryColor}}/g, site.primary_color || '#000000');
           
-          // Inject site data for client-side scripts
           const siteDataScript = `<script>window.FLUXE_SITE_DATA = ${JSON.stringify(site)};</script>`;
-          if (html.includes('</head>')) {
-            html = html.replace('</head>', `${siteDataScript}</head>`);
-          } else if (html.includes('<head>')) {
+          if (html.includes('<head>')) {
             html = html.replace('<head>', `<head>${siteDataScript}`);
           } else {
             html = siteDataScript + html;
           }
           
-          // Adjust asset paths
-          html = html.replace(/(src|href)="(?!\/|http|https|#)([^"]+)"/g, `$1="/templates/${templateId}/$2"`);
+          // Fix relative asset paths in templates
+          // This replaces paths like "css/style.css" with "/templates/template1/css/style.css"
+          // It avoids absolute paths (starting with /) and full URLs (starting with http)
+          html = html.replace(/(src|href)="(?!\/|http|https|#|javascript:)([^"]+)"/g, `$1="/templates/${templateId}/$2"`);
           
           res.setHeader('Content-Type', 'text/html');
           return res.send(html);
         } else {
-          console.error(`[Routing] Template not found: ${templatePath}`);
+          console.error(`[Routing] CRITICAL: Template path missing: ${templatePath}`);
+          return res.status(500).send(`Site found but template "${templateId}" is missing.`);
         }
       } else {
-        // If no site matches, it might be a main domain path or a 404
-        console.log(`[Routing] No site found for subdomain: ${subdomain}`);
+        console.log(`[Routing] No site record for subdomain: "${subdomain}"`);
+        // If it's a subdomain but not in our DB, we should probably continue to normal routes
+        // but if it's supposed to be a user site and isn't found, maybe show a 404?
+        // For now, we'll let it pass to next() so the main app handles it (or 404s)
       }
     } catch (error) {
-      console.error('[Routing] Subdomain routing error:', error);
-      return res.status(500).send('Internal Server Error: ' + error.message);
+      console.error('[Routing] Error in routing middleware:', error);
+      return res.status(500).send('An error occurred during site routing.');
     }
   }
   next();
@@ -522,28 +538,47 @@ app.post('/api/sites', (req, res) => {
       subdomain = `${subdomain}-${Math.floor(Math.random() * 10000)}`;
     }
     
+    // Final check for subdomain existence (double-check after possible modifications)
+    const finalExisting = db.prepare('SELECT id FROM sites WHERE subdomain = ?').get(subdomain);
+    if (finalExisting) {
+      console.log(`[API] Subdomain conflict detected for: ${subdomain}`);
+      return res.status(400).json({ 
+        success: false, 
+        message: 'This subdomain is already taken. Please try another brand name.' 
+      });
+    }
+
     const siteId = generateId();
     const stmt = db.prepare(`
       INSERT INTO sites (id, user_id, subdomain, brand_name, category, template_id, logo_url, phone, email, address, primary_color, secondary_color, created_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
     `);
     
-    console.log('Executing site insertion for:', brandName, 'subdomain:', subdomain);
-    stmt.run(
-      siteId, 
-      user.id, 
-      subdomain, 
-      brandName, 
-      category || 'general', 
-      templateId || 'template1',
-      logoUrl || null,
-      phone || null,
-      email || null,
-      address || null,
-      primaryColor || '#000000',
-      secondaryColor || '#ffffff'
-    );
-    console.log('Site insertion successful');
+    console.log(`[API] Attempting to create site record: ${brandName} (subdomain: ${subdomain})`);
+    try {
+      stmt.run(
+        siteId, 
+        user.id, 
+        subdomain, 
+        brandName, 
+        category || 'general', 
+        templateId || 'template1',
+        logoUrl || null,
+        phone || null,
+        email || null,
+        address || null,
+        primaryColor || '#000000',
+        secondaryColor || '#ffffff'
+      );
+      console.log(`[API] Site record created successfully with ID: ${siteId}`);
+    } catch (err) {
+      console.error('[API] CRITICAL DATABASE ERROR during site insertion:', err);
+      return res.status(500).json({ 
+        success: false, 
+        message: 'Database error while saving site. Please contact support.',
+        details: err.message 
+      });
+    }
     
     // Auto-create initial categories if none provided
     const finalCategories = (categories && categories.length > 0) ? categories : ['All Collection', 'New Arrivals'];
