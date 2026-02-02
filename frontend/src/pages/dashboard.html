@@ -283,9 +283,9 @@
     </div>
 
     <script type="module">
-        import { authService } from '/src/js/auth/AuthService.js';
-        import { siteService } from '/src/js/dashboard/SiteService.js';
-        import { razorpayService } from '/src/js/payment/RazorpayService.js';
+        import { authService } from '/src/js/api/AuthService.js';
+        import { siteService } from '/src/js/api/SiteService.js';
+        import { paymentService } from '/src/js/api/PaymentService.js';
         
         let currentUserData = null;
         let selectedTemplate = null;
@@ -489,26 +489,26 @@
                 try {
                     btn.disabled = true;
                     btn.innerText = 'Processing...';
-                    const order = await razorpayService.createOrder(planId, currentDuration);
-                    await razorpayService.openCheckout({
-                        ...order,
-                        planName: planId.toUpperCase(),
-                        billingCycle: currentDuration,
-                        userName: user.name || 'User',
-                        userEmail: user.email
+                    const result = await paymentService.initiateSubscriptionPayment(planId, currentDuration, {
+                        userName: user?.name || 'User',
+                        userEmail: user?.email || ''
                     });
                     
-                    await fetch('/api/users/subscription', {
-                        method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            plan: planId,
-                            billingCycle: currentDuration,
-                            status: 'active'
-                        })
-                    });
-                    alert('Subscription upgraded successfully!');
-                    window.location.reload();
+                    if (result.success) {
+                        await fetch('/api/users/subscription', {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                plan: planId,
+                                billingCycle: currentDuration,
+                                status: 'active'
+                            })
+                        });
+                        alert('Subscription upgraded successfully!');
+                        window.location.reload();
+                    } else {
+                        throw new Error(result.error || 'Payment failed');
+                    }
                 } catch (error) {
                     alert('Payment failed: ' + error.message);
                 } finally {
@@ -677,24 +677,25 @@
                     const planId = btn.dataset.plan;
                     const user = authService.getCurrentUser();
                     try {
-                        const order = await razorpayService.createOrder(planId, selectedDuration);
-                        await razorpayService.openCheckout({
-                            ...order,
-                            planName: planId.toUpperCase(),
-                            billingCycle: selectedDuration,
-                            userName: user.name || 'User',
-                            userEmail: user.email
+                        const result = await paymentService.initiateSubscriptionPayment(planId, selectedDuration, {
+                            userName: user?.name || 'User',
+                            userEmail: user?.email || ''
                         });
-                        await fetch('/api/users/subscription', {
-                            method: 'PATCH',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                plan: planId,
-                                billingCycle: selectedDuration,
-                                status: 'active'
-                            })
-                        });
-                        location.reload();
+                        
+                        if (result.success) {
+                            await fetch('/api/users/subscription', {
+                                method: 'PATCH',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    plan: planId,
+                                    billingCycle: selectedDuration,
+                                    status: 'active'
+                                })
+                            });
+                            location.reload();
+                        } else {
+                            throw new Error(result.error || 'Payment failed');
+                        }
                     } catch (e) { alert(e.message); }
                 });
             });
