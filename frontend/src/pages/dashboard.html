@@ -342,9 +342,20 @@
 
         async function loadUserData() {
             try {
+                // First ensure token is present
+                const token = getAuthToken();
+                if (!token) {
+                    console.error('No auth token found, redirecting to login');
+                    window.location.href = '/src/pages/login.html';
+                    return;
+                }
+
+                console.log('Fetching user profile...');
                 const result = await apiRequest('/api/users/profile');
-                if (result.success !== false) {
-                    currentUserData = result.data || result;
+                console.log('Profile result:', result);
+
+                if (result.success !== false && result.data) {
+                    currentUserData = result.data;
                     
                     if (document.getElementById('user-display-name')) document.getElementById('user-display-name').innerText = currentUserData.name || 'No Name Set';
                     if (document.getElementById('user-display-email')) document.getElementById('user-display-email').innerText = currentUserData.email;

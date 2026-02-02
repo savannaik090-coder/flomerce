@@ -75,14 +75,21 @@ export async function apiRequest(endpoint, options = {}) {
   headers['X-Session-ID'] = getSessionId();
   
   try {
-    const response = await fetch(url, {
+    const fetchOptions = {
       ...options,
       headers,
       mode: 'cors',
-      credentials: 'omit',
+      credentials: 'omit' // Reverting back to omit since we use Authorization header
+    };
+
+    console.log(`API Request: ${options.method || 'GET'} ${url}`, {
+      headers: Object.keys(headers)
     });
+
+    const response = await fetch(url, fetchOptions);
     
     const data = await response.json();
+    console.log(`API Response: ${response.status}`, data);
     
     if (!response.ok) {
       const errorMsg = data.message || data.error || 'Request failed';
@@ -91,6 +98,7 @@ export async function apiRequest(endpoint, options = {}) {
     
     return data;
   } catch (error) {
+    console.error('API Request Error:', error);
     if (error instanceof APIError) {
       throw error;
     }
