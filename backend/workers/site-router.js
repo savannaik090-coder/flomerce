@@ -13,12 +13,19 @@ export async function handleSiteRouting(request, env) {
 
   // Detect subdomain for fluxe.in or pages.dev
   if (hostname.endsWith('fluxe.in')) {
-    if (hostParts.length >= 3 && hostParts[0] !== 'www') {
-      subdomain = hostParts[0];
+    const parts = hostname.split('.');
+    if (parts.length >= 3 && parts[0] !== 'www') {
+      subdomain = parts[0];
     }
   } else if (hostname.endsWith('pages.dev')) {
-    if (hostParts.length >= 4) {
-      subdomain = hostParts[0];
+    const parts = hostname.split('.');
+    if (parts.length >= 4) {
+      subdomain = parts[0];
+    }
+  } else if (hostname === 'localhost' || hostname.endsWith('.localhost')) {
+    const parts = hostname.split('.');
+    if (parts.length >= 2) {
+      subdomain = parts[0];
     }
   }
 
@@ -218,12 +225,19 @@ export async function resolveSiteFromRequest(request, env) {
 
   // Detect subdomain for fluxe.in or pages.dev
   if (hostname.endsWith('fluxe.in')) {
-    if (hostParts.length >= 3 && hostParts[0] !== 'www') {
-      subdomain = hostParts[0];
+    const parts = hostname.split('.');
+    if (parts.length >= 3 && parts[0] !== 'www') {
+      subdomain = parts[0];
     }
   } else if (hostname.endsWith('pages.dev')) {
-    if (hostParts.length >= 4) {
-      subdomain = hostParts[0];
+    const parts = hostname.split('.');
+    if (parts.length >= 4) {
+      subdomain = parts[0];
+    }
+  } else if (hostname === 'localhost' || hostname.endsWith('.localhost')) {
+    const parts = hostname.split('.');
+    if (parts.length >= 2) {
+      subdomain = parts[0];
     }
   }
 
