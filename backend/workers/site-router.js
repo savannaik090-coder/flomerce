@@ -133,18 +133,17 @@ async function serveTemplate(env, templateId, fileName, siteData) {
   try {
     let html;
 
-    if (env.ASSETS) {
-      const templatePath = `/templates/${templateId}/${fileName}`;
-      const response = await env.ASSETS.fetch(new Request(`https://placeholder${templatePath}`));
-      
-      if (!response.ok) {
-        return new Response('Page not found', { status: 404 });
-      }
-      
-      html = await response.text();
-    } else {
-      return new Response('Template system not configured', { status: 500 });
+    // Use fetch to get the template from the frontend assets
+    const baseUrl = 'https://fluxe.in'; // Your production domain
+    const templatePath = `/templates/${templateId}/${fileName}`;
+    const response = await fetch(`${baseUrl}${templatePath}`);
+    
+    if (!response.ok) {
+      console.error(`[Routing] Template not found at: ${baseUrl}${templatePath}`);
+      return new Response('Page not found', { status: 404 });
     }
+    
+    html = await response.text();
 
     html = replacePlaceholders(html, siteData);
 

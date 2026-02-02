@@ -26,8 +26,8 @@ class SiteService {
         method: 'POST',
         body: JSON.stringify({
           brandName: siteData.brandName || siteData.siteName,
-          category: siteData.category,
-          categories: siteData.categories || [], // Pass the dynamic categories list
+          category: siteData.category || 'general',
+          categories: siteData.categories || [],
           templateId: siteData.templateId || 'template1',
           logoUrl: siteData.logoUrl,
           phone: siteData.phone,
@@ -35,6 +35,7 @@ class SiteService {
           address: siteData.address,
           primaryColor: siteData.primaryColor,
           secondaryColor: siteData.secondaryColor,
+          subdomain: siteData.subdomain // Ensure subdomain is passed if manually entered
         }),
       });
 
@@ -46,7 +47,6 @@ class SiteService {
       };
     } catch (error) {
       console.error('SiteService createSite error:', error);
-      // Backend returns "This subdomain is already taken..." in message
       if (error.message && error.message.includes('already taken')) {
         return { success: false, error: 'This subdomain is already taken. Please choose a different name.' };
       }
