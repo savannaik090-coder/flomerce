@@ -132,18 +132,38 @@ export async function handleSiteRouting(request, env) {
 async function serveTemplate(env, templateId, fileName, siteData) {
   try {
     let html;
-
-    // Use fetch to get the template from the frontend assets
-    const baseUrl = 'https://fluxe.in'; // Your production domain
     const templatePath = `/templates/${templateId}/${fileName}`;
-    const response = await fetch(`${baseUrl}${templatePath}`);
-    
-    if (!response.ok) {
-      console.error(`[Routing] Template not found at: ${baseUrl}${templatePath}`);
-      return new Response('Page not found', { status: 404 });
+
+    // Try to use ASSETS binding first (Cloudflare Pages)
+    if (env.ASSETS) {
+      try {
+        const assetRequest = new Request(`https://placeholder.com${templatePath}`);
+        const response = await env.ASSETS.fetch(assetRequest);
+        if (response.ok) {
+          html = await response.text();
+        }
+      } catch (assetErr) {
+        console.error('[Routing] ASSETS fetch error:', assetErr);
+      }
+    }
+
+    // Fallback: Try fetching from the configured domain
+    if (!html) {
+      const domain = env.DOMAIN || 'fluxe.in';
+      const baseUrl = `https://${domain}`;
+      const response = await fetch(`${baseUrl}${templatePath}`);
+      
+      if (!response.ok) {
+        console.error(`[Routing] Template not found at: ${baseUrl}${templatePath}`);
+        return new Response('Page not found', { status: 404 });
+      }
+      
+      html = await response.text();
     }
     
-    html = await response.text();
+    if (!html) {
+      return new Response('Page not found', { status: 404 });
+    }
 
     html = replacePlaceholders(html, siteData);
 
