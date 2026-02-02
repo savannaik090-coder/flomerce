@@ -999,7 +999,7 @@ background-color: #000 !important;
                 for (const category of categories) {
                     try {
                         const timestamp = Date.now();
-                        const response = await fetch(`/.netlify/functions/load-products?category=${category}&t=${timestamp}`);
+                        const response = await fetch(`/api/products?category=${category}&t=${timestamp}`);
 
                         if (response.ok) {
                             const data = await response.json();

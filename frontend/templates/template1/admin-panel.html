@@ -4192,7 +4192,7 @@
                 // Fetch all categories in parallel
                 const fetchPromises = categories.map(async (category) => {
                     try {
-                        const response = await fetch(`/.netlify/functions/load-products?category=${category}`, {
+                        const response = await fetch(`/api/products?category=${category}`, {
                             signal: AbortSignal.timeout(3000) // 3 second timeout
                         });
                         
@@ -4310,7 +4310,7 @@
             // Test one category directly
             try {
                 console.log('🐛 DEBUG: Testing featured-collection API call...');
-                const testUrl = `/.netlify/functions/load-products?category=featured-collection&cacheBust=${Date.now()}`;
+                const testUrl = `/api/products?category=featured-collection&cacheBust=${Date.now()}`;
                 console.log('🐛 DEBUG: URL:', testUrl);
 
                 const response = await fetch(testUrl);
@@ -4885,7 +4885,7 @@
 
                     console.log('Sending cancellation email with data:', emailData);
 
-                    const emailResponse = await fetch('/.netlify/functions/send-order-email', {
+                    const emailResponse = await fetch('/api/email/order', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
@@ -4991,7 +4991,7 @@
                     console.log('📧 Sending delivery confirmation email with payload:', JSON.stringify(emailPayload, null, 2));
 
                     // Call Netlify Function endpoint
-                    const response = await fetch('/.netlify/functions/send-order-email', {
+                    const response = await fetch('/api/email/order', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(emailPayload)
@@ -5171,7 +5171,7 @@
                 
                 // Fetch all categories in parallel for faster search
                 const categoryPromises = categories.map(category =>
-                    fetch(`/.netlify/functions/load-products?category=${category}&cacheBust=${Date.now()}`)
+                    fetch(`/api/products?category=${category}&cacheBust=${Date.now()}`)
                         .then(response => response.ok ? response.json() : null)
                         .catch(() => null)
                 );
@@ -5240,7 +5240,7 @@
                 ];
                 
                 const categoryPromises = categories.map(category =>
-                    fetch(`/.netlify/functions/load-products?category=${category}&cacheBust=${Date.now()}`)
+                    fetch(`/api/products?category=${category}&cacheBust=${Date.now()}`)
                         .then(response => response.ok ? response.json() : null)
                         .catch(() => null)
                 );
@@ -5471,7 +5471,7 @@
                 console.log(`🗑️ Deleting video: ${videoId}`);
                 
                 // Always use the full path to Netlify functions in production
-                const baseUrl = window.location.hostname.includes('localhost') ? '/api' : '/.netlify/functions';
+                const baseUrl = '/api';
                 // Remove trailing slashes and ensure clean ID passing
                 const deleteUrl = `${baseUrl}/videos/${videoId}`.replace(/\/+$/, '');
                 
@@ -6501,7 +6501,7 @@
 
             for (const category of categories) {
                 try {
-                    const response = await fetch(`/.netlify/functions/load-products?category=${category}&cacheBust=${Date.now()}`);
+                    const response = await fetch(`/api/products?category=${category}&cacheBust=${Date.now()}`);
                     if (response.ok) {
                         const data = await response.json();
                         const products = data.products || [];
@@ -6790,7 +6790,7 @@
                 status: 'confirmed'
             };
 
-            const response = await fetch('/.netlify/functions/send-order-email', {
+            const response = await fetch('/api/email/order', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -6827,7 +6827,7 @@
 
             console.log('Sending cancellation email with data:', emailData);
 
-            const response = await fetch('/.netlify/functions/send-order-email', {
+            const response = await fetch('/api/email/order', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -6950,7 +6950,7 @@
                 for (const category of categories) {
                     try {
                         // Use the same endpoint structure that's working in the server logs
-                        const response = await fetch(`/.netlify/functions/load-products?category=${category}&cacheBust=${Date.now()}`);
+                        const response = await fetch(`/api/products?category=${category}&cacheBust=${Date.now()}`);
                         if (response.ok) {
                             const data = await response.json();
                             if (data.success && data.products && Array.isArray(data.products)) {
@@ -7260,7 +7260,7 @@
             try {
                 console.log(`Deleting product ${productId} from ${category}...`);
 
-                const response = await fetch('/.netlify/functions/delete-product', {
+                const response = await fetch('/api/products/delete', {
                     method: 'DELETE',
                     headers: {
                         'Content-Type': 'application/json'
@@ -8644,7 +8644,7 @@
                 console.log('Sending shipment data:', shipmentData);
 
                 try {
-                    const response = await fetch('/.netlify/functions/shiprocket-create-order', {
+                    const response = await fetch('/api/shipping/create-order', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
@@ -8770,7 +8770,7 @@
                 document.body.appendChild(loadingModal);
 
                 // Use the correct Netlify function endpoint
-                const response = await fetch(`/.netlify/functions/shiprocket-track-order/${awbNumber}`);
+                const response = await fetch(`/api/shipping/track/${awbNumber}`);
 
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}: Failed to track shipment`);

@@ -650,7 +650,7 @@
                 };
 
                 // Send email notification
-                const response = await fetch('/.netlify/functions/send-appointment-email', {
+                const response = await fetch('/api/email/appointment', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
