@@ -142,7 +142,7 @@ app.post('/api/auth/signup', async (req, res) => {
     const userId = generateId();
     
     db.prepare(
-      'INSERT INTO users (id, email, password_hash, name, email_verified, created_at) VALUES (?, ?, ?, ?, 1, datetime("now"))'
+      "INSERT INTO users (id, email, password_hash, name, email_verified, created_at) VALUES (?, ?, ?, ?, 1, datetime('now'))"
     ).run(userId, email, passwordHash, name);
     
     const token = generateJWT({ userId, email });
@@ -308,13 +308,13 @@ app.patch('/api/users/subscription', (req, res) => {
     const { plan, billingCycle, status } = req.body;
     
     const existingSubscription = db.prepare(
-      'SELECT id FROM subscriptions WHERE user_id = ? AND status = "active"'
+      "SELECT id FROM subscriptions WHERE user_id = ? AND status = 'active'"
     ).get(user.id);
     
     if (existingSubscription) {
       if (status === 'expired' || status === 'cancelled') {
         db.prepare(
-          'UPDATE subscriptions SET status = ?, cancelled_at = datetime("now") WHERE id = ?'
+          "UPDATE subscriptions SET status = ?, cancelled_at = datetime('now') WHERE id = ?"
         ).run(status, existingSubscription.id);
         return successResponse(res, null, 'Subscription updated');
       }
@@ -510,7 +510,7 @@ app.put('/api/sites/:siteId', (req, res) => {
       return errorResponse(res, 'No valid fields to update');
     }
     
-    setClause.push('updated_at = datetime("now")');
+    setClause.push("updated_at = datetime('now')");
     values.push(siteId);
     
     db.prepare(`UPDATE sites SET ${setClause.join(', ')} WHERE id = ?`).run(...values);
