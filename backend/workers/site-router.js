@@ -172,36 +172,11 @@ export async function handleSiteRouting(request, env) {
       }
     }
 
-    // Map URL paths to actual template file names
-    const pageMapping = {
-      'shop': 'shop.html',
-      'cart': 'cart.html',
-      'checkout': 'checkout.html',
-      'login': 'login.html',
-      'signup': 'signup.html',
-      'profile': 'profile.html',
-      'wishlist': 'wishlist.html',
-      'orders': 'orders.html',
-      'contact': 'contact-us.html',
-      'contact-us': 'contact-us.html',
-      'about': 'about-us.html',
-      'about-us': 'about-us.html',
-      'privacy-policy': 'privacy-policy.html',
-      'terms-conditions': 'terms-conditions.html',
-      'book-appointment': 'book-appointment.html',
-      'reset-password': 'reset-password.html',
-      'verify-email': 'verify-email.html',
-      'product-detail': 'product-detail.html',
-      'category': 'category.html',
-      'all-collection': 'category.html',
-      'featured-collection': 'category.html',
-    };
-
+    const staticPages = ['shop', 'cart', 'checkout', 'login', 'signup', 'profile', 'wishlist', 'orders', 'contact', 'about'];
     const pageName = path.replace(/^\/|\/$/g, '').split('/')[0];
-    const templateFile = pageMapping[pageName];
 
-    if (templateFile) {
-      return serveTemplate(env, templateId, templateFile, siteData);
+    if (staticPages.includes(pageName)) {
+      return serveTemplate(env, templateId, `${pageName}.html`, siteData);
     }
 
     return null;
