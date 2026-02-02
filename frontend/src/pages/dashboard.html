@@ -290,6 +290,9 @@
         let currentUserData = null;
         let selectedTemplate = null;
 
+        // CRITICAL: Initialize the auth service first
+        await authService.init();
+
         // Navigation
         const updateActiveNav = (page) => {
             document.querySelectorAll('.nav-link, .mobile-nav-item').forEach(link => {
@@ -320,11 +323,11 @@
         });
 
         document.getElementById('mobile-logout')?.addEventListener('click', () => {
-            authService.logout();
+            authService.signOut();
         });
 
         document.getElementById('logout-btn-account')?.addEventListener('click', () => {
-            authService.logout();
+            authService.signOut();
         });
 
         authService.onAuthStateChanged(async (user) => {
@@ -410,14 +413,15 @@
         window.showComingSoon = showComingSoon;
         window.hideComingSoon = hideComingSoon;
 
-        async function loadSites(uid) {
+        async function loadSites() {
             const listEl = document.getElementById('sites-list');
             const createBtn = document.getElementById('open-create-modal');
             if (!listEl) return;
             try {
-                const sites = await siteService.getUserSites(uid);
+                const result = await siteService.getUserSites();
+                const sites = result.sites || [];
                 
-                if (sites.length === 0) {
+                if (!result.success || sites.length === 0) {
                     listEl.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 40px; background: white; border-radius: 12px; border: 1px dashed var(--border);"><p style="color: var(--text-muted); margin-bottom: 20px;">You haven\'t created any websites yet.</p></div>';
                     if (createBtn) {
                         createBtn.classList.remove('btn-plus');
@@ -431,24 +435,32 @@
                     createBtn.classList.add('btn-plus');
                 }
 
-                        listEl.innerHTML = sites.map(site => `
-                            <div class="site-card">
-                                <h3 style="margin-bottom: 0.5rem;">${site.siteName}</h3>
-                                <p style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 1.5rem;">${site.siteUrl}</p>
-                                <div style="display: flex; gap: 0.5rem;">
-                                    <a href="${site.siteUrl}" target="_blank" class="btn btn-outline" style="flex: 1; font-size: 0.75rem;">Visit</a>
-                                    <button class="btn btn-primary" onclick="showComingSoon()" style="flex: 1; font-size: 0.75rem;">Manage</button>
-                                    <button class="btn btn-outline delete-site" data-id="${site.id}" style="color: #ef4444; border-color: #fecaca; font-size: 0.75rem;">Delete</button>
-                                </div>
+                listEl.innerHTML = sites.map(site => {
+                    const siteName = site.brand_name || site.brandName || site.subdomain;
+                    const siteUrl = `https://${site.subdomain}.fluxe.in`;
+                    return `
+                        <div class="site-card">
+                            <h3 style="margin-bottom: 0.5rem;">${siteName}</h3>
+                            <p style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 1.5rem;">${siteUrl}</p>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <a href="${siteUrl}" target="_blank" class="btn btn-outline" style="flex: 1; font-size: 0.75rem;">Visit</a>
+                                <button class="btn btn-primary" onclick="showComingSoon()" style="flex: 1; font-size: 0.75rem;">Manage</button>
+                                <button class="btn btn-outline delete-site" data-id="${site.id}" style="color: #ef4444; border-color: #fecaca; font-size: 0.75rem;">Delete</button>
                             </div>
-                        `).join('');
+                        </div>
+                    `;
+                }).join('');
 
                 document.querySelectorAll('.delete-site').forEach(btn => {
                     btn.addEventListener('click', async () => {
                         if (confirm('Are you sure you want to delete this website?')) {
                             const id = btn.dataset.id;
-                            await siteService.deleteSite(id);
-                            loadSites(uid);
+                            const deleteResult = await siteService.deleteSite(id);
+                            if (deleteResult.success) {
+                                loadSites();
+                            } else {
+                                alert('Failed to delete site: ' + (deleteResult.error || 'Unknown error'));
+                            }
                         }
                     });
                 });
@@ -700,19 +712,10 @@
                 });
             });
 
-            overlay.querySelector('#logout-btn-selection').addEventListener('click', () => authService.logout());
+            overlay.querySelector('#logout-btn-selection').addEventListener('click', () => authService.signOut());
         }
 
-        async function expirePlan(uid, message) {
-            await fetch('/api/users/subscription', {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: 'expired' })
-            });
-            showOverlay(message);
-        }
-
-        document.getElementById('logout-btn-overlay').addEventListener('click', () => authService.logout());
+        document.getElementById('logout-btn-overlay').addEventListener('click', () => authService.signOut());
 
         // Modal Logic
         const modal = document.getElementById('create-site-modal');
@@ -875,8 +878,8 @@
             }
         });
 
-        document.getElementById('mobile-logout')?.addEventListener('click', () => authService.logout());
-        document.getElementById('logout-btn-account')?.addEventListener('click', () => authService.logout());
+        document.getElementById('mobile-logout')?.addEventListener('click', () => authService.signOut());
+        document.getElementById('logout-btn-account')?.addEventListener('click', () => authService.signOut());
     </script>
 </body>
 </html>
