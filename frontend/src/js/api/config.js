@@ -1,6 +1,15 @@
-const API_BASE_URL = window.location.hostname === 'localhost' 
-  ? 'http://localhost:8787'
-  : 'https://fluxe.in';
+function getAPIBaseURL() {
+  const hostname = window.location.hostname;
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return 'http://localhost:8787';
+  }
+  if (hostname.includes('replit.dev') || hostname.includes('repl.co')) {
+    return '';
+  }
+  return 'https://fluxe.in';
+}
+
+const API_BASE_URL = getAPIBaseURL();
 
 export const config = {
   apiBaseUrl: API_BASE_URL,

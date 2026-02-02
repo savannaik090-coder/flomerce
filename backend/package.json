@@ -5,6 +5,7 @@
   "type": "module",
   "main": "workers/index.js",
   "scripts": {
+    "dev:local": "node dev-server.js",
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "db:create": "wrangler d1 create saas-platform-db",
@@ -12,6 +13,12 @@
     "db:migrate:local": "wrangler d1 execute saas-platform-db --local --file=./schema/d1-schema.sql",
     "r2:create": "wrangler r2 bucket create saas-platform-storage",
     "tail": "wrangler tail"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.0.0",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "uuid": "^9.0.0"
   },
   "devDependencies": {
     "wrangler": "^3.0.0"
