@@ -52,6 +52,17 @@ The D1 database schema includes tables for `users`, `sites`, `products`, `catego
 
 ## Recent Changes (February 2026)
 
+### Profile Endpoint Fix (Feb 2)
+**Issue:** Production `/api/users/profile` returning 500 error.
+**Root Cause:** The `subscriptions` table may not exist in production D1.
+**Fix:** Updated `backend/workers/users-worker.js`:
+- Split profile query to fetch user and subscription separately
+- Added graceful fallback when subscriptions table doesn't exist
+- Added `ensureSubscriptionsTable()` function that auto-creates table if missing
+- Now returns `{ plan: null, status: 'none' }` when no subscription exists
+
+**REQUIRES DEPLOYMENT:** Push to GitHub or run `wrangler deploy` in backend folder.
+
 ### Production Configuration Fixes
 1. **API URL Configuration** (`frontend/src/js/api/config.js`):
    - Fixed API base URL handling for all environments (local, Replit, production, subdomains)

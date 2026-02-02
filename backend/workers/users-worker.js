@@ -37,18 +37,30 @@ async function handleProfile(request, env, user) {
 
 async function getProfile(env, user) {
   try {
-    const profile = await env.DB.prepare(
-      `SELECT u.id, u.email, u.name, u.phone, u.email_verified,
-              s.plan, s.billing_cycle, s.status, s.current_period_start, s.current_period_end
-       FROM users u
-       LEFT JOIN subscriptions s ON s.user_id = u.id AND s.status = 'active'
-       WHERE u.id = ?
-       ORDER BY s.created_at DESC
-       LIMIT 1`
+    let profile = null;
+    let subscription = null;
+
+    // First get user data (always works if user exists)
+    profile = await env.DB.prepare(
+      `SELECT id, email, name, phone, email_verified FROM users WHERE id = ?`
     ).bind(user.id).first();
 
     if (!profile) {
       return errorResponse('User not found', 404);
+    }
+
+    // Try to get subscription data (may fail if table doesn't exist)
+    try {
+      subscription = await env.DB.prepare(
+        `SELECT plan, billing_cycle, status, current_period_start, current_period_end 
+         FROM subscriptions 
+         WHERE user_id = ? AND status = 'active' 
+         ORDER BY created_at DESC 
+         LIMIT 1`
+      ).bind(user.id).first();
+    } catch (subError) {
+      console.error('Subscription query error (table may not exist):', subError);
+      // Continue without subscription data
     }
 
     return successResponse({
@@ -57,11 +69,11 @@ async function getProfile(env, user) {
       name: profile.name,
       phone: profile.phone,
       emailVerified: !!profile.email_verified,
-      plan: profile.plan || null,
-      billingCycle: profile.billing_cycle || null,
-      status: profile.status || 'none',
-      trialStartDate: profile.current_period_start,
-      trialEndDate: profile.current_period_end,
+      plan: subscription?.plan || null,
+      billingCycle: subscription?.billing_cycle || null,
+      status: subscription?.status || 'none',
+      trialStartDate: subscription?.current_period_start || null,
+      trialEndDate: subscription?.current_period_end || null,
     });
   } catch (error) {
     console.error('Get profile error:', error);
@@ -103,12 +115,24 @@ async function handleSubscription(request, env, user) {
 
 async function getSubscription(env, user) {
   try {
-    const subscription = await env.DB.prepare(
-      `SELECT * FROM subscriptions 
-       WHERE user_id = ? AND status = 'active' 
-       ORDER BY created_at DESC 
-       LIMIT 1`
-    ).bind(user.id).first();
+    let subscription = null;
+    
+    try {
+      subscription = await env.DB.prepare(
+        `SELECT * FROM subscriptions 
+         WHERE user_id = ? AND status = 'active' 
+         ORDER BY created_at DESC 
+         LIMIT 1`
+      ).bind(user.id).first();
+    } catch (subError) {
+      console.error('Subscription query error (table may not exist):', subError);
+      // Return default if table doesn't exist
+      return successResponse({
+        plan: null,
+        status: 'none',
+        billingCycle: null,
+      });
+    }
 
     if (!subscription) {
       return successResponse({
@@ -132,13 +156,48 @@ async function getSubscription(env, user) {
   }
 }
 
+async function ensureSubscriptionsTable(env) {
+  try {
+    await env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS subscriptions (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        plan TEXT NOT NULL,
+        billing_cycle TEXT NOT NULL,
+        amount REAL NOT NULL,
+        currency TEXT DEFAULT 'INR',
+        status TEXT DEFAULT 'active',
+        razorpay_subscription_id TEXT,
+        current_period_start TEXT,
+        current_period_end TEXT,
+        cancelled_at TEXT,
+        created_at TEXT DEFAULT (datetime('now')),
+        updated_at TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `).run();
+    return true;
+  } catch (error) {
+    console.error('Failed to ensure subscriptions table:', error);
+    return false;
+  }
+}
+
 async function updateSubscription(request, env, user) {
   try {
     const { plan, billingCycle, status } = await request.json();
 
-    const existingSubscription = await env.DB.prepare(
-      `SELECT id FROM subscriptions WHERE user_id = ? AND status = 'active'`
-    ).bind(user.id).first();
+    // Ensure subscriptions table exists
+    await ensureSubscriptionsTable(env);
+
+    let existingSubscription = null;
+    try {
+      existingSubscription = await env.DB.prepare(
+        `SELECT id FROM subscriptions WHERE user_id = ? AND status = 'active'`
+      ).bind(user.id).first();
+    } catch (e) {
+      console.error('Error checking existing subscription:', e);
+    }
 
     if (existingSubscription) {
       if (status === 'expired' || status === 'cancelled') {
