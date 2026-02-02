@@ -134,17 +134,22 @@ app.use(async (req, res, next) => {
   const hostname = parts[0];
   const hostParts = hostname.split('.');
 
+  // In Replit/local, subdomains are hostParts[0] when hostParts.length >= 2
+  // But we need to be careful with domain suffixes.
   if (hostParts.length >= 2) {
     const subdomain = hostParts[0];
     
-    // Ignore system subdomains
-    if (['www', 'fluxe', 'api'].includes(subdomain)) {
+    // Ignore system subdomains and common suffixes
+    if (['www', 'fluxe', 'api', 'localhost'].includes(subdomain)) {
       return next();
     }
 
     try {
-      const site = db.prepare('SELECT * FROM sites WHERE subdomain = ? AND is_active = 1').get(subdomain);
+      // Precise query to avoid ambiguity
+      const site = db.prepare('SELECT * FROM sites WHERE subdomain = ?').get(subdomain);
+      
       if (site) {
+        console.log(`[Routing] Found site for subdomain "${subdomain}": ${site.brand_name}`);
         const templateId = site.template_id || 'template1';
         const templatePath = path.join(__dirname, 'frontend', 'templates', templateId, 'index.html');
         
@@ -158,19 +163,29 @@ app.use(async (req, res, next) => {
           
           // Inject site data for client-side scripts
           const siteDataScript = `<script>window.FLUXE_SITE_DATA = ${JSON.stringify(site)};</script>`;
-          html = html.replace('</head>', `${siteDataScript}</head>`);
+          if (html.includes('</head>')) {
+            html = html.replace('</head>', `${siteDataScript}</head>`);
+          } else if (html.includes('<head>')) {
+            html = html.replace('<head>', `<head>${siteDataScript}`);
+          } else {
+            html = siteDataScript + html;
+          }
           
-          // Adjust asset paths to be absolute from the template directory
-          // Only adjust relative paths that don't start with / or http
-          html = html.replace(/(src|href)="(?!\/|http|https)([^"]+)"/g, `$1="/templates/${templateId}/$2"`);
+          // Adjust asset paths
+          html = html.replace(/(src|href)="(?!\/|http|https|#)([^"]+)"/g, `$1="/templates/${templateId}/$2"`);
           
           res.setHeader('Content-Type', 'text/html');
           return res.send(html);
+        } else {
+          console.error(`[Routing] Template not found: ${templatePath}`);
         }
+      } else {
+        // If no site matches, it might be a main domain path or a 404
+        console.log(`[Routing] No site found for subdomain: ${subdomain}`);
       }
     } catch (error) {
-      console.error('Subdomain routing error:', error);
-      return res.status(500).send('Internal Server Error');
+      console.error('[Routing] Subdomain routing error:', error);
+      return res.status(500).send('Internal Server Error: ' + error.message);
     }
   }
   next();
@@ -503,14 +518,18 @@ app.post('/api/sites', (req, res) => {
     
     const existing = db.prepare('SELECT id FROM sites WHERE subdomain = ?').get(subdomain);
     if (existing) {
-      subdomain = `${subdomain}-${Math.random().toString(36).substring(2, 7)}`;
+      // Use a more predictable suffix for debugging
+      subdomain = `${subdomain}-${Math.floor(Math.random() * 10000)}`;
     }
     
     const siteId = generateId();
-    db.prepare(`
+    const stmt = db.prepare(`
       INSERT INTO sites (id, user_id, subdomain, brand_name, category, template_id, logo_url, phone, email, address, primary_color, secondary_color, created_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
-    `).run(
+    `);
+    
+    console.log('Executing site insertion for:', brandName, 'subdomain:', subdomain);
+    stmt.run(
       siteId, 
       user.id, 
       subdomain, 
@@ -524,6 +543,7 @@ app.post('/api/sites', (req, res) => {
       primaryColor || '#000000',
       secondaryColor || '#ffffff'
     );
+    console.log('Site insertion successful');
     
     // Auto-create initial categories if none provided
     const finalCategories = (categories && categories.length > 0) ? categories : ['All Collection', 'New Arrivals'];

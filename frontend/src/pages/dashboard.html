@@ -626,10 +626,41 @@
             setTimeout(() => { fromEl.style.display = 'none'; toEl.style.display = 'block'; toEl.style.opacity = '1'; }, 300);
         };
         document.getElementById('confirm-create-btn')?.addEventListener('click', async () => {
-            const siteData = { brandName: document.getElementById('site-brand-input').value, subdomain: document.getElementById('site-domain-input').value, templateId: selectedTemplate, categories: Array.from(document.querySelectorAll('.category-name-input')).map(i => i.value).filter(v => v) };
-            const res = await siteService.createSite(siteData);
-            if (res.success) { closeModal(); loadSites(); }
-            else alert(res.error);
+            const btn = document.getElementById('confirm-create-btn');
+            const originalText = btn.innerText;
+            btn.innerText = 'Creating...';
+            btn.disabled = true;
+
+            try {
+                const siteData = { 
+                    brandName: document.getElementById('site-brand-input').value, 
+                    subdomain: document.getElementById('site-domain-input').value, 
+                    templateId: selectedTemplate, 
+                    categories: Array.from(document.querySelectorAll('.category-name-input')).map(i => i.value).filter(v => v) 
+                };
+                
+                if (!siteData.brandName || !siteData.subdomain) {
+                    alert('Please enter both Brand Name and Domain Name');
+                    return;
+                }
+
+                console.log('Sending site data:', siteData);
+                const res = await siteService.createSite(siteData);
+                console.log('Create site response:', res);
+
+                if (res.success) { 
+                    closeModal(); 
+                    await loadSites(); 
+                } else { 
+                    alert('Error: ' + res.error); 
+                }
+            } catch (err) {
+                console.error('Create site fatal error:', err);
+                alert('An unexpected error occurred. Check console for details.');
+            } finally {
+                btn.innerText = originalText;
+                btn.disabled = false;
+            }
         });
 
         // Duration selector logic for billing section
