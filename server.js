@@ -776,10 +776,12 @@ app.get('/api/site', (req, res) => {
 });
 
 function replacePlaceholders(html, siteData) {
+  const sitePrefix = `/site/${siteData.subdomain}`;
+  
   const replacements = {
     '{{brandName}}': siteData.brandName || '',
-    '{{logoUrl}}': siteData.logoUrl || '/images/logo.png',
-    '{{faviconUrl}}': siteData.faviconUrl || '/favicon.ico',
+    '{{logoUrl}}': siteData.logoUrl || `${sitePrefix}/images/logo.png`,
+    '{{faviconUrl}}': siteData.faviconUrl || `${sitePrefix}/favicon.ico`,
     '{{primaryColor}}': siteData.primaryColor || '#000000',
     '{{secondaryColor}}': siteData.secondaryColor || '#ffffff',
     '{{phone}}': siteData.phone || '',
@@ -802,7 +804,7 @@ function replacePlaceholders(html, siteData) {
   if (siteData.categories && siteData.categories.length > 0) {
     const navCategories = siteData.categories
       .filter(c => !c.parent_id)
-      .map(c => `<li><a href="/site/${siteData.subdomain}/category/${c.slug}">${c.name}</a></li>`)
+      .map(c => `<li><a href="${sitePrefix}/category/${c.slug}">${c.name}</a></li>`)
       .join('');
     result = result.replace('{{navigationCategories}}', navCategories);
   } else {
@@ -810,6 +812,14 @@ function replacePlaceholders(html, siteData) {
   }
 
   result = result.replace(/\{\{siteData\}\}/g, JSON.stringify(siteData));
+
+  result = result.replace(/href="\//g, `href="${sitePrefix}/`);
+  result = result.replace(/src="\//g, `src="${sitePrefix}/`);
+  result = result.replace(/href='\//g, `href='${sitePrefix}/`);
+  result = result.replace(/src='\//g, `src='${sitePrefix}/`);
+  result = result.replace(new RegExp(`${sitePrefix}${sitePrefix}`, 'g'), sitePrefix);
+  result = result.replace(new RegExp(`${sitePrefix}/https`, 'g'), 'https');
+  result = result.replace(new RegExp(`${sitePrefix}/http`, 'g'), 'http');
 
   return result;
 }
@@ -879,6 +889,17 @@ app.get('/site/:subdomain/*', (req, res) => {
       return res.status(404).send('<h1>Site not found</h1>');
     }
 
+    const templateId = site.template_id || 'template1';
+    const templateDir = path.join(__dirname, 'frontend', 'templates', templateId);
+    const filePath = path.join(templateDir, pagePath);
+    
+    const ext = path.extname(pagePath).toLowerCase();
+    const staticExtensions = ['.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.woff', '.woff2', '.ttf', '.eot', '.ico', '.webp', '.mp4', '.webm'];
+    
+    if (staticExtensions.includes(ext) && fs.existsSync(filePath)) {
+      return res.sendFile(filePath);
+    }
+
     const categories = db.prepare(
       'SELECT * FROM categories WHERE site_id = ? ORDER BY display_order'
     ).all(site.id);
@@ -888,7 +909,7 @@ app.get('/site/:subdomain/*', (req, res) => {
       subdomain: site.subdomain,
       brandName: site.brand_name,
       category: site.category,
-      templateId: site.template_id || 'template1',
+      templateId: templateId,
       logoUrl: site.logo_url,
       faviconUrl: site.favicon_url,
       primaryColor: site.primary_color,
@@ -901,15 +922,14 @@ app.get('/site/:subdomain/*', (req, res) => {
       categories: categories,
     };
 
-    const templateDir = path.join(__dirname, 'frontend', 'templates', siteData.templateId);
-    let filePath = path.join(templateDir, pagePath);
+    let htmlPath = path.join(templateDir, pagePath);
     
-    if (!filePath.endsWith('.html') && !path.extname(filePath)) {
-      filePath += '.html';
+    if (!htmlPath.endsWith('.html') && !path.extname(htmlPath)) {
+      htmlPath += '.html';
     }
 
-    if (filePath.endsWith('.html') && fs.existsSync(filePath)) {
-      let html = fs.readFileSync(filePath, 'utf8');
+    if (htmlPath.endsWith('.html') && fs.existsSync(htmlPath)) {
+      let html = fs.readFileSync(htmlPath, 'utf8');
       html = replacePlaceholders(html, siteData);
       res.setHeader('Content-Type', 'text/html');
       res.setHeader('Cache-Control', 'no-cache');
