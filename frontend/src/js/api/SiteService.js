@@ -95,7 +95,12 @@ class SiteService {
   }
 
   getSiteUrl(subdomain) {
-    return `https://${subdomain}.fluxe.in`;
+    // Check if we're in production or development
+    if (window.location.hostname.includes('fluxe.in')) {
+      return `https://${subdomain}.fluxe.in`;
+    }
+    // For local development on port 5000
+    return `http://${subdomain}.localhost:5000`;
   }
 }
 

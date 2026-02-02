@@ -121,9 +121,75 @@ function successResponse(res, data, message = 'Success') {
   res.json({ success: true, message, data });
 }
 
-function errorResponse(res, message, status = 400, code = 'ERROR') {
-  res.status(status).json({ success: false, error: message, code });
-}
+// Serving Frontend Files
+app.use(express.static(path.join(__dirname, 'frontend')));
+
+// Subdomain and Dynamic Template Routing
+app.use(async (req, res, next) => {
+  const host = req.get('host');
+  if (!host) return next();
+
+  // Handle local development (e.g., savan.localhost:5000)
+  const parts = host.split(':');
+  const hostname = parts[0];
+  const hostParts = hostname.split('.');
+
+  if (hostParts.length >= 2 && !['www', 'fluxe', 'localhost'].includes(hostParts[0])) {
+    const subdomain = hostParts[0];
+    try {
+      const site = db.prepare('SELECT * FROM sites WHERE subdomain = ? AND is_active = 1').get(subdomain);
+      if (site) {
+        const templateId = site.template_id || 'template1';
+        const templatePath = path.join(__dirname, 'frontend', 'templates', templateId, 'index.html');
+        
+        if (fs.existsSync(templatePath)) {
+          let html = fs.readFileSync(templatePath, 'utf8');
+          
+          // Basic Dynamic Injection
+          html = html.replace(/{{brandName}}/g, site.brand_name || '');
+          html = html.replace(/{{logoUrl}}/g, site.logo_url || '');
+          html = html.replace(/{{primaryColor}}/g, site.primary_color || '#000000');
+          
+          // Inject site data for client-side scripts
+          const siteDataScript = `<script>window.FLUXE_SITE_DATA = ${JSON.stringify(site)};</script>`;
+          html = html.replace('</head>', `${siteDataScript}</head>`);
+          
+          // Adjust asset paths to be absolute from the root
+          html = html.replace(/(src|href)="(?!\/|http|https)([^"]+)"/g, `$1="/templates/${templateId}/$2"`);
+          
+          return res.send(html);
+        }
+      }
+    } catch (error) {
+      console.error('Subdomain routing error:', error);
+      return res.status(500).send('Internal Server Error');
+    }
+  }
+  next();
+});
+
+// Health check
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Serve main landing page for non-subdomain requests
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'frontend', 'index.html'));
+});
+
+// Serve dashboard and other pages
+app.get('/dashboard', (req, res) => {
+  res.sendFile(path.join(__dirname, 'frontend', 'src', 'pages', 'dashboard.html'));
+});
+
+app.get('/login', (req, res) => {
+  res.sendFile(path.join(__dirname, 'frontend', 'src', 'pages', 'login.html'));
+});
+
+app.get('/signup', (req, res) => {
+  res.sendFile(path.join(__dirname, 'frontend', 'src', 'pages', 'signup.html'));
+});
 
 app.post('/api/auth/signup', async (req, res) => {
   try {
