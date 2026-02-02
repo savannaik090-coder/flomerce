@@ -37,19 +37,19 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Fluxe SaaS Frontend (Production)"
+args = "Fluxe SaaS Platform"
 
 [[workflows.workflow]]
-name = "Fluxe SaaS Frontend (Production)"
+name = "Fluxe SaaS Platform"
 author = "agent"
-
-[workflows.workflow.metadata]
-outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "npx -y serve -s frontend -p 5000 --cors"
+args = "node server.js"
 waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"
 
 [agent]
 expertMode = true
