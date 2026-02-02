@@ -43,13 +43,13 @@ args = "Fluxe Backend (Production Mode)"
 name = "Fluxe Backend (Production Mode)"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npx wrangler dev backend/index.js --port 5000 --ip 0.0.0.0 --local-protocol http --experimental-local"
-waitForPort = 5000
-
 [workflows.workflow.metadata]
 outputType = "webview"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd backend && npx wrangler dev workers/index.js --port 5000 --ip 0.0.0.0 --local-protocol http --experimental-local"
+waitForPort = 5000
 
 [agent]
 expertMode = true

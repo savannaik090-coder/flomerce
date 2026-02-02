@@ -1,5 +1,43 @@
 import { jsonResponse, errorResponse, corsHeaders } from '../utils/helpers.js';
 
+const STATIC_EXTENSIONS = [
+  '.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.ico',
+  '.woff', '.woff2', '.ttf', '.eot', '.otf', '.map', '.json'
+];
+
+function isStaticAsset(path) {
+  const lowerPath = path.toLowerCase();
+  return STATIC_EXTENSIONS.some(ext => lowerPath.endsWith(ext)) ||
+         lowerPath.startsWith('/css/') ||
+         lowerPath.startsWith('/js/') ||
+         lowerPath.startsWith('/images/') ||
+         lowerPath.startsWith('/fonts/') ||
+         lowerPath.startsWith('/data/');
+}
+
+function getContentType(path) {
+  const ext = path.split('.').pop().toLowerCase();
+  const contentTypes = {
+    'css': 'text/css',
+    'js': 'application/javascript',
+    'json': 'application/json',
+    'png': 'image/png',
+    'jpg': 'image/jpeg',
+    'jpeg': 'image/jpeg',
+    'gif': 'image/gif',
+    'svg': 'image/svg+xml',
+    'webp': 'image/webp',
+    'ico': 'image/x-icon',
+    'woff': 'font/woff',
+    'woff2': 'font/woff2',
+    'ttf': 'font/ttf',
+    'eot': 'application/vnd.ms-fontobject',
+    'otf': 'font/otf',
+    'map': 'application/json',
+  };
+  return contentTypes[ext] || 'application/octet-stream';
+}
+
 export async function handleSiteRouting(request, env) {
   const url = new URL(request.url);
   const hostname = url.hostname;
@@ -32,6 +70,13 @@ export async function handleSiteRouting(request, env) {
     return null;
   }
 
+  const path = url.pathname;
+  
+  // Always allow API requests to pass through
+  if (path.startsWith('/api/')) {
+    return null;
+  }
+
   try {
     // Simpler query without JOIN to reduce potential errors
     const site = await env.DB.prepare(
@@ -46,10 +91,10 @@ export async function handleSiteRouting(request, env) {
     }
 
     const templateId = site.template_id || 'template1';
-    const path = url.pathname;
 
-    if (path.startsWith('/api/')) {
-      return null;
+    // Handle static assets (CSS, JS, images, fonts) - rewrite to template folder
+    if (isStaticAsset(path)) {
+      return serveStaticAsset(env, templateId, path);
     }
 
     // Try to get categories, but don't fail if it errors
@@ -138,6 +183,57 @@ export async function handleSiteRouting(request, env) {
   } catch (error) {
     console.error('Site routing error:', error);
     return new Response('Internal server error', { status: 500 });
+  }
+}
+
+async function serveStaticAsset(env, templateId, path) {
+  try {
+    const templatePath = `/templates/${templateId}${path}`;
+    
+    // Try ASSETS binding first (Cloudflare Pages)
+    if (env.ASSETS) {
+      try {
+        const assetRequest = new Request(`https://placeholder.com${templatePath}`);
+        const response = await env.ASSETS.fetch(assetRequest);
+        if (response.ok) {
+          const contentType = getContentType(path);
+          const headers = new Headers(response.headers);
+          headers.set('Content-Type', contentType);
+          headers.set('Cache-Control', 'public, max-age=31536000');
+          headers.set('Access-Control-Allow-Origin', '*');
+          
+          return new Response(response.body, {
+            status: 200,
+            headers,
+          });
+        }
+      } catch (assetErr) {
+        console.error('[Static] ASSETS fetch error:', assetErr);
+      }
+    }
+
+    // Fallback: Try fetching from the configured domain
+    const domain = env.DOMAIN || 'fluxe.in';
+    const baseUrl = `https://${domain}`;
+    const response = await fetch(`${baseUrl}${templatePath}`);
+    
+    if (!response.ok) {
+      console.error(`[Static] Asset not found at: ${baseUrl}${templatePath}`);
+      return new Response('Asset not found', { status: 404 });
+    }
+    
+    const contentType = getContentType(path);
+    return new Response(response.body, {
+      status: 200,
+      headers: {
+        'Content-Type': contentType,
+        'Cache-Control': 'public, max-age=31536000',
+        'Access-Control-Allow-Origin': '*',
+      },
+    });
+  } catch (error) {
+    console.error('Serve static asset error:', error);
+    return new Response('Failed to load asset', { status: 500 });
   }
 }
 
