@@ -52,6 +52,19 @@ The D1 database schema includes tables for `users`, `sites`, `products`, `catego
 
 ## Recent Changes (February 2026)
 
+### Dashboard & API Fixes (Feb 2 - Latest)
+**Fixed Issues:**
+1. **Plan Selection Overlay**: Now displays all 4 plans (Trial, Basic, Premium, Pro) in a 2x2 grid layout
+2. **Duration Selector**: Added working Monthly/6 Months/Yearly buttons that update plan prices dynamically
+3. **Upgrade Buttons**: Added click handlers for billing section upgrade buttons to initiate Razorpay payments
+4. **Website Creation API**: Fixed `category` field error - backend now defaults to 'general' if not provided
+5. **Custom Subdomain**: Backend now accepts subdomain from frontend request for custom website URLs
+
+**Files Updated:**
+- `frontend/src/pages/dashboard.html` - Plan overlay UI and JavaScript handlers
+- `backend/workers/sites-worker.js` - Category defaulting and subdomain handling
+- `server.js` - Same fixes for local development
+
 ### Profile Endpoint Fix (Feb 2)
 **Issue:** Production `/api/users/profile` returning 500 error.
 **Root Cause:** The `subscriptions` table may not exist in production D1.
