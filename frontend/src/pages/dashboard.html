@@ -291,11 +291,9 @@
         let currentUserData = null;
         let selectedTemplate = null;
 
-        // CRITICAL: Initialize the auth service first
-        await authService.init();
-
         // Navigation
         const updateActiveNav = (page) => {
+            console.log('Navigating to:', page);
             document.querySelectorAll('.nav-link, .mobile-nav-item').forEach(link => {
                 if (link.dataset.page === page) {
                     link.classList.add('active');
@@ -305,14 +303,21 @@
             });
 
             // Hide all pages
-            ['sites-page', 'plans-page', 'account-page'].forEach(id => {
+            const pages = ['sites-page', 'plans-page', 'account-page'];
+            pages.forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.style.display = 'none';
             });
 
             // Show selected page
             const activePage = document.getElementById(`${page}-page`);
-            if (activePage) activePage.style.display = 'block';
+            if (activePage) {
+                activePage.style.display = 'block';
+            }
+            
+            if (page === 'account') {
+                loadUserData();
+            }
         };
 
         document.querySelectorAll('.nav-link, .mobile-nav-item').forEach(link => {
@@ -323,60 +328,64 @@
             });
         });
 
-        document.getElementById('mobile-logout')?.addEventListener('click', () => {
-            authService.signOut();
-        });
+        document.getElementById('logout-btn-account')?.addEventListener('click', () => authService.signOut());
+        document.getElementById('logout-btn-overlay')?.addEventListener('click', () => authService.signOut());
 
-        document.getElementById('logout-btn-account')?.addEventListener('click', () => {
-            authService.signOut();
-        });
-
-        authService.onAuthStateChanged(async (user) => {
-            if (!user) {
-                window.location.href = '/src/pages/login.html';
-                return;
-            }
-            await loadUserData();
-            loadSites();
-        });
-
-        async function loadUserData() {
-            try {
-                // First ensure token is present
-                const token = getAuthToken();
-                if (!token) {
-                    console.error('No auth token found, redirecting to login');
+        // Initialize
+        (async () => {
+            console.log('Initializing Dashboard...');
+            await authService.init();
+            
+            authService.onAuthStateChanged(async (user) => {
+                console.log('Auth state changed:', user);
+                if (!user && !getAuthToken()) {
                     window.location.href = '/src/pages/login.html';
                     return;
                 }
+                await loadUserData();
+                await loadSites();
+            });
+
+            if (authService.isAuthenticated()) {
+                await loadUserData();
+                await loadSites();
+            }
+        })();
+
+        async function loadUserData() {
+            try {
+                const token = getAuthToken();
+                if (!token) return;
 
                 console.log('Fetching user profile...');
                 const result = await apiRequest('/api/users/profile');
                 console.log('Profile result:', result);
 
-                if (result.success !== false && result.data) {
+                if (result.success && result.data) {
                     currentUserData = result.data;
                     
-                    if (document.getElementById('user-display-name')) document.getElementById('user-display-name').innerText = currentUserData.name || 'No Name Set';
-                    if (document.getElementById('user-display-email')) document.getElementById('user-display-email').innerText = currentUserData.email;
+                    if (document.getElementById('user-display-name')) document.getElementById('user-display-name').innerText = currentUserData.name || 'User';
+                    if (document.getElementById('user-display-email')) document.getElementById('user-display-email').innerText = currentUserData.email || '';
 
                     const plan = currentUserData.plan;
                     const status = currentUserData.status;
                     
+                    const existingOverlay = document.getElementById('plan-selection-overlay');
+                    if (existingOverlay) existingOverlay.remove();
+
                     if (!plan || status === 'none' || status === 'expired') {
                         showPlanSelectionOverlay('Select a plan to start creating websites');
-                        return;
                     }
 
-                    updatePlansUI(plan);
-                    if (document.getElementById('account-plan-name')) document.getElementById('account-plan-name').innerText = (plan || 'NONE').toUpperCase();
+                    if (document.getElementById('account-plan-name')) document.getElementById('account-plan-name').innerText = (plan || 'FREE').toUpperCase();
 
+                    updatePlansUI(plan);
+                    
                     const startDate = currentUserData.trialStartDate ? new Date(currentUserData.trialStartDate) : new Date();
                     const options = { year: 'numeric', month: 'short', day: 'numeric' };
                     if (document.getElementById('account-plan-start')) document.getElementById('account-plan-start').innerText = startDate.toLocaleDateString(undefined, options);
 
                     const billingCycle = currentUserData.billingCycle || 'monthly';
-
                     const now = new Date();
                     let durationDays = 30;
                     if (plan === 'trial') durationDays = 7;
@@ -386,13 +395,10 @@
                     const endDate = currentUserData.trialEndDate ? new Date(currentUserData.trialEndDate) : new Date(startDate.getTime() + durationDays * 24 * 60 * 60 * 1000);
                     if (document.getElementById('account-plan-end')) document.getElementById('account-plan-end').innerText = endDate.toLocaleDateString(undefined, options);
 
-                    const msUsed = now.getTime() - startDate.getTime();
-                    const daysUsed = msUsed / (1000 * 60 * 60 * 24);
                     const daysRemaining = Math.max(0, Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
                     
-                    if (now > endDate) {
-                        await expirePlan(authService.getCurrentUser()?.id, `Your ${plan === 'trial' ? '7-day trial' : billingCycle + ' plan'} has expired. Please renew your subscription to continue using your websites.`);
-                        showPlanSelectionOverlay('Your plan has expired. Please choose a new plan to continue.');
+                    if (now > endDate && plan !== 'free' && plan) {
+                        await expirePlan(currentUserData.id, 'Your plan has expired.');
                     } else {
                         let statusText = daysRemaining >= 30 ? `${Math.floor(daysRemaining/30)} mo left` : `${daysRemaining} days left`;
                         if (document.getElementById('account-plan-status')) document.getElementById('account-plan-status').innerText = 'Active';
@@ -416,21 +422,10 @@
             }
         }
 
-        // --- COMING SOON OVERLAY ---
-        function showComingSoon() {
-            const overlay = document.getElementById('coming-soon-overlay');
-            overlay.style.display = 'flex';
-            setTimeout(() => overlay.classList.add('active'), 10);
+        function showOverlay(message) {
+            document.getElementById('overlay-msg').innerText = message;
+            document.getElementById('overlay-container').style.display = 'flex';
         }
-
-        function hideComingSoon() {
-            const overlay = document.getElementById('coming-soon-overlay');
-            overlay.classList.remove('active');
-            setTimeout(() => overlay.style.display = 'none', 300);
-        }
-
-        window.showComingSoon = showComingSoon;
-        window.hideComingSoon = hideComingSoon;
 
         async function loadSites() {
             const listEl = document.getElementById('sites-list');
@@ -456,15 +451,10 @@
 
                 listEl.innerHTML = sites.map(site => {
                     const siteName = site.brand_name || site.brandName || site.subdomain;
-                    // Dynamically determine the base domain for the site URL
                     const hostname = window.location.hostname;
                     let baseDomain = 'fluxe.in';
-                    
-                    if (hostname.includes('replit.dev')) {
-                        baseDomain = hostname.split('.').slice(-3).join('.');
-                    } else if (hostname.includes('pages.dev')) {
-                        baseDomain = 'pages.dev';
-                    }
+                    if (hostname.includes('replit.dev')) baseDomain = hostname.split('.').slice(-3).join('.');
+                    else if (hostname.includes('pages.dev')) baseDomain = 'pages.dev';
                     
                     const siteUrl = `https://${site.subdomain}.${baseDomain}`;
                     return `
@@ -483,13 +473,9 @@
                 document.querySelectorAll('.delete-site').forEach(btn => {
                     btn.addEventListener('click', async () => {
                         if (confirm('Are you sure you want to delete this website?')) {
-                            const id = btn.dataset.id;
-                            const deleteResult = await siteService.deleteSite(id);
-                            if (deleteResult.success) {
-                                loadSites();
-                            } else {
-                                alert('Failed to delete site: ' + (deleteResult.error || 'Unknown error'));
-                            }
+                            const deleteResult = await siteService.deleteSite(btn.dataset.id);
+                            if (deleteResult.success) loadSites();
+                            else alert('Failed to delete site: ' + (deleteResult.error || 'Unknown error'));
                         }
                     });
                 });
@@ -498,70 +484,11 @@
             }
         }
 
-        // --- SUBSCRIPTION LOGIC ---
-        let currentDuration = 'monthly';
-        
-        document.querySelectorAll('.dur-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                currentDuration = btn.dataset.duration;
-                document.querySelectorAll('.dur-btn').forEach(b => {
-                    b.classList.remove('active');
-                    b.style.background = 'transparent';
-                    b.style.color = 'var(--text-muted)';
-                });
-                btn.classList.add('active');
-                btn.style.background = 'var(--primary)';
-                btn.style.color = 'white';
-                updatePricingDisplay();
-            });
-        });
-
-        function updatePricingDisplay() {
-            document.querySelectorAll('.display-price').forEach(priceEl => {
-                const amount = priceEl.dataset[currentDuration];
-                priceEl.innerHTML = `₹${amount}<span style="font-size:0.875rem; color:var(--text-muted); font-weight: 500;">/${currentDuration === 'monthly' ? 'mo' : currentDuration}</span>`;
-            });
-        }
-
-        document.querySelectorAll('.upgrade-btn').forEach(btn => {
-            btn.addEventListener('click', async () => {
-                const planId = btn.dataset.plan;
-                const user = authService.getCurrentUser();
-                try {
-                    btn.disabled = true;
-                    btn.innerText = 'Processing...';
-                    const result = await paymentService.initiateSubscriptionPayment(planId, currentDuration, {
-                        userName: user?.name || 'User',
-                        userEmail: user?.email || ''
-                    });
-                    
-                    if (result.success) {
-                        await apiRequest('/api/users/subscription', {
-                            method: 'PATCH',
-                            body: JSON.stringify({
-                                plan: planId,
-                                billingCycle: currentDuration,
-                                status: 'active'
-                            })
-                        });
-                        alert('Subscription upgraded successfully!');
-                        window.location.reload();
-                    } else {
-                        throw new Error(result.error || 'Payment failed');
-                    }
-                } catch (error) {
-                    alert('Payment failed: ' + error.message);
-                } finally {
-                    btn.disabled = false;
-                    btn.innerText = `Choose ${planId.charAt(0).toUpperCase() + planId.slice(1)}`;
-                }
-            });
-        });
-
+        // Subscription Plans logic
         function updatePlansUI(currentPlan) {
             if (!currentPlan || currentPlan === 'trial') return;
             const planWeights = { 'basic': 1, 'premium': 2, 'pro': 3 };
-            const currentWeight = planWeights[currentPlan];
+            const currentWeight = planWeights[currentPlan] || 0;
             document.querySelectorAll('.upgrade-btn').forEach(btn => {
                 const btnPlan = btn.dataset.plan;
                 const btnWeight = planWeights[btnPlan];
@@ -569,18 +496,13 @@
                 if (btnPlan === currentPlan) {
                     btn.innerText = 'Current Plan';
                     btn.disabled = true;
-                    card.style.borderColor = '#22c55e';
+                    if (card) card.style.borderColor = '#22c55e';
                 } else if (btnWeight < currentWeight) {
                     btn.innerText = 'Lower Tier';
                     btn.disabled = true;
-                    card.style.opacity = '0.6';
+                    if (card) card.style.opacity = '0.6';
                 }
             });
-        }
-
-        function showOverlay(message) {
-            document.getElementById('overlay-msg').innerText = message;
-            document.getElementById('overlay-container').style.display = 'flex';
         }
 
         function showPlanSelectionOverlay(message) {
@@ -591,183 +513,67 @@
             overlay.innerHTML = `
                 <style>
                     #plan-selection-overlay::-webkit-scrollbar { width: 8px; }
-                    #plan-selection-overlay::-webkit-scrollbar-track { background: transparent; }
                     #plan-selection-overlay::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
-                    .plans-container {
-                        display: grid;
-                        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-                        gap: 20px;
-                        width: 100%;
-                        max-width: 1100px;
-                        margin-bottom: 40px;
-                    }
-                    @media (max-width: 768px) {
-                        .plans-container {
-                            grid-template-columns: 1fr;
-                        }
-                        #plan-selection-overlay h1 { font-size: 1.5rem; }
-                    }
+                    .plans-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; width: 100%; max-width: 1100px; margin-bottom: 40px; }
                 </style>
                 <h1 style="margin-bottom:10px; text-align:center;">Choose Your Plan</h1>
                 <p style="margin-bottom:20px; color:#94a3b8; text-align:center;">${message}</p>
-                
-                <div id="duration-selector" style="display:flex; justify-content:center; gap:10px; margin-bottom:30px; background:#1e293b; padding:5px; border-radius:30px; border:1px solid #334155;">
-                    <button class="duration-btn active" data-duration="monthly" style="padding:8px 20px; border-radius:25px; border:none; background:#2563eb; color:white; cursor:pointer; font-weight:bold;">Monthly</button>
-                    <button class="duration-btn" data-duration="6months" style="padding:8px 20px; border-radius:25px; border:none; background:transparent; color:#94a3b8; cursor:pointer; font-weight:bold;">6 Months</button>
-                    <button class="duration-btn" data-duration="yearly" style="padding:8px 20px; border-radius:25px; border:none; background:transparent; color:#94a3b8; cursor:pointer; font-weight:bold;">Yearly</button>
-                </div>
-                
                 <div class="plans-container">
-                    <!-- Trial Plan -->
                     <div class="plan-card" style="background:#1e293b; padding:30px; border-radius:16px; border:1px solid #334155; text-align:center; display:flex; flex-direction:column;">
-                        <h3 style="color:#94a3b8; margin-top:0;">Free Trial</h3>
+                        <h3 style="color:#94a3b8;">Free Trial</h3>
                         <p style="font-size: 2rem; font-weight: bold; margin:15px 0;">7 Days</p>
-                        <ul style="list-style:none; padding:0; margin:20px 0; text-align:left; font-size:0.95rem; color:#cbd5e1; flex-grow:1;">
-                            <li style="margin-bottom:10px;">✓ Full Platform Access</li>
-                            <li style="margin-bottom:10px;">✓ Create Unlimited Sites</li>
-                            <li style="margin-bottom:10px;">✓ Experience all features</li>
-                        </ul>
                         <button class="btn btn-primary start-trial-btn" style="width:100%; padding:12px; background:#475569; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">Start 7-Day Trial</button>
                     </div>
-
-                    <!-- Basic Plan -->
                     <div class="plan-card" style="background:#1e293b; padding:30px; border-radius:16px; border:1px solid #334155; text-align:center; display:flex; flex-direction:column;">
-                        <h3 style="margin-top:0;">Basic</h3>
-                        <p class="plan-price" data-monthly="99" data-6months="499" data-yearly="899" style="font-size: 2rem; font-weight: bold; margin:15px 0;">₹99<span class="price-suffix" style="font-size:0.9rem; color:#94a3b8;">/mo</span></p>
-                        <ul style="list-style:none; padding:0; margin:20px 0; text-align:left; font-size:0.95rem; color:#cbd5e1; flex-grow:1;">
-                            <li style="margin-bottom:10px;">✓ 1 Website</li>
-                            <li style="margin-bottom:10px;">✓ Standard Templates</li>
-                            <li style="margin-bottom:10px;">✓ 24/7 Support</li>
-                        </ul>
+                        <h3>Basic</h3>
+                        <p style="font-size: 2rem; font-weight: bold; margin:15px 0;">₹99<span style="font-size:0.9rem; color:#94a3b8;">/mo</span></p>
                         <button class="btn btn-primary selection-upgrade-btn" data-plan="basic" style="width:100%; padding:12px; border-radius:8px; cursor:pointer; font-weight:bold;">Choose Basic</button>
                     </div>
-
-                    <!-- Premium Plan -->
-                    <div class="plan-card" style="background:#1e293b; padding:30px; border-radius:16px; border:2px solid #2563eb; text-align:center; position:relative; display:flex; flex-direction:column;">
-                        <span style="position:absolute; top:-12px; left:50%; transform:translateX(-50%); background:#2563eb; color:white; padding:4px 15px; border-radius:20px; font-size:0.8rem; font-weight:bold;">POPULAR</span>
-                        <h3 style="margin-top:0;">Premium</h3>
-                        <p class="plan-price" data-monthly="299" data-6months="1499" data-yearly="2499" style="font-size: 2rem; font-weight: bold; margin:15px 0;">₹299<span class="price-suffix" style="font-size:0.9rem; color:#94a3b8;">/mo</span></p>
-                        <ul style="list-style:none; padding:0; margin:20px 0; text-align:left; font-size:0.95rem; color:#cbd5e1; flex-grow:1;">
-                            <li style="margin-bottom:10px;">✓ 3 Websites</li>
-                            <li style="margin-bottom:10px;">✓ All Templates</li>
-                            <li style="margin-bottom:10px;">✓ Priority Support</li>
-                        </ul>
-                        <button class="btn btn-primary selection-upgrade-btn" data-plan="premium" style="width:100%; padding:12px; border-radius:8px; cursor:pointer; font-weight:bold;">Choose Premium</button>
-                    </div>
-
-                    <!-- Pro Plan -->
-                    <div class="plan-card" style="background:#1e293b; padding:30px; border-radius:16px; border:1px solid #334155; text-align:center; display:flex; flex-direction:column;">
-                        <h3 style="margin-top:0;">Pro</h3>
-                        <p class="plan-price" data-monthly="999" data-6months="4999" data-yearly="8999" style="font-size: 2rem; font-weight: bold; margin:15px 0;">₹999<span class="price-suffix" style="font-size:0.9rem; color:#94a3b8;">/mo</span></p>
-                        <ul style="list-style:none; padding:0; margin:20px 0; text-align:left; font-size:0.95rem; color:#cbd5e1; flex-grow:1;">
-                            <li style="margin-bottom:10px;">✓ Unlimited Websites</li>
-                            <li style="margin-bottom:10px;">✓ Custom Domain Ready</li>
-                            <li style="margin-bottom:10px;">✓ Dedicated Manager</li>
-                        </ul>
-                        <button class="btn btn-primary selection-upgrade-btn" data-plan="pro" style="width:100%; padding:12px; border-radius:8px; cursor:pointer; font-weight:bold;">Choose Pro</button>
-                    </div>
                 </div>
-                
                 <button id="logout-btn-selection" style="background:transparent; border:none; color:#94a3b8; cursor:pointer; text-decoration:underline; font-size:0.9rem;">Logout from Account</button>
             `;
             
             document.body.appendChild(overlay);
-
-            // Add inner overlay event listeners
-            let selectedDuration = 'monthly';
-            const durationBtns = overlay.querySelectorAll('.duration-btn');
-            const priceEls = overlay.querySelectorAll('.plan-price');
-            const priceSuffix = overlay.querySelectorAll('.price-suffix');
-
-            durationBtns.forEach(btn => {
-                btn.addEventListener('click', () => {
-                    selectedDuration = btn.dataset.duration;
-                    durationBtns.forEach(b => {
-                        b.classList.remove('active');
-                        b.style.background = 'transparent';
-                        b.style.color = '#94a3b8';
-                    });
-                    btn.classList.add('active');
-                    btn.style.background = '#2563eb';
-                    btn.style.color = 'white';
-
-                    priceEls.forEach(p => {
-                        const amount = p.dataset[selectedDuration];
-                        p.innerHTML = `₹${amount}<span class="price-suffix" style="font-size:0.9rem; color:#94a3b8;">/${selectedDuration === 'monthly' ? 'mo' : selectedDuration}</span>`;
-                    });
-                });
-            });
-
             overlay.querySelector('.start-trial-btn').addEventListener('click', async () => {
-                try {
-                    await apiRequest('/api/users/subscription', {
-                        method: 'PATCH',
-                        body: JSON.stringify({
-                            plan: 'trial',
-                            status: 'active'
-                        })
-                    });
-                    location.reload();
-                } catch (e) { alert(e.message); }
+                await apiRequest('/api/users/subscription', { method: 'PATCH', body: JSON.stringify({ plan: 'trial', status: 'active' }) });
+                location.reload();
             });
-
             overlay.querySelectorAll('.selection-upgrade-btn').forEach(btn => {
                 btn.addEventListener('click', async () => {
-                    const planId = btn.dataset.plan;
-                    const user = authService.getCurrentUser();
-                    try {
-                        const result = await paymentService.initiateSubscriptionPayment(planId, selectedDuration, {
-                            userName: user?.name || 'User',
-                            userEmail: user?.email || ''
-                        });
-                        
-                        if (result.success) {
-                            await apiRequest('/api/users/subscription', {
-                                method: 'PATCH',
-                                body: JSON.stringify({
-                                    plan: planId,
-                                    billingCycle: selectedDuration,
-                                    status: 'active'
-                                })
-                            });
-                            location.reload();
-                        } else {
-                            throw new Error(result.error || 'Payment failed');
-                        }
-                    } catch (e) { alert(e.message); }
+                    const res = await paymentService.initiateSubscriptionPayment(btn.dataset.plan, 'monthly', { userName: currentUserData?.name || 'User', userEmail: currentUserData?.email || '' });
+                    if (res.success) {
+                        await apiRequest('/api/users/subscription', { method: 'PATCH', body: JSON.stringify({ plan: btn.dataset.plan, billingCycle: 'monthly', status: 'active' }) });
+                        location.reload();
+                    }
                 });
             });
-
             overlay.querySelector('#logout-btn-selection').addEventListener('click', () => authService.signOut());
         }
 
-        document.getElementById('logout-btn-overlay').addEventListener('click', () => authService.signOut());
+        function showComingSoon() {
+            const overlay = document.getElementById('coming-soon-overlay');
+            if (overlay) {
+                overlay.style.display = 'flex';
+                setTimeout(() => overlay.classList.add('active'), 10);
+            }
+        }
+
+        function hideComingSoon() {
+            const overlay = document.getElementById('coming-soon-overlay');
+            if (overlay) {
+                overlay.classList.remove('active');
+                setTimeout(() => overlay.style.display = 'none', 300);
+            }
+        }
+        window.hideComingSoon = hideComingSoon;
 
         // Modal Logic
         const modal = document.getElementById('create-site-modal');
         const floatingBtn = document.getElementById('open-create-modal');
-        
-        const openModal = () => {
-            modal.style.display = 'flex';
-            floatingBtn.style.display = 'none';
-            setTimeout(() => modal.classList.add('active'), 10);
-        };
-
-        const closeModal = () => {
-            modal.classList.remove('active');
-            setTimeout(() => {
-                modal.style.display = 'none';
-                floatingBtn.style.display = 'flex';
-            }, 300);
-        };
-
-        floatingBtn.addEventListener('click', openModal);
-        document.getElementById('close-modal-btn').addEventListener('click', closeModal);
-        
-        window.addEventListener('click', (e) => {
-            if (e.target === modal) closeModal();
-        });
-
+        const openModal = () => { modal.style.display = 'flex'; floatingBtn.style.display = 'none'; setTimeout(() => modal.classList.add('active'), 10); };
+        const closeModal = () => { modal.classList.remove('active'); setTimeout(() => { modal.style.display = 'none'; floatingBtn.style.display = 'flex'; }, 300); };
+        floatingBtn?.addEventListener('click', openModal);
+        document.getElementById('close-modal-btn')?.addEventListener('click', closeModal);
         document.querySelectorAll('.template-option').forEach(opt => {
             opt.addEventListener('click', (e) => {
                 if (e.target.classList.contains('preview-btn')) { window.open(e.target.dataset.url, '_blank'); return; }
@@ -777,137 +583,21 @@
                 document.getElementById('confirm-template-btn').disabled = false;
             });
         });
-
+        document.getElementById('confirm-template-btn')?.addEventListener('click', () => switchStep(1, 2));
+        document.getElementById('back-to-step-1')?.addEventListener('click', () => switchStep(2, 1));
+        document.getElementById('confirm-details-btn')?.addEventListener('click', () => switchStep(2, 3));
         const switchStep = (from, to) => {
             const fromEl = document.getElementById(`modal-step-${from}`);
             const toEl = document.getElementById(`modal-step-${to}`);
-            
-            // Clean up previous step
-            if (from === 3 && to === 2) {
-                // Keep data but just switch view
-            }
-
             fromEl.style.opacity = '0';
-            fromEl.style.transform = 'translateX(-20px)';
-            setTimeout(() => {
-                fromEl.style.display = 'none';
-                toEl.style.display = 'block';
-                toEl.style.opacity = '0';
-                toEl.style.transform = 'translateX(20px)';
-                setTimeout(() => {
-                    toEl.style.opacity = '1';
-                    toEl.style.transform = 'translateX(0)';
-                }, 10);
-            }, 300);
+            setTimeout(() => { fromEl.style.display = 'none'; toEl.style.display = 'block'; toEl.style.opacity = '1'; }, 300);
         };
-
-        document.getElementById('confirm-template-btn').addEventListener('click', () => switchStep(1, 2));
-        document.getElementById('back-to-step-1').addEventListener('click', () => switchStep(2, 1));
-        document.getElementById('confirm-details-btn').addEventListener('click', () => switchStep(2, 3));
-        document.getElementById('back-to-step-2').addEventListener('click', () => switchStep(3, 2));
-
-        // Category management logic
-        const addCategoryField = () => {
-            const container = document.getElementById('categories-container');
-            const group = document.createElement('div');
-            group.className = 'category-input-group';
-            group.style.cssText = 'display: flex; gap: 0.5rem; align-items: center;';
-            group.innerHTML = `
-                <input type="text" class="category-name-input" placeholder="Category Name" style="flex: 1;">
-                <button class="btn btn-outline remove-category-btn" style="padding: 0.5rem; border-color: #fecaca; color: #ef4444;">×</button>
-            `;
-            container.appendChild(group);
-            
-            group.querySelector('.remove-category-btn').addEventListener('click', () => {
-                group.remove();
-            });
-        };
-
-        document.getElementById('add-category-field-btn').addEventListener('click', addCategoryField);
-
-        // Add step transition styles
-        const stepStyle = document.createElement('style');
-        stepStyle.textContent = `
-            #modal-step-1, #modal-step-2, #modal-step-3 {
-                transition: opacity 0.3s ease, transform 0.3s ease;
-            }
-        `;
-        document.head.appendChild(stepStyle);
-
-        document.getElementById('confirm-create-btn').addEventListener('click', async () => {
-            const domain = document.getElementById('site-domain-input').value;
-            const brand = document.getElementById('site-brand-input').value;
-            const logoFile = document.getElementById('site-logo-input').files[0];
-            
-            const categoryInputs = document.querySelectorAll('.category-name-input');
-            const categories = Array.from(categoryInputs)
-                .map(input => input.value.trim())
-                .filter(val => val !== '');
-
-            if (!domain || !brand) { alert('Please fill in domain and brand details.'); return; }
-            if (categories.length === 0) { alert('Please add at least one category.'); return; }
-            
-            try {
-                const btn = document.getElementById('confirm-create-btn');
-                btn.disabled = true;
-                const originalText = btn.innerText;
-                btn.innerText = 'Creating...';
-
-                let logoUrl = '';
-                if (logoFile) {
-                    try {
-                        const formData = new FormData();
-                        formData.append('file', logoFile);
-                        formData.append('path', `logos/${authService.getCurrentUser()?.uid || 'guest'}/${Date.now()}_${logoFile.name}`);
-                        
-                        const token = getAuthToken();
-                        const uploadRes = await fetch(`${config.apiBaseUrl}/api/upload`, {
-                            method: 'POST',
-                            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
-                            body: formData
-                        });
-                        if (uploadRes.ok) {
-                            const uploadData = await uploadRes.json();
-                            logoUrl = uploadData.url;
-                        }
-                    } catch (uploadErr) {
-                        console.error('Logo upload failed, continuing without logo:', uploadErr);
-                    }
-                }
-
-                await siteService.createSite({ 
-                    siteName: domain, 
-                    brandName: brand, 
-                    templateId: selectedTemplate,
-                    logoUrl: logoUrl,
-                    categories: categories
-                });
-                
-                closeModal();
-                loadSites();
-                
-                // Reset form
-                document.getElementById('site-domain-input').value = '';
-                document.getElementById('site-brand-input').value = '';
-                document.getElementById('site-logo-input').value = '';
-                document.getElementById('categories-container').innerHTML = `
-                    <div class="category-input-group" style="display: flex; gap: 0.5rem; align-items: center;">
-                        <input type="text" class="category-name-input" placeholder="Category Name (e.g. Rings)" style="flex: 1;">
-                        <button class="btn btn-outline remove-category-btn" style="padding: 0.5rem; border-color: #fecaca; color: #ef4444;" disabled>×</button>
-                    </div>
-                `;
-                switchStep(3, 1);
-            } catch (error) {
-                alert('Error creating website: ' + error.message);
-            } finally {
-                const btn = document.getElementById('confirm-create-btn');
-                btn.disabled = false;
-                btn.innerText = 'Create Website';
-            }
+        document.getElementById('confirm-create-btn')?.addEventListener('click', async () => {
+            const siteData = { brandName: document.getElementById('site-brand-input').value, subdomain: document.getElementById('site-domain-input').value, templateId: selectedTemplate, categories: Array.from(document.querySelectorAll('.category-name-input')).map(i => i.value).filter(v => v) };
+            const res = await siteService.createSite(siteData);
+            if (res.success) { closeModal(); loadSites(); }
+            else alert(res.error);
         });
-
-        document.getElementById('mobile-logout')?.addEventListener('click', () => authService.signOut());
-        document.getElementById('logout-btn-account')?.addEventListener('click', () => authService.signOut());
     </script>
 </body>
 </html>

@@ -3,7 +3,12 @@ function getAPIBaseURL() {
   if (hostname === 'localhost' || hostname === '127.0.0.1') {
     return 'http://localhost:8787';
   }
-  // Use relative URL for both Replit and production domain
+  // For production and subdomains, always use the main domain for API
+  // This ensures that api calls from nazakat.fluxe.in go to fluxe.in/api
+  if (hostname.endsWith('.fluxe.in')) {
+    return 'https://fluxe.in';
+  }
+  // Otherwise use relative (works for fluxe.in and pages.dev)
   return '';
 }
 
@@ -79,17 +84,20 @@ export async function apiRequest(endpoint, options = {}) {
       ...options,
       headers,
       mode: 'cors',
-      credentials: 'omit' // Reverting back to omit since we use Authorization header
+      credentials: 'omit'
     };
-
-    console.log(`API Request: ${options.method || 'GET'} ${url}`, {
-      headers: Object.keys(headers)
-    });
 
     const response = await fetch(url, fetchOptions);
     
+    // Check if the response is actually JSON
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      const text = await response.text();
+      console.error('Non-JSON response received:', text);
+      throw new APIError('Server returned an unexpected response format', response.status, 'INVALID_RESPONSE');
+    }
+
     const data = await response.json();
-    console.log(`API Response: ${response.status}`, data);
     
     if (!response.ok) {
       const errorMsg = data.message || data.error || 'Request failed';
@@ -102,7 +110,7 @@ export async function apiRequest(endpoint, options = {}) {
     if (error instanceof APIError) {
       throw error;
     }
-    throw new APIError('Network error', 0, 'NETWORK_ERROR');
+    throw new APIError('Network error: ' + error.message, 0, 'NETWORK_ERROR');
   }
 }
 
