@@ -132,21 +132,39 @@ async function handleSiteInfo(request, env) {
       return errorResponse('Site not found', 404);
     }
 
-    const categories = await env.DB.prepare(
-      'SELECT * FROM categories WHERE site_id = ? AND is_active = 1 ORDER BY display_order'
-    ).bind(site.id).all();
+    // Try to get categories, but don't fail if the table doesn't exist
+    let categoriesResult = [];
+    try {
+      const categories = await env.DB.prepare(
+        'SELECT * FROM categories WHERE site_id = ? ORDER BY display_order'
+      ).bind(site.id).all();
+      categoriesResult = categories.results || [];
+    } catch (catError) {
+      console.error('Categories query failed:', catError);
+      // Continue without categories
+    }
+
+    // Safely parse JSON fields
+    let socialLinks = {};
+    let settings = {};
+    try {
+      if (site.social_links) socialLinks = JSON.parse(site.social_links);
+    } catch (e) { /* ignore parse errors */ }
+    try {
+      if (site.settings) settings = JSON.parse(site.settings);
+    } catch (e) { /* ignore parse errors */ }
 
     return jsonResponse({
       success: true,
       data: {
         ...site,
-        socialLinks: site.social_links ? JSON.parse(site.social_links) : {},
-        settings: site.settings ? JSON.parse(site.settings) : {},
-        categories: categories.results,
+        socialLinks,
+        settings,
+        categories: categoriesResult,
       },
     });
   } catch (error) {
     console.error('Get site info error:', error);
-    return errorResponse('Failed to fetch site info', 500);
+    return errorResponse('Failed to fetch site info: ' + error.message, 500);
   }
 }

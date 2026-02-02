@@ -33,11 +33,9 @@ export async function handleSiteRouting(request, env) {
   }
 
   try {
+    // Simpler query without JOIN to reduce potential errors
     const site = await env.DB.prepare(
-      `SELECT s.*, u.email as owner_email 
-       FROM sites s 
-       JOIN users u ON s.user_id = u.id 
-       WHERE s.subdomain = ? AND s.is_active = 1`
+      `SELECT * FROM sites WHERE subdomain = ? AND is_active = 1`
     ).bind(subdomain).first();
 
     if (!site) {
@@ -54,12 +52,26 @@ export async function handleSiteRouting(request, env) {
       return null;
     }
 
-    const categories = await env.DB.prepare(
-      'SELECT * FROM categories WHERE site_id = ? AND is_active = 1 ORDER BY display_order'
-    ).bind(site.id).all();
+    // Try to get categories, but don't fail if it errors
+    let categoriesResult = { results: [] };
+    try {
+      categoriesResult = await env.DB.prepare(
+        'SELECT * FROM categories WHERE site_id = ? ORDER BY display_order'
+      ).bind(site.id).all();
+    } catch (catError) {
+      console.error('Categories query failed:', catError);
+    }
+    const categories = categoriesResult;
 
-    const settings = site.settings ? JSON.parse(site.settings) : {};
-    const socialLinks = site.social_links ? JSON.parse(site.social_links) : {};
+    // Safely parse JSON fields
+    let settings = {};
+    let socialLinks = {};
+    try {
+      if (site.settings) settings = JSON.parse(site.settings);
+    } catch (e) { /* ignore parse errors */ }
+    try {
+      if (site.social_links) socialLinks = JSON.parse(site.social_links);
+    } catch (e) { /* ignore parse errors */ }
 
     const siteData = {
       id: site.id,

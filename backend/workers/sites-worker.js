@@ -67,6 +67,9 @@ async function getSite(env, user, siteId) {
 }
 
 async function createSite(request, env, user) {
+  let siteId = null;
+  let finalSubdomain = null;
+  
   try {
     const body = await request.json();
     const { brandName, categories, templateId, logoUrl, phone, email, address, primaryColor, secondaryColor } = body;
@@ -85,9 +88,9 @@ async function createSite(request, env, user) {
       return errorResponse('This subdomain is already taken. Please choose a different brand name.', 400, 'SUBDOMAIN_TAKEN');
     }
 
-    const finalSubdomain = subdomain;
-
-    const siteId = generateId();
+    finalSubdomain = subdomain;
+    siteId = generateId();
+    
     await env.DB.prepare(
       `INSERT INTO sites (id, user_id, subdomain, brand_name, category, template_id, logo_url, phone, email, address, primary_color, secondary_color, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
@@ -106,19 +109,25 @@ async function createSite(request, env, user) {
       secondaryColor || '#ffffff'
     ).run();
 
-    if (categories && categories.length > 0) {
-      await createUserCategories(env, siteId, categories);
-    } else if (category) {
-      await createDefaultCategories(env, siteId, category);
+    // Try to create categories but don't fail if it errors
+    try {
+      if (categories && categories.length > 0) {
+        await createUserCategories(env, siteId, categories);
+      } else if (category) {
+        await createDefaultCategories(env, siteId, category);
+      }
+    } catch (catError) {
+      console.error('Category creation failed (non-fatal):', catError);
+      // Continue - site was created successfully
     }
 
-    return successResponse({ id: siteId, subdomain }, 'Site created successfully');
+    return successResponse({ id: siteId, subdomain: finalSubdomain }, 'Site created successfully');
   } catch (error) {
     console.error('Create site error:', error);
     if (error.message && error.message.includes('UNIQUE constraint failed')) {
       return errorResponse('Subdomain already taken', 400, 'SUBDOMAIN_TAKEN');
     }
-    return errorResponse('Failed to create site', 500);
+    return errorResponse('Failed to create site: ' + error.message, 500);
   }
 }
 
