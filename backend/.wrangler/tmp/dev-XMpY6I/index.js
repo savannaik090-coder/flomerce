@@ -3023,7 +3023,7 @@ function replacePlaceholders(html, siteData) {
     result = result.replace("{{productDescription}}", siteData.currentProduct.description || "");
     result = result.replace("{{productPrice}}", siteData.currentProduct.price || "");
   }
-  const navCategories = siteData.categories?.filter((c) => !c.parent_id).map((c) => `<li><a href="/category/${c.slug}">${c.name}</a></li>`).join("") || "";
+  const navCategories = siteData.categories?.filter((c) => !c.parent_id).map((c) => `<li><a href="/category/${c.slug}">${c.name}</a></li>`).join("") || '<li><a href="/all-collection">All Collection</a></li><li><a href="/featured-collection">Featured Collection</a></li>';
   result = result.replace("{{navigationCategories}}", navCategories);
   result = result.replace(/\{\{siteData\}\}/g, JSON.stringify(siteData));
   return result;

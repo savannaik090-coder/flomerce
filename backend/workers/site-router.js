@@ -353,7 +353,7 @@ function replacePlaceholders(html, siteData) {
   const navCategories = siteData.categories
     ?.filter(c => !c.parent_id)
     .map(c => `<li><a href="/category/${c.slug}">${c.name}</a></li>`)
-    .join('') || '';
+    .join('') || '<li><a href="/all-collection">All Collection</a></li><li><a href="/featured-collection">Featured Collection</a></li>';
   result = result.replace('{{navigationCategories}}', navCategories);
 
   result = result.replace(/\{\{siteData\}\}/g, JSON.stringify(siteData));
