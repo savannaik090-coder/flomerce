@@ -484,10 +484,9 @@ background-color: #000 !important;
                 <li class="nav-item"><a href="/" class="nav-link" data-translate="home">Home</a></li>
                 <li class="nav-item"><a href="/new-arrivals" class="nav-link" data-translate="new_arrivals">New Arrivals</a></li>
                 <li class="nav-item dropdown">
-                    <a href="#" class="nav-link dropdown-toggle"><span data-translate="categories">Collections</span> <i class="fas fa-chevron-down"></i></a>
+                    <a href="#" class="nav-link dropdown-toggle"><span data-translate="collections">Collections</span> <i class="fas fa-chevron-down"></i></a>
                     <ul class="dropdown-menu" id="dynamic-categories-nav">
-                        <li><a href="/all-collection" data-translate="all_collections">All Collection</a></li>
-                        <li><a href="/featured-collection" data-translate="featured">Featured Collection</a></li>
+                        <!-- Dynamic categories will be loaded here -->
                     </ul>
                 </li>
                 <li class="nav-item"><a href="/about-us" class="nav-link" data-translate="about_us">About</a></li>
@@ -540,14 +539,13 @@ background-color: #000 !important;
             if (siteData && siteData.categories) {
               const nav = document.getElementById('dynamic-categories-nav');
               const wrapper = document.getElementById('dynamic-categories-circles');
+              const footerNav = document.getElementById('dynamic-footer-categories');
+              const searchFilters = document.querySelector('.search-filters');
               
+              // Clear and populate Navbar Collections
               if (nav) {
-                // Keep "All Collection" and "Featured Collection" as defaults if they already exist,
-                // or clear and add them back if that's the preferred behavior.
-                // Based on the user's request, they want THEIR categories instead of ONLY the defaults.
                 nav.innerHTML = '';
-                
-                // Add default links back first if desired, or just add the dynamic ones
+                // Add standard collection links
                 nav.innerHTML += `<li><a href="/all-collection" data-translate="all_collections">All Collection</a></li>`;
                 nav.innerHTML += `<li><a href="/featured-collection" data-translate="featured">Featured Collection</a></li>`;
                 
@@ -557,7 +555,30 @@ background-color: #000 !important;
                   nav.appendChild(li);
                 });
               }
+
+              // Clear and populate Footer Categories
+              if (footerNav) {
+                footerNav.innerHTML = '';
+                siteData.categories.forEach(cat => {
+                  const li = document.createElement('li');
+                  li.innerHTML = `<a href="/category/${cat.slug}">${cat.name}</a>`;
+                  footerNav.appendChild(li);
+                });
+              }
+
+              // Clear and populate Search Filters
+              if (searchFilters) {
+                searchFilters.innerHTML = '<button class="search-filter-btn active" data-filter="all" data-translate="all">All</button>';
+                siteData.categories.forEach(cat => {
+                  const btn = document.createElement('button');
+                  btn.className = 'search-filter-btn';
+                  btn.setAttribute('data-filter', cat.slug);
+                  btn.textContent = cat.name;
+                  searchFilters.appendChild(btn);
+                });
+              }
               
+              // Populate Home Page Circles
               if (wrapper) {
                 wrapper.innerHTML = '';
                 siteData.categories.forEach(cat => {
@@ -601,10 +622,7 @@ background-color: #000 !important;
             </div>
 
             <div class="search-filters">
-                <button class="search-filter-btn active" data-filter="all" data-translate="all">All</button>
-                <button class="search-filter-btn" data-filter="saree" data-translate="jewelry">jewelry</button>
-                <button class="search-filter-btn" data-filter="lehenga" data-translate="earrings">Earrings</button>
-                <button class="search-filter-btn" data-filter="suit" data-translate="rings">Rings</button>
+                <!-- Dynamic filters will be loaded here -->
             </div>
 
             <div class="search-content">
@@ -1773,51 +1791,8 @@ background-color: #000 !important;
                     <i class="fas fa-chevron-down"></i>
                 </button>
                 <div class="footer-content" id="categories-content">
-                    <ul>
-                        <li class="category-with-sub">
-                            <div class="category-item-header">
-                                <a href="#" data-translate="necklaces">Necklace</a>
-                                <i class="fas fa-plus category-toggle-icon"></i>
-                            </div>
-                            <ul class="subcategory-list">
-                                <li><a href="/gold-necklace" data-translate-dynamic>Gold Necklace</a></li>
-                                <li><a href="/silver-necklace" data-translate-dynamic>Silver Necklace</a></li>
-                                <li><a href="/meenakari-necklace" data-translate-dynamic>Meenakari Necklace</a></li>
-                            </ul>
-                        </li>
-                        <li class="category-with-sub">
-                            <div class="category-item-header">
-                                <a href="#" data-translate="earrings">Earrings</a>
-                                <i class="fas fa-plus category-toggle-icon"></i>
-                            </div>
-                            <ul class="subcategory-list">
-                                <li><a href="/gold-earrings" data-translate-dynamic>Gold Earrings</a></li>
-                                <li><a href="/silver-earrings" data-translate-dynamic>Silver Earrings</a></li>
-                                <li><a href="/meenakari-earrings" data-translate-dynamic>Meenakari Earrings</a></li>
-                            </ul>
-                        </li>
-                        <li class="category-with-sub">
-                            <div class="category-item-header">
-                                <a href="#" data-translate="bangles">Bangles</a>
-                                <i class="fas fa-plus category-toggle-icon"></i>
-                            </div>
-                            <ul class="subcategory-list">
-                                <li><a href="/gold-bangles" data-translate-dynamic>Gold Bangles</a></li>
-                                <li><a href="/silver-bangles" data-translate-dynamic>Silver Bangles</a></li>
-                                <li><a href="/meenakari-bangles" data-translate-dynamic>Meenakari Bangles</a></li>
-                            </ul>
-                        </li>
-                        <li class="category-with-sub">
-                            <div class="category-item-header">
-                                <a href="#" data-translate="rings">Rings</a>
-                                <i class="fas fa-plus category-toggle-icon"></i>
-                            </div>
-                            <ul class="subcategory-list">
-                                <li><a href="/gold-rings" data-translate-dynamic>Gold Rings</a></li>
-                                <li><a href="/silver-rings" data-translate-dynamic>Silver Rings</a></li>
-                                <li><a href="/meenakari-rings" data-translate-dynamic>Meenakari Rings</a></li>
-                            </ul>
-                        </li>
+                    <ul id="dynamic-footer-categories">
+                        <!-- Dynamic categories will be loaded here -->
                     </ul>
                 </div>
             </div>
