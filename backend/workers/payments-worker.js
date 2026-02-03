@@ -1,5 +1,6 @@
 import { generateId, jsonResponse, errorResponse, successResponse, handleCORS } from '../utils/helpers.js';
 import { validateAuth } from '../utils/auth.js';
+import crypto from 'crypto';
 
 export async function handlePayments(request, env, path) {
   const corsResponse = handleCORS(request);
@@ -78,6 +79,10 @@ async function verifyPayment(request, env) {
     return errorResponse('Method not allowed', 405);
   }
 
+  if (!env.RAZORPAY_KEY_SECRET || !env.RAZORPAY_KEY_ID) {
+    return errorResponse('Razorpay credentials missing', 500);
+  }
+
   try {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature, planId, billingCycle } = await request.json();
 
@@ -87,28 +92,10 @@ async function verifyPayment(request, env) {
 
     const body = razorpay_order_id + '|' + razorpay_payment_id;
     
-    // Using HMAC verification with the secret key directly to match Razorpay's recommended verification
-    const encoder = new TextEncoder();
-    const secretData = encoder.encode(env.RAZORPAY_KEY_SECRET);
-    const bodyData = encoder.encode(body);
-    
-    const key = await crypto.subtle.importKey(
-      'raw',
-      secretData,
-      { name: 'HMAC', hash: 'SHA-256' },
-      false,
-      ['sign']
-    );
-    
-    const signatureBuffer = await crypto.subtle.sign(
-      'HMAC',
-      key,
-      bodyData
-    );
-    
-    const computedSignature = Array.from(new Uint8Array(signatureBuffer))
-      .map(b => b.toString(16).padStart(2, '0'))
-      .join('');
+    const computedSignature = crypto
+      .createHmac('sha256', env.RAZORPAY_KEY_SECRET)
+      .update(body)
+      .digest('hex');
 
     console.log('VerifyPayment: hasKeyId?', !!env.RAZORPAY_KEY_ID, 'hasSecret?', !!env.RAZORPAY_KEY_SECRET);
 
