@@ -344,13 +344,61 @@
                 }
                 await loadUserData();
                 await loadSites();
+                await updatePlanUI();
             });
 
             if (authService.isAuthenticated()) {
                 await loadUserData();
                 await loadSites();
+                await updatePlanUI();
             }
         })();
+
+        async function updatePlanUI() {
+            try {
+                const result = await paymentService.getSubscription();
+                if (result.success && result.subscription) {
+                    const sub = result.subscription;
+                    const currentPlan = sub.plan.toLowerCase();
+                    
+                    // Update account page plan info
+                    if (document.getElementById('account-plan-name')) {
+                        document.getElementById('account-plan-name').innerText = sub.plan.charAt(0).toUpperCase() + sub.plan.slice(1);
+                    }
+                    if (document.getElementById('account-plan-status-text')) {
+                        document.getElementById('account-plan-status-text').innerText = sub.status === 'active' ? 'Your subscription is active.' : 'No active subscription.';
+                    }
+                    if (document.getElementById('account-plan-end')) {
+                        document.getElementById('account-plan-end').innerText = sub.currentPeriodEnd ? new Date(sub.currentPeriodEnd).toLocaleDateString() : '-';
+                    }
+
+                    // Update Plans page buttons
+                    document.querySelectorAll('.upgrade-btn').forEach(btn => {
+                        const plan = btn.dataset.plan.toLowerCase();
+                        if (plan === currentPlan) {
+                            btn.innerText = 'Extend';
+                            btn.classList.add('btn-outline');
+                            btn.classList.remove('btn-primary');
+                        } else {
+                            // Logic for higher/lower tier
+                            const tiers = ['free', 'basic', 'premium', 'pro'];
+                            const currentIndex = tiers.indexOf(currentPlan);
+                            const planIndex = tiers.indexOf(plan);
+                            
+                            if (planIndex > currentIndex) {
+                                btn.innerText = 'Upgrade';
+                            } else {
+                                btn.innerText = 'Lower Tier';
+                                btn.disabled = true;
+                                btn.style.opacity = '0.5';
+                            }
+                        }
+                    });
+                }
+            } catch (err) {
+                console.error('Error updating plan UI:', err);
+            }
+        }
 
         async function loadUserData() {
             try {
@@ -754,21 +802,28 @@
                 if (btn.disabled) return;
                 const plan = btn.dataset.plan;
                 console.log('Upgrading to:', plan, 'with duration:', selectedDuration);
+                const originalText = btn.innerText;
+                btn.innerText = 'Processing...';
+                btn.disabled = true;
+
                 try {
                     const res = await paymentService.initiateSubscriptionPayment(plan, selectedDuration, { 
                         userName: currentUserData?.name || 'User', 
                         userEmail: currentUserData?.email || '' 
                     });
                     if (res.success) {
-                        // Backend already activated the subscription via verifyPayment
-                        await loadUserData(); // Refresh local data
-                        location.reload();
-                    } else if (res.error) {
-                        alert('Payment failed: ' + res.error);
+                        alert('Payment successful! Your plan has been upgraded.');
+                        await updatePlanUI();
+                        await loadUserData();
+                    } else {
+                        alert('Payment failed: ' + (res.error || 'payment verification failed'));
                     }
                 } catch (e) {
                     console.error('Upgrade error:', e);
                     alert('Failed to process upgrade. Please try again.');
+                } finally {
+                    btn.innerText = originalText;
+                    btn.disabled = false;
                 }
             });
         });

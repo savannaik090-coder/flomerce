@@ -1,7 +1,7 @@
 var __defProp = Object.defineProperty;
 var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
-// .wrangler/tmp/bundle-4Qb2wJ/checked-fetch.js
+// .wrangler/tmp/bundle-x2ZRT9/checked-fetch.js
 var urls = /* @__PURE__ */ new Set();
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
@@ -27,7 +27,7 @@ globalThis.fetch = new Proxy(globalThis.fetch, {
   }
 });
 
-// .wrangler/tmp/bundle-4Qb2wJ/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-x2ZRT9/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
@@ -1825,9 +1825,7 @@ async function verifyPayment(request, env) {
       return errorResponse("Missing payment verification data");
     }
     const body = razorpay_order_id + "|" + razorpay_payment_id;
-    const hmac = crypto2.createHmac("sha256", env.RAZORPAY_KEY_SECRET);
-    hmac.update(body);
-    const computedSignature = hmac.digest("hex");
+    const computedSignature = crypto2.createHmac("sha256", env.RAZORPAY_KEY_SECRET).update(body).digest("hex");
     console.log("VerifyPayment: signature match?", computedSignature === razorpay_signature);
     console.log("VerifyPayment: receivedSignature:", razorpay_signature);
     console.log("VerifyPayment: computedSignature:", computedSignature);
@@ -3342,7 +3340,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-4Qb2wJ/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-x2ZRT9/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -3374,7 +3372,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-4Qb2wJ/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-x2ZRT9/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

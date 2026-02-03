@@ -92,6 +92,7 @@ async function verifyPayment(request, env) {
 
     const body = razorpay_order_id + '|' + razorpay_payment_id;
     
+    // Create HMAC using the secret and the message body
     const computedSignature = crypto
       .createHmac('sha256', env.RAZORPAY_KEY_SECRET)
       .update(body)
