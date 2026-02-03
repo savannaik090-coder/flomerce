@@ -587,10 +587,13 @@ background-color: #000 !important;
                 // Populate Navbar Collections
                 if (nav) {
                   nav.innerHTML = '';
-                  // Add standard collection links
-                  nav.innerHTML += `<li><a href="/all-collection" data-translate="all_collections">All Collection</a></li>`;
-                  nav.innerHTML += `<li><a href="/featured-collection" data-translate="featured">Featured Collection</a></li>`;
                   
+                  // Ensure dropdown is visible if we have categories
+                  const dropdownParent = nav.closest('.dropdown');
+                  if (dropdownParent) {
+                    dropdownParent.style.display = categories.length > 0 ? 'block' : 'none';
+                  }
+
                   categories.forEach(cat => {
                     const name = typeof cat === 'string' ? cat : (cat.name || '');
                     const slug = typeof cat === 'string' ? cat.toLowerCase().replace(/\s+/g, '-') : (cat.slug || name.toLowerCase().replace(/\s+/g, '-'));
