@@ -359,14 +359,15 @@
                 const result = await paymentService.getSubscription();
                 if (result.success && result.subscription) {
                     const sub = result.subscription;
-                    const currentPlan = sub.plan.toLowerCase();
+                    const currentPlan = (sub.plan || 'free').toLowerCase();
+                    const isExpired = sub.currentPeriodEnd && new Date(sub.currentPeriodEnd) < new Date();
                     
                     // Update account page plan info
                     if (document.getElementById('account-plan-name')) {
                         document.getElementById('account-plan-name').innerText = sub.plan.charAt(0).toUpperCase() + sub.plan.slice(1);
                     }
                     if (document.getElementById('account-plan-status-text')) {
-                        document.getElementById('account-plan-status-text').innerText = sub.status === 'active' ? 'Your subscription is active.' : 'No active subscription.';
+                        document.getElementById('account-plan-status-text').innerText = isExpired ? 'Plan Expired' : 'Your subscription is active.';
                     }
                     if (document.getElementById('account-plan-end')) {
                         document.getElementById('account-plan-end').innerText = sub.currentPeriodEnd ? new Date(sub.currentPeriodEnd).toLocaleDateString() : '-';
@@ -375,28 +376,69 @@
                     // Update Plans page buttons
                     document.querySelectorAll('.upgrade-btn').forEach(btn => {
                         const plan = btn.dataset.plan.toLowerCase();
-                        if (plan === currentPlan) {
-                            btn.innerText = 'Extend';
-                            btn.classList.add('btn-outline');
-                            btn.classList.remove('btn-primary');
+                        
+                        // Clean up old event listeners by cloning
+                        const newBtn = btn.cloneNode(true);
+                        btn.parentNode.replaceChild(newBtn, btn);
+                        
+                        if (plan === currentPlan && !isExpired) {
+                            newBtn.innerText = 'Current Plan';
+                            newBtn.classList.add('btn-outline');
+                            newBtn.classList.remove('btn-primary');
+                            newBtn.disabled = true;
                         } else {
-                            // Logic for higher/lower tier
                             const tiers = ['free', 'basic', 'premium', 'pro'];
                             const currentIndex = tiers.indexOf(currentPlan);
                             const planIndex = tiers.indexOf(plan);
                             
-                            if (planIndex > currentIndex) {
-                                btn.innerText = 'Upgrade';
+                            if (planIndex > currentIndex || isExpired) {
+                                newBtn.innerText = planIndex > currentIndex ? 'Upgrade' : 'Choose Plan';
+                                newBtn.classList.add('btn-primary');
+                                newBtn.classList.remove('btn-outline');
+                                newBtn.disabled = false;
+                                newBtn.style.opacity = '1';
+                                newBtn.addEventListener('click', () => initiateUpgrade(plan));
                             } else {
-                                btn.innerText = 'Lower Tier';
-                                btn.disabled = true;
-                                btn.style.opacity = '0.5';
+                                newBtn.innerText = 'Lower Tier';
+                                newBtn.disabled = false; // Keep clickable to show message
+                                newBtn.style.opacity = '0.6';
+                                newBtn.addEventListener('click', () => {
+                                    alert(`You are currently on the ${currentPlan.toUpperCase()} plan. You can only downgrade to the ${plan.toUpperCase()} plan after your current subscription expires on ${new Date(sub.currentPeriodEnd).toLocaleDateString()}.`);
+                                });
                             }
                         }
                     });
                 }
             } catch (err) {
                 console.error('Error updating plan UI:', err);
+            }
+        }
+
+        async function initiateUpgrade(plan) {
+            console.log('Initiating upgrade to:', plan, 'with duration:', selectedDuration);
+            const btn = document.querySelector(`.upgrade-btn[data-plan="${plan}"]`);
+            const originalText = btn.innerText;
+            btn.innerText = 'Processing...';
+            btn.disabled = true;
+
+            try {
+                const res = await paymentService.initiateSubscriptionPayment(plan, selectedDuration, { 
+                    userName: currentUserData?.name || 'User', 
+                    userEmail: currentUserData?.email || '' 
+                });
+                if (res.success) {
+                    alert('Payment successful! Your plan has been updated.');
+                    await updatePlanUI();
+                    await loadUserData();
+                } else {
+                    alert('Payment failed: ' + (res.error || 'payment verification failed'));
+                }
+            } catch (e) {
+                console.error('Upgrade error:', e);
+                alert('Failed to process upgrade. Please try again.');
+            } finally {
+                btn.innerText = originalText;
+                btn.disabled = false;
             }
         }
 
@@ -801,36 +843,8 @@
         });
 
         // Upgrade buttons in billing section
-        document.querySelectorAll('.upgrade-btn').forEach(btn => {
-            btn.addEventListener('click', async () => {
-                if (btn.disabled) return;
-                const plan = btn.dataset.plan;
-                console.log('Upgrading to:', plan, 'with duration:', selectedDuration);
-                const originalText = btn.innerText;
-                btn.innerText = 'Processing...';
-                btn.disabled = true;
+        // Event listeners are now handled within updatePlanUI via cloning to prevent duplicates
 
-                try {
-                    const res = await paymentService.initiateSubscriptionPayment(plan, selectedDuration, { 
-                        userName: currentUserData?.name || 'User', 
-                        userEmail: currentUserData?.email || '' 
-                    });
-                    if (res.success) {
-                        alert('Payment successful! Your plan has been upgraded.');
-                        await updatePlanUI();
-                        await loadUserData();
-                    } else {
-                        alert('Payment failed: ' + (res.error || 'payment verification failed'));
-                    }
-                } catch (e) {
-                    console.error('Upgrade error:', e);
-                    alert('Failed to process upgrade. Please try again.');
-                } finally {
-                    btn.innerText = originalText;
-                    btn.disabled = false;
-                }
-            });
-        });
     </script>
 </body>
 </html>
