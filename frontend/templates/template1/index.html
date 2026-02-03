@@ -591,33 +591,7 @@ background-color: #000 !important;
                   // Ensure dropdown is visible if we have categories
                   const dropdownParent = nav.closest('.dropdown');
                   if (dropdownParent) {
-                    const hasCategories = categories && categories.length > 0;
-                    dropdownParent.style.setProperty('display', hasCategories ? 'block' : 'none', 'important');
-                    
-                    // Force display on hover with high z-index and absolute positioning
-                    const menu = dropdownParent.querySelector('.dropdown-menu');
-                    if (menu) {
-                        menu.style.setProperty('display', 'none', 'important');
-                        
-                        dropdownParent.addEventListener('mouseenter', () => {
-                            menu.style.setProperty('display', 'block', 'important');
-                            menu.style.setProperty('opacity', '1', 'important');
-                            menu.style.setProperty('visibility', 'visible', 'important');
-                            menu.style.setProperty('transform', 'translateY(0) scale(1)', 'important');
-                            menu.style.setProperty('z-index', '9999999', 'important');
-                            menu.style.setProperty('position', 'absolute', 'important');
-                            menu.style.setProperty('top', '100%', 'important');
-                            menu.style.setProperty('left', '0', 'important');
-                            menu.style.setProperty('pointer-events', 'auto', 'important');
-                            menu.style.setProperty('background', 'white', 'important');
-                            menu.style.setProperty('padding', '10px 0', 'important');
-                            menu.style.setProperty('border', '1px solid rgba(196, 157, 95, 0.4)', 'important');
-                        });
-
-                        dropdownParent.addEventListener('mouseleave', () => {
-                            menu.style.setProperty('display', 'none', 'important');
-                        });
-                    }
+                    dropdownParent.style.display = categories.length > 0 ? 'block' : 'none';
                   }
 
                   categories.forEach(cat => {
@@ -625,42 +599,7 @@ background-color: #000 !important;
                     const slug = typeof cat === 'string' ? cat.toLowerCase().replace(/\s+/g, '-') : (cat.slug || name.toLowerCase().replace(/\s+/g, '-'));
                     
                     const li = document.createElement('li');
-                    li.style.setProperty('display', 'block', 'important');
-                    li.style.setProperty('width', '100%', 'important');
-                    li.style.setProperty('margin', '0', 'important');
-                    li.style.setProperty('padding', '0', 'important');
-                    li.style.setProperty('list-style', 'none', 'important');
-                    li.style.setProperty('background', 'white', 'important');
-                    
-                    const link = document.createElement('a');
-                    link.href = `/category/${slug}`;
-                    link.textContent = name;
-                    link.style.setProperty('display', 'block', 'important');
-                    link.style.setProperty('padding', '15px 25px', 'important');
-                    link.style.setProperty('color', '#333', 'important');
-                    link.style.setProperty('text-decoration', 'none', 'important');
-                    link.style.setProperty('visibility', 'visible', 'important');
-                    link.style.setProperty('opacity', '1', 'important');
-                    link.style.setProperty('font-size', '14px', 'important');
-                    link.style.setProperty('font-weight', '600', 'important');
-                    link.style.setProperty('background', 'white', 'important');
-                    link.style.setProperty('width', '100%', 'important');
-                    link.style.setProperty('box-sizing', 'border-box', 'important');
-                    link.style.setProperty('transition', 'all 0.2s ease', 'important');
-                    link.style.setProperty('text-align', 'left', 'important');
-                    
-                    link.addEventListener('mouseenter', () => {
-                        link.style.setProperty('background', '#f8f9fa', 'important');
-                        link.style.setProperty('color', '#c59d5f', 'important');
-                        link.style.setProperty('padding-left', '30px', 'important');
-                    });
-                    link.addEventListener('mouseleave', () => {
-                        link.style.setProperty('background', 'white', 'important');
-                        link.style.setProperty('color', '#333', 'important');
-                        link.style.setProperty('padding-left', '25px', 'important');
-                    });
-                    
-                    li.appendChild(link);
+                    li.innerHTML = `<a href="/category/${slug}">${name}</a>`;
                     nav.appendChild(li);
                   });
                 }
