@@ -140,8 +140,37 @@ async function handleSiteInfo(request, env) {
       ).bind(site.id).all();
       categoriesResult = categories.results || [];
     } catch (catError) {
-      console.error('Categories query failed:', catError);
-      // Continue without categories
+      console.error('Categories query failed, attempting to auto-create table:', catError);
+      
+      // Auto-create categories table if it's missing
+      try {
+        await env.DB.prepare(`
+          CREATE TABLE IF NOT EXISTS categories (
+            id TEXT PRIMARY KEY,
+            site_id TEXT NOT NULL,
+            name TEXT NOT NULL,
+            slug TEXT NOT NULL,
+            parent_id TEXT,
+            description TEXT,
+            image_url TEXT,
+            display_order INTEGER DEFAULT 0,
+            is_active INTEGER DEFAULT 1,
+            created_at TEXT DEFAULT (datetime('now')),
+            updated_at TEXT DEFAULT (datetime('now')),
+            FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
+            FOREIGN KEY (parent_id) REFERENCES categories(id) ON DELETE SET NULL,
+            UNIQUE(site_id, slug)
+          )
+        `).run();
+        
+        await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_categories_site ON categories(site_id)').run();
+        await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_categories_slug ON categories(site_id, slug)').run();
+        await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_categories_parent ON categories(parent_id)').run();
+        
+        console.log('Categories table auto-created successfully');
+      } catch (createError) {
+        console.error('Failed to auto-create categories table:', createError);
+      }
     }
 
     // Safely parse JSON fields
