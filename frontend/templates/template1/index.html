@@ -523,6 +523,11 @@ background-color: #000 !important;
           if (window.FLUXE_SITE_DATA && window.FLUXE_SITE_DATA.id) {
             return { type: 'id', value: window.FLUXE_SITE_DATA.id };
           }
+          // Try to get from URL parameter if on preview/test
+          const urlParams = new URLSearchParams(window.location.search);
+          const siteId = urlParams.get('siteId');
+          if (siteId) return { type: 'id', value: siteId };
+          
           const subdomain = window.location.hostname.split('.')[0];
           return { type: 'subdomain', value: subdomain };
         }
@@ -532,57 +537,123 @@ background-color: #000 !important;
           ? `/api/sites/${siteInfo.value}` 
           : `/api/sites/by-subdomain/${siteInfo.value}`;
 
+        console.log('Fetching site data from:', fetchUrl);
+
         fetch(fetchUrl)
           .then(res => res.json())
           .then(data => {
             const siteData = data.data || data;
-            if (siteData && siteData.categories) {
-              const nav = document.getElementById('dynamic-categories-nav');
-              const wrapper = document.getElementById('dynamic-categories-circles');
-              const footerNav = document.getElementById('dynamic-footer-categories');
-              const searchFilters = document.querySelector('.search-filters');
-              
-              // Clear and populate Navbar Collections
-              if (nav) {
-                nav.innerHTML = '';
-                // Add standard collection links
-                nav.innerHTML += `<li><a href="/all-collection" data-translate="all_collections">All Collection</a></li>`;
-                nav.innerHTML += `<li><a href="/featured-collection" data-translate="featured">Featured Collection</a></li>`;
+            console.log('Site data received:', siteData);
+            
+            if (siteData) {
+              // Update Brand Name
+              if (siteData.brand_name || siteData.brandName) {
+                const brandName = siteData.brand_name || siteData.brandName;
+                document.querySelectorAll('.brand-text').forEach(el => {
+                    el.textContent = brandName;
+                    el.style.display = 'block';
+                });
+                document.querySelectorAll('.brand-logo').forEach(el => {
+                    if (!siteData.logo_url && !siteData.logoUrl) {
+                        el.style.display = 'none';
+                    }
+                });
                 
-                siteData.categories.forEach(cat => {
-                  const li = document.createElement('li');
-                  li.innerHTML = `<a href="/category/${cat.slug}">${cat.name}</a>`;
-                  nav.appendChild(li);
+                const bannerText = document.querySelector('.banner-text');
+                if (bannerText) bannerText.textContent = `Welcome to ${brandName}`;
+              }
+
+              // Update Logo
+              if (siteData.logo_url || siteData.logoUrl) {
+                const logoUrl = siteData.logo_url || siteData.logoUrl;
+                document.querySelectorAll('.brand-logo').forEach(el => {
+                    el.src = logoUrl;
+                    el.style.display = 'block';
                 });
               }
 
-              // Clear and populate Footer Categories
-              if (footerNav) {
-                footerNav.innerHTML = '';
-                siteData.categories.forEach(cat => {
-                  const li = document.createElement('li');
-                  li.innerHTML = `<a href="/category/${cat.slug}">${cat.name}</a>`;
-                  footerNav.appendChild(li);
-                });
-              }
+              if (siteData.categories) {
+                const categories = Array.isArray(siteData.categories) 
+                  ? siteData.categories 
+                  : (typeof siteData.categories === 'string' ? JSON.parse(siteData.categories) : []);
+                
+                console.log('Processing categories:', categories);
+                
+                const nav = document.getElementById('dynamic-categories-nav');
+                const wrapper = document.getElementById('dynamic-categories-circles');
+                const footerNav = document.getElementById('dynamic-footer-categories');
+                const searchFilters = document.querySelector('.search-filters');
+                
+                // Populate Navbar Collections
+                if (nav) {
+                  nav.innerHTML = '';
+                  // Add standard collection links
+                  nav.innerHTML += `<li><a href="/all-collection" data-translate="all_collections">All Collection</a></li>`;
+                  nav.innerHTML += `<li><a href="/featured-collection" data-translate="featured">Featured Collection</a></li>`;
+                  
+                  categories.forEach(cat => {
+                    const name = typeof cat === 'string' ? cat : (cat.name || '');
+                    const slug = typeof cat === 'string' ? cat.toLowerCase().replace(/\s+/g, '-') : (cat.slug || name.toLowerCase().replace(/\s+/g, '-'));
+                    
+                    const li = document.createElement('li');
+                    li.innerHTML = `<a href="/category/${slug}">${name}</a>`;
+                    nav.appendChild(li);
+                  });
+                }
 
-              // Clear and populate Search Filters
-              if (searchFilters) {
-                searchFilters.innerHTML = '<button class="search-filter-btn active" data-filter="all" data-translate="all">All</button>';
-                siteData.categories.forEach(cat => {
-                  const btn = document.createElement('button');
-                  btn.className = 'search-filter-btn';
-                  btn.setAttribute('data-filter', cat.slug);
-                  btn.textContent = cat.name;
-                  searchFilters.appendChild(btn);
-                });
+                // Populate Footer Categories
+                if (footerNav) {
+                  footerNav.innerHTML = '';
+                  categories.forEach(cat => {
+                    const name = typeof cat === 'string' ? cat : (cat.name || '');
+                    const slug = typeof cat === 'string' ? cat.toLowerCase().replace(/\s+/g, '-') : (cat.slug || name.toLowerCase().replace(/\s+/g, '-'));
+                    
+                    const li = document.createElement('li');
+                    li.innerHTML = `<a href="/category/${slug}">${name}</a>`;
+                    footerNav.appendChild(li);
+                  });
+                }
+
+                // Populate Search Filters
+                if (searchFilters) {
+                  searchFilters.innerHTML = '<button class="search-filter-btn active" data-filter="all" data-translate="all">All</button>';
+                  categories.forEach(cat => {
+                    const name = typeof cat === 'string' ? cat : (cat.name || '');
+                    const slug = typeof cat === 'string' ? cat.toLowerCase().replace(/\s+/g, '-') : (cat.slug || name.toLowerCase().replace(/\s+/g, '-'));
+                    
+                    const btn = document.createElement('button');
+                    btn.className = 'search-filter-btn';
+                    btn.setAttribute('data-filter', slug);
+                    btn.textContent = name;
+                    searchFilters.appendChild(btn);
+                  });
+                }
+                
+                // Populate Home Page Circles
+                if (wrapper) {
+                  wrapper.innerHTML = '';
+                  categories.forEach(cat => {
+                    const name = typeof cat === 'string' ? cat : (cat.name || '');
+                    const slug = typeof cat === 'string' ? cat.toLowerCase().replace(/\s+/g, '-') : (cat.slug || name.toLowerCase().replace(/\s+/g, '-'));
+                    const imageUrl = typeof cat === 'object' && cat.image_url ? cat.image_url : 'images/product-placeholder.jpg';
+                    
+                    const a = document.createElement('a');
+                    a.href = `/category/${slug}`;
+                    a.className = 'category-circle-item';
+                    a.innerHTML = `
+                      <div class="circle-image">
+                        <img src="${imageUrl}" alt="${name}">
+                      </div>
+                      <span class="circle-name">${name}</span>
+                    `;
+                    wrapper.appendChild(a);
+                  });
+                }
               }
-              
-              // Populate Home Page Circles
-              if (wrapper) {
-                wrapper.innerHTML = '';
-                siteData.categories.forEach(cat => {
-                  const a = document.createElement('a');
+            }
+          })
+          .catch(err => console.error('Error loading site data:', err));
+      })();
                   a.href = `/category/${cat.slug}`;
                   a.className = 'category-circle-item';
                   a.innerHTML = `
