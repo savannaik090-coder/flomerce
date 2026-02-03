@@ -2982,6 +2982,34 @@ async function handleSiteRouting(request, env) {
         headers: corsHeaders()
       });
     }
+    const isExpired2 = site.subscription_expires_at && new Date(site.subscription_expires_at) < /* @__PURE__ */ new Date();
+    if (isExpired2 && !path.startsWith("/api/")) {
+      return new Response(
+        `<html>
+          <head>
+            <title>Site Disabled - Fluxe</title>
+            <style>
+              body { font-family: 'Inter', sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #f8fafc; color: #1e293b; }
+              .container { text-align: center; padding: 2rem; background: white; border-radius: 12px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); max-width: 400px; }
+              h1 { font-size: 1.5rem; margin-bottom: 1rem; color: #ef4444; }
+              p { color: #64748b; line-height: 1.6; margin-bottom: 2rem; }
+              .btn { background: #2563eb; color: white; padding: 0.75rem 1.5rem; border-radius: 6px; text-decoration: none; font-weight: 600; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <h1>Site Disabled</h1>
+              <p>The subscription for <strong>${site.brand_name || subdomain}</strong> has expired. Please contact the site owner or renew the plan to restore access.</p>
+              <a href="https://fluxe.in" class="btn">Go to Fluxe</a>
+            </div>
+          </body>
+        </html>`,
+        {
+          status: 402,
+          headers: { "Content-Type": "text/html; charset=utf-8", ...corsHeaders() }
+        }
+      );
+    }
     const templateId = site.template_id || "template1";
     if (isStaticAsset(path)) {
       return serveStaticAsset(env, templateId, path);
