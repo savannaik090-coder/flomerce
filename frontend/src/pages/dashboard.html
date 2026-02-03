@@ -379,7 +379,7 @@
 
                     if (document.getElementById('account-plan-name')) document.getElementById('account-plan-name').innerText = (plan || 'FREE').toUpperCase();
 
-                    updatePlansUI(plan);
+                    updatePlansUI(currentUserData);
                     
                     const startDate = currentUserData.trialStartDate ? new Date(currentUserData.trialStartDate) : new Date();
                     const options = { year: 'numeric', month: 'short', day: 'numeric' };
@@ -484,22 +484,39 @@
         }
 
         // Subscription Plans logic
-        function updatePlansUI(currentPlan) {
-            if (!currentPlan || currentPlan === 'trial') return;
-            const planWeights = { 'basic': 1, 'premium': 2, 'pro': 3 };
-            const currentWeight = planWeights[currentPlan] || 0;
-            document.querySelectorAll('.upgrade-btn').forEach(btn => {
+        function updatePlansUI(currentPlanData) {
+            const plan = currentPlanData?.plan || 'none';
+            const status = currentPlanData?.status || 'none';
+            const endDate = currentPlanData?.currentPeriodEnd || currentPlanData?.trialEndDate;
+            const now = new Date();
+            const isExpired = endDate && new Date(endDate) < now;
+            const isActive = status === 'active' && !isExpired;
+
+            const planWeights = { 'trial': 0, 'basic': 1, 'premium': 2, 'pro': 3 };
+            const currentWeight = planWeights[plan] ?? -1;
+
+            document.querySelectorAll('.upgrade-btn, .selection-upgrade-btn').forEach(btn => {
                 const btnPlan = btn.dataset.plan;
-                const btnWeight = planWeights[btnPlan];
-                const card = btn.closest('.plan-card');
-                if (btnPlan === currentPlan) {
+                const btnWeight = planWeights[btnPlan] || 0;
+                const card = btn.closest('.plan-card, .plan-card-overlay');
+
+                if (btnPlan === plan && isActive) {
                     btn.innerText = 'Current Plan';
                     btn.disabled = true;
+                    if (btn.classList.contains('btn-primary')) {
+                        btn.classList.remove('btn-primary');
+                        btn.classList.add('btn-outline');
+                    }
                     if (card) card.style.borderColor = '#22c55e';
-                } else if (btnWeight < currentWeight) {
+                } else if (isActive && btnWeight < currentWeight) {
                     btn.innerText = 'Lower Tier';
                     btn.disabled = true;
                     if (card) card.style.opacity = '0.6';
+                } else {
+                    btn.innerText = (btnWeight > currentWeight) ? 'Upgrade' : 'Choose Plan';
+                    btn.disabled = false;
+                    btn.style.opacity = '1';
+                    if (card) card.style.opacity = '1';
                 }
             });
         }

@@ -1,7 +1,7 @@
 var __defProp = Object.defineProperty;
 var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
-// .wrangler/tmp/bundle-s9wxRZ/checked-fetch.js
+// .wrangler/tmp/bundle-ktyceE/checked-fetch.js
 var urls = /* @__PURE__ */ new Set();
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
@@ -27,7 +27,7 @@ globalThis.fetch = new Proxy(globalThis.fetch, {
   }
 });
 
-// .wrangler/tmp/bundle-s9wxRZ/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-ktyceE/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
@@ -2798,12 +2798,6 @@ async function updateSubscription(request, env, user) {
       periodDays = 7;
     const periodEnd = /* @__PURE__ */ new Date();
     periodEnd.setDate(periodEnd.getDate() + periodDays);
-    const plans = {
-      trial: { monthly: 0, "6months": 0, yearly: 0 },
-      basic: { monthly: 99, "6months": 499, yearly: 899 },
-      premium: { monthly: 299, "6months": 1499, yearly: 2499 },
-      pro: { monthly: 999, "6months": 4999, yearly: 8999 }
-    };
     const amount = plan === "trial" ? 0 : subscriptionPlans[plan]?.[billingCycle] || 0;
     await env.DB.prepare(
       `INSERT INTO subscriptions (id, user_id, plan, billing_cycle, amount, status, current_period_start, current_period_end, created_at)
@@ -3329,7 +3323,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-s9wxRZ/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-ktyceE/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -3361,7 +3355,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-s9wxRZ/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-ktyceE/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

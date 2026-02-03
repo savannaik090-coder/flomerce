@@ -266,13 +266,6 @@ async function updateSubscription(request, env, user) {
     const periodEnd = new Date();
     periodEnd.setDate(periodEnd.getDate() + periodDays);
 
-    const plans = {
-      trial: { monthly: 0, '6months': 0, yearly: 0 },
-      basic: { monthly: 99, '6months': 499, yearly: 899 },
-      premium: { monthly: 299, '6months': 1499, yearly: 2499 },
-      pro: { monthly: 999, '6months': 4999, yearly: 8999 },
-    };
-
     const amount = plan === 'trial' ? 0 : (subscriptionPlans[plan]?.[billingCycle] || 0);
 
     await env.DB.prepare(
