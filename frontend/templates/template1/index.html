@@ -518,15 +518,24 @@ background-color: #000 !important;
 
     <script>
       // Load Dynamic Categories
-      if (window.FLUXE_SITE_DATA && window.FLUXE_SITE_DATA.id) {
-        fetch('/api/sites/' + window.FLUXE_SITE_DATA.id)
+      (function() {
+        const subdomain = window.location.hostname.split('.')[0];
+        const siteId = window.FLUXE_SITE_DATA?.id;
+        
+        const fetchUrl = siteId ? `/api/sites/${siteId}` : `/api/sites/by-subdomain/${subdomain}`;
+
+        fetch(fetchUrl)
           .then(res => res.json())
           .then(data => {
-            if (data.success && data.data.categories) {
+            const siteData = data.data || data;
+            if (siteData && siteData.categories) {
               const nav = document.getElementById('dynamic-categories-nav');
               const wrapper = document.getElementById('dynamic-categories-circles');
               
-              data.data.categories.forEach(cat => {
+              if (nav) nav.innerHTML = '';
+              if (wrapper) wrapper.innerHTML = '';
+              
+              siteData.categories.forEach(cat => {
                 // Add to nav
                 if (nav) {
                   const li = document.createElement('li');
@@ -541,7 +550,7 @@ background-color: #000 !important;
                   a.className = 'category-circle-item';
                   a.innerHTML = `
                     <div class="category-circle">
-                      <img src="${cat.image_url || '/templates/template1/images/product-placeholder.jpg'}" alt="${cat.name}">
+                      <img src="${cat.image_url || 'images/product-placeholder.jpg'}" alt="${cat.name}">
                     </div>
                     <span class="category-circle-label">${cat.name}</span>
                   `;
@@ -549,8 +558,9 @@ background-color: #000 !important;
                 }
               });
             }
-          });
-      }
+          })
+          .catch(err => console.error('Error loading dynamic categories:', err));
+      })();
     </script>
 
     <!-- Circular Category Section -->
