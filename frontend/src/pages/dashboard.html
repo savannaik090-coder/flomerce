@@ -573,10 +573,25 @@
             });
             overlay.querySelectorAll('.selection-upgrade-btn').forEach(btn => {
                 btn.addEventListener('click', async () => {
-                    const res = await paymentService.initiateSubscriptionPayment(btn.dataset.plan, 'monthly', { userName: currentUserData?.name || 'User', userEmail: currentUserData?.email || '' });
-                    if (res.success) {
-                        await apiRequest('/api/users/subscription', { method: 'PATCH', body: JSON.stringify({ plan: btn.dataset.plan, billingCycle: 'monthly', status: 'active' }) });
-                        location.reload();
+                    const btnEl = btn;
+                    const originalText = btnEl.innerText;
+                    btnEl.innerText = 'Processing...';
+                    btnEl.disabled = true;
+
+                    try {
+                        const res = await paymentService.initiateSubscriptionPayment(btn.dataset.plan, 'monthly', { userName: currentUserData?.name || 'User', userEmail: currentUserData?.email || '' });
+                        if (res.success) {
+                            await apiRequest('/api/users/subscription', { method: 'PATCH', body: JSON.stringify({ plan: btn.dataset.plan, billingCycle: 'monthly', status: 'active' }) });
+                            location.reload();
+                        } else {
+                            alert('Payment failed: ' + (res.error || 'Unknown error'));
+                        }
+                    } catch (err) {
+                        console.error('Subscription error:', err);
+                        alert('An error occurred while processing your request.');
+                    } finally {
+                        btnEl.innerText = originalText;
+                        btnEl.disabled = false;
                     }
                 });
             });

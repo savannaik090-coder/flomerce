@@ -1923,7 +1923,16 @@ async function createSubscriptionOrder(request, env, user) {
       })
     });
     if (!response.ok) {
-      return errorResponse("Failed to create subscription order", 500);
+      const errorText = await response.text();
+      let errorData;
+      try {
+        errorData = JSON.parse(errorText);
+      } catch (e) {
+        errorData = errorText;
+      }
+      console.error("Razorpay Error Response:", errorData);
+      const errorMessage = errorData && errorData.error && errorData.error.description ? `Razorpay error: ${errorData.error.description}` : "Failed to create subscription order";
+      return errorResponse(errorMessage, 500);
     }
     const razorpayOrder = await response.json();
     return successResponse({
