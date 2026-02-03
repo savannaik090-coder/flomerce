@@ -117,10 +117,15 @@ async function verifyPayment(request, env) {
     if (planId && billingCycle) {
       const user = await validateAuth(request, env);
       if (user) {
+        console.log(`Activating subscription: user=${user.id}, plan=${planId}, cycle=${billingCycle}`);
         const activated = await activateSubscription(env, user.id, planId, billingCycle, razorpay_payment_id);
         if (!activated) {
           console.error('Failed to activate subscription in verifyPayment');
+        } else {
+          console.log('Subscription activated successfully');
         }
+      } else {
+        console.error('User not authenticated during payment verification');
       }
     }
 
@@ -287,11 +292,19 @@ export async function activateSubscription(env, userId, planId, billingCycle, ra
       periodEnd.toISOString()
     ).run();
 
+    console.log(`Inserted subscription record for user ${userId}`);
+
+    // Update user table as well
+    await env.DB.prepare(
+      `UPDATE users SET updated_at = datetime('now') WHERE id = ?`
+    ).bind(userId).run();
+
     // Ensure the sites table update uses the correct column name if needed
-    // Assuming subscription_plan and subscription_expires_at are correct based on current code
     await env.DB.prepare(
       `UPDATE sites SET subscription_plan = ?, subscription_expires_at = ?, updated_at = datetime('now') WHERE user_id = ?`
     ).bind(planId, periodEnd.toISOString(), userId).run();
+    
+    console.log(`Updated sites table for user ${userId}`);
 
     return true;
   } catch (error) {

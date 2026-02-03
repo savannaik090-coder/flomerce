@@ -1,7 +1,7 @@
 var __defProp = Object.defineProperty;
 var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
-// .wrangler/tmp/bundle-x2ZRT9/checked-fetch.js
+// .wrangler/tmp/bundle-GCWORF/checked-fetch.js
 var urls = /* @__PURE__ */ new Set();
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
@@ -27,7 +27,7 @@ globalThis.fetch = new Proxy(globalThis.fetch, {
   }
 });
 
-// .wrangler/tmp/bundle-x2ZRT9/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-GCWORF/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
@@ -1840,10 +1840,15 @@ async function verifyPayment(request, env) {
     if (planId && billingCycle) {
       const user = await validateAuth(request, env);
       if (user) {
+        console.log(`Activating subscription: user=${user.id}, plan=${planId}, cycle=${billingCycle}`);
         const activated = await activateSubscription(env, user.id, planId, billingCycle, razorpay_payment_id);
         if (!activated) {
           console.error("Failed to activate subscription in verifyPayment");
+        } else {
+          console.log("Subscription activated successfully");
         }
+      } else {
+        console.error("User not authenticated during payment verification");
       }
     }
     return successResponse({ verified: true, planActivated: true }, "Payment verified and plan activated successfully");
@@ -1987,9 +1992,14 @@ async function activateSubscription(env, userId, planId, billingCycle, razorpayP
       plans[planId][billingCycle],
       periodEnd.toISOString()
     ).run();
+    console.log(`Inserted subscription record for user ${userId}`);
+    await env.DB.prepare(
+      `UPDATE users SET updated_at = datetime('now') WHERE id = ?`
+    ).bind(userId).run();
     await env.DB.prepare(
       `UPDATE sites SET subscription_plan = ?, subscription_expires_at = ?, updated_at = datetime('now') WHERE user_id = ?`
     ).bind(planId, periodEnd.toISOString(), userId).run();
+    console.log(`Updated sites table for user ${userId}`);
     return true;
   } catch (error) {
     console.error("Activate subscription error:", error);
@@ -3340,7 +3350,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-x2ZRT9/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-GCWORF/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -3372,7 +3382,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-x2ZRT9/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-GCWORF/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

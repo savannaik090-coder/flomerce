@@ -415,19 +415,23 @@
                     if (document.getElementById('user-display-name')) document.getElementById('user-display-name').innerText = currentUserData.name || 'User';
                     if (document.getElementById('user-display-email')) document.getElementById('user-display-email').innerText = currentUserData.email || '';
 
-                    const plan = currentUserData.plan;
-                    const status = currentUserData.status;
+                    const plan = currentUserData.plan || 'free';
+                    const status = currentUserData.status || 'none';
                     
                     const existingOverlay = document.getElementById('plan-selection-overlay');
                     if (existingOverlay) existingOverlay.remove();
 
-                    if (!plan || status === 'none' || status === 'expired') {
+                    if (!currentUserData.plan || status === 'none' || status === 'expired') {
                         showPlanSelectionOverlay('Select a plan to start creating websites');
                     }
 
-                    if (document.getElementById('account-plan-name')) document.getElementById('account-plan-name').innerText = (plan || 'FREE').toUpperCase();
+                    if (document.getElementById('account-plan-name')) {
+                        document.getElementById('account-plan-name').innerText = plan.toUpperCase();
+                    }
 
+                    // Force update UI labels
                     updatePlansUI(currentUserData);
+                    await updatePlanUI(); // Sync both UI update methods
                     
                     const startDate = currentUserData.trialStartDate ? new Date(currentUserData.trialStartDate) : new Date();
                     const options = { year: 'numeric', month: 'short', day: 'numeric' };
