@@ -206,9 +206,13 @@ async function createDefaultCategories(env, siteId, businessCategory) {
   }
 }
 
-async function createUserCategories(env, siteId, categoryNames) {
+async function createUserCategories(env, siteId, categories) {
   let order = 0;
-  for (const categoryName of categoryNames) {
+  // Handle both array of strings and array of objects
+  for (let cat of categories) {
+    let categoryName = typeof cat === 'string' ? cat : (cat.name || cat.label);
+    if (!categoryName) continue;
+    
     const slug = categoryName
       .toLowerCase()
       .trim()

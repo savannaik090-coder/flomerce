@@ -1,7 +1,7 @@
 var __defProp = Object.defineProperty;
 var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
-// .wrangler/tmp/bundle-XdtOIC/checked-fetch.js
+// .wrangler/tmp/bundle-hswyss/checked-fetch.js
 var urls = /* @__PURE__ */ new Set();
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
@@ -27,7 +27,7 @@ globalThis.fetch = new Proxy(globalThis.fetch, {
   }
 });
 
-// .wrangler/tmp/bundle-XdtOIC/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-hswyss/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
@@ -784,9 +784,12 @@ async function createDefaultCategories(env, siteId, businessCategory) {
   }
 }
 __name(createDefaultCategories, "createDefaultCategories");
-async function createUserCategories(env, siteId, categoryNames) {
+async function createUserCategories(env, siteId, categories) {
   let order = 0;
-  for (const categoryName of categoryNames) {
+  for (let cat of categories) {
+    let categoryName = typeof cat === "string" ? cat : cat.name || cat.label;
+    if (!categoryName)
+      continue;
     const slug = categoryName.toLowerCase().trim().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-");
     await env.DB.prepare(
       `INSERT INTO categories (id, site_id, name, slug, display_order, created_at)
@@ -3241,7 +3244,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-XdtOIC/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-hswyss/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -3273,7 +3276,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-XdtOIC/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-hswyss/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;
