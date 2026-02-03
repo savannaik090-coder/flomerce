@@ -46,7 +46,7 @@ class PaymentService {
     }
   }
 
-  async verifyPayment(paymentData, orderId = null) {
+  async verifyPayment(paymentData, planId = null, billingCycle = null) {
     try {
       const response = await apiRequest(`${config.endpoints.payments}/verify`, {
         method: 'POST',
@@ -54,11 +54,15 @@ class PaymentService {
           razorpay_order_id: paymentData.razorpay_order_id,
           razorpay_payment_id: paymentData.razorpay_payment_id,
           razorpay_signature: paymentData.razorpay_signature,
-          orderId,
+          planId,
+          billingCycle
         }),
       });
 
-      return { success: response.data?.verified === true };
+      return { 
+        success: response.data?.verified === true,
+        error: response.message
+      };
     } catch (error) {
       return { success: false, error: error.message };
     }
@@ -152,9 +156,10 @@ class PaymentService {
           color: '#000000',
         },
         handler: async (response) => {
-          const verifyResult = await this.verifyPayment(response);
+          const verifyResult = await this.verifyPayment(response, planId, billingCycle);
           resolve({
             success: verifyResult.success,
+            error: verifyResult.error || 'Payment verification failed',
             paymentId: response.razorpay_payment_id,
             orderId: response.razorpay_order_id,
             planId,

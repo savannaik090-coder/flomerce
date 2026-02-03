@@ -79,7 +79,7 @@ async function verifyPayment(request, env) {
   }
 
   try {
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, orderId } = await request.json();
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, planId, billingCycle } = await request.json();
 
     if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
       return errorResponse('Missing payment verification data');
@@ -110,18 +110,19 @@ async function verifyPayment(request, env) {
       return errorResponse('Invalid payment signature', 400, 'INVALID_SIGNATURE');
     }
 
+    // Update payment record
     await env.DB.prepare(
       `UPDATE payment_transactions 
        SET razorpay_payment_id = ?, razorpay_signature = ?, status = 'completed', payment_method = 'razorpay'
        WHERE razorpay_order_id = ?`
     ).bind(razorpay_payment_id, razorpay_signature, razorpay_order_id).run();
 
-    if (orderId) {
-      await env.DB.prepare(
-        `UPDATE orders 
-         SET payment_status = 'paid', razorpay_order_id = ?, razorpay_payment_id = ?, razorpay_signature = ?, updated_at = datetime('now')
-         WHERE id = ?`
-      ).bind(razorpay_order_id, razorpay_payment_id, razorpay_signature, orderId).run();
+    // If subscription plan details are provided, activate it immediately
+    if (planId && billingCycle) {
+      const user = await validateAuth(request, env);
+      if (user) {
+        await activateSubscription(env, user.id, planId, billingCycle, razorpay_payment_id);
+      }
     }
 
     return successResponse({ verified: true }, 'Payment verified successfully');

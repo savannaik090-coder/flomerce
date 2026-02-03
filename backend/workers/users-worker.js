@@ -190,10 +190,17 @@ async function updateSubscription(request, env, user) {
     // Ensure subscriptions table exists
     await ensureSubscriptionsTable(env);
 
+    const subscriptionPlans = {
+      trial: { monthly: 0, '6months': 0, yearly: 0, rank: 0 },
+      basic: { monthly: 99, '6months': 499, yearly: 899, rank: 1 },
+      premium: { monthly: 299, '6months': 1499, yearly: 2499, rank: 2 },
+      pro: { monthly: 999, '6months': 4999, yearly: 8999, rank: 3 },
+    };
+
     let existingSubscription = null;
     try {
       existingSubscription = await env.DB.prepare(
-        `SELECT id FROM subscriptions WHERE user_id = ? AND status = 'active'`
+        `SELECT * FROM subscriptions WHERE user_id = ? AND status = 'active'`
       ).bind(user.id).first();
     } catch (e) {
       console.error('Error checking existing subscription:', e);
@@ -208,13 +215,45 @@ async function updateSubscription(request, env, user) {
         return successResponse(null, 'Subscription updated');
       }
 
+      // Enforce downgrade rule: Block downgrade if active and not expired
+      if (plan && subscriptionPlans[plan] && subscriptionPlans[existingSubscription.plan]) {
+        const isDowngrade = subscriptionPlans[plan].rank < subscriptionPlans[existingSubscription.plan].rank;
+        const isExpired = existingSubscription.current_period_end && new Date(existingSubscription.current_period_end) < new Date();
+        
+        if (isDowngrade && !isExpired) {
+          return errorResponse('You can only downgrade after your current plan expires', 400);
+        }
+      }
+
+      // Calculate new period if plan/cycle changes
+      let periodEnd = existingSubscription.current_period_end;
+      const newPlan = plan || existingSubscription.plan;
+      const newCycle = billingCycle || existingSubscription.billing_cycle;
+      
+      if (plan || billingCycle) {
+        let periodDays = 30;
+        if (newCycle === '6months') periodDays = 180;
+        if (newCycle === 'yearly') periodDays = 365;
+        if (newPlan === 'trial') periodDays = 7;
+        
+        const date = new Date();
+        date.setDate(date.getDate() + periodDays);
+        periodEnd = date.toISOString();
+      }
+
+      const amount = newPlan === 'trial' ? 0 : (subscriptionPlans[newPlan]?.[newCycle] || 0);
+
       await env.DB.prepare(
         `UPDATE subscriptions SET 
           plan = COALESCE(?, plan),
           billing_cycle = COALESCE(?, billing_cycle),
-          status = COALESCE(?, status)
+          status = COALESCE(?, status),
+          amount = ?,
+          current_period_start = datetime('now'),
+          current_period_end = ?,
+          updated_at = datetime('now')
          WHERE id = ?`
-      ).bind(plan || null, billingCycle || null, status || null, existingSubscription.id).run();
+      ).bind(plan || null, billingCycle || null, status || null, amount, periodEnd, existingSubscription.id).run();
 
       return successResponse(null, 'Subscription updated');
     }
@@ -234,7 +273,7 @@ async function updateSubscription(request, env, user) {
       pro: { monthly: 999, '6months': 4999, yearly: 8999 },
     };
 
-    const amount = plan === 'trial' ? 0 : (plans[plan]?.[billingCycle] || 0);
+    const amount = plan === 'trial' ? 0 : (subscriptionPlans[plan]?.[billingCycle] || 0);
 
     await env.DB.prepare(
       `INSERT INTO subscriptions (id, user_id, plan, billing_cycle, amount, status, current_period_start, current_period_end, created_at)
