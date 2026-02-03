@@ -310,13 +310,28 @@ export async function activateSubscription(env, userId, planId, billingCycle, ra
       )
     `).run();
 
-    await env.DB.prepare(
-      `UPDATE subscriptions SET status = 'cancelled', cancelled_at = datetime('now') WHERE user_id = ? AND status = 'active'`
-    ).bind(userId).run();
+    const userSub = await env.DB.prepare(
+      `SELECT * FROM subscriptions WHERE user_id = ? AND status = 'active' ORDER BY current_period_end DESC LIMIT 1`
+    ).bind(userId).first();
 
     const periodMonths = billingCycle === 'monthly' ? 1 : billingCycle === '6months' ? 6 : 12;
-    const periodEnd = new Date();
+    let periodStart = new Date();
+    
+    // If user has an active subscription, extend from the current end date
+    if (userSub && userSub.current_period_end) {
+      const currentEnd = new Date(userSub.current_period_end);
+      if (currentEnd > periodStart) {
+        periodStart = currentEnd;
+      }
+    }
+
+    const periodEnd = new Date(periodStart);
     periodEnd.setMonth(periodEnd.getMonth() + periodMonths);
+
+    // Cancel other active subscriptions if any (clean up)
+    await env.DB.prepare(
+      `UPDATE subscriptions SET status = 'cancelled', cancelled_at = datetime('now') WHERE user_id = ? AND status = 'active' AND id != ?`
+    ).bind(userId, userSub?.id || '').run();
 
     const plans = {
       basic: { monthly: 99, '6months': 499, yearly: 899 },
@@ -326,13 +341,14 @@ export async function activateSubscription(env, userId, planId, billingCycle, ra
 
     await env.DB.prepare(
       `INSERT INTO subscriptions (id, user_id, plan, billing_cycle, amount, status, current_period_start, current_period_end, created_at)
-       VALUES (?, ?, ?, ?, ?, 'active', datetime('now'), ?, datetime('now'))`
+       VALUES (?, ?, ?, ?, ?, 'active', ?, ?, datetime('now'))`
     ).bind(
       generateId(),
       userId,
       planId,
       billingCycle,
       plans[planId][billingCycle],
+      periodStart.toISOString(),
       periodEnd.toISOString()
     ).run();
 

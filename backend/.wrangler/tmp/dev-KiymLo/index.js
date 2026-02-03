@@ -2011,12 +2011,22 @@ async function activateSubscription(env, userId, planId, billingCycle, razorpayP
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       )
     `).run();
-    await env.DB.prepare(
-      `UPDATE subscriptions SET status = 'cancelled', cancelled_at = datetime('now') WHERE user_id = ? AND status = 'active'`
-    ).bind(userId).run();
+    const userSub = await env.DB.prepare(
+      `SELECT * FROM subscriptions WHERE user_id = ? AND status = 'active' ORDER BY current_period_end DESC LIMIT 1`
+    ).bind(userId).first();
     const periodMonths = billingCycle === "monthly" ? 1 : billingCycle === "6months" ? 6 : 12;
-    const periodEnd = /* @__PURE__ */ new Date();
+    let periodStart = /* @__PURE__ */ new Date();
+    if (userSub && userSub.current_period_end) {
+      const currentEnd = new Date(userSub.current_period_end);
+      if (currentEnd > periodStart) {
+        periodStart = currentEnd;
+      }
+    }
+    const periodEnd = new Date(periodStart);
     periodEnd.setMonth(periodEnd.getMonth() + periodMonths);
+    await env.DB.prepare(
+      `UPDATE subscriptions SET status = 'cancelled', cancelled_at = datetime('now') WHERE user_id = ? AND status = 'active' AND id != ?`
+    ).bind(userId, userSub?.id || "").run();
     const plans = {
       basic: { monthly: 99, "6months": 499, yearly: 899 },
       premium: { monthly: 299, "6months": 1499, yearly: 2499 },
@@ -2024,13 +2034,14 @@ async function activateSubscription(env, userId, planId, billingCycle, razorpayP
     };
     await env.DB.prepare(
       `INSERT INTO subscriptions (id, user_id, plan, billing_cycle, amount, status, current_period_start, current_period_end, created_at)
-       VALUES (?, ?, ?, ?, ?, 'active', datetime('now'), ?, datetime('now'))`
+       VALUES (?, ?, ?, ?, ?, 'active', ?, ?, datetime('now'))`
     ).bind(
       generateId(),
       userId,
       planId,
       billingCycle,
       plans[planId][billingCycle],
+      periodStart.toISOString(),
       periodEnd.toISOString()
     ).run();
     console.log(`Inserted subscription record for user ${userId}`);
