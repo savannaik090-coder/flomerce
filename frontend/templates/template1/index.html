@@ -575,13 +575,34 @@ background-color: #000 !important;
                 
                 console.log('Processing categories:', categories);
                 
-                const nav = document.getElementById('dynamic-categories-nav');
+                const nav = document.getElementById('dynamic-categories-nav') || document.querySelector('.nav-list');
                 const wrapper = document.getElementById('dynamic-categories-circles');
                 const footerNav = document.getElementById('dynamic-footer-categories');
-                const searchFilters = document.querySelector('.search-filters');
-
+                
                 // Filter for main categories (no parent)
                 const mainCategories = categories.filter(c => !c.parent_id || c.parent_id === '0' || c.parent_id === 0);
+                
+                // Clear existing dynamic categories if any
+                const existingDynamic = document.querySelectorAll('.nav-item-dynamic');
+                existingDynamic.forEach(el => el.remove());
+
+                mainCategories.forEach(cat => {
+                    // Add to navigation
+                    if (nav) {
+                        const li = document.createElement('li');
+                        li.className = 'nav-item nav-item-dynamic';
+                        li.innerHTML = `<a href="category.html?slug=${cat.slug}" class="nav-link">${cat.name}</a>`;
+                        
+                        // Insert before "About" link if possible
+                        const aboutLink = Array.from(nav.querySelectorAll('.nav-link')).find(a => a.getAttribute('href') === '/about-us' || a.textContent.toLowerCase().includes('about'));
+                        if (aboutLink && aboutLink.parentElement) {
+                            nav.insertBefore(li, aboutLink.parentElement);
+                        } else {
+                            nav.appendChild(li);
+                        }
+                    }
+                });
+              }
                 
                 // Populate Navbar Collections
                 if (nav) {

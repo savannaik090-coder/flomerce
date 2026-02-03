@@ -42,7 +42,7 @@ async function getCategories(env, { siteId, subdomain, slug }) {
   try {
     let query = `SELECT c.*, 
                    (SELECT COUNT(*) FROM products p WHERE p.category_id = c.id AND p.is_active = 1) as product_count
-                 FROM categories c WHERE c.is_active = 1`;
+                 FROM categories c WHERE 1=1`;
     const bindings = [];
 
     if (siteId) {
@@ -53,7 +53,7 @@ async function getCategories(env, { siteId, subdomain, slug }) {
                  (SELECT COUNT(*) FROM products p WHERE p.category_id = c.id AND p.is_active = 1) as product_count
                FROM categories c 
                JOIN sites s ON c.site_id = s.id 
-               WHERE c.is_active = 1 AND s.subdomain = ?`;
+               WHERE s.subdomain = ?`;
       bindings.push(subdomain);
     }
 
