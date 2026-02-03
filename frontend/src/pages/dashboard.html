@@ -495,12 +495,11 @@
             const planWeights = { 'trial': 0, 'basic': 1, 'premium': 2, 'pro': 3 };
             const currentWeight = planWeights[plan] ?? -1;
 
+            const capitalize = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+
             document.querySelectorAll('.upgrade-btn, .selection-upgrade-btn').forEach(btn => {
                 const btnPlan = btn.dataset.plan;
                 const btnWeight = planWeights[btnPlan] || 0;
-                const card = btn.closest('.plan-card, .plan-card-overlay');
-
-                const capitalize = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
                 if (!isActive) {
                     btn.innerText = `Choose ${capitalize(btnPlan)}`;
