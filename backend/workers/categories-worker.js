@@ -55,6 +55,10 @@ async function getCategories(env, { siteId, subdomain, slug }) {
                JOIN sites s ON c.site_id = s.id 
                WHERE s.subdomain = ?`;
       bindings.push(subdomain);
+    } else {
+      // If neither siteId nor subdomain is provided, we can't fetch site-specific categories
+      // But we might want to return nothing instead of all categories
+      query += ' AND 1=0';
     }
 
     if (slug) {
