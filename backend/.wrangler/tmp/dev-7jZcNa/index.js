@@ -1913,7 +1913,7 @@ async function createSubscriptionOrder(request, env, user) {
       body: JSON.stringify({
         amount: amount * 100,
         currency: "INR",
-        receipt: `sub_${user.id}_${Date.now()}`,
+        receipt: `sub_${user.id.slice(0, 8)}_${Date.now().toString(36)}`,
         notes: {
           userId: user.id,
           planId,
