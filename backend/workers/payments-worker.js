@@ -1,6 +1,6 @@
 import { generateId, jsonResponse, errorResponse, successResponse, handleCORS } from '../utils/helpers.js';
 import { validateAuth } from '../utils/auth.js';
-import crypto from 'crypto';
+import crypto from 'node:crypto';
 
 export async function handlePayments(request, env, path) {
   const corsResponse = handleCORS(request);
@@ -284,6 +284,8 @@ export async function activateSubscription(env, userId, planId, billingCycle, ra
       periodEnd.toISOString()
     ).run();
 
+    // Ensure the sites table update uses the correct column name if needed
+    // Assuming subscription_plan and subscription_expires_at are correct based on current code
     await env.DB.prepare(
       `UPDATE sites SET subscription_plan = ?, subscription_expires_at = ?, updated_at = datetime('now') WHERE user_id = ?`
     ).bind(planId, periodEnd.toISOString(), userId).run();
@@ -291,6 +293,8 @@ export async function activateSubscription(env, userId, planId, billingCycle, ra
     return true;
   } catch (error) {
     console.error('Activate subscription error:', error);
+    // Log the error message to help debugging in production logs
+    if (error.message) console.error('Error message:', error.message);
     return false;
   }
 }

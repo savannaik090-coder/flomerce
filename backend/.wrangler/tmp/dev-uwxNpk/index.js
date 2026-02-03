@@ -1,7 +1,7 @@
 var __defProp = Object.defineProperty;
 var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
-// .wrangler/tmp/bundle-ZnXLEH/checked-fetch.js
+// .wrangler/tmp/bundle-VJXkLx/checked-fetch.js
 var urls = /* @__PURE__ */ new Set();
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
@@ -27,7 +27,7 @@ globalThis.fetch = new Proxy(globalThis.fetch, {
   }
 });
 
-// .wrangler/tmp/bundle-ZnXLEH/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-VJXkLx/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
@@ -1748,6 +1748,7 @@ async function removeFromWishlist(request, env, user, siteId) {
 __name(removeFromWishlist, "removeFromWishlist");
 
 // workers/payments-worker.js
+import crypto2 from "node:crypto";
 async function handlePayments(request, env, path) {
   const corsResponse = handleCORS(request);
   if (corsResponse)
@@ -1815,28 +1816,16 @@ async function verifyPayment(request, env) {
   if (request.method !== "POST") {
     return errorResponse("Method not allowed", 405);
   }
+  if (!env.RAZORPAY_KEY_SECRET || !env.RAZORPAY_KEY_ID) {
+    return errorResponse("Razorpay credentials missing", 500);
+  }
   try {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature, planId, billingCycle } = await request.json();
     if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
       return errorResponse("Missing payment verification data");
     }
     const body = razorpay_order_id + "|" + razorpay_payment_id;
-    const encoder = new TextEncoder();
-    const secretData = encoder.encode(env.RAZORPAY_KEY_SECRET);
-    const bodyData = encoder.encode(body);
-    const key = await crypto.subtle.importKey(
-      "raw",
-      secretData,
-      { name: "HMAC", hash: "SHA-256" },
-      false,
-      ["sign"]
-    );
-    const signatureBuffer = await crypto.subtle.sign(
-      "HMAC",
-      key,
-      bodyData
-    );
-    const computedSignature = Array.from(new Uint8Array(signatureBuffer)).map((b) => b.toString(16).padStart(2, "0")).join("");
+    const computedSignature = crypto2.createHmac("sha256", env.RAZORPAY_KEY_SECRET).update(body).digest("hex");
     console.log("VerifyPayment: hasKeyId?", !!env.RAZORPAY_KEY_ID, "hasSecret?", !!env.RAZORPAY_KEY_SECRET);
     if (computedSignature !== razorpay_signature) {
       return errorResponse("Invalid payment signature", 400, "INVALID_SIGNATURE");
@@ -2002,6 +1991,8 @@ async function activateSubscription(env, userId, planId, billingCycle, razorpayP
     return true;
   } catch (error) {
     console.error("Activate subscription error:", error);
+    if (error.message)
+      console.error("Error message:", error.message);
     return false;
   }
 }
@@ -3347,7 +3338,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-ZnXLEH/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-VJXkLx/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -3379,7 +3370,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-ZnXLEH/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-VJXkLx/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;
