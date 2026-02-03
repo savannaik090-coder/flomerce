@@ -3000,7 +3000,7 @@ function replacePlaceholders(html, siteData) {
     result = result.replace("{{productDescription}}", siteData.currentProduct.description || "");
     result = result.replace("{{productPrice}}", siteData.currentProduct.price || "");
   }
-  const navCategories = siteData.categories?.filter((c) => !c.parent_id).map((c) => `<li><a href="/category/${c.slug}">${c.name}</a></li>`).join("") || "";
+  const navCategories = siteData.categories?.filter((c) => !c.parent_id || c.parent_id === "0" || c.parent_id === 0).map((c) => `<li><a href="/category/${c.slug}">${c.name}</a></li>`).join("") || "";
   result = result.replace("{{navigationCategories}}", navCategories);
   result = result.replace(/\{\{siteData\}\}/g, JSON.stringify(siteData));
   return result;
