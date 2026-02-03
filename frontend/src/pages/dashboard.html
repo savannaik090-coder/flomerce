@@ -598,7 +598,8 @@
                     try {
                         const res = await paymentService.initiateSubscriptionPayment(btn.dataset.plan, 'monthly', { userName: currentUserData?.name || 'User', userEmail: currentUserData?.email || '' });
                         if (res.success) {
-                            await apiRequest('/api/users/subscription', { method: 'PATCH', body: JSON.stringify({ plan: btn.dataset.plan, billingCycle: 'monthly', status: 'active' }) });
+                            // Backend already activated the subscription via verifyPayment
+                            await loadUserData(); // Refresh local data
                             location.reload();
                         } else {
                             alert('Payment failed: ' + (res.error || 'Unknown error'));
@@ -752,10 +753,8 @@
                         userEmail: currentUserData?.email || '' 
                     });
                     if (res.success) {
-                        await apiRequest('/api/users/subscription', { 
-                            method: 'PATCH', 
-                            body: JSON.stringify({ plan, billingCycle: selectedDuration, status: 'active' }) 
-                        });
+                        // Backend already activated the subscription via verifyPayment
+                        await loadUserData(); // Refresh local data
                         location.reload();
                     } else if (res.error) {
                         alert('Payment failed: ' + res.error);

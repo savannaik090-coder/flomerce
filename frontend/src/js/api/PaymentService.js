@@ -61,7 +61,8 @@ class PaymentService {
 
       return { 
         success: response.data?.verified === true,
-        error: response.message
+        error: response.message,
+        data: response.data
       };
     } catch (error) {
       return { success: false, error: error.message };

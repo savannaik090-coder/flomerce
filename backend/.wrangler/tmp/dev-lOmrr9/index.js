@@ -1846,10 +1846,13 @@ async function verifyPayment(request, env) {
     if (planId && billingCycle) {
       const user = await validateAuth(request, env);
       if (user) {
-        await activateSubscription(env, user.id, planId, billingCycle, razorpay_payment_id);
+        const activated = await activateSubscription(env, user.id, planId, billingCycle, razorpay_payment_id);
+        if (!activated) {
+          console.error("Failed to activate subscription in verifyPayment");
+        }
       }
     }
-    return successResponse({ verified: true }, "Payment verified successfully");
+    return successResponse({ verified: true, planActivated: true }, "Payment verified and plan activated successfully");
   } catch (error) {
     console.error("Verify payment error:", error);
     return errorResponse("Payment verification failed", 500);
