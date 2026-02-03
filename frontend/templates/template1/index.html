@@ -587,6 +587,7 @@ background-color: #000 !important;
                 const nav = document.getElementById('dynamic-categories-nav') || document.querySelector('.nav-list');
                 const wrapper = document.getElementById('dynamic-categories-circles');
                 const footerNav = document.getElementById('dynamic-footer-categories');
+                const searchFilters = document.querySelector('.search-filters');
                 
                 // Filter for main categories (no parent)
                 const mainCategories = categories.filter(c => !c.parent_id || c.parent_id === '0' || c.parent_id === 0);
@@ -611,35 +612,6 @@ background-color: #000 !important;
                         }
                     }
                 });
-              }
-                
-                // Populate Navbar Collections
-                if (nav) {
-                  console.log('Populating nav with categories:', mainCategories);
-                  nav.innerHTML = '';
-                  
-                  // Ensure dropdown is visible if we have categories
-                  const dropdownParent = nav.closest('.dropdown');
-                  if (dropdownParent) {
-                    if (mainCategories.length > 0) {
-                        dropdownParent.style.display = 'block';
-                        dropdownParent.style.visibility = 'visible';
-                        dropdownParent.style.opacity = '1';
-                    } else {
-                        dropdownParent.style.display = 'none';
-                    }
-                  }
-
-                  mainCategories.forEach(cat => {
-                    const name = typeof cat === 'string' ? cat : (cat.name || '');
-                    const slug = typeof cat === 'string' ? cat.toLowerCase().replace(/\s+/g, '-') : (cat.slug || name.toLowerCase().replace(/\s+/g, '-'));
-                    
-                    const li = document.createElement('li');
-                    li.style.display = 'block'; // Ensure visibility
-                    li.innerHTML = `<a href="/category/${slug}" style="display: block; padding: 10px 20px; color: #333;">${name}</a>`;
-                    nav.appendChild(li);
-                  });
-                }
 
                 // Populate Footer Categories
                 if (footerNav) {
@@ -689,6 +661,7 @@ background-color: #000 !important;
                     wrapper.appendChild(a);
                   });
                 }
+              }
               }
             }
           })
