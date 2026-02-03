@@ -531,11 +531,16 @@ background-color: #000 !important;
         // Use window.location.hostname for subdomain
         const hostname = window.location.hostname;
         const parts = hostname.split('.');
-        const subdomain = (parts.length > 2 && hostname !== 'localhost') ? parts[0] : 'testshop';
+        
+        let subdomain = 'demo'; 
+        if (parts.length > 2) {
+            subdomain = parts[0];
+        } else if (parts.length === 2 && !hostname.includes('localhost')) {
+            subdomain = 'www';
+        }
 
-        const fetchUrl = siteInfo.type === 'id' 
-          ? `/api/sites/${siteInfo.value}` 
-          : `/api/site?subdomain=${subdomain}`;
+        // Production API always uses /api/site?subdomain=
+        const fetchUrl = `/api/site?subdomain=${subdomain}`;
 
         console.log('Fetching site data from:', fetchUrl);
 
