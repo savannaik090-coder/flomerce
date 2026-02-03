@@ -1,6 +1,7 @@
 import { generateId, jsonResponse, errorResponse, successResponse, handleCORS } from '../utils/helpers.js';
 import { validateAuth } from '../utils/auth.js';
 
+
 export async function handleCart(request, env, path) {
   const corsResponse = handleCORS(request);
   if (corsResponse) return corsResponse;
