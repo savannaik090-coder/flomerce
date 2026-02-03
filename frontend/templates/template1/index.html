@@ -589,12 +589,19 @@ background-color: #000 !important;
                 
                 // Populate Navbar Collections
                 if (nav) {
+                  console.log('Populating nav with categories:', mainCategories);
                   nav.innerHTML = '';
                   
                   // Ensure dropdown is visible if we have categories
                   const dropdownParent = nav.closest('.dropdown');
                   if (dropdownParent) {
-                    dropdownParent.style.display = mainCategories.length > 0 ? 'block' : 'none';
+                    if (mainCategories.length > 0) {
+                        dropdownParent.style.display = 'block';
+                        dropdownParent.style.visibility = 'visible';
+                        dropdownParent.style.opacity = '1';
+                    } else {
+                        dropdownParent.style.display = 'none';
+                    }
                   }
 
                   mainCategories.forEach(cat => {
@@ -602,7 +609,8 @@ background-color: #000 !important;
                     const slug = typeof cat === 'string' ? cat.toLowerCase().replace(/\s+/g, '-') : (cat.slug || name.toLowerCase().replace(/\s+/g, '-'));
                     
                     const li = document.createElement('li');
-                    li.innerHTML = `<a href="/category/${slug}">${name}</a>`;
+                    li.style.display = 'block'; // Ensure visibility
+                    li.innerHTML = `<a href="/category/${slug}" style="display: block; padding: 10px 20px; color: #333;">${name}</a>`;
                     nav.appendChild(li);
                   });
                 }
