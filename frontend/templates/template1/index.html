@@ -654,21 +654,6 @@ background-color: #000 !important;
           })
           .catch(err => console.error('Error loading site data:', err));
       })();
-                  a.href = `/category/${cat.slug}`;
-                  a.className = 'category-circle-item';
-                  a.innerHTML = `
-                    <div class="category-circle">
-                      <img src="${cat.image_url || 'images/product-placeholder.jpg'}" alt="${cat.name}">
-                    </div>
-                    <span class="category-circle-label">${cat.name}</span>
-                  `;
-                  wrapper.appendChild(a);
-                });
-              }
-            }
-          })
-          .catch(err => console.error('Error loading dynamic categories:', err));
-      })();
     </script>
 
     <!-- Circular Category Section -->
