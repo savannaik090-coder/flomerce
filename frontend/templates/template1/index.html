@@ -519,10 +519,19 @@ background-color: #000 !important;
     <script>
       // Load Dynamic Categories
       (function() {
-        const subdomain = window.location.hostname.split('.')[0];
-        const siteId = window.FLUXE_SITE_DATA?.id;
-        
-        const fetchUrl = siteId ? `/api/sites/${siteId}` : `/api/sites/by-subdomain/${subdomain}`;
+        // Function to get the current site identifier (ID or subdomain)
+        function getSiteIdentifier() {
+          if (window.FLUXE_SITE_DATA && window.FLUXE_SITE_DATA.id) {
+            return { type: 'id', value: window.FLUXE_SITE_DATA.id };
+          }
+          const subdomain = window.location.hostname.split('.')[0];
+          return { type: 'subdomain', value: subdomain };
+        }
+
+        const siteInfo = getSiteIdentifier();
+        const fetchUrl = siteInfo.type === 'id' 
+          ? `/api/sites/${siteInfo.value}` 
+          : `/api/sites/by-subdomain/${siteInfo.value}`;
 
         fetch(fetchUrl)
           .then(res => res.json())
@@ -532,19 +541,26 @@ background-color: #000 !important;
               const nav = document.getElementById('dynamic-categories-nav');
               const wrapper = document.getElementById('dynamic-categories-circles');
               
-              if (nav) nav.innerHTML = '';
-              if (wrapper) wrapper.innerHTML = '';
-              
-              siteData.categories.forEach(cat => {
-                // Add to nav
-                if (nav) {
+              if (nav) {
+                // Keep "All Collection" and "Featured Collection" as defaults if they already exist,
+                // or clear and add them back if that's the preferred behavior.
+                // Based on the user's request, they want THEIR categories instead of ONLY the defaults.
+                nav.innerHTML = '';
+                
+                // Add default links back first if desired, or just add the dynamic ones
+                nav.innerHTML += `<li><a href="/all-collection" data-translate="all_collections">All Collection</a></li>`;
+                nav.innerHTML += `<li><a href="/featured-collection" data-translate="featured">Featured Collection</a></li>`;
+                
+                siteData.categories.forEach(cat => {
                   const li = document.createElement('li');
                   li.innerHTML = `<a href="/category/${cat.slug}">${cat.name}</a>`;
                   nav.appendChild(li);
-                }
-                
-                // Add to circles
-                if (wrapper) {
+                });
+              }
+              
+              if (wrapper) {
+                wrapper.innerHTML = '';
+                siteData.categories.forEach(cat => {
                   const a = document.createElement('a');
                   a.href = `/category/${cat.slug}`;
                   a.className = 'category-circle-item';
@@ -555,8 +571,8 @@ background-color: #000 !important;
                     <span class="category-circle-label">${cat.name}</span>
                   `;
                   wrapper.appendChild(a);
-                }
-              });
+                });
+              }
             }
           })
           .catch(err => console.error('Error loading dynamic categories:', err));
