@@ -7,12 +7,17 @@ const STATIC_EXTENSIONS = [
 
 function isStaticAsset(path) {
   const lowerPath = path.toLowerCase();
-  return STATIC_EXTENSIONS.some(ext => lowerPath.endsWith(ext)) ||
-         lowerPath.startsWith('/css/') ||
-         lowerPath.startsWith('/js/') ||
-         lowerPath.startsWith('/images/') ||
-         lowerPath.startsWith('/fonts/') ||
-         lowerPath.startsWith('/data/');
+  // Check if the path ends with a known static extension
+  const hasStaticExtension = STATIC_EXTENSIONS.some(ext => lowerPath.endsWith(ext));
+  
+  // Check if the path contains known static directories anywhere (to handle /category/css/...)
+  const hasStaticDir = lowerPath.includes('/css/') || 
+                       lowerPath.includes('/js/') || 
+                       lowerPath.includes('/images/') || 
+                       lowerPath.includes('/fonts/') || 
+                       lowerPath.includes('/data/');
+                       
+  return hasStaticExtension || hasStaticDir;
 }
 
 function getContentType(path) {
@@ -188,7 +193,17 @@ export async function handleSiteRouting(request, env) {
 
 async function serveStaticAsset(env, templateId, path) {
   try {
-    const templatePath = `/templates/${templateId}${path}`;
+    // Clean the path to get the actual asset file (e.g., /category/css/style.css -> /css/style.css)
+    let cleanPath = path;
+    const staticDirs = ['/css/', '/js/', '/images/', '/fonts/', '/data/'];
+    for (const dir of staticDirs) {
+      if (path.includes(dir)) {
+        cleanPath = dir + path.split(dir).pop();
+        break;
+      }
+    }
+    
+    const templatePath = `/templates/${templateId}${cleanPath}`;
     
     // Try ASSETS binding first (Cloudflare Pages)
     if (env.ASSETS) {
