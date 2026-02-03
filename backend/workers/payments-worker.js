@@ -97,7 +97,9 @@ async function verifyPayment(request, env) {
       .update(body)
       .digest('hex');
 
-    console.log('VerifyPayment: hasKeyId?', !!env.RAZORPAY_KEY_ID, 'hasSecret?', !!env.RAZORPAY_KEY_SECRET);
+    console.log('VerifyPayment: signature match?', computedSignature === razorpay_signature);
+    console.log('VerifyPayment: receivedSignature:', razorpay_signature);
+    console.log('VerifyPayment: computedSignature:', computedSignature);
 
     if (computedSignature !== razorpay_signature) {
       return errorResponse('Invalid payment signature', 400, 'INVALID_SIGNATURE');
