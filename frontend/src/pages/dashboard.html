@@ -600,6 +600,23 @@
         }
         window.hideComingSoon = hideComingSoon;
 
+        const siteDomainInput = document.getElementById('site-domain-input');
+        const siteBrandInput = document.getElementById('site-brand-input');
+        const siteLogoInput = document.getElementById('site-logo-input');
+        
+        let siteLogoBase64 = null;
+
+        siteLogoInput?.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    siteLogoBase64 = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
         // Modal Logic
         const modal = document.getElementById('create-site-modal');
         const floatingBtn = document.getElementById('open-create-modal');
@@ -636,7 +653,8 @@
                     brandName: document.getElementById('site-brand-input').value, 
                     subdomain: document.getElementById('site-domain-input').value, 
                     templateId: selectedTemplate, 
-                    categories: Array.from(document.querySelectorAll('.category-name-input')).map(i => i.value).filter(v => v) 
+                    categories: Array.from(document.querySelectorAll('.category-name-input')).map(i => i.value).filter(v => v),
+                    logoUrl: siteLogoBase64
                 };
                 
                 if (!siteData.brandName || !siteData.subdomain) {
@@ -650,7 +668,10 @@
 
                 if (res.success) { 
                     closeModal(); 
-                    await loadSites(); 
+                    await loadSites();
+                    // Reset logo state
+                    siteLogoBase64 = null;
+                    if (siteLogoInput) siteLogoInput.value = '';
                 } else { 
                     alert('Error: ' + res.error); 
                 }
