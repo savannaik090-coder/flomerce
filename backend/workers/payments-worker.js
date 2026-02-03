@@ -87,24 +87,30 @@ async function verifyPayment(request, env) {
 
     const body = razorpay_order_id + '|' + razorpay_payment_id;
     
+    // Using HMAC verification with the secret key directly to match Razorpay's recommended verification
     const encoder = new TextEncoder();
+    const secretData = encoder.encode(env.RAZORPAY_KEY_SECRET);
+    const bodyData = encoder.encode(body);
+    
     const key = await crypto.subtle.importKey(
       'raw',
-      encoder.encode(env.RAZORPAY_KEY_SECRET),
+      secretData,
       { name: 'HMAC', hash: 'SHA-256' },
       false,
       ['sign']
     );
     
-    const signature = await crypto.subtle.sign(
+    const signatureBuffer = await crypto.subtle.sign(
       'HMAC',
       key,
-      encoder.encode(body)
+      bodyData
     );
     
-    const computedSignature = Array.from(new Uint8Array(signature))
+    const computedSignature = Array.from(new Uint8Array(signatureBuffer))
       .map(b => b.toString(16).padStart(2, '0'))
       .join('');
+
+    console.log('VerifyPayment: hasKeyId?', !!env.RAZORPAY_KEY_ID, 'hasSecret?', !!env.RAZORPAY_KEY_SECRET);
 
     if (computedSignature !== razorpay_signature) {
       return errorResponse('Invalid payment signature', 400, 'INVALID_SIGNATURE');
@@ -245,6 +251,26 @@ async function createSubscriptionOrder(request, env, user) {
 
 export async function activateSubscription(env, userId, planId, billingCycle, razorpayPaymentId) {
   try {
+    // Ensure subscriptions table exists before insert
+    await env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS subscriptions (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        plan TEXT NOT NULL,
+        billing_cycle TEXT NOT NULL,
+        amount REAL NOT NULL,
+        currency TEXT DEFAULT 'INR',
+        status TEXT DEFAULT 'active',
+        razorpay_subscription_id TEXT,
+        current_period_start TEXT,
+        current_period_end TEXT,
+        cancelled_at TEXT,
+        created_at TEXT DEFAULT (datetime('now')),
+        updated_at TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `).run();
+
     await env.DB.prepare(
       `UPDATE subscriptions SET status = 'cancelled', cancelled_at = datetime('now') WHERE user_id = ? AND status = 'active'`
     ).bind(userId).run();
