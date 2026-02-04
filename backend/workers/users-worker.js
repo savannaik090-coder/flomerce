@@ -69,7 +69,7 @@ async function getProfile(env, user) {
       name: profile.name,
       phone: profile.phone,
       emailVerified: !!profile.email_verified,
-      plan: subscription?.plan || null,
+      plan: subscription?.plan ? subscription.plan.toLowerCase() : null,
       billingCycle: subscription?.billing_cycle || null,
       status: subscription?.status || 'none',
       trialStartDate: subscription?.current_period_start || null,
@@ -144,7 +144,7 @@ async function getSubscription(env, user) {
 
     return successResponse({
       id: subscription.id,
-      plan: subscription.plan,
+      plan: subscription.plan ? subscription.plan.toLowerCase() : null,
       billingCycle: subscription.billing_cycle,
       status: subscription.status,
       currentPeriodStart: subscription.current_period_start,
