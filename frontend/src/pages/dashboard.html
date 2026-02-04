@@ -365,7 +365,7 @@
                     // Update account page plan info
                     if (document.getElementById('account-plan-name')) {
                         const planName = (sub.plan || 'Free').toLowerCase();
-                        const formattedPlan = planName === 'pro' ? 'PRO' : (planName.charAt(0).toUpperCase() + planName.slice(1));
+                        const formattedPlan = planName.charAt(0).toUpperCase() + planName.slice(1);
                         document.getElementById('account-plan-name').innerText = formattedPlan;
                         document.getElementById('account-plan-name').style.textTransform = 'none';
                     }
