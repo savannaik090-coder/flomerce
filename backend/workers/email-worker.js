@@ -72,7 +72,7 @@ async function sendEmail(env, to, subject, html, text) {
 
       if (!response.ok) {
         console.error('Resend error:', body);
-        return false;
+        return body.message || body.error || 'Resend API error';
       }
 
       console.log('Resend Email Sent Success:', body.id);
@@ -98,8 +98,9 @@ async function sendEmail(env, to, subject, html, text) {
       });
 
       if (!response.ok) {
-        console.error('SendGrid error:', await response.text());
-        return false;
+        const errorText = await response.text();
+        console.error('SendGrid error:', errorText);
+        return errorText || 'SendGrid API error';
       }
 
       return true;
@@ -110,7 +111,7 @@ async function sendEmail(env, to, subject, html, text) {
     return true;
   } catch (error) {
     console.error('Send email error:', error);
-    return false;
+    return error.message || 'Unknown email sending error';
   }
 }
 
@@ -237,8 +238,12 @@ async function sendVerificationEmail(request, env) {
 
     const sent = await sendEmail(env, email, 'Verify Your Email', html, text);
 
-    if (!sent) {
-      return errorResponse('Failed to send email', 500);
+    if (sent !== true) {
+      return jsonResponse({
+        success: false,
+        error: typeof sent === 'string' ? sent : 'Failed to send verification email',
+        code: 'EMAIL_PROVIDER_ERROR'
+      }, 500);
     }
 
     return successResponse(null, 'Verification email sent');
@@ -286,8 +291,12 @@ async function sendPasswordResetEmail(request, env) {
 
     const sent = await sendEmail(env, email, 'Reset Your Password', html, text);
 
-    if (!sent) {
-      return errorResponse('Failed to send email', 500);
+    if (sent !== true) {
+      return jsonResponse({
+        success: false,
+        error: typeof sent === 'string' ? sent : 'Failed to send password reset email',
+        code: 'EMAIL_PROVIDER_ERROR'
+      }, 500);
     }
 
     return successResponse(null, 'Password reset email sent');
