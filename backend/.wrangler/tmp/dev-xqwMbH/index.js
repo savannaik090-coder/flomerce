@@ -766,7 +766,7 @@ async function handleSignup(request, env) {
         email: email.toLowerCase(),
         token: verificationToken,
         name: sanitizeInput(name),
-        verifyUrl: `${env.APP_URL}/verify-email?token=${verificationToken}`
+        verifyUrl: `${env.APP_URL}/src/pages/verify-email.html?token=${verificationToken}`
       })
     }), env, "/api/email/verification");
     const emailBody = await emailResponse.json().catch(() => ({}));
@@ -1046,7 +1046,7 @@ async function handleResendVerification(request, env) {
         email: email.toLowerCase(),
         token,
         name: user.name,
-        verifyUrl: `${env.APP_URL}/verify-email?token=${token}`
+        verifyUrl: `${env.APP_URL}/src/pages/verify-email.html?token=${token}`
       })
     }), env, "/api/email/verification");
     const emailBody = await emailResponse.json().catch(() => ({}));
