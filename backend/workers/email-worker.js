@@ -61,7 +61,7 @@ async function sendEmail(env, to, subject, html, text) {
         },
         body: JSON.stringify({
           from: env.FROM_EMAIL || 'noreply@fluxe.in',
-          to: to,
+          to: typeof to === 'string' ? [to] : to,
           subject,
           html,
           text,
