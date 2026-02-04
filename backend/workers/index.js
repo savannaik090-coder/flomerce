@@ -20,10 +20,6 @@ export default {
     const path = url.pathname;
 
     try {
-      if (path === '/verify-email') {
-        return env.ASSETS ? env.ASSETS.fetch(request) : new Response('Verification page not found', { status: 404 });
-      }
-
       if (path.startsWith('/api/')) {
         return handleAPI(request, env, path);
       }
