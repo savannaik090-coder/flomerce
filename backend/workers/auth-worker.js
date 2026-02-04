@@ -80,7 +80,7 @@ async function handleSignup(request, env) {
 
     // Send verification email via email-worker
     try {
-      const emailRes = await fetch(`${env.APP_URL}/api/email/verification`, {
+      await fetch(`${env.APP_URL}/api/email/verification`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -90,10 +90,6 @@ async function handleSignup(request, env) {
           verifyUrl: `${env.APP_URL}/verify-email?token=${verificationToken}`
         })
       });
-      if (!emailRes.ok) {
-        const errorText = await emailRes.text();
-        console.error('Email worker returned error:', errorText);
-      }
     } catch (emailError) {
       console.error('Failed to send signup verification email:', emailError);
     }
@@ -418,7 +414,7 @@ async function handleResendVerification(request, env) {
           email: email.toLowerCase(),
           token,
           name: user.name,
-          verifyUrl: `${env.APP_URL}/src/pages/verify-email.html?token=${token}`
+          verifyUrl: `${env.APP_URL}/verify-email?token=${token}`
         })
       });
     } catch (e) { console.error(e); }

@@ -50,6 +50,8 @@ async function sendEmail(env, to, subject, html, text) {
       const result = await response.json();
       if (!response.ok) {
         console.error('Resend API Error details:', JSON.stringify(result, null, 2));
+        console.error('Resend API Status:', response.status);
+        console.error('Resend API Headers:', JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2));
         return false;
       }
 
