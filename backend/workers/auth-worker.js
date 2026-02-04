@@ -80,16 +80,20 @@ async function handleSignup(request, env) {
 
     // Send verification email via email-worker
     try {
-      await fetch(`${env.APP_URL}/api/email/verification`, {
+      const emailRes = await fetch(`${env.APP_URL}/api/email/verification`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: email.toLowerCase(),
           token: verificationToken,
           name: sanitizeInput(name),
-          verifyUrl: `${env.APP_URL}/src/pages/verify-email.html?token=${verificationToken}`
+          verifyUrl: `${env.APP_URL}/verify-email?token=${verificationToken}`
         })
       });
+      if (!emailRes.ok) {
+        const errorText = await emailRes.text();
+        console.error('Email worker returned error:', errorText);
+      }
     } catch (emailError) {
       console.error('Failed to send signup verification email:', emailError);
     }

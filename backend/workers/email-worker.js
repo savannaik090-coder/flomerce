@@ -31,6 +31,7 @@ export async function handleEmail(request, env, path) {
 async function sendEmail(env, to, subject, html, text) {
   try {
     if (env.RESEND_API_KEY) {
+      console.log('Attempting to send email via Resend to:', to);
       const response = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
@@ -48,7 +49,7 @@ async function sendEmail(env, to, subject, html, text) {
 
       const result = await response.json();
       if (!response.ok) {
-        console.error('Resend API Error:', JSON.stringify(result, null, 2));
+        console.error('Resend API Error details:', JSON.stringify(result, null, 2));
         return false;
       }
 

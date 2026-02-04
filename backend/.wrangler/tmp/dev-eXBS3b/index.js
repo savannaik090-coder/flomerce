@@ -1,7 +1,7 @@
 var __defProp = Object.defineProperty;
 var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
-// .wrangler/tmp/bundle-YLwR6H/checked-fetch.js
+// .wrangler/tmp/bundle-bNS8FN/checked-fetch.js
 var urls = /* @__PURE__ */ new Set();
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
@@ -27,7 +27,7 @@ globalThis.fetch = new Proxy(globalThis.fetch, {
   }
 });
 
-// .wrangler/tmp/bundle-YLwR6H/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-bNS8FN/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
@@ -359,16 +359,20 @@ async function handleSignup(request, env) {
        VALUES (?, ?, ?, ?)`
     ).bind(generateId(), userId, verificationToken, getExpiryDate(24)).run();
     try {
-      await fetch(`${env.APP_URL}/api/email/verification`, {
+      const emailRes = await fetch(`${env.APP_URL}/api/email/verification`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: email.toLowerCase(),
           token: verificationToken,
           name: sanitizeInput(name),
-          verifyUrl: `${env.APP_URL}/src/pages/verify-email.html?token=${verificationToken}`
+          verifyUrl: `${env.APP_URL}/verify-email?token=${verificationToken}`
         })
       });
+      if (!emailRes.ok) {
+        const errorText = await emailRes.text();
+        console.error("Email worker returned error:", errorText);
+      }
     } catch (emailError) {
       console.error("Failed to send signup verification email:", emailError);
     }
@@ -2201,6 +2205,7 @@ __name(handleEmail, "handleEmail");
 async function sendEmail(env, to, subject, html, text) {
   try {
     if (env.RESEND_API_KEY) {
+      console.log("Attempting to send email via Resend to:", to);
       const response = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: {
@@ -2217,7 +2222,7 @@ async function sendEmail(env, to, subject, html, text) {
       });
       const result = await response.json();
       if (!response.ok) {
-        console.error("Resend API Error:", JSON.stringify(result, null, 2));
+        console.error("Resend API Error details:", JSON.stringify(result, null, 2));
         return false;
       }
       console.log("Resend Email Sent Success:", result.id);
@@ -3541,7 +3546,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-YLwR6H/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-bNS8FN/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -3573,7 +3578,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-YLwR6H/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-bNS8FN/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;
