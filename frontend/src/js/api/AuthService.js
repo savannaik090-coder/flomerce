@@ -69,7 +69,8 @@ class AuthService {
         method: 'POST',
         body: JSON.stringify({ email }),
       });
-      return { success: response.success };
+      if (!response.success) throw new Error(response.message || response.error || 'Failed to resend verification');
+      return { success: true, message: response.message };
     } catch (error) {
       throw error;
     }
@@ -163,19 +164,13 @@ class AuthService {
         body: JSON.stringify({ email }),
       });
 
-      if (response.success && response.data?.resetToken) {
-        await apiRequest(`${config.endpoints.email}/password-reset`, {
-          method: 'POST',
-          body: JSON.stringify({
-            email,
-            token: response.data.resetToken,
-          }),
-        });
+      if (!response.success) {
+        throw new Error(response.message || response.error || 'Failed to request reset');
       }
-      
-      return { success: true };
+
+      return { success: true, message: response.message };
     } catch (error) {
-      return { success: false, error: error.message };
+      throw error;
     }
   }
 

@@ -79,19 +79,26 @@ async function handleSignup(request, env) {
     ).bind(generateId(), userId, verificationToken, getExpiryDate(24)).run();
 
     // Send verification email via email-worker
-    try {
-      await fetch(`${env.APP_URL}/api/email/verification`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: email.toLowerCase(),
-          token: verificationToken,
-          name: sanitizeInput(name),
-          verifyUrl: `${env.APP_URL}/verify-email?token=${verificationToken}`
-        })
-      });
-    } catch (emailError) {
-      console.error('Failed to send signup verification email:', emailError);
+    const emailResponse = await fetch(`${env.APP_URL}/api/email/verification`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: email.toLowerCase(),
+        token: verificationToken,
+        name: sanitizeInput(name),
+        verifyUrl: `${env.APP_URL}/verify-email?token=${verificationToken}`
+      })
+    });
+
+    const emailBody = await emailResponse.json().catch(() => ({}));
+
+    if (!emailResponse.ok || emailBody.success === false) {
+      return jsonResponse({
+        success: false,
+        error: emailBody.error || 'Verification email failed',
+        code: 'EMAIL_SEND_FAILED',
+        details: emailBody
+      }, 500, request);
     }
 
     return successResponse({
@@ -291,18 +298,25 @@ async function handleRequestReset(request, env) {
     ).bind(generateId(), user.id, resetToken, getExpiryDate(1)).run();
 
     // Send password reset email
-    try {
-      await fetch(`${env.APP_URL}/api/email/password-reset`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: email.toLowerCase(),
-          token: resetToken,
-          resetUrl: `${env.APP_URL}/src/pages/reset-password.html?token=${resetToken}`
-        })
-      });
-    } catch (e) {
-      console.error('Failed to send password reset email:', e);
+    const emailResponse = await fetch(`${env.APP_URL}/api/email/password-reset`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: email.toLowerCase(),
+        token: resetToken,
+        resetUrl: `${env.APP_URL}/src/pages/reset-password.html?token=${resetToken}`
+      })
+    });
+
+    const emailBody = await emailResponse.json().catch(() => ({}));
+
+    if (!emailResponse.ok || emailBody.success === false) {
+      return jsonResponse({
+        success: false,
+        error: emailBody.error || 'Password reset email failed',
+        code: 'EMAIL_SEND_FAILED',
+        details: emailBody
+      }, 500, request);
     }
 
     return successResponse({ resetToken }, 'Password reset link sent');
@@ -406,18 +420,27 @@ async function handleResendVerification(request, env) {
       `INSERT INTO email_verifications (id, user_id, token, expires_at) VALUES (?, ?, ?, ?)`
     ).bind(generateId(), user.id, token, getExpiryDate(24)).run();
 
-    try {
-      await fetch(`${env.APP_URL}/api/email/verification`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: email.toLowerCase(),
-          token,
-          name: user.name,
-          verifyUrl: `${env.APP_URL}/verify-email?token=${token}`
-        })
-      });
-    } catch (e) { console.error(e); }
+    const emailResponse = await fetch(`${env.APP_URL}/api/email/verification`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: email.toLowerCase(),
+        token,
+        name: user.name,
+        verifyUrl: `${env.APP_URL}/verify-email?token=${token}`
+      })
+    });
+
+    const emailBody = await emailResponse.json().catch(() => ({}));
+
+    if (!emailResponse.ok || emailBody.success === false) {
+      return jsonResponse({
+        success: false,
+        error: emailBody.error || 'Verification email failed',
+        code: 'EMAIL_SEND_FAILED',
+        details: emailBody
+      }, 500, request);
+    }
 
     return successResponse(null, 'Verification email sent');
   } catch (error) {

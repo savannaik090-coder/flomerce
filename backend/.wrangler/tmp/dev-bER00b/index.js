@@ -358,19 +358,24 @@ async function handleSignup(request, env) {
       `INSERT INTO email_verifications (id, user_id, token, expires_at)
        VALUES (?, ?, ?, ?)`
     ).bind(generateId(), userId, verificationToken, getExpiryDate(24)).run();
-    try {
-      await fetch(`${env.APP_URL}/api/email/verification`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: email.toLowerCase(),
-          token: verificationToken,
-          name: sanitizeInput(name),
-          verifyUrl: `${env.APP_URL}/verify-email?token=${verificationToken}`
-        })
-      });
-    } catch (emailError) {
-      console.error("Failed to send signup verification email:", emailError);
+    const emailResponse = await fetch(`${env.APP_URL}/api/email/verification`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: email.toLowerCase(),
+        token: verificationToken,
+        name: sanitizeInput(name),
+        verifyUrl: `${env.APP_URL}/verify-email?token=${verificationToken}`
+      })
+    });
+    const emailBody = await emailResponse.json().catch(() => ({}));
+    if (!emailResponse.ok || emailBody.success === false) {
+      return jsonResponse({
+        success: false,
+        error: emailBody.error || "Verification email failed",
+        code: "EMAIL_SEND_FAILED",
+        details: emailBody
+      }, 500, request);
     }
     return successResponse({
       user: {
@@ -530,18 +535,23 @@ async function handleRequestReset(request, env) {
       `INSERT INTO password_resets (id, user_id, token, expires_at)
        VALUES (?, ?, ?, ?)`
     ).bind(generateId(), user.id, resetToken, getExpiryDate(1)).run();
-    try {
-      await fetch(`${env.APP_URL}/api/email/password-reset`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: email.toLowerCase(),
-          token: resetToken,
-          resetUrl: `${env.APP_URL}/src/pages/reset-password.html?token=${resetToken}`
-        })
-      });
-    } catch (e) {
-      console.error("Failed to send password reset email:", e);
+    const emailResponse = await fetch(`${env.APP_URL}/api/email/password-reset`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: email.toLowerCase(),
+        token: resetToken,
+        resetUrl: `${env.APP_URL}/src/pages/reset-password.html?token=${resetToken}`
+      })
+    });
+    const emailBody = await emailResponse.json().catch(() => ({}));
+    if (!emailResponse.ok || emailBody.success === false) {
+      return jsonResponse({
+        success: false,
+        error: emailBody.error || "Password reset email failed",
+        code: "EMAIL_SEND_FAILED",
+        details: emailBody
+      }, 500, request);
     }
     return successResponse({ resetToken }, "Password reset link sent");
   } catch (error) {
@@ -628,19 +638,24 @@ async function handleResendVerification(request, env) {
     await env.DB.prepare(
       `INSERT INTO email_verifications (id, user_id, token, expires_at) VALUES (?, ?, ?, ?)`
     ).bind(generateId(), user.id, token, getExpiryDate(24)).run();
-    try {
-      await fetch(`${env.APP_URL}/api/email/verification`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: email.toLowerCase(),
-          token,
-          name: user.name,
-          verifyUrl: `${env.APP_URL}/verify-email?token=${token}`
-        })
-      });
-    } catch (e) {
-      console.error(e);
+    const emailResponse = await fetch(`${env.APP_URL}/api/email/verification`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: email.toLowerCase(),
+        token,
+        name: user.name,
+        verifyUrl: `${env.APP_URL}/verify-email?token=${token}`
+      })
+    });
+    const emailBody = await emailResponse.json().catch(() => ({}));
+    if (!emailResponse.ok || emailBody.success === false) {
+      return jsonResponse({
+        success: false,
+        error: emailBody.error || "Verification email failed",
+        code: "EMAIL_SEND_FAILED",
+        details: emailBody
+      }, 500, request);
     }
     return successResponse(null, "Verification email sent");
   } catch (error) {
@@ -2193,15 +2208,33 @@ async function handleEmail(request, env, path) {
       return sendContactEmail(request, env);
     case "appointment":
       return sendAppointmentEmail(request, env);
+    case "test":
+      return sendTestEmail(request, env);
     default:
       return errorResponse("Not found", 404);
   }
 }
 __name(handleEmail, "handleEmail");
+async function sendTestEmail(request, env) {
+  const { email } = await request.json();
+  if (!email)
+    return errorResponse("Email is required");
+  const html = `<h3>Test Email</h3><p>This is a test email from Fluxe.</p>`;
+  const text = `Test Email from Fluxe`;
+  const sent = await sendEmail(env, email, "Fluxe Test Email", html, text);
+  if (!sent)
+    return errorResponse("Failed to send test email", 500);
+  return successResponse(null, "Test email sent");
+}
+__name(sendTestEmail, "sendTestEmail");
 async function sendEmail(env, to, subject, html, text) {
   try {
+    console.log("EMAIL SEND ATTEMPT", {
+      provider: env.RESEND_API_KEY ? "resend" : env.SENDGRID_API_KEY ? "sendgrid" : "none",
+      to,
+      from: env.FROM_EMAIL || "noreply@fluxe.in"
+    });
     if (env.RESEND_API_KEY) {
-      console.log("Attempting to send email via Resend to:", to);
       const response = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: {
@@ -2216,14 +2249,13 @@ async function sendEmail(env, to, subject, html, text) {
           text
         })
       });
-      const result = await response.json();
+      const body = await response.json().catch(() => ({}));
+      console.log("RESEND RESPONSE", response.status, body);
       if (!response.ok) {
-        console.error("Resend API Error details:", JSON.stringify(result, null, 2));
-        console.error("Resend API Status:", response.status);
-        console.error("Resend API Headers:", JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2));
+        console.error("Resend error:", body);
         return false;
       }
-      console.log("Resend Email Sent Success:", result.id);
+      console.log("Resend Email Sent Success:", body.id);
       return true;
     }
     if (env.SENDGRID_API_KEY) {

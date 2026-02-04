@@ -23,15 +23,35 @@ export async function handleEmail(request, env, path) {
       return sendContactEmail(request, env);
     case 'appointment':
       return sendAppointmentEmail(request, env);
+    case 'test':
+      return sendTestEmail(request, env);
     default:
       return errorResponse('Not found', 404);
   }
 }
 
+async function sendTestEmail(request, env) {
+  const { email } = await request.json();
+  if (!email) return errorResponse('Email is required');
+
+  const html = `<h3>Test Email</h3><p>This is a test email from Fluxe.</p>`;
+  const text = `Test Email from Fluxe`;
+
+  const sent = await sendEmail(env, email, 'Fluxe Test Email', html, text);
+  if (!sent) return errorResponse('Failed to send test email', 500);
+
+  return successResponse(null, 'Test email sent');
+}
+
 async function sendEmail(env, to, subject, html, text) {
   try {
+    console.log('EMAIL SEND ATTEMPT', {
+      provider: env.RESEND_API_KEY ? 'resend' : env.SENDGRID_API_KEY ? 'sendgrid' : 'none',
+      to,
+      from: env.FROM_EMAIL || 'noreply@fluxe.in'
+    });
+
     if (env.RESEND_API_KEY) {
-      console.log('Attempting to send email via Resend to:', to);
       const response = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
@@ -47,15 +67,15 @@ async function sendEmail(env, to, subject, html, text) {
         }),
       });
 
-      const result = await response.json();
+      const body = await response.json().catch(() => ({}));
+      console.log('RESEND RESPONSE', response.status, body);
+
       if (!response.ok) {
-        console.error('Resend API Error details:', JSON.stringify(result, null, 2));
-        console.error('Resend API Status:', response.status);
-        console.error('Resend API Headers:', JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2));
+        console.error('Resend error:', body);
         return false;
       }
 
-      console.log('Resend Email Sent Success:', result.id);
+      console.log('Resend Email Sent Success:', body.id);
       return true;
     }
 
