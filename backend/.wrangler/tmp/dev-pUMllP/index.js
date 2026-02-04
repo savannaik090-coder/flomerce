@@ -1,7 +1,7 @@
 var __defProp = Object.defineProperty;
 var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
-// .wrangler/tmp/bundle-jxU3Li/checked-fetch.js
+// .wrangler/tmp/bundle-FcCi4M/checked-fetch.js
 var urls = /* @__PURE__ */ new Set();
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
@@ -27,7 +27,7 @@ globalThis.fetch = new Proxy(globalThis.fetch, {
   }
 });
 
-// .wrangler/tmp/bundle-jxU3Li/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-FcCi4M/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
@@ -359,7 +359,7 @@ async function handleSignup(request, env) {
        VALUES (?, ?, ?, ?)`
     ).bind(generateId(), userId, verificationToken, getExpiryDate(24)).run();
     try {
-      await env.EMAIL_WORKER.fetch(new Request(`${env.APP_URL}/api/email/verification`, {
+      await fetch(`${env.APP_URL}/api/email/verification`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -368,7 +368,7 @@ async function handleSignup(request, env) {
           name: sanitizeInput(name),
           verifyUrl: `${env.APP_URL}/src/pages/verify-email.html?token=${verificationToken}`
         })
-      }));
+      });
     } catch (emailError) {
       console.error("Failed to send signup verification email:", emailError);
     }
@@ -530,6 +530,19 @@ async function handleRequestReset(request, env) {
       `INSERT INTO password_resets (id, user_id, token, expires_at)
        VALUES (?, ?, ?, ?)`
     ).bind(generateId(), user.id, resetToken, getExpiryDate(1)).run();
+    try {
+      await fetch(`${env.APP_URL}/api/email/password-reset`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: email.toLowerCase(),
+          token: resetToken,
+          resetUrl: `${env.APP_URL}/src/pages/reset-password.html?token=${resetToken}`
+        })
+      });
+    } catch (e) {
+      console.error("Failed to send password reset email:", e);
+    }
     return successResponse({ resetToken }, "Password reset link sent");
   } catch (error) {
     console.error("Request reset error:", error);
@@ -616,7 +629,7 @@ async function handleResendVerification(request, env) {
       `INSERT INTO email_verifications (id, user_id, token, expires_at) VALUES (?, ?, ?, ?)`
     ).bind(generateId(), user.id, token, getExpiryDate(24)).run();
     try {
-      await env.EMAIL_WORKER.fetch(new Request(`${env.APP_URL}/api/email/verification`, {
+      await fetch(`${env.APP_URL}/api/email/verification`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -625,7 +638,7 @@ async function handleResendVerification(request, env) {
           name: user.name,
           verifyUrl: `${env.APP_URL}/src/pages/verify-email.html?token=${token}`
         })
-      }));
+      });
     } catch (e) {
       console.error(e);
     }
@@ -2195,7 +2208,7 @@ async function sendEmail(env, to, subject, html, text) {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          from: env.FROM_EMAIL || "noreply@yourdomain.com",
+          from: env.FROM_EMAIL || "noreply@fluxe.in",
           to: [to],
           subject,
           html,
@@ -2218,7 +2231,7 @@ async function sendEmail(env, to, subject, html, text) {
         },
         body: JSON.stringify({
           personalizations: [{ to: [{ email: to }] }],
-          from: { email: env.FROM_EMAIL || "noreply@yourdomain.com" },
+          from: { email: env.FROM_EMAIL || "noreply@fluxe.in" },
           subject,
           content: [
             { type: "text/plain", value: text },
@@ -3527,7 +3540,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-jxU3Li/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-FcCi4M/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -3559,7 +3572,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-jxU3Li/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-FcCi4M/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

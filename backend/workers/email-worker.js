@@ -38,7 +38,7 @@ async function sendEmail(env, to, subject, html, text) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          from: env.FROM_EMAIL || 'noreply@yourdomain.com',
+          from: env.FROM_EMAIL || 'noreply@fluxe.in',
           to: [to],
           subject,
           html,
@@ -64,7 +64,7 @@ async function sendEmail(env, to, subject, html, text) {
         },
         body: JSON.stringify({
           personalizations: [{ to: [{ email: to }] }],
-          from: { email: env.FROM_EMAIL || 'noreply@yourdomain.com' },
+          from: { email: env.FROM_EMAIL || 'noreply@fluxe.in' },
           subject,
           content: [
             { type: 'text/plain', value: text },

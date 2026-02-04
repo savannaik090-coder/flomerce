@@ -80,7 +80,7 @@ async function handleSignup(request, env) {
 
     // Send verification email via email-worker
     try {
-      await env.EMAIL_WORKER.fetch(new Request(`${env.APP_URL}/api/email/verification`, {
+      await fetch(`${env.APP_URL}/api/email/verification`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -89,7 +89,7 @@ async function handleSignup(request, env) {
           name: sanitizeInput(name),
           verifyUrl: `${env.APP_URL}/src/pages/verify-email.html?token=${verificationToken}`
         })
-      }));
+      });
     } catch (emailError) {
       console.error('Failed to send signup verification email:', emailError);
     }
@@ -290,6 +290,21 @@ async function handleRequestReset(request, env) {
        VALUES (?, ?, ?, ?)`
     ).bind(generateId(), user.id, resetToken, getExpiryDate(1)).run();
 
+    // Send password reset email
+    try {
+      await fetch(`${env.APP_URL}/api/email/password-reset`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: email.toLowerCase(),
+          token: resetToken,
+          resetUrl: `${env.APP_URL}/src/pages/reset-password.html?token=${resetToken}`
+        })
+      });
+    } catch (e) {
+      console.error('Failed to send password reset email:', e);
+    }
+
     return successResponse({ resetToken }, 'Password reset link sent');
   } catch (error) {
     console.error('Request reset error:', error);
@@ -392,7 +407,7 @@ async function handleResendVerification(request, env) {
     ).bind(generateId(), user.id, token, getExpiryDate(24)).run();
 
     try {
-      await env.EMAIL_WORKER.fetch(new Request(`${env.APP_URL}/api/email/verification`, {
+      await fetch(`${env.APP_URL}/api/email/verification`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -401,7 +416,7 @@ async function handleResendVerification(request, env) {
           name: user.name,
           verifyUrl: `${env.APP_URL}/src/pages/verify-email.html?token=${token}`
         })
-      }));
+      });
     } catch (e) { console.error(e); }
 
     return successResponse(null, 'Verification email sent');

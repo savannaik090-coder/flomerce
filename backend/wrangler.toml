@@ -20,8 +20,10 @@ routes = [
 
 [vars]
 ENVIRONMENT = "production"
-SKIP_EMAIL_VERIFICATION = "true"
+SKIP_EMAIL_VERIFICATION = "false"
 DOMAIN = "fluxe.in"
+APP_URL = "https://fluxe.in"
+FROM_EMAIL = "noreply@fluxe.in"
 
 # IMPORTANT: JWT_SECRET must be set as a secret, not a var!
 # Run this command in the backend folder to set it:
