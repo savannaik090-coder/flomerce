@@ -1,7 +1,7 @@
 var __defProp = Object.defineProperty;
 var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
-// .wrangler/tmp/bundle-V2CWTd/checked-fetch.js
+// .wrangler/tmp/bundle-gubFqh/checked-fetch.js
 var urls = /* @__PURE__ */ new Set();
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
@@ -27,7 +27,7 @@ globalThis.fetch = new Proxy(globalThis.fetch, {
   }
 });
 
-// .wrangler/tmp/bundle-V2CWTd/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-gubFqh/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
@@ -291,6 +291,407 @@ async function validateAuth(request, env) {
 }
 __name(validateAuth, "validateAuth");
 
+// workers/email-worker.js
+async function handleEmail(request, env, path) {
+  const corsResponse = handleCORS(request);
+  if (corsResponse)
+    return corsResponse;
+  if (request.method !== "POST") {
+    return errorResponse("Method not allowed", 405);
+  }
+  const pathParts = path.split("/").filter(Boolean);
+  const action = pathParts[2];
+  switch (action) {
+    case "order-confirmation":
+      return sendOrderConfirmation(request, env);
+    case "verification":
+      return sendVerificationEmail(request, env);
+    case "password-reset":
+      return sendPasswordResetEmail(request, env);
+    case "contact":
+      return sendContactEmail(request, env);
+    case "appointment":
+      return sendAppointmentEmail(request, env);
+    case "test":
+      return sendTestEmail(request, env);
+    default:
+      return errorResponse("Not found", 404);
+  }
+}
+__name(handleEmail, "handleEmail");
+async function sendTestEmail(request, env) {
+  const { email } = await request.json();
+  if (!email)
+    return errorResponse("Email is required");
+  const html = `<h3>Test Email</h3><p>This is a test email from Fluxe.</p>`;
+  const text = `Test Email from Fluxe`;
+  const sent = await sendEmail(env, email, "Fluxe Test Email", html, text);
+  if (!sent)
+    return errorResponse("Failed to send test email", 500);
+  return successResponse(null, "Test email sent");
+}
+__name(sendTestEmail, "sendTestEmail");
+async function sendEmail(env, to, subject, html, text) {
+  try {
+    console.log("EMAIL SEND ATTEMPT", {
+      provider: env.RESEND_API_KEY ? "resend" : env.SENDGRID_API_KEY ? "sendgrid" : "none",
+      to,
+      from: env.FROM_EMAIL || "noreply@fluxe.in"
+    });
+    if (env.RESEND_API_KEY) {
+      const apiKey = env.RESEND_API_KEY.trim();
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Authorization": apiKey.startsWith("Bearer ") ? apiKey : `Bearer ${apiKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          from: env.FROM_EMAIL || "noreply@fluxe.in",
+          to,
+          subject,
+          html,
+          text
+        })
+      });
+      const body = await response.json().catch(() => ({}));
+      console.log("RESEND RESPONSE", response.status, body);
+      if (!response.ok) {
+        console.error("Resend error:", body);
+        return body.message || body.error || "Resend API error";
+      }
+      console.log("Resend Email Sent Success:", body.id);
+      return true;
+    }
+    if (env.SENDGRID_API_KEY) {
+      const response = await fetch("https://api.sendgrid.com/v3/mail/send", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${env.SENDGRID_API_KEY}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          personalizations: [{ to: [{ email: to }] }],
+          from: { email: env.FROM_EMAIL || "noreply@fluxe.in" },
+          subject,
+          content: [
+            { type: "text/plain", value: text },
+            { type: "text/html", value: html }
+          ]
+        })
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("SendGrid error:", errorText);
+        return errorText || "SendGrid API error";
+      }
+      return true;
+    }
+    console.log("No email provider configured. Email would be sent to:", to);
+    console.log("Subject:", subject);
+    return true;
+  } catch (error) {
+    console.error("Send email error:", error);
+    return error.message || "Unknown email sending error";
+  }
+}
+__name(sendEmail, "sendEmail");
+async function sendOrderConfirmation(request, env) {
+  try {
+    const { order, customerEmail, brandName } = await request.json();
+    if (!order || !customerEmail) {
+      return errorResponse("Order and customer email are required");
+    }
+    const items = typeof order.items === "string" ? JSON.parse(order.items) : order.items;
+    const itemsHtml = items.map((item) => `
+      <tr>
+        <td style="padding: 10px; border-bottom: 1px solid #eee;">${item.name}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">\u20B9${item.price.toFixed(2)}</td>
+      </tr>
+    `).join("");
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: #000; color: #fff; padding: 20px; text-align: center; }
+          .content { padding: 20px; }
+          .order-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+          .order-table th { background: #f5f5f5; padding: 10px; text-align: left; }
+          .total { font-size: 18px; font-weight: bold; text-align: right; margin-top: 20px; }
+          .footer { background: #f5f5f5; padding: 20px; text-align: center; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>${brandName || "Your Order"}</h1>
+          </div>
+          <div class="content">
+            <h2>Order Confirmation</h2>
+            <p>Thank you for your order! Your order number is <strong>${order.order_number || order.orderNumber}</strong>.</p>
+            
+            <table class="order-table">
+              <thead>
+                <tr>
+                  <th>Product</th>
+                  <th style="text-align: center;">Qty</th>
+                  <th style="text-align: right;">Price</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${itemsHtml}
+              </tbody>
+            </table>
+            
+            <div class="total">
+              Total: \u20B9${order.total.toFixed(2)}
+            </div>
+            
+            <p>We will notify you when your order ships.</p>
+          </div>
+          <div class="footer">
+            <p>Thank you for shopping with us!</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+    const text = `Order Confirmation
+
+Thank you for your order!
+Order Number: ${order.order_number || order.orderNumber}
+Total: \u20B9${order.total.toFixed(2)}
+
+We will notify you when your order ships.`;
+    const sent = await sendEmail(env, customerEmail, `Order Confirmation - ${order.order_number || order.orderNumber}`, html, text);
+    if (!sent) {
+      return errorResponse("Failed to send email", 500);
+    }
+    return successResponse(null, "Order confirmation sent");
+  } catch (error) {
+    console.error("Send order confirmation error:", error);
+    return errorResponse("Failed to send email", 500);
+  }
+}
+__name(sendOrderConfirmation, "sendOrderConfirmation");
+async function sendVerificationEmail(request, env) {
+  try {
+    const { email, token, name, verifyUrl } = await request.json();
+    if (!email || !token) {
+      return errorResponse("Email and token are required");
+    }
+    const url = verifyUrl || `${env.APP_URL}/verify-email?token=${token}`;
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .button { display: inline-block; background: #000; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 4px; margin: 20px 0; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <h2>Verify Your Email</h2>
+          <p>Hi ${name || "there"},</p>
+          <p>Please verify your email address by clicking the button below:</p>
+          <a href="${url}" class="button">Verify Email</a>
+          <p>Or copy and paste this link: ${url}</p>
+          <p>This link will expire in 24 hours.</p>
+        </div>
+      </body>
+      </html>
+    `;
+    const text = `Verify Your Email
+
+Hi ${name || "there"},
+
+Please verify your email by visiting: ${url}
+
+This link will expire in 24 hours.`;
+    const sent = await sendEmail(env, email, "Verify Your Email", html, text);
+    if (sent !== true) {
+      return jsonResponse({
+        success: false,
+        error: typeof sent === "string" ? sent : "Failed to send verification email",
+        code: "EMAIL_PROVIDER_ERROR"
+      }, 500);
+    }
+    return successResponse(null, "Verification email sent");
+  } catch (error) {
+    console.error("Send verification email error:", error);
+    return errorResponse("Failed to send email", 500);
+  }
+}
+__name(sendVerificationEmail, "sendVerificationEmail");
+async function sendPasswordResetEmail(request, env) {
+  try {
+    const { email, token, resetUrl } = await request.json();
+    if (!email || !token) {
+      return errorResponse("Email and token are required");
+    }
+    const url = resetUrl || `${env.APP_URL}/reset-password?token=${token}`;
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .button { display: inline-block; background: #000; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 4px; margin: 20px 0; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <h2>Reset Your Password</h2>
+          <p>You requested a password reset. Click the button below to set a new password:</p>
+          <a href="${url}" class="button">Reset Password</a>
+          <p>Or copy and paste this link: ${url}</p>
+          <p>This link will expire in 1 hour.</p>
+          <p>If you didn't request this, you can safely ignore this email.</p>
+        </div>
+      </body>
+      </html>
+    `;
+    const text = `Reset Your Password
+
+You requested a password reset. Visit this link to set a new password: ${url}
+
+This link will expire in 1 hour.
+
+If you didn't request this, you can safely ignore this email.`;
+    const sent = await sendEmail(env, email, "Reset Your Password", html, text);
+    if (sent !== true) {
+      return jsonResponse({
+        success: false,
+        error: typeof sent === "string" ? sent : "Failed to send password reset email",
+        code: "EMAIL_PROVIDER_ERROR"
+      }, 500);
+    }
+    return successResponse(null, "Password reset email sent");
+  } catch (error) {
+    console.error("Send password reset email error:", error);
+    return errorResponse("Failed to send email", 500);
+  }
+}
+__name(sendPasswordResetEmail, "sendPasswordResetEmail");
+async function sendContactEmail(request, env) {
+  try {
+    const { name, email, phone, message, siteEmail, brandName } = await request.json();
+    if (!name || !email || !message) {
+      return errorResponse("Name, email and message are required");
+    }
+    const toEmail = siteEmail || env.CONTACT_EMAIL;
+    if (!toEmail) {
+      return errorResponse("No contact email configured", 500);
+    }
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .field { margin-bottom: 15px; }
+          .label { font-weight: bold; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <h2>New Contact Form Submission</h2>
+          <div class="field"><span class="label">Name:</span> ${name}</div>
+          <div class="field"><span class="label">Email:</span> ${email}</div>
+          ${phone ? `<div class="field"><span class="label">Phone:</span> ${phone}</div>` : ""}
+          <div class="field"><span class="label">Message:</span></div>
+          <p>${message}</p>
+        </div>
+      </body>
+      </html>
+    `;
+    const text = `New Contact Form Submission
+
+Name: ${name}
+Email: ${email}${phone ? `
+Phone: ${phone}` : ""}
+
+Message:
+${message}`;
+    const sent = await sendEmail(env, toEmail, `Contact Form - ${brandName || "Website"}`, html, text);
+    if (!sent) {
+      return errorResponse("Failed to send email", 500);
+    }
+    return successResponse(null, "Contact form submitted");
+  } catch (error) {
+    console.error("Send contact email error:", error);
+    return errorResponse("Failed to send email", 500);
+  }
+}
+__name(sendContactEmail, "sendContactEmail");
+async function sendAppointmentEmail(request, env) {
+  try {
+    const { name, email, phone, date, time, notes, siteEmail, brandName } = await request.json();
+    if (!name || !email || !date) {
+      return errorResponse("Name, email and date are required");
+    }
+    const toEmail = siteEmail || env.CONTACT_EMAIL;
+    if (!toEmail) {
+      return errorResponse("No contact email configured", 500);
+    }
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .field { margin-bottom: 15px; }
+          .label { font-weight: bold; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <h2>New Appointment Request</h2>
+          <div class="field"><span class="label">Name:</span> ${name}</div>
+          <div class="field"><span class="label">Email:</span> ${email}</div>
+          ${phone ? `<div class="field"><span class="label">Phone:</span> ${phone}</div>` : ""}
+          <div class="field"><span class="label">Preferred Date:</span> ${date}</div>
+          ${time ? `<div class="field"><span class="label">Preferred Time:</span> ${time}</div>` : ""}
+          ${notes ? `<div class="field"><span class="label">Notes:</span> ${notes}</div>` : ""}
+        </div>
+      </body>
+      </html>
+    `;
+    const text = `New Appointment Request
+
+Name: ${name}
+Email: ${email}${phone ? `
+Phone: ${phone}` : ""}
+Preferred Date: ${date}${time ? `
+Preferred Time: ${time}` : ""}${notes ? `
+
+Notes: ${notes}` : ""}`;
+    const sent = await sendEmail(env, toEmail, `Appointment Request - ${brandName || "Website"}`, html, text);
+    if (!sent) {
+      return errorResponse("Failed to send email", 500);
+    }
+    return successResponse(null, "Appointment request submitted");
+  } catch (error) {
+    console.error("Send appointment email error:", error);
+    return errorResponse("Failed to send email", 500);
+  }
+}
+__name(sendAppointmentEmail, "sendAppointmentEmail");
+
 // workers/auth-worker.js
 async function handleAuth(request, env, path) {
   const corsResponse = handleCORS(request);
@@ -358,7 +759,7 @@ async function handleSignup(request, env) {
       `INSERT INTO email_verifications (id, user_id, token, expires_at)
        VALUES (?, ?, ?, ?)`
     ).bind(generateId(), userId, verificationToken, getExpiryDate(24)).run();
-    const emailResponse = await fetch(`${env.APP_URL}/api/email/verification`, {
+    const emailResponse = await handleEmail(new Request(`${env.APP_URL || ""}/api/email/verification`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -367,7 +768,7 @@ async function handleSignup(request, env) {
         name: sanitizeInput(name),
         verifyUrl: `${env.APP_URL}/verify-email?token=${verificationToken}`
       })
-    });
+    }), env, "/api/email/verification");
     const emailBody = await emailResponse.json().catch(() => ({}));
     if (!emailResponse.ok || emailBody.success === false) {
       return jsonResponse({
@@ -535,7 +936,7 @@ async function handleRequestReset(request, env) {
       `INSERT INTO password_resets (id, user_id, token, expires_at)
        VALUES (?, ?, ?, ?)`
     ).bind(generateId(), user.id, resetToken, getExpiryDate(1)).run();
-    const emailResponse = await fetch(`${env.APP_URL}/api/email/password-reset`, {
+    const emailResponse = await handleEmail(new Request(`${env.APP_URL || ""}/api/email/password-reset`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -543,7 +944,7 @@ async function handleRequestReset(request, env) {
         token: resetToken,
         resetUrl: `${env.APP_URL}/src/pages/reset-password.html?token=${resetToken}`
       })
-    });
+    }), env, "/api/email/password-reset");
     const emailBody = await emailResponse.json().catch(() => ({}));
     if (!emailResponse.ok || emailBody.success === false) {
       return jsonResponse({
@@ -638,7 +1039,7 @@ async function handleResendVerification(request, env) {
     await env.DB.prepare(
       `INSERT INTO email_verifications (id, user_id, token, expires_at) VALUES (?, ?, ?, ?)`
     ).bind(generateId(), user.id, token, getExpiryDate(24)).run();
-    const emailResponse = await fetch(`${env.APP_URL}/api/email/verification`, {
+    const emailResponse = await handleEmail(new Request(`${env.APP_URL || ""}/api/email/verification`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -647,7 +1048,7 @@ async function handleResendVerification(request, env) {
         name: user.name,
         verifyUrl: `${env.APP_URL}/verify-email?token=${token}`
       })
-    });
+    }), env, "/api/email/verification");
     const emailBody = await emailResponse.json().catch(() => ({}));
     if (!emailResponse.ok || emailBody.success === false) {
       return jsonResponse({
@@ -2187,406 +2588,6 @@ async function activateSubscription(env, userId, planId, billingCycle, razorpayP
 }
 __name(activateSubscription, "activateSubscription");
 
-// workers/email-worker.js
-async function handleEmail(request, env, path) {
-  const corsResponse = handleCORS(request);
-  if (corsResponse)
-    return corsResponse;
-  if (request.method !== "POST") {
-    return errorResponse("Method not allowed", 405);
-  }
-  const pathParts = path.split("/").filter(Boolean);
-  const action = pathParts[2];
-  switch (action) {
-    case "order-confirmation":
-      return sendOrderConfirmation(request, env);
-    case "verification":
-      return sendVerificationEmail(request, env);
-    case "password-reset":
-      return sendPasswordResetEmail(request, env);
-    case "contact":
-      return sendContactEmail(request, env);
-    case "appointment":
-      return sendAppointmentEmail(request, env);
-    case "test":
-      return sendTestEmail(request, env);
-    default:
-      return errorResponse("Not found", 404);
-  }
-}
-__name(handleEmail, "handleEmail");
-async function sendTestEmail(request, env) {
-  const { email } = await request.json();
-  if (!email)
-    return errorResponse("Email is required");
-  const html = `<h3>Test Email</h3><p>This is a test email from Fluxe.</p>`;
-  const text = `Test Email from Fluxe`;
-  const sent = await sendEmail(env, email, "Fluxe Test Email", html, text);
-  if (!sent)
-    return errorResponse("Failed to send test email", 500);
-  return successResponse(null, "Test email sent");
-}
-__name(sendTestEmail, "sendTestEmail");
-async function sendEmail(env, to, subject, html, text) {
-  try {
-    console.log("EMAIL SEND ATTEMPT", {
-      provider: env.RESEND_API_KEY ? "resend" : env.SENDGRID_API_KEY ? "sendgrid" : "none",
-      to,
-      from: env.FROM_EMAIL || "noreply@fluxe.in"
-    });
-    if (env.RESEND_API_KEY) {
-      const response = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${env.RESEND_API_KEY.trim()}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          from: env.FROM_EMAIL || "noreply@fluxe.in",
-          to,
-          subject,
-          html,
-          text
-        })
-      });
-      const body = await response.json().catch(() => ({}));
-      console.log("RESEND RESPONSE", response.status, body);
-      if (!response.ok) {
-        console.error("Resend error:", body);
-        return body.message || body.error || "Resend API error";
-      }
-      console.log("Resend Email Sent Success:", body.id);
-      return true;
-    }
-    if (env.SENDGRID_API_KEY) {
-      const response = await fetch("https://api.sendgrid.com/v3/mail/send", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${env.SENDGRID_API_KEY}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          personalizations: [{ to: [{ email: to }] }],
-          from: { email: env.FROM_EMAIL || "noreply@fluxe.in" },
-          subject,
-          content: [
-            { type: "text/plain", value: text },
-            { type: "text/html", value: html }
-          ]
-        })
-      });
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("SendGrid error:", errorText);
-        return errorText || "SendGrid API error";
-      }
-      return true;
-    }
-    console.log("No email provider configured. Email would be sent to:", to);
-    console.log("Subject:", subject);
-    return true;
-  } catch (error) {
-    console.error("Send email error:", error);
-    return error.message || "Unknown email sending error";
-  }
-}
-__name(sendEmail, "sendEmail");
-async function sendOrderConfirmation(request, env) {
-  try {
-    const { order, customerEmail, brandName } = await request.json();
-    if (!order || !customerEmail) {
-      return errorResponse("Order and customer email are required");
-    }
-    const items = typeof order.items === "string" ? JSON.parse(order.items) : order.items;
-    const itemsHtml = items.map((item) => `
-      <tr>
-        <td style="padding: 10px; border-bottom: 1px solid #eee;">${item.name}</td>
-        <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity}</td>
-        <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">\u20B9${item.price.toFixed(2)}</td>
-      </tr>
-    `).join("");
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background: #000; color: #fff; padding: 20px; text-align: center; }
-          .content { padding: 20px; }
-          .order-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-          .order-table th { background: #f5f5f5; padding: 10px; text-align: left; }
-          .total { font-size: 18px; font-weight: bold; text-align: right; margin-top: 20px; }
-          .footer { background: #f5f5f5; padding: 20px; text-align: center; font-size: 12px; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1>${brandName || "Your Order"}</h1>
-          </div>
-          <div class="content">
-            <h2>Order Confirmation</h2>
-            <p>Thank you for your order! Your order number is <strong>${order.order_number || order.orderNumber}</strong>.</p>
-            
-            <table class="order-table">
-              <thead>
-                <tr>
-                  <th>Product</th>
-                  <th style="text-align: center;">Qty</th>
-                  <th style="text-align: right;">Price</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${itemsHtml}
-              </tbody>
-            </table>
-            
-            <div class="total">
-              Total: \u20B9${order.total.toFixed(2)}
-            </div>
-            
-            <p>We will notify you when your order ships.</p>
-          </div>
-          <div class="footer">
-            <p>Thank you for shopping with us!</p>
-          </div>
-        </div>
-      </body>
-      </html>
-    `;
-    const text = `Order Confirmation
-
-Thank you for your order!
-Order Number: ${order.order_number || order.orderNumber}
-Total: \u20B9${order.total.toFixed(2)}
-
-We will notify you when your order ships.`;
-    const sent = await sendEmail(env, customerEmail, `Order Confirmation - ${order.order_number || order.orderNumber}`, html, text);
-    if (!sent) {
-      return errorResponse("Failed to send email", 500);
-    }
-    return successResponse(null, "Order confirmation sent");
-  } catch (error) {
-    console.error("Send order confirmation error:", error);
-    return errorResponse("Failed to send email", 500);
-  }
-}
-__name(sendOrderConfirmation, "sendOrderConfirmation");
-async function sendVerificationEmail(request, env) {
-  try {
-    const { email, token, name, verifyUrl } = await request.json();
-    if (!email || !token) {
-      return errorResponse("Email and token are required");
-    }
-    const url = verifyUrl || `${env.APP_URL}/verify-email?token=${token}`;
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .button { display: inline-block; background: #000; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 4px; margin: 20px 0; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <h2>Verify Your Email</h2>
-          <p>Hi ${name || "there"},</p>
-          <p>Please verify your email address by clicking the button below:</p>
-          <a href="${url}" class="button">Verify Email</a>
-          <p>Or copy and paste this link: ${url}</p>
-          <p>This link will expire in 24 hours.</p>
-        </div>
-      </body>
-      </html>
-    `;
-    const text = `Verify Your Email
-
-Hi ${name || "there"},
-
-Please verify your email by visiting: ${url}
-
-This link will expire in 24 hours.`;
-    const sent = await sendEmail(env, email, "Verify Your Email", html, text);
-    if (sent !== true) {
-      return jsonResponse({
-        success: false,
-        error: typeof sent === "string" ? sent : "Failed to send verification email",
-        code: "EMAIL_PROVIDER_ERROR"
-      }, 500);
-    }
-    return successResponse(null, "Verification email sent");
-  } catch (error) {
-    console.error("Send verification email error:", error);
-    return errorResponse("Failed to send email", 500);
-  }
-}
-__name(sendVerificationEmail, "sendVerificationEmail");
-async function sendPasswordResetEmail(request, env) {
-  try {
-    const { email, token, resetUrl } = await request.json();
-    if (!email || !token) {
-      return errorResponse("Email and token are required");
-    }
-    const url = resetUrl || `${env.APP_URL}/reset-password?token=${token}`;
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .button { display: inline-block; background: #000; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 4px; margin: 20px 0; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <h2>Reset Your Password</h2>
-          <p>You requested a password reset. Click the button below to set a new password:</p>
-          <a href="${url}" class="button">Reset Password</a>
-          <p>Or copy and paste this link: ${url}</p>
-          <p>This link will expire in 1 hour.</p>
-          <p>If you didn't request this, you can safely ignore this email.</p>
-        </div>
-      </body>
-      </html>
-    `;
-    const text = `Reset Your Password
-
-You requested a password reset. Visit this link to set a new password: ${url}
-
-This link will expire in 1 hour.
-
-If you didn't request this, you can safely ignore this email.`;
-    const sent = await sendEmail(env, email, "Reset Your Password", html, text);
-    if (sent !== true) {
-      return jsonResponse({
-        success: false,
-        error: typeof sent === "string" ? sent : "Failed to send password reset email",
-        code: "EMAIL_PROVIDER_ERROR"
-      }, 500);
-    }
-    return successResponse(null, "Password reset email sent");
-  } catch (error) {
-    console.error("Send password reset email error:", error);
-    return errorResponse("Failed to send email", 500);
-  }
-}
-__name(sendPasswordResetEmail, "sendPasswordResetEmail");
-async function sendContactEmail(request, env) {
-  try {
-    const { name, email, phone, message, siteEmail, brandName } = await request.json();
-    if (!name || !email || !message) {
-      return errorResponse("Name, email and message are required");
-    }
-    const toEmail = siteEmail || env.CONTACT_EMAIL;
-    if (!toEmail) {
-      return errorResponse("No contact email configured", 500);
-    }
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .field { margin-bottom: 15px; }
-          .label { font-weight: bold; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <h2>New Contact Form Submission</h2>
-          <div class="field"><span class="label">Name:</span> ${name}</div>
-          <div class="field"><span class="label">Email:</span> ${email}</div>
-          ${phone ? `<div class="field"><span class="label">Phone:</span> ${phone}</div>` : ""}
-          <div class="field"><span class="label">Message:</span></div>
-          <p>${message}</p>
-        </div>
-      </body>
-      </html>
-    `;
-    const text = `New Contact Form Submission
-
-Name: ${name}
-Email: ${email}${phone ? `
-Phone: ${phone}` : ""}
-
-Message:
-${message}`;
-    const sent = await sendEmail(env, toEmail, `Contact Form - ${brandName || "Website"}`, html, text);
-    if (!sent) {
-      return errorResponse("Failed to send email", 500);
-    }
-    return successResponse(null, "Contact form submitted");
-  } catch (error) {
-    console.error("Send contact email error:", error);
-    return errorResponse("Failed to send email", 500);
-  }
-}
-__name(sendContactEmail, "sendContactEmail");
-async function sendAppointmentEmail(request, env) {
-  try {
-    const { name, email, phone, date, time, notes, siteEmail, brandName } = await request.json();
-    if (!name || !email || !date) {
-      return errorResponse("Name, email and date are required");
-    }
-    const toEmail = siteEmail || env.CONTACT_EMAIL;
-    if (!toEmail) {
-      return errorResponse("No contact email configured", 500);
-    }
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .field { margin-bottom: 15px; }
-          .label { font-weight: bold; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <h2>New Appointment Request</h2>
-          <div class="field"><span class="label">Name:</span> ${name}</div>
-          <div class="field"><span class="label">Email:</span> ${email}</div>
-          ${phone ? `<div class="field"><span class="label">Phone:</span> ${phone}</div>` : ""}
-          <div class="field"><span class="label">Preferred Date:</span> ${date}</div>
-          ${time ? `<div class="field"><span class="label">Preferred Time:</span> ${time}</div>` : ""}
-          ${notes ? `<div class="field"><span class="label">Notes:</span> ${notes}</div>` : ""}
-        </div>
-      </body>
-      </html>
-    `;
-    const text = `New Appointment Request
-
-Name: ${name}
-Email: ${email}${phone ? `
-Phone: ${phone}` : ""}
-Preferred Date: ${date}${time ? `
-Preferred Time: ${time}` : ""}${notes ? `
-
-Notes: ${notes}` : ""}`;
-    const sent = await sendEmail(env, toEmail, `Appointment Request - ${brandName || "Website"}`, html, text);
-    if (!sent) {
-      return errorResponse("Failed to send email", 500);
-    }
-    return successResponse(null, "Appointment request submitted");
-  } catch (error) {
-    console.error("Send appointment email error:", error);
-    return errorResponse("Failed to send email", 500);
-  }
-}
-__name(sendAppointmentEmail, "sendAppointmentEmail");
-
 // workers/categories-worker.js
 async function handleCategories(request, env, path) {
   const corsResponse = handleCORS(request);
@@ -3585,7 +3586,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-V2CWTd/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-gubFqh/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -3617,7 +3618,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-V2CWTd/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-gubFqh/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

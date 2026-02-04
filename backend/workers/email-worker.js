@@ -52,10 +52,11 @@ async function sendEmail(env, to, subject, html, text) {
     });
 
     if (env.RESEND_API_KEY) {
+      const apiKey = env.RESEND_API_KEY.trim();
       const response = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${env.RESEND_API_KEY.trim()}`,
+          'Authorization': apiKey.startsWith('Bearer ') ? apiKey : `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({

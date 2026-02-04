@@ -1,3 +1,4 @@
+import { handleEmail } from './email-worker.js';
 import { generateId, generateToken, getExpiryDate, validateEmail, sanitizeInput, jsonResponse, errorResponse, successResponse, handleCORS } from '../utils/helpers.js';
 import { hashPassword, verifyPassword, generateJWT, validateAuth } from '../utils/auth.js';
 
@@ -78,8 +79,8 @@ async function handleSignup(request, env) {
        VALUES (?, ?, ?, ?)`
     ).bind(generateId(), userId, verificationToken, getExpiryDate(24)).run();
 
-    // Send verification email via email-worker
-    const emailResponse = await fetch(`${env.APP_URL}/api/email/verification`, {
+    // Send verification email via email-worker using relative path
+    const emailResponse = await handleEmail(new Request(`${env.APP_URL || ''}/api/email/verification`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -88,7 +89,7 @@ async function handleSignup(request, env) {
         name: sanitizeInput(name),
         verifyUrl: `${env.APP_URL}/verify-email?token=${verificationToken}`
       })
-    });
+    }), env, '/api/email/verification');
 
     const emailBody = await emailResponse.json().catch(() => ({}));
 
@@ -297,8 +298,8 @@ async function handleRequestReset(request, env) {
        VALUES (?, ?, ?, ?)`
     ).bind(generateId(), user.id, resetToken, getExpiryDate(1)).run();
 
-    // Send password reset email
-    const emailResponse = await fetch(`${env.APP_URL}/api/email/password-reset`, {
+    // Send password reset email using relative path
+    const emailResponse = await handleEmail(new Request(`${env.APP_URL || ''}/api/email/password-reset`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -306,7 +307,7 @@ async function handleRequestReset(request, env) {
         token: resetToken,
         resetUrl: `${env.APP_URL}/src/pages/reset-password.html?token=${resetToken}`
       })
-    });
+    }), env, '/api/email/password-reset');
 
     const emailBody = await emailResponse.json().catch(() => ({}));
 
@@ -420,7 +421,7 @@ async function handleResendVerification(request, env) {
       `INSERT INTO email_verifications (id, user_id, token, expires_at) VALUES (?, ?, ?, ?)`
     ).bind(generateId(), user.id, token, getExpiryDate(24)).run();
 
-    const emailResponse = await fetch(`${env.APP_URL}/api/email/verification`, {
+    const emailResponse = await handleEmail(new Request(`${env.APP_URL || ''}/api/email/verification`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -429,7 +430,7 @@ async function handleResendVerification(request, env) {
         name: user.name,
         verifyUrl: `${env.APP_URL}/verify-email?token=${token}`
       })
-    });
+    }), env, '/api/email/verification');
 
     const emailBody = await emailResponse.json().catch(() => ({}));
 
