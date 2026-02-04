@@ -365,8 +365,9 @@
                     // Update account page plan info
                     if (document.getElementById('account-plan-name')) {
                         const planName = (sub.plan || 'Free').toLowerCase();
-                        document.getElementById('account-plan-name').innerText = planName.charAt(0).toUpperCase() + planName.slice(1);
-                        document.getElementById('account-plan-name').style.textTransform = 'capitalize';
+                        const formattedPlan = planName === 'pro' ? 'PRO' : (planName.charAt(0).toUpperCase() + planName.slice(1));
+                        document.getElementById('account-plan-name').innerText = formattedPlan;
+                        document.getElementById('account-plan-name').style.textTransform = 'none';
                     }
                     if (document.getElementById('account-plan-status-text')) {
                         document.getElementById('account-plan-status-text').innerText = isExpired ? 'Plan Expired' : 'Your subscription is active.';
