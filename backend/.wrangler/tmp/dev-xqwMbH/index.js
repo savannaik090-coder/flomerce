@@ -485,7 +485,7 @@ async function sendVerificationEmail(request, env) {
     if (!email || !token) {
       return errorResponse("Email and token are required");
     }
-    const url = verifyUrl || `${env.APP_URL}/verify-email?token=${token}`;
+    const url = verifyUrl || `${env.APP_URL}/src/pages/verify-email.html?token=${token}`;
     const html = `
       <!DOCTYPE html>
       <html>
@@ -537,7 +537,7 @@ async function sendPasswordResetEmail(request, env) {
     if (!email || !token) {
       return errorResponse("Email and token are required");
     }
-    const url = resetUrl || `${env.APP_URL}/reset-password?token=${token}`;
+    const url = resetUrl || `${env.APP_URL}/src/pages/reset-password.html?token=${token}`;
     const html = `
       <!DOCTYPE html>
       <html>
