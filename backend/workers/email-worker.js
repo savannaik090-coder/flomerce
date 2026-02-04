@@ -34,24 +34,25 @@ async function sendEmail(env, to, subject, html, text) {
       const response = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${env.RESEND_API_KEY}`,
+          'Authorization': `Bearer ${env.RESEND_API_KEY.trim()}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           from: env.FROM_EMAIL || 'noreply@fluxe.in',
-          to: [to],
+          to: to,
           subject,
           html,
           text,
         }),
       });
 
+      const result = await response.json();
       if (!response.ok) {
-        const error = await response.json();
-        console.error('Resend error:', error);
+        console.error('Resend API Error:', JSON.stringify(result, null, 2));
         return false;
       }
 
+      console.log('Resend Email Sent Success:', result.id);
       return true;
     }
 

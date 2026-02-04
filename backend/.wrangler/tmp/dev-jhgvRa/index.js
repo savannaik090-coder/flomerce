@@ -1,7 +1,7 @@
 var __defProp = Object.defineProperty;
 var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
-// .wrangler/tmp/bundle-FcCi4M/checked-fetch.js
+// .wrangler/tmp/bundle-0nl6V1/checked-fetch.js
 var urls = /* @__PURE__ */ new Set();
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
@@ -27,7 +27,7 @@ globalThis.fetch = new Proxy(globalThis.fetch, {
   }
 });
 
-// .wrangler/tmp/bundle-FcCi4M/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-0nl6V1/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
@@ -2204,22 +2204,23 @@ async function sendEmail(env, to, subject, html, text) {
       const response = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${env.RESEND_API_KEY}`,
+          "Authorization": `Bearer ${env.RESEND_API_KEY.trim()}`,
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
           from: env.FROM_EMAIL || "noreply@fluxe.in",
-          to: [to],
+          to,
           subject,
           html,
           text
         })
       });
+      const result = await response.json();
       if (!response.ok) {
-        const error = await response.json();
-        console.error("Resend error:", error);
+        console.error("Resend API Error:", JSON.stringify(result, null, 2));
         return false;
       }
+      console.log("Resend Email Sent Success:", result.id);
       return true;
     }
     if (env.SENDGRID_API_KEY) {
@@ -3540,7 +3541,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-FcCi4M/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-0nl6V1/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -3572,7 +3573,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-FcCi4M/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-0nl6V1/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;
