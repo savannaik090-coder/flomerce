@@ -34,17 +34,42 @@ class AuthService {
         body: JSON.stringify({ name, email, password }),
       });
 
+      if (response.success) {
+        return { success: true, message: response.message };
+      }
+      
+      throw new Error(response.message || response.error || 'Signup failed');
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async googleSignIn(credential) {
+    try {
+      const response = await apiRequest(`${config.apiBase}/auth/google`, {
+        method: 'POST',
+        body: JSON.stringify({ credential }),
+      });
+
       if (response.success && response.data) {
         setAuthToken(response.data.token);
         this.currentUser = response.data.user;
         this.notifyListeners(this.currentUser);
-        
-        // Email verification is disabled - users are verified by default
-        
         return { success: true, user: this.currentUser };
       }
-      
-      throw new Error(response.message || response.error || 'Signup failed');
+      throw new Error(response.message || 'Google login failed');
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async resendVerification(email) {
+    try {
+      const response = await apiRequest(`${config.apiBase}/auth/resend-verification`, {
+        method: 'POST',
+        body: JSON.stringify({ email }),
+      });
+      return { success: response.success };
     } catch (error) {
       throw error;
     }

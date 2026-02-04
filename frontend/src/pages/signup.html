@@ -35,23 +35,52 @@
                     <input type="password" id="password" placeholder="••••••••" required minlength="8">
                 </div>
                 <button type="submit" class="btn btn-primary" style="width: 100%;">Create account</button>
+                <div id="google-signin-btn" style="margin-top: 1rem;"></div>
                 <div id="error-msg" class="error"></div>
             </form>
+            <div id="success-box" style="display: none; text-align: center; padding: 20px; border: 1px solid #ddd; border-radius: 8px; margin-top: 20px;">
+                <h3 style="color: green;">Verification Required</h3>
+                <p>Please check your email to verify your account. If you didn't receive it, check your spam folder.</p>
+                <button id="resend-btn" class="btn" style="margin-top: 10px;">Resend Email</button>
+            </div>
             <p style="text-align: center; margin-top: 1.5rem; margin-bottom: 0;">
                 Already have an account? <a href="/src/pages/login.html" style="color: var(--primary); font-weight: 600; text-decoration: none;">Sign in</a>
             </p>
         </div>
     </div>
 
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script type="module">
         import { authService } from '/src/js/api/AuthService.js';
         
+        window.handleGoogleSignIn = async (response) => {
+            try {
+                const res = await authService.googleSignIn(response.credential);
+                if (res.success) window.location.href = '/src/pages/dashboard.html';
+            } catch (error) {
+                alert(error.message);
+            }
+        };
+
+        window.onload = () => {
+            google.accounts.id.initialize({
+                client_id: "YOUR_GOOGLE_CLIENT_ID",
+                callback: window.handleGoogleSignIn
+            });
+            google.accounts.id.renderButton(
+                document.getElementById("google-signin-btn"),
+                { theme: "outline", size: "large", width: "100%" }
+            );
+        };
+
         document.getElementById('signup-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const name = document.getElementById('name').value;
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             const errorEl = document.getElementById('error-msg');
+            const form = document.getElementById('signup-form');
+            const successBox = document.getElementById('success-box');
             const btn = e.target.querySelector('button');
 
             btn.innerText = 'Creating Account...';
@@ -60,8 +89,12 @@
             try {
                 const result = await authService.signUp(name, email, password);
                 if (result.success) {
-                    alert('Account created successfully! You are now logged in.');
-                    window.location.href = '/src/pages/dashboard.html';
+                    form.style.display = 'none';
+                    successBox.style.display = 'block';
+                    document.getElementById('resend-btn').onclick = async () => {
+                        await authService.resendVerification(email);
+                        alert('Verification email resent!');
+                    };
                 } else {
                     throw new Error(result.error || 'Signup failed');
                 }

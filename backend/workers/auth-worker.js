@@ -13,6 +13,10 @@ export async function handleAuth(request, env, path) {
       return handleSignup(request, env);
     case 'login':
       return handleLogin(request, env);
+    case 'google':
+      return handleGoogleLogin(request, env);
+    case 'resend-verification':
+      return handleResendVerification(request, env);
     case 'logout':
       return handleLogout(request, env);
     case 'verify-email':
@@ -66,28 +70,38 @@ async function handleSignup(request, env) {
 
     await env.DB.prepare(
       `INSERT INTO users (id, email, password_hash, name, phone, email_verified, created_at)
-       VALUES (?, ?, ?, ?, ?, 1, datetime('now'))`
+       VALUES (?, ?, ?, ?, ?, 0, datetime('now'))`
     ).bind(userId, email.toLowerCase(), passwordHash, sanitizeInput(name), phone || null).run();
 
-    // Skip verification for now
-    /*
     await env.DB.prepare(
       `INSERT INTO email_verifications (id, user_id, token, expires_at)
        VALUES (?, ?, ?, ?)`
     ).bind(generateId(), userId, verificationToken, getExpiryDate(24)).run();
-    */
 
-    const token = await generateJWT({ userId, email: email.toLowerCase() }, env.JWT_SECRET || 'your-secret-key');
+    // Send verification email via email-worker
+    try {
+      await env.EMAIL_WORKER.fetch(new Request(`${env.APP_URL}/api/email/verification`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: email.toLowerCase(),
+          token: verificationToken,
+          name: sanitizeInput(name),
+          verifyUrl: `${env.APP_URL}/src/pages/verify-email.html?token=${verificationToken}`
+        })
+      }));
+    } catch (emailError) {
+      console.error('Failed to send signup verification email:', emailError);
+    }
 
     return successResponse({
       user: {
         id: userId,
         email: email.toLowerCase(),
         name: sanitizeInput(name),
-        emailVerified: true,
-      },
-      token,
-    }, 'Account created successfully');
+        emailVerified: false,
+      }
+    }, 'Account created. Please verify your email.');
   } catch (error) {
     console.error('Signup error:', error);
     return errorResponse('Failed to create account', 500);
@@ -122,12 +136,9 @@ async function handleLogin(request, env) {
       return errorResponse('Invalid email or password', 401, 'INVALID_CREDENTIALS');
     }
 
-    // Temporarily bypass verification check if it's still blocking
-    /*
     if (!user.email_verified) {
        return errorResponse('Please verify your email', 401, 'EMAIL_NOT_VERIFIED');
     }
-    */
 
     const token = await generateJWT({ userId: user.id, email: user.email }, env.JWT_SECRET || 'your-secret-key');
 
@@ -355,6 +366,83 @@ async function handleGetCurrentUser(request, env) {
     });
   } catch (error) {
     return errorResponse('Failed to get user', 500);
+  }
+}
+
+async function handleResendVerification(request, env) {
+  if (request.method !== 'POST') {
+    return errorResponse('Method not allowed', 405);
+  }
+
+  try {
+    const { email } = await request.json();
+    if (!email) return errorResponse('Email is required');
+
+    const user = await env.DB.prepare(
+      'SELECT id, name, email_verified FROM users WHERE email = ?'
+    ).bind(email.toLowerCase()).first();
+
+    if (!user) return successResponse(null, 'If account exists, verification email sent');
+    if (user.email_verified) return errorResponse('Email already verified');
+
+    await env.DB.prepare('DELETE FROM email_verifications WHERE user_id = ?').bind(user.id).run();
+    const token = generateToken();
+    await env.DB.prepare(
+      `INSERT INTO email_verifications (id, user_id, token, expires_at) VALUES (?, ?, ?, ?)`
+    ).bind(generateId(), user.id, token, getExpiryDate(24)).run();
+
+    try {
+      await env.EMAIL_WORKER.fetch(new Request(`${env.APP_URL}/api/email/verification`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: email.toLowerCase(),
+          token,
+          name: user.name,
+          verifyUrl: `${env.APP_URL}/src/pages/verify-email.html?token=${token}`
+        })
+      }));
+    } catch (e) { console.error(e); }
+
+    return successResponse(null, 'Verification email sent');
+  } catch (error) {
+    return errorResponse('Failed to resend verification', 500);
+  }
+}
+
+async function handleGoogleLogin(request, env) {
+  if (request.method !== 'POST') return errorResponse('Method not allowed', 405);
+  try {
+    const { credential } = await request.json();
+    const googleRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${credential}`);
+    if (!googleRes.ok) return errorResponse('Invalid Google token', 401);
+    
+    const payload = await googleRes.json();
+    if (payload.aud !== env.GOOGLE_CLIENT_ID) return errorResponse('Invalid client ID', 401);
+
+    const email = payload.email.toLowerCase();
+    let user = await env.DB.prepare('SELECT id, email, name FROM users WHERE email = ?').bind(email).first();
+
+    if (!user) {
+      const userId = generateId();
+      await env.DB.prepare(
+        'INSERT INTO users (id, email, name, email_verified, created_at) VALUES (?, ?, ?, 1, datetime("now"))'
+      ).bind(userId, email, payload.name).run();
+      user = { id: userId, email, name: payload.name };
+    }
+
+    const token = await generateJWT({ userId: user.id, email: user.email }, env.JWT_SECRET);
+    const sessionId = generateId();
+    await env.DB.prepare(
+      'INSERT INTO sessions (id, user_id, token, expires_at) VALUES (?, ?, ?, ?)'
+    ).bind(sessionId, user.id, token, getExpiryDate(24 * 7)).run();
+
+    const response = successResponse({ user, token }, 'Google login successful');
+    response.headers.set('Set-Cookie', `auth_token=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${60 * 60 * 24 * 7}`);
+    return response;
+  } catch (error) {
+    console.error('Google login error:', error);
+    return errorResponse('Google login failed', 500);
   }
 }
 

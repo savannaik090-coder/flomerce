@@ -30,16 +30,41 @@
                     <input type="password" id="password" placeholder="••••••••" required>
                 </div>
                 <button type="submit" class="btn btn-primary" style="width: 100%;">Sign in</button>
+                <div id="google-signin-btn" style="margin-top: 1rem;"></div>
                 <div id="error-msg" class="error"></div>
             </form>
-            <p style="text-align: center; margin-top: 1.5rem; margin-bottom: 0;">
+            <p style="text-align: center; margin-top: 1rem;">
+                <a href="/src/pages/forgot-password.html" style="color: var(--primary); text-decoration: none; font-size: 0.9rem;">Forgot password?</a>
+            </p>
+            <p style="text-align: center; margin-top: 1rem; margin-bottom: 0;">
                 New to Fluxe? <a href="/src/pages/signup.html" style="color: var(--primary); font-weight: 600; text-decoration: none;">Create an account</a>
             </p>
         </div>
     </div>
 
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script type="module">
         import { authService } from '/src/js/api/AuthService.js';
+        
+        window.handleGoogleSignIn = async (response) => {
+            try {
+                const res = await authService.googleSignIn(response.credential);
+                if (res.success) window.location.href = '/src/pages/dashboard.html';
+            } catch (error) {
+                alert(error.message);
+            }
+        };
+
+        window.onload = () => {
+            google.accounts.id.initialize({
+                client_id: "YOUR_GOOGLE_CLIENT_ID", // Will be replaced by env if possible, but for static site it's hardcoded or injected
+                callback: window.handleGoogleSignIn
+            });
+            google.accounts.id.renderButton(
+                document.getElementById("google-signin-btn"),
+                { theme: "outline", size: "large", width: "100%" }
+            );
+        };
         
         document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
