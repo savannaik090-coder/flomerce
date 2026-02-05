@@ -1135,13 +1135,17 @@ async function handleGoogleLogin(request, env) {
       return errorResponse("Invalid client ID", 401);
     }
     const email = payload.email.toLowerCase();
-    let user = await env.DB.prepare("SELECT id, email, name FROM users WHERE email = ?").bind(email).first();
+    let user = await env.DB.prepare("SELECT id, email, name, password_hash FROM users WHERE email = ?").bind(email).first();
     if (!user) {
       const userId = generateId();
       await env.DB.prepare(
         'INSERT INTO users (id, email, password_hash, name, email_verified, created_at) VALUES (?, ?, ?, ?, 1, datetime("now"))'
       ).bind(userId, email, null, payload.name).run();
       user = { id: userId, email, name: payload.name };
+    } else if (user.password_hash !== null && user.password_hash !== void 0 && user.password_hash !== "") {
+      if (!user.email_verified) {
+        await env.DB.prepare("UPDATE users SET email_verified = 1 WHERE id = ?").bind(user.id).run();
+      }
     }
     const token = await generateJWT({ userId: user.id, email: user.email }, env.JWT_SECRET);
     const sessionId = generateId();
