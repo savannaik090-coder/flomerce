@@ -184,6 +184,10 @@ async function handleLogin(request, env) {
       return errorResponse('Invalid email or password', 401, 'INVALID_CREDENTIALS');
     }
 
+    if (!user.password_hash) {
+      return errorResponse('This account uses Google sign-in. Please log in with Google.', 401, 'USE_GOOGLE_LOGIN');
+    }
+
     const isValid = await verifyPassword(password, user.password_hash);
 
     if (!isValid) {
