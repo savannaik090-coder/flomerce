@@ -13,6 +13,8 @@ export const config = {
       resetPassword: '/api/auth/reset-password',
       me: '/api/auth/me',
       updateProfile: '/api/auth/update-profile',
+      google: '/api/auth/google',
+      resendVerification: '/api/auth/resend-verification',
     },
     sites: '/api/sites',
     products: '/api/products',

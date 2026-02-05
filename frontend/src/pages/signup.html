@@ -63,8 +63,9 @@
         };
 
         window.onload = () => {
+            const clientId = (window.ENV && window.ENV.GOOGLE_CLIENT_ID) || "1008005597417-icubq31993f3hob2fuc5em8d9ftope0c.apps.googleusercontent.com";
             google.accounts.id.initialize({
-                client_id: "1008005597417-icubq31993f3hob2fuc5em8d9ftope0c.apps.googleusercontent.com",
+                client_id: clientId,
                 callback: window.handleGoogleSignIn
             });
             google.accounts.id.renderButton(

@@ -46,7 +46,7 @@ class AuthService {
 
   async googleSignIn(credential) {
     try {
-      const response = await apiRequest(`${config.apiBase}/auth/google`, {
+      const response = await apiRequest(config.endpoints.auth.google, {
         method: 'POST',
         body: JSON.stringify({ credential }),
       });
@@ -65,7 +65,7 @@ class AuthService {
 
   async resendVerification(email) {
     try {
-      const response = await apiRequest(`${config.apiBase}/auth/resend-verification`, {
+      const response = await apiRequest(config.endpoints.auth.resendVerification, {
         method: 'POST',
         body: JSON.stringify({ email }),
       });
