@@ -43,6 +43,7 @@ async function handleSignup(request, env) {
   }
 
   try {
+    await ensureAuthTables(env);
     const { name, email, password, phone } = await request.json();
 
     if (!name || !email || !password) {
@@ -87,7 +88,7 @@ async function handleSignup(request, env) {
         email: email.toLowerCase(),
         token: verificationToken,
         name: sanitizeInput(name),
-        verifyUrl: `${env.APP_URL}/src/pages/verify-email.html?token=${verificationToken}`
+        verifyUrl: `${env.APP_URL}${env.VERIFY_PATH || '/src/pages/verify-email.html'}?token=${verificationToken}`
       })
     }), env, '/api/email/verification');
 
@@ -116,12 +117,58 @@ async function handleSignup(request, env) {
   }
 }
 
+async function ensureAuthTables(env) {
+  try {
+    // Sessions table
+    await env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS sessions (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        token TEXT NOT NULL,
+        expires_at TEXT NOT NULL,
+        created_at TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `).run();
+
+    // Email verifications table
+    await env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS email_verifications (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        token TEXT NOT NULL,
+        expires_at TEXT NOT NULL,
+        created_at TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `).run();
+
+    // Password resets table
+    await env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS password_resets (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        token TEXT NOT NULL,
+        expires_at TEXT NOT NULL,
+        used INTEGER DEFAULT 0,
+        created_at TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `).run();
+
+    console.log('Auth tables verified/created');
+  } catch (error) {
+    console.error('Error ensuring auth tables:', error);
+  }
+}
+
 async function handleLogin(request, env) {
   if (request.method !== 'POST') {
     return errorResponse('Method not allowed', 405);
   }
 
   try {
+    await ensureAuthTables(env);
     const { email, password } = await request.json();
 
     if (!email || !password) {
@@ -273,6 +320,7 @@ async function handleRequestReset(request, env) {
   }
 
   try {
+    await ensureAuthTables(env);
     const { email } = await request.json();
 
     if (!email) {
@@ -305,7 +353,7 @@ async function handleRequestReset(request, env) {
       body: JSON.stringify({
         email: email.toLowerCase(),
         token: resetToken,
-        resetUrl: `${env.APP_URL}/src/pages/reset-password.html?token=${resetToken}`
+        resetUrl: `${env.APP_URL}${env.RESET_PATH || '/src/pages/reset-password.html'}?token=${resetToken}`
       })
     }), env, '/api/email/password-reset');
 
@@ -428,7 +476,7 @@ async function handleResendVerification(request, env) {
         email: email.toLowerCase(),
         token,
         name: user.name,
-        verifyUrl: `${env.APP_URL}/src/pages/verify-email.html?token=${token}`
+        verifyUrl: `${env.APP_URL}${env.VERIFY_PATH || '/src/pages/verify-email.html'}?token=${token}`
       })
     }), env, '/api/email/verification');
 

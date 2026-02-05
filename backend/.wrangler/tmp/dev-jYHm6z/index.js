@@ -485,7 +485,7 @@ async function sendVerificationEmail(request, env) {
     if (!email || !token) {
       return errorResponse("Email and token are required");
     }
-    const url = verifyUrl || `${env.APP_URL}/src/pages/verify-email.html?token=${token}`;
+    const url = verifyUrl || `${env.APP_URL}${env.VERIFY_PATH || "/src/pages/verify-email.html"}?token=${token}`;
     const html = `
       <!DOCTYPE html>
       <html>
@@ -537,7 +537,7 @@ async function sendPasswordResetEmail(request, env) {
     if (!email || !token) {
       return errorResponse("Email and token are required");
     }
-    const url = resetUrl || `${env.APP_URL}/src/pages/reset-password.html?token=${token}`;
+    const url = resetUrl || `${env.APP_URL}${env.RESET_PATH || "/src/pages/reset-password.html"}?token=${token}`;
     const html = `
       <!DOCTYPE html>
       <html>
@@ -732,6 +732,7 @@ async function handleSignup(request, env) {
     return errorResponse("Method not allowed", 405);
   }
   try {
+    await ensureAuthTables(env);
     const { name, email, password, phone } = await request.json();
     if (!name || !email || !password) {
       return errorResponse("Name, email and password are required");
@@ -766,7 +767,7 @@ async function handleSignup(request, env) {
         email: email.toLowerCase(),
         token: verificationToken,
         name: sanitizeInput(name),
-        verifyUrl: `${env.APP_URL}/src/pages/verify-email.html?token=${verificationToken}`
+        verifyUrl: `${env.APP_URL}${env.VERIFY_PATH || "/src/pages/verify-email.html"}?token=${verificationToken}`
       })
     }), env, "/api/email/verification");
     const emailBody = await emailResponse.json().catch(() => ({}));
@@ -792,11 +793,51 @@ async function handleSignup(request, env) {
   }
 }
 __name(handleSignup, "handleSignup");
+async function ensureAuthTables(env) {
+  try {
+    await env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS sessions (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        token TEXT NOT NULL,
+        expires_at TEXT NOT NULL,
+        created_at TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `).run();
+    await env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS email_verifications (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        token TEXT NOT NULL,
+        expires_at TEXT NOT NULL,
+        created_at TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `).run();
+    await env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS password_resets (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        token TEXT NOT NULL,
+        expires_at TEXT NOT NULL,
+        used INTEGER DEFAULT 0,
+        created_at TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `).run();
+    console.log("Auth tables verified/created");
+  } catch (error) {
+    console.error("Error ensuring auth tables:", error);
+  }
+}
+__name(ensureAuthTables, "ensureAuthTables");
 async function handleLogin(request, env) {
   if (request.method !== "POST") {
     return errorResponse("Method not allowed", 405);
   }
   try {
+    await ensureAuthTables(env);
     const { email, password } = await request.json();
     if (!email || !password) {
       return errorResponse("Email and password are required");
@@ -918,6 +959,7 @@ async function handleRequestReset(request, env) {
     return errorResponse("Method not allowed", 405);
   }
   try {
+    await ensureAuthTables(env);
     const { email } = await request.json();
     if (!email) {
       return errorResponse("Email is required");
@@ -942,7 +984,7 @@ async function handleRequestReset(request, env) {
       body: JSON.stringify({
         email: email.toLowerCase(),
         token: resetToken,
-        resetUrl: `${env.APP_URL}/src/pages/reset-password.html?token=${resetToken}`
+        resetUrl: `${env.APP_URL}${env.RESET_PATH || "/src/pages/reset-password.html"}?token=${resetToken}`
       })
     }), env, "/api/email/password-reset");
     const emailBody = await emailResponse.json().catch(() => ({}));
@@ -1046,7 +1088,7 @@ async function handleResendVerification(request, env) {
         email: email.toLowerCase(),
         token,
         name: user.name,
-        verifyUrl: `${env.APP_URL}/src/pages/verify-email.html?token=${token}`
+        verifyUrl: `${env.APP_URL}${env.VERIFY_PATH || "/src/pages/verify-email.html"}?token=${token}`
       })
     }), env, "/api/email/verification");
     const emailBody = await emailResponse.json().catch(() => ({}));

@@ -209,7 +209,7 @@ async function sendVerificationEmail(request, env) {
       return errorResponse('Email and token are required');
     }
 
-    const url = verifyUrl || `${env.APP_URL}/src/pages/verify-email.html?token=${token}`;
+    const url = verifyUrl || `${env.APP_URL}${env.VERIFY_PATH || '/src/pages/verify-email.html'}?token=${token}`;
 
     const html = `
       <!DOCTYPE html>
@@ -262,7 +262,7 @@ async function sendPasswordResetEmail(request, env) {
       return errorResponse('Email and token are required');
     }
 
-    const url = resetUrl || `${env.APP_URL}/src/pages/reset-password.html?token=${token}`;
+    const url = resetUrl || `${env.APP_URL}${env.RESET_PATH || '/src/pages/reset-password.html'}?token=${token}`;
 
     const html = `
       <!DOCTYPE html>
