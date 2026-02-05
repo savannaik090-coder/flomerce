@@ -533,8 +533,8 @@ async function handleGoogleLogin(request, env) {
     if (!user) {
       const userId = generateId();
       await env.DB.prepare(
-        'INSERT INTO users (id, email, name, email_verified, created_at) VALUES (?, ?, ?, 1, datetime("now"))'
-      ).bind(userId, email, payload.name).run();
+        'INSERT INTO users (id, email, password_hash, name, email_verified, created_at) VALUES (?, ?, ?, ?, 1, datetime("now"))'
+      ).bind(userId, email, null, payload.name).run();
       user = { id: userId, email, name: payload.name };
     }
 
