@@ -1,7 +1,7 @@
 var __defProp = Object.defineProperty;
 var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
-// .wrangler/tmp/bundle-eo7DCc/checked-fetch.js
+// .wrangler/tmp/bundle-YJKfid/checked-fetch.js
 var urls = /* @__PURE__ */ new Set();
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
@@ -27,7 +27,7 @@ globalThis.fetch = new Proxy(globalThis.fetch, {
   }
 });
 
-// .wrangler/tmp/bundle-eo7DCc/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-YJKfid/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
@@ -848,6 +848,9 @@ async function handleLogin(request, env) {
     if (!user) {
       console.error("Login: User not found:", email.toLowerCase());
       return errorResponse("Invalid email or password", 401, "INVALID_CREDENTIALS");
+    }
+    if (!user.password_hash) {
+      return errorResponse("This account uses Google sign-in. Please log in with Google.", 401, "USE_GOOGLE_LOGIN");
     }
     const isValid = await verifyPassword(password, user.password_hash);
     if (!isValid) {
@@ -3639,7 +3642,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-eo7DCc/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-YJKfid/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -3671,7 +3674,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-eo7DCc/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-YJKfid/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;
