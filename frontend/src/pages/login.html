@@ -45,6 +45,13 @@
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script type="module">
         import { authService } from '/src/js/api/AuthService.js';
+
+        (async () => {
+            await authService.init();
+            if (authService.isAuthenticated()) {
+                window.location.replace('/src/pages/dashboard.html');
+            }
+        })();
         
         window.handleGoogleSignIn = async (response) => {
             try {
