@@ -57,8 +57,9 @@ class AuthService {
         this.notifyListeners(this.currentUser);
         return { success: true, user: this.currentUser };
       }
-      throw new Error(response.message || 'Google login failed');
+      throw new Error(response.error || response.message || 'Google login failed');
     } catch (error) {
+      console.error('AuthService Google Sign In Error:', error);
       throw error;
     }
   }

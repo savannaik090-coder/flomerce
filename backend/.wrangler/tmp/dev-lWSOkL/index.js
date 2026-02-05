@@ -1111,12 +1111,23 @@ async function handleGoogleLogin(request, env) {
     return errorResponse("Method not allowed", 405);
   try {
     const { credential } = await request.json();
+    if (!credential)
+      return errorResponse("Credential is required", 400);
     const googleRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${credential}`);
-    if (!googleRes.ok)
-      return errorResponse("Invalid Google token", 401);
     const payload = await googleRes.json();
-    if (payload.aud !== env.GOOGLE_CLIENT_ID)
+    if (!googleRes.ok) {
+      console.error("Google token validation failed:", payload);
+      return errorResponse(payload.error_description || "Invalid Google token", 401);
+    }
+    const clientId = env.GOOGLE_CLIENT_ID;
+    if (!clientId) {
+      console.error("GOOGLE_CLIENT_ID not set in environment");
+      return errorResponse("Server configuration error", 500);
+    }
+    if (payload.aud !== clientId) {
+      console.error("Audience mismatch. Expected:", clientId, "Got:", payload.aud);
       return errorResponse("Invalid client ID", 401);
+    }
     const email = payload.email.toLowerCase();
     let user = await env.DB.prepare("SELECT id, email, name FROM users WHERE email = ?").bind(email).first();
     if (!user) {
@@ -1136,7 +1147,7 @@ async function handleGoogleLogin(request, env) {
     return response;
   } catch (error) {
     console.error("Google login error:", error);
-    return errorResponse("Google login failed", 500);
+    return errorResponse(error.message || "Google login failed", 500);
   }
 }
 __name(handleGoogleLogin, "handleGoogleLogin");
