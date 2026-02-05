@@ -744,9 +744,12 @@ async function handleSignup(request, env) {
       return errorResponse("Password must be at least 8 characters");
     }
     const existingUser = await env.DB.prepare(
-      "SELECT id FROM users WHERE email = ?"
+      "SELECT id, password_hash FROM users WHERE email = ?"
     ).bind(email.toLowerCase()).first();
     if (existingUser) {
+      if (!existingUser.password_hash) {
+        return errorResponse("This email is already registered via Google sign-in. Please log in with Google.", 400, "USE_GOOGLE_LOGIN");
+      }
       return errorResponse("Email already registered", 400, "EMAIL_EXISTS");
     }
     const userId = generateId();
