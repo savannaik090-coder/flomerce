@@ -9,7 +9,15 @@ import StoreLocations from '../components/home/StoreLocations.jsx';
 import CustomerReviews from '../components/home/CustomerReviews.jsx';
 import FirstVisitBanner from '../components/home/FirstVisitBanner.jsx';
 import NewArrivals from '../components/home/NewArrivals.jsx';
-import '../styles/home.css';
+import '../styles/hero.css';
+import '../styles/categories.css';
+import '../styles/bridal.css';
+import '../styles/showcase.css';
+import '../styles/locations.css';
+import '../styles/reviews.css';
+import '../styles/modals.css';
+import '../styles/testimonials.css';
+import '../styles/home-responsive.css';
 
 export default function HomePage() {
   return (

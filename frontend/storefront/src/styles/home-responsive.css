@@ -1,0 +1,103 @@
+@media (max-width: 1200px) {
+    .hero-slider {
+        height: 90vh;
+        min-height: 90vh;
+        margin: 5px 0;
+        max-width: 100%;
+    }
+    .slide-title,
+    .slide-subtitle { font-size: 3.8rem; }
+    .slide-content { bottom: 160px; max-width: 450px; }
+}
+
+@media (max-width: 768px) {
+    .hero-slider {
+        height: 90vh;
+        min-height: 90vh;
+        margin: 5px 0;
+        max-width: 100%;
+    }
+    .slide-content { bottom: 120px; max-width: 350px; padding: 0 20px; }
+    .slide-title,
+    .slide-subtitle { font-size: 2.8rem; letter-spacing: 0.1em; }
+    .slide-description { font-size: 0.7rem; margin-bottom: 25px; letter-spacing: 0.15em; }
+    .shop-now-btn { padding: 12px 28px; font-size: 0.7rem; }
+
+    .category-circles-section { padding: 30px 0 13px 0; margin-top: 80px; }
+    .category-circles-wrapper { justify-content: flex-start; gap: 20px; max-width: 100%; }
+
+    .new-arrivals-header .section-title,
+    .polki-collection-header .section-title { font-size: 2rem; }
+
+    .bridal-jewelry-section { height: 100vh; min-height: 500px; }
+    .bridal-content { bottom: 60px; padding: 30px 15px; }
+    .bridal-title { font-size: 2.5rem; margin-bottom: 25px; }
+    .bridal-description { font-size: 0.95rem; margin-bottom: 35px; }
+
+    .customer-reviews-section { padding: 60px 0; }
+    .reviews-header .section-title { font-size: 2rem; }
+    .review-item { width: 300px; flex: 0 0 300px; min-width: 300px; }
+    .review-image { height: 250px; }
+    .review-content { padding: 20px; }
+    .reviews-scroll-arrow { width: 50px; height: 50px; font-size: 16px; }
+
+    .store-locations-header h2 { font-size: 2rem; }
+    .store-image { height: 200px; }
+    .store-details { padding: 20px; }
+    .store-name { font-size: 1.3rem; }
+
+    .first-visit-modal-content { max-width: 95%; width: 95%; height: 75vh; max-height: 75vh; }
+    .first-visit-banner-image { height: 60%; }
+    .first-visit-banner-text h2 { font-size: 22px; }
+    .first-visit-banner-text p { font-size: 14px; }
+
+    .featured-collection-header2 .section-title { font-size: 2rem; }
+}
+
+@media (max-width: 576px) {
+    .hero-slider {
+        height: 70vh;
+        min-height: 70vh;
+        margin: 5px 0;
+    }
+    .slide-content { bottom: 300px; max-width: 300px; padding: 0 15px; }
+    .slide-title,
+    .slide-subtitle { font-size: 3.2rem; letter-spacing: 0.08em; }
+    .slide-description { font-size: 0.65rem; margin-bottom: 20px; }
+    .shop-now-btn { padding: 10px 24px; font-size: 0.65rem; }
+}
+
+@media (max-width: 480px) {
+    .category-circles-section { padding: 25px 0 12px 0; margin-top: 55px; }
+    .category-circles-wrapper { gap: 15px; }
+
+    .new-arrivals-header .section-title,
+    .polki-collection-header .section-title { font-size: 1.8rem; }
+
+    .bridal-content { bottom: 40px; }
+    .bridal-title { font-size: 2rem; margin-bottom: 20px; }
+    .bridal-description { font-size: 0.9rem; }
+    .chat-now-btn { padding: 10px 30px; font-size: 0.85rem; min-width: 140px; }
+
+    .review-item { width: 280px; flex: 0 0 280px; min-width: 280px; }
+    .review-image { height: 220px; }
+    .reviews-scroll-arrow { width: 45px; height: 45px; font-size: 14px; }
+    .reviews-scroll-arrow-left { left: 5px; }
+    .reviews-scroll-arrow-right { right: 5px; }
+
+    .store-locations-section { padding: 40px 0; }
+    .store-locations-header h2 { font-size: 1.8rem; }
+    .store-actions { flex-direction: column; }
+    .call-btn { width: 100%; }
+
+    .first-visit-modal-content { height: 65vh; max-height: 65vh; }
+    .first-visit-banner-image { height: 55%; }
+    .first-visit-banner-text { padding: 15px; }
+    .first-visit-banner-text h2 { font-size: 18px; }
+    .first-visit-banner-text p { font-size: 12px; }
+    .first-visit-cta-button { padding: 10px 20px; font-size: 13px; }
+
+    .featured-collection-header2 .section-title { font-size: 1.8rem; }
+
+    .featured-collection-wrapper .product-scroll-container { padding-left: 20px; }
+}

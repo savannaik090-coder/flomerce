@@ -1,0 +1,33 @@
+.featured-collection-header2 {
+    text-align: center;
+    margin: 40px 0 20px 0;
+}
+
+.featured-collection-header2 .section-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 2.5rem;
+    color: #333;
+    margin-bottom: 15px;
+    font-weight: 400;
+}
+
+.testimonials-section {
+    background-color: #f8f8f5;
+    padding: 40px 0;
+}
+
+.testimonials-container {
+    max-width: 100%;
+    overflow: hidden;
+}
+
+.testimonials-scroll {
+    display: flex;
+    gap: 15px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: 0 20px;
+}
+
+.testimonials-scroll::-webkit-scrollbar { display: none; }

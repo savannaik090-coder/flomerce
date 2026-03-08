@@ -1,0 +1,178 @@
+.store-locations-section {
+    padding: 60px 0;
+    background: linear-gradient(135deg, #f8f8f5 0%, #fafafa 100%);
+}
+
+.store-locations-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+.store-locations-header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.store-locations-header h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 2.5rem;
+    color: #333;
+    margin-bottom: 10px;
+    font-weight: 400;
+    position: relative;
+    padding-bottom: 15px;
+}
+
+.store-locations-header h2::after {
+    content: '';
+    position: absolute;
+    width: 80px;
+    height: 2px;
+    background-color: #B08C4C;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.store-locations-header p {
+    font-size: 1.1rem;
+    color: #666;
+    font-weight: 300;
+}
+
+.stores-grid {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+}
+
+.store-card {
+    background: #ffffff;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    max-width: 500px;
+    width: 100%;
+}
+
+.store-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+.store-image {
+    width: 100%;
+    height: 250px;
+    overflow: hidden;
+}
+
+.store-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.store-card:hover .store-image img {
+    transform: scale(1.05);
+}
+
+.store-details { padding: 25px; }
+
+.store-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.5rem;
+    color: #333;
+    margin-bottom: 15px;
+    font-weight: 500;
+}
+
+.store-address {
+    font-size: 0.95rem;
+    color: #666;
+    line-height: 1.6;
+    margin-bottom: 12px;
+}
+
+.store-hours {
+    font-size: 0.9rem;
+    color: #666;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.store-hours i { color: #9c7c38; }
+
+.store-contact {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.store-phone {
+    font-size: 0.95rem;
+    color: #333;
+    font-weight: 500;
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.store-phone:hover { color: #9c7c38; }
+
+.store-actions {
+    display: flex;
+    gap: 12px;
+}
+
+.book-appointment-btn {
+    flex: 1;
+    background-color: #333;
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    text-decoration: none;
+    text-align: center;
+}
+
+.book-appointment-btn:hover { background-color: #000; }
+
+.call-btn {
+    width: 50px;
+    height: 48px;
+    background-color: #fff;
+    border: 2px solid #333;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+}
+
+.call-btn:hover {
+    background-color: #333;
+    color: white;
+}
+
+.call-btn i {
+    font-size: 18px;
+    color: #333;
+    transition: color 0.3s ease;
+}
+
+.call-btn:hover i { color: white; }

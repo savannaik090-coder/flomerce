@@ -8,7 +8,13 @@ import SearchOverlay from './components/layout/SearchOverlay.jsx';
 import CartPanel from './components/cart/CartPanel.jsx';
 import WishlistPanel from './components/wishlist/WishlistPanel.jsx';
 import WhatsAppButton from './components/ui/WhatsAppButton.jsx';
-import './styles/layout.css';
+import './styles/variables.css';
+import './styles/navbar.css';
+import './styles/footer.css';
+import './styles/cart-panel.css';
+import './styles/search.css';
+import './styles/whatsapp.css';
+import './styles/currency.css';
 
 const HomePage = React.lazy(() => import('./pages/HomePage.jsx'));
 const CategoryPage = React.lazy(() => import('./pages/CategoryPage.jsx'));

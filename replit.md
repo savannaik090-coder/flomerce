@@ -33,7 +33,11 @@ Fluxe is a multi-tenant SaaS platform that allows users to create their own e-co
 │   │   │   ├── services/        # productService, cartService, orderService, etc.
 │   │   │   ├── context/         # AuthContext, CartContext, CurrencyContext, SiteContext
 │   │   │   ├── hooks/           # useAuth, useCart, useSiteConfig, etc.
-│   │   │   ├── styles/          # CSS files
+│   │   │   ├── styles/          # CSS (split by component: variables, navbar, footer,
+│   │   │   │                    #   cart-panel, search, whatsapp, currency, hero,
+│   │   │   │                    #   categories, bridal, showcase, locations, reviews,
+│   │   │   │                    #   modals, testimonials, home-responsive, admin,
+│   │   │   │                    #   category, checkout, product-detail, global)
 │   │   │   └── utils/           # priceFormatter, stockChecker
 │   │   ├── package.json
 │   │   └── vite.config.js
