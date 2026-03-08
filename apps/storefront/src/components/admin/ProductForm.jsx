@@ -99,14 +99,14 @@ export default function ProductForm({ product, onSave, onCancel }) {
     setErrors({});
     try {
       const payload = {
-        site_id: siteConfig.id,
+        siteId: siteConfig.id,
         name: form.name.trim(),
         price: parseFloat(form.price),
         stock: parseInt(form.stock),
-        category_id: form.category_id,
+        categoryId: form.category_id,
         description: form.description.trim(),
         images: form.images,
-        main_image_index: form.mainImageIndex,
+        mainImageIndex: form.mainImageIndex,
       };
       if (isEdit) {
         await updateProduct(product.id, payload);
