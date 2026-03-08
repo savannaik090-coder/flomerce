@@ -153,6 +153,7 @@ SSH key has been configured at `~/.ssh/github_key`. To push code:
 | Feature | Local (Replit) | Production (Cloudflare) |
 |---------|---------------|------------------------|
 | Database | SQLite (better-sqlite3) | Cloudflare D1 |
-| Server | Express.js (server.js) | Cloudflare Workers |
-| Port | 5000 | N/A (edge) |
+| Server | Express.js (run-server.js) | Cloudflare Workers |
+| Frontend Port | 5000 (webview) | N/A (edge) |
+| Backend Port | 8000 (wrangler dev) | N/A (edge) |
 | API URL | Relative paths | https://fluxe.in/api/* |
