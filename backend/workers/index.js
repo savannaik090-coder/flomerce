@@ -1,15 +1,16 @@
-import { handleAuth } from './auth-worker.js';
-import { handleSites } from './sites-worker.js';
-import { handleProducts } from './products-worker.js';
-import { handleOrders } from './orders-worker.js';
-import { handleCart, mergeCarts, clearCart } from './cart-worker.js';
-import { handleWishlist } from './wishlist-worker.js';
-import { handlePayments, activateSubscription } from './payments-worker.js';
-import { handleEmail } from './email-worker.js';
-import { handleCategories } from './categories-worker.js';
-import { handleUsers } from './users-worker.js';
+import { handleAuth } from './platform/auth-worker.js';
+import { handleSites } from './platform/sites-worker.js';
+import { handleProducts } from './storefront/products-worker.js';
+import { handleOrders } from './storefront/orders-worker.js';
+import { handleCart, mergeCarts, clearCart } from './storefront/cart-worker.js';
+import { handleWishlist } from './storefront/wishlist-worker.js';
+import { handlePayments, activateSubscription } from './platform/payments-worker.js';
+import { handleEmail } from './platform/email-worker.js';
+import { handleCategories } from './storefront/categories-worker.js';
+import { handleUsers } from './platform/users-worker.js';
 import { handleSiteRouting, resolveSiteFromRequest } from './site-router.js';
-import { handleAdmin } from './admin-worker.js';
+import { handleAdmin } from './platform/admin-worker.js';
+import { handleSiteAdmin } from './storefront/site-admin-worker.js';
 import { jsonResponse, errorResponse, corsHeaders, handleCORS } from '../utils/helpers.js';
 
 export default {
@@ -85,6 +86,9 @@ async function handleAPI(request, env, path) {
     case 'admin':
       return handleAdmin(request, env, path);
 
+    case 'site-admin':
+      return handleSiteAdmin(request, env, path);
+
     case 'health':
       return handleHealth(env);
 
@@ -136,7 +140,6 @@ async function handleSiteInfo(request, env) {
       return errorResponse('Site not found', 404);
     }
 
-    // Try to get categories, but don't fail if the table doesn't exist
     let categoriesResult = [];
     try {
       const categories = await env.DB.prepare(
@@ -146,7 +149,6 @@ async function handleSiteInfo(request, env) {
     } catch (catError) {
       console.error('Categories query failed, attempting to auto-create table:', catError);
       
-      // Auto-create categories table if it's missing
       try {
         await env.DB.prepare(`
           CREATE TABLE IF NOT EXISTS categories (
@@ -177,15 +179,14 @@ async function handleSiteInfo(request, env) {
       }
     }
 
-    // Safely parse JSON fields
     let socialLinks = {};
     let settings = {};
     try {
       if (site.social_links) socialLinks = JSON.parse(site.social_links);
-    } catch (e) { /* ignore parse errors */ }
+    } catch (e) {}
     try {
       if (site.settings) settings = JSON.parse(site.settings);
-    } catch (e) { /* ignore parse errors */ }
+    } catch (e) {}
 
     const { razorpayKeySecret, ...publicSettings } = settings;
 

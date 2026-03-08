@@ -1,205 +1,135 @@
 # Fluxe SaaS Platform
 
 ## Overview
-Fluxe is a SaaS platform designed to empower users to effortlessly create their own e-commerce websites using pre-built templates. The flagship template (template1) offers a comprehensive jewellery e-commerce experience. The project aims to provide a robust, scalable, and customizable solution for online businesses, leveraging a modern cloud-native architecture.
+Fluxe is a multi-tenant SaaS platform that allows users to create their own e-commerce websites using pre-built templates. Each user's website runs on a subdomain (e.g., `store-name.fluxe.in`). The platform uses a Cloudflare-centric serverless architecture.
 
-## User Preferences
-The user prefers clear and concise information. The AI should prioritize iterative development and ask for confirmation before making significant architectural changes or introducing new dependencies. When implementing features, the AI should favor a modular and API-driven approach.
-
-## System Architecture
-
-Fluxe operates on a Cloudflare-centric serverless architecture for enhanced scalability and performance.
-
-**Technology Stack:**
-- **Frontend:** Cloudflare Pages (static assets, user interface)
+## Technology Stack
+- **Frontend:** React 19 + Vite (Cloudflare Pages for deployment)
 - **Backend:** Cloudflare Workers (API endpoints, business logic)
-- **Database:** Cloudflare D1 (SQLite-compatible)
+- **Database:** Cloudflare D1 (SQLite-compatible, shared tables with site_id)
 - **File Storage:** Cloudflare R2
 - **Authentication:** Custom JWT-based system
 - **Payments:** Razorpay integration
+- **Email:** Resend/SendGrid
 
-**Core Design Principles:**
-- **API-Driven:** All frontend functionalities interact with the backend via RESTful APIs.
-- **Multi-tenancy:** The platform supports multiple user-created websites, each potentially with its own subdomain.
-- **Dynamic Content:** A dynamic category system allows users to define and manage categories for their e-commerce sites, replacing hardcoded pages with a single, versatile template (`category.html`) powered by `category-loader.js`.
-- **Modular Backend:** Cloudflare Workers are organized into distinct services (e.g., `auth-worker.js`, `products-worker.js`) for better maintainability and scalability.
-- **Frontend Structure:** The frontend is organized into main SaaS pages, templates, an admin panel, and a user dashboard.
-- **Subdomain Routing:** Cloudflare Workers handle routing for user subdomains (e.g., `*.fluxe.in`) to their respective sites.
+## Project Structure
 
-**Key Features:**
-- User authentication and authorization.
-- Website creation and management for individual users.
-- Product catalog management (CRUD operations).
-- Order processing and management.
-- Shopping cart and wishlist functionalities.
-- Dynamic, user-defined categories for e-commerce sites.
-- Payment processing via Razorpay.
-- Transactional email services.
-- Admin panels for managing products, orders, users, and analytics.
+```
+/
+├── frontend/                    # All frontend code
+│   ├── platform/                # React source - SaaS platform app
+│   │   ├── src/
+│   │   │   ├── pages/           # LandingPage, LoginPage, DashboardPage, etc.
+│   │   │   ├── components/      # Navbar, PlanSelector, SiteCard, etc.
+│   │   │   ├── services/        # authService, siteService, paymentService
+│   │   │   ├── context/         # AuthContext
+│   │   │   └── styles/          # CSS files
+│   │   ├── package.json
+│   │   └── vite.config.js
+│   ├── storefront-src/          # React source - Storefront template app
+│   │   ├── src/
+│   │   │   ├── pages/           # HomePage, CategoryPage, ProductDetailPage, etc.
+│   │   │   ├── components/      # Layout, home, product, cart, admin, UI components
+│   │   │   ├── services/        # productService, cartService, orderService, etc.
+│   │   │   ├── context/         # AuthContext, CartContext, CurrencyContext, SiteContext
+│   │   │   ├── hooks/           # useAuth, useCart, useSiteConfig, etc.
+│   │   │   ├── styles/          # CSS files
+│   │   │   └── utils/           # priceFormatter, stockChecker
+│   │   ├── package.json
+│   │   └── vite.config.js
+│   ├── index.html               # Built platform output (deployed)
+│   ├── assets/                  # Built platform JS/CSS (deployed)
+│   ├── storefront/              # Built storefront output (deployed)
+│   │   ├── index.html
+│   │   └── assets/
+│   └── templates/               # Static HTML templates (legacy, do not modify)
+│       └── template1/
+│
+├── backend/                     # All backend code (Cloudflare Workers)
+│   ├── workers/
+│   │   ├── index.js             # Main router - dispatches to all handlers
+│   │   ├── site-router.js       # Subdomain detection and storefront serving
+│   │   ├── platform/            # SaaS platform logic
+│   │   │   ├── auth-worker.js   # Signup, login, email verify, password reset
+│   │   │   ├── sites-worker.js  # Site CRUD, categories
+│   │   │   ├── users-worker.js  # Profile, subscription management
+│   │   │   ├── payments-worker.js # Razorpay integration, subscriptions
+│   │   │   ├── email-worker.js  # Email sending (Resend/SendGrid)
+│   │   │   └── admin-worker.js  # Platform super-admin (stats, user blocking)
+│   │   └── storefront/          # Storefront/template logic
+│   │       ├── products-worker.js   # Product CRUD (site_id scoped)
+│   │       ├── orders-worker.js     # Order management
+│   │       ├── cart-worker.js       # Cart operations
+│   │       ├── categories-worker.js # Category management
+│   │       ├── wishlist-worker.js   # Wishlist operations
+│   │       └── site-admin-worker.js # Verification-code-based admin access
+│   ├── utils/
+│   │   ├── auth.js              # JWT, password hashing, auth middleware
+│   │   └── helpers.js           # ID generation, CORS, response helpers
+│   ├── schema/
+│   │   └── d1-schema.sql        # Full database schema
+│   ├── migrations/              # D1 migration files
+│   ├── wrangler.toml            # Cloudflare Workers config
+│   └── package.json
+│
+├── assets/                      # Global static assets (logo, template previews)
+├── .github/workflows/           # GitHub Actions for backend deployment
+├── build.js                     # Builds React apps → frontend/ output
+├── run-server.js                # Local dev server (Express, port 5000)
+└── package.json                 # Root package config
+```
 
-**Database Schema:**
-The D1 database schema includes tables for `users`, `sites`, `products`, `categories`, `orders`, `guest_orders`, `carts`, `wishlists`, `subscriptions`, and `payment_transactions`, supporting the core e-commerce and SaaS functionalities.
+## Multi-Tenancy
+- All data stored in shared tables with `site_id` column for isolation
+- Every API endpoint enforces `site_id` filtering
+- Subdomains are detected by the backend worker and routed to storefront
+- Products, orders, categories, cart, wishlist are all scoped per site
 
-## External Dependencies
+## Admin Panel Authentication
+- **Platform Admin:** Full JWT auth + role check (admin@fluxe.in or admin/owner role)
+- **Site Admin:** Simplified verification-code-only access via `/api/site-admin/verify`
+  - Store owners set a verification code from their dashboard
+  - Code is stored in `sites.settings` JSON field as `adminVerificationCode`
+  - Verification returns a `SiteAdmin` token valid for 24 hours
 
-- **Cloudflare Pages:** For hosting the static frontend.
-- **Cloudflare Workers:** For serverless backend API execution.
-- **Cloudflare D1:** For the primary database.
-- **Cloudflare R2:** For object storage (e.g., product images).
-- **Razorpay:** For payment gateway integration.
-- **Resend/SendGrid:** For transactional email services (API keys are required).
-- **GitHub:** For version control and deployment via Cloudflare's integrations.
+## Build & Deployment
 
-## Recent Changes (February 2026)
-
-### Static Asset Routing Fix for Subdomains (Feb 2 - Latest)
-**Issue:** When users created subdomain sites (e.g., `shop-name.fluxe.in`), the CSS, JS, and image files weren't loading because the paths weren't being rewritten to the template folder.
-
-**Root Cause:** The HTML templates use relative paths like `css/styles.css` and `js/main.js`. When a subdomain loads these files, the browser requests `shop-name.fluxe.in/css/styles.css`, but the worker wasn't routing these requests to `/templates/template1/css/styles.css`.
-
-**Fix Applied (`backend/workers/site-router.js`):**
-1. Added `isStaticAsset()` function to detect CSS, JS, images, fonts, and data files
-2. Added `getContentType()` function to return proper MIME types for all file types
-3. Added `serveStaticAsset()` function that rewrites paths to `/templates/{templateId}/...`
-4. Modified `handleSiteRouting()` to intercept static asset requests and serve them from the correct template folder
-
-**Supported Asset Types:**
-- CSS: `.css`
-- JavaScript: `.js`, `.map`
-- Images: `.png`, `.jpg`, `.jpeg`, `.gif`, `.svg`, `.webp`, `.ico`
-- Fonts: `.woff`, `.woff2`, `.ttf`, `.eot`, `.otf`
-- Data: `.json`
-
-**REQUIRES DEPLOYMENT:** Run `wrangler deploy` in the backend folder to apply changes to production.
-
-### Site Preview & Production Fixes (Feb 2)
-**Fixed Issues:**
-1. **Site Preview Routes**: Added `/site/:subdomain` routes to server.js for previewing user-created websites
-2. **Template Static Assets**: Fixed CSS/JS/image serving for template sites with proper URL rewriting
-3. **API Configuration Simplified**: Removed all local development environment checks from config.js - now uses relative URLs everywhere
-4. **Dashboard Site URLs**: Updated to use `/site/subdomain` format for visiting created websites
-5. **Removed Confusing Files**: Deleted `backend/dev-server.js` which was causing confusion between environments
-
-**New API Endpoints:**
-- `GET /api/site?subdomain=xxx` - Fetch site info by subdomain with categories
-- `GET /site/:subdomain` - Serve the site homepage with template
-- `GET /site/:subdomain/*` - Serve site pages and static assets
-
-**Architecture Notes:**
-- Currently using Replit's server.js + SQLite for all operations
-- Site previews work via `/site/subdomain` path instead of actual subdomains
-- For production Cloudflare deployment, data needs to be synced to D1 database
-
-### Dashboard & API Fixes (Feb 2)
-**Fixed Issues:**
-1. **Plan Selection Overlay**: Now displays all 4 plans (Trial, Basic, Premium, Pro) in a 2x2 grid layout
-2. **Duration Selector**: Added working Monthly/6 Months/Yearly buttons that update plan prices dynamically
-3. **Upgrade Buttons**: Added click handlers for billing section upgrade buttons to initiate Razorpay payments
-4. **Website Creation API**: Fixed `category` field error - backend now defaults to 'general' if not provided
-5. **Custom Subdomain**: Backend now accepts subdomain from frontend request for custom website URLs
-
-**Files Updated:**
-- `frontend/src/pages/dashboard.html` - Plan overlay UI and JavaScript handlers
-- `backend/workers/sites-worker.js` - Category defaulting and subdomain handling
-- `server.js` - Same fixes for local development
-
-### Profile Endpoint Fix (Feb 2)
-**Issue:** Production `/api/users/profile` returning 500 error.
-**Root Cause:** The `subscriptions` table may not exist in production D1.
-**Fix:** Updated `backend/workers/users-worker.js`:
-- Split profile query to fetch user and subscription separately
-- Added graceful fallback when subscriptions table doesn't exist
-- Added `ensureSubscriptionsTable()` function that auto-creates table if missing
-- Now returns `{ plan: null, status: 'none' }` when no subscription exists
-
-**REQUIRES DEPLOYMENT:** Push to GitHub or run `wrangler deploy` in backend folder.
-
-### Production Configuration Fixes
-1. **API URL Configuration** (`frontend/src/js/api/config.js`):
-   - Fixed API base URL handling for all environments (local, Replit, production, subdomains)
-   - Added proper handling for fluxe.in main domain
-   - Added support for Replit development environment
-   - Added fallback for Cloudflare Pages default URLs
-
-2. **CORS Configuration** (`backend/utils/helpers.js`):
-   - Updated `getAllowedOrigin` to properly handle:
-     - Main domain (fluxe.in)
-     - All subdomains (*.fluxe.in)
-     - Cloudflare Pages URLs
-     - Cloudflare Workers URLs
-     - Replit development environment
-
-3. **JWT_SECRET Requirement** (`backend/wrangler.toml`):
-   - Added documentation for setting JWT_SECRET as a Cloudflare secret
-   - This is critical for production authentication to work!
-
-## Deployment Checklist for Production
-
-### Required Secrets (set via `wrangler secret put`)
-Run these commands in the `backend` folder:
+### Build
 ```bash
-wrangler secret put JWT_SECRET      # Required: 32+ character random string
+node build.js   # Builds both React apps and copies to frontend/
+```
+
+### Deployment
+- **Frontend:** Push to GitHub → Cloudflare Pages auto-deploys from `frontend/`
+- **Backend:** Push to GitHub → GitHub Actions deploys via `wrangler deploy`
+  - Action triggers on changes to `backend/**` on the `fluxe` branch
+
+### Required Secrets (Cloudflare Workers)
+```bash
+wrangler secret put JWT_SECRET          # 32+ character random string
 wrangler secret put RAZORPAY_KEY_ID
 wrangler secret put RAZORPAY_KEY_SECRET
+wrangler secret put RESEND_API_KEY      # Or SENDGRID_API_KEY
 ```
 
-### SSH Key for GitHub
-SSH key has been configured at `~/.ssh/github_key`. To push code:
-1. Add the public key to GitHub (Settings > SSH Keys)
-2. Use `git push` to deploy
-
-## React Migration Status (March 2026)
-
-The project has been migrated to a two-app React architecture per `MIGRATION_PLAN.md`.
-
-### Apps Built
-- **`apps/platform/`** — App A: Fluxe SaaS Platform (React + Vite)
-  - All pages: LandingPage, LoginPage, SignupPage, DashboardPage, VerifyEmailPage, ResetPasswordPage, OwnerAdminPage
-  - Components: Navbar, PlanSelector, SiteAdminPanel (with per-store Razorpay fields), SiteCard, SiteCreationWizard
-  - Builds to `apps/platform/dist/`
-
-- **`apps/storefront/`** — App B: Dynamic E-commerce Storefront (React + Vite)
-  - All pages: HomePage, CategoryPage, ProductDetailPage, CartPage, CheckoutPage, ProfilePage, LoginPage, SignupPage, WishlistPage, AboutPage, ContactPage, BookAppointmentPage, OrderTrackPage, AdminPanel, ProductsAdminPage, ForgotPasswordPage, ResetPasswordPage, VerifyEmailPage, PrivacyPolicyPage, TermsPage
-  - All 8 admin sections: Dashboard, Products, Inventory, Orders, Customers, Analytics, PushNotifications, WatchBuy
-  - Full product form with image compression
-  - Dynamic site config via subdomain detection
-  - Builds to `apps/storefront/dist/`
-
-### Build & Deployment Pipeline
-The React apps build into the existing `frontend/` folder so the deployment pipeline stays the same:
-
-```bash
-node build.js   # Builds both apps and copies output to frontend/
-```
-
-This runs:
-1. `apps/platform/` → builds → copies to `frontend/index.html` + `frontend/assets/`
-2. `apps/storefront/` → builds → copies to `frontend/storefront/`
-
-**Important:** Always run `node build.js` before pushing to GitHub so the `frontend/` folder has the latest React builds. The backend deploys separately via GitHub Actions (`deploy-backend.yml`).
-
-**Local development:** `run-server.js` serves from `frontend/` on port 5000 with SPA routing. The storefront is accessible at `/storefront/`.
-
-### Backend Updates for React
-- **`site-router.js`**: Rewritten to serve React storefront app (`frontend/storefront/index.html`) for subdomain requests instead of old HTML templates with placeholder replacement. The React app fetches site config via `/api/site?subdomain=...` client-side.
-- **`admin-worker.js`** (NEW): Added admin endpoints for platform owner:
-  - `GET /api/admin/stats` — Returns all users, sites, and order counts
-  - `POST /api/admin/users/:userId/block` — Blocks a user and deactivates their sites
-- **`cart-worker.js`**: Added HTTP routes for `clear` and `merge` actions:
-  - `DELETE /api/cart/clear?siteId=...&sessionId=...`
-  - `POST /api/cart/merge` with `{siteId, sessionId}` body
-- **`wishlist-worker.js`**: Added `check` endpoint:
-  - `GET /api/wishlist/check?siteId=...&productId=...`
-- **`auth-worker.js`**: Updated verify email URLs from old `.html` paths to React route (`/verify-email?token=...`)
-- **`payments-worker.js`**: Per-store Razorpay credentials from site settings when `siteId` is provided.
-- **Parameter naming**: All workers use `siteId` (camelCase) consistently. React services updated to match.
-
-## Local Development vs Production
-
+## Local Development
 | Feature | Local (Replit) | Production (Cloudflare) |
 |---------|---------------|------------------------|
-| Database | SQLite (better-sqlite3) | Cloudflare D1 |
+| Database | SQLite (wrangler local) | Cloudflare D1 |
 | Server | Express.js (run-server.js) | Cloudflare Workers |
-| Frontend Port | 5000 (webview) | N/A (edge) |
+| Frontend Port | 5000 | N/A (edge) |
 | Backend Port | 8000 (wrangler dev) | N/A (edge) |
 | API URL | Relative paths | https://fluxe.in/api/* |
+
+## Key API Routes
+- `POST /api/auth/signup|login|logout|verify-email|reset-password`
+- `GET/POST /api/sites` - Site CRUD (requires auth)
+- `GET /api/products?siteId=...` - Products (requires siteId or subdomain)
+- `GET/POST /api/orders` - Orders
+- `GET/POST /api/cart?siteId=...` - Cart
+- `GET/POST /api/categories?siteId=...` - Categories
+- `GET /api/site?subdomain=...` - Public site info
+- `POST /api/site-admin/verify` - Verify admin code for store admin access
+- `POST /api/site-admin/set-code` - Set admin verification code (requires auth)
+- `GET /api/admin/stats` - Platform admin stats
+- `GET /api/health` - Health check

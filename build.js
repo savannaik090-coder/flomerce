@@ -18,14 +18,14 @@ function copyDir(src, dest) {
   }
 }
 
-console.log('Building Fluxe Platform (App A)...');
-execSync('npm run build', { cwd: path.join(__dirname, 'apps/platform'), stdio: 'inherit' });
+console.log('Building Fluxe Platform...');
+execSync('npm run build', { cwd: path.join(__dirname, 'frontend/platform'), stdio: 'inherit' });
 
-console.log('Building Fluxe Storefront (App B)...');
-execSync('npm run build', { cwd: path.join(__dirname, 'apps/storefront'), stdio: 'inherit' });
+console.log('Building Fluxe Storefront...');
+execSync('npm run build', { cwd: path.join(__dirname, 'frontend/storefront-src'), stdio: 'inherit' });
 
-const platformDist = path.join(__dirname, 'apps/platform/dist');
-const storefrontDist = path.join(__dirname, 'apps/storefront/dist');
+const platformDist = path.join(__dirname, 'frontend/platform/dist');
+const storefrontDist = path.join(__dirname, 'frontend/storefront-src/dist');
 const frontendDir = path.join(__dirname, 'frontend');
 
 console.log('Copying Platform build to frontend/...');

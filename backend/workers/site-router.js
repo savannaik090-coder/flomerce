@@ -1,5 +1,6 @@
 import { jsonResponse, errorResponse, corsHeaders } from '../utils/helpers.js';
 
+
 export async function handleSiteRouting(request, env) {
   const url = new URL(request.url);
   const hostname = url.hostname;
