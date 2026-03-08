@@ -8,6 +8,17 @@ export async function handleCart(request, env, path) {
 
   const method = request.method;
   const url = new URL(request.url);
+  const pathParts = path.split('/').filter(Boolean);
+  const subAction = pathParts[2];
+
+  if (subAction === 'clear') {
+    return handleClearCart(request, env, url);
+  }
+
+  if (subAction === 'merge') {
+    return handleMergeCarts(request, env);
+  }
+
   const siteId = url.searchParams.get('siteId');
 
   if (!siteId) {
@@ -32,6 +43,47 @@ export async function handleCart(request, env, path) {
       return removeFromCart(request, env, siteId, user, sessionId);
     default:
       return errorResponse('Method not allowed', 405);
+  }
+}
+
+async function handleClearCart(request, env, url) {
+  const user = await validateAuth(request, env);
+  const siteId = url.searchParams.get('siteId');
+  const sessionId = url.searchParams.get('sessionId');
+
+  if (!siteId) return errorResponse('Site ID is required');
+  if (!user && !sessionId) return errorResponse('Authentication or session required');
+
+  try {
+    if (user) {
+      await env.DB.prepare(
+        `UPDATE carts SET items = '[]', subtotal = 0, updated_at = datetime('now') WHERE site_id = ? AND user_id = ?`
+      ).bind(siteId, user.id).run();
+    } else {
+      await env.DB.prepare(
+        `UPDATE carts SET items = '[]', subtotal = 0, updated_at = datetime('now') WHERE site_id = ? AND session_id = ?`
+      ).bind(siteId, sessionId).run();
+    }
+    return successResponse(null, 'Cart cleared');
+  } catch (error) {
+    console.error('Clear cart error:', error);
+    return errorResponse('Failed to clear cart', 500);
+  }
+}
+
+async function handleMergeCarts(request, env) {
+  const user = await validateAuth(request, env);
+  if (!user) return errorResponse('Authentication required', 401);
+
+  try {
+    const { siteId, sessionId } = await request.json();
+    if (!siteId || !sessionId) return errorResponse('siteId and sessionId are required');
+
+    await mergeCarts(env, siteId, user.id, sessionId);
+    return successResponse(null, 'Carts merged');
+  } catch (error) {
+    console.error('Merge carts error:', error);
+    return errorResponse('Failed to merge carts', 500);
   }
 }
 
@@ -214,8 +266,9 @@ async function removeFromCart(request, env, siteId, user, sessionId) {
     const cart = await getOrCreateCart(env, siteId, user, sessionId);
     const items = JSON.parse(cart.items);
 
+    const parsedVariant = variant ? variant : null;
     const filteredItems = items.filter(item => 
-      !(item.productId === productId && JSON.stringify(item.variant) === variant)
+      !(item.productId === productId && JSON.stringify(item.variant ?? null) === JSON.stringify(parsedVariant))
     );
 
     await env.DB.prepare(

@@ -33,7 +33,7 @@ export function CartProvider({ children }) {
       try {
         setLoading(true);
         const result = await cartService.getCart(siteConfig.id);
-        const cartItems = result.data || result.items || [];
+        const cartItems = result.data?.items || result.data || result.items || [];
         setItems(cartItems);
       } catch (err) {
         console.error('Failed to fetch cart:', err);
@@ -72,16 +72,15 @@ export function CartProvider({ children }) {
       }
     } else {
       const local = getLocalCart();
-      const existing = local.find(i => i.product_id === product.id);
+      const existing = local.find(i => i.productId === product.id);
       if (existing) {
         existing.quantity += quantity;
       } else {
         local.push({
-          id: crypto.randomUUID(),
-          product_id: product.id,
-          product_name: product.name,
-          product_price: product.price,
-          product_image: product.images?.[0] || product.image_url,
+          productId: product.id,
+          name: product.name,
+          price: product.price,
+          thumbnail: product.images?.[0] || product.thumbnail_url || product.image_url,
           quantity,
         });
       }
@@ -90,41 +89,41 @@ export function CartProvider({ children }) {
     }
   }, [siteConfig?.id, isAuthenticated, fetchCart]);
 
-  const updateQuantity = useCallback(async (itemId, quantity) => {
-    if (quantity <= 0) return removeItem(itemId);
+  const updateQuantity = useCallback(async (productId, quantity) => {
+    if (quantity <= 0) return removeItem(productId);
 
-    if (isAuthenticated) {
+    if (isAuthenticated && siteConfig?.id) {
       try {
-        await cartService.updateCartItem(itemId, quantity);
+        await cartService.updateCartItem(siteConfig.id, productId, quantity);
         await fetchCart();
       } catch (err) {
         console.error('Failed to update cart:', err);
       }
     } else {
       const local = getLocalCart();
-      const item = local.find(i => i.id === itemId);
+      const item = local.find(i => i.productId === productId);
       if (item) {
         item.quantity = quantity;
         setLocalCart(local);
         setItems([...local]);
       }
     }
-  }, [isAuthenticated, fetchCart]);
+  }, [isAuthenticated, siteConfig?.id, fetchCart]);
 
-  const removeItem = useCallback(async (itemId) => {
-    if (isAuthenticated) {
+  const removeItem = useCallback(async (productId) => {
+    if (isAuthenticated && siteConfig?.id) {
       try {
-        await cartService.removeFromCart(itemId);
+        await cartService.removeFromCart(siteConfig.id, productId);
         await fetchCart();
       } catch (err) {
         console.error('Failed to remove from cart:', err);
       }
     } else {
-      const local = getLocalCart().filter(i => i.id !== itemId);
+      const local = getLocalCart().filter(i => i.productId !== productId);
       setLocalCart(local);
       setItems([...local]);
     }
-  }, [isAuthenticated, fetchCart]);
+  }, [isAuthenticated, siteConfig?.id, fetchCart]);
 
   const clearAll = useCallback(async () => {
     if (isAuthenticated && siteConfig?.id) {
@@ -138,7 +137,7 @@ export function CartProvider({ children }) {
     setItems([]);
   }, [isAuthenticated, siteConfig?.id]);
 
-  const subtotal = items.reduce((sum, item) => sum + (item.product_price || item.price || 0) * (item.quantity || 1), 0);
+  const subtotal = items.reduce((sum, item) => sum + (item.price || 0) * (item.quantity || 1), 0);
 
   return (
     <CartContext.Provider value={{ items, cartCount, subtotal, loading, addToCart, updateQuantity, removeItem, clearAll, refetchCart: fetchCart }}>

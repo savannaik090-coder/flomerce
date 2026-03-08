@@ -180,8 +180,19 @@ This runs:
 
 **Local development:** `run-server.js` serves from `frontend/` on port 5000 with SPA routing. The storefront is accessible at `/storefront/`.
 
-### Key Backend Update
-- **Per-store Razorpay credentials**: `payments-worker.js` updated to read `razorpayKeyId`/`razorpayKeySecret` from site settings when `siteId` is provided in payment requests. Falls back to global env vars for subscription payments.
+### Backend Updates for React
+- **`site-router.js`**: Rewritten to serve React storefront app (`frontend/storefront/index.html`) for subdomain requests instead of old HTML templates with placeholder replacement. The React app fetches site config via `/api/site?subdomain=...` client-side.
+- **`admin-worker.js`** (NEW): Added admin endpoints for platform owner:
+  - `GET /api/admin/stats` — Returns all users, sites, and order counts
+  - `POST /api/admin/users/:userId/block` — Blocks a user and deactivates their sites
+- **`cart-worker.js`**: Added HTTP routes for `clear` and `merge` actions:
+  - `DELETE /api/cart/clear?siteId=...&sessionId=...`
+  - `POST /api/cart/merge` with `{siteId, sessionId}` body
+- **`wishlist-worker.js`**: Added `check` endpoint:
+  - `GET /api/wishlist/check?siteId=...&productId=...`
+- **`auth-worker.js`**: Updated verify email URLs from old `.html` paths to React route (`/verify-email?token=...`)
+- **`payments-worker.js`**: Per-store Razorpay credentials from site settings when `siteId` is provided.
+- **Parameter naming**: All workers use `siteId` (camelCase) consistently. React services updated to match.
 
 ## Local Development vs Production
 

@@ -1,22 +1,22 @@
 import { apiRequest } from './api.js';
 
 export async function getWishlist(siteId) {
-  return apiRequest(`/api/wishlist?site_id=${siteId}`);
+  return apiRequest(`/api/wishlist?siteId=${siteId}`);
 }
 
 export async function addToWishlist(siteId, productId) {
   return apiRequest('/api/wishlist', {
     method: 'POST',
-    body: JSON.stringify({ site_id: siteId, product_id: productId }),
+    body: JSON.stringify({ productId, siteId }),
   });
 }
 
-export async function removeFromWishlist(itemId) {
-  return apiRequest(`/api/wishlist/${itemId}`, {
+export async function removeFromWishlist(siteId, productId) {
+  return apiRequest(`/api/wishlist?siteId=${siteId}&productId=${productId}`, {
     method: 'DELETE',
   });
 }
 
 export async function isInWishlist(siteId, productId) {
-  return apiRequest(`/api/wishlist/check?site_id=${siteId}&product_id=${productId}`);
+  return apiRequest(`/api/wishlist/check?siteId=${siteId}&productId=${productId}`);
 }

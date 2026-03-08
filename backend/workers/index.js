@@ -9,6 +9,7 @@ import { handleEmail } from './email-worker.js';
 import { handleCategories } from './categories-worker.js';
 import { handleUsers } from './users-worker.js';
 import { handleSiteRouting, resolveSiteFromRequest } from './site-router.js';
+import { handleAdmin } from './admin-worker.js';
 import { jsonResponse, errorResponse, corsHeaders, handleCORS } from '../utils/helpers.js';
 
 export default {
@@ -80,6 +81,9 @@ async function handleAPI(request, env, path) {
 
     case 'users':
       return handleUsers(request, env, path);
+
+    case 'admin':
+      return handleAdmin(request, env, path);
 
     case 'health':
       return handleHealth(env);

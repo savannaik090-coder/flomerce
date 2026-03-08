@@ -34,7 +34,10 @@ export async function updateProfile(data) {
 }
 
 export async function verifyEmail(token, email) {
-  return apiRequest(`/api/auth/verify-email?token=${token}&email=${encodeURIComponent(email)}`);
+  return apiRequest('/api/auth/verify-email', {
+    method: 'POST',
+    body: JSON.stringify({ token, email }),
+  });
 }
 
 export async function requestPasswordReset(email) {

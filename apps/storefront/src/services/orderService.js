@@ -8,7 +8,7 @@ export async function createOrder(orderData) {
 }
 
 export async function getOrders(siteId, params = {}) {
-  const query = new URLSearchParams({ site_id: siteId, ...params }).toString();
+  const query = new URLSearchParams({ siteId, ...params }).toString();
   return apiRequest(`/api/orders?${query}`);
 }
 

@@ -5,6 +5,13 @@ export async function handleWishlist(request, env, path) {
   const corsResponse = handleCORS(request);
   if (corsResponse) return corsResponse;
 
+  const pathParts = path.split('/').filter(Boolean);
+  const subAction = pathParts[2];
+
+  if (subAction === 'check') {
+    return checkWishlist(request, env);
+  }
+
   const user = await validateAuth(request, env);
   if (!user) {
     return errorResponse('Unauthorized', 401, 'UNAUTHORIZED');
@@ -27,6 +34,32 @@ export async function handleWishlist(request, env, path) {
       return removeFromWishlist(request, env, user, siteId);
     default:
       return errorResponse('Method not allowed', 405);
+  }
+}
+
+async function checkWishlist(request, env) {
+  const user = await validateAuth(request, env);
+  if (!user) {
+    return successResponse({ inWishlist: false });
+  }
+
+  const url = new URL(request.url);
+  const siteId = url.searchParams.get('siteId');
+  const productId = url.searchParams.get('productId');
+
+  if (!siteId || !productId) {
+    return errorResponse('siteId and productId are required');
+  }
+
+  try {
+    const existing = await env.DB.prepare(
+      'SELECT id FROM wishlists WHERE user_id = ? AND product_id = ? AND site_id = ?'
+    ).bind(user.id, productId, siteId).first();
+
+    return successResponse({ inWishlist: !!existing });
+  } catch (error) {
+    console.error('Check wishlist error:', error);
+    return successResponse({ inWishlist: false });
   }
 }
 

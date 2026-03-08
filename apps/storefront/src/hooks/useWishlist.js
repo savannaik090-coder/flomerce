@@ -30,7 +30,7 @@ export function useWishlist() {
       try {
         setLoading(true);
         const result = await wishlistService.getWishlist(siteConfig.id);
-        setItems(result.data || result.items || []);
+        setItems(result.data?.items || result.data || result.items || []);
       } catch (err) {
         console.error('Failed to fetch wishlist:', err);
         setItems(getLocalWishlist());
@@ -58,13 +58,13 @@ export function useWishlist() {
       }
     } else {
       const local = getLocalWishlist();
-      if (!local.find(i => i.product_id === product.id)) {
+      if (!local.find(i => i.productId === product.id)) {
         local.push({
           id: crypto.randomUUID(),
-          product_id: product.id,
-          product_name: product.name,
-          product_price: product.price,
-          product_image: product.images?.[0] || product.image_url,
+          productId: product.id,
+          name: product.name,
+          price: product.price,
+          thumbnail: product.images?.[0] || product.thumbnail_url || product.image_url,
         });
         setLocalWishlist(local);
         setItems([...local]);
@@ -72,23 +72,25 @@ export function useWishlist() {
     }
   }, [siteConfig?.id, isAuthenticated, fetchWishlist]);
 
-  const removeFromWishlist = useCallback(async (itemId) => {
+  const removeFromWishlist = useCallback(async (productId) => {
+    if (!siteConfig?.id) return;
+
     if (isAuthenticated) {
       try {
-        await wishlistService.removeFromWishlist(itemId);
+        await wishlistService.removeFromWishlist(siteConfig.id, productId);
         await fetchWishlist();
       } catch (err) {
         console.error('Failed to remove from wishlist:', err);
       }
     } else {
-      const local = getLocalWishlist().filter(i => i.id !== itemId);
+      const local = getLocalWishlist().filter(i => i.productId !== productId && i.id !== productId);
       setLocalWishlist(local);
       setItems([...local]);
     }
-  }, [isAuthenticated, fetchWishlist]);
+  }, [siteConfig?.id, isAuthenticated, fetchWishlist]);
 
   const isInWishlist = useCallback((productId) => {
-    return items.some(i => i.product_id === productId || i.id === productId);
+    return items.some(i => i.productId === productId || i.product_id === productId);
   }, [items]);
 
   const wishlistCount = items.length;

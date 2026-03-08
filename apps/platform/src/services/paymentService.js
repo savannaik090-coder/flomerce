@@ -1,9 +1,9 @@
 import { apiRequest } from './api.js';
 
 export async function initiateSubscriptionPayment(planId, duration) {
-  return apiRequest('/api/payments/subscribe', {
+  return apiRequest('/api/payments/subscription', {
     method: 'POST',
-    body: JSON.stringify({ planId, duration }),
+    body: JSON.stringify({ planId, billingCycle: duration }),
   });
 }
 

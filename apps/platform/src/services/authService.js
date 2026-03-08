@@ -21,7 +21,10 @@ export async function logout() {
 }
 
 export async function verifyEmail(token, email) {
-  return apiRequest(`/api/auth/verify-email?token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}`);
+  return apiRequest('/api/auth/verify-email', {
+    method: 'POST',
+    body: JSON.stringify({ token, email }),
+  });
 }
 
 export async function resendVerification(email) {

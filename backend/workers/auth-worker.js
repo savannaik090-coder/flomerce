@@ -91,7 +91,7 @@ async function handleSignup(request, env) {
         email: email.toLowerCase(),
         token: verificationToken,
         name: sanitizeInput(name),
-        verifyUrl: `${env.APP_URL}${env.VERIFY_PATH || '/src/pages/verify-email.html'}?token=${verificationToken}`
+        verifyUrl: `${env.APP_URL}/verify-email?token=${verificationToken}`
       })
     }), env, '/api/email/verification');
 
@@ -483,7 +483,7 @@ async function handleResendVerification(request, env) {
         email: email.toLowerCase(),
         token,
         name: user.name,
-        verifyUrl: `${env.APP_URL}${env.VERIFY_PATH || '/src/pages/verify-email.html'}?token=${token}`
+        verifyUrl: `${env.APP_URL}/verify-email?token=${token}`
       })
     }), env, '/api/email/verification');
 

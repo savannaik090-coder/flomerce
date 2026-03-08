@@ -1,31 +1,31 @@
 import { apiRequest, getSessionId } from './api.js';
 
 export async function getCart(siteId) {
-  return apiRequest(`/api/cart?site_id=${siteId}&session_id=${getSessionId()}`);
+  return apiRequest(`/api/cart?siteId=${siteId}&sessionId=${getSessionId()}`);
 }
 
-export async function addToCart(siteId, productId, quantity = 1) {
-  return apiRequest('/api/cart', {
+export async function addToCart(siteId, productId, quantity = 1, variant = null) {
+  return apiRequest(`/api/cart?siteId=${siteId}`, {
     method: 'POST',
-    body: JSON.stringify({ site_id: siteId, product_id: productId, quantity, session_id: getSessionId() }),
+    body: JSON.stringify({ productId, quantity, variant, sessionId: getSessionId() }),
   });
 }
 
-export async function updateCartItem(itemId, quantity) {
-  return apiRequest(`/api/cart/${itemId}`, {
+export async function updateCartItem(siteId, productId, quantity, variant = null) {
+  return apiRequest(`/api/cart?siteId=${siteId}`, {
     method: 'PUT',
-    body: JSON.stringify({ quantity }),
+    body: JSON.stringify({ productId, quantity, variant, sessionId: getSessionId() }),
   });
 }
 
-export async function removeFromCart(itemId) {
-  return apiRequest(`/api/cart/${itemId}`, {
+export async function removeFromCart(siteId, productId) {
+  return apiRequest(`/api/cart?siteId=${siteId}&productId=${productId}&sessionId=${getSessionId()}`, {
     method: 'DELETE',
   });
 }
 
 export async function clearCart(siteId) {
-  return apiRequest(`/api/cart/clear?site_id=${siteId}&session_id=${getSessionId()}`, {
+  return apiRequest(`/api/cart/clear?siteId=${siteId}&sessionId=${getSessionId()}`, {
     method: 'DELETE',
   });
 }
@@ -33,6 +33,6 @@ export async function clearCart(siteId) {
 export async function mergeCarts(siteId) {
   return apiRequest('/api/cart/merge', {
     method: 'POST',
-    body: JSON.stringify({ site_id: siteId, session_id: getSessionId() }),
+    body: JSON.stringify({ siteId, sessionId: getSessionId() }),
   });
 }

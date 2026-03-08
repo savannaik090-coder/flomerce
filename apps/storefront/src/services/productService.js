@@ -1,7 +1,7 @@
 import { apiRequest } from './api.js';
 
 export async function getProducts(siteId, params = {}) {
-  const query = new URLSearchParams({ site_id: siteId, ...params }).toString();
+  const query = new URLSearchParams({ siteId, ...params }).toString();
   return apiRequest(`/api/products?${query}`);
 }
 
@@ -10,11 +10,11 @@ export async function getProductById(productId) {
 }
 
 export async function getProductBySlug(siteId, slug) {
-  return apiRequest(`/api/products?site_id=${siteId}&slug=${slug}`);
+  return apiRequest(`/api/products?siteId=${siteId}&slug=${slug}`);
 }
 
-export async function getProductsByCategory(siteId, categoryId, params = {}) {
-  const query = new URLSearchParams({ site_id: siteId, category_id: categoryId, ...params }).toString();
+export async function getProductsByCategory(siteId, categorySlug, params = {}) {
+  const query = new URLSearchParams({ siteId, category: categorySlug, ...params }).toString();
   return apiRequest(`/api/products?${query}`);
 }
 

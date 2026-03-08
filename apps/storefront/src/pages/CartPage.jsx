@@ -31,13 +31,14 @@ export default function CartPage() {
         <>
           <div style={{ background: '#fff', borderRadius: 8, boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
             {items.map((item, idx) => {
-              const price = item.product_price || item.price || 0;
+              const price = item.price || 0;
               const qty = item.quantity || 1;
-              const name = item.product_name || item.name;
-              const image = item.product_image || item.image_url;
+              const name = item.name;
+              const image = item.thumbnail || item.image_url;
+              const pid = item.productId;
               return (
-                <div key={item.id} style={{ display: 'flex', alignItems: 'center', padding: '16px 20px', borderBottom: idx < items.length - 1 ? '1px solid #f0f0f0' : 'none', gap: 16 }}>
-                  <Link to={`/product/${item.product_id || item.id}`} style={{ flexShrink: 0 }}>
+                <div key={pid || idx} style={{ display: 'flex', alignItems: 'center', padding: '16px 20px', borderBottom: idx < items.length - 1 ? '1px solid #f0f0f0' : 'none', gap: 16 }}>
+                  <Link to={`/product/${pid}`} style={{ flexShrink: 0 }}>
                     <div style={{ width: 80, height: 80, borderRadius: 6, overflow: 'hidden', background: '#f5f5f5' }}>
                       {image ? <img src={image} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ccc', fontSize: 12 }}>No img</div>}
                     </div>
@@ -47,14 +48,14 @@ export default function CartPage() {
                     <p style={{ margin: 0, fontSize: 14, color: '#c8a97e', fontWeight: 600 }}>{formatAmount(price)}</p>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #dee2e6', borderRadius: 4, overflow: 'hidden', height: 34 }}>
-                    <button onClick={() => updateQuantity(item.id, qty - 1)} style={{ width: 32, height: 32, border: 'none', background: '#f8f9fa', cursor: 'pointer', fontWeight: 'bold', fontSize: 16 }}>-</button>
+                    <button onClick={() => updateQuantity(pid, qty - 1)} style={{ width: 32, height: 32, border: 'none', background: '#f8f9fa', cursor: 'pointer', fontWeight: 'bold', fontSize: 16 }}>-</button>
                     <span style={{ padding: '0 12px', fontSize: 14, fontWeight: 500, minWidth: 20, textAlign: 'center' }}>{qty}</span>
-                    <button onClick={() => updateQuantity(item.id, qty + 1)} style={{ width: 32, height: 32, border: 'none', background: '#f8f9fa', cursor: 'pointer', fontWeight: 'bold', fontSize: 16 }}>+</button>
+                    <button onClick={() => updateQuantity(pid, qty + 1)} style={{ width: 32, height: 32, border: 'none', background: '#f8f9fa', cursor: 'pointer', fontWeight: 'bold', fontSize: 16 }}>+</button>
                   </div>
                   <div style={{ textAlign: 'right', minWidth: 80 }}>
                     <span style={{ fontWeight: 700, color: '#333' }}>{formatAmount(price * qty)}</span>
                   </div>
-                  <button onClick={() => removeItem(item.id)} style={{ background: 'none', border: 'none', color: '#999', cursor: 'pointer', fontSize: 20, padding: '4px 8px' }}>×</button>
+                  <button onClick={() => removeItem(pid)} style={{ background: 'none', border: 'none', color: '#999', cursor: 'pointer', fontSize: 20, padding: '4px 8px' }}>×</button>
                 </div>
               );
             })}

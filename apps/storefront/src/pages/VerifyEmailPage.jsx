@@ -10,11 +10,11 @@ export default function VerifyEmailPage() {
 
   useEffect(() => {
     const token = searchParams.get('token');
-    const email = searchParams.get('email');
+    const email = searchParams.get('email') || '';
 
-    if (!token || !email) {
+    if (!token) {
       setStatus('error');
-      setError('Invalid verification link. Missing token or email.');
+      setError('Invalid verification link. Missing verification token.');
       return;
     }
 
