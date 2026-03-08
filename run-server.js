@@ -9,14 +9,14 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = 5000;
 
-const distDir = path.join(__dirname, 'frontend/dist');
-const storefrontDir = path.join(distDir, 'storefront');
+const frontendDir = path.join(__dirname, 'frontend');
+const storefrontDir = path.join(frontendDir, 'storefront');
 
 app.use('/storefront', express.static(storefrontDir));
 
-app.use('/templates', express.static(path.join(distDir, 'templates')));
+app.use('/templates', express.static(path.join(frontendDir, 'templates')));
 
-app.use(express.static(distDir, {
+app.use(express.static(frontendDir, {
   extensions: ['html'],
   index: 'index.html',
 }));
@@ -31,7 +31,7 @@ app.get('/storefront/*', (req, res) => {
 });
 
 app.get('*', (req, res) => {
-  const indexPath = path.join(distDir, 'index.html');
+  const indexPath = path.join(frontendDir, 'index.html');
   if (fs.existsSync(indexPath)) {
     res.sendFile(indexPath);
   } else {

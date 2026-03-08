@@ -18,41 +18,38 @@ function copyDir(src, dest) {
   }
 }
 
-const distDir = path.join(__dirname, 'frontend/dist');
-if (fs.existsSync(distDir)) {
-  fs.rmSync(distDir, { recursive: true });
-}
-fs.mkdirSync(distDir, { recursive: true });
+const frontendDir = path.join(__dirname, 'frontend');
 
 console.log('Building Fluxe Platform...');
-execSync('npm run build', { cwd: path.join(__dirname, 'frontend/platform'), stdio: 'inherit' });
+execSync('npm run build', { cwd: path.join(frontendDir, 'src/platform'), stdio: 'inherit' });
 
 console.log('Building Fluxe Storefront...');
-execSync('npm run build', { cwd: path.join(__dirname, 'frontend/storefront'), stdio: 'inherit' });
+execSync('npm run build', { cwd: path.join(frontendDir, 'src/storefront'), stdio: 'inherit' });
 
-const platformDist = path.join(__dirname, 'frontend/platform/dist');
-const storefrontDist = path.join(__dirname, 'frontend/storefront/dist');
+const platformDist = path.join(frontendDir, 'src/platform/dist');
+const storefrontDist = path.join(frontendDir, 'src/storefront/dist');
 
-console.log('Copying Platform build to frontend/dist/...');
+console.log('Copying Platform build to frontend/...');
 const platformIndex = path.join(platformDist, 'index.html');
 if (fs.existsSync(platformIndex)) {
-  fs.copyFileSync(platformIndex, path.join(distDir, 'index.html'));
+  fs.copyFileSync(platformIndex, path.join(frontendDir, 'index.html'));
 }
 const platformAssets = path.join(platformDist, 'assets');
 if (fs.existsSync(platformAssets)) {
-  copyDir(platformAssets, path.join(distDir, 'assets'));
+  const destAssets = path.join(frontendDir, 'assets');
+  if (fs.existsSync(destAssets)) {
+    fs.rmSync(destAssets, { recursive: true });
+  }
+  copyDir(platformAssets, destAssets);
 }
 
-console.log('Copying Storefront build to frontend/dist/storefront/...');
-copyDir(storefrontDist, path.join(distDir, 'storefront'));
-
-console.log('Copying templates to frontend/dist/templates/...');
-const templatesDir = path.join(__dirname, 'frontend/templates');
-if (fs.existsSync(templatesDir)) {
-  copyDir(templatesDir, path.join(distDir, 'templates'));
+console.log('Copying Storefront build to frontend/storefront/...');
+const storefrontOut = path.join(frontendDir, 'storefront');
+if (fs.existsSync(storefrontOut)) {
+  fs.rmSync(storefrontOut, { recursive: true });
 }
+copyDir(storefrontDist, storefrontOut);
 
 console.log('Build complete!');
-console.log('  Platform   -> frontend/dist/index.html + frontend/dist/assets/');
-console.log('  Storefront -> frontend/dist/storefront/');
-console.log('  Templates  -> frontend/dist/templates/');
+console.log('  Platform   -> frontend/index.html + frontend/assets/');
+console.log('  Storefront -> frontend/storefront/');
