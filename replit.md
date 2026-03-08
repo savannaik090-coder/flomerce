@@ -165,14 +165,23 @@ The project has been migrated to a two-app React architecture per `MIGRATION_PLA
   - Dynamic site config via subdomain detection
   - Builds to `apps/storefront/dist/`
 
+### Build & Deployment Pipeline
+The React apps build into the existing `frontend/` folder so the deployment pipeline stays the same:
+
+```bash
+node build.js   # Builds both apps and copies output to frontend/
+```
+
+This runs:
+1. `apps/platform/` → builds → copies to `frontend/index.html` + `frontend/assets/`
+2. `apps/storefront/` → builds → copies to `frontend/storefront/`
+
+**Important:** Always run `node build.js` before pushing to GitHub so the `frontend/` folder has the latest React builds. The backend deploys separately via GitHub Actions (`deploy-backend.yml`).
+
+**Local development:** `run-server.js` serves from `frontend/` on port 5000 with SPA routing. The storefront is accessible at `/storefront/`.
+
 ### Key Backend Update
 - **Per-store Razorpay credentials**: `payments-worker.js` updated to read `razorpayKeyId`/`razorpayKeySecret` from site settings when `siteId` is provided in payment requests. Falls back to global env vars for subscription payments.
-
-### Build Commands
-```bash
-cd apps/platform && npm run build    # Build App A
-cd apps/storefront && npm run build  # Build App B
-```
 
 ## Local Development vs Production
 

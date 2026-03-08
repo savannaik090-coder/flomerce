@@ -5,8 +5,11 @@
   "type": "module",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node server.js"
+    "start": "node run-server.js",
+    "dev": "node run-server.js",
+    "build": "node build.js",
+    "build:platform": "cd apps/platform && npm run build",
+    "build:storefront": "cd apps/storefront && npm run build"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^5.1.4",

@@ -51,7 +51,8 @@ export function SiteProvider({ children }) {
   async function fetchSiteConfig(sub) {
     try {
       setLoading(true);
-      const response = await fetch(`https://fluxe.in/api/site?subdomain=${encodeURIComponent(sub)}`);
+      const apiBase = window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
+      const response = await fetch(`${apiBase}/api/site?subdomain=${encodeURIComponent(sub)}`);
       if (!response.ok) {
         throw new Error('Store not found');
       }

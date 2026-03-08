@@ -1,0 +1,1 @@
+import{o as t}from"./index-Buy9r4JS.js";async function n(r){return t("/api/orders",{method:"POST",body:JSON.stringify(r)})}async function o(r,e={}){const s=new URLSearchParams({site_id:r,...e}).toString();return t(`/api/orders?${s}`)}async function i(r,e){return t(`/api/orders/${r}`,{method:"PUT",body:JSON.stringify({status:e})})}export{n as c,o as g,i as u};
