@@ -5,6 +5,7 @@ import { AuthContext } from '../context/AuthContext.jsx';
 import { SiteContext } from '../context/SiteContext.jsx';
 import { CurrencyContext } from '../context/CurrencyContext.jsx';
 import * as orderService from '../services/orderService.js';
+import '../styles/checkout.css';
 
 const INDIAN_STATES = [
   'Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Goa',

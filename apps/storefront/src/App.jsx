@@ -28,6 +28,8 @@ const ProductsAdminPage = React.lazy(() => import('./pages/ProductsAdminPage.jsx
 const ForgotPasswordPage = React.lazy(() => import('./pages/ForgotPasswordPage.jsx'));
 const ResetPasswordPage = React.lazy(() => import('./pages/ResetPasswordPage.jsx'));
 const VerifyEmailPage = React.lazy(() => import('./pages/VerifyEmailPage.jsx'));
+const PrivacyPolicyPage = React.lazy(() => import('./pages/PrivacyPolicyPage.jsx'));
+const TermsPage = React.lazy(() => import('./pages/TermsPage.jsx'));
 
 function LoadingFallback() {
   return (
@@ -103,6 +105,8 @@ export default function App() {
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/verify-email" element={<VerifyEmailPage />} />
+            <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+            <Route path="/terms" element={<TermsPage />} />
           </Routes>
         </React.Suspense>
       </main>

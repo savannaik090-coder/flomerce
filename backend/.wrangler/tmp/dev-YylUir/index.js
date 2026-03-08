@@ -2357,20 +2357,47 @@ async function handlePayments(request, env, path) {
   }
 }
 __name(handlePayments, "handlePayments");
+async function getRazorpayCredentials(env, siteId) {
+  if (siteId) {
+    try {
+      const site = await env.DB.prepare("SELECT settings FROM sites WHERE id = ?").bind(siteId).first();
+      if (site?.settings) {
+        let settings = site.settings;
+        if (typeof settings === "string") {
+          try {
+            settings = JSON.parse(settings);
+          } catch {
+          }
+        }
+        if (settings?.razorpayKeyId && settings?.razorpayKeySecret) {
+          return { keyId: settings.razorpayKeyId, keySecret: settings.razorpayKeySecret, perSite: true };
+        }
+      }
+    } catch (err) {
+      console.error("Failed to load site Razorpay credentials:", err);
+    }
+  }
+  return { keyId: env.RAZORPAY_KEY_ID, keySecret: env.RAZORPAY_KEY_SECRET, perSite: false };
+}
+__name(getRazorpayCredentials, "getRazorpayCredentials");
 async function createRazorpayOrder(request, env) {
   if (request.method !== "POST") {
     return errorResponse("Method not allowed", 405);
   }
   try {
-    const { amount, currency, receipt, notes, orderId, type } = await request.json();
+    const { amount, currency, receipt, notes, orderId, type, siteId } = await request.json();
     if (!amount) {
       return errorResponse("Amount is required");
+    }
+    const { keyId, keySecret } = await getRazorpayCredentials(env, siteId);
+    if (!keyId || !keySecret) {
+      return errorResponse("Razorpay credentials not configured", 500);
     }
     const amountInPaise = Math.round(amount * 100);
     const response = await fetch("https://api.razorpay.com/v1/orders", {
       method: "POST",
       headers: {
-        "Authorization": "Basic " + btoa(`${env.RAZORPAY_KEY_ID}:${env.RAZORPAY_KEY_SECRET}`),
+        "Authorization": "Basic " + btoa(`${keyId}:${keySecret}`),
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
@@ -2387,14 +2414,14 @@ async function createRazorpayOrder(request, env) {
     }
     const razorpayOrder = await response.json();
     await env.DB.prepare(
-      `INSERT INTO payment_transactions (id, order_id, razorpay_order_id, amount, currency, status, created_at)
-       VALUES (?, ?, ?, ?, ?, 'pending', datetime('now'))`
-    ).bind(generateId(), orderId || null, razorpayOrder.id, amount, currency || "INR").run();
+      `INSERT INTO payment_transactions (id, site_id, order_id, razorpay_order_id, amount, currency, status, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, 'pending', datetime('now'))`
+    ).bind(generateId(), siteId || null, orderId || null, razorpayOrder.id, amount, currency || "INR").run();
     return successResponse({
       orderId: razorpayOrder.id,
       amount: razorpayOrder.amount,
       currency: razorpayOrder.currency,
-      keyId: env.RAZORPAY_KEY_ID
+      keyId
     });
   } catch (error) {
     console.error("Create order error:", error);
@@ -2405,9 +2432,6 @@ __name(createRazorpayOrder, "createRazorpayOrder");
 async function verifyPayment(request, env) {
   if (request.method !== "POST") {
     return errorResponse("Method not allowed", 405);
-  }
-  if (!env.RAZORPAY_KEY_SECRET || !env.RAZORPAY_KEY_ID) {
-    return errorResponse("Razorpay credentials missing", 500);
   }
   try {
     await env.DB.prepare(`
@@ -2451,12 +2475,16 @@ async function verifyPayment(request, env) {
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         )
     `).run();
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, planId, billingCycle } = await request.json();
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, planId, billingCycle, siteId } = await request.json();
     if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
       return errorResponse("Missing payment verification data");
     }
+    const { keySecret } = await getRazorpayCredentials(env, siteId);
+    if (!keySecret) {
+      return errorResponse("Razorpay credentials not configured", 500);
+    }
     const body = razorpay_order_id + "|" + razorpay_payment_id;
-    const computedSignature = crypto2.createHmac("sha256", env.RAZORPAY_KEY_SECRET).update(body).digest("hex");
+    const computedSignature = crypto2.createHmac("sha256", keySecret).update(body).digest("hex");
     console.log("VerifyPayment: signature match?", computedSignature === razorpay_signature);
     console.log("VerifyPayment: receivedSignature:", razorpay_signature);
     console.log("VerifyPayment: computedSignature:", computedSignature);

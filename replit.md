@@ -148,6 +148,32 @@ SSH key has been configured at `~/.ssh/github_key`. To push code:
 1. Add the public key to GitHub (Settings > SSH Keys)
 2. Use `git push` to deploy
 
+## React Migration Status (March 2026)
+
+The project has been migrated to a two-app React architecture per `MIGRATION_PLAN.md`.
+
+### Apps Built
+- **`apps/platform/`** — App A: Fluxe SaaS Platform (React + Vite)
+  - All pages: LandingPage, LoginPage, SignupPage, DashboardPage, VerifyEmailPage, ResetPasswordPage, OwnerAdminPage
+  - Components: Navbar, PlanSelector, SiteAdminPanel (with per-store Razorpay fields), SiteCard, SiteCreationWizard
+  - Builds to `apps/platform/dist/`
+
+- **`apps/storefront/`** — App B: Dynamic E-commerce Storefront (React + Vite)
+  - All pages: HomePage, CategoryPage, ProductDetailPage, CartPage, CheckoutPage, ProfilePage, LoginPage, SignupPage, WishlistPage, AboutPage, ContactPage, BookAppointmentPage, OrderTrackPage, AdminPanel, ProductsAdminPage, ForgotPasswordPage, ResetPasswordPage, VerifyEmailPage, PrivacyPolicyPage, TermsPage
+  - All 8 admin sections: Dashboard, Products, Inventory, Orders, Customers, Analytics, PushNotifications, WatchBuy
+  - Full product form with image compression
+  - Dynamic site config via subdomain detection
+  - Builds to `apps/storefront/dist/`
+
+### Key Backend Update
+- **Per-store Razorpay credentials**: `payments-worker.js` updated to read `razorpayKeyId`/`razorpayKeySecret` from site settings when `siteId` is provided in payment requests. Falls back to global env vars for subscription payments.
+
+### Build Commands
+```bash
+cd apps/platform && npm run build    # Build App A
+cd apps/storefront && npm run build  # Build App B
+```
+
 ## Local Development vs Production
 
 | Feature | Local (Replit) | Production (Cloudflare) |
