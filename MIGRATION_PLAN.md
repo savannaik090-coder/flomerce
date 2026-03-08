@@ -132,7 +132,7 @@ fluxe/
 │       │   │   │   ├── CategoryCircles.jsx
 │       │   │   │   ├── FeaturedCollection.jsx
 │       │   │   │   ├── WatchAndBuy.jsx
-│       │   │   │   ├── BridalSection.jsx
+│       │   │   │   ├── FeaturedVideoSection.jsx
 │       │   │   │   ├── ProductShowcase.jsx
 │       │   │   │   ├── StoreLocations.jsx
 │       │   │   │   ├── CustomerReviews.jsx
@@ -313,9 +313,9 @@ This is the main platform website where users sign up, create websites, and mana
 
 **Settings Tab:**
 - Edit brand name, logo, favicon
-- Edit primary and secondary colors
 - Edit contact info (phone, email, address)
 - Edit social links (Instagram, Facebook, Twitter, YouTube)
+- add content add about us page add about images etc.
 - **Razorpay Credentials** (NEW): Input fields for the store owner's Razorpay Key ID and Razorpay Key Secret. These will be stored in the site's `settings` JSON field and used when processing payments on their store.
 
 **Categories Tab:**
@@ -365,7 +365,7 @@ This is the e-commerce store that end-customers visit. It will look **exactly li
 ### Pages & Features (Exact Match to Current Template1)
 
 #### 5.1 Home Page (`HomePage.jsx`)
-**Exact same layout and sections as current `template1/index.html`:**
+**Exact same layout and sections as current `template1/index.html`and all these user can easily manage and edit from thier admin panel:**
 
 1. **Announcement Bar** (`AnnouncementBar.jsx`): Scrolling marquee banner with promotional text. Continuous auto-scroll animation.
 
@@ -384,11 +384,9 @@ This is the e-commerce store that end-customers visit. It will look **exactly li
 
 5. **Watch & Buy Section** (`WatchAndBuy.jsx`): Horizontal scroll of shoppable videos. Each video has an overlaid product link (name, price, image). Only one video plays at a time. Intersection observer for auto-focus.
 
-6. **Bridal/Feature Video Section** (`BridalSection.jsx`): Full-width background video. Title, description overlay. "CHAT NOW" WhatsApp button.
+6. **Feature Video Section** (`FeatureVideoSection.jsx`): Full-width background video. Title, description overlay. "CHAT NOW" WhatsApp button.
 
 7. **Interactive Product Showcase** (`ProductShowcase.jsx`): Large image with clickable "product dots" (e.g., necklace, earrings, bangle). Clicking a dot opens a popup with product details and "Shop Now" link.
-
-8. **Featured Collection** (`FeaturedCollection.jsx`): Section title "Featured Collection". Horizontally scrollable product cards. Products fetched from API (featured/promoted items).
 
 9. **Store Locations** (`StoreLocations.jsx`): Showroom address, hours, phone number. "View on Map" link. "Book Appointment" button.
 
@@ -560,12 +558,8 @@ This is the e-commerce store that end-customers visit. It will look **exactly li
 - Additional notes textarea
 
 **Order Track Page** (`OrderTrackPage.jsx`):
-- Order ID / AWB Number input
-- Multi-source tracking (internal API + Shiprocket)
-- Visual tracking timeline (Picked Up → In Transit → Out for Delivery → Delivered)
-- Order details: date, amount, payment method, expected delivery
-
-**Privacy Policy & Terms Pages**: Static content pages with the store's legal information.
+- the owner of that subdomain website can enter a link for order page so if any clicks on order page under navigation section then they will be redirected to that order tracking page instead of creating a complete order tracking functionality that would be too complex 
+**Privacy Policy & Terms Pages**: Static content pages with the store's legal information. where user can the details from admin panel
 
 #### 5.8 Store Admin Panel (`AdminPanel.jsx`)
 **Exact same sections and features as current `template1/admin-panel.html`:**
@@ -577,7 +571,7 @@ This is the e-commerce store that end-customers visit. It will look **exactly li
    - Period selector: Today, This Week, This Month, This Year, Overall
    - Stats grid: Total Orders, Total Revenue (₹), Total Customers, Inventory Value
    - Pending orders table with Confirm/Cancel actions
-   - Recent orders list
+   - Recent ordejusrs list
 
 2. **Products** (`ProductsSection.jsx`):
    - Search bar to filter products
@@ -790,7 +784,7 @@ The work will be done in this order:
 ### Phase 3: App B — Storefront Core
 10. SiteContext + subdomain detection + API integration
 11. Layout components (Navbar with dynamic categories, Footer, Mobile Bottom Nav, Announcement Bar)
-12. Home page with all sections (Hero Slider, Category Circles, Featured Collection, Watch & Buy, Bridal Section, Product Showcase, Store Locations, Reviews)
+12. Home page with all sections (Hero Slider, Category Circles, Featured Collection, Watch & Buy, featured video Section, Product Showcase, Store Locations, Reviews)
 13. Category page with dynamic product loading, filtering, sorting
 14. Product detail page with gallery, zoom, add to cart/wishlist, related products
 
