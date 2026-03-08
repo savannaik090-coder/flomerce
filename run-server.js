@@ -9,14 +9,14 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = 5000;
 
-const frontendDir = path.join(__dirname, 'frontend');
-const storefrontDir = path.join(frontendDir, 'storefront');
+const distDir = path.join(__dirname, 'frontend/dist');
+const storefrontDir = path.join(distDir, 'storefront');
 
 app.use('/storefront', express.static(storefrontDir));
 
-app.use('/templates', express.static(path.join(frontendDir, 'templates')));
+app.use('/templates', express.static(path.join(distDir, 'templates')));
 
-app.use(express.static(frontendDir, {
+app.use(express.static(distDir, {
   extensions: ['html'],
   index: 'index.html',
 }));
@@ -31,7 +31,12 @@ app.get('/storefront/*', (req, res) => {
 });
 
 app.get('*', (req, res) => {
-  res.sendFile(path.join(frontendDir, 'index.html'));
+  const indexPath = path.join(distDir, 'index.html');
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else {
+    res.status(404).send('Platform not built. Run: node build.js');
+  }
 });
 
 app.listen(PORT, '0.0.0.0', () => {
