@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { SiteContext } from '../context/SiteContext.jsx';
 import { AuthContext } from '../context/AuthContext.jsx';
 import * as authService from '../services/authService.js';
 
 export default function SignupPage() {
   const navigate = useNavigate();
-  const { isAuthenticated } = useContext(AuthContext);
+  const { siteConfig } = useContext(SiteContext);
+  const { isAuthenticated, login } = useContext(AuthContext);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -38,7 +40,14 @@ export default function SignupPage() {
     setLoading(true);
     setError('');
     try {
-      await authService.signup(name, email, password);
+      const result = await authService.signup(siteConfig?.id, name, email, password);
+      const userData = result.customer || result.data;
+      const token = result.token;
+      if (userData && token) {
+        login(userData, token);
+        navigate('/');
+        return;
+      }
       setShowVerificationPopup(true);
     } catch (err) {
       setError(err.message || 'Signup failed. Please try again.');

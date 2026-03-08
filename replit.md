@@ -87,12 +87,19 @@ Fluxe is a multi-tenant SaaS platform that allows users to create their own e-co
 - Subdomains are detected by the backend worker and routed to storefront
 - Products, orders, categories, cart, wishlist are all scoped per site
 
-## Admin Panel Authentication
-- **Platform Admin:** Full JWT auth + role check (admin@fluxe.in or admin/owner role)
-- **Site Admin:** Simplified verification-code-only access via `/api/site-admin/verify`
-  - Store owners set a verification code from their dashboard
-  - Code is stored in `sites.settings` JSON field as `adminVerificationCode`
-  - Verification returns a `SiteAdmin` token valid for 24 hours
+## Authentication Architecture
+- **Platform Users:** JWT-based auth (`Bearer <token>`) for platform signup/login/dashboard
+- **Site Customers:** Per-site customer accounts via `site_customers` table, auth via `SiteCustomer <token>` header
+  - Same email can register on multiple stores (unique per site_id + email)
+  - Customer sessions stored in `site_customer_sessions` table
+  - Frontend stores token in `localStorage('store_auth_token')`
+- **Site Admin:** Verification-code-only access via `/api/site-admin/verify`
+  - Code stored in `sites.settings` JSON as `adminVerificationCode`
+  - Returns `SiteAdmin <token>` valid for 24 hours, stored in `sessionStorage('site_admin_token')`
+  - Admin panel uses SiteAdmin token exclusively (no platform JWT needed)
+- **Platform Super-Admin:** Full JWT auth + role check (admin@fluxe.in or admin/owner role)
+- **Auth priority in api.js:** SiteAdmin token (sessionStorage) > SiteCustomer token (localStorage)
+- Backend workers accept SiteAdmin auth for CRUD: products-worker, categories-worker, orders-worker
 
 ## Build & Deployment
 
@@ -124,12 +131,13 @@ wrangler secret put RESEND_API_KEY      # Or SENDGRID_API_KEY
 | API URL | Relative paths | https://fluxe.in/api/* |
 
 ## Key API Routes
-- `POST /api/auth/signup|login|logout|verify-email|reset-password`
-- `GET/POST /api/sites` - Site CRUD (requires auth)
-- `GET /api/products?siteId=...` - Products (requires siteId or subdomain)
-- `GET/POST /api/orders` - Orders
-- `GET/POST /api/cart?siteId=...` - Cart
-- `GET/POST /api/categories?siteId=...` - Categories
+- `POST /api/auth/signup|login|logout|verify-email|reset-password` - Platform user auth
+- `POST /api/customer-auth/signup|login|logout|profile` - Storefront customer auth (per-site)
+- `GET/POST /api/sites` - Site CRUD (requires platform auth)
+- `GET /api/products?siteId=...&categoryId=...` - Products (requires siteId or subdomain)
+- `GET/POST /api/orders` - Orders (SiteCustomer or SiteAdmin auth)
+- `GET/POST /api/cart?siteId=...` - Cart (SiteCustomer or session-based)
+- `GET/POST /api/categories?siteId=...` - Categories (SiteAdmin auth for mutations)
 - `GET /api/site?subdomain=...` - Public site info
 - `POST /api/site-admin/verify` - Verify admin code for store admin access
 - `POST /api/site-admin/set-code` - Set admin verification code (requires auth)

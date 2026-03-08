@@ -1,5 +1,6 @@
 import { generateId, sanitizeInput, jsonResponse, errorResponse, successResponse, handleCORS } from '../../utils/helpers.js';
 import { validateAuth } from '../../utils/auth.js';
+import { validateSiteAdmin } from './site-admin-worker.js';
 
 export async function handleProducts(request, env, path) {
   const corsResponse = handleCORS(request);
@@ -14,14 +15,31 @@ export async function handleProducts(request, env, path) {
     const siteId = url.searchParams.get('siteId');
     const subdomain = url.searchParams.get('subdomain');
     const category = url.searchParams.get('category');
+    const categoryId = url.searchParams.get('categoryId');
     
     if (productId) {
       return getProduct(env, productId);
     }
-    return getProducts(env, { siteId, subdomain, category, url });
+    return getProducts(env, { siteId, subdomain, category, categoryId, url });
   }
 
-  const user = await validateAuth(request, env);
+  let user = await validateAuth(request, env);
+  let adminSiteId = null;
+
+  if (!user) {
+    const authHeader = request.headers.get('Authorization');
+    if (authHeader && authHeader.startsWith('SiteAdmin ')) {
+      const siteId = url.searchParams.get('siteId');
+      if (siteId) {
+        const admin = await validateSiteAdmin(request, env, siteId);
+        if (admin) {
+          adminSiteId = siteId;
+          user = { id: admin.userId || 'site-admin', _adminSiteId: siteId };
+        }
+      }
+    }
+  }
+
   if (!user) {
     return errorResponse('Unauthorized', 401, 'UNAUTHORIZED');
   }
@@ -38,7 +56,7 @@ export async function handleProducts(request, env, path) {
   }
 }
 
-async function getProducts(env, { siteId, subdomain, category, url }) {
+async function getProducts(env, { siteId, subdomain, category, categoryId, url }) {
   try {
     if (!siteId && !subdomain) {
       return errorResponse('siteId or subdomain is required to fetch products');
@@ -59,7 +77,10 @@ async function getProducts(env, { siteId, subdomain, category, url }) {
       bindings.push(subdomain);
     }
 
-    if (category) {
+    if (categoryId) {
+      query += ' AND p.category_id = ?';
+      bindings.push(categoryId);
+    } else if (category) {
       query += ' AND (c.slug = ? OR c.name = ?)';
       bindings.push(category, category);
     }
@@ -134,9 +155,14 @@ async function createProduct(request, env, user) {
       return errorResponse('Site ID, name and price are required');
     }
 
-    const site = await env.DB.prepare(
-      'SELECT id FROM sites WHERE id = ? AND user_id = ?'
-    ).bind(siteId, user.id).first();
+    let site;
+    if (user._adminSiteId && user._adminSiteId === siteId) {
+      site = await env.DB.prepare('SELECT id FROM sites WHERE id = ?').bind(siteId).first();
+    } else {
+      site = await env.DB.prepare(
+        'SELECT id FROM sites WHERE id = ? AND user_id = ?'
+      ).bind(siteId, user.id).first();
+    }
 
     if (!site) {
       return errorResponse('Site not found or unauthorized', 404);
@@ -186,11 +212,18 @@ async function updateProduct(request, env, user, productId) {
   }
 
   try {
-    const product = await env.DB.prepare(
-      `SELECT p.id, p.site_id FROM products p 
-       JOIN sites s ON p.site_id = s.id 
-       WHERE p.id = ? AND s.user_id = ?`
-    ).bind(productId, user.id).first();
+    let product;
+    if (user._adminSiteId) {
+      product = await env.DB.prepare(
+        'SELECT id, site_id FROM products WHERE id = ? AND site_id = ?'
+      ).bind(productId, user._adminSiteId).first();
+    } else {
+      product = await env.DB.prepare(
+        `SELECT p.id, p.site_id FROM products p 
+         JOIN sites s ON p.site_id = s.id 
+         WHERE p.id = ? AND s.user_id = ?`
+      ).bind(productId, user.id).first();
+    }
 
     if (!product) {
       return errorResponse('Product not found or unauthorized', 404);
@@ -240,11 +273,18 @@ async function deleteProduct(env, user, productId) {
   }
 
   try {
-    const product = await env.DB.prepare(
-      `SELECT p.id FROM products p 
-       JOIN sites s ON p.site_id = s.id 
-       WHERE p.id = ? AND s.user_id = ?`
-    ).bind(productId, user.id).first();
+    let product;
+    if (user._adminSiteId) {
+      product = await env.DB.prepare(
+        'SELECT id FROM products WHERE id = ? AND site_id = ?'
+      ).bind(productId, user._adminSiteId).first();
+    } else {
+      product = await env.DB.prepare(
+        `SELECT p.id FROM products p 
+         JOIN sites s ON p.site_id = s.id 
+         WHERE p.id = ? AND s.user_id = ?`
+      ).bind(productId, user.id).first();
+    }
 
     if (!product) {
       return errorResponse('Product not found or unauthorized', 404);

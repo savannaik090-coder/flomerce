@@ -315,6 +315,42 @@ CREATE INDEX idx_guest_orders_site ON guest_orders(site_id);
 CREATE INDEX idx_guest_orders_number ON guest_orders(order_number);
 
 -- =====================================================
+-- SITE CUSTOMERS TABLE (Per-site customer accounts)
+-- =====================================================
+CREATE TABLE IF NOT EXISTS site_customers (
+    id TEXT PRIMARY KEY,
+    site_id TEXT NOT NULL,
+    email TEXT NOT NULL,
+    password_hash TEXT NOT NULL,
+    name TEXT NOT NULL,
+    phone TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
+    UNIQUE(site_id, email)
+);
+
+CREATE INDEX idx_site_customers_site ON site_customers(site_id);
+CREATE INDEX idx_site_customers_email ON site_customers(site_id, email);
+
+-- =====================================================
+-- SITE CUSTOMER SESSIONS TABLE
+-- =====================================================
+CREATE TABLE IF NOT EXISTS site_customer_sessions (
+    id TEXT PRIMARY KEY,
+    customer_id TEXT NOT NULL,
+    site_id TEXT NOT NULL,
+    token TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (customer_id) REFERENCES site_customers(id) ON DELETE CASCADE,
+    FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_customer_sessions_token ON site_customer_sessions(token);
+CREATE INDEX idx_customer_sessions_customer ON site_customer_sessions(customer_id);
+
+-- =====================================================
 -- NOTIFICATIONS TABLE
 -- =====================================================
 CREATE TABLE IF NOT EXISTS notifications (

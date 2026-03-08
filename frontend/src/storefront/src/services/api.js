@@ -45,8 +45,12 @@ export async function apiRequest(endpoint, options = {}) {
     ...options.headers,
   };
 
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+  const adminToken = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('site_admin_token') : null;
+
+  if (adminToken) {
+    headers['Authorization'] = `SiteAdmin ${adminToken}`;
+  } else if (token) {
+    headers['Authorization'] = `SiteCustomer ${token}`;
   }
 
   headers['X-Session-ID'] = getSessionId();

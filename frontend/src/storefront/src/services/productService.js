@@ -13,8 +13,10 @@ export async function getProductBySlug(siteId, slug) {
   return apiRequest(`/api/products?siteId=${siteId}&slug=${slug}`);
 }
 
-export async function getProductsByCategory(siteId, categorySlug, params = {}) {
-  const query = new URLSearchParams({ siteId, category: categorySlug, ...params }).toString();
+export async function getProductsByCategory(siteId, categoryIdOrSlug, params = {}) {
+  const isId = categoryIdOrSlug && categoryIdOrSlug.length > 10 && !categoryIdOrSlug.includes(' ');
+  const categoryParam = isId ? { categoryId: categoryIdOrSlug } : { category: categoryIdOrSlug };
+  const query = new URLSearchParams({ siteId, ...categoryParam, ...params }).toString();
   return apiRequest(`/api/products?${query}`);
 }
 

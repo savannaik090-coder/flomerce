@@ -1,10 +1,12 @@
-import React, { createContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useState, useEffect, useCallback, useContext } from 'react';
+import { SiteContext } from './SiteContext.jsx';
 import { getAuthToken, setAuthToken } from '../services/api.js';
 import { getProfile, logout as logoutService } from '../services/authService.js';
 
 export const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
+  const { siteConfig } = useContext(SiteContext);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -18,8 +20,8 @@ export function AuthProvider({ children }) {
 
     try {
       const result = await getProfile();
-      if (result.data || result.user) {
-        const userData = result.data || result.user;
+      if (result.data || result.customer) {
+        const userData = result.data || result.customer;
         setUser(userData);
         setIsAuthenticated(true);
       }

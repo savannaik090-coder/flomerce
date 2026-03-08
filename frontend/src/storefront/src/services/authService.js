@@ -1,9 +1,9 @@
 import { apiRequest, setAuthToken } from './api.js';
 
-export async function login(email, password) {
-  const data = await apiRequest('/api/auth/login', {
+export async function login(siteId, email, password) {
+  const data = await apiRequest('/api/customer-auth/login', {
     method: 'POST',
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ siteId, email, password }),
   });
   if (data.token) {
     setAuthToken(data.token);
@@ -11,63 +11,33 @@ export async function login(email, password) {
   return data;
 }
 
-export async function signup(name, email, password) {
-  return apiRequest('/api/auth/signup', {
+export async function signup(siteId, name, email, password) {
+  const data = await apiRequest('/api/customer-auth/signup', {
     method: 'POST',
-    body: JSON.stringify({ name, email, password }),
+    body: JSON.stringify({ siteId, name, email, password }),
   });
+  if (data.token) {
+    setAuthToken(data.token);
+  }
+  return data;
 }
 
 export async function logout() {
+  try {
+    await apiRequest('/api/customer-auth/logout', {
+      method: 'POST',
+    });
+  } catch (e) {}
   setAuthToken(null);
 }
 
 export async function getProfile() {
-  return apiRequest('/api/auth/me');
+  return apiRequest('/api/customer-auth/me');
 }
 
 export async function updateProfile(data) {
-  return apiRequest('/api/auth/update-profile', {
+  return apiRequest('/api/customer-auth/update-profile', {
     method: 'PUT',
     body: JSON.stringify(data),
   });
-}
-
-export async function verifyEmail(token, email) {
-  return apiRequest('/api/auth/verify-email', {
-    method: 'POST',
-    body: JSON.stringify({ token, email }),
-  });
-}
-
-export async function requestPasswordReset(email) {
-  return apiRequest('/api/auth/request-reset', {
-    method: 'POST',
-    body: JSON.stringify({ email }),
-  });
-}
-
-export async function resetPassword(token, email, password) {
-  return apiRequest('/api/auth/reset-password', {
-    method: 'POST',
-    body: JSON.stringify({ token, email, password }),
-  });
-}
-
-export async function resendVerification(email) {
-  return apiRequest('/api/auth/resend-verification', {
-    method: 'POST',
-    body: JSON.stringify({ email }),
-  });
-}
-
-export async function googleAuth(credential) {
-  const data = await apiRequest('/api/auth/google', {
-    method: 'POST',
-    body: JSON.stringify({ credential }),
-  });
-  if (data.token) {
-    setAuthToken(data.token);
-  }
-  return data;
 }

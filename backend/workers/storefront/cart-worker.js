@@ -1,5 +1,5 @@
 import { generateId, jsonResponse, errorResponse, successResponse, handleCORS } from '../../utils/helpers.js';
-import { validateAuth } from '../../utils/auth.js';
+import { validateAuth, validateAnyAuth } from '../../utils/auth.js';
 
 
 export async function handleCart(request, env, path) {
@@ -25,7 +25,7 @@ export async function handleCart(request, env, path) {
     return errorResponse('Site ID is required');
   }
 
-  const user = await validateAuth(request, env);
+  const user = await validateAnyAuth(request, env);
   const sessionId = request.headers.get('X-Session-ID') || url.searchParams.get('sessionId');
 
   if (!user && !sessionId) {
@@ -47,7 +47,7 @@ export async function handleCart(request, env, path) {
 }
 
 async function handleClearCart(request, env, url) {
-  const user = await validateAuth(request, env);
+  const user = await validateAnyAuth(request, env);
   const siteId = url.searchParams.get('siteId');
   const sessionId = url.searchParams.get('sessionId');
 
@@ -72,7 +72,7 @@ async function handleClearCart(request, env, url) {
 }
 
 async function handleMergeCarts(request, env) {
-  const user = await validateAuth(request, env);
+  const user = await validateAnyAuth(request, env);
   if (!user) return errorResponse('Authentication required', 401);
 
   try {

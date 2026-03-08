@@ -1,5 +1,6 @@
 import { generateId, sanitizeInput, jsonResponse, errorResponse, successResponse, handleCORS } from '../../utils/helpers.js';
 import { validateAuth } from '../../utils/auth.js';
+import { validateSiteAdmin } from './site-admin-worker.js';
 
 export async function handleCategories(request, env, path) {
   const corsResponse = handleCORS(request);
@@ -21,7 +22,21 @@ export async function handleCategories(request, env, path) {
     return getCategories(env, { siteId, subdomain, slug });
   }
 
-  const user = await validateAuth(request, env);
+  let user = await validateAuth(request, env);
+
+  if (!user) {
+    const authHeader = request.headers.get('Authorization');
+    if (authHeader && authHeader.startsWith('SiteAdmin ')) {
+      const siteId = url.searchParams.get('siteId');
+      if (siteId) {
+        const admin = await validateSiteAdmin(request, env, siteId);
+        if (admin) {
+          user = { id: admin.userId || 'site-admin', _adminSiteId: siteId };
+        }
+      }
+    }
+  }
+
   if (!user) {
     return errorResponse('Unauthorized', 401, 'UNAUTHORIZED');
   }
@@ -118,9 +133,14 @@ async function createCategory(request, env, user) {
       return errorResponse('Site ID and name are required');
     }
 
-    const site = await env.DB.prepare(
-      'SELECT id FROM sites WHERE id = ? AND user_id = ?'
-    ).bind(siteId, user.id).first();
+    let site;
+    if (user._adminSiteId && user._adminSiteId === siteId) {
+      site = await env.DB.prepare('SELECT id FROM sites WHERE id = ?').bind(siteId).first();
+    } else {
+      site = await env.DB.prepare(
+        'SELECT id FROM sites WHERE id = ? AND user_id = ?'
+      ).bind(siteId, user.id).first();
+    }
 
     if (!site) {
       return errorResponse('Site not found or unauthorized', 404);
@@ -165,11 +185,18 @@ async function updateCategory(request, env, user, categoryId) {
   }
 
   try {
-    const category = await env.DB.prepare(
-      `SELECT c.id, c.site_id FROM categories c 
-       JOIN sites s ON c.site_id = s.id 
-       WHERE c.id = ? AND s.user_id = ?`
-    ).bind(categoryId, user.id).first();
+    let category;
+    if (user._adminSiteId) {
+      category = await env.DB.prepare(
+        'SELECT id, site_id FROM categories WHERE id = ? AND site_id = ?'
+      ).bind(categoryId, user._adminSiteId).first();
+    } else {
+      category = await env.DB.prepare(
+        `SELECT c.id, c.site_id FROM categories c 
+         JOIN sites s ON c.site_id = s.id 
+         WHERE c.id = ? AND s.user_id = ?`
+      ).bind(categoryId, user.id).first();
+    }
 
     if (!category) {
       return errorResponse('Category not found or unauthorized', 404);
@@ -223,11 +250,18 @@ async function deleteCategory(env, user, categoryId) {
   }
 
   try {
-    const category = await env.DB.prepare(
-      `SELECT c.id FROM categories c 
-       JOIN sites s ON c.site_id = s.id 
-       WHERE c.id = ? AND s.user_id = ?`
-    ).bind(categoryId, user.id).first();
+    let category;
+    if (user._adminSiteId) {
+      category = await env.DB.prepare(
+        'SELECT id FROM categories WHERE id = ? AND site_id = ?'
+      ).bind(categoryId, user._adminSiteId).first();
+    } else {
+      category = await env.DB.prepare(
+        `SELECT c.id FROM categories c 
+         JOIN sites s ON c.site_id = s.id 
+         WHERE c.id = ? AND s.user_id = ?`
+      ).bind(categoryId, user.id).first();
+    }
 
     if (!category) {
       return errorResponse('Category not found or unauthorized', 404);

@@ -1,5 +1,5 @@
 import { generateId, generateOrderNumber, jsonResponse, errorResponse, successResponse, handleCORS } from '../../utils/helpers.js';
-import { validateAuth } from '../../utils/auth.js';
+import { validateAuth, validateAnyAuth } from '../../utils/auth.js';
 import { updateProductStock } from './products-worker.js';
 
 export async function handleOrders(request, env, path) {
@@ -19,12 +19,12 @@ export async function handleOrders(request, env, path) {
     return trackOrder(env, orderId);
   }
 
-  const user = await validateAuth(request, env);
+  const user = await validateAnyAuth(request, env);
 
   switch (method) {
     case 'GET':
       if (orderId) {
-        return getOrder(env, user, orderId);
+        return getOrder(env, user, orderId, request);
       }
       return getOrders(request, env, user);
     case 'POST':
@@ -47,18 +47,37 @@ async function getOrders(request, env, user) {
     let query = 'SELECT * FROM orders WHERE 1=1';
     const bindings = [];
 
-    if (user) {
-      if (siteId) {
-        const site = await env.DB.prepare(
-          'SELECT id FROM sites WHERE id = ? AND user_id = ?'
-        ).bind(siteId, user.id).first();
+    const authHeader = request.headers.get('Authorization');
+    let isSiteAdmin = false;
 
-        if (site) {
-          query += ' AND site_id = ?';
-          bindings.push(siteId);
+    if (authHeader && authHeader.startsWith('SiteAdmin ') && siteId) {
+      const { validateSiteAdmin } = await import('./site-admin-worker.js');
+      const admin = await validateSiteAdmin(request, env, siteId);
+      if (admin) {
+        isSiteAdmin = true;
+      }
+    }
+
+    if (isSiteAdmin && siteId) {
+      query += ' AND site_id = ?';
+      bindings.push(siteId);
+    } else if (user) {
+      if (siteId) {
+        if (user.type === 'owner') {
+          const site = await env.DB.prepare(
+            'SELECT id FROM sites WHERE id = ? AND user_id = ?'
+          ).bind(siteId, user.id).first();
+
+          if (site) {
+            query += ' AND site_id = ?';
+            bindings.push(siteId);
+          } else {
+            query += ' AND user_id = ? AND site_id = ?';
+            bindings.push(user.id, siteId);
+          }
         } else {
-          query += ' AND user_id = ?';
-          bindings.push(user.id);
+          query += ' AND user_id = ? AND site_id = ?';
+          bindings.push(user.id, siteId);
         }
       } else {
         query += ' AND user_id = ?';
@@ -90,14 +109,36 @@ async function getOrders(request, env, user) {
   }
 }
 
-async function getOrder(env, user, orderId) {
+async function getOrder(env, user, orderId, request) {
   try {
-    let query = 'SELECT * FROM orders WHERE id = ? OR order_number = ?';
+    let query = 'SELECT * FROM orders WHERE (id = ? OR order_number = ?)';
     const bindings = [orderId, orderId];
 
-    if (user) {
-      query += ' AND (user_id = ? OR site_id IN (SELECT id FROM sites WHERE user_id = ?))';
-      bindings.push(user.id, user.id);
+    const authHeader = request ? request.headers.get('Authorization') : null;
+    if (authHeader && authHeader.startsWith('SiteAdmin ')) {
+      const orderCheck = await env.DB.prepare(
+        'SELECT site_id FROM orders WHERE id = ? OR order_number = ?'
+      ).bind(orderId, orderId).first();
+      if (orderCheck) {
+        const { validateSiteAdmin } = await import('./site-admin-worker.js');
+        const admin = await validateSiteAdmin(request, env, orderCheck.site_id);
+        if (admin) {
+          query += ' AND site_id = ?';
+          bindings.push(orderCheck.site_id);
+        } else {
+          return errorResponse('Order not found or unauthorized', 404, 'NOT_FOUND');
+        }
+      }
+    } else if (user) {
+      if (user.type === 'customer') {
+        query += ' AND user_id = ?';
+        bindings.push(user.id);
+      } else {
+        query += ' AND (user_id = ? OR site_id IN (SELECT id FROM sites WHERE user_id = ?))';
+        bindings.push(user.id, user.id);
+      }
+    } else {
+      return errorResponse('Unauthorized', 401, 'UNAUTHORIZED');
     }
 
     const order = await env.DB.prepare(query).bind(...bindings).first();
@@ -234,11 +275,30 @@ async function updateOrderStatus(request, env, user, orderId) {
   }
 
   try {
-    const order = await env.DB.prepare(
-      `SELECT o.id, o.site_id FROM orders o 
-       JOIN sites s ON o.site_id = s.id 
-       WHERE o.id = ? AND s.user_id = ?`
-    ).bind(orderId, user.id).first();
+    let order;
+    if (user && user.type === 'customer') {
+      return errorResponse('Customers cannot update order status', 403);
+    }
+
+    const authHeader = request.headers.get('Authorization');
+    if (authHeader && authHeader.startsWith('SiteAdmin ')) {
+      const { validateSiteAdmin } = await import('./site-admin-worker.js');
+      const orderCheck = await env.DB.prepare('SELECT id, site_id FROM orders WHERE id = ?').bind(orderId).first();
+      if (orderCheck) {
+        const admin = await validateSiteAdmin(request, env, orderCheck.site_id);
+        if (admin) {
+          order = orderCheck;
+        }
+      }
+    }
+
+    if (!order && user) {
+      order = await env.DB.prepare(
+        `SELECT o.id, o.site_id FROM orders o 
+         JOIN sites s ON o.site_id = s.id 
+         WHERE o.id = ? AND s.user_id = ?`
+      ).bind(orderId, user.id).first();
+    }
 
     if (!order) {
       return errorResponse('Order not found or unauthorized', 404);

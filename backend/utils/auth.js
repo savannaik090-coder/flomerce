@@ -188,3 +188,37 @@ export async function requireAuth(request, env) {
   
   return user;
 }
+
+export async function validateAnyAuth(request, env) {
+  const authHeader = request.headers.get('Authorization');
+
+  if (authHeader && authHeader.startsWith('SiteCustomer ')) {
+    const token = authHeader.substring(13);
+    try {
+      const session = await env.DB.prepare(
+        `SELECT cs.customer_id, cs.site_id FROM site_customer_sessions cs
+         WHERE cs.token = ? AND cs.expires_at > datetime('now')`
+      ).bind(token).first();
+
+      if (session) {
+        const customer = await env.DB.prepare(
+          'SELECT id, site_id, email, name, phone FROM site_customers WHERE id = ?'
+        ).bind(session.customer_id).first();
+
+        if (customer) {
+          return { id: customer.id, email: customer.email, name: customer.name, type: 'customer', siteId: customer.site_id };
+        }
+      }
+    } catch (error) {
+      console.error('Customer auth validation error:', error);
+    }
+    return null;
+  }
+
+  const user = await validateAuth(request, env);
+  if (user) {
+    return { ...user, type: 'owner' };
+  }
+
+  return null;
+}

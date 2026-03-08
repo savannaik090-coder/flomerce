@@ -11,6 +11,7 @@ import { handleUsers } from './platform/users-worker.js';
 import { handleSiteRouting, resolveSiteFromRequest } from './site-router.js';
 import { handleAdmin } from './platform/admin-worker.js';
 import { handleSiteAdmin } from './storefront/site-admin-worker.js';
+import { handleCustomerAuth } from './storefront/customer-auth-worker.js';
 import { jsonResponse, errorResponse, corsHeaders, handleCORS } from '../utils/helpers.js';
 
 export default {
@@ -88,6 +89,9 @@ async function handleAPI(request, env, path) {
 
     case 'site-admin':
       return handleSiteAdmin(request, env, path);
+
+    case 'customer-auth':
+      return handleCustomerAuth(request, env, path);
 
     case 'health':
       return handleHealth(env);

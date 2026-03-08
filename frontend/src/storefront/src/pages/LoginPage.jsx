@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { SiteContext } from '../context/SiteContext.jsx';
 import { AuthContext } from '../context/AuthContext.jsx';
 import * as authService from '../services/authService.js';
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const { siteConfig } = useContext(SiteContext);
   const { isAuthenticated, login } = useContext(AuthContext);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -33,25 +35,14 @@ export default function LoginPage() {
     setLoading(true);
     setError('');
     try {
-      const result = await authService.login(email, password);
-      if (result.requiresVerification || result.code === 'EMAIL_NOT_VERIFIED') {
-        setVerificationEmail(email);
-        setShowVerificationNotice(true);
-        setLoading(false);
-        return;
-      }
-      const userData = result.user || result.data;
+      const result = await authService.login(siteConfig?.id, email, password);
+      const userData = result.customer || result.data;
       const token = result.token;
       login(userData, token);
       setSuccess('Login successful!');
       setTimeout(() => navigate('/'), 500);
     } catch (err) {
-      if (err.code === 'EMAIL_NOT_VERIFIED') {
-        setVerificationEmail(email);
-        setShowVerificationNotice(true);
-      } else {
-        setError(err.message || 'Login failed. Please check your credentials.');
-      }
+      setError(err.message || 'Login failed. Please check your credentials.');
     } finally {
       setLoading(false);
     }

@@ -1,5 +1,5 @@
 import { generateId, jsonResponse, errorResponse, successResponse, handleCORS } from '../../utils/helpers.js';
-import { validateAuth } from '../../utils/auth.js';
+import { validateAuth, validateAnyAuth } from '../../utils/auth.js';
 
 export async function handleWishlist(request, env, path) {
   const corsResponse = handleCORS(request);
@@ -12,7 +12,7 @@ export async function handleWishlist(request, env, path) {
     return checkWishlist(request, env);
   }
 
-  const user = await validateAuth(request, env);
+  const user = await validateAnyAuth(request, env);
   if (!user) {
     return errorResponse('Unauthorized', 401, 'UNAUTHORIZED');
   }
@@ -38,7 +38,7 @@ export async function handleWishlist(request, env, path) {
 }
 
 async function checkWishlist(request, env) {
-  const user = await validateAuth(request, env);
+  const user = await validateAnyAuth(request, env);
   if (!user) {
     return successResponse({ inWishlist: false });
   }
