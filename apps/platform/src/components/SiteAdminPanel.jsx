@@ -25,8 +25,35 @@ export default function SiteAdminPanel({ site, onClose, onUpdated }) {
   const [editCategoryName, setEditCategoryName] = useState('');
 
   useEffect(() => {
+    loadFullSite();
     loadCategories();
   }, [site.id]);
+
+  const loadFullSite = async () => {
+    try {
+      const result = await getSite(site.id);
+      const fullSite = result.data || result;
+      let settings = fullSite.settings || {};
+      if (typeof settings === 'string') {
+        try { settings = JSON.parse(settings); } catch (e) { settings = {}; }
+      }
+      let socialLinks = fullSite.social_links || {};
+      if (typeof socialLinks === 'string') {
+        try { socialLinks = JSON.parse(socialLinks); } catch (e) { socialLinks = {}; }
+      }
+      setSiteData({ ...fullSite, settings, socialLinks });
+      setBrandName(fullSite.brand_name || fullSite.brandName || '');
+      setPhone(settings.phone || fullSite.phone || '');
+      setEmail(settings.email || fullSite.email || '');
+      setAddress(settings.address || fullSite.address || '');
+      setInstagram(settings.social?.instagram || socialLinks.instagram || '');
+      setFacebook(settings.social?.facebook || socialLinks.facebook || '');
+      setTwitter(settings.social?.twitter || socialLinks.twitter || '');
+      setYoutube(settings.social?.youtube || socialLinks.youtube || '');
+      setRazorpayKeyId(settings.razorpayKeyId || '');
+      setRazorpayKeySecret(settings.razorpayKeySecret || '');
+    } catch (e) {}
+  };
 
   const loadCategories = async () => {
     try {

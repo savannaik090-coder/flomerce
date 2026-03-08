@@ -44,7 +44,7 @@ export default function SiteCreationWizard({ onClose, onCreated }) {
       const result = await createSite({
         subdomain: subdomain.toLowerCase().replace(/[^a-z0-9-]/g, ''),
         brandName,
-        template: selectedTemplate,
+        templateId: selectedTemplate,
         logo: logoBase64,
         categories: validCategories.map(name => ({
           name,

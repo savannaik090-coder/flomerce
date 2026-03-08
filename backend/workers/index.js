@@ -187,12 +187,14 @@ async function handleSiteInfo(request, env) {
       if (site.settings) settings = JSON.parse(site.settings);
     } catch (e) { /* ignore parse errors */ }
 
+    const { razorpayKeySecret, ...publicSettings } = settings;
+
     return jsonResponse({
       success: true,
       data: {
         ...site,
         socialLinks,
-        settings,
+        settings: publicSettings,
         categories: categoriesResult,
       },
     });

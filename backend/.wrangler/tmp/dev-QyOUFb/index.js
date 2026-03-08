@@ -3650,12 +3650,13 @@ async function handleSiteInfo(request, env) {
         settings = JSON.parse(site.settings);
     } catch (e) {
     }
+    const { razorpayKeySecret, ...publicSettings } = settings;
     return jsonResponse({
       success: true,
       data: {
         ...site,
         socialLinks,
-        settings,
+        settings: publicSettings,
         categories: categoriesResult
       }
     });

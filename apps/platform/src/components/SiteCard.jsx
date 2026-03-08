@@ -4,7 +4,7 @@ export default function SiteCard({ site, onManage, onDelete }) {
   const [deleting, setDeleting] = useState(false);
   const siteName = site.brand_name || site.brandName || site.subdomain;
   const siteUrl = `https://${site.subdomain}.fluxe.in`;
-  const template = site.template || 'template1';
+  const template = site.template_id || site.template || 'template1';
   const createdAt = site.created_at ? new Date(site.created_at).toLocaleDateString() : '';
 
   const handleDelete = async () => {

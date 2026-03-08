@@ -66,7 +66,9 @@ export async function apiRequest(endpoint, options = {}) {
   }
 
   if (data.success && data.data !== undefined) {
-    return { ...data, ...data.data };
+    if (data.data && typeof data.data === 'object' && !Array.isArray(data.data)) {
+      return { ...data, ...data.data };
+    }
   }
 
   return data;

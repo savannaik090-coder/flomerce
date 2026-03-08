@@ -31,7 +31,7 @@ export default function DashboardPage() {
     setSitesLoading(true);
     try {
       const result = await getUserSites();
-      setSites(result.sites || []);
+      setSites(result.data || result.sites || []);
     } catch (e) {
       setSites([]);
     } finally {
@@ -42,8 +42,8 @@ export default function DashboardPage() {
   const loadSubscription = useCallback(async () => {
     try {
       const result = await getSubscriptionStatus();
-      if (result.success && result.subscription) {
-        setSubscription(result.subscription);
+      if (result.success) {
+        setSubscription(result.subscription || result.data || result);
       }
     } catch (e) {}
   }, []);
