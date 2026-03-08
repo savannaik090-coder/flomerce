@@ -75,6 +75,10 @@ export async function apiRequest(endpoint, options = {}) {
       throw new APIError(errorMsg, response.status, data.code);
     }
 
+    if (data.success && data.data !== undefined) {
+      return { ...data, ...data.data };
+    }
+
     return data;
   } catch (error) {
     if (error instanceof APIError) {
