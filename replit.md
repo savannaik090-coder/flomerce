@@ -50,41 +50,9 @@ The D1 database schema includes tables for `users`, `sites`, `products`, `catego
 - **Resend/SendGrid:** For transactional email services (API keys are required).
 - **GitHub:** For version control and deployment via Cloudflare's integrations.
 
-## Recent Changes (March 2026)
-
-### Cloudflare Pages Routing Fix (Mar 8)
-**Issue:** Accessing template files like `/frontend/templates/template1/index.html` was redirecting to home page.
-**Root Cause:** Cloudflare Pages was treating all requests as SPA routes and redirecting unknown paths to `/index.html`.
-**Fix Applied:** Created `frontend/_redirects` file to:
-1. Exclude static assets, templates, and pages from SPA routing
-2. Allow template files to be served directly
-3. Maintain SPA routing for actual frontend routes
-
-**File Created:** `frontend/_redirects`
-- Routes `/templates/*` with status 200 (direct serve)
-- Routes `/src/pages/*.html` with status 200 (direct serve)
-- Falls back to `/index.html` for SPA routes (/* → /index.html)
-
-**Result:** Template files now accessible without redirect. Both direct access and subdomain sites can load templates properly.
-
 ## Recent Changes (February 2026)
 
-### Google Sign-in & Site Creation Fixes (Feb 5 - Latest)
-**Issues Fixed:**
-1. Google sign-in returning `NOT NULL constraint failed` error
-2. Created sites not appearing in lookups ("Site not found")
-
-**Root Causes & Solutions:**
-1. **Google Sign-in:** Backend was trying to save `null` for password_hash, but DB required empty string `''`
-   - Fix: Updated `handleGoogleLogin` to use empty string instead of null
-   
-2. **Site Creation:** `is_active` field wasn't explicitly set, relying on database defaults
-   - Fix: Explicitly set `is_active = 1` and `subscription_plan = 'free'` in INSERT statement
-   - Files Updated: `backend/workers/sites-worker.js`
-
-**Result:** Google sign-up now works, and created sites are immediately discoverable via API and subdomain routing.
-
-### Static Asset Routing Fix for Subdomains (Feb 2)
+### Static Asset Routing Fix for Subdomains (Feb 2 - Latest)
 **Issue:** When users created subdomain sites (e.g., `shop-name.fluxe.in`), the CSS, JS, and image files weren't loading because the paths weren't being rewritten to the template folder.
 
 **Root Cause:** The HTML templates use relative paths like `css/styles.css` and `js/main.js`. When a subdomain loads these files, the browser requests `shop-name.fluxe.in/css/styles.css`, but the worker wasn't routing these requests to `/templates/template1/css/styles.css`.
@@ -167,33 +135,13 @@ The D1 database schema includes tables for `users`, `sites`, `products`, `catego
 
 ## Deployment Checklist for Production
 
-### Frontend Deployment (Cloudflare Pages)
-**Important:** The `frontend/_redirects` file is critical for proper routing:
-- It prevents SPA routing from interfering with static template files
-- It allows `/templates/*` and `/src/pages/*.html` to be served directly
-- Without this, template files will redirect to home page
-
-**Deployment Steps:**
-1. Push frontend code to GitHub repository
-2. Cloudflare Pages will auto-deploy from GitHub
-3. Verify `_redirects` file is included in the deployment
-4. Test: Access `https://fluxe.in/frontend/templates/template1/index.html` (should load directly, not redirect)
-
-### Backend Deployment (Cloudflare Workers)
-**Required Secrets (set via `wrangler secret put`):**
+### Required Secrets (set via `wrangler secret put`)
 Run these commands in the `backend` folder:
 ```bash
 wrangler secret put JWT_SECRET      # Required: 32+ character random string
 wrangler secret put RAZORPAY_KEY_ID
 wrangler secret put RAZORPAY_KEY_SECRET
-wrangler secret put GOOGLE_CLIENT_ID  # Required for Google sign-in
 ```
-
-**Deployment Steps:**
-1. Push backend code to GitHub
-2. GitHub Actions will run `wrangler deploy` automatically
-3. Verify deployment status in GitHub Actions
-4. Test: Access `https://fluxe.in/api/health` to confirm worker is running
 
 ### SSH Key for GitHub
 SSH key has been configured at `~/.ssh/github_key`. To push code:
