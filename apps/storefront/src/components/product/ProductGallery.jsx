@@ -1,0 +1,126 @@
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+
+export default function ProductGallery({ images, productName }) {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [zoomOpen, setZoomOpen] = useState(false);
+  const [zoomIndex, setZoomIndex] = useState(0);
+  const mainImageRef = useRef(null);
+  const touchStartX = useRef(null);
+
+  const parsedImages = React.useMemo(() => {
+    if (!images || images.length === 0) return [];
+    return images.map((img, i) => {
+      if (typeof img === 'string') return { url: img, alt: `${productName || 'Product'} ${i + 1}` };
+      return { url: img.url || img, alt: img.alt || `${productName || 'Product'} ${i + 1}` };
+    }).filter(img => img.url);
+  }, [images, productName]);
+
+  const goToImage = useCallback((index) => {
+    if (index >= 0 && index < parsedImages.length) {
+      setActiveIndex(index);
+    }
+  }, [parsedImages.length]);
+
+  const goToZoomImage = useCallback((index) => {
+    if (index >= 0 && index < parsedImages.length) {
+      setZoomIndex(index);
+    }
+  }, [parsedImages.length]);
+
+  useEffect(() => {
+    if (!zoomOpen) return;
+    function handleKeyDown(e) {
+      if (e.key === 'Escape') setZoomOpen(false);
+      if (e.key === 'ArrowLeft') goToZoomImage(zoomIndex - 1);
+      if (e.key === 'ArrowRight') goToZoomImage(zoomIndex + 1);
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [zoomOpen, zoomIndex, goToZoomImage]);
+
+  function handleMainImageClick() {
+    setZoomIndex(activeIndex);
+    setZoomOpen(true);
+  }
+
+  function handleTouchStart(e) {
+    touchStartX.current = e.touches[0].clientX;
+  }
+
+  function handleTouchEnd(e) {
+    if (touchStartX.current === null) return;
+    const diff = touchStartX.current - e.changedTouches[0].clientX;
+    if (Math.abs(diff) > 50) {
+      if (diff > 0 && activeIndex < parsedImages.length - 1) {
+        goToImage(activeIndex + 1);
+      } else if (diff < 0 && activeIndex > 0) {
+        goToImage(activeIndex - 1);
+      }
+    }
+    touchStartX.current = null;
+  }
+
+  if (parsedImages.length === 0) {
+    return (
+      <div className="product-detail-left">
+        <div className="main-image-container">
+          <div style={{ color: '#999', fontSize: 16 }}>No image available</div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="product-detail-left">
+      <div
+        className="main-image-container"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        ref={mainImageRef}
+      >
+        <img
+          className="product-main-image"
+          src={parsedImages[activeIndex]?.url}
+          alt={parsedImages[activeIndex]?.alt}
+          onClick={handleMainImageClick}
+          style={{ display: 'block' }}
+        />
+      </div>
+
+      {parsedImages.length > 1 && (
+        <div className="product-detail-images">
+          <div className="product-thumbnails">
+            {parsedImages.map((img, index) => (
+              <img
+                key={index}
+                className={`product-thumbnail${index === activeIndex ? ' active' : ''}`}
+                src={img.url}
+                alt={img.alt}
+                onClick={() => goToImage(index)}
+                loading="lazy"
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {zoomOpen && (
+        <div className="image-zoom-overlay" onClick={() => setZoomOpen(false)}>
+          <button className="zoom-close" onClick={() => setZoomOpen(false)}>×</button>
+          {parsedImages.length > 1 && (
+            <>
+              <button className="zoom-nav prev" onClick={(e) => { e.stopPropagation(); goToZoomImage(zoomIndex - 1); }} disabled={zoomIndex === 0}>‹</button>
+              <button className="zoom-nav next" onClick={(e) => { e.stopPropagation(); goToZoomImage(zoomIndex + 1); }} disabled={zoomIndex === parsedImages.length - 1}>›</button>
+            </>
+          )}
+          <img
+            className="zoomed-image"
+            src={parsedImages[zoomIndex]?.url}
+            alt={parsedImages[zoomIndex]?.alt}
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
