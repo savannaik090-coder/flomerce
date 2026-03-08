@@ -1257,12 +1257,12 @@ async function createSite(request, env, user) {
     const body = await request.json();
     const { brandName, categories, templateId, logoUrl, phone, email, address, primaryColor, secondaryColor } = body;
     const category = body.category || "general";
-    const subdomain = body.subdomain || generateSubdomain(brandName);
+    const subdomain = (body.subdomain || generateSubdomain(brandName)).toLowerCase().trim();
     if (!brandName) {
       return errorResponse("Brand name is required");
     }
     const existingSubdomain = await env.DB.prepare(
-      "SELECT id FROM sites WHERE subdomain = ?"
+      "SELECT id FROM sites WHERE LOWER(subdomain) = ?"
     ).bind(subdomain).first();
     if (existingSubdomain) {
       return errorResponse("This subdomain is already taken. Please choose a different brand name.", 400, "SUBDOMAIN_TAKEN");
@@ -1491,7 +1491,7 @@ async function getProducts(env, { siteId, subdomain, category, url }) {
                FROM products p 
                LEFT JOIN categories c ON p.category_id = c.id
                JOIN sites s ON p.site_id = s.id 
-               WHERE p.is_active = 1 AND s.subdomain = ?`;
+               WHERE p.is_active = 1 AND LOWER(s.subdomain) = LOWER(?)`;
       bindings.push(subdomain);
     }
     if (category) {
@@ -2700,7 +2700,7 @@ async function getCategories(env, { siteId, subdomain, slug }) {
                  (SELECT COUNT(*) FROM products p WHERE p.category_id = c.id AND p.is_active = 1) as product_count
                FROM categories c 
                JOIN sites s ON c.site_id = s.id 
-               WHERE s.subdomain = ?`;
+               WHERE LOWER(s.subdomain) = LOWER(?)`;
       bindings.push(subdomain);
     } else {
       query += " AND 1=0";
@@ -3194,7 +3194,7 @@ async function handleSiteRouting(request, env) {
   }
   try {
     const site = await env.DB.prepare(
-      `SELECT * FROM sites WHERE subdomain = ? AND is_active = 1`
+      `SELECT * FROM sites WHERE LOWER(subdomain) = LOWER(?) AND is_active = 1`
     ).bind(subdomain).first();
     if (!site) {
       return new Response("Site not found", {
@@ -3541,7 +3541,7 @@ async function handleSiteInfo(request, env) {
               s.logo_url, s.favicon_url, s.primary_color, s.secondary_color,
               s.phone, s.email, s.address, s.social_links, s.settings
        FROM sites s 
-       WHERE s.subdomain = ? AND s.is_active = 1`
+       WHERE LOWER(s.subdomain) = LOWER(?) AND s.is_active = 1`
     ).bind(subdomain).first();
     if (!site) {
       return errorResponse("Site not found", 404);

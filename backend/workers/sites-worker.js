@@ -74,14 +74,14 @@ async function createSite(request, env, user) {
     const body = await request.json();
     const { brandName, categories, templateId, logoUrl, phone, email, address, primaryColor, secondaryColor } = body;
     const category = body.category || 'general';
-    const subdomain = body.subdomain || generateSubdomain(brandName);
+    const subdomain = (body.subdomain || generateSubdomain(brandName)).toLowerCase().trim();
 
     if (!brandName) {
       return errorResponse('Brand name is required');
     }
 
     const existingSubdomain = await env.DB.prepare(
-      'SELECT id FROM sites WHERE subdomain = ?'
+      'SELECT id FROM sites WHERE LOWER(subdomain) = ?'
     ).bind(subdomain).first();
 
     if (existingSubdomain) {
@@ -299,7 +299,7 @@ async function deleteSite(env, user, siteId) {
 export async function getSiteBySubdomain(env, subdomain) {
   try {
     const site = await env.DB.prepare(
-      `SELECT * FROM sites WHERE subdomain = ? AND is_active = 1`
+      `SELECT * FROM sites WHERE LOWER(subdomain) = LOWER(?) AND is_active = 1`
     ).bind(subdomain).first();
 
     return site;

@@ -51,7 +51,7 @@ async function getProducts(env, { siteId, subdomain, category, url }) {
                FROM products p 
                LEFT JOIN categories c ON p.category_id = c.id
                JOIN sites s ON p.site_id = s.id 
-               WHERE p.is_active = 1 AND s.subdomain = ?`;
+               WHERE p.is_active = 1 AND LOWER(s.subdomain) = LOWER(?)`;
       bindings.push(subdomain);
     }
 

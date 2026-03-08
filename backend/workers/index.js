@@ -125,7 +125,7 @@ async function handleSiteInfo(request, env) {
               s.logo_url, s.favicon_url, s.primary_color, s.secondary_color,
               s.phone, s.email, s.address, s.social_links, s.settings
        FROM sites s 
-       WHERE s.subdomain = ? AND s.is_active = 1`
+       WHERE LOWER(s.subdomain) = LOWER(?) AND s.is_active = 1`
     ).bind(subdomain).first();
 
     if (!site) {

@@ -85,7 +85,7 @@ export async function handleSiteRouting(request, env) {
   try {
     // Simpler query without JOIN to reduce potential errors
     const site = await env.DB.prepare(
-      `SELECT * FROM sites WHERE subdomain = ? AND is_active = 1`
+      `SELECT * FROM sites WHERE LOWER(subdomain) = LOWER(?) AND is_active = 1`
     ).bind(subdomain).first();
 
     if (!site) {
@@ -411,7 +411,7 @@ export async function resolveSiteFromRequest(request, env) {
   }
 
   const site = await env.DB.prepare(
-    'SELECT * FROM sites WHERE subdomain = ? AND is_active = 1'
+    'SELECT * FROM sites WHERE LOWER(subdomain) = LOWER(?) AND is_active = 1'
   ).bind(subdomain).first();
 
   return site;
