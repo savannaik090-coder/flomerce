@@ -151,11 +151,11 @@ export default function CheckoutPage() {
       const orderData = {
         siteId: siteConfig?.id,
         items: items.map(item => ({
-          productId: item.product_id || item.id,
-          name: item.product_name || item.name,
-          price: item.product_price || item.price,
+          productId: item.productId || item.product_id || item.id,
+          name: item.name || item.product_name,
+          price: item.price || item.product_price,
           quantity: item.quantity || 1,
-          image: item.product_image || item.image_url,
+          image: item.thumbnail || item.image_url || item.product_image,
         })),
         total: subtotal,
         shippingAddress: {

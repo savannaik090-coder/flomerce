@@ -173,15 +173,20 @@ async function createOrder(request, env, user) {
     const processedItems = [];
 
     for (const item of items) {
-      const product = await env.DB.prepare(
-        'SELECT id, name, price, stock, thumbnail_url FROM products WHERE id = ? AND site_id = ?'
-      ).bind(item.productId, siteId).first();
-
-      if (!product) {
-        return errorResponse(`Product ${item.productId} not found`, 400);
+      const itemProductId = item.productId || item.product_id;
+      if (!itemProductId) {
+        return errorResponse('Invalid item: missing product ID', 400);
       }
 
-      if (product.stock < item.quantity) {
+      const product = await env.DB.prepare(
+        'SELECT id, name, price, stock, thumbnail_url FROM products WHERE id = ? AND site_id = ?'
+      ).bind(itemProductId, siteId).first();
+
+      if (!product) {
+        return errorResponse(`Product not found`, 400);
+      }
+
+      if (product.stock !== null && product.stock < item.quantity) {
         return errorResponse(`Insufficient stock for ${product.name}`, 400, 'INSUFFICIENT_STOCK');
       }
 
@@ -408,12 +413,17 @@ async function createGuestOrder(request, env) {
     const processedItems = [];
 
     for (const item of items) {
+      const itemProductId = item.productId || item.product_id;
+      if (!itemProductId) {
+        return errorResponse('Invalid item: missing product ID', 400);
+      }
+
       const product = await env.DB.prepare(
         'SELECT id, name, price, stock, thumbnail_url FROM products WHERE id = ? AND site_id = ?'
-      ).bind(item.productId, siteId).first();
+      ).bind(itemProductId, siteId).first();
 
       if (!product) {
-        return errorResponse(`Product ${item.productId} not found`, 400);
+        return errorResponse('Product not found', 400);
       }
 
       const itemTotal = product.price * item.quantity;
