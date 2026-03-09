@@ -125,15 +125,19 @@ async function getProduct(env, productId) {
       return errorResponse('Product not found', 404, 'NOT_FOUND');
     }
 
-    const variants = await env.DB.prepare(
-      'SELECT * FROM product_variants WHERE product_id = ?'
-    ).bind(productId).all();
+    let variantResults = [];
+    try {
+      const variants = await env.DB.prepare(
+        'SELECT * FROM product_variants WHERE product_id = ?'
+      ).bind(productId).all();
+      variantResults = variants.results || [];
+    } catch (_) {}
 
     const parsedProduct = {
       ...product,
       images: product.images ? JSON.parse(product.images) : [],
       tags: product.tags ? JSON.parse(product.tags) : [],
-      variants: variants.results.map(v => ({
+      variants: variantResults.map(v => ({
         ...v,
         attributes: v.attributes ? JSON.parse(v.attributes) : {},
       })),
