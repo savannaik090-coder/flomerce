@@ -69,8 +69,10 @@ export default function SettingsSection() {
         email,
         address,
         social: { instagram, facebook, twitter, youtube },
-        razorpayKeyId,
       };
+      if (razorpayKeyId) {
+        settings.razorpayKeyId = razorpayKeyId;
+      }
       if (razorpayKeySecret) {
         settings.razorpayKeySecret = razorpayKeySecret;
       }

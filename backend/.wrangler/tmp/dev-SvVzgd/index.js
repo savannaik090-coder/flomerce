@@ -1920,8 +1920,22 @@ async function updateSite(request, env, user, siteId) {
     for (const [key, value] of Object.entries(updates)) {
       const dbKey = key.replace(/([A-Z])/g, "_$1").toLowerCase();
       if (allowedFields.includes(dbKey)) {
-        setClause.push(`${dbKey} = ?`);
-        values.push(typeof value === "object" ? JSON.stringify(value) : value);
+        if (dbKey === "settings" && typeof value === "object") {
+          let existingSettings = {};
+          try {
+            const siteRow = await env.DB.prepare("SELECT settings FROM sites WHERE id = ?").bind(siteId).first();
+            if (siteRow && siteRow.settings) {
+              existingSettings = JSON.parse(siteRow.settings);
+            }
+          } catch (e) {
+          }
+          const mergedSettings = { ...existingSettings, ...value };
+          setClause.push(`${dbKey} = ?`);
+          values.push(JSON.stringify(mergedSettings));
+        } else {
+          setClause.push(`${dbKey} = ?`);
+          values.push(typeof value === "object" ? JSON.stringify(value) : value);
+        }
       }
     }
     if (setClause.length === 0) {
@@ -5486,7 +5500,7 @@ async function handleSiteInfo(request, env) {
         }
       }
     }
-    const { razorpayKeySecret, adminVerificationCode, razorpayKeyId, ...publicSettings } = settings;
+    const { razorpayKeySecret, adminVerificationCode, ...publicSettings } = settings;
     return jsonResponse({
       success: true,
       data: {

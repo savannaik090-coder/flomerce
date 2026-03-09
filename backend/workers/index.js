@@ -213,7 +213,7 @@ async function handleSiteInfo(request, env) {
       }
     }
 
-    const { razorpayKeySecret, adminVerificationCode, razorpayKeyId, ...publicSettings } = settings;
+    const { razorpayKeySecret, adminVerificationCode, ...publicSettings } = settings;
 
     return jsonResponse({
       success: true,

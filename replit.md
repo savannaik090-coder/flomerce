@@ -118,7 +118,9 @@ Fluxe is a multi-tenant SaaS platform that allows users to create their own e-co
 - Promo Banner: Up to 3 scrolling text messages saved to `settings.promoBanner` array
 - Backend `updateSiteAsAdmin` does server-side merge of `settings` (reads existing, spreads new keys in) — never overwrites entire settings object
 - Navbar reads `siteConfig.settings.promoBanner` and scrolls messages; falls back to "Welcome to {brandName}"
-- Public site API (`GET /api/site`) redacts `razorpayKeySecret`, `adminVerificationCode`, and `razorpayKeyId` from settings
+- Public site API (`GET /api/site`) redacts `razorpayKeySecret` and `adminVerificationCode` from settings (razorpayKeyId is kept public as it's needed for checkout)
+- Both `updateSite` (platform owner) and `updateSiteAsAdmin` (site admin) merge settings server-side to prevent overwriting unrelated settings keys
+- Frontend SettingsSection only sends razorpayKeyId/razorpayKeySecret when they have values, to avoid overwriting existing credentials with empty strings
 
 ## Social Links Data Flow
 - Admin panel saves social links inside `settings` JSON column as `settings.social` (e.g., `{ social: { instagram: "url" } }`)
