@@ -295,8 +295,21 @@ async function updateSiteAsAdmin(request, env, siteId) {
     for (const [key, value] of Object.entries(updates)) {
       const dbKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();
       if (allowedFields.includes(dbKey)) {
-        setClause.push(`${dbKey} = ?`);
-        values.push(typeof value === 'object' ? JSON.stringify(value) : value);
+        if (dbKey === 'settings' && typeof value === 'object') {
+          let existingSettings = {};
+          try {
+            const site = await env.DB.prepare('SELECT settings FROM sites WHERE id = ?').bind(siteId).first();
+            if (site && site.settings) {
+              existingSettings = JSON.parse(site.settings);
+            }
+          } catch (e) {}
+          const mergedSettings = { ...existingSettings, ...value };
+          setClause.push(`${dbKey} = ?`);
+          values.push(JSON.stringify(mergedSettings));
+        } else {
+          setClause.push(`${dbKey} = ?`);
+          values.push(typeof value === 'object' ? JSON.stringify(value) : value);
+        }
       }
     }
 

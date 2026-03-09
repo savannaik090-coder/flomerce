@@ -7,9 +7,8 @@ const navItems = [
   { id: 'orders', icon: 'fa-shopping-bag', label: 'Orders', badgeKey: 'pendingOrders' },
   { id: 'customers', icon: 'fa-users', label: 'Customers' },
   { id: 'analytics', icon: 'fa-chart-bar', label: 'Analytics' },
-  { id: 'categories', icon: 'fa-folder', label: 'Categories' },
+  { id: 'website', icon: 'fa-globe', label: 'Edit Website' },
   { id: 'notifications', icon: 'fa-bell', label: 'Push Notifications' },
-  { id: 'watchbuy', icon: 'fa-video', label: 'Watch & Buy' },
   { id: 'settings', icon: 'fa-cog', label: 'Settings' },
 ];
 

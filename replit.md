@@ -112,6 +112,14 @@ Fluxe is a multi-tenant SaaS platform that allows users to create their own e-co
 - **Order Flow:** Both COD and Razorpay orders go through `POST /api/orders` (createOrder). For Razorpay, the frontend also calls `/api/payments/create-order` and `/api/payments/verify`. Payment verification automatically updates order status to 'paid' server-side.
 - **Cart Items:** Local cart stores `{ productId, name, price, thumbnail, quantity }`. Server cart enriches to `{ productId, quantity, variant, addedAt, name, price, thumbnail, inStock, availableStock }`. CheckoutPage maps items using `productId || product_id || id` for compatibility.
 
+## Edit Website Admin Section
+- "Edit Website" sidebar item consolidates: Promo Banner, Categories, Watch & Buy into sub-tabs
+- Component: `WebsiteContentSection.jsx` with `PromoBannerEditor` inline
+- Promo Banner: Up to 3 scrolling text messages saved to `settings.promoBanner` array
+- Backend `updateSiteAsAdmin` does server-side merge of `settings` (reads existing, spreads new keys in) — never overwrites entire settings object
+- Navbar reads `siteConfig.settings.promoBanner` and scrolls messages; falls back to "Welcome to {brandName}"
+- Public site API (`GET /api/site`) redacts `razorpayKeySecret`, `adminVerificationCode`, and `razorpayKeyId` from settings
+
 ## Social Links Data Flow
 - Admin panel saves social links inside `settings` JSON column as `settings.social` (e.g., `{ social: { instagram: "url" } }`)
 - Backend API (`index.js` `handleSiteInfo`) merges `settings.social` into `socialLinks` when returning site config, with `settings.social` taking precedence over the legacy `social_links` column

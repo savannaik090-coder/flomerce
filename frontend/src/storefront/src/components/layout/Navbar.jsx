@@ -32,7 +32,15 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
     <header className="header">
       <div className="promo-banner">
         <p className="banner-text">
-          Welcome to {siteConfig?.brandName || 'Our Store'}
+          {(() => {
+            const msgs = siteConfig?.settings?.promoBanner;
+            if (msgs && Array.isArray(msgs) && msgs.length > 0) {
+              const text = msgs.join('  ✦  ');
+              return <>{text}{'  ✦  '}{text}{'  ✦  '}{text}{'  ✦  '}{text}</>;
+            }
+            const defaultMsg = `Welcome to ${siteConfig?.brandName || 'Our Store'}`;
+            return <>{defaultMsg}{'     '}{defaultMsg}{'     '}{defaultMsg}{'     '}{defaultMsg}</>;
+          })()}
         </p>
       </div>
 

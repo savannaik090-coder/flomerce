@@ -8,8 +8,7 @@ import OrdersSection from '../components/admin/OrdersSection.jsx';
 import CustomersSection from '../components/admin/CustomersSection.jsx';
 import AnalyticsSection from '../components/admin/AnalyticsSection.jsx';
 import PushNotificationsSection from '../components/admin/PushNotificationsSection.jsx';
-import WatchBuySection from '../components/admin/WatchBuySection.jsx';
-import CategoriesSection from '../components/admin/CategoriesSection.jsx';
+import WebsiteContentSection from '../components/admin/WebsiteContentSection.jsx';
 import SettingsSection from '../components/admin/SettingsSection.jsx';
 import ProductForm from '../components/admin/ProductForm.jsx';
 import { apiRequest } from '../services/api.js';
@@ -170,9 +169,8 @@ export default function AdminPanel() {
     orders: 'Orders',
     customers: 'Customers',
     analytics: 'Analytics',
-    categories: 'Categories',
+    website: 'Edit Website',
     notifications: 'Push Notifications',
-    watchbuy: 'Watch & Buy',
     settings: 'Settings',
   };
 
@@ -225,9 +223,8 @@ export default function AdminPanel() {
           {activeSection === 'orders' && <OrdersSection />}
           {activeSection === 'customers' && <CustomersSection />}
           {activeSection === 'analytics' && <AnalyticsSection />}
-          {activeSection === 'categories' && <CategoriesSection />}
+          {activeSection === 'website' && <WebsiteContentSection />}
           {activeSection === 'notifications' && <PushNotificationsSection />}
-          {activeSection === 'watchbuy' && <WatchBuySection />}
           {activeSection === 'settings' && <SettingsSection />}
         </div>
       </div>
