@@ -6,7 +6,6 @@ import { getProfile } from '../services/authService.js';
 import SiteCard from '../components/SiteCard.jsx';
 import SiteCreationWizard from '../components/SiteCreationWizard.jsx';
 import PlanSelector from '../components/PlanSelector.jsx';
-import SiteAdminPanel from '../components/SiteAdminPanel.jsx';
 import { useNavigate } from 'react-router-dom';
 import '../styles/dashboard.css';
 
@@ -17,7 +16,6 @@ export default function DashboardPage() {
   const [sites, setSites] = useState([]);
   const [sitesLoading, setSitesLoading] = useState(true);
   const [showWizard, setShowWizard] = useState(false);
-  const [managingSite, setManagingSite] = useState(null);
   const [subscription, setSubscription] = useState(null);
   const [profileData, setProfileData] = useState(null);
 
@@ -161,7 +159,6 @@ export default function DashboardPage() {
                   <SiteCard
                     key={site.id}
                     site={site}
-                    onManage={(s) => setManagingSite(s)}
                     onDelete={handleDeleteSite}
                   />
                 ))}
@@ -241,14 +238,6 @@ export default function DashboardPage() {
         <SiteCreationWizard
           onClose={() => setShowWizard(false)}
           onCreated={loadSites}
-        />
-      )}
-
-      {managingSite && (
-        <SiteAdminPanel
-          site={managingSite}
-          onClose={() => setManagingSite(null)}
-          onUpdated={() => { loadSites(); }}
         />
       )}
     </div>

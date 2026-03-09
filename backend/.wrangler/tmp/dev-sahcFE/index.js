@@ -387,6 +387,8 @@ async function handleSiteAdmin(request, env, path) {
       return validateSiteAdminToken(request, env);
     case "set-code":
       return setSiteAdminCode(request, env);
+    case "auto-login":
+      return autoLoginSiteAdmin(request, env);
     default:
       return errorResponse("Site admin endpoint not found", 404);
   }
@@ -477,10 +479,6 @@ async function setSiteAdminCode(request, env) {
     return errorResponse("Method not allowed", 405);
   }
   try {
-    const user = await validateAuth(request, env);
-    if (!user) {
-      return errorResponse("Unauthorized", 401);
-    }
     const { siteId, verificationCode } = await request.json();
     if (!siteId || !verificationCode) {
       return errorResponse("Site ID and verification code are required");
@@ -488,9 +486,21 @@ async function setSiteAdminCode(request, env) {
     if (verificationCode.length < 4 || verificationCode.length > 20) {
       return errorResponse("Verification code must be between 4 and 20 characters");
     }
-    const site = await env.DB.prepare(
-      "SELECT id, settings FROM sites WHERE id = ? AND user_id = ?"
-    ).bind(siteId, user.id).first();
+    const user = await validateAuth(request, env);
+    let site = null;
+    if (user) {
+      site = await env.DB.prepare(
+        "SELECT id, settings FROM sites WHERE id = ? AND user_id = ?"
+      ).bind(siteId, user.id).first();
+    }
+    if (!site) {
+      const siteAdmin = await validateSiteAdmin(request, env, siteId);
+      if (siteAdmin) {
+        site = await env.DB.prepare(
+          "SELECT id, settings FROM sites WHERE id = ?"
+        ).bind(siteId).first();
+      }
+    }
     if (!site) {
       return errorResponse("Site not found or unauthorized", 404);
     }
@@ -508,6 +518,45 @@ async function setSiteAdminCode(request, env) {
   } catch (error) {
     console.error("Set site admin code error:", error);
     return errorResponse("Failed to set verification code", 500);
+  }
+}
+async function autoLoginSiteAdmin(request, env) {
+  if (request.method !== "POST") {
+    return errorResponse("Method not allowed", 405);
+  }
+  try {
+    const user = await validateAuth(request, env);
+    if (!user) {
+      return errorResponse("Unauthorized", 401);
+    }
+    const { siteId } = await request.json();
+    if (!siteId) {
+      return errorResponse("Site ID is required");
+    }
+    const site = await env.DB.prepare(
+      "SELECT id, subdomain, brand_name FROM sites WHERE id = ? AND user_id = ?"
+    ).bind(siteId, user.id).first();
+    if (!site) {
+      return errorResponse("Site not found or unauthorized", 404);
+    }
+    const adminToken = generateToken(32);
+    const expiresAt = /* @__PURE__ */ new Date();
+    expiresAt.setHours(expiresAt.getHours() + 24);
+    await ensureSiteAdminSessionsTable(env);
+    await env.DB.prepare(
+      `INSERT INTO site_admin_sessions (id, site_id, token, expires_at, created_at)
+       VALUES (?, ?, ?, ?, datetime('now'))`
+    ).bind(generateId(), site.id, adminToken, expiresAt.toISOString()).run();
+    return successResponse({
+      token: adminToken,
+      siteId: site.id,
+      subdomain: site.subdomain,
+      brandName: site.brand_name,
+      expiresAt: expiresAt.toISOString()
+    }, "Auto-login token generated");
+  } catch (error) {
+    console.error("Auto-login site admin error:", error);
+    return errorResponse("Auto-login failed", 500);
   }
 }
 async function ensureSiteAdminSessionsTable(env) {
@@ -569,6 +618,7 @@ var init_site_admin_worker = __esm({
     __name(verifySiteAdminCode, "verifySiteAdminCode");
     __name(validateSiteAdminToken, "validateSiteAdminToken");
     __name(setSiteAdminCode, "setSiteAdminCode");
+    __name(autoLoginSiteAdmin, "autoLoginSiteAdmin");
     __name(ensureSiteAdminSessionsTable, "ensureSiteAdminSessionsTable");
     __name(validateSiteAdmin, "validateSiteAdmin");
   }
@@ -1506,24 +1556,34 @@ init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 init_helpers();
 init_auth();
+init_site_admin_worker();
 async function handleSites(request, env, path) {
   const corsResponse = handleCORS(request);
   if (corsResponse)
     return corsResponse;
+  const method = request.method;
+  const pathParts = path.split("/").filter(Boolean);
+  const siteId = pathParts[2];
+  if (method === "PUT" && siteId) {
+    const user2 = await validateAuth(request, env);
+    if (user2) {
+      return updateSite(request, env, user2, siteId);
+    }
+    const siteAdmin = await validateSiteAdmin(request, env, siteId);
+    if (siteAdmin) {
+      return updateSiteAsAdmin(request, env, siteId);
+    }
+    return errorResponse("Unauthorized", 401, "UNAUTHORIZED");
+  }
   const user = await validateAuth(request, env);
   if (!user) {
     return errorResponse("Unauthorized", 401, "UNAUTHORIZED");
   }
-  const method = request.method;
-  const pathParts = path.split("/").filter(Boolean);
-  const siteId = pathParts[2];
   switch (method) {
     case "GET":
       return siteId ? getSite(env, user, siteId) : getUserSites(env, user);
     case "POST":
       return createSite(request, env, user);
-    case "PUT":
-      return updateSite(request, env, user, siteId);
     case "DELETE":
       return deleteSite(env, user, siteId);
     default:
@@ -1740,6 +1800,34 @@ async function updateSite(request, env, user, siteId) {
   }
 }
 __name(updateSite, "updateSite");
+async function updateSiteAsAdmin(request, env, siteId) {
+  try {
+    const updates = await request.json();
+    const allowedFields = ["brand_name", "logo_url", "favicon_url", "primary_color", "secondary_color", "phone", "email", "address", "social_links", "settings"];
+    const setClause = [];
+    const values = [];
+    for (const [key, value] of Object.entries(updates)) {
+      const dbKey = key.replace(/([A-Z])/g, "_$1").toLowerCase();
+      if (allowedFields.includes(dbKey)) {
+        setClause.push(`${dbKey} = ?`);
+        values.push(typeof value === "object" ? JSON.stringify(value) : value);
+      }
+    }
+    if (setClause.length === 0) {
+      return errorResponse("No valid fields to update");
+    }
+    setClause.push('updated_at = datetime("now")');
+    values.push(siteId);
+    await env.DB.prepare(
+      `UPDATE sites SET ${setClause.join(", ")} WHERE id = ?`
+    ).bind(...values).run();
+    return successResponse(null, "Site updated successfully");
+  } catch (error) {
+    console.error("Update site as admin error:", error);
+    return errorResponse("Failed to update site", 500);
+  }
+}
+__name(updateSiteAsAdmin, "updateSiteAsAdmin");
 async function deleteSite(env, user, siteId) {
   if (!siteId) {
     return errorResponse("Site ID is required");
@@ -3265,11 +3353,27 @@ async function handleCategories(request, env, path) {
   if (!user) {
     const authHeader = request.headers.get("Authorization");
     if (authHeader && authHeader.startsWith("SiteAdmin ")) {
-      const siteId = url.searchParams.get("siteId");
-      if (siteId) {
-        const admin = await validateSiteAdmin(request, env, siteId);
+      let adminSiteId = url.searchParams.get("siteId");
+      if (!adminSiteId && method === "POST") {
+        try {
+          const cloned = request.clone();
+          const body = await cloned.json();
+          adminSiteId = body.siteId;
+        } catch (e) {
+        }
+      }
+      if (!adminSiteId && (method === "PUT" || method === "DELETE") && categoryId) {
+        try {
+          const cat = await env.DB.prepare("SELECT site_id FROM categories WHERE id = ?").bind(categoryId).first();
+          if (cat)
+            adminSiteId = cat.site_id;
+        } catch (e) {
+        }
+      }
+      if (adminSiteId) {
+        const admin = await validateSiteAdmin(request, env, adminSiteId);
         if (admin) {
-          user = { id: admin.userId || "site-admin", _adminSiteId: siteId };
+          user = { id: admin.userId || "site-admin", _adminSiteId: adminSiteId };
         }
       }
     }

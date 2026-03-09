@@ -93,13 +93,16 @@ Fluxe is a multi-tenant SaaS platform that allows users to create their own e-co
   - Same email can register on multiple stores (unique per site_id + email)
   - Customer sessions stored in `site_customer_sessions` table
   - Frontend stores token in `localStorage('store_auth_token')`
-- **Site Admin:** Verification-code-only access via `/api/site-admin/verify`
+- **Site Admin:** Verification-code-only access via `/api/site-admin/verify` or auto-login via `/api/site-admin/auto-login`
   - Code stored in `sites.settings` JSON as `adminVerificationCode`
+  - Auto-login endpoint accepts platform Bearer token, verifies site ownership, generates SiteAdmin session token
   - Returns `SiteAdmin <token>` valid for 24 hours, stored in `sessionStorage('site_admin_token')`
   - Admin panel uses SiteAdmin token exclusively (no platform JWT needed)
+  - Platform "Manage" button calls auto-login endpoint and redirects to `subdomain.fluxe.in/admin?token=xyz`
+  - Storefront admin panel accepts `?token=` query param for seamless auto-login
 - **Platform Super-Admin:** Full JWT auth + role check (admin@fluxe.in or admin/owner role)
 - **Auth priority in api.js:** SiteAdmin token (sessionStorage) > SiteCustomer token (localStorage)
-- Backend workers accept SiteAdmin auth for CRUD: products-worker, categories-worker, orders-worker
+- Backend workers accept SiteAdmin auth for CRUD: products-worker, categories-worker, orders-worker, sites-worker (PUT), site-admin set-code
 
 ## Build & Deployment
 
@@ -140,6 +143,7 @@ wrangler secret put RESEND_API_KEY      # Or SENDGRID_API_KEY
 - `GET/POST /api/categories?siteId=...` - Categories (SiteAdmin auth for mutations)
 - `GET /api/site?subdomain=...` - Public site info
 - `POST /api/site-admin/verify` - Verify admin code for store admin access
-- `POST /api/site-admin/set-code` - Set admin verification code (requires auth)
+- `POST /api/site-admin/auto-login` - Auto-login for site owners (requires platform Bearer auth)
+- `POST /api/site-admin/set-code` - Set admin verification code (requires auth or SiteAdmin token)
 - `GET /api/admin/stats` - Platform admin stats
 - `GET /api/health` - Health check

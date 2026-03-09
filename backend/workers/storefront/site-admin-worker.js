@@ -15,6 +15,8 @@ export async function handleSiteAdmin(request, env, path) {
       return validateSiteAdminToken(request, env);
     case 'set-code':
       return setSiteAdminCode(request, env);
+    case 'auto-login':
+      return autoLoginSiteAdmin(request, env);
     default:
       return errorResponse('Site admin endpoint not found', 404);
   }
@@ -125,11 +127,6 @@ async function setSiteAdminCode(request, env) {
   }
 
   try {
-    const user = await validateAuth(request, env);
-    if (!user) {
-      return errorResponse('Unauthorized', 401);
-    }
-
     const { siteId, verificationCode } = await request.json();
 
     if (!siteId || !verificationCode) {
@@ -140,9 +137,23 @@ async function setSiteAdminCode(request, env) {
       return errorResponse('Verification code must be between 4 and 20 characters');
     }
 
-    const site = await env.DB.prepare(
-      'SELECT id, settings FROM sites WHERE id = ? AND user_id = ?'
-    ).bind(siteId, user.id).first();
+    const user = await validateAuth(request, env);
+    let site = null;
+
+    if (user) {
+      site = await env.DB.prepare(
+        'SELECT id, settings FROM sites WHERE id = ? AND user_id = ?'
+      ).bind(siteId, user.id).first();
+    }
+
+    if (!site) {
+      const siteAdmin = await validateSiteAdmin(request, env, siteId);
+      if (siteAdmin) {
+        site = await env.DB.prepare(
+          'SELECT id, settings FROM sites WHERE id = ?'
+        ).bind(siteId).first();
+      }
+    }
 
     if (!site) {
       return errorResponse('Site not found or unauthorized', 404);
@@ -163,6 +174,54 @@ async function setSiteAdminCode(request, env) {
   } catch (error) {
     console.error('Set site admin code error:', error);
     return errorResponse('Failed to set verification code', 500);
+  }
+}
+
+async function autoLoginSiteAdmin(request, env) {
+  if (request.method !== 'POST') {
+    return errorResponse('Method not allowed', 405);
+  }
+
+  try {
+    const user = await validateAuth(request, env);
+    if (!user) {
+      return errorResponse('Unauthorized', 401);
+    }
+
+    const { siteId } = await request.json();
+    if (!siteId) {
+      return errorResponse('Site ID is required');
+    }
+
+    const site = await env.DB.prepare(
+      'SELECT id, subdomain, brand_name FROM sites WHERE id = ? AND user_id = ?'
+    ).bind(siteId, user.id).first();
+
+    if (!site) {
+      return errorResponse('Site not found or unauthorized', 404);
+    }
+
+    const adminToken = generateToken(32);
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 24);
+
+    await ensureSiteAdminSessionsTable(env);
+
+    await env.DB.prepare(
+      `INSERT INTO site_admin_sessions (id, site_id, token, expires_at, created_at)
+       VALUES (?, ?, ?, ?, datetime('now'))`
+    ).bind(generateId(), site.id, adminToken, expiresAt.toISOString()).run();
+
+    return successResponse({
+      token: adminToken,
+      siteId: site.id,
+      subdomain: site.subdomain,
+      brandName: site.brand_name,
+      expiresAt: expiresAt.toISOString(),
+    }, 'Auto-login token generated');
+  } catch (error) {
+    console.error('Auto-login site admin error:', error);
+    return errorResponse('Auto-login failed', 500);
   }
 }
 

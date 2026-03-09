@@ -1,26 +1,37 @@
 import { generateId, generateSubdomain, sanitizeInput, jsonResponse, errorResponse, successResponse, handleCORS } from '../../utils/helpers.js';
 import { validateAuth } from '../../utils/auth.js';
+import { validateSiteAdmin } from '../storefront/site-admin-worker.js';
 
 export async function handleSites(request, env, path) {
   const corsResponse = handleCORS(request);
   if (corsResponse) return corsResponse;
+
+  const method = request.method;
+  const pathParts = path.split('/').filter(Boolean);
+  const siteId = pathParts[2];
+
+  if (method === 'PUT' && siteId) {
+    const user = await validateAuth(request, env);
+    if (user) {
+      return updateSite(request, env, user, siteId);
+    }
+    const siteAdmin = await validateSiteAdmin(request, env, siteId);
+    if (siteAdmin) {
+      return updateSiteAsAdmin(request, env, siteId);
+    }
+    return errorResponse('Unauthorized', 401, 'UNAUTHORIZED');
+  }
 
   const user = await validateAuth(request, env);
   if (!user) {
     return errorResponse('Unauthorized', 401, 'UNAUTHORIZED');
   }
 
-  const method = request.method;
-  const pathParts = path.split('/').filter(Boolean);
-  const siteId = pathParts[2];
-
   switch (method) {
     case 'GET':
       return siteId ? getSite(env, user, siteId) : getUserSites(env, user);
     case 'POST':
       return createSite(request, env, user);
-    case 'PUT':
-      return updateSite(request, env, user, siteId);
     case 'DELETE':
       return deleteSite(env, user, siteId);
     default:
@@ -269,6 +280,40 @@ async function updateSite(request, env, user, siteId) {
     return successResponse(null, 'Site updated successfully');
   } catch (error) {
     console.error('Update site error:', error);
+    return errorResponse('Failed to update site', 500);
+  }
+}
+
+async function updateSiteAsAdmin(request, env, siteId) {
+  try {
+    const updates = await request.json();
+    const allowedFields = ['brand_name', 'logo_url', 'favicon_url', 'primary_color', 'secondary_color', 'phone', 'email', 'address', 'social_links', 'settings'];
+    
+    const setClause = [];
+    const values = [];
+
+    for (const [key, value] of Object.entries(updates)) {
+      const dbKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();
+      if (allowedFields.includes(dbKey)) {
+        setClause.push(`${dbKey} = ?`);
+        values.push(typeof value === 'object' ? JSON.stringify(value) : value);
+      }
+    }
+
+    if (setClause.length === 0) {
+      return errorResponse('No valid fields to update');
+    }
+
+    setClause.push('updated_at = datetime("now")');
+    values.push(siteId);
+
+    await env.DB.prepare(
+      `UPDATE sites SET ${setClause.join(', ')} WHERE id = ?`
+    ).bind(...values).run();
+
+    return successResponse(null, 'Site updated successfully');
+  } catch (error) {
+    console.error('Update site as admin error:', error);
     return errorResponse('Failed to update site', 500);
   }
 }

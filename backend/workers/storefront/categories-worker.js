@@ -27,11 +27,27 @@ export async function handleCategories(request, env, path) {
   if (!user) {
     const authHeader = request.headers.get('Authorization');
     if (authHeader && authHeader.startsWith('SiteAdmin ')) {
-      const siteId = url.searchParams.get('siteId');
-      if (siteId) {
-        const admin = await validateSiteAdmin(request, env, siteId);
+      let adminSiteId = url.searchParams.get('siteId');
+
+      if (!adminSiteId && method === 'POST') {
+        try {
+          const cloned = request.clone();
+          const body = await cloned.json();
+          adminSiteId = body.siteId;
+        } catch (e) {}
+      }
+
+      if (!adminSiteId && (method === 'PUT' || method === 'DELETE') && categoryId) {
+        try {
+          const cat = await env.DB.prepare('SELECT site_id FROM categories WHERE id = ?').bind(categoryId).first();
+          if (cat) adminSiteId = cat.site_id;
+        } catch (e) {}
+      }
+
+      if (adminSiteId) {
+        const admin = await validateSiteAdmin(request, env, adminSiteId);
         if (admin) {
-          user = { id: admin.userId || 'site-admin', _adminSiteId: siteId };
+          user = { id: admin.userId || 'site-admin', _adminSiteId: adminSiteId };
         }
       }
     }

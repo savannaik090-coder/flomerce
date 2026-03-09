@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { SiteContext } from '../context/SiteContext.jsx';
 import AdminSidebar from '../components/admin/AdminSidebar.jsx';
 import DashboardSection from '../components/admin/DashboardSection.jsx';
@@ -9,6 +9,8 @@ import CustomersSection from '../components/admin/CustomersSection.jsx';
 import AnalyticsSection from '../components/admin/AnalyticsSection.jsx';
 import PushNotificationsSection from '../components/admin/PushNotificationsSection.jsx';
 import WatchBuySection from '../components/admin/WatchBuySection.jsx';
+import CategoriesSection from '../components/admin/CategoriesSection.jsx';
+import SettingsSection from '../components/admin/SettingsSection.jsx';
 import ProductForm from '../components/admin/ProductForm.jsx';
 import { apiRequest } from '../services/api.js';
 import '../styles/admin.css';
@@ -24,10 +26,53 @@ export default function AdminPanel() {
   const [codeInput, setCodeInput] = useState('');
   const [codeError, setCodeError] = useState('');
   const [codeLoading, setCodeLoading] = useState(false);
+  const [autoLoginLoading, setAutoLoginLoading] = useState(false);
   const [activeSection, setActiveSection] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [addingProduct, setAddingProduct] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tokenParam = params.get('token');
+    if (tokenParam && siteConfig?.id && !verified) {
+      handleAutoLogin(tokenParam);
+    }
+  }, [siteConfig?.id]);
+
+  async function handleAutoLogin(token) {
+    setAutoLoginLoading(true);
+    try {
+      const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
+      const response = await fetch(`${API_BASE}/api/site-admin/validate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, siteId: siteConfig?.id }),
+      });
+      const result = await response.json();
+      if (result.success) {
+        sessionStorage.setItem('site_admin_token', token);
+        sessionStorage.setItem('site_admin_site_id', siteConfig?.id);
+        setAdminToken(token);
+        setVerified(true);
+        const url = new URL(window.location);
+        url.searchParams.delete('token');
+        window.history.replaceState({}, '', url.pathname);
+      } else {
+        setCodeError('Auto-login token is invalid or expired. Please enter your verification code.');
+        const url = new URL(window.location);
+        url.searchParams.delete('token');
+        window.history.replaceState({}, '', url.pathname);
+      }
+    } catch (err) {
+      setCodeError('Auto-login failed. Please enter your verification code.');
+      const url = new URL(window.location);
+      url.searchParams.delete('token');
+      window.history.replaceState({}, '', url.pathname);
+    } finally {
+      setAutoLoginLoading(false);
+    }
+  }
 
   async function handleVerify(e) {
     e.preventDefault();
@@ -68,15 +113,27 @@ export default function AdminPanel() {
     setCodeInput('');
   }
 
+  if (autoLoginLoading) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', fontFamily: "'Inter', sans-serif" }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ width: 48, height: 48, border: '3px solid #e2e8f0', borderTopColor: '#2563eb', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 16px' }} />
+          <p style={{ color: '#64748b', fontSize: 15, fontWeight: 500 }}>Authenticating...</p>
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        </div>
+      </div>
+    );
+  }
+
   if (!verified) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', padding: 20 }}>
-        <div style={{ background: 'white', borderRadius: 16, padding: 40, width: '100%', maxWidth: 400, boxShadow: '0 4px 24px rgba(0,0,0,0.08)' }}>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', padding: 20, fontFamily: "'Inter', sans-serif" }}>
+        <div style={{ background: 'white', borderRadius: 12, padding: 40, width: '100%', maxWidth: 400, border: '1px solid #e2e8f0' }}>
           <div style={{ textAlign: 'center', marginBottom: 32 }}>
             <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
               <i className="fas fa-lock" style={{ color: '#2563eb', fontSize: 22 }} />
             </div>
-            <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>Admin Panel</h1>
+            <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8, color: '#0f172a' }}>Admin Panel</h1>
             <p style={{ color: '#64748b', fontSize: 14 }}>Enter your verification code to access the admin panel.</p>
           </div>
           <form onSubmit={handleVerify}>
@@ -85,11 +142,11 @@ export default function AdminPanel() {
               placeholder="Verification code"
               value={codeInput}
               onChange={e => { setCodeInput(e.target.value); setCodeError(''); }}
-              style={{ width: '100%', padding: '12px 16px', border: `1px solid ${codeError ? '#ef4444' : '#e2e8f0'}`, borderRadius: 8, fontSize: 15, marginBottom: 8, boxSizing: 'border-box', outline: 'none' }}
+              style={{ width: '100%', padding: '12px 16px', border: `1px solid ${codeError ? '#ef4444' : '#e2e8f0'}`, borderRadius: 8, fontSize: 15, marginBottom: 8, boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' }}
               autoFocus
             />
             {codeError && <p style={{ color: '#ef4444', fontSize: 13, marginBottom: 12 }}>{codeError}</p>}
-            <button type="submit" disabled={codeLoading} style={{ width: '100%', padding: '12px', background: '#1e293b', color: 'white', border: 'none', borderRadius: 8, fontSize: 15, fontWeight: 600, cursor: codeLoading ? 'not-allowed' : 'pointer', marginTop: 8 }}>
+            <button type="submit" disabled={codeLoading} style={{ width: '100%', padding: '12px', background: '#2563eb', color: 'white', border: 'none', borderRadius: 8, fontSize: 15, fontWeight: 600, cursor: codeLoading ? 'not-allowed' : 'pointer', marginTop: 8, fontFamily: 'inherit' }}>
               {codeLoading ? 'Verifying...' : 'Access Admin Panel'}
             </button>
           </form>
@@ -105,6 +162,19 @@ export default function AdminPanel() {
   }
 
   const showProductForm = addingProduct || editingProduct;
+
+  const sectionTitles = {
+    dashboard: 'Dashboard',
+    products: showProductForm ? (editingProduct ? 'Edit Product' : 'Add Product') : 'Products',
+    inventory: 'Inventory',
+    orders: 'Orders',
+    customers: 'Customers',
+    analytics: 'Analytics',
+    categories: 'Categories',
+    notifications: 'Push Notifications',
+    watchbuy: 'Watch & Buy',
+    settings: 'Settings',
+  };
 
   return (
     <div className="admin-layout">
@@ -122,22 +192,13 @@ export default function AdminPanel() {
             <i className="fas fa-bars" />
           </button>
           <div className="admin-header-title">
-            <h1>{
-              activeSection === 'dashboard' ? 'Dashboard' :
-              activeSection === 'products' ? (showProductForm ? (editingProduct ? 'Edit Product' : 'Add Product') : 'Products') :
-              activeSection === 'inventory' ? 'Inventory' :
-              activeSection === 'orders' ? 'Orders' :
-              activeSection === 'customers' ? 'Customers' :
-              activeSection === 'analytics' ? 'Analytics' :
-              activeSection === 'notifications' ? 'Push Notifications' :
-              activeSection === 'watchbuy' ? 'Watch & Buy' : 'Admin'
-            }</h1>
+            <h1>{sectionTitles[activeSection] || 'Admin'}</h1>
             <span className="admin-brand">{siteConfig?.brand_name || siteConfig?.brandName || 'Store'}</span>
           </div>
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontSize: 13, color: '#64748b' }}>Site Admin</span>
             <button
-              className="btn btn-secondary"
+              className="btn btn-outline"
               style={{ fontSize: 13 }}
               onClick={handleLogout}
             >
@@ -166,8 +227,10 @@ export default function AdminPanel() {
           {activeSection === 'orders' && <OrdersSection />}
           {activeSection === 'customers' && <CustomersSection />}
           {activeSection === 'analytics' && <AnalyticsSection />}
+          {activeSection === 'categories' && <CategoriesSection />}
           {activeSection === 'notifications' && <PushNotificationsSection />}
           {activeSection === 'watchbuy' && <WatchBuySection />}
+          {activeSection === 'settings' && <SettingsSection />}
         </div>
       </div>
     </div>
