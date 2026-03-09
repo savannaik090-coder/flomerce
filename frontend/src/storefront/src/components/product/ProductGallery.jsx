@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { resolveImageUrl } from '../../utils/imageUrl.js';
 
 export default function ProductGallery({ images, productName }) {
   const [activeIndex, setActiveIndex] = useState(0);
@@ -10,8 +11,8 @@ export default function ProductGallery({ images, productName }) {
   const parsedImages = React.useMemo(() => {
     if (!images || images.length === 0) return [];
     return images.map((img, i) => {
-      if (typeof img === 'string') return { url: img, alt: `${productName || 'Product'} ${i + 1}` };
-      return { url: img.url || img, alt: img.alt || `${productName || 'Product'} ${i + 1}` };
+      const rawUrl = typeof img === 'string' ? img : (img.url || img);
+      return { url: resolveImageUrl(rawUrl), alt: (typeof img === 'object' && img.alt) || `${productName || 'Product'} ${i + 1}` };
     }).filter(img => img.url);
   }, [images, productName]);
 

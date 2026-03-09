@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useSiteConfig } from '../../hooks/useSiteConfig.js';
 import { useCart } from '../../hooks/useCart.js';
 import { formatINR } from '../../utils/priceFormatter.js';
+import { resolveImageUrl } from '../../utils/imageUrl.js';
 import * as productService from '../../services/productService.js';
 
 export default function ProductShowcase() {
@@ -66,7 +67,7 @@ export default function ProductShowcase() {
                   style={{ textDecoration: 'none', color: 'inherit' }}
                 >
                   <img
-                    src={product.images?.[0] || product.image_url || ''}
+                    src={resolveImageUrl(product.images?.[0] || product.image_url || '')}
                     alt={product.name}
                     className="showcase-product-thumb"
                   />

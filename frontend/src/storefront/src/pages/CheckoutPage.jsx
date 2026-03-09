@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { CartContext } from '../context/CartContext.jsx';
 import { AuthContext } from '../context/AuthContext.jsx';
 import { SiteContext } from '../context/SiteContext.jsx';
+import { resolveImageUrl } from '../utils/imageUrl.js';
 import { CurrencyContext } from '../context/CurrencyContext.jsx';
 import * as orderService from '../services/orderService.js';
 import '../styles/checkout.css';
@@ -161,7 +162,7 @@ export default function CheckoutPage() {
           name: item.name || item.product_name,
           price: item.price || item.product_price,
           quantity: item.quantity || 1,
-          image: item.thumbnail || item.image_url || item.product_image,
+          image: resolveImageUrl(item.thumbnail || item.image_url || item.product_image || ''),
         })),
         total: subtotal,
         shippingAddress: {
@@ -358,9 +359,9 @@ export default function CheckoutPage() {
               const itemId = item.productId || item.product_id || item.id;
               return (
                 <div key={itemId || index} style={{ display: 'flex', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #f0f0f0', gap: 12 }}>
-                  {(item.thumbnail || item.product_image || item.image_url) && (
+                  {(item.thumbnail || item.product_image || item.image_url) && resolveImageUrl(item.thumbnail || item.product_image || item.image_url) && (
                     <div style={{ width: 60, height: 60, borderRadius: 6, overflow: 'hidden', flexShrink: 0 }}>
-                      <img src={item.thumbnail || item.product_image || item.image_url} alt={item.product_name || item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <img src={resolveImageUrl(item.thumbnail || item.product_image || item.image_url)} alt={item.product_name || item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     </div>
                   )}
                   <div style={{ flex: 1 }}>

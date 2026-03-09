@@ -2,13 +2,15 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useWishlist } from '../../hooks/useWishlist.js';
 import { formatINR } from '../../utils/priceFormatter.js';
+import { resolveImageUrl } from '../../utils/imageUrl.js';
 
 export default function ProductCard({ product, variant = 'grid', onWishlistToggle, isInWishlist: isInWishlistProp }) {
   const wishlist = useWishlist();
 
   if (!product) return null;
 
-  const imageUrl = product.images?.[0] || product.thumbnail_url || product.image_url || '';
+  const rawImageUrl = product.images?.[0] || product.thumbnail_url || product.image_url || '';
+  const imageUrl = resolveImageUrl(rawImageUrl);
   const inWishlist = isInWishlistProp !== undefined ? isInWishlistProp : wishlist.isInWishlist(product.id);
 
   const toggleWishlist = (e) => {

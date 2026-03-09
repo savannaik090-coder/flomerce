@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { CartContext } from '../context/CartContext.jsx';
 import { CurrencyContext } from '../context/CurrencyContext.jsx';
 import { useWishlist } from '../hooks/useWishlist.js';
+import { resolveImageUrl } from '../utils/imageUrl.js';
 
 export default function WishlistPage() {
   const { items, removeFromWishlist, loading } = useWishlist();
@@ -47,7 +48,7 @@ export default function WishlistPage() {
             const pid = item.productId || item.product_id;
             const name = item.name || item.product_name;
             const price = item.price || item.product_price || 0;
-            const image = item.thumbnail || item.product_image;
+            const image = resolveImageUrl(item.thumbnail || item.product_image || '');
             return (
               <div key={pid} style={{ border: '1px solid #eee', borderRadius: 8, overflow: 'hidden', transition: 'box-shadow 0.3s ease' }}>
                 <Link to={`/product/${pid}`} style={{ textDecoration: 'none', color: 'inherit' }}>

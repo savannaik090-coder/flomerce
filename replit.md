@@ -64,6 +64,7 @@ Fluxe is a multi-tenant SaaS platform that allows users to create their own e-co
 │   │       ├── cart-worker.js       # Cart operations
 │   │       ├── categories-worker.js # Category management
 │   │       ├── wishlist-worker.js   # Wishlist operations
+│   │       ├── upload-worker.js     # Image upload/serve/delete via R2
 │   │       └── site-admin-worker.js # Verification-code-based admin access
 │   ├── utils/
 │   │   ├── auth.js              # JWT, password hashing, auth middleware
@@ -117,6 +118,16 @@ Fluxe is a multi-tenant SaaS platform that allows users to create their own e-co
 - If a platform is cleared in admin (empty string), it removes any stale value from `social_links`
 - Storefront footer (`Footer.jsx`) conditionally renders only the social icons that have a URL set
 
+## Image Storage (R2)
+- Product images are uploaded to **Cloudflare R2** bucket (`saas-platform-s`, binding `STORAGE`)
+- Upload endpoint: `POST /api/upload/image?siteId=...` (multipart/form-data, requires SiteAdmin auth)
+- Serve endpoint: `GET /api/upload/image?key=...` (public, cached 1 year)
+- Delete endpoint: `DELETE /api/upload/image?siteId=...&key=...` (requires SiteAdmin auth)
+- Images stored at path: `sites/{siteId}/products/{imageId}.{ext}`
+- Frontend `ProductForm.jsx` compresses images client-side before uploading to R2
+- All image display components use `resolveImageUrl()` from `utils/imageUrl.js` to handle both R2 URLs (relative `/api/upload/image?key=...`) and legacy base64/external URLs
+- Backwards compatible: existing base64 images in DB still display correctly
+
 ## Build & Deployment
 
 ### Build
@@ -159,4 +170,7 @@ wrangler secret put RESEND_API_KEY      # Or SENDGRID_API_KEY
 - `POST /api/site-admin/auto-login` - Auto-login for site owners (requires platform Bearer auth)
 - `POST /api/site-admin/set-code` - Set admin verification code (requires auth or SiteAdmin token)
 - `GET /api/admin/stats` - Platform admin stats
+- `POST /api/upload/image?siteId=...` - Upload images to R2 (SiteAdmin auth, multipart)
+- `GET /api/upload/image?key=...` - Serve image from R2 (public)
+- `DELETE /api/upload/image?siteId=...&key=...` - Delete image from R2 (SiteAdmin auth)
 - `GET /api/health` - Health check

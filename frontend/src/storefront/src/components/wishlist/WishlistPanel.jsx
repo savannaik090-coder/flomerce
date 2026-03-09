@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { CartContext } from '../../context/CartContext.jsx';
 import { useWishlist } from '../../hooks/useWishlist.js';
 import { useCurrency } from '../../hooks/useCurrency.js';
+import { resolveImageUrl } from '../../utils/imageUrl.js';
 
 export default function WishlistPanel({ isOpen, onClose }) {
   const { items, removeFromWishlist } = useWishlist();
@@ -40,7 +41,7 @@ export default function WishlistPanel({ isOpen, onClose }) {
               <div className="wishlist-item" key={item.id}>
                 <img
                   className="wishlist-item-image"
-                  src={item.product_image || ''}
+                  src={resolveImageUrl(item.product_image || '')}
                   alt={item.product_name || ''}
                   onError={(e) => { e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><rect fill="%23f0f0f0" width="80" height="80"/></svg>'; }}
                   onClick={() => { onClose(); navigate(`/product/${item.product_id}`); }}

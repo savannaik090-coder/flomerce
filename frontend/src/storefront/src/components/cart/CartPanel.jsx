@@ -2,6 +2,7 @@ import React, { useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CartContext } from '../../context/CartContext.jsx';
 import { useCurrency } from '../../hooks/useCurrency.js';
+import { resolveImageUrl } from '../../utils/imageUrl.js';
 
 export default function CartPanel({ isOpen, onClose }) {
   const { items, subtotal, updateQuantity, removeItem } = useContext(CartContext);
@@ -25,7 +26,7 @@ export default function CartPanel({ isOpen, onClose }) {
               <div className="cart-item" key={item.id}>
                 <div className="cart-item-image">
                   <img
-                    src={item.product_image || item.image_url || ''}
+                    src={resolveImageUrl(item.product_image || item.image_url || '')}
                     alt={item.product_name || item.name || ''}
                     onError={(e) => { e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><rect fill="%23f0f0f0" width="80" height="80"/></svg>'; }}
                   />

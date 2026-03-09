@@ -2,6 +2,7 @@ import React, { useContext } from 'react';
 import { Link } from 'react-router-dom';
 import { CartContext } from '../context/CartContext.jsx';
 import { CurrencyContext } from '../context/CurrencyContext.jsx';
+import { resolveImageUrl } from '../utils/imageUrl.js';
 
 export default function CartPage() {
   const { items, subtotal, updateQuantity, removeItem, loading } = useContext(CartContext);
@@ -34,7 +35,7 @@ export default function CartPage() {
               const price = item.price || 0;
               const qty = item.quantity || 1;
               const name = item.name;
-              const image = item.thumbnail || item.image_url;
+              const image = resolveImageUrl(item.thumbnail || item.image_url || '');
               const pid = item.productId;
               return (
                 <div key={pid || idx} style={{ display: 'flex', alignItems: 'center', padding: '16px 20px', borderBottom: idx < items.length - 1 ? '1px solid #f0f0f0' : 'none', gap: 16 }}>

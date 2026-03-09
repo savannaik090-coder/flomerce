@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { useCurrency } from '../../hooks/useCurrency.js';
 import * as productService from '../../services/productService.js';
+import { resolveImageUrl } from '../../utils/imageUrl.js';
 
 const SEARCH_HISTORY_KEY = 'search_history';
 const MAX_HISTORY = 10;
@@ -153,7 +154,7 @@ export default function SearchOverlay({ isOpen, onClose }) {
                 <div key={product.id} className="search-product-item" onClick={() => handleProductClick(product)}>
                   <div className="search-product-image">
                     <img
-                      src={product.images?.[0] || product.image_url || ''}
+                      src={resolveImageUrl(product.images?.[0] || product.image_url || '')}
                       alt={product.name}
                       onError={(e) => { e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><rect fill="%23f0f0f0" width="200" height="200"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="%23999" font-size="14">No Image</text></svg>'; }}
                     />

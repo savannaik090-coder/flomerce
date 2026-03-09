@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { getProducts, deleteProduct } from '../../services/productService.js';
 import { getCategories } from '../../services/categoryService.js';
+import { resolveImageUrl } from '../../utils/imageUrl.js';
 
 export default function ProductsSection({ onEditProduct, onAddProduct }) {
   const { siteConfig } = useContext(SiteContext);
@@ -94,7 +95,8 @@ export default function ProductsSection({ onEditProduct, onAddProduct }) {
         <div className="product-grid">
           {filtered.map(product => {
             const images = product.images ? (typeof product.images === 'string' ? JSON.parse(product.images) : product.images) : [];
-            const mainImage = product.image_url || product.imageUrl || (images.length > 0 ? images[0] : null);
+            const rawImage = product.image_url || product.imageUrl || (images.length > 0 ? images[0] : null);
+            const mainImage = rawImage ? resolveImageUrl(rawImage) : null;
             return (
               <div key={product.id} className="product-card-admin">
                 {mainImage ? (

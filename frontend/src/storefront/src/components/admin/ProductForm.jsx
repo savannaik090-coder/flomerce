@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext, useRef } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { createProduct, updateProduct } from '../../services/productService.js';
 import { getCategories } from '../../services/categoryService.js';
+import { getApiUrl } from '../../services/api.js';
 
 const DEFAULT_FORM = {
   name: '',
@@ -13,7 +14,7 @@ const DEFAULT_FORM = {
   mainImageIndex: 0,
 };
 
-function compressImage(file, quality = 0.8, maxWidth = 1200) {
+function compressImageToBlob(file, quality = 0.8, maxWidth = 1200) {
   return new Promise((resolve) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
@@ -30,13 +31,48 @@ function compressImage(file, quality = 0.8, maxWidth = 1200) {
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0, width, height);
       canvas.toBlob(blob => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.readAsDataURL(blob);
+        resolve(blob);
       }, 'image/jpeg', quality);
     };
     img.src = url;
   });
+}
+
+async function uploadImagesToR2(files, siteId, quality) {
+  const formData = new FormData();
+  for (const file of files) {
+    const compressed = await compressImageToBlob(file, quality);
+    formData.append('images', compressed, file.name || 'image.jpg');
+  }
+
+  const adminToken = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('site_admin_token') : null;
+  const headers = {};
+  if (adminToken) {
+    headers['Authorization'] = `SiteAdmin ${adminToken}`;
+  }
+
+  const response = await fetch(getApiUrl(`/api/upload/image?siteId=${siteId}`), {
+    method: 'POST',
+    body: formData,
+    headers,
+    mode: 'cors',
+    credentials: 'omit',
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.message || 'Upload failed');
+  }
+
+  const result = await response.json();
+  const data = result.data || result;
+  const images = data.images || [];
+  const errors = images.filter(img => img.error).map(img => img.error);
+  const urls = images.filter(img => img.url).map(img => img.url);
+  if (urls.length === 0 && errors.length > 0) {
+    throw new Error(errors.join(', '));
+  }
+  return urls;
 }
 
 export default function ProductForm({ product, onSave, onCancel }) {
@@ -46,7 +82,7 @@ export default function ProductForm({ product, onSave, onCancel }) {
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
   const [imageQuality, setImageQuality] = useState(0.8);
-  const [compressing, setCompressing] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef(null);
 
   const isEdit = !!product;
@@ -57,9 +93,10 @@ export default function ProductForm({ product, onSave, onCancel }) {
 
   useEffect(() => {
     if (product) {
-      const imgs = product.images
-        ? (Array.isArray(product.images) ? product.images : JSON.parse(product.images || '[]'))
-        : [];
+      let imgs = [];
+      if (product.images) {
+        imgs = Array.isArray(product.images) ? product.images : JSON.parse(product.images || '[]');
+      }
       setForm({
         name: product.name || '',
         price: product.price || '',
@@ -124,25 +161,33 @@ export default function ProductForm({ product, onSave, onCancel }) {
   async function handleFilesSelected(e) {
     const files = Array.from(e.target.files);
     if (!files.length) return;
-    setCompressing(true);
+    setUploading(true);
+    setErrors(prev => ({ ...prev, upload: undefined }));
     try {
-      const compressed = await Promise.all(files.map(f => compressImage(f, imageQuality)));
-      setForm(prev => ({ ...prev, images: [...prev.images, ...compressed] }));
+      const urls = await uploadImagesToR2(files, siteConfig.id, imageQuality);
+      setForm(prev => ({ ...prev, images: [...prev.images, ...urls] }));
+    } catch (err) {
+      setErrors(prev => ({ ...prev, upload: 'Upload failed: ' + err.message }));
     } finally {
-      setCompressing(false);
+      setUploading(false);
     }
     e.target.value = '';
   }
 
-  function handleDrop(e) {
+  async function handleDrop(e) {
     e.preventDefault();
     const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
     if (!files.length) return;
-    setCompressing(true);
-    Promise.all(files.map(f => compressImage(f, imageQuality))).then(compressed => {
-      setForm(prev => ({ ...prev, images: [...prev.images, ...compressed] }));
-      setCompressing(false);
-    });
+    setUploading(true);
+    setErrors(prev => ({ ...prev, upload: undefined }));
+    try {
+      const urls = await uploadImagesToR2(files, siteConfig.id, imageQuality);
+      setForm(prev => ({ ...prev, images: [...prev.images, ...urls] }));
+    } catch (err) {
+      setErrors(prev => ({ ...prev, upload: 'Upload failed: ' + err.message }));
+    } finally {
+      setUploading(false);
+    }
   }
 
   function removeImage(idx) {
@@ -164,6 +209,13 @@ export default function ProductForm({ product, onSave, onCancel }) {
         mainImageIndex: prev.mainImageIndex === idx ? newIdx : prev.mainImageIndex === newIdx ? idx : prev.mainImageIndex,
       };
     });
+  }
+
+  function getImageSrc(img) {
+    if (img.startsWith('data:') || img.startsWith('http://') || img.startsWith('https://')) {
+      return img;
+    }
+    return getApiUrl(img);
   }
 
   return (
@@ -275,25 +327,26 @@ export default function ProductForm({ product, onSave, onCancel }) {
             <div
               onDrop={handleDrop}
               onDragOver={e => e.preventDefault()}
-              onClick={() => fileInputRef.current?.click()}
+              onClick={() => !uploading && fileInputRef.current?.click()}
               style={{
                 border: '2px dashed #e2e8f0',
                 borderRadius: 8,
                 padding: 32,
                 textAlign: 'center',
-                cursor: 'pointer',
+                cursor: uploading ? 'not-allowed' : 'pointer',
                 background: '#f8fafc',
                 transition: 'border-color 0.2s',
                 marginBottom: 16,
+                opacity: uploading ? 0.7 : 1,
               }}
             >
-              {compressing ? (
-                <><i className="fas fa-spinner fa-spin" style={{ fontSize: 24, color: '#2563eb', marginBottom: 8 }} /><p style={{ color: '#2563eb', fontSize: 14 }}>Compressing images...</p></>
+              {uploading ? (
+                <><i className="fas fa-spinner fa-spin" style={{ fontSize: 24, color: '#2563eb', marginBottom: 8 }} /><p style={{ color: '#2563eb', fontSize: 14 }}>Uploading images...</p></>
               ) : (
                 <>
                   <i className="fas fa-cloud-upload-alt" style={{ fontSize: 32, color: '#94a3b8', marginBottom: 12 }} />
                   <p style={{ color: '#64748b', fontSize: 14 }}>Drop images here or click to upload</p>
-                  <p style={{ color: '#94a3b8', fontSize: 12, marginTop: 4 }}>Supports JPG, PNG, WebP — auto-compressed before saving</p>
+                  <p style={{ color: '#94a3b8', fontSize: 12, marginTop: 4 }}>Supports JPG, PNG, WebP — compressed & uploaded to cloud storage</p>
                 </>
               )}
             </div>
@@ -306,11 +359,17 @@ export default function ProductForm({ product, onSave, onCancel }) {
               style={{ display: 'none' }}
             />
 
+            {errors.upload && (
+              <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '10px 14px', color: '#dc2626', marginBottom: 12, fontSize: 13 }}>
+                {errors.upload}
+              </div>
+            )}
+
             {form.images.length > 0 && (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 12 }}>
                 {form.images.map((img, idx) => (
                   <div key={idx} style={{ position: 'relative', border: `2px solid ${form.mainImageIndex === idx ? '#2563eb' : '#e2e8f0'}`, borderRadius: 8, overflow: 'hidden' }}>
-                    <img src={img} alt={`Product ${idx + 1}`} style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', display: 'block' }} />
+                    <img src={getImageSrc(img)} alt={`Product ${idx + 1}`} style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', display: 'block' }} />
                     {form.mainImageIndex === idx && (
                       <div style={{ position: 'absolute', top: 4, left: 4, background: '#2563eb', color: 'white', fontSize: 10, padding: '2px 6px', borderRadius: 4 }}>Main</div>
                     )}
@@ -342,7 +401,7 @@ export default function ProductForm({ product, onSave, onCancel }) {
           <button type="button" className="btn btn-secondary" onClick={onCancel} style={{ flex: 1 }}>
             Cancel
           </button>
-          <button type="submit" className="btn btn-primary" disabled={saving} style={{ flex: 2 }}>
+          <button type="submit" className="btn btn-primary" disabled={saving || uploading} style={{ flex: 2 }}>
             {saving ? <><i className="fas fa-spinner fa-spin" style={{ marginRight: 8 }} />Saving...</> : isEdit ? 'Save Changes' : 'Create Product'}
           </button>
         </div>
