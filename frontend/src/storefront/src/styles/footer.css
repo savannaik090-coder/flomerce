@@ -78,6 +78,7 @@
     color: var(--color-text-light);
     text-decoration: none;
     font-size: 14px;
+    font-family: var(--font-primary);
     transition: color var(--transition-base);
     display: block;
     padding: var(--spacing-xs) 0;
@@ -94,7 +95,7 @@
 }
 
 .social-section-title {
-    font-family: var(--font-primary);
+    font-family: Georgia, 'Times New Roman', serif !important;
     font-size: 16px;
     font-weight: 500;
     color: var(--color-text-light);
