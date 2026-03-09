@@ -33,13 +33,14 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
       <div className="promo-banner">
         <p className="banner-text">
           {(() => {
+            const sep = <span style={{ padding: '0 30px', opacity: 0.5 }}>{'\u2726'}</span>;
             const msgs = siteConfig?.settings?.promoBanner;
             if (msgs && Array.isArray(msgs) && msgs.length > 0) {
-              const text = msgs.join('     ✦      ');
-              return <>{text}{'  ✦  '}{text}{'  ✦  '}{text}{'  ✦  '}{text}</>;
+              const block = msgs.flatMap((m, i) => i < msgs.length - 1 ? [m, sep] : [m]);
+              return <>{block}{sep}{block}{sep}{block}{sep}{block}</>;
             }
             const defaultMsg = `Welcome to ${siteConfig?.brandName || 'Our Store'}`;
-            return <>{defaultMsg}{'     '}{defaultMsg}{'     '}{defaultMsg}{'     '}{defaultMsg}</>;
+            return <>{defaultMsg}{sep}{defaultMsg}{sep}{defaultMsg}{sep}{defaultMsg}</>;
           })()}
         </p>
       </div>
