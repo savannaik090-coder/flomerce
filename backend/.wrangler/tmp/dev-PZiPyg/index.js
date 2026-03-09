@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-SHnWpn/checked-fetch.js
+// .wrangler/tmp/bundle-0lQCNW/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-SHnWpn/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-0lQCNW/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-SHnWpn/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-0lQCNW/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-SHnWpn/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-0lQCNW/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -663,12 +663,12 @@ var init_site_admin_worker = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-SHnWpn/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-0lQCNW/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-SHnWpn/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-0lQCNW/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -2543,10 +2543,18 @@ async function createOrder(request, env, user) {
       await updateProductStock(env, item.productId, item.quantity, "decrement");
     }
     try {
-      const site = await env.DB.prepare("SELECT brand_name, settings FROM sites WHERE id = ?").bind(siteId).first();
+      const site = await env.DB.prepare("SELECT brand_name, email, settings FROM sites WHERE id = ?").bind(siteId).first();
       const siteBrandName = site?.brand_name || "Store";
       const siteSettings = site?.settings ? JSON.parse(site.settings) : {};
-      const ownerEmail = siteSettings.email || siteSettings.ownerEmail;
+      const ownerEmail = siteSettings.email || siteSettings.ownerEmail || site?.email;
+      console.log("Order email debug:", {
+        customerEmail,
+        ownerEmail,
+        siteSettingsEmail: siteSettings.email,
+        siteEmail: site?.email,
+        hasResendKey: !!env.RESEND_API_KEY,
+        hasSendGridKey: !!env.SENDGRID_API_KEY
+      });
       const orderForEmail = {
         order_number: orderNumber,
         items: processedItems,
@@ -2557,19 +2565,29 @@ async function createOrder(request, env, user) {
         customer_phone: customerPhone,
         shipping_address: shippingAddress
       };
+      const emailPromises = [];
       if (customerEmail) {
         const { html, text } = buildOrderConfirmationEmail(orderForEmail, siteBrandName);
-        sendEmail(env, customerEmail, `Order Confirmation - ${orderNumber}`, html, text).then((result) => {
-          if (result !== true)
-            console.error("Customer email failed:", result);
-        }).catch((e) => console.error("Customer email error:", e));
+        emailPromises.push(
+          sendEmail(env, customerEmail, `Order Confirmation - ${orderNumber}`, html, text).then((result) => {
+            console.log("Customer email result:", result);
+            if (result !== true)
+              console.error("Customer email failed:", result);
+          }).catch((e) => console.error("Customer email error:", e))
+        );
       }
       if (ownerEmail) {
         const { html, text } = buildOwnerNotificationEmail(orderForEmail, siteBrandName);
-        sendEmail(env, ownerEmail, `New Order #${orderNumber} - ${siteBrandName}`, html, text).then((result) => {
-          if (result !== true)
-            console.error("Owner email failed:", result);
-        }).catch((e) => console.error("Owner email error:", e));
+        emailPromises.push(
+          sendEmail(env, ownerEmail, `New Order #${orderNumber} - ${siteBrandName}`, html, text).then((result) => {
+            console.log("Owner email result:", result);
+            if (result !== true)
+              console.error("Owner email failed:", result);
+          }).catch((e) => console.error("Owner email error:", e))
+        );
+      }
+      if (emailPromises.length > 0) {
+        await Promise.all(emailPromises);
       }
     } catch (emailErr) {
       console.error("Order email notification error:", emailErr);
@@ -2729,10 +2747,15 @@ async function createGuestOrder(request, env) {
       await updateProductStock(env, item.productId, item.quantity, "decrement");
     }
     try {
-      const site = await env.DB.prepare("SELECT brand_name, settings FROM sites WHERE id = ?").bind(siteId).first();
+      const site = await env.DB.prepare("SELECT brand_name, email, settings FROM sites WHERE id = ?").bind(siteId).first();
       const siteBrandName = site?.brand_name || "Store";
       const siteSettings = site?.settings ? JSON.parse(site.settings) : {};
-      const ownerEmail = siteSettings.email || siteSettings.ownerEmail;
+      const ownerEmail = siteSettings.email || siteSettings.ownerEmail || site?.email;
+      console.log("Guest order email debug:", {
+        customerEmail,
+        ownerEmail,
+        hasResendKey: !!env.RESEND_API_KEY
+      });
       const orderForEmail = {
         order_number: orderNumber,
         items: processedItems,
@@ -2743,19 +2766,29 @@ async function createGuestOrder(request, env) {
         customer_phone: customerPhone,
         shipping_address: shippingAddress
       };
+      const emailPromises = [];
       if (customerEmail) {
         const { html, text } = buildOrderConfirmationEmail(orderForEmail, siteBrandName);
-        sendEmail(env, customerEmail, `Order Confirmation - ${orderNumber}`, html, text).then((result) => {
-          if (result !== true)
-            console.error("Guest customer email failed:", result);
-        }).catch((e) => console.error("Guest customer email error:", e));
+        emailPromises.push(
+          sendEmail(env, customerEmail, `Order Confirmation - ${orderNumber}`, html, text).then((result) => {
+            console.log("Guest customer email result:", result);
+            if (result !== true)
+              console.error("Guest customer email failed:", result);
+          }).catch((e) => console.error("Guest customer email error:", e))
+        );
       }
       if (ownerEmail) {
         const { html, text } = buildOwnerNotificationEmail(orderForEmail, siteBrandName);
-        sendEmail(env, ownerEmail, `New Order #${orderNumber} - ${siteBrandName}`, html, text).then((result) => {
-          if (result !== true)
-            console.error("Guest owner email failed:", result);
-        }).catch((e) => console.error("Guest owner email error:", e));
+        emailPromises.push(
+          sendEmail(env, ownerEmail, `New Order #${orderNumber} - ${siteBrandName}`, html, text).then((result) => {
+            console.log("Guest owner email result:", result);
+            if (result !== true)
+              console.error("Guest owner email failed:", result);
+          }).catch((e) => console.error("Guest owner email error:", e))
+        );
+      }
+      if (emailPromises.length > 0) {
+        await Promise.all(emailPromises);
       }
     } catch (emailErr) {
       console.error("Guest order email notification error:", emailErr);
@@ -5314,7 +5347,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-SHnWpn/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-0lQCNW/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -5349,7 +5382,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-SHnWpn/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-0lQCNW/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

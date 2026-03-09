@@ -277,10 +277,19 @@ async function createOrder(request, env, user) {
     }
 
     try {
-      const site = await env.DB.prepare('SELECT brand_name, settings FROM sites WHERE id = ?').bind(siteId).first();
+      const site = await env.DB.prepare('SELECT brand_name, email, settings FROM sites WHERE id = ?').bind(siteId).first();
       const siteBrandName = site?.brand_name || 'Store';
       const siteSettings = site?.settings ? JSON.parse(site.settings) : {};
-      const ownerEmail = siteSettings.email || siteSettings.ownerEmail;
+      const ownerEmail = siteSettings.email || siteSettings.ownerEmail || site?.email;
+
+      console.log('Order email debug:', {
+        customerEmail,
+        ownerEmail,
+        siteSettingsEmail: siteSettings.email,
+        siteEmail: site?.email,
+        hasResendKey: !!env.RESEND_API_KEY,
+        hasSendGridKey: !!env.SENDGRID_API_KEY,
+      });
 
       const orderForEmail = {
         order_number: orderNumber,
@@ -293,18 +302,30 @@ async function createOrder(request, env, user) {
         shipping_address: shippingAddress,
       };
 
+      const emailPromises = [];
+
       if (customerEmail) {
         const { html, text } = buildOrderConfirmationEmail(orderForEmail, siteBrandName);
-        sendEmail(env, customerEmail, `Order Confirmation - ${orderNumber}`, html, text).then(result => {
-          if (result !== true) console.error('Customer email failed:', result);
-        }).catch(e => console.error('Customer email error:', e));
+        emailPromises.push(
+          sendEmail(env, customerEmail, `Order Confirmation - ${orderNumber}`, html, text).then(result => {
+            console.log('Customer email result:', result);
+            if (result !== true) console.error('Customer email failed:', result);
+          }).catch(e => console.error('Customer email error:', e))
+        );
       }
 
       if (ownerEmail) {
         const { html, text } = buildOwnerNotificationEmail(orderForEmail, siteBrandName);
-        sendEmail(env, ownerEmail, `New Order #${orderNumber} - ${siteBrandName}`, html, text).then(result => {
-          if (result !== true) console.error('Owner email failed:', result);
-        }).catch(e => console.error('Owner email error:', e));
+        emailPromises.push(
+          sendEmail(env, ownerEmail, `New Order #${orderNumber} - ${siteBrandName}`, html, text).then(result => {
+            console.log('Owner email result:', result);
+            if (result !== true) console.error('Owner email failed:', result);
+          }).catch(e => console.error('Owner email error:', e))
+        );
+      }
+
+      if (emailPromises.length > 0) {
+        await Promise.all(emailPromises);
       }
     } catch (emailErr) {
       console.error('Order email notification error:', emailErr);
@@ -486,10 +507,16 @@ async function createGuestOrder(request, env) {
     }
 
     try {
-      const site = await env.DB.prepare('SELECT brand_name, settings FROM sites WHERE id = ?').bind(siteId).first();
+      const site = await env.DB.prepare('SELECT brand_name, email, settings FROM sites WHERE id = ?').bind(siteId).first();
       const siteBrandName = site?.brand_name || 'Store';
       const siteSettings = site?.settings ? JSON.parse(site.settings) : {};
-      const ownerEmail = siteSettings.email || siteSettings.ownerEmail;
+      const ownerEmail = siteSettings.email || siteSettings.ownerEmail || site?.email;
+
+      console.log('Guest order email debug:', {
+        customerEmail,
+        ownerEmail,
+        hasResendKey: !!env.RESEND_API_KEY,
+      });
 
       const orderForEmail = {
         order_number: orderNumber,
@@ -502,18 +529,30 @@ async function createGuestOrder(request, env) {
         shipping_address: shippingAddress,
       };
 
+      const emailPromises = [];
+
       if (customerEmail) {
         const { html, text } = buildOrderConfirmationEmail(orderForEmail, siteBrandName);
-        sendEmail(env, customerEmail, `Order Confirmation - ${orderNumber}`, html, text).then(result => {
-          if (result !== true) console.error('Guest customer email failed:', result);
-        }).catch(e => console.error('Guest customer email error:', e));
+        emailPromises.push(
+          sendEmail(env, customerEmail, `Order Confirmation - ${orderNumber}`, html, text).then(result => {
+            console.log('Guest customer email result:', result);
+            if (result !== true) console.error('Guest customer email failed:', result);
+          }).catch(e => console.error('Guest customer email error:', e))
+        );
       }
 
       if (ownerEmail) {
         const { html, text } = buildOwnerNotificationEmail(orderForEmail, siteBrandName);
-        sendEmail(env, ownerEmail, `New Order #${orderNumber} - ${siteBrandName}`, html, text).then(result => {
-          if (result !== true) console.error('Guest owner email failed:', result);
-        }).catch(e => console.error('Guest owner email error:', e));
+        emailPromises.push(
+          sendEmail(env, ownerEmail, `New Order #${orderNumber} - ${siteBrandName}`, html, text).then(result => {
+            console.log('Guest owner email result:', result);
+            if (result !== true) console.error('Guest owner email failed:', result);
+          }).catch(e => console.error('Guest owner email error:', e))
+        );
+      }
+
+      if (emailPromises.length > 0) {
+        await Promise.all(emailPromises);
       }
     } catch (emailErr) {
       console.error('Guest order email notification error:', emailErr);
