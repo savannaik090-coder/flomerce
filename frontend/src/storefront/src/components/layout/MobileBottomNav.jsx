@@ -19,15 +19,15 @@ export default function MobileBottomNav({ onCartOpen }) {
   return (
     <nav className="bottom-nav">
       <Link to="/" className={`bottom-nav-item${location.pathname === '/' ? ' active' : ''}`}>
-        <i className="fas fa-home"></i>
+        <i className="fi fi-rs-home"></i>
         <span>Home</span>
       </Link>
       <Link to="/category/all" className="bottom-nav-item">
-        <i className="fas fa-store"></i>
+        <i className="fi fi-rs-shop"></i>
         <span>Shop</span>
       </Link>
       <Link to={isAuthenticated ? '/profile' : '/login'} className="bottom-nav-item">
-        <i className="fas fa-user"></i>
+        <i className="fi fi-rs-user"></i>
         <span>Account</span>
       </Link>
       <div className="bottom-nav-item currency-selector-wrapper">
@@ -44,7 +44,7 @@ export default function MobileBottomNav({ onCartOpen }) {
         </select>
       </div>
       <a href="#" className="bottom-nav-item" onClick={(e) => { e.preventDefault(); onCartOpen?.(); }}>
-        <i className="fas fa-shopping-bag"></i>
+        <i className="fi fi-rs-shopping-bag"></i>
         <span>Bag</span>
         {cartCount > 0 && (
           <span style={{

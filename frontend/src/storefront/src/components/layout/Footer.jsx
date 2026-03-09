@@ -66,7 +66,7 @@ export default function Footer() {
 
         <div className="footer-section">
           <button className="footer-toggle" onClick={() => toggleSection('benefits')}>
-            <span className="footer-title">Exclusive Benefits</span>
+            <span className="footer-title">Exclusive benefits</span>
             <i className={`fas fa-chevron-down`} style={openSections.benefits ? { transform: 'rotate(180deg)' } : {}}></i>
           </button>
           <div className={`footer-content${openSections.benefits ? ' show' : ''}`}>
@@ -103,6 +103,18 @@ export default function Footer() {
             </div>
           </div>
         )}
+
+        <div className="footer-app-section">
+          <h3 className="app-section-title">Download Our App</h3>
+          <div className="app-buttons-container">
+            <a href="#" className="app-store-button">
+              <img src="https://upload.wikimedia.org/wikipedia/commons/3/3c/Download_on_the_App_Store_Badge.svg" alt="Download on App Store" />
+            </a>
+            <a href="#" className="google-play-button">
+              <img src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg" alt="Get it on Google Play" />
+            </a>
+          </div>
+        </div>
 
         <div className="footer-bottom">
           <div className="container">
