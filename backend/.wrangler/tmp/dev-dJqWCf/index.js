@@ -330,6 +330,7 @@ async function validateAnyAuth(request, env) {
   if (authHeader && authHeader.startsWith("SiteCustomer ")) {
     const token = authHeader.substring(13);
     try {
+      await ensureCustomerTablesExist(env);
       const session = await env.DB.prepare(
         `SELECT cs.customer_id, cs.site_id FROM site_customer_sessions cs
          WHERE cs.token = ? AND cs.expires_at > datetime('now')`
@@ -353,6 +354,42 @@ async function validateAnyAuth(request, env) {
   }
   return null;
 }
+async function ensureCustomerTablesExist(env) {
+  if (_customerTablesEnsured)
+    return;
+  try {
+    await env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS site_customers (
+        id TEXT PRIMARY KEY,
+        site_id TEXT NOT NULL,
+        email TEXT NOT NULL,
+        password_hash TEXT NOT NULL,
+        name TEXT NOT NULL,
+        phone TEXT,
+        created_at TEXT DEFAULT (datetime('now')),
+        updated_at TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
+        UNIQUE(site_id, email)
+      )
+    `).run();
+    await env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS site_customer_sessions (
+        id TEXT PRIMARY KEY,
+        customer_id TEXT NOT NULL,
+        site_id TEXT NOT NULL,
+        token TEXT NOT NULL,
+        expires_at TEXT NOT NULL,
+        created_at TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (customer_id) REFERENCES site_customers(id) ON DELETE CASCADE,
+        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
+      )
+    `).run();
+    _customerTablesEnsured = true;
+  } catch (error) {
+    console.error("Error ensuring customer tables:", error);
+  }
+}
+var _customerTablesEnsured;
 var init_auth = __esm({
   "utils/auth.js"() {
     init_checked_fetch();
@@ -365,6 +402,8 @@ var init_auth = __esm({
     __name(verifyJWT, "verifyJWT");
     __name(validateAuth, "validateAuth");
     __name(validateAnyAuth, "validateAnyAuth");
+    _customerTablesEnsured = false;
+    __name(ensureCustomerTablesExist, "ensureCustomerTablesExist");
   }
 });
 

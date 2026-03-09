@@ -182,25 +182,69 @@ export default function CheckoutPage() {
           return;
         }
 
-        const result = await orderService.createOrder(orderData);
-        const order = result.data || result.order || result;
+        if (!window.Razorpay) {
+          setError('Payment gateway not loaded. Please refresh and try again.');
+          setLoading(false);
+          return;
+        }
+
+        const dbOrder = await orderService.createOrder(orderData);
+        const order = dbOrder.data || dbOrder.order || dbOrder;
+        const orderId = order.id || order.orderId;
+        const orderNumber = order.orderNumber || order.order_number;
+
+        const { apiRequest } = await import('../services/api.js');
+        const paymentResult = await apiRequest('/api/payments/create-order', {
+          method: 'POST',
+          body: JSON.stringify({
+            amount: subtotal,
+            currency: 'INR',
+            receipt: orderNumber || `order_${Date.now()}`,
+            orderId: orderId,
+            siteId: siteConfig?.id,
+            notes: { orderNumber },
+          }),
+        });
+
+        const paymentData = paymentResult.data || paymentResult;
+        const razorpayOrderId = paymentData.orderId || paymentData.razorpay_order_id;
+
+        if (!razorpayOrderId) {
+          setError('Failed to initialize payment. Please try again.');
+          setLoading(false);
+          return;
+        }
 
         const options = {
-          key: razorpayKeyId,
-          amount: Math.round(subtotal * 100),
-          currency: 'INR',
+          key: paymentData.keyId || razorpayKeyId,
+          amount: paymentData.amount || Math.round(subtotal * 100),
+          currency: paymentData.currency || 'INR',
           name: siteConfig?.brandName || 'Store',
-          description: `Order #${order.id || 'new'}`,
-          order_id: order.razorpay_order_id,
+          description: `Order #${orderNumber || orderId || 'new'}`,
+          order_id: razorpayOrderId,
           handler: async function (response) {
             try {
-              await orderService.updateOrderStatus(order.id, 'paid');
-              setOrderRef(order.id || order.order_id || 'ORD-' + Date.now());
+              await apiRequest('/api/payments/verify', {
+                method: 'POST',
+                body: JSON.stringify({
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature,
+                  siteId: siteConfig?.id,
+                }),
+              });
+              await orderService.updateOrderStatus(orderId, 'paid');
+              setOrderRef(orderNumber || orderId || 'ORD-' + Date.now());
               setOrderPlaced(true);
               clearAll();
             } catch {
               setError('Payment verified but order update failed. Please contact support.');
             }
+          },
+          modal: {
+            ondismiss: function () {
+              setLoading(false);
+            },
           },
           prefill: {
             name: `${address.firstName} ${address.lastName}`,
@@ -210,12 +254,12 @@ export default function CheckoutPage() {
           theme: { color: siteConfig?.primaryColor || '#000000' },
         };
 
-        if (window.Razorpay) {
-          const rzp = new window.Razorpay(options);
-          rzp.open();
-        } else {
-          setError('Payment gateway not loaded. Please refresh and try again.');
-        }
+        const rzp = new window.Razorpay(options);
+        rzp.on('payment.failed', function (resp) {
+          setError(`Payment failed: ${resp.error?.description || 'Unknown error'}. Please try again.`);
+          setLoading(false);
+        });
+        rzp.open();
         setLoading(false);
         return;
       }

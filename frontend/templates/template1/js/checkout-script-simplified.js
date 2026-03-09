@@ -2222,7 +2222,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 } else {
                     // Fallback to direct API call to Express server
                     console.log('Using local server to create order');
-                    apiEndpoint = `${window.location.origin}/api/create-razorpay-order`;
+                    apiEndpoint = `${window.location.origin}/api/payments/create-order`;
 
                     const response = await Promise.race([
                         fetch(apiEndpoint, {
@@ -2264,15 +2264,24 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Validate the response thoroughly
             if (!result || !result.success) {
-                const errorMsg = result?.message || 'Failed to create payment order';
+                const errorMsg = result?.message || result?.error || 'Failed to create payment order';
                 console.error('Order creation failed:', errorMsg);
                 throw new Error(errorMsg);
             }
 
-            if (!result.order || !result.order.id || !result.key_id) {
+            const paymentData = result.data || result;
+            const razorpayOrderId = paymentData.orderId || (paymentData.order && paymentData.order.id);
+            const razorpayKeyId = paymentData.keyId || paymentData.key_id || result.key_id;
+            const razorpayAmount = paymentData.amount || (paymentData.order && paymentData.order.amount);
+            const razorpayCurrency = paymentData.currency || (paymentData.order && paymentData.order.currency) || 'INR';
+
+            if (!razorpayOrderId || !razorpayKeyId) {
                 console.error('Invalid order response:', result);
                 throw new Error('Invalid order response from payment gateway. Missing required data.');
             }
+
+            result.order = { id: razorpayOrderId, amount: razorpayAmount, currency: razorpayCurrency };
+            result.key_id = razorpayKeyId;
 
             // Update button text
             if (submitButton) {
