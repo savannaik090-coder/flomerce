@@ -35,7 +35,7 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
           {(() => {
             const msgs = siteConfig?.settings?.promoBanner;
             if (msgs && Array.isArray(msgs) && msgs.length > 0) {
-              const text = msgs.join('    ✦    ');
+              const text = msgs.join('     ✦      ');
               return <>{text}{'  ✦  '}{text}{'  ✦  '}{text}{'  ✦  '}{text}</>;
             }
             const defaultMsg = `Welcome to ${siteConfig?.brandName || 'Our Store'}`;
