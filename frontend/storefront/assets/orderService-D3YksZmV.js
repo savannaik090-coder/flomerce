@@ -1,1 +1,0 @@
-import{m as t}from"./index-BpfC9_ly.js";async function s(r){return t("/api/orders",{method:"POST",body:JSON.stringify(r)})}async function o(r,e={}){const a=new URLSearchParams({siteId:r,...e}).toString();return t(`/api/orders?${a}`)}async function i(r,e){return t(`/api/orders/${r}`,{method:"PUT",body:JSON.stringify({status:e})})}export{s as c,o as g,i as u};

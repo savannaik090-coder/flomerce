@@ -4,13 +4,8 @@
     margin-top: var(--spacing-xxxl);
     margin-bottom: 80px;
     font-family: var(--font-primary);
-    padding: var(--spacing-xxl) 0 0;
+    padding: var(--spacing-xxl) var(--spacing-lg) var(--spacing-xl);
     border-top: 1px solid var(--color-border-light);
-}
-
-.footer-minimalist > .container {
-    max-width: 100%;
-    padding: 0 var(--spacing-lg);
 }
 
 .footer-section {
@@ -36,17 +31,17 @@
 }
 
 .footer-title {
-    font-size: 15px;
+    font-size: 16px;
     font-weight: 500;
-    color: var(--color-text);
+    color: var(--color-text-light);
     text-align: left;
-    letter-spacing: 0.3px;
-    font-family: var(--font-primary);
+    letter-spacing: 0.5px;
+    transition: color var(--transition-base);
 }
 
 .footer-toggle i {
     color: var(--color-text-placeholder);
-    font-size: 13px;
+    font-size: 14px;
     transition: transform var(--transition-slow), color var(--transition-base);
 }
 
@@ -83,7 +78,6 @@
     color: var(--color-text-light);
     text-decoration: none;
     font-size: 14px;
-    font-family: var(--font-primary);
     transition: color var(--transition-base);
     display: block;
     padding: var(--spacing-xs) 0;
@@ -95,36 +89,37 @@
 
 .footer-social-section {
     margin-top: var(--spacing-sm);
-    padding: var(--spacing-lg) 0;
+    padding: var(--spacing-sm) 0 var(--spacing-lg) 0;
+    text-align: center;
 }
 
 .social-section-title {
     font-family: var(--font-primary);
-    font-size: 15px;
+    font-size: 16px;
     font-weight: 500;
-    color: var(--color-text);
+    color: var(--color-text-light);
     margin-bottom: var(--spacing-md);
     text-align: left;
-    letter-spacing: 0.3px;
+    letter-spacing: 0.5px;
 }
 
 .social-icons-container {
     display: flex;
     justify-content: flex-start;
     align-items: center;
-    gap: var(--spacing-md);
+    gap: var(--spacing-lg);
 }
 
 .social-icon-link {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 38px;
-    height: 38px;
+    width: 40px;
+    height: 40px;
     background-color: var(--color-bg);
     border-radius: 50%;
     color: var(--color-text-light);
-    font-size: 17px;
+    font-size: 18px;
     transition: all var(--transition-base);
     border: 1px solid var(--color-border-light);
 }
@@ -146,7 +141,7 @@
 
 .app-section-title {
     font-family: var(--font-heading);
-    font-size: 22px;
+    font-size: 24px;
     color: var(--color-text);
     margin-bottom: var(--spacing-lg);
     font-weight: 500;
@@ -181,47 +176,47 @@
     background-color: var(--color-bg);
     color: var(--color-text-light);
     padding: 25px 0;
-    margin-top: var(--spacing-xl);
+    margin-top: 0;
     border-top: 1px solid var(--color-border-light);
 }
 
 .footer-info {
     display: flex;
     flex-wrap: wrap;
-    justify-content: center;
+    justify-content: space-between;
     align-items: center;
     gap: var(--spacing-lg);
+    max-width: var(--container-max);
+    margin: 0 auto;
     padding: 0 var(--spacing-lg);
 }
 
 .copyright {
-    width: 100%;
-    text-align: center;
+    flex: 1;
+    min-width: 250px;
 }
 
 .copyright p {
     margin: 0;
-    font-size: 13px;
+    font-size: 14px;
     line-height: 1.5;
     color: var(--color-text-light);
-    font-family: var(--font-primary);
 }
 
 .footer-links {
     display: flex;
     gap: var(--spacing-lg);
     flex-wrap: wrap;
-    justify-content: center;
 }
 
 .footer-links a {
     color: var(--color-text-light);
     text-decoration: none;
-    font-size: 13px;
-    font-family: var(--font-primary);
+    font-size: 14px;
     padding: var(--spacing-xs) var(--spacing-sm);
     border-radius: var(--radius-sm);
     transition: all var(--transition-base);
+    white-space: nowrap;
 }
 
 .footer-links a:hover {
@@ -231,21 +226,20 @@
 
 .payment-methods {
     display: flex;
-    gap: 10px;
+    gap: 12px;
     align-items: center;
     flex-wrap: wrap;
-    justify-content: center;
 }
 
 .payment-methods span {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 38px;
-    height: 26px;
+    width: 40px;
+    height: 28px;
     background-color: var(--color-bg-white);
     border-radius: var(--radius-sm);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     transition: all var(--transition-base);
     border: 1px solid var(--color-border-light);
 }
@@ -255,17 +249,18 @@
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
-.payment-methods span:nth-child(1) i { font-size: 16px; color: #006FCF; }
-.payment-methods span:nth-child(2) i { font-size: 16px; color: #FF6000; }
-.payment-methods span:nth-child(3) i { font-size: 16px; color: #4285F4; }
-.payment-methods span:nth-child(4) i { font-size: 16px; color: #EB001B; }
-.payment-methods span:nth-child(5) i { font-size: 16px; color: #003087; }
+.payment-methods span:nth-child(1) i { font-size: 18px; color: #006FCF; }
+.payment-methods span:nth-child(2) i { font-size: 18px; color: #FF6000; }
+.payment-methods span:nth-child(3) i { font-size: 18px; color: #4285F4; }
+.payment-methods span:nth-child(4) i { font-size: 18px; color: #EB001B; }
+.payment-methods span:nth-child(5) i { font-size: 18px; color: #003087; }
 .payment-methods span:nth-child(6) { background-color: #E21836; }
-.payment-methods span:nth-child(7) i { font-size: 16px; color: #1A1F71; }
+.payment-methods span:nth-child(7) i { font-size: 18px; color: #1A1F71; }
 .union-pay {
+    font-family: var(--font-primary);
     font-weight: 700;
-    font-size: 11px;
-    color: #fff;
+    font-size: 12px;
+    color: var(--color-bg-white);
     letter-spacing: 0.5px;
 }
 
