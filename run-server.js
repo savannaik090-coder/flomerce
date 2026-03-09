@@ -16,6 +16,18 @@ app.use('/storefront', express.static(storefrontDir));
 
 app.use('/templates', express.static(path.join(frontendDir, 'templates')));
 
+app.use('/assets', (req, res, next) => {
+  const platformAsset = path.join(frontendDir, 'assets', req.path);
+  const storefrontAsset = path.join(storefrontDir, 'assets', req.path);
+  if (fs.existsSync(platformAsset)) {
+    return res.sendFile(platformAsset);
+  }
+  if (fs.existsSync(storefrontAsset)) {
+    return res.sendFile(storefrontAsset);
+  }
+  next();
+});
+
 app.use(express.static(frontendDir, {
   extensions: ['html'],
   index: 'index.html',
