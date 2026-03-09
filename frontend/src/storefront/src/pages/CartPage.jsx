@@ -18,7 +18,7 @@ export default function CartPage() {
   }
 
   return (
-    <div style={{ maxWidth: 900, margin: '140px auto 60px', padding: '0 20px' }}>
+    <div style={{ maxWidth: 900, margin: '40px auto 60px', padding: '0 20px' }}>
       <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 28, marginBottom: 30, textAlign: 'center' }}>Shopping Cart</h1>
 
       {items.length === 0 ? (

@@ -1,6 +1,6 @@
 .checkout-page {
   max-width: 900px;
-  margin: 140px auto 60px;
+  margin: 40px auto 60px;
   padding: 0 20px;
 }
 
@@ -403,7 +403,7 @@
 
 @media (max-width: 640px) {
   .checkout-page {
-    margin-top: 100px;
+    margin-top: 20px;
   }
 
   .checkout-card {

@@ -82,7 +82,7 @@ export default function LoginPage() {
 
   return (
     <div style={{ minHeight: '80vh' }}>
-      <section style={{ maxWidth: 600, margin: '160px auto 60px', backgroundColor: '#fff', padding: 30, borderRadius: 5, boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
+      <section style={{ maxWidth: 600, margin: '40px auto 60px', backgroundColor: '#fff', padding: 30, borderRadius: 5, boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
         <div style={{ textAlign: 'center', marginBottom: 30 }}>
           <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 28, marginBottom: 10, color: '#333' }}>Login to Your Account</h2>
           <p style={{ fontFamily: "'Lato', sans-serif", fontSize: 16, color: '#777' }}>Welcome back, please enter your details</p>

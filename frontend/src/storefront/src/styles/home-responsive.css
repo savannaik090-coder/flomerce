@@ -1,8 +1,8 @@
 @media (max-width: 1200px) {
     .hero-slider {
-        height: 90vh;
-        min-height: 90vh;
-        margin: 5px 0;
+        height: 75vh;
+        min-height: 450px;
+        margin: 0;
         max-width: 100%;
     }
     .slide-title,
@@ -12,18 +12,18 @@
 
 @media (max-width: 768px) {
     .hero-slider {
-        height: 90vh;
-        min-height: 90vh;
-        margin: 5px 0;
+        height: 65vh;
+        min-height: 400px;
+        margin: 0;
         max-width: 100%;
     }
-    .slide-content { bottom: 120px; max-width: 350px; padding: 0 20px; }
+    .slide-content { bottom: 100px; max-width: 350px; padding: 0 20px; }
     .slide-title,
     .slide-subtitle { font-size: 2.8rem; letter-spacing: 0.1em; }
     .slide-description { font-size: 0.7rem; margin-bottom: 25px; letter-spacing: 0.15em; }
     .shop-now-btn { padding: 12px 28px; font-size: 0.7rem; }
 
-    .category-circles-section { padding: 30px 0 13px 0; margin-top: 80px; }
+    .category-circles-section { padding: 30px 0 13px 0; margin-top: 0; }
     .category-circles-wrapper { justify-content: flex-start; gap: 20px; max-width: 100%; }
 
     .new-arrivals-header .section-title,
@@ -56,11 +56,11 @@
 
 @media (max-width: 576px) {
     .hero-slider {
-        height: 70vh;
-        min-height: 70vh;
-        margin: 5px 0;
+        height: 55vh;
+        min-height: 350px;
+        margin: 0;
     }
-    .slide-content { bottom: 300px; max-width: 300px; padding: 0 15px; }
+    .slide-content { bottom: 80px; max-width: 300px; padding: 0 15px; }
     .slide-title,
     .slide-subtitle { font-size: 3.2rem; letter-spacing: 0.08em; }
     .slide-description { font-size: 0.65rem; margin-bottom: 20px; }
@@ -68,7 +68,7 @@
 }
 
 @media (max-width: 480px) {
-    .category-circles-section { padding: 25px 0 12px 0; margin-top: 55px; }
+    .category-circles-section { padding: 25px 0 12px 0; margin-top: 0; }
     .category-circles-wrapper { gap: 15px; }
 
     .new-arrivals-header .section-title,

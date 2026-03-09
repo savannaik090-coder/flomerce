@@ -184,3 +184,10 @@ wrangler secret put RESEND_API_KEY      # Or SENDGRID_API_KEY
 - `GET /api/upload/image?key=...` - Serve image from R2 (public)
 - `DELETE /api/upload/image?siteId=...&key=...` - Delete image from R2 (SiteAdmin auth)
 - `GET /api/health` - Health check
+
+## Storefront Navbar Layout
+- Navbar uses `position: sticky` (not fixed/floating) — sits in normal document flow below the promo banner
+- Solid white background, full-width, no border-radius pill shape
+- Nav links and icons use dark color (#333) instead of white
+- Hero slider height is 85vh (not 100vh) since it no longer sits behind the navbar
+- Page content containers use ~30-40px top margin (not 120-160px) since there's no fixed navbar offset to compensate for

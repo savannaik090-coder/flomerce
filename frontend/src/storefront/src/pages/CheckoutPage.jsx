@@ -317,7 +317,7 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="checkout-page" style={{ maxWidth: 900, margin: '140px auto 60px', padding: '0 20px' }}>
+    <div className="checkout-page" style={{ maxWidth: 900, margin: '40px auto 60px', padding: '0 20px' }}>
       <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 28, marginBottom: 30, textAlign: 'center' }}>Checkout</h1>
 
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 40, gap: 0 }}>

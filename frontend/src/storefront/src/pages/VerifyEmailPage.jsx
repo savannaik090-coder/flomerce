@@ -34,7 +34,7 @@ export default function VerifyEmailPage() {
 
   return (
     <div style={{ minHeight: '80vh' }}>
-      <section style={{ maxWidth: 500, margin: '160px auto 60px', backgroundColor: '#fff', padding: 40, borderRadius: 10, boxShadow: '0 4px 20px rgba(0,0,0,0.1)', textAlign: 'center' }}>
+      <section style={{ maxWidth: 500, margin: '40px auto 60px', backgroundColor: '#fff', padding: 40, borderRadius: 10, boxShadow: '0 4px 20px rgba(0,0,0,0.1)', textAlign: 'center' }}>
         {status === 'verifying' && (
           <>
             <div style={{ width: 40, height: 40, border: '4px solid #f3f3f3', borderTop: '4px solid #c8a97e', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '20px auto' }} />

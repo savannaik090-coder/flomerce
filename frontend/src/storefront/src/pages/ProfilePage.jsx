@@ -131,7 +131,7 @@ export default function ProfilePage() {
 
   return (
     <div style={{ minHeight: '80vh' }}>
-      <div style={{ maxWidth: 1000, margin: '160px auto 60px', backgroundColor: '#fff', padding: 30, borderRadius: 5, boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
+      <div style={{ maxWidth: 1000, margin: '40px auto 60px', backgroundColor: '#fff', padding: 30, borderRadius: 5, boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: 30, paddingBottom: 20, borderBottom: '1px solid #eee' }}>
           <div style={{ width: 100, height: 100, borderRadius: '50%', backgroundColor: '#c8a97e', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: 20, color: '#fff', fontSize: 36, fontFamily: "'Playfair Display', serif", flexShrink: 0 }}>
             {initials}

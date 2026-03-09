@@ -32,7 +32,7 @@ export default function WishlistPage() {
   }
 
   return (
-    <div style={{ maxWidth: 1000, margin: '140px auto 60px', padding: '0 20px' }}>
+    <div style={{ maxWidth: 1000, margin: '40px auto 60px', padding: '0 20px' }}>
       <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 28, marginBottom: 30, textAlign: 'center' }}>My Wishlist</h1>
 
       {items.length === 0 ? (

@@ -58,7 +58,7 @@ export default function ProductsAdminPage() {
   }
 
   return (
-    <div style={{ maxWidth: 800, margin: '120px auto 60px', padding: '0 20px' }}>
+    <div style={{ maxWidth: 800, margin: '40px auto 60px', padding: '0 20px' }}>
       <ProductForm
         product={product}
         onSave={handleSave}

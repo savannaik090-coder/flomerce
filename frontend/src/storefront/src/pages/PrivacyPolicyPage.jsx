@@ -7,7 +7,7 @@ export default function PrivacyPolicyPage() {
   const email = siteConfig?.email || 'support@example.com';
 
   return (
-    <div style={{ maxWidth: 800, margin: '120px auto 80px', padding: '0 20px', fontFamily: 'inherit' }}>
+    <div style={{ maxWidth: 800, margin: '40px auto 80px', padding: '0 20px', fontFamily: 'inherit' }}>
       <h1 style={{ fontSize: 32, fontWeight: 700, marginBottom: 8 }}>Privacy Policy</h1>
       <p style={{ color: '#64748b', marginBottom: 40 }}>Last updated: {new Date().toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
 

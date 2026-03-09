@@ -65,7 +65,7 @@ export default function BookAppointmentPage() {
     <div className="book-appointment-page">
       <style>{`
         .appointment-container {
-          max-width: 800px; margin: 120px auto 50px; padding: 40px 20px;
+          max-width: 800px; margin: 40px auto 50px; padding: 40px 20px;
         }
         .appointment-header { text-align: center; margin-bottom: 40px; }
         .appointment-header h1 {
@@ -124,7 +124,7 @@ export default function BookAppointmentPage() {
         .appt-status-msg.success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
         .appt-status-msg.error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
         @media (max-width: 768px) {
-          .appointment-container { margin-top: 100px; }
+          .appointment-container { margin-top: 30px; }
           .appointment-type { grid-template-columns: 1fr; }
           .time-slots { grid-template-columns: repeat(2, 1fr); }
           .appointment-form { padding: 25px; }

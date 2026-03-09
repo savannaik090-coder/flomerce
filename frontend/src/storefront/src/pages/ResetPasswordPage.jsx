@@ -44,7 +44,7 @@ export default function ResetPasswordPage() {
 
   return (
     <div style={{ minHeight: '80vh' }}>
-      <section style={{ maxWidth: 500, margin: '160px auto 60px', backgroundColor: '#fff', padding: 40, borderRadius: 10, boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }}>
+      <section style={{ maxWidth: 500, margin: '40px auto 60px', backgroundColor: '#fff', padding: 40, borderRadius: 10, boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }}>
         <div style={{ textAlign: 'center', marginBottom: 30 }}>
           <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 28, marginBottom: 10, color: '#333' }}>Reset Password</h2>
           <p style={{ fontFamily: "'Lato', sans-serif", fontSize: 16, color: '#777' }}>Enter your new password below</p>
