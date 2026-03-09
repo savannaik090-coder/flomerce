@@ -16,6 +16,8 @@ app.use('/storefront', express.static(storefrontDir));
 
 app.use('/templates', express.static(path.join(frontendDir, 'templates')));
 
+app.use('/images', express.static(path.join(storefrontDir, 'images')));
+
 app.use('/assets', (req, res, next) => {
   const platformAsset = path.join(frontendDir, 'assets', req.path);
   const storefrontAsset = path.join(storefrontDir, 'assets', req.path);

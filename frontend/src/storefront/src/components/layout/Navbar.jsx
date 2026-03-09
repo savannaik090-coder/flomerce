@@ -48,7 +48,7 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
       <nav className="navbar">
         <div className="nav-container">
           <div className="hamburger" onClick={() => setMenuOpen(true)}>
-            <i className="fas fa-bars" style={{ fontSize: 24, color: '#fff' }}></i>
+            <img src="/images/icons/bars-staggered (2).png" alt="Menu" style={{ width: 25, height: 25 }} />
           </div>
 
           <Link to="/" className="brand">
@@ -67,17 +67,17 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
 
           <div className="nav-icons">
             <a href="#" className="icon-link search-icon" onClick={(e) => { e.preventDefault(); onSearchOpen?.(); }}>
-              <i className="fas fa-search" style={{ fontSize: 18 }}></i>
+              <img src="/images/icons/search.png" alt="Search" style={{ width: 20, height: 20 }} />
             </a>
             <Link to={isAuthenticated ? '/profile' : '/login'} className="icon-link account-icon">
-              <i className="fas fa-user" style={{ fontSize: 18 }}></i>
+              <img src="/images/icons/user.png" alt="Account" style={{ width: 25, height: 25 }} />
             </Link>
             <a href="#" className="icon-link wishlist-icon-container wishlist-toggle" onClick={(e) => { e.preventDefault(); onWishlistOpen?.(); }}>
-              <i className="far fa-heart" style={{ fontSize: 18 }}></i>
+              <img src="/images/icons/heart.png" alt="Wishlist" style={{ width: 20, height: 20 }} />
               <div className="wishlist-count">{wishlistCount}</div>
             </a>
             <a href="#" className="icon-link cart-icon-container cart-toggle" onClick={(e) => { e.preventDefault(); onCartOpen?.(); }}>
-              <i className="fas fa-shopping-bag" style={{ fontSize: 18 }}></i>
+              <img src="/images/icons/cart-minus.png" alt="Cart" style={{ width: 20, height: 20 }} />
               <div className="cart-count">{cartCount}</div>
             </a>
           </div>
@@ -121,13 +121,13 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
 
         <div className="mobile-account-links mobile-special">
           <Link to={isAuthenticated ? '/profile' : '/login'} className="mobile-account-link" onClick={closeMobileMenu}>
-            <i className="fas fa-user" style={{ fontSize: 16, marginRight: 8 }}></i> Account
+            <img src="/images/icons/user.png" alt="Account" style={{ width: 16, height: 16, marginRight: 8 }} /> Account
           </Link>
           <a href="#" className="mobile-account-link wishlist-toggle" onClick={(e) => { e.preventDefault(); closeMobileMenu(); onWishlistOpen?.(); }}>
-            <i className="far fa-heart" style={{ fontSize: 16, marginRight: 8 }}></i> Wishlist ({wishlistCount})
+            <img src="/images/icons/heart.png" alt="Wishlist" style={{ width: 16, height: 16, marginRight: 8 }} /> Wishlist ({wishlistCount})
           </a>
           <a href="#" className="mobile-account-link mobile-cart-toggle" onClick={(e) => { e.preventDefault(); closeMobileMenu(); onCartOpen?.(); }}>
-            <i className="fas fa-shopping-bag" style={{ fontSize: 16, marginRight: 8 }}></i> Shopping Bag ({cartCount})
+            <img src="/images/icons/cart-minus.png" alt="Cart" style={{ width: 16, height: 16, marginRight: 8 }} /> Shopping Bag ({cartCount})
           </a>
         </div>
       </div>
