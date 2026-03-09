@@ -202,6 +202,18 @@
     font-size: 14px;
     line-height: 1.5;
     color: var(--color-text-light);
+    font-family: var(--font-primary);
+}
+
+.powered-by-link {
+    color: var(--color-accent-light);
+    text-decoration: none;
+    font-weight: 500;
+    transition: color var(--transition-base);
+}
+
+.powered-by-link:hover {
+    color: #b8905f;
 }
 
 .footer-links {
@@ -214,6 +226,7 @@
     color: var(--color-text-light);
     text-decoration: none;
     font-size: 14px;
+    font-family: Georgia, 'Times New Roman', serif;
     padding: var(--spacing-xs) var(--spacing-sm);
     border-radius: var(--radius-sm);
     transition: all var(--transition-base);

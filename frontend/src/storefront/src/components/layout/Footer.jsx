@@ -119,7 +119,7 @@ export default function Footer() {
         <div className="footer-bottom">
           <div className="footer-info">
             <div className="copyright">
-              <p>&copy; {new Date().getFullYear()} {siteConfig?.brandName || 'Store'}. All rights reserved.</p>
+              <p>&copy; {new Date().getFullYear()} {siteConfig?.brandName || 'Store'}. All rights reserved. Powered by <a href="https://fluxe.in" target="_blank" rel="noopener noreferrer" className="powered-by-link">Fluxe</a></p>
             </div>
             <div className="footer-links">
               <a href="#">Terms and Conditions</a>
