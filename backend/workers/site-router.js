@@ -125,6 +125,7 @@ async function serveStorefrontApp(request, env, path) {
           headers: {
             'Content-Type': 'text/html; charset=utf-8',
             'Cache-Control': 'no-cache',
+            'Content-Security-Policy': "frame-ancestors 'self' https://fluxe.in https://www.fluxe.in",
             ...corsHeaders(),
           },
         });
@@ -144,6 +145,7 @@ async function serveStorefrontApp(request, env, path) {
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
       'Cache-Control': 'no-cache',
+      'Content-Security-Policy': "frame-ancestors 'self' https://fluxe.in https://www.fluxe.in",
       ...corsHeaders(),
     },
   });

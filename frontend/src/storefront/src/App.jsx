@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, useLocation } from 'react-router-dom';
 import { useSiteConfig } from './hooks/useSiteConfig.js';
 import Navbar from './components/layout/Navbar.jsx';
 import Footer from './components/layout/Footer.jsx';
@@ -78,9 +78,23 @@ export default function App() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [wishlistOpen, setWishlistOpen] = useState(false);
+  const location = useLocation();
 
   if (loading) return <SiteLoadingScreen />;
   if (error) return <SiteErrorScreen error={error} />;
+
+  const isAdminRoute = location.pathname.startsWith('/admin');
+
+  if (isAdminRoute) {
+    return (
+      <React.Suspense fallback={<LoadingFallback />}>
+        <Routes>
+          <Route path="/admin" element={<AdminPanel />} />
+          <Route path="/admin/products" element={<ProductsAdminPage />} />
+        </Routes>
+      </React.Suspense>
+    );
+  }
 
   return (
     <>
@@ -106,8 +120,6 @@ export default function App() {
             <Route path="/contact" element={<ContactPage />} />
             <Route path="/book-appointment" element={<BookAppointmentPage />} />
             <Route path="/order-track" element={<OrderTrackPage />} />
-            <Route path="/admin" element={<AdminPanel />} />
-            <Route path="/admin/products" element={<ProductsAdminPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/verify-email" element={<VerifyEmailPage />} />

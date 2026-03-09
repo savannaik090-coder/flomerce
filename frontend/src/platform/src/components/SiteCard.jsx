@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { apiRequest } from '../services/api.js';
 
-export default function SiteCard({ site, onDelete }) {
+export default function SiteCard({ site, onDelete, onManage }) {
   const [deleting, setDeleting] = useState(false);
   const [managing, setManaging] = useState(false);
   const siteName = site.brand_name || site.brandName || site.subdomain;
@@ -27,14 +27,13 @@ export default function SiteCard({ site, onDelete }) {
         body: JSON.stringify({ siteId: site.id }),
       });
       const token = result.token || result.data?.token;
-      if (token) {
-        window.open(`${siteUrl}/admin?token=${encodeURIComponent(token)}`, '_blank');
-      } else {
-        window.open(`${siteUrl}/admin`, '_blank');
-      }
+      const adminUrl = token
+        ? `${siteUrl}/admin?token=${encodeURIComponent(token)}`
+        : `${siteUrl}/admin`;
+      onManage({ site, adminUrl });
     } catch (e) {
       console.error('Auto-login failed:', e);
-      window.open(`${siteUrl}/admin`, '_blank');
+      onManage({ site, adminUrl: `${siteUrl}/admin` });
     } finally {
       setManaging(false);
     }
@@ -52,7 +51,7 @@ export default function SiteCard({ site, onDelete }) {
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
         <a href={siteUrl} target="_blank" rel="noopener noreferrer" className="btn btn-primary" style={{ flex: 1, fontSize: '0.75rem' }}>Visit Site</a>
         <button className="btn btn-outline" onClick={handleManage} disabled={managing} style={{ flex: 1, fontSize: '0.75rem' }}>
-          {managing ? 'Opening...' : 'Manage'}
+          {managing ? 'Loading...' : 'Manage'}
         </button>
       </div>
       <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>

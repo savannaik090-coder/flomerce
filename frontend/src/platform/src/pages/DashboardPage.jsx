@@ -18,6 +18,7 @@ export default function DashboardPage() {
   const [showWizard, setShowWizard] = useState(false);
   const [subscription, setSubscription] = useState(null);
   const [profileData, setProfileData] = useState(null);
+  const [managedSite, setManagedSite] = useState(null);
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
@@ -81,6 +82,16 @@ export default function DashboardPage() {
     navigate('/login');
   };
 
+  const handleManageSite = ({ site, adminUrl }) => {
+    setManagedSite({ site, adminUrl });
+    setActivePage('manage');
+  };
+
+  const handleBackToDashboard = () => {
+    setManagedSite(null);
+    setActivePage('sites');
+  };
+
   if (loading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', fontFamily: 'Inter, sans-serif' }}>
@@ -103,19 +114,19 @@ export default function DashboardPage() {
         <nav>
           <ul>
             <li>
-              <button className={`nav-link${activePage === 'sites' ? ' active' : ''}`} onClick={() => setActivePage('sites')}>
+              <button className={`nav-link${activePage === 'sites' || activePage === 'manage' ? ' active' : ''}`} onClick={() => { if (managedSite) handleBackToDashboard(); else setActivePage('sites'); }}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
                 Dashboard
               </button>
             </li>
             <li>
-              <button className={`nav-link${activePage === 'plans' ? ' active' : ''}`} onClick={() => setActivePage('plans')}>
+              <button className={`nav-link${activePage === 'plans' ? ' active' : ''}`} onClick={() => { setManagedSite(null); setActivePage('plans'); }}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
                 Subscriptions
               </button>
             </li>
             <li>
-              <button className={`nav-link${activePage === 'account' ? ' active' : ''}`} onClick={() => setActivePage('account')}>
+              <button className={`nav-link${activePage === 'account' ? ' active' : ''}`} onClick={() => { setManagedSite(null); setActivePage('account'); }}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
                 Settings
               </button>
@@ -125,114 +136,137 @@ export default function DashboardPage() {
       </aside>
 
       <div className="mobile-nav">
-        <button className={`mobile-nav-item${activePage === 'sites' ? ' active' : ''}`} onClick={() => setActivePage('sites')}>
+        <button className={`mobile-nav-item${activePage === 'sites' || activePage === 'manage' ? ' active' : ''}`} onClick={() => { if (managedSite) handleBackToDashboard(); else setActivePage('sites'); }}>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
           <span>Dashboard</span>
         </button>
-        <button className={`mobile-nav-item${activePage === 'plans' ? ' active' : ''}`} onClick={() => setActivePage('plans')}>
+        <button className={`mobile-nav-item${activePage === 'plans' ? ' active' : ''}`} onClick={() => { setManagedSite(null); setActivePage('plans'); }}>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
           <span>Billing</span>
         </button>
-        <button className={`mobile-nav-item${activePage === 'account' ? ' active' : ''}`} onClick={() => setActivePage('account')}>
+        <button className={`mobile-nav-item${activePage === 'account' ? ' active' : ''}`} onClick={() => { setManagedSite(null); setActivePage('account'); }}>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
           <span>Settings</span>
         </button>
       </div>
 
-      <main className="main-content">
-        {activePage === 'sites' && (
-          <div>
-            <div className="header">
-              <h1>My Websites</h1>
-            </div>
-
-            {sitesLoading ? (
-              <p style={{ color: 'var(--text-muted)' }}>Loading your websites...</p>
-            ) : sites.length === 0 ? (
-              <div className="empty-state">
-                <p>You haven't created any websites yet.</p>
-                <button className="btn btn-primary" onClick={() => setShowWizard(true)}>Create Your First Website</button>
-              </div>
-            ) : (
-              <div className="sites-grid">
-                {sites.map(site => (
-                  <SiteCard
-                    key={site.id}
-                    site={site}
-                    onDelete={handleDeleteSite}
-                  />
-                ))}
-              </div>
-            )}
-
-            <button className="floating-create-btn" onClick={() => setShowWizard(true)}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-              <span>Create New Site</span>
+      {activePage === 'manage' && managedSite ? (
+        <div className="manage-content">
+          <div className="manage-header">
+            <button className="btn btn-outline" onClick={handleBackToDashboard} style={{ gap: '0.375rem' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+              Back to Dashboard
             </button>
+            <span className="manage-site-name">{managedSite.site.brand_name || managedSite.site.brandName || managedSite.site.subdomain}</span>
+            <a href={`https://${managedSite.site.subdomain}.fluxe.in`} target="_blank" rel="noopener noreferrer" className="btn btn-primary" style={{ fontSize: '0.8rem', marginLeft: 'auto' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+              Visit Site
+            </a>
           </div>
-        )}
-
-        {activePage === 'plans' && (
-          <div>
-            <div className="header">
-              <h1>Subscription Plans</h1>
-            </div>
-            <PlanSelector
-              currentPlan={currentPlan}
-              onUpgraded={() => { loadSubscription(); loadProfile(); }}
-            />
-          </div>
-        )}
-
-        {activePage === 'account' && (
-          <div>
-            <div className="header">
-              <h1>Account Settings</h1>
-              <button className="btn btn-outline" onClick={handleLogout} style={{ color: '#ef4444', borderColor: '#fecaca' }}>Logout</button>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
-              <div className="site-card" style={{ display: 'block' }}>
-                <h2 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                  Profile Details
-                </h2>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  <div>
-                    <label style={{ fontSize: '0.75rem', color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 }}>Name</label>
-                    <div style={{ fontWeight: 500, color: '#111827' }}>{profileData?.name || user?.name || '-'}</div>
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '0.75rem', color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 }}>Email Address</label>
-                    <div style={{ fontWeight: 500, color: '#111827' }}>{profileData?.email || user?.email || '-'}</div>
-                  </div>
-                </div>
+          <iframe
+            src={managedSite.adminUrl}
+            className="manage-iframe"
+            title={`Admin - ${managedSite.site.brand_name || managedSite.site.subdomain}`}
+            allow="clipboard-write"
+          />
+        </div>
+      ) : (
+        <main className="main-content">
+          {activePage === 'sites' && (
+            <div>
+              <div className="header">
+                <h1>My Websites</h1>
               </div>
 
-              <div className="site-card" style={{ display: 'block' }}>
-                <h2 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
-                  Subscription Details
-                </h2>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              {sitesLoading ? (
+                <p style={{ color: 'var(--text-muted)' }}>Loading your websites...</p>
+              ) : sites.length === 0 ? (
+                <div className="empty-state">
+                  <p>You haven't created any websites yet.</p>
+                  <button className="btn btn-primary" onClick={() => setShowWizard(true)}>Create Your First Website</button>
+                </div>
+              ) : (
+                <div className="sites-grid">
+                  {sites.map(site => (
+                    <SiteCard
+                      key={site.id}
+                      site={site}
+                      onDelete={handleDeleteSite}
+                      onManage={handleManageSite}
+                    />
+                  ))}
+                </div>
+              )}
+
+              <button className="floating-create-btn" onClick={() => setShowWizard(true)}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                <span>Create New Site</span>
+              </button>
+            </div>
+          )}
+
+          {activePage === 'plans' && (
+            <div>
+              <div className="header">
+                <h1>Subscription Plans</h1>
+              </div>
+              <PlanSelector
+                currentPlan={currentPlan}
+                onUpgraded={() => { loadSubscription(); loadProfile(); }}
+              />
+            </div>
+          )}
+
+          {activePage === 'account' && (
+            <div>
+              <div className="header">
+                <h1>Account Settings</h1>
+                <button className="btn btn-outline" onClick={handleLogout} style={{ color: '#ef4444', borderColor: '#fecaca' }}>Logout</button>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
+                <div className="site-card" style={{ display: 'block' }}>
+                  <h2 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                    Profile Details
+                  </h2>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     <div>
-                      <label style={{ fontSize: '0.75rem', color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 }}>Plan</label>
-                      <div style={{ fontWeight: 700, color: '#2563eb', fontSize: '1.125rem' }}>
-                        {(currentPlan || 'Free').charAt(0).toUpperCase() + (currentPlan || 'free').slice(1)}
-                      </div>
+                      <label style={{ fontSize: '0.75rem', color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 }}>Name</label>
+                      <div style={{ fontWeight: 500, color: '#111827' }}>{profileData?.name || user?.name || '-'}</div>
                     </div>
-                    <span className="plan-status-pill status-active">Active</span>
+                    <div>
+                      <label style={{ fontSize: '0.75rem', color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 }}>Email Address</label>
+                      <div style={{ fontWeight: 500, color: '#111827' }}>{profileData?.email || user?.email || '-'}</div>
+                    </div>
                   </div>
-                  <button className="btn btn-primary" onClick={() => setActivePage('plans')} style={{ marginTop: '0.5rem' }}>
-                    Upgrade Subscription
-                  </button>
+                </div>
+
+                <div className="site-card" style={{ display: 'block' }}>
+                  <h2 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+                    Subscription Details
+                  </h2>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <label style={{ fontSize: '0.75rem', color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 }}>Plan</label>
+                        <div style={{ fontWeight: 700, color: '#2563eb', fontSize: '1.125rem' }}>
+                          {(currentPlan || 'Free').charAt(0).toUpperCase() + (currentPlan || 'free').slice(1)}
+                        </div>
+                      </div>
+                      <span className="plan-status-pill status-active">Active</span>
+                    </div>
+                    <button className="btn btn-primary" onClick={() => setActivePage('plans')} style={{ marginTop: '0.5rem' }}>
+                      Upgrade Subscription
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        )}
-      </main>
+          )}
+        </main>
+      )}
 
       {showWizard && (
         <SiteCreationWizard

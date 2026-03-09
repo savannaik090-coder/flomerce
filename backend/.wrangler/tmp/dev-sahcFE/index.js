@@ -1878,7 +1878,23 @@ async function handleProducts(request, env, path) {
   if (!user) {
     const authHeader = request.headers.get("Authorization");
     if (authHeader && authHeader.startsWith("SiteAdmin ")) {
-      const siteId = url.searchParams.get("siteId");
+      let siteId = url.searchParams.get("siteId");
+      if (!siteId && method === "POST") {
+        try {
+          const cloned = request.clone();
+          const body = await cloned.json();
+          siteId = body.siteId;
+        } catch (e) {
+        }
+      }
+      if (!siteId && (method === "PUT" || method === "DELETE") && productId) {
+        try {
+          const prod = await env.DB.prepare("SELECT site_id FROM products WHERE id = ?").bind(productId).first();
+          if (prod)
+            siteId = prod.site_id;
+        } catch (e) {
+        }
+      }
       if (siteId) {
         const admin = await validateSiteAdmin(request, env, siteId);
         if (admin) {
@@ -3962,6 +3978,7 @@ async function serveStorefrontApp(request, env, path) {
           headers: {
             "Content-Type": "text/html; charset=utf-8",
             "Cache-Control": "no-cache",
+            "Content-Security-Policy": "frame-ancestors 'self' https://fluxe.in https://www.fluxe.in",
             ...corsHeaders()
           }
         });
@@ -3979,6 +3996,7 @@ async function serveStorefrontApp(request, env, path) {
     headers: {
       "Content-Type": "text/html; charset=utf-8",
       "Cache-Control": "no-cache",
+      "Content-Security-Policy": "frame-ancestors 'self' https://fluxe.in https://www.fluxe.in",
       ...corsHeaders()
     }
   });

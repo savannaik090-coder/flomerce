@@ -98,8 +98,10 @@ Fluxe is a multi-tenant SaaS platform that allows users to create their own e-co
   - Auto-login endpoint accepts platform Bearer token, verifies site ownership, generates SiteAdmin session token
   - Returns `SiteAdmin <token>` valid for 24 hours, stored in `sessionStorage('site_admin_token')`
   - Admin panel uses SiteAdmin token exclusively (no platform JWT needed)
-  - Platform "Manage" button calls auto-login endpoint and redirects to `subdomain.fluxe.in/admin?token=xyz`
+  - Platform "Manage" button calls auto-login endpoint and embeds `subdomain.fluxe.in/admin?token=xyz` in an iframe within the dashboard
   - Storefront admin panel accepts `?token=` query param for seamless auto-login
+  - When on /admin route, storefront App.jsx hides navbar/footer/mobile-nav (admin-only layout)
+  - site-router.js sets `Content-Security-Policy: frame-ancestors` to allow embedding from fluxe.in
 - **Platform Super-Admin:** Full JWT auth + role check (admin@fluxe.in or admin/owner role)
 - **Auth priority in api.js:** SiteAdmin token (sessionStorage) > SiteCustomer token (localStorage)
 - Backend workers accept SiteAdmin auth for CRUD: products-worker, categories-worker, orders-worker, sites-worker (PUT), site-admin set-code

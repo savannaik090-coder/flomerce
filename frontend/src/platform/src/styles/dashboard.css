@@ -467,6 +467,37 @@
   margin-top: 0.25rem;
 }
 
+.manage-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-width: 0;
+}
+
+.manage-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1.5rem;
+  background: var(--card-bg);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.manage-site-name {
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--text);
+}
+
+.manage-iframe {
+  flex: 1;
+  width: 100%;
+  border: none;
+  background: var(--bg);
+}
+
 @media (max-width: 768px) {
   .sidebar {
     display: none;
@@ -487,5 +518,13 @@
   }
   .plans-grid {
     grid-template-columns: 1fr;
+  }
+  .manage-header {
+    padding: 0.5rem 1rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .manage-site-name {
+    font-size: 0.875rem;
   }
 }
