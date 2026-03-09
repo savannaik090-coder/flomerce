@@ -147,9 +147,15 @@ export default function CheckoutPage() {
     setLoading(true);
     setError('');
     try {
+      if (!siteConfig?.id) {
+        setError('Store configuration not loaded. Please refresh the page and try again.');
+        setLoading(false);
+        return;
+      }
+
       const customerName = `${address.firstName} ${address.lastName}`.trim();
       const orderData = {
-        siteId: siteConfig?.id,
+        siteId: siteConfig.id,
         items: items.map(item => ({
           productId: item.productId || item.product_id || item.id,
           name: item.name || item.product_name,
@@ -233,12 +239,12 @@ export default function CheckoutPage() {
                   siteId: siteConfig?.id,
                 }),
               });
-              await orderService.updateOrderStatus(orderId, 'paid');
               setOrderRef(orderNumber || orderId || 'ORD-' + Date.now());
               setOrderPlaced(true);
               clearAll();
-            } catch {
-              setError('Payment verified but order update failed. Please contact support.');
+            } catch (verifyErr) {
+              console.error('Payment verification error:', verifyErr);
+              setError('Payment verification failed. If money was deducted, please contact support with your order reference.');
             }
           },
           modal: {
@@ -266,7 +272,7 @@ export default function CheckoutPage() {
 
       const result = await orderService.createOrder(orderData);
       const order = result.data || result.order || result;
-      setOrderRef(order.id || order.order_id || 'ORD-' + Date.now());
+      setOrderRef(order.orderNumber || order.order_number || order.id || order.order_id || 'ORD-' + Date.now());
       setOrderPlaced(true);
       clearAll();
     } catch (err) {
@@ -346,15 +352,15 @@ export default function CheckoutPage() {
         <div style={{ background: '#fff', padding: 24, boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
           <h3 style={{ fontFamily: "'Playfair Display', serif", marginBottom: 20 }}>Order Summary</h3>
           <div style={{ maxHeight: 400, overflowY: 'auto' }}>
-            {items.map(item => {
+            {items.map((item, index) => {
               const price = item.product_price || item.price || 0;
               const qty = item.quantity || 1;
-              const itemId = item.id;
+              const itemId = item.productId || item.product_id || item.id;
               return (
-                <div key={itemId} style={{ display: 'flex', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #f0f0f0', gap: 12 }}>
-                  {(item.product_image || item.image_url) && (
+                <div key={itemId || index} style={{ display: 'flex', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #f0f0f0', gap: 12 }}>
+                  {(item.thumbnail || item.product_image || item.image_url) && (
                     <div style={{ width: 60, height: 60, borderRadius: 6, overflow: 'hidden', flexShrink: 0 }}>
-                      <img src={item.product_image || item.image_url} alt={item.product_name || item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <img src={item.thumbnail || item.product_image || item.image_url} alt={item.product_name || item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     </div>
                   )}
                   <div style={{ flex: 1 }}>

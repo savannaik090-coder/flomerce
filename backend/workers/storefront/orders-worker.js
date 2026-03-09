@@ -165,8 +165,16 @@ async function createOrder(request, env, user) {
     const data = await request.json();
     const { siteId, items, shippingAddress, billingAddress, customerName, customerEmail, customerPhone, paymentMethod, notes, couponCode } = data;
 
-    if (!siteId || !items || !items.length || !shippingAddress || !customerName || !customerPhone) {
-      return errorResponse('Missing required fields');
+    const missingFields = [];
+    if (!siteId) missingFields.push('siteId');
+    if (!items || !items.length) missingFields.push('items');
+    if (!shippingAddress) missingFields.push('shippingAddress');
+    if (!customerName) missingFields.push('customerName');
+    if (!customerPhone) missingFields.push('customerPhone');
+
+    if (missingFields.length > 0) {
+      console.error('Order missing fields:', missingFields.join(', '), 'Received data keys:', Object.keys(data).join(', '));
+      return errorResponse(`Missing required fields: ${missingFields.join(', ')}`);
     }
 
     let subtotal = 0;
@@ -183,7 +191,7 @@ async function createOrder(request, env, user) {
       ).bind(itemProductId, siteId).first();
 
       if (!product) {
-        return errorResponse(`Product not found`, 400);
+        return errorResponse(`Product not found: ${itemProductId}`, 400);
       }
 
       if (product.stock !== null && product.stock < item.quantity) {
@@ -206,12 +214,17 @@ async function createOrder(request, env, user) {
 
     let discount = 0;
     if (couponCode) {
-      const coupon = await env.DB.prepare(
-        `SELECT * FROM coupons WHERE site_id = ? AND code = ? AND is_active = 1 
-         AND (starts_at IS NULL OR starts_at <= datetime('now'))
-         AND (expires_at IS NULL OR expires_at > datetime('now'))
-         AND (usage_limit IS NULL OR used_count < usage_limit)`
-      ).bind(siteId, couponCode.toUpperCase()).first();
+      let coupon = null;
+      try {
+        coupon = await env.DB.prepare(
+          `SELECT * FROM coupons WHERE site_id = ? AND code = ? AND is_active = 1 
+           AND (starts_at IS NULL OR starts_at <= datetime('now'))
+           AND (expires_at IS NULL OR expires_at > datetime('now'))
+           AND (usage_limit IS NULL OR used_count < usage_limit)`
+        ).bind(siteId, couponCode.toUpperCase()).first();
+      } catch (couponErr) {
+        console.error('Coupon lookup error (table may not exist):', couponErr);
+      }
 
       if (coupon && subtotal >= coupon.min_order_value) {
         if (coupon.type === 'percentage') {
@@ -304,8 +317,8 @@ async function createOrder(request, env, user) {
       items: processedItems,
     }, 'Order created successfully');
   } catch (error) {
-    console.error('Create order error:', error);
-    return errorResponse('Failed to create order', 500);
+    console.error('Create order error:', error.message || error, error.stack || '');
+    return errorResponse('Failed to create order: ' + (error.message || 'Unknown error'), 500);
   }
 }
 
@@ -405,8 +418,16 @@ async function createGuestOrder(request, env) {
     const data = await request.json();
     const { siteId, items, shippingAddress, customerName, customerEmail, customerPhone, paymentMethod } = data;
 
-    if (!siteId || !items || !items.length || !shippingAddress || !customerName || !customerPhone) {
-      return errorResponse('Missing required fields');
+    const missingFields = [];
+    if (!siteId) missingFields.push('siteId');
+    if (!items || !items.length) missingFields.push('items');
+    if (!shippingAddress) missingFields.push('shippingAddress');
+    if (!customerName) missingFields.push('customerName');
+    if (!customerPhone) missingFields.push('customerPhone');
+
+    if (missingFields.length > 0) {
+      console.error('Guest order missing fields:', missingFields.join(', '), 'Received data keys:', Object.keys(data).join(', '));
+      return errorResponse(`Missing required fields: ${missingFields.join(', ')}`);
     }
 
     let subtotal = 0;
@@ -423,7 +444,7 @@ async function createGuestOrder(request, env) {
       ).bind(itemProductId, siteId).first();
 
       if (!product) {
-        return errorResponse('Product not found', 400);
+        return errorResponse(`Product not found: ${itemProductId}`, 400);
       }
 
       const itemTotal = product.price * item.quantity;
@@ -504,8 +525,8 @@ async function createGuestOrder(request, env) {
       total,
     }, 'Guest order created successfully');
   } catch (error) {
-    console.error('Create guest order error:', error);
-    return errorResponse('Failed to create order', 500);
+    console.error('Create guest order error:', error.message || error, error.stack || '');
+    return errorResponse('Failed to create order: ' + (error.message || 'Unknown error'), 500);
   }
 }
 

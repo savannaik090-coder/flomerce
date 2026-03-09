@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-kX7Pxj/checked-fetch.js
+// .wrangler/tmp/bundle-VHXa13/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-kX7Pxj/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-VHXa13/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-kX7Pxj/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-VHXa13/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-kX7Pxj/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-VHXa13/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -663,12 +663,12 @@ var init_site_admin_worker = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-kX7Pxj/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-VHXa13/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-kX7Pxj/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-VHXa13/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -2442,8 +2442,20 @@ async function createOrder(request, env, user) {
   try {
     const data = await request.json();
     const { siteId, items, shippingAddress, billingAddress, customerName, customerEmail, customerPhone, paymentMethod, notes, couponCode } = data;
-    if (!siteId || !items || !items.length || !shippingAddress || !customerName || !customerPhone) {
-      return errorResponse("Missing required fields");
+    const missingFields = [];
+    if (!siteId)
+      missingFields.push("siteId");
+    if (!items || !items.length)
+      missingFields.push("items");
+    if (!shippingAddress)
+      missingFields.push("shippingAddress");
+    if (!customerName)
+      missingFields.push("customerName");
+    if (!customerPhone)
+      missingFields.push("customerPhone");
+    if (missingFields.length > 0) {
+      console.error("Order missing fields:", missingFields.join(", "), "Received data keys:", Object.keys(data).join(", "));
+      return errorResponse(`Missing required fields: ${missingFields.join(", ")}`);
     }
     let subtotal = 0;
     const processedItems = [];
@@ -2456,7 +2468,7 @@ async function createOrder(request, env, user) {
         "SELECT id, name, price, stock, thumbnail_url FROM products WHERE id = ? AND site_id = ?"
       ).bind(itemProductId, siteId).first();
       if (!product) {
-        return errorResponse(`Product not found`, 400);
+        return errorResponse(`Product not found: ${itemProductId}`, 400);
       }
       if (product.stock !== null && product.stock < item.quantity) {
         return errorResponse(`Insufficient stock for ${product.name}`, 400, "INSUFFICIENT_STOCK");
@@ -2475,12 +2487,17 @@ async function createOrder(request, env, user) {
     }
     let discount = 0;
     if (couponCode) {
-      const coupon = await env.DB.prepare(
-        `SELECT * FROM coupons WHERE site_id = ? AND code = ? AND is_active = 1 
-         AND (starts_at IS NULL OR starts_at <= datetime('now'))
-         AND (expires_at IS NULL OR expires_at > datetime('now'))
-         AND (usage_limit IS NULL OR used_count < usage_limit)`
-      ).bind(siteId, couponCode.toUpperCase()).first();
+      let coupon = null;
+      try {
+        coupon = await env.DB.prepare(
+          `SELECT * FROM coupons WHERE site_id = ? AND code = ? AND is_active = 1 
+           AND (starts_at IS NULL OR starts_at <= datetime('now'))
+           AND (expires_at IS NULL OR expires_at > datetime('now'))
+           AND (usage_limit IS NULL OR used_count < usage_limit)`
+        ).bind(siteId, couponCode.toUpperCase()).first();
+      } catch (couponErr) {
+        console.error("Coupon lookup error (table may not exist):", couponErr);
+      }
       if (coupon && subtotal >= coupon.min_order_value) {
         if (coupon.type === "percentage") {
           discount = subtotal * coupon.value / 100;
@@ -2564,8 +2581,8 @@ async function createOrder(request, env, user) {
       items: processedItems
     }, "Order created successfully");
   } catch (error) {
-    console.error("Create order error:", error);
-    return errorResponse("Failed to create order", 500);
+    console.error("Create order error:", error.message || error, error.stack || "");
+    return errorResponse("Failed to create order: " + (error.message || "Unknown error"), 500);
   }
 }
 __name(createOrder, "createOrder");
@@ -2650,8 +2667,20 @@ async function createGuestOrder(request, env) {
   try {
     const data = await request.json();
     const { siteId, items, shippingAddress, customerName, customerEmail, customerPhone, paymentMethod } = data;
-    if (!siteId || !items || !items.length || !shippingAddress || !customerName || !customerPhone) {
-      return errorResponse("Missing required fields");
+    const missingFields = [];
+    if (!siteId)
+      missingFields.push("siteId");
+    if (!items || !items.length)
+      missingFields.push("items");
+    if (!shippingAddress)
+      missingFields.push("shippingAddress");
+    if (!customerName)
+      missingFields.push("customerName");
+    if (!customerPhone)
+      missingFields.push("customerPhone");
+    if (missingFields.length > 0) {
+      console.error("Guest order missing fields:", missingFields.join(", "), "Received data keys:", Object.keys(data).join(", "));
+      return errorResponse(`Missing required fields: ${missingFields.join(", ")}`);
     }
     let subtotal = 0;
     const processedItems = [];
@@ -2664,7 +2693,7 @@ async function createGuestOrder(request, env) {
         "SELECT id, name, price, stock, thumbnail_url FROM products WHERE id = ? AND site_id = ?"
       ).bind(itemProductId, siteId).first();
       if (!product) {
-        return errorResponse("Product not found", 400);
+        return errorResponse(`Product not found: ${itemProductId}`, 400);
       }
       const itemTotal = product.price * item.quantity;
       subtotal += itemTotal;
@@ -2737,8 +2766,8 @@ async function createGuestOrder(request, env) {
       total
     }, "Guest order created successfully");
   } catch (error) {
-    console.error("Create guest order error:", error);
-    return errorResponse("Failed to create order", 500);
+    console.error("Create guest order error:", error.message || error, error.stack || "");
+    return errorResponse("Failed to create order: " + (error.message || "Unknown error"), 500);
   }
 }
 __name(createGuestOrder, "createGuestOrder");
@@ -3252,6 +3281,33 @@ async function getRazorpayCredentials(env, siteId) {
   return { keyId: env.RAZORPAY_KEY_ID, keySecret: env.RAZORPAY_KEY_SECRET, perSite: false };
 }
 __name(getRazorpayCredentials, "getRazorpayCredentials");
+async function ensurePaymentTablesExist(env) {
+  try {
+    await env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS payment_transactions (
+        id TEXT PRIMARY KEY,
+        site_id TEXT,
+        user_id TEXT,
+        order_id TEXT,
+        subscription_id TEXT,
+        razorpay_order_id TEXT,
+        razorpay_payment_id TEXT,
+        razorpay_signature TEXT,
+        amount REAL NOT NULL,
+        currency TEXT DEFAULT 'INR',
+        status TEXT DEFAULT 'pending',
+        payment_method TEXT,
+        error_code TEXT,
+        error_description TEXT,
+        created_at TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE SET NULL
+      )
+    `).run();
+  } catch (err) {
+    console.error("Failed to ensure payment tables:", err);
+  }
+}
+__name(ensurePaymentTablesExist, "ensurePaymentTablesExist");
 async function createRazorpayOrder(request, env) {
   if (request.method !== "POST") {
     return errorResponse("Method not allowed", 405);
@@ -3263,7 +3319,7 @@ async function createRazorpayOrder(request, env) {
     }
     const { keyId, keySecret } = await getRazorpayCredentials(env, siteId);
     if (!keyId || !keySecret) {
-      return errorResponse("Razorpay credentials not configured", 500);
+      return errorResponse("Razorpay credentials not configured. Please add Razorpay Key ID and Key Secret in your store settings.", 500);
     }
     const amountInPaise = Math.round(amount * 100);
     const response = await fetch("https://api.razorpay.com/v1/orders", {
@@ -3280,15 +3336,28 @@ async function createRazorpayOrder(request, env) {
       })
     });
     if (!response.ok) {
-      const error = await response.json();
-      console.error("Razorpay error:", error);
-      return errorResponse("Failed to create payment order", 500);
+      let errorDetail = "";
+      try {
+        const error = await response.json();
+        console.error("Razorpay API error:", JSON.stringify(error));
+        errorDetail = error?.error?.description || "Razorpay rejected the request";
+      } catch {
+        const errorText = await response.text();
+        console.error("Razorpay error (non-JSON):", errorText);
+        errorDetail = "Razorpay returned an unexpected response";
+      }
+      return errorResponse(`Failed to create payment order: ${errorDetail}`, 500);
     }
     const razorpayOrder = await response.json();
-    await env.DB.prepare(
-      `INSERT INTO payment_transactions (id, site_id, order_id, razorpay_order_id, amount, currency, status, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, 'pending', datetime('now'))`
-    ).bind(generateId(), siteId || null, orderId || null, razorpayOrder.id, amount, currency || "INR").run();
+    await ensurePaymentTablesExist(env);
+    try {
+      await env.DB.prepare(
+        `INSERT INTO payment_transactions (id, site_id, order_id, razorpay_order_id, amount, currency, status, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, 'pending', datetime('now'))`
+      ).bind(generateId(), siteId || null, orderId || null, razorpayOrder.id, amount, currency || "INR").run();
+    } catch (dbErr) {
+      console.error("Failed to log payment transaction (non-fatal):", dbErr);
+    }
     return successResponse({
       orderId: razorpayOrder.id,
       amount: razorpayOrder.amount,
@@ -3296,8 +3365,8 @@ async function createRazorpayOrder(request, env) {
       keyId
     });
   } catch (error) {
-    console.error("Create order error:", error);
-    return errorResponse("Failed to create payment order", 500);
+    console.error("Create payment order error:", error.message || error);
+    return errorResponse("Failed to create payment order: " + (error.message || "Unknown error"), 500);
   }
 }
 __name(createRazorpayOrder, "createRazorpayOrder");
@@ -3368,6 +3437,27 @@ async function verifyPayment(request, env) {
        SET razorpay_payment_id = ?, razorpay_signature = ?, status = 'completed', payment_method = 'razorpay'
        WHERE razorpay_order_id = ?`
     ).bind(razorpay_payment_id, razorpay_signature, razorpay_order_id).run();
+    const paymentTx = await env.DB.prepare(
+      `SELECT order_id FROM payment_transactions WHERE razorpay_order_id = ?`
+    ).bind(razorpay_order_id).first();
+    if (paymentTx?.order_id) {
+      try {
+        await env.DB.prepare(
+          `UPDATE orders SET status = 'paid', payment_status = 'paid', payment_method = 'razorpay', razorpay_order_id = ?, razorpay_payment_id = ?, updated_at = datetime('now') WHERE id = ?`
+        ).bind(razorpay_order_id, razorpay_payment_id, paymentTx.order_id).run();
+        console.log("Order status updated to paid:", paymentTx.order_id);
+      } catch (orderUpdateErr) {
+        console.error("Failed to update order status to paid:", orderUpdateErr);
+        try {
+          await env.DB.prepare(
+            `UPDATE guest_orders SET status = 'paid', payment_status = 'paid', payment_method = 'razorpay', razorpay_order_id = ?, razorpay_payment_id = ?, updated_at = datetime('now') WHERE id = ?`
+          ).bind(razorpay_order_id, razorpay_payment_id, paymentTx.order_id).run();
+          console.log("Guest order status updated to paid:", paymentTx.order_id);
+        } catch (guestUpdateErr) {
+          console.error("Failed to update guest order status:", guestUpdateErr);
+        }
+      }
+    }
     if (planId && billingCycle) {
       const user = await validateAuth(request, env);
       if (user) {
@@ -4807,7 +4897,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-kX7Pxj/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-VHXa13/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -4842,7 +4932,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-kX7Pxj/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-VHXa13/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

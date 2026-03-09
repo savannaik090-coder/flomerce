@@ -41,6 +41,33 @@ async function getRazorpayCredentials(env, siteId) {
   return { keyId: env.RAZORPAY_KEY_ID, keySecret: env.RAZORPAY_KEY_SECRET, perSite: false };
 }
 
+async function ensurePaymentTablesExist(env) {
+  try {
+    await env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS payment_transactions (
+        id TEXT PRIMARY KEY,
+        site_id TEXT,
+        user_id TEXT,
+        order_id TEXT,
+        subscription_id TEXT,
+        razorpay_order_id TEXT,
+        razorpay_payment_id TEXT,
+        razorpay_signature TEXT,
+        amount REAL NOT NULL,
+        currency TEXT DEFAULT 'INR',
+        status TEXT DEFAULT 'pending',
+        payment_method TEXT,
+        error_code TEXT,
+        error_description TEXT,
+        created_at TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE SET NULL
+      )
+    `).run();
+  } catch (err) {
+    console.error('Failed to ensure payment tables:', err);
+  }
+}
+
 async function createRazorpayOrder(request, env) {
   if (request.method !== 'POST') {
     return errorResponse('Method not allowed', 405);
@@ -56,7 +83,7 @@ async function createRazorpayOrder(request, env) {
     const { keyId, keySecret } = await getRazorpayCredentials(env, siteId);
 
     if (!keyId || !keySecret) {
-      return errorResponse('Razorpay credentials not configured', 500);
+      return errorResponse('Razorpay credentials not configured. Please add Razorpay Key ID and Key Secret in your store settings.', 500);
     }
 
     const amountInPaise = Math.round(amount * 100);
@@ -76,17 +103,31 @@ async function createRazorpayOrder(request, env) {
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      console.error('Razorpay error:', error);
-      return errorResponse('Failed to create payment order', 500);
+      let errorDetail = '';
+      try {
+        const error = await response.json();
+        console.error('Razorpay API error:', JSON.stringify(error));
+        errorDetail = error?.error?.description || 'Razorpay rejected the request';
+      } catch {
+        const errorText = await response.text();
+        console.error('Razorpay error (non-JSON):', errorText);
+        errorDetail = 'Razorpay returned an unexpected response';
+      }
+      return errorResponse(`Failed to create payment order: ${errorDetail}`, 500);
     }
 
     const razorpayOrder = await response.json();
 
-    await env.DB.prepare(
-      `INSERT INTO payment_transactions (id, site_id, order_id, razorpay_order_id, amount, currency, status, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, 'pending', datetime('now'))`
-    ).bind(generateId(), siteId || null, orderId || null, razorpayOrder.id, amount, currency || 'INR').run();
+    await ensurePaymentTablesExist(env);
+
+    try {
+      await env.DB.prepare(
+        `INSERT INTO payment_transactions (id, site_id, order_id, razorpay_order_id, amount, currency, status, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, 'pending', datetime('now'))`
+      ).bind(generateId(), siteId || null, orderId || null, razorpayOrder.id, amount, currency || 'INR').run();
+    } catch (dbErr) {
+      console.error('Failed to log payment transaction (non-fatal):', dbErr);
+    }
 
     return successResponse({
       orderId: razorpayOrder.id,
@@ -95,8 +136,8 @@ async function createRazorpayOrder(request, env) {
       keyId,
     });
   } catch (error) {
-    console.error('Create order error:', error);
-    return errorResponse('Failed to create payment order', 500);
+    console.error('Create payment order error:', error.message || error);
+    return errorResponse('Failed to create payment order: ' + (error.message || 'Unknown error'), 500);
   }
 }
 
@@ -177,14 +218,35 @@ async function verifyPayment(request, env) {
       return errorResponse('Invalid payment signature', 400, 'INVALID_SIGNATURE');
     }
 
-    // Update payment record
     await env.DB.prepare(
       `UPDATE payment_transactions 
        SET razorpay_payment_id = ?, razorpay_signature = ?, status = 'completed', payment_method = 'razorpay'
        WHERE razorpay_order_id = ?`
     ).bind(razorpay_payment_id, razorpay_signature, razorpay_order_id).run();
 
-    // If subscription plan details are provided, activate it immediately
+    const paymentTx = await env.DB.prepare(
+      `SELECT order_id FROM payment_transactions WHERE razorpay_order_id = ?`
+    ).bind(razorpay_order_id).first();
+
+    if (paymentTx?.order_id) {
+      try {
+        await env.DB.prepare(
+          `UPDATE orders SET status = 'paid', payment_status = 'paid', payment_method = 'razorpay', razorpay_order_id = ?, razorpay_payment_id = ?, updated_at = datetime('now') WHERE id = ?`
+        ).bind(razorpay_order_id, razorpay_payment_id, paymentTx.order_id).run();
+        console.log('Order status updated to paid:', paymentTx.order_id);
+      } catch (orderUpdateErr) {
+        console.error('Failed to update order status to paid:', orderUpdateErr);
+        try {
+          await env.DB.prepare(
+            `UPDATE guest_orders SET status = 'paid', payment_status = 'paid', payment_method = 'razorpay', razorpay_order_id = ?, razorpay_payment_id = ?, updated_at = datetime('now') WHERE id = ?`
+          ).bind(razorpay_order_id, razorpay_payment_id, paymentTx.order_id).run();
+          console.log('Guest order status updated to paid:', paymentTx.order_id);
+        } catch (guestUpdateErr) {
+          console.error('Failed to update guest order status:', guestUpdateErr);
+        }
+      }
+    }
+
     if (planId && billingCycle) {
       const user = await validateAuth(request, env);
       if (user) {

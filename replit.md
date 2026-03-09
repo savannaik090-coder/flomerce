@@ -107,6 +107,8 @@ Fluxe is a multi-tenant SaaS platform that allows users to create their own e-co
 - Backend workers accept SiteAdmin auth for CRUD: products-worker, categories-worker, orders-worker, sites-worker (PUT), site-admin set-code
 - **Order Emails:** After order creation (both registered and guest), the orders-worker sends confirmation email to customer and notification to store owner (from `settings.email`)
 - **Shared Email Utility:** `backend/utils/email.js` contains reusable `sendEmail`, `buildOrderConfirmationEmail`, and `buildOwnerNotificationEmail` functions
+- **Order Flow:** Both COD and Razorpay orders go through `POST /api/orders` (createOrder). For Razorpay, the frontend also calls `/api/payments/create-order` and `/api/payments/verify`. Payment verification automatically updates order status to 'paid' server-side.
+- **Cart Items:** Local cart stores `{ productId, name, price, thumbnail, quantity }`. Server cart enriches to `{ productId, quantity, variant, addedAt, name, price, thumbnail, inStock, availableStock }`. CheckoutPage maps items using `productId || product_id || id` for compatibility.
 
 ## Build & Deployment
 
