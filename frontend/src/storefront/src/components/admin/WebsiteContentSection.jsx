@@ -49,7 +49,7 @@ export default function WebsiteContentSection() {
 }
 
 function PromoBannerEditor() {
-  const { siteConfig, refetchSite } = useContext(SiteContext);
+  const { siteConfig } = useContext(SiteContext);
   const [messages, setMessages] = useState(['', '', '']);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState('');
@@ -105,7 +105,6 @@ function PromoBannerEditor() {
       const result = await response.json();
       if (response.ok && result.success) {
         setStatus('success');
-        if (refetchSite) refetchSite();
       } else {
         setStatus('error:' + (result.error || 'Unknown error'));
       }
@@ -173,32 +172,28 @@ function PromoBannerEditor() {
                 <div style={{
                   background: '#b3a681',
                   color: '#333',
-                  padding: '10px 0',
+                  padding: '7px 0',
                   borderRadius: 6,
                   overflow: 'hidden',
                   position: 'relative',
                 }}>
-                  <div style={{
-                    display: 'flex',
+                  <p style={{
+                    margin: 0,
+                    display: 'inline-block',
                     whiteSpace: 'nowrap',
-                    animation: 'scroll-left 20s linear infinite',
-                    fontSize: 14,
+                    willChange: 'transform',
+                    animation: 'scroll-left 12s linear infinite',
+                    fontSize: 13,
                     letterSpacing: '1.5px',
                     wordSpacing: '4px',
                   }}>
-                    {messages.filter(m => m.trim()).map((msg, i, arr) => (
-                      <span key={i} style={{ paddingRight: 80 }}>
-                        {msg}
-                        {i < arr.length - 1 && <span style={{ margin: '0 40px', opacity: 0.5 }}>✦</span>}
-                      </span>
-                    ))}
-                    {messages.filter(m => m.trim()).map((msg, i, arr) => (
-                      <span key={`dup-${i}`} style={{ paddingRight: 80 }}>
-                        {msg}
-                        {i < arr.length - 1 && <span style={{ margin: '0 40px', opacity: 0.5 }}>✦</span>}
-                      </span>
-                    ))}
-                  </div>
+                    {(() => {
+                      const filtered = messages.filter(m => m.trim());
+                      const sep = <span style={{ padding: '0 30px', opacity: 0.5 }}>{'\u2726'}</span>;
+                      const block = filtered.flatMap((m, i) => i < filtered.length - 1 ? [m, sep] : [m]);
+                      return <>{block}{sep}{block}{sep}{block}{sep}{block}</>;
+                    })()}
+                  </p>
                 </div>
               </div>
             )}
