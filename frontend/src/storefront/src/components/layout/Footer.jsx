@@ -125,7 +125,7 @@ export default function Footer() {
               <a href="#">Terms and Conditions</a>
               <a href="#">Privacy Policy</a>
             </div>
-            <div className="payment-methods">
+            <div className="footer-payment-icons">
               <span><i className="fab fa-cc-amex"></i></span>
               <span><i className="fab fa-cc-discover"></i></span>
               <span><i className="fab fa-google-pay"></i></span>
