@@ -117,24 +117,22 @@ export default function Footer() {
         </div>
 
         <div className="footer-bottom">
-          <div className="container">
-            <div className="footer-info">
-              <div className="copyright">
-                <p>&copy; {new Date().getFullYear()} {siteConfig?.brandName || 'Store'}. All rights reserved.</p>
-              </div>
-              <div className="footer-links">
-                <a href="#">Terms and Conditions</a>
-                <a href="#">Privacy Policy</a>
-              </div>
-              <div className="payment-methods">
-                <span><i className="fab fa-cc-amex"></i></span>
-                <span><i className="fab fa-cc-discover"></i></span>
-                <span><i className="fab fa-google-pay"></i></span>
-                <span><i className="fab fa-cc-mastercard"></i></span>
-                <span><i className="fab fa-cc-paypal"></i></span>
-                <span className="union-pay">UP</span>
-                <span><i className="fab fa-cc-visa"></i></span>
-              </div>
+          <div className="footer-info">
+            <div className="copyright">
+              <p>&copy; {new Date().getFullYear()} {siteConfig?.brandName || 'Store'}. All rights reserved.</p>
+            </div>
+            <div className="footer-links">
+              <a href="#">Terms and Conditions</a>
+              <a href="#">Privacy Policy</a>
+            </div>
+            <div className="payment-methods">
+              <span><i className="fab fa-cc-amex"></i></span>
+              <span><i className="fab fa-cc-discover"></i></span>
+              <span><i className="fab fa-google-pay"></i></span>
+              <span><i className="fab fa-cc-mastercard"></i></span>
+              <span><i className="fab fa-cc-paypal"></i></span>
+              <span className="union-pay">UP</span>
+              <span><i className="fab fa-cc-visa"></i></span>
             </div>
           </div>
         </div>

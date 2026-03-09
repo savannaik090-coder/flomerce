@@ -375,12 +375,4 @@
     .footer-minimalist {
         margin-bottom: 0;
     }
-    .footer-minimalist > .container {
-        max-width: var(--container-max);
-        margin: 0 auto;
-    }
-    .footer-info {
-        max-width: var(--container-max);
-        margin: 0 auto;
-    }
 }
