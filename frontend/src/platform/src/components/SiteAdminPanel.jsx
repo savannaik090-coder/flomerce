@@ -18,6 +18,8 @@ export default function SiteAdminPanel({ site, onClose, onUpdated }) {
   const [youtube, setYoutube] = useState(site.settings?.social?.youtube || '');
   const [razorpayKeyId, setRazorpayKeyId] = useState(site.settings?.razorpayKeyId || '');
   const [razorpayKeySecret, setRazorpayKeySecret] = useState(site.settings?.razorpayKeySecret || '');
+  const [verificationCode, setVerificationCode] = useState('');
+  const [verificationCodeMsg, setVerificationCodeMsg] = useState('');
 
   const [categories, setCategories] = useState([]);
   const [newCategoryName, setNewCategoryName] = useState('');
@@ -61,6 +63,25 @@ export default function SiteAdminPanel({ site, onClose, onUpdated }) {
       setCategories(res.categories || res.data || []);
     } catch (e) {
       setCategories([]);
+    }
+  };
+
+  const handleSetVerificationCode = async () => {
+    if (!verificationCode.trim()) return;
+    if (verificationCode.length < 4 || verificationCode.length > 20) {
+      setVerificationCodeMsg('Code must be 4–20 characters.');
+      return;
+    }
+    setVerificationCodeMsg('');
+    try {
+      await apiRequest('/api/site-admin/set-code', {
+        method: 'POST',
+        body: JSON.stringify({ siteId: site.id, verificationCode: verificationCode.trim() }),
+      });
+      setVerificationCode('');
+      setVerificationCodeMsg('Verification code set successfully!');
+    } catch (e) {
+      setVerificationCodeMsg('Failed: ' + e.message);
     }
   };
 
@@ -228,6 +249,34 @@ export default function SiteAdminPanel({ site, onClose, onUpdated }) {
                 <label>Razorpay Key Secret</label>
                 <input type="password" value={razorpayKeySecret} onChange={(e) => setRazorpayKeySecret(e.target.value)} placeholder="Enter secret key" />
               </div>
+            </div>
+
+            <div className="admin-section-card">
+              <h3>Store Admin Panel Access</h3>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
+                Set a verification code to access your store's admin panel at <strong>{site.subdomain}.fluxe.in/admin</strong>. Keep this code private.
+              </p>
+              <div className="form-group">
+                <label>New Verification Code (4–20 characters)</label>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <input
+                    type="text"
+                    value={verificationCode}
+                    onChange={(e) => setVerificationCode(e.target.value)}
+                    placeholder="e.g. mycode123"
+                    maxLength={20}
+                    style={{ flex: 1 }}
+                  />
+                  <button className="btn btn-primary" onClick={handleSetVerificationCode} style={{ whiteSpace: 'nowrap' }}>
+                    Set Code
+                  </button>
+                </div>
+              </div>
+              {verificationCodeMsg && (
+                <p style={{ color: verificationCodeMsg.includes('success') ? '#16a34a' : '#ef4444', fontSize: '0.875rem', marginTop: '0.5rem' }}>
+                  {verificationCodeMsg}
+                </p>
+              )}
             </div>
 
             {message && (
