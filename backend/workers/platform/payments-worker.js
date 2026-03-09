@@ -1,5 +1,7 @@
 import { generateId, jsonResponse, errorResponse, successResponse, handleCORS } from '../../utils/helpers.js';
 import { validateAuth } from '../../utils/auth.js';
+import { updateProductStock } from '../storefront/products-worker.js';
+import { sendOrderEmails } from '../storefront/orders-worker.js';
 import crypto from 'node:crypto';
 
 export async function handlePayments(request, env, path) {
@@ -218,29 +220,51 @@ async function verifyPayment(request, env) {
       return errorResponse('Invalid payment signature', 400, 'INVALID_SIGNATURE');
     }
 
+    const existingTx = await env.DB.prepare(
+      `SELECT order_id, status FROM payment_transactions WHERE razorpay_order_id = ?`
+    ).bind(razorpay_order_id).first();
+
+    if (existingTx?.status === 'completed') {
+      console.log('Payment already verified, skipping duplicate:', razorpay_order_id);
+      return successResponse({ verified: true, duplicate: true }, 'Payment already verified');
+    }
+
     await env.DB.prepare(
       `UPDATE payment_transactions 
        SET razorpay_payment_id = ?, razorpay_signature = ?, status = 'completed', payment_method = 'razorpay'
-       WHERE razorpay_order_id = ?`
+       WHERE razorpay_order_id = ? AND status = 'pending'`
     ).bind(razorpay_payment_id, razorpay_signature, razorpay_order_id).run();
 
-    const paymentTx = await env.DB.prepare(
-      `SELECT order_id FROM payment_transactions WHERE razorpay_order_id = ?`
-    ).bind(razorpay_order_id).first();
+    const paymentTx = existingTx;
 
     if (paymentTx?.order_id) {
-      try {
+      let order = null;
+
+      order = await env.DB.prepare('SELECT * FROM orders WHERE id = ?').bind(paymentTx.order_id).first();
+      if (order) {
+        const wasPendingPayment = order.status === 'pending_payment';
         await env.DB.prepare(
           `UPDATE orders SET status = 'paid', payment_status = 'paid', payment_method = 'razorpay', razorpay_order_id = ?, razorpay_payment_id = ?, updated_at = datetime('now') WHERE id = ?`
         ).bind(razorpay_order_id, razorpay_payment_id, paymentTx.order_id).run();
         console.log('Order status updated to paid:', paymentTx.order_id);
-      } catch (orderUpdateErr) {
-        console.error('Failed to update order status to paid:', orderUpdateErr);
+
+        if (wasPendingPayment) {
+          await processPostPaymentActions(env, order);
+        }
+      } else {
         try {
-          await env.DB.prepare(
-            `UPDATE guest_orders SET status = 'paid', payment_status = 'paid', payment_method = 'razorpay', razorpay_order_id = ?, razorpay_payment_id = ?, updated_at = datetime('now') WHERE id = ?`
-          ).bind(razorpay_order_id, razorpay_payment_id, paymentTx.order_id).run();
-          console.log('Guest order status updated to paid:', paymentTx.order_id);
+          order = await env.DB.prepare('SELECT * FROM guest_orders WHERE id = ?').bind(paymentTx.order_id).first();
+          if (order) {
+            const wasPendingPayment = order.status === 'pending_payment';
+            await env.DB.prepare(
+              `UPDATE guest_orders SET status = 'paid', payment_status = 'paid', payment_method = 'razorpay', razorpay_order_id = ?, razorpay_payment_id = ?, updated_at = datetime('now') WHERE id = ?`
+            ).bind(razorpay_order_id, razorpay_payment_id, paymentTx.order_id).run();
+            console.log('Guest order status updated to paid:', paymentTx.order_id);
+
+            if (wasPendingPayment) {
+              await processPostPaymentActions(env, order);
+            }
+          }
         } catch (guestUpdateErr) {
           console.error('Failed to update guest order status:', guestUpdateErr);
         }
@@ -266,6 +290,36 @@ async function verifyPayment(request, env) {
   } catch (error) {
     console.error('Verify payment error:', error);
     return errorResponse('Payment verification failed', 500);
+  }
+}
+
+async function processPostPaymentActions(env, order) {
+  try {
+    const orderItems = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
+    for (const item of orderItems) {
+      await updateProductStock(env, item.productId, item.quantity, 'decrement');
+    }
+    console.log('Stock decremented after payment for order:', order.id);
+  } catch (stockErr) {
+    console.error('Failed to decrement stock after payment:', stockErr);
+  }
+
+  try {
+    const orderItems = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
+    const shippingAddress = typeof order.shipping_address === 'string' ? JSON.parse(order.shipping_address) : order.shipping_address;
+    await sendOrderEmails(env, order.site_id, {
+      orderNumber: order.order_number,
+      processedItems: orderItems,
+      total: order.total,
+      paymentMethod: 'razorpay',
+      customerName: order.customer_name,
+      customerEmail: order.customer_email,
+      customerPhone: order.customer_phone,
+      shippingAddress,
+    });
+    console.log('Order confirmation emails sent after payment for order:', order.id);
+  } catch (emailErr) {
+    console.error('Failed to send order emails after payment:', emailErr);
   }
 }
 

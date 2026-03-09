@@ -178,7 +178,6 @@ export default function CheckoutPage() {
         customerEmail: address.email,
         customerPhone: address.phone,
         paymentMethod,
-        status: paymentMethod === 'cod' ? 'confirmed' : 'pending',
       };
 
       if (paymentMethod === 'razorpay') {

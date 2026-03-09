@@ -249,9 +249,12 @@ async function createOrder(request, env, user) {
     const orderId = generateId();
     const orderNumber = generateOrderNumber();
 
+    const isPendingPayment = paymentMethod === 'razorpay';
+    const orderStatus = isPendingPayment ? 'pending_payment' : (data.status || 'confirmed');
+
     await env.DB.prepare(
-      `INSERT INTO orders (id, site_id, user_id, order_number, items, subtotal, discount, shipping_cost, tax, total, payment_method, shipping_address, billing_address, customer_name, customer_email, customer_phone, notes, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+      `INSERT INTO orders (id, site_id, user_id, order_number, items, subtotal, discount, shipping_cost, tax, total, payment_method, status, shipping_address, billing_address, customer_name, customer_email, customer_phone, notes, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(
       orderId,
       siteId,
@@ -264,6 +267,7 @@ async function createOrder(request, env, user) {
       tax,
       total,
       paymentMethod || 'pending',
+      orderStatus,
       JSON.stringify(shippingAddress),
       billingAddress ? JSON.stringify(billingAddress) : null,
       customerName,
@@ -272,63 +276,18 @@ async function createOrder(request, env, user) {
       notes || null
     ).run();
 
-    for (const item of processedItems) {
-      await updateProductStock(env, item.productId, item.quantity, 'decrement');
-    }
-
-    try {
-      const site = await env.DB.prepare('SELECT brand_name, email, settings FROM sites WHERE id = ?').bind(siteId).first();
-      const siteBrandName = site?.brand_name || 'Store';
-      const siteSettings = site?.settings ? JSON.parse(site.settings) : {};
-      const ownerEmail = siteSettings.email || siteSettings.ownerEmail || site?.email;
-
-      console.log('Order email debug:', {
-        customerEmail,
-        ownerEmail,
-        siteSettingsEmail: siteSettings.email,
-        siteEmail: site?.email,
-        hasResendKey: !!env.RESEND_API_KEY,
-        hasSendGridKey: !!env.SENDGRID_API_KEY,
-      });
-
-      const orderForEmail = {
-        order_number: orderNumber,
-        items: processedItems,
-        total,
-        payment_method: paymentMethod || 'cod',
-        customer_name: customerName,
-        customer_email: customerEmail,
-        customer_phone: customerPhone,
-        shipping_address: shippingAddress,
-      };
-
-      const emailPromises = [];
-
-      if (customerEmail) {
-        const { html, text } = buildOrderConfirmationEmail(orderForEmail, siteBrandName);
-        emailPromises.push(
-          sendEmail(env, customerEmail, `Order Confirmation - ${orderNumber}`, html, text).then(result => {
-            console.log('Customer email result:', result);
-            if (result !== true) console.error('Customer email failed:', result);
-          }).catch(e => console.error('Customer email error:', e))
-        );
+    if (!isPendingPayment) {
+      for (const item of processedItems) {
+        await updateProductStock(env, item.productId, item.quantity, 'decrement');
       }
 
-      if (ownerEmail) {
-        const { html, text } = buildOwnerNotificationEmail(orderForEmail, siteBrandName);
-        emailPromises.push(
-          sendEmail(env, ownerEmail, `New Order #${orderNumber} - ${siteBrandName}`, html, text).then(result => {
-            console.log('Owner email result:', result);
-            if (result !== true) console.error('Owner email failed:', result);
-          }).catch(e => console.error('Owner email error:', e))
-        );
+      try {
+        await sendOrderEmails(env, siteId, {
+          orderNumber, processedItems, total, paymentMethod, customerName, customerEmail, customerPhone, shippingAddress
+        });
+      } catch (emailErr) {
+        console.error('Order email notification error:', emailErr);
       }
-
-      if (emailPromises.length > 0) {
-        await Promise.all(emailPromises);
-      }
-    } catch (emailErr) {
-      console.error('Order email notification error:', emailErr);
     }
 
     return successResponse({
@@ -485,9 +444,12 @@ async function createGuestOrder(request, env) {
     const orderId = generateId();
     const orderNumber = generateOrderNumber();
 
+    const isPendingPayment = paymentMethod === 'razorpay';
+    const guestOrderStatus = isPendingPayment ? 'pending_payment' : 'confirmed';
+
     await env.DB.prepare(
-      `INSERT INTO guest_orders (id, site_id, order_number, items, subtotal, total, payment_method, shipping_address, customer_name, customer_email, customer_phone, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+      `INSERT INTO guest_orders (id, site_id, order_number, items, subtotal, total, payment_method, status, shipping_address, customer_name, customer_email, customer_phone, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(
       orderId,
       siteId,
@@ -496,66 +458,25 @@ async function createGuestOrder(request, env) {
       subtotal,
       total,
       paymentMethod || 'cod',
+      guestOrderStatus,
       JSON.stringify(shippingAddress),
       customerName,
       customerEmail || null,
       customerPhone
     ).run();
 
-    for (const item of processedItems) {
-      await updateProductStock(env, item.productId, item.quantity, 'decrement');
-    }
-
-    try {
-      const site = await env.DB.prepare('SELECT brand_name, email, settings FROM sites WHERE id = ?').bind(siteId).first();
-      const siteBrandName = site?.brand_name || 'Store';
-      const siteSettings = site?.settings ? JSON.parse(site.settings) : {};
-      const ownerEmail = siteSettings.email || siteSettings.ownerEmail || site?.email;
-
-      console.log('Guest order email debug:', {
-        customerEmail,
-        ownerEmail,
-        hasResendKey: !!env.RESEND_API_KEY,
-      });
-
-      const orderForEmail = {
-        order_number: orderNumber,
-        items: processedItems,
-        total,
-        payment_method: paymentMethod || 'cod',
-        customer_name: customerName,
-        customer_email: customerEmail,
-        customer_phone: customerPhone,
-        shipping_address: shippingAddress,
-      };
-
-      const emailPromises = [];
-
-      if (customerEmail) {
-        const { html, text } = buildOrderConfirmationEmail(orderForEmail, siteBrandName);
-        emailPromises.push(
-          sendEmail(env, customerEmail, `Order Confirmation - ${orderNumber}`, html, text).then(result => {
-            console.log('Guest customer email result:', result);
-            if (result !== true) console.error('Guest customer email failed:', result);
-          }).catch(e => console.error('Guest customer email error:', e))
-        );
+    if (!isPendingPayment) {
+      for (const item of processedItems) {
+        await updateProductStock(env, item.productId, item.quantity, 'decrement');
       }
 
-      if (ownerEmail) {
-        const { html, text } = buildOwnerNotificationEmail(orderForEmail, siteBrandName);
-        emailPromises.push(
-          sendEmail(env, ownerEmail, `New Order #${orderNumber} - ${siteBrandName}`, html, text).then(result => {
-            console.log('Guest owner email result:', result);
-            if (result !== true) console.error('Guest owner email failed:', result);
-          }).catch(e => console.error('Guest owner email error:', e))
-        );
+      try {
+        await sendOrderEmails(env, siteId, {
+          orderNumber, processedItems, total, paymentMethod, customerName, customerEmail, customerPhone, shippingAddress
+        });
+      } catch (emailErr) {
+        console.error('Guest order email notification error:', emailErr);
       }
-
-      if (emailPromises.length > 0) {
-        await Promise.all(emailPromises);
-      }
-    } catch (emailErr) {
-      console.error('Guest order email notification error:', emailErr);
     }
 
     return successResponse({
@@ -587,6 +508,61 @@ async function getGuestOrder(env, orderNumber) {
   } catch (error) {
     console.error('Get guest order error:', error);
     return errorResponse('Failed to fetch order', 500);
+  }
+}
+
+export async function sendOrderEmails(env, siteId, orderDetails) {
+  const { orderNumber, processedItems, total, paymentMethod, customerName, customerEmail, customerPhone, shippingAddress } = orderDetails;
+
+  const site = await env.DB.prepare('SELECT brand_name, email, settings FROM sites WHERE id = ?').bind(siteId).first();
+  const siteBrandName = site?.brand_name || 'Store';
+  const siteSettings = site?.settings ? JSON.parse(site.settings) : {};
+  const ownerEmail = siteSettings.email || siteSettings.ownerEmail || site?.email;
+
+  console.log('Order email debug:', {
+    customerEmail,
+    ownerEmail,
+    siteSettingsEmail: siteSettings.email,
+    siteEmail: site?.email,
+    hasResendKey: !!env.RESEND_API_KEY,
+    hasSendGridKey: !!env.SENDGRID_API_KEY,
+  });
+
+  const orderForEmail = {
+    order_number: orderNumber,
+    items: processedItems,
+    total,
+    payment_method: paymentMethod || 'cod',
+    customer_name: customerName,
+    customer_email: customerEmail,
+    customer_phone: customerPhone,
+    shipping_address: shippingAddress,
+  };
+
+  const emailPromises = [];
+
+  if (customerEmail) {
+    const { html, text } = buildOrderConfirmationEmail(orderForEmail, siteBrandName);
+    emailPromises.push(
+      sendEmail(env, customerEmail, `Order Confirmation - ${orderNumber}`, html, text).then(result => {
+        console.log('Customer email result:', result);
+        if (result !== true) console.error('Customer email failed:', result);
+      }).catch(e => console.error('Customer email error:', e))
+    );
+  }
+
+  if (ownerEmail) {
+    const { html, text } = buildOwnerNotificationEmail(orderForEmail, siteBrandName);
+    emailPromises.push(
+      sendEmail(env, ownerEmail, `New Order #${orderNumber} - ${siteBrandName}`, html, text).then(result => {
+        console.log('Owner email result:', result);
+        if (result !== true) console.error('Owner email failed:', result);
+      }).catch(e => console.error('Owner email error:', e))
+    );
+  }
+
+  if (emailPromises.length > 0) {
+    await Promise.all(emailPromises);
   }
 }
 

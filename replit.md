@@ -107,9 +107,9 @@ Fluxe is a multi-tenant SaaS platform that allows users to create their own e-co
 - **Platform Super-Admin:** Full JWT auth + role check (admin@fluxe.in or admin/owner role)
 - **Auth priority in api.js:** SiteAdmin token (sessionStorage) > SiteCustomer token (localStorage)
 - Backend workers accept SiteAdmin auth for CRUD: products-worker, categories-worker, orders-worker, sites-worker (PUT), site-admin set-code
-- **Order Emails:** After order creation (both registered and guest), the orders-worker sends confirmation email to customer and notification to store owner (from `settings.email`)
-- **Shared Email Utility:** `backend/utils/email.js` contains reusable `sendEmail`, `buildOrderConfirmationEmail`, and `buildOwnerNotificationEmail` functions
-- **Order Flow:** Both COD and Razorpay orders go through `POST /api/orders` (createOrder). For Razorpay, the frontend also calls `/api/payments/create-order` and `/api/payments/verify`. Payment verification automatically updates order status to 'paid' server-side.
+- **Order Emails:** Confirmation emails (customer + owner) are sent only after payment is confirmed. For COD orders, emails are sent immediately on order creation. For Razorpay orders, emails are sent only after successful payment verification.
+- **Shared Email Utility:** `backend/utils/email.js` contains reusable `sendEmail`, `buildOrderConfirmationEmail`, and `buildOwnerNotificationEmail` functions. `orders-worker.js` exports `sendOrderEmails()` helper used by both order creation (COD) and payment verification (Razorpay).
+- **Order Flow:** Both COD and Razorpay orders go through `POST /api/orders` (createOrder). For COD: order is created with status 'confirmed', stock is decremented, and emails are sent immediately. For Razorpay: order is created with status 'pending_payment' (no stock decrement, no emails). The frontend then calls `/api/payments/create-order` and opens the Razorpay modal. On successful payment, `/api/payments/verify` updates order status to 'paid', decrements stock, and sends confirmation emails.
 - **Cart Items:** Local cart stores `{ productId, name, price, thumbnail, quantity }`. Server cart enriches to `{ productId, quantity, variant, addedAt, name, price, thumbnail, inStock, availableStock }`. CheckoutPage maps items using `productId || product_id || id` for compatibility.
 
 ## Edit Website Admin Section

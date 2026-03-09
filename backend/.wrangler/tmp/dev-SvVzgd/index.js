@@ -2545,9 +2545,11 @@ async function createOrder(request, env, user) {
     const total = subtotal - discount + shippingCost + tax;
     const orderId = generateId();
     const orderNumber = generateOrderNumber();
+    const isPendingPayment = paymentMethod === "razorpay";
+    const orderStatus = isPendingPayment ? "pending_payment" : data.status || "confirmed";
     await env.DB.prepare(
-      `INSERT INTO orders (id, site_id, user_id, order_number, items, subtotal, discount, shipping_cost, tax, total, payment_method, shipping_address, billing_address, customer_name, customer_email, customer_phone, notes, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+      `INSERT INTO orders (id, site_id, user_id, order_number, items, subtotal, discount, shipping_cost, tax, total, payment_method, status, shipping_address, billing_address, customer_name, customer_email, customer_phone, notes, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(
       orderId,
       siteId,
@@ -2560,6 +2562,7 @@ async function createOrder(request, env, user) {
       tax,
       total,
       paymentMethod || "pending",
+      orderStatus,
       JSON.stringify(shippingAddress),
       billingAddress ? JSON.stringify(billingAddress) : null,
       customerName,
@@ -2567,58 +2570,24 @@ async function createOrder(request, env, user) {
       customerPhone,
       notes || null
     ).run();
-    for (const item of processedItems) {
-      await updateProductStock(env, item.productId, item.quantity, "decrement");
-    }
-    try {
-      const site = await env.DB.prepare("SELECT brand_name, email, settings FROM sites WHERE id = ?").bind(siteId).first();
-      const siteBrandName = site?.brand_name || "Store";
-      const siteSettings = site?.settings ? JSON.parse(site.settings) : {};
-      const ownerEmail = siteSettings.email || siteSettings.ownerEmail || site?.email;
-      console.log("Order email debug:", {
-        customerEmail,
-        ownerEmail,
-        siteSettingsEmail: siteSettings.email,
-        siteEmail: site?.email,
-        hasResendKey: !!env.RESEND_API_KEY,
-        hasSendGridKey: !!env.SENDGRID_API_KEY
-      });
-      const orderForEmail = {
-        order_number: orderNumber,
-        items: processedItems,
-        total,
-        payment_method: paymentMethod || "cod",
-        customer_name: customerName,
-        customer_email: customerEmail,
-        customer_phone: customerPhone,
-        shipping_address: shippingAddress
-      };
-      const emailPromises = [];
-      if (customerEmail) {
-        const { html, text } = buildOrderConfirmationEmail(orderForEmail, siteBrandName);
-        emailPromises.push(
-          sendEmail(env, customerEmail, `Order Confirmation - ${orderNumber}`, html, text).then((result) => {
-            console.log("Customer email result:", result);
-            if (result !== true)
-              console.error("Customer email failed:", result);
-          }).catch((e) => console.error("Customer email error:", e))
-        );
+    if (!isPendingPayment) {
+      for (const item of processedItems) {
+        await updateProductStock(env, item.productId, item.quantity, "decrement");
       }
-      if (ownerEmail) {
-        const { html, text } = buildOwnerNotificationEmail(orderForEmail, siteBrandName);
-        emailPromises.push(
-          sendEmail(env, ownerEmail, `New Order #${orderNumber} - ${siteBrandName}`, html, text).then((result) => {
-            console.log("Owner email result:", result);
-            if (result !== true)
-              console.error("Owner email failed:", result);
-          }).catch((e) => console.error("Owner email error:", e))
-        );
+      try {
+        await sendOrderEmails(env, siteId, {
+          orderNumber,
+          processedItems,
+          total,
+          paymentMethod,
+          customerName,
+          customerEmail,
+          customerPhone,
+          shippingAddress
+        });
+      } catch (emailErr) {
+        console.error("Order email notification error:", emailErr);
       }
-      if (emailPromises.length > 0) {
-        await Promise.all(emailPromises);
-      }
-    } catch (emailErr) {
-      console.error("Order email notification error:", emailErr);
     }
     return successResponse({
       id: orderId,
@@ -2755,9 +2724,11 @@ async function createGuestOrder(request, env) {
     const total = subtotal;
     const orderId = generateId();
     const orderNumber = generateOrderNumber();
+    const isPendingPayment = paymentMethod === "razorpay";
+    const guestOrderStatus = isPendingPayment ? "pending_payment" : "confirmed";
     await env.DB.prepare(
-      `INSERT INTO guest_orders (id, site_id, order_number, items, subtotal, total, payment_method, shipping_address, customer_name, customer_email, customer_phone, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+      `INSERT INTO guest_orders (id, site_id, order_number, items, subtotal, total, payment_method, status, shipping_address, customer_name, customer_email, customer_phone, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(
       orderId,
       siteId,
@@ -2766,60 +2737,30 @@ async function createGuestOrder(request, env) {
       subtotal,
       total,
       paymentMethod || "cod",
+      guestOrderStatus,
       JSON.stringify(shippingAddress),
       customerName,
       customerEmail || null,
       customerPhone
     ).run();
-    for (const item of processedItems) {
-      await updateProductStock(env, item.productId, item.quantity, "decrement");
-    }
-    try {
-      const site = await env.DB.prepare("SELECT brand_name, email, settings FROM sites WHERE id = ?").bind(siteId).first();
-      const siteBrandName = site?.brand_name || "Store";
-      const siteSettings = site?.settings ? JSON.parse(site.settings) : {};
-      const ownerEmail = siteSettings.email || siteSettings.ownerEmail || site?.email;
-      console.log("Guest order email debug:", {
-        customerEmail,
-        ownerEmail,
-        hasResendKey: !!env.RESEND_API_KEY
-      });
-      const orderForEmail = {
-        order_number: orderNumber,
-        items: processedItems,
-        total,
-        payment_method: paymentMethod || "cod",
-        customer_name: customerName,
-        customer_email: customerEmail,
-        customer_phone: customerPhone,
-        shipping_address: shippingAddress
-      };
-      const emailPromises = [];
-      if (customerEmail) {
-        const { html, text } = buildOrderConfirmationEmail(orderForEmail, siteBrandName);
-        emailPromises.push(
-          sendEmail(env, customerEmail, `Order Confirmation - ${orderNumber}`, html, text).then((result) => {
-            console.log("Guest customer email result:", result);
-            if (result !== true)
-              console.error("Guest customer email failed:", result);
-          }).catch((e) => console.error("Guest customer email error:", e))
-        );
+    if (!isPendingPayment) {
+      for (const item of processedItems) {
+        await updateProductStock(env, item.productId, item.quantity, "decrement");
       }
-      if (ownerEmail) {
-        const { html, text } = buildOwnerNotificationEmail(orderForEmail, siteBrandName);
-        emailPromises.push(
-          sendEmail(env, ownerEmail, `New Order #${orderNumber} - ${siteBrandName}`, html, text).then((result) => {
-            console.log("Guest owner email result:", result);
-            if (result !== true)
-              console.error("Guest owner email failed:", result);
-          }).catch((e) => console.error("Guest owner email error:", e))
-        );
+      try {
+        await sendOrderEmails(env, siteId, {
+          orderNumber,
+          processedItems,
+          total,
+          paymentMethod,
+          customerName,
+          customerEmail,
+          customerPhone,
+          shippingAddress
+        });
+      } catch (emailErr) {
+        console.error("Guest order email notification error:", emailErr);
       }
-      if (emailPromises.length > 0) {
-        await Promise.all(emailPromises);
-      }
-    } catch (emailErr) {
-      console.error("Guest order email notification error:", emailErr);
     }
     return successResponse({
       id: orderId,
@@ -2851,6 +2792,56 @@ async function getGuestOrder(env, orderNumber) {
   }
 }
 __name(getGuestOrder, "getGuestOrder");
+async function sendOrderEmails(env, siteId, orderDetails) {
+  const { orderNumber, processedItems, total, paymentMethod, customerName, customerEmail, customerPhone, shippingAddress } = orderDetails;
+  const site = await env.DB.prepare("SELECT brand_name, email, settings FROM sites WHERE id = ?").bind(siteId).first();
+  const siteBrandName = site?.brand_name || "Store";
+  const siteSettings = site?.settings ? JSON.parse(site.settings) : {};
+  const ownerEmail = siteSettings.email || siteSettings.ownerEmail || site?.email;
+  console.log("Order email debug:", {
+    customerEmail,
+    ownerEmail,
+    siteSettingsEmail: siteSettings.email,
+    siteEmail: site?.email,
+    hasResendKey: !!env.RESEND_API_KEY,
+    hasSendGridKey: !!env.SENDGRID_API_KEY
+  });
+  const orderForEmail = {
+    order_number: orderNumber,
+    items: processedItems,
+    total,
+    payment_method: paymentMethod || "cod",
+    customer_name: customerName,
+    customer_email: customerEmail,
+    customer_phone: customerPhone,
+    shipping_address: shippingAddress
+  };
+  const emailPromises = [];
+  if (customerEmail) {
+    const { html, text } = buildOrderConfirmationEmail(orderForEmail, siteBrandName);
+    emailPromises.push(
+      sendEmail(env, customerEmail, `Order Confirmation - ${orderNumber}`, html, text).then((result) => {
+        console.log("Customer email result:", result);
+        if (result !== true)
+          console.error("Customer email failed:", result);
+      }).catch((e) => console.error("Customer email error:", e))
+    );
+  }
+  if (ownerEmail) {
+    const { html, text } = buildOwnerNotificationEmail(orderForEmail, siteBrandName);
+    emailPromises.push(
+      sendEmail(env, ownerEmail, `New Order #${orderNumber} - ${siteBrandName}`, html, text).then((result) => {
+        console.log("Owner email result:", result);
+        if (result !== true)
+          console.error("Owner email failed:", result);
+      }).catch((e) => console.error("Owner email error:", e))
+    );
+  }
+  if (emailPromises.length > 0) {
+    await Promise.all(emailPromises);
+  }
+}
+__name(sendOrderEmails, "sendOrderEmails");
 async function trackOrder(env, orderNumber) {
   try {
     let order = await env.DB.prepare(
@@ -3493,27 +3484,44 @@ async function verifyPayment(request, env) {
     if (computedSignature !== razorpay_signature) {
       return errorResponse("Invalid payment signature", 400, "INVALID_SIGNATURE");
     }
+    const existingTx = await env.DB.prepare(
+      `SELECT order_id, status FROM payment_transactions WHERE razorpay_order_id = ?`
+    ).bind(razorpay_order_id).first();
+    if (existingTx?.status === "completed") {
+      console.log("Payment already verified, skipping duplicate:", razorpay_order_id);
+      return successResponse({ verified: true, duplicate: true }, "Payment already verified");
+    }
     await env.DB.prepare(
       `UPDATE payment_transactions 
        SET razorpay_payment_id = ?, razorpay_signature = ?, status = 'completed', payment_method = 'razorpay'
-       WHERE razorpay_order_id = ?`
+       WHERE razorpay_order_id = ? AND status = 'pending'`
     ).bind(razorpay_payment_id, razorpay_signature, razorpay_order_id).run();
-    const paymentTx = await env.DB.prepare(
-      `SELECT order_id FROM payment_transactions WHERE razorpay_order_id = ?`
-    ).bind(razorpay_order_id).first();
+    const paymentTx = existingTx;
     if (paymentTx?.order_id) {
-      try {
+      let order = null;
+      order = await env.DB.prepare("SELECT * FROM orders WHERE id = ?").bind(paymentTx.order_id).first();
+      if (order) {
+        const wasPendingPayment = order.status === "pending_payment";
         await env.DB.prepare(
           `UPDATE orders SET status = 'paid', payment_status = 'paid', payment_method = 'razorpay', razorpay_order_id = ?, razorpay_payment_id = ?, updated_at = datetime('now') WHERE id = ?`
         ).bind(razorpay_order_id, razorpay_payment_id, paymentTx.order_id).run();
         console.log("Order status updated to paid:", paymentTx.order_id);
-      } catch (orderUpdateErr) {
-        console.error("Failed to update order status to paid:", orderUpdateErr);
+        if (wasPendingPayment) {
+          await processPostPaymentActions(env, order);
+        }
+      } else {
         try {
-          await env.DB.prepare(
-            `UPDATE guest_orders SET status = 'paid', payment_status = 'paid', payment_method = 'razorpay', razorpay_order_id = ?, razorpay_payment_id = ?, updated_at = datetime('now') WHERE id = ?`
-          ).bind(razorpay_order_id, razorpay_payment_id, paymentTx.order_id).run();
-          console.log("Guest order status updated to paid:", paymentTx.order_id);
+          order = await env.DB.prepare("SELECT * FROM guest_orders WHERE id = ?").bind(paymentTx.order_id).first();
+          if (order) {
+            const wasPendingPayment = order.status === "pending_payment";
+            await env.DB.prepare(
+              `UPDATE guest_orders SET status = 'paid', payment_status = 'paid', payment_method = 'razorpay', razorpay_order_id = ?, razorpay_payment_id = ?, updated_at = datetime('now') WHERE id = ?`
+            ).bind(razorpay_order_id, razorpay_payment_id, paymentTx.order_id).run();
+            console.log("Guest order status updated to paid:", paymentTx.order_id);
+            if (wasPendingPayment) {
+              await processPostPaymentActions(env, order);
+            }
+          }
         } catch (guestUpdateErr) {
           console.error("Failed to update guest order status:", guestUpdateErr);
         }
@@ -3540,6 +3548,35 @@ async function verifyPayment(request, env) {
   }
 }
 __name(verifyPayment, "verifyPayment");
+async function processPostPaymentActions(env, order) {
+  try {
+    const orderItems = typeof order.items === "string" ? JSON.parse(order.items) : order.items;
+    for (const item of orderItems) {
+      await updateProductStock(env, item.productId, item.quantity, "decrement");
+    }
+    console.log("Stock decremented after payment for order:", order.id);
+  } catch (stockErr) {
+    console.error("Failed to decrement stock after payment:", stockErr);
+  }
+  try {
+    const orderItems = typeof order.items === "string" ? JSON.parse(order.items) : order.items;
+    const shippingAddress = typeof order.shipping_address === "string" ? JSON.parse(order.shipping_address) : order.shipping_address;
+    await sendOrderEmails(env, order.site_id, {
+      orderNumber: order.order_number,
+      processedItems: orderItems,
+      total: order.total,
+      paymentMethod: "razorpay",
+      customerName: order.customer_name,
+      customerEmail: order.customer_email,
+      customerPhone: order.customer_phone,
+      shippingAddress
+    });
+    console.log("Order confirmation emails sent after payment for order:", order.id);
+  } catch (emailErr) {
+    console.error("Failed to send order emails after payment:", emailErr);
+  }
+}
+__name(processPostPaymentActions, "processPostPaymentActions");
 async function handleSubscription(request, env) {
   const user = await validateAuth(request, env);
   if (!user) {
