@@ -1,6 +1,7 @@
 import { generateId, generateOrderNumber, jsonResponse, errorResponse, successResponse, handleCORS } from '../../utils/helpers.js';
 import { validateAuth, validateAnyAuth } from '../../utils/auth.js';
 import { updateProductStock } from './products-worker.js';
+import { sendEmail, buildOrderConfirmationEmail, buildOwnerNotificationEmail } from '../../utils/email.js';
 
 export async function handleOrders(request, env, path) {
   const corsResponse = handleCORS(request);
@@ -257,6 +258,40 @@ async function createOrder(request, env, user) {
       await updateProductStock(env, item.productId, item.quantity, 'decrement');
     }
 
+    try {
+      const site = await env.DB.prepare('SELECT brand_name, settings FROM sites WHERE id = ?').bind(siteId).first();
+      const siteBrandName = site?.brand_name || 'Store';
+      const siteSettings = site?.settings ? JSON.parse(site.settings) : {};
+      const ownerEmail = siteSettings.email || siteSettings.ownerEmail;
+
+      const orderForEmail = {
+        order_number: orderNumber,
+        items: processedItems,
+        total,
+        payment_method: paymentMethod || 'cod',
+        customer_name: customerName,
+        customer_email: customerEmail,
+        customer_phone: customerPhone,
+        shipping_address: shippingAddress,
+      };
+
+      if (customerEmail) {
+        const { html, text } = buildOrderConfirmationEmail(orderForEmail, siteBrandName);
+        sendEmail(env, customerEmail, `Order Confirmation - ${orderNumber}`, html, text).then(result => {
+          if (result !== true) console.error('Customer email failed:', result);
+        }).catch(e => console.error('Customer email error:', e));
+      }
+
+      if (ownerEmail) {
+        const { html, text } = buildOwnerNotificationEmail(orderForEmail, siteBrandName);
+        sendEmail(env, ownerEmail, `New Order #${orderNumber} - ${siteBrandName}`, html, text).then(result => {
+          if (result !== true) console.error('Owner email failed:', result);
+        }).catch(e => console.error('Owner email error:', e));
+      }
+    } catch (emailErr) {
+      console.error('Order email notification error:', emailErr);
+    }
+
     return successResponse({
       id: orderId,
       orderNumber,
@@ -417,6 +452,40 @@ async function createGuestOrder(request, env) {
 
     for (const item of processedItems) {
       await updateProductStock(env, item.productId, item.quantity, 'decrement');
+    }
+
+    try {
+      const site = await env.DB.prepare('SELECT brand_name, settings FROM sites WHERE id = ?').bind(siteId).first();
+      const siteBrandName = site?.brand_name || 'Store';
+      const siteSettings = site?.settings ? JSON.parse(site.settings) : {};
+      const ownerEmail = siteSettings.email || siteSettings.ownerEmail;
+
+      const orderForEmail = {
+        order_number: orderNumber,
+        items: processedItems,
+        total,
+        payment_method: paymentMethod || 'cod',
+        customer_name: customerName,
+        customer_email: customerEmail,
+        customer_phone: customerPhone,
+        shipping_address: shippingAddress,
+      };
+
+      if (customerEmail) {
+        const { html, text } = buildOrderConfirmationEmail(orderForEmail, siteBrandName);
+        sendEmail(env, customerEmail, `Order Confirmation - ${orderNumber}`, html, text).then(result => {
+          if (result !== true) console.error('Guest customer email failed:', result);
+        }).catch(e => console.error('Guest customer email error:', e));
+      }
+
+      if (ownerEmail) {
+        const { html, text } = buildOwnerNotificationEmail(orderForEmail, siteBrandName);
+        sendEmail(env, ownerEmail, `New Order #${orderNumber} - ${siteBrandName}`, html, text).then(result => {
+          if (result !== true) console.error('Guest owner email failed:', result);
+        }).catch(e => console.error('Guest owner email error:', e));
+      }
+    } catch (emailErr) {
+      console.error('Guest order email notification error:', emailErr);
     }
 
     return successResponse({

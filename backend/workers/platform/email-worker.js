@@ -1,5 +1,6 @@
 import { jsonResponse, errorResponse, successResponse, handleCORS } from '../../utils/helpers.js';
 import { validateAuth } from '../../utils/auth.js';
+import { sendEmail as sendEmailUtil, buildOrderConfirmationEmail } from '../../utils/email.js';
 
 export async function handleEmail(request, env, path) {
   const corsResponse = handleCORS(request);
@@ -44,76 +45,7 @@ async function sendTestEmail(request, env) {
 }
 
 async function sendEmail(env, to, subject, html, text) {
-  try {
-    console.log('EMAIL SEND ATTEMPT', {
-      provider: env.RESEND_API_KEY ? 'resend' : env.SENDGRID_API_KEY ? 'sendgrid' : 'none',
-      to,
-      from: env.FROM_EMAIL || 'noreply@fluxe.in'
-    });
-
-    if (env.RESEND_API_KEY) {
-      const apiKey = env.RESEND_API_KEY.trim();
-      const response = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Authorization': apiKey.startsWith('Bearer ') ? apiKey : `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          from: env.FROM_EMAIL || 'noreply@fluxe.in',
-          to: typeof to === 'string' ? [to] : to,
-          subject,
-          html,
-          text,
-        }),
-      });
-
-      const body = await response.json().catch(() => ({}));
-      console.log('RESEND RESPONSE', response.status, body);
-
-      if (!response.ok) {
-        console.error('Resend error:', body);
-        return body.message || body.error || 'Resend API error';
-      }
-
-      console.log('Resend Email Sent Success:', body.id);
-      return true;
-    }
-
-    if (env.SENDGRID_API_KEY) {
-      const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${env.SENDGRID_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          personalizations: [{ to: [{ email: to }] }],
-          from: { email: env.FROM_EMAIL || 'noreply@fluxe.in' },
-          subject,
-          content: [
-            { type: 'text/plain', value: text },
-            { type: 'text/html', value: html },
-          ],
-        }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('SendGrid error:', errorText);
-        return errorText || 'SendGrid API error';
-      }
-
-      return true;
-    }
-
-    console.log('No email provider configured. Email would be sent to:', to);
-    console.log('Subject:', subject);
-    return true;
-  } catch (error) {
-    console.error('Send email error:', error);
-    return error.message || 'Unknown email sending error';
-  }
+  return sendEmailUtil(env, to, subject, html, text);
 }
 
 async function sendOrderConfirmation(request, env) {
@@ -124,73 +56,11 @@ async function sendOrderConfirmation(request, env) {
       return errorResponse('Order and customer email are required');
     }
 
-    const items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
-    
-    const itemsHtml = items.map(item => `
-      <tr>
-        <td style="padding: 10px; border-bottom: 1px solid #eee;">${item.name}</td>
-        <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity}</td>
-        <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">₹${item.price.toFixed(2)}</td>
-      </tr>
-    `).join('');
+    const { html, text } = buildOrderConfirmationEmail(order, brandName);
+    const orderNum = order.order_number || order.orderNumber || '';
+    const sent = await sendEmail(env, customerEmail, `Order Confirmation - ${orderNum}`, html, text);
 
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background: #000; color: #fff; padding: 20px; text-align: center; }
-          .content { padding: 20px; }
-          .order-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-          .order-table th { background: #f5f5f5; padding: 10px; text-align: left; }
-          .total { font-size: 18px; font-weight: bold; text-align: right; margin-top: 20px; }
-          .footer { background: #f5f5f5; padding: 20px; text-align: center; font-size: 12px; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1>${brandName || 'Your Order'}</h1>
-          </div>
-          <div class="content">
-            <h2>Order Confirmation</h2>
-            <p>Thank you for your order! Your order number is <strong>${order.order_number || order.orderNumber}</strong>.</p>
-            
-            <table class="order-table">
-              <thead>
-                <tr>
-                  <th>Product</th>
-                  <th style="text-align: center;">Qty</th>
-                  <th style="text-align: right;">Price</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${itemsHtml}
-              </tbody>
-            </table>
-            
-            <div class="total">
-              Total: ₹${order.total.toFixed(2)}
-            </div>
-            
-            <p>We will notify you when your order ships.</p>
-          </div>
-          <div class="footer">
-            <p>Thank you for shopping with us!</p>
-          </div>
-        </div>
-      </body>
-      </html>
-    `;
-
-    const text = `Order Confirmation\n\nThank you for your order!\nOrder Number: ${order.order_number || order.orderNumber}\nTotal: ₹${order.total.toFixed(2)}\n\nWe will notify you when your order ships.`;
-
-    const sent = await sendEmail(env, customerEmail, `Order Confirmation - ${order.order_number || order.orderNumber}`, html, text);
-
-    if (!sent) {
+    if (sent !== true) {
       return errorResponse('Failed to send email', 500);
     }
 

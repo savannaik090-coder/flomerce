@@ -105,6 +105,8 @@ Fluxe is a multi-tenant SaaS platform that allows users to create their own e-co
 - **Platform Super-Admin:** Full JWT auth + role check (admin@fluxe.in or admin/owner role)
 - **Auth priority in api.js:** SiteAdmin token (sessionStorage) > SiteCustomer token (localStorage)
 - Backend workers accept SiteAdmin auth for CRUD: products-worker, categories-worker, orders-worker, sites-worker (PUT), site-admin set-code
+- **Order Emails:** After order creation (both registered and guest), the orders-worker sends confirmation email to customer and notification to store owner (from `settings.email`)
+- **Shared Email Utility:** `backend/utils/email.js` contains reusable `sendEmail`, `buildOrderConfirmationEmail`, and `buildOwnerNotificationEmail` functions
 
 ## Build & Deployment
 

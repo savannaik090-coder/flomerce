@@ -650,6 +650,231 @@ init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 init_helpers();
 init_auth();
+
+// utils/email.js
+init_checked_fetch();
+init_strip_cf_connecting_ip_header();
+init_modules_watch_stub();
+async function sendEmail(env, to, subject, html, text) {
+  try {
+    if (env.RESEND_API_KEY) {
+      const apiKey = env.RESEND_API_KEY.trim();
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Authorization": apiKey.startsWith("Bearer ") ? apiKey : `Bearer ${apiKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          from: env.FROM_EMAIL || "noreply@fluxe.in",
+          to: typeof to === "string" ? [to] : to,
+          subject,
+          html,
+          text
+        })
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        console.error("Resend error:", body);
+        return body.message || body.error || "Resend API error";
+      }
+      return true;
+    }
+    if (env.SENDGRID_API_KEY) {
+      const toList = typeof to === "string" ? [{ email: to }] : to.map((e) => ({ email: e }));
+      const response = await fetch("https://api.sendgrid.com/v3/mail/send", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${env.SENDGRID_API_KEY}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          personalizations: [{ to: toList }],
+          from: { email: env.FROM_EMAIL || "noreply@fluxe.in" },
+          subject,
+          content: [
+            { type: "text/plain", value: text },
+            { type: "text/html", value: html }
+          ]
+        })
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("SendGrid error:", errorText);
+        return errorText || "SendGrid API error";
+      }
+      return true;
+    }
+    console.log("No email provider configured. Email would be sent to:", to);
+    console.log("Subject:", subject);
+    return true;
+  } catch (error) {
+    console.error("Send email error:", error);
+    return error.message || "Unknown email sending error";
+  }
+}
+__name(sendEmail, "sendEmail");
+function buildOrderConfirmationEmail(order, brandName) {
+  const items = typeof order.items === "string" ? JSON.parse(order.items) : order.items;
+  const itemsHtml = items.map((item) => `
+    <tr>
+      <td style="padding: 12px 16px; border-bottom: 1px solid #f0f0f0; font-size: 14px;">${item.name}</td>
+      <td style="padding: 12px 16px; border-bottom: 1px solid #f0f0f0; text-align: center; font-size: 14px;">${item.quantity}</td>
+      <td style="padding: 12px 16px; border-bottom: 1px solid #f0f0f0; text-align: right; font-size: 14px; font-weight: 600;">&#8377;${Number(item.price).toFixed(2)}</td>
+      <td style="padding: 12px 16px; border-bottom: 1px solid #f0f0f0; text-align: right; font-size: 14px; font-weight: 600;">&#8377;${(Number(item.price) * Number(item.quantity)).toFixed(2)}</td>
+    </tr>
+  `).join("");
+  const shippingAddress = typeof order.shipping_address === "string" ? JSON.parse(order.shipping_address) : order.shipping_address || order.shippingAddress;
+  const addressHtml = shippingAddress ? `
+    <div style="margin-top: 24px; padding: 16px; background: #f8f9fa; border-radius: 8px;">
+      <h3 style="margin: 0 0 8px; font-size: 14px; color: #666; text-transform: uppercase; letter-spacing: 0.5px;">Shipping Address</h3>
+      <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #333;">
+        ${shippingAddress.name || order.customer_name || ""}<br>
+        ${shippingAddress.address || ""}<br>
+        ${shippingAddress.city || ""}, ${shippingAddress.state || ""} ${shippingAddress.pinCode || shippingAddress.pin_code || ""}<br>
+        ${shippingAddress.phone || order.customer_phone || ""}
+      </p>
+    </div>
+  ` : "";
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="utf-8"></head>
+    <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background: #f5f5f5;">
+      <div style="max-width: 600px; margin: 0 auto; background: #ffffff;">
+        <div style="background: #0f172a; color: #ffffff; padding: 32px; text-align: center;">
+          <h1 style="margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.5px;">${brandName || "Your Store"}</h1>
+        </div>
+        <div style="padding: 32px;">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <div style="width: 56px; height: 56px; background: #dcfce7; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 12px;">
+              <span style="font-size: 28px;">&#10003;</span>
+            </div>
+            <h2 style="margin: 0 0 4px; font-size: 22px; color: #0f172a;">Order Confirmed!</h2>
+            <p style="margin: 0; color: #64748b; font-size: 14px;">Order #${order.order_number || order.orderNumber || ""}</p>
+          </div>
+
+          <table style="width: 100%; border-collapse: collapse; margin: 24px 0;">
+            <thead>
+              <tr style="background: #f8f9fa;">
+                <th style="padding: 12px 16px; text-align: left; font-size: 12px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Product</th>
+                <th style="padding: 12px 16px; text-align: center; font-size: 12px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Qty</th>
+                <th style="padding: 12px 16px; text-align: right; font-size: 12px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Price</th>
+                <th style="padding: 12px 16px; text-align: right; font-size: 12px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${itemsHtml}
+            </tbody>
+          </table>
+
+          <div style="text-align: right; padding: 16px; background: #f8f9fa; border-radius: 8px; margin-top: 16px;">
+            <span style="font-size: 18px; font-weight: 700; color: #0f172a;">Total: &#8377;${Number(order.total).toFixed(2)}</span>
+          </div>
+
+          <div style="margin-top: 16px; padding: 12px 16px; background: #eff6ff; border-radius: 8px; font-size: 14px; color: #1e40af;">
+            Payment Method: <strong>${order.payment_method === "cod" || order.paymentMethod === "cod" ? "Cash on Delivery" : "Online Payment"}</strong>
+          </div>
+
+          ${addressHtml}
+
+          <p style="margin-top: 24px; color: #64748b; font-size: 14px; line-height: 1.6;">We will notify you when your order ships. If you have any questions, please don't hesitate to contact us.</p>
+        </div>
+        <div style="background: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8;">
+          <p style="margin: 0;">Thank you for shopping with ${brandName || "us"}!</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+  const text = `Order Confirmation
+
+Thank you for your order!
+Order Number: ${order.order_number || order.orderNumber}
+Total: Rs.${Number(order.total).toFixed(2)}
+Payment: ${order.payment_method === "cod" || order.paymentMethod === "cod" ? "Cash on Delivery" : "Online Payment"}
+
+We will notify you when your order ships.`;
+  return { html, text };
+}
+__name(buildOrderConfirmationEmail, "buildOrderConfirmationEmail");
+function buildOwnerNotificationEmail(order, brandName) {
+  const items = typeof order.items === "string" ? JSON.parse(order.items) : order.items;
+  const itemsHtml = items.map((item) => `
+    <tr>
+      <td style="padding: 10px 16px; border-bottom: 1px solid #f0f0f0; font-size: 14px;">${item.name}</td>
+      <td style="padding: 10px 16px; border-bottom: 1px solid #f0f0f0; text-align: center; font-size: 14px;">${item.quantity}</td>
+      <td style="padding: 10px 16px; border-bottom: 1px solid #f0f0f0; text-align: right; font-size: 14px;">&#8377;${(Number(item.price) * Number(item.quantity)).toFixed(2)}</td>
+    </tr>
+  `).join("");
+  const shippingAddress = typeof order.shipping_address === "string" ? JSON.parse(order.shipping_address) : order.shipping_address || order.shippingAddress;
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="utf-8"></head>
+    <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background: #f5f5f5;">
+      <div style="max-width: 600px; margin: 0 auto; background: #ffffff;">
+        <div style="background: #059669; color: #ffffff; padding: 24px 32px;">
+          <h1 style="margin: 0; font-size: 20px; font-weight: 700;">New Order Received!</h1>
+          <p style="margin: 4px 0 0; opacity: 0.9; font-size: 14px;">${brandName || "Your Store"} - Order #${order.order_number || order.orderNumber || ""}</p>
+        </div>
+        <div style="padding: 24px 32px;">
+          <div style="display: flex; gap: 16px; margin-bottom: 20px;">
+            <div style="padding: 12px 16px; background: #f0fdf4; border-radius: 8px; flex: 1;">
+              <div style="font-size: 12px; color: #059669; text-transform: uppercase; font-weight: 600;">Total Amount</div>
+              <div style="font-size: 22px; font-weight: 700; color: #0f172a;">&#8377;${Number(order.total).toFixed(2)}</div>
+            </div>
+          </div>
+
+          <h3 style="font-size: 14px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin: 20px 0 8px;">Customer Details</h3>
+          <div style="padding: 12px 16px; background: #f8f9fa; border-radius: 8px; font-size: 14px; line-height: 1.8;">
+            <strong>Name:</strong> ${order.customer_name || shippingAddress && shippingAddress.name || "N/A"}<br>
+            <strong>Email:</strong> ${order.customer_email || shippingAddress && shippingAddress.email || "N/A"}<br>
+            <strong>Phone:</strong> ${order.customer_phone || shippingAddress && shippingAddress.phone || "N/A"}<br>
+            <strong>Payment:</strong> ${order.payment_method === "cod" || order.paymentMethod === "cod" ? "Cash on Delivery" : "Online Payment"}
+          </div>
+
+          ${shippingAddress ? `
+          <h3 style="font-size: 14px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin: 20px 0 8px;">Shipping Address</h3>
+          <div style="padding: 12px 16px; background: #f8f9fa; border-radius: 8px; font-size: 14px; line-height: 1.6;">
+            ${shippingAddress.address || ""}<br>
+            ${shippingAddress.city || ""}, ${shippingAddress.state || ""} ${shippingAddress.pinCode || shippingAddress.pin_code || ""}
+          </div>
+          ` : ""}
+
+          <h3 style="font-size: 14px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin: 20px 0 8px;">Order Items</h3>
+          <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+              <tr style="background: #f8f9fa;">
+                <th style="padding: 10px 16px; text-align: left; font-size: 12px; color: #64748b; text-transform: uppercase;">Product</th>
+                <th style="padding: 10px 16px; text-align: center; font-size: 12px; color: #64748b; text-transform: uppercase;">Qty</th>
+                <th style="padding: 10px 16px; text-align: right; font-size: 12px; color: #64748b; text-transform: uppercase;">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${itemsHtml}
+            </tbody>
+          </table>
+        </div>
+        <div style="background: #f8f9fa; padding: 16px 32px; text-align: center; font-size: 12px; color: #94a3b8;">
+          <p style="margin: 0;">This is an automated notification from ${brandName || "Fluxe"}.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+  const text = `New Order Received!
+
+Order #${order.order_number || order.orderNumber}
+Total: Rs.${Number(order.total).toFixed(2)}
+Customer: ${order.customer_name || ""}
+Phone: ${order.customer_phone || ""}
+Payment: ${order.payment_method === "cod" ? "Cash on Delivery" : "Online Payment"}`;
+  return { html, text };
+}
+__name(buildOwnerNotificationEmail, "buildOwnerNotificationEmail");
+
+// workers/platform/email-worker.js
 async function handleEmail(request, env, path) {
   const corsResponse = handleCORS(request);
   if (corsResponse)
@@ -683,151 +908,26 @@ async function sendTestEmail(request, env) {
     return errorResponse("Email is required");
   const html = `<h3>Test Email</h3><p>This is a test email from Fluxe.</p>`;
   const text = `Test Email from Fluxe`;
-  const sent = await sendEmail(env, email, "Fluxe Test Email", html, text);
+  const sent = await sendEmail2(env, email, "Fluxe Test Email", html, text);
   if (!sent)
     return errorResponse("Failed to send test email", 500);
   return successResponse(null, "Test email sent");
 }
 __name(sendTestEmail, "sendTestEmail");
-async function sendEmail(env, to, subject, html, text) {
-  try {
-    console.log("EMAIL SEND ATTEMPT", {
-      provider: env.RESEND_API_KEY ? "resend" : env.SENDGRID_API_KEY ? "sendgrid" : "none",
-      to,
-      from: env.FROM_EMAIL || "noreply@fluxe.in"
-    });
-    if (env.RESEND_API_KEY) {
-      const apiKey = env.RESEND_API_KEY.trim();
-      const response = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          "Authorization": apiKey.startsWith("Bearer ") ? apiKey : `Bearer ${apiKey}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          from: env.FROM_EMAIL || "noreply@fluxe.in",
-          to: typeof to === "string" ? [to] : to,
-          subject,
-          html,
-          text
-        })
-      });
-      const body = await response.json().catch(() => ({}));
-      console.log("RESEND RESPONSE", response.status, body);
-      if (!response.ok) {
-        console.error("Resend error:", body);
-        return body.message || body.error || "Resend API error";
-      }
-      console.log("Resend Email Sent Success:", body.id);
-      return true;
-    }
-    if (env.SENDGRID_API_KEY) {
-      const response = await fetch("https://api.sendgrid.com/v3/mail/send", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${env.SENDGRID_API_KEY}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          personalizations: [{ to: [{ email: to }] }],
-          from: { email: env.FROM_EMAIL || "noreply@fluxe.in" },
-          subject,
-          content: [
-            { type: "text/plain", value: text },
-            { type: "text/html", value: html }
-          ]
-        })
-      });
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("SendGrid error:", errorText);
-        return errorText || "SendGrid API error";
-      }
-      return true;
-    }
-    console.log("No email provider configured. Email would be sent to:", to);
-    console.log("Subject:", subject);
-    return true;
-  } catch (error) {
-    console.error("Send email error:", error);
-    return error.message || "Unknown email sending error";
-  }
+async function sendEmail2(env, to, subject, html, text) {
+  return sendEmail(env, to, subject, html, text);
 }
-__name(sendEmail, "sendEmail");
+__name(sendEmail2, "sendEmail");
 async function sendOrderConfirmation(request, env) {
   try {
     const { order, customerEmail, brandName } = await request.json();
     if (!order || !customerEmail) {
       return errorResponse("Order and customer email are required");
     }
-    const items = typeof order.items === "string" ? JSON.parse(order.items) : order.items;
-    const itemsHtml = items.map((item) => `
-      <tr>
-        <td style="padding: 10px; border-bottom: 1px solid #eee;">${item.name}</td>
-        <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity}</td>
-        <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">\u20B9${item.price.toFixed(2)}</td>
-      </tr>
-    `).join("");
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background: #000; color: #fff; padding: 20px; text-align: center; }
-          .content { padding: 20px; }
-          .order-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-          .order-table th { background: #f5f5f5; padding: 10px; text-align: left; }
-          .total { font-size: 18px; font-weight: bold; text-align: right; margin-top: 20px; }
-          .footer { background: #f5f5f5; padding: 20px; text-align: center; font-size: 12px; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1>${brandName || "Your Order"}</h1>
-          </div>
-          <div class="content">
-            <h2>Order Confirmation</h2>
-            <p>Thank you for your order! Your order number is <strong>${order.order_number || order.orderNumber}</strong>.</p>
-            
-            <table class="order-table">
-              <thead>
-                <tr>
-                  <th>Product</th>
-                  <th style="text-align: center;">Qty</th>
-                  <th style="text-align: right;">Price</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${itemsHtml}
-              </tbody>
-            </table>
-            
-            <div class="total">
-              Total: \u20B9${order.total.toFixed(2)}
-            </div>
-            
-            <p>We will notify you when your order ships.</p>
-          </div>
-          <div class="footer">
-            <p>Thank you for shopping with us!</p>
-          </div>
-        </div>
-      </body>
-      </html>
-    `;
-    const text = `Order Confirmation
-
-Thank you for your order!
-Order Number: ${order.order_number || order.orderNumber}
-Total: \u20B9${order.total.toFixed(2)}
-
-We will notify you when your order ships.`;
-    const sent = await sendEmail(env, customerEmail, `Order Confirmation - ${order.order_number || order.orderNumber}`, html, text);
-    if (!sent) {
+    const { html, text } = buildOrderConfirmationEmail(order, brandName);
+    const orderNum = order.order_number || order.orderNumber || "";
+    const sent = await sendEmail2(env, customerEmail, `Order Confirmation - ${orderNum}`, html, text);
+    if (sent !== true) {
       return errorResponse("Failed to send email", 500);
     }
     return successResponse(null, "Order confirmation sent");
@@ -874,7 +974,7 @@ Hi ${name || "there"},
 Please verify your email by visiting: ${url}
 
 This link will expire in 24 hours.`;
-    const sent = await sendEmail(env, email, "Verify Your Email", html, text);
+    const sent = await sendEmail2(env, email, "Verify Your Email", html, text);
     if (sent !== true) {
       return jsonResponse({
         success: false,
@@ -926,7 +1026,7 @@ You requested a password reset. Visit this link to set a new password: ${url}
 This link will expire in 1 hour.
 
 If you didn't request this, you can safely ignore this email.`;
-    const sent = await sendEmail(env, email, "Reset Your Password", html, text);
+    const sent = await sendEmail2(env, email, "Reset Your Password", html, text);
     if (sent !== true) {
       return jsonResponse({
         success: false,
@@ -983,7 +1083,7 @@ Phone: ${phone}` : ""}
 
 Message:
 ${message}`;
-    const sent = await sendEmail(env, toEmail, `Contact Form - ${brandName || "Website"}`, html, text);
+    const sent = await sendEmail2(env, toEmail, `Contact Form - ${brandName || "Website"}`, html, text);
     if (!sent) {
       return errorResponse("Failed to send email", 500);
     }
@@ -1038,7 +1138,7 @@ Preferred Date: ${date}${time ? `
 Preferred Time: ${time}` : ""}${notes ? `
 
 Notes: ${notes}` : ""}`;
-    const sent = await sendEmail(env, toEmail, `Appointment Request - ${brandName || "Website"}`, html, text);
+    const sent = await sendEmail2(env, toEmail, `Appointment Request - ${brandName || "Website"}`, html, text);
     if (!sent) {
       return errorResponse("Failed to send email", 500);
     }
@@ -2382,6 +2482,38 @@ async function createOrder(request, env, user) {
     for (const item of processedItems) {
       await updateProductStock(env, item.productId, item.quantity, "decrement");
     }
+    try {
+      const site = await env.DB.prepare("SELECT brand_name, settings FROM sites WHERE id = ?").bind(siteId).first();
+      const siteBrandName = site?.brand_name || "Store";
+      const siteSettings = site?.settings ? JSON.parse(site.settings) : {};
+      const ownerEmail = siteSettings.email || siteSettings.ownerEmail;
+      const orderForEmail = {
+        order_number: orderNumber,
+        items: processedItems,
+        total,
+        payment_method: paymentMethod || "cod",
+        customer_name: customerName,
+        customer_email: customerEmail,
+        customer_phone: customerPhone,
+        shipping_address: shippingAddress
+      };
+      if (customerEmail) {
+        const { html, text } = buildOrderConfirmationEmail(orderForEmail, siteBrandName);
+        sendEmail(env, customerEmail, `Order Confirmation - ${orderNumber}`, html, text).then((result) => {
+          if (result !== true)
+            console.error("Customer email failed:", result);
+        }).catch((e) => console.error("Customer email error:", e));
+      }
+      if (ownerEmail) {
+        const { html, text } = buildOwnerNotificationEmail(orderForEmail, siteBrandName);
+        sendEmail(env, ownerEmail, `New Order #${orderNumber} - ${siteBrandName}`, html, text).then((result) => {
+          if (result !== true)
+            console.error("Owner email failed:", result);
+        }).catch((e) => console.error("Owner email error:", e));
+      }
+    } catch (emailErr) {
+      console.error("Order email notification error:", emailErr);
+    }
     return successResponse({
       id: orderId,
       orderNumber,
@@ -2519,6 +2651,38 @@ async function createGuestOrder(request, env) {
     ).run();
     for (const item of processedItems) {
       await updateProductStock(env, item.productId, item.quantity, "decrement");
+    }
+    try {
+      const site = await env.DB.prepare("SELECT brand_name, settings FROM sites WHERE id = ?").bind(siteId).first();
+      const siteBrandName = site?.brand_name || "Store";
+      const siteSettings = site?.settings ? JSON.parse(site.settings) : {};
+      const ownerEmail = siteSettings.email || siteSettings.ownerEmail;
+      const orderForEmail = {
+        order_number: orderNumber,
+        items: processedItems,
+        total,
+        payment_method: paymentMethod || "cod",
+        customer_name: customerName,
+        customer_email: customerEmail,
+        customer_phone: customerPhone,
+        shipping_address: shippingAddress
+      };
+      if (customerEmail) {
+        const { html, text } = buildOrderConfirmationEmail(orderForEmail, siteBrandName);
+        sendEmail(env, customerEmail, `Order Confirmation - ${orderNumber}`, html, text).then((result) => {
+          if (result !== true)
+            console.error("Guest customer email failed:", result);
+        }).catch((e) => console.error("Guest customer email error:", e));
+      }
+      if (ownerEmail) {
+        const { html, text } = buildOwnerNotificationEmail(orderForEmail, siteBrandName);
+        sendEmail(env, ownerEmail, `New Order #${orderNumber} - ${siteBrandName}`, html, text).then((result) => {
+          if (result !== true)
+            console.error("Guest owner email failed:", result);
+        }).catch((e) => console.error("Guest owner email error:", e));
+      }
+    } catch (emailErr) {
+      console.error("Guest order email notification error:", emailErr);
     }
     return successResponse({
       id: orderId,

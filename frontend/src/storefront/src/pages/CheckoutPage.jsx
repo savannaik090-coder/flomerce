@@ -147,18 +147,19 @@ export default function CheckoutPage() {
     setLoading(true);
     setError('');
     try {
+      const customerName = `${address.firstName} ${address.lastName}`.trim();
       const orderData = {
-        site_id: siteConfig?.id,
+        siteId: siteConfig?.id,
         items: items.map(item => ({
-          product_id: item.product_id || item.id,
+          productId: item.product_id || item.id,
           name: item.product_name || item.name,
           price: item.product_price || item.price,
           quantity: item.quantity || 1,
           image: item.product_image || item.image_url,
         })),
         total: subtotal,
-        shipping_address: {
-          name: `${address.firstName} ${address.lastName}`,
+        shippingAddress: {
+          name: customerName,
           email: address.email,
           phone: address.phone,
           address: `${address.houseNumber}, ${address.roadName}`,
@@ -166,12 +167,15 @@ export default function CheckoutPage() {
           state: address.state,
           pinCode: address.pinCode,
         },
-        payment_method: paymentMethod,
+        customerName,
+        customerEmail: address.email,
+        customerPhone: address.phone,
+        paymentMethod,
         status: paymentMethod === 'cod' ? 'confirmed' : 'pending',
       };
 
       if (paymentMethod === 'razorpay') {
-        const razorpayKeyId = siteConfig?.settings?.razorpay_key_id;
+        const razorpayKeyId = siteConfig?.settings?.razorpayKeyId || siteConfig?.settings?.razorpay_key_id;
         if (!razorpayKeyId) {
           setError('Online payment is not configured for this store. Please use Cash on Delivery.');
           setLoading(false);
