@@ -67,7 +67,8 @@ Fluxe is a multi-tenant SaaS platform that allows users to create their own e-co
 │   │       └── site-admin-worker.js # Verification-code-based admin access
 │   ├── utils/
 │   │   ├── auth.js              # JWT, password hashing, auth middleware
-│   │   └── helpers.js           # ID generation, CORS, response helpers
+│   │   ├── helpers.js           # ID generation, CORS, response helpers
+│   │   └── db-init.js           # Auto-creates all DB tables on first request
 │   ├── schema/
 │   │   └── d1-schema.sql        # Full database schema
 │   ├── migrations/              # D1 migration files

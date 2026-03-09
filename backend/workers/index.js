@@ -13,6 +13,7 @@ import { handleAdmin } from './platform/admin-worker.js';
 import { handleSiteAdmin } from './storefront/site-admin-worker.js';
 import { handleCustomerAuth } from './storefront/customer-auth-worker.js';
 import { jsonResponse, errorResponse, corsHeaders, handleCORS } from '../utils/helpers.js';
+import { ensureTablesExist } from '../utils/db-init.js';
 
 export default {
   async fetch(request, env, ctx) {
@@ -23,6 +24,8 @@ export default {
     const path = url.pathname;
 
     try {
+      await ensureTablesExist(env);
+
       if (path.startsWith('/api/')) {
         return handleAPI(request, env, path);
       }
