@@ -3,7 +3,7 @@
     color: var(--color-text-light);
     margin-top: var(--spacing-xxxl);
     margin-bottom: 80px;
-    font-family: var(--font-primary);
+    font-family: Georgia, 'Times New Roman', serif !important;
     padding: var(--spacing-xxl) var(--spacing-lg) var(--spacing-xl);
     border-top: 1px solid var(--color-border-light);
 }
@@ -22,7 +22,7 @@
     justify-content: space-between;
     align-items: center;
     cursor: pointer;
-    font-family: var(--font-primary);
+    font-family: Georgia, 'Times New Roman', serif !important;
     transition: background-color var(--transition-slow);
 }
 
