@@ -195,14 +195,12 @@ export default function AdminPanel() {
             <h1>{sectionTitles[activeSection] || 'Admin'}</h1>
             <span className="admin-brand">{siteConfig?.brand_name || siteConfig?.brandName || 'Store'}</span>
           </div>
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 13, color: '#64748b' }}>Site Admin</span>
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
             <button
-              className="btn btn-outline"
-              style={{ fontSize: 13 }}
+              className="btn btn-outline btn-sm"
               onClick={handleLogout}
             >
-              <i className="fas fa-sign-out-alt" style={{ marginRight: 6 }} />Logout
+              <i className="fas fa-sign-out-alt" />Logout
             </button>
           </div>
         </header>

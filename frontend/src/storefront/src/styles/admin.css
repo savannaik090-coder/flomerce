@@ -20,6 +20,8 @@
   font-family: var(--admin-font);
   color: var(--admin-text);
   line-height: 1.6;
+  width: 100%;
+  overflow-x: hidden;
 }
 
 .admin-sidebar {
@@ -137,6 +139,9 @@
   margin-left: 260px;
   flex: 1;
   min-height: 100vh;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
   transition: margin-left 0.3s ease;
 }
 
@@ -147,7 +152,7 @@
 .admin-header {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.75rem;
   padding: 1rem 2rem;
   background: var(--admin-card-bg);
   border-bottom: 1px solid var(--admin-border);
@@ -155,6 +160,7 @@
   top: 0;
   z-index: 100;
   min-height: 64px;
+  flex-wrap: wrap;
 }
 
 .admin-header-title h1 {
@@ -200,6 +206,8 @@
 
 .admin-content {
   padding: 2rem;
+  max-width: 100%;
+  overflow-x: auto;
 }
 
 .stats-grid {
@@ -1024,6 +1032,7 @@ tr:last-child td { border-bottom: none; }
   }
   .admin-main {
     margin-left: 0;
+    width: 100%;
   }
   .sidebar-close {
     display: block;
@@ -1040,17 +1049,46 @@ tr:last-child td { border-bottom: none; }
 
 @media (max-width: 768px) {
   .admin-content { padding: 1rem; }
-  .admin-header { padding: 0.75rem 1rem; }
+  .admin-header {
+    padding: 0.75rem 1rem;
+    gap: 0.5rem;
+  }
+  .admin-header-title h1 { font-size: 1rem; }
   .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
   .stat-card { padding: 1rem; }
-  .stat-value { font-size: 1.5rem; }
+  .stat-value { font-size: 1.25rem; }
+  .stat-title { font-size: 0.7rem; }
   .product-grid { grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
   .inventory-summary { grid-template-columns: repeat(2, 1fr); }
+  .card-header { padding: 1rem; flex-wrap: wrap; gap: 0.5rem; }
+  .card-content { padding: 1rem; }
+  .search-bar { flex-wrap: wrap; }
+  .search-bar input { min-width: 0; }
+  .modal-content { margin: 0.5rem; max-height: 95vh; }
+  .modal-body { padding: 1rem; }
+  .modal-header { padding: 1rem; }
+  .modal-footer { padding: 0.75rem 1rem; flex-wrap: wrap; }
+  .video-grid { grid-template-columns: 1fr; }
+  .notification-composer { max-width: 100%; }
+  .period-selector { flex-wrap: wrap; }
+  .btn { padding: 0.5rem 1rem; font-size: 0.8rem; }
 }
 
 @media (max-width: 480px) {
+  .admin-content { padding: 0.75rem; }
+  .admin-header { padding: 0.5rem 0.75rem; }
+  .admin-header-title h1 { font-size: 0.9rem; }
+  .admin-brand { font-size: 0.65rem; }
   .stats-grid { grid-template-columns: 1fr; }
+  .stat-card { padding: 0.875rem; }
   .product-grid { grid-template-columns: 1fr; }
   .tabs { gap: 0; }
   .tab { padding: 0.5rem 0.75rem; font-size: 0.75rem; }
+  .inventory-summary { grid-template-columns: 1fr; }
+  .form-group input,
+  .form-group textarea,
+  .form-group select { font-size: 16px; }
+  .card-header { padding: 0.875rem; }
+  .card-content { padding: 0.875rem; }
+  table { min-width: 500px; }
 }
