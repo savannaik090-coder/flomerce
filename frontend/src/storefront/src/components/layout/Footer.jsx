@@ -8,6 +8,8 @@ export default function Footer() {
   const categories = siteConfig?.categories || [];
   const socialLinks = siteConfig?.socialLinks || {};
 
+  const hasSocialLinks = socialLinks.instagram || socialLinks.facebook || socialLinks.twitter || socialLinks.youtube;
+
   function toggleSection(section) {
     setOpenSections((prev) => ({ ...prev, [section]: !prev[section] }));
   }
@@ -18,7 +20,7 @@ export default function Footer() {
         <div className="footer-section">
           <button className="footer-toggle" onClick={() => toggleSection('info')}>
             <span className="footer-title">Info</span>
-            <i className={`fas fa-chevron-down${openSections.info ? ' active' : ''}`} style={openSections.info ? { transform: 'rotate(180deg)' } : {}}></i>
+            <i className={`fas fa-chevron-down`} style={openSections.info ? { transform: 'rotate(180deg)' } : {}}></i>
           </button>
           <div className={`footer-content${openSections.info ? ' show' : ''}`}>
             <ul>
@@ -74,37 +76,33 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="footer-social-section">
-          <h3 className="social-section-title">Follow us on social media</h3>
-          <div className="social-icons-container">
-            {socialLinks.instagram && (
-              <a href={socialLinks.instagram} target="_blank" rel="noopener noreferrer" className="social-icon-link">
-                <i className="fab fa-instagram"></i>
-              </a>
-            )}
-            {socialLinks.facebook && (
-              <a href={socialLinks.facebook} target="_blank" rel="noopener noreferrer" className="social-icon-link">
-                <i className="fab fa-facebook-f"></i>
-              </a>
-            )}
-            {socialLinks.twitter && (
-              <a href={socialLinks.twitter} target="_blank" rel="noopener noreferrer" className="social-icon-link">
-                <i className="fab fa-twitter"></i>
-              </a>
-            )}
-            {socialLinks.youtube && (
-              <a href={socialLinks.youtube} target="_blank" rel="noopener noreferrer" className="social-icon-link">
-                <i className="fab fa-youtube"></i>
-              </a>
-            )}
-            {!socialLinks.instagram && !socialLinks.facebook && !socialLinks.twitter && !socialLinks.youtube && (
-              <>
-                <a href="#" className="social-icon-link"><i className="fab fa-instagram"></i></a>
-                <a href="#" className="social-icon-link"><i className="fab fa-facebook-f"></i></a>
-              </>
-            )}
+        {hasSocialLinks && (
+          <div className="footer-social-section">
+            <h3 className="social-section-title">Follow us on social media</h3>
+            <div className="social-icons-container">
+              {socialLinks.instagram && (
+                <a href={socialLinks.instagram} target="_blank" rel="noopener noreferrer" className="social-icon-link">
+                  <i className="fab fa-instagram"></i>
+                </a>
+              )}
+              {socialLinks.facebook && (
+                <a href={socialLinks.facebook} target="_blank" rel="noopener noreferrer" className="social-icon-link">
+                  <i className="fab fa-facebook-f"></i>
+                </a>
+              )}
+              {socialLinks.twitter && (
+                <a href={socialLinks.twitter} target="_blank" rel="noopener noreferrer" className="social-icon-link">
+                  <i className="fab fa-twitter"></i>
+                </a>
+              )}
+              {socialLinks.youtube && (
+                <a href={socialLinks.youtube} target="_blank" rel="noopener noreferrer" className="social-icon-link">
+                  <i className="fab fa-youtube"></i>
+                </a>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="footer-bottom">
           <div className="container">
