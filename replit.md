@@ -111,6 +111,12 @@ Fluxe is a multi-tenant SaaS platform that allows users to create their own e-co
 - **Order Flow:** Both COD and Razorpay orders go through `POST /api/orders` (createOrder). For Razorpay, the frontend also calls `/api/payments/create-order` and `/api/payments/verify`. Payment verification automatically updates order status to 'paid' server-side.
 - **Cart Items:** Local cart stores `{ productId, name, price, thumbnail, quantity }`. Server cart enriches to `{ productId, quantity, variant, addedAt, name, price, thumbnail, inStock, availableStock }`. CheckoutPage maps items using `productId || product_id || id` for compatibility.
 
+## Social Links Data Flow
+- Admin panel saves social links inside `settings` JSON column as `settings.social` (e.g., `{ social: { instagram: "url" } }`)
+- Backend API (`index.js` `handleSiteInfo`) merges `settings.social` into `socialLinks` when returning site config, with `settings.social` taking precedence over the legacy `social_links` column
+- If a platform is cleared in admin (empty string), it removes any stale value from `social_links`
+- Storefront footer (`Footer.jsx`) conditionally renders only the social icons that have a URL set
+
 ## Build & Deployment
 
 ### Build

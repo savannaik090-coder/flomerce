@@ -5283,6 +5283,19 @@ async function handleSiteInfo(request, env) {
         settings = JSON.parse(site.settings);
     } catch (e) {
     }
+    if (settings.social) {
+      const s = settings.social;
+      const platforms = ["instagram", "facebook", "twitter", "youtube"];
+      for (const p of platforms) {
+        if (p in s) {
+          if (s[p]) {
+            socialLinks[p] = s[p];
+          } else {
+            delete socialLinks[p];
+          }
+        }
+      }
+    }
     const { razorpayKeySecret, ...publicSettings } = settings;
     return jsonResponse({
       success: true,
