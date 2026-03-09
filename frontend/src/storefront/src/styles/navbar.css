@@ -6,7 +6,7 @@
 .promo-banner {
     background-color: #b3a681 !important;
     color: var(--color-text);
-    padding: 12px 0 !important;
+    padding: 7px 0 !important;
     text-align: center;
     position: relative;
     display: flex;
@@ -17,14 +17,14 @@
 }
 
 .promo-banner .banner-text {
-    font-size: 16px;
+    font-size: 13px;
     margin: 0;
     display: inline-block;
     white-space: nowrap;
     will-change: transform;
     letter-spacing: 1.5px;
     word-spacing: 4px;
-    animation: scroll-left 20s linear infinite;
+    animation: scroll-left 12s linear infinite;
 }
 
 @keyframes scroll-left {
