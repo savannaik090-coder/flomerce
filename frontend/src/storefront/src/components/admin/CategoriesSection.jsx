@@ -103,7 +103,7 @@ export default function CategoriesSection() {
     setUploadingImage(categoryId);
     try {
       const formData = new FormData();
-      formData.append('image', file);
+      formData.append('images', file, file.name || 'category-image.jpg');
       const token = sessionStorage.getItem('site_admin_token');
       const response = await fetch(`${API_BASE}/api/upload/image?siteId=${siteConfig.id}`, {
         method: 'POST',
@@ -111,12 +111,12 @@ export default function CategoriesSection() {
         body: formData,
       });
       const result = await response.json();
-      if (result.success && result.data) {
-        const imageUrl = Array.isArray(result.data) ? result.data[0] : result.data;
+      if (result.success && result.data?.images?.length > 0 && result.data.images[0].url) {
+        const imageUrl = result.data.images[0].url;
         await updateCategory(categoryId, { imageUrl });
         await loadCategories();
       } else {
-        alert('Image upload failed');
+        alert('Image upload failed: ' + (result.error || result.message || 'Unknown error'));
       }
     } catch (e) {
       alert('Failed to upload image: ' + e.message);
