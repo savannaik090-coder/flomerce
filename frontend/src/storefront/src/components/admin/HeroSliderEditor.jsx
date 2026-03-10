@@ -90,8 +90,8 @@ export default function HeroSliderEditor() {
         body: formData,
       });
       const result = await response.json();
-      if (result.success && result.urls && result.urls.length > 0) {
-        updateSlide(index, 'image', result.urls[0]);
+      if (result.success && result.data?.images?.length > 0 && result.data.images[0].url) {
+        updateSlide(index, 'image', result.data.images[0].url);
       }
     } catch (e) {
       console.error('Failed to upload image:', e);
