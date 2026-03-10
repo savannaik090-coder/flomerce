@@ -60,6 +60,7 @@ export default function CategorySection({ category }) {
             <div className="home-category-banner-overlay" />
             <div className="home-category-banner-content">
               <h3 className="home-category-banner-title">{category.name}</h3>
+              <div className="home-category-banner-divider" />
               <span className="home-category-banner-btn">VIEW ALL</span>
             </div>
           </Link>

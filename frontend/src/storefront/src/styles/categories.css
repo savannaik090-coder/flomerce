@@ -77,25 +77,30 @@
 }
 
 .home-category-banner {
-    max-width: 1200px;
-    margin: 0 auto 30px;
-    padding: 0 20px;
+    position: relative;
+    width: 100vw;
+    margin-left: calc(-50vw + 50%);
+    height: 70vh;
+    min-height: 500px;
+    max-height: 700px;
+    overflow: hidden;
 }
 
 .home-category-banner-link {
     display: block;
     position: relative;
-    overflow: hidden;
-    border-radius: 8px;
+    width: 100%;
+    height: 100%;
     text-decoration: none;
 }
 
 .home-category-banner-img {
     width: 100%;
-    height: 400px;
+    height: 100%;
     object-fit: cover;
+    object-position: center;
     display: block;
-    transition: transform 0.5s ease;
+    transition: transform 0.6s ease;
 }
 
 .home-category-banner-link:hover .home-category-banner-img {
@@ -106,47 +111,64 @@
     position: absolute;
     top: 0;
     left: 0;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(rgba(0,0,0,0) 30%, rgba(0,0,0,0.5));
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 1;
 }
 
 .home-category-banner-content {
     position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    padding: 40px;
-    box-sizing: border-box;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
     text-align: center;
     z-index: 2;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 30px;
 }
 
 .home-category-banner-title {
     font-family: 'Playfair Display', serif;
-    font-size: 2.2rem;
+    font-size: 2.5rem;
     color: #fff;
-    font-weight: 600;
-    margin: 0 0 16px 0;
-    text-shadow: 1px 1px 3px rgba(0,0,0,0.3);
-    letter-spacing: 1px;
+    font-weight: 400;
+    margin: 0;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.home-category-banner-divider {
+    width: 60px;
+    height: 2px;
+    background-color: white;
+    flex-shrink: 0;
 }
 
 .home-category-banner-btn {
     display: inline-block;
-    background: rgba(255,255,255,0.95);
-    color: #333;
-    padding: 10px 36px;
-    font-size: 0.85rem;
+    background: transparent;
+    color: white;
+    border: 2px solid white;
+    padding: 12px 30px;
+    font-size: 14px;
+    font-weight: 500;
     letter-spacing: 2px;
-    font-weight: 600;
-    backdrop-filter: blur(5px);
+    text-transform: uppercase;
+    text-decoration: none;
     transition: all 0.3s ease;
+    white-space: nowrap;
 }
 
 .home-category-banner-link:hover .home-category-banner-btn {
-    background: #d4af37;
-    color: #fff;
+    background: white;
+    color: #333;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
 }
 
 .home-category-products {
@@ -213,6 +235,91 @@
     transform: translateY(-2px);
     box-shadow: 0 8px 25px rgba(212,175,55,0.4);
     color: white;
+}
+
+@media (max-width: 1024px) {
+    .home-category-banner {
+        height: 60vh;
+        min-height: 400px;
+        max-height: 500px;
+    }
+
+    .home-category-banner-content {
+        bottom: 30px;
+        gap: 20px;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .home-category-banner-title {
+        font-size: 2rem;
+        letter-spacing: 2px;
+    }
+
+    .home-category-banner-divider {
+        width: 50px;
+    }
+
+    .home-category-banner-btn {
+        padding: 10px 25px;
+        font-size: 13px;
+        letter-spacing: 1.5px;
+    }
+}
+
+@media (max-width: 768px) {
+    .home-category-banner {
+        height: 50vh;
+        min-height: 350px;
+        max-height: 450px;
+    }
+
+    .home-category-banner-content {
+        bottom: 25px;
+        gap: 15px;
+    }
+
+    .home-category-banner-title {
+        font-size: 1.6rem;
+        letter-spacing: 1.5px;
+    }
+
+    .home-category-banner-divider {
+        width: 40px;
+    }
+
+    .home-category-banner-btn {
+        padding: 8px 20px;
+        font-size: 12px;
+        letter-spacing: 1px;
+    }
+}
+
+@media (max-width: 480px) {
+    .home-category-banner {
+        height: 45vh;
+        min-height: 300px;
+        max-height: 400px;
+    }
+
+    .home-category-banner-content {
+        bottom: 20px;
+        gap: 12px;
+    }
+
+    .home-category-banner-title {
+        font-size: 1.3rem;
+        letter-spacing: 1px;
+    }
+
+    .home-category-banner-divider {
+        width: 30px;
+    }
+
+    .home-category-banner-btn {
+        padding: 8px 18px;
+        font-size: 11px;
+    }
 }
 
 .product-scroll-container {
