@@ -33,6 +33,7 @@ export default function ChooseByCategory({ categories }) {
       <div className="choose-by-category-container">
         <div className="choose-by-category-header">
           <h2 className="choose-by-category-title">Choose by Category</h2>
+          <hr className="choose-by-category-divider" />
         </div>
         <div className="choose-by-category-grid">
           {visibleCats.map((cat) => {

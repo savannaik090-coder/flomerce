@@ -47,8 +47,16 @@
     font-family: 'Playfair Display', serif;
     font-size: 2.5rem;
     color: #333;
-    margin-bottom: 15px;
+    margin-bottom: 0;
     font-weight: 400;
+}
+
+.wb-divider {
+    width: 60px;
+    height: 2px;
+    background-color: #d4af37;
+    margin: 12px auto 0;
+    border: none;
 }
 
 .wb-container {

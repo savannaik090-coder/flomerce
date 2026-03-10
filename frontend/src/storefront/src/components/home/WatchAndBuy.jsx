@@ -114,6 +114,7 @@ export default function WatchAndBuy() {
     <section className="wb-section">
       <div className="wb-header">
         <h2 className="wb-title">Watch And Buy</h2>
+        <hr className="wb-divider" />
       </div>
       <div className="wb-container">
         <div className="wb-scroll" ref={containerRef}>

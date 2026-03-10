@@ -24,7 +24,15 @@
     color: #333;
     letter-spacing: 2px;
     margin: 0;
-    text-transform: uppercase;
+    text-transform: capitalize;
+}
+
+.choose-by-category-divider {
+    width: 60px;
+    height: 2px;
+    background-color: #d4af37;
+    margin: 12px auto 0;
+    border: none;
 }
 
 .choose-by-category-grid {
