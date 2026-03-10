@@ -65,11 +65,17 @@ export default function HeroSlider() {
               <img src={resolveImageUrl(slide.image)} alt={slide.title || ''} className="slide-image" />
             )}
             {!slide.image && (
-              <div className="slide-fallback-bg">
-                <div className="slide-fallback-shape slide-fallback-shape-1" />
-                <div className="slide-fallback-shape slide-fallback-shape-2" />
-                <div className="slide-fallback-shape slide-fallback-shape-3" />
-              </div>
+              <div
+                className="slide-image"
+                style={{
+                  background: 'linear-gradient(135deg, #2c2c2c 0%, #1a1a2e 100%)',
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                }}
+              />
             )}
             <div className="slide-content">
               <h1 className="slide-title">{slide.title}</h1>

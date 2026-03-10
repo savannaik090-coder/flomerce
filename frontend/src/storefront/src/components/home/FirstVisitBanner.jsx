@@ -40,12 +40,18 @@ export default function FirstVisitBanner() {
         <button className="first-visit-modal-close" onClick={close}>
           &times;
         </button>
-        {bannerImage && (
+        {bannerImage ? (
           <img
             src={resolveImageUrl(bannerImage)}
             alt={heading}
             className="first-visit-banner-image"
           />
+        ) : (
+          <div className="first-visit-fallback-bg">
+            <div className="first-visit-fallback-shape first-visit-fallback-shape-1" />
+            <div className="first-visit-fallback-shape first-visit-fallback-shape-2" />
+            <div className="first-visit-fallback-shape first-visit-fallback-shape-3" />
+          </div>
         )}
         <div className="first-visit-banner-text">
           <h2>{heading}</h2>
