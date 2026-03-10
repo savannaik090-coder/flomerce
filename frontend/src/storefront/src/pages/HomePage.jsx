@@ -3,7 +3,7 @@ import HeroSlider from '../components/home/HeroSlider.jsx';
 import CategorySection from '../components/home/CategorySection.jsx';
 import ChooseByCategory from '../components/home/ChooseByCategory.jsx';
 import WatchAndBuy from '../components/home/WatchAndBuy.jsx';
-import BridalSection from '../components/home/BridalSection.jsx';
+import FeaturedVideoSection from '../components/home/FeaturedVideoSection.jsx';
 import ProductShowcase from '../components/home/ProductShowcase.jsx';
 import StoreLocations from '../components/home/StoreLocations.jsx';
 import CustomerReviews from '../components/home/CustomerReviews.jsx';
@@ -12,7 +12,7 @@ import { useSiteConfig } from '../hooks/useSiteConfig.js';
 import { getCategories } from '../services/categoryService.js';
 import '../styles/hero.css';
 import '../styles/categories.css';
-import '../styles/bridal.css';
+import '../styles/featured-video.css';
 import '../styles/showcase.css';
 import '../styles/locations.css';
 import '../styles/reviews.css';
@@ -54,7 +54,7 @@ export default function HomePage() {
       {remainingCategories.slice(1).map((cat) => (
         <CategorySection key={cat.id} category={cat} />
       ))}
-      <BridalSection />
+      <FeaturedVideoSection />
       <ProductShowcase />
       <StoreLocations />
       <CustomerReviews />

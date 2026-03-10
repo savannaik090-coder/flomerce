@@ -25,10 +25,10 @@
 
     .home-category-header .section-title { font-size: 2rem; }
 
-    .bridal-jewelry-section { height: 100vh; min-height: 500px; }
-    .bridal-content { bottom: 60px; padding: 30px 15px; }
-    .bridal-title { font-size: 2.5rem; margin-bottom: 25px; }
-    .bridal-description { font-size: 0.95rem; margin-bottom: 35px; }
+    .fv-section { height: 100vh; min-height: 500px; }
+    .fv-content { bottom: 60px; padding: 30px 15px; }
+    .fv-title { font-size: 2.5rem; margin-bottom: 25px; }
+    .fv-description { font-size: 0.95rem; margin-bottom: 35px; }
 
     .customer-reviews-section { padding: 60px 0; }
     .reviews-header .section-title { font-size: 2rem; }
@@ -68,10 +68,10 @@
 @media (max-width: 480px) {
     .home-category-header .section-title { font-size: 1.8rem; }
 
-    .bridal-content { bottom: 40px; }
-    .bridal-title { font-size: 2rem; margin-bottom: 20px; }
-    .bridal-description { font-size: 0.9rem; }
-    .chat-now-btn { padding: 10px 30px; font-size: 0.85rem; min-width: 140px; }
+    .fv-content { bottom: 40px; }
+    .fv-title { font-size: 2rem; margin-bottom: 20px; }
+    .fv-description { font-size: 0.9rem; }
+    .fv-chat-btn { padding: 10px 30px; font-size: 0.85rem; min-width: 140px; }
 
     .review-item { width: 280px; flex: 0 0 280px; min-width: 280px; }
     .review-image { height: 220px; }

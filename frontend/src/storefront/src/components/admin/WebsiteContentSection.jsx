@@ -4,6 +4,7 @@ import CategoriesSection from './CategoriesSection.jsx';
 import WatchBuySection from './WatchBuySection.jsx';
 import HeroSliderEditor from './HeroSliderEditor.jsx';
 import WelcomeBannerEditor from './WelcomeBannerEditor.jsx';
+import FeaturedVideoEditor from './FeaturedVideoEditor.jsx';
 
 const SUB_TABS = [
   { id: 'promo-banner', icon: 'fa-bullhorn', label: 'Promo Banner' },
@@ -11,6 +12,7 @@ const SUB_TABS = [
   { id: 'welcome-banner', icon: 'fa-hand-sparkles', label: 'Welcome Banner' },
   { id: 'categories', icon: 'fa-folder', label: 'Categories' },
   { id: 'watchbuy', icon: 'fa-video', label: 'Watch & Buy' },
+  { id: 'featured-video', icon: 'fa-film', label: 'Featured Video' },
 ];
 
 export default function WebsiteContentSection() {
@@ -50,6 +52,7 @@ export default function WebsiteContentSection() {
       {activeTab === 'welcome-banner' && <WelcomeBannerEditor />}
       {activeTab === 'categories' && <CategoriesSection />}
       {activeTab === 'watchbuy' && <WatchBuySection />}
+      {activeTab === 'featured-video' && <FeaturedVideoEditor />}
     </div>
   );
 }

@@ -36,9 +36,9 @@ Fluxe is a multi-tenant SaaS platform that allows users to create their own e-co
 │   │       │   ├── hooks/       # useAuth, useCart, useSiteConfig, etc.
 │   │       │   ├── styles/      # CSS (split by component: variables, navbar, footer,
 │   │       │   │                #   cart-panel, search, whatsapp, currency, hero,
-│   │       │   │                #   categories, bridal, showcase, locations, reviews,
-│   │       │   │                #   modals, testimonials, home-responsive, admin,
-│   │       │   │                #   category, checkout, product-detail, global)
+│   │       │   │                #   categories, featured-video, showcase, locations,
+│   │       │   │                #   reviews, modals, testimonials, home-responsive,
+│   │       │   │                #   admin, category, checkout, product-detail, global)
 │   │       │   └── utils/       # priceFormatter, stockChecker
 │   │       ├── package.json
 │   │       └── vite.config.js
@@ -237,6 +237,16 @@ wrangler secret put RESEND_API_KEY      # Or SENDGRID_API_KEY
 - CSS uses generic `wb-` prefixed class names (not template-specific) in `styles/testimonials.css`
 - Product link cards show product image, name, and price (fetched dynamically by SKU)
 - Homepage positioning: Watch & Buy appears after the second category section (after Choose by Category + one more category listing)
+
+## Featured Video Section
+- Full-screen video background section with text overlay and chat button (matches template1 bridal section design)
+- Component: `FeaturedVideoSection.jsx`, CSS: `featured-video.css` (generic `fv-` prefixed class names)
+- Admin panel: "Edit Website" > "Featured Video" sub-tab (`FeaturedVideoEditor.jsx`)
+- Admin can configure: video upload (to R2), title, description, chat button text, chat button link
+- If no chat link is provided, falls back to the store's WhatsApp number
+- Settings keys: `featuredVideoTitle`, `featuredVideoDescription`, `featuredVideoUrl`, `featuredVideoKey`, `featuredVideoChatLink`, `featuredVideoChatButtonText`
+- Homepage positioning: appears after all category sections, before Product Showcase
+- Section is hidden when no video is configured
 
 ## Storefront Navbar Layout
 - Navbar uses `position: sticky` (not fixed/floating) — sits in normal document flow below the promo banner

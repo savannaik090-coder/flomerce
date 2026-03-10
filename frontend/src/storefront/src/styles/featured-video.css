@@ -1,4 +1,4 @@
-.bridal-jewelry-section {
+.fv-section {
     position: relative;
     height: 100vh;
     min-height: 600px;
@@ -10,7 +10,7 @@
     margin-bottom: 10px;
 }
 
-.video-background {
+.fv-background {
     position: absolute;
     top: 0;
     left: 0;
@@ -19,14 +19,14 @@
     z-index: 1;
 }
 
-.background-video {
+.fv-video {
     width: 100%;
     height: 100%;
     object-fit: cover;
     object-position: center;
 }
 
-.video-overlay {
+.fv-overlay {
     position: absolute;
     top: 0;
     left: 0;
@@ -36,7 +36,7 @@
     z-index: 2;
 }
 
-.bridal-content {
+.fv-content {
     position: absolute;
     bottom: 80px;
     left: 0;
@@ -47,10 +47,10 @@
     padding: 40px 20px;
     max-width: 600px;
     margin: 0 auto;
-    animation: fadeInUp 1s ease-out 0.5s both;
+    animation: fvFadeInUp 1s ease-out 0.5s both;
 }
 
-.bridal-title {
+.fv-title {
     font-family: 'Playfair Display', serif;
     font-size: 3.2rem;
     font-weight: 400;
@@ -59,10 +59,10 @@
     color: #d4af37;
     text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
     letter-spacing: 1px;
-    animation: fadeInUp 1s ease-out 0.7s both;
+    animation: fvFadeInUp 1s ease-out 0.7s both;
 }
 
-.bridal-description {
+.fv-description {
     font-family: 'Lato', sans-serif;
     font-size: 1.05rem;
     line-height: 1.7;
@@ -75,10 +75,10 @@
     max-width: 520px;
     margin-left: auto;
     margin-right: auto;
-    animation: fadeInUp 1s ease-out 0.9s both;
+    animation: fvFadeInUp 1s ease-out 0.9s both;
 }
 
-.chat-now-btn {
+.fv-chat-btn {
     background-color: #ffffff;
     color: #333333;
     border: none;
@@ -93,18 +93,52 @@
     text-transform: uppercase;
     box-shadow: 0 4px 15px rgba(0,0,0,0.3);
     min-width: 180px;
-    animation: fadeInUp 1s ease-out 1.1s both;
+    animation: fvFadeInUp 1s ease-out 1.1s both;
 }
 
-.chat-now-btn:hover {
+.fv-chat-btn:hover {
     background-color: #d4af37;
     color: #ffffff;
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(212,175,55,0.4);
 }
 
-@keyframes fadeInUp {
+@keyframes fvFadeInUp {
     from { opacity: 0; transform: translateY(30px); }
     to { opacity: 1; transform: translateY(0); }
 }
 
+@media (max-width: 767px) {
+    .fv-section {
+        height: 100vh;
+        min-height: 500px;
+    }
+
+    .fv-title {
+        font-size: 2.4rem;
+    }
+
+    .fv-description {
+        font-size: 0.95rem;
+    }
+
+    .fv-content {
+        bottom: 40px;
+        padding: 30px 20px;
+    }
+}
+
+@media (max-width: 480px) {
+    .fv-title {
+        font-size: 2rem;
+    }
+
+    .fv-description {
+        font-size: 0.9rem;
+    }
+
+    .fv-chat-btn {
+        padding: 12px 30px;
+        font-size: 0.9rem;
+    }
+}
