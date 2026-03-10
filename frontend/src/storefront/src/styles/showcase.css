@@ -10,6 +10,19 @@
     padding: 0 20px;
 }
 
+.showcase-header {
+    text-align: center;
+    margin: 40px 0 20px 0;
+}
+
+.showcase-header .section-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 2.5rem;
+    color: #333;
+    margin-bottom: 15px;
+    font-weight: 400;
+}
+
 .showcase-content {
     display: flex;
     flex-direction: column;

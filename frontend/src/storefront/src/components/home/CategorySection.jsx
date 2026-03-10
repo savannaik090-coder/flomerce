@@ -30,17 +30,17 @@ export default function CategorySection({ category }) {
   };
 
   return (
-    <section className="featured-collection-section">
-      <div className="polki-collection-header">
+    <section className="home-category-section">
+      <div className="home-category-header">
         <h2 className="section-title">{category.name}</h2>
         {category.subtitle && (
           <p className="section-subtitle">{category.subtitle}</p>
         )}
       </div>
 
-      <div className="featured-collection-wrapper" style={{ position: 'relative' }}>
+      <div className="home-category-products" style={{ position: 'relative' }}>
         <button
-          className="reviews-scroll-arrow reviews-scroll-arrow-left"
+          className="home-category-scroll-arrow home-category-scroll-left"
           onClick={() => scroll('left')}
         >
           <i className="fas fa-chevron-left"></i>
@@ -68,15 +68,15 @@ export default function CategorySection({ category }) {
         </div>
 
         <button
-          className="reviews-scroll-arrow reviews-scroll-arrow-right"
+          className="home-category-scroll-arrow home-category-scroll-right"
           onClick={() => scroll('right')}
         >
           <i className="fas fa-chevron-right"></i>
         </button>
       </div>
 
-      <div className="reviews-cta">
-        <Link to={`/category/${category.slug}`} className="chat-now-btn" style={{ textDecoration: 'none' }}>
+      <div className="home-category-cta">
+        <Link to={`/category/${category.slug}`} className="home-category-view-all" style={{ textDecoration: 'none' }}>
           VIEW ALL
         </Link>
       </div>

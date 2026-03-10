@@ -34,7 +34,7 @@ export default function ProductShowcase() {
   return (
     <section className="interactive-showcase-section">
       <div className="interactive-showcase-container">
-        <div className="polki-collection-header">
+        <div className="showcase-header">
           <h2 className="section-title">{showcaseTitle}</h2>
         </div>
         <div className="showcase-content">

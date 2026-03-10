@@ -108,11 +108,3 @@
     to { opacity: 1; transform: translateY(0); }
 }
 
-.featured-collection-wrapper {
-    position: relative;
-    margin-bottom: 20px;
-}
-
-.featured-collection-wrapper .product-scroll-container {
-    padding-left: 40px;
-}
