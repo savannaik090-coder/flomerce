@@ -235,9 +235,28 @@ export default function WatchBuySection() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 20 }}>
           {videos.map(video => (
             <div key={video.id} className="card" style={{ padding: 0, overflow: 'hidden' }}>
-              <div style={{ width: '100%', background: '#1e293b', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+              <div
+                style={{ width: '100%', background: '#1e293b', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', cursor: 'pointer' }}
+                onClick={(e) => {
+                  const vid = e.currentTarget.querySelector('video');
+                  if (vid) {
+                    if (vid.paused) { vid.play(); vid.setAttribute('data-playing', 'true'); }
+                    else { vid.pause(); vid.removeAttribute('data-playing'); }
+                    e.currentTarget.querySelector('.admin-play-btn').style.display = vid.paused ? 'flex' : 'none';
+                  }
+                }}
+              >
                 {video.videoUrl ? (
-                  <video src={video.videoUrl} style={{ width: '100%', height: 'auto', maxHeight: 400, objectFit: 'contain', display: 'block' }} muted />
+                  <>
+                    <video src={video.videoUrl} style={{ width: '100%', height: 'auto', maxHeight: 400, objectFit: 'contain', display: 'block' }} muted playsInline loop />
+                    <div className="admin-play-btn" style={{
+                      position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                      width: 50, height: 50, borderRadius: '50%', background: 'rgba(0,0,0,0.55)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none',
+                    }}>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M8 5.14v14l11-7-11-7z" fill="#fff"/></svg>
+                    </div>
+                  </>
                 ) : (
                   <div style={{ width: '100%', height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <i className="fas fa-video" style={{ color: '#64748b', fontSize: 36 }} />
