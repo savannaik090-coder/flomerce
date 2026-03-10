@@ -170,9 +170,7 @@ export default function CategoriesSection() {
         }),
       });
       const result = await response.json();
-      if (response.ok && result.success) {
-        if (refetchSite) refetchSite();
-      } else {
+      if (!response.ok || !result.success) {
         alert('Failed to save: ' + (result.error || 'Unknown error'));
       }
     } catch (e) {
