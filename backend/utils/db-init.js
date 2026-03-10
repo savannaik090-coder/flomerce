@@ -75,6 +75,8 @@ export async function ensureTablesExist(env) {
         slug TEXT NOT NULL,
         parent_id TEXT,
         description TEXT,
+        subtitle TEXT,
+        show_on_home INTEGER DEFAULT 1,
         image_url TEXT,
         display_order INTEGER DEFAULT 0,
         is_active INTEGER DEFAULT 1,
@@ -422,6 +424,18 @@ export async function ensureTablesExist(env) {
         await env.DB.prepare(sql).run();
       } catch (e) {
         // Index might already exist or reference missing column - non-fatal
+      }
+    }
+
+    const migrations = [
+      { col: 'subtitle', sql: 'ALTER TABLE categories ADD COLUMN subtitle TEXT' },
+      { col: 'show_on_home', sql: 'ALTER TABLE categories ADD COLUMN show_on_home INTEGER DEFAULT 1' },
+    ];
+    for (const m of migrations) {
+      try {
+        await env.DB.prepare(m.sql).run();
+      } catch (e) {
+        // Column likely already exists
       }
     }
 

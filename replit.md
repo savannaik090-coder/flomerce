@@ -112,6 +112,19 @@ Fluxe is a multi-tenant SaaS platform that allows users to create their own e-co
 - **Order Flow:** Both COD and Razorpay orders go through `POST /api/orders` (createOrder). For COD: order is created with status 'confirmed', stock is decremented, and emails are sent immediately. For Razorpay: order is created with status 'pending_payment' (no stock decrement, no emails). The frontend then calls `/api/payments/create-order` and opens the Razorpay modal. On successful payment, `/api/payments/verify` updates order status to 'paid', decrements stock, and sends confirmation emails.
 - **Cart Items:** Local cart stores `{ productId, name, price, thumbnail, quantity }`. Server cart enriches to `{ productId, quantity, variant, addedAt, name, price, thumbnail, inStock, availableStock }`. CheckoutPage maps items using `productId || product_id || id` for compatibility.
 
+## Dynamic Homepage Categories
+- Homepage sections are fully dynamic — no hardcoded NewArrivals/FeaturedCollection components
+- Categories table has `subtitle` (TEXT) and `show_on_home` (INTEGER DEFAULT 1) columns
+- `HomePage.jsx` fetches all categories with `show_on_home=1` and renders a `CategorySection` for each
+- `CategorySection.jsx` displays products filtered by `categoryId`, with category name as title and subtitle as description
+- Admin panel (`CategoriesSection.jsx`) supports: name editing, subtitle editing, homepage visibility toggle (switch), and delete
+- Site creation wizard flow: Step 1 = Select Business Category (Jewellery/Clothing), Step 2 = Template + domain + brand + logo, Step 3 = Pre-filled categories (3 defaults based on business category, user can rename/add more)
+- Default categories for Jewellery: "New Arrivals", "Jewellery Collection", "Featured Collection" (all with subtitles and show_on_home=1)
+- Default categories for Clothing: "New Arrivals", "Clothing Collection", "Featured Collection"
+- Any new categories added later (via admin or wizard) default to show_on_home=1 and automatically appear on homepage
+- Backend `createCategory` and `updateCategory` endpoints handle `subtitle` and `showOnHome` fields
+- DB migration in `db-init.js` adds `subtitle` and `show_on_home` columns via ALTER TABLE for existing databases
+
 ## Edit Website Admin Section
 - "Edit Website" sidebar item consolidates: Promo Banner, Categories, Watch & Buy into sub-tabs
 - Component: `WebsiteContentSection.jsx` with `PromoBannerEditor` inline

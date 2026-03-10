@@ -104,6 +104,8 @@ CREATE TABLE IF NOT EXISTS categories (
     slug TEXT NOT NULL,
     parent_id TEXT,
     description TEXT,
+    subtitle TEXT,
+    show_on_home INTEGER DEFAULT 1,
     image_url TEXT,
     display_order INTEGER DEFAULT 0,
     is_active INTEGER DEFAULT 1,

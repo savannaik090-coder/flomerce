@@ -1817,6 +1817,8 @@ async function createSite(request, env, user) {
             slug TEXT NOT NULL,
             parent_id TEXT,
             description TEXT,
+            subtitle TEXT,
+            show_on_home INTEGER DEFAULT 1,
             image_url TEXT,
             display_order INTEGER DEFAULT 0,
             is_active INTEGER DEFAULT 1,
@@ -1852,22 +1854,19 @@ __name(createSite, "createSite");
 async function createDefaultCategories(env, siteId, businessCategory) {
   const categoryTemplates = {
     jewellery: [
-      { name: "Gold", slug: "gold", children: ["Necklace", "Earrings", "Bangles", "Rings"] },
-      { name: "Silver", slug: "silver", children: ["Necklace", "Earrings", "Bangles", "Rings"] },
-      { name: "Featured Collection", slug: "featured-collection", children: [] },
-      { name: "New Arrivals", slug: "new-arrivals", children: [] }
+      { name: "New Arrivals", slug: "new-arrivals", subtitle: "Discover our latest exquisite collections", showOnHome: 1, children: [] },
+      { name: "Jewellery Collection", slug: "jewellery-collection", subtitle: "Exquisite pieces for every occasion", showOnHome: 1, children: [] },
+      { name: "Featured Collection", slug: "featured-collection", subtitle: "Handpicked favourites just for you", showOnHome: 1, children: [] }
     ],
     clothing: [
-      { name: "Men", slug: "men", children: ["Shirts", "Pants", "Suits", "Accessories"] },
-      { name: "Women", slug: "women", children: ["Dresses", "Tops", "Bottoms", "Accessories"] },
-      { name: "New Arrivals", slug: "new-arrivals", children: [] },
-      { name: "Sale", slug: "sale", children: [] }
+      { name: "New Arrivals", slug: "new-arrivals", subtitle: "Discover our latest fashion trends", showOnHome: 1, children: [] },
+      { name: "Clothing Collection", slug: "clothing-collection", subtitle: "Stylish wear for every occasion", showOnHome: 1, children: [] },
+      { name: "Featured Collection", slug: "featured-collection", subtitle: "Handpicked favourites just for you", showOnHome: 1, children: [] }
     ],
     electronics: [
-      { name: "Phones", slug: "phones", children: [] },
-      { name: "Laptops", slug: "laptops", children: [] },
-      { name: "Accessories", slug: "accessories", children: [] },
-      { name: "New Arrivals", slug: "new-arrivals", children: [] }
+      { name: "New Arrivals", slug: "new-arrivals", subtitle: "Latest gadgets and tech", showOnHome: 1, children: [] },
+      { name: "Electronics Collection", slug: "electronics-collection", subtitle: "Top picks in electronics", showOnHome: 1, children: [] },
+      { name: "Featured Collection", slug: "featured-collection", subtitle: "Our best selling products", showOnHome: 1, children: [] }
     ]
   };
   const categories = categoryTemplates[businessCategory] || categoryTemplates.jewellery;
@@ -1875,15 +1874,15 @@ async function createDefaultCategories(env, siteId, businessCategory) {
   for (const cat of categories) {
     const parentId = generateId();
     await env.DB.prepare(
-      `INSERT INTO categories (id, site_id, name, slug, display_order, created_at)
-       VALUES (?, ?, ?, ?, ?, datetime('now'))`
-    ).bind(parentId, siteId, cat.name, cat.slug, order++).run();
-    for (const childName of cat.children) {
+      `INSERT INTO categories (id, site_id, name, slug, subtitle, show_on_home, display_order, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+    ).bind(parentId, siteId, cat.name, cat.slug, cat.subtitle || null, cat.showOnHome !== void 0 ? cat.showOnHome : 1, order++).run();
+    for (const childName of cat.children || []) {
       const childSlug = `${cat.slug}-${childName.toLowerCase().replace(/\s+/g, "-")}`;
       await env.DB.prepare(
-        `INSERT INTO categories (id, site_id, name, slug, parent_id, display_order, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`
-      ).bind(generateId(), siteId, childName, childSlug, parentId, order++).run();
+        `INSERT INTO categories (id, site_id, name, slug, parent_id, show_on_home, display_order, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+      ).bind(generateId(), siteId, childName, childSlug, parentId, 0, order++).run();
     }
   }
 }
@@ -1895,10 +1894,12 @@ async function createUserCategories(env, siteId, categories) {
     if (!categoryName)
       continue;
     const slug = categoryName.toLowerCase().trim().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-");
+    const subtitle = typeof cat === "object" && cat.subtitle ? cat.subtitle : null;
+    const showOnHome = typeof cat === "object" && cat.showOnHome !== void 0 ? cat.showOnHome ? 1 : 0 : 1;
     await env.DB.prepare(
-      `INSERT INTO categories (id, site_id, name, slug, display_order, created_at)
-       VALUES (?, ?, ?, ?, ?, datetime('now'))`
-    ).bind(generateId(), siteId, categoryName, slug, order++).run();
+      `INSERT INTO categories (id, site_id, name, slug, subtitle, show_on_home, display_order, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+    ).bind(generateId(), siteId, categoryName, slug, subtitle, showOnHome, order++).run();
   }
 }
 __name(createUserCategories, "createUserCategories");
@@ -3871,7 +3872,7 @@ async function getCategory(env, categoryId) {
 __name(getCategory, "getCategory");
 async function createCategory(request, env, user) {
   try {
-    const { siteId, name, description, parentId, imageUrl, displayOrder } = await request.json();
+    const { siteId, name, description, parentId, imageUrl, displayOrder, subtitle, showOnHome } = await request.json();
     if (!siteId || !name) {
       return errorResponse("Site ID and name are required");
     }
@@ -3895,14 +3896,16 @@ async function createCategory(request, env, user) {
     }
     const categoryId = generateId();
     await env.DB.prepare(
-      `INSERT INTO categories (id, site_id, name, slug, description, parent_id, image_url, display_order, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+      `INSERT INTO categories (id, site_id, name, slug, description, subtitle, show_on_home, parent_id, image_url, display_order, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(
       categoryId,
       siteId,
       sanitizeInput(name),
       slug,
       description || null,
+      subtitle || null,
+      showOnHome !== void 0 ? showOnHome ? 1 : 0 : 1,
       parentId || null,
       imageUrl || null,
       displayOrder || 0
@@ -3935,7 +3938,7 @@ async function updateCategory(request, env, user, categoryId) {
       return errorResponse("Category not found or unauthorized", 404);
     }
     const updates = await request.json();
-    const allowedFields = ["name", "description", "parent_id", "image_url", "display_order", "is_active"];
+    const allowedFields = ["name", "description", "subtitle", "show_on_home", "parent_id", "image_url", "display_order", "is_active"];
     const setClause = [];
     const values = [];
     for (const [key, value] of Object.entries(updates)) {
@@ -5031,6 +5034,8 @@ async function ensureTablesExist(env) {
         slug TEXT NOT NULL,
         parent_id TEXT,
         description TEXT,
+        subtitle TEXT,
+        show_on_home INTEGER DEFAULT 1,
         image_url TEXT,
         display_order INTEGER DEFAULT 0,
         is_active INTEGER DEFAULT 1,
@@ -5358,6 +5363,16 @@ async function ensureTablesExist(env) {
     for (const sql of indexes) {
       try {
         await env.DB.prepare(sql).run();
+      } catch (e) {
+      }
+    }
+    const migrations = [
+      { col: "subtitle", sql: "ALTER TABLE categories ADD COLUMN subtitle TEXT" },
+      { col: "show_on_home", sql: "ALTER TABLE categories ADD COLUMN show_on_home INTEGER DEFAULT 1" }
+    ];
+    for (const m of migrations) {
+      try {
+        await env.DB.prepare(m.sql).run();
       } catch (e) {
       }
     }

@@ -139,6 +139,8 @@ async function createSite(request, env, user) {
             slug TEXT NOT NULL,
             parent_id TEXT,
             description TEXT,
+            subtitle TEXT,
+            show_on_home INTEGER DEFAULT 1,
             image_url TEXT,
             display_order INTEGER DEFAULT 0,
             is_active INTEGER DEFAULT 1,
@@ -178,22 +180,19 @@ async function createSite(request, env, user) {
 async function createDefaultCategories(env, siteId, businessCategory) {
   const categoryTemplates = {
     jewellery: [
-      { name: 'Gold', slug: 'gold', children: ['Necklace', 'Earrings', 'Bangles', 'Rings'] },
-      { name: 'Silver', slug: 'silver', children: ['Necklace', 'Earrings', 'Bangles', 'Rings'] },
-      { name: 'Featured Collection', slug: 'featured-collection', children: [] },
-      { name: 'New Arrivals', slug: 'new-arrivals', children: [] },
+      { name: 'New Arrivals', slug: 'new-arrivals', subtitle: 'Discover our latest exquisite collections', showOnHome: 1, children: [] },
+      { name: 'Jewellery Collection', slug: 'jewellery-collection', subtitle: 'Exquisite pieces for every occasion', showOnHome: 1, children: [] },
+      { name: 'Featured Collection', slug: 'featured-collection', subtitle: 'Handpicked favourites just for you', showOnHome: 1, children: [] },
     ],
     clothing: [
-      { name: 'Men', slug: 'men', children: ['Shirts', 'Pants', 'Suits', 'Accessories'] },
-      { name: 'Women', slug: 'women', children: ['Dresses', 'Tops', 'Bottoms', 'Accessories'] },
-      { name: 'New Arrivals', slug: 'new-arrivals', children: [] },
-      { name: 'Sale', slug: 'sale', children: [] },
+      { name: 'New Arrivals', slug: 'new-arrivals', subtitle: 'Discover our latest fashion trends', showOnHome: 1, children: [] },
+      { name: 'Clothing Collection', slug: 'clothing-collection', subtitle: 'Stylish wear for every occasion', showOnHome: 1, children: [] },
+      { name: 'Featured Collection', slug: 'featured-collection', subtitle: 'Handpicked favourites just for you', showOnHome: 1, children: [] },
     ],
     electronics: [
-      { name: 'Phones', slug: 'phones', children: [] },
-      { name: 'Laptops', slug: 'laptops', children: [] },
-      { name: 'Accessories', slug: 'accessories', children: [] },
-      { name: 'New Arrivals', slug: 'new-arrivals', children: [] },
+      { name: 'New Arrivals', slug: 'new-arrivals', subtitle: 'Latest gadgets and tech', showOnHome: 1, children: [] },
+      { name: 'Electronics Collection', slug: 'electronics-collection', subtitle: 'Top picks in electronics', showOnHome: 1, children: [] },
+      { name: 'Featured Collection', slug: 'featured-collection', subtitle: 'Our best selling products', showOnHome: 1, children: [] },
     ],
   };
 
@@ -203,23 +202,22 @@ async function createDefaultCategories(env, siteId, businessCategory) {
   for (const cat of categories) {
     const parentId = generateId();
     await env.DB.prepare(
-      `INSERT INTO categories (id, site_id, name, slug, display_order, created_at)
-       VALUES (?, ?, ?, ?, ?, datetime('now'))`
-    ).bind(parentId, siteId, cat.name, cat.slug, order++).run();
+      `INSERT INTO categories (id, site_id, name, slug, subtitle, show_on_home, display_order, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+    ).bind(parentId, siteId, cat.name, cat.slug, cat.subtitle || null, cat.showOnHome !== undefined ? cat.showOnHome : 1, order++).run();
 
-    for (const childName of cat.children) {
+    for (const childName of (cat.children || [])) {
       const childSlug = `${cat.slug}-${childName.toLowerCase().replace(/\s+/g, '-')}`;
       await env.DB.prepare(
-        `INSERT INTO categories (id, site_id, name, slug, parent_id, display_order, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`
-      ).bind(generateId(), siteId, childName, childSlug, parentId, order++).run();
+        `INSERT INTO categories (id, site_id, name, slug, parent_id, show_on_home, display_order, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+      ).bind(generateId(), siteId, childName, childSlug, parentId, 0, order++).run();
     }
   }
 }
 
 async function createUserCategories(env, siteId, categories) {
   let order = 0;
-  // Handle both array of strings and array of objects
   for (let cat of categories) {
     let categoryName = typeof cat === 'string' ? cat : (cat.name || cat.label);
     if (!categoryName) continue;
@@ -230,11 +228,14 @@ async function createUserCategories(env, siteId, categories) {
       .replace(/[^a-z0-9\s-]/g, '')
       .replace(/\s+/g, '-')
       .replace(/-+/g, '-');
+
+    const subtitle = (typeof cat === 'object' && cat.subtitle) ? cat.subtitle : null;
+    const showOnHome = (typeof cat === 'object' && cat.showOnHome !== undefined) ? (cat.showOnHome ? 1 : 0) : 1;
     
     await env.DB.prepare(
-      `INSERT INTO categories (id, site_id, name, slug, display_order, created_at)
-       VALUES (?, ?, ?, ?, ?, datetime('now'))`
-    ).bind(generateId(), siteId, categoryName, slug, order++).run();
+      `INSERT INTO categories (id, site_id, name, slug, subtitle, show_on_home, display_order, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+    ).bind(generateId(), siteId, categoryName, slug, subtitle, showOnHome, order++).run();
   }
 }
 
