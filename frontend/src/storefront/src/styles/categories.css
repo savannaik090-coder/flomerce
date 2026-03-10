@@ -51,7 +51,10 @@
 }
 
 .home-category-section {
-    margin-bottom: 10px;
+    background: #f8f8f5;
+    padding: 40px 0;
+    margin-bottom: 0;
+    border-bottom: 1px solid #f0f0f0;
 }
 
 .home-category-header {
