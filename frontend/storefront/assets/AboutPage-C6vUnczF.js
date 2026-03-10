@@ -1,4 +1,4 @@
-import{u as a,j as e}from"./index-iAF0veOn.js";function o(){const{siteConfig:t}=a(),i=t?.brandName||"Our Store";return e.jsxs("div",{className:"about-page",children:[e.jsx("style",{children:`
+import{u as a,j as e}from"./index-Cm3-C1yx.js";function o(){const{siteConfig:t}=a(),i=t?.brandName||"Our Store";return e.jsxs("div",{className:"about-page",children:[e.jsx("style",{children:`
         .about-hero {
           background: linear-gradient(135deg, #f9f5f0 0%, #ede5d8 100%);
           padding: 120px 0 80px;
