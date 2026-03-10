@@ -207,6 +207,9 @@ wrangler secret put RESEND_API_KEY      # Or SENDGRID_API_KEY
 - `POST /api/upload/image?siteId=...` - Upload images to R2 (SiteAdmin auth, multipart)
 - `GET /api/upload/image?key=...` - Serve image from R2 (public)
 - `DELETE /api/upload/image?siteId=...&key=...` - Delete image from R2 (SiteAdmin auth)
+- `POST /api/upload/video?siteId=...` - Upload video to R2 (SiteAdmin auth, multipart, max 100MB)
+- `GET /api/upload/video?key=...` - Serve video from R2 (public)
+- `DELETE /api/upload/video?siteId=...&key=...` - Delete video from R2 (SiteAdmin auth)
 - `GET /api/health` - Health check
 
 ## Hero Slider Admin
@@ -223,6 +226,17 @@ wrangler secret put RESEND_API_KEY      # Or SENDGRID_API_KEY
 - Default fallback text: "Welcome to {brandName}!", generic signup message, "Sign Up Now" button linking to /signup
 - Data stored in `settings.welcomeBannerImage`, `settings.welcomeBannerHeading`, `settings.welcomeBannerMessage`, `settings.welcomeBannerButtonText`, `settings.welcomeBannerButtonLink`
 - Banner shows once per first-time visitor (after 3 seconds), tracked via localStorage `first_visit_shown`
+
+## Watch & Buy Feature
+- Admin panel "Edit Website" > "Watch & Buy" sub-tab for managing shoppable videos
+- Admin uploads video files directly to R2 (no URL pasting) and enters a Product SKU
+- Product name/details are auto-fetched from the products database based on SKU — no manual title/description fields
+- Videos stored in R2 at path: `sites/{siteId}/videos/{videoId}.{ext}` (max 100MB, MP4/WebM/MOV)
+- Video metadata stored in `settings.watchAndBuyVideos` array: `[{ id, productSku, videoUrl, videoKey, title, createdAt }]`
+- Storefront `WatchAndBuy.jsx` displays videos with template1 styling (horizontal scroll, scroll-snap, play overlay, product link card)
+- CSS uses generic `wb-` prefixed class names (not template-specific) in `styles/testimonials.css`
+- Product link cards show product image, name, and price (fetched dynamically by SKU)
+- Homepage positioning: Watch & Buy appears after the second category section (after Choose by Category + one more category listing)
 
 ## Storefront Navbar Layout
 - Navbar uses `position: sticky` (not fixed/floating) — sits in normal document flow below the promo banner

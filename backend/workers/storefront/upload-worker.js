@@ -3,7 +3,9 @@ import { validateAuth } from '../../utils/auth.js';
 import { validateSiteAdmin } from './site-admin-worker.js';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
+const MAX_VIDEO_SIZE = 100 * 1024 * 1024;
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'];
 
 export async function handleUpload(request, env, path) {
   const corsResponse = handleCORS(request);
@@ -26,6 +28,20 @@ export async function handleUpload(request, env, path) {
 
   if (action === 'image' && method === 'DELETE') {
     return deleteImage(request, env, url);
+  }
+
+  if (action === 'video' && method === 'GET') {
+    const key = url.searchParams.get('key');
+    if (!key) return errorResponse('Key is required', 400);
+    return serveVideo(env, key);
+  }
+
+  if (action === 'video' && method === 'POST') {
+    return uploadVideo(request, env, url);
+  }
+
+  if (action === 'video' && method === 'DELETE') {
+    return deleteVideo(request, env, url);
   }
 
   return errorResponse('Upload endpoint not found', 404);
@@ -189,5 +205,94 @@ async function deleteImage(request, env, url) {
   } catch (error) {
     console.error('Delete image error:', error);
     return errorResponse('Failed to delete image', 500);
+  }
+}
+
+async function uploadVideo(request, env, url) {
+  const siteId = url.searchParams.get('siteId');
+  if (!siteId) return errorResponse('siteId is required', 400);
+
+  const user = await authenticateAdmin(request, env, siteId);
+  if (!user) return errorResponse('Unauthorized', 401, 'UNAUTHORIZED');
+
+  try {
+    const contentType = request.headers.get('content-type') || '';
+
+    if (contentType.includes('multipart/form-data')) {
+      const formData = await request.formData();
+      const file = formData.get('video');
+
+      if (!file || !file.size) return errorResponse('No video provided', 400);
+
+      if (!ALLOWED_VIDEO_TYPES.includes(file.type)) {
+        return errorResponse(`Invalid video type: ${file.type}. Allowed: MP4, WebM, MOV`, 400);
+      }
+
+      if (file.size > MAX_VIDEO_SIZE) {
+        return errorResponse(`Video too large: ${(file.size / 1024 / 1024).toFixed(1)}MB (max 100MB)`, 400);
+      }
+
+      const ext = file.type === 'video/quicktime' ? 'mov' : file.type.split('/')[1];
+      const key = `sites/${siteId}/videos/${generateId()}.${ext}`;
+
+      const arrayBuffer = await file.arrayBuffer();
+      await env.STORAGE.put(key, arrayBuffer, {
+        httpMetadata: {
+          contentType: file.type,
+          cacheControl: 'public, max-age=31536000',
+        },
+      });
+
+      const videoUrl = `/api/upload/video?key=${encodeURIComponent(key)}`;
+      return successResponse({ url: videoUrl, key }, 'Video uploaded successfully');
+    }
+
+    return errorResponse('Video upload requires multipart/form-data', 400);
+  } catch (error) {
+    console.error('Video upload error:', error);
+    return errorResponse('Failed to upload video: ' + error.message, 500);
+  }
+}
+
+async function serveVideo(env, key) {
+  try {
+    const object = await env.STORAGE.get(key);
+    if (!object) {
+      return new Response('Video not found', { status: 404 });
+    }
+
+    const headers = new Headers();
+    headers.set('Content-Type', object.httpMetadata?.contentType || 'video/mp4');
+    headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+    headers.set('Access-Control-Allow-Origin', '*');
+    headers.set('Accept-Ranges', 'bytes');
+
+    return new Response(object.body, { headers });
+  } catch (error) {
+    console.error('Serve video error:', error);
+    return new Response('Failed to retrieve video', { status: 500 });
+  }
+}
+
+async function deleteVideo(request, env, url) {
+  const siteId = url.searchParams.get('siteId');
+  const key = url.searchParams.get('key');
+
+  if (!siteId) return errorResponse('siteId is required', 400);
+  if (!key) return errorResponse('key is required', 400);
+
+  const user = await authenticateAdmin(request, env, siteId);
+  if (!user) return errorResponse('Unauthorized', 401, 'UNAUTHORIZED');
+
+  if (!key.startsWith(`sites/${siteId}/`)) {
+    return errorResponse('Unauthorized: cannot delete videos from another site', 403);
+  }
+
+  try {
+    await env.STORAGE.delete(key);
+    return successResponse(null, 'Video deleted successfully');
+  } catch (error) {
+    console.error('Delete video error:', error);
+    return errorResponse('Failed to delete video', 500);
   }
 }

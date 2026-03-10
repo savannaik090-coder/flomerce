@@ -38,6 +38,8 @@ export default function HomePage() {
       .catch(console.error);
   }, [siteConfig?.id]);
 
+  const remainingCategories = homeCategories.slice(1);
+
   return (
     <div className="home-page">
       <HeroSlider />
@@ -45,10 +47,13 @@ export default function HomePage() {
         <CategorySection key={homeCategories[0].id} category={homeCategories[0]} />
       )}
       <ChooseByCategory categories={allCategories} />
-      {homeCategories.slice(1).map((cat) => (
+      {remainingCategories.length > 0 && (
+        <CategorySection key={remainingCategories[0].id} category={remainingCategories[0]} />
+      )}
+      <WatchAndBuy />
+      {remainingCategories.slice(1).map((cat) => (
         <CategorySection key={cat.id} category={cat} />
       ))}
-      <WatchAndBuy />
       <BridalSection />
       <ProductShowcase />
       <StoreLocations />
