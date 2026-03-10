@@ -200,6 +200,17 @@ wrangler secret put RESEND_API_KEY      # Or SENDGRID_API_KEY
 - Data stored in `settings.welcomeBannerImage`, `settings.welcomeBannerHeading`, `settings.welcomeBannerMessage`, `settings.welcomeBannerButtonText`, `settings.welcomeBannerButtonLink`
 - Banner shows once per first-time visitor (after 3 seconds), tracked via localStorage `first_visit_shown`
 
+## Category-Driven Homepage
+- Site creation wizard has 4 steps: Business Category → Template → Website Details → Categories
+- Business categories available: Jewellery, Clothing/Fashion, Electronics, General Store
+- Categories in step 4 are pre-populated based on the selected business category
+- The `categories` table has `subtitle` (TEXT) and `show_on_home` (INTEGER DEFAULT 1) columns
+- Homepage dynamically renders category sections based on `show_on_home` flag (replaces hardcoded New Arrivals / Featured Collection)
+- Each category section shows its products in a scrollable row with the category name as heading and optional subtitle
+- Admin panel "Edit Website > Categories" section allows editing subtitle and toggling homepage visibility per category
+- Component: `CategorySection.jsx` (reusable, renders one category's products)
+- Migration: `backend/migrations/0004_add_category_home_fields.sql`
+
 ## Storefront Navbar Layout
 - Navbar uses `position: sticky` (not fixed/floating) — sits in normal document flow below the promo banner
 - Solid white background, full-width, no border-radius pill shape

@@ -143,7 +143,7 @@ async function getCategory(env, categoryId) {
 
 async function createCategory(request, env, user) {
   try {
-    const { siteId, name, description, parentId, imageUrl, displayOrder } = await request.json();
+    const { siteId, name, description, parentId, imageUrl, displayOrder, subtitle, showOnHome } = await request.json();
 
     if (!siteId || !name) {
       return errorResponse('Site ID and name are required');
@@ -175,8 +175,8 @@ async function createCategory(request, env, user) {
     const categoryId = generateId();
     
     await env.DB.prepare(
-      `INSERT INTO categories (id, site_id, name, slug, description, parent_id, image_url, display_order, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+      `INSERT INTO categories (id, site_id, name, slug, description, parent_id, image_url, display_order, subtitle, show_on_home, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(
       categoryId,
       siteId,
@@ -185,7 +185,9 @@ async function createCategory(request, env, user) {
       description || null,
       parentId || null,
       imageUrl || null,
-      displayOrder || 0
+      displayOrder || 0,
+      subtitle || null,
+      showOnHome !== undefined ? (showOnHome ? 1 : 0) : 1
     ).run();
 
     return successResponse({ id: categoryId, slug }, 'Category created successfully');
@@ -219,7 +221,7 @@ async function updateCategory(request, env, user, categoryId) {
     }
 
     const updates = await request.json();
-    const allowedFields = ['name', 'description', 'parent_id', 'image_url', 'display_order', 'is_active'];
+    const allowedFields = ['name', 'description', 'parent_id', 'image_url', 'display_order', 'is_active', 'subtitle', 'show_on_home'];
     
     const setClause = [];
     const values = [];
