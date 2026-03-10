@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useSiteConfig } from '../../hooks/useSiteConfig.js';
+import { resolveImageUrl } from '../../utils/imageUrl.js';
 
 const defaultSlides = [
   {
@@ -35,6 +36,8 @@ export default function HeroSlider() {
     ? siteConfig.settings.heroSlides
     : defaultSlides;
 
+  const showScrollButtons = siteConfig?.settings?.heroShowScrollButtons !== false;
+
   const nextSlide = useCallback(() => {
     setCurrentIndex((prev) => (prev + 1) % slides.length);
   }, [slides.length]);
@@ -59,7 +62,7 @@ export default function HeroSlider() {
         {slides.map((slide, i) => (
           <div key={i} className={`slide ${i === currentIndex ? 'active' : ''}`}>
             {slide.image && (
-              <img src={slide.image} alt={slide.title || ''} className="slide-image" />
+              <img src={resolveImageUrl(slide.image)} alt={slide.title || ''} className="slide-image" />
             )}
             {!slide.image && (
               <div
@@ -91,14 +94,16 @@ export default function HeroSlider() {
         ))}
       </div>
 
-      <div className="slider-nav">
-        <button className="slider-prev" onClick={prevSlide}>
-          <i className="fas fa-chevron-left"></i>
-        </button>
-        <button className="slider-next" onClick={nextSlide}>
-          <i className="fas fa-chevron-right"></i>
-        </button>
-      </div>
+      {showScrollButtons && (
+        <div className="slider-nav">
+          <button className="slider-prev" onClick={prevSlide}>
+            <i className="fas fa-chevron-left"></i>
+          </button>
+          <button className="slider-next" onClick={nextSlide}>
+            <i className="fas fa-chevron-right"></i>
+          </button>
+        </div>
+      )}
 
       <div className="slider-dots">
         {slides.map((_, i) => (

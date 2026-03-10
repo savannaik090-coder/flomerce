@@ -185,6 +185,14 @@ wrangler secret put RESEND_API_KEY      # Or SENDGRID_API_KEY
 - `DELETE /api/upload/image?siteId=...&key=...` - Delete image from R2 (SiteAdmin auth)
 - `GET /api/health` - Health check
 
+## Hero Slider Admin
+- Admin panel "Edit Website" tab now includes a "Hero Slider" sub-tab
+- Admins can configure up to 3 slides with: image (uploaded to R2), title, subtitle, description, button text, button link
+- Toggle to show/hide scroll buttons (left/right arrows) on the hero slider
+- Data stored in `settings.heroSlides` array and `settings.heroShowScrollButtons` boolean
+- If no slides configured, falls back to default slides with gradient backgrounds
+- HeroSlider component reads `siteConfig.settings.heroSlides` and `siteConfig.settings.heroShowScrollButtons`
+
 ## Storefront Navbar Layout
 - Navbar uses `position: sticky` (not fixed/floating) — sits in normal document flow below the promo banner
 - Solid white background, full-width, no border-radius pill shape

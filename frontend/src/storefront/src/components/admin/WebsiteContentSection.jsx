@@ -2,9 +2,11 @@ import React, { useState, useEffect, useContext } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import CategoriesSection from './CategoriesSection.jsx';
 import WatchBuySection from './WatchBuySection.jsx';
+import HeroSliderEditor from './HeroSliderEditor.jsx';
 
 const SUB_TABS = [
   { id: 'promo-banner', icon: 'fa-bullhorn', label: 'Promo Banner' },
+  { id: 'hero-slider', icon: 'fa-images', label: 'Hero Slider' },
   { id: 'categories', icon: 'fa-folder', label: 'Categories' },
   { id: 'watchbuy', icon: 'fa-video', label: 'Watch & Buy' },
 ];
@@ -42,6 +44,7 @@ export default function WebsiteContentSection() {
       </div>
 
       {activeTab === 'promo-banner' && <PromoBannerEditor />}
+      {activeTab === 'hero-slider' && <HeroSliderEditor />}
       {activeTab === 'categories' && <CategoriesSection />}
       {activeTab === 'watchbuy' && <WatchBuySection />}
     </div>
