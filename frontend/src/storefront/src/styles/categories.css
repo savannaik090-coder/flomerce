@@ -52,14 +52,15 @@
 
 .home-category-section {
     background: #f8f8f5;
-    padding: 40px 0;
+    padding: 50px 0 60px;
     margin-bottom: 0;
     border-bottom: 1px solid #f0f0f0;
+    overflow: hidden;
 }
 
 .home-category-header {
     text-align: center;
-    margin: 40px 0 20px 0;
+    margin: 0 0 30px 0;
 }
 
 .home-category-header .section-title {
@@ -84,6 +85,7 @@
     min-height: 500px;
     max-height: 700px;
     overflow: hidden;
+    margin-bottom: 40px;
 }
 
 .home-category-banner-link {
@@ -173,7 +175,8 @@
 
 .home-category-products {
     position: relative;
-    margin-bottom: 20px;
+    margin-bottom: 30px;
+    padding-top: 10px;
 }
 
 .home-category-products .product-scroll-container {
@@ -211,7 +214,7 @@
 
 .home-category-cta {
     text-align: center;
-    margin-top: 40px;
+    margin-top: 30px;
     padding: 0 20px;
 }
 
