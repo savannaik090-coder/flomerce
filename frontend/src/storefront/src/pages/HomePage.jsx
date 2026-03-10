@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import HeroSlider from '../components/home/HeroSlider.jsx';
-import CategoryCircles from '../components/home/CategoryCircles.jsx';
 import CategorySection from '../components/home/CategorySection.jsx';
+import ChooseByCategory from '../components/home/ChooseByCategory.jsx';
 import WatchAndBuy from '../components/home/WatchAndBuy.jsx';
 import BridalSection from '../components/home/BridalSection.jsx';
 import ProductShowcase from '../components/home/ProductShowcase.jsx';
@@ -23,12 +23,14 @@ import '../styles/home-responsive.css';
 export default function HomePage() {
   const { siteConfig } = useSiteConfig();
   const [homeCategories, setHomeCategories] = useState([]);
+  const [allCategories, setAllCategories] = useState([]);
 
   useEffect(() => {
     if (!siteConfig?.id) return;
     getCategories(siteConfig.id)
       .then((res) => {
         const all = res.data || res.categories || [];
+        setAllCategories(all);
         const visible = all.filter(c => c.show_on_home === 1 && !c.parent_id);
         visible.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
         setHomeCategories(visible);
@@ -39,8 +41,11 @@ export default function HomePage() {
   return (
     <div className="home-page">
       <HeroSlider />
-      <CategoryCircles />
-      {homeCategories.map((cat) => (
+      {homeCategories.length > 0 && (
+        <CategorySection key={homeCategories[0].id} category={homeCategories[0]} />
+      )}
+      <ChooseByCategory categories={allCategories} />
+      {homeCategories.slice(1).map((cat) => (
         <CategorySection key={cat.id} category={cat} />
       ))}
       <WatchAndBuy />

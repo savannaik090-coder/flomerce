@@ -23,9 +23,6 @@
     .slide-description { font-size: 0.7rem; margin-bottom: 25px; letter-spacing: 0.15em; }
     .shop-now-btn { padding: 12px 28px; font-size: 0.7rem; }
 
-    .category-circles-section { padding: 30px 0 13px 0; margin-top: 0; }
-    .category-circles-wrapper { justify-content: flex-start; gap: 20px; max-width: 100%; }
-
     .home-category-header .section-title { font-size: 2rem; }
 
     .bridal-jewelry-section { height: 100vh; min-height: 500px; }
@@ -69,9 +66,6 @@
 }
 
 @media (max-width: 480px) {
-    .category-circles-section { padding: 25px 0 12px 0; margin-top: 0; }
-    .category-circles-wrapper { gap: 15px; }
-
     .home-category-header .section-title { font-size: 1.8rem; }
 
     .bridal-content { bottom: 40px; }

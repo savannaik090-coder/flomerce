@@ -128,6 +128,13 @@ Fluxe is a multi-tenant SaaS platform that allows users to create their own e-co
 - Homepage banner: If a category has an `image_url`, a large banner image is shown with the category name overlay and "VIEW ALL" button (like template1 style)
 - Category page hero: Uses the same `image_url` as the background for the hero section at the top of each category page
 - Admin panel categories use a card layout with image thumbnail, name, subtitle, homepage toggle, and edit/delete actions
+- "Choose by Category" section: horizontal scrolling cards on homepage (matches template1 shop-by-category design)
+  - Component: `ChooseByCategory.jsx`, CSS: `choose-by-category.css`
+  - Config stored in `settings.chooseByCategory` JSON: `{ enabled: bool, categories: { [catId]: { visible: bool, browseImage: string } } }`
+  - Admin panel: master on/off toggle + per-category visibility toggle + browse image upload in CategoriesSection
+  - When master toggle is off, section is hidden on homepage and admin UI shows disabled/greyed state
+  - Appears after the first category section on homepage, before remaining category sections
+  - Replaced the old CategoryCircles component (circular icons below hero slider)
 
 ## Edit Website Admin Section
 - "Edit Website" sidebar item consolidates: Promo Banner, Categories, Watch & Buy into sub-tabs

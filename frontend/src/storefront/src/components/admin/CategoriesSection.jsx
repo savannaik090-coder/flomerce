@@ -14,7 +14,7 @@ function resolveImageUrl(src) {
 }
 
 export default function CategoriesSection() {
-  const { siteConfig } = useContext(SiteContext);
+  const { siteConfig, refetchSite } = useContext(SiteContext);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [newCategoryName, setNewCategoryName] = useState('');
@@ -25,9 +25,28 @@ export default function CategoriesSection() {
   const [searchTerm, setSearchTerm] = useState('');
   const [uploadingImage, setUploadingImage] = useState(null);
 
+  const [chooseEnabled, setChooseEnabled] = useState(false);
+  const [chooseCats, setChooseCats] = useState({});
+  const [chooseSaving, setChooseSaving] = useState(false);
+  const [chooseUploadingId, setChooseUploadingId] = useState(null);
+
   useEffect(() => {
     if (siteConfig?.id) loadCategories();
   }, [siteConfig?.id]);
+
+  useEffect(() => {
+    if (siteConfig?.settings) {
+      let settings = {};
+      try {
+        settings = typeof siteConfig.settings === 'string' ? JSON.parse(siteConfig.settings) : (siteConfig.settings || {});
+      } catch (e) {
+        settings = {};
+      }
+      const conf = settings.chooseByCategory || {};
+      setChooseEnabled(!!conf.enabled);
+      setChooseCats(conf.categories || {});
+    }
+  }, [siteConfig?.settings]);
 
   async function loadCategories() {
     setLoading(true);
@@ -132,6 +151,84 @@ export default function CategoriesSection() {
     } catch (e) {
       alert('Failed to remove image: ' + e.message);
     }
+  }
+
+  async function saveChooseConfig(enabled, cats) {
+    setChooseSaving(true);
+    try {
+      const token = sessionStorage.getItem('site_admin_token');
+      const response = await fetch(`${API_BASE}/api/sites/${siteConfig.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `SiteAdmin ${token}` : '',
+        },
+        body: JSON.stringify({
+          settings: {
+            chooseByCategory: { enabled, categories: cats },
+          },
+        }),
+      });
+      const result = await response.json();
+      if (response.ok && result.success) {
+        if (refetchSite) refetchSite();
+      } else {
+        alert('Failed to save: ' + (result.error || 'Unknown error'));
+      }
+    } catch (e) {
+      alert('Failed to save: ' + e.message);
+    } finally {
+      setChooseSaving(false);
+    }
+  }
+
+  async function handleChooseToggleEnabled() {
+    const newVal = !chooseEnabled;
+    setChooseEnabled(newVal);
+    await saveChooseConfig(newVal, chooseCats);
+  }
+
+  async function handleChooseCatToggle(catId) {
+    const current = chooseCats[catId] || {};
+    const updated = { ...chooseCats, [catId]: { ...current, visible: !current.visible } };
+    setChooseCats(updated);
+    await saveChooseConfig(chooseEnabled, updated);
+  }
+
+  async function handleChooseImageUpload(catId, file) {
+    if (!file) return;
+    setChooseUploadingId(catId);
+    try {
+      const formData = new FormData();
+      formData.append('images', file, file.name || 'browse-category.jpg');
+      const token = sessionStorage.getItem('site_admin_token');
+      const response = await fetch(`${API_BASE}/api/upload/image?siteId=${siteConfig.id}`, {
+        method: 'POST',
+        headers: { 'Authorization': token ? `SiteAdmin ${token}` : '' },
+        body: formData,
+      });
+      const result = await response.json();
+      if (result.success && result.data?.images?.length > 0 && result.data.images[0].url) {
+        const browseImage = result.data.images[0].url;
+        const current = chooseCats[catId] || {};
+        const updated = { ...chooseCats, [catId]: { ...current, browseImage } };
+        setChooseCats(updated);
+        await saveChooseConfig(chooseEnabled, updated);
+      } else {
+        alert('Image upload failed');
+      }
+    } catch (e) {
+      alert('Failed to upload image: ' + e.message);
+    } finally {
+      setChooseUploadingId(null);
+    }
+  }
+
+  async function handleChooseImageRemove(catId) {
+    const current = chooseCats[catId] || {};
+    const updated = { ...chooseCats, [catId]: { ...current, browseImage: null } };
+    setChooseCats(updated);
+    await saveChooseConfig(chooseEnabled, updated);
   }
 
   const filtered = categories.filter(c =>
@@ -333,6 +430,146 @@ export default function CategoriesSection() {
           ))}
         </div>
       )}
+
+      <div style={{ marginTop: 32 }}>
+        <div className="card">
+          <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 className="card-title" style={{ margin: 0 }}>Choose by Category Section</h3>
+            <label style={{ position: 'relative', display: 'inline-block', width: 44, height: 24, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={chooseEnabled}
+                onChange={handleChooseToggleEnabled}
+                style={{ opacity: 0, width: 0, height: 0 }}
+              />
+              <span style={{
+                position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                backgroundColor: chooseEnabled ? '#10b981' : '#cbd5e1',
+                borderRadius: 24, transition: 'background-color 0.2s',
+              }}>
+                <span style={{
+                  position: 'absolute', left: chooseEnabled ? 22 : 2, top: 2,
+                  width: 20, height: 20, backgroundColor: '#fff',
+                  borderRadius: '50%', transition: 'left 0.2s',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                }} />
+              </span>
+            </label>
+          </div>
+          <div className="card-content" style={{
+            padding: 16,
+            opacity: chooseEnabled ? 1 : 0.5,
+            pointerEvents: chooseEnabled ? 'auto' : 'none',
+            transition: 'opacity 0.3s',
+          }}>
+            <p style={{ color: '#64748b', fontSize: 13, marginTop: 0, marginBottom: 16 }}>
+              Select which categories appear in the "Choose by Category" section on your homepage and upload a browse image for each.
+            </p>
+            {chooseSaving && (
+              <div style={{ color: '#3b82f6', fontSize: 13, marginBottom: 12 }}>Saving...</div>
+            )}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
+              {categories.map(cat => {
+                const conf = chooseCats[cat.id] || {};
+                const isVisible = !!conf.visible;
+                const browseImg = conf.browseImage;
+                return (
+                  <div key={cat.id} style={{
+                    border: isVisible ? '2px solid #10b981' : '1px solid #e2e8f0',
+                    borderRadius: 12,
+                    overflow: 'hidden',
+                    background: '#fff',
+                    transition: 'border-color 0.2s',
+                  }}>
+                    <div style={{ position: 'relative', width: '100%', height: 140, background: '#f8f8f5' }}>
+                      {browseImg ? (
+                        <>
+                          <img
+                            src={resolveImageUrl(browseImg)}
+                            alt={cat.name}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                          />
+                          <button
+                            onClick={() => handleChooseImageRemove(cat.id)}
+                            style={{
+                              position: 'absolute', top: 6, right: 6,
+                              width: 22, height: 22, borderRadius: '50%',
+                              background: '#ef4444', color: '#fff', border: 'none',
+                              fontSize: 12, cursor: 'pointer', display: 'flex',
+                              alignItems: 'center', justifyContent: 'center',
+                            }}
+                          >
+                            x
+                          </button>
+                          <label style={{
+                            position: 'absolute', bottom: 6, right: 6,
+                            background: 'rgba(255,255,255,0.9)', borderRadius: 4,
+                            padding: '3px 8px', fontSize: 11, color: '#3b82f6',
+                            cursor: 'pointer',
+                          }}>
+                            Change
+                            <input
+                              type="file"
+                              accept="image/*"
+                              style={{ display: 'none' }}
+                              onChange={(e) => { if (e.target.files[0]) handleChooseImageUpload(cat.id, e.target.files[0]); }}
+                              disabled={chooseUploadingId === cat.id}
+                            />
+                          </label>
+                        </>
+                      ) : (
+                        <label style={{
+                          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                          width: '100%', height: '100%', cursor: 'pointer', color: '#94a3b8', fontSize: 12,
+                        }}>
+                          {chooseUploadingId === cat.id ? (
+                            <span>Uploading...</span>
+                          ) : (
+                            <>
+                              <i className="fas fa-image" style={{ fontSize: 24, marginBottom: 6 }} />
+                              <span>Add Browse Image</span>
+                            </>
+                          )}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            style={{ display: 'none' }}
+                            onChange={(e) => { if (e.target.files[0]) handleChooseImageUpload(cat.id, e.target.files[0]); }}
+                            disabled={chooseUploadingId === cat.id}
+                          />
+                        </label>
+                      )}
+                    </div>
+                    <div style={{ padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontWeight: 500, fontSize: 14, color: '#333' }}>{cat.name}</span>
+                      <label style={{ position: 'relative', display: 'inline-block', width: 36, height: 20, cursor: 'pointer', flexShrink: 0 }}>
+                        <input
+                          type="checkbox"
+                          checked={isVisible}
+                          onChange={() => handleChooseCatToggle(cat.id)}
+                          style={{ opacity: 0, width: 0, height: 0 }}
+                        />
+                        <span style={{
+                          position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                          backgroundColor: isVisible ? '#10b981' : '#cbd5e1',
+                          borderRadius: 20, transition: 'background-color 0.2s',
+                        }}>
+                          <span style={{
+                            position: 'absolute', left: isVisible ? 18 : 2, top: 2,
+                            width: 16, height: 16, backgroundColor: '#fff',
+                            borderRadius: '50%', transition: 'left 0.2s',
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
+                          }} />
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
