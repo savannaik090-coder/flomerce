@@ -126,7 +126,6 @@ export default function WatchAndBuy() {
                     ref={(el) => (videoRefs.current[idx] = el)}
                     className="wb-video"
                     playsInline
-                    muted
                     loop
                   >
                     <source src={item.videoUrl} type="video/mp4" />
