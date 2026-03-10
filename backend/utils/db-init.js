@@ -427,6 +427,27 @@ export async function ensureTablesExist(env) {
       }
     }
 
+    const columnMigrations = [
+      { table: 'categories', column: 'subtitle', sql: 'ALTER TABLE categories ADD COLUMN subtitle TEXT DEFAULT NULL' },
+      { table: 'categories', column: 'show_on_home', sql: 'ALTER TABLE categories ADD COLUMN show_on_home INTEGER DEFAULT 1' },
+    ];
+
+    for (const migration of columnMigrations) {
+      try {
+        const tableInfo = await env.DB.prepare(`PRAGMA table_info(${migration.table})`).all();
+        const columnExists = tableInfo.results.some(col => col.name === migration.column);
+        if (!columnExists) {
+          await env.DB.prepare(migration.sql).run();
+          if (migration.column === 'show_on_home') {
+            await env.DB.prepare('UPDATE categories SET show_on_home = 0 WHERE parent_id IS NOT NULL').run();
+          }
+          console.log(`Added column ${migration.column} to ${migration.table}`);
+        }
+      } catch (e) {
+        console.error(`Migration for ${migration.table}.${migration.column} failed:`, e.message);
+      }
+    }
+
     _initialized = true;
     console.log('Database tables initialized successfully');
   } catch (error) {
