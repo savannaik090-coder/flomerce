@@ -52,7 +52,7 @@
 
 .home-category-section {
     background: #f8f8f5;
-    padding: 50px 0 60px;
+    padding: 30px 0 40px;
     margin-bottom: 0;
     border-bottom: 1px solid #f0f0f0;
     overflow: hidden;
@@ -85,7 +85,7 @@
     min-height: 500px;
     max-height: 700px;
     overflow: hidden;
-    margin-bottom: 40px;
+    margin-bottom: 25px;
 }
 
 .home-category-banner-link {
@@ -175,12 +175,12 @@
 
 .home-category-products {
     position: relative;
-    margin-bottom: 30px;
-    padding-top: 10px;
+    margin-bottom: 20px;
+    padding-top: 0;
 }
 
 .home-category-products .product-scroll-container {
-    padding-left: 40px;
+    padding-left: 20px;
 }
 
 .home-category-scroll-arrow {

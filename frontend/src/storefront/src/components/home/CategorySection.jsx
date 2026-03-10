@@ -78,7 +78,7 @@ export default function CategorySection({ category }) {
         <div
           className="product-scroll-container"
           ref={scrollRef}
-          style={{ paddingLeft: '40px' }}
+          style={{ paddingLeft: '20px' }}
         >
           {loading ? (
             <div className="product-loader show">
