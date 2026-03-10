@@ -94,7 +94,7 @@ export default function HeroSlider() {
         ))}
       </div>
 
-      {showScrollButtons && (
+      {showScrollButtons && slides.length > 1 && (
         <div className="slider-nav">
           <button className="slider-prev" onClick={prevSlide}>
             <i className="fas fa-chevron-left"></i>
@@ -105,15 +105,17 @@ export default function HeroSlider() {
         </div>
       )}
 
-      <div className="slider-dots">
-        {slides.map((_, i) => (
-          <span
-            key={i}
-            className={`dot ${i === currentIndex ? 'active' : ''}`}
-            onClick={() => setCurrentIndex(i)}
-          />
-        ))}
-      </div>
+      {slides.length > 1 && (
+        <div className="slider-dots">
+          {slides.map((_, i) => (
+            <span
+              key={i}
+              className={`dot ${i === currentIndex ? 'active' : ''}`}
+              onClick={() => setCurrentIndex(i)}
+            />
+          ))}
+        </div>
+      )}
     </section>
   );
 }
