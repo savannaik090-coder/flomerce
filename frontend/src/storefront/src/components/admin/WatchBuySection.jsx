@@ -94,7 +94,7 @@ export default function WatchBuySection() {
     setShowModal(true);
   }
 
-  async function handleVideoUpload(file) {
+  function handleVideoUpload(file) {
     if (!file) return;
     const allowed = ['video/mp4', 'video/webm', 'video/quicktime'];
     if (!allowed.includes(file.type)) {
@@ -107,37 +107,47 @@ export default function WatchBuySection() {
     }
 
     setUploading(true);
-    setUploadProgress(10);
+    setUploadProgress(0);
     setError('');
 
-    try {
-      const formData = new FormData();
-      formData.append('video', file);
-      const token = sessionStorage.getItem('site_admin_token');
+    const formData = new FormData();
+    formData.append('video', file);
+    const token = sessionStorage.getItem('site_admin_token');
 
-      setUploadProgress(30);
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${API_BASE}/api/upload/video?siteId=${siteConfig.id}`);
+    if (token) xhr.setRequestHeader('Authorization', `SiteAdmin ${token}`);
 
-      const response = await fetch(`${API_BASE}/api/upload/video?siteId=${siteConfig.id}`, {
-        method: 'POST',
-        headers: { 'Authorization': token ? `SiteAdmin ${token}` : '' },
-        body: formData,
-      });
-
-      setUploadProgress(80);
-
-      const result = await response.json();
-      if (result.success && result.data?.url) {
-        setForm(p => ({ ...p, videoUrl: result.data.url, videoKey: result.data.key || '' }));
-        setUploadProgress(100);
-      } else {
-        setError('Upload failed: ' + (result.error || result.message || 'Unknown error'));
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) {
+        const pct = Math.round((e.loaded / e.total) * 95);
+        setUploadProgress(pct);
       }
-    } catch (e) {
-      setError('Failed to upload video: ' + e.message);
-    } finally {
+    };
+
+    xhr.onload = () => {
+      try {
+        const result = JSON.parse(xhr.responseText);
+        if (xhr.status >= 200 && xhr.status < 300 && result.success && result.data?.url) {
+          setForm(p => ({ ...p, videoUrl: result.data.url, videoKey: result.data.key || '' }));
+          setUploadProgress(100);
+        } else {
+          setError('Upload failed: ' + (result.error || result.message || 'Unknown error'));
+        }
+      } catch (e) {
+        setError('Upload failed: invalid server response');
+      }
       setUploading(false);
-      setTimeout(() => setUploadProgress(0), 500);
-    }
+      setTimeout(() => setUploadProgress(0), 800);
+    };
+
+    xhr.onerror = () => {
+      setError('Failed to upload video. Please check your connection.');
+      setUploading(false);
+      setUploadProgress(0);
+    };
+
+    xhr.send(formData);
   }
 
   async function saveVideosToSettings(updatedVideos) {
@@ -325,7 +335,7 @@ export default function WatchBuySection() {
                     />
                     <button
                       type="button"
-                      onClick={() => { setForm(p => ({ ...p, videoUrl: '', videoKey: '' })); }}
+                      onClick={() => { setForm(p => ({ ...p, videoUrl: '', videoKey: '' })); if (fileInputRef.current) fileInputRef.current.value = ''; }}
                       style={{
                         position: 'absolute', top: 8, right: 8,
                         background: 'rgba(0,0,0,0.7)', color: '#fff', border: 'none',
