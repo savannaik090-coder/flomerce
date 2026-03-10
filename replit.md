@@ -193,6 +193,13 @@ wrangler secret put RESEND_API_KEY      # Or SENDGRID_API_KEY
 - If no slides configured, falls back to default slides with gradient backgrounds
 - HeroSlider component reads `siteConfig.settings.heroSlides` and `siteConfig.settings.heroShowScrollButtons`
 
+## Welcome Banner Admin
+- Admin panel "Edit Website" tab includes a "Welcome Banner" sub-tab
+- Admins can configure: banner image (uploaded to R2), heading, message, button text, button link
+- Default fallback text: "Welcome to {brandName}!", generic signup message, "Sign Up Now" button linking to /signup
+- Data stored in `settings.welcomeBannerImage`, `settings.welcomeBannerHeading`, `settings.welcomeBannerMessage`, `settings.welcomeBannerButtonText`, `settings.welcomeBannerButtonLink`
+- Banner shows once per first-time visitor (after 3 seconds), tracked via localStorage `first_visit_shown`
+
 ## Storefront Navbar Layout
 - Navbar uses `position: sticky` (not fixed/floating) — sits in normal document flow below the promo banner
 - Solid white background, full-width, no border-radius pill shape

@@ -3,10 +3,12 @@ import { SiteContext } from '../../context/SiteContext.jsx';
 import CategoriesSection from './CategoriesSection.jsx';
 import WatchBuySection from './WatchBuySection.jsx';
 import HeroSliderEditor from './HeroSliderEditor.jsx';
+import WelcomeBannerEditor from './WelcomeBannerEditor.jsx';
 
 const SUB_TABS = [
   { id: 'promo-banner', icon: 'fa-bullhorn', label: 'Promo Banner' },
   { id: 'hero-slider', icon: 'fa-images', label: 'Hero Slider' },
+  { id: 'welcome-banner', icon: 'fa-hand-sparkles', label: 'Welcome Banner' },
   { id: 'categories', icon: 'fa-folder', label: 'Categories' },
   { id: 'watchbuy', icon: 'fa-video', label: 'Watch & Buy' },
 ];
@@ -45,6 +47,7 @@ export default function WebsiteContentSection() {
 
       {activeTab === 'promo-banner' && <PromoBannerEditor />}
       {activeTab === 'hero-slider' && <HeroSliderEditor />}
+      {activeTab === 'welcome-banner' && <WelcomeBannerEditor />}
       {activeTab === 'categories' && <CategoriesSection />}
       {activeTab === 'watchbuy' && <WatchBuySection />}
     </div>
