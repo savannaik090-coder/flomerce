@@ -41,7 +41,6 @@
     position: relative;
     width: 100%;
     height: 100%;
-    text-decoration: none;
 }
 
 .home-category-banner-img {
@@ -53,9 +52,6 @@
     transition: transform 0.6s ease;
 }
 
-.home-category-banner-link:hover .home-category-banner-img {
-    transform: scale(1.05);
-}
 
 .home-category-banner-overlay {
     position: absolute;
@@ -114,7 +110,7 @@
     white-space: nowrap;
 }
 
-.home-category-banner-link:hover .home-category-banner-btn {
+.home-category-banner-btn:hover {
     background: white;
     color: #333;
     transform: translateY(-2px);

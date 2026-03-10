@@ -51,7 +51,7 @@ export default function CategorySection({ category }) {
 
       {hasImage && (
         <div className="home-category-banner">
-          <Link to={`/category/${category.slug}`} className="home-category-banner-link">
+          <div className="home-category-banner-link">
             <img
               src={resolveImg(category.image_url)}
               alt={category.name}
@@ -61,9 +61,9 @@ export default function CategorySection({ category }) {
             <div className="home-category-banner-content">
               <h3 className="home-category-banner-title">{category.name}</h3>
               <div className="home-category-banner-divider" />
-              <span className="home-category-banner-btn">VIEW ALL</span>
+              <Link to={`/category/${category.slug}`} className="home-category-banner-btn" style={{ textDecoration: 'none' }}>VIEW ALL</Link>
             </div>
-          </Link>
+          </div>
         </div>
       )}
 
