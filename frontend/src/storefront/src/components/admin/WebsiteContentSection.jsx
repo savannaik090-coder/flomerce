@@ -188,7 +188,7 @@ function PromoBannerEditor() {
                     display: 'inline-block',
                     whiteSpace: 'nowrap',
                     willChange: 'transform',
-                    animation: 'scroll-left 12s linear infinite',
+                    animation: 'scroll-left 6s linear infinite',
                     fontSize: 13,
                     letterSpacing: '1.5px',
                     wordSpacing: '4px',

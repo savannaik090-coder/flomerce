@@ -26,7 +26,7 @@
     will-change: transform;
     letter-spacing: 1.5px;
     word-spacing: 4px;
-    animation: scroll-left 12s linear infinite;
+    animation: scroll-left 6s linear infinite;
 }
 
 @keyframes scroll-left {
