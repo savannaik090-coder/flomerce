@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useSiteConfig } from '../../hooks/useSiteConfig.js';
 import { getProducts } from '../../services/productService.js';
 import { formatINR } from '../../utils/priceFormatter.js';
+import { resolveImageUrl } from '../../utils/imageUrl.js';
 
 export default function WatchAndBuy() {
   const { siteConfig } = useSiteConfig();
@@ -24,12 +25,18 @@ export default function WatchAndBuy() {
           configVideos.forEach(v => {
             if (v.productSku) {
               const found = prods.find(p => p.sku === v.productSku || p.id === v.productSku);
+              const extractImage = (p) => {
+                let imgs = p.images;
+                if (typeof imgs === 'string') { try { imgs = JSON.parse(imgs); } catch(e) { imgs = []; } }
+                const raw = Array.isArray(imgs) ? (typeof imgs[0] === 'string' ? imgs[0] : imgs[0]?.url) : null;
+                return raw || p.thumbnail_url || p.image_url || p.image || p.mainImage || '';
+              };
               if (found) {
                 map[v.productSku] = {
                   id: found.id,
                   name: found.name,
                   price: found.price,
-                  image: found.images?.[0]?.url || found.image || found.mainImage || '',
+                  image: resolveImageUrl(extractImage(found)),
                 };
               } else if (v.productId) {
                 const foundById = prods.find(p => p.id === v.productId);
@@ -38,7 +45,7 @@ export default function WatchAndBuy() {
                     id: foundById.id,
                     name: foundById.name,
                     price: foundById.price,
-                    image: foundById.images?.[0]?.url || foundById.image || foundById.mainImage || '',
+                    image: resolveImageUrl(extractImage(foundById)),
                   };
                 }
               }
