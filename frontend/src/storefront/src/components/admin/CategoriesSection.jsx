@@ -9,8 +9,6 @@ export default function CategoriesSection() {
   const [newCategoryName, setNewCategoryName] = useState('');
   const [editingCategory, setEditingCategory] = useState(null);
   const [editCategoryName, setEditCategoryName] = useState('');
-  const [editingSubtitle, setEditingSubtitle] = useState(null);
-  const [editSubtitleValue, setEditSubtitleValue] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
@@ -69,27 +67,6 @@ export default function CategoriesSection() {
     }
   }
 
-  async function handleUpdateSubtitle(categoryId) {
-    try {
-      await updateCategory(categoryId, { subtitle: editSubtitleValue.trim() });
-      setEditingSubtitle(null);
-      setEditSubtitleValue('');
-      await loadCategories();
-    } catch (e) {
-      alert('Failed to update subtitle: ' + e.message);
-    }
-  }
-
-  async function handleToggleShowOnHome(cat) {
-    const newValue = cat.show_on_home ? 0 : 1;
-    try {
-      await updateCategory(cat.id, { showOnHome: newValue });
-      setCategories(prev => prev.map(c => c.id === cat.id ? { ...c, show_on_home: newValue } : c));
-    } catch (e) {
-      alert('Failed to update homepage visibility: ' + e.message);
-    }
-  }
-
   const filtered = categories.filter(c =>
     !searchTerm || c.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -98,56 +75,6 @@ export default function CategoriesSection() {
 
   return (
     <div>
-      <style>{`
-        .homepage-toggle {
-          position: relative;
-          width: 44px;
-          height: 24px;
-          cursor: pointer;
-        }
-        .homepage-toggle input {
-          opacity: 0;
-          width: 0;
-          height: 0;
-        }
-        .homepage-toggle .toggle-slider {
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background-color: #cbd5e1;
-          border-radius: 24px;
-          transition: background-color 0.2s;
-        }
-        .homepage-toggle .toggle-slider::before {
-          content: '';
-          position: absolute;
-          height: 18px;
-          width: 18px;
-          left: 3px;
-          bottom: 3px;
-          background-color: white;
-          border-radius: 50%;
-          transition: transform 0.2s;
-        }
-        .homepage-toggle input:checked + .toggle-slider {
-          background-color: var(--admin-primary, #6366f1);
-        }
-        .homepage-toggle input:checked + .toggle-slider::before {
-          transform: translateX(20px);
-        }
-        .subtitle-text {
-          color: #94a3b8;
-          font-size: 13px;
-          font-style: italic;
-          cursor: pointer;
-        }
-        .subtitle-text:hover {
-          color: #64748b;
-        }
-      `}</style>
-
       <div className="search-bar" style={{ marginBottom: 20 }}>
         <input
           type="text"
@@ -193,9 +120,7 @@ export default function CategoriesSection() {
                 <thead>
                   <tr>
                     <th>Name</th>
-                    <th>Subtitle</th>
                     <th>Slug</th>
-                    <th style={{ textAlign: 'center' }}>Show on Homepage</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -216,45 +141,7 @@ export default function CategoriesSection() {
                           <span style={{ fontWeight: 500 }}>{cat.name}</span>
                         )}
                       </td>
-                      <td>
-                        {editingSubtitle === cat.id ? (
-                          <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                            <input
-                              type="text"
-                              value={editSubtitleValue}
-                              onChange={(e) => setEditSubtitleValue(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') handleUpdateSubtitle(cat.id);
-                                if (e.key === 'Escape') setEditingSubtitle(null);
-                              }}
-                              placeholder="Enter subtitle..."
-                              style={{ padding: '6px 10px', border: '1px solid #e2e8f0', borderRadius: 4, fontSize: 13, width: '100%', boxSizing: 'border-box', fontFamily: 'inherit' }}
-                              autoFocus
-                            />
-                            <button className="btn btn-primary btn-sm" onClick={() => handleUpdateSubtitle(cat.id)} style={{ whiteSpace: 'nowrap' }}>Save</button>
-                            <button className="btn btn-outline btn-sm" onClick={() => setEditingSubtitle(null)}>Cancel</button>
-                          </div>
-                        ) : (
-                          <span
-                            className="subtitle-text"
-                            onClick={() => { setEditingSubtitle(cat.id); setEditSubtitleValue(cat.subtitle || ''); }}
-                            title="Click to edit subtitle"
-                          >
-                            {cat.subtitle || 'Click to add subtitle'}
-                          </span>
-                        )}
-                      </td>
                       <td style={{ color: '#64748b', fontSize: 13 }}>/{cat.slug}</td>
-                      <td style={{ textAlign: 'center' }}>
-                        <label className="homepage-toggle">
-                          <input
-                            type="checkbox"
-                            checked={!!cat.show_on_home}
-                            onChange={() => handleToggleShowOnHome(cat)}
-                          />
-                          <span className="toggle-slider" />
-                        </label>
-                      </td>
                       <td>
                         {editingCategory === cat.id ? (
                           <div style={{ display: 'flex', gap: 4 }}>

@@ -142,8 +142,6 @@ async function createSite(request, env, user) {
             image_url TEXT,
             display_order INTEGER DEFAULT 0,
             is_active INTEGER DEFAULT 1,
-            subtitle TEXT DEFAULT NULL,
-            show_on_home INTEGER DEFAULT 1,
             created_at TEXT DEFAULT (datetime('now')),
             updated_at TEXT DEFAULT (datetime('now')),
             FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
@@ -180,22 +178,22 @@ async function createSite(request, env, user) {
 async function createDefaultCategories(env, siteId, businessCategory) {
   const categoryTemplates = {
     jewellery: [
-      { name: 'Gold', slug: 'gold', subtitle: 'Explore our gold collection', children: ['Necklace', 'Earrings', 'Bangles', 'Rings'] },
-      { name: 'Silver', slug: 'silver', subtitle: 'Discover elegant silver pieces', children: ['Necklace', 'Earrings', 'Bangles', 'Rings'] },
-      { name: 'Featured Collection', slug: 'featured-collection', subtitle: 'Our handpicked favourites', children: [] },
-      { name: 'New Arrivals', slug: 'new-arrivals', subtitle: 'Latest additions to our store', children: [] },
+      { name: 'Gold', slug: 'gold', children: ['Necklace', 'Earrings', 'Bangles', 'Rings'] },
+      { name: 'Silver', slug: 'silver', children: ['Necklace', 'Earrings', 'Bangles', 'Rings'] },
+      { name: 'Featured Collection', slug: 'featured-collection', children: [] },
+      { name: 'New Arrivals', slug: 'new-arrivals', children: [] },
     ],
     clothing: [
-      { name: 'Men', slug: 'men', subtitle: 'Shop men\'s fashion', children: ['Shirts', 'Pants', 'Suits', 'Accessories'] },
-      { name: 'Women', slug: 'women', subtitle: 'Shop women\'s fashion', children: ['Dresses', 'Tops', 'Bottoms', 'Accessories'] },
-      { name: 'New Arrivals', slug: 'new-arrivals', subtitle: 'Latest additions to our store', children: [] },
-      { name: 'Sale', slug: 'sale', subtitle: 'Great deals and discounts', children: [] },
+      { name: 'Men', slug: 'men', children: ['Shirts', 'Pants', 'Suits', 'Accessories'] },
+      { name: 'Women', slug: 'women', children: ['Dresses', 'Tops', 'Bottoms', 'Accessories'] },
+      { name: 'New Arrivals', slug: 'new-arrivals', children: [] },
+      { name: 'Sale', slug: 'sale', children: [] },
     ],
     electronics: [
-      { name: 'Phones', slug: 'phones', subtitle: 'Latest smartphones and accessories', children: [] },
-      { name: 'Laptops', slug: 'laptops', subtitle: 'Powerful laptops for every need', children: [] },
-      { name: 'Accessories', slug: 'accessories', subtitle: 'Essential tech accessories', children: [] },
-      { name: 'New Arrivals', slug: 'new-arrivals', subtitle: 'Latest additions to our store', children: [] },
+      { name: 'Phones', slug: 'phones', children: [] },
+      { name: 'Laptops', slug: 'laptops', children: [] },
+      { name: 'Accessories', slug: 'accessories', children: [] },
+      { name: 'New Arrivals', slug: 'new-arrivals', children: [] },
     ],
   };
 
@@ -205,16 +203,16 @@ async function createDefaultCategories(env, siteId, businessCategory) {
   for (const cat of categories) {
     const parentId = generateId();
     await env.DB.prepare(
-      `INSERT INTO categories (id, site_id, name, slug, display_order, subtitle, show_on_home, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
-    ).bind(parentId, siteId, cat.name, cat.slug, order++, cat.subtitle || null, 1).run();
+      `INSERT INTO categories (id, site_id, name, slug, display_order, created_at)
+       VALUES (?, ?, ?, ?, ?, datetime('now'))`
+    ).bind(parentId, siteId, cat.name, cat.slug, order++).run();
 
     for (const childName of cat.children) {
       const childSlug = `${cat.slug}-${childName.toLowerCase().replace(/\s+/g, '-')}`;
       await env.DB.prepare(
-        `INSERT INTO categories (id, site_id, name, slug, parent_id, display_order, show_on_home, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
-      ).bind(generateId(), siteId, childName, childSlug, parentId, order++, 0).run();
+        `INSERT INTO categories (id, site_id, name, slug, parent_id, display_order, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`
+      ).bind(generateId(), siteId, childName, childSlug, parentId, order++).run();
     }
   }
 }
@@ -234,9 +232,9 @@ async function createUserCategories(env, siteId, categories) {
       .replace(/-+/g, '-');
     
     await env.DB.prepare(
-      `INSERT INTO categories (id, site_id, name, slug, display_order, show_on_home, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`
-    ).bind(generateId(), siteId, categoryName, slug, order++, 1).run();
+      `INSERT INTO categories (id, site_id, name, slug, display_order, created_at)
+       VALUES (?, ?, ?, ?, ?, datetime('now'))`
+    ).bind(generateId(), siteId, categoryName, slug, order++).run();
   }
 }
 

@@ -1,23 +1,8 @@
 import { useState } from 'react';
 import { createSite } from '../services/siteService.js';
 
-const businessCategoryOptions = [
-  { id: 'jewellery', name: 'Jewellery', icon: '💎', description: 'Rings, necklaces, earrings & more' },
-  { id: 'clothing', name: 'Clothing & Fashion', icon: '👗', description: 'Apparel, accessories & fashion' },
-  { id: 'electronics', name: 'Electronics', icon: '📱', description: 'Phones, laptops & gadgets' },
-  { id: 'general', name: 'General Store', icon: '🏪', description: 'Multi-category retail shop' },
-];
-
-const categoryTemplates = {
-  jewellery: ['Gold', 'Silver', 'Featured Collection', 'New Arrivals'],
-  clothing: ['Men', 'Women', 'New Arrivals', 'Sale'],
-  electronics: ['Phones', 'Laptops', 'Accessories', 'New Arrivals'],
-  general: ['Category 1', 'Category 2'],
-};
-
 export default function SiteCreationWizard({ onClose, onCreated }) {
   const [step, setStep] = useState(1);
-  const [selectedBusinessCategory, setSelectedBusinessCategory] = useState(null);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [subdomain, setSubdomain] = useState('');
   const [brandName, setBrandName] = useState('');
@@ -37,12 +22,6 @@ export default function SiteCreationWizard({ onClose, onCreated }) {
     const updated = [...categories];
     updated[index] = value;
     setCategories(updated);
-  };
-
-  const handleBusinessCategorySelect = (catId) => {
-    setSelectedBusinessCategory(catId);
-    const template = categoryTemplates[catId] || categoryTemplates.general;
-    setCategories([...template]);
   };
 
   const handleCreate = async () => {
@@ -66,7 +45,6 @@ export default function SiteCreationWizard({ onClose, onCreated }) {
         subdomain: subdomain.toLowerCase().replace(/[^a-z0-9-]/g, ''),
         brandName,
         templateId: selectedTemplate,
-        category: selectedBusinessCategory || 'general',
         logo: logoBase64,
         categories: validCategories.map(name => ({
           name,
@@ -89,59 +67,7 @@ export default function SiteCreationWizard({ onClose, onCreated }) {
   return (
     <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="modal-content">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            {[1, 2, 3, 4].map(s => (
-              <div
-                key={s}
-                style={{
-                  width: '2rem',
-                  height: '4px',
-                  borderRadius: '2px',
-                  background: s <= step ? 'var(--primary, #6366f1)' : 'var(--border, #e5e7eb)',
-                  transition: 'background 0.3s',
-                }}
-              />
-            ))}
-          </div>
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Step {step} of 4</span>
-        </div>
-
         {step === 1 && (
-          <div>
-            <h2 style={{ marginBottom: '0.5rem', fontWeight: 800 }}>What do you sell?</h2>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
-              Select your business category to get started
-            </p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
-              {businessCategoryOptions.map(cat => (
-                <div
-                  key={cat.id}
-                  onClick={() => handleBusinessCategorySelect(cat.id)}
-                  style={{
-                    border: selectedBusinessCategory === cat.id ? '2px solid var(--primary, #6366f1)' : '2px solid var(--border, #e5e7eb)',
-                    borderRadius: '12px',
-                    padding: '1.25rem 1rem',
-                    cursor: 'pointer',
-                    textAlign: 'center',
-                    transition: 'all 0.2s',
-                    background: selectedBusinessCategory === cat.id ? 'var(--primary-light, #eef2ff)' : 'transparent',
-                  }}
-                >
-                  <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>{cat.icon}</div>
-                  <div style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: '0.25rem' }}>{cat.name}</div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{cat.description}</div>
-                </div>
-              ))}
-            </div>
-            <div style={{ display: 'flex', gap: '1rem' }}>
-              <button className="btn btn-outline" onClick={onClose} style={{ flex: 1 }}>Cancel</button>
-              <button className="btn btn-primary" onClick={() => setStep(2)} disabled={!selectedBusinessCategory} style={{ flex: 1 }}>Next</button>
-            </div>
-          </div>
-        )}
-
-        {step === 2 && (
           <div>
             <h2 style={{ marginBottom: '1.5rem', fontWeight: 800 }}>Choose Template</h2>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1rem', maxHeight: '60vh', overflowY: 'auto', padding: '0.5rem' }}>
@@ -167,13 +93,13 @@ export default function SiteCreationWizard({ onClose, onCreated }) {
               ))}
             </div>
             <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-              <button className="btn btn-outline" onClick={() => setStep(1)} style={{ flex: 1 }}>Back</button>
-              <button className="btn btn-primary" onClick={() => setStep(3)} disabled={!selectedTemplate} style={{ flex: 1 }}>Next</button>
+              <button className="btn btn-outline" onClick={onClose} style={{ flex: 1 }}>Cancel</button>
+              <button className="btn btn-primary" onClick={() => setStep(2)} disabled={!selectedTemplate} style={{ flex: 1 }}>Next</button>
             </div>
           </div>
         )}
 
-        {step === 3 && (
+        {step === 2 && (
           <div>
             <h2 style={{ marginBottom: '1.5rem', fontWeight: 800 }}>Website Details</h2>
             <div className="form-group">
@@ -209,17 +135,17 @@ export default function SiteCreationWizard({ onClose, onCreated }) {
               />
             </div>
             <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
-              <button className="btn btn-outline" onClick={() => setStep(2)} style={{ flex: 1 }}>Back</button>
-              <button className="btn btn-primary" onClick={() => setStep(4)} disabled={!subdomain || !brandName} style={{ flex: 1 }}>Next: Categories</button>
+              <button className="btn btn-outline" onClick={() => setStep(1)} style={{ flex: 1 }}>Back</button>
+              <button className="btn btn-primary" onClick={() => setStep(3)} disabled={!subdomain || !brandName} style={{ flex: 1 }}>Next: Categories</button>
             </div>
           </div>
         )}
 
-        {step === 4 && (
+        {step === 3 && (
           <div>
             <h2 style={{ marginBottom: '0.5rem', fontWeight: 800 }}>Product Categories</h2>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
-              We've pre-filled categories based on your business type. Feel free to add, remove, or rename them.
+              Add at least one category for your shop (e.g., Rings, Necklaces, etc.)
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem', maxHeight: '40vh', overflowY: 'auto', padding: '0.5rem' }}>
               {categories.map((cat, i) => (
@@ -246,7 +172,7 @@ export default function SiteCreationWizard({ onClose, onCreated }) {
             </button>
             {error && <p style={{ color: '#ef4444', fontSize: '0.875rem', marginBottom: '1rem' }}>{error}</p>}
             <div style={{ display: 'flex', gap: '1rem' }}>
-              <button className="btn btn-outline" onClick={() => setStep(3)} style={{ flex: 1 }}>Back</button>
+              <button className="btn btn-outline" onClick={() => setStep(2)} style={{ flex: 1 }}>Back</button>
               <button className="btn btn-primary" onClick={handleCreate} disabled={creating} style={{ flex: 1 }}>
                 {creating ? 'Creating...' : 'Create Website'}
               </button>

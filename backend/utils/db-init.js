@@ -78,8 +78,6 @@ export async function ensureTablesExist(env) {
         image_url TEXT,
         display_order INTEGER DEFAULT 0,
         is_active INTEGER DEFAULT 1,
-        subtitle TEXT DEFAULT NULL,
-        show_on_home INTEGER DEFAULT 1,
         created_at TEXT DEFAULT (datetime('now')),
         updated_at TEXT DEFAULT (datetime('now')),
         FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
