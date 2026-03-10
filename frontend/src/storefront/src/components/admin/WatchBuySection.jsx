@@ -235,11 +235,13 @@ export default function WatchBuySection() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 20 }}>
           {videos.map(video => (
             <div key={video.id} className="card" style={{ padding: 0, overflow: 'hidden' }}>
-              <div style={{ aspectRatio: '9/16', background: '#1e293b', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', maxHeight: 320 }}>
+              <div style={{ width: '100%', background: '#1e293b', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
                 {video.videoUrl ? (
-                  <video src={video.videoUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} muted />
+                  <video src={video.videoUrl} style={{ width: '100%', height: 'auto', maxHeight: 400, objectFit: 'contain', display: 'block' }} muted />
                 ) : (
-                  <i className="fas fa-video" style={{ color: '#64748b', fontSize: 36 }} />
+                  <div style={{ width: '100%', height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <i className="fas fa-video" style={{ color: '#64748b', fontSize: 36 }} />
+                  </div>
                 )}
               </div>
               <div style={{ padding: 16 }}>
