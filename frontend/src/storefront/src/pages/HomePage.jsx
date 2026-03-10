@@ -51,10 +51,10 @@ export default function HomePage() {
         <CategorySection key={remainingCategories[0].id} category={remainingCategories[0]} />
       )}
       <WatchAndBuy />
+      <FeaturedVideoSection />
       {remainingCategories.slice(1).map((cat) => (
         <CategorySection key={cat.id} category={cat} />
       ))}
-      <FeaturedVideoSection />
       <ProductShowcase />
       <StoreLocations />
       <CustomerReviews />
