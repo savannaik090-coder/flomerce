@@ -53,6 +53,9 @@
     .featured-collection-header2 .section-title { font-size: 2rem; }
 
     .home-category-scroll-arrow { width: 50px; height: 50px; font-size: 16px; }
+    .home-category-banner-img { height: 300px; }
+    .home-category-banner-content { padding: 30px; }
+    .home-category-banner-title { font-size: 1.8rem; }
 }
 
 @media (max-width: 576px) {
@@ -104,4 +107,8 @@
     .home-category-scroll-left { left: 5px; }
     .home-category-scroll-right { right: 5px; }
     .home-category-view-all { padding: 10px 30px; font-size: 0.85rem; min-width: 140px; }
+    .home-category-banner-img { height: 220px; }
+    .home-category-banner-content { padding: 20px; }
+    .home-category-banner-title { font-size: 1.5rem; margin-bottom: 10px; }
+    .home-category-banner-btn { padding: 8px 24px; font-size: 0.75rem; }
 }

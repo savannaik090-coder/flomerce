@@ -4,6 +4,15 @@ import { useSiteConfig } from '../../hooks/useSiteConfig.js';
 import * as productService from '../../services/productService.js';
 import ProductCard from '../product/ProductCard.jsx';
 
+const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
+
+function resolveImg(src) {
+  if (!src) return '';
+  if (src.startsWith('data:') || src.startsWith('http')) return src;
+  if (src.startsWith('/api/')) return `${API_BASE}${src}`;
+  return src;
+}
+
 export default function CategorySection({ category }) {
   const { siteConfig } = useSiteConfig();
   const [products, setProducts] = useState([]);
@@ -29,6 +38,8 @@ export default function CategorySection({ category }) {
     }
   };
 
+  const hasImage = !!category.image_url;
+
   return (
     <section className="home-category-section">
       <div className="home-category-header">
@@ -37,6 +48,23 @@ export default function CategorySection({ category }) {
           <p className="section-subtitle">{category.subtitle}</p>
         )}
       </div>
+
+      {hasImage && (
+        <div className="home-category-banner">
+          <Link to={`/category/${category.slug}`} className="home-category-banner-link">
+            <img
+              src={resolveImg(category.image_url)}
+              alt={category.name}
+              className="home-category-banner-img"
+            />
+            <div className="home-category-banner-overlay" />
+            <div className="home-category-banner-content">
+              <h3 className="home-category-banner-title">{category.name}</h3>
+              <span className="home-category-banner-btn">VIEW ALL</span>
+            </div>
+          </Link>
+        </div>
+      )}
 
       <div className="home-category-products" style={{ position: 'relative' }}>
         <button

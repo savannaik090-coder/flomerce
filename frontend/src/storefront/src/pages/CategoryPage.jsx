@@ -6,6 +6,7 @@ import * as productService from '../services/productService.js';
 import * as categoryService from '../services/categoryService.js';
 import ProductGrid from '../components/product/ProductGrid.jsx';
 import FilterSortBar from '../components/product/FilterSortBar.jsx';
+import { resolveImageUrl } from '../utils/imageUrl.js';
 import '../styles/category.css';
 
 function formatSlugToTitle(slug) {
@@ -135,7 +136,7 @@ export default function CategoryPage() {
     <div className="category-page">
       <section
         className="hero-section"
-        style={categoryData?.image_url ? { backgroundImage: `url(${categoryData.image_url})` } : {}}
+        style={categoryData?.image_url ? { backgroundImage: `url(${resolveImageUrl(categoryData.image_url)})` } : {}}
       >
         <div className="hero-overlay" />
         <div className="hero-content">

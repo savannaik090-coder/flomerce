@@ -122,8 +122,12 @@ Fluxe is a multi-tenant SaaS platform that allows users to create their own e-co
 - Default categories for Jewellery: "New Arrivals", "Jewellery Collection", "Featured Collection" (all with subtitles and show_on_home=1)
 - Default categories for Clothing: "New Arrivals", "Clothing Collection", "Featured Collection"
 - Any new categories added later (via admin or wizard) default to show_on_home=1 and automatically appear on homepage
-- Backend `createCategory` and `updateCategory` endpoints handle `subtitle` and `showOnHome` fields
+- Backend `createCategory` and `updateCategory` endpoints handle `subtitle`, `showOnHome`, and `imageUrl` fields
 - DB migration in `db-init.js` adds `subtitle` and `show_on_home` columns via ALTER TABLE for existing databases
+- Category images uploaded to R2 via admin panel, stored in `image_url` column
+- Homepage banner: If a category has an `image_url`, a large banner image is shown with the category name overlay and "VIEW ALL" button (like template1 style)
+- Category page hero: Uses the same `image_url` as the background for the hero section at the top of each category page
+- Admin panel categories use a card layout with image thumbnail, name, subtitle, homepage toggle, and edit/delete actions
 
 ## Edit Website Admin Section
 - "Edit Website" sidebar item consolidates: Promo Banner, Categories, Watch & Buy into sub-tabs

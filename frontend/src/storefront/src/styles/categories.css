@@ -76,6 +76,79 @@
     font-weight: 300;
 }
 
+.home-category-banner {
+    max-width: 1200px;
+    margin: 0 auto 30px;
+    padding: 0 20px;
+}
+
+.home-category-banner-link {
+    display: block;
+    position: relative;
+    overflow: hidden;
+    border-radius: 8px;
+    text-decoration: none;
+}
+
+.home-category-banner-img {
+    width: 100%;
+    height: 400px;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.5s ease;
+}
+
+.home-category-banner-link:hover .home-category-banner-img {
+    transform: scale(1.05);
+}
+
+.home-category-banner-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(rgba(0,0,0,0) 30%, rgba(0,0,0,0.5));
+}
+
+.home-category-banner-content {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    padding: 40px;
+    box-sizing: border-box;
+    text-align: center;
+    z-index: 2;
+}
+
+.home-category-banner-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 2.2rem;
+    color: #fff;
+    font-weight: 600;
+    margin: 0 0 16px 0;
+    text-shadow: 1px 1px 3px rgba(0,0,0,0.3);
+    letter-spacing: 1px;
+}
+
+.home-category-banner-btn {
+    display: inline-block;
+    background: rgba(255,255,255,0.95);
+    color: #333;
+    padding: 10px 36px;
+    font-size: 0.85rem;
+    letter-spacing: 2px;
+    font-weight: 600;
+    backdrop-filter: blur(5px);
+    transition: all 0.3s ease;
+}
+
+.home-category-banner-link:hover .home-category-banner-btn {
+    background: #d4af37;
+    color: #fff;
+}
+
 .home-category-products {
     position: relative;
     margin-bottom: 20px;

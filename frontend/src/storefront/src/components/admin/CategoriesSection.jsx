@@ -2,6 +2,17 @@ import React, { useState, useEffect, useContext } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { getCategories, createCategory, updateCategory, deleteCategory } from '../../services/categoryService.js';
 
+const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
+
+function resolveImageUrl(src) {
+  if (!src) return '';
+  if (src.startsWith('data:') || src.startsWith('http')) return src;
+  if (src.startsWith('/api/')) {
+    return `${API_BASE}${src}`;
+  }
+  return src;
+}
+
 export default function CategoriesSection() {
   const { siteConfig } = useContext(SiteContext);
   const [categories, setCategories] = useState([]);
@@ -12,6 +23,7 @@ export default function CategoriesSection() {
   const [editCategoryName, setEditCategoryName] = useState('');
   const [editCategorySubtitle, setEditCategorySubtitle] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [uploadingImage, setUploadingImage] = useState(null);
 
   useEffect(() => {
     if (siteConfig?.id) loadCategories();
@@ -86,6 +98,42 @@ export default function CategoriesSection() {
     }
   }
 
+  async function handleImageUpload(categoryId, file) {
+    if (!file) return;
+    setUploadingImage(categoryId);
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      const token = sessionStorage.getItem('site_admin_token');
+      const response = await fetch(`${API_BASE}/api/upload/image?siteId=${siteConfig.id}`, {
+        method: 'POST',
+        headers: { 'Authorization': token ? `SiteAdmin ${token}` : '' },
+        body: formData,
+      });
+      const result = await response.json();
+      if (result.success && result.data) {
+        const imageUrl = Array.isArray(result.data) ? result.data[0] : result.data;
+        await updateCategory(categoryId, { imageUrl });
+        await loadCategories();
+      } else {
+        alert('Image upload failed');
+      }
+    } catch (e) {
+      alert('Failed to upload image: ' + e.message);
+    } finally {
+      setUploadingImage(null);
+    }
+  }
+
+  async function handleRemoveImage(categoryId) {
+    try {
+      await updateCategory(categoryId, { imageUrl: null });
+      await loadCategories();
+    } catch (e) {
+      alert('Failed to remove image: ' + e.message);
+    }
+  }
+
   const filtered = categories.filter(c =>
     !searchTerm || c.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -139,99 +187,150 @@ export default function CategoriesSection() {
           <p>Create your first category to organize your products.</p>
         </div>
       ) : (
-        <div className="card">
-          <div className="card-header">
-            <h3 className="card-title">Categories ({filtered.length})</h3>
-          </div>
-          <div className="card-content" style={{ padding: 0 }}>
-            <div className="table-container">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Subtitle</th>
-                    <th>Slug</th>
-                    <th>Homepage</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map(cat => (
-                    <tr key={cat.id}>
-                      <td>
-                        {editingCategory === cat.id ? (
-                          <input
-                            type="text"
-                            value={editCategoryName}
-                            onChange={(e) => setEditCategoryName(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && handleUpdateCategory(cat.id)}
-                            style={{ padding: '6px 10px', border: '1px solid #e2e8f0', borderRadius: 4, fontSize: 14, width: '100%', boxSizing: 'border-box', fontFamily: 'inherit' }}
-                            autoFocus
-                          />
-                        ) : (
-                          <span style={{ fontWeight: 500 }}>{cat.name}</span>
-                        )}
-                      </td>
-                      <td>
-                        {editingCategory === cat.id ? (
-                          <input
-                            type="text"
-                            value={editCategorySubtitle}
-                            onChange={(e) => setEditCategorySubtitle(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && handleUpdateCategory(cat.id)}
-                            placeholder="Subtitle (optional)"
-                            style={{ padding: '6px 10px', border: '1px solid #e2e8f0', borderRadius: 4, fontSize: 13, width: '100%', boxSizing: 'border-box', fontFamily: 'inherit', color: '#64748b' }}
-                          />
-                        ) : (
-                          <span style={{ color: '#64748b', fontSize: 13 }}>{cat.subtitle || '-'}</span>
-                        )}
-                      </td>
-                      <td style={{ color: '#64748b', fontSize: 13 }}>/{cat.slug}</td>
-                      <td>
-                        <label style={{ position: 'relative', display: 'inline-block', width: 44, height: 24, cursor: 'pointer' }}>
-                          <input
-                            type="checkbox"
-                            checked={!!cat.show_on_home}
-                            onChange={() => handleToggleHomepage(cat.id, !!cat.show_on_home)}
-                            style={{ opacity: 0, width: 0, height: 0 }}
-                          />
-                          <span style={{
-                            position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-                            backgroundColor: cat.show_on_home ? '#10b981' : '#cbd5e1',
-                            borderRadius: 24, transition: 'background-color 0.2s',
-                          }}>
-                            <span style={{
-                              position: 'absolute', left: cat.show_on_home ? 22 : 2, top: 2,
-                              width: 20, height: 20, backgroundColor: '#fff',
-                              borderRadius: '50%', transition: 'left 0.2s',
-                              boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                            }} />
-                          </span>
-                        </label>
-                      </td>
-                      <td>
-                        {editingCategory === cat.id ? (
-                          <div style={{ display: 'flex', gap: 4 }}>
-                            <button className="btn btn-primary btn-sm" onClick={() => handleUpdateCategory(cat.id)}>Save</button>
-                            <button className="btn btn-outline btn-sm" onClick={() => setEditingCategory(null)}>Cancel</button>
-                          </div>
-                        ) : (
-                          <div style={{ display: 'flex', gap: 4 }}>
-                            <button className="btn btn-outline btn-sm" onClick={() => { setEditingCategory(cat.id); setEditCategoryName(cat.name); setEditCategorySubtitle(cat.subtitle || ''); }}>
-                              <i className="fas fa-edit" />
-                            </button>
-                            <button className="btn btn-danger btn-sm" onClick={() => handleDeleteCategory(cat.id)}>
-                              <i className="fas fa-trash" />
-                            </button>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div className="card">
+            <div className="card-header">
+              <h3 className="card-title">Categories ({filtered.length})</h3>
             </div>
           </div>
+          {filtered.map(cat => (
+            <div className="card" key={cat.id}>
+              <div className="card-content" style={{ padding: 16 }}>
+                <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+                  <div style={{ width: 120, flexShrink: 0 }}>
+                    {cat.image_url ? (
+                      <div style={{ position: 'relative' }}>
+                        <img
+                          src={resolveImageUrl(cat.image_url)}
+                          alt={cat.name}
+                          style={{ width: '100%', height: 80, objectFit: 'cover', borderRadius: 6, border: '1px solid #e2e8f0' }}
+                        />
+                        <button
+                          onClick={() => handleRemoveImage(cat.id)}
+                          style={{
+                            position: 'absolute', top: -6, right: -6,
+                            width: 20, height: 20, borderRadius: '50%',
+                            background: '#ef4444', color: '#fff', border: 'none',
+                            fontSize: 11, cursor: 'pointer', display: 'flex',
+                            alignItems: 'center', justifyContent: 'center', lineHeight: 1,
+                          }}
+                        >
+                          x
+                        </button>
+                      </div>
+                    ) : (
+                      <label style={{
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                        width: '100%', height: 80, border: '2px dashed #e2e8f0', borderRadius: 6,
+                        cursor: 'pointer', color: '#94a3b8', fontSize: 12, textAlign: 'center',
+                        transition: 'border-color 0.2s',
+                      }}>
+                        {uploadingImage === cat.id ? (
+                          <span>Uploading...</span>
+                        ) : (
+                          <>
+                            <i className="fas fa-image" style={{ fontSize: 18, marginBottom: 4 }} />
+                            <span>Add Image</span>
+                          </>
+                        )}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          style={{ display: 'none' }}
+                          onChange={(e) => { if (e.target.files[0]) handleImageUpload(cat.id, e.target.files[0]); }}
+                          disabled={uploadingImage === cat.id}
+                        />
+                      </label>
+                    )}
+                    {cat.image_url && (
+                      <label style={{
+                        display: 'block', textAlign: 'center', marginTop: 4,
+                        fontSize: 11, color: '#3b82f6', cursor: 'pointer',
+                      }}>
+                        Change
+                        <input
+                          type="file"
+                          accept="image/*"
+                          style={{ display: 'none' }}
+                          onChange={(e) => { if (e.target.files[0]) handleImageUpload(cat.id, e.target.files[0]); }}
+                          disabled={uploadingImage === cat.id}
+                        />
+                      </label>
+                    )}
+                  </div>
+
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    {editingCategory === cat.id ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <input
+                          type="text"
+                          value={editCategoryName}
+                          onChange={(e) => setEditCategoryName(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && handleUpdateCategory(cat.id)}
+                          placeholder="Category name"
+                          style={{ padding: '8px 10px', border: '1px solid #e2e8f0', borderRadius: 4, fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box' }}
+                          autoFocus
+                        />
+                        <input
+                          type="text"
+                          value={editCategorySubtitle}
+                          onChange={(e) => setEditCategorySubtitle(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && handleUpdateCategory(cat.id)}
+                          placeholder="Subtitle (optional)"
+                          style={{ padding: '8px 10px', border: '1px solid #e2e8f0', borderRadius: 4, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', color: '#64748b' }}
+                        />
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button className="btn btn-primary btn-sm" onClick={() => handleUpdateCategory(cat.id)}>Save</button>
+                          <button className="btn btn-outline btn-sm" onClick={() => setEditingCategory(null)}>Cancel</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 2 }}>{cat.name}</div>
+                        <div style={{ color: '#64748b', fontSize: 13, marginBottom: 4 }}>{cat.subtitle || 'No subtitle'}</div>
+                        <div style={{ color: '#94a3b8', fontSize: 12 }}>/{cat.slug}</div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                    <div style={{ fontSize: 11, color: '#64748b', textAlign: 'center' }}>Homepage</div>
+                    <label style={{ position: 'relative', display: 'inline-block', width: 44, height: 24, cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={!!cat.show_on_home}
+                        onChange={() => handleToggleHomepage(cat.id, !!cat.show_on_home)}
+                        style={{ opacity: 0, width: 0, height: 0 }}
+                      />
+                      <span style={{
+                        position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                        backgroundColor: cat.show_on_home ? '#10b981' : '#cbd5e1',
+                        borderRadius: 24, transition: 'background-color 0.2s',
+                      }}>
+                        <span style={{
+                          position: 'absolute', left: cat.show_on_home ? 22 : 2, top: 2,
+                          width: 20, height: 20, backgroundColor: '#fff',
+                          borderRadius: '50%', transition: 'left 0.2s',
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                        }} />
+                      </span>
+                    </label>
+                  </div>
+
+                  {editingCategory !== cat.id && (
+                    <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                      <button className="btn btn-outline btn-sm" onClick={() => { setEditingCategory(cat.id); setEditCategoryName(cat.name); setEditCategorySubtitle(cat.subtitle || ''); }}>
+                        <i className="fas fa-edit" />
+                      </button>
+                      <button className="btn btn-danger btn-sm" onClick={() => handleDeleteCategory(cat.id)}>
+                        <i className="fas fa-trash" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>
