@@ -1,7 +1,7 @@
 @media (max-width: 1200px) {
     .hero-slider {
-        height: 75vh;
-        min-height: 450px;
+        height: 90vh;
+        min-height: 500px;
         margin: 0;
         max-width: 100%;
     }
@@ -12,8 +12,8 @@
 
 @media (max-width: 768px) {
     .hero-slider {
-        height: 65vh;
-        min-height: 400px;
+        height: 80vh;
+        min-height: 450px;
         margin: 0;
         max-width: 100%;
     }
@@ -56,8 +56,8 @@
 
 @media (max-width: 576px) {
     .hero-slider {
-        height: 55vh;
-        min-height: 350px;
+        height: 70vh;
+        min-height: 400px;
         margin: 0;
     }
     .slide-content { bottom: 80px; max-width: 300px; padding: 0 15px; }
