@@ -92,8 +92,11 @@ function generateOrderNumber() {
 function generateSubdomain(brandName) {
   return brandName.toLowerCase().trim().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-").substring(0, 30);
 }
+function setRequestOrigin(request) {
+  _currentRequestOrigin = request ? request.headers.get("Origin") : null;
+}
 function jsonResponse(data, status = 200, request = null) {
-  const origin = request ? request.headers.get("Origin") : null;
+  const origin = request ? request.headers.get("Origin") : _currentRequestOrigin;
   const allowedOrigin = getAllowedOrigin(origin);
   return new Response(JSON.stringify(data), {
     status,
@@ -108,7 +111,7 @@ function jsonResponse(data, status = 200, request = null) {
 }
 function getAllowedOrigin(origin) {
   if (!origin)
-    return "https://fluxe.in";
+    return "*";
   if (origin === "https://fluxe.in")
     return origin;
   if (origin.endsWith(".fluxe.in") && origin.startsWith("https://"))
@@ -125,7 +128,7 @@ function getAllowedOrigin(origin) {
     return origin;
   if (origin.includes("replit.dev") || origin.includes("repl.co"))
     return origin;
-  return "https://fluxe.in";
+  return "*";
 }
 function errorResponse(message, status = 400, code = "ERROR") {
   return jsonResponse({ success: false, error: message, code }, status);
@@ -134,7 +137,7 @@ function successResponse(data, message = "Success") {
   return jsonResponse({ success: true, message, data });
 }
 function corsHeaders(request) {
-  const origin = request ? request.headers.get("Origin") : null;
+  const origin = request ? request.headers.get("Origin") : _currentRequestOrigin;
   const allowedOrigin = getAllowedOrigin(origin);
   return {
     "Access-Control-Allow-Origin": allowedOrigin,
@@ -144,6 +147,7 @@ function corsHeaders(request) {
   };
 }
 function handleCORS(request) {
+  setRequestOrigin(request);
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders(request) });
   }
@@ -163,6 +167,7 @@ function validateEmail(email) {
   const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return re.test(email);
 }
+var _currentRequestOrigin;
 var init_helpers = __esm({
   "utils/helpers.js"() {
     init_checked_fetch();
@@ -172,6 +177,8 @@ var init_helpers = __esm({
     __name(generateToken, "generateToken");
     __name(generateOrderNumber, "generateOrderNumber");
     __name(generateSubdomain, "generateSubdomain");
+    _currentRequestOrigin = null;
+    __name(setRequestOrigin, "setRequestOrigin");
     __name(jsonResponse, "jsonResponse");
     __name(getAllowedOrigin, "getAllowedOrigin");
     __name(errorResponse, "errorResponse");

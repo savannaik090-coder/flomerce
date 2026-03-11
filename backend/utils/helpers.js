@@ -24,8 +24,14 @@ export function generateSubdomain(brandName) {
     .substring(0, 30);
 }
 
+let _currentRequestOrigin = null;
+
+export function setRequestOrigin(request) {
+  _currentRequestOrigin = request ? request.headers.get('Origin') : null;
+}
+
 export function jsonResponse(data, status = 200, request = null) {
-  const origin = request ? request.headers.get('Origin') : null;
+  const origin = request ? request.headers.get('Origin') : _currentRequestOrigin;
   const allowedOrigin = getAllowedOrigin(origin);
   
   return new Response(JSON.stringify(data), {
@@ -41,29 +47,23 @@ export function jsonResponse(data, status = 200, request = null) {
 }
 
 function getAllowedOrigin(origin) {
-  if (!origin) return 'https://fluxe.in';
+  if (!origin) return '*';
   
-  // Main production domain
   if (origin === 'https://fluxe.in') return origin;
   
-  // All subdomains of fluxe.in (e.g., https://nazakat.fluxe.in)
   if (origin.endsWith('.fluxe.in') && origin.startsWith('https://')) return origin;
   
-  // Cloudflare Pages default URLs
   if (origin === 'https://fluxe-8x1.pages.dev') return origin;
   if (origin.endsWith('.pages.dev')) return origin;
   
-  // Cloudflare Workers default URL
   if (origin === 'https://saas-platform.savannaik090.workers.dev') return origin;
   if (origin.endsWith('.workers.dev')) return origin;
   
-  // Local development
   if (origin.includes('localhost')) return origin;
   
-  // Replit development
   if (origin.includes('replit.dev') || origin.includes('repl.co')) return origin;
   
-  return 'https://fluxe.in';
+  return '*';
 }
 
 export function errorResponse(message, status = 400, code = 'ERROR') {
@@ -75,7 +75,7 @@ export function successResponse(data, message = 'Success') {
 }
 
 export function corsHeaders(request) {
-  const origin = request ? request.headers.get('Origin') : null;
+  const origin = request ? request.headers.get('Origin') : _currentRequestOrigin;
   const allowedOrigin = getAllowedOrigin(origin);
   return {
     'Access-Control-Allow-Origin': allowedOrigin,
@@ -86,6 +86,7 @@ export function corsHeaders(request) {
 }
 
 export function handleCORS(request) {
+  setRequestOrigin(request);
   if (request.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: corsHeaders(request) });
   }
