@@ -2,7 +2,6 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
-import { createProxyMiddleware } from 'http-proxy-middleware';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -12,11 +11,6 @@ const PORT = 5000;
 
 const frontendDir = path.join(__dirname, 'frontend');
 const storefrontDir = path.join(frontendDir, 'storefront');
-
-app.use('/api', createProxyMiddleware({
-  target: 'http://127.0.0.1:8000',
-  changeOrigin: true,
-}));
 
 app.use('/storefront', express.static(storefrontDir));
 
