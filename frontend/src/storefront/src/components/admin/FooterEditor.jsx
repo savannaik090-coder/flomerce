@@ -88,7 +88,7 @@ export default function FooterEditor() {
   }
 
   async function saveFooterConfig(overrideLinks) {
-    const linksToSave = overrideLinks !== undefined ? overrideLinks : customLinks;
+    const linksToSave = Array.isArray(overrideLinks) ? overrideLinks : customLinks;
     setSaving(true);
     setStatus('');
     try {
