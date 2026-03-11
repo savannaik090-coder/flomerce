@@ -7,33 +7,33 @@ const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsW
 const CATEGORY_DEFAULTS = {
   jewellery: {
     heroSubtitle: 'Discover our story, heritage, and the passion behind every exquisite piece we create',
-    storyHeading: 'Our Heritage',
     storyText: 'Welcome to {brandName}. We are dedicated to bringing you the finest jewellery with unmatched quality and craftsmanship that speaks for itself.\n\nOur commitment to authentic craftsmanship and traditional artistry has made us one of the most trusted names in the jewellery industry. Every piece in our collection reflects expertise, artistic brilliance, and timeless beauty.\n\nWe believe in creating experiences, not just jewellery. Each item is carefully curated and crafted to perfection for discerning customers worldwide.',
-    missionHeading: 'Our Mission',
-    missionText: '{brandName} is more than just a brand – it is a commitment to excellence, quality, and customer satisfaction that drives everything we do.\n\nWe aim to preserve and promote the finest traditions of craftsmanship, creating masterpieces that blend timeless elegance with contemporary appeal.\n\nOur commitment extends beyond creating beautiful products – we are dedicated to supporting artisans, preserving techniques, and ensuring that this heritage continues to shine for generations to come.',
+    sections: [
+      { heading: 'Our Mission', text: '{brandName} is more than just a brand – it is a commitment to excellence, quality, and customer satisfaction that drives everything we do.\n\nWe aim to preserve and promote the finest traditions of craftsmanship, creating masterpieces that blend timeless elegance with contemporary appeal.\n\nOur commitment extends beyond creating beautiful products – we are dedicated to supporting artisans, preserving techniques, and ensuring that this heritage continues to shine for generations to come.', visible: true },
+    ],
   },
   clothing: {
     heroSubtitle: 'Discover our story and the passion behind every collection we design',
-    storyHeading: 'Our Story',
     storyText: 'Welcome to {brandName}. We are passionate about fashion and dedicated to bringing you stylish, high-quality clothing for every occasion.\n\nOur team of designers draws inspiration from global trends while staying true to timeless style. Every garment in our collection is thoughtfully designed and crafted with attention to detail.\n\nWe believe fashion should be accessible, comfortable, and expressive. That\'s why we create versatile pieces that help you look and feel your best.',
-    missionHeading: 'Our Mission',
-    missionText: '{brandName} is more than just a clothing brand – it is about empowering you to express yourself through style.\n\nWe aim to make fashion accessible and sustainable, creating collections that are as kind to the planet as they are to your wardrobe.\n\nOur commitment goes beyond great clothing – we are building a community of fashion lovers who believe in quality, creativity, and individuality.',
+    sections: [
+      { heading: 'Our Mission', text: '{brandName} is more than just a clothing brand – it is about empowering you to express yourself through style.\n\nWe aim to make fashion accessible and sustainable, creating collections that are as kind to the planet as they are to your wardrobe.\n\nOur commitment goes beyond great clothing – we are building a community of fashion lovers who believe in quality, creativity, and individuality.', visible: true },
+    ],
   },
   electronics: {
     heroSubtitle: 'Innovation, quality, and technology at the heart of everything we do',
-    storyHeading: 'Our Story',
     storyText: 'Welcome to {brandName}. We are dedicated to bringing you the latest in technology with products that combine innovation, quality, and value.\n\nOur team of tech enthusiasts carefully selects every product in our catalogue, ensuring it meets the highest standards of performance and reliability.\n\nWe believe technology should enhance your life. That\'s why we offer products that are not just cutting-edge, but also user-friendly and built to last.',
-    missionHeading: 'Our Mission',
-    missionText: '{brandName} is your trusted destination for quality technology products.\n\nWe aim to make the latest technology accessible to everyone, offering genuine products at competitive prices with exceptional service.\n\nOur commitment is to be more than a store – we want to be your go-to tech partner, helping you find the perfect products for your needs.',
+    sections: [
+      { heading: 'Our Mission', text: '{brandName} is your trusted destination for quality technology products.\n\nWe aim to make the latest technology accessible to everyone, offering genuine products at competitive prices with exceptional service.\n\nOur commitment is to be more than a store – we want to be your go-to tech partner, helping you find the perfect products for your needs.', visible: true },
+    ],
   },
 };
 
 const GENERIC_DEFAULTS = {
   heroSubtitle: 'Discover our story, heritage, and the passion behind every product we offer',
-  storyHeading: 'Our Story',
   storyText: 'Welcome to {brandName}. We are dedicated to bringing you the finest products with unmatched quality and service that speaks for itself.\n\nOur commitment to excellence and attention to detail has made us one of the most trusted names in our industry. Every product in our collection reflects expertise, quality, and care.\n\nWe believe in creating experiences, not just selling products. Each item is carefully curated and selected to perfection for discerning customers worldwide.',
-  missionHeading: 'Our Mission',
-  missionText: '{brandName} is more than just a brand – it is a commitment to excellence, quality, and customer satisfaction that drives everything we do.\n\nWe aim to deliver the finest products, creating an experience that blends quality with exceptional service.\n\nOur commitment extends beyond selling products – we are dedicated to building lasting relationships with our customers and ensuring satisfaction for generations to come.',
+  sections: [
+    { heading: 'Our Mission', text: '{brandName} is more than just a brand – it is a commitment to excellence, quality, and customer satisfaction that drives everything we do.\n\nWe aim to deliver the finest products, creating an experience that blends quality with exceptional service.\n\nOur commitment extends beyond selling products – we are dedicated to building lasting relationships with our customers and ensuring satisfaction for generations to come.', visible: true },
+  ],
 };
 
 function getDefaults(category, brandName) {
@@ -41,11 +41,13 @@ function getDefaults(category, brandName) {
   const name = brandName || 'Our Store';
   return {
     heroSubtitle: base.heroSubtitle,
-    storyHeading: base.storyHeading,
     storyText: base.storyText.replace(/\{brandName\}/g, name),
     storyImage: '',
-    missionHeading: base.missionHeading,
-    missionText: base.missionText.replace(/\{brandName\}/g, name),
+    sections: base.sections.map(s => ({
+      heading: s.heading,
+      text: s.text.replace(/\{brandName\}/g, name),
+      visible: s.visible,
+    })),
   };
 }
 
@@ -56,11 +58,9 @@ const textareaStyle = { ...inputStyle, resize: 'vertical' };
 export default function AboutUsEditor() {
   const { siteConfig } = useContext(SiteContext);
   const [heroSubtitle, setHeroSubtitle] = useState('');
-  const [storyHeading, setStoryHeading] = useState('');
   const [storyText, setStoryText] = useState('');
   const [storyImage, setStoryImage] = useState('');
-  const [missionHeading, setMissionHeading] = useState('');
-  const [missionText, setMissionText] = useState('');
+  const [sections, setSections] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -85,11 +85,24 @@ export default function AboutUsEditor() {
         const defaults = getDefaults(siteConfig.category, siteConfig.brandName || siteConfig.brand_name);
 
         setHeroSubtitle(aboutPage.heroSubtitle || defaults.heroSubtitle);
-        setStoryHeading(aboutPage.storyHeading || defaults.storyHeading);
         setStoryText(aboutPage.storyText || defaults.storyText);
         setStoryImage(aboutPage.storyImage || '');
-        setMissionHeading(aboutPage.missionHeading || defaults.missionHeading);
-        setMissionText(aboutPage.missionText || defaults.missionText);
+
+        if (aboutPage.sections && aboutPage.sections.length > 0) {
+          setSections(aboutPage.sections.map(s => ({
+            heading: s.heading || '',
+            text: s.text || '',
+            visible: s.visible !== false,
+          })));
+        } else if (aboutPage.missionHeading || aboutPage.missionText) {
+          setSections([{
+            heading: aboutPage.missionHeading || defaults.sections[0].heading,
+            text: aboutPage.missionText || defaults.sections[0].text,
+            visible: true,
+          }]);
+        } else {
+          setSections(defaults.sections);
+        }
       }
     } catch (e) {
       console.error('Failed to load about page settings:', e);
@@ -134,6 +147,29 @@ export default function AboutUsEditor() {
     }
   }
 
+  function updateSection(index, field, value) {
+    setSections(prev => prev.map((s, i) => i === index ? { ...s, [field]: value } : s));
+  }
+
+  function addSection() {
+    setSections(prev => [...prev, { heading: 'New Section', text: '', visible: true }]);
+  }
+
+  function removeSection(index) {
+    if (!window.confirm('Remove this section?')) return;
+    setSections(prev => prev.filter((_, i) => i !== index));
+  }
+
+  function moveSection(index, direction) {
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= sections.length) return;
+    setSections(prev => {
+      const updated = [...prev];
+      [updated[index], updated[newIndex]] = [updated[newIndex], updated[index]];
+      return updated;
+    });
+  }
+
   async function handleSave(e) {
     e.preventDefault();
     setSaving(true);
@@ -150,11 +186,9 @@ export default function AboutUsEditor() {
           settings: {
             aboutPage: {
               heroSubtitle,
-              storyHeading,
               storyText,
               storyImage,
-              missionHeading,
-              missionText,
+              sections,
             }
           }
         }),
@@ -206,16 +240,6 @@ export default function AboutUsEditor() {
             <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
               Tell your brand story. Use blank lines to separate paragraphs.
             </p>
-            <div style={{ marginBottom: 16 }}>
-              <label style={labelStyle}>Section Heading</label>
-              <input
-                type="text"
-                value={storyHeading}
-                onChange={e => setStoryHeading(e.target.value)}
-                maxLength={100}
-                style={inputStyle}
-              />
-            </div>
             <div style={{ marginBottom: 16 }}>
               <label style={labelStyle}>Story Text</label>
               <textarea
@@ -285,36 +309,80 @@ export default function AboutUsEditor() {
           </div>
         </div>
 
-        <div className="card" style={{ marginBottom: 20 }}>
-          <div className="card-header">
-            <h3 className="card-title">Mission Section</h3>
-          </div>
-          <div className="card-content">
-            <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
-              Share your brand mission. Use blank lines to separate paragraphs.
-            </p>
-            <div style={{ marginBottom: 16 }}>
-              <label style={labelStyle}>Section Heading</label>
-              <input
-                type="text"
-                value={missionHeading}
-                onChange={e => setMissionHeading(e.target.value)}
-                maxLength={100}
-                style={inputStyle}
-              />
-            </div>
-            <div style={{ marginBottom: 16 }}>
-              <label style={labelStyle}>Mission Text</label>
-              <textarea
-                value={missionText}
-                onChange={e => setMissionText(e.target.value)}
-                rows={6}
-                style={textareaStyle}
-              />
-              <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>Separate paragraphs with blank lines</p>
-            </div>
-          </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <h3 style={{ fontSize: 16, fontWeight: 700 }}>Content Sections ({sections.length})</h3>
+          <button type="button" className="btn btn-secondary" onClick={addSection} style={{ fontSize: 13 }}>
+            <i className="fas fa-plus" style={{ marginRight: 6 }} />Add Section
+          </button>
         </div>
+
+        {sections.map((section, index) => (
+          <div key={index} className="card" style={{ marginBottom: 16, opacity: section.visible ? 1 : 0.6 }}>
+            <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 className="card-title" style={{ fontSize: 14 }}>{section.heading || `Section ${index + 1}`}</h3>
+              <div style={{ display: 'flex', gap: 4 }}>
+                <button
+                  type="button"
+                  onClick={() => updateSection(index, 'visible', !section.visible)}
+                  title={section.visible ? 'Hide section' : 'Show section'}
+                  style={{
+                    background: section.visible ? '#f0fdf4' : '#f8fafc',
+                    border: `1px solid ${section.visible ? '#bbf7d0' : '#e2e8f0'}`,
+                    borderRadius: 4, padding: '4px 8px', cursor: 'pointer',
+                    color: section.visible ? '#16a34a' : '#94a3b8', fontSize: 12,
+                  }}
+                >
+                  <i className={`fas ${section.visible ? 'fa-eye' : 'fa-eye-slash'}`} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => moveSection(index, -1)}
+                  disabled={index === 0}
+                  style={{ background: 'none', border: '1px solid #e2e8f0', borderRadius: 4, padding: '4px 8px', cursor: index === 0 ? 'not-allowed' : 'pointer', color: index === 0 ? '#cbd5e1' : '#64748b', fontSize: 12 }}
+                >
+                  <i className="fas fa-arrow-up" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => moveSection(index, 1)}
+                  disabled={index === sections.length - 1}
+                  style={{ background: 'none', border: '1px solid #e2e8f0', borderRadius: 4, padding: '4px 8px', cursor: index === sections.length - 1 ? 'not-allowed' : 'pointer', color: index === sections.length - 1 ? '#cbd5e1' : '#64748b', fontSize: 12 }}
+                >
+                  <i className="fas fa-arrow-down" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => removeSection(index)}
+                  style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 4, padding: '4px 8px', cursor: 'pointer', color: '#dc2626', fontSize: 12 }}
+                >
+                  <i className="fas fa-trash" />
+                </button>
+              </div>
+            </div>
+            <div className="card-content">
+              <div style={{ marginBottom: 12 }}>
+                <label style={labelStyle}>Section Heading</label>
+                <input
+                  type="text"
+                  value={section.heading}
+                  onChange={e => updateSection(index, 'heading', e.target.value)}
+                  maxLength={100}
+                  style={inputStyle}
+                />
+              </div>
+              <div>
+                <label style={labelStyle}>Content</label>
+                <textarea
+                  value={section.text}
+                  onChange={e => updateSection(index, 'text', e.target.value)}
+                  rows={5}
+                  style={textareaStyle}
+                />
+                <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>Separate paragraphs with blank lines</p>
+              </div>
+            </div>
+          </div>
+        ))}
 
         {status && (
           <div style={{

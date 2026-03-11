@@ -168,29 +168,24 @@
   margin-bottom: 0;
 }
 
-.about-mission {
+.about-content-section {
   position: relative;
-  padding: 100px 24px;
+  padding: 90px 24px;
   background: #fff;
-  overflow: hidden;
   border-top: 1px solid #f0ebe4;
 }
 
-.about-mission-bg {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
+.about-content-section:nth-child(even) {
+  background: #faf9f7;
 }
 
-.about-mission-inner {
-  position: relative;
-  z-index: 2;
+.about-content-section-inner {
   max-width: 760px;
   margin: 0 auto;
   text-align: center;
 }
 
-.about-mission-eyebrow {
+.about-content-section-eyebrow {
   display: inline-block;
   font-size: 11px;
   font-weight: 600;
@@ -203,7 +198,7 @@
   border-radius: 30px;
 }
 
-.about-mission h2 {
+.about-content-section h2 {
   font-family: 'Playfair Display', Georgia, serif;
   font-size: 40px;
   font-weight: 700;
@@ -212,7 +207,7 @@
   line-height: 1.2;
 }
 
-.about-mission-divider {
+.about-content-section-divider {
   width: 50px;
   height: 2px;
   background: linear-gradient(90deg, #d4af37, #f0d78c);
@@ -220,7 +215,7 @@
   border-radius: 2px;
 }
 
-.about-mission-text p {
+.about-content-section-text p {
   font-family: 'Poppins', sans-serif;
   font-size: 17px;
   line-height: 1.9;
@@ -229,7 +224,7 @@
   font-weight: 300;
 }
 
-.about-mission-text p:last-child {
+.about-content-section-text p:last-child {
   margin-bottom: 0;
 }
 
@@ -302,15 +297,15 @@
     font-size: 30px;
   }
 
-  .about-mission {
+  .about-content-section {
     padding: 60px 16px;
   }
 
-  .about-mission h2 {
+  .about-content-section h2 {
     font-size: 30px;
   }
 
-  .about-mission-text p {
+  .about-content-section-text p {
     font-size: 15px;
   }
 }
@@ -334,7 +329,7 @@
     font-size: 26px;
   }
 
-  .about-mission h2 {
+  .about-content-section h2 {
     font-size: 26px;
   }
 }
