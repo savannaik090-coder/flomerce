@@ -5,6 +5,7 @@ import App from './App.jsx';
 import { SiteProvider } from './context/SiteContext.jsx';
 import { AuthProvider } from './context/AuthContext.jsx';
 import { CartProvider } from './context/CartContext.jsx';
+import { WishlistProvider } from './context/WishlistContext.jsx';
 import { CurrencyProvider } from './context/CurrencyContext.jsx';
 import './styles/global.css';
 
@@ -14,9 +15,11 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       <SiteProvider>
         <AuthProvider>
           <CartProvider>
-            <CurrencyProvider>
-              <App />
-            </CurrencyProvider>
+            <WishlistProvider>
+              <CurrencyProvider>
+                <App />
+              </CurrencyProvider>
+            </WishlistProvider>
           </CartProvider>
         </AuthProvider>
       </SiteProvider>

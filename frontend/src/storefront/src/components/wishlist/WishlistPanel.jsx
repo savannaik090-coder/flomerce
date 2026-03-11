@@ -1,25 +1,45 @@
 import React, { useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CartContext } from '../../context/CartContext.jsx';
-import { useWishlist } from '../../hooks/useWishlist.js';
+import { WishlistContext } from '../../context/WishlistContext.jsx';
 import { useCurrency } from '../../hooks/useCurrency.js';
 import { resolveImageUrl } from '../../utils/imageUrl.js';
 
+function getItemImage(item) {
+  return item.product_image || item.thumbnail || item.image_url || (item.images && item.images[0]) || '';
+}
+
+function getItemPrice(item) {
+  return item.product_price || item.price || 0;
+}
+
+function getItemName(item) {
+  return item.product_name || item.name || '';
+}
+
+function getItemProductId(item) {
+  return item.product_id || item.productId;
+}
+
 export default function WishlistPanel({ isOpen, onClose }) {
-  const { items, removeFromWishlist } = useWishlist();
+  const { items, removeFromWishlist } = useContext(WishlistContext);
   const { addToCart } = useContext(CartContext);
   const { formatAmount } = useCurrency();
   const navigate = useNavigate();
 
   function handleMoveToCart(item) {
+    var pid = getItemProductId(item);
+    var name = getItemName(item);
+    var price = getItemPrice(item);
+    var image = getItemImage(item);
     addToCart({
-      id: item.product_id,
-      name: item.product_name,
-      price: item.product_price,
-      images: [item.product_image],
-      image_url: item.product_image,
+      id: pid,
+      name: name,
+      price: price,
+      images: [image],
+      image_url: image,
     });
-    removeFromWishlist(item.id);
+    removeFromWishlist(item.id || pid);
   }
 
   return (
@@ -38,20 +58,20 @@ export default function WishlistPanel({ isOpen, onClose }) {
             </div>
           ) : (
             items.map((item) => (
-              <div className="wishlist-item" key={item.id}>
+              <div className="wishlist-item" key={item.id || getItemProductId(item)}>
                 <img
                   className="wishlist-item-image"
-                  src={resolveImageUrl(item.product_image || '')}
-                  alt={item.product_name || ''}
+                  src={resolveImageUrl(getItemImage(item))}
+                  alt={getItemName(item)}
                   onError={(e) => { e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><rect fill="%23f0f0f0" width="80" height="80"/></svg>'; }}
-                  onClick={() => { onClose(); navigate(`/product/${item.product_id}`); }}
+                  onClick={() => { onClose(); navigate(`/product/${getItemProductId(item)}`); }}
                   style={{ cursor: 'pointer' }}
                 />
                 <div className="wishlist-item-details">
-                  <div className="wishlist-item-name">{item.product_name}</div>
-                  <div className="wishlist-item-price">{formatAmount(item.product_price)}</div>
+                  <div className="wishlist-item-name">{getItemName(item)}</div>
+                  <div className="wishlist-item-price">{formatAmount(getItemPrice(item))}</div>
                   <div className="wishlist-item-actions">
-                    <button className="remove-from-wishlist" onClick={() => removeFromWishlist(item.id)}>Remove</button>
+                    <button className="remove-from-wishlist" onClick={() => removeFromWishlist(item.id || getItemProductId(item))}>Remove</button>
                     <button className="move-to-cart" onClick={() => handleMoveToCart(item)}>Move to Cart</button>
                   </div>
                 </div>

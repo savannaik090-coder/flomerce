@@ -78,9 +78,14 @@ export function CartProvider({ children }) {
       } else {
         local.push({
           productId: product.id,
+          product_id: product.id,
           name: product.name,
+          product_name: product.name,
           price: product.price,
+          product_price: product.price,
           thumbnail: product.images?.[0] || product.thumbnail_url || product.image_url,
+          product_image: product.images?.[0] || product.thumbnail_url || product.image_url,
+          image_url: product.images?.[0] || product.thumbnail_url || product.image_url,
           quantity,
         });
       }
