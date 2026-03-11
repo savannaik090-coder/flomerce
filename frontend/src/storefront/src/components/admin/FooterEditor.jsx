@@ -22,6 +22,12 @@ export default function FooterEditor() {
   const [shopRedirect, setShopRedirect] = useState('');
   const [showCurrency, setShowCurrency] = useState(true);
 
+  const [showAppBanner, setShowAppBanner] = useState(false);
+  const [showAppStore, setShowAppStore] = useState(true);
+  const [showPlayStore, setShowPlayStore] = useState(true);
+  const [appStoreUrl, setAppStoreUrl] = useState('');
+  const [playStoreUrl, setPlayStoreUrl] = useState('');
+
   const [categories, setCategories] = useState([]);
 
   useEffect(() => {
@@ -66,6 +72,13 @@ export default function FooterEditor() {
         const bottomNav = footer.bottomNav || {};
         setShopRedirect(bottomNav.shopRedirect || '');
         setShowCurrency(bottomNav.showCurrency !== false);
+
+        const appBanner = footer.appBanner || {};
+        setShowAppBanner(appBanner.show === true);
+        setShowAppStore(appBanner.showAppStore !== false);
+        setShowPlayStore(appBanner.showPlayStore !== false);
+        setAppStoreUrl(appBanner.appStoreUrl || '');
+        setPlayStoreUrl(appBanner.playStoreUrl || '');
       }
     } catch (e) {
       console.error('Failed to load footer config:', e);
@@ -93,6 +106,7 @@ export default function FooterEditor() {
               customLinks: linksToSave,
               social: { instagram, facebook, twitter, youtube },
               bottomNav: { shopRedirect, showCurrency },
+              appBanner: { show: showAppBanner, showAppStore, showPlayStore, appStoreUrl, playStoreUrl },
             },
           },
         }),
@@ -234,6 +248,130 @@ export default function FooterEditor() {
               <input type="text" value={youtube} onChange={(e) => setYoutube(e.target.value)} placeholder="https://youtube.com/..." style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
             </div>
           </div>
+        </div>
+      </div>
+
+      <div className="card" style={{ marginBottom: 20 }}>
+        <div className="card-header"><h3 className="card-title">App Download Banner</h3></div>
+        <div className="card-content">
+          <p style={{ fontSize: 13, color: '#64748b', marginTop: 0, marginBottom: 16 }}>
+            Show a "Download Our App" section in the footer with App Store and Google Play buttons.
+          </p>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: showAppBanner ? 20 : 0 }}>
+            <div>
+              <label style={{ fontWeight: 600, fontSize: 13, display: 'block' }}>Show App Banner</label>
+              <span style={{ fontSize: 12, color: '#94a3b8' }}>Display app download buttons in the footer</span>
+            </div>
+            <label style={{ position: 'relative', display: 'inline-block', width: 44, height: 24, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={showAppBanner}
+                onChange={() => setShowAppBanner(!showAppBanner)}
+                style={{ opacity: 0, width: 0, height: 0 }}
+              />
+              <span style={{
+                position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                backgroundColor: showAppBanner ? '#10b981' : '#cbd5e1',
+                borderRadius: 24, transition: 'background-color 0.2s',
+              }}>
+                <span style={{
+                  position: 'absolute', left: showAppBanner ? 22 : 2, top: 2,
+                  width: 20, height: 20, backgroundColor: '#fff',
+                  borderRadius: '50%', transition: 'left 0.2s',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                }} />
+              </span>
+            </label>
+          </div>
+
+          {showAppBanner && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <i className="fab fa-apple" style={{ fontSize: 18, color: '#000' }} />
+                  <div>
+                    <label style={{ fontWeight: 600, fontSize: 13, display: 'block' }}>App Store</label>
+                    <span style={{ fontSize: 12, color: '#94a3b8' }}>Apple App Store button</span>
+                  </div>
+                </div>
+                <label style={{ position: 'relative', display: 'inline-block', width: 44, height: 24, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={showAppStore}
+                    onChange={() => setShowAppStore(!showAppStore)}
+                    style={{ opacity: 0, width: 0, height: 0 }}
+                  />
+                  <span style={{
+                    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                    backgroundColor: showAppStore ? '#10b981' : '#cbd5e1',
+                    borderRadius: 24, transition: 'background-color 0.2s',
+                  }}>
+                    <span style={{
+                      position: 'absolute', left: showAppStore ? 22 : 2, top: 2,
+                      width: 20, height: 20, backgroundColor: '#fff',
+                      borderRadius: '50%', transition: 'left 0.2s',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                    }} />
+                  </span>
+                </label>
+              </div>
+              {showAppStore && (
+                <div>
+                  <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>App Store URL</label>
+                  <input
+                    type="text"
+                    value={appStoreUrl}
+                    onChange={(e) => setAppStoreUrl(e.target.value)}
+                    placeholder="https://apps.apple.com/app/..."
+                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }}
+                  />
+                </div>
+              )}
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <i className="fab fa-google-play" style={{ fontSize: 18, color: '#34a853' }} />
+                  <div>
+                    <label style={{ fontWeight: 600, fontSize: 13, display: 'block' }}>Google Play</label>
+                    <span style={{ fontSize: 12, color: '#94a3b8' }}>Google Play Store button</span>
+                  </div>
+                </div>
+                <label style={{ position: 'relative', display: 'inline-block', width: 44, height: 24, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={showPlayStore}
+                    onChange={() => setShowPlayStore(!showPlayStore)}
+                    style={{ opacity: 0, width: 0, height: 0 }}
+                  />
+                  <span style={{
+                    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                    backgroundColor: showPlayStore ? '#10b981' : '#cbd5e1',
+                    borderRadius: 24, transition: 'background-color 0.2s',
+                  }}>
+                    <span style={{
+                      position: 'absolute', left: showPlayStore ? 22 : 2, top: 2,
+                      width: 20, height: 20, backgroundColor: '#fff',
+                      borderRadius: '50%', transition: 'left 0.2s',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                    }} />
+                  </span>
+                </label>
+              </div>
+              {showPlayStore && (
+                <div>
+                  <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Google Play URL</label>
+                  <input
+                    type="text"
+                    value={playStoreUrl}
+                    onChange={(e) => setPlayStoreUrl(e.target.value)}
+                    placeholder="https://play.google.com/store/apps/..."
+                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }}
+                  />
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
