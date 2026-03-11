@@ -461,11 +461,28 @@ export async function ensureTablesExist(env) {
       console.error('Wishlists migration failed (non-fatal):', e.message || e);
     }
 
-    // Migration: Remove incorrect FK on user_id from orders, reviews,
+    // Migration: Remove incorrect FK on user_id from carts, orders, reviews,
     // payment_transactions, notifications, activity_log.
     // user_id in these tables can reference either users or site_customers,
     // so no single FK can be declared.
     const fkMigrations = [
+      {
+        table: 'carts',
+        detect: `REFERENCES users`,
+        create: `CREATE TABLE carts (
+          id TEXT PRIMARY KEY, site_id TEXT NOT NULL, user_id TEXT,
+          session_id TEXT, items TEXT NOT NULL DEFAULT '[]',
+          subtotal REAL DEFAULT 0,
+          created_at TEXT DEFAULT (datetime('now')),
+          updated_at TEXT DEFAULT (datetime('now')),
+          FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
+        )`,
+        indexes: [
+          'CREATE INDEX IF NOT EXISTS idx_carts_user ON carts(user_id)',
+          'CREATE INDEX IF NOT EXISTS idx_carts_session ON carts(session_id)',
+          'CREATE INDEX IF NOT EXISTS idx_carts_site ON carts(site_id)',
+        ],
+      },
       {
         table: 'orders',
         detect: `REFERENCES users`,

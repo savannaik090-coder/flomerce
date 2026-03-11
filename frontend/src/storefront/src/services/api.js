@@ -1,6 +1,10 @@
-const API_BASE_URL = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in')
-  ? ''
-  : 'https://fluxe.in';
+const API_BASE_URL = (() => {
+  if (typeof window === 'undefined') return 'https://fluxe.in';
+  const host = window.location.hostname;
+  if (host.endsWith('fluxe.in')) return '';
+  if (host.includes('replit.dev') || host.includes('repl.co') || host === 'localhost') return '';
+  return 'https://fluxe.in';
+})();
 
 export function getApiUrl(endpoint) {
   return `${API_BASE_URL}${endpoint}`;

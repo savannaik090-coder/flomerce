@@ -12,7 +12,8 @@
     "build:storefront": "cd frontend/storefront-src && npm run build"
   },
   "dependencies": {
-    "express": "^4.22.1"
+    "express": "^4.22.1",
+    "http-proxy-middleware": "^3.0.5"
   },
   "engines": {
     "node": ">=18.0.0"
