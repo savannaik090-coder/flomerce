@@ -10,10 +10,6 @@ export default function FooterEditor() {
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState('');
 
-  const [customLinks, setCustomLinks] = useState([]);
-  const [newLinkName, setNewLinkName] = useState('');
-  const [newLinkUrl, setNewLinkUrl] = useState('');
-
   const [instagram, setInstagram] = useState('');
   const [facebook, setFacebook] = useState('');
   const [twitter, setTwitter] = useState('');
@@ -57,8 +53,6 @@ export default function FooterEditor() {
           try { settings = JSON.parse(settings); } catch (e) { settings = {}; }
         }
         const footer = settings.footer || {};
-        setCustomLinks(footer.customLinks || []);
-
         let socialLinks = result.data.social_links || result.data.socialLinks || {};
         if (typeof socialLinks === 'string') {
           try { socialLinks = JSON.parse(socialLinks); } catch (e) { socialLinks = {}; }
@@ -87,37 +81,6 @@ export default function FooterEditor() {
     }
   }
 
-  function handleAddLink(e) {
-    if (e && e.preventDefault) e.preventDefault();
-    const name = newLinkName.trim();
-    if (!name) return;
-    setCustomLinks(function (prev) {
-      return prev.concat([{ name: name, url: newLinkUrl.trim() || '#' }]);
-    });
-    setNewLinkName('');
-    setNewLinkUrl('');
-  }
-
-  function handleRemoveLink(index) {
-    setCustomLinks(function (prev) {
-      return prev.filter(function (_, i) { return i !== index; });
-    });
-  }
-
-  function handleUpdateLink(index, field, value) {
-    setCustomLinks(function (prev) {
-      return prev.map(function (link, i) {
-        if (i === index) {
-          var updated = {};
-          for (var k in link) updated[k] = link[k];
-          updated[field] = value;
-          return updated;
-        }
-        return link;
-      });
-    });
-  }
-
   async function handleSave(e) {
     if (e && e.preventDefault) e.preventDefault();
     setSaving(true);
@@ -128,7 +91,6 @@ export default function FooterEditor() {
         settings: {
           social: { instagram: instagram, facebook: facebook, twitter: twitter, youtube: youtube },
           footer: {
-            customLinks: customLinks,
             social: { instagram: instagram, facebook: facebook, twitter: twitter, youtube: youtube },
             bottomNav: { shopRedirect: shopRedirect, showCurrency: showCurrency },
             appBanner: { show: showAppBanner, showAppStore: showAppStore, showPlayStore: showPlayStore, appStoreUrl: appStoreUrl, playStoreUrl: playStoreUrl },
@@ -165,85 +127,6 @@ export default function FooterEditor() {
 
   return (
     <div style={{ maxWidth: 700 }}>
-      <div className="card" style={{ marginBottom: 20 }}>
-        <div className="card-header"><h3 className="card-title">Footer Navigation Links</h3></div>
-        <div className="card-content">
-          <p style={{ fontSize: 13, color: '#64748b', marginTop: 0, marginBottom: 16 }}>
-            Add custom links that appear in the "Exclusive Benefits" section of your footer. Enter a link name and URL for each.
-          </p>
-
-          {customLinks.length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
-              {customLinks.map(function (link, idx) {
-                return (
-                  <div key={'link-' + idx} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <input
-                      type="text"
-                      value={link.name}
-                      onChange={function (ev) { handleUpdateLink(idx, 'name', ev.target.value); }}
-                      placeholder="Link name"
-                      style={{ flex: 1, padding: '8px 10px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }}
-                    />
-                    <input
-                      type="text"
-                      value={link.url}
-                      onChange={function (ev) { handleUpdateLink(idx, 'url', ev.target.value); }}
-                      placeholder="URL (e.g. /about or https://...)"
-                      style={{ flex: 1, padding: '8px 10px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }}
-                    />
-                    <button
-                      type="button"
-                      onClick={function () { handleRemoveLink(idx); }}
-                      style={{
-                        width: 30, height: 30, borderRadius: '50%', border: 'none',
-                        background: '#fee2e2', color: '#ef4444', cursor: 'pointer',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: 14, flexShrink: 0,
-                      }}
-                    >
-                      <i className="fas fa-times" />
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <input
-              type="text"
-              value={newLinkName}
-              onChange={function (ev) { setNewLinkName(ev.target.value); }}
-              placeholder="Link name"
-              onKeyDown={function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); handleAddLink(); } }}
-              style={{ flex: 1, padding: '8px 10px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }}
-            />
-            <input
-              type="text"
-              value={newLinkUrl}
-              onChange={function (ev) { setNewLinkUrl(ev.target.value); }}
-              placeholder="URL"
-              onKeyDown={function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); handleAddLink(); } }}
-              style={{ flex: 1, padding: '8px 10px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }}
-            />
-            <button type="button" onClick={function () { handleAddLink(); }} style={{
-              padding: '8px 16px', background: '#2563eb', color: '#fff', border: 'none',
-              borderRadius: 6, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
-              fontSize: 13, fontWeight: 600, fontFamily: 'inherit',
-              display: 'flex', alignItems: 'center', gap: 4,
-            }}>
-              <i className="fas fa-plus" style={{ fontSize: 11 }} />
-              Add
-            </button>
-          </div>
-          {customLinks.length > 0 && (
-            <p style={{ fontSize: 12, color: '#10b981', marginTop: 8, marginBottom: 0 }}>
-              {customLinks.length} link{customLinks.length > 1 ? 's' : ''} added. Click "Save Footer Settings" below to save.
-            </p>
-          )}
-        </div>
-      </div>
-
       <div className="card" style={{ marginBottom: 20 }}>
         <div className="card-header"><h3 className="card-title">Social Media Links</h3></div>
         <div className="card-content">
