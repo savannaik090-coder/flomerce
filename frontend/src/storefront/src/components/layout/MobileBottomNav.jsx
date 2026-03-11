@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { CartContext } from '../../context/CartContext.jsx';
 import { AuthContext } from '../../context/AuthContext.jsx';
 import { CurrencyContext } from '../../context/CurrencyContext.jsx';
+import { SiteContext } from '../../context/SiteContext.jsx';
 
 const CURRENCY_FLAGS = {
   INR: '🇮🇳', USD: '🇺🇸', EUR: '🇪🇺', GBP: '🇬🇧', AED: '🇦🇪', CAD: '🇨🇦', AUD: '🇦🇺',
@@ -15,6 +16,12 @@ export default function MobileBottomNav({ onCartOpen }) {
   const { cartCount } = useContext(CartContext);
   const { isAuthenticated } = useContext(AuthContext);
   const { currency, setCurrency } = useContext(CurrencyContext);
+  const { siteConfig } = useContext(SiteContext);
+
+  const footerSettings = siteConfig?.settings?.footer || {};
+  const bottomNav = footerSettings.bottomNav || {};
+  const shopRedirect = bottomNav.shopRedirect || '/category/all';
+  const showCurrency = bottomNav.showCurrency !== false;
 
   return (
     <nav className="bottom-nav">
@@ -22,7 +29,7 @@ export default function MobileBottomNav({ onCartOpen }) {
         <i className="fi fi-rs-home"></i>
         <span>Home</span>
       </Link>
-      <Link to="/category/all" className="bottom-nav-item">
+      <Link to={shopRedirect} className="bottom-nav-item">
         <i className="fi fi-rs-shop"></i>
         <span>Shop</span>
       </Link>
@@ -30,19 +37,21 @@ export default function MobileBottomNav({ onCartOpen }) {
         <i className="fi fi-rs-user"></i>
         <span>Account</span>
       </Link>
-      <div className="bottom-nav-item currency-selector-wrapper">
-        <span className="currency-flag-display">{CURRENCY_FLAGS[currency] || '🌐'}</span>
-        <span className="currency-code-display">{currency}</span>
-        <select
-          className="currency-select"
-          value={currency}
-          onChange={(e) => setCurrency(e.target.value)}
-        >
-          {CURRENCIES.map((c) => (
-            <option key={c} value={c}>{c}</option>
-          ))}
-        </select>
-      </div>
+      {showCurrency && (
+        <div className="bottom-nav-item currency-selector-wrapper">
+          <span className="currency-flag-display">{CURRENCY_FLAGS[currency] || '🌐'}</span>
+          <span className="currency-code-display">{currency}</span>
+          <select
+            className="currency-select"
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value)}
+          >
+            {CURRENCIES.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+        </div>
+      )}
       <a href="#" className="bottom-nav-item" onClick={(e) => { e.preventDefault(); onCartOpen?.(); }}>
         <i className="fi fi-rs-shopping-bag"></i>
         <span>Bag</span>

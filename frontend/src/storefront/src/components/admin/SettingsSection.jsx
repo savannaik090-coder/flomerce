@@ -11,10 +11,6 @@ export default function SettingsSection() {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [address, setAddress] = useState('');
-  const [instagram, setInstagram] = useState('');
-  const [facebook, setFacebook] = useState('');
-  const [twitter, setTwitter] = useState('');
-  const [youtube, setYoutube] = useState('');
   const [razorpayKeyId, setRazorpayKeyId] = useState('');
   const [razorpayKeySecret, setRazorpayKeySecret] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
@@ -37,18 +33,10 @@ export default function SettingsSection() {
         if (typeof settings === 'string') {
           try { settings = JSON.parse(settings); } catch (e) { settings = {}; }
         }
-        let socialLinks = data.social_links || data.socialLinks || {};
-        if (typeof socialLinks === 'string') {
-          try { socialLinks = JSON.parse(socialLinks); } catch (e) { socialLinks = {}; }
-        }
         setBrandName(data.brand_name || data.brandName || '');
         setPhone(settings.phone || data.phone || '');
         setEmail(settings.email || data.email || '');
         setAddress(settings.address || data.address || '');
-        setInstagram(settings.social?.instagram || socialLinks.instagram || '');
-        setFacebook(settings.social?.facebook || socialLinks.facebook || '');
-        setTwitter(settings.social?.twitter || socialLinks.twitter || '');
-        setYoutube(settings.social?.youtube || socialLinks.youtube || '');
         setRazorpayKeyId(settings.razorpayKeyId || '');
         setRazorpayKeySecret(settings.razorpayKeySecret || '');
       }
@@ -68,7 +56,6 @@ export default function SettingsSection() {
         phone,
         email,
         address,
-        social: { instagram, facebook, twitter, youtube },
       };
       if (razorpayKeyId) {
         settings.razorpayKeyId = razorpayKeyId;
@@ -159,30 +146,6 @@ export default function SettingsSection() {
             <div>
               <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Address</label>
               <textarea value={address} onChange={(e) => setAddress(e.target.value)} rows={2} placeholder="Store address" style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }} />
-            </div>
-          </div>
-        </div>
-
-        <div className="card" style={{ marginBottom: 20 }}>
-          <div className="card-header"><h3 className="card-title">Social Links</h3></div>
-          <div className="card-content">
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-              <div>
-                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Instagram</label>
-                <input type="text" value={instagram} onChange={(e) => setInstagram(e.target.value)} placeholder="https://instagram.com/..." style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Facebook</label>
-                <input type="text" value={facebook} onChange={(e) => setFacebook(e.target.value)} placeholder="https://facebook.com/..." style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Twitter</label>
-                <input type="text" value={twitter} onChange={(e) => setTwitter(e.target.value)} placeholder="https://twitter.com/..." style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>YouTube</label>
-                <input type="text" value={youtube} onChange={(e) => setYoutube(e.target.value)} placeholder="https://youtube.com/..." style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
-              </div>
             </div>
           </div>
         </div>

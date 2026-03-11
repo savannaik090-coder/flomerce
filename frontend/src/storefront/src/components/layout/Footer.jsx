@@ -6,7 +6,17 @@ export default function Footer() {
   const { siteConfig } = useContext(SiteContext);
   const [openSections, setOpenSections] = useState({});
   const categories = siteConfig?.categories || [];
-  const socialLinks = siteConfig?.socialLinks || {};
+
+  let settings = siteConfig?.settings || {};
+  if (typeof settings === 'string') {
+    try { settings = JSON.parse(settings); } catch (e) { settings = {}; }
+  }
+  const footerConfig = settings.footer || {};
+  const customLinks = footerConfig.customLinks || [];
+
+  const socialLinks = footerConfig.social
+    ? footerConfig.social
+    : (siteConfig?.socialLinks || settings.social || {});
 
   const hasSocialLinks = socialLinks.instagram || socialLinks.facebook || socialLinks.twitter || socialLinks.youtube;
 
@@ -64,17 +74,27 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="footer-section">
-          <button className="footer-toggle" onClick={() => toggleSection('benefits')}>
-            <span className="footer-title">Exclusive benefits</span>
-            <i className={`fas fa-chevron-down`} style={openSections.benefits ? { transform: 'rotate(180deg)' } : {}}></i>
-          </button>
-          <div className={`footer-content${openSections.benefits ? ' show' : ''}`}>
-            <ul>
-              <li><a href="#">Personal Styling</a></li>
-            </ul>
+        {customLinks.length > 0 && (
+          <div className="footer-section">
+            <button className="footer-toggle" onClick={() => toggleSection('benefits')}>
+              <span className="footer-title">Exclusive benefits</span>
+              <i className={`fas fa-chevron-down`} style={openSections.benefits ? { transform: 'rotate(180deg)' } : {}}></i>
+            </button>
+            <div className={`footer-content${openSections.benefits ? ' show' : ''}`}>
+              <ul>
+                {customLinks.map((link, idx) => (
+                  <li key={idx}>
+                    {link.url && link.url.startsWith('http') ? (
+                      <a href={link.url} target="_blank" rel="noopener noreferrer">{link.name}</a>
+                    ) : (
+                      <Link to={link.url || '#'}>{link.name}</Link>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
-        </div>
+        )}
 
         {hasSocialLinks && (
           <div className="footer-social-section">

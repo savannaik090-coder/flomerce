@@ -9,6 +9,7 @@ import CustomerReviewsEditor from './CustomerReviewsEditor.jsx';
 import AboutUsEditor from './AboutUsEditor.jsx';
 import TermsEditor from './TermsEditor.jsx';
 import PrivacyEditor from './PrivacyEditor.jsx';
+import FooterEditor from './FooterEditor.jsx';
 
 const SUB_TABS = [
   { id: 'promo-banner', icon: 'fa-bullhorn', label: 'Promo Banner' },
@@ -21,6 +22,7 @@ const SUB_TABS = [
   { id: 'about-us', icon: 'fa-info-circle', label: 'About Us' },
   { id: 'terms', icon: 'fa-file-contract', label: 'Terms & Conditions' },
   { id: 'privacy', icon: 'fa-user-shield', label: 'Privacy Policy' },
+  { id: 'footer', icon: 'fa-shoe-prints', label: 'Footer' },
 ];
 
 export default function WebsiteContentSection() {
@@ -65,6 +67,7 @@ export default function WebsiteContentSection() {
       {activeTab === 'about-us' && <AboutUsEditor />}
       {activeTab === 'terms' && <TermsEditor />}
       {activeTab === 'privacy' && <PrivacyEditor />}
+      {activeTab === 'footer' && <FooterEditor />}
     </div>
   );
 }

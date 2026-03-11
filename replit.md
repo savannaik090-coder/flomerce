@@ -147,10 +147,20 @@ Fluxe is a multi-tenant SaaS platform that allows users to create their own e-co
 - Frontend SettingsSection only sends razorpayKeyId/razorpayKeySecret when they have values, to avoid overwriting existing credentials with empty strings
 
 ## Social Links Data Flow
-- Admin panel saves social links inside `settings` JSON column as `settings.social` (e.g., `{ social: { instagram: "url" } }`)
+- Social links are now managed in the Footer Editor (Edit Website > Footer tab), saved to both `settings.footer.social` and `settings.social` for backward compatibility
 - Backend API (`index.js` `handleSiteInfo`) merges `settings.social` into `socialLinks` when returning site config, with `settings.social` taking precedence over the legacy `social_links` column
-- If a platform is cleared in admin (empty string), it removes any stale value from `social_links`
-- Storefront footer (`Footer.jsx`) conditionally renders only the social icons that have a URL set
+- Footer.jsx reads social links from `settings.footer.social` (authoritative when footer config exists), falling back to `siteConfig.socialLinks` or `settings.social` for sites that haven't used the new editor yet
+- Social links fields removed from SettingsSection.jsx (no longer in Settings panel)
+
+## Footer Editor (Admin Panel)
+- Admin panel "Edit Website" tab includes a "Footer" sub-tab (`FooterEditor.jsx`)
+- Three configuration sections:
+  1. **Custom Footer Links**: Add/edit/remove links for the "Exclusive Benefits" footer section (name + URL pairs). External URLs open in new tab, internal paths use React Router.
+  2. **Social Media Links**: Instagram, Facebook, Twitter, YouTube URLs (moved from Settings panel). Saves to both `settings.footer.social` and `settings.social` for compatibility.
+  3. **Bottom Navigation Bar**: Shop icon redirect (dropdown with All Products, Featured, New Arrivals, plus all categories), Currency selector show/hide toggle.
+- All config stored in `settings.footer`: `{ customLinks: [{name, url}], social: {instagram, facebook, twitter, youtube}, bottomNav: {shopRedirect: string, showCurrency: bool} }`
+- Footer.jsx renders custom links dynamically in the "Exclusive Benefits" section (section hidden when no links configured)
+- MobileBottomNav.jsx reads `settings.footer.bottomNav.shopRedirect` (default: `/category/all`) and `settings.footer.bottomNav.showCurrency` (default: `true`)
 
 ## Image Storage (R2)
 - Product images are uploaded to **Cloudflare R2** bucket (`saas-platform-s`, binding `STORAGE`)
