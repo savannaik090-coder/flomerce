@@ -22,7 +22,7 @@
   position: relative;
   z-index: 2;
   text-align: center;
-  padding: 80px 24px 70px;
+  padding: 80px 24px 40px;
   max-width: 720px;
   margin: 0 auto;
   animation: aboutFadeUp 0.8s ease-out;
@@ -64,7 +64,7 @@
   width: 50px;
   height: 2px;
   background: linear-gradient(90deg, #d4af37, #f0d78c);
-  margin: 32px auto 0;
+  margin: 20px auto 0;
   border-radius: 2px;
 }
 
