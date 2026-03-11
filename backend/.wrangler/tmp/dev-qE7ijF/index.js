@@ -3278,8 +3278,8 @@ async function addToWishlist(request, env, user, siteId) {
       return errorResponse("Product not found", 404);
     }
     const existing = await env.DB.prepare(
-      "SELECT id FROM wishlists WHERE user_id = ? AND product_id = ?"
-    ).bind(user.id, productId).first();
+      "SELECT id FROM wishlists WHERE user_id = ? AND product_id = ? AND site_id = ?"
+    ).bind(user.id, productId, siteId).first();
     if (existing) {
       return errorResponse("Product already in wishlist", 400, "ALREADY_EXISTS");
     }
