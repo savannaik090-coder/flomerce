@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { useSiteConfig } from '../../hooks/useSiteConfig.js';
+import { resolveImageUrl } from '../../utils/imageUrl.js';
 
 const defaultReviews = [
   { text: '"Received parcel. Jewelry quality is excellent. Thank you so much!"', rating: 5, image: '' },
@@ -14,10 +15,13 @@ export default function CustomerReviews() {
   const scrollRef = useRef(null);
   const [modalImage, setModalImage] = useState(null);
 
-  const reviews = siteConfig?.settings?.reviews?.length
-    ? siteConfig.settings.reviews
+  const settings = siteConfig?.settings || {};
+  const reviews = settings.reviews?.length
+    ? settings.reviews
     : defaultReviews;
 
+  const sectionTitle = settings.reviewsSectionTitle || 'What Our Customers Say';
+  const sectionSubtitle = settings.reviewsSectionSubtitle || 'Real reviews from our happy customers';
   const phone = siteConfig?.phone || '';
 
   const scroll = (direction) => {
@@ -36,8 +40,8 @@ export default function CustomerReviews() {
     <section className="customer-reviews-section" id="customer-reviews">
       <div className="reviews-container">
         <div className="reviews-header">
-          <h2 className="section-title">What Our Customers Say</h2>
-          <p className="section-subtitle">Real reviews from our happy customers</p>
+          <h2 className="section-title">{sectionTitle}</h2>
+          <p className="section-subtitle">{sectionSubtitle}</p>
         </div>
 
         <div className="reviews-wrapper">
@@ -54,9 +58,9 @@ export default function CustomerReviews() {
                 {review.image && (
                   <div
                     className="review-image"
-                    onClick={() => setModalImage(review.image)}
+                    onClick={() => setModalImage(resolveImageUrl(review.image))}
                   >
-                    <img src={review.image} alt={`Customer Review ${i + 1}`} />
+                    <img src={resolveImageUrl(review.image)} alt={`Customer Review ${i + 1}`} />
                   </div>
                 )}
                 <div className="review-content">

@@ -245,8 +245,20 @@ wrangler secret put RESEND_API_KEY      # Or SENDGRID_API_KEY
 - Admin can configure: video upload (to R2), title, description, chat button text, chat button link
 - If no chat link is provided, falls back to the store's WhatsApp number
 - Settings keys: `featuredVideoTitle`, `featuredVideoDescription`, `featuredVideoUrl`, `featuredVideoKey`, `featuredVideoChatLink`, `featuredVideoChatButtonText`
-- Homepage positioning: appears after all category sections, before Product Showcase
+- Category-based defaults: title and description auto-set based on business category (jewellery, clothing, electronics) during site creation and as frontend fallbacks
+- Homepage positioning: appears right after Watch & Buy section, before remaining category sections
 - Section is hidden when no video is configured
+
+## Customer Reviews Section
+- Dynamic customer reviews section on homepage with scrollable review cards
+- Component: `CustomerReviews.jsx`, CSS: `reviews.css`
+- Admin panel: "Edit Website" > "Customer Reviews" sub-tab (`CustomerReviewsEditor.jsx`)
+- Admin can configure: section title, section subtitle, and individual reviews (add/edit/delete)
+- Each review has: text, customer name (optional), star rating (1-5), image (optional, uploaded to R2)
+- Settings keys: `reviewsSectionTitle`, `reviewsSectionSubtitle`, `reviews` (array of review objects)
+- Default section title: "What Our Customers Say", subtitle: "Real reviews from our happy customers"
+- Falls back to hardcoded default reviews if no reviews configured in settings
+- Review images use `resolveImageUrl()` for proper URL resolution across environments
 
 ## Storefront Navbar Layout
 - Navbar uses `position: sticky` (not fixed/floating) — sits in normal document flow below the promo banner
