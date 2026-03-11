@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef, useCallback } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { getCategories } from '../../services/categoryService.js';
 
@@ -29,6 +29,16 @@ export default function FooterEditor() {
   const [playStoreUrl, setPlayStoreUrl] = useState('');
 
   const [categories, setCategories] = useState([]);
+
+  const linksRef = useRef(customLinks);
+  const socialRef = useRef({ instagram, facebook, twitter, youtube });
+  const bottomNavRef = useRef({ shopRedirect, showCurrency });
+  const appBannerRef = useRef({ show: showAppBanner, showAppStore, showPlayStore, appStoreUrl, playStoreUrl });
+
+  useEffect(() => { linksRef.current = customLinks; }, [customLinks]);
+  useEffect(() => { socialRef.current = { instagram, facebook, twitter, youtube }; }, [instagram, facebook, twitter, youtube]);
+  useEffect(() => { bottomNavRef.current = { shopRedirect, showCurrency }; }, [shopRedirect, showCurrency]);
+  useEffect(() => { appBannerRef.current = { show: showAppBanner, showAppStore, showPlayStore, appStoreUrl, playStoreUrl }; }, [showAppBanner, showAppStore, showPlayStore, appStoreUrl, playStoreUrl]);
 
   useEffect(() => {
     if (siteConfig?.id) {
@@ -87,31 +97,38 @@ export default function FooterEditor() {
     }
   }
 
-  async function saveFooterConfig(overrideLinks) {
-    const linksToSave = Array.isArray(overrideLinks) ? overrideLinks : customLinks;
+  const doSave = useCallback(async function doSave(linksOverride) {
+    const links = linksOverride !== undefined ? linksOverride : linksRef.current;
+    const social = socialRef.current;
+    const nav = bottomNavRef.current;
+    const app = appBannerRef.current;
+
     setSaving(true);
     setStatus('');
     try {
       const token = sessionStorage.getItem('site_admin_token');
+      const payload = {
+        settings: {
+          social: { ...social },
+          footer: {
+            customLinks: links,
+            social: { ...social },
+            bottomNav: { ...nav },
+            appBanner: { ...app },
+          },
+        },
+      };
+      console.log('[FooterEditor] Saving payload:', JSON.stringify(payload));
       const response = await fetch(`${API_BASE}/api/sites/${siteConfig.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': token ? `SiteAdmin ${token}` : '',
         },
-        body: JSON.stringify({
-          settings: {
-            social: { instagram, facebook, twitter, youtube },
-            footer: {
-              customLinks: linksToSave,
-              social: { instagram, facebook, twitter, youtube },
-              bottomNav: { shopRedirect, showCurrency },
-              appBanner: { show: showAppBanner, showAppStore, showPlayStore, appStoreUrl, playStoreUrl },
-            },
-          },
-        }),
+        body: JSON.stringify(payload),
       });
       const result = await response.json();
+      console.log('[FooterEditor] Save response:', response.status, JSON.stringify(result));
       if (response.ok && result.success) {
         setStatus('success');
         if (refetchSite) refetchSite();
@@ -119,11 +136,12 @@ export default function FooterEditor() {
         setStatus('error:' + (result.error || 'Unknown error'));
       }
     } catch (e) {
+      console.error('[FooterEditor] Save error:', e);
       setStatus('error:' + e.message);
     } finally {
       setSaving(false);
     }
-  }
+  }, [siteConfig?.id, refetchSite]);
 
   async function handleAddLink() {
     if (!newLinkName.trim()) return;
@@ -132,13 +150,13 @@ export default function FooterEditor() {
     setCustomLinks(updated);
     setNewLinkName('');
     setNewLinkUrl('');
-    await saveFooterConfig(updated);
+    await doSave(updated);
   }
 
   async function handleRemoveLink(index) {
     const updated = customLinks.filter((_, i) => i !== index);
     setCustomLinks(updated);
-    await saveFooterConfig(updated);
+    await doSave(updated);
   }
 
   function handleUpdateLink(index, field, value) {
@@ -209,7 +227,7 @@ export default function FooterEditor() {
               onKeyDown={(e) => e.key === 'Enter' && handleAddLink()}
               style={{ flex: 1, padding: '8px 10px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }}
             />
-            <button className="btn btn-primary btn-sm" onClick={handleAddLink} style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
+            <button className="btn btn-primary btn-sm" onClick={() => handleAddLink()} style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
               <i className="fas fa-plus" style={{ marginRight: 4 }} />Add
             </button>
           </div>
@@ -439,7 +457,7 @@ export default function FooterEditor() {
         </div>
       )}
 
-      <button className="btn btn-primary" onClick={saveFooterConfig} disabled={saving} style={{ width: '100%' }}>
+      <button className="btn btn-primary" onClick={() => doSave()} disabled={saving} style={{ width: '100%' }}>
         {saving ? 'Saving...' : 'Save Footer Settings'}
       </button>
     </div>
