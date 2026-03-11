@@ -75,36 +75,33 @@ export default function AboutPage() {
   return (
     <div className="about-page">
       <section className="about-hero">
-        <div className="container">
-          <div className="about-hero-content">
-            <h1>About {brandName}</h1>
-            <p>{heroSubtitle}</p>
-          </div>
+        <div className="about-hero-overlay" />
+        <div className="about-hero-inner">
+          <span className="about-hero-label">Our Story</span>
+          <h1>About {brandName}</h1>
+          <p>{heroSubtitle}</p>
+          <div className="about-hero-divider" />
         </div>
       </section>
 
-      <section className="founder-section">
-        <div className="founder-container">
-          <div className="founder-image">
+      <section className="about-story">
+        <div className="about-story-inner">
+          <div className="about-story-image-wrap">
             {resolvedStoryImage ? (
-              <img src={resolvedStoryImage} alt={brandName} />
+              <img src={resolvedStoryImage} alt={brandName} className="about-story-img" />
             ) : siteConfig?.logoUrl ? (
-              <img src={siteConfig.logoUrl} alt={brandName} />
+              <img src={siteConfig.logoUrl} alt={brandName} className="about-story-img" />
             ) : (
-              <div style={{
-                width: '100%', maxWidth: 450, height: 400, borderRadius: 8,
-                background: 'linear-gradient(135deg, #f9f5f0, #ede5d8)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                position: 'relative', zIndex: 2,
-                fontSize: 64, color: '#d4af37',
-              }}>
+              <div className="about-story-placeholder">
                 <i className="fas fa-store"></i>
               </div>
             )}
+            <div className="about-story-image-accent" />
           </div>
-          <div className="founder-content">
+          <div className="about-story-text">
+            <span className="about-section-eyebrow">{storyHeading}</span>
             <h2>{brandName}</h2>
-            <div className="title">{storyHeading}</div>
+            <div className="about-story-divider" />
             {storyParagraphs.map((paragraph, idx) => (
               <p key={idx}>{paragraph}</p>
             ))}
@@ -112,12 +109,17 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <section className="mission-section">
-        <div className="mission-content">
+      <section className="about-mission">
+        <div className="about-mission-bg" />
+        <div className="about-mission-inner">
+          <span className="about-mission-eyebrow">{missionHeading}</span>
           <h2>{missionHeading}</h2>
-          {missionParagraphs.map((paragraph, idx) => (
-            <p key={idx}>{paragraph}</p>
-          ))}
+          <div className="about-mission-divider" />
+          <div className="about-mission-text">
+            {missionParagraphs.map((paragraph, idx) => (
+              <p key={idx}>{paragraph}</p>
+            ))}
+          </div>
         </div>
       </section>
     </div>
