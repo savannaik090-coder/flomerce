@@ -19,7 +19,7 @@ export default function FooterEditor() {
   const [twitter, setTwitter] = useState('');
   const [youtube, setYoutube] = useState('');
 
-  const [shopRedirect, setShopRedirect] = useState('/category/all');
+  const [shopRedirect, setShopRedirect] = useState('');
   const [showCurrency, setShowCurrency] = useState(true);
 
   const [categories, setCategories] = useState([]);
@@ -64,7 +64,7 @@ export default function FooterEditor() {
         setYoutube(social.youtube || settings.social?.youtube || socialLinks.youtube || '');
 
         const bottomNav = footer.bottomNav || {};
-        setShopRedirect(bottomNav.shopRedirect || '/category/all');
+        setShopRedirect(bottomNav.shopRedirect || '');
         setShowCurrency(bottomNav.showCurrency !== false);
       }
     } catch (e) {
@@ -74,7 +74,8 @@ export default function FooterEditor() {
     }
   }
 
-  async function saveFooterConfig() {
+  async function saveFooterConfig(overrideLinks) {
+    const linksToSave = overrideLinks !== undefined ? overrideLinks : customLinks;
     setSaving(true);
     setStatus('');
     try {
@@ -89,7 +90,7 @@ export default function FooterEditor() {
           settings: {
             social: { instagram, facebook, twitter, youtube },
             footer: {
-              customLinks,
+              customLinks: linksToSave,
               social: { instagram, facebook, twitter, youtube },
               bottomNav: { shopRedirect, showCurrency },
             },
@@ -110,29 +111,27 @@ export default function FooterEditor() {
     }
   }
 
-  function handleAddLink() {
+  async function handleAddLink() {
     if (!newLinkName.trim()) return;
     const link = { name: newLinkName.trim(), url: newLinkUrl.trim() || '#' };
     const updated = [...customLinks, link];
     setCustomLinks(updated);
     setNewLinkName('');
     setNewLinkUrl('');
+    await saveFooterConfig(updated);
   }
 
-  function handleRemoveLink(index) {
-    setCustomLinks(prev => prev.filter((_, i) => i !== index));
+  async function handleRemoveLink(index) {
+    const updated = customLinks.filter((_, i) => i !== index);
+    setCustomLinks(updated);
+    await saveFooterConfig(updated);
   }
 
   function handleUpdateLink(index, field, value) {
     setCustomLinks(prev => prev.map((link, i) => i === index ? { ...link, [field]: value } : link));
   }
 
-  const shopRedirectOptions = [
-    { value: '/category/all', label: 'All Products' },
-    { value: '/category/featured', label: 'Featured Collection' },
-    { value: '/category/new-arrivals', label: 'New Arrivals' },
-    ...categories.map(cat => ({ value: `/category/${cat.slug}`, label: cat.name })),
-  ];
+  const shopRedirectOptions = categories.map(cat => ({ value: `/category/${cat.slug}`, label: cat.name }));
 
   if (loading) return <div className="loading-spinner-admin"><div className="spinner" /></div>;
 
@@ -254,6 +253,7 @@ export default function FooterEditor() {
               onChange={(e) => setShopRedirect(e.target.value)}
               style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit', background: '#fff' }}
             >
+              <option value="">Select a category</option>
               {shopRedirectOptions.map(opt => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
               ))}

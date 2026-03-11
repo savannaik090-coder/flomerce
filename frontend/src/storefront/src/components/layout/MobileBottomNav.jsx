@@ -20,7 +20,7 @@ export default function MobileBottomNav({ onCartOpen }) {
 
   const footerSettings = siteConfig?.settings?.footer || {};
   const bottomNav = footerSettings.bottomNav || {};
-  const shopRedirect = bottomNav.shopRedirect || '/category/all';
+  const shopRedirect = bottomNav.shopRedirect || '/';
   const showCurrency = bottomNav.showCurrency !== false;
 
   return (
