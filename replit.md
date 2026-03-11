@@ -260,6 +260,33 @@ wrangler secret put RESEND_API_KEY      # Or SENDGRID_API_KEY
 - Falls back to hardcoded default reviews if no reviews configured in settings
 - Review images use `resolveImageUrl()` for proper URL resolution across environments
 
+## About Us Page (Dynamic)
+- Redesigned About Us page with aesthetic design (gradients, gold accents, card hover effects)
+- Component: `AboutPage.jsx`, CSS: `about.css` (extracted from inline styles)
+- Admin panel: "Edit Website" > "About Us" sub-tab (`AboutUsEditor.jsx`)
+- All content dynamic from `settings.aboutPage` with category-based defaults (jewellery, clothing, electronics, generic)
+- Sections: Hero (subtitle), Story (heading, text, image upload to R2), Values (heading, subtitle, 3 cards with icon/title/description), Mission (heading, text)
+- Admin fields pre-filled with actual default content based on business category (not placeholders)
+- Supports `{brandName}` interpolation in defaults
+- Story image priority: uploaded image > store logo > placeholder icon
+- Multi-paragraph text (storyText, missionText) split on `\n\n` for rendering
+
+## Terms & Conditions Page (Dynamic)
+- Component: `TermsPage.jsx`
+- Admin panel: "Edit Website" > "Terms & Conditions" sub-tab (`TermsEditor.jsx`)
+- Content from `settings.termsContent`: `{ intro: string, sections: [{title, content}] }`
+- Admin can add/remove/reorder sections, edit all text
+- Fields pre-filled with default 10-section terms content on first load
+- Supports `{brand}`, `{email}`, `{phone}` placeholder interpolation in custom content
+- Falls back to hardcoded defaults when no custom content configured
+
+## Privacy Policy Page (Dynamic)
+- Component: `PrivacyPolicyPage.jsx`
+- Admin panel: "Edit Website" > "Privacy Policy" sub-tab (`PrivacyEditor.jsx`)
+- Content from `settings.privacyContent`: `{ intro: string, sections: [{title, content}] }`
+- Same pattern as Terms editor: add/remove sections, pre-filled defaults
+- Falls back to hardcoded 9-section privacy policy when not configured
+
 ## Storefront Navbar Layout
 - Navbar uses `position: sticky` (not fixed/floating) — sits in normal document flow below the promo banner
 - Solid white background, full-width, no border-radius pill shape

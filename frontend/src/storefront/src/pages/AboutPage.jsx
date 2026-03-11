@@ -1,171 +1,125 @@
 import React from 'react';
 import { useSiteConfig } from '../hooks/useSiteConfig.js';
+import { resolveImageUrl } from '../utils/imageUrl.js';
+import '../styles/about.css';
+
+const CATEGORY_DEFAULTS = {
+  jewellery: {
+    heroSubtitle: 'Discover our story, heritage, and the passion behind every exquisite piece we create',
+    storyHeading: 'Our Heritage',
+    storyText: 'Welcome to {brandName}. We are dedicated to bringing you the finest jewellery with unmatched quality and craftsmanship that speaks for itself.\n\nOur commitment to authentic craftsmanship and traditional artistry has made us one of the most trusted names in the jewellery industry. Every piece in our collection reflects expertise, artistic brilliance, and timeless beauty.\n\nWe believe in creating experiences, not just jewellery. Each item is carefully curated and crafted to perfection for discerning customers worldwide.',
+    valuesHeading: 'What We Offer',
+    valuesSubtitle: 'Our commitment to excellence drives everything we do, from sourcing to delivery',
+    values: [
+      { icon: 'fas fa-certificate', title: 'Authentic & Pure', description: 'Every piece is crafted with original materials and artistry. We guarantee authenticity and purity, ensuring that traditional craftsmanship is preserved and honored.' },
+      { icon: 'fas fa-globe-americas', title: 'Worldwide Shipping', description: 'We deliver happiness across borders with a smooth and timely shopping experience. Our global reach ensures that elegance reaches customers worldwide.' },
+      { icon: 'fas fa-gem', title: 'Exclusive Designs', description: 'Unique collections that bring luxury and tradition together. Each design is carefully curated to offer something special — pieces that you won\'t find anywhere else.' },
+    ],
+    missionHeading: 'Our Mission',
+    missionText: '{brandName} is more than just a brand – it is a commitment to excellence, quality, and customer satisfaction that drives everything we do.\n\nWe aim to preserve and promote the finest traditions of craftsmanship, creating masterpieces that blend timeless elegance with contemporary appeal.\n\nOur commitment extends beyond creating beautiful products – we are dedicated to supporting artisans, preserving techniques, and ensuring that this heritage continues to shine for generations to come.',
+  },
+  clothing: {
+    heroSubtitle: 'Discover our story and the passion behind every collection we design',
+    storyHeading: 'Our Story',
+    storyText: 'Welcome to {brandName}. We are passionate about fashion and dedicated to bringing you stylish, high-quality clothing for every occasion.\n\nOur team of designers draws inspiration from global trends while staying true to timeless style. Every garment in our collection is thoughtfully designed and crafted with attention to detail.\n\nWe believe fashion should be accessible, comfortable, and expressive. That\'s why we create versatile pieces that help you look and feel your best.',
+    valuesHeading: 'Why Choose Us',
+    valuesSubtitle: 'Fashion-forward designs with uncompromising quality',
+    values: [
+      { icon: 'fas fa-tshirt', title: 'Premium Quality', description: 'We use only the finest fabrics and materials. Every garment goes through rigorous quality checks to ensure comfort, durability, and a perfect fit.' },
+      { icon: 'fas fa-shipping-fast', title: 'Fast Delivery', description: 'Quick and reliable shipping so you get your favourite styles without the wait. We deliver across the country with care and speed.' },
+      { icon: 'fas fa-paint-brush', title: 'Trending Designs', description: 'Stay ahead of the curve with our latest collections. Our designers create fresh, on-trend styles that keep your wardrobe current and exciting.' },
+    ],
+    missionHeading: 'Our Mission',
+    missionText: '{brandName} is more than just a clothing brand – it is about empowering you to express yourself through style.\n\nWe aim to make fashion accessible and sustainable, creating collections that are as kind to the planet as they are to your wardrobe.\n\nOur commitment goes beyond great clothing – we are building a community of fashion lovers who believe in quality, creativity, and individuality.',
+  },
+  electronics: {
+    heroSubtitle: 'Innovation, quality, and technology at the heart of everything we do',
+    storyHeading: 'Our Story',
+    storyText: 'Welcome to {brandName}. We are dedicated to bringing you the latest in technology with products that combine innovation, quality, and value.\n\nOur team of tech enthusiasts carefully selects every product in our catalogue, ensuring it meets the highest standards of performance and reliability.\n\nWe believe technology should enhance your life. That\'s why we offer products that are not just cutting-edge, but also user-friendly and built to last.',
+    valuesHeading: 'Why Choose Us',
+    valuesSubtitle: 'Trusted technology solutions for modern life',
+    values: [
+      { icon: 'fas fa-microchip', title: 'Latest Technology', description: 'We stock only the newest and most innovative products. Stay ahead with cutting-edge gadgets and devices from top brands.' },
+      { icon: 'fas fa-shield-alt', title: 'Genuine Products', description: '100% authentic products with manufacturer warranty. We source directly from authorized distributors to guarantee quality.' },
+      { icon: 'fas fa-headset', title: 'Expert Support', description: 'Our tech-savvy team is here to help you choose the right product and provide after-sales support whenever you need it.' },
+    ],
+    missionHeading: 'Our Mission',
+    missionText: '{brandName} is your trusted destination for quality technology products.\n\nWe aim to make the latest technology accessible to everyone, offering genuine products at competitive prices with exceptional service.\n\nOur commitment is to be more than a store – we want to be your go-to tech partner, helping you find the perfect products for your needs.',
+  },
+};
+
+const GENERIC_DEFAULTS = {
+  heroSubtitle: 'Discover our story, heritage, and the passion behind every product we offer',
+  storyHeading: 'Our Story',
+  storyText: 'Welcome to {brandName}. We are dedicated to bringing you the finest products with unmatched quality and service that speaks for itself.\n\nOur commitment to excellence and attention to detail has made us one of the most trusted names in our industry. Every product in our collection reflects expertise, quality, and care.\n\nWe believe in creating experiences, not just selling products. Each item is carefully curated and selected to perfection for discerning customers worldwide.',
+  valuesHeading: 'What We Offer',
+  valuesSubtitle: 'Our commitment to excellence drives everything we do, from sourcing to delivery',
+  values: [
+    { icon: 'fas fa-certificate', title: 'Authentic & Quality', description: 'Every product meets the highest standards of quality. We guarantee authenticity and excellence, ensuring that our customers receive only the best.' },
+    { icon: 'fas fa-globe-americas', title: 'Worldwide Shipping', description: 'We deliver happiness across borders with a smooth and timely shopping experience. Our global reach ensures that quality reaches customers worldwide.' },
+    { icon: 'fas fa-star', title: 'Exclusive Selection', description: 'Unique collections that bring quality and value together. Each product is carefully curated to offer something special that you won\'t find anywhere else.' },
+  ],
+  missionHeading: 'Our Mission',
+  missionText: '{brandName} is more than just a brand – it is a commitment to excellence, quality, and customer satisfaction that drives everything we do.\n\nWe aim to deliver the finest products, creating an experience that blends quality with exceptional service.\n\nOur commitment extends beyond selling products – we are dedicated to building lasting relationships with our customers and ensuring satisfaction for generations to come.',
+};
+
+function getDefaults(category, brandName) {
+  const base = CATEGORY_DEFAULTS[category] || GENERIC_DEFAULTS;
+  const name = brandName || 'Our Store';
+  return {
+    heroSubtitle: base.heroSubtitle,
+    storyHeading: base.storyHeading,
+    storyText: base.storyText.replace(/\{brandName\}/g, name),
+    storyImage: '',
+    valuesHeading: base.valuesHeading,
+    valuesSubtitle: base.valuesSubtitle,
+    values: base.values.map(v => ({ ...v })),
+    missionHeading: base.missionHeading,
+    missionText: base.missionText.replace(/\{brandName\}/g, name),
+  };
+}
 
 export default function AboutPage() {
   const { siteConfig } = useSiteConfig();
-  const brandName = siteConfig?.brandName || 'Our Store';
+  const brandName = siteConfig?.brandName || siteConfig?.name || 'Our Store';
+  const category = siteConfig?.category || '';
+
+  let settings = siteConfig?.settings || {};
+  if (typeof settings === 'string') {
+    try { settings = JSON.parse(settings); } catch (e) { settings = {}; }
+  }
+  const aboutPage = settings.aboutPage || {};
+  const defaults = getDefaults(category, brandName);
+
+  const heroSubtitle = aboutPage.heroSubtitle || defaults.heroSubtitle;
+  const storyHeading = aboutPage.storyHeading || defaults.storyHeading;
+  const storyText = aboutPage.storyText || defaults.storyText;
+  const storyImage = aboutPage.storyImage || defaults.storyImage;
+  const valuesHeading = aboutPage.valuesHeading || defaults.valuesHeading;
+  const valuesSubtitle = aboutPage.valuesSubtitle || defaults.valuesSubtitle;
+  const missionHeading = aboutPage.missionHeading || defaults.missionHeading;
+  const missionText = aboutPage.missionText || defaults.missionText;
+
+  const valuesData = (aboutPage.values && aboutPage.values.length === 3)
+    ? aboutPage.values.map((v, i) => ({
+        icon: v.icon || defaults.values[i].icon,
+        title: v.title || defaults.values[i].title,
+        description: v.description || defaults.values[i].description,
+      }))
+    : defaults.values;
+
+  const storyParagraphs = storyText.split('\n\n').filter(p => p.trim());
+  const missionParagraphs = missionText.split('\n\n').filter(p => p.trim());
+
+  const resolvedStoryImage = storyImage ? resolveImageUrl(storyImage) : '';
 
   return (
     <div className="about-page">
-      <style>{`
-        .about-hero {
-          background: linear-gradient(135deg, #f9f5f0 0%, #ede5d8 100%);
-          padding: 120px 0 80px;
-          text-align: center;
-          position: relative;
-          overflow: hidden;
-        }
-        .about-hero::before {
-          content: '';
-          position: absolute;
-          top: 0; left: 0; right: 0; bottom: 0;
-          background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23d4af37' fill-opacity='0.05'%3E%3Ccircle cx='30' cy='30' r='4'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-          opacity: 0.3;
-        }
-        .about-hero-content { position: relative; z-index: 2; }
-        .about-hero h1 {
-          font-family: 'Playfair Display', serif;
-          font-size: 52px; color: #5E2900;
-          margin-bottom: 20px; font-weight: 700; position: relative;
-        }
-        .about-hero h1::after {
-          content: ''; position: absolute;
-          bottom: -15px; left: 50%; transform: translateX(-50%);
-          width: 80px; height: 3px;
-          background: linear-gradient(90deg, #d4af37, #b8941f);
-          border-radius: 2px;
-        }
-        .about-hero p {
-          font-family: 'Poppins', sans-serif;
-          max-width: 800px; margin: 30px auto 0;
-          font-size: 20px; color: #8a8a8a;
-          line-height: 1.7; font-style: italic;
-        }
-        .founder-section {
-          padding: 100px 0; background-color: #fff; position: relative;
-        }
-        .founder-section::before {
-          content: ''; position: absolute; top: 0; left: 0; right: 0;
-          height: 1px; background: linear-gradient(90deg, transparent, #d4af37, transparent);
-        }
-        .founder-container {
-          display: flex; align-items: center; gap: 80px;
-          max-width: 1200px; margin: 0 auto; padding: 0 20px;
-        }
-        .founder-image { flex: 1; position: relative; }
-        .founder-image::before {
-          content: ''; position: absolute;
-          top: -20px; left: -20px; right: 20px; bottom: 20px;
-          background: linear-gradient(135deg, #d4af37, #b8941f);
-          border-radius: 8px; z-index: 1;
-        }
-        .founder-image img {
-          width: 100%; max-width: 450px; border-radius: 8px;
-          box-shadow: 0 25px 50px rgba(0,0,0,0.15);
-          position: relative; z-index: 2;
-        }
-        .founder-content { flex: 1; }
-        .founder-content h2 {
-          font-family: 'Playfair Display', serif;
-          font-size: 42px; margin-bottom: 10px; color: #5E2900;
-        }
-        .founder-content .title {
-          font-family: 'Poppins', sans-serif;
-          font-size: 18px; font-weight: 500; color: #d4af37;
-          margin-bottom: 30px; text-transform: uppercase; letter-spacing: 1px;
-        }
-        .founder-content p {
-          font-family: 'Poppins', sans-serif;
-          font-size: 16px; line-height: 1.8; color: #444; margin-bottom: 20px;
-        }
-        .values-section {
-          background: linear-gradient(135deg, #f9f5f0 0%, #ede5d8 100%);
-          padding: 100px 0; position: relative;
-        }
-        .values-heading { text-align: center; margin-bottom: 80px; }
-        .values-heading h2 {
-          font-family: 'Playfair Display', serif;
-          font-size: 42px; color: #5E2900; margin-bottom: 20px; position: relative;
-        }
-        .values-heading h2::after {
-          content: ''; position: absolute;
-          bottom: -10px; left: 50%; transform: translateX(-50%);
-          width: 60px; height: 3px;
-          background: linear-gradient(90deg, #d4af37, #b8941f);
-          border-radius: 2px;
-        }
-        .values-heading p {
-          font-family: 'Poppins', sans-serif;
-          max-width: 700px; margin: 20px auto 0; color: #8a8a8a;
-          font-size: 18px; line-height: 1.6;
-        }
-        .values-grid {
-          display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-          gap: 40px; max-width: 1200px; margin: 0 auto; padding: 0 20px;
-        }
-        .value-card {
-          background-color: #fff; padding: 50px 40px; border-radius: 12px;
-          box-shadow: 0 15px 35px rgba(0,0,0,0.08); text-align: center;
-          transition: all 0.4s ease; position: relative; overflow: hidden;
-        }
-        .value-card::before {
-          content: ''; position: absolute; top: 0; left: 0; right: 0;
-          height: 4px; background: linear-gradient(90deg, #d4af37, #b8941f);
-          transform: translateX(-100%); transition: transform 0.4s ease;
-        }
-        .value-card:hover::before { transform: translateX(0); }
-        .value-card:hover { transform: translateY(-15px); box-shadow: 0 25px 50px rgba(0,0,0,0.15); }
-        .value-icon {
-          font-size: 48px; color: #d4af37; margin-bottom: 25px; transition: all 0.3s ease;
-        }
-        .value-card:hover .value-icon { transform: scale(1.1); }
-        .value-card h3 {
-          font-family: 'Playfair Display', serif;
-          font-size: 28px; margin-bottom: 20px; color: #5E2900;
-        }
-        .value-card p {
-          font-family: 'Poppins', sans-serif;
-          font-size: 15px; line-height: 1.7; color: #666;
-        }
-        .mission-section {
-          padding: 100px 0; background-color: #5E2900; color: #fff;
-          text-align: center; position: relative;
-        }
-        .mission-section::before {
-          content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-          background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23d4af37' fill-opacity='0.1'%3E%3Cpath d='M20 20c0-11.046-8.954-20-20-20v20h20z'/%3E%3C/g%3E%3C/svg%3E");
-        }
-        .mission-content {
-          max-width: 800px; margin: 0 auto; padding: 0 20px;
-          position: relative; z-index: 2;
-        }
-        .mission-content h2 {
-          font-family: 'Playfair Display', serif;
-          font-size: 42px; margin-bottom: 30px; color: #d4af37;
-        }
-        .mission-content p {
-          font-family: 'Poppins', sans-serif;
-          font-size: 18px; line-height: 1.8; margin-bottom: 25px;
-        }
-        @media (max-width: 991px) {
-          .founder-container { flex-direction: column; gap: 50px; }
-          .founder-image, .founder-content { width: 100%; }
-          .values-grid { grid-template-columns: 1fr; }
-        }
-        @media (max-width: 767px) {
-          .about-hero { padding: 80px 0 60px; }
-          .about-hero h1 { font-size: 36px; }
-          .founder-content h2 { font-size: 32px; }
-          .values-heading h2 { font-size: 32px; }
-          .mission-content h2 { font-size: 32px; }
-        }
-      `}</style>
-
       <section className="about-hero">
         <div className="container">
           <div className="about-hero-content">
             <h1>About {brandName}</h1>
-            <p>Discover our story, heritage, and the passion behind everything we create</p>
+            <p>{heroSubtitle}</p>
           </div>
         </div>
       </section>
@@ -173,7 +127,9 @@ export default function AboutPage() {
       <section className="founder-section">
         <div className="founder-container">
           <div className="founder-image">
-            {siteConfig?.logoUrl ? (
+            {resolvedStoryImage ? (
+              <img src={resolvedStoryImage} alt={brandName} />
+            ) : siteConfig?.logoUrl ? (
               <img src={siteConfig.logoUrl} alt={brandName} />
             ) : (
               <div style={{
@@ -189,20 +145,10 @@ export default function AboutPage() {
           </div>
           <div className="founder-content">
             <h2>{brandName}</h2>
-            <div className="title">Heritage & Excellence</div>
-            <p>
-              Welcome to {brandName}. We are dedicated to bringing you the finest products with
-              unmatched quality and craftsmanship that speaks for itself.
-            </p>
-            <p>
-              Our commitment to authentic craftsmanship and traditional artistry has made us
-              one of the most trusted names in our industry. Every piece in our collection reflects
-              expertise, artistic brilliance, and timeless beauty.
-            </p>
-            <p>
-              We believe in creating experiences, not just products. Each item is carefully curated
-              and crafted to perfection for discerning customers worldwide.
-            </p>
+            <div className="title">{storyHeading}</div>
+            {storyParagraphs.map((paragraph, idx) => (
+              <p key={idx}>{paragraph}</p>
+            ))}
           </div>
         </div>
       </section>
@@ -210,51 +156,29 @@ export default function AboutPage() {
       <section className="values-section">
         <div className="container">
           <div className="values-heading">
-            <h2>What We Offer</h2>
-            <p>Our commitment to excellence drives everything we do, from sourcing to delivery</p>
+            <h2>{valuesHeading}</h2>
+            <p>{valuesSubtitle}</p>
           </div>
           <div className="values-grid">
-            <div className="value-card">
-              <div className="value-icon">
-                <i className="fas fa-certificate"></i>
+            {valuesData.map((val, idx) => (
+              <div className="value-card" key={idx}>
+                <div className="value-icon">
+                  <i className={val.icon}></i>
+                </div>
+                <h3>{val.title}</h3>
+                <p>{val.description}</p>
               </div>
-              <h3>Authentic & Pure</h3>
-              <p>Every product is crafted with original materials and artistry. We guarantee authenticity and purity, ensuring that traditional craftsmanship is preserved and honored.</p>
-            </div>
-            <div className="value-card">
-              <div className="value-icon">
-                <i className="fas fa-globe-americas"></i>
-              </div>
-              <h3>Worldwide Shipping</h3>
-              <p>We deliver happiness across borders with a smooth and timely shopping experience. Our global reach ensures that elegance reaches customers worldwide.</p>
-            </div>
-            <div className="value-card">
-              <div className="value-icon">
-                <i className="fas fa-gem"></i>
-              </div>
-              <h3>Exclusive Designs</h3>
-              <p>Unique collections that bring luxury and tradition together. Each design is carefully curated to offer something special - pieces that you won't find anywhere else.</p>
-            </div>
+            ))}
           </div>
         </div>
       </section>
 
       <section className="mission-section">
         <div className="mission-content">
-          <h2>Our Mission</h2>
-          <p>
-            {brandName} is more than just a brand – it is a commitment to excellence,
-            quality, and customer satisfaction that drives everything we do.
-          </p>
-          <p>
-            We aim to preserve and promote the finest traditions of craftsmanship,
-            creating masterpieces that blend timeless elegance with contemporary appeal.
-          </p>
-          <p>
-            Our commitment extends beyond creating beautiful products – we are dedicated to
-            supporting artisans, preserving techniques, and ensuring that this heritage
-            continues to shine for generations to come.
-          </p>
+          <h2>{missionHeading}</h2>
+          {missionParagraphs.map((paragraph, idx) => (
+            <p key={idx}>{paragraph}</p>
+          ))}
         </div>
       </section>
     </div>

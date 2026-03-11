@@ -6,6 +6,9 @@ import HeroSliderEditor from './HeroSliderEditor.jsx';
 import WelcomeBannerEditor from './WelcomeBannerEditor.jsx';
 import FeaturedVideoEditor from './FeaturedVideoEditor.jsx';
 import CustomerReviewsEditor from './CustomerReviewsEditor.jsx';
+import AboutUsEditor from './AboutUsEditor.jsx';
+import TermsEditor from './TermsEditor.jsx';
+import PrivacyEditor from './PrivacyEditor.jsx';
 
 const SUB_TABS = [
   { id: 'promo-banner', icon: 'fa-bullhorn', label: 'Promo Banner' },
@@ -15,6 +18,9 @@ const SUB_TABS = [
   { id: 'watchbuy', icon: 'fa-video', label: 'Watch & Buy' },
   { id: 'featured-video', icon: 'fa-film', label: 'Featured Video' },
   { id: 'customer-reviews', icon: 'fa-star', label: 'Customer Reviews' },
+  { id: 'about-us', icon: 'fa-info-circle', label: 'About Us' },
+  { id: 'terms', icon: 'fa-file-contract', label: 'Terms & Conditions' },
+  { id: 'privacy', icon: 'fa-user-shield', label: 'Privacy Policy' },
 ];
 
 export default function WebsiteContentSection() {
@@ -56,6 +62,9 @@ export default function WebsiteContentSection() {
       {activeTab === 'watchbuy' && <WatchBuySection />}
       {activeTab === 'featured-video' && <FeaturedVideoEditor />}
       {activeTab === 'customer-reviews' && <CustomerReviewsEditor />}
+      {activeTab === 'about-us' && <AboutUsEditor />}
+      {activeTab === 'terms' && <TermsEditor />}
+      {activeTab === 'privacy' && <PrivacyEditor />}
     </div>
   );
 }
