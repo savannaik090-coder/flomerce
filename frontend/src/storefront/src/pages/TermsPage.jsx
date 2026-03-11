@@ -1,4 +1,5 @@
-import React, { useContext } from 'react';
+import React, { useContext, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { SiteContext } from '../context/SiteContext.jsx';
 
 const getDefaultSections = (brand, email, phone) => [
@@ -53,6 +54,17 @@ export default function TermsPage() {
   const email = siteConfig?.email || 'support@example.com';
   const phone = siteConfig?.phone || '';
 
+  const location = useLocation();
+
+  useEffect(() => {
+    if (location.hash) {
+      const el = document.querySelector(location.hash);
+      if (el) {
+        setTimeout(() => el.scrollIntoView({ behavior: 'smooth' }), 100);
+      }
+    }
+  }, [location.hash]);
+
   const termsContent = siteConfig?.settings?.termsContent;
   const hasCustomContent = termsContent && Array.isArray(termsContent.sections) && termsContent.sections.length > 0;
 
@@ -76,7 +88,7 @@ export default function TermsPage() {
         <p style={{ marginBottom: 24 }}>{intro}</p>
 
         {sections.map((section, i) => (
-          <div key={i} style={{ marginBottom: 32 }}>
+          <div key={i} id={`section-${i + 1}`} style={{ marginBottom: 32, scrollMarginTop: 20 }}>
             <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 12, color: '#1e293b' }}>{section.title}</h2>
             <p style={{ whiteSpace: 'pre-line', color: '#374151' }}>{section.content}</p>
           </div>

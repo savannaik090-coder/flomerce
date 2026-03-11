@@ -26,8 +26,8 @@ export default function Footer() {
             <ul>
               <li><Link to="/about">About Us</Link></li>
               <li><Link to="/contact">Contact Us</Link></li>
-              <li><a href="#">Shipping Policy</a></li>
-              <li><a href="#">Returns & Exchanges</a></li>
+              <li><Link to="/terms#section-4">Shipping Policy</Link></li>
+              <li><Link to="/terms#section-5">Returns & Exchanges</Link></li>
               <li><Link to="/terms">Terms and Conditions</Link></li>
               <li><Link to="/privacy-policy">Privacy Policy</Link></li>
             </ul>
