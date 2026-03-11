@@ -95,8 +95,10 @@ Fluxe is a multi-tenant SaaS platform that allows users to create their own e-co
 - `wishlists` table has `UNIQUE(site_id, user_id, product_id)` — product can be in wishlist on store A and store B simultaneously (was incorrectly `UNIQUE(user_id, product_id)` before migration 0006)
 - `carts.user_id` can reference either `users` (platform owners) OR `site_customers` (storefront shoppers) — no FK constraint on it for this reason
 - `wishlists.user_id` same: no FK constraint, can reference either table
+- `orders.user_id`, `reviews.user_id`, `payment_transactions.user_id`, `activity_log.user_id`, `notifications.user_id` — all have NO FK to `users` for the same reason (can reference either `users` or `site_customers`)
 - All product lookups in cart/wishlist workers include `AND site_id = ?` to prevent cross-site data serving
 - Migration `0006_fix_wishlist_cart_isolation.sql` — run via wrangler to apply schema fix on existing D1 databases; `db-init.js` also auto-applies this at runtime
+- Migration `0007_fix_orders_reviews_payments_fk.sql` — removes incorrect `user_id` FK from orders, reviews, payment_transactions, activity_log, notifications; `db-init.js` auto-applies via rename→recreate→copy→drop at runtime
 
 ## Authentication Architecture
 - **Platform Users:** JWT-based auth (`Bearer <token>`) for platform signup/login/dashboard

@@ -204,8 +204,7 @@ export async function ensureTablesExist(env) {
         cancellation_reason TEXT,
         created_at TEXT DEFAULT (datetime('now')),
         updated_at TEXT DEFAULT (datetime('now')),
-        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
       )`,
 
       `CREATE TABLE IF NOT EXISTS guest_orders (
@@ -293,7 +292,6 @@ export async function ensureTablesExist(env) {
         error_description TEXT,
         created_at TEXT DEFAULT (datetime('now')),
         FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE SET NULL,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
         FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE SET NULL,
         FOREIGN KEY (subscription_id) REFERENCES subscriptions(id) ON DELETE SET NULL
       )`,
@@ -326,8 +324,7 @@ export async function ensureTablesExist(env) {
         auth TEXT,
         is_active INTEGER DEFAULT 1,
         created_at TEXT DEFAULT (datetime('now')),
-        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
       )`,
 
       `CREATE TABLE IF NOT EXISTS reviews (
@@ -344,8 +341,7 @@ export async function ensureTablesExist(env) {
         is_approved INTEGER DEFAULT 0,
         created_at TEXT DEFAULT (datetime('now')),
         FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
-        FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+        FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
       )`,
 
       `CREATE TABLE IF NOT EXISTS activity_log (
@@ -359,8 +355,7 @@ export async function ensureTablesExist(env) {
         ip_address TEXT,
         user_agent TEXT,
         created_at TEXT DEFAULT (datetime('now')),
-        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
       )`,
     ];
 
@@ -438,10 +433,6 @@ export async function ensureTablesExist(env) {
     }
 
     // Migration: Fix wishlists unique constraint to include site_id.
-    // The old constraint UNIQUE(user_id, product_id) blocks the same product
-    // from being wishlisted independently on different stores.
-    // We detect the old constraint by inspecting sqlite_master and recreate
-    // the table only if needed.
     try {
       const wishlistDef = await env.DB.prepare(
         `SELECT sql FROM sqlite_master WHERE type='table' AND name='wishlists'`
@@ -468,6 +459,130 @@ export async function ensureTablesExist(env) {
       }
     } catch (e) {
       console.error('Wishlists migration failed (non-fatal):', e.message || e);
+    }
+
+    // Migration: Remove incorrect FK on user_id from orders, reviews,
+    // payment_transactions, notifications, activity_log.
+    // user_id in these tables can reference either users or site_customers,
+    // so no single FK can be declared.
+    const fkMigrations = [
+      {
+        table: 'orders',
+        detect: `REFERENCES users`,
+        create: `CREATE TABLE orders (
+          id TEXT PRIMARY KEY, site_id TEXT NOT NULL, user_id TEXT,
+          order_number TEXT UNIQUE NOT NULL, status TEXT DEFAULT 'pending',
+          items TEXT NOT NULL, subtotal REAL NOT NULL, discount REAL DEFAULT 0,
+          shipping_cost REAL DEFAULT 0, tax REAL DEFAULT 0, total REAL NOT NULL,
+          currency TEXT DEFAULT 'INR', payment_method TEXT,
+          payment_status TEXT DEFAULT 'pending', payment_id TEXT,
+          razorpay_order_id TEXT, razorpay_payment_id TEXT, razorpay_signature TEXT,
+          shipping_address TEXT NOT NULL, billing_address TEXT,
+          customer_name TEXT NOT NULL, customer_email TEXT,
+          customer_phone TEXT NOT NULL, notes TEXT,
+          tracking_number TEXT, carrier TEXT,
+          shipped_at TEXT, delivered_at TEXT, cancelled_at TEXT, cancellation_reason TEXT,
+          created_at TEXT DEFAULT (datetime('now')),
+          updated_at TEXT DEFAULT (datetime('now')),
+          FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
+        )`,
+        indexes: [
+          'CREATE INDEX IF NOT EXISTS idx_orders_site ON orders(site_id)',
+          'CREATE INDEX IF NOT EXISTS idx_orders_user ON orders(user_id)',
+          'CREATE INDEX IF NOT EXISTS idx_orders_number ON orders(order_number)',
+          'CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(site_id, status)',
+          'CREATE INDEX IF NOT EXISTS idx_orders_created ON orders(site_id, created_at)',
+        ],
+      },
+      {
+        table: 'reviews',
+        detect: `REFERENCES users`,
+        create: `CREATE TABLE reviews (
+          id TEXT PRIMARY KEY, site_id TEXT NOT NULL, product_id TEXT NOT NULL,
+          user_id TEXT, customer_name TEXT NOT NULL,
+          rating INTEGER NOT NULL CHECK(rating >= 1 AND rating <= 5),
+          title TEXT, content TEXT, images TEXT,
+          is_verified INTEGER DEFAULT 0, is_approved INTEGER DEFAULT 0,
+          created_at TEXT DEFAULT (datetime('now')),
+          FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
+          FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+        )`,
+        indexes: [
+          'CREATE INDEX IF NOT EXISTS idx_reviews_product ON reviews(product_id)',
+          'CREATE INDEX IF NOT EXISTS idx_reviews_site ON reviews(site_id)',
+        ],
+      },
+      {
+        table: 'payment_transactions',
+        detect: `REFERENCES users`,
+        create: `CREATE TABLE payment_transactions (
+          id TEXT PRIMARY KEY, site_id TEXT, user_id TEXT,
+          order_id TEXT, subscription_id TEXT,
+          razorpay_order_id TEXT, razorpay_payment_id TEXT, razorpay_signature TEXT,
+          amount REAL NOT NULL, currency TEXT DEFAULT 'INR',
+          status TEXT DEFAULT 'pending', payment_method TEXT,
+          error_code TEXT, error_description TEXT,
+          created_at TEXT DEFAULT (datetime('now')),
+          FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE SET NULL,
+          FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE SET NULL,
+          FOREIGN KEY (subscription_id) REFERENCES subscriptions(id) ON DELETE SET NULL
+        )`,
+        indexes: [
+          'CREATE INDEX IF NOT EXISTS idx_transactions_order ON payment_transactions(order_id)',
+          'CREATE INDEX IF NOT EXISTS idx_transactions_user ON payment_transactions(user_id)',
+        ],
+      },
+      {
+        table: 'activity_log',
+        detect: `REFERENCES users`,
+        create: `CREATE TABLE activity_log (
+          id TEXT PRIMARY KEY, site_id TEXT, user_id TEXT,
+          action TEXT NOT NULL, entity_type TEXT, entity_id TEXT,
+          details TEXT, ip_address TEXT, user_agent TEXT,
+          created_at TEXT DEFAULT (datetime('now')),
+          FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
+        )`,
+        indexes: [
+          'CREATE INDEX IF NOT EXISTS idx_activity_site ON activity_log(site_id)',
+          'CREATE INDEX IF NOT EXISTS idx_activity_user ON activity_log(user_id)',
+          'CREATE INDEX IF NOT EXISTS idx_activity_created ON activity_log(created_at)',
+        ],
+      },
+      {
+        table: 'notifications',
+        detect: `REFERENCES users`,
+        create: `CREATE TABLE notifications (
+          id TEXT PRIMARY KEY, site_id TEXT NOT NULL, user_id TEXT,
+          push_token TEXT NOT NULL, endpoint TEXT, p256dh TEXT, auth TEXT,
+          is_active INTEGER DEFAULT 1,
+          created_at TEXT DEFAULT (datetime('now')),
+          FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
+        )`,
+        indexes: [
+          'CREATE INDEX IF NOT EXISTS idx_notifications_site ON notifications(site_id)',
+          'CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id)',
+        ],
+      },
+    ];
+
+    for (const mig of fkMigrations) {
+      try {
+        const def = await env.DB.prepare(
+          `SELECT sql FROM sqlite_master WHERE type='table' AND name=?`
+        ).bind(mig.table).first();
+        if (def && def.sql && def.sql.includes(mig.detect)) {
+          await env.DB.prepare(`ALTER TABLE ${mig.table} RENAME TO ${mig.table}_old`).run();
+          await env.DB.prepare(mig.create).run();
+          for (const idx of mig.indexes) {
+            try { await env.DB.prepare(idx).run(); } catch (_) {}
+          }
+          await env.DB.prepare(`INSERT INTO ${mig.table} SELECT * FROM ${mig.table}_old`).run();
+          await env.DB.prepare(`DROP TABLE ${mig.table}_old`).run();
+          console.log(`${mig.table} table migrated: removed incorrect user_id FK`);
+        }
+      } catch (e) {
+        console.error(`${mig.table} FK migration failed (non-fatal):`, e.message || e);
+      }
     }
 
     _initialized = true;

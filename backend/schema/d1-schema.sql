@@ -277,8 +277,7 @@ CREATE TABLE IF NOT EXISTS orders (
     cancellation_reason TEXT,
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now')),
-    FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+    FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
 );
 
 CREATE INDEX idx_orders_site ON orders(site_id);
@@ -369,8 +368,7 @@ CREATE TABLE IF NOT EXISTS notifications (
     auth TEXT,
     is_active INTEGER DEFAULT 1,
     created_at TEXT DEFAULT (datetime('now')),
-    FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
 );
 
 CREATE INDEX idx_notifications_site ON notifications(site_id);
@@ -393,8 +391,7 @@ CREATE TABLE IF NOT EXISTS reviews (
     is_approved INTEGER DEFAULT 0,
     created_at TEXT DEFAULT (datetime('now')),
     FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
-    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
 );
 
 CREATE INDEX idx_reviews_product ON reviews(product_id);
@@ -443,7 +440,6 @@ CREATE TABLE IF NOT EXISTS payment_transactions (
     error_description TEXT,
     created_at TEXT DEFAULT (datetime('now')),
     FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE SET NULL,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
     FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE SET NULL,
     FOREIGN KEY (subscription_id) REFERENCES subscriptions(id) ON DELETE SET NULL
 );
@@ -489,8 +485,7 @@ CREATE TABLE IF NOT EXISTS activity_log (
     ip_address TEXT,
     user_agent TEXT,
     created_at TEXT DEFAULT (datetime('now')),
-    FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+    FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
 );
 
 CREATE INDEX idx_activity_site ON activity_log(site_id);
