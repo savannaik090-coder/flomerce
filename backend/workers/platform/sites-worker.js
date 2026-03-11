@@ -77,6 +77,32 @@ async function getSite(env, user, siteId) {
   }
 }
 
+function getDefaultFeaturedVideoSettings(businessCategory) {
+  const defaults = {
+    jewellery: {
+      featuredVideoTitle: "Let's Create Your Perfect Bridal Jewelry",
+      featuredVideoDescription: "Dreaming of something truly elegant? Discover our exquisite jewelry collection. Connect with our designers and create your perfect bridal ensemble",
+      featuredVideoChatButtonText: "CHAT NOW",
+    },
+    clothing: {
+      featuredVideoTitle: "Discover Your Perfect Style",
+      featuredVideoDescription: "Explore our latest fashion collection crafted for every occasion. Connect with our stylists and find the perfect outfit that defines you",
+      featuredVideoChatButtonText: "CHAT NOW",
+    },
+    electronics: {
+      featuredVideoTitle: "Experience Next-Gen Technology",
+      featuredVideoDescription: "Discover cutting-edge gadgets and smart devices. Connect with our tech experts and find the perfect product for your needs",
+      featuredVideoChatButtonText: "CHAT NOW",
+    },
+  };
+
+  return defaults[businessCategory] || {
+    featuredVideoTitle: "Discover Our Collection",
+    featuredVideoDescription: "Explore our curated selection of premium products. Connect with us and find exactly what you're looking for",
+    featuredVideoChatButtonText: "CHAT NOW",
+  };
+}
+
 async function createSite(request, env, user) {
   let siteId = null;
   let finalSubdomain = null;
@@ -101,10 +127,12 @@ async function createSite(request, env, user) {
 
     finalSubdomain = subdomain;
     siteId = generateId();
+
+    const defaultSettings = getDefaultFeaturedVideoSettings(category);
     
     await env.DB.prepare(
-      `INSERT INTO sites (id, user_id, subdomain, brand_name, category, template_id, logo_url, phone, email, address, primary_color, secondary_color, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+      `INSERT INTO sites (id, user_id, subdomain, brand_name, category, template_id, logo_url, phone, email, address, primary_color, secondary_color, settings, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(
       siteId, 
       user.id, 
@@ -117,7 +145,8 @@ async function createSite(request, env, user) {
       email || null,
       address || null,
       primaryColor || '#000000',
-      secondaryColor || '#ffffff'
+      secondaryColor || '#ffffff',
+      JSON.stringify(defaultSettings)
     ).run();
 
     // Try to create categories but don't fail if it errors

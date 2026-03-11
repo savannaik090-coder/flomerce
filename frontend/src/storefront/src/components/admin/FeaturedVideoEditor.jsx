@@ -3,6 +3,26 @@ import { SiteContext } from '../../context/SiteContext.jsx';
 
 const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
 
+const CATEGORY_PLACEHOLDERS = {
+  jewellery: {
+    title: "e.g., Let's Create Your Perfect Bridal Jewelry",
+    description: "e.g., Dreaming of something truly elegant? Discover our exquisite jewelry collection. Connect with our designers and create your perfect bridal ensemble",
+  },
+  clothing: {
+    title: "e.g., Discover Your Perfect Style",
+    description: "e.g., Explore our latest fashion collection crafted for every occasion. Connect with our stylists and find the perfect outfit that defines you",
+  },
+  electronics: {
+    title: "e.g., Experience Next-Gen Technology",
+    description: "e.g., Discover cutting-edge gadgets and smart devices. Connect with our tech experts and find the perfect product for your needs",
+  },
+};
+
+const DEFAULT_PLACEHOLDERS = {
+  title: "e.g., Discover Our Collection",
+  description: "e.g., Explore our curated selection of premium products. Connect with us and find exactly what you're looking for",
+};
+
 export default function FeaturedVideoEditor() {
   const { siteConfig } = useContext(SiteContext);
   const [title, setTitle] = useState('');
@@ -17,6 +37,8 @@ export default function FeaturedVideoEditor() {
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(true);
   const fileInputRef = useRef(null);
+
+  const placeholders = CATEGORY_PLACEHOLDERS[siteConfig?.category] || DEFAULT_PLACEHOLDERS;
 
   useEffect(() => {
     if (siteConfig?.id) loadSettings();
@@ -223,7 +245,7 @@ export default function FeaturedVideoEditor() {
                 type="text"
                 value={title}
                 onChange={e => setTitle(e.target.value)}
-                placeholder="e.g., Let's Create Your Perfect Look"
+                placeholder={placeholders.title}
                 maxLength={100}
                 style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }}
               />
@@ -234,7 +256,7 @@ export default function FeaturedVideoEditor() {
               <textarea
                 value={description}
                 onChange={e => setDescription(e.target.value)}
-                placeholder="e.g., Discover our exquisite collection. Connect with us and create your perfect ensemble."
+                placeholder={placeholders.description}
                 maxLength={300}
                 rows={3}
                 style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit', resize: 'vertical' }}
