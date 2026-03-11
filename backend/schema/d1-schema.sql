@@ -202,6 +202,8 @@ CREATE INDEX idx_addresses_user ON addresses(user_id);
 -- =====================================================
 -- CARTS TABLE
 -- =====================================================
+-- Note: user_id can reference either users (platform owners) or
+-- site_customers (storefront shoppers), so no FK is declared for it.
 CREATE TABLE IF NOT EXISTS carts (
     id TEXT PRIMARY KEY,
     site_id TEXT NOT NULL,
@@ -211,8 +213,7 @@ CREATE TABLE IF NOT EXISTS carts (
     subtotal REAL DEFAULT 0,
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now')),
-    FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
 );
 
 CREATE INDEX idx_carts_user ON carts(user_id);
@@ -222,6 +223,10 @@ CREATE INDEX idx_carts_site ON carts(site_id);
 -- =====================================================
 -- WISHLISTS TABLE
 -- =====================================================
+-- Note: user_id can reference either users (platform owners) or
+-- site_customers (storefront shoppers), so no FK is declared for it.
+-- UNIQUE includes site_id so the same product can be wishlisted
+-- independently on different stores.
 CREATE TABLE IF NOT EXISTS wishlists (
     id TEXT PRIMARY KEY,
     site_id TEXT NOT NULL,
@@ -229,9 +234,8 @@ CREATE TABLE IF NOT EXISTS wishlists (
     product_id TEXT NOT NULL,
     created_at TEXT DEFAULT (datetime('now')),
     FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
-    UNIQUE(user_id, product_id)
+    UNIQUE(site_id, user_id, product_id)
 );
 
 CREATE INDEX idx_wishlists_user ON wishlists(user_id);

@@ -121,8 +121,8 @@ async function getCart(env, siteId, user, sessionId) {
     const enrichedItems = [];
     for (const item of items) {
       const product = await env.DB.prepare(
-        'SELECT id, name, price, stock, thumbnail_url, is_active FROM products WHERE id = ?'
-      ).bind(item.productId).first();
+        'SELECT id, name, price, stock, thumbnail_url, is_active FROM products WHERE id = ? AND site_id = ?'
+      ).bind(item.productId, siteId).first();
 
       if (product && product.is_active) {
         enrichedItems.push({
@@ -232,8 +232,8 @@ async function updateCartItem(request, env, siteId, user, sessionId) {
       items.splice(existingIndex, 1);
     } else {
       const product = await env.DB.prepare(
-        'SELECT stock FROM products WHERE id = ?'
-      ).bind(productId).first();
+        'SELECT stock FROM products WHERE id = ? AND site_id = ?'
+      ).bind(productId, siteId).first();
 
       if (product && quantity > product.stock) {
         return errorResponse('Insufficient stock', 400, 'INSUFFICIENT_STOCK');

@@ -89,6 +89,15 @@ Fluxe is a multi-tenant SaaS platform that allows users to create their own e-co
 - Subdomains are detected by the backend worker and routed to storefront
 - Products, orders, categories, cart, wishlist are all scoped per site
 
+## Data Isolation Notes (important for future dev)
+- `site_customers` table has `UNIQUE(site_id, email)` — same email can be a customer on multiple stores independently
+- `site_customer_sessions` includes `site_id` — a session token is only valid for the store it was created on
+- `wishlists` table has `UNIQUE(site_id, user_id, product_id)` — product can be in wishlist on store A and store B simultaneously (was incorrectly `UNIQUE(user_id, product_id)` before migration 0006)
+- `carts.user_id` can reference either `users` (platform owners) OR `site_customers` (storefront shoppers) — no FK constraint on it for this reason
+- `wishlists.user_id` same: no FK constraint, can reference either table
+- All product lookups in cart/wishlist workers include `AND site_id = ?` to prevent cross-site data serving
+- Migration `0006_fix_wishlist_cart_isolation.sql` — run via wrangler to apply schema fix on existing D1 databases; `db-init.js` also auto-applies this at runtime
+
 ## Authentication Architecture
 - **Platform Users:** JWT-based auth (`Bearer <token>`) for platform signup/login/dashboard
 - **Site Customers:** Per-site customer accounts via `site_customers` table, auth via `SiteCustomer <token>` header

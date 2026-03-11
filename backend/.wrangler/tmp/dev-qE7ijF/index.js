@@ -3004,8 +3004,8 @@ async function getCart(env, siteId, user, sessionId) {
     const enrichedItems = [];
     for (const item of items) {
       const product = await env.DB.prepare(
-        "SELECT id, name, price, stock, thumbnail_url, is_active FROM products WHERE id = ?"
-      ).bind(item.productId).first();
+        "SELECT id, name, price, stock, thumbnail_url, is_active FROM products WHERE id = ? AND site_id = ?"
+      ).bind(item.productId, siteId).first();
       if (product && product.is_active) {
         enrichedItems.push({
           ...item,
@@ -3095,8 +3095,8 @@ async function updateCartItem(request, env, siteId, user, sessionId) {
       items.splice(existingIndex, 1);
     } else {
       const product = await env.DB.prepare(
-        "SELECT stock FROM products WHERE id = ?"
-      ).bind(productId).first();
+        "SELECT stock FROM products WHERE id = ? AND site_id = ?"
+      ).bind(productId, siteId).first();
       if (product && quantity > product.stock) {
         return errorResponse("Insufficient stock", 400, "INSUFFICIENT_STOCK");
       }
@@ -5232,8 +5232,7 @@ async function ensureTablesExist(env) {
         subtotal REAL DEFAULT 0,
         created_at TEXT DEFAULT (datetime('now')),
         updated_at TEXT DEFAULT (datetime('now')),
-        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
       )`,
       `CREATE TABLE IF NOT EXISTS wishlists (
         id TEXT PRIMARY KEY,
@@ -5242,9 +5241,8 @@ async function ensureTablesExist(env) {
         product_id TEXT NOT NULL,
         created_at TEXT DEFAULT (datetime('now')),
         FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
         FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
-        UNIQUE(user_id, product_id)
+        UNIQUE(site_id, user_id, product_id)
       )`,
       `CREATE TABLE IF NOT EXISTS orders (
         id TEXT PRIMARY KEY,
@@ -5495,6 +5493,33 @@ async function ensureTablesExist(env) {
         await env.DB.prepare(m.sql).run();
       } catch (e) {
       }
+    }
+    try {
+      const wishlistDef = await env.DB.prepare(
+        `SELECT sql FROM sqlite_master WHERE type='table' AND name='wishlists'`
+      ).first();
+      if (wishlistDef && wishlistDef.sql && !wishlistDef.sql.includes("site_id, user_id, product_id")) {
+        await env.DB.prepare(`ALTER TABLE wishlists RENAME TO wishlists_old`).run();
+        await env.DB.prepare(`
+          CREATE TABLE wishlists (
+            id TEXT PRIMARY KEY,
+            site_id TEXT NOT NULL,
+            user_id TEXT NOT NULL,
+            product_id TEXT NOT NULL,
+            created_at TEXT DEFAULT (datetime('now')),
+            FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
+            FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+            UNIQUE(site_id, user_id, product_id)
+          )
+        `).run();
+        await env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_wishlists_user ON wishlists(user_id)`).run();
+        await env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_wishlists_site ON wishlists(site_id)`).run();
+        await env.DB.prepare(`INSERT INTO wishlists SELECT * FROM wishlists_old`).run();
+        await env.DB.prepare(`DROP TABLE wishlists_old`).run();
+        console.log("Wishlists table migrated: unique constraint now includes site_id");
+      }
+    } catch (e) {
+      console.error("Wishlists migration failed (non-fatal):", e.message || e);
     }
     _initialized = true;
     console.log("Database tables initialized successfully");
