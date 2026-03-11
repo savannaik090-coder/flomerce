@@ -28,8 +28,8 @@ export default function Footer() {
               <li><Link to="/contact">Contact Us</Link></li>
               <li><a href="#">Shipping Policy</a></li>
               <li><a href="#">Returns & Exchanges</a></li>
-              <li><a href="#">Terms and Conditions</a></li>
-              <li><a href="#">Privacy Policy</a></li>
+              <li><Link to="/terms">Terms and Conditions</Link></li>
+              <li><Link to="/privacy-policy">Privacy Policy</Link></li>
             </ul>
           </div>
         </div>
@@ -122,8 +122,8 @@ export default function Footer() {
               <p>&copy; {new Date().getFullYear()} {siteConfig?.brandName || 'Store'}. All rights reserved. Powered by <a href="https://fluxe.in" target="_blank" rel="noopener noreferrer" className="powered-by-link">Fluxe</a></p>
             </div>
             <div className="footer-links">
-              <a href="#">Terms and Conditions</a>
-              <a href="#">Privacy Policy</a>
+              <Link to="/terms">Terms and Conditions</Link>
+              <Link to="/privacy-policy">Privacy Policy</Link>
             </div>
             <div className="footer-payment-icons">
               <span><i className="fab fa-cc-amex"></i></span>
