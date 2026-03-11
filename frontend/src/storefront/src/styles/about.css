@@ -8,16 +8,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(160deg, #1a1a2e 0%, #16213e 40%, #0f3460 100%);
+  background: #fff;
   overflow: hidden;
 }
 
 .about-hero-overlay {
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(ellipse at 20% 50%, rgba(212, 175, 55, 0.08) 0%, transparent 60%),
-    radial-gradient(ellipse at 80% 20%, rgba(255, 255, 255, 0.04) 0%, transparent 50%);
   pointer-events: none;
 }
 
@@ -48,7 +45,7 @@
   font-family: 'Playfair Display', Georgia, serif;
   font-size: 48px;
   font-weight: 700;
-  color: #ffffff;
+  color: #1a1a2e;
   margin: 0 0 20px;
   line-height: 1.15;
   letter-spacing: -0.5px;
@@ -57,7 +54,7 @@
 .about-hero p {
   font-family: 'Poppins', sans-serif;
   font-size: 17px;
-  color: rgba(255, 255, 255, 0.65);
+  color: #777;
   line-height: 1.7;
   margin: 0;
   font-weight: 300;
@@ -174,16 +171,14 @@
 .about-mission {
   position: relative;
   padding: 100px 24px;
-  background: linear-gradient(160deg, #1a1a2e 0%, #16213e 40%, #0f3460 100%);
+  background: #fff;
   overflow: hidden;
+  border-top: 1px solid #f0ebe4;
 }
 
 .about-mission-bg {
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(circle at 10% 80%, rgba(212, 175, 55, 0.06) 0%, transparent 50%),
-    radial-gradient(circle at 90% 20%, rgba(212, 175, 55, 0.04) 0%, transparent 50%);
   pointer-events: none;
 }
 
@@ -204,7 +199,7 @@
   color: #d4af37;
   margin-bottom: 16px;
   padding: 6px 20px;
-  border: 1px solid rgba(212, 175, 55, 0.25);
+  border: 1px solid rgba(212, 175, 55, 0.3);
   border-radius: 30px;
 }
 
@@ -212,7 +207,7 @@
   font-family: 'Playfair Display', Georgia, serif;
   font-size: 40px;
   font-weight: 700;
-  color: #ffffff;
+  color: #1a1a2e;
   margin: 0 0 16px;
   line-height: 1.2;
 }
@@ -229,7 +224,7 @@
   font-family: 'Poppins', sans-serif;
   font-size: 17px;
   line-height: 1.9;
-  color: rgba(255, 255, 255, 0.72);
+  color: #555;
   margin: 0 0 22px;
   font-weight: 300;
 }
