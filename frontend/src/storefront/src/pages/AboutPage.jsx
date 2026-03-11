@@ -111,7 +111,6 @@ export default function AboutPage() {
             <div className="about-story-image-accent" />
           </div>
           <div className="about-story-text">
-            <div className="about-story-divider" />
             {storyParagraphs.map((paragraph, idx) => (
               <p key={idx}>{paragraph}</p>
             ))}

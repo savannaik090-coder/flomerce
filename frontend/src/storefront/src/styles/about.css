@@ -139,22 +139,6 @@
   margin-bottom: 12px;
 }
 
-.about-story-text h2 {
-  font-family: 'Playfair Display', Georgia, serif;
-  font-size: 40px;
-  font-weight: 700;
-  color: #1a1a2e;
-  margin: 0 0 16px;
-  line-height: 1.2;
-}
-
-.about-story-divider {
-  width: 45px;
-  height: 3px;
-  background: linear-gradient(90deg, #d4af37, #f0d78c);
-  border-radius: 2px;
-  margin-bottom: 28px;
-}
 
 .about-story-text p {
   font-family: 'Poppins', sans-serif;
@@ -254,16 +238,7 @@
 
   .about-story-img,
   .about-story-placeholder {
-    height: 380px;
-  }
-
-  .about-story-text {
-    text-align: center;
-  }
-
-  .about-story-divider {
-    margin-left: auto;
-    margin-right: auto;
+    height: 500px;
   }
 }
 
@@ -290,11 +265,7 @@
 
   .about-story-img,
   .about-story-placeholder {
-    height: 300px;
-  }
-
-  .about-story-text h2 {
-    font-size: 30px;
+    height: 420px;
   }
 
   .about-content-section {
@@ -321,12 +292,8 @@
 
   .about-story-img,
   .about-story-placeholder {
-    height: 250px;
+    height: 350px;
     border-radius: 12px;
-  }
-
-  .about-story-text h2 {
-    font-size: 26px;
   }
 
   .about-content-section h2 {
