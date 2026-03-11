@@ -99,7 +99,6 @@ export default function AboutPage() {
             <div className="about-story-image-accent" />
           </div>
           <div className="about-story-text">
-            <span className="about-section-eyebrow">{storyHeading}</span>
             <h2>{brandName}</h2>
             <div className="about-story-divider" />
             {storyParagraphs.map((paragraph, idx) => (
