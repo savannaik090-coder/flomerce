@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { getCategories } from '../../services/categoryService.js';
 
@@ -29,16 +29,6 @@ export default function FooterEditor() {
   const [playStoreUrl, setPlayStoreUrl] = useState('');
 
   const [categories, setCategories] = useState([]);
-
-  const linksRef = useRef(customLinks);
-  const socialRef = useRef({ instagram, facebook, twitter, youtube });
-  const bottomNavRef = useRef({ shopRedirect, showCurrency });
-  const appBannerRef = useRef({ show: showAppBanner, showAppStore, showPlayStore, appStoreUrl, playStoreUrl });
-
-  useEffect(() => { linksRef.current = customLinks; }, [customLinks]);
-  useEffect(() => { socialRef.current = { instagram, facebook, twitter, youtube }; }, [instagram, facebook, twitter, youtube]);
-  useEffect(() => { bottomNavRef.current = { shopRedirect, showCurrency }; }, [shopRedirect, showCurrency]);
-  useEffect(() => { appBannerRef.current = { show: showAppBanner, showAppStore, showPlayStore, appStoreUrl, playStoreUrl }; }, [showAppBanner, showAppStore, showPlayStore, appStoreUrl, playStoreUrl]);
 
   useEffect(() => {
     if (siteConfig?.id) {
@@ -97,73 +87,79 @@ export default function FooterEditor() {
     }
   }
 
-  const doSave = useCallback(async function doSave(linksOverride) {
-    const links = linksOverride !== undefined ? linksOverride : linksRef.current;
-    const social = socialRef.current;
-    const nav = bottomNavRef.current;
-    const app = appBannerRef.current;
+  function handleAddLink(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const name = newLinkName.trim();
+    if (!name) return;
+    setCustomLinks(function (prev) {
+      return prev.concat([{ name: name, url: newLinkUrl.trim() || '#' }]);
+    });
+    setNewLinkName('');
+    setNewLinkUrl('');
+  }
 
+  function handleRemoveLink(index) {
+    setCustomLinks(function (prev) {
+      return prev.filter(function (_, i) { return i !== index; });
+    });
+  }
+
+  function handleUpdateLink(index, field, value) {
+    setCustomLinks(function (prev) {
+      return prev.map(function (link, i) {
+        if (i === index) {
+          var updated = {};
+          for (var k in link) updated[k] = link[k];
+          updated[field] = value;
+          return updated;
+        }
+        return link;
+      });
+    });
+  }
+
+  async function handleSave(e) {
+    if (e && e.preventDefault) e.preventDefault();
     setSaving(true);
     setStatus('');
     try {
-      const token = sessionStorage.getItem('site_admin_token');
-      const payload = {
+      var token = sessionStorage.getItem('site_admin_token');
+      var payload = {
         settings: {
-          social: { ...social },
+          social: { instagram: instagram, facebook: facebook, twitter: twitter, youtube: youtube },
           footer: {
-            customLinks: links,
-            social: { ...social },
-            bottomNav: { ...nav },
-            appBanner: { ...app },
+            customLinks: customLinks,
+            social: { instagram: instagram, facebook: facebook, twitter: twitter, youtube: youtube },
+            bottomNav: { shopRedirect: shopRedirect, showCurrency: showCurrency },
+            appBanner: { show: showAppBanner, showAppStore: showAppStore, showPlayStore: showPlayStore, appStoreUrl: appStoreUrl, playStoreUrl: playStoreUrl },
           },
         },
       };
-      console.log('[FooterEditor] Saving payload:', JSON.stringify(payload));
-      const response = await fetch(`${API_BASE}/api/sites/${siteConfig.id}`, {
+      var response = await fetch(API_BASE + '/api/sites/' + siteConfig.id, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': token ? `SiteAdmin ${token}` : '',
+          'Authorization': token ? 'SiteAdmin ' + token : '',
         },
         body: JSON.stringify(payload),
       });
-      const result = await response.json();
-      console.log('[FooterEditor] Save response:', response.status, JSON.stringify(result));
+      var result = await response.json();
       if (response.ok && result.success) {
         setStatus('success');
         if (refetchSite) refetchSite();
       } else {
         setStatus('error:' + (result.error || 'Unknown error'));
       }
-    } catch (e) {
-      console.error('[FooterEditor] Save error:', e);
-      setStatus('error:' + e.message);
+    } catch (err) {
+      setStatus('error:' + err.message);
     } finally {
       setSaving(false);
     }
-  }, [siteConfig?.id, refetchSite]);
-
-  async function handleAddLink() {
-    if (!newLinkName.trim()) return;
-    const link = { name: newLinkName.trim(), url: newLinkUrl.trim() || '#' };
-    const updated = [...customLinks, link];
-    setCustomLinks(updated);
-    setNewLinkName('');
-    setNewLinkUrl('');
-    await doSave(updated);
   }
 
-  async function handleRemoveLink(index) {
-    const updated = customLinks.filter((_, i) => i !== index);
-    setCustomLinks(updated);
-    await doSave(updated);
-  }
-
-  function handleUpdateLink(index, field, value) {
-    setCustomLinks(prev => prev.map((link, i) => i === index ? { ...link, [field]: value } : link));
-  }
-
-  const shopRedirectOptions = categories.map(cat => ({ value: `/category/${cat.slug}`, label: cat.name }));
+  var shopRedirectOptions = categories.map(function (cat) {
+    return { value: '/category/' + cat.slug, label: cat.name };
+  });
 
   if (loading) return <div className="loading-spinner-admin"><div className="spinner" /></div>;
 
@@ -178,35 +174,38 @@ export default function FooterEditor() {
 
           {customLinks.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
-              {customLinks.map((link, idx) => (
-                <div key={idx} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <input
-                    type="text"
-                    value={link.name}
-                    onChange={(e) => handleUpdateLink(idx, 'name', e.target.value)}
-                    placeholder="Link name"
-                    style={{ flex: 1, padding: '8px 10px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }}
-                  />
-                  <input
-                    type="text"
-                    value={link.url}
-                    onChange={(e) => handleUpdateLink(idx, 'url', e.target.value)}
-                    placeholder="URL (e.g. /about or https://...)"
-                    style={{ flex: 1, padding: '8px 10px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }}
-                  />
-                  <button
-                    onClick={() => handleRemoveLink(idx)}
-                    style={{
-                      width: 30, height: 30, borderRadius: '50%', border: 'none',
-                      background: '#fee2e2', color: '#ef4444', cursor: 'pointer',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 14, flexShrink: 0,
-                    }}
-                  >
-                    <i className="fas fa-times" />
-                  </button>
-                </div>
-              ))}
+              {customLinks.map(function (link, idx) {
+                return (
+                  <div key={'link-' + idx} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <input
+                      type="text"
+                      value={link.name}
+                      onChange={function (ev) { handleUpdateLink(idx, 'name', ev.target.value); }}
+                      placeholder="Link name"
+                      style={{ flex: 1, padding: '8px 10px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }}
+                    />
+                    <input
+                      type="text"
+                      value={link.url}
+                      onChange={function (ev) { handleUpdateLink(idx, 'url', ev.target.value); }}
+                      placeholder="URL (e.g. /about or https://...)"
+                      style={{ flex: 1, padding: '8px 10px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={function () { handleRemoveLink(idx); }}
+                      style={{
+                        width: 30, height: 30, borderRadius: '50%', border: 'none',
+                        background: '#fee2e2', color: '#ef4444', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 14, flexShrink: 0,
+                      }}
+                    >
+                      <i className="fas fa-times" />
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           )}
 
@@ -214,23 +213,34 @@ export default function FooterEditor() {
             <input
               type="text"
               value={newLinkName}
-              onChange={(e) => setNewLinkName(e.target.value)}
+              onChange={function (ev) { setNewLinkName(ev.target.value); }}
               placeholder="Link name"
-              onKeyDown={(e) => e.key === 'Enter' && handleAddLink()}
+              onKeyDown={function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); handleAddLink(); } }}
               style={{ flex: 1, padding: '8px 10px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }}
             />
             <input
               type="text"
               value={newLinkUrl}
-              onChange={(e) => setNewLinkUrl(e.target.value)}
+              onChange={function (ev) { setNewLinkUrl(ev.target.value); }}
               placeholder="URL"
-              onKeyDown={(e) => e.key === 'Enter' && handleAddLink()}
+              onKeyDown={function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); handleAddLink(); } }}
               style={{ flex: 1, padding: '8px 10px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }}
             />
-            <button className="btn btn-primary btn-sm" onClick={() => handleAddLink()} style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
-              <i className="fas fa-plus" style={{ marginRight: 4 }} />Add
+            <button type="button" onClick={function () { handleAddLink(); }} style={{
+              padding: '8px 16px', background: '#2563eb', color: '#fff', border: 'none',
+              borderRadius: 6, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
+              fontSize: 13, fontWeight: 600, fontFamily: 'inherit',
+              display: 'flex', alignItems: 'center', gap: 4,
+            }}>
+              <i className="fas fa-plus" style={{ fontSize: 11 }} />
+              Add
             </button>
           </div>
+          {customLinks.length > 0 && (
+            <p style={{ fontSize: 12, color: '#10b981', marginTop: 8, marginBottom: 0 }}>
+              {customLinks.length} link{customLinks.length > 1 ? 's' : ''} added. Click "Save Footer Settings" below to save.
+            </p>
+          )}
         </div>
       </div>
 
@@ -245,25 +255,25 @@ export default function FooterEditor() {
               <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>
                 <i className="fab fa-instagram" style={{ marginRight: 6, color: '#E1306C' }} />Instagram
               </label>
-              <input type="text" value={instagram} onChange={(e) => setInstagram(e.target.value)} placeholder="https://instagram.com/..." style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
+              <input type="text" value={instagram} onChange={function (ev) { setInstagram(ev.target.value); }} placeholder="https://instagram.com/..." style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
             </div>
             <div>
               <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>
                 <i className="fab fa-facebook-f" style={{ marginRight: 6, color: '#1877F2' }} />Facebook
               </label>
-              <input type="text" value={facebook} onChange={(e) => setFacebook(e.target.value)} placeholder="https://facebook.com/..." style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
+              <input type="text" value={facebook} onChange={function (ev) { setFacebook(ev.target.value); }} placeholder="https://facebook.com/..." style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
             </div>
             <div>
               <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>
                 <i className="fab fa-twitter" style={{ marginRight: 6, color: '#1DA1F2' }} />Twitter
               </label>
-              <input type="text" value={twitter} onChange={(e) => setTwitter(e.target.value)} placeholder="https://twitter.com/..." style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
+              <input type="text" value={twitter} onChange={function (ev) { setTwitter(ev.target.value); }} placeholder="https://twitter.com/..." style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
             </div>
             <div>
               <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>
                 <i className="fab fa-youtube" style={{ marginRight: 6, color: '#FF0000' }} />YouTube
               </label>
-              <input type="text" value={youtube} onChange={(e) => setYoutube(e.target.value)} placeholder="https://youtube.com/..." style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
+              <input type="text" value={youtube} onChange={function (ev) { setYoutube(ev.target.value); }} placeholder="https://youtube.com/..." style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
             </div>
           </div>
         </div>
@@ -282,23 +292,9 @@ export default function FooterEditor() {
               <span style={{ fontSize: 12, color: '#94a3b8' }}>Display app download buttons in the footer</span>
             </div>
             <label style={{ position: 'relative', display: 'inline-block', width: 44, height: 24, cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                checked={showAppBanner}
-                onChange={() => setShowAppBanner(!showAppBanner)}
-                style={{ opacity: 0, width: 0, height: 0 }}
-              />
-              <span style={{
-                position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-                backgroundColor: showAppBanner ? '#10b981' : '#cbd5e1',
-                borderRadius: 24, transition: 'background-color 0.2s',
-              }}>
-                <span style={{
-                  position: 'absolute', left: showAppBanner ? 22 : 2, top: 2,
-                  width: 20, height: 20, backgroundColor: '#fff',
-                  borderRadius: '50%', transition: 'left 0.2s',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                }} />
+              <input type="checkbox" checked={showAppBanner} onChange={function () { setShowAppBanner(!showAppBanner); }} style={{ opacity: 0, width: 0, height: 0 }} />
+              <span style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: showAppBanner ? '#10b981' : '#cbd5e1', borderRadius: 24, transition: 'background-color 0.2s' }}>
+                <span style={{ position: 'absolute', left: showAppBanner ? 22 : 2, top: 2, width: 20, height: 20, backgroundColor: '#fff', borderRadius: '50%', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
               </span>
             </label>
           </div>
@@ -314,36 +310,16 @@ export default function FooterEditor() {
                   </div>
                 </div>
                 <label style={{ position: 'relative', display: 'inline-block', width: 44, height: 24, cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={showAppStore}
-                    onChange={() => setShowAppStore(!showAppStore)}
-                    style={{ opacity: 0, width: 0, height: 0 }}
-                  />
-                  <span style={{
-                    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-                    backgroundColor: showAppStore ? '#10b981' : '#cbd5e1',
-                    borderRadius: 24, transition: 'background-color 0.2s',
-                  }}>
-                    <span style={{
-                      position: 'absolute', left: showAppStore ? 22 : 2, top: 2,
-                      width: 20, height: 20, backgroundColor: '#fff',
-                      borderRadius: '50%', transition: 'left 0.2s',
-                      boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                    }} />
+                  <input type="checkbox" checked={showAppStore} onChange={function () { setShowAppStore(!showAppStore); }} style={{ opacity: 0, width: 0, height: 0 }} />
+                  <span style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: showAppStore ? '#10b981' : '#cbd5e1', borderRadius: 24, transition: 'background-color 0.2s' }}>
+                    <span style={{ position: 'absolute', left: showAppStore ? 22 : 2, top: 2, width: 20, height: 20, backgroundColor: '#fff', borderRadius: '50%', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
                   </span>
                 </label>
               </div>
               {showAppStore && (
                 <div>
                   <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>App Store URL</label>
-                  <input
-                    type="text"
-                    value={appStoreUrl}
-                    onChange={(e) => setAppStoreUrl(e.target.value)}
-                    placeholder="https://apps.apple.com/app/..."
-                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }}
-                  />
+                  <input type="text" value={appStoreUrl} onChange={function (ev) { setAppStoreUrl(ev.target.value); }} placeholder="https://apps.apple.com/app/..." style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
                 </div>
               )}
 
@@ -356,36 +332,16 @@ export default function FooterEditor() {
                   </div>
                 </div>
                 <label style={{ position: 'relative', display: 'inline-block', width: 44, height: 24, cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={showPlayStore}
-                    onChange={() => setShowPlayStore(!showPlayStore)}
-                    style={{ opacity: 0, width: 0, height: 0 }}
-                  />
-                  <span style={{
-                    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-                    backgroundColor: showPlayStore ? '#10b981' : '#cbd5e1',
-                    borderRadius: 24, transition: 'background-color 0.2s',
-                  }}>
-                    <span style={{
-                      position: 'absolute', left: showPlayStore ? 22 : 2, top: 2,
-                      width: 20, height: 20, backgroundColor: '#fff',
-                      borderRadius: '50%', transition: 'left 0.2s',
-                      boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                    }} />
+                  <input type="checkbox" checked={showPlayStore} onChange={function () { setShowPlayStore(!showPlayStore); }} style={{ opacity: 0, width: 0, height: 0 }} />
+                  <span style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: showPlayStore ? '#10b981' : '#cbd5e1', borderRadius: 24, transition: 'background-color 0.2s' }}>
+                    <span style={{ position: 'absolute', left: showPlayStore ? 22 : 2, top: 2, width: 20, height: 20, backgroundColor: '#fff', borderRadius: '50%', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
                   </span>
                 </label>
               </div>
               {showPlayStore && (
                 <div>
                   <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Google Play URL</label>
-                  <input
-                    type="text"
-                    value={playStoreUrl}
-                    onChange={(e) => setPlayStoreUrl(e.target.value)}
-                    placeholder="https://play.google.com/store/apps/..."
-                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }}
-                  />
+                  <input type="text" value={playStoreUrl} onChange={function (ev) { setPlayStoreUrl(ev.target.value); }} placeholder="https://play.google.com/store/apps/..." style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
                 </div>
               )}
             </div>
@@ -404,15 +360,9 @@ export default function FooterEditor() {
             <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>
               <i className="fi fi-rs-shop" style={{ marginRight: 6 }} />Shop Icon Redirects To
             </label>
-            <select
-              value={shopRedirect}
-              onChange={(e) => setShopRedirect(e.target.value)}
-              style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit', background: '#fff' }}
-            >
+            <select value={shopRedirect} onChange={function (ev) { setShopRedirect(ev.target.value); }} style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit', background: '#fff' }}>
               <option value="">Select a category</option>
-              {shopRedirectOptions.map(opt => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
+              {shopRedirectOptions.map(function (opt) { return <option key={opt.value} value={opt.value}>{opt.label}</option>; })}
             </select>
           </div>
 
@@ -422,23 +372,9 @@ export default function FooterEditor() {
               <span style={{ fontSize: 12, color: '#94a3b8' }}>Toggle the currency icon on the bottom navigation</span>
             </div>
             <label style={{ position: 'relative', display: 'inline-block', width: 44, height: 24, cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                checked={showCurrency}
-                onChange={() => setShowCurrency(!showCurrency)}
-                style={{ opacity: 0, width: 0, height: 0 }}
-              />
-              <span style={{
-                position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-                backgroundColor: showCurrency ? '#10b981' : '#cbd5e1',
-                borderRadius: 24, transition: 'background-color 0.2s',
-              }}>
-                <span style={{
-                  position: 'absolute', left: showCurrency ? 22 : 2, top: 2,
-                  width: 20, height: 20, backgroundColor: '#fff',
-                  borderRadius: '50%', transition: 'left 0.2s',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                }} />
+              <input type="checkbox" checked={showCurrency} onChange={function () { setShowCurrency(!showCurrency); }} style={{ opacity: 0, width: 0, height: 0 }} />
+              <span style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: showCurrency ? '#10b981' : '#cbd5e1', borderRadius: 24, transition: 'background-color 0.2s' }}>
+                <span style={{ position: 'absolute', left: showCurrency ? 22 : 2, top: 2, width: 20, height: 20, backgroundColor: '#fff', borderRadius: '50%', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
               </span>
             </label>
           </div>
@@ -448,7 +384,7 @@ export default function FooterEditor() {
       {status && (
         <div style={{
           background: status === 'success' ? '#f0fdf4' : '#fef2f2',
-          border: `1px solid ${status === 'success' ? '#bbf7d0' : '#fecaca'}`,
+          border: '1px solid ' + (status === 'success' ? '#bbf7d0' : '#fecaca'),
           borderRadius: 8, padding: '12px 16px',
           color: status === 'success' ? '#166534' : '#dc2626',
           marginBottom: 16, fontSize: 14,
@@ -457,7 +393,12 @@ export default function FooterEditor() {
         </div>
       )}
 
-      <button className="btn btn-primary" onClick={() => doSave()} disabled={saving} style={{ width: '100%' }}>
+      <button type="button" onClick={function () { handleSave(); }} disabled={saving} style={{
+        width: '100%', padding: '12px', background: '#2563eb', color: '#fff',
+        border: 'none', borderRadius: 8, fontSize: 15, fontWeight: 600,
+        cursor: saving ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
+        opacity: saving ? 0.7 : 1,
+      }}>
         {saving ? 'Saving...' : 'Save Footer Settings'}
       </button>
     </div>
