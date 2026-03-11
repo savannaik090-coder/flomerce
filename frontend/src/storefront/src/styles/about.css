@@ -4,7 +4,6 @@
 
 .about-hero {
   position: relative;
-  min-height: 420px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -243,12 +242,8 @@
 }
 
 @media (max-width: 767px) {
-  .about-hero {
-    min-height: 340px;
-  }
-
   .about-hero-inner {
-    padding: 60px 20px 50px;
+    padding: 50px 20px 30px;
   }
 
   .about-hero h1 {
