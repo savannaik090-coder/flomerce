@@ -77,9 +77,9 @@ export default function ProductDetailPage() {
     addToCart(product, 1);
   }
 
-  function handleBuyNow() {
+  async function handleBuyNow() {
     if (!product) return;
-    addToCart(product, 1);
+    await addToCart(product, 1);
     navigate('/checkout');
   }
 

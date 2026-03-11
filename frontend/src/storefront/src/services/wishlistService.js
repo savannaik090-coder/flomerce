@@ -5,9 +5,9 @@ export async function getWishlist(siteId) {
 }
 
 export async function addToWishlist(siteId, productId) {
-  return apiRequest('/api/wishlist', {
+  return apiRequest(`/api/wishlist?siteId=${siteId}`, {
     method: 'POST',
-    body: JSON.stringify({ productId, siteId }),
+    body: JSON.stringify({ productId }),
   });
 }
 

@@ -21,10 +21,7 @@ export default function ProductCard({ product, variant = 'grid', onWishlistToggl
       return;
     }
     if (inWishlist) {
-      const wishItem = wishlist.items.find(
-        (i) => i.product_id === product.id || i.id === product.id
-      );
-      if (wishItem) wishlist.removeFromWishlist(wishItem.id);
+      wishlist.removeFromWishlist(product.id);
     } else {
       wishlist.addToWishlist(product);
     }
