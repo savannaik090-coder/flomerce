@@ -1,6 +1,5 @@
 import React, { useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CartContext } from '../../context/CartContext.jsx';
 import { WishlistContext } from '../../context/WishlistContext.jsx';
 import { useCurrency } from '../../hooks/useCurrency.js';
 import { resolveImageUrl } from '../../utils/imageUrl.js';
@@ -23,23 +22,12 @@ function getItemProductId(item) {
 
 export default function WishlistPanel({ isOpen, onClose }) {
   const { items, removeFromWishlist } = useContext(WishlistContext);
-  const { addToCart } = useContext(CartContext);
   const { formatAmount } = useCurrency();
   const navigate = useNavigate();
 
-  function handleMoveToCart(item) {
-    var pid = getItemProductId(item);
-    var name = getItemName(item);
-    var price = getItemPrice(item);
-    var image = getItemImage(item);
-    addToCart({
-      id: pid,
-      name: name,
-      price: price,
-      images: [image],
-      image_url: image,
-    });
-    removeFromWishlist(item.id || pid);
+  function handleItemClick(item) {
+    onClose();
+    navigate(`/product/${getItemProductId(item)}`);
   }
 
   return (
@@ -58,21 +46,28 @@ export default function WishlistPanel({ isOpen, onClose }) {
             </div>
           ) : (
             items.map((item) => (
-              <div className="wishlist-item" key={item.id || getItemProductId(item)}>
+              <div
+                className="wishlist-item"
+                key={item.id || getItemProductId(item)}
+                onClick={() => handleItemClick(item)}
+                style={{ cursor: 'pointer' }}
+              >
                 <img
                   className="wishlist-item-image"
                   src={resolveImageUrl(getItemImage(item))}
                   alt={getItemName(item)}
                   onError={(e) => { e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><rect fill="%23f0f0f0" width="80" height="80"/></svg>'; }}
-                  onClick={() => { onClose(); navigate(`/product/${getItemProductId(item)}`); }}
-                  style={{ cursor: 'pointer' }}
                 />
                 <div className="wishlist-item-details">
                   <div className="wishlist-item-name">{getItemName(item)}</div>
                   <div className="wishlist-item-price">{formatAmount(getItemPrice(item))}</div>
                   <div className="wishlist-item-actions">
-                    <button className="remove-from-wishlist" onClick={() => removeFromWishlist(item.id || getItemProductId(item))}>Remove</button>
-                    <button className="move-to-cart" onClick={() => handleMoveToCart(item)}>Move to Cart</button>
+                    <button
+                      className="remove-from-wishlist"
+                      onClick={(e) => { e.stopPropagation(); removeFromWishlist(item.id || getItemProductId(item)); }}
+                    >
+                      Remove
+                    </button>
                   </div>
                 </div>
               </div>
