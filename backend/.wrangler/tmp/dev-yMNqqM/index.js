@@ -1710,6 +1710,33 @@ async function handleSites(request, env, path) {
   const method = request.method;
   const pathParts = path.split("/").filter(Boolean);
   const siteId = pathParts[2];
+  const subResource = pathParts[3];
+  if (siteId && (subResource === "custom-domain" || subResource === "verify-domain")) {
+    let authorized = false;
+    const user2 = await validateAuth(request, env);
+    if (user2) {
+      const ownedSite = await env.DB.prepare("SELECT id FROM sites WHERE id = ? AND user_id = ?").bind(siteId, user2.id).first();
+      if (ownedSite)
+        authorized = true;
+    }
+    if (!authorized) {
+      const siteAdmin = await validateSiteAdmin(request, env, siteId);
+      if (!siteAdmin)
+        return errorResponse("Unauthorized", 401, "UNAUTHORIZED");
+    }
+    if (subResource === "custom-domain") {
+      if (method === "PUT")
+        return handleSetCustomDomain(request, env, siteId);
+      if (method === "DELETE")
+        return handleRemoveCustomDomain(env, siteId);
+      return errorResponse("Method not allowed", 405);
+    }
+    if (subResource === "verify-domain") {
+      if (method === "POST")
+        return handleVerifyDomain(env, siteId);
+      return errorResponse("Method not allowed", 405);
+    }
+  }
   if (method === "PUT" && siteId) {
     const user2 = await validateAuth(request, env);
     if (user2) {
@@ -1741,7 +1768,8 @@ async function getUserSites(env, user) {
   try {
     const sites = await env.DB.prepare(
       `SELECT id, subdomain, brand_name, category, template_id, logo_url, 
-              primary_color, is_active, subscription_plan, created_at
+              primary_color, is_active, subscription_plan, created_at,
+              custom_domain, domain_status
        FROM sites 
        WHERE user_id = ? 
        ORDER BY created_at DESC`
@@ -2049,6 +2077,156 @@ async function deleteSite(env, user, siteId) {
   }
 }
 __name(deleteSite, "deleteSite");
+async function handleSetCustomDomain(request, env, siteId) {
+  try {
+    const body = await request.json();
+    let { domain } = body;
+    if (!domain || typeof domain !== "string") {
+      return errorResponse("Domain is required");
+    }
+    domain = domain.toLowerCase().trim();
+    if (domain.startsWith("http://") || domain.startsWith("https://")) {
+      domain = domain.replace(/^https?:\/\//, "");
+    }
+    domain = domain.replace(/\/+$/, "");
+    const domainParts = domain.split(".");
+    if (domainParts.length < 3 || domainParts[0] !== "www") {
+      return errorResponse("Only www subdomains are supported (e.g. www.mystore.com). Root domains like mystore.com are not supported.", 400, "INVALID_DOMAIN");
+    }
+    const domainRegex = /^www\.[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z]{2,})+$/;
+    if (!domainRegex.test(domain)) {
+      return errorResponse("Invalid domain format. Please enter a valid domain like www.mystore.com", 400, "INVALID_DOMAIN");
+    }
+    const existing = await env.DB.prepare(
+      "SELECT id FROM sites WHERE custom_domain = ? AND id != ?"
+    ).bind(domain, siteId).first();
+    if (existing) {
+      return errorResponse("This domain is already connected to another site", 409, "DOMAIN_TAKEN");
+    }
+    const site = await env.DB.prepare("SELECT id FROM sites WHERE id = ?").bind(siteId).first();
+    if (!site) {
+      return errorResponse("Site not found", 404, "NOT_FOUND");
+    }
+    const token = generateId().replace(/-/g, "");
+    await env.DB.prepare(
+      `UPDATE sites SET custom_domain = ?, domain_status = 'pending', domain_verification_token = ?, updated_at = datetime('now') WHERE id = ?`
+    ).bind(domain, token, siteId).run();
+    return successResponse({
+      custom_domain: domain,
+      domain_status: "pending",
+      domain_verification_token: token
+    }, "Custom domain saved. Please add the DNS records and verify.");
+  } catch (error) {
+    console.error("Set custom domain error:", error);
+    if (error.message && error.message.includes("UNIQUE constraint failed")) {
+      return errorResponse("This domain is already connected to another site", 409, "DOMAIN_TAKEN");
+    }
+    return errorResponse("Failed to set custom domain: " + error.message, 500);
+  }
+}
+__name(handleSetCustomDomain, "handleSetCustomDomain");
+async function handleVerifyDomain(env, siteId) {
+  try {
+    const site = await env.DB.prepare(
+      "SELECT id, custom_domain, domain_verification_token FROM sites WHERE id = ?"
+    ).bind(siteId).first();
+    if (!site) {
+      return errorResponse("Site not found", 404, "NOT_FOUND");
+    }
+    if (!site.custom_domain) {
+      return errorResponse("No custom domain configured for this site", 400);
+    }
+    const domain = site.custom_domain;
+    const expectedToken = site.domain_verification_token;
+    const errors = [];
+    let txtVerified = false;
+    try {
+      const baseDomain = domain.replace(/^www\./, "");
+      const txtHost = `_fluxe-verify.${baseDomain}`;
+      const txtResponse = await fetch(
+        `https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(txtHost)}&type=TXT`,
+        { headers: { "Accept": "application/dns-json" } }
+      );
+      const txtData = await txtResponse.json();
+      if (txtData.Answer && txtData.Answer.length > 0) {
+        for (const answer of txtData.Answer) {
+          const val = (answer.data || "").replace(/"/g, "").trim();
+          if (val === expectedToken) {
+            txtVerified = true;
+            break;
+          }
+        }
+      }
+      if (!txtVerified) {
+        errors.push(`TXT record _fluxe-verify.${baseDomain} not found or does not match the expected token.`);
+      }
+    } catch (e) {
+      errors.push("Failed to check TXT record: " + (e.message || "DNS lookup error"));
+    }
+    let cnameVerified = false;
+    try {
+      const cnameResponse = await fetch(
+        `https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(domain)}&type=CNAME`,
+        { headers: { "Accept": "application/dns-json" } }
+      );
+      const cnameData = await cnameResponse.json();
+      if (cnameData.Answer && cnameData.Answer.length > 0) {
+        for (const answer of cnameData.Answer) {
+          const target = (answer.data || "").replace(/\.$/, "").toLowerCase();
+          if (target === "fluxe.in") {
+            cnameVerified = true;
+            break;
+          }
+        }
+      }
+      if (!cnameVerified) {
+        errors.push(`CNAME record for ${domain} not found or does not point to fluxe.in.`);
+      }
+    } catch (e) {
+      errors.push("Failed to check CNAME record: " + (e.message || "DNS lookup error"));
+    }
+    if (txtVerified && cnameVerified) {
+      await env.DB.prepare(
+        `UPDATE sites SET domain_status = 'verified', updated_at = datetime('now') WHERE id = ?`
+      ).bind(siteId).run();
+      return successResponse({
+        domain_status: "verified",
+        txt_verified: true,
+        cname_verified: true
+      }, "Domain verified successfully! Your custom domain is now active.");
+    } else {
+      await env.DB.prepare(
+        `UPDATE sites SET domain_status = 'failed', updated_at = datetime('now') WHERE id = ?`
+      ).bind(siteId).run();
+      return successResponse({
+        domain_status: "failed",
+        txt_verified: txtVerified,
+        cname_verified: cnameVerified,
+        errors
+      }, "Domain verification failed. Please check your DNS records.");
+    }
+  } catch (error) {
+    console.error("Verify domain error:", error);
+    return errorResponse("Failed to verify domain: " + error.message, 500);
+  }
+}
+__name(handleVerifyDomain, "handleVerifyDomain");
+async function handleRemoveCustomDomain(env, siteId) {
+  try {
+    const site = await env.DB.prepare("SELECT id FROM sites WHERE id = ?").bind(siteId).first();
+    if (!site) {
+      return errorResponse("Site not found", 404, "NOT_FOUND");
+    }
+    await env.DB.prepare(
+      `UPDATE sites SET custom_domain = NULL, domain_status = NULL, domain_verification_token = NULL, updated_at = datetime('now') WHERE id = ?`
+    ).bind(siteId).run();
+    return successResponse(null, "Custom domain removed successfully.");
+  } catch (error) {
+    console.error("Remove custom domain error:", error);
+    return errorResponse("Failed to remove custom domain: " + error.message, 500);
+  }
+}
+__name(handleRemoveCustomDomain, "handleRemoveCustomDomain");
 
 // workers/storefront/products-worker.js
 init_checked_fetch();
@@ -4344,23 +4522,38 @@ async function handleSiteRouting(request, env) {
   if (subdomainParam) {
     subdomain = subdomainParam;
   }
-  if (!subdomain) {
-    return null;
-  }
   const path = url.pathname;
   if (path.startsWith("/api/")) {
     return null;
   }
-  try {
-    const site = await env.DB.prepare(
-      `SELECT * FROM sites WHERE LOWER(subdomain) = LOWER(?) AND is_active = 1`
-    ).bind(subdomain).first();
-    if (!site) {
-      return new Response("Site not found", {
-        status: 404,
-        headers: corsHeaders()
-      });
+  let site = null;
+  if (subdomain) {
+    try {
+      site = await env.DB.prepare(
+        `SELECT * FROM sites WHERE LOWER(subdomain) = LOWER(?) AND is_active = 1`
+      ).bind(subdomain).first();
+    } catch (error) {
+      console.error("Site routing subdomain lookup error:", error);
     }
+  }
+  if (!site && !hostname.endsWith("fluxe.in") && !hostname.endsWith("pages.dev") && !hostname.includes("localhost") && !hostname.includes("workers.dev")) {
+    try {
+      site = await env.DB.prepare(
+        `SELECT * FROM sites WHERE custom_domain = ? AND domain_status = 'verified' AND is_active = 1`
+      ).bind(hostname.toLowerCase()).first();
+    } catch (error) {
+      console.error("Site routing custom domain lookup error:", error);
+    }
+  }
+  if (!site) {
+    if (!subdomain)
+      return null;
+    return new Response("Site not found", {
+      status: 404,
+      headers: corsHeaders()
+    });
+  }
+  try {
     const isExpired2 = site.subscription_expires_at && new Date(site.subscription_expires_at) < /* @__PURE__ */ new Date();
     if (isExpired2) {
       return new Response(
@@ -5345,6 +5538,9 @@ async function ensureTablesExist(env) {
         is_active INTEGER DEFAULT 1,
         subscription_plan TEXT DEFAULT 'free',
         subscription_expires_at TEXT,
+        custom_domain TEXT,
+        domain_status TEXT,
+        domain_verification_token TEXT,
         created_at TEXT DEFAULT (datetime('now')),
         updated_at TEXT DEFAULT (datetime('now')),
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -5691,7 +5887,8 @@ async function ensureTablesExist(env) {
       "CREATE INDEX IF NOT EXISTS idx_reviews_site ON reviews(site_id)",
       "CREATE INDEX IF NOT EXISTS idx_activity_site ON activity_log(site_id)",
       "CREATE INDEX IF NOT EXISTS idx_activity_user ON activity_log(user_id)",
-      "CREATE INDEX IF NOT EXISTS idx_activity_created ON activity_log(created_at)"
+      "CREATE INDEX IF NOT EXISTS idx_activity_created ON activity_log(created_at)",
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_sites_custom_domain ON sites(custom_domain) WHERE custom_domain IS NOT NULL"
     ];
     for (const sql of tables) {
       await env.DB.prepare(sql).run();
@@ -5704,7 +5901,10 @@ async function ensureTablesExist(env) {
     }
     const migrations = [
       { col: "subtitle", sql: "ALTER TABLE categories ADD COLUMN subtitle TEXT" },
-      { col: "show_on_home", sql: "ALTER TABLE categories ADD COLUMN show_on_home INTEGER DEFAULT 1" }
+      { col: "show_on_home", sql: "ALTER TABLE categories ADD COLUMN show_on_home INTEGER DEFAULT 1" },
+      { col: "custom_domain", sql: "ALTER TABLE sites ADD COLUMN custom_domain TEXT" },
+      { col: "domain_status", sql: "ALTER TABLE sites ADD COLUMN domain_status TEXT" },
+      { col: "domain_verification_token", sql: "ALTER TABLE sites ADD COLUMN domain_verification_token TEXT" }
     ];
     for (const m of migrations) {
       try {
@@ -5978,20 +6178,31 @@ async function handleHealth(env) {
 __name(handleHealth, "handleHealth");
 async function handleSiteInfo(request, env) {
   const url = new URL(request.url);
+  const hostname = url.hostname;
   const subdomain = url.searchParams.get("subdomain");
-  if (!subdomain) {
-    return errorResponse("Subdomain is required");
-  }
+  let site = null;
   try {
-    const site = await env.DB.prepare(
-      `SELECT s.id, s.subdomain, s.brand_name, s.category, s.template_id, 
-              s.logo_url, s.favicon_url, s.primary_color, s.secondary_color,
-              s.phone, s.email, s.address, s.social_links, s.settings
-       FROM sites s 
-       WHERE LOWER(s.subdomain) = LOWER(?) AND s.is_active = 1`
-    ).bind(subdomain).first();
+    if (subdomain) {
+      site = await env.DB.prepare(
+        `SELECT s.id, s.subdomain, s.brand_name, s.category, s.template_id, 
+                s.logo_url, s.favicon_url, s.primary_color, s.secondary_color,
+                s.phone, s.email, s.address, s.social_links, s.settings,
+                s.custom_domain, s.domain_status, s.domain_verification_token
+         FROM sites s 
+         WHERE LOWER(s.subdomain) = LOWER(?) AND s.is_active = 1`
+      ).bind(subdomain).first();
+    } else if (!hostname.endsWith("fluxe.in") && !hostname.endsWith("pages.dev") && !hostname.includes("localhost") && !hostname.includes("workers.dev")) {
+      site = await env.DB.prepare(
+        `SELECT s.id, s.subdomain, s.brand_name, s.category, s.template_id, 
+                s.logo_url, s.favicon_url, s.primary_color, s.secondary_color,
+                s.phone, s.email, s.address, s.social_links, s.settings,
+                s.custom_domain, s.domain_status, s.domain_verification_token
+         FROM sites s 
+         WHERE s.custom_domain = ? AND s.domain_status = 'verified' AND s.is_active = 1`
+      ).bind(hostname.toLowerCase()).first();
+    }
     if (!site) {
-      return errorResponse("Site not found", 404);
+      return errorResponse(subdomain ? "Site not found" : "Subdomain is required", subdomain ? 404 : 400);
     }
     let categoriesResult = [];
     try {

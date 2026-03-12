@@ -94,3 +94,7 @@ RAZORPAY_KEY_ID = "rzp_test_qZWULE2MoPHZJv"
 RAZORPAY_KEY_SECRET = "dwhI00HuTIRk5T61AyUq1Bhh"
 OWNER_EMAIL = "sss.naik2007@gmail.com"
 JWT_SECRET = "2f7522488d21eaec47e6092f7522488d21eaec47e6092f7522488d21eaec47"
+
+[postMerge]
+path = "scripts/post-merge.sh"
+timeoutMs = 180000
