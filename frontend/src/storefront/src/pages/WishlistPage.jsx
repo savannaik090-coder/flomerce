@@ -1,26 +1,12 @@
 import React, { useContext } from 'react';
 import { Link } from 'react-router-dom';
-import { CartContext } from '../context/CartContext.jsx';
 import { CurrencyContext } from '../context/CurrencyContext.jsx';
 import { useWishlist } from '../hooks/useWishlist.js';
 import { resolveImageUrl } from '../utils/imageUrl.js';
 
 export default function WishlistPage() {
   const { items, removeFromWishlist, loading } = useWishlist();
-  const { addToCart } = useContext(CartContext);
   const { formatAmount } = useContext(CurrencyContext);
-
-  const handleMoveToCart = (item) => {
-    const pid = item.productId || item.product_id;
-    addToCart({
-      id: pid,
-      name: item.name || item.product_name,
-      price: item.price || item.product_price,
-      images: [item.thumbnail || item.product_image],
-      thumbnail_url: item.thumbnail || item.product_image,
-    });
-    removeFromWishlist(pid);
-  };
 
   if (loading) {
     return (
@@ -50,8 +36,8 @@ export default function WishlistPage() {
             const price = item.price || item.product_price || 0;
             const image = resolveImageUrl(item.thumbnail || item.product_image || '');
             return (
-              <div key={pid} style={{ border: '1px solid #eee', borderRadius: 8, overflow: 'hidden', transition: 'box-shadow 0.3s ease' }}>
-                <Link to={`/product/${pid}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+              <div key={pid} style={{ border: '1px solid #eee', borderRadius: 8, overflow: 'hidden', transition: 'box-shadow 0.3s ease', position: 'relative' }}>
+                <Link to={`/product/${pid}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
                   <div style={{ height: 280, overflow: 'hidden', background: '#f5f5f5' }}>
                     {image ? (
                       <img src={image} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.3s ease' }} />
@@ -59,15 +45,12 @@ export default function WishlistPage() {
                       <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999' }}>No Image</div>
                     )}
                   </div>
-                </Link>
-                <div style={{ padding: 16 }}>
-                  <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 6, color: '#333' }}>{name}</h3>
-                  <p style={{ color: '#c8a97e', fontWeight: 'bold', fontSize: 16, marginBottom: 12 }}>{formatAmount(price)}</p>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button onClick={() => handleMoveToCart(item)} style={{ flex: 1, padding: '8px 12px', background: '#c8a97e', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>Move to Cart</button>
-                    <button onClick={() => removeFromWishlist(pid)} style={{ padding: '8px 12px', background: '#fff', color: '#e74c3c', border: '1px solid #e74c3c', borderRadius: 4, cursor: 'pointer', fontSize: 13 }}>Remove</button>
+                  <div style={{ padding: 16 }}>
+                    <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 6, color: '#333' }}>{name}</h3>
+                    <p style={{ color: '#c8a97e', fontWeight: 'bold', fontSize: 16, margin: 0 }}>{formatAmount(price)}</p>
                   </div>
-                </div>
+                </Link>
+                <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); removeFromWishlist(pid); }} style={{ position: 'absolute', top: 10, right: 10, width: 32, height: 32, borderRadius: '50%', background: 'rgba(255,255,255,0.9)', color: '#e74c3c', border: 'none', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.15)' }}>x</button>
               </div>
             );
           })}
