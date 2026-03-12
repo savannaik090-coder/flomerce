@@ -258,6 +258,26 @@ export async function ensureTablesExist(env) {
         FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
       )`,
 
+      `CREATE TABLE IF NOT EXISTS customer_addresses (
+        id TEXT PRIMARY KEY,
+        site_id TEXT NOT NULL,
+        customer_id TEXT NOT NULL,
+        label TEXT DEFAULT 'Home',
+        first_name TEXT NOT NULL,
+        last_name TEXT,
+        phone TEXT,
+        house_number TEXT NOT NULL,
+        road_name TEXT,
+        city TEXT NOT NULL,
+        state TEXT NOT NULL,
+        pin_code TEXT NOT NULL,
+        is_default INTEGER DEFAULT 0,
+        created_at TEXT DEFAULT (datetime('now')),
+        updated_at TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (customer_id) REFERENCES site_customers(id) ON DELETE CASCADE,
+        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
+      )`,
+
       `CREATE TABLE IF NOT EXISTS subscriptions (
         id TEXT PRIMARY KEY,
         user_id TEXT NOT NULL,
@@ -393,6 +413,8 @@ export async function ensureTablesExist(env) {
       'CREATE INDEX IF NOT EXISTS idx_site_customers_email ON site_customers(site_id, email)',
       'CREATE INDEX IF NOT EXISTS idx_customer_sessions_token ON site_customer_sessions(token)',
       'CREATE INDEX IF NOT EXISTS idx_customer_sessions_customer ON site_customer_sessions(customer_id)',
+      'CREATE INDEX IF NOT EXISTS idx_customer_addresses_customer ON customer_addresses(customer_id)',
+      'CREATE INDEX IF NOT EXISTS idx_customer_addresses_site ON customer_addresses(site_id)',
       'CREATE INDEX IF NOT EXISTS idx_subscriptions_user ON subscriptions(user_id)',
       'CREATE INDEX IF NOT EXISTS idx_subscriptions_status ON subscriptions(status)',
       'CREATE INDEX IF NOT EXISTS idx_transactions_order ON payment_transactions(order_id)',

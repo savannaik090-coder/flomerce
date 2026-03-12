@@ -5,7 +5,13 @@ export async function handleCustomerAuth(request, env, path) {
   const corsResponse = handleCORS(request);
   if (corsResponse) return corsResponse;
 
-  const action = path.split('/').pop();
+  const segments = path.split('/').filter(Boolean);
+  const action = segments[2] || '';
+
+  if (action === 'addresses') {
+    const addressId = segments[3] || null;
+    return handleAddresses(request, env, addressId);
+  }
 
   switch (action) {
     case 'signup':
@@ -66,8 +72,197 @@ async function ensureCustomerTables(env) {
     await env.DB.prepare(
       'CREATE INDEX IF NOT EXISTS idx_customer_sessions_customer ON site_customer_sessions(customer_id)'
     ).run();
+
+    await env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS customer_addresses (
+        id TEXT PRIMARY KEY,
+        site_id TEXT NOT NULL,
+        customer_id TEXT NOT NULL,
+        label TEXT DEFAULT 'Home',
+        first_name TEXT NOT NULL,
+        last_name TEXT,
+        phone TEXT,
+        house_number TEXT NOT NULL,
+        road_name TEXT,
+        city TEXT NOT NULL,
+        state TEXT NOT NULL,
+        pin_code TEXT NOT NULL,
+        is_default INTEGER DEFAULT 0,
+        created_at TEXT DEFAULT (datetime('now')),
+        updated_at TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (customer_id) REFERENCES site_customers(id) ON DELETE CASCADE,
+        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
+      )
+    `).run();
+
+    await env.DB.prepare(
+      'CREATE INDEX IF NOT EXISTS idx_customer_addresses_customer ON customer_addresses(customer_id)'
+    ).run();
+    await env.DB.prepare(
+      'CREATE INDEX IF NOT EXISTS idx_customer_addresses_site ON customer_addresses(site_id)'
+    ).run();
   } catch (error) {
     console.error('Error ensuring customer tables:', error);
+  }
+}
+
+async function handleAddresses(request, env, addressId) {
+  const customer = await validateCustomerAuth(request, env);
+  if (!customer) {
+    return errorResponse('Unauthorized', 401);
+  }
+
+  const method = request.method;
+
+  if (method === 'GET') {
+    return getAddresses(env, customer);
+  } else if (method === 'POST') {
+    return createAddress(request, env, customer);
+  } else if (method === 'PUT' && addressId) {
+    return updateAddress(request, env, customer, addressId);
+  } else if (method === 'DELETE' && addressId) {
+    return deleteAddress(env, customer, addressId);
+  }
+
+  return errorResponse('Method not allowed', 405);
+}
+
+async function getAddresses(env, customer) {
+  try {
+    const { results } = await env.DB.prepare(
+      'SELECT * FROM customer_addresses WHERE customer_id = ? AND site_id = ? ORDER BY is_default DESC, created_at DESC'
+    ).bind(customer.id, customer.site_id).all();
+
+    return successResponse(results || []);
+  } catch (error) {
+    console.error('Error fetching addresses:', error);
+    return errorResponse('Failed to fetch addresses', 500);
+  }
+}
+
+async function createAddress(request, env, customer) {
+  try {
+    const body = await request.json();
+    const { label, firstName, lastName, phone, houseNumber, roadName, city, state, pinCode, isDefault } = body;
+
+    if (!firstName || !houseNumber || !city || !state || !pinCode) {
+      return errorResponse('First name, house number, city, state, and PIN code are required');
+    }
+
+    const id = generateId();
+
+    if (isDefault) {
+      await env.DB.prepare(
+        'UPDATE customer_addresses SET is_default = 0 WHERE customer_id = ? AND site_id = ?'
+      ).bind(customer.id, customer.site_id).run();
+    }
+
+    await env.DB.prepare(
+      `INSERT INTO customer_addresses (id, site_id, customer_id, label, first_name, last_name, phone, house_number, road_name, city, state, pin_code, is_default, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
+    ).bind(
+      id, customer.site_id, customer.id,
+      sanitizeInput(label || 'Home'),
+      sanitizeInput(firstName),
+      lastName ? sanitizeInput(lastName) : null,
+      phone || null,
+      sanitizeInput(houseNumber),
+      roadName ? sanitizeInput(roadName) : null,
+      sanitizeInput(city),
+      sanitizeInput(state),
+      sanitizeInput(pinCode),
+      isDefault ? 1 : 0
+    ).run();
+
+    const address = await env.DB.prepare(
+      'SELECT * FROM customer_addresses WHERE id = ?'
+    ).bind(id).first();
+
+    return successResponse(address, 'Address saved successfully');
+  } catch (error) {
+    console.error('Error creating address:', error);
+    return errorResponse('Failed to save address', 500);
+  }
+}
+
+async function updateAddress(request, env, customer, addressId) {
+  try {
+    const existing = await env.DB.prepare(
+      'SELECT * FROM customer_addresses WHERE id = ? AND customer_id = ? AND site_id = ?'
+    ).bind(addressId, customer.id, customer.site_id).first();
+
+    if (!existing) {
+      return errorResponse('Address not found', 404);
+    }
+
+    const body = await request.json();
+    const { label, firstName, lastName, phone, houseNumber, roadName, city, state, pinCode, isDefault } = body;
+
+    if (isDefault) {
+      await env.DB.prepare(
+        'UPDATE customer_addresses SET is_default = 0 WHERE customer_id = ? AND site_id = ?'
+      ).bind(customer.id, customer.site_id).run();
+    }
+
+    await env.DB.prepare(
+      `UPDATE customer_addresses SET
+        label = COALESCE(?, label),
+        first_name = COALESCE(?, first_name),
+        last_name = COALESCE(?, last_name),
+        phone = COALESCE(?, phone),
+        house_number = COALESCE(?, house_number),
+        road_name = COALESCE(?, road_name),
+        city = COALESCE(?, city),
+        state = COALESCE(?, state),
+        pin_code = COALESCE(?, pin_code),
+        is_default = ?,
+        updated_at = datetime('now')
+       WHERE id = ? AND customer_id = ? AND site_id = ?`
+    ).bind(
+      label ? sanitizeInput(label) : null,
+      firstName ? sanitizeInput(firstName) : null,
+      lastName !== undefined ? (lastName ? sanitizeInput(lastName) : null) : null,
+      phone !== undefined ? (phone || null) : null,
+      houseNumber ? sanitizeInput(houseNumber) : null,
+      roadName !== undefined ? (roadName ? sanitizeInput(roadName) : null) : null,
+      city ? sanitizeInput(city) : null,
+      state ? sanitizeInput(state) : null,
+      pinCode ? sanitizeInput(pinCode) : null,
+      isDefault ? 1 : 0,
+      addressId,
+      customer.id,
+      customer.site_id
+    ).run();
+
+    const updated = await env.DB.prepare(
+      'SELECT * FROM customer_addresses WHERE id = ?'
+    ).bind(addressId).first();
+
+    return successResponse(updated, 'Address updated successfully');
+  } catch (error) {
+    console.error('Error updating address:', error);
+    return errorResponse('Failed to update address', 500);
+  }
+}
+
+async function deleteAddress(env, customer, addressId) {
+  try {
+    const existing = await env.DB.prepare(
+      'SELECT * FROM customer_addresses WHERE id = ? AND customer_id = ? AND site_id = ?'
+    ).bind(addressId, customer.id, customer.site_id).first();
+
+    if (!existing) {
+      return errorResponse('Address not found', 404);
+    }
+
+    await env.DB.prepare(
+      'DELETE FROM customer_addresses WHERE id = ? AND customer_id = ? AND site_id = ?'
+    ).bind(addressId, customer.id, customer.site_id).run();
+
+    return successResponse(null, 'Address deleted successfully');
+  } catch (error) {
+    console.error('Error deleting address:', error);
+    return errorResponse('Failed to delete address', 500);
   }
 }
 

@@ -356,6 +356,32 @@ CREATE INDEX idx_customer_sessions_token ON site_customer_sessions(token);
 CREATE INDEX idx_customer_sessions_customer ON site_customer_sessions(customer_id);
 
 -- =====================================================
+-- CUSTOMER ADDRESSES TABLE
+-- =====================================================
+CREATE TABLE IF NOT EXISTS customer_addresses (
+    id TEXT PRIMARY KEY,
+    site_id TEXT NOT NULL,
+    customer_id TEXT NOT NULL,
+    label TEXT DEFAULT 'Home',
+    first_name TEXT NOT NULL,
+    last_name TEXT,
+    phone TEXT,
+    house_number TEXT NOT NULL,
+    road_name TEXT,
+    city TEXT NOT NULL,
+    state TEXT NOT NULL,
+    pin_code TEXT NOT NULL,
+    is_default INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (customer_id) REFERENCES site_customers(id) ON DELETE CASCADE,
+    FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_customer_addresses_customer ON customer_addresses(customer_id);
+CREATE INDEX idx_customer_addresses_site ON customer_addresses(site_id);
+
+-- =====================================================
 -- NOTIFICATIONS TABLE
 -- =====================================================
 CREATE TABLE IF NOT EXISTS notifications (

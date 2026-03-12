@@ -6,6 +6,7 @@ import { SiteContext } from '../context/SiteContext.jsx';
 import { resolveImageUrl } from '../utils/imageUrl.js';
 import { CurrencyContext } from '../context/CurrencyContext.jsx';
 import * as orderService from '../services/orderService.js';
+import * as authService from '../services/authService.js';
 import '../styles/checkout.css';
 
 const INDIAN_STATES = [
@@ -43,7 +44,9 @@ export default function CheckoutPage() {
   const [addressErrors, setAddressErrors] = useState({});
   const [pinValidating, setPinValidating] = useState(false);
   const [savedAddresses, setSavedAddresses] = useState([]);
-  const [selectedAddressIdx, setSelectedAddressIdx] = useState(-1);
+  const [selectedAddressId, setSelectedAddressId] = useState(null);
+  const [saveAddress, setSaveAddress] = useState(true);
+  const [addressesLoaded, setAddressesLoaded] = useState(false);
 
   const [paymentMethod, setPaymentMethod] = useState('cod');
   const [orderPlaced, setOrderPlaced] = useState(false);
@@ -57,12 +60,29 @@ export default function CheckoutPage() {
         lastName: user.name?.split(' ').slice(1).join(' ') || '',
         email: user.email || '',
       }));
-      const stored = localStorage.getItem('saved_addresses');
-      if (stored) {
-        try { setSavedAddresses(JSON.parse(stored)); } catch {}
-      }
     }
   }, [isAuthenticated, user]);
+
+  useEffect(() => {
+    if (isAuthenticated && !addressesLoaded) {
+      (async () => {
+        try {
+          const result = await authService.getAddresses();
+          const addrs = result.data || result || [];
+          const list = Array.isArray(addrs) ? addrs : [];
+          setSavedAddresses(list);
+          if (list.length > 0) {
+            const defaultAddr = list.find(a => a.is_default === 1) || list[0];
+            selectSavedAddress(defaultAddr);
+          }
+        } catch (err) {
+          console.error('Failed to fetch saved addresses:', err);
+        } finally {
+          setAddressesLoaded(true);
+        }
+      })();
+    }
+  }, [isAuthenticated, addressesLoaded]);
 
   const validateAddress = useCallback(() => {
     const errs = {};
@@ -108,41 +128,57 @@ export default function CheckoutPage() {
   const handleAddressChange = useCallback((field, value) => {
     setAddress(prev => ({ ...prev, [field]: value }));
     setAddressErrors(prev => ({ ...prev, [field]: undefined }));
+    setSelectedAddressId(null);
     if (field === 'pinCode' && value.length === 6) {
       validatePinCode(value);
     }
   }, [validatePinCode]);
 
-  const selectSavedAddress = useCallback((idx) => {
-    setSelectedAddressIdx(idx);
-    if (idx >= 0 && savedAddresses[idx]) {
-      const sa = savedAddresses[idx];
-      setAddress(prev => ({ ...prev, ...sa }));
-    }
-  }, [savedAddresses]);
+  const selectSavedAddress = useCallback((addr) => {
+    setSelectedAddressId(addr.id);
+    setAddress(prev => ({
+      ...prev,
+      firstName: addr.first_name || prev.firstName,
+      lastName: addr.last_name || prev.lastName,
+      phone: addr.phone || prev.phone,
+      houseNumber: addr.house_number || '',
+      roadName: addr.road_name || '',
+      city: addr.city || '',
+      state: addr.state || '',
+      pinCode: addr.pin_code || '',
+    }));
+  }, []);
 
-  const goToStep = useCallback((s) => {
+  const goToStep = useCallback(async (s) => {
     if (s === 2 && items.length === 0) {
       setError('Your cart is empty');
       return;
     }
     if (s === 3) {
       if (!validateAddress()) return;
-      if (isAuthenticated) {
-        const exists = savedAddresses.some(sa =>
-          sa.pinCode === address.pinCode && sa.houseNumber === address.houseNumber
-        );
-        if (!exists) {
-          const updated = [...savedAddresses, address];
-          setSavedAddresses(updated);
-          localStorage.setItem('saved_addresses', JSON.stringify(updated));
+      if (isAuthenticated && saveAddress && !selectedAddressId) {
+        try {
+          await authService.createAddress({
+            label: 'Home',
+            firstName: address.firstName,
+            lastName: address.lastName,
+            phone: address.phone,
+            houseNumber: address.houseNumber,
+            roadName: address.roadName,
+            city: address.city,
+            state: address.state,
+            pinCode: address.pinCode,
+            isDefault: savedAddresses.length === 0,
+          });
+        } catch (err) {
+          console.error('Failed to save address:', err);
         }
       }
     }
     setError('');
     setStep(s);
     window.scrollTo(0, 0);
-  }, [items, validateAddress, isAuthenticated, savedAddresses, address]);
+  }, [items, validateAddress, isAuthenticated, saveAddress, selectedAddressId, savedAddresses, address]);
 
   const placeOrder = useCallback(async () => {
     setLoading(true);
@@ -286,7 +322,7 @@ export default function CheckoutPage() {
     return (
       <div className="checkout-page" style={{ minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ textAlign: 'center', maxWidth: 500, padding: 40, background: '#fff', borderRadius: 8, boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
-          <div style={{ fontSize: 60, color: '#25ab00', marginBottom: 20 }}>✓</div>
+          <div style={{ fontSize: 60, color: '#25ab00', marginBottom: 20 }}>&#10003;</div>
           <h2 style={{ fontFamily: "'Playfair Display', serif", marginBottom: 15 }}>Order Confirmed!</h2>
           <p style={{ color: '#666', marginBottom: 10 }}>Thank you for your order.</p>
           <p style={{ fontFamily: 'monospace', background: '#f5f5f5', padding: '8px 16px', borderRadius: 4, display: 'inline-block', marginBottom: 20 }}>
@@ -322,9 +358,9 @@ export default function CheckoutPage() {
 
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 40, gap: 0 }}>
         {[
-          { num: 1, label: 'Order Summary', icon: '🛒' },
-          { num: 2, label: 'Address', icon: '📍' },
-          { num: 3, label: 'Payment', icon: '💳' },
+          { num: 1, label: 'Order Summary', icon: '&#128722;' },
+          { num: 2, label: 'Address', icon: '&#128205;' },
+          { num: 3, label: 'Payment', icon: '&#128179;' },
         ].map((s) => (
           <div key={s.num} style={{ textAlign: 'center', flex: 1 }}>
             <div style={{
@@ -335,7 +371,7 @@ export default function CheckoutPage() {
               color: step >= s.num ? '#fff' : '#999',
               transition: 'all 0.3s ease',
             }}>
-              {step > s.num ? '✓' : s.icon}
+              {step > s.num ? <span>&#10003;</span> : <span dangerouslySetInnerHTML={{ __html: s.icon }} />}
             </div>
             <span style={{ fontSize: 13, fontWeight: 500, color: step >= s.num ? '#333' : '#999' }}>{s.label}</span>
           </div>
@@ -376,7 +412,7 @@ export default function CheckoutPage() {
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         <span style={{ fontWeight: 600, color: '#9c7c38' }}>{formatAmount(price * qty)}</span>
-                        <button type="button" onClick={() => removeItem(itemId)} style={{ background: 'none', border: 'none', color: '#999', cursor: 'pointer', fontSize: 18 }}>×</button>
+                        <button type="button" onClick={() => removeItem(itemId)} style={{ background: 'none', border: 'none', color: '#999', cursor: 'pointer', fontSize: 18 }}>x</button>
                       </div>
                     </div>
                   </div>
@@ -399,24 +435,28 @@ export default function CheckoutPage() {
         <div style={{ background: '#fff', padding: 24, boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
           <h3 style={{ fontFamily: "'Playfair Display', serif", marginBottom: 20 }}>Shipping Address</h3>
 
-          {savedAddresses.length > 0 && (
+          {isAuthenticated && savedAddresses.length > 0 && (
             <div style={{ marginBottom: 24 }}>
               <h5 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>Saved Addresses</h5>
-              {savedAddresses.map((sa, idx) => (
-                <div key={idx} onClick={() => selectSavedAddress(idx)} style={{
-                  border: `2px solid ${selectedAddressIdx === idx ? '#7a4012' : '#e0e0e0'}`,
+              {savedAddresses.map((sa) => (
+                <div key={sa.id} onClick={() => selectSavedAddress(sa)} style={{
+                  border: `2px solid ${selectedAddressId === sa.id ? '#7a4012' : '#e0e0e0'}`,
                   borderRadius: 8, padding: 15, marginBottom: 12, cursor: 'pointer',
-                  backgroundColor: selectedAddressIdx === idx ? '#f8f6f0' : '#fff',
+                  backgroundColor: selectedAddressId === sa.id ? '#f8f6f0' : '#fff',
                   transition: 'all 0.3s ease',
                 }}>
-                  <div style={{ fontWeight: 600, color: '#7a4012', marginBottom: 4 }}>{sa.firstName} {sa.lastName}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    <span style={{ fontWeight: 600, color: '#7a4012' }}>{sa.first_name} {sa.last_name}</span>
+                    {sa.label && <span style={{ fontSize: 12, color: '#888', background: '#f0f0f0', padding: '1px 8px', borderRadius: 10 }}>{sa.label}</span>}
+                    {sa.is_default === 1 && <span style={{ fontSize: 11, color: '#fff', background: '#7a4012', padding: '1px 8px', borderRadius: 10 }}>Default</span>}
+                  </div>
                   <div style={{ color: '#555', fontSize: 14, lineHeight: 1.4 }}>
-                    {sa.houseNumber}, {sa.roadName}, {sa.city}, {sa.state} - {sa.pinCode}
+                    {sa.house_number}{sa.road_name ? `, ${sa.road_name}` : ''}, {sa.city}, {sa.state} - {sa.pin_code}
                   </div>
                 </div>
               ))}
               <div style={{ borderTop: '1px solid #e0e0e0', paddingTop: 16, marginTop: 8 }}>
-                <button type="button" onClick={() => { setSelectedAddressIdx(-1); setAddress(prev => ({ ...prev, houseNumber: '', roadName: '', city: '', state: '', pinCode: '' })); }} style={{ background: 'none', border: 'none', color: '#7a4012', cursor: 'pointer', fontWeight: 500, fontSize: 14 }}>+ Add New Address</button>
+                <button type="button" onClick={() => { setSelectedAddressId(null); setAddress(prev => ({ ...prev, houseNumber: '', roadName: '', city: '', state: '', pinCode: '', phone: '' })); }} style={{ background: 'none', border: 'none', color: '#7a4012', cursor: 'pointer', fontWeight: 500, fontSize: 14 }}>+ Use a New Address</button>
               </div>
             </div>
           )}
@@ -476,6 +516,13 @@ export default function CheckoutPage() {
               {addressErrors.state && <div style={{ color: '#e74c3c', fontSize: 12, marginTop: 4 }}>{addressErrors.state}</div>}
             </div>
           </div>
+
+          {isAuthenticated && !selectedAddressId && (
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 20, padding: '12px 16px', background: '#f9f6f0', borderRadius: 6, border: '1px solid #e8e0d0' }}>
+              <input type="checkbox" id="saveAddr" checked={saveAddress} onChange={e => setSaveAddress(e.target.checked)} style={{ width: 'auto', marginRight: 10, accentColor: '#7a4012' }} />
+              <label htmlFor="saveAddr" style={{ color: '#333', fontSize: 14, cursor: 'pointer' }}>Save this address to my account for faster checkout</label>
+            </div>
+          )}
 
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 24, gap: 12 }}>
             <button onClick={() => goToStep(1)} style={{ padding: '10px 20px', border: '1px solid #7a4012', background: 'transparent', color: '#7a4012', cursor: 'pointer', fontWeight: 500 }}>Back to Summary</button>

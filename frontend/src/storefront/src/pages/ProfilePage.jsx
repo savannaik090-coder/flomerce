@@ -6,6 +6,16 @@ import { CurrencyContext } from '../context/CurrencyContext.jsx';
 import * as authService from '../services/authService.js';
 import * as orderService from '../services/orderService.js';
 
+const INDIAN_STATES = [
+  'Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Goa',
+  'Gujarat','Haryana','Himachal Pradesh','Jharkhand','Karnataka','Kerala',
+  'Madhya Pradesh','Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland',
+  'Odisha','Punjab','Rajasthan','Sikkim','Tamil Nadu','Telangana','Tripura',
+  'Uttar Pradesh','Uttarakhand','West Bengal','Delhi','Jammu and Kashmir',
+  'Ladakh','Chandigarh','Puducherry','Andaman and Nicobar Islands',
+  'Dadra and Nagar Haveli and Daman and Diu','Lakshadweep'
+];
+
 export default function ProfilePage() {
   const navigate = useNavigate();
   const { user, isAuthenticated, loading: authLoading, logout } = useContext(AuthContext);
@@ -21,8 +31,11 @@ export default function ProfilePage() {
   const [savingName, setSavingName] = useState(false);
 
   const [addresses, setAddresses] = useState([]);
+  const [addressesLoading, setAddressesLoading] = useState(false);
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [editAddress, setEditAddress] = useState(null);
+  const [savingAddress, setSavingAddress] = useState(false);
+  const [addressError, setAddressError] = useState('');
   const [addressForm, setAddressForm] = useState({ label: 'Home', firstName: '', lastName: '', phone: '', houseNumber: '', roadName: '', city: '', state: '', pinCode: '', isDefault: false });
 
   useEffect(() => {
@@ -35,11 +48,20 @@ export default function ProfilePage() {
     if (user) {
       setNewName(user.name || '');
     }
-    const stored = localStorage.getItem('saved_addresses');
-    if (stored) {
-      try { setAddresses(JSON.parse(stored)); } catch {}
-    }
   }, [user]);
+
+  const fetchAddresses = useCallback(async () => {
+    setAddressesLoading(true);
+    try {
+      const result = await authService.getAddresses();
+      const addrs = result.data || result || [];
+      setAddresses(Array.isArray(addrs) ? addrs : []);
+    } catch (err) {
+      console.error('Failed to fetch addresses:', err);
+    } finally {
+      setAddressesLoading(false);
+    }
+  }, []);
 
   const fetchOrders = useCallback(async () => {
     if (!siteConfig?.id) return;
@@ -57,8 +79,10 @@ export default function ProfilePage() {
   useEffect(() => {
     if (activeTab === 'orders') {
       fetchOrders();
+    } else if (activeTab === 'addresses') {
+      fetchAddresses();
     }
-  }, [activeTab, fetchOrders]);
+  }, [activeTab, fetchOrders, fetchAddresses]);
 
   const handleSaveName = async () => {
     if (!newName.trim()) return;
@@ -77,38 +101,55 @@ export default function ProfilePage() {
     navigate('/');
   };
 
-  const saveAddresses = (addrs) => {
-    setAddresses(addrs);
-    localStorage.setItem('saved_addresses', JSON.stringify(addrs));
-  };
-
-  const handleSaveAddress = () => {
-    if (!addressForm.firstName || !addressForm.houseNumber || !addressForm.city || !addressForm.state || !addressForm.pinCode) return;
-    let updated;
-    if (editAddress !== null) {
-      updated = [...addresses];
-      updated[editAddress] = { ...addressForm };
-    } else {
-      updated = [...addresses, { ...addressForm }];
+  const handleSaveAddress = async () => {
+    if (!addressForm.firstName || !addressForm.houseNumber || !addressForm.city || !addressForm.state || !addressForm.pinCode) {
+      setAddressError('Please fill in all required fields');
+      return;
     }
-    if (addressForm.isDefault) {
-      updated = updated.map((a, i) => ({ ...a, isDefault: i === (editAddress !== null ? editAddress : updated.length - 1) }));
+    setSavingAddress(true);
+    setAddressError('');
+    try {
+      if (editAddress !== null) {
+        await authService.updateAddress(editAddress, addressForm);
+      } else {
+        await authService.createAddress(addressForm);
+      }
+      await fetchAddresses();
+      setShowAddressModal(false);
+      setEditAddress(null);
+      setAddressForm({ label: 'Home', firstName: '', lastName: '', phone: '', houseNumber: '', roadName: '', city: '', state: '', pinCode: '', isDefault: false });
+    } catch (err) {
+      setAddressError(err.message || 'Failed to save address');
+    } finally {
+      setSavingAddress(false);
     }
-    saveAddresses(updated);
-    setShowAddressModal(false);
-    setEditAddress(null);
-    setAddressForm({ label: 'Home', firstName: '', lastName: '', phone: '', houseNumber: '', roadName: '', city: '', state: '', pinCode: '', isDefault: false });
   };
 
-  const handleDeleteAddress = (idx) => {
-    const updated = addresses.filter((_, i) => i !== idx);
-    saveAddresses(updated);
+  const handleDeleteAddress = async (id) => {
+    try {
+      await authService.deleteAddress(id);
+      await fetchAddresses();
+    } catch (err) {
+      console.error('Failed to delete address:', err);
+    }
   };
 
-  const openEditAddress = (idx) => {
-    setEditAddress(idx);
-    setAddressForm(addresses[idx]);
+  const openEditAddress = (addr) => {
+    setEditAddress(addr.id);
+    setAddressForm({
+      label: addr.label || 'Home',
+      firstName: addr.first_name || '',
+      lastName: addr.last_name || '',
+      phone: addr.phone || '',
+      houseNumber: addr.house_number || '',
+      roadName: addr.road_name || '',
+      city: addr.city || '',
+      state: addr.state || '',
+      pinCode: addr.pin_code || '',
+      isDefault: addr.is_default === 1,
+    });
     setShowAddressModal(true);
+    setAddressError('');
   };
 
   const getStatusColor = (status) => {
@@ -236,29 +277,35 @@ export default function ProfilePage() {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <h3 style={{ fontFamily: "'Playfair Display', serif", margin: 0 }}>Saved Addresses</h3>
-              <button onClick={() => { setEditAddress(null); setAddressForm({ label: 'Home', firstName: '', lastName: '', phone: '', houseNumber: '', roadName: '', city: '', state: '', pinCode: '', isDefault: false }); setShowAddressModal(true); }} style={{ background: '#c8a97e', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: 4, cursor: 'pointer', fontWeight: 600, fontSize: 14 }}>
+              <button onClick={() => { setEditAddress(null); setAddressForm({ label: 'Home', firstName: '', lastName: '', phone: '', houseNumber: '', roadName: '', city: '', state: '', pinCode: '', isDefault: false }); setAddressError(''); setShowAddressModal(true); }} style={{ background: '#c8a97e', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: 4, cursor: 'pointer', fontWeight: 600, fontSize: 14 }}>
                 + Add Address
               </button>
             </div>
-            {addresses.length === 0 ? (
+            {addressesLoading ? (
+              <div style={{ textAlign: 'center', padding: 40 }}>
+                <div style={{ width: 40, height: 40, border: '4px solid #f3f3f3', borderTop: '4px solid #c8a97e', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 16px' }} />
+                <p style={{ color: '#777' }}>Loading addresses...</p>
+                <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+              </div>
+            ) : addresses.length === 0 ? (
               <p style={{ textAlign: 'center', color: '#777', fontStyle: 'italic', padding: 30 }}>No saved addresses. Add one for faster checkout.</p>
             ) : (
-              addresses.map((addr, idx) => (
-                <div key={idx} style={{ border: `1px solid ${addr.isDefault ? '#c8a97e' : '#eee'}`, borderRadius: 8, padding: 20, marginBottom: 15, backgroundColor: addr.isDefault ? '#fefcf8' : '#fff', transition: 'box-shadow 0.3s ease' }}>
+              addresses.map((addr) => (
+                <div key={addr.id} style={{ border: `1px solid ${addr.is_default ? '#c8a97e' : '#eee'}`, borderRadius: 8, padding: 20, marginBottom: 15, backgroundColor: addr.is_default ? '#fefcf8' : '#fff', transition: 'box-shadow 0.3s ease' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, paddingBottom: 10, borderBottom: '1px solid #eee' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <span style={{ fontWeight: 'bold', color: '#333' }}>{addr.label || 'Address'}</span>
-                      {addr.isDefault && <span style={{ backgroundColor: '#c8a97e', color: '#fff', padding: '2px 8px', borderRadius: 12, fontSize: 12 }}>Default</span>}
+                      {addr.is_default === 1 && <span style={{ backgroundColor: '#c8a97e', color: '#fff', padding: '2px 8px', borderRadius: 12, fontSize: 12 }}>Default</span>}
                     </div>
                     <div style={{ display: 'flex', gap: 15 }}>
-                      <button onClick={() => openEditAddress(idx)} style={{ background: 'none', border: 'none', color: '#c8a97e', cursor: 'pointer', fontSize: 14 }}>Edit</button>
-                      <button onClick={() => handleDeleteAddress(idx)} style={{ background: 'none', border: 'none', color: '#e74c3c', cursor: 'pointer', fontSize: 14 }}>Delete</button>
+                      <button onClick={() => openEditAddress(addr)} style={{ background: 'none', border: 'none', color: '#c8a97e', cursor: 'pointer', fontSize: 14 }}>Edit</button>
+                      <button onClick={() => handleDeleteAddress(addr.id)} style={{ background: 'none', border: 'none', color: '#e74c3c', cursor: 'pointer', fontSize: 14 }}>Delete</button>
                     </div>
                   </div>
                   <div style={{ color: '#555', lineHeight: 1.6, fontSize: 14 }}>
-                    <div>{addr.firstName} {addr.lastName}</div>
-                    <div>{addr.houseNumber}, {addr.roadName}</div>
-                    <div>{addr.city}, {addr.state} - {addr.pinCode}</div>
+                    <div>{addr.first_name} {addr.last_name}</div>
+                    <div>{addr.house_number}{addr.road_name ? `, ${addr.road_name}` : ''}</div>
+                    <div>{addr.city}, {addr.state} - {addr.pin_code}</div>
                     {addr.phone && <div>Phone: {addr.phone}</div>}
                   </div>
                 </div>
@@ -286,8 +333,9 @@ export default function ProfilePage() {
           <div style={{ background: '#fff', borderRadius: 8, padding: 30, width: '90%', maxWidth: 500, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 10px 30px rgba(0,0,0,0.3)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 25, paddingBottom: 15, borderBottom: '1px solid #eee' }}>
               <h3 style={{ margin: 0, fontFamily: "'Playfair Display', serif" }}>{editAddress !== null ? 'Edit Address' : 'Add Address'}</h3>
-              <button onClick={() => setShowAddressModal(false)} style={{ background: 'none', border: 'none', fontSize: 24, cursor: 'pointer', color: '#999' }}>×</button>
+              <button onClick={() => setShowAddressModal(false)} style={{ background: 'none', border: 'none', fontSize: 24, cursor: 'pointer', color: '#999' }}>x</button>
             </div>
+            {addressError && <div style={{ background: '#ffebee', color: '#d32f2f', padding: 10, borderRadius: 4, marginBottom: 15, fontSize: 14 }}>{addressError}</div>}
             <div style={{ marginBottom: 20 }}>
               <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>Address Label</label>
               <select value={addressForm.label} onChange={e => setAddressForm(p => ({ ...p, label: e.target.value }))} style={{ width: '100%', padding: 12, border: '1px solid #ddd', borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }}>
@@ -298,7 +346,7 @@ export default function ProfilePage() {
             </div>
             <div style={{ display: 'flex', gap: 15, marginBottom: 20 }}>
               <div style={{ flex: 1 }}>
-                <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>First Name</label>
+                <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>First Name *</label>
                 <input type="text" value={addressForm.firstName} onChange={e => setAddressForm(p => ({ ...p, firstName: e.target.value }))} style={{ width: '100%', padding: 12, border: '1px solid #ddd', borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }} />
               </div>
               <div style={{ flex: 1 }}>
@@ -311,7 +359,7 @@ export default function ProfilePage() {
               <input type="tel" value={addressForm.phone} onChange={e => setAddressForm(p => ({ ...p, phone: e.target.value }))} style={{ width: '100%', padding: 12, border: '1px solid #ddd', borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }} />
             </div>
             <div style={{ marginBottom: 20 }}>
-              <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>House/Building Number</label>
+              <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>House/Building Number *</label>
               <input type="text" value={addressForm.houseNumber} onChange={e => setAddressForm(p => ({ ...p, houseNumber: e.target.value }))} style={{ width: '100%', padding: 12, border: '1px solid #ddd', borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }} />
             </div>
             <div style={{ marginBottom: 20 }}>
@@ -320,17 +368,20 @@ export default function ProfilePage() {
             </div>
             <div style={{ display: 'flex', gap: 15, marginBottom: 20 }}>
               <div style={{ flex: 1 }}>
-                <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>City</label>
+                <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>City *</label>
                 <input type="text" value={addressForm.city} onChange={e => setAddressForm(p => ({ ...p, city: e.target.value }))} style={{ width: '100%', padding: 12, border: '1px solid #ddd', borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }} />
               </div>
               <div style={{ flex: 1 }}>
-                <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>PIN Code</label>
+                <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>PIN Code *</label>
                 <input type="text" maxLength={6} value={addressForm.pinCode} onChange={e => setAddressForm(p => ({ ...p, pinCode: e.target.value.replace(/\D/g, '') }))} style={{ width: '100%', padding: 12, border: '1px solid #ddd', borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }} />
               </div>
             </div>
             <div style={{ marginBottom: 20 }}>
-              <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>State</label>
-              <input type="text" value={addressForm.state} onChange={e => setAddressForm(p => ({ ...p, state: e.target.value }))} style={{ width: '100%', padding: 12, border: '1px solid #ddd', borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }} />
+              <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>State *</label>
+              <select value={addressForm.state} onChange={e => setAddressForm(p => ({ ...p, state: e.target.value }))} style={{ width: '100%', padding: 12, border: '1px solid #ddd', borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }}>
+                <option value="">Select State</option>
+                {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', marginTop: 20, marginBottom: 20 }}>
               <input type="checkbox" id="defaultAddr" checked={addressForm.isDefault} onChange={e => setAddressForm(p => ({ ...p, isDefault: e.target.checked }))} style={{ width: 'auto', marginRight: 10 }} />
@@ -338,7 +389,9 @@ export default function ProfilePage() {
             </div>
             <div style={{ display: 'flex', gap: 15, justifyContent: 'flex-end' }}>
               <button onClick={() => setShowAddressModal(false)} style={{ backgroundColor: '#f8f9fa', color: '#333', border: '1px solid #ddd', padding: '10px 20px', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-              <button onClick={handleSaveAddress} style={{ backgroundColor: '#c8a97e', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}>Save Address</button>
+              <button onClick={handleSaveAddress} disabled={savingAddress} style={{ backgroundColor: '#c8a97e', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: 4, cursor: 'pointer', fontWeight: 600, opacity: savingAddress ? 0.7 : 1 }}>
+                {savingAddress ? 'Saving...' : 'Save Address'}
+              </button>
             </div>
           </div>
         </div>
