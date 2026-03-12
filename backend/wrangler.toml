@@ -23,6 +23,7 @@ SKIP_EMAIL_VERIFICATION = "false"
 DOMAIN = "fluxe.in"
 APP_URL = "https://fluxe.in"
 FROM_EMAIL = "noreply@fluxe.in"
+PAGES_HOSTNAME = "fluxe-8x1.pages.dev"
 
 # IMPORTANT: JWT_SECRET must be set as a secret, not a var!
 # Run this command in the backend folder to set it:

@@ -36,6 +36,22 @@ export default {
         return siteResponse;
       }
 
+      // www.fluxe.in is caught by the *.fluxe.in/* Worker route but belongs
+      // to the Cloudflare Pages project. Proxy it through so Pages can serve it.
+      const hostname = url.hostname;
+      if (hostname === 'www.fluxe.in' || hostname === 'fluxe.in') {
+        const pagesHostname = env.PAGES_HOSTNAME || 'fluxe-8x1.pages.dev';
+        const pagesUrl = new URL(request.url);
+        pagesUrl.hostname = pagesHostname;
+        const pagesRequest = new Request(pagesUrl.toString(), {
+          method: request.method,
+          headers: request.headers,
+          body: request.body,
+          redirect: 'follow',
+        });
+        return fetch(pagesRequest);
+      }
+
       if (env.ASSETS) {
         return env.ASSETS.fetch(request);
       }
