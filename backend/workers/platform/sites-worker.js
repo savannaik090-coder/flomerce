@@ -1,6 +1,7 @@
 import { generateId, generateSubdomain, sanitizeInput, jsonResponse, errorResponse, successResponse, handleCORS } from '../../utils/helpers.js';
 import { validateAuth } from '../../utils/auth.js';
 import { validateSiteAdmin } from '../storefront/site-admin-worker.js';
+import { registerCustomHostname, deleteCustomHostname, findCustomHostname } from '../../utils/cloudflare.js';
 
 export async function handleSites(request, env, path) {
   const corsResponse = handleCORS(request);
@@ -494,6 +495,15 @@ async function handleSetCustomDomain(request, env, siteId) {
   }
 }
 
+async function resolveDnsA(hostname) {
+  const res = await fetch(
+    `https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(hostname)}&type=A`,
+    { headers: { 'Accept': 'application/dns-json' } }
+  );
+  const data = await res.json();
+  return (data.Answer || []).filter(r => r.type === 1).map(r => r.data);
+}
+
 async function handleVerifyDomain(env, siteId) {
   try {
     const site = await env.DB.prepare(
@@ -512,6 +522,7 @@ async function handleVerifyDomain(env, siteId) {
     const expectedToken = site.domain_verification_token;
     const errors = [];
 
+    // --- TXT record check ---
     let txtVerified = false;
     try {
       const baseDomain = domain.replace(/^www\./, '');
@@ -537,6 +548,9 @@ async function handleVerifyDomain(env, siteId) {
       errors.push('Failed to check TXT record: ' + (e.message || 'DNS lookup error'));
     }
 
+    // --- CNAME / A record check ---
+    // Cloudflare-proxied domains flatten CNAMEs to A records, so we check
+    // both the CNAME answer AND fall back to comparing A records with fluxe.in.
     let cnameVerified = false;
     try {
       const cnameResponse = await fetch(
@@ -547,23 +561,49 @@ async function handleVerifyDomain(env, siteId) {
       if (cnameData.Answer && cnameData.Answer.length > 0) {
         for (const answer of cnameData.Answer) {
           const target = (answer.data || '').replace(/\.$/, '').toLowerCase();
-          if (target === 'fluxe.in') {
+          if (target === 'fluxe.in' || target.endsWith('.fluxe.in')) {
             cnameVerified = true;
             break;
           }
         }
       }
+
+      // Fallback: compare A records — handles Cloudflare-proxied (orange-cloud) domains
+      // where CNAME is flattened and only A records are returned.
       if (!cnameVerified) {
-        errors.push(`CNAME record for ${domain} not found or does not point to fluxe.in.`);
+        const [domainIPs, fluxeIPs] = await Promise.all([
+          resolveDnsA(domain),
+          resolveDnsA('fluxe.in'),
+        ]);
+        if (domainIPs.length > 0 && fluxeIPs.length > 0) {
+          cnameVerified = domainIPs.some(ip => fluxeIPs.includes(ip));
+        }
+      }
+
+      if (!cnameVerified) {
+        errors.push(`${domain} does not appear to point to fluxe.in. Please add a CNAME record pointing to fluxe.in.`);
       }
     } catch (e) {
-      errors.push('Failed to check CNAME record: ' + (e.message || 'DNS lookup error'));
+      errors.push('Failed to check DNS records: ' + (e.message || 'DNS lookup error'));
     }
 
     if (txtVerified && cnameVerified) {
+      // Register with Cloudflare for SaaS so SSL is provisioned automatically
+      let cfHostnameId = null;
+      try {
+        const cfResult = await registerCustomHostname(env, domain);
+        if (cfResult.success) {
+          cfHostnameId = cfResult.cfHostnameId;
+        } else if (cfResult.reason !== 'not_configured') {
+          console.warn('Cloudflare hostname registration warning:', cfResult.reason);
+        }
+      } catch (cfErr) {
+        console.error('Cloudflare registration failed (non-fatal):', cfErr.message);
+      }
+
       await env.DB.prepare(
-        `UPDATE sites SET domain_status = 'verified', updated_at = datetime('now') WHERE id = ?`
-      ).bind(siteId).run();
+        `UPDATE sites SET domain_status = 'verified', cf_hostname_id = ?, updated_at = datetime('now') WHERE id = ?`
+      ).bind(cfHostnameId, siteId).run();
 
       return successResponse({
         domain_status: 'verified',
@@ -590,13 +630,25 @@ async function handleVerifyDomain(env, siteId) {
 
 async function handleRemoveCustomDomain(env, siteId) {
   try {
-    const site = await env.DB.prepare('SELECT id FROM sites WHERE id = ?').bind(siteId).first();
+    const site = await env.DB.prepare(
+      'SELECT id, cf_hostname_id FROM sites WHERE id = ?'
+    ).bind(siteId).first();
+
     if (!site) {
       return errorResponse('Site not found', 404, 'NOT_FOUND');
     }
 
+    // Remove from Cloudflare for SaaS so SSL certificate is revoked
+    if (site.cf_hostname_id) {
+      try {
+        await deleteCustomHostname(env, site.cf_hostname_id);
+      } catch (cfErr) {
+        console.error('Cloudflare hostname deletion failed (non-fatal):', cfErr.message);
+      }
+    }
+
     await env.DB.prepare(
-      `UPDATE sites SET custom_domain = NULL, domain_status = NULL, domain_verification_token = NULL, updated_at = datetime('now') WHERE id = ?`
+      `UPDATE sites SET custom_domain = NULL, domain_status = NULL, domain_verification_token = NULL, cf_hostname_id = NULL, updated_at = datetime('now') WHERE id = ?`
     ).bind(siteId).run();
 
     return successResponse(null, 'Custom domain removed successfully.');

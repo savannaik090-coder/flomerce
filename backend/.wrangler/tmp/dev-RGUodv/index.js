@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-yIJapY/checked-fetch.js
+// .wrangler/tmp/bundle-xHA6RF/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-yIJapY/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-xHA6RF/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-yIJapY/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-xHA6RF/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-yIJapY/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-xHA6RF/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -670,12 +670,12 @@ var init_site_admin_worker = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-yIJapY/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-xHA6RF/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-yIJapY/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-xHA6RF/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -1703,6 +1703,95 @@ init_modules_watch_stub();
 init_helpers();
 init_auth();
 init_site_admin_worker();
+
+// utils/cloudflare.js
+init_checked_fetch();
+init_strip_cf_connecting_ip_header();
+init_modules_watch_stub();
+var CF_API_BASE = "https://api.cloudflare.com/client/v4";
+function cfHeaders(apiToken) {
+  return {
+    "Authorization": `Bearer ${apiToken}`,
+    "Content-Type": "application/json"
+  };
+}
+__name(cfHeaders, "cfHeaders");
+async function registerCustomHostname(env, hostname) {
+  const token = env.CF_API_TOKEN;
+  const zoneId = env.CF_ZONE_ID;
+  if (!token || !zoneId) {
+    console.warn("CF_API_TOKEN or CF_ZONE_ID not configured \u2014 skipping Cloudflare hostname registration");
+    return { success: false, reason: "not_configured" };
+  }
+  const res = await fetch(`${CF_API_BASE}/zones/${zoneId}/custom_hostnames`, {
+    method: "POST",
+    headers: cfHeaders(token),
+    body: JSON.stringify({
+      hostname,
+      ssl: {
+        method: "http",
+        type: "dv",
+        settings: {
+          http2: "on",
+          min_tls_version: "1.2",
+          tls_1_3: "on"
+        }
+      }
+    })
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    const errMsg = data?.errors?.[0]?.message || "Unknown Cloudflare API error";
+    if (data?.errors?.[0]?.code === 1406) {
+      return findCustomHostname(env, hostname);
+    }
+    console.error("Cloudflare registerCustomHostname error:", errMsg);
+    return { success: false, reason: errMsg };
+  }
+  return { success: true, cfHostnameId: data.result.id };
+}
+__name(registerCustomHostname, "registerCustomHostname");
+async function findCustomHostname(env, hostname) {
+  const token = env.CF_API_TOKEN;
+  const zoneId = env.CF_ZONE_ID;
+  if (!token || !zoneId)
+    return { success: false, reason: "not_configured" };
+  const res = await fetch(
+    `${CF_API_BASE}/zones/${zoneId}/custom_hostnames?hostname=${encodeURIComponent(hostname)}`,
+    { headers: cfHeaders(token) }
+  );
+  const data = await res.json();
+  if (!res.ok || !data.result?.length) {
+    return { success: false, reason: "not_found" };
+  }
+  return { success: true, cfHostnameId: data.result[0].id };
+}
+__name(findCustomHostname, "findCustomHostname");
+async function deleteCustomHostname(env, cfHostnameId) {
+  const token = env.CF_API_TOKEN;
+  const zoneId = env.CF_ZONE_ID;
+  if (!token || !zoneId) {
+    console.warn("CF_API_TOKEN or CF_ZONE_ID not configured \u2014 skipping Cloudflare hostname deletion");
+    return { success: false, reason: "not_configured" };
+  }
+  if (!cfHostnameId) {
+    return { success: false, reason: "no_id" };
+  }
+  const res = await fetch(
+    `${CF_API_BASE}/zones/${zoneId}/custom_hostnames/${cfHostnameId}`,
+    { method: "DELETE", headers: cfHeaders(token) }
+  );
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    const errMsg = data?.errors?.[0]?.message || "Unknown Cloudflare API error";
+    console.error("Cloudflare deleteCustomHostname error:", errMsg);
+    return { success: false, reason: errMsg };
+  }
+  return { success: true };
+}
+__name(deleteCustomHostname, "deleteCustomHostname");
+
+// workers/platform/sites-worker.js
 async function handleSites(request, env, path) {
   const corsResponse = handleCORS(request);
   if (corsResponse)
@@ -2125,6 +2214,15 @@ async function handleSetCustomDomain(request, env, siteId) {
   }
 }
 __name(handleSetCustomDomain, "handleSetCustomDomain");
+async function resolveDnsA(hostname) {
+  const res = await fetch(
+    `https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(hostname)}&type=A`,
+    { headers: { "Accept": "application/dns-json" } }
+  );
+  const data = await res.json();
+  return (data.Answer || []).filter((r) => r.type === 1).map((r) => r.data);
+}
+__name(resolveDnsA, "resolveDnsA");
 async function handleVerifyDomain(env, siteId) {
   try {
     const site = await env.DB.prepare(
@@ -2173,22 +2271,42 @@ async function handleVerifyDomain(env, siteId) {
       if (cnameData.Answer && cnameData.Answer.length > 0) {
         for (const answer of cnameData.Answer) {
           const target = (answer.data || "").replace(/\.$/, "").toLowerCase();
-          if (target === "fluxe.in") {
+          if (target === "fluxe.in" || target.endsWith(".fluxe.in")) {
             cnameVerified = true;
             break;
           }
         }
       }
       if (!cnameVerified) {
-        errors.push(`CNAME record for ${domain} not found or does not point to fluxe.in.`);
+        const [domainIPs, fluxeIPs] = await Promise.all([
+          resolveDnsA(domain),
+          resolveDnsA("fluxe.in")
+        ]);
+        if (domainIPs.length > 0 && fluxeIPs.length > 0) {
+          cnameVerified = domainIPs.some((ip) => fluxeIPs.includes(ip));
+        }
+      }
+      if (!cnameVerified) {
+        errors.push(`${domain} does not appear to point to fluxe.in. Please add a CNAME record pointing to fluxe.in.`);
       }
     } catch (e) {
-      errors.push("Failed to check CNAME record: " + (e.message || "DNS lookup error"));
+      errors.push("Failed to check DNS records: " + (e.message || "DNS lookup error"));
     }
     if (txtVerified && cnameVerified) {
+      let cfHostnameId = null;
+      try {
+        const cfResult = await registerCustomHostname(env, domain);
+        if (cfResult.success) {
+          cfHostnameId = cfResult.cfHostnameId;
+        } else if (cfResult.reason !== "not_configured") {
+          console.warn("Cloudflare hostname registration warning:", cfResult.reason);
+        }
+      } catch (cfErr) {
+        console.error("Cloudflare registration failed (non-fatal):", cfErr.message);
+      }
       await env.DB.prepare(
-        `UPDATE sites SET domain_status = 'verified', updated_at = datetime('now') WHERE id = ?`
-      ).bind(siteId).run();
+        `UPDATE sites SET domain_status = 'verified', cf_hostname_id = ?, updated_at = datetime('now') WHERE id = ?`
+      ).bind(cfHostnameId, siteId).run();
       return successResponse({
         domain_status: "verified",
         txt_verified: true,
@@ -2213,12 +2331,21 @@ async function handleVerifyDomain(env, siteId) {
 __name(handleVerifyDomain, "handleVerifyDomain");
 async function handleRemoveCustomDomain(env, siteId) {
   try {
-    const site = await env.DB.prepare("SELECT id FROM sites WHERE id = ?").bind(siteId).first();
+    const site = await env.DB.prepare(
+      "SELECT id, cf_hostname_id FROM sites WHERE id = ?"
+    ).bind(siteId).first();
     if (!site) {
       return errorResponse("Site not found", 404, "NOT_FOUND");
     }
+    if (site.cf_hostname_id) {
+      try {
+        await deleteCustomHostname(env, site.cf_hostname_id);
+      } catch (cfErr) {
+        console.error("Cloudflare hostname deletion failed (non-fatal):", cfErr.message);
+      }
+    }
     await env.DB.prepare(
-      `UPDATE sites SET custom_domain = NULL, domain_status = NULL, domain_verification_token = NULL, updated_at = datetime('now') WHERE id = ?`
+      `UPDATE sites SET custom_domain = NULL, domain_status = NULL, domain_verification_token = NULL, cf_hostname_id = NULL, updated_at = datetime('now') WHERE id = ?`
     ).bind(siteId).run();
     return successResponse(null, "Custom domain removed successfully.");
   } catch (error) {
@@ -5541,6 +5668,7 @@ async function ensureTablesExist(env) {
         custom_domain TEXT,
         domain_status TEXT,
         domain_verification_token TEXT,
+        cf_hostname_id TEXT,
         created_at TEXT DEFAULT (datetime('now')),
         updated_at TEXT DEFAULT (datetime('now')),
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -5904,7 +6032,8 @@ async function ensureTablesExist(env) {
       { col: "show_on_home", sql: "ALTER TABLE categories ADD COLUMN show_on_home INTEGER DEFAULT 1" },
       { col: "custom_domain", sql: "ALTER TABLE sites ADD COLUMN custom_domain TEXT" },
       { col: "domain_status", sql: "ALTER TABLE sites ADD COLUMN domain_status TEXT" },
-      { col: "domain_verification_token", sql: "ALTER TABLE sites ADD COLUMN domain_verification_token TEXT" }
+      { col: "domain_verification_token", sql: "ALTER TABLE sites ADD COLUMN domain_verification_token TEXT" },
+      { col: "cf_hostname_id", sql: "ALTER TABLE sites ADD COLUMN cf_hostname_id TEXT" }
     ];
     for (const m of migrations) {
       try {
@@ -6341,7 +6470,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-yIJapY/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-xHA6RF/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -6376,7 +6505,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-yIJapY/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-xHA6RF/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

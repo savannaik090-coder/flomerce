@@ -24,6 +24,11 @@ DOMAIN = "fluxe.in"
 APP_URL = "https://fluxe.in"
 FROM_EMAIL = "noreply@fluxe.in"
 PAGES_HOSTNAME = "fluxe-8x1.pages.dev"
+# Cloudflare for SaaS — custom domain SSL provisioning
+# CF_ZONE_ID: Zone ID for fluxe.in (find in Cloudflare dashboard → Overview → right sidebar)
+# CF_API_TOKEN must be set as a secret: cd backend && npx wrangler secret put CF_API_TOKEN
+# Token needs permission: Zone > Custom Hostnames > Edit
+CF_ZONE_ID = ""
 
 # IMPORTANT: JWT_SECRET must be set as a secret, not a var!
 # Run this command in the backend folder to set it:

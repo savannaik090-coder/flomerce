@@ -66,6 +66,7 @@ export async function ensureTablesExist(env) {
         custom_domain TEXT,
         domain_status TEXT,
         domain_verification_token TEXT,
+        cf_hostname_id TEXT,
         created_at TEXT DEFAULT (datetime('now')),
         updated_at TEXT DEFAULT (datetime('now')),
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -452,6 +453,7 @@ export async function ensureTablesExist(env) {
       { col: 'custom_domain', sql: 'ALTER TABLE sites ADD COLUMN custom_domain TEXT' },
       { col: 'domain_status', sql: 'ALTER TABLE sites ADD COLUMN domain_status TEXT' },
       { col: 'domain_verification_token', sql: 'ALTER TABLE sites ADD COLUMN domain_verification_token TEXT' },
+      { col: 'cf_hostname_id', sql: 'ALTER TABLE sites ADD COLUMN cf_hostname_id TEXT' },
     ];
     for (const m of migrations) {
       try {
