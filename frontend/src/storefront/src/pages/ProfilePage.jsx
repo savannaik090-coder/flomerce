@@ -37,6 +37,8 @@ export default function ProfilePage() {
   const [savingAddress, setSavingAddress] = useState(false);
   const [addressError, setAddressError] = useState('');
   const [addressForm, setAddressForm] = useState({ label: 'Home', firstName: '', lastName: '', phone: '', houseNumber: '', roadName: '', city: '', state: '', pinCode: '', isDefault: false });
+  const [addressFieldErrors, setAddressFieldErrors] = useState({});
+  const [pinValidating, setPinValidating] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -101,9 +103,54 @@ export default function ProfilePage() {
     navigate('/');
   };
 
+  const validatePinCode = useCallback(async (pin) => {
+    if (!/^\d{6}$/.test(pin)) return;
+    setPinValidating(true);
+    try {
+      const response = await fetch(`https://api.postalpincode.in/pincode/${pin}`);
+      const data = await response.json();
+      if (data?.[0]?.Status === 'Success') {
+        const po = data[0].PostOffice[0];
+        setAddressForm(prev => ({
+          ...prev,
+          city: po.District || prev.city,
+          state: po.State || prev.state,
+        }));
+        setAddressFieldErrors(prev => ({ ...prev, pinCode: undefined }));
+      } else {
+        setAddressFieldErrors(prev => ({ ...prev, pinCode: 'Invalid PIN code' }));
+      }
+    } catch {
+      setAddressFieldErrors(prev => ({ ...prev, pinCode: undefined }));
+    } finally {
+      setPinValidating(false);
+    }
+  }, []);
+
+  const handleAddressFieldChange = useCallback((field, value) => {
+    setAddressForm(prev => ({ ...prev, [field]: value }));
+    setAddressFieldErrors(prev => ({ ...prev, [field]: undefined }));
+    if (field === 'pinCode' && value.length === 6) {
+      validatePinCode(value);
+    }
+  }, [validatePinCode]);
+
+  const validateAddressForm = useCallback(() => {
+    const errs = {};
+    if (!addressForm.firstName || addressForm.firstName.trim().length < 2) errs.firstName = 'First name must be at least 2 characters';
+    const phoneDigits = (addressForm.phone || '').replace(/\D/g, '');
+    if (phoneDigits.length > 0 && phoneDigits.length !== 10) errs.phone = 'Please enter a valid 10-digit phone number';
+    if (!addressForm.houseNumber || addressForm.houseNumber.trim().length < 1) errs.houseNumber = 'House/Building number is required';
+    if (addressForm.roadName && addressForm.roadName.trim().length > 0 && addressForm.roadName.trim().length < 5) errs.roadName = 'Road/Area must be at least 5 characters';
+    if (!addressForm.city || addressForm.city.trim().length < 2) errs.city = 'City name must be at least 2 characters';
+    if (!addressForm.state || addressForm.state.trim().length < 2) errs.state = 'Please select a state';
+    if (!/^\d{6}$/.test((addressForm.pinCode || '').trim())) errs.pinCode = 'Please enter a valid 6-digit PIN code';
+    setAddressFieldErrors(errs);
+    return Object.keys(errs).length === 0;
+  }, [addressForm]);
+
   const handleSaveAddress = async () => {
-    if (!addressForm.firstName || !addressForm.houseNumber || !addressForm.city || !addressForm.state || !addressForm.pinCode) {
-      setAddressError('Please fill in all required fields');
+    if (!validateAddressForm()) {
       return;
     }
     setSavingAddress(true);
@@ -150,6 +197,7 @@ export default function ProfilePage() {
     });
     setShowAddressModal(true);
     setAddressError('');
+    setAddressFieldErrors({});
   };
 
   const getStatusColor = (status) => {
@@ -277,7 +325,7 @@ export default function ProfilePage() {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <h3 style={{ fontFamily: "'Playfair Display', serif", margin: 0 }}>Saved Addresses</h3>
-              <button onClick={() => { setEditAddress(null); setAddressForm({ label: 'Home', firstName: '', lastName: '', phone: '', houseNumber: '', roadName: '', city: '', state: '', pinCode: '', isDefault: false }); setAddressError(''); setShowAddressModal(true); }} style={{ background: '#c8a97e', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: 4, cursor: 'pointer', fontWeight: 600, fontSize: 14 }}>
+              <button onClick={() => { setEditAddress(null); setAddressForm({ label: 'Home', firstName: '', lastName: '', phone: '', houseNumber: '', roadName: '', city: '', state: '', pinCode: '', isDefault: false }); setAddressError(''); setAddressFieldErrors({}); setShowAddressModal(true); }} style={{ background: '#c8a97e', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: 4, cursor: 'pointer', fontWeight: 600, fontSize: 14 }}>
                 + Add Address
               </button>
             </div>
@@ -338,50 +386,58 @@ export default function ProfilePage() {
             {addressError && <div style={{ background: '#ffebee', color: '#d32f2f', padding: 10, borderRadius: 4, marginBottom: 15, fontSize: 14 }}>{addressError}</div>}
             <div style={{ marginBottom: 20 }}>
               <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>Address Label</label>
-              <select value={addressForm.label} onChange={e => setAddressForm(p => ({ ...p, label: e.target.value }))} style={{ width: '100%', padding: 12, border: '1px solid #ddd', borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }}>
+              <select value={addressForm.label} onChange={e => handleAddressFieldChange('label', e.target.value)} style={{ width: '100%', padding: 12, border: '1px solid #ddd', borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }}>
                 <option>Home</option>
                 <option>Work</option>
                 <option>Other</option>
               </select>
             </div>
-            <div style={{ display: 'flex', gap: 15, marginBottom: 20 }}>
-              <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', gap: 15, marginBottom: 0 }}>
+              <div style={{ flex: 1, marginBottom: 20 }}>
                 <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>First Name *</label>
-                <input type="text" value={addressForm.firstName} onChange={e => setAddressForm(p => ({ ...p, firstName: e.target.value }))} style={{ width: '100%', padding: 12, border: '1px solid #ddd', borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }} />
+                <input type="text" value={addressForm.firstName} onChange={e => handleAddressFieldChange('firstName', e.target.value)} style={{ width: '100%', padding: 12, border: `1px solid ${addressFieldErrors.firstName ? '#e74c3c' : '#ddd'}`, borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }} />
+                {addressFieldErrors.firstName && <div style={{ color: '#e74c3c', fontSize: 12, marginTop: 4 }}>{addressFieldErrors.firstName}</div>}
               </div>
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: 1, marginBottom: 20 }}>
                 <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>Last Name</label>
-                <input type="text" value={addressForm.lastName} onChange={e => setAddressForm(p => ({ ...p, lastName: e.target.value }))} style={{ width: '100%', padding: 12, border: '1px solid #ddd', borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }} />
+                <input type="text" value={addressForm.lastName} onChange={e => handleAddressFieldChange('lastName', e.target.value)} style={{ width: '100%', padding: 12, border: '1px solid #ddd', borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }} />
               </div>
             </div>
             <div style={{ marginBottom: 20 }}>
               <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>Phone</label>
-              <input type="tel" value={addressForm.phone} onChange={e => setAddressForm(p => ({ ...p, phone: e.target.value }))} style={{ width: '100%', padding: 12, border: '1px solid #ddd', borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }} />
+              <input type="tel" value={addressForm.phone} onChange={e => handleAddressFieldChange('phone', e.target.value)} style={{ width: '100%', padding: 12, border: `1px solid ${addressFieldErrors.phone ? '#e74c3c' : '#ddd'}`, borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }} />
+              {addressFieldErrors.phone && <div style={{ color: '#e74c3c', fontSize: 12, marginTop: 4 }}>{addressFieldErrors.phone}</div>}
             </div>
             <div style={{ marginBottom: 20 }}>
               <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>House/Building Number *</label>
-              <input type="text" value={addressForm.houseNumber} onChange={e => setAddressForm(p => ({ ...p, houseNumber: e.target.value }))} style={{ width: '100%', padding: 12, border: '1px solid #ddd', borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }} />
+              <input type="text" value={addressForm.houseNumber} onChange={e => handleAddressFieldChange('houseNumber', e.target.value)} style={{ width: '100%', padding: 12, border: `1px solid ${addressFieldErrors.houseNumber ? '#e74c3c' : '#ddd'}`, borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }} />
+              {addressFieldErrors.houseNumber && <div style={{ color: '#e74c3c', fontSize: 12, marginTop: 4 }}>{addressFieldErrors.houseNumber}</div>}
             </div>
             <div style={{ marginBottom: 20 }}>
               <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>Road / Area / Colony</label>
-              <input type="text" value={addressForm.roadName} onChange={e => setAddressForm(p => ({ ...p, roadName: e.target.value }))} style={{ width: '100%', padding: 12, border: '1px solid #ddd', borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }} />
+              <input type="text" value={addressForm.roadName} onChange={e => handleAddressFieldChange('roadName', e.target.value)} style={{ width: '100%', padding: 12, border: `1px solid ${addressFieldErrors.roadName ? '#e74c3c' : '#ddd'}`, borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }} />
+              {addressFieldErrors.roadName && <div style={{ color: '#e74c3c', fontSize: 12, marginTop: 4 }}>{addressFieldErrors.roadName}</div>}
             </div>
-            <div style={{ display: 'flex', gap: 15, marginBottom: 20 }}>
-              <div style={{ flex: 1 }}>
-                <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>City *</label>
-                <input type="text" value={addressForm.city} onChange={e => setAddressForm(p => ({ ...p, city: e.target.value }))} style={{ width: '100%', padding: 12, border: '1px solid #ddd', borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }} />
-              </div>
-              <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', gap: 15, marginBottom: 0 }}>
+              <div style={{ flex: 1, marginBottom: 20 }}>
                 <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>PIN Code *</label>
-                <input type="text" maxLength={6} value={addressForm.pinCode} onChange={e => setAddressForm(p => ({ ...p, pinCode: e.target.value.replace(/\D/g, '') }))} style={{ width: '100%', padding: 12, border: '1px solid #ddd', borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }} />
+                <input type="text" maxLength={6} value={addressForm.pinCode} onChange={e => handleAddressFieldChange('pinCode', e.target.value.replace(/\D/g, ''))} style={{ width: '100%', padding: 12, border: `1px solid ${addressFieldErrors.pinCode ? '#e74c3c' : '#ddd'}`, borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }} />
+                {pinValidating && <div style={{ color: '#c8a97e', fontSize: 12, marginTop: 4 }}>Validating PIN code...</div>}
+                {addressFieldErrors.pinCode && <div style={{ color: '#e74c3c', fontSize: 12, marginTop: 4 }}>{addressFieldErrors.pinCode}</div>}
+              </div>
+              <div style={{ flex: 1, marginBottom: 20 }}>
+                <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>City *</label>
+                <input type="text" value={addressForm.city} onChange={e => handleAddressFieldChange('city', e.target.value)} style={{ width: '100%', padding: 12, border: `1px solid ${addressFieldErrors.city ? '#e74c3c' : '#ddd'}`, borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }} />
+                {addressFieldErrors.city && <div style={{ color: '#e74c3c', fontSize: 12, marginTop: 4 }}>{addressFieldErrors.city}</div>}
               </div>
             </div>
             <div style={{ marginBottom: 20 }}>
               <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>State *</label>
-              <select value={addressForm.state} onChange={e => setAddressForm(p => ({ ...p, state: e.target.value }))} style={{ width: '100%', padding: 12, border: '1px solid #ddd', borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }}>
+              <select value={addressForm.state} onChange={e => handleAddressFieldChange('state', e.target.value)} style={{ width: '100%', padding: 12, border: `1px solid ${addressFieldErrors.state ? '#e74c3c' : '#ddd'}`, borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }}>
                 <option value="">Select State</option>
                 {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
+              {addressFieldErrors.state && <div style={{ color: '#e74c3c', fontSize: 12, marginTop: 4 }}>{addressFieldErrors.state}</div>}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', marginTop: 20, marginBottom: 20 }}>
               <input type="checkbox" id="defaultAddr" checked={addressForm.isDefault} onChange={e => setAddressForm(p => ({ ...p, isDefault: e.target.checked }))} style={{ width: 'auto', marginRight: 10 }} />
