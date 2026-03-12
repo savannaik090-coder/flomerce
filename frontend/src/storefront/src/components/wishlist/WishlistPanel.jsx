@@ -64,7 +64,7 @@ export default function WishlistPanel({ isOpen, onClose }) {
                   <div className="wishlist-item-actions">
                     <button
                       className="remove-from-wishlist"
-                      onClick={(e) => { e.stopPropagation(); removeFromWishlist(item.id || getItemProductId(item)); }}
+                      onClick={(e) => { e.stopPropagation(); removeFromWishlist(getItemProductId(item)); }}
                     >
                       Remove
                     </button>
