@@ -121,15 +121,22 @@ async function getCart(env, siteId, user, sessionId) {
     const enrichedItems = [];
     for (const item of items) {
       const product = await env.DB.prepare(
-        'SELECT id, name, price, stock, thumbnail_url, is_active FROM products WHERE id = ? AND site_id = ?'
+        'SELECT id, name, price, stock, thumbnail_url, images, is_active FROM products WHERE id = ? AND site_id = ?'
       ).bind(item.productId, siteId).first();
 
       if (product && product.is_active) {
+        let imageUrl = product.thumbnail_url;
+        if (!imageUrl && product.images) {
+          try {
+            const imgs = JSON.parse(product.images);
+            if (Array.isArray(imgs) && imgs.length > 0) imageUrl = imgs[0];
+          } catch {}
+        }
         enrichedItems.push({
           ...item,
           name: product.name,
           price: product.price,
-          thumbnail: product.thumbnail_url,
+          thumbnail: imageUrl,
           inStock: product.stock >= item.quantity,
           availableStock: product.stock,
         });

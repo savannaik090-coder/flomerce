@@ -34,8 +34,10 @@ export default function CartPanel({ isOpen, onClose }) {
           {items.length === 0 ? (
             <div className="empty-cart-message">Your cart is empty</div>
           ) : (
-            items.map((item) => (
-              <div className="cart-item" key={item.id}>
+            items.map((item) => {
+              const itemId = item.productId || item.product_id || item.id;
+              return (
+              <div className="cart-item" key={itemId}>
                 <div className="cart-item-image">
                   <img
                     src={resolveImageUrl(getItemImage(item))}
@@ -47,17 +49,17 @@ export default function CartPanel({ isOpen, onClose }) {
                   <div className="cart-item-name">{getItemName(item)}</div>
                   <div className="cart-item-price">{formatAmount(getItemPrice(item))}</div>
                   <div className="cart-item-quantity">
-                    <button className="quantity-btn" onClick={() => updateQuantity(item.id, (item.quantity || 1) - 1)}>−</button>
+                    <button className="quantity-btn" onClick={() => updateQuantity(itemId, (item.quantity || 1) - 1)}>-</button>
                     <input type="text" className="quantity-input" value={item.quantity || 1} readOnly />
-                    <button className="quantity-btn" onClick={() => updateQuantity(item.id, (item.quantity || 1) + 1)}>+</button>
+                    <button className="quantity-btn" onClick={() => updateQuantity(itemId, (item.quantity || 1) + 1)}>+</button>
                   </div>
                   <div className="cart-item-total">{formatAmount(getItemPrice(item) * (item.quantity || 1))}</div>
                 </div>
-                <button className="remove-item-btn" onClick={() => removeItem(item.id)}>
+                <button className="remove-item-btn" onClick={() => removeItem(itemId)}>
                   <i className="fas fa-times"></i>
                 </button>
               </div>
-            ))
+            );})
           )}
         </div>
 

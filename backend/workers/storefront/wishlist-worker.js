@@ -67,24 +67,33 @@ async function getWishlist(env, user, siteId) {
   try {
     const wishlistItems = await env.DB.prepare(
       `SELECT w.id, w.product_id, w.created_at,
-              p.name, p.price, p.compare_price, p.thumbnail_url, p.stock, p.is_active
+              p.name, p.price, p.compare_price, p.thumbnail_url, p.images, p.stock, p.is_active
        FROM wishlists w
        JOIN products p ON w.product_id = p.id
        WHERE w.user_id = ? AND w.site_id = ?
        ORDER BY w.created_at DESC`
     ).bind(user.id, siteId).all();
 
-    const items = wishlistItems.results.map(item => ({
-      id: item.id,
-      productId: item.product_id,
-      name: item.name,
-      price: item.price,
-      comparePrice: item.compare_price,
-      thumbnail: item.thumbnail_url,
-      inStock: item.stock > 0,
-      isActive: !!item.is_active,
-      addedAt: item.created_at,
-    }));
+    const items = wishlistItems.results.map(item => {
+      let imageUrl = item.thumbnail_url;
+      if (!imageUrl && item.images) {
+        try {
+          const imgs = JSON.parse(item.images);
+          if (Array.isArray(imgs) && imgs.length > 0) imageUrl = imgs[0];
+        } catch {}
+      }
+      return {
+        id: item.id,
+        productId: item.product_id,
+        name: item.name,
+        price: item.price,
+        comparePrice: item.compare_price,
+        thumbnail: imageUrl,
+        inStock: item.stock > 0,
+        isActive: !!item.is_active,
+        addedAt: item.created_at,
+      };
+    });
 
     return successResponse({
       items,
