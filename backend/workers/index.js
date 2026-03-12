@@ -132,23 +132,34 @@ async function handleHealth(env) {
 
 async function handleSiteInfo(request, env) {
   const url = new URL(request.url);
+  const hostname = url.hostname;
   const subdomain = url.searchParams.get('subdomain');
 
-  if (!subdomain) {
-    return errorResponse('Subdomain is required');
-  }
+  let site = null;
 
   try {
-    const site = await env.DB.prepare(
-      `SELECT s.id, s.subdomain, s.brand_name, s.category, s.template_id, 
-              s.logo_url, s.favicon_url, s.primary_color, s.secondary_color,
-              s.phone, s.email, s.address, s.social_links, s.settings
-       FROM sites s 
-       WHERE LOWER(s.subdomain) = LOWER(?) AND s.is_active = 1`
-    ).bind(subdomain).first();
+    if (subdomain) {
+      site = await env.DB.prepare(
+        `SELECT s.id, s.subdomain, s.brand_name, s.category, s.template_id, 
+                s.logo_url, s.favicon_url, s.primary_color, s.secondary_color,
+                s.phone, s.email, s.address, s.social_links, s.settings,
+                s.custom_domain, s.domain_status, s.domain_verification_token
+         FROM sites s 
+         WHERE LOWER(s.subdomain) = LOWER(?) AND s.is_active = 1`
+      ).bind(subdomain).first();
+    } else if (!hostname.endsWith('fluxe.in') && !hostname.endsWith('pages.dev') && !hostname.includes('localhost') && !hostname.includes('workers.dev')) {
+      site = await env.DB.prepare(
+        `SELECT s.id, s.subdomain, s.brand_name, s.category, s.template_id, 
+                s.logo_url, s.favicon_url, s.primary_color, s.secondary_color,
+                s.phone, s.email, s.address, s.social_links, s.settings,
+                s.custom_domain, s.domain_status, s.domain_verification_token
+         FROM sites s 
+         WHERE s.custom_domain = ? AND s.domain_status = 'verified' AND s.is_active = 1`
+      ).bind(hostname.toLowerCase()).first();
+    }
 
     if (!site) {
-      return errorResponse('Site not found', 404);
+      return errorResponse(subdomain ? 'Site not found' : 'Subdomain is required', subdomain ? 404 : 400);
     }
 
     let categoriesResult = [];

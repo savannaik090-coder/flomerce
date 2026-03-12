@@ -63,6 +63,9 @@ export async function ensureTablesExist(env) {
         is_active INTEGER DEFAULT 1,
         subscription_plan TEXT DEFAULT 'free',
         subscription_expires_at TEXT,
+        custom_domain TEXT,
+        domain_status TEXT,
+        domain_verification_token TEXT,
         created_at TEXT DEFAULT (datetime('now')),
         updated_at TEXT DEFAULT (datetime('now')),
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -428,6 +431,7 @@ export async function ensureTablesExist(env) {
       'CREATE INDEX IF NOT EXISTS idx_activity_site ON activity_log(site_id)',
       'CREATE INDEX IF NOT EXISTS idx_activity_user ON activity_log(user_id)',
       'CREATE INDEX IF NOT EXISTS idx_activity_created ON activity_log(created_at)',
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_sites_custom_domain ON sites(custom_domain) WHERE custom_domain IS NOT NULL',
     ];
 
     for (const sql of tables) {
@@ -445,6 +449,9 @@ export async function ensureTablesExist(env) {
     const migrations = [
       { col: 'subtitle', sql: 'ALTER TABLE categories ADD COLUMN subtitle TEXT' },
       { col: 'show_on_home', sql: 'ALTER TABLE categories ADD COLUMN show_on_home INTEGER DEFAULT 1' },
+      { col: 'custom_domain', sql: 'ALTER TABLE sites ADD COLUMN custom_domain TEXT' },
+      { col: 'domain_status', sql: 'ALTER TABLE sites ADD COLUMN domain_status TEXT' },
+      { col: 'domain_verification_token', sql: 'ALTER TABLE sites ADD COLUMN domain_verification_token TEXT' },
     ];
     for (const m of migrations) {
       try {

@@ -23,28 +23,43 @@ export async function handleSiteRouting(request, env) {
     subdomain = subdomainParam;
   }
 
-  if (!subdomain) {
-    return null;
-  }
-
   const path = url.pathname;
 
   if (path.startsWith('/api/')) {
     return null;
   }
 
-  try {
-    const site = await env.DB.prepare(
-      `SELECT * FROM sites WHERE LOWER(subdomain) = LOWER(?) AND is_active = 1`
-    ).bind(subdomain).first();
+  let site = null;
 
-    if (!site) {
-      return new Response('Site not found', {
-        status: 404,
-        headers: corsHeaders()
-      });
+  if (subdomain) {
+    try {
+      site = await env.DB.prepare(
+        `SELECT * FROM sites WHERE LOWER(subdomain) = LOWER(?) AND is_active = 1`
+      ).bind(subdomain).first();
+    } catch (error) {
+      console.error('Site routing subdomain lookup error:', error);
     }
+  }
 
+  if (!site && !hostname.endsWith('fluxe.in') && !hostname.endsWith('pages.dev') && !hostname.includes('localhost') && !hostname.includes('workers.dev')) {
+    try {
+      site = await env.DB.prepare(
+        `SELECT * FROM sites WHERE custom_domain = ? AND domain_status = 'verified' AND is_active = 1`
+      ).bind(hostname.toLowerCase()).first();
+    } catch (error) {
+      console.error('Site routing custom domain lookup error:', error);
+    }
+  }
+
+  if (!site) {
+    if (!subdomain) return null;
+    return new Response('Site not found', {
+      status: 404,
+      headers: corsHeaders()
+    });
+  }
+
+  try {
     const isExpired = site.subscription_expires_at && new Date(site.subscription_expires_at) < new Date();
     if (isExpired) {
       return new Response(
@@ -173,13 +188,19 @@ export async function resolveSiteFromRequest(request, env) {
     subdomain = subdomainParam;
   }
 
-  if (!subdomain) {
-    return null;
+  if (subdomain) {
+    const site = await env.DB.prepare(
+      'SELECT * FROM sites WHERE LOWER(subdomain) = LOWER(?) AND is_active = 1'
+    ).bind(subdomain).first();
+    if (site) return site;
   }
 
-  const site = await env.DB.prepare(
-    'SELECT * FROM sites WHERE LOWER(subdomain) = LOWER(?) AND is_active = 1'
-  ).bind(subdomain).first();
+  if (!hostname.endsWith('fluxe.in') && !hostname.endsWith('pages.dev') && !hostname.includes('localhost') && !hostname.includes('workers.dev')) {
+    const site = await env.DB.prepare(
+      `SELECT * FROM sites WHERE custom_domain = ? AND domain_status = 'verified' AND is_active = 1`
+    ).bind(hostname.toLowerCase()).first();
+    if (site) return site;
+  }
 
-  return site;
+  return null;
 }

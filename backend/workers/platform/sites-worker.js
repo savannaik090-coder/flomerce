@@ -9,6 +9,30 @@ export async function handleSites(request, env, path) {
   const method = request.method;
   const pathParts = path.split('/').filter(Boolean);
   const siteId = pathParts[2];
+  const subResource = pathParts[3];
+
+  if (siteId && (subResource === 'custom-domain' || subResource === 'verify-domain')) {
+    let authorized = false;
+    const user = await validateAuth(request, env);
+    if (user) {
+      const ownedSite = await env.DB.prepare('SELECT id FROM sites WHERE id = ? AND user_id = ?').bind(siteId, user.id).first();
+      if (ownedSite) authorized = true;
+    }
+    if (!authorized) {
+      const siteAdmin = await validateSiteAdmin(request, env, siteId);
+      if (!siteAdmin) return errorResponse('Unauthorized', 401, 'UNAUTHORIZED');
+    }
+
+    if (subResource === 'custom-domain') {
+      if (method === 'PUT') return handleSetCustomDomain(request, env, siteId);
+      if (method === 'DELETE') return handleRemoveCustomDomain(env, siteId);
+      return errorResponse('Method not allowed', 405);
+    }
+    if (subResource === 'verify-domain') {
+      if (method === 'POST') return handleVerifyDomain(env, siteId);
+      return errorResponse('Method not allowed', 405);
+    }
+  }
 
   if (method === 'PUT' && siteId) {
     const user = await validateAuth(request, env);
@@ -43,7 +67,8 @@ async function getUserSites(env, user) {
   try {
     const sites = await env.DB.prepare(
       `SELECT id, subdomain, brand_name, category, template_id, logo_url, 
-              primary_color, is_active, subscription_plan, created_at
+              primary_color, is_active, subscription_plan, created_at,
+              custom_domain, domain_status
        FROM sites 
        WHERE user_id = ? 
        ORDER BY created_at DESC`
@@ -407,5 +432,176 @@ export async function getSiteBySubdomain(env, subdomain) {
   } catch (error) {
     console.error('Get site by subdomain error:', error);
     return null;
+  }
+}
+
+async function handleSetCustomDomain(request, env, siteId) {
+  try {
+    const body = await request.json();
+    let { domain } = body;
+
+    if (!domain || typeof domain !== 'string') {
+      return errorResponse('Domain is required');
+    }
+
+    domain = domain.toLowerCase().trim();
+
+    if (domain.startsWith('http://') || domain.startsWith('https://')) {
+      domain = domain.replace(/^https?:\/\//, '');
+    }
+    domain = domain.replace(/\/+$/, '');
+
+    const domainParts = domain.split('.');
+    if (domainParts.length < 3 || domainParts[0] !== 'www') {
+      return errorResponse('Only www subdomains are supported (e.g. www.mystore.com). Root domains like mystore.com are not supported.', 400, 'INVALID_DOMAIN');
+    }
+
+    const domainRegex = /^www\.[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z]{2,})+$/;
+    if (!domainRegex.test(domain)) {
+      return errorResponse('Invalid domain format. Please enter a valid domain like www.mystore.com', 400, 'INVALID_DOMAIN');
+    }
+
+    const existing = await env.DB.prepare(
+      'SELECT id FROM sites WHERE custom_domain = ? AND id != ?'
+    ).bind(domain, siteId).first();
+
+    if (existing) {
+      return errorResponse('This domain is already connected to another site', 409, 'DOMAIN_TAKEN');
+    }
+
+    const site = await env.DB.prepare('SELECT id FROM sites WHERE id = ?').bind(siteId).first();
+    if (!site) {
+      return errorResponse('Site not found', 404, 'NOT_FOUND');
+    }
+
+    const token = generateId().replace(/-/g, '');
+
+    await env.DB.prepare(
+      `UPDATE sites SET custom_domain = ?, domain_status = 'pending', domain_verification_token = ?, updated_at = datetime('now') WHERE id = ?`
+    ).bind(domain, token, siteId).run();
+
+    return successResponse({
+      custom_domain: domain,
+      domain_status: 'pending',
+      domain_verification_token: token,
+    }, 'Custom domain saved. Please add the DNS records and verify.');
+  } catch (error) {
+    console.error('Set custom domain error:', error);
+    if (error.message && error.message.includes('UNIQUE constraint failed')) {
+      return errorResponse('This domain is already connected to another site', 409, 'DOMAIN_TAKEN');
+    }
+    return errorResponse('Failed to set custom domain: ' + error.message, 500);
+  }
+}
+
+async function handleVerifyDomain(env, siteId) {
+  try {
+    const site = await env.DB.prepare(
+      'SELECT id, custom_domain, domain_verification_token FROM sites WHERE id = ?'
+    ).bind(siteId).first();
+
+    if (!site) {
+      return errorResponse('Site not found', 404, 'NOT_FOUND');
+    }
+
+    if (!site.custom_domain) {
+      return errorResponse('No custom domain configured for this site', 400);
+    }
+
+    const domain = site.custom_domain;
+    const expectedToken = site.domain_verification_token;
+    const errors = [];
+
+    let txtVerified = false;
+    try {
+      const baseDomain = domain.replace(/^www\./, '');
+      const txtHost = `_fluxe-verify.${baseDomain}`;
+      const txtResponse = await fetch(
+        `https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(txtHost)}&type=TXT`,
+        { headers: { 'Accept': 'application/dns-json' } }
+      );
+      const txtData = await txtResponse.json();
+      if (txtData.Answer && txtData.Answer.length > 0) {
+        for (const answer of txtData.Answer) {
+          const val = (answer.data || '').replace(/"/g, '').trim();
+          if (val === expectedToken) {
+            txtVerified = true;
+            break;
+          }
+        }
+      }
+      if (!txtVerified) {
+        errors.push(`TXT record _fluxe-verify.${baseDomain} not found or does not match the expected token.`);
+      }
+    } catch (e) {
+      errors.push('Failed to check TXT record: ' + (e.message || 'DNS lookup error'));
+    }
+
+    let cnameVerified = false;
+    try {
+      const cnameResponse = await fetch(
+        `https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(domain)}&type=CNAME`,
+        { headers: { 'Accept': 'application/dns-json' } }
+      );
+      const cnameData = await cnameResponse.json();
+      if (cnameData.Answer && cnameData.Answer.length > 0) {
+        for (const answer of cnameData.Answer) {
+          const target = (answer.data || '').replace(/\.$/, '').toLowerCase();
+          if (target === 'fluxe.in') {
+            cnameVerified = true;
+            break;
+          }
+        }
+      }
+      if (!cnameVerified) {
+        errors.push(`CNAME record for ${domain} not found or does not point to fluxe.in.`);
+      }
+    } catch (e) {
+      errors.push('Failed to check CNAME record: ' + (e.message || 'DNS lookup error'));
+    }
+
+    if (txtVerified && cnameVerified) {
+      await env.DB.prepare(
+        `UPDATE sites SET domain_status = 'verified', updated_at = datetime('now') WHERE id = ?`
+      ).bind(siteId).run();
+
+      return successResponse({
+        domain_status: 'verified',
+        txt_verified: true,
+        cname_verified: true,
+      }, 'Domain verified successfully! Your custom domain is now active.');
+    } else {
+      await env.DB.prepare(
+        `UPDATE sites SET domain_status = 'failed', updated_at = datetime('now') WHERE id = ?`
+      ).bind(siteId).run();
+
+      return successResponse({
+        domain_status: 'failed',
+        txt_verified: txtVerified,
+        cname_verified: cnameVerified,
+        errors,
+      }, 'Domain verification failed. Please check your DNS records.');
+    }
+  } catch (error) {
+    console.error('Verify domain error:', error);
+    return errorResponse('Failed to verify domain: ' + error.message, 500);
+  }
+}
+
+async function handleRemoveCustomDomain(env, siteId) {
+  try {
+    const site = await env.DB.prepare('SELECT id FROM sites WHERE id = ?').bind(siteId).first();
+    if (!site) {
+      return errorResponse('Site not found', 404, 'NOT_FOUND');
+    }
+
+    await env.DB.prepare(
+      `UPDATE sites SET custom_domain = NULL, domain_status = NULL, domain_verification_token = NULL, updated_at = datetime('now') WHERE id = ?`
+    ).bind(siteId).run();
+
+    return successResponse(null, 'Custom domain removed successfully.');
+  } catch (error) {
+    console.error('Remove custom domain error:', error);
+    return errorResponse('Failed to remove custom domain: ' + error.message, 500);
   }
 }

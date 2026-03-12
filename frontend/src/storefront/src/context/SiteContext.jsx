@@ -2,6 +2,13 @@ import React, { createContext, useState, useEffect } from 'react';
 
 export const SiteContext = createContext(null);
 
+function isCustomDomain() {
+  const hostname = window.location.hostname;
+  return !hostname.endsWith('fluxe.in') && !hostname.endsWith('pages.dev') &&
+    hostname !== 'localhost' && hostname !== '127.0.0.1' && !hostname.includes('replit') &&
+    !hostname.includes('workers.dev');
+}
+
 function getSubdomain() {
   const hostname = window.location.hostname;
   const hostParts = hostname.split('.');
@@ -19,6 +26,10 @@ function getSubdomain() {
   const params = new URLSearchParams(window.location.search);
   const subdomainParam = params.get('subdomain');
   if (subdomainParam) return subdomainParam;
+
+  if (isCustomDomain()) {
+    return '__custom_domain__';
+  }
 
   if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.includes('replit')) {
     const stored = localStorage.getItem('dev_subdomain');
@@ -51,8 +62,14 @@ export function SiteProvider({ children }) {
   async function fetchSiteConfig(sub) {
     try {
       setLoading(true);
-      const apiBase = window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
-      const response = await fetch(`${apiBase}/api/site?subdomain=${encodeURIComponent(sub)}`);
+      let apiUrl;
+      if (sub === '__custom_domain__') {
+        apiUrl = `/api/site`;
+      } else {
+        const apiBase = window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
+        apiUrl = `${apiBase}/api/site?subdomain=${encodeURIComponent(sub)}`;
+      }
+      const response = await fetch(apiUrl);
       if (!response.ok) {
         throw new Error('Store not found');
       }
@@ -78,6 +95,8 @@ export function SiteProvider({ children }) {
         socialLinks: data.socialLinks || {},
         settings: data.settings || {},
         categories: data.categories || [],
+        customDomain: data.custom_domain || null,
+        domainStatus: data.domain_status || null,
       };
 
       setSiteConfig(config);
