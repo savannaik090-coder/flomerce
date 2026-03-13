@@ -4,7 +4,7 @@ import { getProducts } from '../../services/productService.js';
 
 const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
 
-export default function WatchBuySection() {
+export default function WatchBuySection({ onSaved }) {
   const { siteConfig } = useContext(SiteContext);
   const [videos, setVideos] = useState([]);
   const [products, setProducts] = useState([]);
@@ -196,6 +196,7 @@ export default function WatchBuySection() {
       await saveVideosToSettings(updatedVideos);
       setVideos(updatedVideos);
       setShowModal(false);
+      if (onSaved) onSaved();
     } catch (err) {
       setError('Failed to save: ' + err.message);
     } finally {
@@ -209,6 +210,7 @@ export default function WatchBuySection() {
       const updatedVideos = videos.filter(v => v.id !== videoId);
       await saveVideosToSettings(updatedVideos);
       setVideos(updatedVideos);
+      if (onSaved) onSaved();
     } catch (err) {
       alert('Failed to delete: ' + err.message);
     }

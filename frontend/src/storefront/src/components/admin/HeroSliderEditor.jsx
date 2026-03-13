@@ -21,7 +21,7 @@ function compressImage(file, maxWidth = 1400, quality = 0.85) {
   });
 }
 
-export default function HeroSliderEditor() {
+export default function HeroSliderEditor({ onSaved }) {
   const { siteConfig } = useContext(SiteContext);
   const [slides, setSlides] = useState([
     { title: '', subtitle: '', description: '', buttonText: 'SHOP NOW', buttonLink: '', image: '' },
@@ -127,6 +127,7 @@ export default function HeroSliderEditor() {
       const result = await response.json();
       if (response.ok && result.success) {
         setStatus('success');
+        if (onSaved) onSaved();
       } else {
         setStatus('error:' + (result.error || 'Unknown error'));
       }

@@ -23,7 +23,7 @@ const DEFAULT_PLACEHOLDERS = {
   description: "e.g., Explore our curated selection of premium products. Connect with us and find exactly what you're looking for",
 };
 
-export default function FeaturedVideoEditor() {
+export default function FeaturedVideoEditor({ onSaved }) {
   const { siteConfig } = useContext(SiteContext);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -150,6 +150,7 @@ export default function FeaturedVideoEditor() {
       const result = await response.json();
       if (response.ok && result.success) {
         setStatus('success');
+        if (onSaved) onSaved();
       } else {
         setStatus('error:' + (result.error || 'Unknown error'));
       }
@@ -288,23 +289,6 @@ export default function FeaturedVideoEditor() {
               </div>
             </div>
 
-            {videoUrl && title && (
-              <div style={{ marginTop: 8 }}>
-                <label style={{ display: 'block', fontWeight: 600, marginBottom: 8, fontSize: 13 }}>Preview</label>
-                <div style={{
-                  position: 'relative', borderRadius: 8, overflow: 'hidden', height: 200,
-                  background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  <video src={videoUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} muted autoPlay loop playsInline />
-                  <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.5) 100%)' }} />
-                  <div style={{ position: 'absolute', bottom: 16, left: 0, right: 0, textAlign: 'center', zIndex: 2 }}>
-                    <h4 style={{ color: '#d4af37', fontFamily: "'Playfair Display', serif", fontSize: 18, margin: '0 0 6px', textShadow: '1px 1px 3px rgba(0,0,0,0.5)' }}>{title}</h4>
-                    {description && <p style={{ color: '#fff', fontSize: 11, margin: '0 0 8px', maxWidth: 300, marginLeft: 'auto', marginRight: 'auto' }}>{description}</p>}
-                    <span style={{ background: '#fff', color: '#333', padding: '4px 16px', borderRadius: 20, fontSize: 10, fontWeight: 600, letterSpacing: 1 }}>{chatButtonText}</span>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         </div>
 

@@ -55,7 +55,7 @@ const inputStyle = { width: '100%', padding: '10px 12px', border: '1px solid #e2
 const labelStyle = { display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 };
 const textareaStyle = { ...inputStyle, resize: 'vertical' };
 
-export default function AboutUsEditor() {
+export default function AboutUsEditor({ onSaved }) {
   const { siteConfig } = useContext(SiteContext);
   const [heroSubtitle, setHeroSubtitle] = useState('');
   const [storyText, setStoryText] = useState('');
@@ -196,6 +196,7 @@ export default function AboutUsEditor() {
       const result = await response.json();
       if (response.ok && result.success) {
         setStatus('success');
+        if (onSaved) onSaved();
       } else {
         setStatus('error:' + (result.error || 'Unknown error'));
       }

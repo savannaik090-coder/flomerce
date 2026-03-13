@@ -48,7 +48,7 @@ function getDefaultSections(brand, email, phone) {
   ];
 }
 
-export default function TermsEditor() {
+export default function TermsEditor({ onSaved }) {
   const { siteConfig } = useContext(SiteContext);
   const brand = siteConfig?.brand_name || 'Our Store';
   const email = siteConfig?.email || 'support@example.com';
@@ -118,6 +118,7 @@ export default function TermsEditor() {
         throw new Error(result.error || 'Failed to save');
       }
       setStatus('success');
+      if (onSaved) onSaved();
     } catch (e) {
       setStatus('error:' + e.message);
     } finally {

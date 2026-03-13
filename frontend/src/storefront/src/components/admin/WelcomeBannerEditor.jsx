@@ -21,7 +21,7 @@ function compressImage(file, maxWidth = 1200, quality = 0.85) {
   });
 }
 
-export default function WelcomeBannerEditor() {
+export default function WelcomeBannerEditor({ onSaved }) {
   const { siteConfig } = useContext(SiteContext);
   const [heading, setHeading] = useState('');
   const [message, setMessage] = useState('');
@@ -112,6 +112,7 @@ export default function WelcomeBannerEditor() {
       const result = await response.json();
       if (response.ok && result.success) {
         setStatus('success');
+        if (onSaved) onSaved();
       } else {
         setStatus('error:' + (result.error || 'Unknown error'));
       }

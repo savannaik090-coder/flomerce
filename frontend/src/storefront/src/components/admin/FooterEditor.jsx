@@ -4,7 +4,7 @@ import { getCategories } from '../../services/categoryService.js';
 
 const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
 
-export default function FooterEditor() {
+export default function FooterEditor({ onSaved }) {
   const { siteConfig, refetchSite } = useContext(SiteContext);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -108,6 +108,7 @@ export default function FooterEditor() {
       var result = await response.json();
       if (response.ok && result.success) {
         setStatus('success');
+        if (onSaved) onSaved();
         if (refetchSite) refetchSite();
       } else {
         setStatus('error:' + (result.error || 'Unknown error'));

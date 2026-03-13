@@ -4,7 +4,7 @@ import { resolveImageUrl } from '../../utils/imageUrl.js';
 
 const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
 
-export default function CustomerReviewsEditor() {
+export default function CustomerReviewsEditor({ onSaved }) {
   const { siteConfig } = useContext(SiteContext);
   const [sectionTitle, setSectionTitle] = useState('What Our Customers Say');
   const [sectionSubtitle, setSectionSubtitle] = useState('Real reviews from our happy customers');
@@ -71,6 +71,7 @@ export default function CustomerReviewsEditor() {
         reviewsSectionSubtitle: sectionSubtitle,
       });
       setStatus('success');
+      if (onSaved) onSaved();
     } catch (e) {
       setStatus('error:' + e.message);
     } finally {
@@ -164,6 +165,7 @@ export default function CustomerReviewsEditor() {
       await saveToSettings({ reviews: updatedReviews });
       setReviews(updatedReviews);
       setShowModal(false);
+      if (onSaved) onSaved();
     } catch (err) {
       setError('Failed to save: ' + err.message);
     } finally {
@@ -177,6 +179,7 @@ export default function CustomerReviewsEditor() {
       const updatedReviews = reviews.filter((_, i) => i !== index);
       await saveToSettings({ reviews: updatedReviews });
       setReviews(updatedReviews);
+      if (onSaved) onSaved();
     } catch (err) {
       alert('Failed to delete: ' + err.message);
     }

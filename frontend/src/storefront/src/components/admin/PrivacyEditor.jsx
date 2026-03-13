@@ -64,7 +64,7 @@ const DEFAULT_SECTIONS = [
 
 const DEFAULT_INTRO = 'We are committed to protecting your personal information and your right to privacy. This Privacy Policy explains how we collect, use, and share information about you when you use our services.';
 
-export default function PrivacyEditor() {
+export default function PrivacyEditor({ onSaved }) {
   const { siteConfig } = useContext(SiteContext);
   const [intro, setIntro] = useState('');
   const [sections, setSections] = useState([]);
@@ -130,6 +130,7 @@ export default function PrivacyEditor() {
         throw new Error(result.error || 'Failed to save');
       }
       setStatus('success');
+      if (onSaved) onSaved();
     } catch (e) {
       setStatus('error:' + e.message);
     } finally {

@@ -149,8 +149,10 @@ Fluxe is a multi-tenant SaaS platform that allows users to create their own e-co
   - Replaced the old CategoryCircles component (circular icons below hero slider)
 
 ## Edit Website Admin Section
-- "Edit Website" sidebar item consolidates: Promo Banner, Categories, Watch & Buy into sub-tabs
-- Component: `WebsiteContentSection.jsx` with `PromoBannerEditor` inline
+- "Edit Website" sidebar item consolidates: Promo Banner, Hero Slider, Welcome Banner, Categories, Watch & Buy, Featured Video, Customer Reviews, About Us, Terms, Privacy, Footer into sub-tabs
+- Component: `WebsiteContentSection.jsx` with `PromoBannerEditor` inline and side-by-side iframe preview
+- **Iframe Preview:** 380px sticky panel on the right showing the live storefront. Each tab maps to the correct storefront page (home `/`, about `/about`, terms `/terms`, privacy `/privacy-policy`). Refresh button reloads iframe; auto-refreshes when any editor saves successfully via `onSaved` prop. Show/hide toggle with floating "Show Preview" button when hidden.
+- All 11 editor components accept `onSaved` callback prop — called after every successful save/delete/update operation to trigger iframe refresh
 - Promo Banner: Up to 3 scrolling text messages saved to `settings.promoBanner` array
 - Backend `updateSiteAsAdmin` does server-side merge of `settings` (reads existing, spreads new keys in) — never overwrites entire settings object
 - Navbar reads `siteConfig.settings.promoBanner` and scrolls messages; falls back to "Welcome to {brandName}"

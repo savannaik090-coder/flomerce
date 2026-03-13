@@ -13,7 +13,7 @@ function resolveImageUrl(src) {
   return src;
 }
 
-export default function CategoriesSection() {
+export default function CategoriesSection({ onSaved }) {
   const { siteConfig, refetchSite } = useContext(SiteContext);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -75,6 +75,7 @@ export default function CategoriesSection() {
       setNewCategoryName('');
       setNewCategorySubtitle('');
       await loadCategories();
+      if (onSaved) onSaved();
     } catch (e) {
       alert('Failed to add category: ' + e.message);
     }
@@ -85,6 +86,7 @@ export default function CategoriesSection() {
     try {
       await deleteCategory(categoryId);
       await loadCategories();
+      if (onSaved) onSaved();
     } catch (e) {
       alert('Failed to delete category: ' + e.message);
     }
@@ -103,6 +105,7 @@ export default function CategoriesSection() {
       setEditCategoryName('');
       setEditCategorySubtitle('');
       await loadCategories();
+      if (onSaved) onSaved();
     } catch (e) {
       alert('Failed to update category: ' + e.message);
     }
@@ -112,6 +115,7 @@ export default function CategoriesSection() {
     try {
       await updateCategory(categoryId, { showOnHome: !currentValue });
       await loadCategories();
+      if (onSaved) onSaved();
     } catch (e) {
       alert('Failed to update category: ' + e.message);
     }
@@ -134,6 +138,7 @@ export default function CategoriesSection() {
         const imageUrl = result.data.images[0].url;
         await updateCategory(categoryId, { imageUrl });
         await loadCategories();
+        if (onSaved) onSaved();
       } else {
         alert('Image upload failed: ' + (result.error || result.message || 'Unknown error'));
       }
@@ -148,6 +153,7 @@ export default function CategoriesSection() {
     try {
       await updateCategory(categoryId, { imageUrl: null });
       await loadCategories();
+      if (onSaved) onSaved();
     } catch (e) {
       alert('Failed to remove image: ' + e.message);
     }
@@ -172,6 +178,8 @@ export default function CategoriesSection() {
       const result = await response.json();
       if (!response.ok || !result.success) {
         alert('Failed to save: ' + (result.error || 'Unknown error'));
+      } else {
+        if (onSaved) onSaved();
       }
     } catch (e) {
       alert('Failed to save: ' + e.message);

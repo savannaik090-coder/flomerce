@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef, useCallback } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import CategoriesSection from './CategoriesSection.jsx';
 import WatchBuySection from './WatchBuySection.jsx';
@@ -12,26 +12,46 @@ import PrivacyEditor from './PrivacyEditor.jsx';
 import FooterEditor from './FooterEditor.jsx';
 
 const SUB_TABS = [
-  { id: 'promo-banner', icon: 'fa-bullhorn', label: 'Promo Banner' },
-  { id: 'hero-slider', icon: 'fa-images', label: 'Hero Slider' },
-  { id: 'welcome-banner', icon: 'fa-hand-sparkles', label: 'Welcome Banner' },
-  { id: 'categories', icon: 'fa-folder', label: 'Categories' },
-  { id: 'watchbuy', icon: 'fa-video', label: 'Watch & Buy' },
-  { id: 'featured-video', icon: 'fa-film', label: 'Featured Video' },
-  { id: 'customer-reviews', icon: 'fa-star', label: 'Customer Reviews' },
-  { id: 'about-us', icon: 'fa-info-circle', label: 'About Us' },
-  { id: 'terms', icon: 'fa-file-contract', label: 'Terms & Conditions' },
-  { id: 'privacy', icon: 'fa-user-shield', label: 'Privacy Policy' },
-  { id: 'footer', icon: 'fa-shoe-prints', label: 'Footer' },
+  { id: 'promo-banner', icon: 'fa-bullhorn', label: 'Promo Banner', page: '/' },
+  { id: 'hero-slider', icon: 'fa-images', label: 'Hero Slider', page: '/' },
+  { id: 'welcome-banner', icon: 'fa-hand-sparkles', label: 'Welcome Banner', page: '/' },
+  { id: 'categories', icon: 'fa-folder', label: 'Categories', page: '/' },
+  { id: 'watchbuy', icon: 'fa-video', label: 'Watch & Buy', page: '/' },
+  { id: 'featured-video', icon: 'fa-film', label: 'Featured Video', page: '/' },
+  { id: 'customer-reviews', icon: 'fa-star', label: 'Customer Reviews', page: '/' },
+  { id: 'about-us', icon: 'fa-info-circle', label: 'About Us', page: '/about' },
+  { id: 'terms', icon: 'fa-file-contract', label: 'Terms & Conditions', page: '/terms' },
+  { id: 'privacy', icon: 'fa-user-shield', label: 'Privacy Policy', page: '/privacy-policy' },
+  { id: 'footer', icon: 'fa-shoe-prints', label: 'Footer', page: '/' },
 ];
 
+function getStoreUrl(siteConfig) {
+  if (!siteConfig?.subdomain) return '';
+  const host = window.location.hostname;
+  if (host.endsWith('fluxe.in')) {
+    return `https://${siteConfig.subdomain}.fluxe.in`;
+  }
+  return `${window.location.protocol}//${window.location.host}`;
+}
+
 export default function WebsiteContentSection() {
-  const { siteConfig, refetchSite } = useContext(SiteContext);
+  const { siteConfig } = useContext(SiteContext);
   const [activeTab, setActiveTab] = useState('promo-banner');
+  const [showPreview, setShowPreview] = useState(true);
+  const [previewKey, setPreviewKey] = useState(0);
+  const iframeRef = useRef(null);
+
+  const storeBaseUrl = getStoreUrl(siteConfig);
+  const currentTab = SUB_TABS.find(t => t.id === activeTab);
+  const previewUrl = storeBaseUrl ? `${storeBaseUrl}${currentTab?.page || '/'}` : '';
+
+  const refreshPreview = useCallback(() => {
+    setPreviewKey(k => k + 1);
+  }, []);
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
         {SUB_TABS.map(tab => (
           <button
             key={tab.id}
@@ -57,22 +77,90 @@ export default function WebsiteContentSection() {
         ))}
       </div>
 
-      {activeTab === 'promo-banner' && <PromoBannerEditor />}
-      {activeTab === 'hero-slider' && <HeroSliderEditor />}
-      {activeTab === 'welcome-banner' && <WelcomeBannerEditor />}
-      {activeTab === 'categories' && <CategoriesSection />}
-      {activeTab === 'watchbuy' && <WatchBuySection />}
-      {activeTab === 'featured-video' && <FeaturedVideoEditor />}
-      {activeTab === 'customer-reviews' && <CustomerReviewsEditor />}
-      {activeTab === 'about-us' && <AboutUsEditor />}
-      {activeTab === 'terms' && <TermsEditor />}
-      {activeTab === 'privacy' && <PrivacyEditor />}
-      {activeTab === 'footer' && <FooterEditor />}
+      <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
+        <div style={{ flex: '1 1 0', minWidth: 0 }}>
+          {activeTab === 'promo-banner' && <PromoBannerEditor onSaved={refreshPreview} />}
+          {activeTab === 'hero-slider' && <HeroSliderEditor onSaved={refreshPreview} />}
+          {activeTab === 'welcome-banner' && <WelcomeBannerEditor onSaved={refreshPreview} />}
+          {activeTab === 'categories' && <CategoriesSection onSaved={refreshPreview} />}
+          {activeTab === 'watchbuy' && <WatchBuySection onSaved={refreshPreview} />}
+          {activeTab === 'featured-video' && <FeaturedVideoEditor onSaved={refreshPreview} />}
+          {activeTab === 'customer-reviews' && <CustomerReviewsEditor onSaved={refreshPreview} />}
+          {activeTab === 'about-us' && <AboutUsEditor onSaved={refreshPreview} />}
+          {activeTab === 'terms' && <TermsEditor onSaved={refreshPreview} />}
+          {activeTab === 'privacy' && <PrivacyEditor onSaved={refreshPreview} />}
+          {activeTab === 'footer' && <FooterEditor onSaved={refreshPreview} />}
+        </div>
+
+        {showPreview && previewUrl && (
+          <div style={{ width: 380, flexShrink: 0, position: 'sticky', top: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#334155' }}>
+                <i className="fas fa-eye" style={{ marginRight: 6, fontSize: 12 }} />
+                Live Preview
+              </span>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button
+                  type="button"
+                  onClick={refreshPreview}
+                  title="Refresh preview"
+                  style={{ background: 'none', border: '1px solid #e2e8f0', borderRadius: 4, cursor: 'pointer', padding: '4px 8px', fontSize: 12, color: '#64748b' }}
+                >
+                  <i className="fas fa-sync-alt" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => window.open(previewUrl, '_blank')}
+                  title="Open in new tab"
+                  style={{ background: 'none', border: '1px solid #e2e8f0', borderRadius: 4, cursor: 'pointer', padding: '4px 8px', fontSize: 12, color: '#64748b' }}
+                >
+                  <i className="fas fa-external-link-alt" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowPreview(false)}
+                  title="Hide preview"
+                  style={{ background: 'none', border: '1px solid #e2e8f0', borderRadius: 4, cursor: 'pointer', padding: '4px 8px', fontSize: 12, color: '#64748b' }}
+                >
+                  <i className="fas fa-times" />
+                </button>
+              </div>
+            </div>
+            <div style={{ border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden', background: '#fff' }}>
+              <iframe
+                ref={iframeRef}
+                key={previewKey}
+                src={previewUrl}
+                style={{ width: '100%', height: 600, border: 'none', display: 'block' }}
+                title="Store Preview"
+              />
+            </div>
+            <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 6, textAlign: 'center' }}>
+              Save your changes, then click <i className="fas fa-sync-alt" style={{ fontSize: 10 }} /> to refresh
+            </p>
+          </div>
+        )}
+      </div>
+
+      {!showPreview && previewUrl && (
+        <button
+          type="button"
+          onClick={() => setShowPreview(true)}
+          style={{
+            position: 'fixed', bottom: 20, right: 20, zIndex: 100,
+            background: '#2563eb', color: '#fff', border: 'none', borderRadius: 8,
+            padding: '10px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.15)', display: 'flex', alignItems: 'center', gap: 6,
+          }}
+        >
+          <i className="fas fa-eye" /> Show Preview
+        </button>
+      )}
     </div>
   );
 }
 
-function PromoBannerEditor() {
+function PromoBannerEditor({ onSaved }) {
   const { siteConfig } = useContext(SiteContext);
   const [messages, setMessages] = useState(['', '', '']);
   const [saving, setSaving] = useState(false);
@@ -129,6 +217,7 @@ function PromoBannerEditor() {
       const result = await response.json();
       if (response.ok && result.success) {
         setStatus('success');
+        if (onSaved) onSaved();
       } else {
         setStatus('error:' + (result.error || 'Unknown error'));
       }
@@ -148,8 +237,6 @@ function PromoBannerEditor() {
   }
 
   if (loading) return <div className="loading-spinner-admin"><div className="spinner" /></div>;
-
-  const hasMessages = messages.some(m => m.trim() !== '');
 
   return (
     <div style={{ maxWidth: 700 }}>
@@ -189,38 +276,6 @@ function PromoBannerEditor() {
                 </div>
               </div>
             ))}
-
-            {hasMessages && (
-              <div style={{ marginTop: 8 }}>
-                <label style={{ display: 'block', fontWeight: 600, marginBottom: 8, fontSize: 13 }}>Preview</label>
-                <div style={{
-                  background: '#b3a681',
-                  color: '#333',
-                  padding: '7px 0',
-                  borderRadius: 6,
-                  overflow: 'hidden',
-                  position: 'relative',
-                }}>
-                  <p style={{
-                    margin: 0,
-                    display: 'inline-block',
-                    whiteSpace: 'nowrap',
-                    willChange: 'transform',
-                    animation: 'scroll-left 6s linear infinite',
-                    fontSize: 13,
-                    letterSpacing: '1.5px',
-                    wordSpacing: '4px',
-                  }}>
-                    {(() => {
-                      const filtered = messages.filter(m => m.trim());
-                      const sep = <span style={{ padding: '0 30px', opacity: 0.5 }}>{'\u2726'}</span>;
-                      const block = filtered.flatMap((m, i) => i < filtered.length - 1 ? [m, sep] : [m]);
-                      return <>{block}{sep}{block}{sep}{block}{sep}{block}</>;
-                    })()}
-                  </p>
-                </div>
-              </div>
-            )}
           </div>
         </div>
 
