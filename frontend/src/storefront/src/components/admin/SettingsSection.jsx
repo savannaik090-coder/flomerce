@@ -383,25 +383,15 @@ export default function SettingsSection() {
                 <p style={{ fontSize: 11, color: '#94a3b8' }}>Add a TXT record with host <code>_fluxe-verify</code> on your domain provider.</p>
               </div>
 
-              <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: 14, marginBottom: 10 }}>
-                <p style={{ fontSize: 12, color: '#92400e', fontWeight: 600, marginBottom: 8 }}>Step 3: Root domain redirect (recommended)</p>
-                <p style={{ fontSize: 12, color: '#92400e', marginBottom: 10 }}>
-                  So visitors who type <strong>{customDomain.replace(/^www\./, '')}</strong> are automatically sent to <strong>{customDomain}</strong>
-                </p>
-                <div style={{ background: '#fef3c7', borderRadius: 6, padding: 10, marginBottom: 8 }}>
-                  <p style={{ fontSize: 12, color: '#92400e', fontWeight: 600, marginBottom: 4 }}>Cloudflare DNS:</p>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <code style={{ flex: 1, fontSize: 13, background: '#fff', padding: '6px 10px', borderRadius: 4, border: '1px solid #fde68a', wordBreak: 'break-all' }}>
-                      CNAME &nbsp; @ &nbsp; → &nbsp; fluxe.in
-                    </code>
-                    <button type="button" onClick={() => copyToClipboard('fluxe.in')} style={{ padding: '6px 10px', border: '1px solid #fde68a', borderRadius: 4, background: '#fff', cursor: 'pointer', fontSize: 12, whiteSpace: 'nowrap' }}>Copy</button>
-                  </div>
-                  <p style={{ fontSize: 11, color: '#92400e', marginTop: 4, opacity: 0.8 }}>Only works on Cloudflare (CNAME flattening). Then add a Redirect Rule: <strong>{customDomain.replace(/^www\./, '')}</strong> → <strong>https://{customDomain}</strong></p>
+              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: 14, marginBottom: 10 }}>
+                <p style={{ fontSize: 12, color: '#64748b', marginBottom: 4 }}>Step 3: CNAME Record for root domain (recommended)</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                  <code style={{ flex: 1, fontSize: 13, background: '#fff', padding: '6px 10px', borderRadius: 4, border: '1px solid #e2e8f0', wordBreak: 'break-all' }}>
+                    CNAME &nbsp; @ &nbsp; → &nbsp; fluxe.in
+                  </code>
+                  <button type="button" onClick={() => copyToClipboard('fluxe.in')} style={{ padding: '6px 10px', border: '1px solid #e2e8f0', borderRadius: 4, background: '#fff', cursor: 'pointer', fontSize: 12, whiteSpace: 'nowrap' }}>Copy</button>
                 </div>
-                <div style={{ background: '#fef3c7', borderRadius: 6, padding: 10 }}>
-                  <p style={{ fontSize: 12, color: '#92400e', fontWeight: 600, marginBottom: 4 }}>GoDaddy, Namecheap & others:</p>
-                  <p style={{ fontSize: 12, color: '#92400e', margin: 0 }}>These providers don't support CNAME on the root domain. Instead, use the <strong>"Forwarding"</strong> or <strong>"URL Redirect"</strong> feature in your domain settings to forward <strong>{customDomain.replace(/^www\./, '')}</strong> → <strong>https://{customDomain}</strong></p>
-                </div>
+                <p style={{ fontSize: 11, color: '#94a3b8' }}>Add a CNAME record with name <code>@</code> pointing to <code>fluxe.in</code> so that <strong>{customDomain.replace(/^www\./, '')}</strong> also works. Cloudflare handles this automatically via CNAME flattening. On other providers, use their URL forwarding to redirect <strong>{customDomain.replace(/^www\./, '')}</strong> → <strong>https://{customDomain}</strong></p>
               </div>
 
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
