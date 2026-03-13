@@ -1,4 +1,4 @@
-import{u as x,a as v,j as e}from"./index--sxFS5jh.js";const w={jewellery:{heroSubtitle:"Discover our story, heritage, and the passion behind every exquisite piece we create",storyText:`Welcome to {brandName}. We are dedicated to bringing you the finest jewellery with unmatched quality and craftsmanship that speaks for itself.
+import{u as x,a as v,j as e}from"./index-6eNEVIEv.js";const w={jewellery:{heroSubtitle:"Discover our story, heritage, and the passion behind every exquisite piece we create",storyText:`Welcome to {brandName}. We are dedicated to bringing you the finest jewellery with unmatched quality and craftsmanship that speaks for itself.
 
 Our commitment to authentic craftsmanship and traditional artistry has made us one of the most trusted names in the jewellery industry. Every piece in our collection reflects expertise, artistic brilliance, and timeless beauty.
 

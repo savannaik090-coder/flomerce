@@ -32,17 +32,14 @@ export default function FeaturedVideoSection() {
   const videoUrl = settings.featuredVideoUrl || '';
   const chatLink = settings.featuredVideoChatLink || '';
   const chatButtonText = settings.featuredVideoChatButtonText || 'CHAT NOW';
-  const whatsapp = siteConfig?.whatsapp || '';
   const phone = siteConfig?.phone || '';
 
   const handleChatClick = () => {
     if (chatLink) {
       window.open(chatLink, '_blank');
-    } else if (whatsapp) {
-      const msg = encodeURIComponent("Hi! I'm interested. Can you help me?");
-      window.open(`https://wa.me/${whatsapp.replace(/\D/g, '')}?text=${msg}`, '_blank');
     } else if (phone) {
-      window.open(`tel:${phone.replace(/[^0-9+]/g, '')}`, '_self');
+      const msg = encodeURIComponent("Hi! I'm interested. Can you help me?");
+      window.open(`https://wa.me/${phone.replace(/[^0-9]/g, '')}?text=${msg}`, '_blank');
     }
   };
 
@@ -59,7 +56,7 @@ export default function FeaturedVideoSection() {
       <div className="fv-content">
         {title && <h1 className="fv-title">{title}</h1>}
         {description && <p className="fv-description">{description}</p>}
-        {(chatLink || whatsapp || phone) && (
+        {(chatLink || phone) && (
           <button className="fv-chat-btn" onClick={handleChatClick}>
             {chatButtonText}
           </button>
