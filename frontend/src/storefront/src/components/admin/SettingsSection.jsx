@@ -250,90 +250,114 @@ export default function SettingsSection() {
             Connect your own domain (e.g. <strong>www.mystore.com</strong>) to your store. Only <code>www.</code> subdomains are supported — root domains like <code>mystore.com</code> are not supported.
           </p>
 
-          {customDomain && domainStatus && (
-            <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 8, background: domainStatus === 'verified' ? '#f0fdf4' : domainStatus === 'failed' ? '#fef2f2' : '#fffbeb', border: `1px solid ${domainStatus === 'verified' ? '#bbf7d0' : domainStatus === 'failed' ? '#fecaca' : '#fde68a'}` }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontWeight: 600, fontSize: 14 }}>{customDomain}</span>
-                <span style={{
-                  fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 4, textTransform: 'uppercase',
-                  background: domainStatus === 'verified' ? '#dcfce7' : domainStatus === 'failed' ? '#fee2e2' : '#fef3c7',
-                  color: domainStatus === 'verified' ? '#166534' : domainStatus === 'failed' ? '#dc2626' : '#92400e',
-                }}>{domainStatus}</span>
-              </div>
-            </div>
-          )}
-
-          <div style={{ marginBottom: 16 }}>
-            <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Domain</label>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <input
-                type="text"
-                value={domainInput}
-                onChange={(e) => { setDomainInput(e.target.value); setDomainError(''); }}
-                placeholder="www.mystore.com"
-                style={{ flex: 1, padding: '10px 12px', border: `1px solid ${domainError ? '#ef4444' : '#e2e8f0'}`, borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }}
-              />
-              <button type="button" className="btn btn-primary" onClick={handleSaveDomain} disabled={domainSaving} style={{ whiteSpace: 'nowrap' }}>
-                {domainSaving ? 'Saving...' : 'Save Domain'}
-              </button>
-            </div>
-            {domainError && <p style={{ color: '#ef4444', fontSize: 13, marginTop: 6 }}>{domainError}</p>}
-            {domainMsg && <p style={{ color: '#16a34a', fontSize: 13, marginTop: 6 }}>{domainMsg}</p>}
-          </div>
-
-          {customDomain && domainToken && (
-            <div style={{ marginBottom: 16 }}>
-              <p style={{ fontWeight: 600, fontSize: 13, marginBottom: 10 }}>DNS Records to Add</p>
-              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: 14, marginBottom: 10 }}>
-                <p style={{ fontSize: 12, color: '#64748b', marginBottom: 4 }}>Step 1: CNAME Record (for routing)</p>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <code style={{ flex: 1, fontSize: 13, background: '#fff', padding: '6px 10px', borderRadius: 4, border: '1px solid #e2e8f0', wordBreak: 'break-all' }}>
-                    CNAME &nbsp; www &nbsp; → &nbsp; fluxe.in
-                  </code>
-                  <button type="button" onClick={() => copyToClipboard('fluxe.in')} style={{ padding: '6px 10px', border: '1px solid #e2e8f0', borderRadius: 4, background: '#fff', cursor: 'pointer', fontSize: 12, whiteSpace: 'nowrap' }}>Copy</button>
-                </div>
-              </div>
-              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: 14, marginBottom: 10 }}>
-                <p style={{ fontSize: 12, color: '#64748b', marginBottom: 4 }}>Step 2: TXT Record (for ownership verification)</p>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                  <code style={{ flex: 1, fontSize: 13, background: '#fff', padding: '6px 10px', borderRadius: 4, border: '1px solid #e2e8f0', wordBreak: 'break-all' }}>
-                    TXT &nbsp; _fluxe-verify &nbsp; → &nbsp; {domainToken}
-                  </code>
-                  <button type="button" onClick={() => copyToClipboard(domainToken)} style={{ padding: '6px 10px', border: '1px solid #e2e8f0', borderRadius: 4, background: '#fff', cursor: 'pointer', fontSize: 12, whiteSpace: 'nowrap' }}>Copy</button>
-                </div>
-                <p style={{ fontSize: 11, color: '#94a3b8' }}>Add this as a TXT record with host <code>_fluxe-verify</code> on your domain provider.</p>
-              </div>
-
-              <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: 14, marginBottom: 10 }}>
-                <p style={{ fontSize: 12, color: '#92400e', fontWeight: 600, marginBottom: 8 }}>Step 3: Root domain redirect (recommended)</p>
-                <p style={{ fontSize: 12, color: '#92400e', marginBottom: 10 }}>
-                  So visitors who type <strong>{customDomain.replace(/^www\./, '')}</strong> are automatically sent to <strong>{customDomain}</strong>
-                </p>
-                <div style={{ background: '#fef3c7', borderRadius: 6, padding: 10, marginBottom: 8 }}>
-                  <p style={{ fontSize: 12, color: '#92400e', fontWeight: 600, marginBottom: 4 }}>Cloudflare DNS:</p>
+          {customDomain && domainStatus === 'verified' ? (
+            <div>
+              <div style={{ marginBottom: 16, padding: '14px 16px', borderRadius: 8, background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <code style={{ flex: 1, fontSize: 13, background: '#fff', padding: '6px 10px', borderRadius: 4, border: '1px solid #fde68a', wordBreak: 'break-all' }}>
-                      CNAME &nbsp; @ &nbsp; → &nbsp; fluxe.in
-                    </code>
-                    <button type="button" onClick={() => copyToClipboard('fluxe.in')} style={{ padding: '6px 10px', border: '1px solid #fde68a', borderRadius: 4, background: '#fff', cursor: 'pointer', fontSize: 12, whiteSpace: 'nowrap' }}>Copy</button>
+                    <span style={{ color: '#16a34a', fontSize: 18 }}>&#10003;</span>
+                    <span style={{ fontWeight: 600, fontSize: 14 }}>{customDomain}</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 4, textTransform: 'uppercase', background: '#dcfce7', color: '#166534' }}>verified</span>
                   </div>
-                  <p style={{ fontSize: 11, color: '#92400e', marginTop: 4, opacity: 0.8 }}>Only works on Cloudflare (CNAME flattening). Then add a Redirect Rule: <strong>{customDomain.replace(/^www\./, '')}</strong> → <strong>https://{customDomain}</strong></p>
+                  <button type="button" className="btn btn-outline" onClick={handleRemoveDomain} style={{ color: '#ef4444', borderColor: '#fecaca', fontSize: 12, padding: '6px 12px' }}>
+                    Remove Domain
+                  </button>
                 </div>
-                <div style={{ background: '#fef3c7', borderRadius: 6, padding: 10 }}>
-                  <p style={{ fontSize: 12, color: '#92400e', fontWeight: 600, marginBottom: 4 }}>GoDaddy, Namecheap & others:</p>
-                  <p style={{ fontSize: 12, color: '#92400e', margin: 0 }}>These providers don't support CNAME on the root domain. Instead, use the <strong>"Forwarding"</strong> or <strong>"URL Redirect"</strong> feature in your domain settings to forward <strong>{customDomain.replace(/^www\./, '')}</strong> → <strong>https://{customDomain}</strong></p>
+                <p style={{ fontSize: 13, color: '#166534', marginTop: 8, marginBottom: 0 }}>
+                  Your custom domain is active. Visitors can access your store at <strong>https://{customDomain}</strong>
+                </p>
+              </div>
+              {domainMsg && <p style={{ color: '#16a34a', fontSize: 13, marginTop: 6 }}>{domainMsg}</p>}
+              {domainError && <p style={{ color: '#ef4444', fontSize: 13, marginTop: 6 }}>{domainError}</p>}
+            </div>
+          ) : (
+            <>
+              {customDomain && domainStatus && (
+                <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 8, background: domainStatus === 'failed' ? '#fef2f2' : '#fffbeb', border: `1px solid ${domainStatus === 'failed' ? '#fecaca' : '#fde68a'}` }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontWeight: 600, fontSize: 14 }}>{customDomain}</span>
+                    <span style={{
+                      fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 4, textTransform: 'uppercase',
+                      background: domainStatus === 'failed' ? '#fee2e2' : '#fef3c7',
+                      color: domainStatus === 'failed' ? '#dc2626' : '#92400e',
+                    }}>{domainStatus}</span>
+                  </div>
                 </div>
+              )}
+
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Domain</label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input
+                    type="text"
+                    value={domainInput}
+                    onChange={(e) => { setDomainInput(e.target.value); setDomainError(''); }}
+                    placeholder="www.mystore.com"
+                    style={{ flex: 1, padding: '10px 12px', border: `1px solid ${domainError ? '#ef4444' : '#e2e8f0'}`, borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }}
+                  />
+                  <button type="button" className="btn btn-primary" onClick={handleSaveDomain} disabled={domainSaving} style={{ whiteSpace: 'nowrap' }}>
+                    {domainSaving ? 'Saving...' : 'Save Domain'}
+                  </button>
+                </div>
+                {domainError && <p style={{ color: '#ef4444', fontSize: 13, marginTop: 6 }}>{domainError}</p>}
+                {domainMsg && <p style={{ color: '#16a34a', fontSize: 13, marginTop: 6 }}>{domainMsg}</p>}
               </div>
 
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <button type="button" className="btn btn-primary" onClick={handleVerifyDomain} disabled={domainVerifying} style={{ flex: 1 }}>
-                  {domainVerifying ? 'Verifying...' : 'Verify Now'}
-                </button>
-                <button type="button" className="btn btn-outline" onClick={handleRemoveDomain} style={{ color: '#ef4444', borderColor: '#fecaca' }}>
-                  Remove Domain
-                </button>
-              </div>
-            </div>
+              {customDomain && domainToken && (
+                <div style={{ marginBottom: 16 }}>
+                  <p style={{ fontWeight: 600, fontSize: 13, marginBottom: 10 }}>DNS Records to Add</p>
+                  <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: 14, marginBottom: 10 }}>
+                    <p style={{ fontSize: 12, color: '#64748b', marginBottom: 4 }}>Step 1: CNAME Record (for routing)</p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <code style={{ flex: 1, fontSize: 13, background: '#fff', padding: '6px 10px', borderRadius: 4, border: '1px solid #e2e8f0', wordBreak: 'break-all' }}>
+                        CNAME &nbsp; www &nbsp; → &nbsp; fluxe.in
+                      </code>
+                      <button type="button" onClick={() => copyToClipboard('fluxe.in')} style={{ padding: '6px 10px', border: '1px solid #e2e8f0', borderRadius: 4, background: '#fff', cursor: 'pointer', fontSize: 12, whiteSpace: 'nowrap' }}>Copy</button>
+                    </div>
+                  </div>
+                  <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: 14, marginBottom: 10 }}>
+                    <p style={{ fontSize: 12, color: '#64748b', marginBottom: 4 }}>Step 2: TXT Record (for ownership verification)</p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                      <code style={{ flex: 1, fontSize: 13, background: '#fff', padding: '6px 10px', borderRadius: 4, border: '1px solid #e2e8f0', wordBreak: 'break-all' }}>
+                        TXT &nbsp; _fluxe-verify &nbsp; → &nbsp; {domainToken}
+                      </code>
+                      <button type="button" onClick={() => copyToClipboard(domainToken)} style={{ padding: '6px 10px', border: '1px solid #e2e8f0', borderRadius: 4, background: '#fff', cursor: 'pointer', fontSize: 12, whiteSpace: 'nowrap' }}>Copy</button>
+                    </div>
+                    <p style={{ fontSize: 11, color: '#94a3b8' }}>Add this as a TXT record with host <code>_fluxe-verify</code> on your domain provider.</p>
+                  </div>
+
+                  <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: 14, marginBottom: 10 }}>
+                    <p style={{ fontSize: 12, color: '#92400e', fontWeight: 600, marginBottom: 8 }}>Step 3: Root domain redirect (recommended)</p>
+                    <p style={{ fontSize: 12, color: '#92400e', marginBottom: 10 }}>
+                      So visitors who type <strong>{customDomain.replace(/^www\./, '')}</strong> are automatically sent to <strong>{customDomain}</strong>
+                    </p>
+                    <div style={{ background: '#fef3c7', borderRadius: 6, padding: 10, marginBottom: 8 }}>
+                      <p style={{ fontSize: 12, color: '#92400e', fontWeight: 600, marginBottom: 4 }}>Cloudflare DNS:</p>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <code style={{ flex: 1, fontSize: 13, background: '#fff', padding: '6px 10px', borderRadius: 4, border: '1px solid #fde68a', wordBreak: 'break-all' }}>
+                          CNAME &nbsp; @ &nbsp; → &nbsp; fluxe.in
+                        </code>
+                        <button type="button" onClick={() => copyToClipboard('fluxe.in')} style={{ padding: '6px 10px', border: '1px solid #fde68a', borderRadius: 4, background: '#fff', cursor: 'pointer', fontSize: 12, whiteSpace: 'nowrap' }}>Copy</button>
+                      </div>
+                      <p style={{ fontSize: 11, color: '#92400e', marginTop: 4, opacity: 0.8 }}>Only works on Cloudflare (CNAME flattening). Then add a Redirect Rule: <strong>{customDomain.replace(/^www\./, '')}</strong> → <strong>https://{customDomain}</strong></p>
+                    </div>
+                    <div style={{ background: '#fef3c7', borderRadius: 6, padding: 10 }}>
+                      <p style={{ fontSize: 12, color: '#92400e', fontWeight: 600, marginBottom: 4 }}>GoDaddy, Namecheap & others:</p>
+                      <p style={{ fontSize: 12, color: '#92400e', margin: 0 }}>These providers don't support CNAME on the root domain. Instead, use the <strong>"Forwarding"</strong> or <strong>"URL Redirect"</strong> feature in your domain settings to forward <strong>{customDomain.replace(/^www\./, '')}</strong> → <strong>https://{customDomain}</strong></p>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <button type="button" className="btn btn-primary" onClick={handleVerifyDomain} disabled={domainVerifying} style={{ flex: 1 }}>
+                      {domainVerifying ? 'Verifying...' : 'Verify Now'}
+                    </button>
+                    <button type="button" className="btn btn-outline" onClick={handleRemoveDomain} style={{ color: '#ef4444', borderColor: '#fecaca' }}>
+                      Remove Domain
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
