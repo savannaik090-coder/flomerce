@@ -348,36 +348,45 @@ export default function SettingsSection() {
             </div>
           ) : (
             <>
-              {customDomain && domainStatus && (
-                <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 8, background: domainStatus === 'failed' ? '#fef2f2' : '#fffbeb', border: `1px solid ${domainStatus === 'failed' ? '#fecaca' : '#fde68a'}` }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontWeight: 600, fontSize: 14 }}>{customDomain}</span>
-                    <span style={{
-                      fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 4, textTransform: 'uppercase',
-                      background: domainStatus === 'failed' ? '#fee2e2' : '#fef3c7',
-                      color: domainStatus === 'failed' ? '#dc2626' : '#92400e',
-                    }}>{domainStatus}</span>
+              {customDomain && domainStatus ? (
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ padding: '10px 14px', borderRadius: 8, background: domainStatus === 'failed' ? '#fef2f2' : '#fffbeb', border: `1px solid ${domainStatus === 'failed' ? '#fecaca' : '#fde68a'}` }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontWeight: 600, fontSize: 14 }}>{customDomain}</span>
+                        <span style={{
+                          fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 4, textTransform: 'uppercase',
+                          background: domainStatus === 'failed' ? '#fee2e2' : '#fef3c7',
+                          color: domainStatus === 'failed' ? '#dc2626' : '#92400e',
+                        }}>{domainStatus}</span>
+                      </div>
+                      <button type="button" className="btn btn-outline" onClick={handleRemoveDomain} style={{ color: '#ef4444', borderColor: '#fecaca', fontSize: 12, padding: '4px 10px' }}>
+                        Remove
+                      </button>
+                    </div>
                   </div>
+                  {domainMsg && <p style={{ color: '#16a34a', fontSize: 13, marginTop: 6 }}>{domainMsg}</p>}
+                  {domainError && <p style={{ color: '#ef4444', fontSize: 13, marginTop: 6 }}>{domainError}</p>}
+                </div>
+              ) : (
+                <div style={{ marginBottom: 16 }}>
+                  <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Domain</label>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input
+                      type="text"
+                      value={domainInput}
+                      onChange={(e) => { setDomainInput(e.target.value); setDomainError(''); }}
+                      placeholder="www.mystore.com"
+                      style={{ flex: 1, padding: '10px 12px', border: `1px solid ${domainError ? '#ef4444' : '#e2e8f0'}`, borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }}
+                    />
+                    <button type="button" className="btn btn-primary" onClick={handleSaveDomain} disabled={domainSaving} style={{ whiteSpace: 'nowrap' }}>
+                      {domainSaving ? 'Saving...' : 'Save Domain'}
+                    </button>
+                  </div>
+                  {domainError && <p style={{ color: '#ef4444', fontSize: 13, marginTop: 6 }}>{domainError}</p>}
+                  {domainMsg && <p style={{ color: '#16a34a', fontSize: 13, marginTop: 6 }}>{domainMsg}</p>}
                 </div>
               )}
-
-              <div style={{ marginBottom: 16 }}>
-                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Domain</label>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <input
-                    type="text"
-                    value={domainInput}
-                    onChange={(e) => { setDomainInput(e.target.value); setDomainError(''); }}
-                    placeholder="www.mystore.com"
-                    style={{ flex: 1, padding: '10px 12px', border: `1px solid ${domainError ? '#ef4444' : '#e2e8f0'}`, borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }}
-                  />
-                  <button type="button" className="btn btn-primary" onClick={handleSaveDomain} disabled={domainSaving} style={{ whiteSpace: 'nowrap' }}>
-                    {domainSaving ? 'Saving...' : 'Save Domain'}
-                  </button>
-                </div>
-                {domainError && <p style={{ color: '#ef4444', fontSize: 13, marginTop: 6 }}>{domainError}</p>}
-                {domainMsg && <p style={{ color: '#16a34a', fontSize: 13, marginTop: 6 }}>{domainMsg}</p>}
-              </div>
 
               {customDomain && domainToken && (
                 <div style={{ marginBottom: 16 }}>
@@ -423,14 +432,9 @@ export default function SettingsSection() {
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    <button type="button" className="btn btn-primary" onClick={handleVerifyDomain} disabled={domainVerifying} style={{ flex: 1 }}>
-                      {domainVerifying ? 'Verifying...' : 'Verify Now'}
-                    </button>
-                    <button type="button" className="btn btn-outline" onClick={handleRemoveDomain} style={{ color: '#ef4444', borderColor: '#fecaca' }}>
-                      Remove Domain
-                    </button>
-                  </div>
+                  <button type="button" className="btn btn-primary" onClick={handleVerifyDomain} disabled={domainVerifying} style={{ width: '100%' }}>
+                    {domainVerifying ? 'Verifying...' : 'Verify Now'}
+                  </button>
                 </div>
               )}
             </>

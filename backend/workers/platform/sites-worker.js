@@ -470,15 +470,25 @@ async function handleSetCustomDomain(request, env, siteId) {
       return errorResponse('This domain is already connected to another site', 409, 'DOMAIN_TAKEN');
     }
 
-    const site = await env.DB.prepare('SELECT id FROM sites WHERE id = ?').bind(siteId).first();
+    const site = await env.DB.prepare(
+      'SELECT id, custom_domain, domain_status, domain_verification_token FROM sites WHERE id = ?'
+    ).bind(siteId).first();
     if (!site) {
       return errorResponse('Site not found', 404, 'NOT_FOUND');
+    }
+
+    if (site.custom_domain === domain && site.domain_verification_token) {
+      return successResponse({
+        custom_domain: domain,
+        domain_status: site.domain_status || 'pending',
+        domain_verification_token: site.domain_verification_token,
+      }, 'Domain already configured. Use the existing verification token.');
     }
 
     const token = generateId().replace(/-/g, '');
 
     await env.DB.prepare(
-      `UPDATE sites SET custom_domain = ?, domain_status = 'pending', domain_verification_token = ?, updated_at = datetime('now') WHERE id = ?`
+      `UPDATE sites SET custom_domain = ?, domain_status = 'pending', domain_verification_token = ?, cf_hostname_id = NULL, updated_at = datetime('now') WHERE id = ?`
     ).bind(domain, token, siteId).run();
 
     return successResponse({
