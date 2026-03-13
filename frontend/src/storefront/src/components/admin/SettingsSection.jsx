@@ -25,8 +25,43 @@ export default function SettingsSection() {
   const [domainVerifying, setDomainVerifying] = useState(false);
   const [domainMsg, setDomainMsg] = useState('');
   const [domainError, setDomainError] = useState('');
+  const storageKey = siteConfig?.id ? `fluxe_domain_tips_${siteConfig.id}` : null;
+
+  function getDismissedDomain() {
+    if (!storageKey) return null;
+    try { return JSON.parse(localStorage.getItem(storageKey)); } catch { return null; }
+  }
+
+  function dismissTips(domain) {
+    if (!storageKey) return;
+    const current = getDismissedDomain() || {};
+    localStorage.setItem(storageKey, JSON.stringify({ ...current, domain, whatsNext: true, rootRedirect: true }));
+  }
+
+  function dismissTip(domain, key) {
+    if (!storageKey) return;
+    const current = getDismissedDomain() || {};
+    localStorage.setItem(storageKey, JSON.stringify({ ...current, domain, [key]: true }));
+  }
+
+  function isTipDismissed(domain, key) {
+    const stored = getDismissedDomain();
+    if (!stored || stored.domain !== domain) return false;
+    return !!stored[key];
+  }
+
   const [rootDomainTipDismissed, setRootDomainTipDismissed] = useState(false);
   const [whatsNextDismissed, setWhatsNextDismissed] = useState(false);
+
+  useEffect(() => {
+    if (customDomain && domainStatus === 'verified') {
+      setWhatsNextDismissed(isTipDismissed(customDomain, 'whatsNext'));
+      setRootDomainTipDismissed(isTipDismissed(customDomain, 'rootRedirect'));
+    } else {
+      setWhatsNextDismissed(false);
+      setRootDomainTipDismissed(false);
+    }
+  }, [customDomain, domainStatus]);
 
   useEffect(() => {
     if (siteConfig?.id) loadSettings();
@@ -229,6 +264,7 @@ export default function SettingsSection() {
         setDomainStatus(null);
         setDomainToken('');
         setDomainMsg('Custom domain removed.');
+        if (storageKey) localStorage.removeItem(storageKey);
       } else {
         setDomainError(result.error || 'Failed to remove domain');
       }
@@ -272,7 +308,7 @@ export default function SettingsSection() {
 
               {!whatsNextDismissed && (
               <div style={{ marginBottom: 16, padding: '12px 14px', borderRadius: 8, background: '#eff6ff', border: '1px solid #bfdbfe', position: 'relative' }}>
-                <button type="button" onClick={() => setWhatsNextDismissed(true)} style={{ position: 'absolute', top: 8, right: 10, background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: '#1e40af', opacity: 0.6, lineHeight: 1 }} title="Dismiss">&times;</button>
+                <button type="button" onClick={() => { setWhatsNextDismissed(true); dismissTip(customDomain, 'whatsNext'); }} style={{ position: 'absolute', top: 8, right: 10, background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: '#1e40af', opacity: 0.6, lineHeight: 1 }} title="Dismiss">&times;</button>
                 <p style={{ fontSize: 13, fontWeight: 600, color: '#1e40af', marginBottom: 6, paddingRight: 20 }}>What happens next?</p>
                 <ul style={{ fontSize: 12, color: '#1e40af', margin: 0, paddingLeft: 18 }}>
                   <li style={{ marginBottom: 4 }}>SSL certificate is issued automatically — this usually takes <strong>5–15 minutes</strong>.</li>
@@ -285,7 +321,7 @@ export default function SettingsSection() {
 
               {!rootDomainTipDismissed && (
                 <div style={{ marginBottom: 16, padding: '14px 16px', borderRadius: 8, background: '#fffbeb', border: '1px solid #fde68a', position: 'relative' }}>
-                  <button type="button" onClick={() => setRootDomainTipDismissed(true)} style={{ position: 'absolute', top: 8, right: 10, background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: '#92400e', opacity: 0.6, lineHeight: 1 }} title="Dismiss">&times;</button>
+                  <button type="button" onClick={() => { setRootDomainTipDismissed(true); dismissTip(customDomain, 'rootRedirect'); }} style={{ position: 'absolute', top: 8, right: 10, background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: '#92400e', opacity: 0.6, lineHeight: 1 }} title="Dismiss">&times;</button>
                   <p style={{ fontSize: 12, color: '#92400e', fontWeight: 600, marginBottom: 8, paddingRight: 20 }}>Root domain redirect (recommended)</p>
                   <p style={{ fontSize: 12, color: '#92400e', marginBottom: 10 }}>
                     So visitors who type <strong>{customDomain.replace(/^www\./, '')}</strong> are automatically sent to <strong>{customDomain}</strong>
