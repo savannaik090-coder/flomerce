@@ -79,6 +79,10 @@ export function SiteProvider({ children }) {
       }
 
       const data = result.data;
+      let parsedSettings = data.settings || {};
+      if (typeof parsedSettings === 'string') {
+        try { parsedSettings = JSON.parse(parsedSettings); } catch (e) { parsedSettings = {}; }
+      }
       const config = {
         id: data.id,
         subdomain: data.subdomain,
@@ -89,11 +93,11 @@ export function SiteProvider({ children }) {
         faviconUrl: data.favicon_url,
         primaryColor: data.primary_color || '#000000',
         secondaryColor: data.secondary_color || '#ffffff',
-        phone: data.phone,
-        email: data.email,
-        address: data.address,
+        phone: data.phone || parsedSettings.phone || '',
+        email: data.email || parsedSettings.email || '',
+        address: data.address || parsedSettings.address || '',
         socialLinks: data.socialLinks || {},
-        settings: data.settings || {},
+        settings: parsedSettings,
         categories: data.categories || [],
         customDomain: data.custom_domain || null,
         domainStatus: data.domain_status || null,
