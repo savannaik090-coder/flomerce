@@ -25,6 +25,7 @@ export default function SettingsSection() {
   const [domainVerifying, setDomainVerifying] = useState(false);
   const [domainMsg, setDomainMsg] = useState('');
   const [domainError, setDomainError] = useState('');
+  const [rootDomainTipDismissed, setRootDomainTipDismissed] = useState(false);
 
   useEffect(() => {
     if (siteConfig?.id) loadSettings();
@@ -253,7 +254,7 @@ export default function SettingsSection() {
           {customDomain && domainStatus === 'verified' ? (
             <div>
               <div style={{ marginBottom: 16, padding: '14px 16px', borderRadius: 8, background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ color: '#16a34a', fontSize: 18 }}>&#10003;</span>
                     <span style={{ fontWeight: 600, fontSize: 14 }}>{customDomain}</span>
@@ -264,9 +265,44 @@ export default function SettingsSection() {
                   </button>
                 </div>
                 <p style={{ fontSize: 13, color: '#166534', marginTop: 8, marginBottom: 0 }}>
-                  Your custom domain is active. Visitors can access your store at <strong>https://{customDomain}</strong>
+                  Your domain has been verified and SSL certificate is being provisioned.
                 </p>
               </div>
+
+              <div style={{ marginBottom: 16, padding: '12px 14px', borderRadius: 8, background: '#eff6ff', border: '1px solid #bfdbfe' }}>
+                <p style={{ fontSize: 13, fontWeight: 600, color: '#1e40af', marginBottom: 6 }}>What happens next?</p>
+                <ul style={{ fontSize: 12, color: '#1e40af', margin: 0, paddingLeft: 18 }}>
+                  <li style={{ marginBottom: 4 }}>SSL certificate is issued automatically — this usually takes <strong>5–15 minutes</strong>.</li>
+                  <li style={{ marginBottom: 4 }}>DNS changes can take up to <strong>48 hours</strong> to propagate worldwide, though most work within 1–2 hours.</li>
+                  <li style={{ marginBottom: 4 }}>During this time, visitors may see a security warning or "site not found" — this is normal.</li>
+                  <li>Once live, your store will be accessible at <strong>https://{customDomain}</strong></li>
+                </ul>
+              </div>
+
+              {!rootDomainTipDismissed && (
+                <div style={{ marginBottom: 16, padding: '14px 16px', borderRadius: 8, background: '#fffbeb', border: '1px solid #fde68a', position: 'relative' }}>
+                  <button type="button" onClick={() => setRootDomainTipDismissed(true)} style={{ position: 'absolute', top: 8, right: 10, background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: '#92400e', opacity: 0.6, lineHeight: 1 }} title="Dismiss">&times;</button>
+                  <p style={{ fontSize: 12, color: '#92400e', fontWeight: 600, marginBottom: 8, paddingRight: 20 }}>Root domain redirect (recommended)</p>
+                  <p style={{ fontSize: 12, color: '#92400e', marginBottom: 10 }}>
+                    So visitors who type <strong>{customDomain.replace(/^www\./, '')}</strong> are automatically sent to <strong>{customDomain}</strong>
+                  </p>
+                  <div style={{ background: '#fef3c7', borderRadius: 6, padding: 10, marginBottom: 8 }}>
+                    <p style={{ fontSize: 12, color: '#92400e', fontWeight: 600, marginBottom: 4 }}>Cloudflare DNS:</p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <code style={{ flex: 1, fontSize: 13, background: '#fff', padding: '6px 10px', borderRadius: 4, border: '1px solid #fde68a', wordBreak: 'break-all' }}>
+                        CNAME &nbsp; @ &nbsp; → &nbsp; fluxe.in
+                      </code>
+                      <button type="button" onClick={() => copyToClipboard('fluxe.in')} style={{ padding: '6px 10px', border: '1px solid #fde68a', borderRadius: 4, background: '#fff', cursor: 'pointer', fontSize: 12, whiteSpace: 'nowrap' }}>Copy</button>
+                    </div>
+                    <p style={{ fontSize: 11, color: '#92400e', marginTop: 4, opacity: 0.8 }}>Only works on Cloudflare (CNAME flattening). Then add a Redirect Rule: <strong>{customDomain.replace(/^www\./, '')}</strong> → <strong>https://{customDomain}</strong></p>
+                  </div>
+                  <div style={{ background: '#fef3c7', borderRadius: 6, padding: 10 }}>
+                    <p style={{ fontSize: 12, color: '#92400e', fontWeight: 600, marginBottom: 4 }}>GoDaddy, Namecheap & others:</p>
+                    <p style={{ fontSize: 12, color: '#92400e', margin: 0 }}>These providers don't support CNAME on the root domain. Instead, use the <strong>"Forwarding"</strong> or <strong>"URL Redirect"</strong> feature in your domain settings to forward <strong>{customDomain.replace(/^www\./, '')}</strong> → <strong>https://{customDomain}</strong></p>
+                  </div>
+                </div>
+              )}
+
               {domainMsg && <p style={{ color: '#16a34a', fontSize: 13, marginTop: 6 }}>{domainMsg}</p>}
               {domainError && <p style={{ color: '#ef4444', fontSize: 13, marginTop: 6 }}>{domainError}</p>}
             </div>
