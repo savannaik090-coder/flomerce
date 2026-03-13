@@ -59,9 +59,9 @@ export function SiteProvider({ children }) {
     fetchSiteConfig(detected);
   }, []);
 
-  async function fetchSiteConfig(sub) {
+  async function fetchSiteConfig(sub, isRefetch = false) {
     try {
-      setLoading(true);
+      if (!isRefetch) setLoading(true);
       let apiUrl;
       if (sub === '__custom_domain__') {
         apiUrl = `/api/site`;
@@ -115,12 +115,12 @@ export function SiteProvider({ children }) {
       console.error('Failed to load site config:', err);
       setError(err.message || 'Failed to load store');
     } finally {
-      setLoading(false);
+      if (!isRefetch) setLoading(false);
     }
   }
 
   return (
-    <SiteContext.Provider value={{ siteConfig, loading, error, subdomain, refetchSite: () => subdomain && fetchSiteConfig(subdomain) }}>
+    <SiteContext.Provider value={{ siteConfig, loading, error, subdomain, refetchSite: () => subdomain && fetchSiteConfig(subdomain, true) }}>
       {children}
     </SiteContext.Provider>
   );
