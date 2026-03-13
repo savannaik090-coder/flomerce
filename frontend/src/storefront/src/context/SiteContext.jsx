@@ -94,6 +94,8 @@ export function SiteProvider({ children }) {
         primaryColor: data.primary_color || '#000000',
         secondaryColor: data.secondary_color || '#ffffff',
         phone: data.phone || parsedSettings.phone || '',
+        whatsapp: parsedSettings.whatsapp || '',
+        showFloatingButton: parsedSettings.showFloatingButton !== false,
         email: data.email || parsedSettings.email || '',
         address: data.address || parsedSettings.address || '',
         socialLinks: data.socialLinks || {},

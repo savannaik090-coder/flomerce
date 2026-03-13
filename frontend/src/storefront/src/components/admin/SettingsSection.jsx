@@ -9,6 +9,8 @@ export default function SettingsSection() {
 
   const [brandName, setBrandName] = useState('');
   const [phone, setPhone] = useState('');
+  const [whatsapp, setWhatsapp] = useState('');
+  const [showFloatingButton, setShowFloatingButton] = useState(true);
   const [email, setEmail] = useState('');
   const [address, setAddress] = useState('');
   const [razorpayKeyId, setRazorpayKeyId] = useState('');
@@ -81,6 +83,8 @@ export default function SettingsSection() {
         }
         setBrandName(data.brand_name || data.brandName || '');
         setPhone(settings.phone || data.phone || '');
+        setWhatsapp(settings.whatsapp || '');
+        setShowFloatingButton(settings.showFloatingButton !== false);
         setEmail(settings.email || data.email || '');
         setAddress(settings.address || data.address || '');
         setRazorpayKeyId(settings.razorpayKeyId || '');
@@ -106,6 +110,8 @@ export default function SettingsSection() {
     try {
       const settings = {
         phone,
+        whatsapp,
+        showFloatingButton,
         email,
         address,
       };
@@ -457,8 +463,32 @@ export default function SettingsSection() {
           <div className="card-header"><h3 className="card-title">Contact Information</h3></div>
           <div className="card-content">
             <div style={{ marginBottom: 16 }}>
-              <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Phone</label>
+              <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>
+                <i className="fas fa-phone" style={{ marginRight: 6, color: '#2563eb' }} />Phone Number
+              </label>
               <input type="text" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+91 9876543210" style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
+              <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>Used for contact page, store locations, and as fallback for the floating button if no WhatsApp is set</p>
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>
+                <i className="fab fa-whatsapp" style={{ marginRight: 6, color: '#25D366' }} />WhatsApp Number
+              </label>
+              <input type="text" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder="+91 9876543210" style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
+              <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>If added, the floating button and featured video chat will redirect to WhatsApp</p>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, padding: '12px 14px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+              <div>
+                <label style={{ fontWeight: 600, fontSize: 13, display: 'block' }}>Show Floating Contact Button</label>
+                <span style={{ fontSize: 12, color: '#94a3b8' }}>
+                  {whatsapp ? 'Shows WhatsApp icon' : phone ? 'Shows phone call icon' : 'Add a phone or WhatsApp number first'}
+                </span>
+              </div>
+              <label style={{ position: 'relative', display: 'inline-block', width: 44, height: 24, cursor: 'pointer' }}>
+                <input type="checkbox" checked={showFloatingButton} onChange={() => setShowFloatingButton(!showFloatingButton)} style={{ opacity: 0, width: 0, height: 0 }} />
+                <span style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: showFloatingButton ? '#10b981' : '#cbd5e1', borderRadius: 24, transition: 'background-color 0.2s' }}>
+                  <span style={{ position: 'absolute', left: showFloatingButton ? 22 : 2, top: 2, width: 20, height: 20, backgroundColor: '#fff', borderRadius: '50%', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+                </span>
+              </label>
             </div>
             <div style={{ marginBottom: 16 }}>
               <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Email</label>

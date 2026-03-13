@@ -6,25 +6,32 @@ export default function WhatsAppButton() {
   const [showTooltip, setShowTooltip] = useState(false);
 
   const phone = siteConfig?.phone || '';
+  const whatsapp = siteConfig?.whatsapp || '';
+  const showFloatingButton = siteConfig?.showFloatingButton !== false;
 
   useEffect(() => {
     const timer = setTimeout(() => setShowTooltip(true), 3000);
     return () => clearTimeout(timer);
   }, []);
 
-  if (!phone) return null;
+  if (!showFloatingButton) return null;
+  if (!whatsapp && !phone) return null;
 
-  const cleanPhone = phone.replace(/[^0-9+]/g, '');
-  const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent("Hi! I would like to know more about your products. Can you help me?")}`;
+  const isWhatsApp = !!whatsapp;
+  const contactNumber = whatsapp || phone;
+
+  const href = isWhatsApp
+    ? `https://wa.me/${contactNumber.replace(/\D/g, '')}?text=${encodeURIComponent("Hi! I would like to know more about your products. Can you help me?")}`
+    : `tel:${contactNumber.replace(/[^0-9+]/g, '')}`;
 
   return (
     <>
-      <a href={whatsappUrl} className="whatsapp-btn" target="_blank" rel="noopener noreferrer">
-        <i className="fab fa-whatsapp"></i>
+      <a href={href} className={isWhatsApp ? 'whatsapp-btn' : 'whatsapp-btn phone-btn'} target={isWhatsApp ? '_blank' : '_self'} rel="noopener noreferrer">
+        <i className={isWhatsApp ? 'fab fa-whatsapp' : 'fas fa-phone'} />
       </a>
       {showTooltip && (
         <div className="whatsapp-tooltip" onClick={() => setShowTooltip(false)}>
-          How can I help you?
+          {isWhatsApp ? 'Chat with us!' : 'Call us!'}
         </div>
       )}
     </>
