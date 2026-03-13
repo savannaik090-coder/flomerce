@@ -361,16 +361,15 @@ export default function SettingsSection() {
 
           {customDomain && domainToken && (
             <div style={{ marginBottom: 16 }}>
-              <p style={{ fontWeight: 600, fontSize: 13, marginBottom: 10 }}>Required DNS Records</p>
+              <p style={{ fontWeight: 600, fontSize: 13, marginBottom: 10 }}>DNS Records to Add</p>
               <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: 14, marginBottom: 10 }}>
                 <p style={{ fontSize: 12, color: '#64748b', marginBottom: 4 }}>Step 1: CNAME Record (for routing)</p>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <code style={{ flex: 1, fontSize: 13, background: '#fff', padding: '6px 10px', borderRadius: 4, border: '1px solid #e2e8f0', wordBreak: 'break-all' }}>
                     CNAME &nbsp; www &nbsp; → &nbsp; fluxe.in
                   </code>
                   <button type="button" onClick={() => copyToClipboard('fluxe.in')} style={{ padding: '6px 10px', border: '1px solid #e2e8f0', borderRadius: 4, background: '#fff', cursor: 'pointer', fontSize: 12, whiteSpace: 'nowrap' }}>Copy</button>
                 </div>
-                <p style={{ fontSize: 11, color: '#94a3b8' }}>Add a CNAME record with name <code>www</code> pointing to <code>fluxe.in</code></p>
               </div>
               <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: 14, marginBottom: 10 }}>
                 <p style={{ fontSize: 12, color: '#64748b', marginBottom: 4 }}>Step 2: TXT Record (for ownership verification)</p>
@@ -380,24 +379,7 @@ export default function SettingsSection() {
                   </code>
                   <button type="button" onClick={() => copyToClipboard(domainToken)} style={{ padding: '6px 10px', border: '1px solid #e2e8f0', borderRadius: 4, background: '#fff', cursor: 'pointer', fontSize: 12, whiteSpace: 'nowrap' }}>Copy</button>
                 </div>
-                <p style={{ fontSize: 11, color: '#94a3b8' }}>Add a TXT record with host <code>_fluxe-verify</code> on your domain provider.</p>
-              </div>
-
-              <p style={{ fontWeight: 600, fontSize: 13, marginBottom: 10, marginTop: 16 }}>Recommended: Root Domain Redirect</p>
-              <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: 14, marginBottom: 10 }}>
-                <p style={{ fontSize: 12, color: '#92400e', marginBottom: 8 }}>
-                  Redirect your root domain so visitors who type <strong>{customDomain.replace(/^www\./, '')}</strong> are automatically sent to <strong>{customDomain}</strong>.
-                </p>
-                <p style={{ fontSize: 12, color: '#92400e', fontWeight: 600, marginBottom: 6 }}>If your domain is on Cloudflare:</p>
-                <ol style={{ fontSize: 12, color: '#92400e', margin: '0 0 8px 16px', padding: 0 }}>
-                  <li style={{ marginBottom: 4 }}>Go to Rules → Redirect Rules → Create Rule</li>
-                  <li style={{ marginBottom: 4 }}>Set hostname equals <code style={{ background: '#fef3c7', padding: '1px 4px', borderRadius: 3 }}>{customDomain.replace(/^www\./, '')}</code></li>
-                  <li style={{ marginBottom: 4 }}>Redirect to <code style={{ background: '#fef3c7', padding: '1px 4px', borderRadius: 3 }}>https://{customDomain}</code> (301 permanent)</li>
-                </ol>
-                <p style={{ fontSize: 12, color: '#92400e', fontWeight: 600, marginBottom: 6 }}>If your domain is on another provider:</p>
-                <p style={{ fontSize: 12, color: '#92400e', margin: 0 }}>
-                  Use your registrar's "URL forwarding" or "URL redirect" feature to forward <strong>{customDomain.replace(/^www\./, '')}</strong> → <strong>https://{customDomain}</strong>
-                </p>
+                <p style={{ fontSize: 11, color: '#94a3b8' }}>Add this as a TXT record with host <code>_fluxe-verify</code> on your domain provider.</p>
               </div>
 
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
