@@ -243,85 +243,7 @@ export default function SettingsSection() {
 
   return (
     <div style={{ maxWidth: 700 }}>
-      <form onSubmit={handleSaveSettings}>
-        <div className="card" style={{ marginBottom: 20 }}>
-          <div className="card-header"><h3 className="card-title">Brand Information</h3></div>
-          <div className="card-content">
-            <div style={{ marginBottom: 16 }}>
-              <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Brand Name</label>
-              <input type="text" value={brandName} onChange={(e) => setBrandName(e.target.value)} style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
-            </div>
-          </div>
-        </div>
-
-        <div className="card" style={{ marginBottom: 20 }}>
-          <div className="card-header"><h3 className="card-title">Contact Information</h3></div>
-          <div className="card-content">
-            <div style={{ marginBottom: 16 }}>
-              <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Phone</label>
-              <input type="text" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+91 9876543210" style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
-            </div>
-            <div style={{ marginBottom: 16 }}>
-              <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Email</label>
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="contact@store.com" style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Address</label>
-              <textarea value={address} onChange={(e) => setAddress(e.target.value)} rows={2} placeholder="Store address" style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }} />
-            </div>
-          </div>
-        </div>
-
-        <div className="card" style={{ marginBottom: 20 }}>
-          <div className="card-header"><h3 className="card-title">Payment Credentials</h3></div>
-          <div className="card-content">
-            <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>Enter your Razorpay credentials to enable online payments on your store.</p>
-            <div style={{ marginBottom: 16 }}>
-              <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Razorpay Key ID</label>
-              <input type="text" value={razorpayKeyId} onChange={(e) => setRazorpayKeyId(e.target.value)} placeholder="rzp_live_..." style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Razorpay Key Secret</label>
-              <input type="password" value={razorpayKeySecret} onChange={(e) => setRazorpayKeySecret(e.target.value)} placeholder="Leave empty to keep current secret" style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
-            </div>
-          </div>
-        </div>
-
-        {message && (
-          <div style={{ background: message.includes('success') ? '#f0fdf4' : '#fef2f2', border: `1px solid ${message.includes('success') ? '#bbf7d0' : '#fecaca'}`, borderRadius: 8, padding: '12px 16px', color: message.includes('success') ? '#166534' : '#dc2626', marginBottom: 16, fontSize: 14 }}>
-            {message}
-          </div>
-        )}
-
-        <button type="submit" className="btn btn-primary" disabled={saving} style={{ width: '100%', marginBottom: 24 }}>
-          {saving ? 'Saving...' : 'Save Settings'}
-        </button>
-      </form>
-
       <div className="card" style={{ marginBottom: 20 }}>
-        <div className="card-header"><h3 className="card-title">Admin Panel Access</h3></div>
-        <div className="card-content">
-          <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>Set a verification code for direct admin panel access. Keep this code private.</p>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <input
-              type="text"
-              value={verificationCode}
-              onChange={(e) => setVerificationCode(e.target.value)}
-              placeholder="e.g. mycode123 (4-20 characters)"
-              maxLength={20}
-              style={{ flex: 1, padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }}
-            />
-            <button type="button" className="btn btn-primary" onClick={handleSetVerificationCode} style={{ whiteSpace: 'nowrap' }}>Set Code</button>
-          </div>
-          {verificationCodeMsg && (
-            <p style={{ color: verificationCodeMsg.includes('success') ? '#16a34a' : '#ef4444', fontSize: 13, marginTop: 8 }}>
-              {verificationCodeMsg}
-            </p>
-          )}
-        </div>
-      </div>
-
-      <div className="card">
         <div className="card-header"><h3 className="card-title">Custom Domain</h3></div>
         <div className="card-content">
           <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
@@ -415,6 +337,85 @@ export default function SettingsSection() {
           )}
         </div>
       </div>
+
+      <form onSubmit={handleSaveSettings}>
+        <div className="card" style={{ marginBottom: 20 }}>
+          <div className="card-header"><h3 className="card-title">Brand Information</h3></div>
+          <div className="card-content">
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Brand Name</label>
+              <input type="text" value={brandName} onChange={(e) => setBrandName(e.target.value)} style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
+            </div>
+          </div>
+        </div>
+
+        <div className="card" style={{ marginBottom: 20 }}>
+          <div className="card-header"><h3 className="card-title">Contact Information</h3></div>
+          <div className="card-content">
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Phone</label>
+              <input type="text" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+91 9876543210" style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Email</label>
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="contact@store.com" style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Address</label>
+              <textarea value={address} onChange={(e) => setAddress(e.target.value)} rows={2} placeholder="Store address" style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }} />
+            </div>
+          </div>
+        </div>
+
+        <div className="card" style={{ marginBottom: 20 }}>
+          <div className="card-header"><h3 className="card-title">Payment Credentials</h3></div>
+          <div className="card-content">
+            <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>Enter your Razorpay credentials to enable online payments on your store.</p>
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Razorpay Key ID</label>
+              <input type="text" value={razorpayKeyId} onChange={(e) => setRazorpayKeyId(e.target.value)} placeholder="rzp_live_..." style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Razorpay Key Secret</label>
+              <input type="password" value={razorpayKeySecret} onChange={(e) => setRazorpayKeySecret(e.target.value)} placeholder="Leave empty to keep current secret" style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
+            </div>
+          </div>
+        </div>
+
+        {message && (
+          <div style={{ background: message.includes('success') ? '#f0fdf4' : '#fef2f2', border: `1px solid ${message.includes('success') ? '#bbf7d0' : '#fecaca'}`, borderRadius: 8, padding: '12px 16px', color: message.includes('success') ? '#166534' : '#dc2626', marginBottom: 16, fontSize: 14 }}>
+            {message}
+          </div>
+        )}
+
+        <button type="submit" className="btn btn-primary" disabled={saving} style={{ width: '100%', marginBottom: 24 }}>
+          {saving ? 'Saving...' : 'Save Settings'}
+        </button>
+      </form>
+
+      <div className="card" style={{ marginBottom: 20 }}>
+        <div className="card-header"><h3 className="card-title">Admin Panel Access</h3></div>
+        <div className="card-content">
+          <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>Set a verification code for direct admin panel access. Keep this code private.</p>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input
+              type="text"
+              value={verificationCode}
+              onChange={(e) => setVerificationCode(e.target.value)}
+              placeholder="e.g. mycode123 (4-20 characters)"
+              maxLength={20}
+              style={{ flex: 1, padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }}
+            />
+            <button type="button" className="btn btn-primary" onClick={handleSetVerificationCode} style={{ whiteSpace: 'nowrap' }}>Set Code</button>
+          </div>
+          {verificationCodeMsg && (
+            <p style={{ color: verificationCodeMsg.includes('success') ? '#16a34a' : '#ef4444', fontSize: 13, marginTop: 8 }}>
+              {verificationCodeMsg}
+            </p>
+          )}
+        </div>
+      </div>
+
     </div>
   );
 }
