@@ -1,9 +1,29 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 
 const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
 
 const EMPTY_STORE = { name: '', address: '', hours: '', phone: '', mapLink: '', image: '' };
+
+function compressImage(file, maxWidth = 1200, quality = 0.85) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let w = img.width, h = img.height;
+        if (w > maxWidth) { h = Math.round(h * maxWidth / w); w = maxWidth; }
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        canvas.toBlob((blob) => resolve(blob), 'image/jpeg', quality);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
 
 export default function StoreLocationsEditor({ onSaved }) {
   const { siteConfig } = useContext(SiteContext);
@@ -11,7 +31,9 @@ export default function StoreLocationsEditor({ onSaved }) {
   const [stores, setStores] = useState([{ ...EMPTY_STORE }]);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState({});
   const [status, setStatus] = useState('');
+  const fileInputRefs = useRef({});
 
   useEffect(() => {
     if (siteConfig?.id) loadSettings();
@@ -60,6 +82,43 @@ export default function StoreLocationsEditor({ onSaved }) {
   function removeStore(index) {
     if (stores.length <= 1) return;
     setStores(prev => prev.filter((_, i) => i !== index));
+  }
+
+  async function handleImageUpload(index, file) {
+    if (!file) return;
+    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
+    if (!allowed.includes(file.type)) {
+      setStatus('error:Please upload a JPG, PNG, or WebP image.');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setStatus('error:Image is too large. Maximum size is 10MB.');
+      return;
+    }
+    setUploading(prev => ({ ...prev, [index]: true }));
+    setStatus('');
+    try {
+      const blob = await compressImage(file);
+      const formData = new FormData();
+      formData.append('images', blob, 'store-location.jpg');
+      const token = sessionStorage.getItem('site_admin_token');
+      const response = await fetch(`${API_BASE}/api/upload/image?siteId=${siteConfig.id}`, {
+        method: 'POST',
+        headers: { 'Authorization': token ? `SiteAdmin ${token}` : '' },
+        body: formData,
+      });
+      const result = await response.json();
+      if (result.success && result.data?.images?.length > 0 && result.data.images[0].url) {
+        updateStore(index, 'image', result.data.images[0].url);
+      } else {
+        setStatus('error:Image upload failed. Please try again.');
+      }
+    } catch (e) {
+      console.error('Failed to upload store image:', e);
+      setStatus('error:Failed to upload image. Please check your connection.');
+    } finally {
+      setUploading(prev => ({ ...prev, [index]: false }));
+    }
   }
 
   async function handleSave(e) {
@@ -133,6 +192,57 @@ export default function StoreLocationsEditor({ onSaved }) {
                 </div>
 
                 <div style={{ marginBottom: 12 }}>
+                  <label style={labelStyle}>Store Image</label>
+                  {store.image ? (
+                    <div style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', marginBottom: 8 }}>
+                      <img src={store.image} alt={store.name || 'Store'} style={{ width: '100%', height: 180, objectFit: 'cover', display: 'block', borderRadius: 8 }} />
+                      <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 6 }}>
+                        <button
+                          type="button"
+                          onClick={() => { if (fileInputRefs.current[index]) fileInputRefs.current[index].click(); }}
+                          style={{ background: 'rgba(0,0,0,0.6)', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 10px', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}
+                        >
+                          <i className="fas fa-camera" style={{ marginRight: 4 }} />Change
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => updateStore(index, 'image', '')}
+                          style={{ background: 'rgba(220,38,38,0.8)', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 10px', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}
+                        >
+                          <i className="fas fa-trash" />
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div
+                      onClick={() => { if (!uploading[index] && fileInputRefs.current[index]) fileInputRefs.current[index].click(); }}
+                      style={{ border: '2px dashed #cbd5e1', borderRadius: 8, padding: '28px 16px', textAlign: 'center', cursor: uploading[index] ? 'not-allowed' : 'pointer', background: '#fff', transition: 'border-color 0.2s' }}
+                      onMouseEnter={(e) => e.currentTarget.style.borderColor = '#2563eb'}
+                      onMouseLeave={(e) => e.currentTarget.style.borderColor = '#cbd5e1'}
+                    >
+                      {uploading[index] ? (
+                        <span style={{ fontSize: 13, color: '#64748b' }}>
+                          <i className="fas fa-spinner fa-spin" style={{ marginRight: 6 }} />Uploading...
+                        </span>
+                      ) : (
+                        <>
+                          <i className="fas fa-cloud-upload-alt" style={{ fontSize: 24, color: '#94a3b8', display: 'block', marginBottom: 6 }} />
+                          <span style={{ fontSize: 13, color: '#64748b' }}>Click to upload store image</span>
+                          <span style={{ fontSize: 11, color: '#94a3b8', display: 'block', marginTop: 4 }}>JPG, PNG, or WebP (max 10MB)</span>
+                        </>
+                      )}
+                    </div>
+                  )}
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    ref={(el) => { fileInputRefs.current[index] = el; }}
+                    onChange={(e) => { handleImageUpload(index, e.target.files[0]); e.target.value = ''; }}
+                    style={{ display: 'none' }}
+                  />
+                </div>
+
+                <div style={{ marginBottom: 12 }}>
                   <label style={labelStyle}>Store Name</label>
                   <input type="text" value={store.name} onChange={(e) => updateStore(index, 'name', e.target.value)} placeholder="e.g., Main Showroom" style={inputStyle} />
                 </div>
@@ -153,14 +263,9 @@ export default function StoreLocationsEditor({ onSaved }) {
                   </div>
                 </div>
 
-                <div style={{ marginBottom: 12 }}>
+                <div>
                   <label style={labelStyle}>Google Maps Link</label>
                   <input type="text" value={store.mapLink} onChange={(e) => updateStore(index, 'mapLink', e.target.value)} placeholder="https://maps.google.com/..." style={inputStyle} />
-                </div>
-
-                <div>
-                  <label style={labelStyle}>Store Image URL</label>
-                  <input type="text" value={store.image} onChange={(e) => updateStore(index, 'image', e.target.value)} placeholder="https://..." style={inputStyle} />
                 </div>
               </div>
             ))}
