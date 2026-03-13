@@ -39,6 +39,8 @@ export default function WebsiteContentSection() {
   const [activeTab, setActiveTab] = useState('promo-banner');
   const [showPreview, setShowPreview] = useState(true);
   const [previewKey, setPreviewKey] = useState(0);
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 900);
+  const [showMobilePreview, setShowMobilePreview] = useState(false);
   const iframeRef = useRef(null);
 
   const storeBaseUrl = getStoreUrl(siteConfig);
@@ -49,20 +51,55 @@ export default function WebsiteContentSection() {
     setPreviewKey(k => k + 1);
   }, []);
 
+  useEffect(() => {
+    function handleResize() {
+      setIsMobile(window.innerWidth < 900);
+    }
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   return (
     <div>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
-        {SUB_TABS.map(tab => (
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          {SUB_TABS.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              style={{
+                padding: '8px 16px',
+                borderRadius: 6,
+                border: activeTab === tab.id ? '2px solid #2563eb' : '1px solid #e2e8f0',
+                background: activeTab === tab.id ? '#eff6ff' : '#fff',
+                color: activeTab === tab.id ? '#2563eb' : '#64748b',
+                fontWeight: activeTab === tab.id ? 600 : 400,
+                fontSize: 13,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                fontFamily: 'inherit',
+              }}
+            >
+              <i className={`fas ${tab.icon}`} style={{ fontSize: 12 }} />
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {isMobile && previewUrl && (
           <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
+            type="button"
+            onClick={() => { setShowMobilePreview(true); setPreviewKey(k => k + 1); }}
             style={{
-              padding: '8px 16px',
+              flexShrink: 0,
+              padding: '8px 14px',
               borderRadius: 6,
-              border: activeTab === tab.id ? '2px solid #2563eb' : '1px solid #e2e8f0',
-              background: activeTab === tab.id ? '#eff6ff' : '#fff',
-              color: activeTab === tab.id ? '#2563eb' : '#64748b',
-              fontWeight: activeTab === tab.id ? 600 : 400,
+              border: '2px solid #2563eb',
+              background: '#2563eb',
+              color: '#fff',
+              fontWeight: 600,
               fontSize: 13,
               cursor: 'pointer',
               display: 'flex',
@@ -71,10 +108,10 @@ export default function WebsiteContentSection() {
               fontFamily: 'inherit',
             }}
           >
-            <i className={`fas ${tab.icon}`} style={{ fontSize: 12 }} />
-            {tab.label}
+            <i className="fas fa-eye" style={{ fontSize: 12 }} />
+            Preview
           </button>
-        ))}
+        )}
       </div>
 
       <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
@@ -92,7 +129,7 @@ export default function WebsiteContentSection() {
           {activeTab === 'footer' && <FooterEditor onSaved={refreshPreview} />}
         </div>
 
-        {showPreview && previewUrl && (
+        {!isMobile && showPreview && previewUrl && (
           <div style={{ width: 380, flexShrink: 0, position: 'sticky', top: 20 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
               <span style={{ fontSize: 13, fontWeight: 600, color: '#334155' }}>
@@ -142,7 +179,7 @@ export default function WebsiteContentSection() {
         )}
       </div>
 
-      {!showPreview && previewUrl && (
+      {!isMobile && !showPreview && previewUrl && (
         <button
           type="button"
           onClick={() => setShowPreview(true)}
@@ -155,6 +192,52 @@ export default function WebsiteContentSection() {
         >
           <i className="fas fa-eye" /> Show Preview
         </button>
+      )}
+
+      {isMobile && showMobilePreview && previewUrl && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 9999,
+          background: '#fff', display: 'flex', flexDirection: 'column',
+        }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '12px 16px', borderBottom: '1px solid #e2e8f0',
+            background: '#fff', flexShrink: 0,
+          }}>
+            <span style={{ fontSize: 14, fontWeight: 600, color: '#334155' }}>
+              <i className="fas fa-eye" style={{ marginRight: 6, color: '#2563eb' }} />
+              Live Preview
+            </span>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <button
+                type="button"
+                onClick={refreshPreview}
+                title="Refresh preview"
+                style={{ background: 'none', border: '1px solid #e2e8f0', borderRadius: 4, cursor: 'pointer', padding: '6px 10px', fontSize: 13, color: '#64748b' }}
+              >
+                <i className="fas fa-sync-alt" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowMobilePreview(false)}
+                title="Close preview"
+                style={{
+                  background: '#f1f5f9', border: 'none', borderRadius: 4, cursor: 'pointer',
+                  padding: '6px 12px', fontSize: 13, color: '#334155', fontWeight: 600,
+                  display: 'flex', alignItems: 'center', gap: 6,
+                }}
+              >
+                <i className="fas fa-arrow-left" /> Back
+              </button>
+            </div>
+          </div>
+          <iframe
+            key={previewKey}
+            src={previewUrl}
+            style={{ flex: 1, width: '100%', border: 'none', display: 'block' }}
+            title="Store Preview"
+          />
+        </div>
       )}
     </div>
   );
