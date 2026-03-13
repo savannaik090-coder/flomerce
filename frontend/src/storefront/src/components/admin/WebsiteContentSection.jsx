@@ -96,8 +96,8 @@ export default function WebsiteContentSection() {
               flexShrink: 0,
               padding: '8px 14px',
               borderRadius: 6,
-              border: '2px solid #2563eb',
-              background: '#2563eb',
+              border: '2px solid #000',
+              background: '#000',
               color: '#fff',
               fontWeight: 600,
               fontSize: 13,
@@ -144,14 +144,6 @@ export default function WebsiteContentSection() {
                   style={{ background: 'none', border: '1px solid #e2e8f0', borderRadius: 4, cursor: 'pointer', padding: '4px 8px', fontSize: 12, color: '#64748b' }}
                 >
                   <i className="fas fa-sync-alt" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => window.open(previewUrl, '_blank')}
-                  title="Open in new tab"
-                  style={{ background: 'none', border: '1px solid #e2e8f0', borderRadius: 4, cursor: 'pointer', padding: '4px 8px', fontSize: 12, color: '#64748b' }}
-                >
-                  <i className="fas fa-external-link-alt" />
                 </button>
                 <button
                   type="button"
