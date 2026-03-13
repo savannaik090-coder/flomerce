@@ -26,6 +26,7 @@ export default function SettingsSection() {
   const [domainMsg, setDomainMsg] = useState('');
   const [domainError, setDomainError] = useState('');
   const [rootDomainTipDismissed, setRootDomainTipDismissed] = useState(false);
+  const [whatsNextDismissed, setWhatsNextDismissed] = useState(false);
 
   useEffect(() => {
     if (siteConfig?.id) loadSettings();
@@ -269,8 +270,10 @@ export default function SettingsSection() {
                 </p>
               </div>
 
-              <div style={{ marginBottom: 16, padding: '12px 14px', borderRadius: 8, background: '#eff6ff', border: '1px solid #bfdbfe' }}>
-                <p style={{ fontSize: 13, fontWeight: 600, color: '#1e40af', marginBottom: 6 }}>What happens next?</p>
+              {!whatsNextDismissed && (
+              <div style={{ marginBottom: 16, padding: '12px 14px', borderRadius: 8, background: '#eff6ff', border: '1px solid #bfdbfe', position: 'relative' }}>
+                <button type="button" onClick={() => setWhatsNextDismissed(true)} style={{ position: 'absolute', top: 8, right: 10, background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: '#1e40af', opacity: 0.6, lineHeight: 1 }} title="Dismiss">&times;</button>
+                <p style={{ fontSize: 13, fontWeight: 600, color: '#1e40af', marginBottom: 6, paddingRight: 20 }}>What happens next?</p>
                 <ul style={{ fontSize: 12, color: '#1e40af', margin: 0, paddingLeft: 18 }}>
                   <li style={{ marginBottom: 4 }}>SSL certificate is issued automatically — this usually takes <strong>5–15 minutes</strong>.</li>
                   <li style={{ marginBottom: 4 }}>DNS changes can take up to <strong>48 hours</strong> to propagate worldwide, though most work within 1–2 hours.</li>
@@ -278,6 +281,7 @@ export default function SettingsSection() {
                   <li>Once live, your store will be accessible at <strong>https://{customDomain}</strong></li>
                 </ul>
               </div>
+              )}
 
               {!rootDomainTipDismissed && (
                 <div style={{ marginBottom: 16, padding: '14px 16px', borderRadius: 8, background: '#fffbeb', border: '1px solid #fde68a', position: 'relative' }}>
