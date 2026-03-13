@@ -10,6 +10,7 @@ import AboutUsEditor from './AboutUsEditor.jsx';
 import TermsEditor from './TermsEditor.jsx';
 import PrivacyEditor from './PrivacyEditor.jsx';
 import FooterEditor from './FooterEditor.jsx';
+import StoreLocationsEditor from './StoreLocationsEditor.jsx';
 
 const SUB_TABS = [
   { id: 'promo-banner', icon: 'fa-bullhorn', label: 'Promo Banner', page: '/' },
@@ -19,6 +20,7 @@ const SUB_TABS = [
   { id: 'watchbuy', icon: 'fa-video', label: 'Watch & Buy', page: '/' },
   { id: 'featured-video', icon: 'fa-film', label: 'Featured Video', page: '/' },
   { id: 'customer-reviews', icon: 'fa-star', label: 'Customer Reviews', page: '/' },
+  { id: 'store-locations', icon: 'fa-store', label: 'Store Locations', page: '/' },
   { id: 'about-us', icon: 'fa-info-circle', label: 'About Us', page: '/about' },
   { id: 'terms', icon: 'fa-file-contract', label: 'Terms & Conditions', page: '/terms' },
   { id: 'privacy', icon: 'fa-user-shield', label: 'Privacy Policy', page: '/privacy-policy' },
@@ -123,6 +125,7 @@ export default function WebsiteContentSection() {
           {activeTab === 'watchbuy' && <WatchBuySection onSaved={refreshPreview} />}
           {activeTab === 'featured-video' && <FeaturedVideoEditor onSaved={refreshPreview} />}
           {activeTab === 'customer-reviews' && <CustomerReviewsEditor onSaved={refreshPreview} />}
+          {activeTab === 'store-locations' && <StoreLocationsEditor onSaved={refreshPreview} />}
           {activeTab === 'about-us' && <AboutUsEditor onSaved={refreshPreview} />}
           {activeTab === 'terms' && <TermsEditor onSaved={refreshPreview} />}
           {activeTab === 'privacy' && <PrivacyEditor onSaved={refreshPreview} />}

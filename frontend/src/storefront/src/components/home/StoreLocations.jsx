@@ -5,10 +5,12 @@ import { useSiteConfig } from '../../hooks/useSiteConfig.js';
 export default function StoreLocations() {
   const { siteConfig } = useSiteConfig();
 
-  const stores = siteConfig?.settings?.storeLocations || [];
+  const settings = siteConfig?.settings || {};
+  const stores = settings.storeLocations || [];
   const address = siteConfig?.address;
   const phone = siteConfig?.phone;
 
+  if (settings.showStoreLocations === false) return null;
   if (!stores.length && !address) return null;
 
   const defaultStore = stores.length
