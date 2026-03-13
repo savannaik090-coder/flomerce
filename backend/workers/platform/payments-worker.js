@@ -193,7 +193,7 @@ async function verifyPayment(request, env) {
         )
     `).run();
 
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, planId, billingCycle, siteId } = await request.json();
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, planId, billingCycle, siteId, orderId } = await request.json();
 
     if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
       return errorResponse('Missing payment verification data');
@@ -237,33 +237,27 @@ async function verifyPayment(request, env) {
 
     const paymentTx = existingTx;
 
-    if (paymentTx?.order_id) {
+    const dbOrderId = paymentTx?.order_id || orderId || null;
+
+    if (dbOrderId) {
       let order = null;
 
-      order = await env.DB.prepare('SELECT * FROM orders WHERE id = ?').bind(paymentTx.order_id).first();
+      order = await env.DB.prepare('SELECT * FROM orders WHERE id = ?').bind(dbOrderId).first();
       if (order) {
-        const wasPendingPayment = order.status === 'pending_payment';
         await env.DB.prepare(
           `UPDATE orders SET status = 'paid', payment_status = 'paid', payment_method = 'razorpay', razorpay_order_id = ?, razorpay_payment_id = ?, updated_at = datetime('now') WHERE id = ?`
-        ).bind(razorpay_order_id, razorpay_payment_id, paymentTx.order_id).run();
-        console.log('Order status updated to paid:', paymentTx.order_id);
-
-        if (wasPendingPayment) {
-          await processPostPaymentActions(env, order);
-        }
+        ).bind(razorpay_order_id, razorpay_payment_id, dbOrderId).run();
+        console.log('Order status updated to paid:', dbOrderId);
+        await processPostPaymentActions(env, order);
       } else {
         try {
-          order = await env.DB.prepare('SELECT * FROM guest_orders WHERE id = ?').bind(paymentTx.order_id).first();
+          order = await env.DB.prepare('SELECT * FROM guest_orders WHERE id = ?').bind(dbOrderId).first();
           if (order) {
-            const wasPendingPayment = order.status === 'pending_payment';
             await env.DB.prepare(
               `UPDATE guest_orders SET status = 'paid', payment_status = 'paid', payment_method = 'razorpay', razorpay_order_id = ?, razorpay_payment_id = ?, updated_at = datetime('now') WHERE id = ?`
-            ).bind(razorpay_order_id, razorpay_payment_id, paymentTx.order_id).run();
-            console.log('Guest order status updated to paid:', paymentTx.order_id);
-
-            if (wasPendingPayment) {
-              await processPostPaymentActions(env, order);
-            }
+            ).bind(razorpay_order_id, razorpay_payment_id, dbOrderId).run();
+            console.log('Guest order status updated to paid:', dbOrderId);
+            await processPostPaymentActions(env, order);
           }
         } catch (guestUpdateErr) {
           console.error('Failed to update guest order status:', guestUpdateErr);

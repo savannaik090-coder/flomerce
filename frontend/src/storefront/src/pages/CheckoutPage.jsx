@@ -230,21 +230,15 @@ export default function CheckoutPage() {
           return;
         }
 
-        const dbOrder = await orderService.createOrder(orderData);
-        const order = dbOrder.data || dbOrder.order || dbOrder;
-        const orderId = order.id || order.orderId;
-        const orderNumber = order.orderNumber || order.order_number;
-
         const { apiRequest } = await import('../services/api.js');
         const paymentResult = await apiRequest('/api/payments/create-order', {
           method: 'POST',
           body: JSON.stringify({
             amount: subtotal,
             currency: 'INR',
-            receipt: orderNumber || `order_${Date.now()}`,
-            orderId: orderId,
+            receipt: `order_${Date.now()}`,
             siteId: siteConfig?.id,
-            notes: { orderNumber },
+            notes: {},
           }),
         });
 
@@ -262,10 +256,15 @@ export default function CheckoutPage() {
           amount: paymentData.amount || Math.round(subtotal * 100),
           currency: paymentData.currency || 'INR',
           name: siteConfig?.brandName || 'Store',
-          description: `Order #${orderNumber || orderId || 'new'}`,
+          description: 'Store Order',
           order_id: razorpayOrderId,
           handler: async function (response) {
             try {
+              const dbOrder = await orderService.createOrder(orderData);
+              const order = dbOrder.data || dbOrder.order || dbOrder;
+              const orderId = order.id || order.orderId;
+              const orderNumber = order.orderNumber || order.order_number;
+
               await apiRequest('/api/payments/verify', {
                 method: 'POST',
                 body: JSON.stringify({
@@ -273,6 +272,7 @@ export default function CheckoutPage() {
                   razorpay_payment_id: response.razorpay_payment_id,
                   razorpay_signature: response.razorpay_signature,
                   siteId: siteConfig?.id,
+                  orderId: orderId,
                 }),
               });
               setOrderRef(orderNumber || orderId || 'ORD-' + Date.now());
