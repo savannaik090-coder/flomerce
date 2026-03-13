@@ -34,6 +34,19 @@ PORT = "5000"
 runButton = "Project"
 
 [[workflows.workflow]]
+name = "Start Website"
+author = "agent"
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "node run-server.js"
+waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
+[[workflows.workflow]]
 name = "Project"
 mode = "parallel"
 author = "agent"
@@ -44,7 +57,7 @@ args = "Fluxe Backend (Production Mode)"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Start application"
+args = "Start Website"
 
 [[workflows.workflow]]
 name = "Fluxe Backend (Production Mode)"
@@ -57,18 +70,6 @@ outputType = "console"
 task = "shell.exec"
 args = "cd backend && npx wrangler dev workers/index.js --port 8000 --ip 0.0.0.0 --local-protocol http --experimental-local"
 waitForPort = 8000
-
-[[workflows.workflow]]
-name = "Start application"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd video-teaser && npx vite --port 5000 --host 0.0.0.0"
-waitForPort = 5000
-
-[workflows.workflow.metadata]
-outputType = "webview"
 
 [agent]
 expertMode = true
