@@ -16,10 +16,10 @@ export async function getOrderById(orderId) {
   return apiRequest(`/api/orders/${orderId}`);
 }
 
-export async function updateOrderStatus(orderId, status) {
+export async function updateOrderStatus(orderId, status, extraData = {}) {
   return apiRequest(`/api/orders/${orderId}`, {
     method: 'PUT',
-    body: JSON.stringify({ status }),
+    body: JSON.stringify({ status, ...extraData }),
   });
 }
 

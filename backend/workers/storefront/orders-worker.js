@@ -1,7 +1,7 @@
 import { generateId, generateOrderNumber, jsonResponse, errorResponse, successResponse, handleCORS } from '../../utils/helpers.js';
 import { validateAuth, validateAnyAuth } from '../../utils/auth.js';
 import { updateProductStock } from './products-worker.js';
-import { sendEmail, buildOrderConfirmationEmail, buildOwnerNotificationEmail } from '../../utils/email.js';
+import { sendEmail, buildOrderConfirmationEmail, buildOwnerNotificationEmail, buildCancellationCustomerEmail, buildCancellationOwnerEmail } from '../../utils/email.js';
 
 export async function handleOrders(request, env, path) {
   const corsResponse = handleCORS(request);
@@ -250,7 +250,7 @@ async function createOrder(request, env, user) {
     const orderNumber = generateOrderNumber();
 
     const isPendingPayment = paymentMethod === 'razorpay';
-    const orderStatus = isPendingPayment ? 'pending_payment' : (data.status || 'confirmed');
+    const orderStatus = isPendingPayment ? 'pending_payment' : (data.status || 'pending');
 
     await env.DB.prepare(
       `INSERT INTO orders (id, site_id, user_id, order_number, items, subtotal, discount, shipping_cost, tax, total, payment_method, status, shipping_address, billing_address, customer_name, customer_email, customer_phone, notes, created_at)
@@ -337,7 +337,7 @@ async function updateOrderStatus(request, env, user, orderId) {
       return errorResponse('Order not found or unauthorized', 404);
     }
 
-    const { status, trackingNumber, carrier } = await request.json();
+    const { status, trackingNumber, carrier, cancellationReason } = await request.json();
 
     const updates = [];
     const values = [];
@@ -352,6 +352,15 @@ async function updateOrderStatus(request, env, user, orderId) {
         updates.push('delivered_at = datetime("now")');
       } else if (status === 'cancelled') {
         updates.push('cancelled_at = datetime("now")');
+        if (cancellationReason) {
+          try {
+            await env.DB.prepare(
+              `ALTER TABLE orders ADD COLUMN cancellation_reason TEXT`
+            ).run();
+          } catch {}
+          updates.push('cancellation_reason = ?');
+          values.push(cancellationReason);
+        }
       }
     }
 
@@ -375,6 +384,40 @@ async function updateOrderStatus(request, env, user, orderId) {
     await env.DB.prepare(
       `UPDATE orders SET ${updates.join(', ')} WHERE id = ?`
     ).bind(...values).run();
+
+    if (status === 'cancelled' && cancellationReason) {
+      try {
+        const fullOrder = await env.DB.prepare('SELECT * FROM orders WHERE id = ?').bind(orderId).first();
+        if (fullOrder) {
+          const site = await env.DB.prepare('SELECT brand_name, email, settings FROM sites WHERE id = ?').bind(fullOrder.site_id).first();
+          const siteBrandName = site?.brand_name || 'Store';
+          const siteSettings = site?.settings ? JSON.parse(site.settings) : {};
+          const ownerEmail = siteSettings.email || siteSettings.ownerEmail || site?.email;
+
+          const emailOrder = {
+            order_number: fullOrder.order_number,
+            customer_name: fullOrder.customer_name,
+            customer_email: fullOrder.customer_email,
+            customer_phone: fullOrder.customer_phone,
+            total: fullOrder.total,
+            payment_method: fullOrder.payment_method,
+          };
+
+          const emailJobs = [];
+          if (fullOrder.customer_email) {
+            const { html, text } = buildCancellationCustomerEmail(emailOrder, siteBrandName, cancellationReason);
+            emailJobs.push(sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been cancelled`, html, text).catch(e => console.error('Cancellation customer email error:', e)));
+          }
+          if (ownerEmail) {
+            const { html, text } = buildCancellationOwnerEmail(emailOrder, siteBrandName, cancellationReason);
+            emailJobs.push(sendEmail(env, ownerEmail, `Order #${fullOrder.order_number} cancelled - ${siteBrandName}`, html, text).catch(e => console.error('Cancellation owner email error:', e)));
+          }
+          await Promise.all(emailJobs);
+        }
+      } catch (emailErr) {
+        console.error('Failed to send cancellation emails:', emailErr);
+      }
+    }
 
     return successResponse(null, 'Order updated successfully');
   } catch (error) {

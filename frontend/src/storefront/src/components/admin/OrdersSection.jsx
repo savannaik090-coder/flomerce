@@ -2,6 +2,34 @@ import React, { useState, useEffect, useContext } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { getOrders, updateOrderStatus } from '../../services/orderService.js';
 
+const CANCEL_REASONS = [
+  'Item out of stock',
+  'Customer requested cancellation',
+  'Duplicate order',
+  'Suspected fraud',
+  'Other',
+];
+
+function getStatusColor(status) {
+  const s = (status || '').toLowerCase();
+  if (s === 'delivered') return '#27ae60';
+  if (s === 'confirmed' || s === 'paid') return '#2196f3';
+  if (s === 'cancelled') return '#e53935';
+  if (s === 'pending_payment') return '#ff9800';
+  return '#757575';
+}
+
+function getStatusLabel(status) {
+  const s = (status || '').toLowerCase();
+  if (s === 'pending_payment') return 'Awaiting Payment';
+  if (s === 'paid') return 'Paid';
+  if (s === 'pending') return 'Pending';
+  if (s === 'confirmed') return 'Confirmed';
+  if (s === 'delivered') return 'Delivered';
+  if (s === 'cancelled') return 'Cancelled';
+  return status || 'Pending';
+}
+
 export default function OrdersSection() {
   const { siteConfig } = useContext(SiteContext);
   const [orders, setOrders] = useState([]);
@@ -9,6 +37,11 @@ export default function OrdersSection() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [loading, setLoading] = useState(true);
   const [expandedOrderId, setExpandedOrderId] = useState(null);
+
+  const [cancelModal, setCancelModal] = useState(null);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelCustomReason, setCancelCustomReason] = useState('');
+  const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
     if (siteConfig?.id) loadOrders();
@@ -36,31 +69,56 @@ export default function OrdersSection() {
     }
   }
 
+  function openCancelModal(order) {
+    setCancelModal(order);
+    setCancelReason('');
+    setCancelCustomReason('');
+  }
+
+  function closeCancelModal() {
+    setCancelModal(null);
+    setCancelReason('');
+    setCancelCustomReason('');
+  }
+
+  async function confirmCancellation() {
+    if (!cancelReason) {
+      alert('Please select a cancellation reason.');
+      return;
+    }
+    const finalReason = cancelReason === 'Other' ? cancelCustomReason.trim() : cancelReason;
+    if (cancelReason === 'Other' && !finalReason) {
+      alert('Please enter a specific cancellation reason.');
+      return;
+    }
+    setCancelling(true);
+    try {
+      await updateOrderStatus(cancelModal.id, 'cancelled', { cancellationReason: finalReason });
+      setOrders(prev => prev.map(o => o.id === cancelModal.id ? { ...o, status: 'cancelled', cancellation_reason: finalReason } : o));
+      closeCancelModal();
+    } catch (err) {
+      alert('Failed to cancel order: ' + err.message);
+    } finally {
+      setCancelling(false);
+    }
+  }
+
   function toggleExpand(orderId) {
     setExpandedOrderId(prev => (prev === orderId ? null : orderId));
   }
 
-  const statuses = ['all', 'new', 'pending', 'pending_payment', 'paid', 'confirmed', 'shipped', 'delivered', 'cancelled'];
+  const statuses = ['all', 'pending', 'pending_payment', 'paid', 'confirmed', 'delivered', 'cancelled'];
 
   const filtered = orders.filter(o => {
     const matchesStatus = statusFilter === 'all' || (o.status || '').toLowerCase() === statusFilter;
     const matchesSearch = !searchTerm ||
       (o.id || '').toString().toLowerCase().includes(searchTerm.toLowerCase()) ||
       (o.order_number || o.orderNumber || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (o.customer_name || o.name || o.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (o.customer_name || o.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (o.customer_email || o.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (o.customer_phone || '').toLowerCase().includes(searchTerm.toLowerCase());
     return matchesStatus && matchesSearch;
   });
-
-  function getStatusColor(status) {
-    const s = (status || '').toLowerCase();
-    if (s === 'paid' || s === 'confirmed' || s === 'delivered') return '#25ab00';
-    if (s === 'shipped') return '#2196f3';
-    if (s === 'cancelled') return '#e53935';
-    if (s === 'pending_payment' || s === 'pending') return '#ff9800';
-    return '#757575';
-  }
 
   if (loading) return <div className="loading-spinner-admin"><div className="spinner" /></div>;
 
@@ -69,7 +127,7 @@ export default function OrdersSection() {
       <div className="search-bar">
         <input
           type="text"
-          placeholder="Search by order ID, number, customer name, email or phone..."
+          placeholder="Search by order number, customer name, email or phone..."
           value={searchTerm}
           onChange={e => setSearchTerm(e.target.value)}
         />
@@ -84,7 +142,7 @@ export default function OrdersSection() {
           if (s !== 'all' && count === 0) return null;
           return (
             <button key={s} className={`tab${statusFilter === s ? ' active' : ''}`} onClick={() => setStatusFilter(s)}>
-              {s === 'pending_payment' ? 'Pending Payment' : s.charAt(0).toUpperCase() + s.slice(1)} ({count})
+              {getStatusLabel(s)} ({count})
             </button>
           );
         })}
@@ -109,8 +167,8 @@ export default function OrdersSection() {
                     <th>Phone</th>
                     <th>Items</th>
                     <th>Total</th>
-                    <th>Payment</th>
-                    <th>Status</th>
+                    <th>Payment Method</th>
+                    <th>Order Status</th>
                     <th>Date</th>
                     <th>Actions</th>
                   </tr>
@@ -121,6 +179,9 @@ export default function OrdersSection() {
                     const address = order.shipping_address || {};
                     const isExpanded = expandedOrderId === order.id;
                     const orderNum = order.order_number || order.orderNumber || order.id?.slice(-6);
+                    const statusLower = (order.status || '').toLowerCase();
+                    const isCancelled = statusLower === 'cancelled';
+                    const isDelivered = statusLower === 'delivered';
 
                     return (
                       <React.Fragment key={order.id}>
@@ -139,37 +200,51 @@ export default function OrdersSection() {
                           <td>{order.customer_phone || '—'}</td>
                           <td>{items.length > 0 ? items.length : '—'}</td>
                           <td style={{ fontWeight: 600 }}>₹{parseFloat(order.total || order.total_amount || 0).toLocaleString('en-IN')}</td>
-                          <td style={{ textTransform: 'capitalize' }}>{order.payment_method || order.paymentMethod || '—'}</td>
+                          <td style={{ textTransform: 'capitalize' }}>
+                            {order.payment_method === 'cod' ? 'Cash on Delivery' : (order.payment_method || '—')}
+                          </td>
                           <td>
                             <span style={{
                               display: 'inline-block',
                               background: getStatusColor(order.status),
                               color: '#fff',
                               borderRadius: 12,
-                              padding: '2px 10px',
+                              padding: '3px 10px',
                               fontSize: 12,
                               fontWeight: 600,
-                              textTransform: 'capitalize',
                               whiteSpace: 'nowrap',
                             }}>
-                              {(order.status || 'new').replace('_', ' ')}
+                              {getStatusLabel(order.status)}
                             </span>
                           </td>
                           <td style={{ whiteSpace: 'nowrap' }}>{new Date(order.created_at || order.createdAt).toLocaleDateString()}</td>
                           <td onClick={e => e.stopPropagation()}>
                             <div style={{ display: 'flex', gap: 4 }}>
-                              {!['confirmed', 'delivered', 'paid'].includes((order.status || '').toLowerCase()) && (
-                                <button className="btn btn-sm btn-success" onClick={() => handleStatusUpdate(order.id, 'confirmed')} title="Confirm">
+                              {!isCancelled && !isDelivered && statusLower !== 'confirmed' && (
+                                <button
+                                  className="btn btn-sm btn-success"
+                                  onClick={() => handleStatusUpdate(order.id, 'confirmed')}
+                                  title="Confirm Order"
+                                >
                                   <i className="fas fa-check" />
                                 </button>
                               )}
-                              {(order.status || '').toLowerCase() !== 'shipped' && !['delivered', 'cancelled'].includes((order.status || '').toLowerCase()) && (
-                                <button className="btn btn-sm btn-outline" onClick={() => handleStatusUpdate(order.id, 'shipped')} title="Mark Shipped" style={{ fontSize: 11 }}>
-                                  Ship
+                              {!isCancelled && !isDelivered && (
+                                <button
+                                  className="btn btn-sm"
+                                  style={{ background: '#27ae60', color: '#fff', border: 'none', borderRadius: 4, padding: '4px 8px', cursor: 'pointer', fontSize: 11, fontWeight: 600 }}
+                                  onClick={() => handleStatusUpdate(order.id, 'delivered')}
+                                  title="Mark as Delivered"
+                                >
+                                  Delivered
                                 </button>
                               )}
-                              {(order.status || '').toLowerCase() !== 'cancelled' && (
-                                <button className="btn btn-sm btn-danger" onClick={() => handleStatusUpdate(order.id, 'cancelled')} title="Cancel">
+                              {!isCancelled && !isDelivered && (
+                                <button
+                                  className="btn btn-sm btn-danger"
+                                  onClick={() => openCancelModal(order)}
+                                  title="Cancel Order"
+                                >
                                   <i className="fas fa-times" />
                                 </button>
                               )}
@@ -211,7 +286,7 @@ export default function OrdersSection() {
                                       <div style={{ fontWeight: 600 }}>{address.name || order.customer_name}</div>
                                       {address.phone && <div>📞 {address.phone}</div>}
                                       {address.address && <div>{address.address}</div>}
-                                      {(address.city || address.state) && <div>{[address.city, address.state].filter(Boolean).join(', ')}{address.pinCode ? ' - ' + address.pinCode : ''}</div>}
+                                      {(address.city || address.state) && <div>{[address.city, address.state].filter(Boolean).join(', ')}{address.pinCode ? ' – ' + address.pinCode : ''}</div>}
                                     </div>
                                   ) : (
                                     <div style={{ color: '#999', fontSize: 13 }}>No address on file</div>
@@ -221,12 +296,17 @@ export default function OrdersSection() {
                                 <div style={{ minWidth: 180 }}>
                                   <div style={{ fontWeight: 700, marginBottom: 10, color: '#333', fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5 }}>Payment Info</div>
                                   <div style={{ fontSize: 13, lineHeight: 1.8, color: '#444' }}>
-                                    <div><span style={{ color: '#888' }}>Method:</span> {order.payment_method || '—'}</div>
-                                    <div><span style={{ color: '#888' }}>Status:</span> {order.payment_status || order.status || '—'}</div>
+                                    <div><span style={{ color: '#888' }}>Method:</span> {order.payment_method === 'cod' ? 'Cash on Delivery' : (order.payment_method || '—')}</div>
                                     {order.razorpay_payment_id && <div style={{ wordBreak: 'break-all' }}><span style={{ color: '#888' }}>Payment ID:</span> {order.razorpay_payment_id}</div>}
                                     {order.razorpay_order_id && <div style={{ wordBreak: 'break-all' }}><span style={{ color: '#888' }}>Razorpay Order:</span> {order.razorpay_order_id}</div>}
                                     {order.notes && <div><span style={{ color: '#888' }}>Notes:</span> {order.notes}</div>}
                                   </div>
+                                  {isCancelled && order.cancellation_reason && (
+                                    <div style={{ marginTop: 12, padding: '10px 12px', background: '#fff5f5', borderLeft: '3px solid #e53935', borderRadius: 4 }}>
+                                      <div style={{ fontSize: 11, color: '#e53935', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>Cancellation Reason</div>
+                                      <div style={{ fontSize: 13, color: '#333' }}>{order.cancellation_reason}</div>
+                                    </div>
+                                  )}
                                 </div>
 
                               </div>
@@ -238,6 +318,50 @@ export default function OrdersSection() {
                   })}
                 </tbody>
               </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {cancelModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
+          <div style={{ background: '#fff', borderRadius: 10, padding: 28, width: '90%', maxWidth: 440, boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}>
+            <h3 style={{ margin: '0 0 6px', fontSize: 18, color: '#1a1a1a' }}>Cancel Order #{cancelModal.order_number || cancelModal.id?.slice(-6)}</h3>
+            <p style={{ margin: '0 0 20px', fontSize: 14, color: '#666' }}>Select a reason for cancellation. Both you and the customer will receive an email.</p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
+              {CANCEL_REASONS.map(reason => (
+                <label key={reason} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', padding: '10px 14px', borderRadius: 6, border: `1.5px solid ${cancelReason === reason ? '#e53935' : '#e0e0e0'}`, background: cancelReason === reason ? '#fff5f5' : '#fafafa', transition: 'all 0.15s' }}>
+                  <input
+                    type="radio"
+                    name="cancelReason"
+                    value={reason}
+                    checked={cancelReason === reason}
+                    onChange={() => setCancelReason(reason)}
+                    style={{ accentColor: '#e53935' }}
+                  />
+                  <span style={{ fontSize: 14, color: '#333', fontWeight: cancelReason === reason ? 600 : 400 }}>{reason}</span>
+                </label>
+              ))}
+            </div>
+
+            {cancelReason === 'Other' && (
+              <textarea
+                placeholder="Please describe the reason..."
+                value={cancelCustomReason}
+                onChange={e => setCancelCustomReason(e.target.value)}
+                rows={3}
+                style={{ width: '100%', padding: 10, borderRadius: 6, border: '1.5px solid #ddd', fontSize: 14, resize: 'vertical', boxSizing: 'border-box', marginBottom: 16, fontFamily: 'inherit' }}
+              />
+            )}
+
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
+              <button onClick={closeCancelModal} disabled={cancelling} style={{ padding: '9px 20px', borderRadius: 6, border: '1px solid #ddd', background: '#f5f5f5', cursor: 'pointer', fontSize: 14 }}>
+                Go Back
+              </button>
+              <button onClick={confirmCancellation} disabled={cancelling || !cancelReason} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: cancelling || !cancelReason ? '#f5b3b3' : '#e53935', color: '#fff', cursor: cancelling || !cancelReason ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 600 }}>
+                {cancelling ? 'Cancelling...' : 'Confirm Cancellation'}
+              </button>
             </div>
           </div>
         </div>

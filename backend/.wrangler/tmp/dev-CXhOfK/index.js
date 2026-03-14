@@ -844,6 +844,92 @@ We will notify you when your order ships.`;
   return { html, text };
 }
 __name(buildOrderConfirmationEmail, "buildOrderConfirmationEmail");
+function buildCancellationCustomerEmail(order, brandName, reason) {
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="utf-8"></head>
+    <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background: #f5f5f5;">
+      <div style="max-width: 600px; margin: 0 auto; background: #ffffff;">
+        <div style="background: #c0392b; color: #ffffff; padding: 32px; text-align: center;">
+          <h1 style="margin: 0; font-size: 24px; font-weight: 700;">${brandName || "Your Store"}</h1>
+        </div>
+        <div style="padding: 32px;">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <div style="width: 56px; height: 56px; background: #fde8e8; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 12px;">
+              <span style="font-size: 28px;">&#10007;</span>
+            </div>
+            <h2 style="margin: 0 0 4px; font-size: 22px; color: #0f172a;">Order Cancelled</h2>
+            <p style="margin: 0; color: #64748b; font-size: 14px;">Order #${order.order_number || order.orderNumber || ""}</p>
+          </div>
+          <p style="color: #333; font-size: 15px; line-height: 1.6;">Hi ${order.customer_name || "Customer"},</p>
+          <p style="color: #333; font-size: 15px; line-height: 1.6;">We're sorry to inform you that your order has been cancelled.</p>
+          <div style="margin: 24px 0; padding: 16px; background: #fff5f5; border-left: 4px solid #c0392b; border-radius: 4px;">
+            <div style="font-size: 13px; color: #888; text-transform: uppercase; font-weight: 600; margin-bottom: 6px;">Cancellation Reason</div>
+            <div style="font-size: 15px; color: #333;">${reason || "No reason provided"}</div>
+          </div>
+          <div style="padding: 16px; background: #f8f9fa; border-radius: 8px; font-size: 14px; color: #555;">
+            <strong>Order Total:</strong> &#8377;${Number(order.total || 0).toFixed(2)}<br>
+            <strong>Payment Method:</strong> ${order.payment_method === "cod" ? "Cash on Delivery" : "Online Payment"}
+          </div>
+          <p style="margin-top: 24px; color: #64748b; font-size: 14px; line-height: 1.6;">If you paid online and a refund is applicable, it will be processed within 5\u20137 business days. For any questions, please contact us.</p>
+        </div>
+        <div style="background: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8;">
+          <p style="margin: 0;">Thank you for shopping with ${brandName || "us"}!</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+  const text = `Order Cancelled
+
+Your order #${order.order_number || order.orderNumber} has been cancelled.
+Reason: ${reason || "No reason provided"}
+Total: Rs.${Number(order.total || 0).toFixed(2)}`;
+  return { html, text };
+}
+__name(buildCancellationCustomerEmail, "buildCancellationCustomerEmail");
+function buildCancellationOwnerEmail(order, brandName, reason) {
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="utf-8"></head>
+    <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background: #f5f5f5;">
+      <div style="max-width: 600px; margin: 0 auto; background: #ffffff;">
+        <div style="background: #7f1d1d; color: #ffffff; padding: 24px 32px;">
+          <h1 style="margin: 0; font-size: 20px; font-weight: 700;">Order Cancelled</h1>
+          <p style="margin: 4px 0 0; opacity: 0.9; font-size: 14px;">${brandName || "Your Store"} - Order #${order.order_number || order.orderNumber || ""}</p>
+        </div>
+        <div style="padding: 24px 32px;">
+          <p style="color: #333; font-size: 15px;">An order has been marked as cancelled.</p>
+          <div style="margin: 20px 0; padding: 16px; background: #fff5f5; border-left: 4px solid #c0392b; border-radius: 4px;">
+            <div style="font-size: 13px; color: #888; text-transform: uppercase; font-weight: 600; margin-bottom: 6px;">Cancellation Reason</div>
+            <div style="font-size: 15px; color: #333;">${reason || "No reason provided"}</div>
+          </div>
+          <div style="padding: 12px 16px; background: #f8f9fa; border-radius: 8px; font-size: 14px; line-height: 1.8;">
+            <strong>Order #:</strong> ${order.order_number || order.orderNumber || ""}<br>
+            <strong>Customer:</strong> ${order.customer_name || "N/A"}<br>
+            <strong>Email:</strong> ${order.customer_email || "N/A"}<br>
+            <strong>Phone:</strong> ${order.customer_phone || "N/A"}<br>
+            <strong>Total:</strong> &#8377;${Number(order.total || 0).toFixed(2)}
+          </div>
+        </div>
+        <div style="background: #f8f9fa; padding: 16px 32px; text-align: center; font-size: 12px; color: #94a3b8;">
+          <p style="margin: 0;">This is an automated notification from ${brandName || "Fluxe"}.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+  const text = `Order Cancelled
+
+Order #${order.order_number || order.orderNumber} has been cancelled.
+Reason: ${reason || "No reason provided"}
+Customer: ${order.customer_name || ""}
+Total: Rs.${Number(order.total || 0).toFixed(2)}`;
+  return { html, text };
+}
+__name(buildCancellationOwnerEmail, "buildCancellationOwnerEmail");
 function buildOwnerNotificationEmail(order, brandName) {
   const items = typeof order.items === "string" ? JSON.parse(order.items) : order.items;
   const itemsHtml = items.map((item) => `
@@ -2895,7 +2981,7 @@ async function createOrder(request, env, user) {
     const orderId = generateId();
     const orderNumber = generateOrderNumber();
     const isPendingPayment = paymentMethod === "razorpay";
-    const orderStatus = isPendingPayment ? "pending_payment" : data.status || "confirmed";
+    const orderStatus = isPendingPayment ? "pending_payment" : data.status || "pending";
     await env.DB.prepare(
       `INSERT INTO orders (id, site_id, user_id, order_number, items, subtotal, discount, shipping_cost, tax, total, payment_method, status, shipping_address, billing_address, customer_name, customer_email, customer_phone, notes, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
@@ -2980,7 +3066,7 @@ async function updateOrderStatus(request, env, user, orderId) {
     if (!order) {
       return errorResponse("Order not found or unauthorized", 404);
     }
-    const { status, trackingNumber, carrier } = await request.json();
+    const { status, trackingNumber, carrier, cancellationReason } = await request.json();
     const updates = [];
     const values = [];
     if (status) {
@@ -2992,6 +3078,16 @@ async function updateOrderStatus(request, env, user, orderId) {
         updates.push('delivered_at = datetime("now")');
       } else if (status === "cancelled") {
         updates.push('cancelled_at = datetime("now")');
+        if (cancellationReason) {
+          try {
+            await env.DB.prepare(
+              `ALTER TABLE orders ADD COLUMN cancellation_reason TEXT`
+            ).run();
+          } catch {
+          }
+          updates.push("cancellation_reason = ?");
+          values.push(cancellationReason);
+        }
       }
     }
     if (trackingNumber) {
@@ -3010,6 +3106,37 @@ async function updateOrderStatus(request, env, user, orderId) {
     await env.DB.prepare(
       `UPDATE orders SET ${updates.join(", ")} WHERE id = ?`
     ).bind(...values).run();
+    if (status === "cancelled" && cancellationReason) {
+      try {
+        const fullOrder = await env.DB.prepare("SELECT * FROM orders WHERE id = ?").bind(orderId).first();
+        if (fullOrder) {
+          const site = await env.DB.prepare("SELECT brand_name, email, settings FROM sites WHERE id = ?").bind(fullOrder.site_id).first();
+          const siteBrandName = site?.brand_name || "Store";
+          const siteSettings = site?.settings ? JSON.parse(site.settings) : {};
+          const ownerEmail = siteSettings.email || siteSettings.ownerEmail || site?.email;
+          const emailOrder = {
+            order_number: fullOrder.order_number,
+            customer_name: fullOrder.customer_name,
+            customer_email: fullOrder.customer_email,
+            customer_phone: fullOrder.customer_phone,
+            total: fullOrder.total,
+            payment_method: fullOrder.payment_method
+          };
+          const emailJobs = [];
+          if (fullOrder.customer_email) {
+            const { html, text } = buildCancellationCustomerEmail(emailOrder, siteBrandName, cancellationReason);
+            emailJobs.push(sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been cancelled`, html, text).catch((e) => console.error("Cancellation customer email error:", e)));
+          }
+          if (ownerEmail) {
+            const { html, text } = buildCancellationOwnerEmail(emailOrder, siteBrandName, cancellationReason);
+            emailJobs.push(sendEmail(env, ownerEmail, `Order #${fullOrder.order_number} cancelled - ${siteBrandName}`, html, text).catch((e) => console.error("Cancellation owner email error:", e)));
+          }
+          await Promise.all(emailJobs);
+        }
+      } catch (emailErr) {
+        console.error("Failed to send cancellation emails:", emailErr);
+      }
+    }
     return successResponse(null, "Order updated successfully");
   } catch (error) {
     console.error("Update order error:", error);

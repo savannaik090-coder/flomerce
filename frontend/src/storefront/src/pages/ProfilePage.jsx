@@ -201,8 +201,13 @@ export default function ProfilePage() {
   };
 
   const getStatusColor = (status) => {
-    const colors = { pending: '#f39c12', confirmed: '#3498db', processing: '#9b59b6', shipped: '#2980b9', delivered: '#27ae60', cancelled: '#e74c3c', paid: '#27ae60' };
-    return colors[status?.toLowerCase()] || '#6c757d';
+    const colors = { pending: '#757575', pending_payment: '#ff9800', paid: '#2196f3', confirmed: '#2196f3', shipped: '#1565c0', delivered: '#27ae60', cancelled: '#e74c3c' };
+    return colors[status?.toLowerCase()] || '#757575';
+  };
+
+  const getStatusLabel = (status) => {
+    const labels = { pending: 'Pending', pending_payment: 'Awaiting Payment', paid: 'Paid', confirmed: 'Confirmed', shipped: 'Shipped', delivered: 'Delivered', cancelled: 'Cancelled' };
+    return labels[status?.toLowerCase()] || (status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Pending');
   };
 
   if (authLoading) {
@@ -293,12 +298,19 @@ export default function ProfilePage() {
                 return (
                   <div key={order.id} style={{ border: '1px solid #eee', borderRadius: 5, padding: 15, marginBottom: 15 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 10, borderBottom: '1px solid #eee', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
-                      <span style={{ fontWeight: 'bold' }}>Order #{order.id || order.order_id}</span>
+                      <div>
+                        <span style={{ fontWeight: 'bold' }}>Order #{order.order_number || order.id || order.order_id}</span>
+                      </div>
                       <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                         <span style={{ color: '#777', fontSize: 14 }}>{order.created_at ? new Date(order.created_at).toLocaleDateString() : ''}</span>
-                        <span style={{ backgroundColor: getStatusColor(order.status), color: '#fff', padding: '2px 10px', borderRadius: 12, fontSize: 12, fontWeight: 600, textTransform: 'capitalize' }}>{order.status || 'Pending'}</span>
+                        <span style={{ backgroundColor: getStatusColor(order.status), color: '#fff', padding: '3px 10px', borderRadius: 12, fontSize: 12, fontWeight: 600 }}>{getStatusLabel(order.status)}</span>
                       </div>
                     </div>
+                    {order.status === 'cancelled' && order.cancellation_reason && (
+                      <div style={{ marginBottom: 12, padding: '8px 12px', background: '#fff5f5', borderLeft: '3px solid #e74c3c', borderRadius: 4, fontSize: 13, color: '#555' }}>
+                        <strong style={{ color: '#e74c3c' }}>Cancellation Reason:</strong> {order.cancellation_reason}
+                      </div>
+                    )}
                     {orderItems.map((item, idx) => (
                       <div key={idx} style={{ display: 'flex', padding: '10px 0', gap: 15 }}>
                         {item.image && <img src={item.image} alt={item.name} style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 4 }} />}
