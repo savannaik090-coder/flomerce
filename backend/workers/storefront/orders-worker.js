@@ -625,7 +625,7 @@ async function getGuestOrder(env, orderNumber) {
 }
 
 export async function sendOrderEmails(env, siteId, orderDetails) {
-  const { orderNumber, processedItems, subtotal, discount, coupon_code, total, paymentMethod, customerName, customerEmail, customerPhone, shippingAddress } = orderDetails;
+  const { orderNumber, processedItems, total, paymentMethod, customerName, customerEmail, customerPhone, shippingAddress } = orderDetails;
 
   const site = await env.DB.prepare('SELECT brand_name, email, settings FROM sites WHERE id = ?').bind(siteId).first();
   const siteBrandName = site?.brand_name || 'Store';
@@ -644,9 +644,6 @@ export async function sendOrderEmails(env, siteId, orderDetails) {
   const orderForEmail = {
     order_number: orderNumber,
     items: processedItems,
-    subtotal: subtotal ?? total,
-    discount: discount || 0,
-    coupon_code: coupon_code || null,
     total,
     payment_method: paymentMethod || 'cod',
     customer_name: customerName,
