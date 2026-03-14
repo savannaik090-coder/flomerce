@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-Ye4yap/checked-fetch.js
+// .wrangler/tmp/bundle-k9n61Q/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-Ye4yap/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-k9n61Q/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-Ye4yap/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-k9n61Q/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-Ye4yap/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-k9n61Q/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -670,12 +670,12 @@ var init_site_admin_worker = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-Ye4yap/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-k9n61Q/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-Ye4yap/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-k9n61Q/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -760,7 +760,7 @@ async function sendEmail(env, to, subject, html, text) {
   }
 }
 __name(sendEmail, "sendEmail");
-function buildOrderConfirmationEmail(order, brandName) {
+function buildOrderConfirmationEmail(order, brandName, ownerEmail) {
   const items = typeof order.items === "string" ? JSON.parse(order.items) : order.items;
   const itemsHtml = items.map((item) => `
     <tr>
@@ -824,7 +824,7 @@ function buildOrderConfirmationEmail(order, brandName) {
 
           ${addressHtml}
 
-          <p style="margin-top: 24px; color: #64748b; font-size: 14px; line-height: 1.6;">Your order is now being prepared. We'll update you once it's on its way. For any queries, simply reply to this email or reach out to us directly.</p>
+          <p style="margin-top: 24px; color: #64748b; font-size: 14px; line-height: 1.6;">Your order is now being prepared. We'll update you once it's on its way. For any queries, reach out to us at ${ownerEmail ? `<a href="mailto:${ownerEmail}" style="color:#0f172a;">${ownerEmail}</a>` : brandName || "the store"}.</p>
         </div>
         <div style="background: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8;">
           <p style="margin: 0;">Thank you for shopping with ${brandName || "us"}!</p>
@@ -893,7 +893,14 @@ ${ownerEmail ? "Contact us at: " + ownerEmail : "Please reply to this email for 
 }
 __name(buildCancellationCustomerEmail, "buildCancellationCustomerEmail");
 function buildDeliveryCustomerEmail(order, brandName, ownerEmail) {
-  const items = typeof order.items === "string" ? JSON.parse(order.items) : order.items || [];
+  let items = [];
+  try {
+    items = typeof order.items === "string" ? JSON.parse(order.items) : order.items || [];
+    if (!Array.isArray(items))
+      items = [];
+  } catch (_) {
+    items = [];
+  }
   const itemsHtml = items.map((item) => `
     <tr>
       <td style="padding: 10px 16px; border-bottom: 1px solid #f0f0f0; font-size: 14px;">${item.name}</td>
@@ -3259,12 +3266,20 @@ async function updateOrderStatus(request, env, user, orderId) {
           };
           const emailJobs = [];
           if (fullOrder.customer_email) {
-            const { html, text } = buildDeliveryCustomerEmail(emailOrder, siteBrandName, ownerEmail);
-            emailJobs.push(sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been delivered!`, html, text).catch((e) => console.error("Delivery customer email error:", e)));
+            try {
+              const { html, text } = buildDeliveryCustomerEmail(emailOrder, siteBrandName, ownerEmail);
+              emailJobs.push(sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been delivered! \u{1F4E6}`, html, text).catch((e) => console.error("Delivery customer email send error:", e)));
+            } catch (buildErr) {
+              console.error("Delivery customer email build error:", buildErr);
+            }
           }
           if (ownerEmail) {
-            const { html, text } = buildDeliveryOwnerEmail(emailOrder, siteBrandName);
-            emailJobs.push(sendEmail(env, ownerEmail, `Order #${fullOrder.order_number} delivered - ${siteBrandName}`, html, text).catch((e) => console.error("Delivery owner email error:", e)));
+            try {
+              const { html, text } = buildDeliveryOwnerEmail(emailOrder, siteBrandName);
+              emailJobs.push(sendEmail(env, ownerEmail, `Order #${fullOrder.order_number} delivered - ${siteBrandName}`, html, text).catch((e) => console.error("Delivery owner email send error:", e)));
+            } catch (buildErr) {
+              console.error("Delivery owner email build error:", buildErr);
+            }
           }
           await Promise.all(emailJobs);
         }
@@ -3429,7 +3444,7 @@ async function sendOrderEmails(env, siteId, orderDetails) {
   };
   const emailPromises = [];
   if (customerEmail) {
-    const { html, text } = buildOrderConfirmationEmail(orderForEmail, siteBrandName);
+    const { html, text } = buildOrderConfirmationEmail(orderForEmail, siteBrandName, ownerEmail);
     emailPromises.push(
       sendEmail(env, customerEmail, `Order Confirmation - ${orderNumber}`, html, text).then((result) => {
         console.log("Customer email result:", result);
@@ -6736,7 +6751,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-Ye4yap/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-k9n61Q/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -6771,7 +6786,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-Ye4yap/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-k9n61Q/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

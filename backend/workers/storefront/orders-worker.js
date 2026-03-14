@@ -440,12 +440,20 @@ async function updateOrderStatus(request, env, user, orderId) {
 
           const emailJobs = [];
           if (fullOrder.customer_email) {
-            const { html, text } = buildDeliveryCustomerEmail(emailOrder, siteBrandName, ownerEmail);
-            emailJobs.push(sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been delivered!`, html, text).catch(e => console.error('Delivery customer email error:', e)));
+            try {
+              const { html, text } = buildDeliveryCustomerEmail(emailOrder, siteBrandName, ownerEmail);
+              emailJobs.push(sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been delivered! 📦`, html, text).catch(e => console.error('Delivery customer email send error:', e)));
+            } catch (buildErr) {
+              console.error('Delivery customer email build error:', buildErr);
+            }
           }
           if (ownerEmail) {
-            const { html, text } = buildDeliveryOwnerEmail(emailOrder, siteBrandName);
-            emailJobs.push(sendEmail(env, ownerEmail, `Order #${fullOrder.order_number} delivered - ${siteBrandName}`, html, text).catch(e => console.error('Delivery owner email error:', e)));
+            try {
+              const { html, text } = buildDeliveryOwnerEmail(emailOrder, siteBrandName);
+              emailJobs.push(sendEmail(env, ownerEmail, `Order #${fullOrder.order_number} delivered - ${siteBrandName}`, html, text).catch(e => console.error('Delivery owner email send error:', e)));
+            } catch (buildErr) {
+              console.error('Delivery owner email build error:', buildErr);
+            }
           }
           await Promise.all(emailJobs);
         }
@@ -620,7 +628,7 @@ export async function sendOrderEmails(env, siteId, orderDetails) {
   const emailPromises = [];
 
   if (customerEmail) {
-    const { html, text } = buildOrderConfirmationEmail(orderForEmail, siteBrandName);
+    const { html, text } = buildOrderConfirmationEmail(orderForEmail, siteBrandName, ownerEmail);
     emailPromises.push(
       sendEmail(env, customerEmail, `Order Confirmation - ${orderNumber}`, html, text).then(result => {
         console.log('Customer email result:', result);

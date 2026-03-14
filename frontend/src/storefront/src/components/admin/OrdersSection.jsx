@@ -44,6 +44,7 @@ export default function OrdersSection() {
   const [cancelling, setCancelling] = useState(false);
 
   const [confirmDialog, setConfirmDialog] = useState(null);
+  const [confirming, setConfirming] = useState(false);
 
   useEffect(() => {
     if (siteConfig?.id) loadOrders();
@@ -338,18 +339,29 @@ export default function OrdersSection() {
             <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
               <button
                 onClick={() => setConfirmDialog(null)}
-                style={{ padding: '9px 22px', borderRadius: 6, border: '1px solid #ddd', background: '#f5f5f5', cursor: 'pointer', fontSize: 14 }}
+                disabled={confirming}
+                style={{ padding: '9px 22px', borderRadius: 6, border: '1px solid #ddd', background: '#f5f5f5', cursor: confirming ? 'not-allowed' : 'pointer', fontSize: 14, opacity: confirming ? 0.6 : 1 }}
               >
                 Go Back
               </button>
               <button
                 onClick={async () => {
+                  setConfirming(true);
                   await handleStatusUpdate(confirmDialog.orderId, confirmDialog.action);
+                  setConfirming(false);
                   setConfirmDialog(null);
                 }}
-                style={{ padding: '9px 22px', borderRadius: 6, border: 'none', background: confirmDialog.action === 'delivered' ? '#27ae60' : '#2196f3', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}
+                disabled={confirming}
+                style={{ padding: '9px 22px', borderRadius: 6, border: 'none', background: confirmDialog.action === 'delivered' ? '#27ae60' : '#2196f3', color: '#fff', cursor: confirming ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 600, minWidth: 140, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
               >
-                Yes, {confirmDialog.action === 'delivered' ? 'Mark Delivered' : 'Confirm Order'}
+                {confirming ? (
+                  <>
+                    <span style={{ width: 14, height: 14, border: '2px solid rgba(255,255,255,0.4)', borderTopColor: '#fff', borderRadius: '50%', display: 'inline-block', animation: 'admin-spin 0.7s linear infinite' }} />
+                    Processing...
+                  </>
+                ) : (
+                  `Yes, ${confirmDialog.action === 'delivered' ? 'Mark Delivered' : 'Confirm Order'}`
+                )}
               </button>
             </div>
           </div>

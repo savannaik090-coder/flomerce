@@ -61,7 +61,7 @@ export async function sendEmail(env, to, subject, html, text) {
   }
 }
 
-export function buildOrderConfirmationEmail(order, brandName) {
+export function buildOrderConfirmationEmail(order, brandName, ownerEmail) {
   const items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
 
   const itemsHtml = items.map(item => `
@@ -131,7 +131,7 @@ export function buildOrderConfirmationEmail(order, brandName) {
 
           ${addressHtml}
 
-          <p style="margin-top: 24px; color: #64748b; font-size: 14px; line-height: 1.6;">Your order is now being prepared. We'll update you once it's on its way. For any queries, simply reply to this email or reach out to us directly.</p>
+          <p style="margin-top: 24px; color: #64748b; font-size: 14px; line-height: 1.6;">Your order is now being prepared. We'll update you once it's on its way. For any queries, reach out to us at ${ownerEmail ? `<a href="mailto:${ownerEmail}" style="color:#0f172a;">${ownerEmail}</a>` : brandName || 'the store'}.</p>
         </div>
         <div style="background: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8;">
           <p style="margin: 0;">Thank you for shopping with ${brandName || 'us'}!</p>
@@ -191,7 +191,11 @@ export function buildCancellationCustomerEmail(order, brandName, reason, ownerEm
 }
 
 export function buildDeliveryCustomerEmail(order, brandName, ownerEmail) {
-  const items = typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []);
+  let items = [];
+  try {
+    items = typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []);
+    if (!Array.isArray(items)) items = [];
+  } catch (_) { items = []; }
   const itemsHtml = items.map(item => `
     <tr>
       <td style="padding: 10px 16px; border-bottom: 1px solid #f0f0f0; font-size: 14px;">${item.name}</td>
