@@ -11,20 +11,22 @@ import TermsEditor from './TermsEditor.jsx';
 import PrivacyEditor from './PrivacyEditor.jsx';
 import FooterEditor from './FooterEditor.jsx';
 import StoreLocationsEditor from './StoreLocationsEditor.jsx';
+import CheckoutEditor from './CheckoutEditor.jsx';
 
 const SUB_TABS = [
-  { id: 'promo-banner', icon: 'fa-bullhorn', label: 'Promo Banner', page: '/' },
-  { id: 'hero-slider', icon: 'fa-images', label: 'Hero Slider', page: '/' },
-  { id: 'welcome-banner', icon: 'fa-hand-sparkles', label: 'Welcome Banner', page: '/' },
-  { id: 'categories', icon: 'fa-folder', label: 'Categories', page: '/' },
-  { id: 'watchbuy', icon: 'fa-video', label: 'Watch & Buy', page: '/' },
-  { id: 'featured-video', icon: 'fa-film', label: 'Featured Video', page: '/' },
-  { id: 'customer-reviews', icon: 'fa-star', label: 'Customer Reviews', page: '/' },
-  { id: 'store-locations', icon: 'fa-store', label: 'Store Locations', page: '/' },
-  { id: 'about-us', icon: 'fa-info-circle', label: 'About Us', page: '/about' },
-  { id: 'terms', icon: 'fa-file-contract', label: 'Terms & Conditions', page: '/terms' },
-  { id: 'privacy', icon: 'fa-user-shield', label: 'Privacy Policy', page: '/privacy-policy' },
-  { id: 'footer', icon: 'fa-shoe-prints', label: 'Footer', page: '/' },
+  { id: 'promo-banner',      icon: 'fa-bullhorn',       label: 'Promo Banner',      page: '/' },
+  { id: 'hero-slider',       icon: 'fa-images',         label: 'Hero Slider',        page: '/' },
+  { id: 'welcome-banner',    icon: 'fa-hand-sparkles',  label: 'Welcome Banner',     page: '/' },
+  { id: 'categories',        icon: 'fa-folder',         label: 'Categories',         page: '/' },
+  { id: 'watchbuy',          icon: 'fa-video',          label: 'Watch & Buy',        page: '/' },
+  { id: 'featured-video',    icon: 'fa-film',           label: 'Featured Video',     page: '/' },
+  { id: 'customer-reviews',  icon: 'fa-star',           label: 'Customer Reviews',   page: '/' },
+  { id: 'store-locations',   icon: 'fa-store',          label: 'Store Locations',    page: '/' },
+  { id: 'checkout',          icon: 'fa-shopping-bag',   label: 'Checkout',           page: '/' },
+  { id: 'footer',            icon: 'fa-shoe-prints',    label: 'Footer',             page: '/' },
+  { id: 'about-us',          icon: 'fa-info-circle',    label: 'About Us',           page: '/about' },
+  { id: 'terms',             icon: 'fa-file-contract',  label: 'Terms & Conditions', page: '/terms' },
+  { id: 'privacy',           icon: 'fa-user-shield',    label: 'Privacy Policy',     page: '/privacy-policy' },
 ];
 
 function getStoreUrl(siteConfig) {
@@ -155,6 +157,7 @@ export default function WebsiteContentSection() {
           {activeTab === 'featured-video' && <FeaturedVideoEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
           {activeTab === 'customer-reviews' && <CustomerReviewsEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
           {activeTab === 'store-locations' && <StoreLocationsEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
+          {activeTab === 'checkout' && <CheckoutEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
           {activeTab === 'about-us' && <AboutUsEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
           {activeTab === 'terms' && <TermsEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
           {activeTab === 'privacy' && <PrivacyEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}

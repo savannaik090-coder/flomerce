@@ -53,6 +53,15 @@ export default function CheckoutPage() {
   const [orderRef, setOrderRef] = useState('');
   const [placedOrderDetails, setPlacedOrderDetails] = useState(null);
 
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
+  const [couponError, setCouponError] = useState('');
+  const [couponApplying, setCouponApplying] = useState(false);
+
+  const settings = siteConfig?.settings || {};
+  const codEnabled = settings.codEnabled !== false;
+  const availableCoupons = Array.isArray(settings.coupons) ? settings.coupons : [];
+
   useEffect(() => {
     if (isAuthenticated && user) {
       setAddress(prev => ({
@@ -150,6 +159,38 @@ export default function CheckoutPage() {
     }));
   }, []);
 
+  useEffect(() => {
+    if (!codEnabled && paymentMethod === 'cod') {
+      setPaymentMethod('razorpay');
+    }
+  }, [codEnabled]);
+
+  const couponDiscount = appliedCoupon
+    ? appliedCoupon.type === 'percent'
+      ? Math.round((subtotal * appliedCoupon.value) / 100 * 100) / 100
+      : Math.min(appliedCoupon.value, subtotal)
+    : 0;
+  const finalTotal = Math.max(0, subtotal - couponDiscount);
+
+  const applyCoupon = useCallback(() => {
+    setCouponError('');
+    const code = couponCode.trim().toUpperCase();
+    if (!code) { setCouponError('Please enter a coupon code'); return; }
+    setCouponApplying(true);
+    const found = availableCoupons.find(c => c.active && c.code.toUpperCase() === code);
+    if (!found) { setCouponError('Invalid coupon code'); setCouponApplying(false); return; }
+    if (found.expiryDate && new Date(found.expiryDate) < new Date()) { setCouponError('This coupon has expired'); setCouponApplying(false); return; }
+    if (found.minOrder && subtotal < found.minOrder) { setCouponError(`Minimum order amount for this coupon is ₹${found.minOrder}`); setCouponApplying(false); return; }
+    setAppliedCoupon(found);
+    setCouponApplying(false);
+  }, [couponCode, availableCoupons, subtotal]);
+
+  const removeCoupon = useCallback(() => {
+    setAppliedCoupon(null);
+    setCouponCode('');
+    setCouponError('');
+  }, []);
+
   const goToStep = useCallback(async (s) => {
     if (s === 2 && items.length === 0) {
       setError('Your cart is empty');
@@ -201,7 +242,10 @@ export default function CheckoutPage() {
         quantity: item.quantity || 1,
         image: resolveImageUrl(item.thumbnail || item.image_url || item.product_image || ''),
       })),
-      total: subtotal,
+      total: finalTotal,
+      subtotal,
+      couponCode: appliedCoupon?.code || null,
+      couponDiscount: couponDiscount || 0,
       shippingAddress: {
         name: customerName,
         email: address.email,
@@ -236,7 +280,7 @@ export default function CheckoutPage() {
         const paymentResult = await apiRequest('/api/payments/create-order', {
           method: 'POST',
           body: JSON.stringify({
-            amount: subtotal,
+            amount: finalTotal,
             currency: 'INR',
             receipt: `order_${Date.now()}`,
             siteId: siteConfig?.id,
@@ -255,11 +299,13 @@ export default function CheckoutPage() {
 
         const snapshotItems = [...items];
         const snapshotAddress = { ...address };
-        const snapshotTotal = subtotal;
+        const snapshotTotal = finalTotal;
+        const snapshotDiscount = couponDiscount;
+        const snapshotCoupon = appliedCoupon?.code || null;
 
         const options = {
           key: paymentData.keyId || razorpayKeyId,
-          amount: paymentData.amount || Math.round(subtotal * 100),
+          amount: paymentData.amount || Math.round(finalTotal * 100),
           currency: paymentData.currency || 'INR',
           name: siteConfig?.brandName || 'Store',
           description: 'Store Order',
@@ -283,7 +329,7 @@ export default function CheckoutPage() {
               });
               const ref = orderNumber || orderId || 'ORD-' + Date.now();
               setOrderRef(ref);
-              setPlacedOrderDetails({ items: snapshotItems, address: snapshotAddress, paymentMethod: 'razorpay', total: snapshotTotal });
+              setPlacedOrderDetails({ items: snapshotItems, address: snapshotAddress, paymentMethod: 'razorpay', total: snapshotTotal, discount: snapshotDiscount, couponCode: snapshotCoupon, originalTotal: subtotal });
               setOrderPlaced(true);
               clearAll();
             } catch (verifyErr) {
@@ -323,7 +369,7 @@ export default function CheckoutPage() {
       const order = result.data || result.order || result;
       const ref = order.orderNumber || order.order_number || order.id || order.order_id || 'ORD-' + Date.now();
       setOrderRef(ref);
-      setPlacedOrderDetails({ items: [...items], address: { ...address }, paymentMethod, total: subtotal });
+      setPlacedOrderDetails({ items: [...items], address: { ...address }, paymentMethod, total: finalTotal, discount: couponDiscount, couponCode: appliedCoupon?.code || null, originalTotal: subtotal });
       setOrderPlaced(true);
       clearAll();
     } catch (err) {
@@ -372,6 +418,12 @@ export default function CheckoutPage() {
                   })}
                 </div>
 
+                {od.discount > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderTop: '1px solid #f0f0f0' }}>
+                    <span style={{ color: '#16a34a', fontSize: 14 }}>Coupon ({od.couponCode})</span>
+                    <span style={{ color: '#16a34a', fontWeight: 600, fontSize: 14 }}>- {formatAmount(od.discount)}</span>
+                  </div>
+                )}
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderTop: '2px solid #f0f0f0', marginBottom: 24 }}>
                   <span style={{ fontWeight: 700, fontSize: 16 }}>Total Paid</span>
                   <span style={{ fontWeight: 700, fontSize: 18, color: '#7a4012' }}>{formatAmount(od.total)}</span>
@@ -501,11 +553,73 @@ export default function CheckoutPage() {
               );
             })}
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 16, marginTop: 16, borderTop: '2px solid #f0f0f0' }}>
-            <span style={{ fontSize: 16, fontWeight: 600 }}>Subtotal</span>
-            <span style={{ fontSize: 18, fontWeight: 700, color: '#7a4012' }}>{formatAmount(subtotal)}</span>
+          <div style={{ borderTop: '2px solid #f0f0f0', paddingTop: 16, marginTop: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: couponDiscount > 0 ? 8 : 0 }}>
+              <span style={{ fontSize: 15, fontWeight: 600 }}>Subtotal</span>
+              <span style={{ fontSize: 16, fontWeight: 700 }}>{formatAmount(subtotal)}</span>
+            </div>
+            {couponDiscount > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <span style={{ fontSize: 14, color: '#16a34a', fontWeight: 500 }}>
+                  Coupon ({appliedCoupon.code})
+                </span>
+                <span style={{ fontSize: 14, color: '#16a34a', fontWeight: 700 }}>- {formatAmount(couponDiscount)}</span>
+              </div>
+            )}
+            {couponDiscount > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 8, borderTop: '1px solid #f0f0f0' }}>
+                <span style={{ fontSize: 16, fontWeight: 700 }}>Total</span>
+                <span style={{ fontSize: 18, fontWeight: 700, color: '#7a4012' }}>{formatAmount(finalTotal)}</span>
+              </div>
+            )}
+            {couponDiscount === 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: 16, fontWeight: 700 }}>Total</span>
+                <span style={{ fontSize: 18, fontWeight: 700, color: '#7a4012' }}>{formatAmount(subtotal)}</span>
+              </div>
+            )}
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 24, gap: 12 }}>
+
+          {availableCoupons.some(c => c.active) && (
+            <div style={{ marginTop: 16, padding: '14px 16px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+              {!appliedCoupon ? (
+                <>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 8 }}>Have a coupon code?</div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input
+                      type="text"
+                      value={couponCode}
+                      onChange={e => { setCouponCode(e.target.value.toUpperCase()); setCouponError(''); }}
+                      onKeyDown={e => e.key === 'Enter' && applyCoupon()}
+                      placeholder="Enter code"
+                      style={{ flex: 1, padding: '9px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, fontFamily: 'monospace', letterSpacing: 1, textTransform: 'uppercase' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={applyCoupon}
+                      disabled={couponApplying}
+                      style={{ padding: '9px 16px', background: '#1e293b', color: '#fff', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}
+                    >
+                      Apply
+                    </button>
+                  </div>
+                  {couponError && <div style={{ color: '#ef4444', fontSize: 12, marginTop: 6 }}>{couponError}</div>}
+                </>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div>
+                    <span style={{ fontSize: 13, color: '#16a34a', fontWeight: 700 }}>✓ Coupon applied: {appliedCoupon.code}</span>
+                    <span style={{ fontSize: 13, color: '#64748b', marginLeft: 8 }}>
+                      ({appliedCoupon.type === 'percent' ? `${appliedCoupon.value}% off` : `₹${appliedCoupon.value} off`})
+                    </span>
+                  </div>
+                  <button type="button" onClick={removeCoupon} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 13, textDecoration: 'underline' }}>Remove</button>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 20, gap: 12 }}>
             <Link to="/" style={{ padding: '10px 20px', border: '1px solid #9c7c38', color: '#9c7c38', borderRadius: 0, textDecoration: 'none', fontWeight: 500 }}>Continue Shopping</Link>
             <button onClick={() => goToStep(2)} style={{ padding: '10px 24px', background: '#7a4012', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600 }}>Continue to Address</button>
           </div>
@@ -630,25 +744,33 @@ export default function CheckoutPage() {
               <span>Subtotal ({items.length} items)</span>
               <span style={{ fontWeight: 600 }}>{formatAmount(subtotal)}</span>
             </div>
+            {couponDiscount > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #f0f0f0' }}>
+                <span style={{ color: '#16a34a' }}>Coupon ({appliedCoupon.code})</span>
+                <span style={{ color: '#16a34a', fontWeight: 600 }}>- {formatAmount(couponDiscount)}</span>
+              </div>
+            )}
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #f0f0f0' }}>
               <span>Shipping</span>
               <span style={{ color: '#25ab00', fontWeight: 500 }}>Free</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', fontSize: 18, fontWeight: 700 }}>
               <span>Total</span>
-              <span style={{ color: '#7a4012' }}>{formatAmount(subtotal)}</span>
+              <span style={{ color: '#7a4012' }}>{formatAmount(finalTotal)}</span>
             </div>
           </div>
 
           <div style={{ marginBottom: 24 }}>
             <h5 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>Payment Method</h5>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 16, border: `2px solid ${paymentMethod === 'cod' ? '#7a4012' : '#e0e0e0'}`, borderRadius: 8, marginBottom: 12, cursor: 'pointer', background: paymentMethod === 'cod' ? '#f8f6f0' : '#fff' }}>
-              <input type="radio" name="payment" value="cod" checked={paymentMethod === 'cod'} onChange={() => setPaymentMethod('cod')} />
-              <div>
-                <div style={{ fontWeight: 600 }}>Cash on Delivery (COD)</div>
-                <div style={{ fontSize: 13, color: '#666' }}>Pay when you receive your order</div>
-              </div>
-            </label>
+            {codEnabled && (
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 16, border: `2px solid ${paymentMethod === 'cod' ? '#7a4012' : '#e0e0e0'}`, borderRadius: 8, marginBottom: 12, cursor: 'pointer', background: paymentMethod === 'cod' ? '#f8f6f0' : '#fff' }}>
+                <input type="radio" name="payment" value="cod" checked={paymentMethod === 'cod'} onChange={() => setPaymentMethod('cod')} />
+                <div>
+                  <div style={{ fontWeight: 600 }}>Cash on Delivery (COD)</div>
+                  <div style={{ fontSize: 13, color: '#666' }}>Pay when you receive your order</div>
+                </div>
+              </label>
+            )}
             <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 16, border: `2px solid ${paymentMethod === 'razorpay' ? '#7a4012' : '#e0e0e0'}`, borderRadius: 8, cursor: 'pointer', background: paymentMethod === 'razorpay' ? '#f8f6f0' : '#fff' }}>
               <input type="radio" name="payment" value="razorpay" checked={paymentMethod === 'razorpay'} onChange={() => setPaymentMethod('razorpay')} />
               <div>
