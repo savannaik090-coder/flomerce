@@ -26,8 +26,8 @@
     border-radius: 12px;
     overflow: hidden;
     margin-bottom: 20px;
-    height: 750px;
-    min-height: 550px;
+    height: 850px;
+    min-height: 650px;
 }
 
 .product-main-image {
@@ -496,8 +496,8 @@
     }
 
     .main-image-container {
-        height: 500px;
-        min-height: 400px;
+        height: 650px;
+        min-height: 550px;
     }
 
     .product-thumbnail {
@@ -545,8 +545,8 @@
     }
 
     .main-image-container {
-        height: 400px;
-        min-height: 350px;
+        height: 550px;
+        min-height: 450px;
         margin-bottom: 15px;
     }
 
