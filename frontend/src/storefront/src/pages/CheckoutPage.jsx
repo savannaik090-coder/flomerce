@@ -51,6 +51,7 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState('cod');
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [orderRef, setOrderRef] = useState('');
+  const [placedOrderDetails, setPlacedOrderDetails] = useState(null);
 
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -275,7 +276,9 @@ export default function CheckoutPage() {
                   orderId: orderId,
                 }),
               });
-              setOrderRef(orderNumber || orderId || 'ORD-' + Date.now());
+              const ref = orderNumber || orderId || 'ORD-' + Date.now();
+              setOrderRef(ref);
+              setPlacedOrderDetails({ items: [...items], address: { ...address }, paymentMethod, total: subtotal });
               setOrderPlaced(true);
               clearAll();
             } catch (verifyErr) {
@@ -308,7 +311,9 @@ export default function CheckoutPage() {
 
       const result = await orderService.createOrder(orderData);
       const order = result.data || result.order || result;
-      setOrderRef(order.orderNumber || order.order_number || order.id || order.order_id || 'ORD-' + Date.now());
+      const ref = order.orderNumber || order.order_number || order.id || order.order_id || 'ORD-' + Date.now();
+      setOrderRef(ref);
+      setPlacedOrderDetails({ items: [...items], address: { ...address }, paymentMethod, total: subtotal });
       setOrderPlaced(true);
       clearAll();
     } catch (err) {
@@ -319,17 +324,87 @@ export default function CheckoutPage() {
   }, [siteConfig, items, subtotal, address, paymentMethod, clearAll]);
 
   if (orderPlaced) {
+    const od = placedOrderDetails;
     return (
-      <div className="checkout-page" style={{ minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ textAlign: 'center', maxWidth: 500, padding: 40, background: '#fff', borderRadius: 8, boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
-          <div style={{ fontSize: 60, color: '#25ab00', marginBottom: 20 }}>&#10003;</div>
-          <h2 style={{ fontFamily: "'Playfair Display', serif", marginBottom: 15 }}>Order Confirmed!</h2>
-          <p style={{ color: '#666', marginBottom: 10 }}>Thank you for your order.</p>
-          <p style={{ fontFamily: 'monospace', background: '#f5f5f5', padding: '8px 16px', borderRadius: 4, display: 'inline-block', marginBottom: 20 }}>
-            Order Reference: {orderRef}
-          </p>
-          <div>
-            <Link to="/" style={{ display: 'inline-block', background: '#000', color: '#fff', padding: '12px 24px', borderRadius: 4, textDecoration: 'none', fontWeight: 600 }}>
+      <div className="checkout-page" style={{ maxWidth: 640, margin: '40px auto 60px', padding: '0 16px' }}>
+        <div style={{ background: '#fff', borderRadius: 10, boxShadow: '0 4px 20px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
+          <div style={{ background: '#25ab00', padding: '32px 24px', textAlign: 'center' }}>
+            <div style={{ width: 64, height: 64, background: 'rgba(255,255,255,0.2)', borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14, fontSize: 34 }}>✓</div>
+            <h2 style={{ color: '#fff', margin: '0 0 6px', fontFamily: "'Playfair Display', serif", fontSize: 24 }}>Order Placed Successfully!</h2>
+            <p style={{ color: 'rgba(255,255,255,0.85)', margin: 0, fontSize: 14 }}>Thank you for your purchase. We'll get it ready for you.</p>
+          </div>
+
+          <div style={{ padding: '24px 24px 0' }}>
+            <div style={{ background: '#f5f5f5', borderRadius: 6, padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+              <span style={{ color: '#555', fontSize: 14 }}>Order Reference</span>
+              <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: 15, color: '#1a1a1a' }}>{orderRef}</span>
+            </div>
+
+            {od && (
+              <>
+                <h4 style={{ margin: '0 0 12px', fontSize: 15, color: '#333', borderBottom: '1px solid #f0f0f0', paddingBottom: 8 }}>Items Ordered</h4>
+                <div style={{ marginBottom: 20 }}>
+                  {od.items.map((item, i) => {
+                    const price = item.product_price || item.price || 0;
+                    const qty = item.quantity || 1;
+                    const imgUrl = resolveImageUrl(item.thumbnail || item.product_image || item.image_url || '');
+                    return (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid #f7f7f7' }}>
+                        {imgUrl && (
+                          <img src={imgUrl} alt={item.product_name || item.name} style={{ width: 50, height: 50, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />
+                        )}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 600, fontSize: 14, color: '#1a1a1a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.product_name || item.name}</div>
+                          <div style={{ fontSize: 13, color: '#888', marginTop: 2 }}>Qty: {qty} × {formatAmount(price)}</div>
+                        </div>
+                        <div style={{ fontWeight: 700, color: '#7a4012', fontSize: 14, flexShrink: 0 }}>{formatAmount(price * qty)}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderTop: '2px solid #f0f0f0', marginBottom: 24 }}>
+                  <span style={{ fontWeight: 700, fontSize: 16 }}>Total Paid</span>
+                  <span style={{ fontWeight: 700, fontSize: 18, color: '#7a4012' }}>{formatAmount(od.total)}</span>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
+                  <div style={{ background: '#f9f9f9', borderRadius: 8, padding: 14 }}>
+                    <div style={{ fontSize: 12, color: '#888', textTransform: 'uppercase', fontWeight: 600, marginBottom: 8, letterSpacing: 0.5 }}>Shipping To</div>
+                    <div style={{ fontSize: 13, color: '#333', lineHeight: 1.7 }}>
+                      <div style={{ fontWeight: 600 }}>{od.address.firstName} {od.address.lastName}</div>
+                      <div>{od.address.houseNumber}, {od.address.roadName}</div>
+                      <div>{od.address.city}, {od.address.state}</div>
+                      <div>PIN: {od.address.pinCode}</div>
+                      <div style={{ marginTop: 4, color: '#666' }}>{od.address.phone}</div>
+                    </div>
+                  </div>
+                  <div style={{ background: '#f9f9f9', borderRadius: 8, padding: 14 }}>
+                    <div style={{ fontSize: 12, color: '#888', textTransform: 'uppercase', fontWeight: 600, marginBottom: 8, letterSpacing: 0.5 }}>Payment</div>
+                    <div style={{ fontSize: 13, color: '#333' }}>
+                      <div style={{ fontWeight: 600, marginBottom: 4 }}>
+                        {od.paymentMethod === 'cod' ? 'Cash on Delivery' : 'Online Payment (Razorpay)'}
+                      </div>
+                      <div style={{ fontSize: 12, color: '#888' }}>
+                        {od.paymentMethod === 'cod'
+                          ? 'You will pay when the order is delivered to you.'
+                          : 'Payment completed successfully online.'}
+                      </div>
+                      <div style={{ marginTop: 10, display: 'inline-block', background: od.paymentMethod === 'cod' ? '#fff3e0' : '#e8f5e9', color: od.paymentMethod === 'cod' ? '#e65100' : '#2e7d32', fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 20 }}>
+                        {od.paymentMethod === 'cod' ? 'Pending' : 'Paid'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+
+          <div style={{ padding: '0 24px 24px', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            <Link to="/profile" style={{ flex: 1, display: 'block', textAlign: 'center', padding: '11px 20px', border: '1.5px solid #7a4012', color: '#7a4012', borderRadius: 6, textDecoration: 'none', fontWeight: 600, fontSize: 14 }}>
+              Track My Order
+            </Link>
+            <Link to="/" style={{ flex: 1, display: 'block', textAlign: 'center', padding: '11px 20px', background: '#7a4012', color: '#fff', borderRadius: 6, textDecoration: 'none', fontWeight: 600, fontSize: 14 }}>
               Continue Shopping
             </Link>
           </div>
