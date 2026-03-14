@@ -54,7 +54,10 @@ export default function WebsiteContentSection() {
     setPreviewKey(k => k + 1);
   }, []);
 
+  const accumulatedSettingsRef = useRef({});
+
   const sendPreviewUpdate = useCallback((settingsPatch) => {
+    accumulatedSettingsRef.current = { ...accumulatedSettingsRef.current, ...settingsPatch };
     [iframeRef.current, mobileIframeRef.current].forEach(frame => {
       try {
         if (frame?.contentWindow) {
@@ -62,6 +65,21 @@ export default function WebsiteContentSection() {
         }
       } catch (e) {}
     });
+  }, []);
+
+  const replayPreviewToMobile = useCallback(() => {
+    if (Object.keys(accumulatedSettingsRef.current).length === 0) return;
+    const tryPost = (attempts) => {
+      try {
+        if (mobileIframeRef.current?.contentWindow) {
+          mobileIframeRef.current.contentWindow.postMessage(
+            { type: 'FLUXE_PREVIEW_UPDATE', settings: accumulatedSettingsRef.current }, '*'
+          );
+        }
+      } catch (e) {}
+      if (attempts > 1) setTimeout(() => tryPost(attempts - 1), 600);
+    };
+    setTimeout(() => tryPost(3), 400);
   }, []);
 
   useEffect(() => {
@@ -200,10 +218,12 @@ export default function WebsiteContentSection() {
         </button>
       )}
 
-      {isMobile && showMobilePreview && previewUrl && (
+      {isMobile && (
         <div style={{
           position: 'fixed', inset: 0, zIndex: 9999,
           background: '#fff', display: 'flex', flexDirection: 'column',
+          visibility: showMobilePreview ? 'visible' : 'hidden',
+          pointerEvents: showMobilePreview ? 'auto' : 'none',
         }}>
           <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -237,13 +257,16 @@ export default function WebsiteContentSection() {
               </button>
             </div>
           </div>
-          <iframe
-            ref={mobileIframeRef}
-            key={previewKey}
-            src={previewUrl}
-            style={{ flex: 1, width: '100%', border: 'none', display: 'block' }}
-            title="Store Preview"
-          />
+          {previewUrl && (
+            <iframe
+              ref={mobileIframeRef}
+              key={previewKey}
+              src={previewUrl}
+              onLoad={replayPreviewToMobile}
+              style={{ flex: 1, width: '100%', border: 'none', display: 'block' }}
+              title="Store Preview"
+            />
+          )}
         </div>
       )}
     </div>
