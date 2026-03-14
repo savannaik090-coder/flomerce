@@ -1,13 +1,26 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 
+function getFacebookPageName(facebookUrl) {
+  if (!facebookUrl) return null;
+  try {
+    const url = new URL(facebookUrl.startsWith('http') ? facebookUrl : `https://${facebookUrl}`);
+    const parts = url.pathname.replace(/^\/+|\/+$/g, '').split('/');
+    return parts[0] || null;
+  } catch {
+    return null;
+  }
+}
+
 export default function WhatsAppButton() {
   const { siteConfig } = useContext(SiteContext);
   const [showTooltip, setShowTooltip] = useState(false);
 
-  const phone = siteConfig?.phone || '';
   const whatsapp = siteConfig?.whatsapp || '';
   const showFloatingButton = siteConfig?.showFloatingButton !== false;
+
+  const facebookUrl = siteConfig?.settings?.social?.facebook || siteConfig?.socialLinks?.facebook || '';
+  const messengerPage = getFacebookPageName(facebookUrl);
 
   useEffect(() => {
     const timer = setTimeout(() => setShowTooltip(true), 3000);
@@ -15,25 +28,38 @@ export default function WhatsAppButton() {
   }, []);
 
   if (!showFloatingButton) return null;
-  if (!whatsapp && !phone) return null;
 
-  const isWhatsApp = !!whatsapp;
-  const contactNumber = whatsapp || phone;
+  if (whatsapp) {
+    const href = `https://wa.me/${whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent("Hi! I would like to know more about your products. Can you help me?")}`;
+    return (
+      <>
+        <a href={href} className="whatsapp-btn" target="_blank" rel="noopener noreferrer">
+          <i className="fab fa-whatsapp" />
+        </a>
+        {showTooltip && (
+          <div className="whatsapp-tooltip" onClick={() => setShowTooltip(false)}>
+            Chat with us!
+          </div>
+        )}
+      </>
+    );
+  }
 
-  const href = isWhatsApp
-    ? `https://wa.me/${contactNumber.replace(/\D/g, '')}?text=${encodeURIComponent("Hi! I would like to know more about your products. Can you help me?")}`
-    : `tel:${contactNumber.replace(/[^0-9+]/g, '')}`;
+  if (messengerPage) {
+    const href = `https://m.me/${messengerPage}`;
+    return (
+      <>
+        <a href={href} className="whatsapp-btn messenger-btn" target="_blank" rel="noopener noreferrer">
+          <i className="fab fa-facebook-messenger" />
+        </a>
+        {showTooltip && (
+          <div className="whatsapp-tooltip" onClick={() => setShowTooltip(false)}>
+            Message us!
+          </div>
+        )}
+      </>
+    );
+  }
 
-  return (
-    <>
-      <a href={href} className={isWhatsApp ? 'whatsapp-btn' : 'whatsapp-btn phone-btn'} target={isWhatsApp ? '_blank' : '_self'} rel="noopener noreferrer">
-        <i className={isWhatsApp ? 'fab fa-whatsapp' : 'fas fa-phone'} />
-      </a>
-      {showTooltip && (
-        <div className="whatsapp-tooltip" onClick={() => setShowTooltip(false)}>
-          {isWhatsApp ? 'Chat with us!' : 'Call us!'}
-        </div>
-      )}
-    </>
-  );
+  return null;
 }

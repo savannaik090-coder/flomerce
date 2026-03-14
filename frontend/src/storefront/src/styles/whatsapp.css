@@ -44,8 +44,8 @@
     border-left-color: white;
 }
 
-.whatsapp-btn.phone-btn {
-    background-color: #2563eb;
+.whatsapp-btn.messenger-btn {
+    background: linear-gradient(135deg, #0099ff, #a033ff);
 }
 
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }

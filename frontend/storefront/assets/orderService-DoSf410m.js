@@ -1,0 +1,1 @@
+import{t as a}from"./index-Cyv0BOP8.js";async function s(r){return a("/api/orders",{method:"POST",body:JSON.stringify(r)})}async function o(r,t={}){const e=new URLSearchParams({siteId:r,...t}).toString();return a(`/api/orders?${e}`)}async function i(r,t,e={}){return a(`/api/orders/${r}`,{method:"PUT",body:JSON.stringify({status:t,...e})})}export{s as c,o as g,i as u};
