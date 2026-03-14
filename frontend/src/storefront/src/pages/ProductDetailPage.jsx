@@ -116,8 +116,8 @@ export default function ProductDetailPage() {
   const isOutOfStock = product.stock !== undefined && product.stock !== null && product.stock <= 0;
   const productInWishlist = isInWishlist(product.id);
 
-  const categoryName = product.category
-    ? product.category.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+  const categoryName = product.category_name || product.category
+    ? (product.category_name || product.category).replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
     : null;
 
   const reviews = product.reviews || [];
