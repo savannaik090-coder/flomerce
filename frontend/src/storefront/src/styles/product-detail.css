@@ -528,15 +528,18 @@
         gap: 1rem;
         padding: 1rem;
         margin-top: 20px;
+        max-width: 100%;
     }
 
     .product-detail-left {
         position: static;
+        width: 100%;
     }
 
     .main-image-container {
         height: 650px;
         min-height: 550px;
+        width: 100%;
     }
 
     .product-thumbnail {
@@ -581,12 +584,14 @@
     .product-detail-container {
         margin-top: 70px;
         padding: 0.75rem;
+        max-width: 100%;
     }
 
     .main-image-container {
         height: 550px;
         min-height: 450px;
         margin-bottom: 15px;
+        width: 100%;
     }
 
     .product-thumbnail {
