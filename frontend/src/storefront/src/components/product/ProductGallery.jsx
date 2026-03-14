@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import ReactDOM from 'react-dom';
 import { resolveImageUrl } from '../../utils/imageUrl.js';
 
 export default function ProductGallery({ images, productName }) {
@@ -63,6 +64,25 @@ export default function ProductGallery({ images, productName }) {
     touchStartX.current = null;
   }
 
+  const zoomOverlay = zoomOpen ? ReactDOM.createPortal(
+    <div className="image-zoom-overlay" onClick={() => setZoomOpen(false)}>
+      <button className="zoom-close" onClick={(e) => { e.stopPropagation(); setZoomOpen(false); }}>✕ Close</button>
+      {hasMultipleImages && (
+        <>
+          <button className="zoom-nav prev" onClick={(e) => { e.stopPropagation(); goToZoomImage(zoomIndex - 1); }} disabled={zoomIndex === 0}>‹</button>
+          <button className="zoom-nav next" onClick={(e) => { e.stopPropagation(); goToZoomImage(zoomIndex + 1); }} disabled={zoomIndex === parsedImages.length - 1}>›</button>
+        </>
+      )}
+      <img
+        className="zoomed-image"
+        src={parsedImages[zoomIndex]?.url}
+        alt={parsedImages[zoomIndex]?.alt}
+        onClick={(e) => e.stopPropagation()}
+      />
+    </div>,
+    document.body
+  ) : null;
+
   if (parsedImages.length === 0) {
     return (
       <div className="product-detail-left">
@@ -74,76 +94,62 @@ export default function ProductGallery({ images, productName }) {
   }
 
   return (
-    <div className="product-detail-left">
-      <div
-        className="main-image-container"
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
-        ref={mainImageRef}
-      >
-        {hasMultipleImages && (
-          <button
-            className="gallery-nav gallery-nav-prev"
-            onClick={() => goToImage(activeIndex - 1)}
-            disabled={activeIndex === 0}
-          >
-            ‹
-          </button>
-        )}
+    <>
+      <div className="product-detail-left">
+        <div
+          className="main-image-container"
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+          ref={mainImageRef}
+        >
+          {hasMultipleImages && (
+            <button
+              className="gallery-nav gallery-nav-prev"
+              onClick={() => goToImage(activeIndex - 1)}
+              disabled={activeIndex === 0}
+            >
+              ‹
+            </button>
+          )}
 
-        <img
-          className="product-main-image"
-          src={parsedImages[activeIndex]?.url}
-          alt={parsedImages[activeIndex]?.alt}
-          onClick={handleMainImageClick}
-          style={{ display: 'block' }}
-        />
+          <img
+            className="product-main-image"
+            src={parsedImages[activeIndex]?.url}
+            alt={parsedImages[activeIndex]?.alt}
+            onClick={handleMainImageClick}
+            style={{ display: 'block' }}
+          />
+
+          {hasMultipleImages && (
+            <button
+              className="gallery-nav gallery-nav-next"
+              onClick={() => goToImage(activeIndex + 1)}
+              disabled={activeIndex === parsedImages.length - 1}
+            >
+              ›
+            </button>
+          )}
+        </div>
 
         {hasMultipleImages && (
-          <button
-            className="gallery-nav gallery-nav-next"
-            onClick={() => goToImage(activeIndex + 1)}
-            disabled={activeIndex === parsedImages.length - 1}
-          >
-            ›
-          </button>
+          <div className="product-detail-images">
+            <div className="product-thumbnails">
+              {parsedImages.map((img, index) => (
+                <img
+                  key={index}
+                  className={`product-thumbnail${index === activeIndex ? ' active' : ''}`}
+                  src={img.url}
+                  alt={img.alt}
+                  onClick={() => goToImage(index)}
+                  loading="lazy"
+                />
+              ))}
+            </div>
+          </div>
         )}
       </div>
 
-      {hasMultipleImages && (
-        <div className="product-detail-images">
-          <div className="product-thumbnails">
-            {parsedImages.map((img, index) => (
-              <img
-                key={index}
-                className={`product-thumbnail${index === activeIndex ? ' active' : ''}`}
-                src={img.url}
-                alt={img.alt}
-                onClick={() => goToImage(index)}
-                loading="lazy"
-              />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {zoomOpen && (
-        <div className="image-zoom-overlay" onClick={() => setZoomOpen(false)}>
-          <button className="zoom-close" onClick={(e) => { e.stopPropagation(); setZoomOpen(false); }}>✕ Close</button>
-          {hasMultipleImages && (
-            <>
-              <button className="zoom-nav prev" onClick={(e) => { e.stopPropagation(); goToZoomImage(zoomIndex - 1); }} disabled={zoomIndex === 0}>‹</button>
-              <button className="zoom-nav next" onClick={(e) => { e.stopPropagation(); goToZoomImage(zoomIndex + 1); }} disabled={zoomIndex === parsedImages.length - 1}>›</button>
-            </>
-          )}
-          <img
-            className="zoomed-image"
-            src={parsedImages[zoomIndex]?.url}
-            alt={parsedImages[zoomIndex]?.alt}
-            onClick={(e) => e.stopPropagation()}
-          />
-        </div>
-      )}
-    </div>
+      {zoomOverlay}
+    </>
   );
 }
