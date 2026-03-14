@@ -539,9 +539,11 @@
     .main-image-container {
         height: 650px;
         min-height: 550px;
+    }
+
+    .product-main-image {
         width: 90vw;
-        margin-left: auto;
-        margin-right: auto;
+        max-width: 90vw;
     }
 
     .product-thumbnail {
@@ -593,9 +595,11 @@
         height: 550px;
         min-height: 450px;
         margin-bottom: 15px;
+    }
+
+    .product-main-image {
         width: 90vw;
-        margin-left: auto;
-        margin-right: auto;
+        max-width: 90vw;
     }
 
     .product-thumbnail {
