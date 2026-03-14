@@ -156,6 +156,13 @@ export default function ProductDetailPage() {
               )}
             </div>
 
+            {product.description && (
+              <div className="product-description-section product-description-inline">
+                <h3>Product Description</h3>
+                <p>{product.description}</p>
+              </div>
+            )}
+
             <div className="product-actions">
               <button
                 className="add-to-cart-btn"
@@ -182,13 +189,6 @@ export default function ProductDetailPage() {
           </div>
         </div>
       </div>
-
-      {product.description && (
-        <div className="product-description-section">
-          <h3>Product Description</h3>
-          <p>{product.description}</p>
-        </div>
-      )}
 
       {reviews.length > 0 && (
         <div className="product-reviews-section">

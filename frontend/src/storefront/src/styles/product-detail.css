@@ -26,8 +26,8 @@
     border-radius: 12px;
     overflow: hidden;
     margin-bottom: 20px;
-    height: 650px;
-    min-height: 450px;
+    height: 750px;
+    min-height: 550px;
 }
 
 .product-main-image {
@@ -58,8 +58,8 @@
 }
 
 .zoomed-image {
-    max-width: 90%;
-    max-height: 90%;
+    max-width: 95%;
+    max-height: 95%;
     object-fit: contain;
     animation: zoomIn 0.3s ease;
 }
@@ -258,6 +258,11 @@
 .add-to-wishlist-btn.active {
     color: #ff3e6c;
     border-color: #ff3e6c;
+}
+
+.product-description-inline {
+    padding: 0;
+    margin-bottom: 25px;
 }
 
 .product-description-section {
