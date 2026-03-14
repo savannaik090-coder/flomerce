@@ -433,8 +433,9 @@
 .related-products-section .section-title {
     font-family: var(--font-heading);
     font-size: 28px;
-    text-align: center;
+    text-align: left;
     margin-bottom: 30px;
+    padding-left: 20px;
     color: #333;
 }
 
@@ -526,7 +527,7 @@
     .product-detail-container {
         grid-template-columns: 1fr;
         gap: 1rem;
-        padding: 0 0.5rem;
+        padding: 0 1.25rem;
         margin-top: 20px;
         max-width: 100%;
     }
@@ -595,7 +596,7 @@
 @media (max-width: 480px) {
     .product-detail-container {
         margin-top: 70px;
-        padding: 0 0.4rem;
+        padding: 0 1rem;
         max-width: 100%;
     }
 
