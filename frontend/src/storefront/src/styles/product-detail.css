@@ -254,11 +254,11 @@
 }
 
 .add-to-cart-btn, .buy-now-btn, .add-to-wishlist-btn {
-    padding: 14px 24px;
-    font-family: var(--font-primary);
-    font-size: 14px;
-    font-weight: 600;
-    letter-spacing: 1px;
+    padding: 16px 32px;
+    font-family: var(--font-heading, Georgia, serif);
+    font-size: 15px;
+    font-weight: 500;
+    letter-spacing: 2.5px;
     border: none;
     cursor: pointer;
     transition: all 0.3s ease;
@@ -266,32 +266,37 @@
 }
 
 .add-to-cart-btn {
-    background: #000;
+    background: #b5727a;
     color: #fff;
+    border: 1px solid #b5727a;
 }
 
 .add-to-cart-btn:hover {
-    background: #333;
+    background: #9e5d65;
+    border-color: #9e5d65;
 }
 
 .add-to-cart-btn:disabled {
-    background: #ccc;
+    background: #d4b0b5;
+    border-color: #d4b0b5;
     cursor: not-allowed;
 }
 
 .buy-now-btn {
-    background: var(--color-secondary, #5a3f2a);
-    color: #fff;
+    background: transparent;
+    color: #b5727a;
+    border: 1px solid #b5727a;
 }
 
 .buy-now-btn:hover {
-    background: var(--color-primary, #4a2f1a);
+    background: #b5727a;
+    color: #fff;
 }
 
 .add-to-wishlist-btn {
     background: transparent;
-    color: #333;
-    border: 1px solid #ddd;
+    color: #b5727a;
+    border: 1px solid #d4b0b5;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -299,12 +304,12 @@
 }
 
 .add-to-wishlist-btn:hover {
-    border-color: #333;
+    border-color: #b5727a;
 }
 
 .add-to-wishlist-btn.active {
-    color: #ff3e6c;
-    border-color: #ff3e6c;
+    color: #b5727a;
+    border-color: #b5727a;
 }
 
 .product-description-inline.product-description-section {
