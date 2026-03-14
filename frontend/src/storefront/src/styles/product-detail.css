@@ -498,17 +498,12 @@
     background: none;
     border: none;
     cursor: pointer;
-    font-family: var(--font-heading, Georgia, serif);
+    font-family: var(--font-primary, 'Segoe UI', system-ui, -apple-system, sans-serif);
     font-size: 14px;
     font-weight: 500;
     color: #333;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.3px;
     text-align: left;
-    transition: color 0.2s ease;
-}
-
-.policy-accordion-header:hover {
-    color: #b5727a;
 }
 
 .policy-accordion-title {
