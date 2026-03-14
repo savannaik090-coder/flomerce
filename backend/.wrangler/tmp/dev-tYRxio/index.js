@@ -793,9 +793,6 @@ function buildOrderConfirmationEmail(order, brandName, ownerEmail) {
         </div>
         <div style="padding: 32px;">
           <div style="text-align: center; margin-bottom: 24px;">
-            <div style="width: 56px; height: 56px; background: #dcfce7; border-radius: 50%; display: inline-block; line-height: 56px; text-align: center; margin-bottom: 12px; vertical-align: middle;">
-              <span style="font-size: 28px; line-height: 1; vertical-align: middle;">&#10003;</span>
-            </div>
             <h2 style="margin: 0 0 4px; font-size: 22px; color: #0f172a;">Order Confirmed!</h2>
             <p style="margin: 0; color: #64748b; font-size: 14px;">Order #${order.order_number || order.orderNumber || ""}</p>
           </div>
@@ -857,9 +854,6 @@ function buildCancellationCustomerEmail(order, brandName, reason, ownerEmail) {
         </div>
         <div style="padding: 32px;">
           <div style="text-align: center; margin-bottom: 24px;">
-            <div style="width: 56px; height: 56px; background: #fde8e8; border-radius: 50%; display: inline-block; line-height: 56px; text-align: center; margin-bottom: 12px; vertical-align: middle;">
-              <span style="font-size: 28px; line-height: 1; vertical-align: middle;">&#10007;</span>
-            </div>
             <h2 style="margin: 0 0 4px; font-size: 22px; color: #0f172a;">Order Cancelled</h2>
             <p style="margin: 0; color: #64748b; font-size: 14px;">Order #${order.order_number || order.orderNumber || ""}</p>
           </div>
