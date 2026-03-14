@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-k9n61Q/checked-fetch.js
+// .wrangler/tmp/bundle-62yemx/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-k9n61Q/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-62yemx/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-k9n61Q/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-62yemx/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-k9n61Q/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-62yemx/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -670,12 +670,12 @@ var init_site_admin_worker = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-k9n61Q/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-62yemx/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-k9n61Q/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-62yemx/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -811,9 +811,22 @@ function buildOrderConfirmationEmail(order, brandName, ownerEmail) {
             </tbody>
           </table>
 
-          <div style="text-align: right; padding: 16px; background: #f8f9fa; border-radius: 8px; margin-top: 16px;">
-            <span style="font-size: 18px; font-weight: 700; color: #0f172a;">Total: &#8377;${Number(order.total).toFixed(2)}</span>
-          </div>
+          ${(() => {
+    const sub = Number(order.subtotal || order.total || 0);
+    const disc = Number(order.discount || 0);
+    const tot = Number(order.total || 0);
+    const coupon = order.coupon_code || "";
+    if (disc > 0) {
+      return `<div style="padding: 16px; background: #f8f9fa; border-radius: 8px; margin-top: 16px; text-align: right;">
+                <div style="font-size: 14px; color: #555; margin-bottom: 4px;">Subtotal: <strong>&#8377;${sub.toFixed(2)}</strong></div>
+                <div style="font-size: 14px; color: #16a34a; margin-bottom: 8px;">Coupon${coupon ? ` (${coupon})` : ""}: <strong>-&#8377;${disc.toFixed(2)}</strong></div>
+                <div style="font-size: 18px; font-weight: 700; color: #0f172a; border-top: 1px solid #e2e8f0; padding-top: 8px;">Total: &#8377;${tot.toFixed(2)}</div>
+              </div>`;
+    }
+    return `<div style="text-align: right; padding: 16px; background: #f8f9fa; border-radius: 8px; margin-top: 16px;">
+              <span style="font-size: 18px; font-weight: 700; color: #0f172a;">Total: &#8377;${tot.toFixed(2)}</span>
+            </div>`;
+  })()}
 
           <div style="margin-top: 16px; padding: 12px 16px; background: #eff6ff; border-radius: 8px; font-size: 14px; color: #1e40af;">
             Payment Method: <strong>${order.payment_method === "cod" || order.paymentMethod === "cod" ? "Cash on Delivery" : "Online Payment"}</strong>
@@ -830,10 +843,15 @@ function buildOrderConfirmationEmail(order, brandName, ownerEmail) {
     </body>
     </html>
   `;
+  const _disc = Number(order.discount || 0);
+  const _coupon = order.coupon_code || "";
+  const discountLine = _disc > 0 ? `
+Subtotal: Rs.${Number(order.subtotal || order.total).toFixed(2)}
+Coupon${_coupon ? ` (${_coupon})` : ""}: -Rs.${_disc.toFixed(2)}` : "";
   const text = `Order Confirmation
 
 Thank you for your order!
-Order Number: ${order.order_number || order.orderNumber}
+Order Number: ${order.order_number || order.orderNumber}${discountLine}
 Total: Rs.${Number(order.total).toFixed(2)}
 Payment: ${order.payment_method === "cod" || order.paymentMethod === "cod" ? "Cash on Delivery" : "Online Payment"}
 
@@ -1059,6 +1077,7 @@ function buildOwnerNotificationEmail(order, brandName) {
             <div style="padding: 12px 16px; background: #f0fdf4; border-radius: 8px; flex: 1;">
               <div style="font-size: 12px; color: #059669; text-transform: uppercase; font-weight: 600;">Total Amount</div>
               <div style="font-size: 22px; font-weight: 700; color: #0f172a;">&#8377;${Number(order.total).toFixed(2)}</div>
+              ${Number(order.discount || 0) > 0 ? `<div style="font-size: 12px; color: #16a34a; margin-top: 4px;">Coupon${order.coupon_code ? ` (${order.coupon_code})` : ""}: -&#8377;${Number(order.discount).toFixed(2)} off</div>` : ""}
             </div>
           </div>
 
@@ -3053,6 +3072,7 @@ async function createOrder(request, env, user) {
       });
     }
     let discount = 0;
+    let appliedCouponCode = null;
     if (couponCode) {
       let coupon = null;
       try {
@@ -3065,7 +3085,7 @@ async function createOrder(request, env, user) {
       } catch (couponErr) {
         console.error("Coupon lookup error (table may not exist):", couponErr);
       }
-      if (coupon && subtotal >= coupon.min_order_value) {
+      if (coupon && subtotal >= (coupon.min_order_value || 0)) {
         if (coupon.type === "percentage") {
           discount = subtotal * coupon.value / 100;
           if (coupon.max_discount && discount > coupon.max_discount) {
@@ -3074,9 +3094,36 @@ async function createOrder(request, env, user) {
         } else {
           discount = coupon.value;
         }
+        appliedCouponCode = couponCode.toUpperCase();
         await env.DB.prepare(
           "UPDATE coupons SET used_count = used_count + 1 WHERE id = ?"
         ).bind(coupon.id).run();
+      } else {
+        try {
+          const site = await env.DB.prepare("SELECT settings FROM sites WHERE id = ?").bind(siteId).first();
+          if (site?.settings) {
+            let siteSettings = site.settings;
+            if (typeof siteSettings === "string")
+              siteSettings = JSON.parse(siteSettings);
+            const settingsCoupons = Array.isArray(siteSettings.coupons) ? siteSettings.coupons : [];
+            const sc = settingsCoupons.find((c) => c.active && c.code.toUpperCase() === couponCode.toUpperCase());
+            if (sc) {
+              const minOrder = parseFloat(sc.minOrder) || 0;
+              const expOk = !sc.expiryDate || new Date(sc.expiryDate) >= /* @__PURE__ */ new Date();
+              if (subtotal >= minOrder && expOk) {
+                if (sc.type === "percent") {
+                  discount = subtotal * parseFloat(sc.value) / 100;
+                } else {
+                  discount = parseFloat(sc.value) || 0;
+                }
+                discount = Math.min(discount, subtotal);
+                appliedCouponCode = couponCode.toUpperCase();
+              }
+            }
+          }
+        } catch (settingsCouponErr) {
+          console.error("Settings coupon lookup error:", settingsCouponErr);
+        }
       }
     }
     const shippingCost = 0;
@@ -3087,8 +3134,8 @@ async function createOrder(request, env, user) {
     const isPendingPayment = paymentMethod === "razorpay";
     const orderStatus = isPendingPayment ? "pending_payment" : data.status || "pending";
     await env.DB.prepare(
-      `INSERT INTO orders (id, site_id, user_id, order_number, items, subtotal, discount, shipping_cost, tax, total, payment_method, status, shipping_address, billing_address, customer_name, customer_email, customer_phone, notes, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+      `INSERT INTO orders (id, site_id, user_id, order_number, items, subtotal, discount, shipping_cost, tax, total, payment_method, status, shipping_address, billing_address, customer_name, customer_email, customer_phone, coupon_code, notes, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(
       orderId,
       siteId,
@@ -3107,6 +3154,7 @@ async function createOrder(request, env, user) {
       customerName,
       customerEmail || null,
       customerPhone,
+      appliedCouponCode || null,
       notes || null
     ).run();
     if (!isPendingPayment) {
@@ -3117,6 +3165,9 @@ async function createOrder(request, env, user) {
         await sendOrderEmails(env, siteId, {
           orderNumber,
           processedItems,
+          subtotal,
+          discount,
+          coupon_code: appliedCouponCode,
           total,
           paymentMethod,
           customerName,
@@ -6069,6 +6120,7 @@ async function ensureTablesExist(env) {
         customer_name TEXT NOT NULL,
         customer_email TEXT,
         customer_phone TEXT NOT NULL,
+        coupon_code TEXT,
         notes TEXT,
         tracking_number TEXT,
         carrier TEXT,
@@ -6308,7 +6360,8 @@ async function ensureTablesExist(env) {
       { col: "custom_domain", sql: "ALTER TABLE sites ADD COLUMN custom_domain TEXT" },
       { col: "domain_status", sql: "ALTER TABLE sites ADD COLUMN domain_status TEXT" },
       { col: "domain_verification_token", sql: "ALTER TABLE sites ADD COLUMN domain_verification_token TEXT" },
-      { col: "cf_hostname_id", sql: "ALTER TABLE sites ADD COLUMN cf_hostname_id TEXT" }
+      { col: "cf_hostname_id", sql: "ALTER TABLE sites ADD COLUMN cf_hostname_id TEXT" },
+      { col: "coupon_code", table: "orders", sql: "ALTER TABLE orders ADD COLUMN coupon_code TEXT" }
     ];
     for (const m of migrations) {
       try {
@@ -6745,7 +6798,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-k9n61Q/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-62yemx/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -6780,7 +6833,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-k9n61Q/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-62yemx/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

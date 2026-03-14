@@ -199,6 +199,7 @@ export async function ensureTablesExist(env) {
         customer_name TEXT NOT NULL,
         customer_email TEXT,
         customer_phone TEXT NOT NULL,
+        coupon_code TEXT,
         notes TEXT,
         tracking_number TEXT,
         carrier TEXT,
@@ -454,6 +455,7 @@ export async function ensureTablesExist(env) {
       { col: 'domain_status', sql: 'ALTER TABLE sites ADD COLUMN domain_status TEXT' },
       { col: 'domain_verification_token', sql: 'ALTER TABLE sites ADD COLUMN domain_verification_token TEXT' },
       { col: 'cf_hostname_id', sql: 'ALTER TABLE sites ADD COLUMN cf_hostname_id TEXT' },
+      { col: 'coupon_code', table: 'orders', sql: 'ALTER TABLE orders ADD COLUMN coupon_code TEXT' },
     ];
     for (const m of migrations) {
       try {

@@ -118,9 +118,22 @@ export function buildOrderConfirmationEmail(order, brandName, ownerEmail) {
             </tbody>
           </table>
 
-          <div style="text-align: right; padding: 16px; background: #f8f9fa; border-radius: 8px; margin-top: 16px;">
-            <span style="font-size: 18px; font-weight: 700; color: #0f172a;">Total: &#8377;${Number(order.total).toFixed(2)}</span>
-          </div>
+          ${(() => {
+            const sub = Number(order.subtotal || order.total || 0);
+            const disc = Number(order.discount || 0);
+            const tot = Number(order.total || 0);
+            const coupon = order.coupon_code || '';
+            if (disc > 0) {
+              return `<div style="padding: 16px; background: #f8f9fa; border-radius: 8px; margin-top: 16px; text-align: right;">
+                <div style="font-size: 14px; color: #555; margin-bottom: 4px;">Subtotal: <strong>&#8377;${sub.toFixed(2)}</strong></div>
+                <div style="font-size: 14px; color: #16a34a; margin-bottom: 8px;">Coupon${coupon ? ` (${coupon})` : ''}: <strong>-&#8377;${disc.toFixed(2)}</strong></div>
+                <div style="font-size: 18px; font-weight: 700; color: #0f172a; border-top: 1px solid #e2e8f0; padding-top: 8px;">Total: &#8377;${tot.toFixed(2)}</div>
+              </div>`;
+            }
+            return `<div style="text-align: right; padding: 16px; background: #f8f9fa; border-radius: 8px; margin-top: 16px;">
+              <span style="font-size: 18px; font-weight: 700; color: #0f172a;">Total: &#8377;${tot.toFixed(2)}</span>
+            </div>`;
+          })()}
 
           <div style="margin-top: 16px; padding: 12px 16px; background: #eff6ff; border-radius: 8px; font-size: 14px; color: #1e40af;">
             Payment Method: <strong>${order.payment_method === 'cod' || order.paymentMethod === 'cod' ? 'Cash on Delivery' : 'Online Payment'}</strong>
@@ -138,7 +151,10 @@ export function buildOrderConfirmationEmail(order, brandName, ownerEmail) {
     </html>
   `;
 
-  const text = `Order Confirmation\n\nThank you for your order!\nOrder Number: ${order.order_number || order.orderNumber}\nTotal: Rs.${Number(order.total).toFixed(2)}\nPayment: ${order.payment_method === 'cod' || order.paymentMethod === 'cod' ? 'Cash on Delivery' : 'Online Payment'}\n\nYour order is now being prepared.`;
+  const _disc = Number(order.discount || 0);
+  const _coupon = order.coupon_code || '';
+  const discountLine = _disc > 0 ? `\nSubtotal: Rs.${Number(order.subtotal || order.total).toFixed(2)}\nCoupon${_coupon ? ` (${_coupon})` : ''}: -Rs.${_disc.toFixed(2)}` : '';
+  const text = `Order Confirmation\n\nThank you for your order!\nOrder Number: ${order.order_number || order.orderNumber}${discountLine}\nTotal: Rs.${Number(order.total).toFixed(2)}\nPayment: ${order.payment_method === 'cod' || order.paymentMethod === 'cod' ? 'Cash on Delivery' : 'Online Payment'}\n\nYour order is now being prepared.`;
 
   return { html, text };
 }
@@ -346,6 +362,7 @@ export function buildOwnerNotificationEmail(order, brandName) {
             <div style="padding: 12px 16px; background: #f0fdf4; border-radius: 8px; flex: 1;">
               <div style="font-size: 12px; color: #059669; text-transform: uppercase; font-weight: 600;">Total Amount</div>
               <div style="font-size: 22px; font-weight: 700; color: #0f172a;">&#8377;${Number(order.total).toFixed(2)}</div>
+              ${Number(order.discount || 0) > 0 ? `<div style="font-size: 12px; color: #16a34a; margin-top: 4px;">Coupon${order.coupon_code ? ` (${order.coupon_code})` : ''}: -&#8377;${Number(order.discount).toFixed(2)} off</div>` : ''}
             </div>
           </div>
 

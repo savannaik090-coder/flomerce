@@ -213,6 +213,7 @@ async function createOrder(request, env, user) {
     }
 
     let discount = 0;
+    let appliedCouponCode = null;
     if (couponCode) {
       let coupon = null;
       try {
@@ -226,7 +227,7 @@ async function createOrder(request, env, user) {
         console.error('Coupon lookup error (table may not exist):', couponErr);
       }
 
-      if (coupon && subtotal >= coupon.min_order_value) {
+      if (coupon && subtotal >= (coupon.min_order_value || 0)) {
         if (coupon.type === 'percentage') {
           discount = (subtotal * coupon.value) / 100;
           if (coupon.max_discount && discount > coupon.max_discount) {
@@ -235,10 +236,35 @@ async function createOrder(request, env, user) {
         } else {
           discount = coupon.value;
         }
-
+        appliedCouponCode = couponCode.toUpperCase();
         await env.DB.prepare(
           'UPDATE coupons SET used_count = used_count + 1 WHERE id = ?'
         ).bind(coupon.id).run();
+      } else {
+        try {
+          const site = await env.DB.prepare('SELECT settings FROM sites WHERE id = ?').bind(siteId).first();
+          if (site?.settings) {
+            let siteSettings = site.settings;
+            if (typeof siteSettings === 'string') siteSettings = JSON.parse(siteSettings);
+            const settingsCoupons = Array.isArray(siteSettings.coupons) ? siteSettings.coupons : [];
+            const sc = settingsCoupons.find(c => c.active && c.code.toUpperCase() === couponCode.toUpperCase());
+            if (sc) {
+              const minOrder = parseFloat(sc.minOrder) || 0;
+              const expOk = !sc.expiryDate || new Date(sc.expiryDate) >= new Date();
+              if (subtotal >= minOrder && expOk) {
+                if (sc.type === 'percent') {
+                  discount = (subtotal * parseFloat(sc.value)) / 100;
+                } else {
+                  discount = parseFloat(sc.value) || 0;
+                }
+                discount = Math.min(discount, subtotal);
+                appliedCouponCode = couponCode.toUpperCase();
+              }
+            }
+          }
+        } catch (settingsCouponErr) {
+          console.error('Settings coupon lookup error:', settingsCouponErr);
+        }
       }
     }
 
@@ -253,8 +279,8 @@ async function createOrder(request, env, user) {
     const orderStatus = isPendingPayment ? 'pending_payment' : (data.status || 'pending');
 
     await env.DB.prepare(
-      `INSERT INTO orders (id, site_id, user_id, order_number, items, subtotal, discount, shipping_cost, tax, total, payment_method, status, shipping_address, billing_address, customer_name, customer_email, customer_phone, notes, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+      `INSERT INTO orders (id, site_id, user_id, order_number, items, subtotal, discount, shipping_cost, tax, total, payment_method, status, shipping_address, billing_address, customer_name, customer_email, customer_phone, coupon_code, notes, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(
       orderId,
       siteId,
@@ -273,6 +299,7 @@ async function createOrder(request, env, user) {
       customerName,
       customerEmail || null,
       customerPhone,
+      appliedCouponCode || null,
       notes || null
     ).run();
 
@@ -283,7 +310,7 @@ async function createOrder(request, env, user) {
 
       try {
         await sendOrderEmails(env, siteId, {
-          orderNumber, processedItems, total, paymentMethod, customerName, customerEmail, customerPhone, shippingAddress
+          orderNumber, processedItems, subtotal, discount, coupon_code: appliedCouponCode, total, paymentMethod, customerName, customerEmail, customerPhone, shippingAddress
         });
       } catch (emailErr) {
         console.error('Order email notification error:', emailErr);

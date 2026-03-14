@@ -277,8 +277,20 @@ export default function OrdersSection() {
                                       </div>
                                     </div>
                                   )) : <div style={{ color: '#999', fontSize: 13 }}>No item details available</div>}
-                                  <div style={{ fontWeight: 700, textAlign: 'right', paddingTop: 6, borderTop: '2px solid #eee', fontSize: 14 }}>
-                                    Total: ₹{parseFloat(order.total || 0).toLocaleString('en-IN')}
+                                  <div style={{ paddingTop: 8, borderTop: '2px solid #eee', textAlign: 'right' }}>
+                                    {parseFloat(order.discount || 0) > 0 && (
+                                      <>
+                                        <div style={{ fontSize: 13, color: '#555', marginBottom: 2 }}>
+                                          Subtotal: ₹{parseFloat(order.subtotal || order.total || 0).toLocaleString('en-IN')}
+                                        </div>
+                                        <div style={{ fontSize: 13, color: '#16a34a', marginBottom: 4 }}>
+                                          Coupon{order.coupon_code ? ` (${order.coupon_code})` : ''}: −₹{parseFloat(order.discount || 0).toLocaleString('en-IN')}
+                                        </div>
+                                      </>
+                                    )}
+                                    <div style={{ fontWeight: 700, fontSize: 14 }}>
+                                      Total: ₹{parseFloat(order.total || 0).toLocaleString('en-IN')}
+                                    </div>
                                   </div>
                                 </div>
 

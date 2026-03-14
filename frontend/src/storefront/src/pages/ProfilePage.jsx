@@ -323,8 +323,18 @@ export default function ProfilePage() {
                         </div>
                       </div>
                     ))}
-                    <div style={{ textAlign: 'right', fontWeight: 'bold', paddingTop: 10, borderTop: '1px solid #eee', marginTop: 10 }}>
-                      Total: {formatAmount(orderTotal)}
+                    <div style={{ textAlign: 'right', paddingTop: 10, borderTop: '1px solid #eee', marginTop: 10 }}>
+                      {parseFloat(order.discount || 0) > 0 && (
+                        <>
+                          <div style={{ fontSize: 13, color: '#777', marginBottom: 2 }}>
+                            Subtotal: {formatAmount(order.subtotal || orderTotal)}
+                          </div>
+                          <div style={{ fontSize: 13, color: '#27ae60', marginBottom: 4 }}>
+                            Coupon{order.coupon_code ? ` (${order.coupon_code})` : ''}: −{formatAmount(order.discount)}
+                          </div>
+                        </>
+                      )}
+                      <div style={{ fontWeight: 'bold' }}>Total: {formatAmount(orderTotal)}</div>
                     </div>
                   </div>
                 );
