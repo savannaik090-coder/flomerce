@@ -68,17 +68,25 @@
     position: absolute;
     top: 20px;
     right: 30px;
-    background: none;
-    border: none;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.4);
     color: white;
-    font-size: 40px;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    padding: 10px 20px;
+    border-radius: 8px;
     cursor: pointer;
     z-index: 10001;
-    transition: opacity 0.2s ease;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
 
 .zoom-close:hover {
-    opacity: 0.7;
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.6);
 }
 
 .zoom-nav {

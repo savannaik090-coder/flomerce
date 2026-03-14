@@ -129,7 +129,7 @@ export default function ProductGallery({ images, productName }) {
 
       {zoomOpen && (
         <div className="image-zoom-overlay" onClick={() => setZoomOpen(false)}>
-          <button className="zoom-close" onClick={() => setZoomOpen(false)}>×</button>
+          <button className="zoom-close" onClick={(e) => { e.stopPropagation(); setZoomOpen(false); }}>✕ Close</button>
           {hasMultipleImages && (
             <>
               <button className="zoom-nav prev" onClick={(e) => { e.stopPropagation(); goToZoomImage(zoomIndex - 1); }} disabled={zoomIndex === 0}>‹</button>
