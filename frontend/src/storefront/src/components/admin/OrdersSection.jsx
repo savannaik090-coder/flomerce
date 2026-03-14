@@ -164,16 +164,16 @@ export default function OrdersSection() {
               <table>
                 <thead>
                   <tr>
-                    <th style={{ width: 32 }}></th>
-                    <th>Order #</th>
-                    <th>Customer</th>
-                    <th>Phone</th>
-                    <th>Items</th>
-                    <th>Total</th>
-                    <th>Payment Method</th>
-                    <th>Order Status</th>
-                    <th>Date</th>
-                    <th>Actions</th>
+                    <th style={{ width: 32, minWidth: 32 }}></th>
+                    <th style={{ minWidth: 110 }}>Order #</th>
+                    <th style={{ minWidth: 180 }}>Customer</th>
+                    <th style={{ minWidth: 140 }}>Phone</th>
+                    <th style={{ minWidth: 80 }}>Items</th>
+                    <th style={{ minWidth: 100 }}>Total</th>
+                    <th style={{ minWidth: 150 }}>Payment Method</th>
+                    <th style={{ minWidth: 130 }}>Order Status</th>
+                    <th style={{ minWidth: 100 }}>Date</th>
+                    <th style={{ minWidth: 100 }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -202,7 +202,7 @@ export default function OrdersSection() {
                           </td>
                           <td style={{ whiteSpace: 'nowrap' }}>{order.customer_phone || '—'}</td>
                           <td>{items.length > 0 ? `${items.length} item${items.length !== 1 ? 's' : ''}` : '—'}</td>
-                          <td style={{ fontWeight: 600 }}>₹{parseFloat(order.total || order.total_amount || 0).toLocaleString('en-IN')}</td>
+                          <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>₹{parseFloat(order.total || order.total_amount || 0).toLocaleString('en-IN')}</td>
                           <td style={{ textTransform: 'capitalize' }}>
                             {order.payment_method === 'cod' ? 'Cash on Delivery' : (order.payment_method || '—')}
                           </td>

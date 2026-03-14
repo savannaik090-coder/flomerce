@@ -318,7 +318,7 @@ table {
   width: 100%;
   border-collapse: collapse;
   background: var(--admin-card-bg);
-  min-width: 600px;
+  min-width: 800px;
 }
 
 th {
