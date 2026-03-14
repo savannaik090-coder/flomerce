@@ -184,54 +184,55 @@ export default function CheckoutPage() {
   const placeOrder = useCallback(async () => {
     setLoading(true);
     setError('');
-    try {
-      if (!siteConfig?.id) {
-        setError('Store configuration not loaded. Please refresh the page and try again.');
+
+    if (!siteConfig?.id) {
+      setError('Store configuration not loaded. Please refresh the page and try again.');
+      setLoading(false);
+      return;
+    }
+
+    const customerName = `${address.firstName} ${address.lastName}`.trim();
+    const orderData = {
+      siteId: siteConfig.id,
+      items: items.map(item => ({
+        productId: item.productId || item.product_id || item.id,
+        name: item.name || item.product_name,
+        price: item.price || item.product_price,
+        quantity: item.quantity || 1,
+        image: resolveImageUrl(item.thumbnail || item.image_url || item.product_image || ''),
+      })),
+      total: subtotal,
+      shippingAddress: {
+        name: customerName,
+        email: address.email,
+        phone: address.phone,
+        address: `${address.houseNumber}, ${address.roadName}`,
+        city: address.city,
+        state: address.state,
+        pinCode: address.pinCode,
+      },
+      customerName,
+      customerEmail: address.email,
+      customerPhone: address.phone,
+      paymentMethod,
+    };
+
+    if (paymentMethod === 'razorpay') {
+      const razorpayKeyId = siteConfig?.settings?.razorpayKeyId || siteConfig?.settings?.razorpay_key_id;
+      if (!razorpayKeyId) {
+        setError('Online payment is not configured for this store. Please use Cash on Delivery.');
+        setLoading(false);
+        return;
+      }
+      if (!window.Razorpay) {
+        setError('Payment gateway not loaded. Please refresh and try again.');
         setLoading(false);
         return;
       }
 
-      const customerName = `${address.firstName} ${address.lastName}`.trim();
-      const orderData = {
-        siteId: siteConfig.id,
-        items: items.map(item => ({
-          productId: item.productId || item.product_id || item.id,
-          name: item.name || item.product_name,
-          price: item.price || item.product_price,
-          quantity: item.quantity || 1,
-          image: resolveImageUrl(item.thumbnail || item.image_url || item.product_image || ''),
-        })),
-        total: subtotal,
-        shippingAddress: {
-          name: customerName,
-          email: address.email,
-          phone: address.phone,
-          address: `${address.houseNumber}, ${address.roadName}`,
-          city: address.city,
-          state: address.state,
-          pinCode: address.pinCode,
-        },
-        customerName,
-        customerEmail: address.email,
-        customerPhone: address.phone,
-        paymentMethod,
-      };
-
-      if (paymentMethod === 'razorpay') {
-        const razorpayKeyId = siteConfig?.settings?.razorpayKeyId || siteConfig?.settings?.razorpay_key_id;
-        if (!razorpayKeyId) {
-          setError('Online payment is not configured for this store. Please use Cash on Delivery.');
-          setLoading(false);
-          return;
-        }
-
-        if (!window.Razorpay) {
-          setError('Payment gateway not loaded. Please refresh and try again.');
-          setLoading(false);
-          return;
-        }
-
-        const { apiRequest } = await import('../services/api.js');
+      let apiRequest;
+      try {
+        ({ apiRequest } = await import('../services/api.js'));
         const paymentResult = await apiRequest('/api/payments/create-order', {
           method: 'POST',
           body: JSON.stringify({
@@ -252,6 +253,10 @@ export default function CheckoutPage() {
           return;
         }
 
+        const snapshotItems = [...items];
+        const snapshotAddress = { ...address };
+        const snapshotTotal = subtotal;
+
         const options = {
           key: paymentData.keyId || razorpayKeyId,
           amount: paymentData.amount || Math.round(subtotal * 100),
@@ -260,12 +265,12 @@ export default function CheckoutPage() {
           description: 'Store Order',
           order_id: razorpayOrderId,
           handler: async function (response) {
+            setLoading(true);
             try {
               const dbOrder = await orderService.createOrder(orderData);
               const order = dbOrder.data || dbOrder.order || dbOrder;
               const orderId = order.id || order.orderId;
               const orderNumber = order.orderNumber || order.order_number;
-
               await apiRequest('/api/payments/verify', {
                 method: 'POST',
                 body: JSON.stringify({
@@ -278,12 +283,13 @@ export default function CheckoutPage() {
               });
               const ref = orderNumber || orderId || 'ORD-' + Date.now();
               setOrderRef(ref);
-              setPlacedOrderDetails({ items: [...items], address: { ...address }, paymentMethod, total: subtotal });
+              setPlacedOrderDetails({ items: snapshotItems, address: snapshotAddress, paymentMethod: 'razorpay', total: snapshotTotal });
               setOrderPlaced(true);
               clearAll();
             } catch (verifyErr) {
               console.error('Payment verification error:', verifyErr);
               setError('Payment verification failed. If money was deducted, please contact support with your order reference.');
+              setLoading(false);
             }
           },
           modal: {
@@ -305,10 +311,14 @@ export default function CheckoutPage() {
           setLoading(false);
         });
         rzp.open();
+      } catch (err) {
+        setError(err.message || 'Failed to initialize payment. Please try again.');
         setLoading(false);
-        return;
       }
+      return;
+    }
 
+    try {
       const result = await orderService.createOrder(orderData);
       const order = result.data || result.order || result;
       const ref = order.orderNumber || order.order_number || order.id || order.order_id || 'ORD-' + Date.now();
@@ -318,9 +328,8 @@ export default function CheckoutPage() {
       clearAll();
     } catch (err) {
       setError(err.message || 'Failed to place order. Please try again.');
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
   }, [siteConfig, items, subtotal, address, paymentMethod, clearAll]);
 
   if (orderPlaced) {
@@ -400,11 +409,8 @@ export default function CheckoutPage() {
             )}
           </div>
 
-          <div style={{ padding: '0 24px 24px', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            <Link to="/profile" style={{ flex: 1, display: 'block', textAlign: 'center', padding: '11px 20px', border: '1.5px solid #7a4012', color: '#7a4012', borderRadius: 6, textDecoration: 'none', fontWeight: 600, fontSize: 14 }}>
-              Track My Order
-            </Link>
-            <Link to="/" style={{ flex: 1, display: 'block', textAlign: 'center', padding: '11px 20px', background: '#7a4012', color: '#fff', borderRadius: 6, textDecoration: 'none', fontWeight: 600, fontSize: 14 }}>
+          <div style={{ padding: '0 24px 24px' }}>
+            <Link to="/" style={{ display: 'block', textAlign: 'center', padding: '13px 20px', background: '#7a4012', color: '#fff', borderRadius: 6, textDecoration: 'none', fontWeight: 600, fontSize: 15 }}>
               Continue Shopping
             </Link>
           </div>
