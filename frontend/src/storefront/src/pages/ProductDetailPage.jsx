@@ -118,7 +118,7 @@ export default function ProductDetailPage() {
 
   const categoryName = product.category
     ? product.category.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
-    : 'Uncategorized';
+    : null;
 
   const reviews = product.reviews || [];
 
@@ -139,10 +139,6 @@ export default function ProductDetailPage() {
 
             <div className="product-meta">
               <div className="meta-item">
-                <span className="meta-label">Brand:</span>
-                <span className="meta-value">{siteConfig?.brandName || 'Store'}</span>
-              </div>
-              <div className="meta-item">
                 <span className="meta-label">Availability:</span>
                 <span className={`meta-value ${isOutOfStock ? 'out-of-stock' : 'in-stock'}`}>
                   {isOutOfStock ? 'Out of Stock ✗' : 'In Stock ✓'}
@@ -152,10 +148,12 @@ export default function ProductDetailPage() {
                 <span className="meta-label">SKU:</span>
                 <span className="meta-value">{product.sku || product.id}</span>
               </div>
-              <div className="meta-item">
-                <span className="meta-label">Category:</span>
-                <span className="meta-value">{categoryName}</span>
-              </div>
+              {categoryName && (
+                <div className="meta-item">
+                  <span className="meta-label">Category:</span>
+                  <span className="meta-value">{categoryName}</span>
+                </div>
+              )}
             </div>
 
             <div className="product-actions">
