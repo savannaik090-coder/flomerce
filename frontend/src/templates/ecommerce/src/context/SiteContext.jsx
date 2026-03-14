@@ -1,0 +1,133 @@
+import React, { createContext, useState, useEffect } from 'react';
+
+export const SiteContext = createContext(null);
+
+function isCustomDomain() {
+  const hostname = window.location.hostname;
+  return !hostname.endsWith('fluxe.in') && !hostname.endsWith('pages.dev') &&
+    hostname !== 'localhost' && hostname !== '127.0.0.1' && !hostname.includes('replit') &&
+    !hostname.includes('workers.dev');
+}
+
+function getSubdomain() {
+  const hostname = window.location.hostname;
+  const hostParts = hostname.split('.');
+
+  if (hostname.endsWith('fluxe.in')) {
+    if (hostParts.length >= 3 && hostParts[0] !== 'www') {
+      return hostParts[0];
+    }
+  } else if (hostname.endsWith('pages.dev')) {
+    if (hostParts.length >= 4) {
+      return hostParts[0];
+    }
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  const subdomainParam = params.get('subdomain');
+  if (subdomainParam) return subdomainParam;
+
+  if (isCustomDomain()) {
+    return '__custom_domain__';
+  }
+
+  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.includes('replit')) {
+    const stored = localStorage.getItem('dev_subdomain');
+    if (stored) return stored;
+    return params.get('subdomain') || null;
+  }
+
+  return null;
+}
+
+export function SiteProvider({ children }) {
+  const [siteConfig, setSiteConfig] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [subdomain, setSubdomain] = useState(null);
+
+  useEffect(() => {
+    const detected = getSubdomain();
+    setSubdomain(detected);
+
+    if (!detected) {
+      setError('No store detected. Please access via a store subdomain.');
+      setLoading(false);
+      return;
+    }
+
+    fetchSiteConfig(detected);
+  }, []);
+
+  async function fetchSiteConfig(sub, isRefetch = false) {
+    try {
+      if (!isRefetch) setLoading(true);
+      let apiUrl;
+      if (sub === '__custom_domain__') {
+        apiUrl = `/api/site`;
+      } else {
+        const apiBase = window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
+        apiUrl = `${apiBase}/api/site?subdomain=${encodeURIComponent(sub)}`;
+      }
+      const response = await fetch(apiUrl);
+      if (!response.ok) {
+        throw new Error('Store not found');
+      }
+      const result = await response.json();
+      if (!result.success || !result.data) {
+        throw new Error('Invalid store data');
+      }
+
+      const data = result.data;
+      let parsedSettings = data.settings || {};
+      if (typeof parsedSettings === 'string') {
+        try { parsedSettings = JSON.parse(parsedSettings); } catch (e) { parsedSettings = {}; }
+      }
+      const config = {
+        id: data.id,
+        subdomain: data.subdomain,
+        brandName: data.brand_name,
+        category: data.category,
+        templateId: data.template_id,
+        logoUrl: data.logo_url,
+        faviconUrl: data.favicon_url,
+        primaryColor: data.primary_color || '#000000',
+        secondaryColor: data.secondary_color || '#ffffff',
+        phone: data.phone || parsedSettings.phone || '',
+        whatsapp: parsedSettings.whatsapp || '',
+        showFloatingButton: parsedSettings.showFloatingButton !== false,
+        email: data.email || parsedSettings.email || '',
+        address: data.address || parsedSettings.address || '',
+        socialLinks: data.socialLinks || {},
+        settings: parsedSettings,
+        categories: data.categories || [],
+        customDomain: data.custom_domain || null,
+        domainStatus: data.domain_status || null,
+      };
+
+      setSiteConfig(config);
+
+      if (config.brandName) {
+        document.title = config.brandName;
+      }
+      if (config.faviconUrl) {
+        const link = document.querySelector("link[rel*='icon']") || document.createElement('link');
+        link.type = 'image/x-icon';
+        link.rel = 'shortcut icon';
+        link.href = config.faviconUrl;
+        document.head.appendChild(link);
+      }
+    } catch (err) {
+      console.error('Failed to load site config:', err);
+      setError(err.message || 'Failed to load store');
+    } finally {
+      if (!isRefetch) setLoading(false);
+    }
+  }
+
+  return (
+    <SiteContext.Provider value={{ siteConfig, loading, error, subdomain, refetchSite: () => subdomain && fetchSiteConfig(subdomain, true) }}>
+      {children}
+    </SiteContext.Provider>
+  );
+}

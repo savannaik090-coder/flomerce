@@ -1,0 +1,110 @@
+:root {
+    --color-primary: #603000;
+    --color-primary-light: #7B410A;
+    --color-primary-dark: #5E2900;
+    --color-secondary: #5a3f2a;
+    --color-accent: #B08C4C;
+    --color-accent-light: #9c7c38;
+    --color-accent-gold: #d4af37;
+    --color-text: #333;
+    --color-text-light: #666;
+    --color-text-muted: #888;
+    --color-text-placeholder: #999;
+    --color-bg: #f8f8f5;
+    --color-bg-white: #fff;
+    --color-bg-light: #fafafa;
+    --color-border: #eee;
+    --color-border-light: #e0e0e0;
+    --color-border-dark: #ddd;
+    --color-success: #4CAF50;
+    --color-error: #d32f2f;
+    --color-warning: #856404;
+    --color-warning-bg: #fff3cd;
+    --color-whatsapp: #25D366;
+    --font-primary: 'Lato', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Arial Unicode MS', 'Noto Sans', sans-serif;
+    --font-heading: 'Playfair Display', serif;
+    --font-product: 'Futura PT', 'Futura', 'Century Gothic', 'Avenir Next', 'Helvetica Neue', Arial, sans-serif;
+    --font-body: 'Lora', serif;
+    --spacing-xs: 5px;
+    --spacing-sm: 10px;
+    --spacing-md: 15px;
+    --spacing-lg: 20px;
+    --spacing-xl: 30px;
+    --spacing-xxl: 40px;
+    --spacing-xxxl: 60px;
+    --radius-sm: 4px;
+    --radius-md: 6px;
+    --radius-lg: 8px;
+    --radius-xl: 12px;
+    --radius-full: 25px;
+    --shadow-sm: 0 2px 5px rgba(0, 0, 0, 0.1);
+    --shadow-md: 0 4px 10px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 8px 25px rgba(0, 0, 0, 0.15);
+    --shadow-card: 0 5px 15px rgba(107, 52, 0, 0.2);
+    --transition-fast: 0.2s ease;
+    --transition-base: 0.3s ease;
+    --transition-slow: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    --z-base: 1;
+    --z-dropdown: 100;
+    --z-sticky: 500;
+    --z-fixed: 1000;
+    --z-modal: 10000;
+    --container-max: 1200px;
+    --product-card-width: 280px;
+    --product-card-width-lg: 420px;
+    --product-card-width-sm: 250px;
+    --product-image-height: 480px;
+    --product-image-height-md: 380px;
+    --product-image-height-sm: 320px;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: var(--font-primary);
+    color: var(--color-text);
+    overflow-x: hidden;
+    background-color: var(--color-bg);
+}
+
+img {
+    max-width: 100%;
+    height: auto;
+}
+
+a {
+    text-decoration: none;
+    color: inherit;
+}
+
+.container {
+    max-width: var(--container-max);
+    margin: 0 auto;
+    padding: 0 var(--spacing-lg);
+}
+
+.section-title {
+    font-family: var(--font-heading);
+    font-size: 2.2rem;
+    font-weight: 600;
+    color: var(--color-text);
+    margin-bottom: var(--spacing-xl);
+    position: relative;
+    display: inline-block;
+    text-align: center;
+}
+
+.section-title::after {
+    content: '';
+    position: absolute;
+    width: 60px;
+    height: 2px;
+    background-color: var(--color-accent);
+    bottom: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+}
