@@ -43,6 +43,8 @@ export default function OrdersSection() {
   const [cancelCustomReason, setCancelCustomReason] = useState('');
   const [cancelling, setCancelling] = useState(false);
 
+  const [confirmDialog, setConfirmDialog] = useState(null);
+
   useEffect(() => {
     if (siteConfig?.id) loadOrders();
   }, [siteConfig?.id]);
@@ -223,17 +225,17 @@ export default function OrdersSection() {
                               {!isCancelled && !isDelivered && statusLower !== 'confirmed' && (
                                 <button
                                   className="btn btn-sm btn-success"
-                                  onClick={() => handleStatusUpdate(order.id, 'confirmed')}
+                                  onClick={() => setConfirmDialog({ orderId: order.id, orderNum, action: 'confirmed', label: 'Confirm this order?' })}
                                   title="Confirm Order"
                                 >
                                   <i className="fas fa-check" />
                                 </button>
                               )}
-                              {!isCancelled && !isDelivered && (
+                              {statusLower === 'confirmed' && (
                                 <button
                                   className="btn btn-sm"
                                   style={{ background: '#27ae60', color: '#fff', border: 'none', borderRadius: 4, padding: '4px 8px', cursor: 'pointer', fontSize: 11, fontWeight: 600 }}
-                                  onClick={() => handleStatusUpdate(order.id, 'delivered')}
+                                  onClick={() => setConfirmDialog({ orderId: order.id, orderNum, action: 'delivered', label: 'Mark this order as delivered?' })}
                                   title="Mark as Delivered"
                                 >
                                   Delivered
@@ -318,6 +320,37 @@ export default function OrdersSection() {
                   })}
                 </tbody>
               </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmDialog && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
+          <div style={{ background: '#fff', borderRadius: 10, padding: 28, width: '90%', maxWidth: 380, boxShadow: '0 10px 40px rgba(0,0,0,0.2)', textAlign: 'center' }}>
+            <div style={{ fontSize: 36, marginBottom: 12 }}>
+              {confirmDialog.action === 'delivered' ? '📦' : '✅'}
+            </div>
+            <h3 style={{ margin: '0 0 8px', fontSize: 17, color: '#1a1a1a' }}>Are you sure?</h3>
+            <p style={{ margin: '0 0 24px', fontSize: 14, color: '#666' }}>
+              {confirmDialog.label} <strong>#{confirmDialog.orderNum}</strong>
+            </p>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+              <button
+                onClick={() => setConfirmDialog(null)}
+                style={{ padding: '9px 22px', borderRadius: 6, border: '1px solid #ddd', background: '#f5f5f5', cursor: 'pointer', fontSize: 14 }}
+              >
+                Go Back
+              </button>
+              <button
+                onClick={async () => {
+                  await handleStatusUpdate(confirmDialog.orderId, confirmDialog.action);
+                  setConfirmDialog(null);
+                }}
+                style={{ padding: '9px 22px', borderRadius: 6, border: 'none', background: confirmDialog.action === 'delivered' ? '#27ae60' : '#2196f3', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}
+              >
+                Yes, {confirmDialog.action === 'delivered' ? 'Mark Delivered' : 'Confirm Order'}
+              </button>
             </div>
           </div>
         </div>

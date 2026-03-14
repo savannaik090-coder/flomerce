@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-PH68Yy/checked-fetch.js
+// .wrangler/tmp/bundle-Ye4yap/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-PH68Yy/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-Ye4yap/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-PH68Yy/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-Ye4yap/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-PH68Yy/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-Ye4yap/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -670,12 +670,12 @@ var init_site_admin_worker = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-PH68Yy/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-Ye4yap/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-PH68Yy/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-Ye4yap/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -824,7 +824,7 @@ function buildOrderConfirmationEmail(order, brandName) {
 
           ${addressHtml}
 
-          <p style="margin-top: 24px; color: #64748b; font-size: 14px; line-height: 1.6;">We will notify you when your order ships. If you have any questions, please don't hesitate to contact us.</p>
+          <p style="margin-top: 24px; color: #64748b; font-size: 14px; line-height: 1.6;">Your order is now being prepared. We'll update you once it's on its way. For any queries, simply reply to this email or reach out to us directly.</p>
         </div>
         <div style="background: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8;">
           <p style="margin: 0;">Thank you for shopping with ${brandName || "us"}!</p>
@@ -840,11 +840,12 @@ Order Number: ${order.order_number || order.orderNumber}
 Total: Rs.${Number(order.total).toFixed(2)}
 Payment: ${order.payment_method === "cod" || order.paymentMethod === "cod" ? "Cash on Delivery" : "Online Payment"}
 
-We will notify you when your order ships.`;
+Your order is now being prepared.`;
   return { html, text };
 }
 __name(buildOrderConfirmationEmail, "buildOrderConfirmationEmail");
-function buildCancellationCustomerEmail(order, brandName, reason) {
+function buildCancellationCustomerEmail(order, brandName, reason, ownerEmail) {
+  const contactLine = ownerEmail ? `For any questions or to request a refund, please contact us at <a href="mailto:${ownerEmail}" style="color:#c0392b;">${ownerEmail}</a>.` : "For any questions or to request a refund, please reply to this email.";
   const html = `
     <!DOCTYPE html>
     <html>
@@ -872,7 +873,7 @@ function buildCancellationCustomerEmail(order, brandName, reason) {
             <strong>Order Total:</strong> &#8377;${Number(order.total || 0).toFixed(2)}<br>
             <strong>Payment Method:</strong> ${order.payment_method === "cod" ? "Cash on Delivery" : "Online Payment"}
           </div>
-          <p style="margin-top: 24px; color: #64748b; font-size: 14px; line-height: 1.6;">If you paid online and a refund is applicable, it will be processed within 5\u20137 business days. For any questions, please contact us.</p>
+          <p style="margin-top: 24px; color: #64748b; font-size: 14px; line-height: 1.6;">If you paid online and a refund is applicable, it will be processed within 5\u20137 business days. ${contactLine}</p>
         </div>
         <div style="background: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8;">
           <p style="margin: 0;">Thank you for shopping with ${brandName || "us"}!</p>
@@ -885,10 +886,112 @@ function buildCancellationCustomerEmail(order, brandName, reason) {
 
 Your order #${order.order_number || order.orderNumber} has been cancelled.
 Reason: ${reason || "No reason provided"}
-Total: Rs.${Number(order.total || 0).toFixed(2)}`;
+Total: Rs.${Number(order.total || 0).toFixed(2)}
+
+${ownerEmail ? "Contact us at: " + ownerEmail : "Please reply to this email for any queries."}`;
   return { html, text };
 }
 __name(buildCancellationCustomerEmail, "buildCancellationCustomerEmail");
+function buildDeliveryCustomerEmail(order, brandName, ownerEmail) {
+  const items = typeof order.items === "string" ? JSON.parse(order.items) : order.items || [];
+  const itemsHtml = items.map((item) => `
+    <tr>
+      <td style="padding: 10px 16px; border-bottom: 1px solid #f0f0f0; font-size: 14px;">${item.name}</td>
+      <td style="padding: 10px 16px; border-bottom: 1px solid #f0f0f0; text-align: center; font-size: 14px;">${item.quantity}</td>
+      <td style="padding: 10px 16px; border-bottom: 1px solid #f0f0f0; text-align: right; font-size: 14px; font-weight: 600;">&#8377;${(Number(item.price) * Number(item.quantity)).toFixed(2)}</td>
+    </tr>
+  `).join("");
+  const contactLine = ownerEmail ? `If you have any issues with your order, contact us at <a href="mailto:${ownerEmail}" style="color:#27ae60;">${ownerEmail}</a>.` : "If you have any issues with your order, please reply to this email.";
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="utf-8"></head>
+    <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background: #f5f5f5;">
+      <div style="max-width: 600px; margin: 0 auto; background: #ffffff;">
+        <div style="background: #27ae60; color: #ffffff; padding: 32px; text-align: center;">
+          <h1 style="margin: 0; font-size: 24px; font-weight: 700;">${brandName || "Your Store"}</h1>
+        </div>
+        <div style="padding: 32px;">
+          <div style="text-align: center; margin-bottom: 28px;">
+            <div style="font-size: 52px; margin-bottom: 12px;">\u{1F4E6}</div>
+            <h2 style="margin: 0 0 6px; font-size: 24px; color: #0f172a;">Your Order Has Been Delivered!</h2>
+            <p style="margin: 0; color: #64748b; font-size: 14px;">Order #${order.order_number || ""}</p>
+          </div>
+          <p style="color: #333; font-size: 15px; line-height: 1.6;">Hi ${order.customer_name || "Customer"}, we hope you love your purchase! \u{1F389}</p>
+          ${items.length > 0 ? `
+          <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+            <thead>
+              <tr style="background: #f8f9fa;">
+                <th style="padding: 10px 16px; text-align: left; font-size: 12px; color: #64748b; text-transform: uppercase;">Product</th>
+                <th style="padding: 10px 16px; text-align: center; font-size: 12px; color: #64748b; text-transform: uppercase;">Qty</th>
+                <th style="padding: 10px 16px; text-align: right; font-size: 12px; color: #64748b; text-transform: uppercase;">Amount</th>
+              </tr>
+            </thead>
+            <tbody>${itemsHtml}</tbody>
+          </table>
+          <div style="text-align: right; padding: 12px 16px; background: #f0fdf4; border-radius: 8px; font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 24px;">
+            Total Paid: &#8377;${Number(order.total || 0).toFixed(2)}
+          </div>` : ""}
+          <div style="margin: 24px 0; padding: 20px; background: #f0fdf4; border-radius: 10px; text-align: center;">
+            <p style="margin: 0 0 8px; font-size: 16px; font-weight: 600; color: #166534;">Enjoying your purchase?</p>
+            <p style="margin: 0; font-size: 14px; color: #555; line-height: 1.6;">We'd love to hear from you! Share your experience and leave a review \u2014 your feedback helps us serve you better and helps other shoppers make great choices.</p>
+          </div>
+          <p style="margin-top: 20px; color: #64748b; font-size: 14px; line-height: 1.6;">${contactLine}</p>
+        </div>
+        <div style="background: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8;">
+          <p style="margin: 0;">Thank you for shopping with ${brandName || "us"}! We look forward to serving you again.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+  const text = `Your order #${order.order_number} has been delivered!
+
+We hope you love your purchase. We'd love to hear your feedback \u2014 please leave a review!
+
+Total Paid: Rs.${Number(order.total || 0).toFixed(2)}
+
+${ownerEmail ? "For any issues, contact: " + ownerEmail : ""}`;
+  return { html, text };
+}
+__name(buildDeliveryCustomerEmail, "buildDeliveryCustomerEmail");
+function buildDeliveryOwnerEmail(order, brandName) {
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="utf-8"></head>
+    <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background: #f5f5f5;">
+      <div style="max-width: 600px; margin: 0 auto; background: #ffffff;">
+        <div style="background: #1a6b3a; color: #ffffff; padding: 24px 32px;">
+          <h1 style="margin: 0; font-size: 20px; font-weight: 700;">Order Delivered \u2713</h1>
+          <p style="margin: 4px 0 0; opacity: 0.9; font-size: 14px;">${brandName || "Your Store"} \u2013 Order #${order.order_number || ""}</p>
+        </div>
+        <div style="padding: 24px 32px;">
+          <p style="color: #333; font-size: 15px;">Order <strong>#${order.order_number || ""}</strong> has been marked as delivered.</p>
+          <div style="padding: 12px 16px; background: #f0fdf4; border-radius: 8px; font-size: 14px; line-height: 1.8; margin-top: 16px;">
+            <strong>Customer:</strong> ${order.customer_name || "N/A"}<br>
+            <strong>Email:</strong> ${order.customer_email || "N/A"}<br>
+            <strong>Phone:</strong> ${order.customer_phone || "N/A"}<br>
+            <strong>Total:</strong> &#8377;${Number(order.total || 0).toFixed(2)}<br>
+            <strong>Payment:</strong> ${order.payment_method === "cod" ? "Cash on Delivery" : "Online Payment"}
+          </div>
+          <p style="margin-top: 20px; color: #64748b; font-size: 14px;">The customer has been notified and prompted to leave a review. Keep up the great work!</p>
+        </div>
+        <div style="background: #f8f9fa; padding: 16px 32px; text-align: center; font-size: 12px; color: #94a3b8;">
+          <p style="margin: 0;">This is an automated notification from ${brandName || "Fluxe"}.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+  const text = `Order Delivered
+
+Order #${order.order_number} has been marked as delivered.
+Customer: ${order.customer_name || ""}
+Total: Rs.${Number(order.total || 0).toFixed(2)}`;
+  return { html, text };
+}
+__name(buildDeliveryOwnerEmail, "buildDeliveryOwnerEmail");
 function buildCancellationOwnerEmail(order, brandName, reason) {
   const html = `
     <!DOCTYPE html>
@@ -3124,7 +3227,7 @@ async function updateOrderStatus(request, env, user, orderId) {
           };
           const emailJobs = [];
           if (fullOrder.customer_email) {
-            const { html, text } = buildCancellationCustomerEmail(emailOrder, siteBrandName, cancellationReason);
+            const { html, text } = buildCancellationCustomerEmail(emailOrder, siteBrandName, cancellationReason, ownerEmail);
             emailJobs.push(sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been cancelled`, html, text).catch((e) => console.error("Cancellation customer email error:", e)));
           }
           if (ownerEmail) {
@@ -3135,6 +3238,38 @@ async function updateOrderStatus(request, env, user, orderId) {
         }
       } catch (emailErr) {
         console.error("Failed to send cancellation emails:", emailErr);
+      }
+    }
+    if (status === "delivered") {
+      try {
+        const fullOrder = await env.DB.prepare("SELECT * FROM orders WHERE id = ?").bind(orderId).first();
+        if (fullOrder) {
+          const site = await env.DB.prepare("SELECT brand_name, email, settings FROM sites WHERE id = ?").bind(fullOrder.site_id).first();
+          const siteBrandName = site?.brand_name || "Store";
+          const siteSettings = site?.settings ? JSON.parse(site.settings) : {};
+          const ownerEmail = siteSettings.email || siteSettings.ownerEmail || site?.email;
+          const emailOrder = {
+            order_number: fullOrder.order_number,
+            customer_name: fullOrder.customer_name,
+            customer_email: fullOrder.customer_email,
+            customer_phone: fullOrder.customer_phone,
+            total: fullOrder.total,
+            payment_method: fullOrder.payment_method,
+            items: fullOrder.items
+          };
+          const emailJobs = [];
+          if (fullOrder.customer_email) {
+            const { html, text } = buildDeliveryCustomerEmail(emailOrder, siteBrandName, ownerEmail);
+            emailJobs.push(sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been delivered!`, html, text).catch((e) => console.error("Delivery customer email error:", e)));
+          }
+          if (ownerEmail) {
+            const { html, text } = buildDeliveryOwnerEmail(emailOrder, siteBrandName);
+            emailJobs.push(sendEmail(env, ownerEmail, `Order #${fullOrder.order_number} delivered - ${siteBrandName}`, html, text).catch((e) => console.error("Delivery owner email error:", e)));
+          }
+          await Promise.all(emailJobs);
+        }
+      } catch (emailErr) {
+        console.error("Failed to send delivery emails:", emailErr);
       }
     }
     return successResponse(null, "Order updated successfully");
@@ -6601,7 +6736,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-PH68Yy/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-Ye4yap/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -6636,7 +6771,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-PH68Yy/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-Ye4yap/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

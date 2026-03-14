@@ -1,7 +1,7 @@
 import { generateId, generateOrderNumber, jsonResponse, errorResponse, successResponse, handleCORS } from '../../utils/helpers.js';
 import { validateAuth, validateAnyAuth } from '../../utils/auth.js';
 import { updateProductStock } from './products-worker.js';
-import { sendEmail, buildOrderConfirmationEmail, buildOwnerNotificationEmail, buildCancellationCustomerEmail, buildCancellationOwnerEmail } from '../../utils/email.js';
+import { sendEmail, buildOrderConfirmationEmail, buildOwnerNotificationEmail, buildCancellationCustomerEmail, buildCancellationOwnerEmail, buildDeliveryCustomerEmail, buildDeliveryOwnerEmail } from '../../utils/email.js';
 
 export async function handleOrders(request, env, path) {
   const corsResponse = handleCORS(request);
@@ -405,7 +405,7 @@ async function updateOrderStatus(request, env, user, orderId) {
 
           const emailJobs = [];
           if (fullOrder.customer_email) {
-            const { html, text } = buildCancellationCustomerEmail(emailOrder, siteBrandName, cancellationReason);
+            const { html, text } = buildCancellationCustomerEmail(emailOrder, siteBrandName, cancellationReason, ownerEmail);
             emailJobs.push(sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been cancelled`, html, text).catch(e => console.error('Cancellation customer email error:', e)));
           }
           if (ownerEmail) {
@@ -416,6 +416,41 @@ async function updateOrderStatus(request, env, user, orderId) {
         }
       } catch (emailErr) {
         console.error('Failed to send cancellation emails:', emailErr);
+      }
+    }
+
+    if (status === 'delivered') {
+      try {
+        const fullOrder = await env.DB.prepare('SELECT * FROM orders WHERE id = ?').bind(orderId).first();
+        if (fullOrder) {
+          const site = await env.DB.prepare('SELECT brand_name, email, settings FROM sites WHERE id = ?').bind(fullOrder.site_id).first();
+          const siteBrandName = site?.brand_name || 'Store';
+          const siteSettings = site?.settings ? JSON.parse(site.settings) : {};
+          const ownerEmail = siteSettings.email || siteSettings.ownerEmail || site?.email;
+
+          const emailOrder = {
+            order_number: fullOrder.order_number,
+            customer_name: fullOrder.customer_name,
+            customer_email: fullOrder.customer_email,
+            customer_phone: fullOrder.customer_phone,
+            total: fullOrder.total,
+            payment_method: fullOrder.payment_method,
+            items: fullOrder.items,
+          };
+
+          const emailJobs = [];
+          if (fullOrder.customer_email) {
+            const { html, text } = buildDeliveryCustomerEmail(emailOrder, siteBrandName, ownerEmail);
+            emailJobs.push(sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been delivered!`, html, text).catch(e => console.error('Delivery customer email error:', e)));
+          }
+          if (ownerEmail) {
+            const { html, text } = buildDeliveryOwnerEmail(emailOrder, siteBrandName);
+            emailJobs.push(sendEmail(env, ownerEmail, `Order #${fullOrder.order_number} delivered - ${siteBrandName}`, html, text).catch(e => console.error('Delivery owner email error:', e)));
+          }
+          await Promise.all(emailJobs);
+        }
+      } catch (emailErr) {
+        console.error('Failed to send delivery emails:', emailErr);
       }
     }
 
