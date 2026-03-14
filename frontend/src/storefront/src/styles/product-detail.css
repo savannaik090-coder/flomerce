@@ -496,8 +496,8 @@
     }
 
     .main-image-container {
-        height: 400px;
-        min-height: 300px;
+        height: 500px;
+        min-height: 400px;
     }
 
     .product-thumbnail {
@@ -512,7 +512,7 @@
 
     .zoomed-image {
         max-width: 95%;
-        max-height: 85%;
+        max-height: 95%;
     }
 
     .zoom-close {
@@ -545,8 +545,8 @@
     }
 
     .main-image-container {
-        height: 300px;
-        min-height: 250px;
+        height: 400px;
+        min-height: 350px;
         margin-bottom: 15px;
     }
 
