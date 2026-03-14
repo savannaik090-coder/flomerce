@@ -59,6 +59,16 @@ export default function AboutPage() {
   if (typeof settings === 'string') {
     try { settings = JSON.parse(settings); } catch (e) { settings = {}; }
   }
+
+  if (settings.showAboutUs === false) {
+    return (
+      <div className="about-page" style={{ textAlign: 'center', padding: '80px 20px' }}>
+        <h2>This page is currently unavailable</h2>
+        <p style={{ color: '#64748b', marginTop: 12 }}>Please check back later.</p>
+      </div>
+    );
+  }
+
   const aboutPage = settings.aboutPage || {};
   const defaults = getDefaults(category, brandName);
 

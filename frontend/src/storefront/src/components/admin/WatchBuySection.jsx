@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { getProducts } from '../../services/productService.js';
+import SectionToggle from './SectionToggle.jsx';
 
 const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
 
@@ -16,6 +17,7 @@ export default function WatchBuySection({ onSaved }) {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState('');
+  const [showSection, setShowSection] = useState(true);
   const [skuLookup, setSkuLookup] = useState(null);
   const [skuSearching, setSkuSearching] = useState(false);
   const fileInputRef = useRef(null);
@@ -48,11 +50,13 @@ export default function WatchBuySection({ onSaved }) {
           try { settings = JSON.parse(settings); } catch (e) { settings = {}; }
         }
         setVideos(settings.watchAndBuyVideos || []);
+        setShowSection(settings.showWatchAndBuy !== false);
       }
     } catch (e) {
       console.error('Failed to load videos:', e);
     } finally {
       setLoading(false);
+      hasLoadedRef.current = true;
     }
   }
 
@@ -150,6 +154,21 @@ export default function WatchBuySection({ onSaved }) {
     xhr.send(formData);
   }
 
+  const hasLoadedRef = useRef(false);
+
+  useEffect(() => {
+    if (!hasLoadedRef.current) return;
+    const token = sessionStorage.getItem('site_admin_token');
+    fetch(`${API_BASE}/api/sites/${siteConfig.id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': token ? `SiteAdmin ${token}` : '',
+      },
+      body: JSON.stringify({ settings: { showWatchAndBuy: showSection } }),
+    }).catch(e => console.error('Failed to save visibility toggle:', e));
+  }, [showSection]);
+
   async function saveVideosToSettings(updatedVideos) {
     const token = sessionStorage.getItem('site_admin_token');
     const response = await fetch(`${API_BASE}/api/sites/${siteConfig.id}`, {
@@ -158,7 +177,7 @@ export default function WatchBuySection({ onSaved }) {
         'Content-Type': 'application/json',
         'Authorization': token ? `SiteAdmin ${token}` : '',
       },
-      body: JSON.stringify({ settings: { watchAndBuyVideos: updatedVideos } }),
+      body: JSON.stringify({ settings: { watchAndBuyVideos: updatedVideos, showWatchAndBuy: showSection } }),
     });
     const result = await response.json();
     if (!response.ok || !result.success) {
@@ -227,6 +246,12 @@ export default function WatchBuySection({ onSaved }) {
 
   return (
     <div>
+      <SectionToggle
+        enabled={showSection}
+        onChange={setShowSection}
+        label="Show Watch & Buy"
+        description="Toggle the shoppable video section on your homepage"
+      />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <h2 style={{ fontSize: 20, fontWeight: 700 }}>Watch & Buy Videos</h2>
         <button className="btn btn-primary" onClick={openAdd}>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { resolveImageUrl } from '../../utils/imageUrl.js';
+import SectionToggle from './SectionToggle.jsx';
 
 const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
 
@@ -63,6 +64,7 @@ export default function AboutUsEditor({ onSaved, onPreviewUpdate }) {
   const [sections, setSections] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showSection, setShowSection] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [status, setStatus] = useState('');
   const fileInputRef = useRef(null);
@@ -74,8 +76,8 @@ export default function AboutUsEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!hasLoadedRef.current || !onPreviewUpdate) return;
-    onPreviewUpdate({ aboutPage: { heroSubtitle, storyText, storyImage, sections } });
-  }, [heroSubtitle, storyText, storyImage, sections]);
+    onPreviewUpdate({ aboutPage: { heroSubtitle, storyText, storyImage, sections }, showAboutUs: showSection });
+  }, [heroSubtitle, storyText, storyImage, sections, showSection]);
 
   async function loadSettings() {
     setLoading(true);
@@ -93,6 +95,8 @@ export default function AboutUsEditor({ onSaved, onPreviewUpdate }) {
         setHeroSubtitle(aboutPage.heroSubtitle || defaults.heroSubtitle);
         setStoryText(aboutPage.storyText || defaults.storyText);
         setStoryImage(aboutPage.storyImage || '');
+
+        setShowSection(settings.showAboutUs !== false);
 
         if (aboutPage.sections && aboutPage.sections.length > 0) {
           setSections(aboutPage.sections.map(s => ({
@@ -196,7 +200,8 @@ export default function AboutUsEditor({ onSaved, onPreviewUpdate }) {
               storyText,
               storyImage,
               sections,
-            }
+            },
+            showAboutUs: showSection,
           }
         }),
       });
@@ -219,6 +224,12 @@ export default function AboutUsEditor({ onSaved, onPreviewUpdate }) {
   return (
     <div style={{ maxWidth: 700 }}>
       <form onSubmit={handleSave}>
+        <SectionToggle
+          enabled={showSection}
+          onChange={setShowSection}
+          label="Show About Us Page"
+          description="Toggle the About Us page visibility in your store"
+        />
         <div className="card" style={{ marginBottom: 20 }}>
           <div className="card-header">
             <h3 className="card-title">Hero Section</h3>

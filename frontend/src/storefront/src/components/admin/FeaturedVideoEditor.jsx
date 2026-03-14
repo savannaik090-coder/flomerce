@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
+import SectionToggle from './SectionToggle.jsx';
 
 const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
 
@@ -31,6 +32,7 @@ export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate }) {
   const [videoKey, setVideoKey] = useState('');
   const [chatLink, setChatLink] = useState('');
   const [chatButtonText, setChatButtonText] = useState('CHAT NOW');
+  const [showSection, setShowSection] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -47,8 +49,8 @@ export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!hasLoadedRef.current || !onPreviewUpdate) return;
-    onPreviewUpdate({ featuredVideoTitle: title, featuredVideoDescription: description, featuredVideoUrl: videoUrl, featuredVideoChatLink: chatLink, featuredVideoChatButtonText: chatButtonText || 'CHAT NOW' });
-  }, [title, description, videoUrl, chatLink, chatButtonText]);
+    onPreviewUpdate({ featuredVideoTitle: title, featuredVideoDescription: description, featuredVideoUrl: videoUrl, featuredVideoChatLink: chatLink, featuredVideoChatButtonText: chatButtonText || 'CHAT NOW', showFeaturedVideo: showSection });
+  }, [title, description, videoUrl, chatLink, chatButtonText, showSection]);
 
   async function loadSettings() {
     setLoading(true);
@@ -66,6 +68,7 @@ export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate }) {
         setVideoKey(settings.featuredVideoKey || '');
         setChatLink(settings.featuredVideoChatLink || '');
         setChatButtonText(settings.featuredVideoChatButtonText || 'CHAT NOW');
+        setShowSection(settings.showFeaturedVideo !== false);
       }
     } catch (e) {
       console.error('Failed to load featured video settings:', e);
@@ -151,6 +154,7 @@ export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate }) {
             featuredVideoKey: videoKey,
             featuredVideoChatLink: chatLink,
             featuredVideoChatButtonText: chatButtonText || 'CHAT NOW',
+            showFeaturedVideo: showSection,
           }
         }),
       });
@@ -173,6 +177,12 @@ export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate }) {
   return (
     <div style={{ maxWidth: 700 }}>
       <form onSubmit={handleSave}>
+        <SectionToggle
+          enabled={showSection}
+          onChange={setShowSection}
+          label="Show Featured Video"
+          description="Toggle the featured video section on your homepage"
+        />
         <div className="card" style={{ marginBottom: 20 }}>
           <div className="card-header">
             <h3 className="card-title">Featured Video Section</h3>

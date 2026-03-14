@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { resolveImageUrl } from '../../utils/imageUrl.js';
+import SectionToggle from './SectionToggle.jsx';
 
 const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
 
@@ -16,6 +17,7 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate }) {
   const [editingIndex, setEditingIndex] = useState(null);
   const [form, setForm] = useState({ text: '', name: '', rating: 5, image: '', imageKey: '' });
   const [uploading, setUploading] = useState(false);
+  const [showSection, setShowSection] = useState(true);
   const [error, setError] = useState('');
   const fileInputRef = useRef(null);
   const hasLoadedRef = useRef(false);
@@ -26,8 +28,8 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!hasLoadedRef.current || !onPreviewUpdate) return;
-    onPreviewUpdate({ reviewsSectionTitle: sectionTitle, reviewsSectionSubtitle: sectionSubtitle, reviews });
-  }, [sectionTitle, sectionSubtitle, reviews]);
+    onPreviewUpdate({ reviewsSectionTitle: sectionTitle, reviewsSectionSubtitle: sectionSubtitle, reviews, showCustomerReviews: showSection });
+  }, [sectionTitle, sectionSubtitle, reviews, showSection]);
 
   async function loadSettings() {
     setLoading(true);
@@ -42,6 +44,7 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate }) {
         setSectionTitle(settings.reviewsSectionTitle || 'What Our Customers Say');
         setSectionSubtitle(settings.reviewsSectionSubtitle || 'Real reviews from our happy customers');
         setReviews(settings.reviews || []);
+        setShowSection(settings.showCustomerReviews !== false);
       }
     } catch (e) {
       console.error('Failed to load reviews settings:', e);
@@ -76,6 +79,7 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate }) {
       await saveToSettings({
         reviewsSectionTitle: sectionTitle,
         reviewsSectionSubtitle: sectionSubtitle,
+        showCustomerReviews: showSection,
       });
       setStatus('success');
       if (onSaved) onSaved();
@@ -196,6 +200,12 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate }) {
 
   return (
     <div>
+      <SectionToggle
+        enabled={showSection}
+        onChange={setShowSection}
+        label="Show Customer Reviews"
+        description="Toggle the customer reviews section on your homepage"
+      />
       <form onSubmit={handleSaveSection} style={{ maxWidth: 700, marginBottom: 32 }}>
         <div className="card" style={{ marginBottom: 20 }}>
           <div className="card-header">

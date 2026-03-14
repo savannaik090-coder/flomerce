@@ -13,6 +13,7 @@ import FooterEditor from './FooterEditor.jsx';
 import StoreLocationsEditor from './StoreLocationsEditor.jsx';
 import CheckoutEditor from './CheckoutEditor.jsx';
 import ProductPoliciesEditor from './ProductPoliciesEditor.jsx';
+import SectionToggle from './SectionToggle.jsx';
 
 const SUB_TABS = [
   { id: 'promo-banner',      icon: 'fa-bullhorn',       label: 'Promo Banner',      page: '/' },
@@ -282,6 +283,7 @@ export default function WebsiteContentSection() {
 function PromoBannerEditor({ onSaved, onPreviewUpdate }) {
   const { siteConfig } = useContext(SiteContext);
   const [messages, setMessages] = useState(['', '', '']);
+  const [showSection, setShowSection] = useState(true);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(true);
@@ -293,8 +295,8 @@ function PromoBannerEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!hasLoadedRef.current || !onPreviewUpdate) return;
-    onPreviewUpdate({ promoBanner: messages.filter(m => m.trim() !== '') });
-  }, [messages]);
+    onPreviewUpdate({ promoBanner: messages.filter(m => m.trim() !== ''), showPromoBanner: showSection });
+  }, [messages, showSection]);
 
   async function loadPromoBanner() {
     setLoading(true);
@@ -313,6 +315,7 @@ function PromoBannerEditor({ onSaved, onPreviewUpdate }) {
           existing[1] || '',
           existing[2] || '',
         ]);
+        setShowSection(settings.showPromoBanner !== false);
       }
     } catch (e) {
       console.error('Failed to load promo banner:', e);
@@ -338,7 +341,7 @@ function PromoBannerEditor({ onSaved, onPreviewUpdate }) {
           'Content-Type': 'application/json',
           'Authorization': token ? `SiteAdmin ${token}` : '',
         },
-        body: JSON.stringify({ settings: { promoBanner: filtered } }),
+        body: JSON.stringify({ settings: { promoBanner: filtered, showPromoBanner: showSection } }),
       });
       const result = await response.json();
       if (response.ok && result.success) {
@@ -367,6 +370,12 @@ function PromoBannerEditor({ onSaved, onPreviewUpdate }) {
   return (
     <div style={{ maxWidth: 700 }}>
       <form onSubmit={handleSave}>
+        <SectionToggle
+          enabled={showSection}
+          onChange={setShowSection}
+          label="Show Promo Banner"
+          description="Toggle the scrolling promo banner at the top of your store"
+        />
         <div className="card" style={{ marginBottom: 20 }}>
           <div className="card-header">
             <h3 className="card-title">Promo Banner Messages</h3>

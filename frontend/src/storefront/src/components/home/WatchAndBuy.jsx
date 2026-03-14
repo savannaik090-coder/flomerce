@@ -13,7 +13,10 @@ export default function WatchAndBuy() {
   const videoRefs = useRef([]);
   const containerRef = useRef(null);
 
+  const isSectionHidden = siteConfig?.settings?.showWatchAndBuy === false;
+
   useEffect(() => {
+    if (isSectionHidden) return;
     const configVideos = siteConfig?.settings?.watchAndBuyVideos || [];
     setVideos(configVideos);
 
@@ -108,7 +111,7 @@ export default function WatchAndBuy() {
     }
   };
 
-  if (!videos.length) return null;
+  if (!videos.length || isSectionHidden) return null;
 
   return (
     <section className="wb-section">

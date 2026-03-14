@@ -24,10 +24,11 @@ export default function FirstVisitBanner() {
     localStorage.setItem(STORAGE_KEY, 'true');
   };
 
-  if (!show) return null;
+  const settings = siteConfig?.settings || {};
+
+  if (!show || settings.showWelcomeBanner === false) return null;
 
   const brandName = siteConfig?.brandName || siteConfig?.brand_name || 'Our Store';
-  const settings = siteConfig?.settings || {};
   const bannerImage = settings.welcomeBannerImage || '';
   const heading = settings.welcomeBannerHeading || `Welcome to ${brandName}!`;
   const message = settings.welcomeBannerMessage || 'Discover our exquisite collection. Sign up today to receive exclusive offers and updates.';

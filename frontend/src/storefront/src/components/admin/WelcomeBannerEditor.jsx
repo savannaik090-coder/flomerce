@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { resolveImageUrl } from '../../utils/imageUrl.js';
+import SectionToggle from './SectionToggle.jsx';
 
 const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
 
@@ -28,6 +29,7 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate }) {
   const [buttonText, setButtonText] = useState('');
   const [buttonLink, setButtonLink] = useState('');
   const [bannerImage, setBannerImage] = useState('');
+  const [showSection, setShowSection] = useState(true);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(true);
@@ -43,8 +45,8 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!hasLoadedRef.current || !onPreviewUpdate) return;
-    onPreviewUpdate({ welcomeBannerImage: bannerImage, welcomeBannerHeading: heading, welcomeBannerMessage: message, welcomeBannerButtonText: buttonText, welcomeBannerButtonLink: buttonLink });
-  }, [heading, message, buttonText, buttonLink, bannerImage]);
+    onPreviewUpdate({ welcomeBannerImage: bannerImage, welcomeBannerHeading: heading, welcomeBannerMessage: message, welcomeBannerButtonText: buttonText, welcomeBannerButtonLink: buttonLink, showWelcomeBanner: showSection });
+  }, [heading, message, buttonText, buttonLink, bannerImage, showSection]);
 
   async function loadSettings() {
     setLoading(true);
@@ -61,6 +63,7 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate }) {
         setButtonText(settings.welcomeBannerButtonText || '');
         setButtonLink(settings.welcomeBannerButtonLink || '');
         setBannerImage(settings.welcomeBannerImage || '');
+        setShowSection(settings.showWelcomeBanner !== false);
       }
     } catch (e) {
       console.error('Failed to load welcome banner settings:', e);
@@ -113,6 +116,7 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate }) {
             welcomeBannerMessage: message,
             welcomeBannerButtonText: buttonText,
             welcomeBannerButtonLink: buttonLink,
+            showWelcomeBanner: showSection,
           }
         }),
       });
@@ -135,6 +139,12 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate }) {
   return (
     <div style={{ maxWidth: 700 }}>
       <form onSubmit={handleSave}>
+        <SectionToggle
+          enabled={showSection}
+          onChange={setShowSection}
+          label="Show Welcome Banner"
+          description="Toggle the first-visit popup banner for new customers"
+        />
         <div className="card" style={{ marginBottom: 20 }}>
           <div className="card-header">
             <h3 className="card-title">Welcome Banner</h3>

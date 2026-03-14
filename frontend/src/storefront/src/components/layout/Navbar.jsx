@@ -30,7 +30,7 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
 
   return (
     <header className="header">
-      <div className="promo-banner">
+      {siteConfig?.settings?.showPromoBanner !== false && <div className="promo-banner">
         <p className="banner-text">
           {(() => {
             const sep = <span style={{ padding: '0 30px', opacity: 0.5 }}>{'\u2726'}</span>;
@@ -43,7 +43,7 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
             return <>{defaultMsg}{sep}{defaultMsg}{sep}{defaultMsg}{sep}{defaultMsg}</>;
           })()}
         </p>
-      </div>
+      </div>}
 
       <nav className="navbar">
         <div className="nav-container">

@@ -43,7 +43,7 @@ export default function FeaturedVideoSection() {
     }
   };
 
-  if (!videoUrl) return null;
+  if (!videoUrl || settings.showFeaturedVideo === false) return null;
 
   return (
     <section className="fv-section">

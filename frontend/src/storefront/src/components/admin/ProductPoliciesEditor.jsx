@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
+import SectionToggle from './SectionToggle.jsx';
 
 const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
 
@@ -109,6 +110,7 @@ const DEFAULT_PLACEHOLDERS = {
 
 export default function ProductPoliciesEditor({ onSaved, onPreviewUpdate }) {
   const { siteConfig } = useContext(SiteContext);
+  const [showSection, setShowSection] = useState(true);
   const [fields, setFields] = useState({
     shippingRegions: '',
     shippingCharges: '',
@@ -134,8 +136,8 @@ export default function ProductPoliciesEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!hasLoadedRef.current || !onPreviewUpdate) return;
-    onPreviewUpdate(fields);
-  }, [fields]);
+    onPreviewUpdate({ ...fields, showProductPolicies: showSection });
+  }, [fields, showSection]);
 
   async function loadSettings() {
     setLoading(true);
@@ -159,6 +161,7 @@ export default function ProductPoliciesEditor({ onSaved, onPreviewUpdate }) {
           careGuideWashing: settings.careGuideWashing || '',
           careGuideMaintenance: settings.careGuideMaintenance || '',
         });
+        setShowSection(settings.showProductPolicies !== false);
       }
     } catch (e) {
       console.error('Failed to load product policies settings:', e);
@@ -189,7 +192,7 @@ export default function ProductPoliciesEditor({ onSaved, onPreviewUpdate }) {
           'Content-Type': 'application/json',
           'Authorization': token ? `SiteAdmin ${token}` : '',
         },
-        body: JSON.stringify({ settings: fields }),
+        body: JSON.stringify({ settings: { ...fields, showProductPolicies: showSection } }),
       });
       const result = await response.json();
       if (response.ok && result.success) {
@@ -236,6 +239,12 @@ export default function ProductPoliciesEditor({ onSaved, onPreviewUpdate }) {
   return (
     <div style={{ maxWidth: 700 }}>
       <form onSubmit={handleSave}>
+        <SectionToggle
+          enabled={showSection}
+          onChange={setShowSection}
+          label="Show Product Policies"
+          description="Toggle shipping, returns, and care guide sections on product pages"
+        />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
           <div>
             <h3 style={{ margin: 0, fontSize: 18, color: '#1e293b' }}>Product Policies</h3>

@@ -279,6 +279,7 @@ export default function ProductDetailPage() {
               </button>
             </div>
 
+            {siteConfig?.settings?.showProductPolicies !== false && (
             <div className="product-policies-accordions">
               <PolicyAccordion title="Shipping & Delivery Details" icon="fa-truck">
                 <PolicyItem label="Regions" value={pol('shippingRegions')} />
@@ -299,6 +300,7 @@ export default function ProductDetailPage() {
                 <PolicyItem label="Maintenance" value={pol('careGuideMaintenance')} />
               </PolicyAccordion>
             </div>
+            )}
           </div>
         </div>
       </div>

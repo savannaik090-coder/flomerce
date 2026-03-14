@@ -16,6 +16,9 @@ export default function CustomerReviews() {
   const [modalImage, setModalImage] = useState(null);
 
   const settings = siteConfig?.settings || {};
+
+  if (settings.showCustomerReviews === false) return null;
+
   const reviews = settings.reviews?.length
     ? settings.reviews
     : defaultReviews;
