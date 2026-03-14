@@ -124,6 +124,15 @@ Fluxe is a multi-tenant SaaS platform that allows users to create their own e-co
 - **Cart Items:** Local cart stores `{ productId, name, price, thumbnail, quantity }`. Server cart enriches to `{ productId, quantity, variant, addedAt, name, price, thumbnail, inStock, availableStock }`. CheckoutPage maps items using `productId || product_id || id` for compatibility.
 - **Customer Addresses:** Stored server-side in `customer_addresses` table (FK to `site_customers` + `sites`). CRUD API at `/api/customer-auth/addresses` and `/api/customer-auth/addresses/:id`. ProfilePage and CheckoutPage load/save addresses from the server when logged in. Checkout shows a "Save this address" checkbox for new addresses and auto-selects the default saved address. Guest users have no address persistence.
 
+## Product Policies (Shipping, Returns, Care Guide)
+- Three accordion sections on every product detail page: Shipping & Delivery, Return & Exchange, Care Guide
+- Settings stored in site `settings` JSON with keys: `shippingRegions`, `shippingCharges`, `shippingDeliveryTime`, `shippingTracking`, `returnPolicy`, `returnReplacements`, `returnMandatory`, `careGuideCleaning`, `careGuideWashing`, `careGuideMaintenance`
+- Admin manages via Edit Website > "Product Policies" tab (`ProductPoliciesEditor.jsx`)
+- Category-based defaults: jewellery, clothing, electronics each have tailored default text
+- "Load Defaults" button in admin auto-fills based on site's business category
+- New sites get these defaults automatically via `getDefaultProductPolicies()` in `sites-worker.js`
+- Product detail page falls back: saved settings → category defaults → generic fallback
+
 ## Dynamic Homepage Categories
 - Homepage sections are fully dynamic — no hardcoded NewArrivals/FeaturedCollection components
 - Categories table has `subtitle` (TEXT) and `show_on_home` (INTEGER DEFAULT 1) columns

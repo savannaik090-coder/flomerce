@@ -12,6 +12,7 @@ import PrivacyEditor from './PrivacyEditor.jsx';
 import FooterEditor from './FooterEditor.jsx';
 import StoreLocationsEditor from './StoreLocationsEditor.jsx';
 import CheckoutEditor from './CheckoutEditor.jsx';
+import ProductPoliciesEditor from './ProductPoliciesEditor.jsx';
 
 const SUB_TABS = [
   { id: 'promo-banner',      icon: 'fa-bullhorn',       label: 'Promo Banner',      page: '/' },
@@ -23,6 +24,7 @@ const SUB_TABS = [
   { id: 'customer-reviews',  icon: 'fa-star',           label: 'Customer Reviews',   page: '/' },
   { id: 'store-locations',   icon: 'fa-store',          label: 'Store Locations',    page: '/' },
   { id: 'checkout',          icon: 'fa-shopping-bag',   label: 'Checkout',           page: '/' },
+  { id: 'product-policies',  icon: 'fa-shield-alt',     label: 'Product Policies',   page: '/' },
   { id: 'footer',            icon: 'fa-shoe-prints',    label: 'Footer',             page: '/' },
   { id: 'about-us',          icon: 'fa-info-circle',    label: 'About Us',           page: '/about' },
   { id: 'terms',             icon: 'fa-file-contract',  label: 'Terms & Conditions', page: '/terms' },
@@ -158,6 +160,7 @@ export default function WebsiteContentSection() {
           {activeTab === 'customer-reviews' && <CustomerReviewsEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
           {activeTab === 'store-locations' && <StoreLocationsEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
           {activeTab === 'checkout' && <CheckoutEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
+          {activeTab === 'product-policies' && <ProductPoliciesEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
           {activeTab === 'about-us' && <AboutUsEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
           {activeTab === 'terms' && <TermsEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
           {activeTab === 'privacy' && <PrivacyEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
