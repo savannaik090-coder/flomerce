@@ -16,6 +16,8 @@ export default function ProductGallery({ images, productName }) {
     }).filter(img => img.url);
   }, [images, productName]);
 
+  const hasMultipleImages = parsedImages.length > 1;
+
   const goToImage = useCallback((index) => {
     if (index >= 0 && index < parsedImages.length) {
       setActiveIndex(index);
@@ -79,6 +81,16 @@ export default function ProductGallery({ images, productName }) {
         onTouchEnd={handleTouchEnd}
         ref={mainImageRef}
       >
+        {hasMultipleImages && (
+          <button
+            className="gallery-nav gallery-nav-prev"
+            onClick={() => goToImage(activeIndex - 1)}
+            disabled={activeIndex === 0}
+          >
+            ‹
+          </button>
+        )}
+
         <img
           className="product-main-image"
           src={parsedImages[activeIndex]?.url}
@@ -86,9 +98,19 @@ export default function ProductGallery({ images, productName }) {
           onClick={handleMainImageClick}
           style={{ display: 'block' }}
         />
+
+        {hasMultipleImages && (
+          <button
+            className="gallery-nav gallery-nav-next"
+            onClick={() => goToImage(activeIndex + 1)}
+            disabled={activeIndex === parsedImages.length - 1}
+          >
+            ›
+          </button>
+        )}
       </div>
 
-      {parsedImages.length > 1 && (
+      {hasMultipleImages && (
         <div className="product-detail-images">
           <div className="product-thumbnails">
             {parsedImages.map((img, index) => (
@@ -108,7 +130,7 @@ export default function ProductGallery({ images, productName }) {
       {zoomOpen && (
         <div className="image-zoom-overlay" onClick={() => setZoomOpen(false)}>
           <button className="zoom-close" onClick={() => setZoomOpen(false)}>×</button>
-          {parsedImages.length > 1 && (
+          {hasMultipleImages && (
             <>
               <button className="zoom-nav prev" onClick={(e) => { e.stopPropagation(); goToZoomImage(zoomIndex - 1); }} disabled={zoomIndex === 0}>‹</button>
               <button className="zoom-nav next" onClick={(e) => { e.stopPropagation(); goToZoomImage(zoomIndex + 1); }} disabled={zoomIndex === parsedImages.length - 1}>›</button>
