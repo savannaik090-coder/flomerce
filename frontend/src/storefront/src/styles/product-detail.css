@@ -299,7 +299,7 @@
     border-color: #ff3e6c;
 }
 
-.product-description-inline {
+.product-description-inline.product-description-section {
     padding: 0;
     margin: 0 0 25px 0;
     max-width: none;
