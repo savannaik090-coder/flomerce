@@ -200,8 +200,8 @@ export default function OrdersSection() {
                             <div style={{ fontWeight: 500 }}>{order.customer_name || order.name || 'Guest'}</div>
                             <div style={{ fontSize: 12, color: '#888' }}>{order.customer_email || order.email || '—'}</div>
                           </td>
-                          <td>{order.customer_phone || '—'}</td>
-                          <td>{items.length > 0 ? items.length : '—'}</td>
+                          <td style={{ whiteSpace: 'nowrap' }}>{order.customer_phone || '—'}</td>
+                          <td>{items.length > 0 ? `${items.length} item${items.length !== 1 ? 's' : ''}` : '—'}</td>
                           <td style={{ fontWeight: 600 }}>₹{parseFloat(order.total || order.total_amount || 0).toLocaleString('en-IN')}</td>
                           <td style={{ textTransform: 'capitalize' }}>
                             {order.payment_method === 'cod' ? 'Cash on Delivery' : (order.payment_method || '—')}
