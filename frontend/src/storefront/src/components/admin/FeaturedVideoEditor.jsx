@@ -23,7 +23,7 @@ const DEFAULT_PLACEHOLDERS = {
   description: "e.g., Explore our curated selection of premium products. Connect with us and find exactly what you're looking for",
 };
 
-export default function FeaturedVideoEditor({ onSaved }) {
+export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate }) {
   const { siteConfig } = useContext(SiteContext);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -37,12 +37,18 @@ export default function FeaturedVideoEditor({ onSaved }) {
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(true);
   const fileInputRef = useRef(null);
+  const hasLoadedRef = useRef(false);
 
   const placeholders = CATEGORY_PLACEHOLDERS[siteConfig?.category] || DEFAULT_PLACEHOLDERS;
 
   useEffect(() => {
     if (siteConfig?.id) loadSettings();
   }, [siteConfig?.id]);
+
+  useEffect(() => {
+    if (!hasLoadedRef.current || !onPreviewUpdate) return;
+    onPreviewUpdate({ featuredVideoTitle: title, featuredVideoDescription: description, featuredVideoUrl: videoUrl, featuredVideoChatLink: chatLink, featuredVideoChatButtonText: chatButtonText || 'CHAT NOW' });
+  }, [title, description, videoUrl, chatLink, chatButtonText]);
 
   async function loadSettings() {
     setLoading(true);
@@ -64,6 +70,7 @@ export default function FeaturedVideoEditor({ onSaved }) {
     } catch (e) {
       console.error('Failed to load featured video settings:', e);
     } finally {
+      hasLoadedRef.current = true;
       setLoading(false);
     }
   }

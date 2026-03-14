@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 
 const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
@@ -48,7 +48,7 @@ function getDefaultSections(brand, email, phone) {
   ];
 }
 
-export default function TermsEditor({ onSaved }) {
+export default function TermsEditor({ onSaved, onPreviewUpdate }) {
   const { siteConfig } = useContext(SiteContext);
   const brand = siteConfig?.brand_name || 'Our Store';
   const email = siteConfig?.email || 'support@example.com';
@@ -59,10 +59,16 @@ export default function TermsEditor({ onSaved }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState('');
+  const hasLoadedRef = useRef(false);
 
   useEffect(() => {
     if (siteConfig?.id) loadSettings();
   }, [siteConfig?.id]);
+
+  useEffect(() => {
+    if (!hasLoadedRef.current || !onPreviewUpdate) return;
+    onPreviewUpdate({ termsContent: { intro, sections } });
+  }, [intro, sections]);
 
   async function loadSettings() {
     setLoading(true);
@@ -88,6 +94,7 @@ export default function TermsEditor({ onSaved }) {
       setIntro(`Please read these Terms and Conditions carefully before using ${brand}'s website and services. By accessing or using our service, you agree to be bound by these terms.`);
       setSections(getDefaultSections(brand, email, phone));
     } finally {
+      hasLoadedRef.current = true;
       setLoading(false);
     }
   }

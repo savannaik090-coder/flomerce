@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 
 const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
@@ -64,17 +64,23 @@ const DEFAULT_SECTIONS = [
 
 const DEFAULT_INTRO = 'We are committed to protecting your personal information and your right to privacy. This Privacy Policy explains how we collect, use, and share information about you when you use our services.';
 
-export default function PrivacyEditor({ onSaved }) {
+export default function PrivacyEditor({ onSaved, onPreviewUpdate }) {
   const { siteConfig } = useContext(SiteContext);
   const [intro, setIntro] = useState('');
   const [sections, setSections] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState('');
+  const hasLoadedRef = useRef(false);
 
   useEffect(() => {
     if (siteConfig?.id) loadSettings();
   }, [siteConfig?.id]);
+
+  useEffect(() => {
+    if (!hasLoadedRef.current || !onPreviewUpdate) return;
+    onPreviewUpdate({ privacyContent: { intro, sections: sections.map(s => ({ title: s.title, content: s.content })) } });
+  }, [intro, sections]);
 
   async function loadSettings() {
     setLoading(true);
@@ -100,6 +106,7 @@ export default function PrivacyEditor({ onSaved }) {
       setIntro(DEFAULT_INTRO);
       setSections(DEFAULT_SECTIONS.map(s => ({ ...s })));
     } finally {
+      hasLoadedRef.current = true;
       setLoading(false);
     }
   }

@@ -4,7 +4,7 @@ import { resolveImageUrl } from '../../utils/imageUrl.js';
 
 const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
 
-export default function CustomerReviewsEditor({ onSaved }) {
+export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate }) {
   const { siteConfig } = useContext(SiteContext);
   const [sectionTitle, setSectionTitle] = useState('What Our Customers Say');
   const [sectionSubtitle, setSectionSubtitle] = useState('Real reviews from our happy customers');
@@ -18,10 +18,16 @@ export default function CustomerReviewsEditor({ onSaved }) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const fileInputRef = useRef(null);
+  const hasLoadedRef = useRef(false);
 
   useEffect(() => {
     if (siteConfig?.id) loadSettings();
   }, [siteConfig?.id]);
+
+  useEffect(() => {
+    if (!hasLoadedRef.current || !onPreviewUpdate) return;
+    onPreviewUpdate({ reviewsSectionTitle: sectionTitle, reviewsSectionSubtitle: sectionSubtitle, reviews });
+  }, [sectionTitle, sectionSubtitle, reviews]);
 
   async function loadSettings() {
     setLoading(true);
@@ -40,6 +46,7 @@ export default function CustomerReviewsEditor({ onSaved }) {
     } catch (e) {
       console.error('Failed to load reviews settings:', e);
     } finally {
+      hasLoadedRef.current = true;
       setLoading(false);
     }
   }

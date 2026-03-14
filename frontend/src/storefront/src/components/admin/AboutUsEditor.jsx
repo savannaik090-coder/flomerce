@@ -55,7 +55,7 @@ const inputStyle = { width: '100%', padding: '10px 12px', border: '1px solid #e2
 const labelStyle = { display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 };
 const textareaStyle = { ...inputStyle, resize: 'vertical' };
 
-export default function AboutUsEditor({ onSaved }) {
+export default function AboutUsEditor({ onSaved, onPreviewUpdate }) {
   const { siteConfig } = useContext(SiteContext);
   const [heroSubtitle, setHeroSubtitle] = useState('');
   const [storyText, setStoryText] = useState('');
@@ -66,10 +66,16 @@ export default function AboutUsEditor({ onSaved }) {
   const [uploading, setUploading] = useState(false);
   const [status, setStatus] = useState('');
   const fileInputRef = useRef(null);
+  const hasLoadedRef = useRef(false);
 
   useEffect(() => {
     if (siteConfig?.id) loadSettings();
   }, [siteConfig?.id]);
+
+  useEffect(() => {
+    if (!hasLoadedRef.current || !onPreviewUpdate) return;
+    onPreviewUpdate({ aboutPage: { heroSubtitle, storyText, storyImage, sections } });
+  }, [heroSubtitle, storyText, storyImage, sections]);
 
   async function loadSettings() {
     setLoading(true);
@@ -107,6 +113,7 @@ export default function AboutUsEditor({ onSaved }) {
     } catch (e) {
       console.error('Failed to load about page settings:', e);
     } finally {
+      hasLoadedRef.current = true;
       setLoading(false);
     }
   }

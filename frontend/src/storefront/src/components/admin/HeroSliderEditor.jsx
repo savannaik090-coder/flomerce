@@ -21,7 +21,7 @@ function compressImage(file, maxWidth = 1400, quality = 0.85) {
   });
 }
 
-export default function HeroSliderEditor({ onSaved }) {
+export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
   const { siteConfig } = useContext(SiteContext);
   const [slides, setSlides] = useState([
     { title: '', subtitle: '', description: '', buttonText: 'SHOP NOW', buttonLink: '', image: '' },
@@ -34,10 +34,17 @@ export default function HeroSliderEditor({ onSaved }) {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState([false, false, false]);
   const fileRefs = [useRef(null), useRef(null), useRef(null)];
+  const hasLoadedRef = useRef(false);
 
   useEffect(() => {
     if (siteConfig?.id) loadHeroSettings();
   }, [siteConfig?.id]);
+
+  useEffect(() => {
+    if (!hasLoadedRef.current || !onPreviewUpdate) return;
+    const filtered = slides.filter(s => s.title.trim() || s.subtitle.trim() || s.description.trim() || s.image);
+    onPreviewUpdate({ heroSlides: filtered.length > 0 ? filtered : [], heroShowScrollButtons: showScrollButtons });
+  }, [slides, showScrollButtons]);
 
   async function loadHeroSettings() {
     setLoading(true);
@@ -64,6 +71,7 @@ export default function HeroSliderEditor({ onSaved }) {
     } catch (e) {
       console.error('Failed to load hero settings:', e);
     } finally {
+      hasLoadedRef.current = true;
       setLoading(false);
     }
   }

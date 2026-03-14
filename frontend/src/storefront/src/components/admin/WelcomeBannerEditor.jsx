@@ -21,7 +21,7 @@ function compressImage(file, maxWidth = 1200, quality = 0.85) {
   });
 }
 
-export default function WelcomeBannerEditor({ onSaved }) {
+export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate }) {
   const { siteConfig } = useContext(SiteContext);
   const [heading, setHeading] = useState('');
   const [message, setMessage] = useState('');
@@ -33,12 +33,18 @@ export default function WelcomeBannerEditor({ onSaved }) {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef(null);
+  const hasLoadedRef = useRef(false);
 
   const brandName = siteConfig?.brand_name || siteConfig?.brandName || 'Our Store';
 
   useEffect(() => {
     if (siteConfig?.id) loadSettings();
   }, [siteConfig?.id]);
+
+  useEffect(() => {
+    if (!hasLoadedRef.current || !onPreviewUpdate) return;
+    onPreviewUpdate({ welcomeBannerImage: bannerImage, welcomeBannerHeading: heading, welcomeBannerMessage: message, welcomeBannerButtonText: buttonText, welcomeBannerButtonLink: buttonLink });
+  }, [heading, message, buttonText, buttonLink, bannerImage]);
 
   async function loadSettings() {
     setLoading(true);
@@ -59,6 +65,7 @@ export default function WelcomeBannerEditor({ onSaved }) {
     } catch (e) {
       console.error('Failed to load welcome banner settings:', e);
     } finally {
+      hasLoadedRef.current = true;
       setLoading(false);
     }
   }

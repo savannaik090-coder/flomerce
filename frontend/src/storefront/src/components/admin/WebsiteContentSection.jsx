@@ -44,6 +44,7 @@ export default function WebsiteContentSection() {
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 900);
   const [showMobilePreview, setShowMobilePreview] = useState(false);
   const iframeRef = useRef(null);
+  const mobileIframeRef = useRef(null);
 
   const storeBaseUrl = getStoreUrl(siteConfig);
   const currentTab = SUB_TABS.find(t => t.id === activeTab);
@@ -51,6 +52,16 @@ export default function WebsiteContentSection() {
 
   const refreshPreview = useCallback(() => {
     setPreviewKey(k => k + 1);
+  }, []);
+
+  const sendPreviewUpdate = useCallback((settingsPatch) => {
+    [iframeRef.current, mobileIframeRef.current].forEach(frame => {
+      try {
+        if (frame?.contentWindow) {
+          frame.contentWindow.postMessage({ type: 'FLUXE_PREVIEW_UPDATE', settings: settingsPatch }, '*');
+        }
+      } catch (e) {}
+    });
   }, []);
 
   useEffect(() => {
@@ -118,18 +129,18 @@ export default function WebsiteContentSection() {
 
       <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
         <div style={{ flex: '1 1 0', minWidth: 0 }}>
-          {activeTab === 'promo-banner' && <PromoBannerEditor onSaved={refreshPreview} />}
-          {activeTab === 'hero-slider' && <HeroSliderEditor onSaved={refreshPreview} />}
-          {activeTab === 'welcome-banner' && <WelcomeBannerEditor onSaved={refreshPreview} />}
+          {activeTab === 'promo-banner' && <PromoBannerEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
+          {activeTab === 'hero-slider' && <HeroSliderEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
+          {activeTab === 'welcome-banner' && <WelcomeBannerEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
           {activeTab === 'categories' && <CategoriesSection onSaved={refreshPreview} />}
           {activeTab === 'watchbuy' && <WatchBuySection onSaved={refreshPreview} />}
-          {activeTab === 'featured-video' && <FeaturedVideoEditor onSaved={refreshPreview} />}
-          {activeTab === 'customer-reviews' && <CustomerReviewsEditor onSaved={refreshPreview} />}
-          {activeTab === 'store-locations' && <StoreLocationsEditor onSaved={refreshPreview} />}
-          {activeTab === 'about-us' && <AboutUsEditor onSaved={refreshPreview} />}
-          {activeTab === 'terms' && <TermsEditor onSaved={refreshPreview} />}
-          {activeTab === 'privacy' && <PrivacyEditor onSaved={refreshPreview} />}
-          {activeTab === 'footer' && <FooterEditor onSaved={refreshPreview} />}
+          {activeTab === 'featured-video' && <FeaturedVideoEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
+          {activeTab === 'customer-reviews' && <CustomerReviewsEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
+          {activeTab === 'store-locations' && <StoreLocationsEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
+          {activeTab === 'about-us' && <AboutUsEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
+          {activeTab === 'terms' && <TermsEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
+          {activeTab === 'privacy' && <PrivacyEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
+          {activeTab === 'footer' && <FooterEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
         </div>
 
         {!isMobile && showPreview && previewUrl && (
@@ -168,7 +179,7 @@ export default function WebsiteContentSection() {
               />
             </div>
             <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 6, textAlign: 'center' }}>
-              Save your changes, then click <i className="fas fa-sync-alt" style={{ fontSize: 10 }} /> to refresh
+              Preview updates as you type. Save to make changes permanent.
             </p>
           </div>
         )}
@@ -227,6 +238,7 @@ export default function WebsiteContentSection() {
             </div>
           </div>
           <iframe
+            ref={mobileIframeRef}
             key={previewKey}
             src={previewUrl}
             style={{ flex: 1, width: '100%', border: 'none', display: 'block' }}
@@ -238,16 +250,22 @@ export default function WebsiteContentSection() {
   );
 }
 
-function PromoBannerEditor({ onSaved }) {
+function PromoBannerEditor({ onSaved, onPreviewUpdate }) {
   const { siteConfig } = useContext(SiteContext);
   const [messages, setMessages] = useState(['', '', '']);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(true);
+  const hasLoadedRef = useRef(false);
 
   useEffect(() => {
     if (siteConfig?.id) loadPromoBanner();
   }, [siteConfig?.id]);
+
+  useEffect(() => {
+    if (!hasLoadedRef.current || !onPreviewUpdate) return;
+    onPreviewUpdate({ promoBanner: messages.filter(m => m.trim() !== '') });
+  }, [messages]);
 
   async function loadPromoBanner() {
     setLoading(true);
@@ -270,6 +288,7 @@ function PromoBannerEditor({ onSaved }) {
     } catch (e) {
       console.error('Failed to load promo banner:', e);
     } finally {
+      hasLoadedRef.current = true;
       setLoading(false);
     }
   }

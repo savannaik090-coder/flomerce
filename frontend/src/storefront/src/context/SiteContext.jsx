@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect } from 'react';
+import React, { createContext, useState, useEffect, useContext } from 'react';
 
 export const SiteContext = createContext(null);
 
@@ -45,6 +45,21 @@ export function SiteProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [subdomain, setSubdomain] = useState(null);
+  const [previewSettings, setPreviewSettings] = useState(null);
+
+  useEffect(() => {
+    let isInIframe = false;
+    try { isInIframe = window.self !== window.top; } catch (e) { isInIframe = true; }
+    if (!isInIframe) return;
+
+    function handleMessage(event) {
+      if (!event.data || event.data.type !== 'FLUXE_PREVIEW_UPDATE') return;
+      setPreviewSettings(prev => ({ ...(prev || {}), ...event.data.settings }));
+    }
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
 
   useEffect(() => {
     const detected = getSubdomain();
@@ -106,6 +121,7 @@ export function SiteProvider({ children }) {
       };
 
       setSiteConfig(config);
+      setPreviewSettings(null);
 
       if (config.brandName) {
         document.title = config.brandName;
@@ -125,8 +141,12 @@ export function SiteProvider({ children }) {
     }
   }
 
+  const effectiveSiteConfig = previewSettings && siteConfig
+    ? { ...siteConfig, settings: { ...(siteConfig.settings || {}), ...previewSettings } }
+    : siteConfig;
+
   return (
-    <SiteContext.Provider value={{ siteConfig, loading, error, subdomain, refetchSite: () => subdomain && fetchSiteConfig(subdomain, true) }}>
+    <SiteContext.Provider value={{ siteConfig: effectiveSiteConfig, loading, error, subdomain, refetchSite: () => subdomain && fetchSiteConfig(subdomain, true) }}>
       {children}
     </SiteContext.Provider>
   );

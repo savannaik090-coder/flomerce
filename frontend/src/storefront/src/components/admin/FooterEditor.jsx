@@ -1,14 +1,15 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { getCategories } from '../../services/categoryService.js';
 
 const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
 
-export default function FooterEditor({ onSaved }) {
+export default function FooterEditor({ onSaved, onPreviewUpdate }) {
   const { siteConfig, refetchSite } = useContext(SiteContext);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState('');
+  const hasLoadedRef = useRef(false);
 
   const [instagram, setInstagram] = useState('');
   const [facebook, setFacebook] = useState('');
@@ -32,6 +33,19 @@ export default function FooterEditor({ onSaved }) {
       loadCategories();
     }
   }, [siteConfig?.id]);
+
+  useEffect(() => {
+    if (!hasLoadedRef.current || !onPreviewUpdate) return;
+    const social = { instagram, facebook, twitter, youtube };
+    onPreviewUpdate({
+      social,
+      footer: {
+        social,
+        bottomNav: { shopRedirect, showCurrency },
+        appBanner: { show: showAppBanner, showAppStore, showPlayStore, appStoreUrl, playStoreUrl },
+      },
+    });
+  }, [instagram, facebook, twitter, youtube, shopRedirect, showCurrency, showAppBanner, showAppStore, showPlayStore, appStoreUrl, playStoreUrl]);
 
   async function loadCategories() {
     try {
@@ -77,6 +91,7 @@ export default function FooterEditor({ onSaved }) {
     } catch (e) {
       console.error('Failed to load footer config:', e);
     } finally {
+      hasLoadedRef.current = true;
       setLoading(false);
     }
   }

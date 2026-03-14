@@ -25,7 +25,7 @@ function compressImage(file, maxWidth = 1200, quality = 0.85) {
   });
 }
 
-export default function StoreLocationsEditor({ onSaved }) {
+export default function StoreLocationsEditor({ onSaved, onPreviewUpdate }) {
   const { siteConfig } = useContext(SiteContext);
   const [showSection, setShowSection] = useState(true);
   const [stores, setStores] = useState([{ ...EMPTY_STORE }]);
@@ -34,10 +34,16 @@ export default function StoreLocationsEditor({ onSaved }) {
   const [uploading, setUploading] = useState({});
   const [status, setStatus] = useState('');
   const fileInputRefs = useRef({});
+  const hasLoadedRef = useRef(false);
 
   useEffect(() => {
     if (siteConfig?.id) loadSettings();
   }, [siteConfig?.id]);
+
+  useEffect(() => {
+    if (!hasLoadedRef.current || !onPreviewUpdate) return;
+    onPreviewUpdate({ showStoreLocations: showSection, storeLocations: stores.filter(s => s.name || s.address) });
+  }, [showSection, stores]);
 
   async function loadSettings() {
     setLoading(true);
@@ -67,6 +73,7 @@ export default function StoreLocationsEditor({ onSaved }) {
     } catch (e) {
       console.error('Failed to load store locations:', e);
     } finally {
+      hasLoadedRef.current = true;
       setLoading(false);
     }
   }
