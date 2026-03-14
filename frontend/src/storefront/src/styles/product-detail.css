@@ -539,6 +539,14 @@
     .main-image-container {
         height: 650px;
         min-height: 550px;
+        width: 90vw;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .product-main-image {
+        width: 100%;
+        max-width: 100%;
     }
 
     .product-thumbnail {
@@ -595,6 +603,14 @@
         height: 550px;
         min-height: 450px;
         margin-bottom: 15px;
+        width: 90vw;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .product-main-image {
+        width: 100%;
+        max-width: 100%;
     }
 
     .image-zoom-overlay {
