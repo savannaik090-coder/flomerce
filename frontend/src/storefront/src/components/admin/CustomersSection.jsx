@@ -83,23 +83,23 @@ export default function CustomersSection() {
               <table>
                 <thead>
                   <tr>
-                    <th>Name</th>
-                    <th>Email</th>
-                    <th>Phone</th>
-                    <th>Orders</th>
-                    <th>Total Spent</th>
-                    <th>Last Order</th>
+                    <th style={{ minWidth: 140 }}>Name</th>
+                    <th style={{ minWidth: 200 }}>Email</th>
+                    <th style={{ minWidth: 130 }}>Phone</th>
+                    <th style={{ minWidth: 80 }}>Orders</th>
+                    <th style={{ minWidth: 110 }}>Total Spent</th>
+                    <th style={{ minWidth: 110 }}>Last Order</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filtered.map(customer => (
                     <tr key={customer.email}>
-                      <td style={{ fontWeight: 500 }}>{customer.name}</td>
-                      <td>{customer.email}</td>
-                      <td>{customer.phone || '—'}</td>
+                      <td style={{ fontWeight: 500, whiteSpace: 'nowrap' }}>{customer.name}</td>
+                      <td style={{ wordBreak: 'break-all' }}>{customer.email}</td>
+                      <td style={{ whiteSpace: 'nowrap' }}>{customer.phone || '—'}</td>
                       <td>{customer.orderCount}</td>
-                      <td>₹{customer.totalSpent.toLocaleString('en-IN')}</td>
-                      <td>{new Date(customer.lastOrder).toLocaleDateString()}</td>
+                      <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>₹{customer.totalSpent.toLocaleString('en-IN')}</td>
+                      <td style={{ whiteSpace: 'nowrap' }}>{new Date(customer.lastOrder).toLocaleDateString()}</td>
                     </tr>
                   ))}
                 </tbody>
