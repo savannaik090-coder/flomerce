@@ -378,6 +378,7 @@ function SiteSEOTab({ siteConfig }) {
 
 function CategoriesSEOTab({ siteConfig }) {
   const siteId = siteConfig?.id;
+  const brandName = siteConfig?.brand_name || 'Store';
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState(null);
@@ -400,12 +401,20 @@ function CategoriesSEOTab({ siteConfig }) {
     })();
   }, [siteId]);
 
+  function getAutoTitle(cat) {
+    return `${cat.name} | ${brandName}`;
+  }
+
+  function getAutoDesc(cat) {
+    return cat.description || `Browse our ${cat.name} collection.`;
+  }
+
   function startEdit(cat) {
     setEditingId(cat.id);
     setEditForm({
-      seo_title: cat.seo_title || '',
-      seo_description: cat.seo_description || '',
-      seo_og_image: cat.seo_og_image || '',
+      seo_title: cat.seo_title || getAutoTitle(cat),
+      seo_description: cat.seo_description || getAutoDesc(cat),
+      seo_og_image: cat.seo_og_image || cat.image_url || '',
     });
     setMsg(null);
   }
@@ -463,8 +472,6 @@ function CategoriesSEOTab({ siteConfig }) {
 
       {categories.map(cat => {
         const catImgSrc = getCatImgSrc(cat);
-        const autoTitle = `${cat.name} | ${siteConfig?.brand_name || 'Store'}`;
-        const autoDesc = cat.description || `Browse our ${cat.name} collection.`;
         return (
           <div key={cat.id} className="card" style={{ marginBottom: 12 }}>
             <div className="card-content" style={{ padding: '14px 16px' }}>
@@ -499,8 +506,8 @@ function CategoriesSEOTab({ siteConfig }) {
               {editingId === cat.id && (
                 <div>
                   <SearchPreview
-                    title={editForm.seo_title || autoTitle}
-                    description={editForm.seo_description || autoDesc}
+                    title={editForm.seo_title}
+                    description={editForm.seo_description}
                     url={`${siteConfig?.subdomain ? `https://${siteConfig.subdomain}.fluxe.in` : ''}/category/${cat.slug}`}
                   />
                   <div className="seo-field">
@@ -509,28 +516,24 @@ function CategoriesSEOTab({ siteConfig }) {
                       type="text"
                       value={editForm.seo_title}
                       onChange={e => setEditForm(p => ({ ...p, seo_title: e.target.value }))}
-                      placeholder={autoTitle}
                       maxLength={70}
                     />
-                    <CharCounter value={editForm.seo_title || autoTitle} max={60} />
-                    <div className="seo-hint">{editForm.seo_title ? 'Using your custom title.' : 'Auto-generated from category name. Add a custom title to override.'}</div>
+                    <CharCounter value={editForm.seo_title} max={60} />
                   </div>
                   <div className="seo-field">
                     <label>Meta Description</label>
                     <textarea
                       value={editForm.seo_description}
                       onChange={e => setEditForm(p => ({ ...p, seo_description: e.target.value }))}
-                      placeholder={autoDesc}
                       rows={2}
                       maxLength={200}
                     />
-                    <CharCounter value={editForm.seo_description || autoDesc} max={160} />
-                    <div className="seo-hint">{editForm.seo_description ? 'Using your custom description.' : 'Auto-generated from category description. Add a custom one to override.'}</div>
+                    <CharCounter value={editForm.seo_description} max={160} />
                   </div>
                   <ImageUploadField
                     label="OG Image (for social sharing)"
-                    hint={editForm.seo_og_image ? 'Using your custom OG image.' : cat.image_url ? 'Auto-using the category image. Upload a custom image to override.' : 'Upload an image for social sharing (1200x630px recommended).'}
-                    value={editForm.seo_og_image || cat.image_url || ''}
+                    hint="This image appears when the category is shared on WhatsApp, Facebook, Twitter, etc. Recommended: 1200x630px."
+                    value={editForm.seo_og_image}
                     onChange={url => setEditForm(p => ({ ...p, seo_og_image: url }))}
                     siteId={siteId}
                   />
@@ -565,6 +568,7 @@ function CategoriesSEOTab({ siteConfig }) {
 
 function ProductsSEOTab({ siteConfig }) {
   const siteId = siteConfig?.id;
+  const brandName = siteConfig?.brand_name || 'Store';
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState(null);
@@ -588,12 +592,20 @@ function ProductsSEOTab({ siteConfig }) {
     })();
   }, [siteId]);
 
+  function getAutoTitle(product) {
+    return `${product.name} | ${brandName}`;
+  }
+
+  function getAutoDesc(product) {
+    return product.short_description || product.description || '';
+  }
+
   function startEdit(product) {
     setEditingId(product.id);
     setEditForm({
-      seo_title: product.seo_title || '',
-      seo_description: product.seo_description || '',
-      seo_og_image: product.seo_og_image || '',
+      seo_title: product.seo_title || getAutoTitle(product),
+      seo_description: product.seo_description || getAutoDesc(product),
+      seo_og_image: product.seo_og_image || product.thumbnail_url || '',
     });
     setMsg(null);
   }
@@ -648,7 +660,7 @@ function ProductsSEOTab({ siteConfig }) {
   return (
     <div>
       <p style={{ fontSize: 13, color: '#64748b', marginBottom: 12 }}>
-        Customize SEO for each product. Fields are auto-filled from your product data — override only if needed.
+        SEO fields are pre-filled from your product data. Edit to customize how each product appears in Google and social media.
       </p>
 
       <div className="seo-field" style={{ marginBottom: 16 }}>
@@ -664,8 +676,6 @@ function ProductsSEOTab({ siteConfig }) {
 
       {filtered.map(product => {
         const thumbSrc = getProductImgSrc(product);
-        const autoTitle = `${product.name} | ${siteConfig?.brand_name || 'Store'}`;
-        const autoDesc = product.short_description || product.description || '';
         return (
           <div key={product.id} className="card" style={{ marginBottom: 12 }}>
             <div className="card-content" style={{ padding: '14px 16px' }}>
@@ -700,8 +710,8 @@ function ProductsSEOTab({ siteConfig }) {
               {editingId === product.id && (
                 <div>
                   <SearchPreview
-                    title={editForm.seo_title || autoTitle}
-                    description={editForm.seo_description || autoDesc}
+                    title={editForm.seo_title}
+                    description={editForm.seo_description}
                     url={`${siteConfig?.subdomain ? `https://${siteConfig.subdomain}.fluxe.in` : ''}/product/${product.slug}`}
                   />
                   <div className="seo-field">
@@ -710,28 +720,24 @@ function ProductsSEOTab({ siteConfig }) {
                       type="text"
                       value={editForm.seo_title}
                       onChange={e => setEditForm(p => ({ ...p, seo_title: e.target.value }))}
-                      placeholder={autoTitle}
                       maxLength={70}
                     />
-                    <CharCounter value={editForm.seo_title || autoTitle} max={60} />
-                    <div className="seo-hint">{editForm.seo_title ? 'Using your custom title.' : 'Auto-generated from product name. Add a custom title to override.'}</div>
+                    <CharCounter value={editForm.seo_title} max={60} />
                   </div>
                   <div className="seo-field">
                     <label>Meta Description</label>
                     <textarea
                       value={editForm.seo_description}
                       onChange={e => setEditForm(p => ({ ...p, seo_description: e.target.value }))}
-                      placeholder={autoDesc || 'Auto-filled from product description...'}
                       rows={2}
                       maxLength={200}
                     />
-                    <CharCounter value={editForm.seo_description || autoDesc} max={160} />
-                    <div className="seo-hint">{editForm.seo_description ? 'Using your custom description.' : 'Auto-generated from product description. Add a custom one to override.'}</div>
+                    <CharCounter value={editForm.seo_description} max={160} />
                   </div>
                   <ImageUploadField
                     label="OG Image (for social sharing)"
-                    hint={editForm.seo_og_image ? 'Using your custom OG image.' : product.thumbnail_url ? 'Auto-using the product thumbnail. Upload a custom image to override.' : 'Upload an image for social sharing (1200x630px recommended).'}
-                    value={editForm.seo_og_image || product.thumbnail_url || ''}
+                    hint="This image appears when the product is shared on WhatsApp, Facebook, Twitter, etc. Recommended: 1200x630px."
+                    value={editForm.seo_og_image}
                     onChange={url => setEditForm(p => ({ ...p, seo_og_image: url }))}
                     siteId={siteId}
                   />
