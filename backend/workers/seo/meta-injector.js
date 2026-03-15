@@ -37,6 +37,10 @@ function buildMetaTagsString(tags) {
     lines.push(`  <link rel="icon" type="image/png" href="${escapeAttr(tags.favicon)}">`);
   }
 
+  if (tags.ogLocale) {
+    lines.push(`  <meta property="og:locale" content="${escapeAttr(tags.ogLocale)}">`);
+  }
+
   lines.push(`  <meta property="og:type" content="${escapeAttr(tags.ogType || 'website')}">`);
   lines.push(`  <meta property="og:site_name" content="${escapeAttr(tags.siteName || '')}">`);
 

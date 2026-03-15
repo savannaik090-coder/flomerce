@@ -18,6 +18,7 @@ export function updateMetaTags(tags) {
   setOrCreateMeta('author', tags.author || '', 'name');
   setOrCreateMeta('robots', tags.robots || '', 'name');
 
+  setOrCreateMeta('og:locale', tags.ogLocale || 'en_US');
   setOrCreateMeta('og:title', tags.ogTitle || '');
   setOrCreateMeta('og:description', tags.ogDescription || '');
   setOrCreateMeta('og:image', tags.ogImage || '');

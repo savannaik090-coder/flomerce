@@ -339,6 +339,11 @@ wrangler secret put RESEND_API_KEY      # Or SENDGRID_API_KEY
 - **API endpoints** (site-admin-worker.js): GET/PUT `/api/site-admin/seo` (site), `/seo/categories/:id`, `/seo/products/:id`, `/seo/pages/:pageType`
 - **Auto-generated**: `/sitemap.xml` (all products, categories, static pages), `/robots.txt` (with sitemap reference)
 - **Structured data**: JSON-LD for Organization, Website, Product, Category, Breadcrumbs
+- **Absolute URLs**: All image URLs in structured data (product images, org logo) are resolved to absolute URLs via `absUrl()` helper — Google requires this for rich results
+- **Currency**: Product schema uses site's `currency` column from DB instead of hardcoded INR
+- **og:locale**: Added `og:locale` meta tag (both server-side injector and client-side useSEO hook)
+- **Canonical URL normalization**: Trailing slashes stripped from canonical URLs to prevent duplicate content (both server-side and client-side)
+- **Admin SEO panel**: Products/Categories tabs auto-populate title, description, and image from actual product/category data. OG image fields use image upload (not URL input) across all tabs (Products, Categories, Pages). Shows "Auto SEO" vs "Custom SEO" badge per item.
 - **Template configs**: `seo/templates/template1/seo-config.js` — each template defines title format, fallback titles, and which schemas to include
 - **Important**: Dynamic `import()` does NOT work in Cloudflare Workers — template configs use static imports registered in `TEMPLATE_CONFIGS` object
 

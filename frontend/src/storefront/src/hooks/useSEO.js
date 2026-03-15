@@ -33,7 +33,8 @@ export function useSEO({ title, description, ogImage, ogType, seoOverrides, page
     const absImg = (url) => url && !url.startsWith('http') ? origin + (url.startsWith('/') ? url : '/' + url) : url;
     const finalOgImage = absImg(rawOgImage);
     const finalTwImage = absImg(seo.twitter_image || rawOgImage);
-    const canonicalUrl = origin + window.location.pathname;
+    const pathname = window.location.pathname.length > 1 ? window.location.pathname.replace(/\/+$/, '') : window.location.pathname;
+    const canonicalUrl = origin + pathname;
 
     document.title = finalTitle;
 

@@ -45,12 +45,21 @@ function buildBaseUrl(request, site) {
 // ─── SEO data fetchers ───────────────────────────────────────────────────────
 
 async function fetchSiteSEO(env, site) {
+  let currency = 'INR';
+  try {
+    const siteRow = await env.DB.prepare(
+      `SELECT currency FROM sites WHERE id = ?`
+    ).bind(site.id).first();
+    if (siteRow?.currency) currency = siteRow.currency;
+  } catch {}
+
   return {
     seo_title: site.seo_title || null,
     seo_description: site.seo_description || null,
     seo_og_image: site.seo_og_image || null,
     seo_robots: site.seo_robots || 'index, follow',
     google_verification: site.google_verification || null,
+    currency,
   };
 }
 
@@ -202,6 +211,7 @@ function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl,
     ogDescription: site.og_description || description,
     ogImage: finalOgImage,
     ogType: site.og_type || ogType || 'website',
+    ogLocale: 'en_US',
     siteName: site.brand_name,
     canonicalUrl,
     robots: siteSEO.seo_robots || 'index, follow',
@@ -223,8 +233,9 @@ export async function applySEO(request, env, site, rawHTML) {
   try {
     const url = new URL(request.url);
     const baseUrl = buildBaseUrl(request, site);
-    const canonicalUrl = `${baseUrl}${url.pathname}`;
-    const pageInfo = detectPageType(url.pathname);
+    const pathname = url.pathname.length > 1 ? url.pathname.replace(/\/+$/, '') : url.pathname;
+    const canonicalUrl = `${baseUrl}${pathname}`;
+    const pageInfo = detectPageType(pathname);
     const templateConfig = loadTemplateConfig(site.template_id);
     const siteSEO = await fetchSiteSEO(env, site);
 
@@ -237,7 +248,8 @@ export async function applySEO(request, env, site, rawHTML) {
       pageData = await fetchPageSEO(env, site, pageInfo.type);
     }
 
-    const tags = buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl, canonicalUrl });
+    const siteWithCurrency = { ...site, currency: siteSEO.currency || site.currency || 'INR' };
+    const tags = buildTags({ pageInfo, site: siteWithCurrency, siteSEO, pageData, templateConfig, baseUrl, canonicalUrl });
 
     return injectSEOTags(rawHTML, tags);
   } catch (err) {

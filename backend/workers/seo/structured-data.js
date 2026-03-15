@@ -1,3 +1,9 @@
+function absUrl(url, baseUrl) {
+  if (!url) return url;
+  if (url.startsWith('http')) return url;
+  return baseUrl + (url.startsWith('/') ? url : '/' + url);
+}
+
 export function buildOrganizationSchema(site, baseUrl) {
   const schema = {
     '@context': 'https://schema.org',
@@ -6,7 +12,7 @@ export function buildOrganizationSchema(site, baseUrl) {
     url: baseUrl,
   };
 
-  if (site.logo_url) schema.logo = site.logo_url;
+  if (site.logo_url) schema.logo = absUrl(site.logo_url, baseUrl);
   if (site.email) schema.email = site.email;
   if (site.phone) schema.telephone = site.phone;
   if (site.address) schema.address = { '@type': 'PostalAddress', streetAddress: site.address };
@@ -36,6 +42,10 @@ export function buildProductSchema(product, site, baseUrl) {
     images.unshift(product.thumbnail_url);
   }
 
+  images = images.map(img => absUrl(img, baseUrl)).filter(Boolean);
+
+  const currency = site.currency || 'INR';
+
   const schema = {
     '@context': 'https://schema.org',
     '@type': 'Product',
@@ -45,7 +55,7 @@ export function buildProductSchema(product, site, baseUrl) {
     offers: {
       '@type': 'Offer',
       price: product.price,
-      priceCurrency: 'INR',
+      priceCurrency: currency,
       availability: product.stock > 0
         ? 'https://schema.org/InStock'
         : 'https://schema.org/OutOfStock',

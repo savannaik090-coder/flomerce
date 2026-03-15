@@ -721,7 +721,7 @@ async function getCategoriesSEO(request, env) {
     if (!admin)
       return errorResponse("Unauthorized", 401);
     const result = await env.DB.prepare(
-      `SELECT id, name, slug, seo_title, seo_description, seo_og_image
+      `SELECT id, name, slug, description, image_url, seo_title, seo_description, seo_og_image
        FROM categories WHERE site_id = ? AND is_active = 1 ORDER BY display_order ASC`
     ).bind(siteId).all();
     return jsonResponse({ success: true, data: result.results || [] });
@@ -760,7 +760,7 @@ async function getProductsSEO(request, env) {
     if (!admin)
       return errorResponse("Unauthorized", 401);
     const result = await env.DB.prepare(
-      `SELECT id, name, slug, seo_title, seo_description, seo_og_image
+      `SELECT id, name, slug, short_description, description, thumbnail_url, price, seo_title, seo_description, seo_og_image
        FROM products WHERE site_id = ? AND is_active = 1 ORDER BY created_at DESC`
     ).bind(siteId).all();
     return jsonResponse({ success: true, data: result.results || [] });
@@ -5363,6 +5363,9 @@ function buildMetaTagsString(tags) {
   if (tags.favicon) {
     lines.push(`  <link rel="icon" type="image/png" href="${escapeAttr(tags.favicon)}">`);
   }
+  if (tags.ogLocale) {
+    lines.push(`  <meta property="og:locale" content="${escapeAttr(tags.ogLocale)}">`);
+  }
   lines.push(`  <meta property="og:type" content="${escapeAttr(tags.ogType || "website")}">`);
   lines.push(`  <meta property="og:site_name" content="${escapeAttr(tags.siteName || "")}">`);
   if (tags.title) {
@@ -5528,6 +5531,14 @@ __name(generateRobots, "generateRobots");
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
+function absUrl(url, baseUrl) {
+  if (!url)
+    return url;
+  if (url.startsWith("http"))
+    return url;
+  return baseUrl + (url.startsWith("/") ? url : "/" + url);
+}
+__name(absUrl, "absUrl");
 function buildOrganizationSchema(site, baseUrl) {
   const schema = {
     "@context": "https://schema.org",
@@ -5536,7 +5547,7 @@ function buildOrganizationSchema(site, baseUrl) {
     url: baseUrl
   };
   if (site.logo_url)
-    schema.logo = site.logo_url;
+    schema.logo = absUrl(site.logo_url, baseUrl);
   if (site.email)
     schema.email = site.email;
   if (site.phone)
@@ -5567,6 +5578,8 @@ function buildProductSchema(product, site, baseUrl) {
   if (product.thumbnail_url && !images.includes(product.thumbnail_url)) {
     images.unshift(product.thumbnail_url);
   }
+  images = images.map((img) => absUrl(img, baseUrl)).filter(Boolean);
+  const currency = site.currency || "INR";
   const schema = {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -5576,7 +5589,7 @@ function buildProductSchema(product, site, baseUrl) {
     offers: {
       "@type": "Offer",
       price: product.price,
-      priceCurrency: "INR",
+      priceCurrency: currency,
       availability: product.stock > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
       url: `${baseUrl}/product/${product.slug}`
     }
@@ -5694,12 +5707,22 @@ function buildBaseUrl(request, site) {
 }
 __name(buildBaseUrl, "buildBaseUrl");
 async function fetchSiteSEO(env, site) {
+  let currency = "INR";
+  try {
+    const siteRow = await env.DB.prepare(
+      `SELECT currency FROM sites WHERE id = ?`
+    ).bind(site.id).first();
+    if (siteRow?.currency)
+      currency = siteRow.currency;
+  } catch {
+  }
   return {
     seo_title: site.seo_title || null,
     seo_description: site.seo_description || null,
     seo_og_image: site.seo_og_image || null,
     seo_robots: site.seo_robots || "index, follow",
-    google_verification: site.google_verification || null
+    google_verification: site.google_verification || null,
+    currency
   };
 }
 __name(fetchSiteSEO, "fetchSiteSEO");
@@ -5808,16 +5831,16 @@ function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl,
     description = pageSEO?.seo_description || siteSEO.seo_description || templateConfig.fallbackDescription(site);
     ogImage = pageSEO?.seo_og_image || siteSEO.seo_og_image;
   }
-  function absUrl(url) {
+  function absUrl2(url) {
     if (!url)
       return url;
     if (url.startsWith("http"))
       return url;
     return baseUrl + (url.startsWith("/") ? url : "/" + url);
   }
-  __name(absUrl, "absUrl");
-  const finalOgImage = absUrl(site.og_image || ogImage);
-  const finalTwImage = absUrl(site.twitter_image || site.og_image || ogImage);
+  __name(absUrl2, "absUrl");
+  const finalOgImage = absUrl2(site.og_image || ogImage);
+  const finalTwImage = absUrl2(site.twitter_image || site.og_image || ogImage);
   return {
     title,
     description,
@@ -5825,6 +5848,7 @@ function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl,
     ogDescription: site.og_description || description,
     ogImage: finalOgImage,
     ogType: site.og_type || ogType || "website",
+    ogLocale: "en_US",
     siteName: site.brand_name,
     canonicalUrl,
     robots: siteSEO.seo_robots || "index, follow",
@@ -5844,8 +5868,9 @@ async function applySEO(request, env, site, rawHTML) {
   try {
     const url = new URL(request.url);
     const baseUrl = buildBaseUrl(request, site);
-    const canonicalUrl = `${baseUrl}${url.pathname}`;
-    const pageInfo = detectPageType(url.pathname);
+    const pathname = url.pathname.length > 1 ? url.pathname.replace(/\/+$/, "") : url.pathname;
+    const canonicalUrl = `${baseUrl}${pathname}`;
+    const pageInfo = detectPageType(pathname);
     const templateConfig = loadTemplateConfig(site.template_id);
     const siteSEO = await fetchSiteSEO(env, site);
     let pageData = null;
@@ -5856,7 +5881,8 @@ async function applySEO(request, env, site, rawHTML) {
     } else {
       pageData = await fetchPageSEO(env, site, pageInfo.type);
     }
-    const tags = buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl, canonicalUrl });
+    const siteWithCurrency = { ...site, currency: siteSEO.currency || site.currency || "INR" };
+    const tags = buildTags({ pageInfo, site: siteWithCurrency, siteSEO, pageData, templateConfig, baseUrl, canonicalUrl });
     return injectSEOTags(rawHTML, tags);
   } catch (err) {
     console.error("[SEO] applySEO error:", err);

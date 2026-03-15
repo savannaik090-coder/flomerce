@@ -434,6 +434,12 @@ function CategoriesSEOTab({ siteConfig }) {
     setSaving(false);
   }
 
+  function getCatImgSrc(cat) {
+    const url = cat.seo_og_image || cat.image_url;
+    if (!url) return null;
+    return url.startsWith('/') ? `${API_BASE}${url}` : url;
+  }
+
   if (loading) return <div className="loading-spinner-admin"><div className="spinner" /></div>;
 
   if (categories.length === 0) {
@@ -450,81 +456,107 @@ function CategoriesSEOTab({ siteConfig }) {
   return (
     <div>
       <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
-        Set custom SEO title and description for each category page. Leave blank to use the category name with your brand name.
+        Customize SEO for each category page. Fields are auto-filled from your category data — override only if needed.
       </p>
 
       {msg && <div className={`seo-msg ${msg.type}`} style={{ marginBottom: 12 }}>{msg.text}</div>}
 
-      {categories.map(cat => (
-        <div key={cat.id} className="card" style={{ marginBottom: 12 }}>
-          <div className="card-content" style={{ padding: '14px 16px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: editingId === cat.id ? 14 : 0 }}>
-              <div>
-                <div style={{ fontWeight: 600, fontSize: 14 }}>{cat.name}</div>
-                <div style={{ fontSize: 12, color: '#94a3b8' }}>/category/{cat.slug}</div>
+      {categories.map(cat => {
+        const catImgSrc = getCatImgSrc(cat);
+        const autoTitle = `${cat.name} | ${siteConfig?.brand_name || 'Store'}`;
+        const autoDesc = cat.description || `Browse our ${cat.name} collection.`;
+        return (
+          <div key={cat.id} className="card" style={{ marginBottom: 12 }}>
+            <div className="card-content" style={{ padding: '14px 16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: editingId === cat.id ? 14 : 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
+                  {catImgSrc ? (
+                    <img src={catImgSrc} alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 6, border: '1px solid #e2e8f0', flexShrink: 0 }} onError={e => e.target.style.display = 'none'} />
+                  ) : (
+                    <div style={{ width: 44, height: 44, borderRadius: 6, border: '2px dashed #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', flexShrink: 0, fontSize: 16 }}>
+                      <i className="fas fa-folder" />
+                    </div>
+                  )}
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 600, fontSize: 14 }}>{cat.name}</div>
+                    <div style={{ fontSize: 12, color: '#94a3b8', display: 'flex', gap: 10, marginTop: 2 }}>
+                      <span>/category/{cat.slug}</span>
+                      {cat.seo_title ? (
+                        <span style={{ color: '#22c55e' }}>Custom SEO</span>
+                      ) : (
+                        <span style={{ color: '#3b82f6' }}>Auto SEO</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                {editingId !== cat.id && (
+                  <button className="btn btn-outline btn-sm" onClick={() => startEdit(cat)} style={{ flexShrink: 0 }}>
+                    <i className="fas fa-pen" /> Edit SEO
+                  </button>
+                )}
               </div>
-              {editingId !== cat.id && (
-                <button className="btn btn-outline btn-sm" onClick={() => startEdit(cat)}>
-                  <i className="fas fa-pen" /> Edit SEO
-                </button>
+
+              {editingId === cat.id && (
+                <div>
+                  <SearchPreview
+                    title={editForm.seo_title || autoTitle}
+                    description={editForm.seo_description || autoDesc}
+                    url={`${siteConfig?.subdomain ? `https://${siteConfig.subdomain}.fluxe.in` : ''}/category/${cat.slug}`}
+                  />
+                  <div className="seo-field">
+                    <label>SEO Title</label>
+                    <input
+                      type="text"
+                      value={editForm.seo_title}
+                      onChange={e => setEditForm(p => ({ ...p, seo_title: e.target.value }))}
+                      placeholder={autoTitle}
+                      maxLength={70}
+                    />
+                    <CharCounter value={editForm.seo_title || autoTitle} max={60} />
+                    <div className="seo-hint">{editForm.seo_title ? 'Using your custom title.' : 'Auto-generated from category name. Add a custom title to override.'}</div>
+                  </div>
+                  <div className="seo-field">
+                    <label>Meta Description</label>
+                    <textarea
+                      value={editForm.seo_description}
+                      onChange={e => setEditForm(p => ({ ...p, seo_description: e.target.value }))}
+                      placeholder={autoDesc}
+                      rows={2}
+                      maxLength={200}
+                    />
+                    <CharCounter value={editForm.seo_description || autoDesc} max={160} />
+                    <div className="seo-hint">{editForm.seo_description ? 'Using your custom description.' : 'Auto-generated from category description. Add a custom one to override.'}</div>
+                  </div>
+                  <ImageUploadField
+                    label="OG Image (for social sharing)"
+                    hint={editForm.seo_og_image ? 'Using your custom OG image.' : cat.image_url ? 'Auto-using the category image. Upload a custom image to override.' : 'Upload an image for social sharing (1200x630px recommended).'}
+                    value={editForm.seo_og_image || cat.image_url || ''}
+                    onChange={url => setEditForm(p => ({ ...p, seo_og_image: url }))}
+                    siteId={siteId}
+                  />
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      type="button"
+                      className="btn btn-primary btn-sm"
+                      onClick={() => handleSave(cat.id)}
+                      disabled={saving}
+                    >
+                      {saving ? 'Saving...' : 'Save'}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-outline btn-sm"
+                      onClick={() => setEditingId(null)}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
-
-            {editingId === cat.id && (
-              <div>
-                <div className="seo-field">
-                  <label>SEO Title</label>
-                  <input
-                    type="text"
-                    value={editForm.seo_title}
-                    onChange={e => setEditForm(p => ({ ...p, seo_title: e.target.value }))}
-                    placeholder={`${cat.name} | ${siteConfig?.brand_name || 'Store'}`}
-                    maxLength={70}
-                  />
-                  <CharCounter value={editForm.seo_title} max={60} />
-                </div>
-                <div className="seo-field">
-                  <label>Meta Description</label>
-                  <textarea
-                    value={editForm.seo_description}
-                    onChange={e => setEditForm(p => ({ ...p, seo_description: e.target.value }))}
-                    placeholder={`Browse our ${cat.name} collection...`}
-                    rows={2}
-                    maxLength={200}
-                  />
-                  <CharCounter value={editForm.seo_description} max={160} />
-                </div>
-                <div className="seo-field">
-                  <label>OG Image URL</label>
-                  <input
-                    type="url"
-                    value={editForm.seo_og_image}
-                    onChange={e => setEditForm(p => ({ ...p, seo_og_image: e.target.value }))}
-                    placeholder="https://..."
-                  />
-                </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button
-                    type="button"
-                    className="btn btn-primary btn-sm"
-                    onClick={() => handleSave(cat.id)}
-                    disabled={saving}
-                  >
-                    {saving ? 'Saving...' : 'Save'}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-outline btn-sm"
-                    onClick={() => setEditingId(null)}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -590,6 +622,12 @@ function ProductsSEOTab({ siteConfig }) {
     setSaving(false);
   }
 
+  function getProductImgSrc(product) {
+    const url = product.seo_og_image || product.thumbnail_url;
+    if (!url) return null;
+    return url.startsWith('/') ? `${API_BASE}${url}` : url;
+  }
+
   const filtered = products.filter(p =>
     !search || p.name.toLowerCase().includes(search.toLowerCase())
   );
@@ -610,7 +648,7 @@ function ProductsSEOTab({ siteConfig }) {
   return (
     <div>
       <p style={{ fontSize: 13, color: '#64748b', marginBottom: 12 }}>
-        Set custom SEO title and description for each product. Leave blank to use the product name automatically.
+        Customize SEO for each product. Fields are auto-filled from your product data — override only if needed.
       </p>
 
       <div className="seo-field" style={{ marginBottom: 16 }}>
@@ -624,79 +662,102 @@ function ProductsSEOTab({ siteConfig }) {
 
       {msg && <div className={`seo-msg ${msg.type}`} style={{ marginBottom: 12 }}>{msg.text}</div>}
 
-      {filtered.map(product => (
-        <div key={product.id} className="card" style={{ marginBottom: 12 }}>
-          <div className="card-content" style={{ padding: '14px 16px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: editingId === product.id ? 14 : 0 }}>
-              <div>
-                <div style={{ fontWeight: 600, fontSize: 14 }}>{product.name}</div>
-                <div style={{ fontSize: 12, color: '#94a3b8', display: 'flex', gap: 10, marginTop: 2 }}>
-                  <span>/product/{product.slug}</span>
-                  {product.seo_title && <span style={{ color: '#22c55e' }}>✓ SEO set</span>}
+      {filtered.map(product => {
+        const thumbSrc = getProductImgSrc(product);
+        const autoTitle = `${product.name} | ${siteConfig?.brand_name || 'Store'}`;
+        const autoDesc = product.short_description || product.description || '';
+        return (
+          <div key={product.id} className="card" style={{ marginBottom: 12 }}>
+            <div className="card-content" style={{ padding: '14px 16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: editingId === product.id ? 14 : 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
+                  {thumbSrc ? (
+                    <img src={thumbSrc} alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 6, border: '1px solid #e2e8f0', flexShrink: 0 }} onError={e => e.target.style.display = 'none'} />
+                  ) : (
+                    <div style={{ width: 44, height: 44, borderRadius: 6, border: '2px dashed #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', flexShrink: 0, fontSize: 16 }}>
+                      <i className="fas fa-image" />
+                    </div>
+                  )}
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 600, fontSize: 14 }}>{product.name}</div>
+                    <div style={{ fontSize: 12, color: '#94a3b8', display: 'flex', gap: 10, marginTop: 2 }}>
+                      <span>/product/{product.slug}</span>
+                      {product.seo_title ? (
+                        <span style={{ color: '#22c55e' }}>Custom SEO</span>
+                      ) : (
+                        <span style={{ color: '#3b82f6' }}>Auto SEO</span>
+                      )}
+                    </div>
+                  </div>
                 </div>
+                {editingId !== product.id && (
+                  <button className="btn btn-outline btn-sm" onClick={() => startEdit(product)} style={{ flexShrink: 0 }}>
+                    <i className="fas fa-pen" /> Edit SEO
+                  </button>
+                )}
               </div>
-              {editingId !== product.id && (
-                <button className="btn btn-outline btn-sm" onClick={() => startEdit(product)}>
-                  <i className="fas fa-pen" /> Edit SEO
-                </button>
+
+              {editingId === product.id && (
+                <div>
+                  <SearchPreview
+                    title={editForm.seo_title || autoTitle}
+                    description={editForm.seo_description || autoDesc}
+                    url={`${siteConfig?.subdomain ? `https://${siteConfig.subdomain}.fluxe.in` : ''}/product/${product.slug}`}
+                  />
+                  <div className="seo-field">
+                    <label>SEO Title</label>
+                    <input
+                      type="text"
+                      value={editForm.seo_title}
+                      onChange={e => setEditForm(p => ({ ...p, seo_title: e.target.value }))}
+                      placeholder={autoTitle}
+                      maxLength={70}
+                    />
+                    <CharCounter value={editForm.seo_title || autoTitle} max={60} />
+                    <div className="seo-hint">{editForm.seo_title ? 'Using your custom title.' : 'Auto-generated from product name. Add a custom title to override.'}</div>
+                  </div>
+                  <div className="seo-field">
+                    <label>Meta Description</label>
+                    <textarea
+                      value={editForm.seo_description}
+                      onChange={e => setEditForm(p => ({ ...p, seo_description: e.target.value }))}
+                      placeholder={autoDesc || 'Auto-filled from product description...'}
+                      rows={2}
+                      maxLength={200}
+                    />
+                    <CharCounter value={editForm.seo_description || autoDesc} max={160} />
+                    <div className="seo-hint">{editForm.seo_description ? 'Using your custom description.' : 'Auto-generated from product description. Add a custom one to override.'}</div>
+                  </div>
+                  <ImageUploadField
+                    label="OG Image (for social sharing)"
+                    hint={editForm.seo_og_image ? 'Using your custom OG image.' : product.thumbnail_url ? 'Auto-using the product thumbnail. Upload a custom image to override.' : 'Upload an image for social sharing (1200x630px recommended).'}
+                    value={editForm.seo_og_image || product.thumbnail_url || ''}
+                    onChange={url => setEditForm(p => ({ ...p, seo_og_image: url }))}
+                    siteId={siteId}
+                  />
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      type="button"
+                      className="btn btn-primary btn-sm"
+                      onClick={() => handleSave(product.id)}
+                      disabled={saving}
+                    >
+                      {saving ? 'Saving...' : 'Save'}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-outline btn-sm"
+                      onClick={() => setEditingId(null)}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
-
-            {editingId === product.id && (
-              <div>
-                <div className="seo-field">
-                  <label>SEO Title</label>
-                  <input
-                    type="text"
-                    value={editForm.seo_title}
-                    onChange={e => setEditForm(p => ({ ...p, seo_title: e.target.value }))}
-                    placeholder={`${product.name} | ${siteConfig?.brand_name || 'Store'}`}
-                    maxLength={70}
-                  />
-                  <CharCounter value={editForm.seo_title} max={60} />
-                </div>
-                <div className="seo-field">
-                  <label>Meta Description</label>
-                  <textarea
-                    value={editForm.seo_description}
-                    onChange={e => setEditForm(p => ({ ...p, seo_description: e.target.value }))}
-                    placeholder="Describe this product for search engines..."
-                    rows={2}
-                    maxLength={200}
-                  />
-                  <CharCounter value={editForm.seo_description} max={160} />
-                </div>
-                <div className="seo-field">
-                  <label>OG Image URL <span style={{ fontWeight: 400, color: '#94a3b8' }}>(for social sharing)</span></label>
-                  <input
-                    type="url"
-                    value={editForm.seo_og_image}
-                    onChange={e => setEditForm(p => ({ ...p, seo_og_image: e.target.value }))}
-                    placeholder="https://..."
-                  />
-                </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button
-                    type="button"
-                    className="btn btn-primary btn-sm"
-                    onClick={() => handleSave(product.id)}
-                    disabled={saving}
-                  >
-                    {saving ? 'Saving...' : 'Save'}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-outline btn-sm"
-                    onClick={() => setEditingId(null)}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
-        </div>
-      ))}
+        );
+      })}
 
       {filtered.length === 0 && (
         <div style={{ textAlign: 'center', color: '#94a3b8', padding: 24 }}>No products match your search.</div>
@@ -830,15 +891,13 @@ function PagesSEOTab({ siteConfig }) {
                     />
                     <CharCounter value={editForm.seo_description} max={160} />
                   </div>
-                  <div className="seo-field">
-                    <label>OG Image URL</label>
-                    <input
-                      type="url"
-                      value={editForm.seo_og_image}
-                      onChange={e => setEditForm(p => ({ ...p, seo_og_image: e.target.value }))}
-                      placeholder="https://..."
-                    />
-                  </div>
+                  <ImageUploadField
+                    label="OG Image (for social sharing)"
+                    hint="Upload an image for social sharing (1200x630px recommended)."
+                    value={editForm.seo_og_image}
+                    onChange={url => setEditForm(p => ({ ...p, seo_og_image: url }))}
+                    siteId={siteId}
+                  />
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button
                       type="button"

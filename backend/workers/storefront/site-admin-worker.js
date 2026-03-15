@@ -350,7 +350,7 @@ async function getCategoriesSEO(request, env) {
     if (!admin) return errorResponse('Unauthorized', 401);
 
     const result = await env.DB.prepare(
-      `SELECT id, name, slug, seo_title, seo_description, seo_og_image
+      `SELECT id, name, slug, description, image_url, seo_title, seo_description, seo_og_image
        FROM categories WHERE site_id = ? AND is_active = 1 ORDER BY display_order ASC`
     ).bind(siteId).all();
 
@@ -393,7 +393,7 @@ async function getProductsSEO(request, env) {
     if (!admin) return errorResponse('Unauthorized', 401);
 
     const result = await env.DB.prepare(
-      `SELECT id, name, slug, seo_title, seo_description, seo_og_image
+      `SELECT id, name, slug, short_description, description, thumbnail_url, price, seo_title, seo_description, seo_og_image
        FROM products WHERE site_id = ? AND is_active = 1 ORDER BY created_at DESC`
     ).bind(siteId).all();
 
