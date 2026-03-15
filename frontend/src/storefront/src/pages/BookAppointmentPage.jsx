@@ -8,12 +8,7 @@ const TIME_SLOTS = [
 
 const PURPOSES = [
   { value: '', label: 'Select purpose' },
-  { value: 'browse', label: 'Browse Collection' },
-  { value: 'custom', label: 'Custom Design' },
-  { value: 'repair', label: 'Repair & Restoration' },
   { value: 'consultation', label: 'General Consultation' },
-  { value: 'wedding', label: 'Wedding / Bridal' },
-  { value: 'gift', label: 'Gift Selection' },
   { value: 'other', label: 'Other' },
 ];
 
