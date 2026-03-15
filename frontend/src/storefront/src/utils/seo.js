@@ -25,10 +25,11 @@ export function updateMetaTags(tags) {
   setOrCreateMeta('og:url', tags.ogUrl || '');
   setOrCreateMeta('og:site_name', tags.siteName || '');
 
-  setOrCreateMeta('twitter:card', tags.ogTitle ? 'summary_large_image' : '', 'name');
-  setOrCreateMeta('twitter:title', tags.ogTitle || '', 'name');
-  setOrCreateMeta('twitter:description', tags.ogDescription || '', 'name');
-  setOrCreateMeta('twitter:image', tags.ogImage || '', 'name');
+  setOrCreateMeta('twitter:card', tags.twitterCard || (tags.ogTitle ? 'summary_large_image' : ''), 'name');
+  setOrCreateMeta('twitter:site', tags.twitterSite || '', 'name');
+  setOrCreateMeta('twitter:title', tags.twitterTitle || tags.ogTitle || '', 'name');
+  setOrCreateMeta('twitter:description', tags.twitterDescription || tags.ogDescription || '', 'name');
+  setOrCreateMeta('twitter:image', tags.twitterImage || tags.ogImage || '', 'name');
 
   let link = document.querySelector('link[rel="canonical"]');
   if (tags.canonicalUrl) {

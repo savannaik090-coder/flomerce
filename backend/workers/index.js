@@ -160,7 +160,9 @@ async function handleSiteInfo(request, env) {
                 s.logo_url, s.favicon_url, s.primary_color, s.secondary_color,
                 s.phone, s.email, s.address, s.social_links, s.settings,
                 s.custom_domain, s.domain_status, s.domain_verification_token,
-                s.seo_title, s.seo_description, s.seo_og_image, s.seo_robots, s.google_verification
+                s.seo_title, s.seo_description, s.seo_og_image, s.seo_robots, s.google_verification,
+                s.og_title, s.og_description, s.og_image, s.og_type,
+                s.twitter_card, s.twitter_title, s.twitter_description, s.twitter_image, s.twitter_site
          FROM sites s 
          WHERE LOWER(s.subdomain) = LOWER(?) AND s.is_active = 1`
       ).bind(subdomain).first();
@@ -170,7 +172,9 @@ async function handleSiteInfo(request, env) {
                 s.logo_url, s.favicon_url, s.primary_color, s.secondary_color,
                 s.phone, s.email, s.address, s.social_links, s.settings,
                 s.custom_domain, s.domain_status, s.domain_verification_token,
-                s.seo_title, s.seo_description, s.seo_og_image, s.seo_robots, s.google_verification
+                s.seo_title, s.seo_description, s.seo_og_image, s.seo_robots, s.google_verification,
+                s.og_title, s.og_description, s.og_image, s.og_type,
+                s.twitter_card, s.twitter_title, s.twitter_description, s.twitter_image, s.twitter_site
          FROM sites s 
          WHERE s.custom_domain = ? AND s.domain_status = 'verified' AND s.is_active = 1`
       ).bind(hostname.toLowerCase()).first();

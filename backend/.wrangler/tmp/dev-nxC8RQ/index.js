@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-dMmUKP/checked-fetch.js
+// .wrangler/tmp/bundle-ZufHUB/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-dMmUKP/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-ZufHUB/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-dMmUKP/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-ZufHUB/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-dMmUKP/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-ZufHUB/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -982,12 +982,12 @@ var init_site_admin_worker = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-dMmUKP/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-ZufHUB/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-dMmUKP/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-ZufHUB/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -5808,12 +5808,22 @@ function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl,
     description = pageSEO?.seo_description || siteSEO.seo_description || templateConfig.fallbackDescription(site);
     ogImage = pageSEO?.seo_og_image || siteSEO.seo_og_image;
   }
+  function absUrl(url) {
+    if (!url)
+      return url;
+    if (url.startsWith("http"))
+      return url;
+    return baseUrl + (url.startsWith("/") ? url : "/" + url);
+  }
+  __name(absUrl, "absUrl");
+  const finalOgImage = absUrl(site.og_image || ogImage);
+  const finalTwImage = absUrl(site.twitter_image || site.og_image || ogImage);
   return {
     title,
     description,
     ogTitle: site.og_title || title,
     ogDescription: site.og_description || description,
-    ogImage: site.og_image || ogImage,
+    ogImage: finalOgImage,
     ogType: site.og_type || ogType || "website",
     siteName: site.brand_name,
     canonicalUrl,
@@ -5824,7 +5834,7 @@ function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl,
     twitterCard: site.twitter_card || "summary_large_image",
     twitterTitle: site.twitter_title || site.og_title || title,
     twitterDescription: site.twitter_description || site.og_description || description,
-    twitterImage: site.twitter_image || site.og_image || ogImage,
+    twitterImage: finalTwImage,
     twitterSite: site.twitter_site || null,
     structuredData
   };
@@ -7669,7 +7679,9 @@ async function handleSiteInfo(request, env) {
                 s.logo_url, s.favicon_url, s.primary_color, s.secondary_color,
                 s.phone, s.email, s.address, s.social_links, s.settings,
                 s.custom_domain, s.domain_status, s.domain_verification_token,
-                s.seo_title, s.seo_description, s.seo_og_image, s.seo_robots, s.google_verification
+                s.seo_title, s.seo_description, s.seo_og_image, s.seo_robots, s.google_verification,
+                s.og_title, s.og_description, s.og_image, s.og_type,
+                s.twitter_card, s.twitter_title, s.twitter_description, s.twitter_image, s.twitter_site
          FROM sites s 
          WHERE LOWER(s.subdomain) = LOWER(?) AND s.is_active = 1`
       ).bind(subdomain).first();
@@ -7679,7 +7691,9 @@ async function handleSiteInfo(request, env) {
                 s.logo_url, s.favicon_url, s.primary_color, s.secondary_color,
                 s.phone, s.email, s.address, s.social_links, s.settings,
                 s.custom_domain, s.domain_status, s.domain_verification_token,
-                s.seo_title, s.seo_description, s.seo_og_image, s.seo_robots, s.google_verification
+                s.seo_title, s.seo_description, s.seo_og_image, s.seo_robots, s.google_verification,
+                s.og_title, s.og_description, s.og_image, s.og_type,
+                s.twitter_card, s.twitter_title, s.twitter_description, s.twitter_image, s.twitter_site
          FROM sites s 
          WHERE s.custom_domain = ? AND s.domain_status = 'verified' AND s.is_active = 1`
       ).bind(hostname.toLowerCase()).first();
@@ -7828,7 +7842,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-dMmUKP/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-ZufHUB/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -7863,7 +7877,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-dMmUKP/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-ZufHUB/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

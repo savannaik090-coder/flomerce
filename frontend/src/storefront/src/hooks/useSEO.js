@@ -28,8 +28,12 @@ export function useSEO({ title, description, ogImage, ogType, seoOverrides, page
     }
 
     const finalDescription = seoDesc || description || seo.seo_description || '';
-    const finalOgImage = seoImage || ogImage || seo.seo_og_image || '';
-    const canonicalUrl = window.location.origin + window.location.pathname;
+    const rawOgImage = seoImage || ogImage || seo.og_image || seo.seo_og_image || '';
+    const origin = window.location.origin;
+    const absImg = (url) => url && !url.startsWith('http') ? origin + (url.startsWith('/') ? url : '/' + url) : url;
+    const finalOgImage = absImg(rawOgImage);
+    const finalTwImage = absImg(seo.twitter_image || rawOgImage);
+    const canonicalUrl = origin + window.location.pathname;
 
     document.title = finalTitle;
 
@@ -37,13 +41,18 @@ export function useSEO({ title, description, ogImage, ogType, seoOverrides, page
       description: finalDescription,
       author: brandName,
       robots: seo.seo_robots || 'index, follow',
-      ogTitle: finalTitle,
-      ogDescription: finalDescription,
+      ogTitle: seo.og_title || finalTitle,
+      ogDescription: seo.og_description || finalDescription,
       ogImage: finalOgImage,
-      ogType: ogType || 'website',
+      ogType: seo.og_type || ogType || 'website',
       ogUrl: canonicalUrl,
       siteName: brandName,
       canonicalUrl,
+      twitterCard: seo.twitter_card || 'summary_large_image',
+      twitterTitle: seo.twitter_title || seo.og_title || finalTitle,
+      twitterDescription: seo.twitter_description || seo.og_description || finalDescription,
+      twitterImage: finalTwImage,
+      twitterSite: seo.twitter_site || '',
     });
   }, [title, description, ogImage, ogType, seoOverrides, pageType, siteConfig]);
 }

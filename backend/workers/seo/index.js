@@ -186,12 +186,21 @@ function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl,
     ogImage = pageSEO?.seo_og_image || siteSEO.seo_og_image;
   }
 
+  function absUrl(url) {
+    if (!url) return url;
+    if (url.startsWith('http')) return url;
+    return baseUrl + (url.startsWith('/') ? url : '/' + url);
+  }
+
+  const finalOgImage = absUrl(site.og_image || ogImage);
+  const finalTwImage = absUrl(site.twitter_image || site.og_image || ogImage);
+
   return {
     title,
     description,
     ogTitle: site.og_title || title,
     ogDescription: site.og_description || description,
-    ogImage: site.og_image || ogImage,
+    ogImage: finalOgImage,
     ogType: site.og_type || ogType || 'website',
     siteName: site.brand_name,
     canonicalUrl,
@@ -202,7 +211,7 @@ function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl,
     twitterCard: site.twitter_card || 'summary_large_image',
     twitterTitle: site.twitter_title || site.og_title || title,
     twitterDescription: site.twitter_description || site.og_description || description,
-    twitterImage: site.twitter_image || site.og_image || ogImage,
+    twitterImage: finalTwImage,
     twitterSite: site.twitter_site || null,
     structuredData,
   };
