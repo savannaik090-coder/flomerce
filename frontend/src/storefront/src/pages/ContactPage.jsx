@@ -17,16 +17,32 @@ export default function ContactPage() {
     setForm({ ...form, [e.target.name]: e.target.value });
   }
 
+  const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
+
   async function handleSubmit(e) {
     e.preventDefault();
     setSubmitting(true);
     setStatus(null);
     try {
-      const whatsappNum = phone.replace(/[^0-9]/g, '');
-      const msg = `Name: ${form.name}%0AEmail: ${form.email}%0APhone: ${form.phone}%0ASubject: ${form.subject}%0AMessage: ${form.message}`;
-      window.open(`https://wa.me/${whatsappNum}?text=${msg}`, '_blank');
-      setStatus('success');
-      setForm({ name: '', email: '', phone: '', subject: '', message: '' });
+      const response = await fetch(`${API_BASE}/api/email/contact`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: form.name,
+          email: form.email,
+          phone: form.phone,
+          message: `${form.subject ? `Subject: ${form.subject}\n\n` : ''}${form.message}`,
+          siteEmail: siteConfig?.email,
+          brandName: siteConfig?.brandName,
+        }),
+      });
+      const result = await response.json();
+      if (response.ok && result.success) {
+        setStatus('success');
+        setForm({ name: '', email: '', phone: '', subject: '', message: '' });
+      } else {
+        setStatus('error');
+      }
     } catch {
       setStatus('error');
     } finally {

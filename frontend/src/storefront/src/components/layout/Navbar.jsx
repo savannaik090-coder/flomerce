@@ -31,6 +31,8 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
   const showAbout = settings.showAboutUs !== false;
   const showOrderTrack = settings.showOrderTrack !== false;
   const orderTrackUrl = settings.orderTrackUrl || '';
+  const showBookAppointment = settings.showBookAppointment !== false;
+  const showContact = settings.showContact !== false;
 
   const assignedCategorySlugs = new Set();
   if (hasCustomNavbar) {
@@ -159,7 +161,7 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
                 );
               })}
               {showAbout && <li className="nav-item"><Link to="/about" className="nav-link" onClick={closeMobileMenu}>About</Link></li>}
-              <li className="nav-item"><Link to="/book-appointment" className="nav-link" onClick={closeMobileMenu}>Book Appointment</Link></li>
+              {showBookAppointment && <li className="nav-item"><Link to="/book-appointment" className="nav-link" onClick={closeMobileMenu}>Book Appointment</Link></li>}
               {showOrderTrack && (
                 orderTrackUrl ? (
                   <li className="nav-item"><a href={orderTrackUrl} className="nav-link" target="_blank" rel="noopener noreferrer" onClick={closeMobileMenu}>Order Track</a></li>
@@ -167,7 +169,7 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
                   <li className="nav-item"><Link to="/order-track" className="nav-link" onClick={closeMobileMenu}>Order Track</Link></li>
                 )
               )}
-              <li className="nav-item"><Link to="/contact" className="nav-link" onClick={closeMobileMenu}>Contact</Link></li>
+              {showContact && <li className="nav-item"><Link to="/contact" className="nav-link" onClick={closeMobileMenu}>Contact</Link></li>}
             </ul>
 
             <div className="mobile-account-links mobile-special">

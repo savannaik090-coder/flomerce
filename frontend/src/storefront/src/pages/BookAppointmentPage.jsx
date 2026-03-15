@@ -38,6 +38,8 @@ export default function BookAppointmentPage() {
     return d.toISOString().split('T')[0];
   }
 
+  const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
+
   async function handleSubmit(e) {
     e.preventDefault();
     if (!appointmentType) { setStatus({ type: 'error', msg: 'Please select an appointment type.' }); return; }
@@ -45,15 +47,30 @@ export default function BookAppointmentPage() {
     setSubmitting(true);
     setStatus(null);
     try {
-      const phone = siteConfig?.phone?.replace(/[^0-9]/g, '') || '';
-      const msg = `Appointment Request%0AType: ${appointmentType}%0AName: ${form.fullName}%0AEmail: ${form.email}%0APhone: ${form.phone}%0ADate: ${form.appointmentDate}%0ATime: ${selectedTime}%0APurpose: ${form.purpose}%0ANotes: ${form.notes}`;
-      if (phone) {
-        window.open(`https://wa.me/${phone}?text=${msg}`, '_blank');
+      const purposeLabel = PURPOSES.find(p => p.value === form.purpose)?.label || form.purpose;
+      const response = await fetch(`${API_BASE}/api/email/appointment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: form.fullName,
+          email: form.email,
+          phone: form.phone,
+          date: form.appointmentDate,
+          time: selectedTime,
+          notes: `Type: ${appointmentType}\nPurpose: ${purposeLabel}${form.notes ? '\n' + form.notes : ''}`,
+          siteEmail: siteConfig?.email,
+          brandName: siteConfig?.brandName,
+        }),
+      });
+      const result = await response.json();
+      if (response.ok && result.success) {
+        setStatus({ type: 'success', msg: 'Your appointment has been booked successfully! We\'ll send you a confirmation shortly.' });
+        setForm({ fullName: '', email: '', phone: '', appointmentDate: '', purpose: '', notes: '' });
+        setAppointmentType('');
+        setSelectedTime('');
+      } else {
+        setStatus({ type: 'error', msg: result.error || 'Something went wrong. Please try again.' });
       }
-      setStatus({ type: 'success', msg: 'Your appointment has been booked successfully! We\'ll send you a confirmation shortly.' });
-      setForm({ fullName: '', email: '', phone: '', appointmentDate: '', purpose: '', notes: '' });
-      setAppointmentType('');
-      setSelectedTime('');
     } catch {
       setStatus({ type: 'error', msg: 'Something went wrong. Please try again.' });
     } finally {
