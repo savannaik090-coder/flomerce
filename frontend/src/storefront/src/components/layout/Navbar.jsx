@@ -125,21 +125,6 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
           {hasCustomNavbar && validMenus.map((menu) => {
             const activeLinks = menu.links.filter(l => l.label && l.url);
             if (activeLinks.length === 0) return null;
-            if (activeLinks.length === 1) {
-              const link = activeLinks[0];
-              const isSafe = link.url.startsWith('/') || link.url.startsWith('http://') || link.url.startsWith('https://');
-              if (!isSafe) return null;
-              const isExternal = link.url.startsWith('http://') || link.url.startsWith('https://');
-              return (
-                <li className="nav-item" key={menu.id}>
-                  {isExternal ? (
-                    <a href={link.url} className="nav-link" target="_blank" rel="noopener noreferrer" onClick={closeMobileMenu}>{menu.name}</a>
-                  ) : (
-                    <Link to={link.url} className="nav-link" onClick={closeMobileMenu}>{menu.name}</Link>
-                  )}
-                </li>
-              );
-            }
             return (
               <li className={`nav-item dropdown${openDropdown === menu.id ? ' active' : ''}`} key={menu.id}>
                 <span className="nav-link dropdown-toggle" style={{ cursor: 'pointer' }} onClick={(e) => toggleDropdown(menu.id, e)}>

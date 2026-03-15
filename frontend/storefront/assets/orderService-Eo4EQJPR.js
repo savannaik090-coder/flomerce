@@ -1,0 +1,1 @@
+import{w as a}from"./index-B8IF8nXa.js";async function s(r){return a("/api/orders",{method:"POST",body:JSON.stringify(r)})}async function o(r,e={}){const t=new URLSearchParams({siteId:r,...e}).toString();return a(`/api/orders?${t}`)}async function i(r,e,t={}){return a(`/api/orders/${r}`,{method:"PUT",body:JSON.stringify({status:e,...t})})}export{s as c,o as g,i as u};
