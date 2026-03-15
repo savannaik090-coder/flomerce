@@ -297,13 +297,6 @@ function SiteSEOTab({ siteConfig }) {
             <div className="seo-hint">Recommended: 120–160 characters. Affects click-through rate from Google.</div>
           </div>
 
-          <ImageUploadField
-            label="OG Image (for social sharing)"
-            hint="Recommended size: 1200 × 630px. Shown when your link is shared on WhatsApp, Facebook, Twitter."
-            value={form.seo_og_image}
-            onChange={url => setForm(prev => ({ ...prev, seo_og_image: url }))}
-            siteId={siteId}
-          />
 
         </div>
       </div>
@@ -1052,11 +1045,13 @@ function SocialMediaTab({ siteConfig }) {
                 <textarea value={form.twitter_description} onChange={set('twitter_description')} placeholder={form.og_description || defaults.description || 'Uses OG description'} maxLength={200} rows={3} />
                 <CharCounter value={form.twitter_description || form.og_description || defaults.description} max={200} />
               </div>
-              <div className="seo-field">
-                <label>Twitter Image URL</label>
-                <input type="url" value={form.twitter_image} onChange={set('twitter_image')} placeholder={form.og_image || defaults.image || 'Uses OG image'} />
-                <div className="seo-hint">If empty, falls back to OG Image.</div>
-              </div>
+              <ImageUploadField
+                label="Twitter Image"
+                hint="If empty, falls back to OG Image."
+                value={form.twitter_image}
+                onChange={url => setForm(prev => ({ ...prev, twitter_image: url }))}
+                siteId={siteId}
+              />
               <div className="seo-field">
                 <label>Twitter @username</label>
                 <input type="text" value={form.twitter_site} onChange={set('twitter_site')} placeholder="@yourbrand" />
