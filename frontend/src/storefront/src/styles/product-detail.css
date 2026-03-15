@@ -268,14 +268,14 @@
 }
 
 .add-to-cart-btn {
-    background: #b5727a;
+    background: #c9949a;
     color: #fff;
-    border: 1px solid #b5727a;
+    border: 1px solid #c9949a;
 }
 
 .add-to-cart-btn:hover {
-    background: #9e5d65;
-    border-color: #9e5d65;
+    background: #b5727a;
+    border-color: #b5727a;
 }
 
 .add-to-cart-btn:disabled {
@@ -285,14 +285,14 @@
 }
 
 .buy-now-btn {
-    background: #c9949a;
+    background: #c8b99a;
     color: #fff;
-    border: 1px solid #c9949a;
+    border: 1px solid #c8b99a;
 }
 
 .buy-now-btn:hover {
-    background: #b5727a;
-    border-color: #b5727a;
+    background: #b5a585;
+    border-color: #b5a585;
     color: #fff;
 }
 
