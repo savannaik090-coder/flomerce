@@ -285,14 +285,14 @@
 }
 
 .buy-now-btn {
-    background: #c8b99a;
+    background: #c9949a;
     color: #fff;
-    border: 1px solid #c8b99a;
+    border: 1px solid #c9949a;
 }
 
 .buy-now-btn:hover {
-    background: #b5a585;
-    border-color: #b5a585;
+    background: #b5727a;
+    border-color: #b5727a;
     color: #fff;
 }
 
