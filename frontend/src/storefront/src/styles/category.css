@@ -105,51 +105,54 @@
 
 .sort-dropdown {
     position: absolute;
-    top: 100%;
+    top: calc(100% + 8px);
     right: 25px;
-    width: 200px;
-    background-color: white;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    width: 230px;
+    background: linear-gradient(145deg, #ffffff 0%, #fafaf8 100%);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06);
     z-index: 1000;
-    border-radius: 4px;
-    border: 1px solid #e0e0e0;
-    margin-top: 5px;
+    border-radius: 12px;
+    border: 1px solid rgba(201, 148, 154, 0.15);
     opacity: 0;
-    transform: translateY(-10px);
+    transform: translateY(-8px) scale(0.96);
     pointer-events: none;
-    transition: opacity 0.3s ease, transform 0.3s ease;
+    transition: opacity 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    padding: 8px 0;
+    overflow: hidden;
 }
 
 .sort-dropdown.active {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
     pointer-events: auto;
 }
 
 .sort-dropdown-option {
-    padding: 12px 15px;
+    padding: 13px 20px;
     cursor: pointer;
-    transition: all 0.2s ease;
-    color: #333;
+    transition: all 0.25s ease;
+    color: #555;
     font-size: 14px;
     font-family: var(--font-primary);
+    letter-spacing: 0.3px;
+    position: relative;
 }
 
 .sort-dropdown-option:hover {
-    background-color: #f9f9f9;
-    color: var(--color-accent);
-    padding-left: 18px;
+    background: linear-gradient(90deg, rgba(201, 148, 154, 0.1) 0%, rgba(201, 148, 154, 0.03) 100%);
+    color: #b5727a;
+    padding-left: 24px;
 }
 
 .sort-dropdown-option:not(:last-child) {
-    border-bottom: 1px solid #f0f0f0;
+    border-bottom: 1px solid #f3f0ee;
 }
 
 .sort-dropdown-option.active {
-    background-color: #f5f5f5;
-    color: var(--color-accent);
+    background: linear-gradient(90deg, rgba(201, 148, 154, 0.12) 0%, rgba(201, 148, 154, 0.04) 100%);
+    color: #b5727a;
     font-weight: 600;
-    padding-left: 18px;
+    padding-left: 24px;
 }
 
 .products-grid {
@@ -274,7 +277,8 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0,0,0,0.5);
+    background-color: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(4px);
     z-index: 1000;
     display: flex;
     justify-content: center;
@@ -283,19 +287,21 @@
 }
 
 .filter-modal-content {
-    background-color: white;
+    background: linear-gradient(145deg, #ffffff 0%, #fafaf8 100%);
     width: 90%;
     max-width: 400px;
     max-height: 80vh;
     overflow-y: auto;
-    border-radius: 5px;
-    animation: slideUpModal 0.3s ease forwards;
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15), 0 4px 12px rgba(0, 0, 0, 0.08);
+    border: 1px solid rgba(201, 148, 154, 0.12);
+    animation: slideUpModal 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
 }
 
 @keyframes slideUpModal {
     from {
         opacity: 0;
-        transform: scale(0.9) translateY(-20px);
+        transform: scale(0.92) translateY(20px);
     }
     to {
         opacity: 1;
@@ -304,8 +310,8 @@
 }
 
 .filter-modal-header {
-    padding: 15px 20px;
-    border-bottom: 1px solid #eee;
+    padding: 20px 24px;
+    border-bottom: 1px solid #f0ece8;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -314,7 +320,10 @@
 .filter-modal-header h2 {
     font-family: var(--font-heading);
     font-size: 20px;
+    font-weight: 600;
     margin: 0;
+    color: #333;
+    letter-spacing: 0.5px;
 }
 
 .close-filter-modal {
@@ -322,28 +331,40 @@
     border: none;
     font-size: 22px;
     cursor: pointer;
-    color: #666;
+    color: #999;
+    transition: color 0.2s ease;
+    padding: 4px;
+}
+
+.close-filter-modal:hover {
+    color: #b5727a;
 }
 
 .filter-modal-body {
-    padding: 20px;
+    padding: 24px;
 }
 
 .filter-section {
-    margin-bottom: 20px;
+    margin-bottom: 24px;
+}
+
+.filter-section:last-child {
+    margin-bottom: 0;
 }
 
 .filter-section h3 {
     font-family: var(--font-primary);
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 600;
-    margin: 0 0 15px;
+    margin: 0 0 14px;
+    color: #444;
+    letter-spacing: 0.3px;
 }
 
 .filter-options {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
 }
 
 .filter-option-label {
@@ -353,32 +374,54 @@
     font-family: var(--font-primary);
     font-size: 14px;
     cursor: pointer;
+    color: #555;
+    transition: color 0.2s ease;
+    padding: 4px 0;
+}
+
+.filter-option-label:hover {
+    color: #b5727a;
 }
 
 .filter-modal-footer {
-    padding: 15px 20px;
-    border-top: 1px solid #eee;
+    padding: 18px 24px;
+    border-top: 1px solid #f0ece8;
     display: flex;
     justify-content: space-between;
+    gap: 12px;
 }
 
 .apply-filter-btn, .clear-filter-btn {
-    padding: 10px 15px;
+    padding: 12px 20px;
     border: none;
-    border-radius: 4px;
+    border-radius: 10px;
     font-family: var(--font-primary);
     font-size: 14px;
+    font-weight: 500;
     cursor: pointer;
+    letter-spacing: 0.5px;
+    transition: all 0.25s ease;
 }
 
 .apply-filter-btn {
-    background-color: var(--color-secondary, #5a3f2a);
+    background: #c9949a;
     color: white;
+    flex: 1;
+}
+
+.apply-filter-btn:hover {
+    background: #b5727a;
 }
 
 .clear-filter-btn {
-    background-color: #f5f5f5;
-    color: #333;
+    background: transparent;
+    color: #888;
+    border: 1px solid #ddd;
+}
+
+.clear-filter-btn:hover {
+    border-color: #bbb;
+    color: #666;
 }
 
 .loading-skeleton {
