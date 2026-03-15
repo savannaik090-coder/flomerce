@@ -533,10 +533,16 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
                           >
                             <option value="">+ Add a category link...</option>
                             {flatCats.map(cat => {
-                              const alreadyAdded = menu.links.some(l => l.categorySlug === cat.slug);
+                              const alreadyInThisGroup = menu.links.some(l => l.categorySlug === cat.slug);
+                              const usedInGroup = navbarMenus.find(m => m.id !== menu.id && m.links.some(l => l.categorySlug === cat.slug));
+                              const usedLabel = alreadyInThisGroup
+                                ? '(already added)'
+                                : usedInGroup
+                                  ? `(used in "${usedInGroup.name || 'Untitled Group'}")`
+                                  : '';
                               return (
-                                <option key={cat.id} value={cat.slug} disabled={alreadyAdded}>
-                                  {cat.name} {alreadyAdded ? '(already added)' : ''}
+                                <option key={cat.id} value={cat.slug} disabled={alreadyInThisGroup}>
+                                  {cat.name} {usedLabel}
                                 </option>
                               );
                             })}
@@ -585,11 +591,11 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
                 <li>A group with <strong>multiple links</strong> shows a dropdown when hovered/clicked</li>
                 <li>A group with <strong>one link</strong> navigates directly to that link</li>
                 <li>A group with <strong>no links</strong> will not appear in the navbar</li>
-                <li>If <strong>no menu groups</strong> are defined, the navbar shows your categories directly (default behavior)</li>
+                <li><strong>Categories not assigned</strong> to any group will still appear as individual links in the navbar (just like before)</li>
               </ul>
               <p style={{ margin: 0, color: '#94a3b8', fontSize: 12 }}>
                 <i className="fas fa-info-circle" style={{ marginRight: 4 }} />
-                Static links like Home, About, Contact etc. will always appear in the navbar.
+                Static links like Home, About, Contact etc. will always appear in the navbar. A category can only belong to one group — it will be marked if already used elsewhere.
               </p>
             </div>
           </div>
