@@ -1141,7 +1141,80 @@ function SocialMediaTab({ siteConfig }) {
 
 // ─── Main SEO Section ─────────────────────────────────────────────────────────
 
+function SEOOverviewTab() {
+  const autoManaged = [
+    { tag: 'Viewport', detail: '<meta name="viewport" content="width=device-width, initial-scale=1.0">', icon: 'fa-mobile-alt' },
+    { tag: 'Charset', detail: '<meta charset="UTF-8">', icon: 'fa-font' },
+    { tag: 'Canonical URL', detail: 'Auto-set for every page with trailing-slash normalization to avoid duplicate content', icon: 'fa-link' },
+    { tag: 'Robots', detail: '<meta name="robots" content="index, follow"> — all pages are indexable by default', icon: 'fa-robot' },
+    { tag: 'Author', detail: 'Auto-set from your store/brand name', icon: 'fa-user' },
+    { tag: 'Open Graph Type', detail: 'og:type set to "product" on product pages, "website" on all others (customizable in Site SEO)', icon: 'fa-share-alt' },
+    { tag: 'Open Graph Locale', detail: 'og:locale set to "en_US"', icon: 'fa-language' },
+    { tag: 'Open Graph Site Name', detail: 'og:site_name auto-set from your brand name', icon: 'fa-store' },
+    { tag: 'Twitter Card', detail: 'twitter:card set to "summary_large_image" for rich previews', icon: 'fa-hashtag' },
+    { tag: 'Product Schema (JSON-LD)', detail: 'Full Product structured data — name, price, currency, availability, images, description, and SKU when available', icon: 'fa-code' },
+    { tag: 'Organization Schema', detail: 'Organization structured data with your brand name, logo, and social links', icon: 'fa-building' },
+    { tag: 'WebSite Schema', detail: 'WebSite structured data with site name and URL for Google knowledge panel', icon: 'fa-globe' },
+    { tag: 'BreadcrumbList Schema', detail: 'Breadcrumb navigation structured data for better search appearance', icon: 'fa-sitemap' },
+    { tag: 'Category Schema', detail: 'ItemList structured data for category pages listing products', icon: 'fa-folder-open' },
+  ];
+
+  const customizable = [
+    { item: 'Page Title & Meta Description', where: 'Products, Categories, Pages tabs', icon: 'fa-heading' },
+    { item: 'OG Image', where: 'Products, Categories, Pages tabs (auto-uses product/category image if not set)', icon: 'fa-image' },
+    { item: 'Site-Level Defaults', where: 'Site SEO tab — default title, description, OG image for homepage', icon: 'fa-globe' },
+    { item: 'Social Media Previews', where: 'Social Media tab — customize how your store appears when shared on Facebook, Twitter, etc.', icon: 'fa-share-nodes' },
+  ];
+
+  return (
+    <div>
+      <div className="seo-overview-section">
+        <div className="seo-overview-header">
+          <i className="fas fa-check-circle" style={{ color: '#22c55e', marginRight: 8 }} />
+          Auto-Managed by Fluxe
+        </div>
+        <p className="seo-overview-desc">
+          These SEO tags and structured data are automatically generated for every page. No action needed — they stay up to date as you update your store.
+        </p>
+        <div className="seo-overview-grid">
+          {autoManaged.map(item => (
+            <div key={item.tag} className="seo-overview-item">
+              <div className="seo-overview-item-header">
+                <i className={`fas ${item.icon}`} />
+                <span>{item.tag}</span>
+              </div>
+              <div className="seo-overview-item-detail">{item.detail}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="seo-overview-section" style={{ marginTop: 24 }}>
+        <div className="seo-overview-header">
+          <i className="fas fa-pen" style={{ color: '#3b82f6', marginRight: 8 }} />
+          Customizable by You
+        </div>
+        <p className="seo-overview-desc">
+          These fields can be customized per product, category, or page using the other tabs. If left empty, smart defaults are used automatically.
+        </p>
+        <div className="seo-overview-grid">
+          {customizable.map(item => (
+            <div key={item.item} className="seo-overview-item seo-overview-item-custom">
+              <div className="seo-overview-item-header">
+                <i className={`fas ${item.icon}`} />
+                <span>{item.item}</span>
+              </div>
+              <div className="seo-overview-item-detail">{item.where}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const TABS = [
+  { id: 'overview', label: 'Overview', icon: 'fa-info-circle' },
   { id: 'site', label: 'Site SEO', icon: 'fa-globe' },
   { id: 'social', label: 'Social Media', icon: 'fa-share-alt' },
   { id: 'pages', label: 'Pages', icon: 'fa-file-alt' },
@@ -1151,7 +1224,7 @@ const TABS = [
 
 export default function SEOSection() {
   const { siteConfig } = useContext(SiteContext);
-  const [activeTab, setActiveTab] = useState('site');
+  const [activeTab, setActiveTab] = useState('overview');
 
   return (
     <div className="seo-section">
@@ -1168,6 +1241,7 @@ export default function SEOSection() {
         ))}
       </div>
 
+      {activeTab === 'overview' && <SEOOverviewTab />}
       {activeTab === 'site' && <SiteSEOTab siteConfig={siteConfig} />}
       {activeTab === 'social' && <SocialMediaTab siteConfig={siteConfig} />}
       {activeTab === 'pages' && <PagesSEOTab siteConfig={siteConfig} />}
