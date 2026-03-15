@@ -11,6 +11,7 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
   const { isAuthenticated } = useContext(AuthContext);
   const { wishlistCount } = useWishlist();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [openDropdown, setOpenDropdown] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -23,9 +24,19 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
   }, [menuOpen]);
 
   const categories = siteConfig?.categories || [];
+  const navbarMenus = siteConfig?.settings?.navbarMenus || [];
+  const validMenus = navbarMenus.filter(menu => menu.name && menu.links && menu.links.length > 0 && menu.links.some(l => l.label && l.url));
+  const hasCustomNavbar = validMenus.length > 0;
 
   function closeMobileMenu() {
     setMenuOpen(false);
+    setOpenDropdown(null);
+  }
+
+  function toggleDropdown(id, e) {
+    e.preventDefault();
+    e.stopPropagation();
+    setOpenDropdown(prev => prev === id ? null : id);
   }
 
   return (
@@ -99,30 +110,75 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
 
         <ul className="nav-list">
           <li className="nav-item"><Link to="/" className="nav-link" onClick={closeMobileMenu}>Home</Link></li>
-          {categories.map((cat) => {
-            const subCategories = cat.subcategories || cat.sub_categories || [];
-            if (subCategories.length > 0) {
+          {hasCustomNavbar ? (
+            validMenus.map((menu) => {
+              const activeLinks = menu.links.filter(l => l.label && l.url);
+              if (activeLinks.length === 0) return null;
+              if (activeLinks.length === 1) {
+                const link = activeLinks[0];
+                const isSafe = link.url.startsWith('/') || link.url.startsWith('http://') || link.url.startsWith('https://');
+                if (!isSafe) return null;
+                const isExternal = link.url.startsWith('http://') || link.url.startsWith('https://');
+                return (
+                  <li className="nav-item" key={menu.id}>
+                    {isExternal ? (
+                      <a href={link.url} className="nav-link" target="_blank" rel="noopener noreferrer" onClick={closeMobileMenu}>{menu.name}</a>
+                    ) : (
+                      <Link to={link.url} className="nav-link" onClick={closeMobileMenu}>{menu.name}</Link>
+                    )}
+                  </li>
+                );
+              }
               return (
-                <li className="nav-item dropdown" key={cat.id || cat.slug}>
-                  <Link to={`/category/${cat.slug}`} className="nav-link dropdown-toggle" onClick={closeMobileMenu}>
-                    {cat.name} <i className="fas fa-chevron-down"></i>
-                  </Link>
+                <li className={`nav-item dropdown${openDropdown === menu.id ? ' active' : ''}`} key={menu.id}>
+                  <span className="nav-link dropdown-toggle" style={{ cursor: 'pointer' }} onClick={(e) => toggleDropdown(menu.id, e)}>
+                    {menu.name} <i className="fas fa-chevron-down"></i>
+                  </span>
                   <ul className="dropdown-menu">
-                    {subCategories.map((sub) => (
-                      <li key={sub.id || sub.slug}>
-                        <Link to={`/category/${sub.slug}`} onClick={closeMobileMenu}>{sub.name}</Link>
-                      </li>
-                    ))}
+                    {activeLinks.map((link) => {
+                      const isSafe = link.url.startsWith('/') || link.url.startsWith('http://') || link.url.startsWith('https://');
+                      if (!isSafe) return null;
+                      const isExternal = link.url.startsWith('http://') || link.url.startsWith('https://');
+                      return (
+                        <li key={link.id}>
+                          {isExternal ? (
+                            <a href={link.url} target="_blank" rel="noopener noreferrer" onClick={closeMobileMenu}>{link.label}</a>
+                          ) : (
+                            <Link to={link.url} onClick={closeMobileMenu}>{link.label}</Link>
+                          )}
+                        </li>
+                      );
+                    })}
                   </ul>
                 </li>
               );
-            }
-            return (
-              <li className="nav-item" key={cat.id || cat.slug}>
-                <Link to={`/category/${cat.slug}`} className="nav-link" onClick={closeMobileMenu}>{cat.name}</Link>
-              </li>
-            );
-          })}
+            })
+          ) : (
+            categories.map((cat) => {
+              const subCategories = cat.subcategories || cat.sub_categories || [];
+              if (subCategories.length > 0) {
+                return (
+                  <li className={`nav-item dropdown${openDropdown === (cat.id || cat.slug) ? ' active' : ''}`} key={cat.id || cat.slug}>
+                    <span className="nav-link dropdown-toggle" style={{ cursor: 'pointer' }} onClick={(e) => toggleDropdown(cat.id || cat.slug, e)}>
+                      {cat.name} <i className="fas fa-chevron-down"></i>
+                    </span>
+                    <ul className="dropdown-menu">
+                      {subCategories.map((sub) => (
+                        <li key={sub.id || sub.slug}>
+                          <Link to={`/category/${sub.slug}`} onClick={closeMobileMenu}>{sub.name}</Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </li>
+                );
+              }
+              return (
+                <li className="nav-item" key={cat.id || cat.slug}>
+                  <Link to={`/category/${cat.slug}`} className="nav-link" onClick={closeMobileMenu}>{cat.name}</Link>
+                </li>
+              );
+            })
+          )}
           <li className="nav-item"><Link to="/about" className="nav-link" onClick={closeMobileMenu}>About</Link></li>
           <li className="nav-item"><Link to="/book-appointment" className="nav-link" onClick={closeMobileMenu}>Book Appointment</Link></li>
           <li className="nav-item"><Link to="/order-track" className="nav-link" onClick={closeMobileMenu}>Order Track</Link></li>

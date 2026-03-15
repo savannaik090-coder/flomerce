@@ -13,9 +13,11 @@ import FooterEditor from './FooterEditor.jsx';
 import StoreLocationsEditor from './StoreLocationsEditor.jsx';
 import CheckoutEditor from './CheckoutEditor.jsx';
 import ProductPoliciesEditor from './ProductPoliciesEditor.jsx';
+import NavbarEditor from './NavbarEditor.jsx';
 import SectionToggle from './SectionToggle.jsx';
 
 const SUB_TABS = [
+  { id: 'navbar',             icon: 'fa-bars',           label: 'Navbar',             page: '/' },
   { id: 'promo-banner',      icon: 'fa-bullhorn',       label: 'Promo Banner',      page: '/' },
   { id: 'hero-slider',       icon: 'fa-images',         label: 'Hero Slider',        page: '/' },
   { id: 'welcome-banner',    icon: 'fa-hand-sparkles',  label: 'Welcome Banner',     page: '/' },
@@ -43,7 +45,7 @@ function getStoreUrl(siteConfig) {
 
 export default function WebsiteContentSection() {
   const { siteConfig } = useContext(SiteContext);
-  const [activeTab, setActiveTab] = useState('promo-banner');
+  const [activeTab, setActiveTab] = useState('navbar');
   const [showPreview, setShowPreview] = useState(true);
   const [previewKey, setPreviewKey] = useState(0);
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 900);
@@ -152,6 +154,7 @@ export default function WebsiteContentSection() {
 
       <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
         <div style={{ flex: '1 1 0', minWidth: 0 }}>
+          {activeTab === 'navbar' && <NavbarEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
           {activeTab === 'promo-banner' && <PromoBannerEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
           {activeTab === 'hero-slider' && <HeroSliderEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
           {activeTab === 'welcome-banner' && <WelcomeBannerEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
