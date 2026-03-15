@@ -393,11 +393,23 @@ async function getProductsSEO(request, env) {
     if (!admin) return errorResponse('Unauthorized', 401);
 
     const result = await env.DB.prepare(
-      `SELECT id, name, slug, short_description, description, thumbnail_url, price, seo_title, seo_description, seo_og_image
+      `SELECT id, name, slug, short_description, description, thumbnail_url, images, price, seo_title, seo_description, seo_og_image
        FROM products WHERE site_id = ? AND is_active = 1 ORDER BY created_at DESC`
     ).bind(siteId).all();
 
-    return jsonResponse({ success: true, data: result.results || [] });
+    const products = (result.results || []).map(p => {
+      if (!p.thumbnail_url && p.images) {
+        try {
+          const imgs = JSON.parse(p.images);
+          if (Array.isArray(imgs) && imgs.length > 0) {
+            p.thumbnail_url = imgs[0];
+          }
+        } catch {}
+      }
+      return p;
+    });
+
+    return jsonResponse({ success: true, data: products });
   } catch (err) {
     console.error('getProductsSEO error:', err);
     return errorResponse('Failed to fetch products', 500);

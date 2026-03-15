@@ -169,7 +169,7 @@ async function getProduct(env, productId) {
 async function createProduct(request, env, user) {
   try {
     const data = await request.json();
-    const { siteId, name, description, shortDescription, price, comparePrice, costPrice, sku, stock, categoryId, images, thumbnailUrl, tags, isFeatured, weight, dimensions } = data;
+    const { siteId, name, description, shortDescription, price, comparePrice, costPrice, sku, stock, categoryId, images, thumbnailUrl, mainImageIndex, tags, isFeatured, weight, dimensions } = data;
 
     if (!siteId || !name || price === undefined) {
       return errorResponse('Site ID, name and price are required');
@@ -186,6 +186,12 @@ async function createProduct(request, env, user) {
 
     if (!site) {
       return errorResponse('Site not found or unauthorized', 404);
+    }
+
+    let resolvedThumbnail = thumbnailUrl || null;
+    if (!resolvedThumbnail && Array.isArray(images) && images.length > 0) {
+      const idx = typeof mainImageIndex === 'number' ? mainImageIndex : 0;
+      resolvedThumbnail = images[idx] || images[0] || null;
     }
 
     const slug = name.toLowerCase().trim().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').substring(0, 100);
@@ -211,7 +217,7 @@ async function createProduct(request, env, user) {
       weight || null,
       dimensions ? JSON.stringify(dimensions) : null,
       images ? JSON.stringify(images) : '[]',
-      thumbnailUrl || null,
+      resolvedThumbnail,
       tags ? JSON.stringify(tags) : '[]',
       isFeatured ? 1 : 0
     ).run();
@@ -252,10 +258,18 @@ async function updateProduct(request, env, user, productId) {
     const updates = await request.json();
     const allowedFields = ['name', 'description', 'short_description', 'price', 'compare_price', 'cost_price', 'sku', 'stock', 'low_stock_threshold', 'category_id', 'images', 'thumbnail_url', 'tags', 'is_featured', 'is_active', 'weight', 'dimensions'];
     
+    if (updates.images && !updates.thumbnailUrl && !updates.thumbnail_url) {
+      const imgs = Array.isArray(updates.images) ? updates.images : [];
+      const idx = typeof updates.mainImageIndex === 'number' ? updates.mainImageIndex : 0;
+      const thumb = imgs[idx] || imgs[0] || null;
+      if (thumb) updates.thumbnailUrl = thumb;
+    }
+
     const setClause = [];
     const values = [];
 
     for (const [key, value] of Object.entries(updates)) {
+      if (key === 'mainImageIndex' || key === 'siteId') continue;
       const dbKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();
       if (allowedFields.includes(dbKey)) {
         setClause.push(`${dbKey} = ?`);
