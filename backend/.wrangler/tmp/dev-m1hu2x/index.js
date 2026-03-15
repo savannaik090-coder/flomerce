@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-lQniI3/checked-fetch.js
+// .wrangler/tmp/bundle-DcDafc/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-lQniI3/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-DcDafc/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-lQniI3/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-DcDafc/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-lQniI3/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-DcDafc/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -435,6 +435,8 @@ async function handleSiteAdmin(request, env, path) {
       return setSiteAdminCode(request, env);
     case "auto-login":
       return autoLoginSiteAdmin(request, env);
+    case "seo":
+      return handleSEO(request, env, pathParts);
     default:
       return errorResponse("Site admin endpoint not found", 404);
   }
@@ -627,6 +629,153 @@ async function ensureSiteAdminSessionsTable(env) {
     console.error("Error ensuring site_admin_sessions table:", error);
   }
 }
+async function handleSEO(request, env, pathParts) {
+  const subResource = pathParts[3];
+  const resourceId = pathParts[4];
+  if (!subResource) {
+    if (request.method === "GET")
+      return getSiteSEO(request, env);
+    if (request.method === "PUT")
+      return saveSiteSEO(request, env);
+  }
+  if (subResource === "categories") {
+    if (request.method === "GET")
+      return getCategoriesSEO(request, env);
+    if (request.method === "PUT" && resourceId)
+      return saveCategorySEO(request, env, resourceId);
+  }
+  if (subResource === "products") {
+    if (request.method === "GET")
+      return getProductsSEO(request, env);
+    if (request.method === "PUT" && resourceId)
+      return saveProductSEO(request, env, resourceId);
+  }
+  return errorResponse("SEO endpoint not found", 404);
+}
+async function getSiteSEO(request, env) {
+  try {
+    const url = new URL(request.url);
+    const siteId = url.searchParams.get("siteId");
+    if (!siteId)
+      return errorResponse("siteId is required");
+    const admin = await validateSiteAdmin(request, env, siteId);
+    if (!admin)
+      return errorResponse("Unauthorized", 401);
+    const site = await env.DB.prepare(
+      `SELECT seo_title, seo_description, seo_og_image, seo_robots, google_verification FROM sites WHERE id = ?`
+    ).bind(siteId).first();
+    return jsonResponse({ success: true, data: site || {} });
+  } catch (err) {
+    console.error("getSiteSEO error:", err);
+    return errorResponse("Failed to fetch SEO settings", 500);
+  }
+}
+async function saveSiteSEO(request, env) {
+  try {
+    const { siteId, seo_title, seo_description, seo_og_image, seo_robots, google_verification } = await request.json();
+    if (!siteId)
+      return errorResponse("siteId is required");
+    const admin = await validateSiteAdmin(request, env, siteId);
+    if (!admin)
+      return errorResponse("Unauthorized", 401);
+    await env.DB.prepare(
+      `UPDATE sites SET
+        seo_title = ?, seo_description = ?, seo_og_image = ?,
+        seo_robots = ?, google_verification = ?,
+        updated_at = datetime('now')
+       WHERE id = ?`
+    ).bind(
+      seo_title || null,
+      seo_description || null,
+      seo_og_image || null,
+      seo_robots || "index, follow",
+      google_verification || null,
+      siteId
+    ).run();
+    return jsonResponse({ success: true, message: "SEO settings saved" });
+  } catch (err) {
+    console.error("saveSiteSEO error:", err);
+    return errorResponse("Failed to save SEO settings", 500);
+  }
+}
+async function getCategoriesSEO(request, env) {
+  try {
+    const url = new URL(request.url);
+    const siteId = url.searchParams.get("siteId");
+    if (!siteId)
+      return errorResponse("siteId is required");
+    const admin = await validateSiteAdmin(request, env, siteId);
+    if (!admin)
+      return errorResponse("Unauthorized", 401);
+    const result = await env.DB.prepare(
+      `SELECT id, name, slug, seo_title, seo_description, seo_og_image
+       FROM categories WHERE site_id = ? AND is_active = 1 ORDER BY display_order ASC`
+    ).bind(siteId).all();
+    return jsonResponse({ success: true, data: result.results || [] });
+  } catch (err) {
+    console.error("getCategoriesSEO error:", err);
+    return errorResponse("Failed to fetch categories", 500);
+  }
+}
+async function saveCategorySEO(request, env, categoryId) {
+  try {
+    const { siteId, seo_title, seo_description, seo_og_image } = await request.json();
+    if (!siteId)
+      return errorResponse("siteId is required");
+    const admin = await validateSiteAdmin(request, env, siteId);
+    if (!admin)
+      return errorResponse("Unauthorized", 401);
+    await env.DB.prepare(
+      `UPDATE categories SET
+        seo_title = ?, seo_description = ?, seo_og_image = ?,
+        updated_at = datetime('now')
+       WHERE id = ? AND site_id = ?`
+    ).bind(seo_title || null, seo_description || null, seo_og_image || null, categoryId, siteId).run();
+    return jsonResponse({ success: true, message: "Category SEO saved" });
+  } catch (err) {
+    console.error("saveCategorySEO error:", err);
+    return errorResponse("Failed to save category SEO", 500);
+  }
+}
+async function getProductsSEO(request, env) {
+  try {
+    const url = new URL(request.url);
+    const siteId = url.searchParams.get("siteId");
+    if (!siteId)
+      return errorResponse("siteId is required");
+    const admin = await validateSiteAdmin(request, env, siteId);
+    if (!admin)
+      return errorResponse("Unauthorized", 401);
+    const result = await env.DB.prepare(
+      `SELECT id, name, slug, seo_title, seo_description, seo_og_image
+       FROM products WHERE site_id = ? AND is_active = 1 ORDER BY created_at DESC`
+    ).bind(siteId).all();
+    return jsonResponse({ success: true, data: result.results || [] });
+  } catch (err) {
+    console.error("getProductsSEO error:", err);
+    return errorResponse("Failed to fetch products", 500);
+  }
+}
+async function saveProductSEO(request, env, productId) {
+  try {
+    const { siteId, seo_title, seo_description, seo_og_image } = await request.json();
+    if (!siteId)
+      return errorResponse("siteId is required");
+    const admin = await validateSiteAdmin(request, env, siteId);
+    if (!admin)
+      return errorResponse("Unauthorized", 401);
+    await env.DB.prepare(
+      `UPDATE products SET
+        seo_title = ?, seo_description = ?, seo_og_image = ?,
+        updated_at = datetime('now')
+       WHERE id = ? AND site_id = ?`
+    ).bind(seo_title || null, seo_description || null, seo_og_image || null, productId, siteId).run();
+    return jsonResponse({ success: true, message: "Product SEO saved" });
+  } catch (err) {
+    console.error("saveProductSEO error:", err);
+    return errorResponse("Failed to save product SEO", 500);
+  }
+}
 async function validateSiteAdmin(request, env, siteId) {
   const user = await validateAuth(request, env);
   if (user) {
@@ -666,16 +815,23 @@ var init_site_admin_worker = __esm({
     __name(setSiteAdminCode, "setSiteAdminCode");
     __name(autoLoginSiteAdmin, "autoLoginSiteAdmin");
     __name(ensureSiteAdminSessionsTable, "ensureSiteAdminSessionsTable");
+    __name(handleSEO, "handleSEO");
+    __name(getSiteSEO, "getSiteSEO");
+    __name(saveSiteSEO, "saveSiteSEO");
+    __name(getCategoriesSEO, "getCategoriesSEO");
+    __name(saveCategorySEO, "saveCategorySEO");
+    __name(getProductsSEO, "getProductsSEO");
+    __name(saveProductSEO, "saveProductSEO");
     __name(validateSiteAdmin, "validateSiteAdmin");
   }
 });
 
-// .wrangler/tmp/bundle-lQniI3/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-DcDafc/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-lQniI3/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-DcDafc/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -5013,6 +5169,499 @@ init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 init_helpers();
+
+// workers/seo/index.js
+init_checked_fetch();
+init_strip_cf_connecting_ip_header();
+init_modules_watch_stub();
+
+// workers/seo/meta-injector.js
+init_checked_fetch();
+init_strip_cf_connecting_ip_header();
+init_modules_watch_stub();
+function injectSEOTags(html, tags) {
+  let result = html;
+  result = result.replace(/<title>[^<]*<\/title>/i, `<title>${escapeHtml(tags.title)}</title>`);
+  const metaTags = buildMetaTagsString(tags);
+  result = result.replace("</head>", `${metaTags}
+</head>`);
+  return result;
+}
+__name(injectSEOTags, "injectSEOTags");
+function buildMetaTagsString(tags) {
+  const lines = [];
+  if (tags.description) {
+    lines.push(`  <meta name="description" content="${escapeAttr(tags.description)}">`);
+  }
+  if (tags.keywords) {
+    lines.push(`  <meta name="keywords" content="${escapeAttr(tags.keywords)}">`);
+  }
+  if (tags.author) {
+    lines.push(`  <meta name="author" content="${escapeAttr(tags.author)}">`);
+  }
+  lines.push(`  <meta name="robots" content="${escapeAttr(tags.robots || "index, follow")}">`);
+  lines.push(`  <meta name="viewport" content="width=device-width, initial-scale=1.0">`);
+  if (tags.canonicalUrl) {
+    lines.push(`  <link rel="canonical" href="${escapeAttr(tags.canonicalUrl)}">`);
+  }
+  if (tags.favicon) {
+    lines.push(`  <link rel="icon" type="image/png" href="${escapeAttr(tags.favicon)}">`);
+  }
+  lines.push(`  <meta property="og:type" content="${escapeAttr(tags.ogType || "website")}">`);
+  lines.push(`  <meta property="og:site_name" content="${escapeAttr(tags.siteName || "")}">`);
+  if (tags.title) {
+    lines.push(`  <meta property="og:title" content="${escapeAttr(tags.ogTitle || tags.title)}">`);
+  }
+  if (tags.description) {
+    lines.push(`  <meta property="og:description" content="${escapeAttr(tags.ogDescription || tags.description)}">`);
+  }
+  if (tags.ogImage) {
+    lines.push(`  <meta property="og:image" content="${escapeAttr(tags.ogImage)}">`);
+    lines.push(`  <meta property="og:image:width" content="1200">`);
+    lines.push(`  <meta property="og:image:height" content="630">`);
+  }
+  if (tags.canonicalUrl) {
+    lines.push(`  <meta property="og:url" content="${escapeAttr(tags.canonicalUrl)}">`);
+  }
+  lines.push(`  <meta name="twitter:card" content="summary_large_image">`);
+  if (tags.title) {
+    lines.push(`  <meta name="twitter:title" content="${escapeAttr(tags.ogTitle || tags.title)}">`);
+  }
+  if (tags.description) {
+    lines.push(`  <meta name="twitter:description" content="${escapeAttr(tags.ogDescription || tags.description)}">`);
+  }
+  if (tags.ogImage) {
+    lines.push(`  <meta name="twitter:image" content="${escapeAttr(tags.ogImage)}">`);
+  }
+  if (tags.googleVerification) {
+    lines.push(`  <meta name="google-site-verification" content="${escapeAttr(tags.googleVerification)}">`);
+  }
+  if (tags.structuredData && tags.structuredData.length > 0) {
+    for (const schema of tags.structuredData) {
+      lines.push(`  <script type="application/ld+json">${schema}<\/script>`);
+    }
+  }
+  return lines.join("\n");
+}
+__name(buildMetaTagsString, "buildMetaTagsString");
+function escapeHtml(str) {
+  if (!str)
+    return "";
+  return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+__name(escapeHtml, "escapeHtml");
+function escapeAttr(str) {
+  if (!str)
+    return "";
+  return String(str).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+__name(escapeAttr, "escapeAttr");
+
+// workers/seo/sitemap-generator.js
+init_checked_fetch();
+init_strip_cf_connecting_ip_header();
+init_modules_watch_stub();
+async function generateSitemap(env, site, baseUrl) {
+  const urls2 = [];
+  urls2.push({
+    loc: `${baseUrl}/`,
+    changefreq: "daily",
+    priority: "1.0"
+  });
+  urls2.push({
+    loc: `${baseUrl}/about`,
+    changefreq: "monthly",
+    priority: "0.5"
+  });
+  urls2.push({
+    loc: `${baseUrl}/contact`,
+    changefreq: "monthly",
+    priority: "0.5"
+  });
+  try {
+    const categories = await env.DB.prepare(
+      `SELECT slug, updated_at FROM categories WHERE site_id = ? AND is_active = 1 ORDER BY display_order ASC`
+    ).bind(site.id).all();
+    for (const cat of categories.results || []) {
+      urls2.push({
+        loc: `${baseUrl}/category/${cat.slug}`,
+        lastmod: formatDate(cat.updated_at),
+        changefreq: "weekly",
+        priority: "0.7"
+      });
+    }
+  } catch {
+  }
+  try {
+    const products = await env.DB.prepare(
+      `SELECT slug, updated_at FROM products WHERE site_id = ? AND is_active = 1 ORDER BY created_at DESC`
+    ).bind(site.id).all();
+    for (const product of products.results || []) {
+      urls2.push({
+        loc: `${baseUrl}/product/${product.slug}`,
+        lastmod: formatDate(product.updated_at),
+        changefreq: "weekly",
+        priority: "0.8"
+      });
+    }
+  } catch {
+  }
+  const urlEntries = urls2.map((u) => {
+    let entry = `  <url>
+    <loc>${u.loc}</loc>`;
+    if (u.lastmod)
+      entry += `
+    <lastmod>${u.lastmod}</lastmod>`;
+    if (u.changefreq)
+      entry += `
+    <changefreq>${u.changefreq}</changefreq>`;
+    if (u.priority)
+      entry += `
+    <priority>${u.priority}</priority>`;
+    entry += `
+  </url>`;
+    return entry;
+  });
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${urlEntries.join("\n")}
+</urlset>`;
+}
+__name(generateSitemap, "generateSitemap");
+function formatDate(dateStr) {
+  if (!dateStr)
+    return (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
+  try {
+    return new Date(dateStr).toISOString().split("T")[0];
+  } catch {
+    return (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
+  }
+}
+__name(formatDate, "formatDate");
+
+// workers/seo/robots-generator.js
+init_checked_fetch();
+init_strip_cf_connecting_ip_header();
+init_modules_watch_stub();
+function generateRobots(site, baseUrl) {
+  const robots = site.seo_robots || "index, follow";
+  const isBlocked = robots.includes("noindex");
+  if (isBlocked) {
+    return `User-agent: *
+Disallow: /
+`;
+  }
+  return `User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+Disallow: /cart
+Disallow: /checkout
+Disallow: /profile
+Disallow: /orders
+
+Sitemap: ${baseUrl}/sitemap.xml
+`;
+}
+__name(generateRobots, "generateRobots");
+
+// workers/seo/structured-data.js
+init_checked_fetch();
+init_strip_cf_connecting_ip_header();
+init_modules_watch_stub();
+function buildOrganizationSchema(site, baseUrl) {
+  const schema = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: site.brand_name,
+    url: baseUrl
+  };
+  if (site.logo_url)
+    schema.logo = site.logo_url;
+  if (site.email)
+    schema.email = site.email;
+  if (site.phone)
+    schema.telephone = site.phone;
+  if (site.address)
+    schema.address = { "@type": "PostalAddress", streetAddress: site.address };
+  let socialLinks = [];
+  try {
+    if (site.social_links) {
+      const links = typeof site.social_links === "string" ? JSON.parse(site.social_links) : site.social_links;
+      socialLinks = Object.values(links).filter(Boolean);
+    }
+  } catch {
+  }
+  if (socialLinks.length > 0)
+    schema.sameAs = socialLinks;
+  return JSON.stringify(schema);
+}
+__name(buildOrganizationSchema, "buildOrganizationSchema");
+function buildProductSchema(product, site, baseUrl) {
+  let images = [];
+  try {
+    if (product.images) {
+      images = typeof product.images === "string" ? JSON.parse(product.images) : product.images;
+    }
+  } catch {
+  }
+  if (product.thumbnail_url && !images.includes(product.thumbnail_url)) {
+    images.unshift(product.thumbnail_url);
+  }
+  const schema = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: product.name,
+    description: product.description || product.short_description || "",
+    url: `${baseUrl}/product/${product.slug}`,
+    offers: {
+      "@type": "Offer",
+      price: product.price,
+      priceCurrency: "INR",
+      availability: product.stock > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+      url: `${baseUrl}/product/${product.slug}`
+    }
+  };
+  if (images.length > 0)
+    schema.image = images;
+  if (product.sku)
+    schema.sku = product.sku;
+  if (product.barcode)
+    schema.gtin = product.barcode;
+  if (product.compare_price && product.compare_price > product.price) {
+    schema.offers.priceValidUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1e3).toISOString().split("T")[0];
+  }
+  return JSON.stringify(schema);
+}
+__name(buildProductSchema, "buildProductSchema");
+function buildCategorySchema(category, products, site, baseUrl) {
+  const items = (products || []).slice(0, 10).map((p, index) => ({
+    "@type": "ListItem",
+    position: index + 1,
+    url: `${baseUrl}/product/${p.slug}`,
+    name: p.name
+  }));
+  const schema = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: category.name,
+    description: category.description || "",
+    url: `${baseUrl}/category/${category.slug}`,
+    numberOfItems: items.length,
+    itemListElement: items
+  };
+  return JSON.stringify(schema);
+}
+__name(buildCategorySchema, "buildCategorySchema");
+function buildBreadcrumbSchema(items, baseUrl) {
+  const schema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: items.map((item, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      name: item.name,
+      item: item.url.startsWith("http") ? item.url : `${baseUrl}${item.url}`
+    }))
+  };
+  return JSON.stringify(schema);
+}
+__name(buildBreadcrumbSchema, "buildBreadcrumbSchema");
+function buildWebsiteSchema(site, baseUrl) {
+  return JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: site.brand_name,
+    url: baseUrl,
+    potentialAction: {
+      "@type": "SearchAction",
+      target: {
+        "@type": "EntryPoint",
+        urlTemplate: `${baseUrl}/search?q={search_term_string}`
+      },
+      "query-input": "required name=search_term_string"
+    }
+  });
+}
+__name(buildWebsiteSchema, "buildWebsiteSchema");
+
+// workers/seo/templates/template1/seo-config.js
+init_checked_fetch();
+init_strip_cf_connecting_ip_header();
+init_modules_watch_stub();
+var seo_config_default = {
+  titleFormat: "{pageTitle} | {brandName}",
+  fallbackTitle(site) {
+    return `${site.brand_name} | Fluxe Store`;
+  },
+  fallbackDescription(site) {
+    return `Shop at ${site.brand_name}. Browse our collection of products with fast delivery.`;
+  },
+  includeOrganizationSchema: true,
+  includeProductSchema: true,
+  includeCategorySchema: true,
+  includeBreadcrumbs: true
+};
+
+// workers/seo/index.js
+var TEMPLATE_CONFIGS = {
+  template1: seo_config_default
+};
+function loadTemplateConfig(templateId) {
+  return TEMPLATE_CONFIGS[templateId] || TEMPLATE_CONFIGS["template1"];
+}
+__name(loadTemplateConfig, "loadTemplateConfig");
+function detectPageType(pathname) {
+  if (pathname.startsWith("/product/"))
+    return { type: "product", slug: pathname.split("/product/")[1]?.split("?")[0] };
+  if (pathname.startsWith("/category/"))
+    return { type: "category", slug: pathname.split("/category/")[1]?.split("?")[0] };
+  if (pathname === "/about" || pathname === "/about-us")
+    return { type: "about" };
+  if (pathname === "/contact" || pathname === "/contact-us")
+    return { type: "contact" };
+  return { type: "home" };
+}
+__name(detectPageType, "detectPageType");
+function buildBaseUrl(request, site) {
+  const url = new URL(request.url);
+  const proto = url.protocol;
+  const hostname = url.hostname;
+  return `${proto}//${hostname}`;
+}
+__name(buildBaseUrl, "buildBaseUrl");
+async function fetchSiteSEO(env, site) {
+  return {
+    seo_title: site.seo_title || null,
+    seo_description: site.seo_description || null,
+    seo_og_image: site.seo_og_image || null,
+    seo_robots: site.seo_robots || "index, follow",
+    google_verification: site.google_verification || null
+  };
+}
+__name(fetchSiteSEO, "fetchSiteSEO");
+async function fetchProductSEO(env, site, slug) {
+  try {
+    return await env.DB.prepare(
+      `SELECT id, name, slug, description, short_description, price, stock,
+              images, thumbnail_url, seo_title, seo_description, seo_og_image
+       FROM products WHERE site_id = ? AND slug = ? AND is_active = 1`
+    ).bind(site.id, slug).first();
+  } catch {
+    return null;
+  }
+}
+__name(fetchProductSEO, "fetchProductSEO");
+async function fetchCategorySEO(env, site, slug) {
+  try {
+    const category = await env.DB.prepare(
+      `SELECT id, name, slug, description, image_url, seo_title, seo_description, seo_og_image
+       FROM categories WHERE site_id = ? AND slug = ? AND is_active = 1`
+    ).bind(site.id, slug).first();
+    if (!category)
+      return { category: null, products: [] };
+    const products = await env.DB.prepare(
+      `SELECT name, slug, thumbnail_url FROM products
+       WHERE site_id = ? AND category_id = ? AND is_active = 1
+       ORDER BY is_featured DESC, created_at DESC LIMIT 10`
+    ).bind(site.id, category.id).all();
+    return { category, products: products.results || [] };
+  } catch {
+    return { category: null, products: [] };
+  }
+}
+__name(fetchCategorySEO, "fetchCategorySEO");
+function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl, canonicalUrl }) {
+  const { type } = pageInfo;
+  const structuredData = [];
+  let title, description, ogImage, ogType, breadcrumbs;
+  if (templateConfig.includeOrganizationSchema) {
+    structuredData.push(buildOrganizationSchema(site, baseUrl));
+  }
+  structuredData.push(buildWebsiteSchema(site, baseUrl));
+  if (type === "product" && pageData) {
+    title = pageData.seo_title || templateConfig.titleFormat.replace("{pageTitle}", pageData.name).replace("{brandName}", site.brand_name);
+    description = pageData.seo_description || pageData.short_description || pageData.description || templateConfig.fallbackDescription(site);
+    ogImage = pageData.seo_og_image || pageData.thumbnail_url || siteSEO.seo_og_image;
+    ogType = "product";
+    if (templateConfig.includeProductSchema) {
+      structuredData.push(buildProductSchema(pageData, site, baseUrl));
+    }
+    if (templateConfig.includeBreadcrumbs) {
+      structuredData.push(buildBreadcrumbSchema([
+        { name: "Home", url: "/" },
+        { name: "Products", url: "/products" },
+        { name: pageData.name, url: `/product/${pageData.slug}` }
+      ], baseUrl));
+    }
+  } else if (type === "category" && pageData?.category) {
+    const cat = pageData.category;
+    title = cat.seo_title || templateConfig.titleFormat.replace("{pageTitle}", cat.name).replace("{brandName}", site.brand_name);
+    description = cat.seo_description || cat.description || templateConfig.fallbackDescription(site);
+    ogImage = cat.seo_og_image || cat.image_url || siteSEO.seo_og_image;
+    if (templateConfig.includeCategorySchema) {
+      structuredData.push(buildCategorySchema(cat, pageData.products, site, baseUrl));
+    }
+    if (templateConfig.includeBreadcrumbs) {
+      structuredData.push(buildBreadcrumbSchema([
+        { name: "Home", url: "/" },
+        { name: cat.name, url: `/category/${cat.slug}` }
+      ], baseUrl));
+    }
+  } else if (type === "about") {
+    title = templateConfig.titleFormat.replace("{pageTitle}", "About Us").replace("{brandName}", site.brand_name);
+    description = siteSEO.seo_description || templateConfig.fallbackDescription(site);
+    ogImage = siteSEO.seo_og_image;
+  } else if (type === "contact") {
+    title = templateConfig.titleFormat.replace("{pageTitle}", "Contact Us").replace("{brandName}", site.brand_name);
+    description = siteSEO.seo_description || templateConfig.fallbackDescription(site);
+    ogImage = siteSEO.seo_og_image;
+  } else {
+    title = siteSEO.seo_title || templateConfig.fallbackTitle(site);
+    description = siteSEO.seo_description || templateConfig.fallbackDescription(site);
+    ogImage = siteSEO.seo_og_image;
+  }
+  return {
+    title,
+    description,
+    ogTitle: title,
+    ogDescription: description,
+    ogImage,
+    ogType: ogType || "website",
+    siteName: site.brand_name,
+    canonicalUrl,
+    robots: siteSEO.seo_robots || "index, follow",
+    favicon: site.favicon_url || null,
+    author: site.brand_name,
+    googleVerification: siteSEO.google_verification || null,
+    structuredData
+  };
+}
+__name(buildTags, "buildTags");
+async function applySEO(request, env, site, rawHTML) {
+  try {
+    const url = new URL(request.url);
+    const baseUrl = buildBaseUrl(request, site);
+    const canonicalUrl = `${baseUrl}${url.pathname}`;
+    const pageInfo = detectPageType(url.pathname);
+    const templateConfig = loadTemplateConfig(site.template_id);
+    const siteSEO = await fetchSiteSEO(env, site);
+    let pageData = null;
+    if (pageInfo.type === "product") {
+      pageData = await fetchProductSEO(env, site, pageInfo.slug);
+    } else if (pageInfo.type === "category") {
+      pageData = await fetchCategorySEO(env, site, pageInfo.slug);
+    }
+    const tags = buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl, canonicalUrl });
+    return injectSEOTags(rawHTML, tags);
+  } catch (err) {
+    console.error("[SEO] applySEO error:", err);
+    return rawHTML;
+  }
+}
+__name(applySEO, "applySEO");
+
+// workers/site-router.js
 async function handleSiteRouting(request, env) {
   const url = new URL(request.url);
   const hostname = url.hostname;
@@ -5091,66 +5740,106 @@ async function handleSiteRouting(request, env) {
         }
       );
     }
-    return serveStorefrontApp(request, env, path);
+    if (path === "/sitemap.xml") {
+      return handleSitemap(request, env, site);
+    }
+    if (path === "/robots.txt") {
+      return handleRobots(request, env, site);
+    }
+    return serveStorefrontApp(request, env, path, site);
   } catch (error) {
     console.error("Site routing error:", error);
     return new Response("Internal server error", { status: 500 });
   }
 }
 __name(handleSiteRouting, "handleSiteRouting");
-async function serveStorefrontApp(request, env, path) {
+async function handleSitemap(request, env, site) {
+  try {
+    const url = new URL(request.url);
+    const baseUrl = `${url.protocol}//${url.hostname}`;
+    const xml = await generateSitemap(env, site, baseUrl);
+    return new Response(xml, {
+      headers: {
+        "Content-Type": "application/xml; charset=utf-8",
+        "Cache-Control": "public, max-age=3600",
+        ...corsHeaders()
+      }
+    });
+  } catch (err) {
+    console.error("[SEO] Sitemap error:", err);
+    return new Response("Failed to generate sitemap", { status: 500 });
+  }
+}
+__name(handleSitemap, "handleSitemap");
+async function handleRobots(request, env, site) {
+  try {
+    const url = new URL(request.url);
+    const baseUrl = `${url.protocol}//${url.hostname}`;
+    const txt = generateRobots(site, baseUrl);
+    return new Response(txt, {
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Cache-Control": "public, max-age=3600",
+        ...corsHeaders()
+      }
+    });
+  } catch (err) {
+    console.error("[SEO] Robots error:", err);
+    return new Response("User-agent: *\nAllow: /\n", { status: 200 });
+  }
+}
+__name(handleRobots, "handleRobots");
+async function serveStorefrontApp(request, env, path, site) {
   const isAsset = path.startsWith("/assets/") || path.match(/\.(js|css|png|jpg|jpeg|gif|svg|webp|ico|woff|woff2|ttf|eot|otf|map|json)$/i);
   if (isAsset) {
     const storefrontAssetPath = `/storefront${path}`;
     if (env.ASSETS) {
       try {
         const assetRequest = new Request(`https://placeholder.com${storefrontAssetPath}`);
-        const response3 = await env.ASSETS.fetch(assetRequest);
-        if (response3.ok) {
-          const headers = new Headers(response3.headers);
+        const response2 = await env.ASSETS.fetch(assetRequest);
+        if (response2.ok) {
+          const headers = new Headers(response2.headers);
           headers.set("Cache-Control", "public, max-age=31536000, immutable");
           headers.set("Access-Control-Allow-Origin", "*");
-          return new Response(response3.body, { status: 200, headers });
+          return new Response(response2.body, { status: 200, headers });
         }
       } catch (err) {
         console.error("[Storefront] ASSETS fetch error:", err);
       }
     }
-    const domain2 = env.DOMAIN || "fluxe.in";
-    const response2 = await fetch(`https://${domain2}${storefrontAssetPath}`);
-    if (response2.ok) {
-      const headers = new Headers(response2.headers);
+    const domain = env.DOMAIN || "fluxe.in";
+    const response = await fetch(`https://${domain}${storefrontAssetPath}`);
+    if (response.ok) {
+      const headers = new Headers(response.headers);
       headers.set("Cache-Control", "public, max-age=31536000, immutable");
       headers.set("Access-Control-Allow-Origin", "*");
-      return new Response(response2.body, { status: 200, headers });
+      return new Response(response.body, { status: 200, headers });
     }
     return new Response("Asset not found", { status: 404 });
   }
   const storefrontIndexPath = "/storefront/index.html";
+  let rawHTML = null;
   if (env.ASSETS) {
     try {
       const assetRequest = new Request(`https://placeholder.com${storefrontIndexPath}`);
-      const response2 = await env.ASSETS.fetch(assetRequest);
-      if (response2.ok) {
-        return new Response(response2.body, {
-          headers: {
-            "Content-Type": "text/html; charset=utf-8",
-            "Cache-Control": "no-cache",
-            "Content-Security-Policy": "frame-ancestors 'self' https://fluxe.in https://www.fluxe.in",
-            ...corsHeaders()
-          }
-        });
+      const response = await env.ASSETS.fetch(assetRequest);
+      if (response.ok) {
+        rawHTML = await response.text();
       }
     } catch (err) {
       console.error("[Storefront] ASSETS index fetch error:", err);
     }
   }
-  const domain = env.DOMAIN || "fluxe.in";
-  const response = await fetch(`https://${domain}${storefrontIndexPath}`);
-  if (!response.ok) {
-    return new Response("Storefront not available", { status: 500 });
+  if (!rawHTML) {
+    const domain = env.DOMAIN || "fluxe.in";
+    const response = await fetch(`https://${domain}${storefrontIndexPath}`);
+    if (!response.ok) {
+      return new Response("Storefront not available", { status: 500 });
+    }
+    rawHTML = await response.text();
   }
-  return new Response(response.body, {
+  const seoHTML = await applySEO(request, env, site, rawHTML);
+  return new Response(seoHTML, {
     headers: {
       "Content-Type": "text/html; charset=utf-8",
       "Cache-Control": "no-cache",
@@ -5987,6 +6676,35 @@ init_helpers();
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
+
+// workers/seo/migrations.js
+init_checked_fetch();
+init_strip_cf_connecting_ip_header();
+init_modules_watch_stub();
+async function ensureSEOColumns(env) {
+  const alterStatements = [
+    `ALTER TABLE sites ADD COLUMN seo_title TEXT`,
+    `ALTER TABLE sites ADD COLUMN seo_description TEXT`,
+    `ALTER TABLE sites ADD COLUMN seo_og_image TEXT`,
+    `ALTER TABLE sites ADD COLUMN seo_robots TEXT DEFAULT 'index, follow'`,
+    `ALTER TABLE sites ADD COLUMN google_verification TEXT`,
+    `ALTER TABLE categories ADD COLUMN seo_title TEXT`,
+    `ALTER TABLE categories ADD COLUMN seo_description TEXT`,
+    `ALTER TABLE categories ADD COLUMN seo_og_image TEXT`,
+    `ALTER TABLE products ADD COLUMN seo_title TEXT`,
+    `ALTER TABLE products ADD COLUMN seo_description TEXT`,
+    `ALTER TABLE products ADD COLUMN seo_og_image TEXT`
+  ];
+  for (const sql of alterStatements) {
+    try {
+      await env.DB.prepare(sql).run();
+    } catch {
+    }
+  }
+}
+__name(ensureSEOColumns, "ensureSEOColumns");
+
+// utils/db-init.js
 var _initialized = false;
 async function ensureTablesExist(env) {
   if (_initialized)
@@ -6590,6 +7308,7 @@ async function ensureTablesExist(env) {
         console.error(`${mig.table} FK migration failed (non-fatal):`, e.message || e);
       }
     }
+    await ensureSEOColumns(env);
     _initialized = true;
     console.log("Database tables initialized successfully");
   } catch (error) {
@@ -6854,7 +7573,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-lQniI3/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-DcDafc/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -6889,7 +7608,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-lQniI3/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-DcDafc/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

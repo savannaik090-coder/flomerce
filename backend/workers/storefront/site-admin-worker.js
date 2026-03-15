@@ -17,6 +17,8 @@ export async function handleSiteAdmin(request, env, path) {
       return setSiteAdminCode(request, env);
     case 'auto-login':
       return autoLoginSiteAdmin(request, env);
+    case 'seo':
+      return handleSEO(request, env, pathParts);
     default:
       return errorResponse('Site admin endpoint not found', 404);
   }
@@ -247,6 +249,170 @@ async function ensureSiteAdminSessionsTable(env) {
     ).run();
   } catch (error) {
     console.error('Error ensuring site_admin_sessions table:', error);
+  }
+}
+
+// ─── SEO Handler ─────────────────────────────────────────────────────────────
+// Routes:
+//   GET  /api/site-admin/seo?siteId=xxx          → get site SEO settings
+//   PUT  /api/site-admin/seo                      → save site SEO settings
+//   GET  /api/site-admin/seo/categories?siteId=x → get all categories with SEO
+//   PUT  /api/site-admin/seo/categories/:id       → save category SEO
+//   GET  /api/site-admin/seo/products?siteId=xxx  → get all products with SEO
+//   PUT  /api/site-admin/seo/products/:id         → save product SEO
+
+async function handleSEO(request, env, pathParts) {
+  const subResource = pathParts[3];
+  const resourceId  = pathParts[4];
+
+  if (!subResource) {
+    if (request.method === 'GET') return getSiteSEO(request, env);
+    if (request.method === 'PUT') return saveSiteSEO(request, env);
+  }
+
+  if (subResource === 'categories') {
+    if (request.method === 'GET') return getCategoriesSEO(request, env);
+    if (request.method === 'PUT' && resourceId) return saveCategorySEO(request, env, resourceId);
+  }
+
+  if (subResource === 'products') {
+    if (request.method === 'GET') return getProductsSEO(request, env);
+    if (request.method === 'PUT' && resourceId) return saveProductSEO(request, env, resourceId);
+  }
+
+  return errorResponse('SEO endpoint not found', 404);
+}
+
+async function getSiteSEO(request, env) {
+  try {
+    const url = new URL(request.url);
+    const siteId = url.searchParams.get('siteId');
+    if (!siteId) return errorResponse('siteId is required');
+
+    const admin = await validateSiteAdmin(request, env, siteId);
+    if (!admin) return errorResponse('Unauthorized', 401);
+
+    const site = await env.DB.prepare(
+      `SELECT seo_title, seo_description, seo_og_image, seo_robots, google_verification FROM sites WHERE id = ?`
+    ).bind(siteId).first();
+
+    return jsonResponse({ success: true, data: site || {} });
+  } catch (err) {
+    console.error('getSiteSEO error:', err);
+    return errorResponse('Failed to fetch SEO settings', 500);
+  }
+}
+
+async function saveSiteSEO(request, env) {
+  try {
+    const { siteId, seo_title, seo_description, seo_og_image, seo_robots, google_verification } = await request.json();
+    if (!siteId) return errorResponse('siteId is required');
+
+    const admin = await validateSiteAdmin(request, env, siteId);
+    if (!admin) return errorResponse('Unauthorized', 401);
+
+    await env.DB.prepare(
+      `UPDATE sites SET
+        seo_title = ?, seo_description = ?, seo_og_image = ?,
+        seo_robots = ?, google_verification = ?,
+        updated_at = datetime('now')
+       WHERE id = ?`
+    ).bind(
+      seo_title || null, seo_description || null, seo_og_image || null,
+      seo_robots || 'index, follow', google_verification || null,
+      siteId
+    ).run();
+
+    return jsonResponse({ success: true, message: 'SEO settings saved' });
+  } catch (err) {
+    console.error('saveSiteSEO error:', err);
+    return errorResponse('Failed to save SEO settings', 500);
+  }
+}
+
+async function getCategoriesSEO(request, env) {
+  try {
+    const url = new URL(request.url);
+    const siteId = url.searchParams.get('siteId');
+    if (!siteId) return errorResponse('siteId is required');
+
+    const admin = await validateSiteAdmin(request, env, siteId);
+    if (!admin) return errorResponse('Unauthorized', 401);
+
+    const result = await env.DB.prepare(
+      `SELECT id, name, slug, seo_title, seo_description, seo_og_image
+       FROM categories WHERE site_id = ? AND is_active = 1 ORDER BY display_order ASC`
+    ).bind(siteId).all();
+
+    return jsonResponse({ success: true, data: result.results || [] });
+  } catch (err) {
+    console.error('getCategoriesSEO error:', err);
+    return errorResponse('Failed to fetch categories', 500);
+  }
+}
+
+async function saveCategorySEO(request, env, categoryId) {
+  try {
+    const { siteId, seo_title, seo_description, seo_og_image } = await request.json();
+    if (!siteId) return errorResponse('siteId is required');
+
+    const admin = await validateSiteAdmin(request, env, siteId);
+    if (!admin) return errorResponse('Unauthorized', 401);
+
+    await env.DB.prepare(
+      `UPDATE categories SET
+        seo_title = ?, seo_description = ?, seo_og_image = ?,
+        updated_at = datetime('now')
+       WHERE id = ? AND site_id = ?`
+    ).bind(seo_title || null, seo_description || null, seo_og_image || null, categoryId, siteId).run();
+
+    return jsonResponse({ success: true, message: 'Category SEO saved' });
+  } catch (err) {
+    console.error('saveCategorySEO error:', err);
+    return errorResponse('Failed to save category SEO', 500);
+  }
+}
+
+async function getProductsSEO(request, env) {
+  try {
+    const url = new URL(request.url);
+    const siteId = url.searchParams.get('siteId');
+    if (!siteId) return errorResponse('siteId is required');
+
+    const admin = await validateSiteAdmin(request, env, siteId);
+    if (!admin) return errorResponse('Unauthorized', 401);
+
+    const result = await env.DB.prepare(
+      `SELECT id, name, slug, seo_title, seo_description, seo_og_image
+       FROM products WHERE site_id = ? AND is_active = 1 ORDER BY created_at DESC`
+    ).bind(siteId).all();
+
+    return jsonResponse({ success: true, data: result.results || [] });
+  } catch (err) {
+    console.error('getProductsSEO error:', err);
+    return errorResponse('Failed to fetch products', 500);
+  }
+}
+
+async function saveProductSEO(request, env, productId) {
+  try {
+    const { siteId, seo_title, seo_description, seo_og_image } = await request.json();
+    if (!siteId) return errorResponse('siteId is required');
+
+    const admin = await validateSiteAdmin(request, env, siteId);
+    if (!admin) return errorResponse('Unauthorized', 401);
+
+    await env.DB.prepare(
+      `UPDATE products SET
+        seo_title = ?, seo_description = ?, seo_og_image = ?,
+        updated_at = datetime('now')
+       WHERE id = ? AND site_id = ?`
+    ).bind(seo_title || null, seo_description || null, seo_og_image || null, productId, siteId).run();
+
+    return jsonResponse({ success: true, message: 'Product SEO saved' });
+  } catch (err) {
+    console.error('saveProductSEO error:', err);
+    return errorResponse('Failed to save product SEO', 500);
   }
 }
 

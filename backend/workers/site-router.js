@@ -1,4 +1,5 @@
 import { jsonResponse, errorResponse, corsHeaders } from '../utils/helpers.js';
+import { applySEO, generateSitemap, generateRobots } from './seo/index.js';
 
 
 export async function handleSiteRouting(request, env) {
@@ -89,14 +90,68 @@ export async function handleSiteRouting(request, env) {
       );
     }
 
-    return serveStorefrontApp(request, env, path);
+    // ── SEO special routes ───────────────────────────────────────────────────
+
+    if (path === '/sitemap.xml') {
+      return handleSitemap(request, env, site);
+    }
+
+    if (path === '/robots.txt') {
+      return handleRobots(request, env, site);
+    }
+
+    // ── Storefront app ───────────────────────────────────────────────────────
+
+    return serveStorefrontApp(request, env, path, site);
   } catch (error) {
     console.error('Site routing error:', error);
     return new Response('Internal server error', { status: 500 });
   }
 }
 
-async function serveStorefrontApp(request, env, path) {
+// ─── /sitemap.xml ────────────────────────────────────────────────────────────
+
+async function handleSitemap(request, env, site) {
+  try {
+    const url = new URL(request.url);
+    const baseUrl = `${url.protocol}//${url.hostname}`;
+    const xml = await generateSitemap(env, site, baseUrl);
+    return new Response(xml, {
+      headers: {
+        'Content-Type': 'application/xml; charset=utf-8',
+        'Cache-Control': 'public, max-age=3600',
+        ...corsHeaders(),
+      },
+    });
+  } catch (err) {
+    console.error('[SEO] Sitemap error:', err);
+    return new Response('Failed to generate sitemap', { status: 500 });
+  }
+}
+
+// ─── /robots.txt ─────────────────────────────────────────────────────────────
+
+async function handleRobots(request, env, site) {
+  try {
+    const url = new URL(request.url);
+    const baseUrl = `${url.protocol}//${url.hostname}`;
+    const txt = generateRobots(site, baseUrl);
+    return new Response(txt, {
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Cache-Control': 'public, max-age=3600',
+        ...corsHeaders(),
+      },
+    });
+  } catch (err) {
+    console.error('[SEO] Robots error:', err);
+    return new Response('User-agent: *\nAllow: /\n', { status: 200 });
+  }
+}
+
+// ─── Storefront HTML (with SEO injection) ────────────────────────────────────
+
+async function serveStorefrontApp(request, env, path, site) {
   const isAsset = path.startsWith('/assets/') || path.match(/\.(js|css|png|jpg|jpeg|gif|svg|webp|ico|woff|woff2|ttf|eot|otf|map|json)$/i);
 
   if (isAsset) {
@@ -129,34 +184,35 @@ async function serveStorefrontApp(request, env, path) {
     return new Response('Asset not found', { status: 404 });
   }
 
+  // ── Serve index.html with SEO tags injected ───────────────────────────────
+
   const storefrontIndexPath = '/storefront/index.html';
+  let rawHTML = null;
 
   if (env.ASSETS) {
     try {
       const assetRequest = new Request(`https://placeholder.com${storefrontIndexPath}`);
       const response = await env.ASSETS.fetch(assetRequest);
       if (response.ok) {
-        return new Response(response.body, {
-          headers: {
-            'Content-Type': 'text/html; charset=utf-8',
-            'Cache-Control': 'no-cache',
-            'Content-Security-Policy': "frame-ancestors 'self' https://fluxe.in https://www.fluxe.in",
-            ...corsHeaders(),
-          },
-        });
+        rawHTML = await response.text();
       }
     } catch (err) {
       console.error('[Storefront] ASSETS index fetch error:', err);
     }
   }
 
-  const domain = env.DOMAIN || 'fluxe.in';
-  const response = await fetch(`https://${domain}${storefrontIndexPath}`);
-  if (!response.ok) {
-    return new Response('Storefront not available', { status: 500 });
+  if (!rawHTML) {
+    const domain = env.DOMAIN || 'fluxe.in';
+    const response = await fetch(`https://${domain}${storefrontIndexPath}`);
+    if (!response.ok) {
+      return new Response('Storefront not available', { status: 500 });
+    }
+    rawHTML = await response.text();
   }
 
-  return new Response(response.body, {
+  const seoHTML = await applySEO(request, env, site, rawHTML);
+
+  return new Response(seoHTML, {
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
       'Cache-Control': 'no-cache',

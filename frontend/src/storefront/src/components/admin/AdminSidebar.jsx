@@ -8,6 +8,7 @@ const navItems = [
   { id: 'customers', icon: 'fa-users', label: 'Customers' },
   { id: 'analytics', icon: 'fa-chart-bar', label: 'Analytics' },
   { id: 'website', icon: 'fa-globe', label: 'Edit Website' },
+  { id: 'seo', icon: 'fa-search', label: 'SEO' },
   { id: 'notifications', icon: 'fa-bell', label: 'Push Notifications' },
   { id: 'settings', icon: 'fa-cog', label: 'Settings' },
 ];

@@ -10,6 +10,7 @@ import AnalyticsSection from '../components/admin/AnalyticsSection.jsx';
 import PushNotificationsSection from '../components/admin/PushNotificationsSection.jsx';
 import WebsiteContentSection from '../components/admin/WebsiteContentSection.jsx';
 import SettingsSection from '../components/admin/SettingsSection.jsx';
+import SEOSection from '../components/admin/SEOSection.jsx';
 import ProductForm from '../components/admin/ProductForm.jsx';
 import { apiRequest } from '../services/api.js';
 import '../styles/admin.css';
@@ -170,6 +171,7 @@ export default function AdminPanel() {
     customers: 'Customers',
     analytics: 'Analytics',
     website: 'Edit Website',
+    seo: 'SEO',
     notifications: 'Push Notifications',
     settings: 'Settings',
   };
@@ -224,6 +226,7 @@ export default function AdminPanel() {
           {activeSection === 'customers' && <CustomersSection />}
           {activeSection === 'analytics' && <AnalyticsSection />}
           {activeSection === 'website' && <WebsiteContentSection />}
+          {activeSection === 'seo' && <SEOSection />}
           {activeSection === 'notifications' && <PushNotificationsSection />}
           {activeSection === 'settings' && <SettingsSection />}
         </div>

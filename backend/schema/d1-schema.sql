@@ -83,6 +83,13 @@ CREATE TABLE IF NOT EXISTS sites (
     address TEXT,
     social_links TEXT,
     settings TEXT,
+    -- SEO fields
+    seo_title TEXT,
+    seo_description TEXT,
+    seo_og_image TEXT,
+    seo_robots TEXT DEFAULT 'index, follow',
+    google_verification TEXT,
+
     is_active INTEGER DEFAULT 1,
     subscription_plan TEXT DEFAULT 'free',
     subscription_expires_at TEXT,
@@ -109,6 +116,10 @@ CREATE TABLE IF NOT EXISTS categories (
     image_url TEXT,
     display_order INTEGER DEFAULT 0,
     is_active INTEGER DEFAULT 1,
+    -- SEO fields
+    seo_title TEXT,
+    seo_description TEXT,
+    seo_og_image TEXT,
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now')),
     FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
@@ -145,6 +156,10 @@ CREATE TABLE IF NOT EXISTS products (
     tags TEXT,
     is_featured INTEGER DEFAULT 0,
     is_active INTEGER DEFAULT 1,
+    -- SEO fields
+    seo_title TEXT,
+    seo_description TEXT,
+    seo_og_image TEXT,
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now')),
     FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,

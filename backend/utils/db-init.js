@@ -1,3 +1,5 @@
+import { ensureSEOColumns } from '../workers/seo/migrations.js';
+
 let _initialized = false;
 
 export async function ensureTablesExist(env) {
@@ -634,6 +636,8 @@ export async function ensureTablesExist(env) {
         console.error(`${mig.table} FK migration failed (non-fatal):`, e.message || e);
       }
     }
+
+    await ensureSEOColumns(env);
 
     _initialized = true;
     console.log('Database tables initialized successfully');
