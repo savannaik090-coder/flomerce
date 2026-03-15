@@ -95,7 +95,8 @@ function SiteSEOTab({ siteConfig }) {
         body: formData,
       });
       const result = await res.json();
-      const urls = result.urls || (result.images || []).filter(r => r.url).map(r => r.url);
+      const data = result.data || result;
+      const urls = data.urls || (data.images || []).filter(r => r.url).map(r => r.url);
       if (result.success && urls.length > 0) {
         setForm(prev => ({ ...prev, favicon_url: urls[0] }));
         setMsg({ type: 'success', text: 'Favicon uploaded! Click "Save SEO Settings" to apply.' });
