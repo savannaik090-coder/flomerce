@@ -12,7 +12,6 @@ function newCoupon() {
 
 export default function CheckoutEditor({ onSaved, onPreviewUpdate }) {
   const { siteConfig } = useContext(SiteContext);
-  const [codEnabled, setCodEnabled] = useState(true);
   const [coupons, setCoupons] = useState([]);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState('');
@@ -26,8 +25,8 @@ export default function CheckoutEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!hasLoadedRef.current || !onPreviewUpdate) return;
-    onPreviewUpdate({ codEnabled, coupons });
-  }, [codEnabled, coupons]);
+    onPreviewUpdate({ coupons });
+  }, [coupons]);
 
   async function loadSettings() {
     setLoading(true);
@@ -39,7 +38,6 @@ export default function CheckoutEditor({ onSaved, onPreviewUpdate }) {
         if (typeof settings === 'string') {
           try { settings = JSON.parse(settings); } catch (e) { settings = {}; }
         }
-        setCodEnabled(settings.codEnabled !== false);
         setCoupons(Array.isArray(settings.coupons) ? settings.coupons : []);
       }
     } catch (e) {
@@ -62,7 +60,7 @@ export default function CheckoutEditor({ onSaved, onPreviewUpdate }) {
       const response = await fetch(`${API_BASE}/api/sites/${siteConfig.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': token ? `SiteAdmin ${token}` : '' },
-        body: JSON.stringify({ settings: { codEnabled, coupons: cleaned } }),
+        body: JSON.stringify({ settings: { coupons: cleaned } }),
       });
       const result = await response.json();
       if (response.ok && result.success) {
@@ -99,45 +97,6 @@ export default function CheckoutEditor({ onSaved, onPreviewUpdate }) {
   return (
     <div style={{ maxWidth: 700 }}>
       <form onSubmit={handleSave}>
-
-        <div className="card" style={{ marginBottom: 20 }}>
-          <div className="card-header">
-            <h3 className="card-title">Payment Methods</h3>
-          </div>
-          <div className="card-content">
-            <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
-              Control which payment options are available to customers at checkout.
-            </p>
-
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', border: '1px solid #e2e8f0', borderRadius: 8, marginBottom: 12, background: codEnabled ? '#f0fdf4' : '#f8fafc' }}>
-              <div>
-                <div style={{ fontWeight: 600, fontSize: 14, color: '#1e293b' }}>Cash on Delivery (COD)</div>
-                <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>Customer pays when the order is delivered</div>
-              </div>
-              <label style={{ position: 'relative', display: 'inline-block', width: 44, height: 24, flexShrink: 0 }}>
-                <input type="checkbox" checked={codEnabled} onChange={e => setCodEnabled(e.target.checked)} style={{ opacity: 0, width: 0, height: 0 }} />
-                <span style={{
-                  position: 'absolute', cursor: 'pointer', inset: 0, borderRadius: 24, transition: '0.3s',
-                  background: codEnabled ? '#22c55e' : '#cbd5e1',
-                }}>
-                  <span style={{
-                    position: 'absolute', left: codEnabled ? 22 : 2, top: 2, width: 20, height: 20,
-                    background: '#fff', borderRadius: '50%', transition: '0.3s',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                  }} />
-                </span>
-              </label>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', border: '1px solid #e2e8f0', borderRadius: 8, background: '#f8fafc' }}>
-              <div>
-                <div style={{ fontWeight: 600, fontSize: 14, color: '#1e293b' }}>Pay Online (Razorpay)</div>
-                <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>Credit/Debit Card, UPI, Net Banking — managed in Store Settings</div>
-              </div>
-              <span style={{ fontSize: 12, background: '#e0f2fe', color: '#0369a1', padding: '3px 10px', borderRadius: 20, fontWeight: 600, flexShrink: 0 }}>Always On</span>
-            </div>
-          </div>
-        </div>
 
         <div className="card" style={{ marginBottom: 20 }}>
           <div className="card-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
