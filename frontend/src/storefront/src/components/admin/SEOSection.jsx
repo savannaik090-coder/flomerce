@@ -15,6 +15,76 @@ function CharCounter({ value, max }) {
   return <div className={`seo-char-counter ${cls}`}>{len} / {max}</div>;
 }
 
+// ─── Image Upload Field ──────────────────────────────────────────────────────
+
+function ImageUploadField({ label, hint, value, onChange, siteId }) {
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState(null);
+  const imgSrc = value ? (value.startsWith('/') ? `${API_BASE}${value}` : value) : null;
+
+  async function handleUpload(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (!allowed.includes(file.type)) {
+      setError('Use JPG, PNG, WebP, or GIF.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Image must be under 5MB.');
+      return;
+    }
+
+    setUploading(true);
+    setError(null);
+    try {
+      const formData = new FormData();
+      formData.append('images', file, file.name);
+      const res = await fetch(`${API_BASE}/api/upload/image?siteId=${siteId}`, {
+        method: 'POST',
+        headers: getAuthHeader(),
+        body: formData,
+      });
+      const result = await res.json();
+      const data = result.data || result;
+      const urls = data.urls || (data.images || []).filter(r => r.url).map(r => r.url);
+      if (result.success && urls.length > 0) {
+        onChange(urls[0]);
+      } else {
+        setError(result.error || 'Upload failed');
+      }
+    } catch {
+      setError('Upload failed');
+    }
+    setUploading(false);
+    e.target.value = '';
+  }
+
+  return (
+    <div className="seo-field">
+      <label>{label}</label>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+        {imgSrc ? (
+          <div style={{ position: 'relative', flexShrink: 0 }}>
+            <img src={imgSrc} alt="" style={{ width: 120, height: 63, objectFit: 'cover', borderRadius: 6, border: '1px solid #e2e8f0' }} onError={e => e.target.style.display = 'none'} />
+            <button type="button" onClick={() => onChange('')} style={{ position: 'absolute', top: -6, right: -6, background: '#ef4444', color: '#fff', border: 'none', borderRadius: '50%', width: 20, height: 20, fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>&times;</button>
+          </div>
+        ) : null}
+        <div style={{ flex: 1 }}>
+          <label className="btn btn-outline" style={{ fontSize: 13, padding: '8px 16px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, opacity: uploading ? 0.6 : 1 }}>
+            <i className={`fas ${uploading ? 'fa-spinner fa-spin' : 'fa-upload'}`} />
+            {uploading ? 'Uploading...' : value ? 'Change Image' : 'Upload Image'}
+            <input type="file" accept=".jpg,.jpeg,.png,.webp,.gif" onChange={handleUpload} disabled={uploading} style={{ display: 'none' }} />
+          </label>
+          {error && <div style={{ color: '#ef4444', fontSize: 12, marginTop: 4 }}>{error}</div>}
+        </div>
+      </div>
+      <div className="seo-hint">{hint}</div>
+    </div>
+  );
+}
+
 // ─── Google Search Preview ────────────────────────────────────────────────────
 
 function SearchPreview({ title, description, url }) {
@@ -227,16 +297,13 @@ function SiteSEOTab({ siteConfig }) {
             <div className="seo-hint">Recommended: 120–160 characters. Affects click-through rate from Google.</div>
           </div>
 
-          <div className="seo-field">
-            <label>OG Image URL <span style={{ fontWeight: 400, color: '#94a3b8' }}>(for social sharing)</span></label>
-            <input
-              type="url"
-              value={form.seo_og_image}
-              onChange={set('seo_og_image')}
-              placeholder="https://cdn.example.com/og-image.jpg"
-            />
-            <div className="seo-hint">Recommended size: 1200 × 630px. Shown when your link is shared on WhatsApp, Facebook, Twitter.</div>
-          </div>
+          <ImageUploadField
+            label="OG Image (for social sharing)"
+            hint="Recommended size: 1200 × 630px. Shown when your link is shared on WhatsApp, Facebook, Twitter."
+            value={form.seo_og_image}
+            onChange={url => setForm(prev => ({ ...prev, seo_og_image: url }))}
+            siteId={siteId}
+          />
 
         </div>
       </div>
@@ -937,11 +1004,13 @@ function SocialMediaTab({ siteConfig }) {
                 <textarea value={form.og_description} onChange={set('og_description')} placeholder={defaults.description || 'Uses site description'} maxLength={200} rows={3} />
                 <CharCounter value={form.og_description || defaults.description} max={160} />
               </div>
-              <div className="seo-field">
-                <label>OG Image URL</label>
-                <input type="url" value={form.og_image} onChange={set('og_image')} placeholder={defaults.image || 'https://cdn.example.com/og-image.jpg'} />
-                <div className="seo-hint">Recommended: 1200 × 630px. Used by Facebook, WhatsApp, LinkedIn.</div>
-              </div>
+              <ImageUploadField
+                label="OG Image"
+                hint="Recommended: 1200 × 630px. Used by Facebook, WhatsApp, LinkedIn."
+                value={form.og_image}
+                onChange={url => setForm(prev => ({ ...prev, og_image: url }))}
+                siteId={siteId}
+              />
               <div className="seo-field">
                 <label>OG Type</label>
                 <select value={form.og_type} onChange={set('og_type')}>
