@@ -1,5 +1,6 @@
 import React from 'react';
 import { useSiteConfig } from '../hooks/useSiteConfig.js';
+import { useSEO } from '../hooks/useSEO.js';
 import { resolveImageUrl } from '../utils/imageUrl.js';
 import '../styles/about.css';
 
@@ -52,6 +53,7 @@ function getDefaults(category, brandName) {
 
 export default function AboutPage() {
   const { siteConfig } = useSiteConfig();
+  useSEO({ title: 'About Us', pageType: 'about' });
   const brandName = siteConfig?.brandName || siteConfig?.name || 'Our Store';
   const category = siteConfig?.category || '';
 

@@ -10,6 +10,7 @@ import CustomerReviews from '../components/home/CustomerReviews.jsx';
 import FirstVisitBanner from '../components/home/FirstVisitBanner.jsx';
 import { useSiteConfig } from '../hooks/useSiteConfig.js';
 import { getCategories } from '../services/categoryService.js';
+import { useSEO } from '../hooks/useSEO.js';
 import '../styles/hero.css';
 import '../styles/categories.css';
 import '../styles/featured-video.css';
@@ -24,6 +25,8 @@ export default function HomePage() {
   const { siteConfig } = useSiteConfig();
   const [homeCategories, setHomeCategories] = useState([]);
   const [allCategories, setAllCategories] = useState([]);
+
+  useSEO({ pageType: 'home' });
 
   useEffect(() => {
     if (!siteConfig?.id) return;

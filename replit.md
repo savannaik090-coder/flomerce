@@ -65,7 +65,15 @@ Fluxe is a multi-tenant SaaS platform that allows users to create their own e-co
 │   │       ├── categories-worker.js # Category management
 │   │       ├── wishlist-worker.js   # Wishlist operations
 │   │       ├── upload-worker.js     # Image upload/serve/delete via R2
-│   │       └── site-admin-worker.js # Verification-code-based admin access
+│   │       └── site-admin-worker.js # Verification-code-based admin access + SEO APIs
+│   ├── seo/                       # SEO module
+│   │   ├── index.js               # SEO orchestrator (page detection, tag building, applySEO)
+│   │   ├── meta-injector.js       # Injects SEO tags into HTML <head> for crawlers
+│   │   ├── sitemap-generator.js   # Dynamic /sitemap.xml generation
+│   │   ├── robots-generator.js    # Dynamic /robots.txt generation
+│   │   ├── structured-data.js     # JSON-LD schema builders (Organization, Product, etc.)
+│   │   ├── migrations.js          # SEO DB columns + page_seo table creation
+│   │   └── templates/template1/seo-config.js  # Template-specific SEO config
 │   ├── utils/
 │   │   ├── auth.js              # JWT, password hashing, auth middleware
 │   │   ├── helpers.js           # ID generation, CORS, response helpers
@@ -320,6 +328,19 @@ wrangler secret put RESEND_API_KEY      # Or SENDGRID_API_KEY
 - Content from `settings.privacyContent`: `{ intro: string, sections: [{title, content}] }`
 - Same pattern as Terms editor: add/remove sections, pre-filled defaults
 - Falls back to hardcoded 9-section privacy policy when not configured
+
+## SEO System
+- **Dual-layer architecture**: Worker-side injection (for crawlers/bots) + React client-side management (for SPA navigation)
+- **Worker-side** (`backend/workers/seo/`): Detects page type from URL, fetches SEO data from D1, injects title/meta/OG/Twitter/JSON-LD/canonical into HTML `<head>` before serving
+- **Client-side** (`useSEO` hook + `seo.js` utility): Updates `document.title` and meta tags as users navigate between pages in the SPA
+- **SEO priority chain**: Page-specific admin overrides → natural page data (product name, category name) → site-level SEO → template defaults
+- **Database tables**: `sites` (seo_title, seo_description, seo_og_image, seo_robots, google_verification), `categories`/`products` (seo_title, seo_description, seo_og_image), `page_seo` (per-page SEO for home/about/contact/privacy/terms)
+- **Admin panel**: SEOSection.jsx with 4 tabs: Site SEO, Pages, Categories, Products
+- **API endpoints** (site-admin-worker.js): GET/PUT `/api/site-admin/seo` (site), `/seo/categories/:id`, `/seo/products/:id`, `/seo/pages/:pageType`
+- **Auto-generated**: `/sitemap.xml` (all products, categories, static pages), `/robots.txt` (with sitemap reference)
+- **Structured data**: JSON-LD for Organization, Website, Product, Category, Breadcrumbs
+- **Template configs**: `seo/templates/template1/seo-config.js` — each template defines title format, fallback titles, and which schemas to include
+- **Important**: Dynamic `import()` does NOT work in Cloudflare Workers — template configs use static imports registered in `TEMPLATE_CONFIGS` object
 
 ## Storefront Navbar Layout
 - Navbar uses `position: sticky` (not fixed/floating) — sits in normal document flow below the promo banner

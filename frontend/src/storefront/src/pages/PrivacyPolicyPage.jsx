@@ -1,8 +1,10 @@
 import React, { useContext } from 'react';
 import { SiteContext } from '../context/SiteContext.jsx';
+import { useSEO } from '../hooks/useSEO.js';
 
 export default function PrivacyPolicyPage() {
   const { siteConfig } = useContext(SiteContext);
+  useSEO({ title: 'Privacy Policy', pageType: 'privacy' });
   const brand = siteConfig?.brandName || siteConfig?.brand_name || 'Our Store';
   const email = siteConfig?.email || 'support@example.com';
 

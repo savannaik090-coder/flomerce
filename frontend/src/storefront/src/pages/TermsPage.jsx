@@ -1,6 +1,7 @@
 import React, { useContext, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { SiteContext } from '../context/SiteContext.jsx';
+import { useSEO } from '../hooks/useSEO.js';
 
 const getDefaultSections = (brand, email, phone) => [
   {
@@ -50,6 +51,7 @@ const getDefaultIntro = (brand) =>
 
 export default function TermsPage() {
   const { siteConfig } = useContext(SiteContext);
+  useSEO({ title: 'Terms & Conditions', pageType: 'terms' });
   const brand = siteConfig?.brandName || siteConfig?.brand_name || 'Our Store';
   const email = siteConfig?.email || 'support@example.com';
   const phone = siteConfig?.phone || '';

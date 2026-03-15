@@ -280,6 +280,11 @@ async function handleSEO(request, env, pathParts) {
     if (request.method === 'PUT' && resourceId) return saveProductSEO(request, env, resourceId);
   }
 
+  if (subResource === 'pages') {
+    if (request.method === 'GET') return getPagesSEO(request, env);
+    if (request.method === 'PUT' && resourceId) return savePageSEO(request, env, resourceId);
+  }
+
   return errorResponse('SEO endpoint not found', 404);
 }
 
@@ -413,6 +418,70 @@ async function saveProductSEO(request, env, productId) {
   } catch (err) {
     console.error('saveProductSEO error:', err);
     return errorResponse('Failed to save product SEO', 500);
+  }
+}
+
+const PAGE_TYPES = ['home', 'about', 'contact', 'privacy', 'terms'];
+
+async function getPagesSEO(request, env) {
+  try {
+    const url = new URL(request.url);
+    const siteId = url.searchParams.get('siteId');
+    if (!siteId) return errorResponse('siteId is required');
+
+    const admin = await validateSiteAdmin(request, env, siteId);
+    if (!admin) return errorResponse('Unauthorized', 401);
+
+    const result = await env.DB.prepare(
+      `SELECT id, page_type, seo_title, seo_description, seo_og_image
+       FROM page_seo WHERE site_id = ? ORDER BY page_type ASC`
+    ).bind(siteId).all();
+
+    const existing = result.results || [];
+    const pages = PAGE_TYPES.map(pt => {
+      const found = existing.find(e => e.page_type === pt);
+      return found || { id: null, page_type: pt, seo_title: '', seo_description: '', seo_og_image: '' };
+    });
+
+    return jsonResponse({ success: true, data: pages });
+  } catch (err) {
+    console.error('getPagesSEO error:', err);
+    return errorResponse('Failed to fetch page SEO', 500);
+  }
+}
+
+async function savePageSEO(request, env, pageType) {
+  try {
+    const { siteId, seo_title, seo_description, seo_og_image } = await request.json();
+    if (!siteId) return errorResponse('siteId is required');
+    if (!PAGE_TYPES.includes(pageType)) return errorResponse('Invalid page type');
+
+    const admin = await validateSiteAdmin(request, env, siteId);
+    if (!admin) return errorResponse('Unauthorized', 401);
+
+    const existing = await env.DB.prepare(
+      `SELECT id FROM page_seo WHERE site_id = ? AND page_type = ?`
+    ).bind(siteId, pageType).first();
+
+    if (existing) {
+      await env.DB.prepare(
+        `UPDATE page_seo SET
+          seo_title = ?, seo_description = ?, seo_og_image = ?,
+          updated_at = datetime('now')
+         WHERE id = ?`
+      ).bind(seo_title || null, seo_description || null, seo_og_image || null, existing.id).run();
+    } else {
+      const id = crypto.randomUUID();
+      await env.DB.prepare(
+        `INSERT INTO page_seo (id, site_id, page_type, seo_title, seo_description, seo_og_image)
+         VALUES (?, ?, ?, ?, ?, ?)`
+      ).bind(id, siteId, pageType, seo_title || null, seo_description || null, seo_og_image || null).run();
+    }
+
+    return jsonResponse({ success: true, message: 'Page SEO saved' });
+  } catch (err) {
+    console.error('savePageSEO error:', err);
+    return errorResponse('Failed to save page SEO', 500);
   }
 }
 

@@ -28,6 +28,8 @@ function detectPageType(pathname) {
   if (pathname.startsWith('/category/')) return { type: 'category', slug: pathname.split('/category/')[1]?.split('?')[0] };
   if (pathname === '/about' || pathname === '/about-us') return { type: 'about' };
   if (pathname === '/contact' || pathname === '/contact-us') return { type: 'contact' };
+  if (pathname === '/privacy-policy' || pathname === '/privacy') return { type: 'privacy' };
+  if (pathname === '/terms' || pathname === '/terms-and-conditions') return { type: 'terms' };
   return { type: 'home' };
 }
 
@@ -85,6 +87,17 @@ async function fetchCategorySEO(env, site, slug) {
   }
 }
 
+async function fetchPageSEO(env, site, pageType) {
+  try {
+    return await env.DB.prepare(
+      `SELECT seo_title, seo_description, seo_og_image
+       FROM page_seo WHERE site_id = ? AND page_type = ?`
+    ).bind(site.id, pageType).first();
+  } catch {
+    return null;
+  }
+}
+
 // ─── Tag builder ─────────────────────────────────────────────────────────────
 
 function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl, canonicalUrl }) {
@@ -135,23 +148,42 @@ function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl,
     }
 
   } else if (type === 'about') {
-    title = templateConfig.titleFormat
+    const pageSEO = pageData;
+    title = pageSEO?.seo_title || templateConfig.titleFormat
       .replace('{pageTitle}', 'About Us')
       .replace('{brandName}', site.brand_name);
-    description = siteSEO.seo_description || templateConfig.fallbackDescription(site);
-    ogImage = siteSEO.seo_og_image;
+    description = pageSEO?.seo_description || siteSEO.seo_description || templateConfig.fallbackDescription(site);
+    ogImage = pageSEO?.seo_og_image || siteSEO.seo_og_image;
 
   } else if (type === 'contact') {
-    title = templateConfig.titleFormat
+    const pageSEO = pageData;
+    title = pageSEO?.seo_title || templateConfig.titleFormat
       .replace('{pageTitle}', 'Contact Us')
       .replace('{brandName}', site.brand_name);
-    description = siteSEO.seo_description || templateConfig.fallbackDescription(site);
-    ogImage = siteSEO.seo_og_image;
+    description = pageSEO?.seo_description || siteSEO.seo_description || templateConfig.fallbackDescription(site);
+    ogImage = pageSEO?.seo_og_image || siteSEO.seo_og_image;
+
+  } else if (type === 'privacy') {
+    const pageSEO = pageData;
+    title = pageSEO?.seo_title || templateConfig.titleFormat
+      .replace('{pageTitle}', 'Privacy Policy')
+      .replace('{brandName}', site.brand_name);
+    description = pageSEO?.seo_description || siteSEO.seo_description || templateConfig.fallbackDescription(site);
+    ogImage = pageSEO?.seo_og_image || siteSEO.seo_og_image;
+
+  } else if (type === 'terms') {
+    const pageSEO = pageData;
+    title = pageSEO?.seo_title || templateConfig.titleFormat
+      .replace('{pageTitle}', 'Terms & Conditions')
+      .replace('{brandName}', site.brand_name);
+    description = pageSEO?.seo_description || siteSEO.seo_description || templateConfig.fallbackDescription(site);
+    ogImage = pageSEO?.seo_og_image || siteSEO.seo_og_image;
 
   } else {
-    title = siteSEO.seo_title || templateConfig.fallbackTitle(site);
-    description = siteSEO.seo_description || templateConfig.fallbackDescription(site);
-    ogImage = siteSEO.seo_og_image;
+    const pageSEO = pageData;
+    title = pageSEO?.seo_title || siteSEO.seo_title || templateConfig.fallbackTitle(site);
+    description = pageSEO?.seo_description || siteSEO.seo_description || templateConfig.fallbackDescription(site);
+    ogImage = pageSEO?.seo_og_image || siteSEO.seo_og_image;
   }
 
   return {
@@ -187,6 +219,8 @@ export async function applySEO(request, env, site, rawHTML) {
       pageData = await fetchProductSEO(env, site, pageInfo.slug);
     } else if (pageInfo.type === 'category') {
       pageData = await fetchCategorySEO(env, site, pageInfo.slug);
+    } else {
+      pageData = await fetchPageSEO(env, site, pageInfo.type);
     }
 
     const tags = buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl, canonicalUrl });

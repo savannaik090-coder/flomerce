@@ -4,6 +4,7 @@ import { SiteContext } from '../context/SiteContext.jsx';
 import { PanelContext } from '../context/PanelContext.jsx';
 import { useCart } from '../hooks/useCart.js';
 import { useWishlist } from '../hooks/useWishlist.js';
+import { useSEO } from '../hooks/useSEO.js';
 import { formatINR } from '../utils/priceFormatter.js';
 import * as productService from '../services/productService.js';
 import ProductGallery from '../components/product/ProductGallery.jsx';
@@ -156,11 +157,17 @@ export default function ProductDetailPage() {
     loadProduct();
   }, [id]);
 
-  useEffect(() => {
-    if (product?.name && siteConfig?.brandName) {
-      document.title = `${product.name} - ${siteConfig.brandName}`;
-    }
-  }, [product?.name, siteConfig?.brandName]);
+  useSEO({
+    title: product?.name,
+    description: product?.short_description || product?.description,
+    ogImage: product?.thumbnail_url,
+    ogType: 'product',
+    seoOverrides: product ? {
+      seo_title: product.seo_title,
+      seo_description: product.seo_description,
+      seo_og_image: product.seo_og_image,
+    } : null,
+  });
 
   function handleAddToCart() {
     if (!product) return;

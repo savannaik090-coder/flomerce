@@ -120,12 +120,19 @@ export function SiteProvider({ children }) {
         domainStatus: data.domain_status || null,
       };
 
+      config.seo = {
+        seo_title: data.seo_title || null,
+        seo_description: data.seo_description || null,
+        seo_og_image: data.seo_og_image || null,
+        seo_robots: data.seo_robots || 'index, follow',
+        google_verification: data.google_verification || null,
+      };
+
+      config.pageSEO = data.pageSEO || {};
+
       setSiteConfig(config);
       setPreviewSettings(null);
 
-      if (config.brandName) {
-        document.title = config.brandName;
-      }
       if (config.faviconUrl) {
         const link = document.querySelector("link[rel*='icon']") || document.createElement('link');
         link.type = 'image/x-icon';

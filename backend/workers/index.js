@@ -159,7 +159,8 @@ async function handleSiteInfo(request, env) {
         `SELECT s.id, s.subdomain, s.brand_name, s.category, s.template_id, 
                 s.logo_url, s.favicon_url, s.primary_color, s.secondary_color,
                 s.phone, s.email, s.address, s.social_links, s.settings,
-                s.custom_domain, s.domain_status, s.domain_verification_token
+                s.custom_domain, s.domain_status, s.domain_verification_token,
+                s.seo_title, s.seo_description, s.seo_og_image, s.seo_robots, s.google_verification
          FROM sites s 
          WHERE LOWER(s.subdomain) = LOWER(?) AND s.is_active = 1`
       ).bind(subdomain).first();
@@ -168,7 +169,8 @@ async function handleSiteInfo(request, env) {
         `SELECT s.id, s.subdomain, s.brand_name, s.category, s.template_id, 
                 s.logo_url, s.favicon_url, s.primary_color, s.secondary_color,
                 s.phone, s.email, s.address, s.social_links, s.settings,
-                s.custom_domain, s.domain_status, s.domain_verification_token
+                s.custom_domain, s.domain_status, s.domain_verification_token,
+                s.seo_title, s.seo_description, s.seo_og_image, s.seo_robots, s.google_verification
          FROM sites s 
          WHERE s.custom_domain = ? AND s.domain_status = 'verified' AND s.is_active = 1`
       ).bind(hostname.toLowerCase()).first();
@@ -242,6 +244,23 @@ async function handleSiteInfo(request, env) {
 
     const { razorpayKeySecret, adminVerificationCode, ...publicSettings } = settings;
 
+    let pageSEOResult = [];
+    try {
+      const psResult = await env.DB.prepare(
+        'SELECT page_type, seo_title, seo_description, seo_og_image FROM page_seo WHERE site_id = ?'
+      ).bind(site.id).all();
+      pageSEOResult = psResult.results || [];
+    } catch {}
+
+    const pageSEO = {};
+    for (const ps of pageSEOResult) {
+      pageSEO[ps.page_type] = {
+        seo_title: ps.seo_title,
+        seo_description: ps.seo_description,
+        seo_og_image: ps.seo_og_image,
+      };
+    }
+
     return jsonResponse({
       success: true,
       data: {
@@ -249,6 +268,7 @@ async function handleSiteInfo(request, env) {
         socialLinks,
         settings: publicSettings,
         categories: categoriesResult,
+        pageSEO,
       },
     });
   } catch (error) {

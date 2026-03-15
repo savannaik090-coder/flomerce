@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useContext } from 'react';
 import { useParams } from 'react-router-dom';
 import { SiteContext } from '../context/SiteContext.jsx';
 import { useWishlist } from '../hooks/useWishlist.js';
+import { useSEO } from '../hooks/useSEO.js';
 import * as productService from '../services/productService.js';
 import * as categoryService from '../services/categoryService.js';
 import ProductGrid from '../components/product/ProductGrid.jsx';
@@ -126,11 +127,16 @@ export default function CategoryPage() {
   const categoryName = categoryData?.name || formatSlugToTitle(slug);
   const categoryDescription = categoryData?.description || `Discover our exquisite ${categoryName} collection`;
 
-  useEffect(() => {
-    if (categoryName && siteConfig?.brandName) {
-      document.title = `${categoryName} - ${siteConfig.brandName}`;
-    }
-  }, [categoryName, siteConfig?.brandName]);
+  useSEO({
+    title: categoryName,
+    description: categoryDescription,
+    ogImage: categoryData?.image_url,
+    seoOverrides: categoryData ? {
+      seo_title: categoryData.seo_title,
+      seo_description: categoryData.seo_description,
+      seo_og_image: categoryData.seo_og_image,
+    } : null,
+  });
 
   return (
     <div className="category-page">

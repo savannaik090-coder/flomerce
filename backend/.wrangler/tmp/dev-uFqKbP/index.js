@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-mg63cC/checked-fetch.js
+// .wrangler/tmp/bundle-rT2KNz/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-mg63cC/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-rT2KNz/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-mg63cC/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-rT2KNz/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-mg63cC/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-rT2KNz/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -650,6 +650,12 @@ async function handleSEO(request, env, pathParts) {
     if (request.method === "PUT" && resourceId)
       return saveProductSEO(request, env, resourceId);
   }
+  if (subResource === "pages") {
+    if (request.method === "GET")
+      return getPagesSEO(request, env);
+    if (request.method === "PUT" && resourceId)
+      return savePageSEO(request, env, resourceId);
+  }
   return errorResponse("SEO endpoint not found", 404);
 }
 async function getSiteSEO(request, env) {
@@ -776,6 +782,63 @@ async function saveProductSEO(request, env, productId) {
     return errorResponse("Failed to save product SEO", 500);
   }
 }
+async function getPagesSEO(request, env) {
+  try {
+    const url = new URL(request.url);
+    const siteId = url.searchParams.get("siteId");
+    if (!siteId)
+      return errorResponse("siteId is required");
+    const admin = await validateSiteAdmin(request, env, siteId);
+    if (!admin)
+      return errorResponse("Unauthorized", 401);
+    const result = await env.DB.prepare(
+      `SELECT id, page_type, seo_title, seo_description, seo_og_image
+       FROM page_seo WHERE site_id = ? ORDER BY page_type ASC`
+    ).bind(siteId).all();
+    const existing = result.results || [];
+    const pages = PAGE_TYPES.map((pt) => {
+      const found = existing.find((e) => e.page_type === pt);
+      return found || { id: null, page_type: pt, seo_title: "", seo_description: "", seo_og_image: "" };
+    });
+    return jsonResponse({ success: true, data: pages });
+  } catch (err) {
+    console.error("getPagesSEO error:", err);
+    return errorResponse("Failed to fetch page SEO", 500);
+  }
+}
+async function savePageSEO(request, env, pageType) {
+  try {
+    const { siteId, seo_title, seo_description, seo_og_image } = await request.json();
+    if (!siteId)
+      return errorResponse("siteId is required");
+    if (!PAGE_TYPES.includes(pageType))
+      return errorResponse("Invalid page type");
+    const admin = await validateSiteAdmin(request, env, siteId);
+    if (!admin)
+      return errorResponse("Unauthorized", 401);
+    const existing = await env.DB.prepare(
+      `SELECT id FROM page_seo WHERE site_id = ? AND page_type = ?`
+    ).bind(siteId, pageType).first();
+    if (existing) {
+      await env.DB.prepare(
+        `UPDATE page_seo SET
+          seo_title = ?, seo_description = ?, seo_og_image = ?,
+          updated_at = datetime('now')
+         WHERE id = ?`
+      ).bind(seo_title || null, seo_description || null, seo_og_image || null, existing.id).run();
+    } else {
+      const id = crypto.randomUUID();
+      await env.DB.prepare(
+        `INSERT INTO page_seo (id, site_id, page_type, seo_title, seo_description, seo_og_image)
+         VALUES (?, ?, ?, ?, ?, ?)`
+      ).bind(id, siteId, pageType, seo_title || null, seo_description || null, seo_og_image || null).run();
+    }
+    return jsonResponse({ success: true, message: "Page SEO saved" });
+  } catch (err) {
+    console.error("savePageSEO error:", err);
+    return errorResponse("Failed to save page SEO", 500);
+  }
+}
 async function validateSiteAdmin(request, env, siteId) {
   const user = await validateAuth(request, env);
   if (user) {
@@ -802,6 +865,7 @@ async function validateSiteAdmin(request, env, siteId) {
   }
   return null;
 }
+var PAGE_TYPES;
 var init_site_admin_worker = __esm({
   "workers/storefront/site-admin-worker.js"() {
     init_checked_fetch();
@@ -822,16 +886,19 @@ var init_site_admin_worker = __esm({
     __name(saveCategorySEO, "saveCategorySEO");
     __name(getProductsSEO, "getProductsSEO");
     __name(saveProductSEO, "saveProductSEO");
+    PAGE_TYPES = ["home", "about", "contact", "privacy", "terms"];
+    __name(getPagesSEO, "getPagesSEO");
+    __name(savePageSEO, "savePageSEO");
     __name(validateSiteAdmin, "validateSiteAdmin");
   }
 });
 
-// .wrangler/tmp/bundle-mg63cC/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-rT2KNz/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-mg63cC/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-rT2KNz/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -5520,6 +5587,10 @@ function detectPageType(pathname) {
     return { type: "about" };
   if (pathname === "/contact" || pathname === "/contact-us")
     return { type: "contact" };
+  if (pathname === "/privacy-policy" || pathname === "/privacy")
+    return { type: "privacy" };
+  if (pathname === "/terms" || pathname === "/terms-and-conditions")
+    return { type: "terms" };
   return { type: "home" };
 }
 __name(detectPageType, "detectPageType");
@@ -5571,6 +5642,17 @@ async function fetchCategorySEO(env, site, slug) {
   }
 }
 __name(fetchCategorySEO, "fetchCategorySEO");
+async function fetchPageSEO(env, site, pageType) {
+  try {
+    return await env.DB.prepare(
+      `SELECT seo_title, seo_description, seo_og_image
+       FROM page_seo WHERE site_id = ? AND page_type = ?`
+    ).bind(site.id, pageType).first();
+  } catch {
+    return null;
+  }
+}
+__name(fetchPageSEO, "fetchPageSEO");
 function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl, canonicalUrl }) {
   const { type } = pageInfo;
   const structuredData = [];
@@ -5609,17 +5691,30 @@ function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl,
       ], baseUrl));
     }
   } else if (type === "about") {
-    title = templateConfig.titleFormat.replace("{pageTitle}", "About Us").replace("{brandName}", site.brand_name);
-    description = siteSEO.seo_description || templateConfig.fallbackDescription(site);
-    ogImage = siteSEO.seo_og_image;
+    const pageSEO = pageData;
+    title = pageSEO?.seo_title || templateConfig.titleFormat.replace("{pageTitle}", "About Us").replace("{brandName}", site.brand_name);
+    description = pageSEO?.seo_description || siteSEO.seo_description || templateConfig.fallbackDescription(site);
+    ogImage = pageSEO?.seo_og_image || siteSEO.seo_og_image;
   } else if (type === "contact") {
-    title = templateConfig.titleFormat.replace("{pageTitle}", "Contact Us").replace("{brandName}", site.brand_name);
-    description = siteSEO.seo_description || templateConfig.fallbackDescription(site);
-    ogImage = siteSEO.seo_og_image;
+    const pageSEO = pageData;
+    title = pageSEO?.seo_title || templateConfig.titleFormat.replace("{pageTitle}", "Contact Us").replace("{brandName}", site.brand_name);
+    description = pageSEO?.seo_description || siteSEO.seo_description || templateConfig.fallbackDescription(site);
+    ogImage = pageSEO?.seo_og_image || siteSEO.seo_og_image;
+  } else if (type === "privacy") {
+    const pageSEO = pageData;
+    title = pageSEO?.seo_title || templateConfig.titleFormat.replace("{pageTitle}", "Privacy Policy").replace("{brandName}", site.brand_name);
+    description = pageSEO?.seo_description || siteSEO.seo_description || templateConfig.fallbackDescription(site);
+    ogImage = pageSEO?.seo_og_image || siteSEO.seo_og_image;
+  } else if (type === "terms") {
+    const pageSEO = pageData;
+    title = pageSEO?.seo_title || templateConfig.titleFormat.replace("{pageTitle}", "Terms & Conditions").replace("{brandName}", site.brand_name);
+    description = pageSEO?.seo_description || siteSEO.seo_description || templateConfig.fallbackDescription(site);
+    ogImage = pageSEO?.seo_og_image || siteSEO.seo_og_image;
   } else {
-    title = siteSEO.seo_title || templateConfig.fallbackTitle(site);
-    description = siteSEO.seo_description || templateConfig.fallbackDescription(site);
-    ogImage = siteSEO.seo_og_image;
+    const pageSEO = pageData;
+    title = pageSEO?.seo_title || siteSEO.seo_title || templateConfig.fallbackTitle(site);
+    description = pageSEO?.seo_description || siteSEO.seo_description || templateConfig.fallbackDescription(site);
+    ogImage = pageSEO?.seo_og_image || siteSEO.seo_og_image;
   }
   return {
     title,
@@ -5651,6 +5746,8 @@ async function applySEO(request, env, site, rawHTML) {
       pageData = await fetchProductSEO(env, site, pageInfo.slug);
     } else if (pageInfo.type === "category") {
       pageData = await fetchCategorySEO(env, site, pageInfo.slug);
+    } else {
+      pageData = await fetchPageSEO(env, site, pageInfo.type);
     }
     const tags = buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl, canonicalUrl });
     return injectSEOTags(rawHTML, tags);
@@ -6701,6 +6798,29 @@ async function ensureSEOColumns(env) {
     } catch {
     }
   }
+  try {
+    await env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS page_seo (
+        id TEXT PRIMARY KEY,
+        site_id TEXT NOT NULL,
+        page_type TEXT NOT NULL,
+        seo_title TEXT,
+        seo_description TEXT,
+        seo_og_image TEXT,
+        created_at TEXT DEFAULT (datetime('now')),
+        updated_at TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
+        UNIQUE(site_id, page_type)
+      )
+    `).run();
+  } catch {
+  }
+  try {
+    await env.DB.prepare(
+      "CREATE INDEX IF NOT EXISTS idx_page_seo_site ON page_seo(site_id)"
+    ).run();
+  } catch {
+  }
 }
 __name(ensureSEOColumns, "ensureSEOColumns");
 
@@ -7432,7 +7552,8 @@ async function handleSiteInfo(request, env) {
         `SELECT s.id, s.subdomain, s.brand_name, s.category, s.template_id, 
                 s.logo_url, s.favicon_url, s.primary_color, s.secondary_color,
                 s.phone, s.email, s.address, s.social_links, s.settings,
-                s.custom_domain, s.domain_status, s.domain_verification_token
+                s.custom_domain, s.domain_status, s.domain_verification_token,
+                s.seo_title, s.seo_description, s.seo_og_image, s.seo_robots, s.google_verification
          FROM sites s 
          WHERE LOWER(s.subdomain) = LOWER(?) AND s.is_active = 1`
       ).bind(subdomain).first();
@@ -7441,7 +7562,8 @@ async function handleSiteInfo(request, env) {
         `SELECT s.id, s.subdomain, s.brand_name, s.category, s.template_id, 
                 s.logo_url, s.favicon_url, s.primary_color, s.secondary_color,
                 s.phone, s.email, s.address, s.social_links, s.settings,
-                s.custom_domain, s.domain_status, s.domain_verification_token
+                s.custom_domain, s.domain_status, s.domain_verification_token,
+                s.seo_title, s.seo_description, s.seo_og_image, s.seo_robots, s.google_verification
          FROM sites s 
          WHERE s.custom_domain = ? AND s.domain_status = 'verified' AND s.is_active = 1`
       ).bind(hostname.toLowerCase()).first();
@@ -7510,13 +7632,30 @@ async function handleSiteInfo(request, env) {
       }
     }
     const { razorpayKeySecret, adminVerificationCode, ...publicSettings } = settings;
+    let pageSEOResult = [];
+    try {
+      const psResult = await env.DB.prepare(
+        "SELECT page_type, seo_title, seo_description, seo_og_image FROM page_seo WHERE site_id = ?"
+      ).bind(site.id).all();
+      pageSEOResult = psResult.results || [];
+    } catch {
+    }
+    const pageSEO = {};
+    for (const ps of pageSEOResult) {
+      pageSEO[ps.page_type] = {
+        seo_title: ps.seo_title,
+        seo_description: ps.seo_description,
+        seo_og_image: ps.seo_og_image
+      };
+    }
     return jsonResponse({
       success: true,
       data: {
         ...site,
         socialLinks,
         settings: publicSettings,
-        categories: categoriesResult
+        categories: categoriesResult,
+        pageSEO
       }
     });
   } catch (error) {
@@ -7573,7 +7712,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-mg63cC/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-rT2KNz/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -7608,7 +7747,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-mg63cC/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-rT2KNz/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;
