@@ -298,7 +298,7 @@ async function getSiteSEO(request, env) {
     if (!admin) return errorResponse('Unauthorized', 401);
 
     const site = await env.DB.prepare(
-      `SELECT seo_title, seo_description, seo_og_image, seo_robots, google_verification FROM sites WHERE id = ?`
+      `SELECT seo_title, seo_description, seo_og_image, seo_robots, google_verification, favicon_url FROM sites WHERE id = ?`
     ).bind(siteId).first();
 
     return jsonResponse({ success: true, data: site || {} });
@@ -310,7 +310,7 @@ async function getSiteSEO(request, env) {
 
 async function saveSiteSEO(request, env) {
   try {
-    const { siteId, seo_title, seo_description, seo_og_image, seo_robots, google_verification } = await request.json();
+    const { siteId, seo_title, seo_description, seo_og_image, seo_robots, google_verification, favicon_url } = await request.json();
     if (!siteId) return errorResponse('siteId is required');
 
     const admin = await validateSiteAdmin(request, env, siteId);
@@ -319,12 +319,12 @@ async function saveSiteSEO(request, env) {
     await env.DB.prepare(
       `UPDATE sites SET
         seo_title = ?, seo_description = ?, seo_og_image = ?,
-        seo_robots = ?, google_verification = ?,
+        seo_robots = ?, google_verification = ?, favicon_url = ?,
         updated_at = datetime('now')
        WHERE id = ?`
     ).bind(
       seo_title || null, seo_description || null, seo_og_image || null,
-      seo_robots || 'index, follow', google_verification || null,
+      seo_robots || 'index, follow', google_verification || null, favicon_url || null,
       siteId
     ).run();
 

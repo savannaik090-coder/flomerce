@@ -45,10 +45,12 @@ function SiteSEOTab({ siteConfig }) {
     seo_og_image: '',
     seo_robots: 'index, follow',
     google_verification: '',
+    favicon_url: '',
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState(null);
+  const [faviconUploading, setFaviconUploading] = useState(false);
 
   useEffect(() => {
     if (!siteId) return;
@@ -66,6 +68,46 @@ function SiteSEOTab({ siteConfig }) {
       setLoading(false);
     })();
   }, [siteId]);
+
+  async function handleFaviconUpload(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const allowed = ['image/png', 'image/x-icon', 'image/vnd.microsoft.icon', 'image/svg+xml', 'image/webp', 'image/jpeg', 'image/gif'];
+    if (!allowed.includes(file.type)) {
+      setMsg({ type: 'error', text: 'Invalid file type. Use PNG, ICO, SVG, or WebP.' });
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      setMsg({ type: 'error', text: 'Favicon must be under 2MB.' });
+      return;
+    }
+
+    setFaviconUploading(true);
+    setMsg(null);
+    try {
+      const formData = new FormData();
+      formData.append('images', file, file.name);
+      const res = await fetch(`${API_BASE}/api/upload/image?siteId=${siteId}`, {
+        method: 'POST',
+        headers: getAuthHeader(),
+        body: formData,
+      });
+      const result = await res.json();
+      if (result.success && result.urls?.length > 0) {
+        setForm(prev => ({ ...prev, favicon_url: result.urls[0] }));
+        setMsg({ type: 'success', text: 'Favicon uploaded! Click "Save SEO Settings" to apply.' });
+        setTimeout(() => setMsg(null), 4000);
+      } else {
+        setMsg({ type: 'error', text: result.error || 'Upload failed' });
+      }
+    } catch {
+      setMsg({ type: 'error', text: 'Failed to upload favicon' });
+    }
+    setFaviconUploading(false);
+    e.target.value = '';
+  }
 
   async function handleSave(e) {
     e.preventDefault();
@@ -104,6 +146,54 @@ function SiteSEOTab({ siteConfig }) {
         description={form.seo_description}
         url={storeUrl}
       />
+
+      <div className="card" style={{ marginBottom: 16 }}>
+        <div className="card-header"><h3 className="card-title">Favicon</h3></div>
+        <div className="card-content">
+          <div className="seo-field">
+            <label>Site Favicon</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              {form.favicon_url ? (
+                <div style={{ position: 'relative', width: 48, height: 48, borderRadius: 8, border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', flexShrink: 0 }}>
+                  <img
+                    src={form.favicon_url.startsWith('/') ? `${API_BASE}${form.favicon_url}` : form.favicon_url}
+                    alt="Favicon"
+                    style={{ maxWidth: 32, maxHeight: 32, objectFit: 'contain' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setForm(prev => ({ ...prev, favicon_url: '' }))}
+                    style={{ position: 'absolute', top: -6, right: -6, width: 18, height: 18, borderRadius: '50%', background: '#ef4444', color: '#fff', border: 'none', fontSize: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}
+                  >
+                    &times;
+                  </button>
+                </div>
+              ) : (
+                <div style={{ width: 48, height: 48, borderRadius: 8, border: '2px dashed #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', flexShrink: 0 }}>
+                  <i className="fas fa-image" />
+                </div>
+              )}
+              <div style={{ flex: 1 }}>
+                <label
+                  className="btn btn-outline"
+                  style={{ fontSize: 13, padding: '8px 16px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, opacity: faviconUploading ? 0.6 : 1 }}
+                >
+                  <i className={`fas ${faviconUploading ? 'fa-spinner fa-spin' : 'fa-upload'}`} />
+                  {faviconUploading ? 'Uploading...' : form.favicon_url ? 'Change Favicon' : 'Upload Favicon'}
+                  <input
+                    type="file"
+                    accept=".png,.ico,.svg,.webp,.jpg,.jpeg"
+                    onChange={handleFaviconUpload}
+                    disabled={faviconUploading}
+                    style={{ display: 'none' }}
+                  />
+                </label>
+              </div>
+            </div>
+            <div className="seo-hint">Recommended: 32×32 or 64×64 PNG. This icon appears in browser tabs and bookmarks.</div>
+          </div>
+        </div>
+      </div>
 
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="card-header"><h3 className="card-title">Homepage SEO</h3></div>

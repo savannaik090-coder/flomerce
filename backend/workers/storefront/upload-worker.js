@@ -4,7 +4,7 @@ import { validateSiteAdmin } from './site-admin-worker.js';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const MAX_VIDEO_SIZE = 100 * 1024 * 1024;
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/x-icon', 'image/vnd.microsoft.icon', 'image/svg+xml'];
 const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'];
 
 export async function handleUpload(request, env, path) {
