@@ -30,20 +30,30 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
 
   return (
     <header className="header">
-      {siteConfig?.settings?.showPromoBanner !== false && <div className="promo-banner">
-        <p className="banner-text">
-          {(() => {
-            const sep = <span style={{ padding: '0 30px', opacity: 0.5 }}>{'\u2726'}</span>;
-            const msgs = siteConfig?.settings?.promoBanner;
-            if (msgs && Array.isArray(msgs) && msgs.length > 0) {
-              const block = msgs.flatMap((m, i) => i < msgs.length - 1 ? [m, sep] : [m]);
-              return <>{block}{sep}{block}{sep}{block}{sep}{block}</>;
-            }
-            const defaultMsg = `Welcome to ${siteConfig?.brandName || 'Our Store'}`;
-            return <>{defaultMsg}{sep}{defaultMsg}{sep}{defaultMsg}{sep}{defaultMsg}</>;
-          })()}
-        </p>
-      </div>}
+      {siteConfig?.settings?.showPromoBanner !== false && (() => {
+        const msgs = siteConfig?.settings?.promoBanner;
+        const validMsgs = msgs && Array.isArray(msgs) ? msgs.filter(m => m.trim()) : [];
+        const isSingle = validMsgs.length <= 1;
+        const sep = <span style={{ padding: '0 30px', opacity: 0.5 }}>{'\u2726'}</span>;
+
+        if (isSingle) {
+          const text = validMsgs.length === 1 ? validMsgs[0] : `Welcome to ${siteConfig?.brandName || 'Our Store'}`;
+          return (
+            <div className="promo-banner" style={{ justifyContent: 'center' }}>
+              <p className="banner-text" style={{ animation: 'none', textAlign: 'center' }}>{text}</p>
+            </div>
+          );
+        }
+
+        const block = validMsgs.flatMap((m, i) => i < validMsgs.length - 1 ? [m, sep] : [m]);
+        return (
+          <div className="promo-banner">
+            <p className="banner-text">
+              {block}{sep}{block}{sep}{block}{sep}{block}
+            </p>
+          </div>
+        );
+      })()}
 
       <nav className="navbar">
         <div className="nav-container">
