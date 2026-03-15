@@ -285,20 +285,21 @@
 }
 
 .buy-now-btn {
-    background: transparent;
-    color: #b5727a;
-    border: 1px solid #b5727a;
+    background: #c8b99a;
+    color: #fff;
+    border: 1px solid #c8b99a;
 }
 
 .buy-now-btn:hover {
-    background: #b5727a;
+    background: #b5a585;
+    border-color: #b5a585;
     color: #fff;
 }
 
 .add-to-wishlist-btn {
     background: transparent;
-    color: #b5727a;
-    border: 1px solid #d4b0b5;
+    color: #888;
+    border: 1px solid #bbb;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -306,12 +307,13 @@
 }
 
 .add-to-wishlist-btn:hover {
-    border-color: #b5727a;
+    border-color: #999;
+    color: #666;
 }
 
 .add-to-wishlist-btn.active {
-    color: #b5727a;
-    border-color: #b5727a;
+    color: #666;
+    border-color: #999;
 }
 
 .product-description-inline.product-description-section {
