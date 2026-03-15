@@ -68,12 +68,14 @@ export default function CategorySection({ category }) {
       )}
 
       <div className="home-category-products" style={{ position: 'relative' }}>
+        {!loading && products.length > 0 && (
         <button
           className="home-category-scroll-arrow home-category-scroll-left"
           onClick={() => scroll('left')}
         >
           <i className="fas fa-chevron-left"></i>
         </button>
+        )}
 
         <div
           className="product-scroll-container"
@@ -96,12 +98,14 @@ export default function CategorySection({ category }) {
           )}
         </div>
 
+        {!loading && products.length > 0 && (
         <button
           className="home-category-scroll-arrow home-category-scroll-right"
           onClick={() => scroll('right')}
         >
           <i className="fas fa-chevron-right"></i>
         </button>
+        )}
       </div>
 
       <div className="home-category-cta">
