@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useContext } from 'react';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import { useSiteConfig } from './hooks/useSiteConfig.js';
+import { PanelContext } from './context/PanelContext.jsx';
 import Navbar from './components/layout/Navbar.jsx';
 import Footer from './components/layout/Footer.jsx';
 import MobileBottomNav from './components/layout/MobileBottomNav.jsx';
@@ -75,9 +76,7 @@ function SiteErrorScreen({ error }) {
 
 export default function App() {
   const { siteConfig, loading, error } = useSiteConfig();
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [cartOpen, setCartOpen] = useState(false);
-  const [wishlistOpen, setWishlistOpen] = useState(false);
+  const { cartOpen, openCart, closeCart, wishlistOpen, openWishlist, closeWishlist, searchOpen, openSearch, closeSearch } = useContext(PanelContext);
   const location = useLocation();
 
   if (loading) return <SiteLoadingScreen />;
@@ -99,9 +98,9 @@ export default function App() {
   return (
     <>
       <Navbar
-        onSearchOpen={() => setSearchOpen(true)}
-        onCartOpen={() => setCartOpen(true)}
-        onWishlistOpen={() => setWishlistOpen(true)}
+        onSearchOpen={openSearch}
+        onCartOpen={openCart}
+        onWishlistOpen={openWishlist}
       />
 
       <main>
@@ -130,11 +129,11 @@ export default function App() {
       </main>
 
       <Footer />
-      <MobileBottomNav onCartOpen={() => setCartOpen(true)} />
+      <MobileBottomNav onCartOpen={openCart} />
       <WhatsAppButton />
-      <SearchOverlay isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
-      <CartPanel isOpen={cartOpen} onClose={() => setCartOpen(false)} />
-      <WishlistPanel isOpen={wishlistOpen} onClose={() => setWishlistOpen(false)} />
+      <SearchOverlay isOpen={searchOpen} onClose={closeSearch} />
+      <CartPanel isOpen={cartOpen} onClose={closeCart} />
+      <WishlistPanel isOpen={wishlistOpen} onClose={closeWishlist} />
     </>
   );
 }

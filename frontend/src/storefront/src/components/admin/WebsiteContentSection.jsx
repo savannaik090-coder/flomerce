@@ -14,6 +14,7 @@ import StoreLocationsEditor from './StoreLocationsEditor.jsx';
 import CheckoutEditor from './CheckoutEditor.jsx';
 import ProductPoliciesEditor from './ProductPoliciesEditor.jsx';
 import NavbarEditor from './NavbarEditor.jsx';
+import OrderTrackEditor from './OrderTrackEditor.jsx';
 import SectionToggle from './SectionToggle.jsx';
 
 const SUB_TABS = [
@@ -26,6 +27,7 @@ const SUB_TABS = [
   { id: 'featured-video',    icon: 'fa-film',           label: 'Featured Video',     page: '/' },
   { id: 'customer-reviews',  icon: 'fa-star',           label: 'Customer Reviews',   page: '/' },
   { id: 'store-locations',   icon: 'fa-store',          label: 'Store Locations',    page: '/' },
+  { id: 'order-tracking',    icon: 'fa-truck',          label: 'Order Tracking',     page: '/order-track' },
   { id: 'checkout',          icon: 'fa-shopping-bag',   label: 'Checkout',           page: '/' },
   { id: 'product-policies',  icon: 'fa-shield-alt',     label: 'Product Policies',   page: '/' },
   { id: 'footer',            icon: 'fa-shoe-prints',    label: 'Footer',             page: '/' },
@@ -163,6 +165,7 @@ export default function WebsiteContentSection() {
           {activeTab === 'featured-video' && <FeaturedVideoEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
           {activeTab === 'customer-reviews' && <CustomerReviewsEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
           {activeTab === 'store-locations' && <StoreLocationsEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
+          {activeTab === 'order-tracking' && <OrderTrackEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
           {activeTab === 'checkout' && <CheckoutEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
           {activeTab === 'product-policies' && <ProductPoliciesEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
           {activeTab === 'about-us' && <AboutUsEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { SiteContext } from '../context/SiteContext.jsx';
+import { PanelContext } from '../context/PanelContext.jsx';
 import { useCart } from '../hooks/useCart.js';
 import { useWishlist } from '../hooks/useWishlist.js';
 import { formatINR } from '../utils/priceFormatter.js';
@@ -101,6 +102,7 @@ export default function ProductDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { siteConfig } = useContext(SiteContext);
+  const { openCart, openWishlist } = useContext(PanelContext);
   const { addToCart } = useCart();
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
 
@@ -163,6 +165,7 @@ export default function ProductDetailPage() {
   function handleAddToCart() {
     if (!product) return;
     addToCart(product, 1);
+    openCart();
   }
 
   async function handleBuyNow() {
@@ -177,6 +180,7 @@ export default function ProductDetailPage() {
       removeFromWishlist(product.id);
     } else {
       addToWishlist(product);
+      openWishlist();
     }
   }
 

@@ -1,11 +1,13 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { Link } from 'react-router-dom';
+import { PanelContext } from '../../context/PanelContext.jsx';
 import { useWishlist } from '../../hooks/useWishlist.js';
 import { formatINR } from '../../utils/priceFormatter.js';
 import { resolveImageUrl } from '../../utils/imageUrl.js';
 
 export default function ProductCard({ product, variant = 'grid', onWishlistToggle, isInWishlist: isInWishlistProp }) {
   const wishlist = useWishlist();
+  const { openWishlist } = useContext(PanelContext);
 
   if (!product) return null;
 
@@ -24,6 +26,7 @@ export default function ProductCard({ product, variant = 'grid', onWishlistToggl
       wishlist.removeFromWishlist(product.id);
     } else {
       wishlist.addToWishlist(product);
+      openWishlist();
     }
   };
 
