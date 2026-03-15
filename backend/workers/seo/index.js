@@ -201,8 +201,8 @@ function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl,
     return baseUrl + (url.startsWith('/') ? url : '/' + url);
   }
 
-  const finalOgImage = absUrl(site.og_image || ogImage);
-  const finalTwImage = absUrl(site.twitter_image || site.og_image || ogImage);
+  const finalOgImage = absUrl(ogImage || site.og_image);
+  const finalTwImage = absUrl(ogImage || site.twitter_image || site.og_image);
 
   return {
     title,

@@ -5839,8 +5839,8 @@ function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl,
     return baseUrl + (url.startsWith("/") ? url : "/" + url);
   }
   __name(absUrl2, "absUrl");
-  const finalOgImage = absUrl2(site.og_image || ogImage);
-  const finalTwImage = absUrl2(site.twitter_image || site.og_image || ogImage);
+  const finalOgImage = absUrl2(ogImage || site.og_image);
+  const finalTwImage = absUrl2(ogImage || site.twitter_image || site.og_image);
   return {
     title,
     description,
