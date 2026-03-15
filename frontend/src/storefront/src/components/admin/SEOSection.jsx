@@ -198,7 +198,7 @@ function SiteSEOTab({ siteConfig }) {
       </div>
 
       <div className="card" style={{ marginBottom: 16 }}>
-        <div className="card-header"><h3 className="card-title">Homepage SEO</h3></div>
+        <div className="card-header"><h3 className="card-title">Site-Wide SEO Defaults</h3></div>
         <div className="card-content">
 
           <div className="seo-field">
