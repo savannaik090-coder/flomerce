@@ -7,6 +7,16 @@ const MAX_VIDEO_SIZE = 100 * 1024 * 1024;
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/x-icon', 'image/vnd.microsoft.icon', 'image/svg+xml'];
 const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'];
 
+const MIME_TO_EXT = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+  'image/gif': 'gif',
+  'image/x-icon': 'ico',
+  'image/vnd.microsoft.icon': 'ico',
+  'image/svg+xml': 'svg',
+};
+
 export async function handleUpload(request, env, path) {
   const corsResponse = handleCORS(request);
   if (corsResponse) return corsResponse;
@@ -99,8 +109,8 @@ async function uploadImage(request, env, url) {
           continue;
         }
 
-        const ext = file.type.split('/')[1] === 'jpeg' ? 'jpg' : file.type.split('/')[1];
-        const key = `sites/${siteId}/products/${generateId()}.${ext}`;
+        const ext = MIME_TO_EXT[file.type] || file.type.split('/')[1];
+        const key = `sites/${siteId}/images/${generateId()}.${ext}`;
 
         const arrayBuffer = await file.arrayBuffer();
         await env.STORAGE.put(key, arrayBuffer, {
@@ -114,7 +124,8 @@ async function uploadImage(request, env, url) {
         results.push({ url: imageUrl, key });
       }
 
-      return successResponse({ images: results }, 'Images uploaded successfully');
+      const urls = results.filter(r => r.url).map(r => r.url);
+      return successResponse({ images: results, urls }, 'Images uploaded successfully');
     }
 
     const body = await request.json();
@@ -147,8 +158,8 @@ async function uploadImage(request, env, url) {
       return errorResponse('Image too large (max 10MB)', 400);
     }
 
-    const ext = mimeType.split('/')[1] === 'jpeg' ? 'jpg' : mimeType.split('/')[1];
-    const key = `sites/${siteId}/products/${generateId()}.${ext}`;
+    const ext = MIME_TO_EXT[mimeType] || mimeType.split('/')[1];
+    const key = `sites/${siteId}/images/${generateId()}.${ext}`;
 
     await env.STORAGE.put(key, buffer, {
       httpMetadata: {
