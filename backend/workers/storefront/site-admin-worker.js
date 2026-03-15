@@ -285,6 +285,11 @@ async function handleSEO(request, env, pathParts) {
     if (request.method === 'PUT' && resourceId) return savePageSEO(request, env, resourceId);
   }
 
+  if (subResource === 'social') {
+    if (request.method === 'GET') return getSocialTags(request, env);
+    if (request.method === 'PUT') return saveSocialTags(request, env);
+  }
+
   return errorResponse('SEO endpoint not found', 404);
 }
 
@@ -482,6 +487,74 @@ async function savePageSEO(request, env, pageType) {
   } catch (err) {
     console.error('savePageSEO error:', err);
     return errorResponse('Failed to save page SEO', 500);
+  }
+}
+
+async function getSocialTags(request, env) {
+  try {
+    const url = new URL(request.url);
+    const siteId = url.searchParams.get('siteId');
+    if (!siteId) return errorResponse('siteId is required');
+
+    const admin = await validateSiteAdmin(request, env, siteId);
+    if (!admin) return errorResponse('Unauthorized', 401);
+
+    const site = await env.DB.prepare(
+      `SELECT seo_title, seo_description, seo_og_image,
+              og_title, og_description, og_image, og_type,
+              twitter_card, twitter_title, twitter_description, twitter_image, twitter_site
+       FROM sites WHERE id = ?`
+    ).bind(siteId).first();
+
+    const data = {
+      og_title: site?.og_title || '',
+      og_description: site?.og_description || '',
+      og_image: site?.og_image || '',
+      og_type: site?.og_type || 'website',
+      twitter_card: site?.twitter_card || 'summary_large_image',
+      twitter_title: site?.twitter_title || '',
+      twitter_description: site?.twitter_description || '',
+      twitter_image: site?.twitter_image || '',
+      twitter_site: site?.twitter_site || '',
+      defaults: {
+        title: site?.seo_title || '',
+        description: site?.seo_description || '',
+        image: site?.seo_og_image || '',
+      },
+    };
+
+    return jsonResponse({ success: true, data });
+  } catch (err) {
+    console.error('getSocialTags error:', err);
+    return errorResponse('Failed to fetch social tags', 500);
+  }
+}
+
+async function saveSocialTags(request, env) {
+  try {
+    const { siteId, og_title, og_description, og_image, og_type,
+            twitter_card, twitter_title, twitter_description, twitter_image, twitter_site } = await request.json();
+    if (!siteId) return errorResponse('siteId is required');
+
+    const admin = await validateSiteAdmin(request, env, siteId);
+    if (!admin) return errorResponse('Unauthorized', 401);
+
+    await env.DB.prepare(
+      `UPDATE sites SET
+        og_title = ?, og_description = ?, og_image = ?, og_type = ?,
+        twitter_card = ?, twitter_title = ?, twitter_description = ?, twitter_image = ?, twitter_site = ?,
+        updated_at = datetime('now')
+       WHERE id = ?`
+    ).bind(
+      og_title || null, og_description || null, og_image || null, og_type || 'website',
+      twitter_card || 'summary_large_image', twitter_title || null, twitter_description || null, twitter_image || null, twitter_site || null,
+      siteId
+    ).run();
+
+    return jsonResponse({ success: true, message: 'Social media tags saved' });
+  } catch (err) {
+    console.error('saveSocialTags error:', err);
+    return errorResponse('Failed to save social tags', 500);
   }
 }
 

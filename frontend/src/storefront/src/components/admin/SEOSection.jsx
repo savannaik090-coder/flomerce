@@ -806,10 +806,215 @@ function PagesSEOTab({ siteConfig }) {
   );
 }
 
+// ─── Social Media Tags Tab ────────────────────────────────────────────────────
+
+function SocialPreview({ type, title, description, image, url, siteName }) {
+  if (type === 'twitter') {
+    return (
+      <div className="seo-preview" style={{ borderLeft: '3px solid #1da1f2' }}>
+        <div className="seo-preview-label" style={{ color: '#1da1f2' }}>Twitter Card Preview</div>
+        {image && <div style={{ background: '#f1f5f9', borderRadius: 8, height: 120, marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+          <img src={image} alt="" style={{ maxHeight: 120, maxWidth: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
+        </div>}
+        <div style={{ fontSize: 14, fontWeight: 600 }}>{title || 'Page Title'}</div>
+        <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>{description || 'Description will appear here.'}</div>
+        <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>{url || 'yoursite.com'}</div>
+      </div>
+    );
+  }
+  return (
+    <div className="seo-preview" style={{ borderLeft: '3px solid #1877f2' }}>
+      <div className="seo-preview-label" style={{ color: '#1877f2' }}>Facebook / Open Graph Preview</div>
+      {image && <div style={{ background: '#f1f5f9', borderRadius: 8, height: 120, marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+        <img src={image} alt="" style={{ maxHeight: 120, maxWidth: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
+      </div>}
+      <div style={{ fontSize: 11, color: '#94a3b8', textTransform: 'uppercase' }}>{siteName || 'Your Site'}</div>
+      <div style={{ fontSize: 14, fontWeight: 600 }}>{title || 'Page Title'}</div>
+      <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>{description || 'Description will appear here.'}</div>
+    </div>
+  );
+}
+
+function SocialMediaTab({ siteConfig }) {
+  const siteId = siteConfig?.id;
+  const [form, setForm] = useState({
+    og_title: '',
+    og_description: '',
+    og_image: '',
+    og_type: 'website',
+    twitter_card: 'summary_large_image',
+    twitter_title: '',
+    twitter_description: '',
+    twitter_image: '',
+    twitter_site: '',
+  });
+  const [defaults, setDefaults] = useState({ title: '', description: '', image: '' });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState(null);
+
+  const set = key => e => setForm(prev => ({ ...prev, [key]: e.target.value }));
+
+  useEffect(() => {
+    if (!siteId) return;
+    (async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`${API_BASE}/api/site-admin/seo/social?siteId=${siteId}`, {
+          headers: getAuthHeader(),
+        });
+        const result = await res.json();
+        if (result.success && result.data) {
+          const d = result.data;
+          setForm({
+            og_title: d.og_title || '',
+            og_description: d.og_description || '',
+            og_image: d.og_image || '',
+            og_type: d.og_type || 'website',
+            twitter_card: d.twitter_card || 'summary_large_image',
+            twitter_title: d.twitter_title || '',
+            twitter_description: d.twitter_description || '',
+            twitter_image: d.twitter_image || '',
+            twitter_site: d.twitter_site || '',
+          });
+          if (d.defaults) setDefaults(d.defaults);
+        }
+      } catch {}
+      setLoading(false);
+    })();
+  }, [siteId]);
+
+  async function handleSave(e) {
+    e.preventDefault();
+    setSaving(true);
+    setMsg(null);
+    try {
+      const res = await fetch(`${API_BASE}/api/site-admin/seo/social`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+        body: JSON.stringify({ siteId, ...form }),
+      });
+      const result = await res.json();
+      setMsg(result.success
+        ? { type: 'success', text: 'Social media tags saved!' }
+        : { type: 'error', text: result.error || 'Failed to save' });
+    } catch {
+      setMsg({ type: 'error', text: 'Failed to save social media tags' });
+    }
+    setSaving(false);
+    if (msg?.type === 'success') setTimeout(() => setMsg(null), 4000);
+  }
+
+  if (loading) return <div style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>Loading social media settings...</div>;
+
+  const ogTitle = form.og_title || defaults.title;
+  const ogDesc = form.og_description || defaults.description;
+  const ogImg = form.og_image || defaults.image;
+  const twTitle = form.twitter_title || form.og_title || defaults.title;
+  const twDesc = form.twitter_description || form.og_description || defaults.description;
+  const twImg = form.twitter_image || form.og_image || defaults.image;
+  const storeUrl = siteConfig?.subdomain ? `https://${siteConfig.subdomain}.fluxe.in` : window.location.origin;
+
+  return (
+    <form onSubmit={handleSave}>
+      <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
+        Control how your site appears when shared on Facebook, WhatsApp, Twitter/X, and other platforms. If left empty, values from your Site SEO settings are used as defaults.
+      </p>
+
+      <div className="card" style={{ marginBottom: 16 }}>
+        <div className="card-header"><h3 className="card-title"><i className="fab fa-facebook" style={{ marginRight: 8, color: '#1877f2' }} />Open Graph Tags</h3></div>
+        <div className="card-content">
+          <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+            <div style={{ flex: '1 1 320px' }}>
+              <div className="seo-field">
+                <label>OG Title</label>
+                <input type="text" value={form.og_title} onChange={set('og_title')} placeholder={defaults.title || 'Uses site title'} maxLength={70} />
+                <CharCounter value={form.og_title || defaults.title} max={60} />
+                <div className="seo-hint">Title shown when shared on Facebook, WhatsApp, LinkedIn, etc.</div>
+              </div>
+              <div className="seo-field">
+                <label>OG Description</label>
+                <textarea value={form.og_description} onChange={set('og_description')} placeholder={defaults.description || 'Uses site description'} maxLength={200} rows={3} />
+                <CharCounter value={form.og_description || defaults.description} max={160} />
+              </div>
+              <div className="seo-field">
+                <label>OG Image URL</label>
+                <input type="url" value={form.og_image} onChange={set('og_image')} placeholder={defaults.image || 'https://cdn.example.com/og-image.jpg'} />
+                <div className="seo-hint">Recommended: 1200 × 630px. Used by Facebook, WhatsApp, LinkedIn.</div>
+              </div>
+              <div className="seo-field">
+                <label>OG Type</label>
+                <select value={form.og_type} onChange={set('og_type')}>
+                  <option value="website">Website</option>
+                  <option value="article">Article</option>
+                  <option value="product">Product</option>
+                  <option value="profile">Profile</option>
+                </select>
+              </div>
+            </div>
+            <div style={{ flex: '0 0 300px' }}>
+              <SocialPreview type="og" title={ogTitle} description={ogDesc} image={ogImg} siteName={siteConfig?.brand_name} />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="card" style={{ marginBottom: 16 }}>
+        <div className="card-header"><h3 className="card-title"><i className="fab fa-twitter" style={{ marginRight: 8, color: '#1da1f2' }} />Twitter Card</h3></div>
+        <div className="card-content">
+          <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+            <div style={{ flex: '1 1 320px' }}>
+              <div className="seo-field">
+                <label>Card Type</label>
+                <select value={form.twitter_card} onChange={set('twitter_card')}>
+                  <option value="summary_large_image">Summary with Large Image</option>
+                  <option value="summary">Summary</option>
+                </select>
+                <div className="seo-hint">Large image cards get more engagement on Twitter/X.</div>
+              </div>
+              <div className="seo-field">
+                <label>Twitter Title</label>
+                <input type="text" value={form.twitter_title} onChange={set('twitter_title')} placeholder={form.og_title || defaults.title || 'Uses OG title'} maxLength={70} />
+                <CharCounter value={form.twitter_title || form.og_title || defaults.title} max={70} />
+                <div className="seo-hint">If empty, falls back to OG Title.</div>
+              </div>
+              <div className="seo-field">
+                <label>Twitter Description</label>
+                <textarea value={form.twitter_description} onChange={set('twitter_description')} placeholder={form.og_description || defaults.description || 'Uses OG description'} maxLength={200} rows={3} />
+                <CharCounter value={form.twitter_description || form.og_description || defaults.description} max={200} />
+              </div>
+              <div className="seo-field">
+                <label>Twitter Image URL</label>
+                <input type="url" value={form.twitter_image} onChange={set('twitter_image')} placeholder={form.og_image || defaults.image || 'Uses OG image'} />
+                <div className="seo-hint">If empty, falls back to OG Image.</div>
+              </div>
+              <div className="seo-field">
+                <label>Twitter @username</label>
+                <input type="text" value={form.twitter_site} onChange={set('twitter_site')} placeholder="@yourbrand" />
+                <div className="seo-hint">Your brand's Twitter/X handle (e.g. @nike).</div>
+              </div>
+            </div>
+            <div style={{ flex: '0 0 300px' }}>
+              <SocialPreview type="twitter" title={twTitle} description={twDesc} image={twImg} url={storeUrl} />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {msg && <div className={`seo-msg ${msg.type}`}>{msg.text}</div>}
+
+      <button type="submit" className="btn btn-primary" disabled={saving} style={{ marginTop: 8 }}>
+        {saving ? 'Saving...' : 'Save Social Media Tags'}
+      </button>
+    </form>
+  );
+}
+
 // ─── Main SEO Section ─────────────────────────────────────────────────────────
 
 const TABS = [
   { id: 'site', label: 'Site SEO', icon: 'fa-globe' },
+  { id: 'social', label: 'Social Media', icon: 'fa-share-alt' },
   { id: 'pages', label: 'Pages', icon: 'fa-file-alt' },
   { id: 'categories', label: 'Categories', icon: 'fa-folder' },
   { id: 'products', label: 'Products', icon: 'fa-box' },
@@ -835,6 +1040,7 @@ export default function SEOSection() {
       </div>
 
       {activeTab === 'site' && <SiteSEOTab siteConfig={siteConfig} />}
+      {activeTab === 'social' && <SocialMediaTab siteConfig={siteConfig} />}
       {activeTab === 'pages' && <PagesSEOTab siteConfig={siteConfig} />}
       {activeTab === 'categories' && <CategoriesSEOTab siteConfig={siteConfig} />}
       {activeTab === 'products' && <ProductsSEOTab siteConfig={siteConfig} />}

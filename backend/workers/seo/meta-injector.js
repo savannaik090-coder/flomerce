@@ -58,18 +58,22 @@ function buildMetaTagsString(tags) {
     lines.push(`  <meta property="og:url" content="${escapeAttr(tags.canonicalUrl)}">`);
   }
 
-  lines.push(`  <meta name="twitter:card" content="summary_large_image">`);
+  lines.push(`  <meta name="twitter:card" content="${escapeAttr(tags.twitterCard || 'summary_large_image')}">`);
 
-  if (tags.title) {
-    lines.push(`  <meta name="twitter:title" content="${escapeAttr(tags.ogTitle || tags.title)}">`);
+  if (tags.twitterSite) {
+    lines.push(`  <meta name="twitter:site" content="${escapeAttr(tags.twitterSite)}">`);
   }
 
-  if (tags.description) {
-    lines.push(`  <meta name="twitter:description" content="${escapeAttr(tags.ogDescription || tags.description)}">`);
+  if (tags.twitterTitle || tags.title) {
+    lines.push(`  <meta name="twitter:title" content="${escapeAttr(tags.twitterTitle || tags.ogTitle || tags.title)}">`);
   }
 
-  if (tags.ogImage) {
-    lines.push(`  <meta name="twitter:image" content="${escapeAttr(tags.ogImage)}">`);
+  if (tags.twitterDescription || tags.description) {
+    lines.push(`  <meta name="twitter:description" content="${escapeAttr(tags.twitterDescription || tags.ogDescription || tags.description)}">`);
+  }
+
+  if (tags.twitterImage || tags.ogImage) {
+    lines.push(`  <meta name="twitter:image" content="${escapeAttr(tags.twitterImage || tags.ogImage)}">`);
   }
 
   if (tags.googleVerification) {
