@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-iM35j8/checked-fetch.js
+// .wrangler/tmp/bundle-WC7qHp/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-iM35j8/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-WC7qHp/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-iM35j8/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-WC7qHp/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-iM35j8/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-WC7qHp/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -994,12 +994,12 @@ var init_site_admin_worker = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-iM35j8/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-WC7qHp/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-iM35j8/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-WC7qHp/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -4697,7 +4697,20 @@ async function getUserSubscription(env, user) {
       `SELECT * FROM subscriptions WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1`
     ).bind(user.id).first();
     if (!subscription) {
-      return successResponse({ plan: "free", status: "none" });
+      return successResponse({ plan: null, status: "none" });
+    }
+    if (subscription.current_period_end && new Date(subscription.current_period_end) < /* @__PURE__ */ new Date()) {
+      await env.DB.prepare(
+        `UPDATE subscriptions SET status = 'expired', updated_at = datetime('now') WHERE id = ?`
+      ).bind(subscription.id).run();
+      return successResponse({
+        id: subscription.id,
+        plan: subscription.plan,
+        billingCycle: subscription.billing_cycle,
+        status: "expired",
+        currentPeriodEnd: subscription.current_period_end,
+        razorpaySubscriptionId: subscription.razorpay_subscription_id
+      });
     }
     return successResponse({
       id: subscription.id,
@@ -4942,9 +4955,17 @@ async function handleSubscriptionCancelled(env, entity) {
     return;
   const subId = entity.id;
   try {
-    await env.DB.prepare(
-      `UPDATE subscriptions SET status = 'cancelled', cancelled_at = datetime('now'), updated_at = datetime('now') WHERE razorpay_subscription_id = ? AND status = 'active'`
-    ).bind(subId).run();
+    const sub = await env.DB.prepare(
+      `SELECT * FROM subscriptions WHERE razorpay_subscription_id = ? AND status = 'active'`
+    ).bind(subId).first();
+    if (sub) {
+      await env.DB.prepare(
+        `UPDATE subscriptions SET status = 'cancelled', cancelled_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`
+      ).bind(sub.id).run();
+      await env.DB.prepare(
+        `UPDATE sites SET subscription_expires_at = datetime('now'), updated_at = datetime('now') WHERE user_id = ?`
+      ).bind(sub.user_id).run();
+    }
     console.log("Subscription cancelled:", subId);
   } catch (err) {
     console.error("handleSubscriptionCancelled error:", err);
@@ -4956,9 +4977,17 @@ async function handleSubscriptionPaused(env, entity) {
     return;
   const subId = entity.id;
   try {
-    await env.DB.prepare(
-      `UPDATE subscriptions SET status = 'paused', updated_at = datetime('now') WHERE razorpay_subscription_id = ? AND status = 'active'`
-    ).bind(subId).run();
+    const sub = await env.DB.prepare(
+      `SELECT * FROM subscriptions WHERE razorpay_subscription_id = ? AND status = 'active'`
+    ).bind(subId).first();
+    if (sub) {
+      await env.DB.prepare(
+        `UPDATE subscriptions SET status = 'paused', updated_at = datetime('now') WHERE id = ?`
+      ).bind(sub.id).run();
+      await env.DB.prepare(
+        `UPDATE sites SET subscription_expires_at = datetime('now'), updated_at = datetime('now') WHERE user_id = ?`
+      ).bind(sub.user_id).run();
+    }
     console.log("Subscription paused:", subId);
   } catch (err) {
     console.error("handleSubscriptionPaused error:", err);
@@ -5325,27 +5354,53 @@ async function handleProfile(request, env, user) {
   return errorResponse("Method not allowed", 405);
 }
 __name(handleProfile, "handleProfile");
+async function checkAndExpireSubscription(env, userId) {
+  try {
+    const subscription = await env.DB.prepare(
+      `SELECT * FROM subscriptions WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1`
+    ).bind(userId).first();
+    if (!subscription)
+      return null;
+    if (subscription.current_period_end && new Date(subscription.current_period_end) < /* @__PURE__ */ new Date()) {
+      await env.DB.prepare(
+        `UPDATE subscriptions SET status = 'expired', updated_at = datetime('now') WHERE id = ?`
+      ).bind(subscription.id).run();
+      return { ...subscription, status: "expired" };
+    }
+    return subscription;
+  } catch (e) {
+    console.error("Check/expire subscription error:", e);
+    return null;
+  }
+}
+__name(checkAndExpireSubscription, "checkAndExpireSubscription");
+async function hasEverHadSubscription(env, userId) {
+  try {
+    const result = await env.DB.prepare(
+      `SELECT COUNT(*) as count FROM subscriptions WHERE user_id = ?`
+    ).bind(userId).first();
+    return (result?.count || 0) > 0;
+  } catch (e) {
+    return false;
+  }
+}
+__name(hasEverHadSubscription, "hasEverHadSubscription");
 async function getProfile(env, user) {
   try {
     let profile = null;
-    let subscription = null;
     profile = await env.DB.prepare(
       `SELECT id, email, name, phone, email_verified FROM users WHERE id = ?`
     ).bind(user.id).first();
     if (!profile) {
       return errorResponse("User not found", 404);
     }
+    let subscription = null;
     try {
-      subscription = await env.DB.prepare(
-        `SELECT plan, billing_cycle, status, current_period_start, current_period_end 
-         FROM subscriptions 
-         WHERE user_id = ? AND status = 'active' 
-         ORDER BY created_at DESC 
-         LIMIT 1`
-      ).bind(user.id).first();
+      subscription = await checkAndExpireSubscription(env, user.id);
     } catch (subError) {
       console.error("Subscription query error (table may not exist):", subError);
     }
+    const hadSubscription = await hasEverHadSubscription(env, user.id);
     return successResponse({
       id: profile.id,
       email: profile.email,
@@ -5356,7 +5411,8 @@ async function getProfile(env, user) {
       billingCycle: subscription?.billing_cycle || null,
       status: subscription?.status || "none",
       trialStartDate: subscription?.current_period_start || null,
-      trialEndDate: subscription?.current_period_end || null
+      trialEndDate: subscription?.current_period_end || null,
+      hadSubscription
     });
   } catch (error) {
     console.error("Get profile error:", error);
@@ -5396,12 +5452,7 @@ async function getSubscription(env, user) {
   try {
     let subscription = null;
     try {
-      subscription = await env.DB.prepare(
-        `SELECT * FROM subscriptions 
-         WHERE user_id = ? AND status = 'active' 
-         ORDER BY created_at DESC 
-         LIMIT 1`
-      ).bind(user.id).first();
+      subscription = await checkAndExpireSubscription(env, user.id);
     } catch (subError) {
       console.error("Subscription query error (table may not exist):", subError);
       return successResponse({
@@ -5411,10 +5462,12 @@ async function getSubscription(env, user) {
       });
     }
     if (!subscription) {
+      const hadSubscription = await hasEverHadSubscription(env, user.id);
       return successResponse({
         plan: null,
-        status: "none",
-        billingCycle: null
+        status: hadSubscription ? "expired" : "none",
+        billingCycle: null,
+        hadSubscription
       });
     }
     return successResponse({
@@ -5460,91 +5513,43 @@ async function ensureSubscriptionsTable(env) {
 __name(ensureSubscriptionsTable, "ensureSubscriptionsTable");
 async function updateSubscription(request, env, user) {
   try {
-    const { plan, billingCycle, status } = await request.json();
+    const { plan } = await request.json();
+    if (plan !== "trial") {
+      return errorResponse("Only trial activation is allowed through this endpoint. Use Razorpay for paid plans.", 403);
+    }
     await ensureSubscriptionsTable(env);
-    const subscriptionPlans = {
-      trial: { monthly: 0, "6months": 0, yearly: 0, rank: 0 },
-      basic: { monthly: 99, "6months": 499, yearly: 899, rank: 1 },
-      premium: { monthly: 299, "6months": 1499, yearly: 2499, rank: 2 },
-      pro: { monthly: 999, "6months": 4999, yearly: 8999, rank: 3 }
-    };
-    let existingSubscription = null;
+    const hadPrevious = await hasEverHadSubscription(env, user.id);
+    if (hadPrevious) {
+      return errorResponse("Free trial is only available for new users. Please subscribe to a paid plan.", 400);
+    }
+    let existingActive = null;
     try {
-      existingSubscription = await env.DB.prepare(
+      existingActive = await env.DB.prepare(
         `SELECT * FROM subscriptions WHERE user_id = ? AND status = 'active'`
       ).bind(user.id).first();
     } catch (e) {
       console.error("Error checking existing subscription:", e);
     }
-    if (existingSubscription) {
-      if (status === "expired" || status === "cancelled") {
-        await env.DB.prepare(
-          `UPDATE subscriptions SET status = ?, cancelled_at = datetime('now') WHERE id = ?`
-        ).bind(status, existingSubscription.id).run();
-        return successResponse(null, "Subscription updated");
-      }
-      if (plan && subscriptionPlans[plan] && subscriptionPlans[existingSubscription.plan]) {
-        const isDowngrade = subscriptionPlans[plan].rank < subscriptionPlans[existingSubscription.plan].rank;
-        const isExpired2 = existingSubscription.current_period_end && new Date(existingSubscription.current_period_end) < /* @__PURE__ */ new Date();
-        if (isDowngrade && !isExpired2) {
-          return errorResponse("You can only downgrade after your current plan expires", 400);
-        }
-      }
-      let periodEnd2 = existingSubscription.current_period_end;
-      const newPlan = plan || existingSubscription.plan;
-      const newCycle = billingCycle || existingSubscription.billing_cycle;
-      if (plan || billingCycle) {
-        let periodDays2 = 30;
-        if (newCycle === "6months")
-          periodDays2 = 180;
-        if (newCycle === "yearly")
-          periodDays2 = 365;
-        if (newPlan === "trial")
-          periodDays2 = 7;
-        const date = /* @__PURE__ */ new Date();
-        date.setDate(date.getDate() + periodDays2);
-        periodEnd2 = date.toISOString();
-      }
-      const amount2 = newPlan === "trial" ? 0 : subscriptionPlans[newPlan]?.[newCycle] || 0;
-      await env.DB.prepare(
-        `UPDATE subscriptions SET 
-          plan = COALESCE(?, plan),
-          billing_cycle = COALESCE(?, billing_cycle),
-          status = COALESCE(?, status),
-          amount = ?,
-          current_period_start = datetime('now'),
-          current_period_end = ?,
-          updated_at = datetime('now')
-         WHERE id = ?`
-      ).bind(plan || null, billingCycle || null, status || null, amount2, periodEnd2, existingSubscription.id).run();
-      return successResponse(null, "Subscription updated");
+    if (existingActive) {
+      return errorResponse("You already have an active subscription.", 400);
     }
-    let periodDays = 30;
-    if (billingCycle === "6months")
-      periodDays = 180;
-    if (billingCycle === "yearly")
-      periodDays = 365;
-    if (plan === "trial")
-      periodDays = 7;
     const periodEnd = /* @__PURE__ */ new Date();
-    periodEnd.setDate(periodEnd.getDate() + periodDays);
-    const amount = plan === "trial" ? 0 : subscriptionPlans[plan]?.[billingCycle] || 0;
+    periodEnd.setDate(periodEnd.getDate() + 7);
     await env.DB.prepare(
       `INSERT INTO subscriptions (id, user_id, plan, billing_cycle, amount, status, current_period_start, current_period_end, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, datetime('now'), ?, datetime('now'))`
+       VALUES (?, ?, 'trial', 'monthly', 0, 'active', datetime('now'), ?, datetime('now'))`
     ).bind(
       generateId(),
       user.id,
-      plan,
-      billingCycle || "monthly",
-      amount,
-      status || "active",
       periodEnd.toISOString()
     ).run();
-    return successResponse(null, "Subscription created");
+    await env.DB.prepare(
+      `UPDATE sites SET subscription_plan = 'trial', subscription_expires_at = ?, updated_at = datetime('now') WHERE user_id = ?`
+    ).bind(periodEnd.toISOString(), user.id).run();
+    return successResponse(null, "Your 7-day free trial has started!");
   } catch (error) {
     console.error("Update subscription error:", error);
-    return errorResponse("Failed to update subscription", 500);
+    return errorResponse("Failed to start trial", 500);
   }
 }
 __name(updateSubscription, "updateSubscription");
@@ -8357,7 +8362,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-iM35j8/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-WC7qHp/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -8392,7 +8397,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-iM35j8/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-WC7qHp/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

@@ -4,7 +4,7 @@ import { getAvailablePlans, createSubscription, verifySubscriptionPayment, start
 const DURATION_LABELS = { monthly: 'Monthly', '6months': '6 Months', yearly: 'Yearly' };
 const PERIOD_SUFFIX = { monthly: '/mo', '6months': '/6mo', yearly: '/yr' };
 
-export default function PlanSelector({ currentPlan, onUpgraded, isOverlay, onSkip }) {
+export default function PlanSelector({ currentPlan, currentStatus, hadSubscription, onUpgraded, isOverlay }) {
   const [duration, setDuration] = useState('monthly');
   const [upgrading, setUpgrading] = useState(null);
   const [plans, setPlans] = useState([]);
@@ -54,12 +54,16 @@ export default function PlanSelector({ currentPlan, onUpgraded, isOverlay, onSki
 
   const availableDurations = [...new Set(plans.map(p => p.billing_cycle))];
 
-  const currentPlanLower = currentPlan?.toLowerCase() || 'free';
+  const isActive = currentStatus === 'active';
+  const currentPlanLower = (isActive && currentPlan) ? currentPlan.toLowerCase() : null;
   const currentPlanOrder = (() => {
-    if (currentPlanLower === 'free' || currentPlanLower === 'trial') return -1;
+    if (!currentPlanLower || currentPlanLower === 'trial') return -1;
     const match = planList.find(p => p.name.toLowerCase() === currentPlanLower);
     return match ? match.display_order : -1;
   })();
+
+  const showTrialCard = !hadSubscription && currentPlanLower !== 'trial';
+  const isExpired = currentStatus === 'expired' || currentStatus === 'none';
 
   const handleUpgrade = async (planGroup) => {
     const selectedPlan = planGroup.plans[duration];
@@ -133,15 +137,15 @@ export default function PlanSelector({ currentPlan, onUpgraded, isOverlay, onSki
 
   const getButtonText = (planGroup) => {
     const planNameLower = planGroup.name.toLowerCase();
-    if (planNameLower === currentPlanLower) return 'Current Plan';
-    if (planGroup.display_order > currentPlanOrder) return 'Upgrade';
+    if (isActive && planNameLower === currentPlanLower) return 'Current Plan';
+    if (!isActive || planGroup.display_order > currentPlanOrder) return 'Subscribe';
     return 'Lower Tier';
   };
 
-  const isDisabled = (planGroup) => {
+  const isButtonDisabled = (planGroup) => {
     const planNameLower = planGroup.name.toLowerCase();
-    if (planNameLower === currentPlanLower) return true;
-    if (planGroup.display_order < currentPlanOrder) return true;
+    if (isActive && planNameLower === currentPlanLower) return true;
+    if (isActive && planGroup.display_order < currentPlanOrder) return true;
     return false;
   };
 
@@ -161,9 +165,13 @@ export default function PlanSelector({ currentPlan, onUpgraded, isOverlay, onSki
     <div>
       {isOverlay && (
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.5rem' }}>Choose Your Plan</h2>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.5rem' }}>
+            {isExpired && hadSubscription ? 'Your Plan Has Expired' : 'Choose Your Plan'}
+          </h2>
           <p style={{ color: '#64748b', fontSize: '0.9rem' }}>
-            Start with a 7-day free trial or pick a plan that fits your needs
+            {isExpired && hadSubscription
+              ? 'Your subscription has expired and your websites are currently disabled. Subscribe to a plan to restore access.'
+              : 'Start with a 7-day free trial or pick a plan that fits your needs'}
           </p>
         </div>
       )}
@@ -183,7 +191,7 @@ export default function PlanSelector({ currentPlan, onUpgraded, isOverlay, onSki
       )}
 
       <div className="plans-grid">
-        {(currentPlanLower === 'free') && (
+        {showTrialCard && (
           <div className="site-card plan-card" style={{ position: 'relative', borderColor: '#10b981', borderWidth: '2px' }}>
             <span style={{
               position: 'absolute', top: '-12px', left: '50%', transform: 'translateX(-50%)',
@@ -201,9 +209,9 @@ export default function PlanSelector({ currentPlan, onUpgraded, isOverlay, onSki
               <li style={{ marginBottom: '0.5rem' }}>✓ Upgrade anytime during trial</li>
             </ul>
             <button
-              className={`btn ${currentPlanLower === 'trial' ? 'btn-outline' : 'btn-primary'}`}
-              style={{ width: '100%', background: currentPlanLower === 'trial' ? undefined : '#10b981', borderColor: '#10b981', opacity: currentPlanLower === 'trial' ? 0.6 : 1 }}
-              disabled={currentPlanLower === 'trial'}
+              className="btn btn-primary"
+              style={{ width: '100%', background: '#10b981', borderColor: '#10b981' }}
+              disabled={upgrading !== null}
               onClick={async () => {
                 setUpgrading('trial');
                 try {
@@ -221,7 +229,7 @@ export default function PlanSelector({ currentPlan, onUpgraded, isOverlay, onSki
                 }
               }}
             >
-              {upgrading === 'trial' ? 'Starting...' : (currentPlanLower === 'trial' ? 'Current Plan' : 'Start Free Trial')}
+              {upgrading === 'trial' ? 'Starting...' : 'Start Free Trial'}
             </button>
           </div>
         )}
@@ -250,9 +258,9 @@ export default function PlanSelector({ currentPlan, onUpgraded, isOverlay, onSki
                 ))}
               </ul>
               <button
-                className={`btn ${isDisabled(planGroup) || !hasPlanForDuration ? 'btn-outline' : 'btn-primary'}`}
-                style={{ width: '100%', opacity: isDisabled(planGroup) || !hasPlanForDuration ? 0.6 : 1 }}
-                disabled={isDisabled(planGroup) || !hasPlanForDuration || upgrading !== null}
+                className={`btn ${isButtonDisabled(planGroup) || !hasPlanForDuration ? 'btn-outline' : 'btn-primary'}`}
+                style={{ width: '100%', opacity: isButtonDisabled(planGroup) || !hasPlanForDuration ? 0.6 : 1 }}
+                disabled={isButtonDisabled(planGroup) || !hasPlanForDuration || upgrading !== null}
                 onClick={() => handleUpgrade(planGroup)}
               >
                 {upgrading === planGroup.plans[duration]?.id ? 'Processing...' : getButtonText(planGroup)}
@@ -261,24 +269,12 @@ export default function PlanSelector({ currentPlan, onUpgraded, isOverlay, onSki
           );
         })}
       </div>
-
-      {isOverlay && (
-        <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
-          <button
-            className="btn btn-outline"
-            onClick={onSkip}
-            style={{ color: '#64748b', fontSize: '0.875rem' }}
-          >
-            Continue with Free Plan
-          </button>
-        </div>
-      )}
     </div>
   );
 
   if (isOverlay) {
     return (
-      <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onSkip?.()}>
+      <div className="modal-overlay">
         <div className="modal-content" style={{ maxWidth: '900px' }}>
           {content}
         </div>

@@ -238,7 +238,7 @@ export default function OwnerAdminPage() {
                     <span className="oa-list-name">{u.name}</span>
                     <span className="oa-list-sub">{u.email}</span>
                   </div>
-                  <span className="oa-badge">{u.plan || 'free'}</span>
+                  <span className="oa-badge">{u.plan || 'No Plan'}</span>
                 </div>
               ))}
               {users.length === 0 && <p className="oa-empty">No users yet</p>}
@@ -283,7 +283,7 @@ export default function OwnerAdminPage() {
                     <tr key={u.id || u.email}>
                       <td data-label="Name">{u.name}</td>
                       <td data-label="Email">{u.email}</td>
-                      <td data-label="Plan"><span className="oa-badge">{u.plan || 'free'}</span></td>
+                      <td data-label="Plan"><span className="oa-badge">{u.plan || 'No Plan'}</span></td>
                       <td data-label="Joined">{u.created_at ? new Date(u.created_at).toLocaleDateString() : '-'}</td>
                       <td data-label="Action">
                         {u.email !== currentOwner?.email && (
@@ -307,7 +307,7 @@ export default function OwnerAdminPage() {
                       <div className="oa-user-card-name">{u.name}</div>
                       <div className="oa-user-card-email">{u.email}</div>
                     </div>
-                    <span className="oa-badge">{u.plan || 'free'}</span>
+                    <span className="oa-badge">{u.plan || 'No Plan'}</span>
                   </div>
                   <div className="oa-user-card-footer">
                     <span className="oa-user-card-date">Joined {u.created_at ? new Date(u.created_at).toLocaleDateString() : '-'}</span>

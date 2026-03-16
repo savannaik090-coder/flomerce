@@ -35,12 +35,44 @@ async function handleProfile(request, env, user) {
   return errorResponse('Method not allowed', 405);
 }
 
+async function checkAndExpireSubscription(env, userId) {
+  try {
+    const subscription = await env.DB.prepare(
+      `SELECT * FROM subscriptions WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1`
+    ).bind(userId).first();
+
+    if (!subscription) return null;
+
+    if (subscription.current_period_end && new Date(subscription.current_period_end) < new Date()) {
+      await env.DB.prepare(
+        `UPDATE subscriptions SET status = 'expired', updated_at = datetime('now') WHERE id = ?`
+      ).bind(subscription.id).run();
+
+      return { ...subscription, status: 'expired' };
+    }
+
+    return subscription;
+  } catch (e) {
+    console.error('Check/expire subscription error:', e);
+    return null;
+  }
+}
+
+async function hasEverHadSubscription(env, userId) {
+  try {
+    const result = await env.DB.prepare(
+      `SELECT COUNT(*) as count FROM subscriptions WHERE user_id = ?`
+    ).bind(userId).first();
+    return (result?.count || 0) > 0;
+  } catch (e) {
+    return false;
+  }
+}
+
 async function getProfile(env, user) {
   try {
     let profile = null;
-    let subscription = null;
 
-    // First get user data (always works if user exists)
     profile = await env.DB.prepare(
       `SELECT id, email, name, phone, email_verified FROM users WHERE id = ?`
     ).bind(user.id).first();
@@ -49,19 +81,14 @@ async function getProfile(env, user) {
       return errorResponse('User not found', 404);
     }
 
-    // Try to get subscription data (may fail if table doesn't exist)
+    let subscription = null;
     try {
-      subscription = await env.DB.prepare(
-        `SELECT plan, billing_cycle, status, current_period_start, current_period_end 
-         FROM subscriptions 
-         WHERE user_id = ? AND status = 'active' 
-         ORDER BY created_at DESC 
-         LIMIT 1`
-      ).bind(user.id).first();
+      subscription = await checkAndExpireSubscription(env, user.id);
     } catch (subError) {
       console.error('Subscription query error (table may not exist):', subError);
-      // Continue without subscription data
     }
+
+    const hadSubscription = await hasEverHadSubscription(env, user.id);
 
     return successResponse({
       id: profile.id,
@@ -74,6 +101,7 @@ async function getProfile(env, user) {
       status: subscription?.status || 'none',
       trialStartDate: subscription?.current_period_start || null,
       trialEndDate: subscription?.current_period_end || null,
+      hadSubscription: hadSubscription,
     });
   } catch (error) {
     console.error('Get profile error:', error);
@@ -118,15 +146,9 @@ async function getSubscription(env, user) {
     let subscription = null;
     
     try {
-      subscription = await env.DB.prepare(
-        `SELECT * FROM subscriptions 
-         WHERE user_id = ? AND status = 'active' 
-         ORDER BY created_at DESC 
-         LIMIT 1`
-      ).bind(user.id).first();
+      subscription = await checkAndExpireSubscription(env, user.id);
     } catch (subError) {
       console.error('Subscription query error (table may not exist):', subError);
-      // Return default if table doesn't exist
       return successResponse({
         plan: null,
         status: 'none',
@@ -135,10 +157,12 @@ async function getSubscription(env, user) {
     }
 
     if (!subscription) {
+      const hadSubscription = await hasEverHadSubscription(env, user.id);
       return successResponse({
         plan: null,
-        status: 'none',
+        status: hadSubscription ? 'expired' : 'none',
         billingCycle: null,
+        hadSubscription: hadSubscription,
       });
     }
 
@@ -185,105 +209,51 @@ async function ensureSubscriptionsTable(env) {
 
 async function updateSubscription(request, env, user) {
   try {
-    const { plan, billingCycle, status } = await request.json();
+    const { plan } = await request.json();
 
-    // Ensure subscriptions table exists
+    if (plan !== 'trial') {
+      return errorResponse('Only trial activation is allowed through this endpoint. Use Razorpay for paid plans.', 403);
+    }
+
     await ensureSubscriptionsTable(env);
 
-    const subscriptionPlans = {
-      trial: { monthly: 0, '6months': 0, yearly: 0, rank: 0 },
-      basic: { monthly: 99, '6months': 499, yearly: 899, rank: 1 },
-      premium: { monthly: 299, '6months': 1499, yearly: 2499, rank: 2 },
-      pro: { monthly: 999, '6months': 4999, yearly: 8999, rank: 3 },
-    };
+    const hadPrevious = await hasEverHadSubscription(env, user.id);
+    if (hadPrevious) {
+      return errorResponse('Free trial is only available for new users. Please subscribe to a paid plan.', 400);
+    }
 
-    let existingSubscription = null;
+    let existingActive = null;
     try {
-      existingSubscription = await env.DB.prepare(
+      existingActive = await env.DB.prepare(
         `SELECT * FROM subscriptions WHERE user_id = ? AND status = 'active'`
       ).bind(user.id).first();
     } catch (e) {
       console.error('Error checking existing subscription:', e);
     }
 
-    if (existingSubscription) {
-      if (status === 'expired' || status === 'cancelled') {
-        await env.DB.prepare(
-          `UPDATE subscriptions SET status = ?, cancelled_at = datetime('now') WHERE id = ?`
-        ).bind(status, existingSubscription.id).run();
-
-        return successResponse(null, 'Subscription updated');
-      }
-
-      // Enforce downgrade rule: Block downgrade if active and not expired
-      if (plan && subscriptionPlans[plan] && subscriptionPlans[existingSubscription.plan]) {
-        const isDowngrade = subscriptionPlans[plan].rank < subscriptionPlans[existingSubscription.plan].rank;
-        const isExpired = existingSubscription.current_period_end && new Date(existingSubscription.current_period_end) < new Date();
-        
-        if (isDowngrade && !isExpired) {
-          return errorResponse('You can only downgrade after your current plan expires', 400);
-        }
-      }
-
-      // Calculate new period if plan/cycle changes
-      let periodEnd = existingSubscription.current_period_end;
-      const newPlan = plan || existingSubscription.plan;
-      const newCycle = billingCycle || existingSubscription.billing_cycle;
-      
-      if (plan || billingCycle) {
-        let periodDays = 30;
-        if (newCycle === '6months') periodDays = 180;
-        if (newCycle === 'yearly') periodDays = 365;
-        if (newPlan === 'trial') periodDays = 7;
-        
-        const date = new Date();
-        date.setDate(date.getDate() + periodDays);
-        periodEnd = date.toISOString();
-      }
-
-      const amount = newPlan === 'trial' ? 0 : (subscriptionPlans[newPlan]?.[newCycle] || 0);
-
-      await env.DB.prepare(
-        `UPDATE subscriptions SET 
-          plan = COALESCE(?, plan),
-          billing_cycle = COALESCE(?, billing_cycle),
-          status = COALESCE(?, status),
-          amount = ?,
-          current_period_start = datetime('now'),
-          current_period_end = ?,
-          updated_at = datetime('now')
-         WHERE id = ?`
-      ).bind(plan || null, billingCycle || null, status || null, amount, periodEnd, existingSubscription.id).run();
-
-      return successResponse(null, 'Subscription updated');
+    if (existingActive) {
+      return errorResponse('You already have an active subscription.', 400);
     }
 
-    let periodDays = 30;
-    if (billingCycle === '6months') periodDays = 180;
-    if (billingCycle === 'yearly') periodDays = 365;
-    if (plan === 'trial') periodDays = 7;
-
     const periodEnd = new Date();
-    periodEnd.setDate(periodEnd.getDate() + periodDays);
-
-    const amount = plan === 'trial' ? 0 : (subscriptionPlans[plan]?.[billingCycle] || 0);
+    periodEnd.setDate(periodEnd.getDate() + 7);
 
     await env.DB.prepare(
       `INSERT INTO subscriptions (id, user_id, plan, billing_cycle, amount, status, current_period_start, current_period_end, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, datetime('now'), ?, datetime('now'))`
+       VALUES (?, ?, 'trial', 'monthly', 0, 'active', datetime('now'), ?, datetime('now'))`
     ).bind(
       generateId(),
       user.id,
-      plan,
-      billingCycle || 'monthly',
-      amount,
-      status || 'active',
       periodEnd.toISOString()
     ).run();
 
-    return successResponse(null, 'Subscription created');
+    await env.DB.prepare(
+      `UPDATE sites SET subscription_plan = 'trial', subscription_expires_at = ?, updated_at = datetime('now') WHERE user_id = ?`
+    ).bind(periodEnd.toISOString(), user.id).run();
+
+    return successResponse(null, 'Your 7-day free trial has started!');
   } catch (error) {
     console.error('Update subscription error:', error);
-    return errorResponse('Failed to update subscription', 500);
+    return errorResponse('Failed to start trial', 500);
   }
 }

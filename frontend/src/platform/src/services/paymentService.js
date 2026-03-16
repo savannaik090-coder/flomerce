@@ -22,6 +22,10 @@ export async function getSubscriptionStatus() {
   return apiRequest('/api/payments/subscription');
 }
 
+export async function getUserProfile() {
+  return apiRequest('/api/users/profile');
+}
+
 export async function startFreeTrial() {
   return apiRequest('/api/users/subscription', {
     method: 'PATCH',

@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { getUserSites, deleteSite } from '../services/siteService.js';
-import { getSubscriptionStatus } from '../services/paymentService.js';
-import { getProfile } from '../services/authService.js';
+import { getSubscriptionStatus, getUserProfile } from '../services/paymentService.js';
 import SiteCard from '../components/SiteCard.jsx';
 import SiteCreationWizard from '../components/SiteCreationWizard.jsx';
 import PlanSelector from '../components/PlanSelector.jsx';
@@ -51,10 +50,10 @@ export default function DashboardPage() {
 
   const loadProfile = useCallback(async () => {
     try {
-      const result = await getProfile();
+      const result = await getUserProfile();
       const data = result.user || result.data || result;
       setProfileData(data);
-      setUser(data);
+      setUser(prev => ({ ...prev, ...data }));
     } catch (e) {}
   }, [setUser]);
 
@@ -68,11 +67,10 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!dataLoaded) return;
-    const hasPlanData = profileData?.plan || subscription?.plan;
-    const plan = hasPlanData || 'free';
-    const planLower = plan.toLowerCase();
-    const dismissed = sessionStorage.getItem('planOverlayDismissed');
-    if (planLower === 'free' && !dismissed) {
+    const plan = profileData?.plan;
+    const status = profileData?.status;
+    const hasActivePlan = plan && status === 'active';
+    if (!hasActivePlan) {
       setShowPlanOverlay(true);
     }
   }, [dataLoaded, profileData, subscription]);
@@ -105,13 +103,7 @@ export default function DashboardPage() {
     setActivePage('sites');
   };
 
-  const handlePlanOverlayClose = () => {
-    sessionStorage.setItem('planOverlayDismissed', 'true');
-    setShowPlanOverlay(false);
-  };
-
   const handlePlanUpgraded = () => {
-    sessionStorage.setItem('planOverlayDismissed', 'true');
     setShowPlanOverlay(false);
     loadSubscription();
     loadProfile();
@@ -127,7 +119,25 @@ export default function DashboardPage() {
 
   if (!isAuthenticated) return null;
 
-  const currentPlan = profileData?.plan || subscription?.plan || 'free';
+  const currentPlan = profileData?.plan || subscription?.plan || null;
+  const currentStatus = profileData?.status || subscription?.status || 'none';
+  const hadSubscription = profileData?.hadSubscription || false;
+  const isExpired = currentStatus === 'expired';
+  const hasNoPlan = !currentPlan || currentStatus === 'none' || currentStatus === 'expired';
+
+  const getPlanDisplayName = () => {
+    if (!currentPlan || currentStatus === 'none') return 'No Plan';
+    if (currentStatus === 'expired') return `${currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1)} (Expired)`;
+    return currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1);
+  };
+
+  const getStatusPill = () => {
+    if (currentStatus === 'active') return { text: 'Active', className: 'status-active' };
+    if (currentStatus === 'expired') return { text: 'Expired', className: 'status-expired' };
+    return { text: 'No Plan', className: 'status-expired' };
+  };
+
+  const statusPill = getStatusPill();
 
   return (
     <div className="dashboard-layout">
@@ -199,6 +209,27 @@ export default function DashboardPage() {
                 <h1>My Websites</h1>
               </div>
 
+              {hasNoPlan && (
+                <div className="site-card" style={{ display: 'block', marginBottom: '1.5rem', borderColor: '#ef4444', borderWidth: '2px', background: '#fef2f2' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                    <div>
+                      <p style={{ fontWeight: 700, color: '#dc2626', margin: 0 }}>
+                        {isExpired ? 'Your subscription has expired' : 'No active subscription'}
+                      </p>
+                      <p style={{ fontSize: '0.875rem', color: '#991b1b', margin: '0.25rem 0 0 0' }}>
+                        {isExpired
+                          ? 'Your websites are currently disabled. Subscribe to a plan to restore access.'
+                          : 'You need an active subscription to keep your websites running.'}
+                      </p>
+                    </div>
+                    <button className="btn btn-primary" onClick={() => setActivePage('plans')} style={{ marginLeft: 'auto', whiteSpace: 'nowrap' }}>
+                      {isExpired ? 'Renew Plan' : 'Subscribe Now'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {sitesLoading ? (
                 <p style={{ color: 'var(--text-muted)' }}>Loading your websites...</p>
               ) : sites.length === 0 ? (
@@ -233,6 +264,8 @@ export default function DashboardPage() {
               </div>
               <PlanSelector
                 currentPlan={currentPlan}
+                currentStatus={currentStatus}
+                hadSubscription={hadSubscription}
                 onUpgraded={() => { loadSubscription(); loadProfile(); }}
               />
             </div>
@@ -272,14 +305,26 @@ export default function DashboardPage() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
                         <label style={{ fontSize: '0.75rem', color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 }}>Plan</label>
-                        <div style={{ fontWeight: 700, color: '#2563eb', fontSize: '1.125rem' }}>
-                          {(currentPlan || 'Free').charAt(0).toUpperCase() + (currentPlan || 'free').slice(1)}
+                        <div style={{ fontWeight: 700, color: isExpired || hasNoPlan ? '#ef4444' : '#2563eb', fontSize: '1.125rem' }}>
+                          {getPlanDisplayName()}
                         </div>
                       </div>
-                      <span className="plan-status-pill status-active">Active</span>
+                      <span className={`plan-status-pill ${statusPill.className}`}>{statusPill.text}</span>
                     </div>
+                    {profileData?.trialEndDate && currentPlan === 'trial' && currentStatus === 'active' && (
+                      <div>
+                        <label style={{ fontSize: '0.75rem', color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 }}>Trial Ends</label>
+                        <div style={{ fontWeight: 500, color: '#111827' }}>{new Date(profileData.trialEndDate).toLocaleDateString()}</div>
+                      </div>
+                    )}
+                    {profileData?.trialEndDate && currentPlan !== 'trial' && currentStatus === 'active' && (
+                      <div>
+                        <label style={{ fontSize: '0.75rem', color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 }}>Renews On</label>
+                        <div style={{ fontWeight: 500, color: '#111827' }}>{new Date(profileData.trialEndDate).toLocaleDateString()}</div>
+                      </div>
+                    )}
                     <button className="btn btn-primary" onClick={() => setActivePage('plans')} style={{ marginTop: '0.5rem' }}>
-                      Upgrade Subscription
+                      {hasNoPlan ? 'Subscribe Now' : 'Manage Subscription'}
                     </button>
                   </div>
                 </div>
@@ -299,9 +344,10 @@ export default function DashboardPage() {
       {showPlanOverlay && (
         <PlanSelector
           currentPlan={currentPlan}
+          currentStatus={currentStatus}
+          hadSubscription={hadSubscription}
           onUpgraded={handlePlanUpgraded}
           isOverlay={true}
-          onSkip={handlePlanOverlayClose}
         />
       )}
     </div>

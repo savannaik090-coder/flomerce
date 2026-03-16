@@ -370,7 +370,22 @@ async function getUserSubscription(env, user) {
     ).bind(user.id).first();
 
     if (!subscription) {
-      return successResponse({ plan: 'free', status: 'none' });
+      return successResponse({ plan: null, status: 'none' });
+    }
+
+    if (subscription.current_period_end && new Date(subscription.current_period_end) < new Date()) {
+      await env.DB.prepare(
+        `UPDATE subscriptions SET status = 'expired', updated_at = datetime('now') WHERE id = ?`
+      ).bind(subscription.id).run();
+
+      return successResponse({
+        id: subscription.id,
+        plan: subscription.plan,
+        billingCycle: subscription.billing_cycle,
+        status: 'expired',
+        currentPeriodEnd: subscription.current_period_end,
+        razorpaySubscriptionId: subscription.razorpay_subscription_id,
+      });
     }
 
     return successResponse({
@@ -640,9 +655,19 @@ async function handleSubscriptionCancelled(env, entity) {
   const subId = entity.id;
 
   try {
-    await env.DB.prepare(
-      `UPDATE subscriptions SET status = 'cancelled', cancelled_at = datetime('now'), updated_at = datetime('now') WHERE razorpay_subscription_id = ? AND status = 'active'`
-    ).bind(subId).run();
+    const sub = await env.DB.prepare(
+      `SELECT * FROM subscriptions WHERE razorpay_subscription_id = ? AND status = 'active'`
+    ).bind(subId).first();
+
+    if (sub) {
+      await env.DB.prepare(
+        `UPDATE subscriptions SET status = 'cancelled', cancelled_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`
+      ).bind(sub.id).run();
+
+      await env.DB.prepare(
+        `UPDATE sites SET subscription_expires_at = datetime('now'), updated_at = datetime('now') WHERE user_id = ?`
+      ).bind(sub.user_id).run();
+    }
 
     console.log('Subscription cancelled:', subId);
   } catch (err) {
@@ -655,9 +680,19 @@ async function handleSubscriptionPaused(env, entity) {
   const subId = entity.id;
 
   try {
-    await env.DB.prepare(
-      `UPDATE subscriptions SET status = 'paused', updated_at = datetime('now') WHERE razorpay_subscription_id = ? AND status = 'active'`
-    ).bind(subId).run();
+    const sub = await env.DB.prepare(
+      `SELECT * FROM subscriptions WHERE razorpay_subscription_id = ? AND status = 'active'`
+    ).bind(subId).first();
+
+    if (sub) {
+      await env.DB.prepare(
+        `UPDATE subscriptions SET status = 'paused', updated_at = datetime('now') WHERE id = ?`
+      ).bind(sub.id).run();
+
+      await env.DB.prepare(
+        `UPDATE sites SET subscription_expires_at = datetime('now'), updated_at = datetime('now') WHERE user_id = ?`
+      ).bind(sub.user_id).run();
+    }
 
     console.log('Subscription paused:', subId);
   } catch (err) {
