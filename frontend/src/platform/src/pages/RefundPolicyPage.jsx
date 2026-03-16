@@ -18,7 +18,7 @@ export default function RefundPolicyPage() {
 
           <section>
             <h2>2. Free Trial</h2>
-            <p>Fluxe offers a 7-day free trial for new users. During the trial period, you have full access to the platform features at no cost. No payment information is required to start a free trial. At the end of the trial, your account will revert to the free plan unless you choose to subscribe to a paid plan.</p>
+            <p>Fluxe offers a 7-day free trial for new users. During the trial period, you have full access to the platform features at no cost. No payment information is required to start a free trial. At the end of the trial, your account will be suspended and your website will be disabled unless you choose to subscribe to a paid plan.</p>
           </section>
 
           <section>
@@ -28,7 +28,7 @@ export default function RefundPolicyPage() {
               <li>Your subscription will remain active until the end of the current billing period</li>
               <li>You will not be charged for the next billing cycle</li>
               <li>Your websites will continue to function until the subscription period ends</li>
-              <li>After the subscription expires, your account will revert to the free plan</li>
+              <li>After the subscription expires, your account will be suspended and your website will be disabled</li>
             </ul>
           </section>
 

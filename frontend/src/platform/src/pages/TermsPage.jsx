@@ -33,7 +33,7 @@ export default function TermsPage() {
 
           <section>
             <h2>5. Free Trial</h2>
-            <p>We may offer a free trial period for new users. At the end of the trial period, your account will revert to the free plan unless you subscribe to a paid plan. We reserve the right to modify or discontinue the free trial at any time.</p>
+            <p>We may offer a 7-day free trial period for new users. At the end of the trial period, your account will be suspended and your website will be disabled unless you subscribe to a paid plan. We reserve the right to modify or discontinue the free trial at any time.</p>
           </section>
 
           <section>

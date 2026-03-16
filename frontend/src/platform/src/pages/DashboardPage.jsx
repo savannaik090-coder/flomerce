@@ -72,6 +72,8 @@ export default function DashboardPage() {
     const hasActivePlan = plan && status === 'active';
     if (!hasActivePlan) {
       setShowPlanOverlay(true);
+    } else {
+      setShowPlanOverlay(false);
     }
   }, [dataLoaded, profileData, subscription]);
 
