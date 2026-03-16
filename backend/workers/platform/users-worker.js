@@ -103,7 +103,7 @@ async function getProfile(env, user) {
       emailVerified: !!profile.email_verified,
       plan: subscription?.plan || null,
       billingCycle: subscription?.billing_cycle || null,
-      status: subscription?.status || 'none',
+      status: subscription?.status || (hadSubscription ? 'expired' : 'none'),
       trialStartDate: subscription?.current_period_start || null,
       trialEndDate: subscription?.current_period_end || null,
       hadSubscription: hadSubscription,
