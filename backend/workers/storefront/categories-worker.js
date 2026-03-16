@@ -199,7 +199,7 @@ async function createCategory(request, env, user) {
       displayOrder || 0
     ).run();
 
-    trackD1Usage(env, siteId, estimatedBytes).catch(() => {});
+    await trackD1Usage(env, siteId, estimatedBytes);
 
     return successResponse({ id: categoryId, slug }, 'Category created successfully');
   } catch (error) {
@@ -266,11 +266,6 @@ async function updateCategory(request, env, user, categoryId) {
       `UPDATE categories SET ${setClause.join(', ')} WHERE id = ?`
     ).bind(...values).run();
 
-    const siteId = category.site_id || updates.siteId;
-    if (siteId) {
-      trackD1Usage(env, siteId, estimateRowBytes(updates)).catch(() => {});
-    }
-
     return successResponse(null, 'Category updated successfully');
   } catch (error) {
     console.error('Update category error:', error);
@@ -315,7 +310,7 @@ async function deleteCategory(env, user, categoryId) {
 
     if (fullCategory) {
       const rowBytes = estimateRowBytes(fullCategory);
-      trackD1Usage(env, fullCategory.site_id, -rowBytes).catch(() => {});
+      await trackD1Usage(env, fullCategory.site_id, -rowBytes);
     }
 
     return successResponse(null, 'Category deleted successfully');

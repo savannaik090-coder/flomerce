@@ -312,7 +312,7 @@ async function createOrder(request, env, user) {
       notes || null
     ).run();
 
-    trackD1Usage(env, siteId, estimatedBytes).catch(() => {});
+    await trackD1Usage(env, siteId, estimatedBytes);
 
     if (!isPendingPayment) {
       for (const item of processedItems) {
@@ -422,11 +422,6 @@ async function updateOrderStatus(request, env, user, orderId) {
     await env.DB.prepare(
       `UPDATE orders SET ${updates.join(', ')} WHERE id = ?`
     ).bind(...values).run();
-
-    if (order.site_id) {
-      const updateData = { status, trackingNumber, carrier, cancellationReason };
-      trackD1Usage(env, order.site_id, estimateRowBytes(updateData)).catch(() => {});
-    }
 
     if (status === 'cancelled' && cancellationReason) {
       try {
@@ -602,7 +597,7 @@ async function createGuestOrder(request, env) {
       customerPhone
     ).run();
 
-    trackD1Usage(env, siteId, guestEstBytes).catch(() => {});
+    await trackD1Usage(env, siteId, guestEstBytes);
 
     if (!isPendingPayment) {
       for (const item of processedItems) {

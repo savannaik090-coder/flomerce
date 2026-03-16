@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-axIt2E/checked-fetch.js
+// .wrangler/tmp/bundle-X7wTnU/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-axIt2E/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-X7wTnU/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-axIt2E/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-X7wTnU/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-axIt2E/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-X7wTnU/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -657,6 +657,10 @@ async function handleUsageAPI(request, env, path) {
     return errorResponse("siteId is required", 400);
   }
   if (request.method === "POST") {
+    const action = url.searchParams.get("action");
+    if (action === "reconcile") {
+      return handleReconcile(env, user, siteId);
+    }
     return handleOverageToggle(request, env, user, siteId);
   }
   if (request.method !== "GET") {
@@ -674,6 +678,21 @@ async function handleUsageAPI(request, env, path) {
       const reconciled = await reconcileSiteUsage(env, siteId);
       if (reconciled) {
         usage = { d1BytesUsed: reconciled.d1BytesUsed, r2BytesUsed: reconciled.r2BytesUsed, lastUpdated: (/* @__PURE__ */ new Date()).toISOString() };
+      }
+    } else if (usage.r2BytesUsed === 0) {
+      const mediaTotal = await env.DB.prepare(
+        "SELECT SUM(size_bytes) as total FROM site_media WHERE site_id = ?"
+      ).bind(siteId).first();
+      const r2FromMedia = mediaTotal?.total || 0;
+      if (r2FromMedia > 0) {
+        await env.DB.prepare(`
+          INSERT INTO site_usage (site_id, d1_bytes_used, r2_bytes_used, last_updated)
+          VALUES (?, ?, ?, datetime('now'))
+          ON CONFLICT(site_id) DO UPDATE SET
+            r2_bytes_used = ?,
+            last_updated = datetime('now')
+        `).bind(siteId, usage.d1BytesUsed, r2FromMedia, r2FromMedia).run();
+        usage = { ...usage, r2BytesUsed: r2FromMedia, lastUpdated: (/* @__PURE__ */ new Date()).toISOString() };
       }
     }
     const planKey = getSitePlan(site);
@@ -752,6 +771,27 @@ async function handleOverageToggle(request, env, user, siteId) {
     return errorResponse("Failed to update overage settings", 500);
   }
 }
+async function handleReconcile(env, user, siteId) {
+  try {
+    const site = await env.DB.prepare(
+      "SELECT id FROM sites WHERE id = ? AND user_id = ?"
+    ).bind(siteId, user.id).first();
+    if (!site) {
+      return errorResponse("Site not found or unauthorized", 404);
+    }
+    const reconciled = await reconcileSiteUsage(env, siteId);
+    if (!reconciled) {
+      return errorResponse("Failed to reconcile usage", 500);
+    }
+    return successResponse({
+      d1BytesUsed: reconciled.d1BytesUsed,
+      r2BytesUsed: reconciled.r2BytesUsed
+    }, "Usage reconciled successfully");
+  } catch (error) {
+    console.error("Reconcile error:", error);
+    return errorResponse("Failed to reconcile usage", 500);
+  }
+}
 var PLAN_LIMITS, OVERAGE_RATES;
 var init_usage_tracker = __esm({
   "utils/usage-tracker.js"() {
@@ -783,6 +823,7 @@ var init_usage_tracker = __esm({
     __name(reconcileSiteUsage, "reconcileSiteUsage");
     __name(handleUsageAPI, "handleUsageAPI");
     __name(handleOverageToggle, "handleOverageToggle");
+    __name(handleReconcile, "handleReconcile");
   }
 });
 
@@ -1077,9 +1118,6 @@ async function saveSiteSEO(request, env) {
       favicon_url || null,
       siteId
     ).run();
-    const seoData = { seo_title, seo_description, seo_og_image, seo_robots, google_verification, favicon_url };
-    trackD1Usage(env, siteId, estimateRowBytes(seoData)).catch(() => {
-    });
     return jsonResponse({ success: true, message: "SEO settings saved" });
   } catch (err) {
     console.error("saveSiteSEO error:", err);
@@ -1119,8 +1157,6 @@ async function saveCategorySEO(request, env, categoryId) {
         updated_at = datetime('now')
        WHERE id = ? AND site_id = ?`
     ).bind(seo_title || null, seo_description || null, seo_og_image || null, categoryId, siteId).run();
-    trackD1Usage(env, siteId, estimateRowBytes({ seo_title, seo_description, seo_og_image })).catch(() => {
-    });
     return jsonResponse({ success: true, message: "Category SEO saved" });
   } catch (err) {
     console.error("saveCategorySEO error:", err);
@@ -1172,8 +1208,6 @@ async function saveProductSEO(request, env, productId) {
         updated_at = datetime('now')
        WHERE id = ? AND site_id = ?`
     ).bind(seo_title || null, seo_description || null, seo_og_image || null, productId, siteId).run();
-    trackD1Usage(env, siteId, estimateRowBytes({ seo_title, seo_description, seo_og_image })).catch(() => {
-    });
     return jsonResponse({ success: true, message: "Product SEO saved" });
   } catch (err) {
     console.error("saveProductSEO error:", err);
@@ -1225,16 +1259,13 @@ async function savePageSEO(request, env, pageType) {
           updated_at = datetime('now')
          WHERE id = ?`
       ).bind(seo_title || null, seo_description || null, seo_og_image || null, existing.id).run();
-      trackD1Usage(env, siteId, estimateRowBytes(pageSeoData)).catch(() => {
-      });
     } else {
       const id = crypto.randomUUID();
       await env.DB.prepare(
         `INSERT INTO page_seo (id, site_id, page_type, seo_title, seo_description, seo_og_image)
          VALUES (?, ?, ?, ?, ?, ?)`
       ).bind(id, siteId, pageType, seo_title || null, seo_description || null, seo_og_image || null).run();
-      trackD1Usage(env, siteId, estimateRowBytes({ id, site_id: siteId, ...pageSeoData })).catch(() => {
-      });
+      await trackD1Usage(env, siteId, estimateRowBytes({ id, site_id: siteId, ...pageSeoData }));
     }
     return jsonResponse({ success: true, message: "Page SEO saved" });
   } catch (err) {
@@ -1316,8 +1347,6 @@ async function saveSocialTags(request, env) {
       twitter_site || null,
       siteId
     ).run();
-    trackD1Usage(env, siteId, estimateRowBytes({ og_title, og_description, og_image, og_type, twitter_card, twitter_title, twitter_description, twitter_image, twitter_site })).catch(() => {
-    });
     return jsonResponse({ success: true, message: "Social media tags saved" });
   } catch (err) {
     console.error("saveSocialTags error:", err);
@@ -1381,12 +1410,12 @@ var init_site_admin_worker = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-axIt2E/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-X7wTnU/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-axIt2E/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-X7wTnU/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -3053,8 +3082,7 @@ async function createDefaultCategories(env, siteId, businessCategory) {
       `INSERT INTO categories (id, site_id, name, slug, subtitle, show_on_home, display_order, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(parentId, siteId, cat.name, cat.slug, cat.subtitle || null, cat.showOnHome !== void 0 ? cat.showOnHome : 1, order++).run();
-    trackD1Usage(env, siteId, estimateRowBytes({ id: parentId, site_id: siteId, name: cat.name, slug: cat.slug, subtitle: cat.subtitle })).catch(() => {
-    });
+    await trackD1Usage(env, siteId, estimateRowBytes({ id: parentId, site_id: siteId, name: cat.name, slug: cat.slug, subtitle: cat.subtitle }));
     for (const childName of cat.children || []) {
       const childId = generateId();
       const childSlug = `${cat.slug}-${childName.toLowerCase().replace(/\s+/g, "-")}`;
@@ -3062,8 +3090,7 @@ async function createDefaultCategories(env, siteId, businessCategory) {
         `INSERT INTO categories (id, site_id, name, slug, parent_id, show_on_home, display_order, created_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
       ).bind(childId, siteId, childName, childSlug, parentId, 0, order++).run();
-      trackD1Usage(env, siteId, estimateRowBytes({ id: childId, site_id: siteId, name: childName, slug: childSlug, parent_id: parentId })).catch(() => {
-      });
+      await trackD1Usage(env, siteId, estimateRowBytes({ id: childId, site_id: siteId, name: childName, slug: childSlug, parent_id: parentId }));
     }
   }
 }
@@ -3082,8 +3109,7 @@ async function createUserCategories(env, siteId, categories) {
       `INSERT INTO categories (id, site_id, name, slug, subtitle, show_on_home, display_order, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(catId, siteId, categoryName, slug, subtitle, showOnHome, order++).run();
-    trackD1Usage(env, siteId, estimateRowBytes({ id: catId, site_id: siteId, name: categoryName, slug, subtitle })).catch(() => {
-    });
+    await trackD1Usage(env, siteId, estimateRowBytes({ id: catId, site_id: siteId, name: categoryName, slug, subtitle }));
   }
 }
 __name(createUserCategories, "createUserCategories");
@@ -3131,8 +3157,6 @@ async function updateSite(request, env, user, siteId) {
     await env.DB.prepare(
       `UPDATE sites SET ${setClause.join(", ")} WHERE id = ?`
     ).bind(...values).run();
-    trackD1Usage(env, siteId, estimateRowBytes(updates)).catch(() => {
-    });
     return successResponse(null, "Site updated successfully");
   } catch (error) {
     console.error("Update site error:", error);
@@ -3175,8 +3199,6 @@ async function updateSiteAsAdmin(request, env, siteId) {
     await env.DB.prepare(
       `UPDATE sites SET ${setClause.join(", ")} WHERE id = ?`
     ).bind(...values).run();
-    trackD1Usage(env, siteId, estimateRowBytes(updates)).catch(() => {
-    });
     return successResponse(null, "Site updated successfully");
   } catch (error) {
     console.error("Update site as admin error:", error);
@@ -3610,8 +3632,7 @@ async function createProduct(request, env, user) {
       tags ? JSON.stringify(tags) : "[]",
       isFeatured ? 1 : 0
     ).run();
-    trackD1Usage(env, siteId, estimatedBytes).catch(() => {
-    });
+    await trackD1Usage(env, siteId, estimatedBytes);
     return successResponse({ id: productId, slug }, "Product created successfully");
   } catch (error) {
     console.error("Create product error:", error);
@@ -3676,11 +3697,6 @@ async function updateProduct(request, env, user, productId) {
     await env.DB.prepare(
       `UPDATE products SET ${setClause.join(", ")} WHERE id = ?`
     ).bind(...values).run();
-    const siteId = product.site_id || updates.siteId;
-    if (siteId) {
-      trackD1Usage(env, siteId, estimateRowBytes(updates)).catch(() => {
-      });
-    }
     return successResponse(null, "Product updated successfully");
   } catch (error) {
     console.error("Update product error:", error);
@@ -3712,8 +3728,7 @@ async function deleteProduct(env, user, productId) {
     await env.DB.prepare("DELETE FROM products WHERE id = ?").bind(productId).run();
     if (fullProduct) {
       const rowBytes = estimateRowBytes(fullProduct);
-      trackD1Usage(env, fullProduct.site_id, -rowBytes).catch(() => {
-      });
+      await trackD1Usage(env, fullProduct.site_id, -rowBytes);
     }
     return successResponse(null, "Product deleted successfully");
   } catch (error) {
@@ -4026,8 +4041,7 @@ async function createOrder(request, env, user) {
       appliedCouponCode || null,
       notes || null
     ).run();
-    trackD1Usage(env, siteId, estimatedBytes).catch(() => {
-    });
+    await trackD1Usage(env, siteId, estimatedBytes);
     if (!isPendingPayment) {
       for (const item of processedItems) {
         await updateProductStock(env, item.productId, item.quantity, "decrement");
@@ -4132,11 +4146,6 @@ async function updateOrderStatus(request, env, user, orderId) {
     await env.DB.prepare(
       `UPDATE orders SET ${updates.join(", ")} WHERE id = ?`
     ).bind(...values).run();
-    if (order.site_id) {
-      const updateData = { status, trackingNumber, carrier, cancellationReason };
-      trackD1Usage(env, order.site_id, estimateRowBytes(updateData)).catch(() => {
-      });
-    }
     if (status === "cancelled" && cancellationReason) {
       try {
         const fullOrder = await env.DB.prepare("SELECT * FROM orders WHERE id = ?").bind(orderId).first();
@@ -4296,8 +4305,7 @@ async function createGuestOrder(request, env) {
       customerEmail || null,
       customerPhone
     ).run();
-    trackD1Usage(env, siteId, guestEstBytes).catch(() => {
-    });
+    await trackD1Usage(env, siteId, guestEstBytes);
     if (!isPendingPayment) {
       for (const item of processedItems) {
         await updateProductStock(env, item.productId, item.quantity, "decrement");
@@ -4520,8 +4528,7 @@ async function getOrCreateCart(env, siteId, user, sessionId) {
       `INSERT INTO carts (id, site_id, user_id, session_id, items, subtotal, created_at)
        VALUES (?, ?, ?, ?, '[]', 0, datetime('now'))`
     ).bind(cartId, siteId, user ? user.id : null, user ? null : sessionId).run();
-    trackD1Usage(env, siteId, estimateRowBytes({ id: cartId, site_id: siteId, user_id: user?.id, session_id: sessionId, items: "[]", subtotal: 0 })).catch(() => {
-    });
+    await trackD1Usage(env, siteId, estimateRowBytes({ id: cartId, site_id: siteId, user_id: user?.id, session_id: sessionId, items: "[]", subtotal: 0 }));
     cart = { id: cartId, items: "[]", subtotal: 0 };
   }
   return cart;
@@ -4839,8 +4846,7 @@ async function addToWishlist(request, env, user, siteId) {
       `INSERT INTO wishlists (id, site_id, user_id, product_id, created_at)
        VALUES (?, ?, ?, ?, datetime('now'))`
     ).bind(wishlistId, siteId, user.id, productId).run();
-    trackD1Usage(env, siteId, estimateRowBytes({ id: wishlistId, site_id: siteId, user_id: user.id, product_id: productId })).catch(() => {
-    });
+    await trackD1Usage(env, siteId, estimateRowBytes({ id: wishlistId, site_id: siteId, user_id: user.id, product_id: productId }));
     return successResponse({ id: wishlistId }, "Added to wishlist");
   } catch (error) {
     console.error("Add to wishlist error:", error);
@@ -4862,8 +4868,7 @@ async function removeFromWishlist(request, env, user, siteId) {
       "DELETE FROM wishlists WHERE user_id = ? AND product_id = ? AND site_id = ?"
     ).bind(user.id, productId, siteId).run();
     if (existing) {
-      trackD1Usage(env, siteId, -estimateRowBytes(existing)).catch(() => {
-      });
+      await trackD1Usage(env, siteId, -estimateRowBytes(existing));
     }
     return successResponse(null, "Removed from wishlist");
   } catch (error) {
@@ -5810,8 +5815,7 @@ async function createCategory(request, env, user) {
       imageUrl || null,
       displayOrder || 0
     ).run();
-    trackD1Usage(env, siteId, estimatedBytes).catch(() => {
-    });
+    await trackD1Usage(env, siteId, estimatedBytes);
     return successResponse({ id: categoryId, slug }, "Category created successfully");
   } catch (error) {
     console.error("Create category error:", error);
@@ -5867,11 +5871,6 @@ async function updateCategory(request, env, user, categoryId) {
     await env.DB.prepare(
       `UPDATE categories SET ${setClause.join(", ")} WHERE id = ?`
     ).bind(...values).run();
-    const siteId = category.site_id || updates.siteId;
-    if (siteId) {
-      trackD1Usage(env, siteId, estimateRowBytes(updates)).catch(() => {
-      });
-    }
     return successResponse(null, "Category updated successfully");
   } catch (error) {
     console.error("Update category error:", error);
@@ -5909,8 +5908,7 @@ async function deleteCategory(env, user, categoryId) {
     await env.DB.prepare("DELETE FROM categories WHERE id = ?").bind(categoryId).run();
     if (fullCategory) {
       const rowBytes = estimateRowBytes(fullCategory);
-      trackD1Usage(env, fullCategory.site_id, -rowBytes).catch(() => {
-      });
+      await trackD1Usage(env, fullCategory.site_id, -rowBytes);
     }
     return successResponse(null, "Category deleted successfully");
   } catch (error) {
@@ -7513,8 +7511,7 @@ async function createAddress(request, env, customer) {
     ).run();
     try {
       const { trackD1Usage: trackD1Usage2, estimateRowBytes: estimateRowBytes2 } = await Promise.resolve().then(() => (init_usage_tracker(), usage_tracker_exports));
-      trackD1Usage2(env, customer.site_id, estimateRowBytes2({ id, site_id: customer.site_id, customer_id: customer.id, label, firstName, lastName, phone, houseNumber, roadName, city, state, pinCode })).catch(() => {
-      });
+      await trackD1Usage2(env, customer.site_id, estimateRowBytes2({ id, site_id: customer.site_id, customer_id: customer.id, label, firstName, lastName, phone, houseNumber, roadName, city, state, pinCode }));
     } catch (_) {
     }
     const address = await env.DB.prepare(
@@ -7594,8 +7591,7 @@ async function deleteAddress(env, customer, addressId) {
     ).bind(addressId, customer.id, customer.site_id).run();
     try {
       const { trackD1Usage: trackD1Usage2, estimateRowBytes: estimateRowBytes2 } = await Promise.resolve().then(() => (init_usage_tracker(), usage_tracker_exports));
-      trackD1Usage2(env, customer.site_id, -estimateRowBytes2(existing)).catch(() => {
-      });
+      await trackD1Usage2(env, customer.site_id, -estimateRowBytes2(existing));
     } catch (_) {
     }
     return successResponse(null, "Address deleted successfully");
@@ -7655,8 +7651,7 @@ async function handleSignup2(request, env) {
       `INSERT INTO site_customers (id, site_id, email, password_hash, name, phone, email_verified, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(customerId, siteId, email.toLowerCase(), passwordHash, sanitizeInput(name), phone || null, skipVerification ? 1 : 0).run();
-    trackD1Usage2(env, siteId, estimatedBytes).catch(() => {
-    });
+    await trackD1Usage2(env, siteId, estimatedBytes);
     if (!skipVerification) {
       const verifyToken = generateToken(32);
       const verifyExpiry = getExpiryDate(24);
@@ -8196,8 +8191,7 @@ async function uploadImage(request, env, url) {
             cacheControl: "public, max-age=31536000"
           }
         });
-        recordMediaFile(env, siteId, key2, file.size, "image").catch(() => {
-        });
+        await recordMediaFile(env, siteId, key2, file.size, "image");
         const imageUrl2 = `/api/upload/image?key=${encodeURIComponent(key2)}`;
         results.push({ url: imageUrl2, key: key2 });
       }
@@ -8242,8 +8236,7 @@ async function uploadImage(request, env, url) {
         cacheControl: "public, max-age=31536000"
       }
     });
-    recordMediaFile(env, siteId, key, buffer.length, "image").catch(() => {
-    });
+    await recordMediaFile(env, siteId, key, buffer.length, "image");
     const imageUrl = `/api/upload/image?key=${encodeURIComponent(key)}`;
     return successResponse({ url: imageUrl, key }, "Image uploaded successfully");
   } catch (error) {
@@ -8284,8 +8277,7 @@ async function deleteImage(request, env, url) {
   }
   try {
     await env.STORAGE.delete(key);
-    removeMediaFile(env, siteId, key).catch(() => {
-    });
+    await removeMediaFile(env, siteId, key);
     return successResponse(null, "Image deleted successfully");
   } catch (error) {
     console.error("Delete image error:", error);
@@ -8326,8 +8318,7 @@ async function uploadVideo(request, env, url) {
           cacheControl: "public, max-age=31536000"
         }
       });
-      recordMediaFile(env, siteId, key, file.size, "video").catch(() => {
-      });
+      await recordMediaFile(env, siteId, key, file.size, "video");
       const videoUrl = `/api/upload/video?key=${encodeURIComponent(key)}`;
       return successResponse({ url: videoUrl, key }, "Video uploaded successfully");
     }
@@ -8371,8 +8362,7 @@ async function deleteVideo(request, env, url) {
   }
   try {
     await env.STORAGE.delete(key);
-    removeMediaFile(env, siteId, key).catch(() => {
-    });
+    await removeMediaFile(env, siteId, key);
     return successResponse(null, "Video deleted successfully");
   } catch (error) {
     console.error("Delete video error:", error);
@@ -9392,7 +9382,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-axIt2E/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-X7wTnU/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -9427,7 +9417,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-axIt2E/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-X7wTnU/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

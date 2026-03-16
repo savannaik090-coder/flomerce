@@ -259,6 +259,10 @@ export async function handleUsageAPI(request, env, path) {
   }
 
   if (request.method === 'POST') {
+    const action = url.searchParams.get('action');
+    if (action === 'reconcile') {
+      return handleReconcile(env, user, siteId);
+    }
     return handleOverageToggle(request, env, user, siteId);
   }
 
@@ -281,6 +285,21 @@ export async function handleUsageAPI(request, env, path) {
       const reconciled = await reconcileSiteUsage(env, siteId);
       if (reconciled) {
         usage = { d1BytesUsed: reconciled.d1BytesUsed, r2BytesUsed: reconciled.r2BytesUsed, lastUpdated: new Date().toISOString() };
+      }
+    } else if (usage.r2BytesUsed === 0) {
+      const mediaTotal = await env.DB.prepare(
+        'SELECT SUM(size_bytes) as total FROM site_media WHERE site_id = ?'
+      ).bind(siteId).first();
+      const r2FromMedia = mediaTotal?.total || 0;
+      if (r2FromMedia > 0) {
+        await env.DB.prepare(`
+          INSERT INTO site_usage (site_id, d1_bytes_used, r2_bytes_used, last_updated)
+          VALUES (?, ?, ?, datetime('now'))
+          ON CONFLICT(site_id) DO UPDATE SET
+            r2_bytes_used = ?,
+            last_updated = datetime('now')
+        `).bind(siteId, usage.d1BytesUsed, r2FromMedia, r2FromMedia).run();
+        usage = { ...usage, r2BytesUsed: r2FromMedia, lastUpdated: new Date().toISOString() };
       }
     }
 
@@ -369,5 +388,30 @@ async function handleOverageToggle(request, env, user, siteId) {
   } catch (error) {
     console.error('Overage toggle error:', error);
     return errorResponse('Failed to update overage settings', 500);
+  }
+}
+
+async function handleReconcile(env, user, siteId) {
+  try {
+    const site = await env.DB.prepare(
+      'SELECT id FROM sites WHERE id = ? AND user_id = ?'
+    ).bind(siteId, user.id).first();
+
+    if (!site) {
+      return errorResponse('Site not found or unauthorized', 404);
+    }
+
+    const reconciled = await reconcileSiteUsage(env, siteId);
+    if (!reconciled) {
+      return errorResponse('Failed to reconcile usage', 500);
+    }
+
+    return successResponse({
+      d1BytesUsed: reconciled.d1BytesUsed,
+      r2BytesUsed: reconciled.r2BytesUsed,
+    }, 'Usage reconciled successfully');
+  } catch (error) {
+    console.error('Reconcile error:', error);
+    return errorResponse('Failed to reconcile usage', 500);
   }
 }

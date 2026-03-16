@@ -127,7 +127,7 @@ async function uploadImage(request, env, url) {
           },
         });
 
-        recordMediaFile(env, siteId, key, file.size, 'image').catch(() => {});
+        await recordMediaFile(env, siteId, key, file.size, 'image');
 
         const imageUrl = `/api/upload/image?key=${encodeURIComponent(key)}`;
         results.push({ url: imageUrl, key });
@@ -182,7 +182,7 @@ async function uploadImage(request, env, url) {
       },
     });
 
-    recordMediaFile(env, siteId, key, buffer.length, 'image').catch(() => {});
+    await recordMediaFile(env, siteId, key, buffer.length, 'image');
 
     const imageUrl = `/api/upload/image?key=${encodeURIComponent(key)}`;
     return successResponse({ url: imageUrl, key }, 'Image uploaded successfully');
@@ -228,7 +228,7 @@ async function deleteImage(request, env, url) {
 
   try {
     await env.STORAGE.delete(key);
-    removeMediaFile(env, siteId, key).catch(() => {});
+    await removeMediaFile(env, siteId, key);
     return successResponse(null, 'Image deleted successfully');
   } catch (error) {
     console.error('Delete image error:', error);
@@ -276,7 +276,7 @@ async function uploadVideo(request, env, url) {
         },
       });
 
-      recordMediaFile(env, siteId, key, file.size, 'video').catch(() => {});
+      await recordMediaFile(env, siteId, key, file.size, 'video');
 
       const videoUrl = `/api/upload/video?key=${encodeURIComponent(key)}`;
       return successResponse({ url: videoUrl, key }, 'Video uploaded successfully');
@@ -325,7 +325,7 @@ async function deleteVideo(request, env, url) {
 
   try {
     await env.STORAGE.delete(key);
-    removeMediaFile(env, siteId, key).catch(() => {});
+    await removeMediaFile(env, siteId, key);
     return successResponse(null, 'Video deleted successfully');
   } catch (error) {
     console.error('Delete video error:', error);

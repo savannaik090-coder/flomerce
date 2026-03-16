@@ -108,7 +108,7 @@ async function getOrCreateCart(env, siteId, user, sessionId) {
        VALUES (?, ?, ?, ?, '[]', 0, datetime('now'))`
     ).bind(cartId, siteId, user ? user.id : null, user ? null : sessionId).run();
 
-    trackD1Usage(env, siteId, estimateRowBytes({ id: cartId, site_id: siteId, user_id: user?.id, session_id: sessionId, items: '[]', subtotal: 0 })).catch(() => {});
+    await trackD1Usage(env, siteId, estimateRowBytes({ id: cartId, site_id: siteId, user_id: user?.id, session_id: sessionId, items: '[]', subtotal: 0 }));
 
     cart = { id: cartId, items: '[]', subtotal: 0 };
   }

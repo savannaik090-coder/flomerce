@@ -231,7 +231,7 @@ async function createProduct(request, env, user) {
       isFeatured ? 1 : 0
     ).run();
 
-    trackD1Usage(env, siteId, estimatedBytes).catch(() => {});
+    await trackD1Usage(env, siteId, estimatedBytes);
 
     return successResponse({ id: productId, slug }, 'Product created successfully');
   } catch (error) {
@@ -305,11 +305,6 @@ async function updateProduct(request, env, user, productId) {
       `UPDATE products SET ${setClause.join(', ')} WHERE id = ?`
     ).bind(...values).run();
 
-    const siteId = product.site_id || updates.siteId;
-    if (siteId) {
-      trackD1Usage(env, siteId, estimateRowBytes(updates)).catch(() => {});
-    }
-
     return successResponse(null, 'Product updated successfully');
   } catch (error) {
     console.error('Update product error:', error);
@@ -345,7 +340,7 @@ async function deleteProduct(env, user, productId) {
 
     if (fullProduct) {
       const rowBytes = estimateRowBytes(fullProduct);
-      trackD1Usage(env, fullProduct.site_id, -rowBytes).catch(() => {});
+      await trackD1Usage(env, fullProduct.site_id, -rowBytes);
     }
 
     return successResponse(null, 'Product deleted successfully');

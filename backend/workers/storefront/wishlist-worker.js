@@ -136,7 +136,7 @@ async function addToWishlist(request, env, user, siteId) {
        VALUES (?, ?, ?, ?, datetime('now'))`
     ).bind(wishlistId, siteId, user.id, productId).run();
 
-    trackD1Usage(env, siteId, estimateRowBytes({ id: wishlistId, site_id: siteId, user_id: user.id, product_id: productId })).catch(() => {});
+    await trackD1Usage(env, siteId, estimateRowBytes({ id: wishlistId, site_id: siteId, user_id: user.id, product_id: productId }));
 
     return successResponse({ id: wishlistId }, 'Added to wishlist');
   } catch (error) {
@@ -163,7 +163,7 @@ async function removeFromWishlist(request, env, user, siteId) {
     ).bind(user.id, productId, siteId).run();
 
     if (existing) {
-      trackD1Usage(env, siteId, -estimateRowBytes(existing)).catch(() => {});
+      await trackD1Usage(env, siteId, -estimateRowBytes(existing));
     }
 
     return successResponse(null, 'Removed from wishlist');

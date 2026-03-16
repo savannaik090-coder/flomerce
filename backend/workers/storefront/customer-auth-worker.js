@@ -224,7 +224,7 @@ async function createAddress(request, env, customer) {
 
     try {
       const { trackD1Usage, estimateRowBytes } = await import('../../utils/usage-tracker.js');
-      trackD1Usage(env, customer.site_id, estimateRowBytes({ id, site_id: customer.site_id, customer_id: customer.id, label, firstName, lastName, phone, houseNumber, roadName, city, state, pinCode })).catch(() => {});
+      await trackD1Usage(env, customer.site_id, estimateRowBytes({ id, site_id: customer.site_id, customer_id: customer.id, label, firstName, lastName, phone, houseNumber, roadName, city, state, pinCode }));
     } catch (_) {}
 
     const address = await env.DB.prepare(
@@ -314,7 +314,7 @@ async function deleteAddress(env, customer, addressId) {
 
     try {
       const { trackD1Usage, estimateRowBytes } = await import('../../utils/usage-tracker.js');
-      trackD1Usage(env, customer.site_id, -estimateRowBytes(existing)).catch(() => {});
+      await trackD1Usage(env, customer.site_id, -estimateRowBytes(existing));
     } catch (_) {}
 
     return successResponse(null, 'Address deleted successfully');
@@ -389,7 +389,7 @@ async function handleSignup(request, env) {
        VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(customerId, siteId, email.toLowerCase(), passwordHash, sanitizeInput(name), phone || null, skipVerification ? 1 : 0).run();
 
-    trackD1Usage(env, siteId, estimatedBytes).catch(() => {});
+    await trackD1Usage(env, siteId, estimatedBytes);
 
     if (!skipVerification) {
       const verifyToken = generateToken(32);

@@ -365,7 +365,7 @@ async function createDefaultCategories(env, siteId, businessCategory) {
       `INSERT INTO categories (id, site_id, name, slug, subtitle, show_on_home, display_order, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(parentId, siteId, cat.name, cat.slug, cat.subtitle || null, cat.showOnHome !== undefined ? cat.showOnHome : 1, order++).run();
-    trackD1Usage(env, siteId, estimateRowBytes({ id: parentId, site_id: siteId, name: cat.name, slug: cat.slug, subtitle: cat.subtitle })).catch(() => {});
+    await trackD1Usage(env, siteId, estimateRowBytes({ id: parentId, site_id: siteId, name: cat.name, slug: cat.slug, subtitle: cat.subtitle }));
 
     for (const childName of (cat.children || [])) {
       const childId = generateId();
@@ -374,7 +374,7 @@ async function createDefaultCategories(env, siteId, businessCategory) {
         `INSERT INTO categories (id, site_id, name, slug, parent_id, show_on_home, display_order, created_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
       ).bind(childId, siteId, childName, childSlug, parentId, 0, order++).run();
-      trackD1Usage(env, siteId, estimateRowBytes({ id: childId, site_id: siteId, name: childName, slug: childSlug, parent_id: parentId })).catch(() => {});
+      await trackD1Usage(env, siteId, estimateRowBytes({ id: childId, site_id: siteId, name: childName, slug: childSlug, parent_id: parentId }));
     }
   }
 }
@@ -400,7 +400,7 @@ async function createUserCategories(env, siteId, categories) {
       `INSERT INTO categories (id, site_id, name, slug, subtitle, show_on_home, display_order, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(catId, siteId, categoryName, slug, subtitle, showOnHome, order++).run();
-    trackD1Usage(env, siteId, estimateRowBytes({ id: catId, site_id: siteId, name: categoryName, slug, subtitle })).catch(() => {});
+    await trackD1Usage(env, siteId, estimateRowBytes({ id: catId, site_id: siteId, name: categoryName, slug, subtitle }));
   }
 }
 
@@ -456,8 +456,6 @@ async function updateSite(request, env, user, siteId) {
       `UPDATE sites SET ${setClause.join(', ')} WHERE id = ?`
     ).bind(...values).run();
 
-    trackD1Usage(env, siteId, estimateRowBytes(updates)).catch(() => {});
-
     return successResponse(null, 'Site updated successfully');
   } catch (error) {
     console.error('Update site error:', error);
@@ -504,8 +502,6 @@ async function updateSiteAsAdmin(request, env, siteId) {
     await env.DB.prepare(
       `UPDATE sites SET ${setClause.join(', ')} WHERE id = ?`
     ).bind(...values).run();
-
-    trackD1Usage(env, siteId, estimateRowBytes(updates)).catch(() => {});
 
     return successResponse(null, 'Site updated successfully');
   } catch (error) {
