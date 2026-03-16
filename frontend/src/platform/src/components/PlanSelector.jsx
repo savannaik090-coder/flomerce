@@ -39,6 +39,7 @@ export default function PlanSelector({ siteId, currentPlan, currentStatus, onUpg
         is_popular: false,
         plans: {},
         display_order: plan.display_order ?? 999,
+        plan_tier: plan.plan_tier ?? 1,
       };
     }
     acc[key].prices[plan.billing_cycle] = plan.display_price;
@@ -46,6 +47,9 @@ export default function PlanSelector({ siteId, currentPlan, currentStatus, onUpg
     if (plan.is_popular) acc[key].is_popular = true;
     if (plan.display_order != null && plan.display_order < acc[key].display_order) {
       acc[key].display_order = plan.display_order;
+    }
+    if (plan.plan_tier != null && plan.plan_tier > acc[key].plan_tier) {
+      acc[key].plan_tier = plan.plan_tier;
     }
     return acc;
   }, {});
@@ -56,10 +60,10 @@ export default function PlanSelector({ siteId, currentPlan, currentStatus, onUpg
 
   const isActive = currentStatus === 'active';
   const currentPlanLower = (isActive && currentPlan) ? currentPlan.toLowerCase() : null;
-  const currentPlanOrder = (() => {
-    if (!currentPlanLower || currentPlanLower === 'trial') return -1;
+  const currentPlanTier = (() => {
+    if (!currentPlanLower || currentPlanLower === 'trial') return 0;
     const match = planList.find(p => p.name.toLowerCase() === currentPlanLower);
-    return match ? match.display_order : -1;
+    return match ? match.plan_tier : 0;
   })();
 
   const isExpired = currentStatus === 'expired' || currentStatus === 'none';
@@ -155,14 +159,15 @@ export default function PlanSelector({ siteId, currentPlan, currentStatus, onUpg
   const getButtonText = (planGroup) => {
     const planNameLower = planGroup.name.toLowerCase();
     if (isActive && planNameLower === currentPlanLower) return 'Current Plan';
-    if (!isActive || planGroup.display_order > currentPlanOrder) return 'Subscribe';
-    return 'Lower Tier';
+    if (!isActive || planGroup.plan_tier > currentPlanTier) return planGroup.plan_tier > currentPlanTier && isActive ? 'Upgrade' : 'Subscribe';
+    if (planGroup.plan_tier < currentPlanTier) return 'Lower Tier';
+    return 'Subscribe';
   };
 
   const isButtonDisabled = (planGroup) => {
     const planNameLower = planGroup.name.toLowerCase();
     if (isActive && planNameLower === currentPlanLower) return true;
-    if (isActive && planGroup.display_order < currentPlanOrder) return true;
+    if (isActive && planGroup.plan_tier < currentPlanTier) return true;
     return false;
   };
 

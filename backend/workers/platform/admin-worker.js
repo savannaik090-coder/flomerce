@@ -179,10 +179,15 @@ async function ensurePlansTables(env) {
       is_popular INTEGER DEFAULT 0,
       is_active INTEGER DEFAULT 1,
       display_order INTEGER DEFAULT 0,
+      plan_tier INTEGER DEFAULT 1,
       created_at TEXT DEFAULT (datetime('now')),
       updated_at TEXT DEFAULT (datetime('now'))
     )
   `).run();
+
+  try {
+    await env.DB.prepare(`ALTER TABLE subscription_plans ADD COLUMN plan_tier INTEGER DEFAULT 1`).run();
+  } catch (e) {}
 
   await env.DB.prepare(`
     CREATE TABLE IF NOT EXISTS platform_settings (
@@ -234,10 +239,14 @@ async function getPlans(env) {
 
 async function createPlan(request, env) {
   try {
-    const { plan_name, billing_cycle, display_price, razorpay_plan_id, features, is_popular, display_order } = await request.json();
+    const { plan_name, billing_cycle, display_price, razorpay_plan_id, features, is_popular, display_order, plan_tier } = await request.json();
 
     if (!plan_name || !billing_cycle || display_price === undefined || !razorpay_plan_id) {
       return errorResponse('Plan name, billing cycle, display price, and Razorpay Plan ID are required');
+    }
+
+    if (!plan_tier || plan_tier < 1 || plan_tier > 10) {
+      return errorResponse('Plan tier is required (1-10)');
     }
 
     const validCycles = ['monthly', '6months', 'yearly'];
@@ -247,8 +256,8 @@ async function createPlan(request, env) {
 
     const id = generateId();
     await env.DB.prepare(
-      `INSERT INTO subscription_plans (id, plan_name, billing_cycle, display_price, razorpay_plan_id, features, is_popular, display_order, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
+      `INSERT INTO subscription_plans (id, plan_name, billing_cycle, display_price, razorpay_plan_id, features, is_popular, display_order, plan_tier, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
     ).bind(
       id,
       plan_name,
@@ -257,7 +266,8 @@ async function createPlan(request, env) {
       razorpay_plan_id,
       JSON.stringify(features || []),
       is_popular ? 1 : 0,
-      display_order || 0
+      display_order || 0,
+      plan_tier
     ).run();
 
     return successResponse({ id }, 'Plan created successfully');
@@ -275,7 +285,7 @@ async function updatePlan(request, env, planId) {
     }
 
     const updates = await request.json();
-    const { plan_name, billing_cycle, display_price, razorpay_plan_id, features, is_popular, is_active, display_order } = updates;
+    const { plan_name, billing_cycle, display_price, razorpay_plan_id, features, is_popular, is_active, display_order, plan_tier } = updates;
 
     await env.DB.prepare(
       `UPDATE subscription_plans SET
@@ -287,6 +297,7 @@ async function updatePlan(request, env, planId) {
         is_popular = ?,
         is_active = ?,
         display_order = ?,
+        plan_tier = ?,
         updated_at = datetime('now')
       WHERE id = ?`
     ).bind(
@@ -298,6 +309,7 @@ async function updatePlan(request, env, planId) {
       is_popular !== undefined ? (is_popular ? 1 : 0) : existing.is_popular,
       is_active !== undefined ? (is_active ? 1 : 0) : existing.is_active,
       display_order ?? existing.display_order,
+      (plan_tier != null && plan_tier >= 1 && plan_tier <= 10) ? plan_tier : (existing.plan_tier ?? 1),
       planId
     ).run();
 

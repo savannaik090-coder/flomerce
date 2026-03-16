@@ -17,7 +17,7 @@ export default function OwnerAdminPage() {
   const [showPlanForm, setShowPlanForm] = useState(false);
   const [editingPlan, setEditingPlan] = useState(null);
   const [planForm, setPlanForm] = useState({
-    plan_name: '', billing_cycle: 'monthly', display_price: '', razorpay_plan_id: '', features: '', is_popular: false, display_order: 0
+    plan_name: '', billing_cycle: 'monthly', display_price: '', razorpay_plan_id: '', features: '', is_popular: false, display_order: 0, plan_tier: 1
   });
 
   const [settings, setSettings] = useState({});
@@ -76,10 +76,12 @@ export default function OwnerAdminPage() {
   };
 
   const resetPlanForm = () => {
-    setPlanForm({ plan_name: '', billing_cycle: 'monthly', display_price: '', razorpay_plan_id: '', features: '', is_popular: false, display_order: 0 });
+    setPlanForm({ plan_name: '', billing_cycle: 'monthly', display_price: '', razorpay_plan_id: '', features: '', is_popular: false, display_order: 0, plan_tier: 1 });
     setEditingPlan(null);
     setShowPlanForm(false);
   };
+
+  const TIER_LABELS = { 1: 'Tier 1 (Basic)', 2: 'Tier 2 (Standard)', 3: 'Tier 3 (Pro)', 4: 'Tier 4 (Premium)', 5: 'Tier 5 (Enterprise)' };
 
   const handlePlanSubmit = async (e) => {
     e.preventDefault();
@@ -88,6 +90,7 @@ export default function OwnerAdminPage() {
         ...planForm,
         display_price: parseFloat(planForm.display_price),
         display_order: parseInt(planForm.display_order) || 0,
+        plan_tier: parseInt(planForm.plan_tier) || 1,
         features: planForm.features ? planForm.features.split('\n').filter(f => f.trim()) : [],
       };
 
@@ -112,6 +115,7 @@ export default function OwnerAdminPage() {
       features: Array.isArray(plan.features) ? plan.features.join('\n') : '',
       is_popular: !!plan.is_popular,
       display_order: plan.display_order || 0,
+      plan_tier: plan.plan_tier || 1,
     });
     setEditingPlan(plan);
     setShowPlanForm(true);
@@ -386,7 +390,16 @@ export default function OwnerAdminPage() {
                   <div className="oa-form-grid">
                     <div className="oa-form-group">
                       <label>Plan Name</label>
-                      <input type="text" value={planForm.plan_name} onChange={e => setPlanForm({ ...planForm, plan_name: e.target.value })} placeholder="e.g. Basic, Premium, Pro" required />
+                      <input type="text" value={planForm.plan_name} onChange={e => setPlanForm({ ...planForm, plan_name: e.target.value })} placeholder="e.g. Starter, Growth, Enterprise" required />
+                    </div>
+                    <div className="oa-form-group">
+                      <label>Plan Tier</label>
+                      <select value={planForm.plan_tier} onChange={e => setPlanForm({ ...planForm, plan_tier: parseInt(e.target.value) })}>
+                        {Object.entries(TIER_LABELS).map(([val, label]) => (
+                          <option key={val} value={val}>{label}</option>
+                        ))}
+                      </select>
+                      <p style={{ fontSize: '0.7rem', color: '#94a3b8', margin: '0.25rem 0 0' }}>Defines the hierarchy level. Higher tier = more features.</p>
                     </div>
                     <div className="oa-form-group">
                       <label>Billing Cycle</label>
@@ -438,6 +451,7 @@ export default function OwnerAdminPage() {
                     <thead>
                       <tr>
                         <th>Plan Name</th>
+                        <th>Tier</th>
                         <th>Cycle</th>
                         <th>Price</th>
                         <th>Razorpay Plan ID</th>
@@ -451,6 +465,11 @@ export default function OwnerAdminPage() {
                           <td data-label="Name">
                             {p.plan_name}
                             {p.is_popular ? <span className="oa-badge oa-badge-popular" style={{ marginLeft: '0.5rem' }}>Popular</span> : ''}
+                          </td>
+                          <td data-label="Tier">
+                            <span className="oa-badge" style={{ background: '#e0e7ff', color: '#3730a3' }}>
+                              {TIER_LABELS[p.plan_tier] || `Tier ${p.plan_tier || 1}`}
+                            </span>
                           </td>
                           <td data-label="Cycle">{p.billing_cycle}</td>
                           <td data-label="Price">₹{p.display_price}</td>
@@ -484,7 +503,10 @@ export default function OwnerAdminPage() {
                             {p.plan_name}
                             {p.is_popular ? <span className="oa-badge oa-badge-popular" style={{ marginLeft: '0.5rem' }}>Popular</span> : ''}
                           </div>
-                          <div className="oa-user-card-email">{p.billing_cycle} - ₹{p.display_price}</div>
+                          <div className="oa-user-card-email">
+                            <span className="oa-badge" style={{ background: '#e0e7ff', color: '#3730a3', marginRight: '0.5rem' }}>{TIER_LABELS[p.plan_tier] || `Tier ${p.plan_tier || 1}`}</span>
+                            {p.billing_cycle} - ₹{p.display_price}
+                          </div>
                           <div className="oa-user-card-email" style={{ fontFamily: 'monospace' }}>{p.razorpay_plan_id}</div>
                         </div>
                         <span className={`oa-badge ${p.is_active ? 'oa-badge-green' : 'oa-badge-red'}`}>
