@@ -10,6 +10,10 @@ async function ensureRoleColumn(env) {
   } catch (e) {}
 
   try {
+    await env.DB.prepare("UPDATE users SET role = 'user' WHERE role IS NULL").run();
+  } catch (e) {}
+
+  try {
     const ownerExists = await env.DB.prepare("SELECT id FROM users WHERE role = 'owner' LIMIT 1").first();
     if (!ownerExists) {
       const firstUser = await env.DB.prepare("SELECT id FROM users ORDER BY created_at ASC LIMIT 1").first();
@@ -27,6 +31,13 @@ async function isOwner(user, env) {
   await ensureRoleColumn(env);
   const dbUser = await env.DB.prepare('SELECT role FROM users WHERE id = ?').bind(user.id).first();
   if (dbUser && (dbUser.role === 'admin' || dbUser.role === 'owner')) return true;
+
+  const ownerExists = await env.DB.prepare("SELECT id FROM users WHERE role = 'owner' LIMIT 1").first();
+  if (!ownerExists) {
+    await env.DB.prepare("UPDATE users SET role = 'owner' WHERE id = ?").bind(user.id).run();
+    return true;
+  }
+
   return false;
 }
 

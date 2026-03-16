@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-DpbYNw/checked-fetch.js
+// .wrangler/tmp/bundle-sH7v7P/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-DpbYNw/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-sH7v7P/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-DpbYNw/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-sH7v7P/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-DpbYNw/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-sH7v7P/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -994,12 +994,12 @@ var init_site_admin_worker = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-DpbYNw/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-sH7v7P/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-DpbYNw/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-sH7v7P/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -6125,6 +6125,10 @@ async function ensureRoleColumn(env) {
   } catch (e) {
   }
   try {
+    await env.DB.prepare("UPDATE users SET role = 'user' WHERE role IS NULL").run();
+  } catch (e) {
+  }
+  try {
     const ownerExists = await env.DB.prepare("SELECT id FROM users WHERE role = 'owner' LIMIT 1").first();
     if (!ownerExists) {
       const firstUser = await env.DB.prepare("SELECT id FROM users ORDER BY created_at ASC LIMIT 1").first();
@@ -6144,6 +6148,11 @@ async function isOwner(user, env) {
   const dbUser = await env.DB.prepare("SELECT role FROM users WHERE id = ?").bind(user.id).first();
   if (dbUser && (dbUser.role === "admin" || dbUser.role === "owner"))
     return true;
+  const ownerExists = await env.DB.prepare("SELECT id FROM users WHERE role = 'owner' LIMIT 1").first();
+  if (!ownerExists) {
+    await env.DB.prepare("UPDATE users SET role = 'owner' WHERE id = ?").bind(user.id).run();
+    return true;
+  }
   return false;
 }
 __name(isOwner, "isOwner");
@@ -7983,7 +7992,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-DpbYNw/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-sH7v7P/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -8018,7 +8027,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-DpbYNw/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-sH7v7P/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;
