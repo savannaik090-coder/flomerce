@@ -301,7 +301,7 @@ async function verifySubscriptionPayment(request, env, { razorpay_subscription_i
       return successResponse({ verified: true, planActivated: true, duplicate: true }, 'Subscription already activated');
     }
 
-    const activated = await activateSubscription(env, user.id, pending.plan_name, pending.billing_cycle, razorpay_payment_id, razorpay_subscription_id, pending.display_price);
+    const activated = await activateSubscription(env, user.id, pending.plan_name, pending.billing_cycle, razorpay_payment_id, razorpay_subscription_id, pending.display_price, pending.site_id || null);
 
     if (!activated) {
       return errorResponse('Failed to activate subscription', 500);
@@ -419,7 +419,7 @@ async function getUserSubscription(env, user) {
 
 async function createRazorpaySubscription(request, env, user) {
   try {
-    const { planId } = await request.json();
+    const { planId, siteId } = await request.json();
 
     if (!planId) {
       return errorResponse('Plan ID is required');
@@ -435,6 +435,15 @@ async function createRazorpaySubscription(request, env, user) {
 
     if (!plan.razorpay_plan_id) {
       return errorResponse('This plan is not configured for payments yet');
+    }
+
+    if (siteId) {
+      const site = await env.DB.prepare(
+        `SELECT id FROM sites WHERE id = ? AND user_id = ?`
+      ).bind(siteId, user.id).first();
+      if (!site) {
+        return errorResponse('Site not found or you do not own this site.', 403);
+      }
     }
 
     const platformKeyId = await getPlatformRazorpayKeyId(env);
@@ -460,6 +469,7 @@ async function createRazorpaySubscription(request, env, user) {
           planId: plan.id,
           planName: plan.plan_name,
           billingCycle: plan.billing_cycle,
+          siteId: siteId || '',
         },
       }),
     });
@@ -480,15 +490,20 @@ async function createRazorpaySubscription(request, env, user) {
         CREATE TABLE IF NOT EXISTS pending_subscriptions (
           id TEXT PRIMARY KEY,
           user_id TEXT NOT NULL,
+          site_id TEXT,
           plan_id TEXT NOT NULL,
           razorpay_subscription_id TEXT NOT NULL UNIQUE,
           created_at TEXT DEFAULT (datetime('now'))
         )
       `).run();
 
+      try {
+        await env.DB.prepare(`ALTER TABLE pending_subscriptions ADD COLUMN site_id TEXT`).run();
+      } catch (e) {}
+
       await env.DB.prepare(
-        `INSERT INTO pending_subscriptions (id, user_id, plan_id, razorpay_subscription_id, created_at) VALUES (?, ?, ?, ?, datetime('now'))`
-      ).bind(generateId(), user.id, plan.id, razorpaySub.id).run();
+        `INSERT INTO pending_subscriptions (id, user_id, site_id, plan_id, razorpay_subscription_id, created_at) VALUES (?, ?, ?, ?, ?, datetime('now'))`
+      ).bind(generateId(), user.id, siteId || null, plan.id, razorpaySub.id).run();
     } catch (dbErr) {
       console.error('Failed to store pending subscription (non-fatal):', dbErr);
     }
@@ -619,14 +634,14 @@ async function handleSubscriptionActivated(env, entity) {
     ).bind(subId).first();
 
     if (pending) {
-      await activateSubscription(env, pending.user_id, pending.plan_name, pending.billing_cycle, null, subId, pending.display_price);
+      await activateSubscription(env, pending.user_id, pending.plan_name, pending.billing_cycle, null, subId, pending.display_price, pending.site_id || null);
       try {
         await env.DB.prepare(`DELETE FROM pending_subscriptions WHERE razorpay_subscription_id = ?`).bind(subId).run();
       } catch {}
     } else {
       const notes = entity.notes || {};
       if (notes.userId && notes.planName) {
-        await activateSubscription(env, notes.userId, notes.planName, notes.billingCycle || 'monthly', null, subId, null);
+        await activateSubscription(env, notes.userId, notes.planName, notes.billingCycle || 'monthly', null, subId, null, notes.siteId || null);
       } else {
         console.error('No pending subscription or notes found for:', subId);
       }
@@ -654,9 +669,15 @@ async function handleSubscriptionCharged(env, subEntity, paymentEntity) {
         `UPDATE subscriptions SET current_period_end = ?, updated_at = datetime('now') WHERE id = ?`
       ).bind(newEnd.toISOString(), existingSub.id).run();
 
-      await env.DB.prepare(
-        `UPDATE sites SET subscription_expires_at = ?, updated_at = datetime('now') WHERE user_id = ?`
-      ).bind(newEnd.toISOString(), existingSub.user_id).run();
+      if (existingSub.site_id) {
+        await env.DB.prepare(
+          `UPDATE sites SET subscription_expires_at = ?, updated_at = datetime('now') WHERE id = ?`
+        ).bind(newEnd.toISOString(), existingSub.site_id).run();
+      } else {
+        await env.DB.prepare(
+          `UPDATE sites SET subscription_expires_at = ?, updated_at = datetime('now') WHERE user_id = ?`
+        ).bind(newEnd.toISOString(), existingSub.user_id).run();
+      }
 
       console.log('Subscription renewed:', subId);
     }
@@ -679,9 +700,15 @@ async function handleSubscriptionCancelled(env, entity) {
         `UPDATE subscriptions SET status = 'cancelled', cancelled_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`
       ).bind(sub.id).run();
 
-      await env.DB.prepare(
-        `UPDATE sites SET subscription_expires_at = datetime('now'), updated_at = datetime('now') WHERE user_id = ?`
-      ).bind(sub.user_id).run();
+      if (sub.site_id) {
+        await env.DB.prepare(
+          `UPDATE sites SET subscription_plan = 'expired', subscription_expires_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`
+        ).bind(sub.site_id).run();
+      } else {
+        await env.DB.prepare(
+          `UPDATE sites SET subscription_plan = 'expired', subscription_expires_at = datetime('now'), updated_at = datetime('now') WHERE user_id = ?`
+        ).bind(sub.user_id).run();
+      }
     }
 
     console.log('Subscription cancelled:', subId);
@@ -704,9 +731,15 @@ async function handleSubscriptionPaused(env, entity) {
         `UPDATE subscriptions SET status = 'paused', updated_at = datetime('now') WHERE id = ?`
       ).bind(sub.id).run();
 
-      await env.DB.prepare(
-        `UPDATE sites SET subscription_expires_at = datetime('now'), updated_at = datetime('now') WHERE user_id = ?`
-      ).bind(sub.user_id).run();
+      if (sub.site_id) {
+        await env.DB.prepare(
+          `UPDATE sites SET subscription_plan = 'paused', subscription_expires_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`
+        ).bind(sub.site_id).run();
+      } else {
+        await env.DB.prepare(
+          `UPDATE sites SET subscription_plan = 'paused', subscription_expires_at = datetime('now'), updated_at = datetime('now') WHERE user_id = ?`
+        ).bind(sub.user_id).run();
+      }
     }
 
     console.log('Subscription paused:', subId);
@@ -715,12 +748,13 @@ async function handleSubscriptionPaused(env, entity) {
   }
 }
 
-export async function activateSubscription(env, userId, planName, billingCycle, razorpayPaymentId, razorpaySubscriptionId, amount) {
+export async function activateSubscription(env, userId, planName, billingCycle, razorpayPaymentId, razorpaySubscriptionId, amount, siteId) {
   try {
     await env.DB.prepare(`
       CREATE TABLE IF NOT EXISTS subscriptions (
         id TEXT PRIMARY KEY,
         user_id TEXT NOT NULL,
+        site_id TEXT,
         plan TEXT NOT NULL,
         billing_cycle TEXT NOT NULL,
         amount REAL NOT NULL,
@@ -732,27 +766,39 @@ export async function activateSubscription(env, userId, planName, billingCycle, 
         cancelled_at TEXT,
         created_at TEXT DEFAULT (datetime('now')),
         updated_at TEXT DEFAULT (datetime('now')),
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
       )
     `).run();
+
+    try {
+      await env.DB.prepare(`ALTER TABLE subscriptions ADD COLUMN site_id TEXT REFERENCES sites(id) ON DELETE CASCADE`).run();
+    } catch (e) {}
 
     const periodMonths = billingCycle === 'monthly' ? 1 : billingCycle === '6months' ? 6 : 12;
     const periodStart = new Date();
     const periodEnd = new Date(periodStart);
     periodEnd.setMonth(periodEnd.getMonth() + periodMonths);
 
-    await env.DB.prepare(
-      `UPDATE subscriptions SET status = 'cancelled', cancelled_at = datetime('now') WHERE user_id = ? AND status = 'active'`
-    ).bind(userId).run();
+    if (siteId) {
+      await env.DB.prepare(
+        `UPDATE subscriptions SET status = 'cancelled', cancelled_at = datetime('now') WHERE site_id = ? AND status = 'active'`
+      ).bind(siteId).run();
+    } else {
+      await env.DB.prepare(
+        `UPDATE subscriptions SET status = 'cancelled', cancelled_at = datetime('now') WHERE user_id = ? AND status = 'active'`
+      ).bind(userId).run();
+    }
 
     const resolvedAmount = amount || 0;
 
     await env.DB.prepare(
-      `INSERT INTO subscriptions (id, user_id, plan, billing_cycle, amount, status, razorpay_subscription_id, current_period_start, current_period_end, created_at)
-       VALUES (?, ?, ?, ?, ?, 'active', ?, ?, ?, datetime('now'))`
+      `INSERT INTO subscriptions (id, user_id, site_id, plan, billing_cycle, amount, status, razorpay_subscription_id, current_period_start, current_period_end, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, datetime('now'))`
     ).bind(
       generateId(),
       userId,
+      siteId || null,
       planName,
       billingCycle,
       resolvedAmount,
@@ -765,11 +811,17 @@ export async function activateSubscription(env, userId, planName, billingCycle, 
       `UPDATE users SET updated_at = datetime('now') WHERE id = ?`
     ).bind(userId).run();
 
-    await env.DB.prepare(
-      `UPDATE sites SET subscription_plan = ?, subscription_expires_at = ?, updated_at = datetime('now') WHERE user_id = ?`
-    ).bind(planName, periodEnd.toISOString(), userId).run();
+    if (siteId) {
+      await env.DB.prepare(
+        `UPDATE sites SET subscription_plan = ?, subscription_expires_at = ?, updated_at = datetime('now') WHERE id = ?`
+      ).bind(planName, periodEnd.toISOString(), siteId).run();
+    } else {
+      await env.DB.prepare(
+        `UPDATE sites SET subscription_plan = ?, subscription_expires_at = ?, updated_at = datetime('now') WHERE user_id = ?`
+      ).bind(planName, periodEnd.toISOString(), userId).run();
+    }
 
-    console.log(`Subscription activated: user=${userId}, plan=${planName}, cycle=${billingCycle}`);
+    console.log(`Subscription activated: user=${userId}, site=${siteId || 'all'}, plan=${planName}, cycle=${billingCycle}`);
     return true;
   } catch (error) {
     console.error('Activate subscription error:', error);

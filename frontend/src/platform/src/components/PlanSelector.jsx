@@ -4,7 +4,7 @@ import { getAvailablePlans, createSubscription, verifySubscriptionPayment, start
 const DURATION_LABELS = { monthly: 'Monthly', '6months': '6 Months', yearly: 'Yearly' };
 const PERIOD_SUFFIX = { monthly: '/mo', '6months': '/6mo', yearly: '/yr' };
 
-export default function PlanSelector({ currentPlan, currentStatus, hadSubscription, onUpgraded, isOverlay }) {
+export default function PlanSelector({ siteId, currentPlan, currentStatus, onUpgraded, isOverlay }) {
   const [duration, setDuration] = useState('monthly');
   const [upgrading, setUpgrading] = useState(null);
   const [plans, setPlans] = useState([]);
@@ -62,8 +62,8 @@ export default function PlanSelector({ currentPlan, currentStatus, hadSubscripti
     return match ? match.display_order : -1;
   })();
 
-  const showTrialCard = !hadSubscription && currentPlanLower !== 'trial';
   const isExpired = currentStatus === 'expired' || currentStatus === 'none';
+  const showTrialCard = isExpired && currentPlanLower !== 'trial' && currentPlan !== 'trial';
 
   const handleUpgrade = async (planGroup) => {
     const selectedPlan = planGroup.plans[duration];
@@ -79,7 +79,7 @@ export default function PlanSelector({ currentPlan, currentStatus, hadSubscripti
 
     setUpgrading(selectedPlan.id);
     try {
-      const res = await createSubscription(selectedPlan.id);
+      const res = await createSubscription(selectedPlan.id, siteId);
 
       if (!res.subscriptionId) {
         alert('Failed to create subscription: ' + (res.error || 'Unknown error'));
@@ -135,6 +135,27 @@ export default function PlanSelector({ currentPlan, currentStatus, hadSubscripti
     }
   };
 
+  const handleStartTrial = async () => {
+    if (!siteId) {
+      alert('No site selected for trial.');
+      return;
+    }
+    setUpgrading('trial');
+    try {
+      const data = await startFreeTrial(siteId);
+      if (data.success || data.message) {
+        alert('Your 7-day free trial has started!');
+        onUpgraded?.();
+      } else {
+        alert(data.error || 'Failed to start trial');
+      }
+    } catch (e) {
+      alert(e.message || 'Failed to start trial. Please try again.');
+    } finally {
+      setUpgrading(null);
+    }
+  };
+
   const getButtonText = (planGroup) => {
     const planNameLower = planGroup.name.toLowerCase();
     if (isActive && planNameLower === currentPlanLower) return 'Current Plan';
@@ -166,12 +187,12 @@ export default function PlanSelector({ currentPlan, currentStatus, hadSubscripti
       {isOverlay && (
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.5rem' }}>
-            {isExpired && hadSubscription ? 'Your Plan Has Expired' : 'Choose Your Plan'}
+            {isExpired ? 'Your Plan Has Expired' : 'Choose Your Plan'}
           </h2>
           <p style={{ color: '#64748b', fontSize: '0.9rem' }}>
-            {isExpired && hadSubscription
-              ? 'Your subscription has expired and your websites are currently disabled. Subscribe to a plan to restore access.'
-              : 'Start with a 7-day free trial or pick a plan that fits your needs'}
+            {isExpired
+              ? 'Your subscription has expired and your website is currently disabled. Subscribe to a plan to restore access.'
+              : 'Pick a plan that fits your needs'}
           </p>
         </div>
       )}
@@ -212,22 +233,7 @@ export default function PlanSelector({ currentPlan, currentStatus, hadSubscripti
               className="btn btn-primary"
               style={{ width: '100%', background: '#10b981', borderColor: '#10b981' }}
               disabled={upgrading !== null}
-              onClick={async () => {
-                setUpgrading('trial');
-                try {
-                  const data = await startFreeTrial();
-                  if (data.success || data.message) {
-                    alert('Your 7-day free trial has started!');
-                    onUpgraded?.();
-                  } else {
-                    alert(data.error || 'Failed to start trial');
-                  }
-                } catch (e) {
-                  alert(e.message || 'Failed to start trial. Please try again.');
-                } finally {
-                  setUpgrading(null);
-                }
-              }}
+              onClick={handleStartTrial}
             >
               {upgrading === 'trial' ? 'Starting...' : 'Start Free Trial'}
             </button>

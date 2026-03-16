@@ -6,19 +6,21 @@ import SiteCard from '../components/SiteCard.jsx';
 import SiteCreationWizard from '../components/SiteCreationWizard.jsx';
 import PlanSelector from '../components/PlanSelector.jsx';
 import { useNavigate } from 'react-router-dom';
+import { apiRequest } from '../services/api.js';
 import '../styles/dashboard.css';
 
 export default function DashboardPage() {
   const { user, isAuthenticated, loading, logout, setUser } = useAuth();
   const navigate = useNavigate();
-  const [activePage, setActivePage] = useState('sites');
+  const [activePage, setActivePage] = useState('dashboard');
   const [sites, setSites] = useState([]);
   const [sitesLoading, setSitesLoading] = useState(true);
   const [showWizard, setShowWizard] = useState(false);
-  const [subscription, setSubscription] = useState(null);
   const [profileData, setProfileData] = useState(null);
   const [managedSite, setManagedSite] = useState(null);
-  const [showPlanOverlay, setShowPlanOverlay] = useState(false);
+  const [managedAdminUrl, setManagedAdminUrl] = useState(null);
+  const [adminLoading, setAdminLoading] = useState(false);
+  const [billingSiteId, setBillingSiteId] = useState(null);
   const [dataLoaded, setDataLoaded] = useState(false);
 
   useEffect(() => {
@@ -39,15 +41,6 @@ export default function DashboardPage() {
     }
   }, []);
 
-  const loadSubscription = useCallback(async () => {
-    try {
-      const result = await getSubscriptionStatus();
-      if (result.success) {
-        setSubscription(result.subscription || result.data || result);
-      }
-    } catch (e) {}
-  }, []);
-
   const loadProfile = useCallback(async () => {
     try {
       const result = await getUserProfile();
@@ -59,23 +52,11 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      Promise.all([loadSites(), loadSubscription(), loadProfile()]).then(() => {
+      Promise.all([loadSites(), loadProfile()]).then(() => {
         setDataLoaded(true);
       });
     }
-  }, [isAuthenticated, loadSites, loadSubscription, loadProfile]);
-
-  useEffect(() => {
-    if (!dataLoaded) return;
-    const plan = profileData?.plan;
-    const status = profileData?.status;
-    const hasActivePlan = plan && status === 'active';
-    if (!hasActivePlan) {
-      setShowPlanOverlay(true);
-    } else {
-      setShowPlanOverlay(false);
-    }
-  }, [dataLoaded, profileData, subscription]);
+  }, [isAuthenticated, loadSites, loadProfile]);
 
   const handleDeleteSite = async (siteId) => {
     try {
@@ -95,20 +76,37 @@ export default function DashboardPage() {
     navigate('/login');
   };
 
-  const handleManageSite = ({ site, adminUrl }) => {
-    setManagedSite({ site, adminUrl });
-    setActivePage('manage');
+  const handleManageSite = async (site) => {
+    setActivePage('admin');
+    setManagedSite(site);
+    setAdminLoading(true);
+    setManagedAdminUrl(null);
+    try {
+      const siteUrl = `https://${site.subdomain}.fluxe.in`;
+      const result = await apiRequest('/api/site-admin/auto-login', {
+        method: 'POST',
+        body: JSON.stringify({ siteId: site.id }),
+      });
+      const token = result.token || result.data?.token;
+      const adminUrl = token
+        ? `${siteUrl}/admin?token=${encodeURIComponent(token)}`
+        : `${siteUrl}/admin`;
+      setManagedAdminUrl(adminUrl);
+    } catch (e) {
+      const siteUrl = `https://${site.subdomain}.fluxe.in`;
+      setManagedAdminUrl(`${siteUrl}/admin`);
+    } finally {
+      setAdminLoading(false);
+    }
   };
 
-  const handleBackToDashboard = () => {
-    setManagedSite(null);
-    setActivePage('sites');
+  const handleBillingSite = (siteId) => {
+    setBillingSiteId(siteId);
+    setActivePage('billing');
   };
 
-  const handlePlanUpgraded = () => {
-    setShowPlanOverlay(false);
-    loadSubscription();
-    loadProfile();
+  const handleSiteCreated = () => {
+    loadSites();
   };
 
   if (loading) {
@@ -121,27 +119,123 @@ export default function DashboardPage() {
 
   if (!isAuthenticated) return null;
 
-  const currentPlan = profileData?.plan || subscription?.plan || null;
-  const profileStatus = profileData?.status;
-  const subStatus = subscription?.status;
-  const currentStatus = (profileStatus && profileStatus !== 'none') ? profileStatus : (subStatus && subStatus !== 'none') ? subStatus : profileStatus || subStatus || 'none';
-  const hadSubscription = profileData?.hadSubscription || false;
-  const isExpired = currentStatus === 'expired';
-  const hasNoPlan = !currentPlan || currentStatus === 'none' || currentStatus === 'expired';
-
-  const getPlanDisplayName = () => {
-    if (!currentPlan || currentStatus === 'none') return 'No Plan';
-    if (currentStatus === 'expired') return `${currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1)} (Expired)`;
-    return currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1);
+  const getSiteSubscriptionInfo = (site) => {
+    const sub = site.subscription || {};
+    const plan = sub.plan || site.subscription_plan || null;
+    const rawStatus = sub.status || 'none';
+    const periodEnd = sub.periodEnd || site.subscription_expires_at || null;
+    const isExpired = rawStatus === 'expired' || rawStatus === 'cancelled' || rawStatus === 'paused' || (rawStatus === 'active' && periodEnd && new Date(periodEnd) < new Date());
+    const isActive = rawStatus === 'active' && !isExpired;
+    const displayStatus = isExpired ? 'expired' : rawStatus;
+    return { plan, status: displayStatus, periodEnd, isActive, isExpired };
   };
 
-  const getStatusPill = () => {
-    if (currentStatus === 'active') return { text: 'Active', className: 'status-active' };
-    if (currentStatus === 'expired') return { text: 'Expired', className: 'status-expired' };
-    return { text: 'No Plan', className: 'status-expired' };
-  };
+  const renderAdminContent = () => {
+    if (managedSite && managedAdminUrl) {
+      const siteInfo = getSiteSubscriptionInfo(managedSite);
+      return (
+        <div className="manage-content">
+          <div className="manage-header">
+            <button className="btn btn-outline" onClick={() => { setManagedSite(null); setManagedAdminUrl(null); setActivePage('dashboard'); }} style={{ gap: '0.375rem' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+              Back
+            </button>
+            <span className="manage-site-name" style={{ marginLeft: 'auto' }}>{managedSite.brand_name || managedSite.brandName || managedSite.subdomain}</span>
+            {siteInfo.plan && (
+              <span className={`plan-status-pill ${siteInfo.isActive ? 'status-active' : 'status-expired'}`} style={{ marginLeft: '0.5rem' }}>
+                {siteInfo.plan === 'trial' ? 'Trial' : siteInfo.plan} - {siteInfo.isActive ? 'Active' : 'Expired'}
+              </span>
+            )}
+          </div>
+          {siteInfo.isExpired ? (
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '1rem', padding: '2rem' }}>
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+              <h2 style={{ margin: 0, color: '#dc2626' }}>Subscription Expired</h2>
+              <p style={{ color: '#64748b', textAlign: 'center', maxWidth: '400px' }}>This site's subscription has expired and its admin panel is disabled. Please renew to restore access.</p>
+              <button className="btn btn-primary" onClick={() => handleBillingSite(managedSite.id)}>Renew Subscription</button>
+            </div>
+          ) : (
+            <iframe
+              src={managedAdminUrl}
+              className="manage-iframe"
+              title={`Admin - ${managedSite.brand_name || managedSite.subdomain}`}
+              allow="clipboard-write"
+            />
+          )}
+        </div>
+      );
+    }
 
-  const statusPill = getStatusPill();
+    if (adminLoading) {
+      return (
+        <main className="main-content">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
+            <p style={{ color: 'var(--text-muted)' }}>Loading admin panel...</p>
+          </div>
+        </main>
+      );
+    }
+
+    if (sitesLoading) {
+      return (
+        <main className="main-content">
+          <div className="header"><h1>Admin Panel</h1></div>
+          <p style={{ color: 'var(--text-muted)' }}>Loading sites...</p>
+        </main>
+      );
+    }
+
+    if (sites.length === 0) {
+      return (
+        <main className="main-content">
+          <div className="header"><h1>Admin Panel</h1></div>
+          <div className="empty-state">
+            <p>You don't have any websites yet. Create one first.</p>
+            <button className="btn btn-primary" onClick={() => { setActivePage('dashboard'); setShowWizard(true); }}>Create a Website</button>
+          </div>
+        </main>
+      );
+    }
+
+    if (sites.length === 1) {
+      const site = sites[0];
+      if (!managedSite) {
+        handleManageSite(site);
+      }
+      return (
+        <main className="main-content">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
+            <p style={{ color: 'var(--text-muted)' }}>Loading admin panel...</p>
+          </div>
+        </main>
+      );
+    }
+
+    return (
+      <main className="main-content">
+        <div className="header"><h1>Select a Site to Manage</h1></div>
+        <div className="sites-grid">
+          {sites.map(site => {
+            const subInfo = getSiteSubscriptionInfo(site);
+            return (
+              <div key={site.id} className="site-card" style={{ cursor: 'pointer' }} onClick={() => handleManageSite(site)}>
+                <h3 style={{ marginBottom: '0.25rem', fontSize: '1.125rem', fontWeight: 700 }}>{site.brand_name || site.subdomain}</h3>
+                <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>https://{site.subdomain}.fluxe.in</p>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span className={`plan-status-pill ${subInfo.isActive ? 'status-active' : 'status-expired'}`}>
+                    {subInfo.plan ? (subInfo.plan === 'trial' ? 'Trial' : subInfo.plan) : 'No Plan'} - {subInfo.isActive ? 'Active' : subInfo.status === 'expired' ? 'Expired' : 'None'}
+                  </span>
+                  <button className="btn btn-primary" style={{ fontSize: '0.8rem', padding: '0.5rem 1rem' }}>
+                    Open Admin
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </main>
+    );
+  };
 
   return (
     <div className="dashboard-layout">
@@ -153,21 +247,27 @@ export default function DashboardPage() {
         <nav>
           <ul>
             <li>
-              <button className={`nav-link${activePage === 'sites' || activePage === 'manage' ? ' active' : ''}`} onClick={() => { if (managedSite) handleBackToDashboard(); else setActivePage('sites'); }}>
+              <button className={`nav-link${activePage === 'dashboard' ? ' active' : ''}`} onClick={() => { setManagedSite(null); setManagedAdminUrl(null); setActivePage('dashboard'); }}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
                 Dashboard
               </button>
             </li>
             <li>
-              <button className={`nav-link${activePage === 'plans' ? ' active' : ''}`} onClick={() => { setManagedSite(null); setActivePage('plans'); }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
-                Subscriptions
+              <button className={`nav-link${activePage === 'admin' ? ' active' : ''}`} onClick={() => { setManagedSite(null); setManagedAdminUrl(null); setActivePage('admin'); }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+                Admin
               </button>
             </li>
             <li>
-              <button className={`nav-link${activePage === 'account' ? ' active' : ''}`} onClick={() => { setManagedSite(null); setActivePage('account'); }}>
+              <button className={`nav-link${activePage === 'billing' ? ' active' : ''}`} onClick={() => { setManagedSite(null); setManagedAdminUrl(null); setActivePage('billing'); }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+                Billing
+              </button>
+            </li>
+            <li>
+              <button className={`nav-link${activePage === 'account' ? ' active' : ''}`} onClick={() => { setManagedSite(null); setManagedAdminUrl(null); setActivePage('account'); }}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                Settings
+                Account
               </button>
             </li>
           </ul>
@@ -175,62 +275,31 @@ export default function DashboardPage() {
       </aside>
 
       <div className="mobile-nav">
-        <button className={`mobile-nav-item${activePage === 'sites' || activePage === 'manage' ? ' active' : ''}`} onClick={() => { if (managedSite) handleBackToDashboard(); else setActivePage('sites'); }}>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+        <button className={`mobile-nav-item${activePage === 'dashboard' ? ' active' : ''}`} onClick={() => { setManagedSite(null); setManagedAdminUrl(null); setActivePage('dashboard'); }}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
           <span>Dashboard</span>
         </button>
-        <button className={`mobile-nav-item${activePage === 'plans' ? ' active' : ''}`} onClick={() => { setManagedSite(null); setActivePage('plans'); }}>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+        <button className={`mobile-nav-item${activePage === 'admin' ? ' active' : ''}`} onClick={() => { setManagedSite(null); setManagedAdminUrl(null); setActivePage('admin'); }}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+          <span>Admin</span>
+        </button>
+        <button className={`mobile-nav-item${activePage === 'billing' ? ' active' : ''}`} onClick={() => { setManagedSite(null); setManagedAdminUrl(null); setActivePage('billing'); }}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
           <span>Billing</span>
         </button>
-        <button className={`mobile-nav-item${activePage === 'account' ? ' active' : ''}`} onClick={() => { setManagedSite(null); setActivePage('account'); }}>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-          <span>Settings</span>
+        <button className={`mobile-nav-item${activePage === 'account' ? ' active' : ''}`} onClick={() => { setManagedSite(null); setManagedAdminUrl(null); setActivePage('account'); }}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+          <span>Account</span>
         </button>
       </div>
 
-      {activePage === 'manage' && managedSite ? (
-        <div className="manage-content">
-          <div className="manage-header">
-            <button className="btn btn-outline" onClick={handleBackToDashboard} style={{ gap: '0.375rem' }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-              Back to Dashboard
-            </button>
-            <span className="manage-site-name" style={{ marginLeft: 'auto' }}>{managedSite.site.brand_name || managedSite.site.brandName || managedSite.site.subdomain}</span>
-          </div>
-          <iframe
-            src={managedSite.adminUrl}
-            className="manage-iframe"
-            title={`Admin - ${managedSite.site.brand_name || managedSite.site.subdomain}`}
-            allow="clipboard-write"
-          />
-        </div>
-      ) : (
+      {activePage === 'admin' ? renderAdminContent() : (
         <main className="main-content">
-          {activePage === 'sites' && (
+          {activePage === 'dashboard' && (
             <div>
               <div className="header">
                 <h1>My Websites</h1>
               </div>
-
-              {isExpired && hadSubscription && (
-                <div className="site-card" style={{ display: 'block', marginBottom: '1.5rem', borderColor: '#ef4444', borderWidth: '2px', background: '#fef2f2' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-                    <div>
-                      <p style={{ fontWeight: 700, color: '#dc2626', margin: 0 }}>
-                        Your subscription has expired
-                      </p>
-                      <p style={{ fontSize: '0.875rem', color: '#991b1b', margin: '0.25rem 0 0 0' }}>
-                        Your websites are currently disabled. Subscribe to a plan to restore access.
-                      </p>
-                    </div>
-                    <button className="btn btn-primary" onClick={() => setActivePage('plans')} style={{ marginLeft: 'auto', whiteSpace: 'nowrap' }}>
-                      Renew Plan
-                    </button>
-                  </div>
-                </div>
-              )}
 
               {sitesLoading ? (
                 <p style={{ color: 'var(--text-muted)' }}>Loading your websites...</p>
@@ -246,7 +315,9 @@ export default function DashboardPage() {
                       key={site.id}
                       site={site}
                       onDelete={handleDeleteSite}
-                      onManage={handleManageSite}
+                      onManage={() => handleManageSite(site)}
+                      onBilling={() => handleBillingSite(site.id)}
+                      subscriptionInfo={getSiteSubscriptionInfo(site)}
                     />
                   ))}
                 </div>
@@ -259,75 +330,116 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {activePage === 'plans' && (
+          {activePage === 'billing' && (
             <div>
               <div className="header">
-                <h1>Subscription Plans</h1>
+                <h1>Billing</h1>
               </div>
-              <PlanSelector
-                currentPlan={currentPlan}
-                currentStatus={currentStatus}
-                hadSubscription={hadSubscription}
-                onUpgraded={() => { loadSubscription(); loadProfile(); }}
-              />
+
+              {sitesLoading ? (
+                <p style={{ color: 'var(--text-muted)' }}>Loading...</p>
+              ) : sites.length === 0 ? (
+                <div className="empty-state">
+                  <p>You don't have any websites yet. Create a website first, and a 7-day free trial will start automatically.</p>
+                  <button className="btn btn-primary" onClick={() => { setActivePage('dashboard'); setShowWizard(true); }}>Create a Website</button>
+                </div>
+              ) : (
+                <div>
+                  {billingSiteId ? (
+                    <div>
+                      <button className="btn btn-outline" onClick={() => setBillingSiteId(null)} style={{ marginBottom: '1.5rem', gap: '0.375rem' }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                        Back to All Sites
+                      </button>
+                      {(() => {
+                        const site = sites.find(s => s.id === billingSiteId);
+                        if (!site) return <p>Site not found.</p>;
+                        const subInfo = getSiteSubscriptionInfo(site);
+                        return (
+                          <div>
+                            <div className="site-card" style={{ display: 'block', marginBottom: '1.5rem' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                                <div>
+                                  <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700 }}>{site.brand_name || site.subdomain}</h2>
+                                  <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>https://{site.subdomain}.fluxe.in</p>
+                                </div>
+                                <span className={`plan-status-pill ${subInfo.isActive ? 'status-active' : 'status-expired'}`}>
+                                  {subInfo.plan ? (subInfo.plan === 'trial' ? 'Trial' : subInfo.plan) : 'No Plan'} - {subInfo.isActive ? 'Active' : 'Expired'}
+                                </span>
+                              </div>
+                              {subInfo.periodEnd && subInfo.isActive && (
+                                <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: 0 }}>
+                                  {subInfo.plan === 'trial' ? 'Trial ends' : 'Renews'}: {new Date(subInfo.periodEnd).toLocaleDateString()}
+                                </p>
+                              )}
+                            </div>
+                            <PlanSelector
+                              siteId={billingSiteId}
+                              currentPlan={subInfo.plan}
+                              currentStatus={subInfo.isActive ? 'active' : subInfo.status}
+                              onUpgraded={() => { loadSites(); }}
+                            />
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  ) : (
+                    <div className="billing-sites-list">
+                      {sites.map(site => {
+                        const subInfo = getSiteSubscriptionInfo(site);
+                        return (
+                          <div key={site.id} className="site-card" style={{ display: 'block', marginBottom: '1rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+                              <div style={{ flex: 1, minWidth: '200px' }}>
+                                <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 700 }}>{site.brand_name || site.subdomain}</h3>
+                                <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>https://{site.subdomain}.fluxe.in</p>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                <div style={{ textAlign: 'right' }}>
+                                  <span className={`plan-status-pill ${subInfo.isActive ? 'status-active' : 'status-expired'}`}>
+                                    {subInfo.plan ? (subInfo.plan === 'trial' ? 'Trial' : subInfo.plan) : 'No Plan'}
+                                  </span>
+                                  {subInfo.periodEnd && subInfo.isActive && (
+                                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0.25rem 0 0' }}>
+                                      {subInfo.plan === 'trial' ? 'Ends' : 'Renews'}: {new Date(subInfo.periodEnd).toLocaleDateString()}
+                                    </p>
+                                  )}
+                                </div>
+                                <button className="btn btn-primary" style={{ fontSize: '0.8rem', whiteSpace: 'nowrap' }} onClick={() => setBillingSiteId(site.id)}>
+                                  {subInfo.isExpired || !subInfo.plan ? 'Subscribe' : 'Manage Plan'}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
           {activePage === 'account' && (
             <div>
               <div className="header">
-                <h1>Account Settings</h1>
+                <h1>Account</h1>
                 <button className="btn btn-outline" onClick={handleLogout} style={{ color: '#ef4444', borderColor: '#fecaca' }}>Logout</button>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
-                <div className="site-card" style={{ display: 'block' }}>
-                  <h2 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                    Profile Details
-                  </h2>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    <div>
-                      <label style={{ fontSize: '0.75rem', color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 }}>Name</label>
-                      <div style={{ fontWeight: 500, color: '#111827' }}>{profileData?.name || user?.name || '-'}</div>
-                    </div>
-                    <div>
-                      <label style={{ fontSize: '0.75rem', color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 }}>Email Address</label>
-                      <div style={{ fontWeight: 500, color: '#111827' }}>{profileData?.email || user?.email || '-'}</div>
-                    </div>
+              <div className="site-card" style={{ display: 'block', maxWidth: '500px' }}>
+                <h2 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                  Profile Details
+                </h2>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div>
+                    <label style={{ fontSize: '0.75rem', color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 }}>Name</label>
+                    <div style={{ fontWeight: 500, color: '#111827' }}>{profileData?.name || user?.name || '-'}</div>
                   </div>
-                </div>
-
-                <div className="site-card" style={{ display: 'block' }}>
-                  <h2 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
-                    Subscription Details
-                  </h2>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div>
-                        <label style={{ fontSize: '0.75rem', color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 }}>Plan</label>
-                        <div style={{ fontWeight: 700, color: isExpired || hasNoPlan ? '#ef4444' : '#2563eb', fontSize: '1.125rem' }}>
-                          {getPlanDisplayName()}
-                        </div>
-                      </div>
-                      <span className={`plan-status-pill ${statusPill.className}`}>{statusPill.text}</span>
-                    </div>
-                    {profileData?.trialEndDate && currentPlan === 'trial' && currentStatus === 'active' && (
-                      <div>
-                        <label style={{ fontSize: '0.75rem', color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 }}>Trial Ends</label>
-                        <div style={{ fontWeight: 500, color: '#111827' }}>{new Date(profileData.trialEndDate).toLocaleDateString()}</div>
-                      </div>
-                    )}
-                    {profileData?.trialEndDate && currentPlan !== 'trial' && currentStatus === 'active' && (
-                      <div>
-                        <label style={{ fontSize: '0.75rem', color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 }}>Renews On</label>
-                        <div style={{ fontWeight: 500, color: '#111827' }}>{new Date(profileData.trialEndDate).toLocaleDateString()}</div>
-                      </div>
-                    )}
-                    <button className="btn btn-primary" onClick={() => setActivePage('plans')} style={{ marginTop: '0.5rem' }}>
-                      {hasNoPlan ? 'Subscribe Now' : 'Manage Subscription'}
-                    </button>
+                  <div>
+                    <label style={{ fontSize: '0.75rem', color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 }}>Email Address</label>
+                    <div style={{ fontWeight: 500, color: '#111827' }}>{profileData?.email || user?.email || '-'}</div>
                   </div>
                 </div>
               </div>
@@ -339,17 +451,7 @@ export default function DashboardPage() {
       {showWizard && (
         <SiteCreationWizard
           onClose={() => setShowWizard(false)}
-          onCreated={loadSites}
-        />
-      )}
-
-      {showPlanOverlay && (
-        <PlanSelector
-          currentPlan={currentPlan}
-          currentStatus={currentStatus}
-          hadSubscription={hadSubscription}
-          onUpgraded={handlePlanUpgraded}
-          isOverlay={true}
+          onCreated={handleSiteCreated}
         />
       )}
     </div>

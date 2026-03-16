@@ -68,14 +68,47 @@ async function getUserSites(env, user) {
   try {
     const sites = await env.DB.prepare(
       `SELECT id, subdomain, brand_name, category, template_id, logo_url, 
-              primary_color, is_active, subscription_plan, created_at,
+              primary_color, is_active, subscription_plan, subscription_expires_at, created_at,
               custom_domain, domain_status
        FROM sites 
        WHERE user_id = ? 
        ORDER BY created_at DESC`
     ).bind(user.id).all();
 
-    return successResponse(sites.results);
+    const enrichedSites = [];
+    for (const site of sites.results) {
+      let subscription = { plan: site.subscription_plan || null, status: 'none', billingCycle: null, periodStart: null, periodEnd: null };
+      try {
+        const sub = await env.DB.prepare(
+          `SELECT plan, status, billing_cycle, current_period_start, current_period_end FROM subscriptions WHERE site_id = ? ORDER BY created_at DESC LIMIT 1`
+        ).bind(site.id).first();
+        if (sub) {
+          let subStatus = sub.status;
+          if (subStatus === 'active' && sub.current_period_end && new Date(sub.current_period_end) < new Date()) {
+            subStatus = 'expired';
+          }
+          subscription = {
+            plan: sub.plan,
+            status: subStatus,
+            billingCycle: sub.billing_cycle,
+            periodStart: sub.current_period_start,
+            periodEnd: sub.current_period_end,
+          };
+        } else if (site.subscription_plan && site.subscription_expires_at) {
+          const isExpired = new Date(site.subscription_expires_at) < new Date();
+          subscription = {
+            plan: site.subscription_plan,
+            status: isExpired ? 'expired' : 'active',
+            billingCycle: null,
+            periodStart: null,
+            periodEnd: site.subscription_expires_at,
+          };
+        }
+      } catch (e) {}
+      enrichedSites.push({ ...site, subscription });
+    }
+
+    return successResponse(enrichedSites);
   } catch (error) {
     console.error('Get sites error:', error);
     return errorResponse('Failed to fetch sites', 500);
@@ -277,6 +310,47 @@ async function createSite(request, env, user) {
       } catch (retryError) {
         console.error('Retry category creation failed:', retryError);
       }
+    }
+
+    try {
+      const periodEnd = new Date();
+      periodEnd.setDate(periodEnd.getDate() + 7);
+
+      await env.DB.prepare(`
+        CREATE TABLE IF NOT EXISTS subscriptions (
+          id TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL,
+          site_id TEXT,
+          plan TEXT NOT NULL,
+          billing_cycle TEXT NOT NULL,
+          amount REAL NOT NULL,
+          currency TEXT DEFAULT 'INR',
+          status TEXT DEFAULT 'active',
+          razorpay_subscription_id TEXT,
+          current_period_start TEXT,
+          current_period_end TEXT,
+          cancelled_at TEXT,
+          created_at TEXT DEFAULT (datetime('now')),
+          updated_at TEXT DEFAULT (datetime('now')),
+          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+          FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
+        )
+      `).run();
+
+      try {
+        await env.DB.prepare(`ALTER TABLE subscriptions ADD COLUMN site_id TEXT REFERENCES sites(id) ON DELETE CASCADE`).run();
+      } catch (e) {}
+
+      await env.DB.prepare(
+        `INSERT INTO subscriptions (id, user_id, site_id, plan, billing_cycle, amount, status, current_period_start, current_period_end, created_at)
+         VALUES (?, ?, ?, 'trial', 'monthly', 0, 'active', datetime('now'), ?, datetime('now'))`
+      ).bind(generateId(), user.id, siteId, periodEnd.toISOString()).run();
+
+      await env.DB.prepare(
+        `UPDATE sites SET subscription_plan = 'trial', subscription_expires_at = ?, updated_at = datetime('now') WHERE id = ?`
+      ).bind(periodEnd.toISOString(), siteId).run();
+    } catch (trialErr) {
+      console.error('Auto-start trial failed (non-fatal):', trialErr);
     }
 
     return successResponse({ id: siteId, subdomain: finalSubdomain }, 'Site created successfully');

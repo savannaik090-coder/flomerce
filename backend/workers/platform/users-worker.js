@@ -63,6 +63,38 @@ async function checkAndExpireSubscription(env, userId) {
   }
 }
 
+async function checkAndExpireSiteSubscription(env, siteId) {
+  try {
+    const activeSub = await env.DB.prepare(
+      `SELECT * FROM subscriptions WHERE site_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1`
+    ).bind(siteId).first();
+
+    if (activeSub) {
+      if (activeSub.current_period_end && new Date(activeSub.current_period_end) < new Date()) {
+        await env.DB.prepare(
+          `UPDATE subscriptions SET status = 'expired', updated_at = datetime('now') WHERE id = ?`
+        ).bind(activeSub.id).run();
+
+        await env.DB.prepare(
+          `UPDATE sites SET subscription_plan = 'expired', updated_at = datetime('now') WHERE id = ?`
+        ).bind(siteId).run();
+
+        return { ...activeSub, status: 'expired' };
+      }
+      return activeSub;
+    }
+
+    const latestSub = await env.DB.prepare(
+      `SELECT * FROM subscriptions WHERE site_id = ? ORDER BY created_at DESC LIMIT 1`
+    ).bind(siteId).first();
+
+    return latestSub || null;
+  } catch (e) {
+    console.error('Check/expire site subscription error:', e);
+    return null;
+  }
+}
+
 async function hasEverHadSubscription(env, userId) {
   try {
     const result = await env.DB.prepare(
@@ -191,6 +223,7 @@ async function ensureSubscriptionsTable(env) {
       CREATE TABLE IF NOT EXISTS subscriptions (
         id TEXT PRIMARY KEY,
         user_id TEXT NOT NULL,
+        site_id TEXT,
         plan TEXT NOT NULL,
         billing_cycle TEXT NOT NULL,
         amount REAL NOT NULL,
@@ -202,9 +235,15 @@ async function ensureSubscriptionsTable(env) {
         cancelled_at TEXT,
         created_at TEXT DEFAULT (datetime('now')),
         updated_at TEXT DEFAULT (datetime('now')),
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
       )
     `).run();
+
+    try {
+      await env.DB.prepare(`ALTER TABLE subscriptions ADD COLUMN site_id TEXT REFERENCES sites(id) ON DELETE CASCADE`).run();
+    } catch (e) {}
+
     return true;
   } catch (error) {
     console.error('Failed to ensure subscriptions table:', error);
@@ -214,47 +253,67 @@ async function ensureSubscriptionsTable(env) {
 
 async function updateSubscription(request, env, user) {
   try {
-    const { plan } = await request.json();
+    const { plan, siteId } = await request.json();
 
     if (plan !== 'trial') {
       return errorResponse('Only trial activation is allowed through this endpoint. Use Razorpay for paid plans.', 403);
     }
 
+    if (!siteId) {
+      return errorResponse('Site ID is required to start a trial.', 400);
+    }
+
+    const site = await env.DB.prepare(
+      `SELECT id FROM sites WHERE id = ? AND user_id = ?`
+    ).bind(siteId, user.id).first();
+
+    if (!site) {
+      return errorResponse('Site not found or you do not own this site.', 404);
+    }
+
     await ensureSubscriptionsTable(env);
 
-    const hadPrevious = await hasEverHadSubscription(env, user.id);
-    if (hadPrevious) {
-      return errorResponse('Free trial is only available for new users. Please subscribe to a paid plan.', 400);
-    }
-
-    let existingActive = null;
+    let existingSiteSub = null;
     try {
-      existingActive = await env.DB.prepare(
-        `SELECT * FROM subscriptions WHERE user_id = ? AND status = 'active'`
-      ).bind(user.id).first();
+      existingSiteSub = await env.DB.prepare(
+        `SELECT * FROM subscriptions WHERE site_id = ? AND status = 'active'`
+      ).bind(siteId).first();
     } catch (e) {
-      console.error('Error checking existing subscription:', e);
+      console.error('Error checking existing site subscription:', e);
     }
 
-    if (existingActive) {
-      return errorResponse('You already have an active subscription.', 400);
+    if (existingSiteSub) {
+      return errorResponse('This site already has an active subscription.', 400);
+    }
+
+    let hadSiteTrial = false;
+    try {
+      const trialCheck = await env.DB.prepare(
+        `SELECT COUNT(*) as count FROM subscriptions WHERE site_id = ? AND plan = 'trial'`
+      ).bind(siteId).first();
+      hadSiteTrial = (trialCheck?.count || 0) > 0;
+    } catch (e) {}
+
+    if (hadSiteTrial) {
+      return errorResponse('This site has already used its free trial. Please subscribe to a paid plan.', 400);
     }
 
     const periodEnd = new Date();
     periodEnd.setDate(periodEnd.getDate() + 7);
 
     await env.DB.prepare(
-      `INSERT INTO subscriptions (id, user_id, plan, billing_cycle, amount, status, current_period_start, current_period_end, created_at)
-       VALUES (?, ?, 'trial', 'monthly', 0, 'active', datetime('now'), ?, datetime('now'))`
+      `INSERT INTO subscriptions (id, user_id, site_id, plan, billing_cycle, amount, status, current_period_start, current_period_end, created_at)
+       VALUES (?, ?, ?, 'trial', 'monthly', 0, 'active', datetime('now'), ?, datetime('now'))`
     ).bind(
       generateId(),
       user.id,
+      siteId,
       periodEnd.toISOString()
     ).run();
 
     await env.DB.prepare(
-      `UPDATE sites SET subscription_plan = 'trial', subscription_expires_at = ?, updated_at = datetime('now') WHERE user_id = ?`
-    ).bind(periodEnd.toISOString(), user.id).run();
+      `UPDATE sites SET subscription_plan = 'trial', subscription_expires_at = ?, updated_at = datetime('now') WHERE id = ?`
+    ).bind(periodEnd.toISOString(), siteId).run();
 
     return successResponse(null, 'Your 7-day free trial has started!');
   } catch (error) {

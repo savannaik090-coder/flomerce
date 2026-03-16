@@ -4,10 +4,10 @@ export async function getAvailablePlans() {
   return apiRequest('/api/payments/plans');
 }
 
-export async function createSubscription(planId) {
+export async function createSubscription(planId, siteId) {
   return apiRequest('/api/payments/subscription', {
     method: 'POST',
-    body: JSON.stringify({ planId }),
+    body: JSON.stringify({ planId, siteId }),
   });
 }
 
@@ -26,9 +26,9 @@ export async function getUserProfile() {
   return apiRequest('/api/users/profile');
 }
 
-export async function startFreeTrial() {
+export async function startFreeTrial(siteId) {
   return apiRequest('/api/users/subscription', {
     method: 'PATCH',
-    body: JSON.stringify({ plan: 'trial', billingCycle: 'monthly', status: 'active' }),
+    body: JSON.stringify({ plan: 'trial', siteId }),
   });
 }

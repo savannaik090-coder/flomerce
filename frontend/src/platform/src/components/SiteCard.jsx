@@ -1,15 +1,14 @@
 import { useState } from 'react';
-import { apiRequest } from '../services/api.js';
 
-export default function SiteCard({ site, onDelete, onManage }) {
+export default function SiteCard({ site, onDelete, onManage, onBilling, subscriptionInfo }) {
   const [deleting, setDeleting] = useState(false);
-  const [managing, setManaging] = useState(false);
   const siteName = site.brand_name || site.brandName || site.subdomain;
   const siteUrl = `https://${site.subdomain}.fluxe.in`;
-  const template = site.template_id || site.template || 'template1';
   const createdAt = site.created_at ? new Date(site.created_at).toLocaleDateString() : '';
   const hasCustomDomain = site.custom_domain && site.domain_status === 'verified';
   const customDomainUrl = hasCustomDomain ? `https://${site.custom_domain}` : null;
+
+  const sub = subscriptionInfo || { plan: null, status: 'none', isActive: false, isExpired: false };
 
   const handleDelete = async () => {
     if (!window.confirm('Are you sure you want to delete this website?')) return;
@@ -21,25 +20,18 @@ export default function SiteCard({ site, onDelete, onManage }) {
     }
   };
 
-  const handleManage = async () => {
-    setManaging(true);
-    try {
-      const result = await apiRequest('/api/site-admin/auto-login', {
-        method: 'POST',
-        body: JSON.stringify({ siteId: site.id }),
-      });
-      const token = result.token || result.data?.token;
-      const adminUrl = token
-        ? `${siteUrl}/admin?token=${encodeURIComponent(token)}`
-        : `${siteUrl}/admin`;
-      onManage({ site, adminUrl });
-    } catch (e) {
-      console.error('Auto-login failed:', e);
-      onManage({ site, adminUrl: `${siteUrl}/admin` });
-    } finally {
-      setManaging(false);
+  const getStatusBadge = () => {
+    if (sub.isActive) {
+      const label = sub.plan === 'trial' ? 'Trial' : sub.plan || 'Active';
+      return { text: label, bg: '#dcfce7', color: '#166534' };
     }
+    if (sub.isExpired) {
+      return { text: 'Expired', bg: '#fee2e2', color: '#dc2626' };
+    }
+    return { text: 'No Plan', bg: '#f3f4f6', color: '#6b7280' };
   };
+
+  const badge = getStatusBadge();
 
   return (
     <div className="site-card">
@@ -51,18 +43,27 @@ export default function SiteCard({ site, onDelete, onManage }) {
           {customDomainUrl}
         </p>
       )}
-      <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
-        <span>{template}</span>
-        {createdAt && <span>· {createdAt}</span>}
-        <span style={{ marginLeft: 'auto', background: '#dcfce7', color: '#166534', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>Active</span>
+      <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '1rem', alignItems: 'center' }}>
+        {createdAt && <span>{createdAt}</span>}
+        <span style={{ marginLeft: 'auto', background: badge.bg, color: badge.color, padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>{badge.text}</span>
       </div>
+      {sub.isActive && sub.periodEnd && (
+        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.75rem', margin: '0 0 0.75rem 0' }}>
+          {sub.plan === 'trial' ? 'Trial ends' : 'Renews'}: {new Date(sub.periodEnd).toLocaleDateString()}
+        </p>
+      )}
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
         <a href={siteUrl} target="_blank" rel="noopener noreferrer" className="btn btn-primary" style={{ flex: 1, fontSize: '0.75rem' }}>Visit Site</a>
-        <button className="btn btn-outline" onClick={handleManage} disabled={managing} style={{ flex: 1, fontSize: '0.75rem' }}>
-          {managing ? 'Loading...' : 'Manage'}
+        <button className="btn btn-outline" onClick={onManage} style={{ flex: 1, fontSize: '0.75rem' }}>
+          Manage
         </button>
       </div>
       <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+        {onBilling && (
+          <button className="btn btn-outline" onClick={onBilling} style={{ flex: 1, fontSize: '0.75rem' }}>
+            {sub.isExpired ? 'Subscribe' : 'Billing'}
+          </button>
+        )}
         <button className="btn btn-danger" onClick={handleDelete} disabled={deleting} style={{ flex: 1, fontSize: '0.75rem' }}>
           {deleting ? 'Deleting...' : 'Delete'}
         </button>
