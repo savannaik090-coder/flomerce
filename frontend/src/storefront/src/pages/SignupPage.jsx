@@ -43,6 +43,10 @@ export default function SignupPage() {
       const result = await authService.signup(siteConfig?.id, name, email, password);
       const userData = result.customer || result.data;
       const token = result.token;
+      if (result.requiresVerification) {
+        setShowVerificationPopup(true);
+        return;
+      }
       if (userData && token) {
         login(userData, token);
         navigate('/');

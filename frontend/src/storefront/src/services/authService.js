@@ -65,3 +65,31 @@ export async function deleteAddress(id) {
     method: 'DELETE',
   });
 }
+
+export async function requestPasswordReset(email, siteId) {
+  return apiRequest('/api/customer-auth/request-password-reset', {
+    method: 'POST',
+    body: JSON.stringify({ email, siteId }),
+  });
+}
+
+export async function resetPassword(token, email, password) {
+  return apiRequest('/api/customer-auth/reset-password', {
+    method: 'POST',
+    body: JSON.stringify({ token, email, password }),
+  });
+}
+
+export async function verifyEmail(token, email) {
+  return apiRequest('/api/customer-auth/verify-email', {
+    method: 'POST',
+    body: JSON.stringify({ token, email }),
+  });
+}
+
+export async function resendVerification(email, siteId) {
+  return apiRequest('/api/customer-auth/resend-verification', {
+    method: 'POST',
+    body: JSON.stringify({ email, siteId }),
+  });
+}

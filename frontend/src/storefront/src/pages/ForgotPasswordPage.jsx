@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { Link } from 'react-router-dom';
+import { SiteContext } from '../context/SiteContext.jsx';
 import * as authService from '../services/authService.js';
 
 export default function ForgotPasswordPage() {
+  const { siteConfig } = useContext(SiteContext);
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -15,7 +17,7 @@ export default function ForgotPasswordPage() {
     setError('');
     setSuccess('');
     try {
-      await authService.requestPasswordReset(email);
+      await authService.requestPasswordReset(email, siteConfig?.id);
       setSuccess('Password reset link has been sent to your email. Please check your inbox and spam folder.');
     } catch (err) {
       setError(err.message || 'Failed to send reset email. Please try again.');

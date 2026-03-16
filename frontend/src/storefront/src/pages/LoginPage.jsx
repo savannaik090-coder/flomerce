@@ -42,7 +42,12 @@ export default function LoginPage() {
       setSuccess('Login successful!');
       setTimeout(() => navigate('/'), 500);
     } catch (err) {
-      setError(err.message || 'Login failed. Please check your credentials.');
+      if (err.code === 'EMAIL_NOT_VERIFIED') {
+        setVerificationEmail(email);
+        setShowVerificationNotice(true);
+      } else {
+        setError(err.message || 'Login failed. Please check your credentials.');
+      }
     } finally {
       setLoading(false);
     }
@@ -54,7 +59,7 @@ export default function LoginPage() {
     setResetError('');
     setResetSuccess('');
     try {
-      await authService.requestPasswordReset(resetEmail);
+      await authService.requestPasswordReset(resetEmail, siteConfig?.id);
       setResetSuccess('Password reset email sent! Check your inbox.');
     } catch (err) {
       setResetError(err.message || 'Failed to send reset email');
@@ -67,7 +72,7 @@ export default function LoginPage() {
     setResendLoading(true);
     setResendSuccess('');
     try {
-      await authService.resendVerification(verificationEmail);
+      await authService.resendVerification(verificationEmail, siteConfig?.id);
       setResendSuccess('Verification email sent! Check your inbox.');
     } catch {
       setResendSuccess('Failed to resend. Please try again.');

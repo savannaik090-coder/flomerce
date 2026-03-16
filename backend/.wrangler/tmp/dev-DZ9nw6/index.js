@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-EdqdBR/checked-fetch.js
+// .wrangler/tmp/bundle-I1UrMs/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-EdqdBR/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-I1UrMs/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-EdqdBR/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-I1UrMs/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-EdqdBR/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-I1UrMs/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -1381,12 +1381,12 @@ var init_site_admin_worker = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-EdqdBR/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-I1UrMs/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-EdqdBR/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-I1UrMs/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -7327,6 +7327,14 @@ async function handleCustomerAuth(request, env, path) {
       return handleGetProfile(request, env);
     case "update-profile":
       return handleUpdateProfile2(request, env);
+    case "request-password-reset":
+      return handleRequestPasswordReset(request, env);
+    case "reset-password":
+      return handleResetPassword2(request, env);
+    case "verify-email":
+      return handleVerifyEmail2(request, env);
+    case "resend-verification":
+      return handleResendVerification2(request, env);
     default:
       return errorResponse("Not found", 404);
   }
@@ -7342,6 +7350,7 @@ async function ensureCustomerTables(env) {
         password_hash TEXT NOT NULL,
         name TEXT NOT NULL,
         phone TEXT,
+        email_verified INTEGER DEFAULT 0,
         created_at TEXT DEFAULT (datetime('now')),
         updated_at TEXT DEFAULT (datetime('now')),
         FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
@@ -7399,6 +7408,40 @@ async function ensureCustomerTables(env) {
     await env.DB.prepare(
       "CREATE INDEX IF NOT EXISTS idx_customer_addresses_site ON customer_addresses(site_id)"
     ).run();
+    await env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS customer_password_resets (
+        id TEXT PRIMARY KEY,
+        site_id TEXT NOT NULL,
+        customer_id TEXT NOT NULL,
+        token TEXT NOT NULL UNIQUE,
+        expires_at TEXT NOT NULL,
+        used INTEGER DEFAULT 0,
+        created_at TEXT DEFAULT (datetime('now'))
+      )
+    `).run();
+    await env.DB.prepare(
+      "CREATE INDEX IF NOT EXISTS idx_customer_pw_reset_token ON customer_password_resets(token)"
+    ).run();
+    await env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS customer_email_verifications (
+        id TEXT PRIMARY KEY,
+        site_id TEXT NOT NULL,
+        customer_id TEXT NOT NULL,
+        token TEXT NOT NULL UNIQUE,
+        expires_at TEXT NOT NULL,
+        used INTEGER DEFAULT 0,
+        created_at TEXT DEFAULT (datetime('now'))
+      )
+    `).run();
+    await env.DB.prepare(
+      "CREATE INDEX IF NOT EXISTS idx_customer_email_verify_token ON customer_email_verifications(token)"
+    ).run();
+    try {
+      await env.DB.prepare(
+        "ALTER TABLE site_customers ADD COLUMN email_verified INTEGER DEFAULT 0"
+      ).run();
+    } catch (_) {
+    }
   } catch (error) {
     console.error("Error ensuring customer tables:", error);
   }
@@ -7559,6 +7602,14 @@ async function deleteAddress(env, customer, addressId) {
   }
 }
 __name(deleteAddress, "deleteAddress");
+function getStorefrontUrl(env, site) {
+  if (site.custom_domain && site.domain_status === "verified") {
+    return `https://${site.custom_domain}`;
+  }
+  const domain = env.DOMAIN || "fluxe.in";
+  return `https://${site.subdomain}.${domain}`;
+}
+__name(getStorefrontUrl, "getStorefrontUrl");
 async function handleSignup2(request, env) {
   if (request.method !== "POST") {
     return errorResponse("Method not allowed", 405);
@@ -7576,7 +7627,7 @@ async function handleSignup2(request, env) {
       return errorResponse("Password must be at least 8 characters");
     }
     const site = await env.DB.prepare(
-      "SELECT id, brand_name FROM sites WHERE id = ? AND is_active = 1"
+      "SELECT id, brand_name, subdomain, custom_domain, domain_status FROM sites WHERE id = ? AND is_active = 1"
     ).bind(siteId).first();
     if (!site) {
       return errorResponse("Store not found", 404);
@@ -7596,12 +7647,35 @@ async function handleSignup2(request, env) {
     if (!usageCheck.allowed) {
       return errorResponse(usageCheck.reason, 403, "STORAGE_LIMIT");
     }
+    const skipVerification = env.SKIP_EMAIL_VERIFICATION === "true";
     await env.DB.prepare(
-      `INSERT INTO site_customers (id, site_id, email, password_hash, name, phone, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`
-    ).bind(customerId, siteId, email.toLowerCase(), passwordHash, sanitizeInput(name), phone || null).run();
+      `INSERT INTO site_customers (id, site_id, email, password_hash, name, phone, email_verified, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+    ).bind(customerId, siteId, email.toLowerCase(), passwordHash, sanitizeInput(name), phone || null, skipVerification ? 1 : 0).run();
     trackD1Usage2(env, siteId, estimatedBytes).catch(() => {
     });
+    if (!skipVerification) {
+      const verifyToken = generateToken(32);
+      const verifyExpiry = getExpiryDate(24);
+      await env.DB.prepare(
+        `INSERT INTO customer_email_verifications (id, site_id, customer_id, token, expires_at)
+         VALUES (?, ?, ?, ?, ?)`
+      ).bind(generateId(), siteId, customerId, verifyToken, verifyExpiry).run();
+      const baseUrl = getStorefrontUrl(env, site);
+      const verifyUrl = `${baseUrl}/verify-email?token=${verifyToken}&email=${encodeURIComponent(email.toLowerCase())}`;
+      const emailContent = buildVerificationEmail(site.brand_name, verifyUrl);
+      sendEmail(env, email.toLowerCase(), `Verify your email - ${site.brand_name}`, emailContent.html, emailContent.text).catch((err) => {
+        console.error("Failed to send verification email:", err);
+      });
+      return successResponse({
+        customer: {
+          id: customerId,
+          email: email.toLowerCase(),
+          name: sanitizeInput(name)
+        },
+        requiresVerification: true
+      }, "Account created. Please check your email to verify your account.");
+    }
     const token = generateToken(32);
     const expiresAt = getExpiryDate(24 * 7);
     const sessionId = generateId();
@@ -7634,7 +7708,7 @@ async function handleLogin2(request, env) {
       return errorResponse("Site ID, email and password are required");
     }
     const customer = await env.DB.prepare(
-      "SELECT id, email, password_hash, name, phone FROM site_customers WHERE site_id = ? AND email = ?"
+      "SELECT id, email, password_hash, name, phone, email_verified FROM site_customers WHERE site_id = ? AND email = ?"
     ).bind(siteId, email.toLowerCase()).first();
     if (!customer) {
       return errorResponse("Invalid email or password", 401, "INVALID_CREDENTIALS");
@@ -7642,6 +7716,10 @@ async function handleLogin2(request, env) {
     const isValid = await verifyPassword(password, customer.password_hash);
     if (!isValid) {
       return errorResponse("Invalid email or password", 401, "INVALID_CREDENTIALS");
+    }
+    const skipVerification = env.SKIP_EMAIL_VERIFICATION === "true";
+    if (!skipVerification && !customer.email_verified) {
+      return errorResponse("Please verify your email before logging in. Check your inbox for the verification link.", 403, "EMAIL_NOT_VERIFIED");
     }
     const token = generateToken(32);
     const expiresAt = getExpiryDate(24 * 7);
@@ -7729,6 +7807,247 @@ async function handleUpdateProfile2(request, env) {
   }
 }
 __name(handleUpdateProfile2, "handleUpdateProfile");
+async function handleRequestPasswordReset(request, env) {
+  if (request.method !== "POST") {
+    return errorResponse("Method not allowed", 405);
+  }
+  try {
+    await ensureCustomerTables(env);
+    const { siteId, email } = await request.json();
+    if (!siteId || !email) {
+      return errorResponse("Site ID and email are required");
+    }
+    const customer = await env.DB.prepare(
+      "SELECT id, name FROM site_customers WHERE site_id = ? AND email = ?"
+    ).bind(siteId, email.toLowerCase()).first();
+    if (!customer) {
+      return successResponse(null, "If an account with that email exists, a password reset link has been sent.");
+    }
+    const site = await env.DB.prepare(
+      "SELECT id, brand_name, subdomain, custom_domain, domain_status FROM sites WHERE id = ?"
+    ).bind(siteId).first();
+    await env.DB.prepare(
+      "UPDATE customer_password_resets SET used = 1 WHERE customer_id = ? AND site_id = ? AND used = 0"
+    ).bind(customer.id, siteId).run();
+    const resetToken = generateToken(32);
+    const expiresAt = getExpiryDate(1);
+    await env.DB.prepare(
+      `INSERT INTO customer_password_resets (id, site_id, customer_id, token, expires_at)
+       VALUES (?, ?, ?, ?, ?)`
+    ).bind(generateId(), siteId, customer.id, resetToken, expiresAt).run();
+    const baseUrl = getStorefrontUrl(env, site);
+    const resetUrl = `${baseUrl}/reset-password?token=${resetToken}&email=${encodeURIComponent(email.toLowerCase())}`;
+    const emailContent = buildPasswordResetEmail(site.brand_name, resetUrl, customer.name);
+    sendEmail(env, email.toLowerCase(), `Reset your password - ${site.brand_name}`, emailContent.html, emailContent.text).catch((err) => {
+      console.error("Failed to send password reset email:", err);
+    });
+    return successResponse(null, "If an account with that email exists, a password reset link has been sent.");
+  } catch (error) {
+    console.error("Request password reset error:", error);
+    return errorResponse("Failed to process password reset request", 500);
+  }
+}
+__name(handleRequestPasswordReset, "handleRequestPasswordReset");
+async function handleResetPassword2(request, env) {
+  if (request.method !== "POST") {
+    return errorResponse("Method not allowed", 405);
+  }
+  try {
+    await ensureCustomerTables(env);
+    const { token, email, password } = await request.json();
+    if (!token || !email || !password) {
+      return errorResponse("Token, email and new password are required");
+    }
+    if (password.length < 8) {
+      return errorResponse("Password must be at least 8 characters");
+    }
+    const resetRecord = await env.DB.prepare(
+      `SELECT pr.*, sc.email as customer_email FROM customer_password_resets pr
+       JOIN site_customers sc ON sc.id = pr.customer_id
+       WHERE pr.token = ? AND pr.used = 0 AND pr.expires_at > datetime('now')`
+    ).bind(token).first();
+    if (!resetRecord) {
+      return errorResponse("Invalid or expired reset link. Please request a new password reset.", 400, "INVALID_TOKEN");
+    }
+    if (resetRecord.customer_email.toLowerCase() !== email.toLowerCase()) {
+      return errorResponse("Invalid reset link.", 400, "INVALID_TOKEN");
+    }
+    const passwordHash = await hashPassword(password);
+    await env.DB.prepare(
+      "UPDATE site_customers SET password_hash = ?, updated_at = datetime('now') WHERE id = ?"
+    ).bind(passwordHash, resetRecord.customer_id).run();
+    await env.DB.prepare(
+      "UPDATE customer_password_resets SET used = 1 WHERE id = ?"
+    ).bind(resetRecord.id).run();
+    await env.DB.prepare(
+      "DELETE FROM site_customer_sessions WHERE customer_id = ?"
+    ).bind(resetRecord.customer_id).run();
+    return successResponse(null, "Password reset successfully. You can now log in with your new password.");
+  } catch (error) {
+    console.error("Reset password error:", error);
+    return errorResponse("Failed to reset password", 500);
+  }
+}
+__name(handleResetPassword2, "handleResetPassword");
+async function handleVerifyEmail2(request, env) {
+  if (request.method !== "POST") {
+    return errorResponse("Method not allowed", 405);
+  }
+  try {
+    await ensureCustomerTables(env);
+    const { token, email } = await request.json();
+    if (!token) {
+      return errorResponse("Verification token is required");
+    }
+    const verifyRecord = await env.DB.prepare(
+      `SELECT ev.*, sc.email as customer_email FROM customer_email_verifications ev
+       JOIN site_customers sc ON sc.id = ev.customer_id
+       WHERE ev.token = ? AND ev.used = 0 AND ev.expires_at > datetime('now')`
+    ).bind(token).first();
+    if (!verifyRecord) {
+      return errorResponse("Invalid or expired verification link. Please request a new verification email.", 400, "INVALID_TOKEN");
+    }
+    if (email && verifyRecord.customer_email.toLowerCase() !== email.toLowerCase()) {
+      return errorResponse("Invalid verification link.", 400, "INVALID_TOKEN");
+    }
+    await env.DB.prepare(
+      "UPDATE site_customers SET email_verified = 1, updated_at = datetime('now') WHERE id = ?"
+    ).bind(verifyRecord.customer_id).run();
+    await env.DB.prepare(
+      "UPDATE customer_email_verifications SET used = 1 WHERE id = ?"
+    ).bind(verifyRecord.id).run();
+    return successResponse(null, "Email verified successfully. You can now log in.");
+  } catch (error) {
+    console.error("Verify email error:", error);
+    return errorResponse("Failed to verify email", 500);
+  }
+}
+__name(handleVerifyEmail2, "handleVerifyEmail");
+async function handleResendVerification2(request, env) {
+  if (request.method !== "POST") {
+    return errorResponse("Method not allowed", 405);
+  }
+  try {
+    await ensureCustomerTables(env);
+    const { siteId, email } = await request.json();
+    if (!siteId || !email) {
+      return errorResponse("Site ID and email are required");
+    }
+    const customer = await env.DB.prepare(
+      "SELECT id, name, email_verified FROM site_customers WHERE site_id = ? AND email = ?"
+    ).bind(siteId, email.toLowerCase()).first();
+    if (!customer) {
+      return successResponse(null, "If an account with that email exists, a verification email has been sent.");
+    }
+    if (customer.email_verified) {
+      return successResponse(null, "Your email is already verified. You can log in.");
+    }
+    const site = await env.DB.prepare(
+      "SELECT id, brand_name, subdomain, custom_domain, domain_status FROM sites WHERE id = ?"
+    ).bind(siteId).first();
+    await env.DB.prepare(
+      "UPDATE customer_email_verifications SET used = 1 WHERE customer_id = ? AND site_id = ? AND used = 0"
+    ).bind(customer.id, siteId).run();
+    const verifyToken = generateToken(32);
+    const verifyExpiry = getExpiryDate(24);
+    await env.DB.prepare(
+      `INSERT INTO customer_email_verifications (id, site_id, customer_id, token, expires_at)
+       VALUES (?, ?, ?, ?, ?)`
+    ).bind(generateId(), siteId, customer.id, verifyToken, verifyExpiry).run();
+    const baseUrl = getStorefrontUrl(env, site);
+    const verifyUrl = `${baseUrl}/verify-email?token=${verifyToken}&email=${encodeURIComponent(email.toLowerCase())}`;
+    const emailContent = buildVerificationEmail(site.brand_name, verifyUrl);
+    sendEmail(env, email.toLowerCase(), `Verify your email - ${site.brand_name}`, emailContent.html, emailContent.text).catch((err) => {
+      console.error("Failed to send verification email:", err);
+    });
+    return successResponse(null, "If an account with that email exists, a verification email has been sent.");
+  } catch (error) {
+    console.error("Resend verification error:", error);
+    return errorResponse("Failed to resend verification email", 500);
+  }
+}
+__name(handleResendVerification2, "handleResendVerification");
+function buildPasswordResetEmail(brandName, resetUrl, customerName) {
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="utf-8"></head>
+    <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background: #f5f5f5;">
+      <div style="max-width: 600px; margin: 0 auto; background: #ffffff;">
+        <div style="background: #0f172a; color: #ffffff; padding: 32px; text-align: center;">
+          <h1 style="margin: 0; font-size: 24px; font-weight: 700;">${brandName || "Your Store"}</h1>
+        </div>
+        <div style="padding: 32px;">
+          <h2 style="margin: 0 0 16px; font-size: 22px; color: #0f172a;">Reset Your Password</h2>
+          <p style="color: #333; font-size: 15px; line-height: 1.6;">Hi ${customerName || "there"},</p>
+          <p style="color: #333; font-size: 15px; line-height: 1.6;">We received a request to reset your password. Click the button below to create a new password:</p>
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="${resetUrl}" style="display: inline-block; background: #c8a97e; color: #fff; padding: 14px 32px; border-radius: 6px; text-decoration: none; font-weight: 700; font-size: 16px;">Reset Password</a>
+          </div>
+          <p style="color: #666; font-size: 13px; line-height: 1.6;">This link will expire in 1 hour. If you didn't request a password reset, you can safely ignore this email.</p>
+          <div style="margin-top: 24px; padding: 12px; background: #f8f9fa; border-radius: 6px; font-size: 12px; color: #888; word-break: break-all;">
+            <strong>Link not working?</strong> Copy and paste this URL into your browser:<br>${resetUrl}
+          </div>
+        </div>
+        <div style="background: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8;">
+          <p style="margin: 0;">${brandName || "Your Store"}</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+  const text = `Reset Your Password
+
+Hi ${customerName || "there"},
+
+We received a request to reset your password. Visit this link to create a new password:
+${resetUrl}
+
+This link expires in 1 hour.
+
+If you didn't request this, you can ignore this email.`;
+  return { html, text };
+}
+__name(buildPasswordResetEmail, "buildPasswordResetEmail");
+function buildVerificationEmail(brandName, verifyUrl) {
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="utf-8"></head>
+    <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background: #f5f5f5;">
+      <div style="max-width: 600px; margin: 0 auto; background: #ffffff;">
+        <div style="background: #0f172a; color: #ffffff; padding: 32px; text-align: center;">
+          <h1 style="margin: 0; font-size: 24px; font-weight: 700;">${brandName || "Your Store"}</h1>
+        </div>
+        <div style="padding: 32px;">
+          <h2 style="margin: 0 0 16px; font-size: 22px; color: #0f172a;">Verify Your Email</h2>
+          <p style="color: #333; font-size: 15px; line-height: 1.6;">Welcome! Please verify your email address to activate your account and start shopping.</p>
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="${verifyUrl}" style="display: inline-block; background: #28a745; color: #fff; padding: 14px 32px; border-radius: 6px; text-decoration: none; font-weight: 700; font-size: 16px;">Verify Email</a>
+          </div>
+          <p style="color: #666; font-size: 13px; line-height: 1.6;">This link will expire in 24 hours. If you didn't create an account, you can safely ignore this email.</p>
+          <div style="margin-top: 24px; padding: 12px; background: #f8f9fa; border-radius: 6px; font-size: 12px; color: #888; word-break: break-all;">
+            <strong>Link not working?</strong> Copy and paste this URL into your browser:<br>${verifyUrl}
+          </div>
+        </div>
+        <div style="background: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8;">
+          <p style="margin: 0;">${brandName || "Your Store"}</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+  const text = `Verify Your Email
+
+Welcome! Please verify your email address by visiting this link:
+${verifyUrl}
+
+This link expires in 24 hours.
+
+If you didn't create an account, you can ignore this email.`;
+  return { html, text };
+}
+__name(buildVerificationEmail, "buildVerificationEmail");
 async function validateCustomerAuth(request, env) {
   const authHeader = request.headers.get("Authorization");
   if (!authHeader || !authHeader.startsWith("SiteCustomer ")) {
@@ -9067,7 +9386,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-EdqdBR/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-I1UrMs/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -9102,7 +9421,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-EdqdBR/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-I1UrMs/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;
