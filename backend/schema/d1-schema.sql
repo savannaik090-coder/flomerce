@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash TEXT,
     name TEXT NOT NULL,
     phone TEXT,
+    role TEXT DEFAULT 'user',
     email_verified INTEGER DEFAULT 0,
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now'))

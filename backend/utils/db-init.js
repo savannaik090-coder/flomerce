@@ -13,6 +13,7 @@ export async function ensureTablesExist(env) {
         password_hash TEXT,
         name TEXT NOT NULL,
         phone TEXT,
+        role TEXT DEFAULT 'user',
         email_verified INTEGER DEFAULT 0,
         created_at TEXT DEFAULT (datetime('now')),
         updated_at TEXT DEFAULT (datetime('now'))
@@ -458,6 +459,7 @@ export async function ensureTablesExist(env) {
       { col: 'domain_verification_token', sql: 'ALTER TABLE sites ADD COLUMN domain_verification_token TEXT' },
       { col: 'cf_hostname_id', sql: 'ALTER TABLE sites ADD COLUMN cf_hostname_id TEXT' },
       { col: 'coupon_code', table: 'orders', sql: 'ALTER TABLE orders ADD COLUMN coupon_code TEXT' },
+      { col: 'role', table: 'users', sql: "ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'" },
     ];
     for (const m of migrations) {
       try {
@@ -465,6 +467,19 @@ export async function ensureTablesExist(env) {
       } catch (e) {
         // Column likely already exists
       }
+    }
+
+    try {
+      const ownerCheck = await env.DB.prepare("SELECT id FROM users WHERE role = 'owner' LIMIT 1").first();
+      if (!ownerCheck) {
+        const firstUser = await env.DB.prepare("SELECT id FROM users ORDER BY created_at ASC LIMIT 1").first();
+        if (firstUser) {
+          await env.DB.prepare("UPDATE users SET role = 'owner' WHERE id = ?").bind(firstUser.id).run();
+          console.log('Promoted first user to owner:', firstUser.id);
+        }
+      }
+    } catch (e) {
+      console.error('Owner bootstrap check failed (non-fatal):', e.message || e);
     }
 
     // Migration: Fix wishlists unique constraint to include site_id.

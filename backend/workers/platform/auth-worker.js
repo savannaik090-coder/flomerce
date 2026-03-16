@@ -73,10 +73,13 @@ async function handleSignup(request, env) {
     const passwordHash = await hashPassword(password);
     const verificationToken = generateToken();
 
+    const userCount = await env.DB.prepare('SELECT COUNT(*) as count FROM users').first();
+    const role = (!userCount || userCount.count === 0) ? 'owner' : 'user';
+
     await env.DB.prepare(
-      `INSERT INTO users (id, email, password_hash, name, phone, email_verified, created_at)
-       VALUES (?, ?, ?, ?, ?, 0, datetime('now'))`
-    ).bind(userId, email.toLowerCase(), passwordHash, sanitizeInput(name), phone || null).run();
+      `INSERT INTO users (id, email, password_hash, name, phone, role, email_verified, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, 0, datetime('now'))`
+    ).bind(userId, email.toLowerCase(), passwordHash, sanitizeInput(name), phone || null, role).run();
 
     await env.DB.prepare(
       `INSERT INTO email_verifications (id, user_id, token, expires_at)
@@ -535,10 +538,12 @@ async function handleGoogleLogin(request, env) {
 
     if (!user) {
       const userId = generateId();
+      const userCount = await env.DB.prepare('SELECT COUNT(*) as count FROM users').first();
+      const role = (!userCount || userCount.count === 0) ? 'owner' : 'user';
       await env.DB.prepare(
-        'INSERT INTO users (id, email, password_hash, name, email_verified, created_at) VALUES (?, ?, ?, ?, 1, datetime("now"))'
-      ).bind(userId, email, '', payload.name).run();
-      user = { id: userId, email, name: payload.name, email_verified: 1 };
+        'INSERT INTO users (id, email, password_hash, name, role, email_verified, created_at) VALUES (?, ?, ?, ?, ?, 1, datetime("now"))'
+      ).bind(userId, email, '', payload.name, role).run();
+      user = { id: userId, email, name: payload.name, role, email_verified: 1 };
     } else {
       // User exists. If they don't have a password_hash, they are a Google user.
       // If they DO have a password_hash, they are a password user logging in via Google.

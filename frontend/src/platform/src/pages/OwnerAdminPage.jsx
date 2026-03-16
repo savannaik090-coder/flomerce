@@ -10,6 +10,9 @@ export default function OwnerAdminPage() {
   const [adminData, setAdminData] = useState(null);
   const [error, setError] = useState('');
   const [dataLoading, setDataLoading] = useState(true);
+  const [transferEmail, setTransferEmail] = useState('');
+  const [transferMsg, setTransferMsg] = useState(null);
+  const [transferring, setTransferring] = useState(false);
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
@@ -45,6 +48,27 @@ export default function OwnerAdminPage() {
     }
   };
 
+  const handleTransferOwnership = async (e) => {
+    e.preventDefault();
+    if (!transferEmail.trim()) return;
+    if (!window.confirm(`Are you sure you want to transfer ownership to ${transferEmail}? You will lose admin access.`)) return;
+    setTransferring(true);
+    setTransferMsg(null);
+    try {
+      await apiRequest('/api/admin/transfer-ownership', {
+        method: 'POST',
+        body: JSON.stringify({ newOwnerEmail: transferEmail.trim() }),
+      });
+      setTransferMsg({ type: 'success', text: `Ownership transferred to ${transferEmail}. You will be logged out.` });
+      setTransferEmail('');
+      setTimeout(() => { window.location.href = '/login'; }, 3000);
+    } catch (e) {
+      setTransferMsg({ type: 'error', text: e.message || 'Failed to transfer ownership' });
+    } finally {
+      setTransferring(false);
+    }
+  };
+
   if (loading || dataLoading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', fontFamily: 'Inter, sans-serif' }}>
@@ -66,6 +90,7 @@ export default function OwnerAdminPage() {
 
   const users = adminData?.users || [];
   const allSites = adminData?.sites || [];
+  const currentOwner = adminData?.currentOwner;
 
   return (
     <div className="owner-admin-container">
@@ -89,6 +114,32 @@ export default function OwnerAdminPage() {
       </div>
 
       <div className="card">
+        <h2 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '0.5rem' }}>Ownership</h2>
+        {currentOwner && (
+          <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
+            Current owner: <strong>{currentOwner.name}</strong> ({currentOwner.email})
+          </p>
+        )}
+        <form onSubmit={handleTransferOwnership} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+          <input
+            type="email"
+            value={transferEmail}
+            onChange={e => setTransferEmail(e.target.value)}
+            placeholder="New owner email..."
+            style={{ flex: 1, minWidth: 200, padding: '8px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14 }}
+          />
+          <button type="submit" className="btn btn-primary" disabled={transferring} style={{ whiteSpace: 'nowrap' }}>
+            {transferring ? 'Transferring...' : 'Transfer Ownership'}
+          </button>
+        </form>
+        {transferMsg && (
+          <p style={{ marginTop: 8, fontSize: 13, color: transferMsg.type === 'success' ? '#16a34a' : '#ef4444' }}>
+            {transferMsg.text}
+          </p>
+        )}
+      </div>
+
+      <div className="card">
         <h2 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '0.5rem' }}>Recent Users</h2>
         <div style={{ overflowX: 'auto' }}>
           <table>
@@ -96,6 +147,7 @@ export default function OwnerAdminPage() {
               <tr>
                 <th>Name</th>
                 <th>Email</th>
+                <th>Role</th>
                 <th>Plan</th>
                 <th>Created At</th>
                 <th>Action</th>
@@ -106,15 +158,18 @@ export default function OwnerAdminPage() {
                 <tr key={u.id || u.email}>
                   <td>{u.name}</td>
                   <td>{u.email}</td>
+                  <td><span style={{ fontSize: 12, padding: '2px 8px', borderRadius: 4, background: u.role === 'owner' ? '#dbeafe' : '#f1f5f9', color: u.role === 'owner' ? '#1d4ed8' : '#64748b', fontWeight: 600 }}>{u.role || 'user'}</span></td>
                   <td>{u.plan || 'free'}</td>
                   <td>{u.created_at ? new Date(u.created_at).toLocaleDateString() : '-'}</td>
                   <td>
-                    <button className="btn-block" onClick={() => handleBlockUser(u.id)}>Block</button>
+                    {u.role !== 'owner' && (
+                      <button className="btn-block" onClick={() => handleBlockUser(u.id)}>Block</button>
+                    )}
                   </td>
                 </tr>
               ))}
               {users.length === 0 && (
-                <tr><td colSpan="5" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No users found</td></tr>
+                <tr><td colSpan="6" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No users found</td></tr>
               )}
             </tbody>
           </table>

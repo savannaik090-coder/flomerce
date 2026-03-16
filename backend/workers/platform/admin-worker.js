@@ -1,12 +1,10 @@
-import { errorResponse, successResponse, handleCORS } from '../../utils/helpers.js';
+import { errorResponse, successResponse, handleCORS, validateEmail } from '../../utils/helpers.js';
 import { validateAuth } from '../../utils/auth.js';
-
-const OWNER_EMAIL = 'admin@fluxe.in';
 
 async function isOwner(user, env) {
   if (!user) return false;
-  if (user.email === OWNER_EMAIL) return true;
-  if (user.role === 'admin' || user.role === 'owner') return true;
+  const dbUser = await env.DB.prepare('SELECT role FROM users WHERE id = ?').bind(user.id).first();
+  if (dbUser && (dbUser.role === 'admin' || dbUser.role === 'owner')) return true;
   return false;
 }
 
@@ -32,6 +30,8 @@ export async function handleAdmin(request, env, path) {
       return getAdminStats(env);
     case 'users':
       return handleUserAction(request, env, pathParts);
+    case 'transfer-ownership':
+      return handleTransferOwnership(request, env, user);
     default:
       return errorResponse('Admin endpoint not found', 404);
   }
@@ -42,7 +42,7 @@ async function getAdminStats(env) {
     let users = [];
     try {
       const usersResult = await env.DB.prepare(
-        `SELECT u.id, u.name, u.email, u.created_at, u.email_verified,
+        `SELECT u.id, u.name, u.email, u.role, u.created_at, u.email_verified,
                 s.plan, s.status as subscription_status
          FROM users u
          LEFT JOIN subscriptions s ON u.id = s.user_id AND s.status = 'active'
@@ -52,7 +52,7 @@ async function getAdminStats(env) {
       users = usersResult.results || [];
     } catch (e) {
       const usersResult = await env.DB.prepare(
-        'SELECT id, name, email, created_at, email_verified FROM users ORDER BY created_at DESC LIMIT 100'
+        'SELECT id, name, email, role, created_at, email_verified FROM users ORDER BY created_at DESC LIMIT 100'
       ).all();
       users = (usersResult.results || []).map(u => ({ ...u, plan: null }));
     }
@@ -68,12 +68,15 @@ async function getAdminStats(env) {
       totalOrders = ordersCount?.count || 0;
     } catch (e) {}
 
+    const currentOwner = users.find(u => u.role === 'owner') || null;
+
     return successResponse({
       users,
       sites,
       totalUsers: users.length,
       totalSites: sites.length,
       totalOrders,
+      currentOwner: currentOwner ? { id: currentOwner.id, email: currentOwner.email, name: currentOwner.name } : null,
     });
   } catch (error) {
     console.error('Get admin stats error:', error);
@@ -115,5 +118,53 @@ async function blockUser(env, userId) {
   } catch (error) {
     console.error('Block user error:', error);
     return errorResponse('Failed to block user', 500);
+  }
+}
+
+async function handleTransferOwnership(request, env, currentUser) {
+  if (request.method !== 'POST') {
+    return errorResponse('Method not allowed', 405);
+  }
+
+  try {
+    const dbUser = await env.DB.prepare('SELECT role FROM users WHERE id = ?').bind(currentUser.id).first();
+    if (!dbUser || dbUser.role !== 'owner') {
+      return errorResponse('Only the current owner can transfer ownership', 403);
+    }
+
+    const { newOwnerEmail } = await request.json();
+
+    if (!newOwnerEmail) {
+      return errorResponse('New owner email is required');
+    }
+
+    if (!validateEmail(newOwnerEmail)) {
+      return errorResponse('Invalid email format');
+    }
+
+    const newOwner = await env.DB.prepare(
+      'SELECT id, email, name FROM users WHERE email = ?'
+    ).bind(newOwnerEmail.toLowerCase()).first();
+
+    if (!newOwner) {
+      return errorResponse('No user found with that email. They must register first.', 404);
+    }
+
+    if (newOwner.id === currentUser.id) {
+      return errorResponse('You are already the owner');
+    }
+
+    await env.DB.batch([
+      env.DB.prepare("UPDATE users SET role = 'user' WHERE id = ?").bind(currentUser.id),
+      env.DB.prepare("UPDATE users SET role = 'owner' WHERE id = ?").bind(newOwner.id),
+    ]);
+
+    return successResponse(
+      { newOwner: { id: newOwner.id, email: newOwner.email, name: newOwner.name } },
+      `Ownership transferred to ${newOwner.email}`
+    );
+  } catch (error) {
+    console.error('Transfer ownership error:', error);
+    return errorResponse('Failed to transfer ownership', 500);
   }
 }
