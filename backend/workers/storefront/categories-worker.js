@@ -266,6 +266,11 @@ async function updateCategory(request, env, user, categoryId) {
       `UPDATE categories SET ${setClause.join(', ')} WHERE id = ?`
     ).bind(...values).run();
 
+    const siteId = category.site_id || updates.siteId;
+    if (siteId) {
+      trackD1Usage(env, siteId, estimateRowBytes(updates)).catch(() => {});
+    }
+
     return successResponse(null, 'Category updated successfully');
   } catch (error) {
     console.error('Update category error:', error);

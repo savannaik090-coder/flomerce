@@ -1,5 +1,6 @@
 import { generateId, jsonResponse, errorResponse, successResponse, handleCORS } from '../../utils/helpers.js';
 import { validateAuth, validateAnyAuth } from '../../utils/auth.js';
+import { trackD1Usage, estimateRowBytes } from '../../utils/usage-tracker.js';
 
 export async function handleWishlist(request, env, path) {
   const corsResponse = handleCORS(request);
@@ -135,6 +136,8 @@ async function addToWishlist(request, env, user, siteId) {
        VALUES (?, ?, ?, ?, datetime('now'))`
     ).bind(wishlistId, siteId, user.id, productId).run();
 
+    trackD1Usage(env, siteId, estimateRowBytes({ id: wishlistId, site_id: siteId, user_id: user.id, product_id: productId })).catch(() => {});
+
     return successResponse({ id: wishlistId }, 'Added to wishlist');
   } catch (error) {
     console.error('Add to wishlist error:', error);
@@ -151,9 +154,17 @@ async function removeFromWishlist(request, env, user, siteId) {
       return errorResponse('Product ID is required');
     }
 
+    const existing = await env.DB.prepare(
+      'SELECT * FROM wishlists WHERE user_id = ? AND product_id = ? AND site_id = ?'
+    ).bind(user.id, productId, siteId).first();
+
     await env.DB.prepare(
       'DELETE FROM wishlists WHERE user_id = ? AND product_id = ? AND site_id = ?'
     ).bind(user.id, productId, siteId).run();
+
+    if (existing) {
+      trackD1Usage(env, siteId, -estimateRowBytes(existing)).catch(() => {});
+    }
 
     return successResponse(null, 'Removed from wishlist');
   } catch (error) {

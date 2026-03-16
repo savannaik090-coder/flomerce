@@ -1,5 +1,6 @@
 import { generateId, jsonResponse, errorResponse, successResponse, handleCORS } from '../../utils/helpers.js';
 import { validateAuth, validateAnyAuth } from '../../utils/auth.js';
+import { trackD1Usage, estimateRowBytes } from '../../utils/usage-tracker.js';
 
 
 export async function handleCart(request, env, path) {
@@ -106,6 +107,8 @@ async function getOrCreateCart(env, siteId, user, sessionId) {
       `INSERT INTO carts (id, site_id, user_id, session_id, items, subtotal, created_at)
        VALUES (?, ?, ?, ?, '[]', 0, datetime('now'))`
     ).bind(cartId, siteId, user ? user.id : null, user ? null : sessionId).run();
+
+    trackD1Usage(env, siteId, estimateRowBytes({ id: cartId, site_id: siteId, user_id: user?.id, session_id: sessionId, items: '[]', subtotal: 0 })).catch(() => {});
 
     cart = { id: cartId, items: '[]', subtotal: 0 };
   }

@@ -1,5 +1,6 @@
 import { generateId, generateToken, jsonResponse, errorResponse, successResponse, handleCORS } from '../../utils/helpers.js';
 import { validateAuth } from '../../utils/auth.js';
+import { trackD1Usage, estimateRowBytes } from '../../utils/usage-tracker.js';
 
 export async function handleSiteAdmin(request, env, path) {
   const corsResponse = handleCORS(request);
@@ -333,6 +334,9 @@ async function saveSiteSEO(request, env) {
       siteId
     ).run();
 
+    const seoData = { seo_title, seo_description, seo_og_image, seo_robots, google_verification, favicon_url };
+    trackD1Usage(env, siteId, estimateRowBytes(seoData)).catch(() => {});
+
     return jsonResponse({ success: true, message: 'SEO settings saved' });
   } catch (err) {
     console.error('saveSiteSEO error:', err);
@@ -375,6 +379,8 @@ async function saveCategorySEO(request, env, categoryId) {
         updated_at = datetime('now')
        WHERE id = ? AND site_id = ?`
     ).bind(seo_title || null, seo_description || null, seo_og_image || null, categoryId, siteId).run();
+
+    trackD1Usage(env, siteId, estimateRowBytes({ seo_title, seo_description, seo_og_image })).catch(() => {});
 
     return jsonResponse({ success: true, message: 'Category SEO saved' });
   } catch (err) {
@@ -431,6 +437,8 @@ async function saveProductSEO(request, env, productId) {
        WHERE id = ? AND site_id = ?`
     ).bind(seo_title || null, seo_description || null, seo_og_image || null, productId, siteId).run();
 
+    trackD1Usage(env, siteId, estimateRowBytes({ seo_title, seo_description, seo_og_image })).catch(() => {});
+
     return jsonResponse({ success: true, message: 'Product SEO saved' });
   } catch (err) {
     console.error('saveProductSEO error:', err);
@@ -480,6 +488,7 @@ async function savePageSEO(request, env, pageType) {
       `SELECT id FROM page_seo WHERE site_id = ? AND page_type = ?`
     ).bind(siteId, pageType).first();
 
+    const pageSeoData = { seo_title, seo_description, seo_og_image, page_type: pageType };
     if (existing) {
       await env.DB.prepare(
         `UPDATE page_seo SET
@@ -487,12 +496,14 @@ async function savePageSEO(request, env, pageType) {
           updated_at = datetime('now')
          WHERE id = ?`
       ).bind(seo_title || null, seo_description || null, seo_og_image || null, existing.id).run();
+      trackD1Usage(env, siteId, estimateRowBytes(pageSeoData)).catch(() => {});
     } else {
       const id = crypto.randomUUID();
       await env.DB.prepare(
         `INSERT INTO page_seo (id, site_id, page_type, seo_title, seo_description, seo_og_image)
          VALUES (?, ?, ?, ?, ?, ?)`
       ).bind(id, siteId, pageType, seo_title || null, seo_description || null, seo_og_image || null).run();
+      trackD1Usage(env, siteId, estimateRowBytes({ id, site_id: siteId, ...pageSeoData })).catch(() => {});
     }
 
     return jsonResponse({ success: true, message: 'Page SEO saved' });
@@ -562,6 +573,8 @@ async function saveSocialTags(request, env) {
       twitter_card || 'summary_large_image', twitter_title || null, twitter_description || null, twitter_image || null, twitter_site || null,
       siteId
     ).run();
+
+    trackD1Usage(env, siteId, estimateRowBytes({ og_title, og_description, og_image, og_type, twitter_card, twitter_title, twitter_description, twitter_image, twitter_site })).catch(() => {});
 
     return jsonResponse({ success: true, message: 'Social media tags saved' });
   } catch (err) {

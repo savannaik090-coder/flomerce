@@ -206,7 +206,7 @@ export async function reconcileSiteUsage(env, siteId) {
   try {
     await ensureUsageTables(env);
 
-    const tables = ['products', 'categories', 'orders', 'guest_orders', 'site_customers', 'reviews', 'coupons'];
+    const tables = ['products', 'categories', 'orders', 'guest_orders', 'site_customers', 'reviews', 'coupons', 'customer_addresses', 'wishlists', 'carts', 'page_seo'];
     let totalD1Bytes = 0;
 
     for (const table of tables) {

@@ -305,6 +305,11 @@ async function updateProduct(request, env, user, productId) {
       `UPDATE products SET ${setClause.join(', ')} WHERE id = ?`
     ).bind(...values).run();
 
+    const siteId = product.site_id || updates.siteId;
+    if (siteId) {
+      trackD1Usage(env, siteId, estimateRowBytes(updates)).catch(() => {});
+    }
+
     return successResponse(null, 'Product updated successfully');
   } catch (error) {
     console.error('Update product error:', error);

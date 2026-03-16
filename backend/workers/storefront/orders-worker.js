@@ -423,6 +423,11 @@ async function updateOrderStatus(request, env, user, orderId) {
       `UPDATE orders SET ${updates.join(', ')} WHERE id = ?`
     ).bind(...values).run();
 
+    if (order.site_id) {
+      const updateData = { status, trackingNumber, carrier, cancellationReason };
+      trackD1Usage(env, order.site_id, estimateRowBytes(updateData)).catch(() => {});
+    }
+
     if (status === 'cancelled' && cancellationReason) {
       try {
         const fullOrder = await env.DB.prepare('SELECT * FROM orders WHERE id = ?').bind(orderId).first();

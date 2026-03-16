@@ -174,6 +174,11 @@ async function createAddress(request, env, customer) {
       isDefault ? 1 : 0
     ).run();
 
+    try {
+      const { trackD1Usage, estimateRowBytes } = await import('../../utils/usage-tracker.js');
+      trackD1Usage(env, customer.site_id, estimateRowBytes({ id, site_id: customer.site_id, customer_id: customer.id, label, firstName, lastName, phone, houseNumber, roadName, city, state, pinCode })).catch(() => {});
+    } catch (_) {}
+
     const address = await env.DB.prepare(
       'SELECT * FROM customer_addresses WHERE id = ?'
     ).bind(id).first();
@@ -258,6 +263,11 @@ async function deleteAddress(env, customer, addressId) {
     await env.DB.prepare(
       'DELETE FROM customer_addresses WHERE id = ? AND customer_id = ? AND site_id = ?'
     ).bind(addressId, customer.id, customer.site_id).run();
+
+    try {
+      const { trackD1Usage, estimateRowBytes } = await import('../../utils/usage-tracker.js');
+      trackD1Usage(env, customer.site_id, -estimateRowBytes(existing)).catch(() => {});
+    } catch (_) {}
 
     return successResponse(null, 'Address deleted successfully');
   } catch (error) {

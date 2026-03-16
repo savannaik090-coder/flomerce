@@ -414,6 +414,378 @@ var init_auth = __esm({
   }
 });
 
+// utils/usage-tracker.js
+var usage_tracker_exports = {};
+__export(usage_tracker_exports, {
+  checkUsageLimit: () => checkUsageLimit,
+  ensureUsageTables: () => ensureUsageTables,
+  estimateRowBytes: () => estimateRowBytes,
+  getSiteUsage: () => getSiteUsage,
+  handleUsageAPI: () => handleUsageAPI,
+  reconcileSiteUsage: () => reconcileSiteUsage,
+  recordMediaFile: () => recordMediaFile,
+  removeMediaFile: () => removeMediaFile,
+  trackD1Usage: () => trackD1Usage,
+  trackR2Usage: () => trackR2Usage
+});
+async function ensureUsageTables(env) {
+  try {
+    await env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS site_usage (
+        site_id TEXT PRIMARY KEY,
+        d1_bytes_used INTEGER DEFAULT 0,
+        r2_bytes_used INTEGER DEFAULT 0,
+        last_updated TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
+      )
+    `).run();
+    await env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS site_media (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        site_id TEXT NOT NULL,
+        storage_key TEXT NOT NULL UNIQUE,
+        size_bytes INTEGER NOT NULL,
+        media_type TEXT DEFAULT 'image',
+        created_at TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
+      )
+    `).run();
+    await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_site_media_site ON site_media(site_id)").run();
+    await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_site_media_key ON site_media(storage_key)").run();
+  } catch (e) {
+    console.error("ensureUsageTables error (non-fatal):", e.message || e);
+  }
+}
+function estimateRowBytes(fields) {
+  let bytes = 100;
+  for (const val of Object.values(fields)) {
+    if (val === null || val === void 0) {
+      bytes += 1;
+    } else if (typeof val === "number") {
+      bytes += 8;
+    } else if (typeof val === "string") {
+      bytes += val.length * 2;
+    } else if (typeof val === "boolean") {
+      bytes += 1;
+    } else {
+      bytes += JSON.stringify(val).length * 2;
+    }
+  }
+  return bytes;
+}
+async function trackD1Usage(env, siteId, byteDelta) {
+  if (!siteId || byteDelta === 0)
+    return;
+  try {
+    await ensureUsageTables(env);
+    await env.DB.prepare(`
+      INSERT INTO site_usage (site_id, d1_bytes_used, r2_bytes_used, last_updated)
+      VALUES (?, MAX(0, ?), 0, datetime('now'))
+      ON CONFLICT(site_id) DO UPDATE SET
+        d1_bytes_used = MAX(0, d1_bytes_used + ?),
+        last_updated = datetime('now')
+    `).bind(siteId, Math.max(0, byteDelta), byteDelta).run();
+  } catch (e) {
+    console.error("trackD1Usage error (non-fatal):", e.message || e);
+  }
+}
+async function trackR2Usage(env, siteId, byteDelta) {
+  if (!siteId || byteDelta === 0)
+    return;
+  try {
+    await ensureUsageTables(env);
+    await env.DB.prepare(`
+      INSERT INTO site_usage (site_id, d1_bytes_used, r2_bytes_used, last_updated)
+      VALUES (?, 0, MAX(0, ?), datetime('now'))
+      ON CONFLICT(site_id) DO UPDATE SET
+        r2_bytes_used = MAX(0, r2_bytes_used + ?),
+        last_updated = datetime('now')
+    `).bind(siteId, Math.max(0, byteDelta), byteDelta).run();
+  } catch (e) {
+    console.error("trackR2Usage error (non-fatal):", e.message || e);
+  }
+}
+async function recordMediaFile(env, siteId, storageKey, sizeBytes, mediaType = "image") {
+  if (!siteId || !storageKey)
+    return;
+  try {
+    await ensureUsageTables(env);
+    const result = await env.DB.prepare(`
+      INSERT OR IGNORE INTO site_media (site_id, storage_key, size_bytes, media_type, created_at)
+      VALUES (?, ?, ?, ?, datetime('now'))
+    `).bind(siteId, storageKey, sizeBytes, mediaType).run();
+    if (result?.meta?.changes > 0) {
+      await trackR2Usage(env, siteId, sizeBytes);
+    }
+  } catch (e) {
+    console.error("recordMediaFile error (non-fatal):", e.message || e);
+  }
+}
+async function removeMediaFile(env, siteId, storageKey) {
+  if (!storageKey)
+    return;
+  try {
+    await ensureUsageTables(env);
+    const record = await env.DB.prepare(
+      "SELECT size_bytes, site_id FROM site_media WHERE storage_key = ?"
+    ).bind(storageKey).first();
+    if (record) {
+      const resolvedSiteId = siteId || record.site_id;
+      await env.DB.prepare("DELETE FROM site_media WHERE storage_key = ?").bind(storageKey).run();
+      await trackR2Usage(env, resolvedSiteId, -record.size_bytes);
+    }
+  } catch (e) {
+    console.error("removeMediaFile error (non-fatal):", e.message || e);
+  }
+}
+async function getSiteUsage(env, siteId) {
+  try {
+    await ensureUsageTables(env);
+    const usage = await env.DB.prepare(
+      "SELECT d1_bytes_used, r2_bytes_used, last_updated FROM site_usage WHERE site_id = ?"
+    ).bind(siteId).first();
+    return {
+      d1BytesUsed: usage?.d1_bytes_used || 0,
+      r2BytesUsed: usage?.r2_bytes_used || 0,
+      lastUpdated: usage?.last_updated || null
+    };
+  } catch (e) {
+    console.error("getSiteUsage error:", e.message || e);
+    return { d1BytesUsed: 0, r2BytesUsed: 0, lastUpdated: null };
+  }
+}
+function getSitePlan(site) {
+  const plan = (site.subscription_plan || "free").toLowerCase();
+  if (plan.includes("premium"))
+    return "premium";
+  if (plan.includes("pro"))
+    return "pro";
+  if (plan.includes("basic"))
+    return "basic";
+  if (plan === "trial")
+    return "trial";
+  return "free";
+}
+async function checkUsageLimit(env, siteId, resourceType = "d1", additionalBytes = 0) {
+  try {
+    const site = await env.DB.prepare(
+      "SELECT subscription_plan, settings FROM sites WHERE id = ?"
+    ).bind(siteId).first();
+    if (!site)
+      return { allowed: true, reason: null };
+    const planKey = getSitePlan(site);
+    const limits = PLAN_LIMITS[planKey] || PLAN_LIMITS.free;
+    const usage = await getSiteUsage(env, siteId);
+    const currentBytes = resourceType === "d1" ? usage.d1BytesUsed : usage.r2BytesUsed;
+    const limitBytes = resourceType === "d1" ? limits.d1Bytes : limits.r2Bytes;
+    const newTotal = currentBytes + additionalBytes;
+    if (newTotal <= limitBytes) {
+      return { allowed: true, reason: null };
+    }
+    if (limits.allowOverage) {
+      let siteSettings = {};
+      try {
+        if (site.settings)
+          siteSettings = typeof site.settings === "string" ? JSON.parse(site.settings) : site.settings;
+      } catch (_) {
+      }
+      if (siteSettings.overageEnabled) {
+        const overageBytes = Math.max(0, newTotal - limitBytes);
+        const overageGB = overageBytes / (1024 * 1024 * 1024);
+        const rate = resourceType === "d1" ? OVERAGE_RATES.d1PerGB : OVERAGE_RATES.r2PerGB;
+        const overageCost = overageGB * rate;
+        return { allowed: true, overage: true, overageBytes, overageCostINR: overageCost, reason: null };
+      }
+    }
+    const limitMB = (limitBytes / (1024 * 1024)).toFixed(0);
+    const usedMB = (currentBytes / (1024 * 1024)).toFixed(1);
+    return {
+      allowed: false,
+      reason: `Storage limit reached. ${resourceType.toUpperCase()} usage: ${usedMB}MB / ${limitMB}MB. ${limits.allowOverage ? "Enable overage charges in your billing settings to continue, or upgrade your plan." : "Upgrade your plan for more storage."}`
+    };
+  } catch (e) {
+    console.error("checkUsageLimit error (non-fatal):", e.message || e);
+    return { allowed: true, reason: null };
+  }
+}
+async function reconcileSiteUsage(env, siteId) {
+  try {
+    await ensureUsageTables(env);
+    const tables = ["products", "categories", "orders", "guest_orders", "site_customers", "reviews", "coupons", "customer_addresses", "wishlists", "carts", "page_seo"];
+    let totalD1Bytes = 0;
+    for (const table of tables) {
+      try {
+        const rows = await env.DB.prepare(
+          `SELECT * FROM ${table} WHERE site_id = ?`
+        ).bind(siteId).all();
+        for (const row of rows.results || []) {
+          totalD1Bytes += estimateRowBytes(row);
+        }
+      } catch (e) {
+      }
+    }
+    let totalR2Bytes = 0;
+    const mediaRows = await env.DB.prepare(
+      "SELECT SUM(size_bytes) as total FROM site_media WHERE site_id = ?"
+    ).bind(siteId).first();
+    totalR2Bytes = mediaRows?.total || 0;
+    await env.DB.prepare(`
+      INSERT INTO site_usage (site_id, d1_bytes_used, r2_bytes_used, last_updated)
+      VALUES (?, ?, ?, datetime('now'))
+      ON CONFLICT(site_id) DO UPDATE SET
+        d1_bytes_used = ?,
+        r2_bytes_used = ?,
+        last_updated = datetime('now')
+    `).bind(siteId, totalD1Bytes, totalR2Bytes, totalD1Bytes, totalR2Bytes).run();
+    return { d1BytesUsed: totalD1Bytes, r2BytesUsed: totalR2Bytes };
+  } catch (e) {
+    console.error("reconcileSiteUsage error:", e.message || e);
+    return null;
+  }
+}
+async function handleUsageAPI(request, env, path) {
+  const corsResponse = handleCORS(request);
+  if (corsResponse)
+    return corsResponse;
+  const user = await validateAuth(request, env);
+  if (!user) {
+    return errorResponse("Unauthorized", 401);
+  }
+  const url = new URL(request.url);
+  const siteId = url.searchParams.get("siteId");
+  if (!siteId) {
+    return errorResponse("siteId is required", 400);
+  }
+  if (request.method === "POST") {
+    return handleOverageToggle(request, env, user, siteId);
+  }
+  if (request.method !== "GET") {
+    return errorResponse("Method not allowed", 405);
+  }
+  try {
+    const site = await env.DB.prepare(
+      "SELECT id, subscription_plan, settings FROM sites WHERE id = ? AND user_id = ?"
+    ).bind(siteId, user.id).first();
+    if (!site) {
+      return errorResponse("Site not found or unauthorized", 404);
+    }
+    let usage = await getSiteUsage(env, siteId);
+    if (usage.d1BytesUsed === 0 && usage.r2BytesUsed === 0 && !usage.lastUpdated) {
+      const reconciled = await reconcileSiteUsage(env, siteId);
+      if (reconciled) {
+        usage = { d1BytesUsed: reconciled.d1BytesUsed, r2BytesUsed: reconciled.r2BytesUsed, lastUpdated: (/* @__PURE__ */ new Date()).toISOString() };
+      }
+    }
+    const planKey = getSitePlan(site);
+    const limits = PLAN_LIMITS[planKey] || PLAN_LIMITS.free;
+    let siteSettings = {};
+    try {
+      if (site.settings)
+        siteSettings = typeof site.settings === "string" ? JSON.parse(site.settings) : site.settings;
+    } catch (_) {
+    }
+    const overageEnabled = !!siteSettings.overageEnabled;
+    const d1OverageBytes = Math.max(0, usage.d1BytesUsed - limits.d1Bytes);
+    const r2OverageBytes = Math.max(0, usage.r2BytesUsed - limits.r2Bytes);
+    const d1OverageGB = d1OverageBytes / (1024 * 1024 * 1024);
+    const r2OverageGB = r2OverageBytes / (1024 * 1024 * 1024);
+    let overageCostINR = 0;
+    if (limits.allowOverage && overageEnabled) {
+      overageCostINR = d1OverageGB * OVERAGE_RATES.d1PerGB + r2OverageGB * OVERAGE_RATES.r2PerGB;
+    }
+    return successResponse({
+      plan: planKey,
+      d1: {
+        used: usage.d1BytesUsed,
+        limit: limits.d1Bytes,
+        percentage: limits.d1Bytes > 0 ? Math.min(100, usage.d1BytesUsed / limits.d1Bytes * 100) : 0,
+        overageBytes: d1OverageBytes
+      },
+      r2: {
+        used: usage.r2BytesUsed,
+        limit: limits.r2Bytes,
+        percentage: limits.r2Bytes > 0 ? Math.min(100, usage.r2BytesUsed / limits.r2Bytes * 100) : 0,
+        overageBytes: r2OverageBytes
+      },
+      allowOverage: limits.allowOverage,
+      overageEnabled,
+      overageCostINR: Math.round(overageCostINR * 100) / 100,
+      overageRates: OVERAGE_RATES,
+      lastUpdated: usage.lastUpdated
+    });
+  } catch (error) {
+    console.error("Usage API error:", error);
+    return errorResponse("Failed to fetch usage data", 500);
+  }
+}
+async function handleOverageToggle(request, env, user, siteId) {
+  try {
+    const body = await request.json();
+    const { overageEnabled } = body;
+    if (typeof overageEnabled !== "boolean") {
+      return errorResponse("overageEnabled must be a boolean", 400);
+    }
+    const site = await env.DB.prepare(
+      "SELECT id, subscription_plan, settings FROM sites WHERE id = ? AND user_id = ?"
+    ).bind(siteId, user.id).first();
+    if (!site) {
+      return errorResponse("Site not found or unauthorized", 404);
+    }
+    const planKey = getSitePlan(site);
+    const limits = PLAN_LIMITS[planKey] || PLAN_LIMITS.free;
+    if (!limits.allowOverage) {
+      return errorResponse("Overage charges are only available on the Premium plan", 403);
+    }
+    let siteSettings = {};
+    try {
+      if (site.settings)
+        siteSettings = typeof site.settings === "string" ? JSON.parse(site.settings) : site.settings;
+    } catch (_) {
+    }
+    siteSettings.overageEnabled = overageEnabled;
+    await env.DB.prepare(
+      "UPDATE sites SET settings = ? WHERE id = ?"
+    ).bind(JSON.stringify(siteSettings), siteId).run();
+    return successResponse({ overageEnabled, message: overageEnabled ? "Overage charges enabled. You will be billed for usage beyond your plan limits." : "Overage charges disabled. Your site will be blocked when storage limits are reached." });
+  } catch (error) {
+    console.error("Overage toggle error:", error);
+    return errorResponse("Failed to update overage settings", 500);
+  }
+}
+var PLAN_LIMITS, OVERAGE_RATES;
+var init_usage_tracker = __esm({
+  "utils/usage-tracker.js"() {
+    init_checked_fetch();
+    init_strip_cf_connecting_ip_header();
+    init_modules_watch_stub();
+    init_helpers();
+    init_auth();
+    PLAN_LIMITS = {
+      basic: { d1Bytes: 500 * 1024 * 1024, r2Bytes: 5 * 1024 * 1024 * 1024, allowOverage: false },
+      pro: { d1Bytes: 1.5 * 1024 * 1024 * 1024, r2Bytes: 50 * 1024 * 1024 * 1024, allowOverage: false },
+      premium: { d1Bytes: 3 * 1024 * 1024 * 1024, r2Bytes: 100 * 1024 * 1024 * 1024, allowOverage: true },
+      trial: { d1Bytes: 500 * 1024 * 1024, r2Bytes: 5 * 1024 * 1024 * 1024, allowOverage: false },
+      free: { d1Bytes: 500 * 1024 * 1024, r2Bytes: 5 * 1024 * 1024 * 1024, allowOverage: false }
+    };
+    OVERAGE_RATES = {
+      d1PerGB: 0.75,
+      r2PerGB: 0.015
+    };
+    __name(ensureUsageTables, "ensureUsageTables");
+    __name(estimateRowBytes, "estimateRowBytes");
+    __name(trackD1Usage, "trackD1Usage");
+    __name(trackR2Usage, "trackR2Usage");
+    __name(recordMediaFile, "recordMediaFile");
+    __name(removeMediaFile, "removeMediaFile");
+    __name(getSiteUsage, "getSiteUsage");
+    __name(getSitePlan, "getSitePlan");
+    __name(checkUsageLimit, "checkUsageLimit");
+    __name(reconcileSiteUsage, "reconcileSiteUsage");
+    __name(handleUsageAPI, "handleUsageAPI");
+    __name(handleOverageToggle, "handleOverageToggle");
+  }
+});
+
 // workers/storefront/site-admin-worker.js
 var site_admin_worker_exports = {};
 __export(site_admin_worker_exports, {
@@ -705,6 +1077,9 @@ async function saveSiteSEO(request, env) {
       favicon_url || null,
       siteId
     ).run();
+    const seoData = { seo_title, seo_description, seo_og_image, seo_robots, google_verification, favicon_url };
+    trackD1Usage(env, siteId, estimateRowBytes(seoData)).catch(() => {
+    });
     return jsonResponse({ success: true, message: "SEO settings saved" });
   } catch (err) {
     console.error("saveSiteSEO error:", err);
@@ -744,6 +1119,8 @@ async function saveCategorySEO(request, env, categoryId) {
         updated_at = datetime('now')
        WHERE id = ? AND site_id = ?`
     ).bind(seo_title || null, seo_description || null, seo_og_image || null, categoryId, siteId).run();
+    trackD1Usage(env, siteId, estimateRowBytes({ seo_title, seo_description, seo_og_image })).catch(() => {
+    });
     return jsonResponse({ success: true, message: "Category SEO saved" });
   } catch (err) {
     console.error("saveCategorySEO error:", err);
@@ -795,6 +1172,8 @@ async function saveProductSEO(request, env, productId) {
         updated_at = datetime('now')
        WHERE id = ? AND site_id = ?`
     ).bind(seo_title || null, seo_description || null, seo_og_image || null, productId, siteId).run();
+    trackD1Usage(env, siteId, estimateRowBytes({ seo_title, seo_description, seo_og_image })).catch(() => {
+    });
     return jsonResponse({ success: true, message: "Product SEO saved" });
   } catch (err) {
     console.error("saveProductSEO error:", err);
@@ -838,6 +1217,7 @@ async function savePageSEO(request, env, pageType) {
     const existing = await env.DB.prepare(
       `SELECT id FROM page_seo WHERE site_id = ? AND page_type = ?`
     ).bind(siteId, pageType).first();
+    const pageSeoData = { seo_title, seo_description, seo_og_image, page_type: pageType };
     if (existing) {
       await env.DB.prepare(
         `UPDATE page_seo SET
@@ -845,12 +1225,16 @@ async function savePageSEO(request, env, pageType) {
           updated_at = datetime('now')
          WHERE id = ?`
       ).bind(seo_title || null, seo_description || null, seo_og_image || null, existing.id).run();
+      trackD1Usage(env, siteId, estimateRowBytes(pageSeoData)).catch(() => {
+      });
     } else {
       const id = crypto.randomUUID();
       await env.DB.prepare(
         `INSERT INTO page_seo (id, site_id, page_type, seo_title, seo_description, seo_og_image)
          VALUES (?, ?, ?, ?, ?, ?)`
       ).bind(id, siteId, pageType, seo_title || null, seo_description || null, seo_og_image || null).run();
+      trackD1Usage(env, siteId, estimateRowBytes({ id, site_id: siteId, ...pageSeoData })).catch(() => {
+      });
     }
     return jsonResponse({ success: true, message: "Page SEO saved" });
   } catch (err) {
@@ -932,6 +1316,8 @@ async function saveSocialTags(request, env) {
       twitter_site || null,
       siteId
     ).run();
+    trackD1Usage(env, siteId, estimateRowBytes({ og_title, og_description, og_image, og_type, twitter_card, twitter_title, twitter_description, twitter_image, twitter_site })).catch(() => {
+    });
     return jsonResponse({ success: true, message: "Social media tags saved" });
   } catch (err) {
     console.error("saveSocialTags error:", err);
@@ -972,6 +1358,7 @@ var init_site_admin_worker = __esm({
     init_modules_watch_stub();
     init_helpers();
     init_auth();
+    init_usage_tracker();
     __name(handleSiteAdmin, "handleSiteAdmin");
     __name(verifySiteAdminCode, "verifySiteAdminCode");
     __name(validateSiteAdminToken, "validateSiteAdminToken");
@@ -991,378 +1378,6 @@ var init_site_admin_worker = __esm({
     __name(getSocialTags, "getSocialTags");
     __name(saveSocialTags, "saveSocialTags");
     __name(validateSiteAdmin, "validateSiteAdmin");
-  }
-});
-
-// utils/usage-tracker.js
-var usage_tracker_exports = {};
-__export(usage_tracker_exports, {
-  checkUsageLimit: () => checkUsageLimit,
-  ensureUsageTables: () => ensureUsageTables,
-  estimateRowBytes: () => estimateRowBytes,
-  getSiteUsage: () => getSiteUsage,
-  handleUsageAPI: () => handleUsageAPI,
-  reconcileSiteUsage: () => reconcileSiteUsage,
-  recordMediaFile: () => recordMediaFile,
-  removeMediaFile: () => removeMediaFile,
-  trackD1Usage: () => trackD1Usage,
-  trackR2Usage: () => trackR2Usage
-});
-async function ensureUsageTables(env) {
-  try {
-    await env.DB.prepare(`
-      CREATE TABLE IF NOT EXISTS site_usage (
-        site_id TEXT PRIMARY KEY,
-        d1_bytes_used INTEGER DEFAULT 0,
-        r2_bytes_used INTEGER DEFAULT 0,
-        last_updated TEXT DEFAULT (datetime('now')),
-        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
-      )
-    `).run();
-    await env.DB.prepare(`
-      CREATE TABLE IF NOT EXISTS site_media (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        site_id TEXT NOT NULL,
-        storage_key TEXT NOT NULL UNIQUE,
-        size_bytes INTEGER NOT NULL,
-        media_type TEXT DEFAULT 'image',
-        created_at TEXT DEFAULT (datetime('now')),
-        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
-      )
-    `).run();
-    await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_site_media_site ON site_media(site_id)").run();
-    await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_site_media_key ON site_media(storage_key)").run();
-  } catch (e) {
-    console.error("ensureUsageTables error (non-fatal):", e.message || e);
-  }
-}
-function estimateRowBytes(fields) {
-  let bytes = 100;
-  for (const val of Object.values(fields)) {
-    if (val === null || val === void 0) {
-      bytes += 1;
-    } else if (typeof val === "number") {
-      bytes += 8;
-    } else if (typeof val === "string") {
-      bytes += val.length * 2;
-    } else if (typeof val === "boolean") {
-      bytes += 1;
-    } else {
-      bytes += JSON.stringify(val).length * 2;
-    }
-  }
-  return bytes;
-}
-async function trackD1Usage(env, siteId, byteDelta) {
-  if (!siteId || byteDelta === 0)
-    return;
-  try {
-    await ensureUsageTables(env);
-    await env.DB.prepare(`
-      INSERT INTO site_usage (site_id, d1_bytes_used, r2_bytes_used, last_updated)
-      VALUES (?, MAX(0, ?), 0, datetime('now'))
-      ON CONFLICT(site_id) DO UPDATE SET
-        d1_bytes_used = MAX(0, d1_bytes_used + ?),
-        last_updated = datetime('now')
-    `).bind(siteId, Math.max(0, byteDelta), byteDelta).run();
-  } catch (e) {
-    console.error("trackD1Usage error (non-fatal):", e.message || e);
-  }
-}
-async function trackR2Usage(env, siteId, byteDelta) {
-  if (!siteId || byteDelta === 0)
-    return;
-  try {
-    await ensureUsageTables(env);
-    await env.DB.prepare(`
-      INSERT INTO site_usage (site_id, d1_bytes_used, r2_bytes_used, last_updated)
-      VALUES (?, 0, MAX(0, ?), datetime('now'))
-      ON CONFLICT(site_id) DO UPDATE SET
-        r2_bytes_used = MAX(0, r2_bytes_used + ?),
-        last_updated = datetime('now')
-    `).bind(siteId, Math.max(0, byteDelta), byteDelta).run();
-  } catch (e) {
-    console.error("trackR2Usage error (non-fatal):", e.message || e);
-  }
-}
-async function recordMediaFile(env, siteId, storageKey, sizeBytes, mediaType = "image") {
-  if (!siteId || !storageKey)
-    return;
-  try {
-    await ensureUsageTables(env);
-    const result = await env.DB.prepare(`
-      INSERT OR IGNORE INTO site_media (site_id, storage_key, size_bytes, media_type, created_at)
-      VALUES (?, ?, ?, ?, datetime('now'))
-    `).bind(siteId, storageKey, sizeBytes, mediaType).run();
-    if (result?.meta?.changes > 0) {
-      await trackR2Usage(env, siteId, sizeBytes);
-    }
-  } catch (e) {
-    console.error("recordMediaFile error (non-fatal):", e.message || e);
-  }
-}
-async function removeMediaFile(env, siteId, storageKey) {
-  if (!storageKey)
-    return;
-  try {
-    await ensureUsageTables(env);
-    const record = await env.DB.prepare(
-      "SELECT size_bytes, site_id FROM site_media WHERE storage_key = ?"
-    ).bind(storageKey).first();
-    if (record) {
-      const resolvedSiteId = siteId || record.site_id;
-      await env.DB.prepare("DELETE FROM site_media WHERE storage_key = ?").bind(storageKey).run();
-      await trackR2Usage(env, resolvedSiteId, -record.size_bytes);
-    }
-  } catch (e) {
-    console.error("removeMediaFile error (non-fatal):", e.message || e);
-  }
-}
-async function getSiteUsage(env, siteId) {
-  try {
-    await ensureUsageTables(env);
-    const usage = await env.DB.prepare(
-      "SELECT d1_bytes_used, r2_bytes_used, last_updated FROM site_usage WHERE site_id = ?"
-    ).bind(siteId).first();
-    return {
-      d1BytesUsed: usage?.d1_bytes_used || 0,
-      r2BytesUsed: usage?.r2_bytes_used || 0,
-      lastUpdated: usage?.last_updated || null
-    };
-  } catch (e) {
-    console.error("getSiteUsage error:", e.message || e);
-    return { d1BytesUsed: 0, r2BytesUsed: 0, lastUpdated: null };
-  }
-}
-function getSitePlan(site) {
-  const plan = (site.subscription_plan || "free").toLowerCase();
-  if (plan.includes("premium"))
-    return "premium";
-  if (plan.includes("pro"))
-    return "pro";
-  if (plan.includes("basic"))
-    return "basic";
-  if (plan === "trial")
-    return "trial";
-  return "free";
-}
-async function checkUsageLimit(env, siteId, resourceType = "d1", additionalBytes = 0) {
-  try {
-    const site = await env.DB.prepare(
-      "SELECT subscription_plan, settings FROM sites WHERE id = ?"
-    ).bind(siteId).first();
-    if (!site)
-      return { allowed: true, reason: null };
-    const planKey = getSitePlan(site);
-    const limits = PLAN_LIMITS[planKey] || PLAN_LIMITS.free;
-    const usage = await getSiteUsage(env, siteId);
-    const currentBytes = resourceType === "d1" ? usage.d1BytesUsed : usage.r2BytesUsed;
-    const limitBytes = resourceType === "d1" ? limits.d1Bytes : limits.r2Bytes;
-    const newTotal = currentBytes + additionalBytes;
-    if (newTotal <= limitBytes) {
-      return { allowed: true, reason: null };
-    }
-    if (limits.allowOverage) {
-      let siteSettings = {};
-      try {
-        if (site.settings)
-          siteSettings = typeof site.settings === "string" ? JSON.parse(site.settings) : site.settings;
-      } catch (_) {
-      }
-      if (siteSettings.overageEnabled) {
-        const overageBytes = Math.max(0, newTotal - limitBytes);
-        const overageGB = overageBytes / (1024 * 1024 * 1024);
-        const rate = resourceType === "d1" ? OVERAGE_RATES.d1PerGB : OVERAGE_RATES.r2PerGB;
-        const overageCost = overageGB * rate;
-        return { allowed: true, overage: true, overageBytes, overageCostINR: overageCost, reason: null };
-      }
-    }
-    const limitMB = (limitBytes / (1024 * 1024)).toFixed(0);
-    const usedMB = (currentBytes / (1024 * 1024)).toFixed(1);
-    return {
-      allowed: false,
-      reason: `Storage limit reached. ${resourceType.toUpperCase()} usage: ${usedMB}MB / ${limitMB}MB. ${limits.allowOverage ? "Enable overage charges in your billing settings to continue, or upgrade your plan." : "Upgrade your plan for more storage."}`
-    };
-  } catch (e) {
-    console.error("checkUsageLimit error (non-fatal):", e.message || e);
-    return { allowed: true, reason: null };
-  }
-}
-async function reconcileSiteUsage(env, siteId) {
-  try {
-    await ensureUsageTables(env);
-    const tables = ["products", "categories", "orders", "guest_orders", "site_customers", "reviews", "coupons"];
-    let totalD1Bytes = 0;
-    for (const table of tables) {
-      try {
-        const rows = await env.DB.prepare(
-          `SELECT * FROM ${table} WHERE site_id = ?`
-        ).bind(siteId).all();
-        for (const row of rows.results || []) {
-          totalD1Bytes += estimateRowBytes(row);
-        }
-      } catch (e) {
-      }
-    }
-    let totalR2Bytes = 0;
-    const mediaRows = await env.DB.prepare(
-      "SELECT SUM(size_bytes) as total FROM site_media WHERE site_id = ?"
-    ).bind(siteId).first();
-    totalR2Bytes = mediaRows?.total || 0;
-    await env.DB.prepare(`
-      INSERT INTO site_usage (site_id, d1_bytes_used, r2_bytes_used, last_updated)
-      VALUES (?, ?, ?, datetime('now'))
-      ON CONFLICT(site_id) DO UPDATE SET
-        d1_bytes_used = ?,
-        r2_bytes_used = ?,
-        last_updated = datetime('now')
-    `).bind(siteId, totalD1Bytes, totalR2Bytes, totalD1Bytes, totalR2Bytes).run();
-    return { d1BytesUsed: totalD1Bytes, r2BytesUsed: totalR2Bytes };
-  } catch (e) {
-    console.error("reconcileSiteUsage error:", e.message || e);
-    return null;
-  }
-}
-async function handleUsageAPI(request, env, path) {
-  const corsResponse = handleCORS(request);
-  if (corsResponse)
-    return corsResponse;
-  const user = await validateAuth(request, env);
-  if (!user) {
-    return errorResponse("Unauthorized", 401);
-  }
-  const url = new URL(request.url);
-  const siteId = url.searchParams.get("siteId");
-  if (!siteId) {
-    return errorResponse("siteId is required", 400);
-  }
-  if (request.method === "POST") {
-    return handleOverageToggle(request, env, user, siteId);
-  }
-  if (request.method !== "GET") {
-    return errorResponse("Method not allowed", 405);
-  }
-  try {
-    const site = await env.DB.prepare(
-      "SELECT id, subscription_plan, settings FROM sites WHERE id = ? AND user_id = ?"
-    ).bind(siteId, user.id).first();
-    if (!site) {
-      return errorResponse("Site not found or unauthorized", 404);
-    }
-    let usage = await getSiteUsage(env, siteId);
-    if (usage.d1BytesUsed === 0 && usage.r2BytesUsed === 0 && !usage.lastUpdated) {
-      const reconciled = await reconcileSiteUsage(env, siteId);
-      if (reconciled) {
-        usage = { d1BytesUsed: reconciled.d1BytesUsed, r2BytesUsed: reconciled.r2BytesUsed, lastUpdated: (/* @__PURE__ */ new Date()).toISOString() };
-      }
-    }
-    const planKey = getSitePlan(site);
-    const limits = PLAN_LIMITS[planKey] || PLAN_LIMITS.free;
-    let siteSettings = {};
-    try {
-      if (site.settings)
-        siteSettings = typeof site.settings === "string" ? JSON.parse(site.settings) : site.settings;
-    } catch (_) {
-    }
-    const overageEnabled = !!siteSettings.overageEnabled;
-    const d1OverageBytes = Math.max(0, usage.d1BytesUsed - limits.d1Bytes);
-    const r2OverageBytes = Math.max(0, usage.r2BytesUsed - limits.r2Bytes);
-    const d1OverageGB = d1OverageBytes / (1024 * 1024 * 1024);
-    const r2OverageGB = r2OverageBytes / (1024 * 1024 * 1024);
-    let overageCostINR = 0;
-    if (limits.allowOverage && overageEnabled) {
-      overageCostINR = d1OverageGB * OVERAGE_RATES.d1PerGB + r2OverageGB * OVERAGE_RATES.r2PerGB;
-    }
-    return successResponse({
-      plan: planKey,
-      d1: {
-        used: usage.d1BytesUsed,
-        limit: limits.d1Bytes,
-        percentage: limits.d1Bytes > 0 ? Math.min(100, usage.d1BytesUsed / limits.d1Bytes * 100) : 0,
-        overageBytes: d1OverageBytes
-      },
-      r2: {
-        used: usage.r2BytesUsed,
-        limit: limits.r2Bytes,
-        percentage: limits.r2Bytes > 0 ? Math.min(100, usage.r2BytesUsed / limits.r2Bytes * 100) : 0,
-        overageBytes: r2OverageBytes
-      },
-      allowOverage: limits.allowOverage,
-      overageEnabled,
-      overageCostINR: Math.round(overageCostINR * 100) / 100,
-      overageRates: OVERAGE_RATES,
-      lastUpdated: usage.lastUpdated
-    });
-  } catch (error) {
-    console.error("Usage API error:", error);
-    return errorResponse("Failed to fetch usage data", 500);
-  }
-}
-async function handleOverageToggle(request, env, user, siteId) {
-  try {
-    const body = await request.json();
-    const { overageEnabled } = body;
-    if (typeof overageEnabled !== "boolean") {
-      return errorResponse("overageEnabled must be a boolean", 400);
-    }
-    const site = await env.DB.prepare(
-      "SELECT id, subscription_plan, settings FROM sites WHERE id = ? AND user_id = ?"
-    ).bind(siteId, user.id).first();
-    if (!site) {
-      return errorResponse("Site not found or unauthorized", 404);
-    }
-    const planKey = getSitePlan(site);
-    const limits = PLAN_LIMITS[planKey] || PLAN_LIMITS.free;
-    if (!limits.allowOverage) {
-      return errorResponse("Overage charges are only available on the Premium plan", 403);
-    }
-    let siteSettings = {};
-    try {
-      if (site.settings)
-        siteSettings = typeof site.settings === "string" ? JSON.parse(site.settings) : site.settings;
-    } catch (_) {
-    }
-    siteSettings.overageEnabled = overageEnabled;
-    await env.DB.prepare(
-      "UPDATE sites SET settings = ? WHERE id = ?"
-    ).bind(JSON.stringify(siteSettings), siteId).run();
-    return successResponse({ overageEnabled, message: overageEnabled ? "Overage charges enabled. You will be billed for usage beyond your plan limits." : "Overage charges disabled. Your site will be blocked when storage limits are reached." });
-  } catch (error) {
-    console.error("Overage toggle error:", error);
-    return errorResponse("Failed to update overage settings", 500);
-  }
-}
-var PLAN_LIMITS, OVERAGE_RATES;
-var init_usage_tracker = __esm({
-  "utils/usage-tracker.js"() {
-    init_checked_fetch();
-    init_strip_cf_connecting_ip_header();
-    init_modules_watch_stub();
-    init_helpers();
-    init_auth();
-    PLAN_LIMITS = {
-      basic: { d1Bytes: 500 * 1024 * 1024, r2Bytes: 5 * 1024 * 1024 * 1024, allowOverage: false },
-      pro: { d1Bytes: 1.5 * 1024 * 1024 * 1024, r2Bytes: 50 * 1024 * 1024 * 1024, allowOverage: false },
-      premium: { d1Bytes: 3 * 1024 * 1024 * 1024, r2Bytes: 100 * 1024 * 1024 * 1024, allowOverage: true },
-      trial: { d1Bytes: 500 * 1024 * 1024, r2Bytes: 5 * 1024 * 1024 * 1024, allowOverage: false },
-      free: { d1Bytes: 500 * 1024 * 1024, r2Bytes: 5 * 1024 * 1024 * 1024, allowOverage: false }
-    };
-    OVERAGE_RATES = {
-      d1PerGB: 0.75,
-      r2PerGB: 0.015
-    };
-    __name(ensureUsageTables, "ensureUsageTables");
-    __name(estimateRowBytes, "estimateRowBytes");
-    __name(trackD1Usage, "trackD1Usage");
-    __name(trackR2Usage, "trackR2Usage");
-    __name(recordMediaFile, "recordMediaFile");
-    __name(removeMediaFile, "removeMediaFile");
-    __name(getSiteUsage, "getSiteUsage");
-    __name(getSitePlan, "getSitePlan");
-    __name(checkUsageLimit, "checkUsageLimit");
-    __name(reconcileSiteUsage, "reconcileSiteUsage");
-    __name(handleUsageAPI, "handleUsageAPI");
-    __name(handleOverageToggle, "handleOverageToggle");
   }
 });
 
@@ -2697,6 +2712,7 @@ async function deleteCustomHostname(env, cfHostnameId) {
 __name(deleteCustomHostname, "deleteCustomHostname");
 
 // workers/platform/sites-worker.js
+init_usage_tracker();
 async function handleSites(request, env, path) {
   const corsResponse = handleCORS(request);
   if (corsResponse)
@@ -3034,12 +3050,17 @@ async function createDefaultCategories(env, siteId, businessCategory) {
       `INSERT INTO categories (id, site_id, name, slug, subtitle, show_on_home, display_order, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(parentId, siteId, cat.name, cat.slug, cat.subtitle || null, cat.showOnHome !== void 0 ? cat.showOnHome : 1, order++).run();
+    trackD1Usage(env, siteId, estimateRowBytes({ id: parentId, site_id: siteId, name: cat.name, slug: cat.slug, subtitle: cat.subtitle })).catch(() => {
+    });
     for (const childName of cat.children || []) {
+      const childId = generateId();
       const childSlug = `${cat.slug}-${childName.toLowerCase().replace(/\s+/g, "-")}`;
       await env.DB.prepare(
         `INSERT INTO categories (id, site_id, name, slug, parent_id, show_on_home, display_order, created_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
-      ).bind(generateId(), siteId, childName, childSlug, parentId, 0, order++).run();
+      ).bind(childId, siteId, childName, childSlug, parentId, 0, order++).run();
+      trackD1Usage(env, siteId, estimateRowBytes({ id: childId, site_id: siteId, name: childName, slug: childSlug, parent_id: parentId })).catch(() => {
+      });
     }
   }
 }
@@ -3053,10 +3074,13 @@ async function createUserCategories(env, siteId, categories) {
     const slug = categoryName.toLowerCase().trim().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-");
     const subtitle = typeof cat === "object" && cat.subtitle ? cat.subtitle : null;
     const showOnHome = typeof cat === "object" && cat.showOnHome !== void 0 ? cat.showOnHome ? 1 : 0 : 1;
+    const catId = generateId();
     await env.DB.prepare(
       `INSERT INTO categories (id, site_id, name, slug, subtitle, show_on_home, display_order, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
-    ).bind(generateId(), siteId, categoryName, slug, subtitle, showOnHome, order++).run();
+    ).bind(catId, siteId, categoryName, slug, subtitle, showOnHome, order++).run();
+    trackD1Usage(env, siteId, estimateRowBytes({ id: catId, site_id: siteId, name: categoryName, slug, subtitle })).catch(() => {
+    });
   }
 }
 __name(createUserCategories, "createUserCategories");
@@ -3104,6 +3128,8 @@ async function updateSite(request, env, user, siteId) {
     await env.DB.prepare(
       `UPDATE sites SET ${setClause.join(", ")} WHERE id = ?`
     ).bind(...values).run();
+    trackD1Usage(env, siteId, estimateRowBytes(updates)).catch(() => {
+    });
     return successResponse(null, "Site updated successfully");
   } catch (error) {
     console.error("Update site error:", error);
@@ -3146,6 +3172,8 @@ async function updateSiteAsAdmin(request, env, siteId) {
     await env.DB.prepare(
       `UPDATE sites SET ${setClause.join(", ")} WHERE id = ?`
     ).bind(...values).run();
+    trackD1Usage(env, siteId, estimateRowBytes(updates)).catch(() => {
+    });
     return successResponse(null, "Site updated successfully");
   } catch (error) {
     console.error("Update site as admin error:", error);
@@ -3645,6 +3673,11 @@ async function updateProduct(request, env, user, productId) {
     await env.DB.prepare(
       `UPDATE products SET ${setClause.join(", ")} WHERE id = ?`
     ).bind(...values).run();
+    const siteId = product.site_id || updates.siteId;
+    if (siteId) {
+      trackD1Usage(env, siteId, estimateRowBytes(updates)).catch(() => {
+      });
+    }
     return successResponse(null, "Product updated successfully");
   } catch (error) {
     console.error("Update product error:", error);
@@ -4096,6 +4129,11 @@ async function updateOrderStatus(request, env, user, orderId) {
     await env.DB.prepare(
       `UPDATE orders SET ${updates.join(", ")} WHERE id = ?`
     ).bind(...values).run();
+    if (order.site_id) {
+      const updateData = { status, trackingNumber, carrier, cancellationReason };
+      trackD1Usage(env, order.site_id, estimateRowBytes(updateData)).catch(() => {
+      });
+    }
     if (status === "cancelled" && cancellationReason) {
       try {
         const fullOrder = await env.DB.prepare("SELECT * FROM orders WHERE id = ?").bind(orderId).first();
@@ -4383,6 +4421,7 @@ init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 init_helpers();
 init_auth();
+init_usage_tracker();
 async function handleCart(request, env, path) {
   const corsResponse = handleCORS(request);
   if (corsResponse)
@@ -4478,6 +4517,8 @@ async function getOrCreateCart(env, siteId, user, sessionId) {
       `INSERT INTO carts (id, site_id, user_id, session_id, items, subtotal, created_at)
        VALUES (?, ?, ?, ?, '[]', 0, datetime('now'))`
     ).bind(cartId, siteId, user ? user.id : null, user ? null : sessionId).run();
+    trackD1Usage(env, siteId, estimateRowBytes({ id: cartId, site_id: siteId, user_id: user?.id, session_id: sessionId, items: "[]", subtotal: 0 })).catch(() => {
+    });
     cart = { id: cartId, items: "[]", subtotal: 0 };
   }
   return cart;
@@ -4676,6 +4717,7 @@ init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 init_helpers();
 init_auth();
+init_usage_tracker();
 async function handleWishlist(request, env, path) {
   const corsResponse = handleCORS(request);
   if (corsResponse)
@@ -4794,6 +4836,8 @@ async function addToWishlist(request, env, user, siteId) {
       `INSERT INTO wishlists (id, site_id, user_id, product_id, created_at)
        VALUES (?, ?, ?, ?, datetime('now'))`
     ).bind(wishlistId, siteId, user.id, productId).run();
+    trackD1Usage(env, siteId, estimateRowBytes({ id: wishlistId, site_id: siteId, user_id: user.id, product_id: productId })).catch(() => {
+    });
     return successResponse({ id: wishlistId }, "Added to wishlist");
   } catch (error) {
     console.error("Add to wishlist error:", error);
@@ -4808,9 +4852,16 @@ async function removeFromWishlist(request, env, user, siteId) {
     if (!productId) {
       return errorResponse("Product ID is required");
     }
+    const existing = await env.DB.prepare(
+      "SELECT * FROM wishlists WHERE user_id = ? AND product_id = ? AND site_id = ?"
+    ).bind(user.id, productId, siteId).first();
     await env.DB.prepare(
       "DELETE FROM wishlists WHERE user_id = ? AND product_id = ? AND site_id = ?"
     ).bind(user.id, productId, siteId).run();
+    if (existing) {
+      trackD1Usage(env, siteId, -estimateRowBytes(existing)).catch(() => {
+      });
+    }
     return successResponse(null, "Removed from wishlist");
   } catch (error) {
     console.error("Remove from wishlist error:", error);
@@ -5813,6 +5864,11 @@ async function updateCategory(request, env, user, categoryId) {
     await env.DB.prepare(
       `UPDATE categories SET ${setClause.join(", ")} WHERE id = ?`
     ).bind(...values).run();
+    const siteId = category.site_id || updates.siteId;
+    if (siteId) {
+      trackD1Usage(env, siteId, estimateRowBytes(updates)).catch(() => {
+      });
+    }
     return successResponse(null, "Category updated successfully");
   } catch (error) {
     console.error("Update category error:", error);
@@ -7427,6 +7483,12 @@ async function createAddress(request, env, customer) {
       sanitizeInput(pinCode),
       isDefault ? 1 : 0
     ).run();
+    try {
+      const { trackD1Usage: trackD1Usage2, estimateRowBytes: estimateRowBytes2 } = await Promise.resolve().then(() => (init_usage_tracker(), usage_tracker_exports));
+      trackD1Usage2(env, customer.site_id, estimateRowBytes2({ id, site_id: customer.site_id, customer_id: customer.id, label, firstName, lastName, phone, houseNumber, roadName, city, state, pinCode })).catch(() => {
+      });
+    } catch (_) {
+    }
     const address = await env.DB.prepare(
       "SELECT * FROM customer_addresses WHERE id = ?"
     ).bind(id).first();
@@ -7502,6 +7564,12 @@ async function deleteAddress(env, customer, addressId) {
     await env.DB.prepare(
       "DELETE FROM customer_addresses WHERE id = ? AND customer_id = ? AND site_id = ?"
     ).bind(addressId, customer.id, customer.site_id).run();
+    try {
+      const { trackD1Usage: trackD1Usage2, estimateRowBytes: estimateRowBytes2 } = await Promise.resolve().then(() => (init_usage_tracker(), usage_tracker_exports));
+      trackD1Usage2(env, customer.site_id, -estimateRowBytes2(existing)).catch(() => {
+      });
+    } catch (_) {
+    }
     return successResponse(null, "Address deleted successfully");
   } catch (error) {
     console.error("Error deleting address:", error);
