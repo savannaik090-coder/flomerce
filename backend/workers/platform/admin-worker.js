@@ -1,5 +1,7 @@
 import { generateId, errorResponse, successResponse, handleCORS, validateEmail } from '../../utils/helpers.js';
 import { validateAuth } from '../../utils/auth.js';
+import { listAllSiteDatabases, getDatabaseSize, deleteDatabase, createDatabase, runSchemaOnDB, addBindingAndRedeploy } from '../../utils/d1-manager.js';
+import { getSiteSchemaStatements } from '../../utils/site-schema.js';
 
 const OWNER_EMAIL = 'savannaik090@gmail.com';
 
@@ -36,6 +38,8 @@ export async function handleAdmin(request, env, path) {
       return handlePlansManagement(request, env, pathParts);
     case 'settings':
       return handleSettingsManagement(request, env);
+    case 'databases':
+      return handleDatabaseManagement(request, env, pathParts);
     default:
       return errorResponse('Admin endpoint not found', 404);
   }
@@ -387,5 +391,165 @@ async function updateSettings(request, env) {
   } catch (error) {
     console.error('Update settings error:', error);
     return errorResponse('Failed to update settings', 500);
+  }
+}
+
+async function handleDatabaseManagement(request, env, pathParts) {
+  const subAction = pathParts[3];
+  const method = request.method;
+
+  if (method === 'GET' && !subAction) {
+    return listSiteDatabases(env);
+  }
+
+  if (method === 'GET' && subAction === 'sizes') {
+    return getSiteDatabaseSizes(env);
+  }
+
+  if (method === 'POST' && subAction === 'provision') {
+    return provisionSiteDatabase(request, env);
+  }
+
+  if (method === 'DELETE' && subAction) {
+    return deleteSiteDatabase(env, subAction);
+  }
+
+  return errorResponse('Database endpoint not found', 404);
+}
+
+async function listSiteDatabases(env) {
+  try {
+    const sites = await env.DB.prepare(
+      `SELECT id, subdomain, brand_name, d1_database_id, d1_binding_name, created_at
+       FROM sites WHERE is_active = 1 ORDER BY created_at DESC`
+    ).all();
+
+    const siteList = (sites.results || []).map(s => ({
+      siteId: s.id,
+      subdomain: s.subdomain,
+      brandName: s.brand_name,
+      d1DatabaseId: s.d1_database_id,
+      d1BindingName: s.d1_binding_name,
+      hasPerSiteDB: !!s.d1_database_id,
+      createdAt: s.created_at,
+    }));
+
+    let cfDatabases = [];
+    try {
+      cfDatabases = await listAllSiteDatabases(env);
+    } catch (e) {
+      console.error('Failed to list CF databases:', e.message || e);
+    }
+
+    return successResponse({
+      sites: siteList,
+      cfDatabases,
+      totalSites: siteList.length,
+      sitesWithDB: siteList.filter(s => s.hasPerSiteDB).length,
+      sitesWithoutDB: siteList.filter(s => !s.hasPerSiteDB).length,
+    });
+  } catch (error) {
+    console.error('List site databases error:', error);
+    return errorResponse('Failed to list databases', 500);
+  }
+}
+
+async function getSiteDatabaseSizes(env) {
+  try {
+    const sites = await env.DB.prepare(
+      `SELECT id, subdomain, d1_database_id FROM sites WHERE d1_database_id IS NOT NULL`
+    ).all();
+
+    const sizeResults = [];
+    for (const site of (sites.results || [])) {
+      try {
+        const size = await getDatabaseSize(env, site.d1_database_id);
+        sizeResults.push({
+          siteId: site.id,
+          subdomain: site.subdomain,
+          d1DatabaseId: site.d1_database_id,
+          sizeBytes: size,
+          sizeMB: (size / (1024 * 1024)).toFixed(2),
+        });
+      } catch (e) {
+        sizeResults.push({
+          siteId: site.id,
+          subdomain: site.subdomain,
+          d1DatabaseId: site.d1_database_id,
+          error: e.message || 'Failed to fetch size',
+        });
+      }
+    }
+
+    return successResponse(sizeResults);
+  } catch (error) {
+    console.error('Get database sizes error:', error);
+    return errorResponse('Failed to get database sizes', 500);
+  }
+}
+
+async function provisionSiteDatabase(request, env) {
+  try {
+    const { siteId } = await request.json();
+    if (!siteId) return errorResponse('siteId is required');
+
+    const site = await env.DB.prepare(
+      'SELECT id, subdomain, d1_database_id FROM sites WHERE id = ?'
+    ).bind(siteId).first();
+
+    if (!site) return errorResponse('Site not found', 404);
+    if (site.d1_database_id) return errorResponse('Site already has a per-site database', 400);
+
+    const shortId = siteId.substring(0, 8);
+    const dbName = `site-${site.subdomain}-${shortId}`;
+    const d1BindingName = `SITE_DB_${shortId.toUpperCase()}`;
+
+    const dbResult = await createDatabase(env, dbName);
+    const d1DatabaseId = dbResult.id;
+
+    const schemaStatements = getSiteSchemaStatements();
+    await runSchemaOnDB(env, d1DatabaseId, schemaStatements);
+
+    await env.DB.prepare(
+      `UPDATE sites SET d1_database_id = ?, d1_binding_name = ?, updated_at = datetime('now') WHERE id = ?`
+    ).bind(d1DatabaseId, d1BindingName, siteId).run();
+
+    try {
+      await addBindingAndRedeploy(env, siteId, d1DatabaseId, d1BindingName);
+    } catch (redeployErr) {
+      console.error('Redeploy failed (non-fatal):', redeployErr.message || redeployErr);
+    }
+
+    return successResponse({
+      siteId,
+      d1DatabaseId,
+      d1BindingName,
+      dbName,
+    }, 'Database provisioned successfully');
+  } catch (error) {
+    console.error('Provision database error:', error);
+    return errorResponse('Failed to provision database: ' + (error.message || 'Unknown error'), 500);
+  }
+}
+
+async function deleteSiteDatabase(env, siteId) {
+  try {
+    const site = await env.DB.prepare(
+      'SELECT id, d1_database_id FROM sites WHERE id = ?'
+    ).bind(siteId).first();
+
+    if (!site) return errorResponse('Site not found', 404);
+    if (!site.d1_database_id) return errorResponse('Site has no per-site database', 400);
+
+    await deleteDatabase(env, site.d1_database_id);
+
+    await env.DB.prepare(
+      `UPDATE sites SET d1_database_id = NULL, d1_binding_name = NULL, updated_at = datetime('now') WHERE id = ?`
+    ).bind(siteId).run();
+
+    return successResponse({ siteId }, 'Database deleted successfully');
+  } catch (error) {
+    console.error('Delete database error:', error);
+    return errorResponse('Failed to delete database: ' + (error.message || 'Unknown error'), 500);
   }
 }

@@ -131,15 +131,50 @@ export async function removeMediaFile(env, siteId, storageKey) {
 
 export async function getSiteUsage(env, siteId) {
   try {
-    await ensureUsageTables(env);
-    const usage = await env.DB.prepare(
-      'SELECT d1_bytes_used, r2_bytes_used, last_updated FROM site_usage WHERE site_id = ?'
-    ).bind(siteId).first();
+    let d1BytesUsed = 0;
+
+    try {
+      const site = await env.DB.prepare(
+        'SELECT d1_database_id FROM sites WHERE id = ?'
+      ).bind(siteId).first();
+
+      if (site && site.d1_database_id) {
+        const { getDatabaseSize } = await import('./d1-manager.js');
+        d1BytesUsed = await getDatabaseSize(env, site.d1_database_id);
+      }
+    } catch (d1Err) {
+      console.error('getDatabaseSize error (falling back to estimate):', d1Err.message || d1Err);
+    }
+
+    if (d1BytesUsed === 0) {
+      try {
+        await ensureUsageTables(env);
+        const usage = await env.DB.prepare(
+          'SELECT d1_bytes_used FROM site_usage WHERE site_id = ?'
+        ).bind(siteId).first();
+        d1BytesUsed = usage?.d1_bytes_used || 0;
+      } catch (_) {}
+    }
+
+    let r2BytesUsed = 0;
+    try {
+      await ensureUsageTables(env);
+      const usage = await env.DB.prepare(
+        'SELECT r2_bytes_used, last_updated FROM site_usage WHERE site_id = ?'
+      ).bind(siteId).first();
+      r2BytesUsed = usage?.r2_bytes_used || 0;
+
+      return {
+        d1BytesUsed,
+        r2BytesUsed,
+        lastUpdated: usage?.last_updated || new Date().toISOString(),
+      };
+    } catch (_) {}
 
     return {
-      d1BytesUsed: usage?.d1_bytes_used || 0,
-      r2BytesUsed: usage?.r2_bytes_used || 0,
-      lastUpdated: usage?.last_updated || null,
+      d1BytesUsed,
+      r2BytesUsed: 0,
+      lastUpdated: new Date().toISOString(),
     };
   } catch (e) {
     console.error('getSiteUsage error:', e.message || e);
@@ -206,25 +241,28 @@ export async function reconcileSiteUsage(env, siteId) {
   try {
     await ensureUsageTables(env);
 
-    const tables = ['products', 'categories', 'orders', 'guest_orders', 'site_customers', 'reviews', 'coupons', 'customer_addresses', 'wishlists', 'carts', 'page_seo'];
     let totalD1Bytes = 0;
 
-    for (const table of tables) {
-      try {
-        const rows = await env.DB.prepare(
-          `SELECT * FROM ${table} WHERE site_id = ?`
-        ).bind(siteId).all();
-        for (const row of (rows.results || [])) {
-          totalD1Bytes += estimateRowBytes(row);
-        }
-      } catch (e) {}
+    try {
+      const site = await env.DB.prepare(
+        'SELECT d1_database_id FROM sites WHERE id = ?'
+      ).bind(siteId).first();
+
+      if (site && site.d1_database_id) {
+        const { getDatabaseSize } = await import('./d1-manager.js');
+        totalD1Bytes = await getDatabaseSize(env, site.d1_database_id);
+      }
+    } catch (d1Err) {
+      console.error('getDatabaseSize for reconcile failed:', d1Err.message || d1Err);
     }
 
     let totalR2Bytes = 0;
-    const mediaRows = await env.DB.prepare(
-      'SELECT SUM(size_bytes) as total FROM site_media WHERE site_id = ?'
-    ).bind(siteId).first();
-    totalR2Bytes = mediaRows?.total || 0;
+    try {
+      const mediaRows = await env.DB.prepare(
+        'SELECT SUM(size_bytes) as total FROM site_media WHERE site_id = ?'
+      ).bind(siteId).first();
+      totalR2Bytes = mediaRows?.total || 0;
+    } catch (_) {}
 
     await env.DB.prepare(`
       INSERT INTO site_usage (site_id, d1_bytes_used, r2_bytes_used, last_updated)

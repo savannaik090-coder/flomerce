@@ -1,6 +1,6 @@
 import { generateId, generateToken, jsonResponse, errorResponse, successResponse, handleCORS } from '../../utils/helpers.js';
 import { validateAuth } from '../../utils/auth.js';
-import { trackD1Usage, estimateRowBytes } from '../../utils/usage-tracker.js';
+import { resolveSiteDBById } from '../../utils/site-db.js';
 
 export async function handleSiteAdmin(request, env, path) {
   const corsResponse = handleCORS(request);
@@ -350,7 +350,8 @@ async function getCategoriesSEO(request, env) {
     const admin = await validateSiteAdmin(request, env, siteId);
     if (!admin) return errorResponse('Unauthorized', 401);
 
-    const result = await env.DB.prepare(
+    const db = await resolveSiteDBById(env, siteId);
+    const result = await db.prepare(
       `SELECT id, name, slug, description, image_url, seo_title, seo_description, seo_og_image
        FROM categories WHERE site_id = ? AND is_active = 1 ORDER BY display_order ASC`
     ).bind(siteId).all();
@@ -370,7 +371,8 @@ async function saveCategorySEO(request, env, categoryId) {
     const admin = await validateSiteAdmin(request, env, siteId);
     if (!admin) return errorResponse('Unauthorized', 401);
 
-    await env.DB.prepare(
+    const db = await resolveSiteDBById(env, siteId);
+    await db.prepare(
       `UPDATE categories SET
         seo_title = ?, seo_description = ?, seo_og_image = ?,
         updated_at = datetime('now')
@@ -393,7 +395,8 @@ async function getProductsSEO(request, env) {
     const admin = await validateSiteAdmin(request, env, siteId);
     if (!admin) return errorResponse('Unauthorized', 401);
 
-    const result = await env.DB.prepare(
+    const db = await resolveSiteDBById(env, siteId);
+    const result = await db.prepare(
       `SELECT id, name, slug, short_description, description, thumbnail_url, images, price, seo_title, seo_description, seo_og_image
        FROM products WHERE site_id = ? AND is_active = 1 ORDER BY created_at DESC`
     ).bind(siteId).all();
@@ -425,7 +428,8 @@ async function saveProductSEO(request, env, productId) {
     const admin = await validateSiteAdmin(request, env, siteId);
     if (!admin) return errorResponse('Unauthorized', 401);
 
-    await env.DB.prepare(
+    const db = await resolveSiteDBById(env, siteId);
+    await db.prepare(
       `UPDATE products SET
         seo_title = ?, seo_description = ?, seo_og_image = ?,
         updated_at = datetime('now')
@@ -450,7 +454,8 @@ async function getPagesSEO(request, env) {
     const admin = await validateSiteAdmin(request, env, siteId);
     if (!admin) return errorResponse('Unauthorized', 401);
 
-    const result = await env.DB.prepare(
+    const db = await resolveSiteDBById(env, siteId);
+    const result = await db.prepare(
       `SELECT id, page_type, seo_title, seo_description, seo_og_image
        FROM page_seo WHERE site_id = ? ORDER BY page_type ASC`
     ).bind(siteId).all();
@@ -477,13 +482,13 @@ async function savePageSEO(request, env, pageType) {
     const admin = await validateSiteAdmin(request, env, siteId);
     if (!admin) return errorResponse('Unauthorized', 401);
 
-    const existing = await env.DB.prepare(
+    const db = await resolveSiteDBById(env, siteId);
+    const existing = await db.prepare(
       `SELECT id FROM page_seo WHERE site_id = ? AND page_type = ?`
     ).bind(siteId, pageType).first();
 
-    const pageSeoData = { seo_title, seo_description, seo_og_image, page_type: pageType };
     if (existing) {
-      await env.DB.prepare(
+      await db.prepare(
         `UPDATE page_seo SET
           seo_title = ?, seo_description = ?, seo_og_image = ?,
           updated_at = datetime('now')
@@ -491,11 +496,10 @@ async function savePageSEO(request, env, pageType) {
       ).bind(seo_title || null, seo_description || null, seo_og_image || null, existing.id).run();
     } else {
       const id = crypto.randomUUID();
-      await env.DB.prepare(
+      await db.prepare(
         `INSERT INTO page_seo (id, site_id, page_type, seo_title, seo_description, seo_og_image)
          VALUES (?, ?, ?, ?, ?, ?)`
       ).bind(id, siteId, pageType, seo_title || null, seo_description || null, seo_og_image || null).run();
-      await trackD1Usage(env, siteId, estimateRowBytes({ id, site_id: siteId, ...pageSeoData }));
     }
 
     return jsonResponse({ success: true, message: 'Page SEO saved' });

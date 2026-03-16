@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-ebMujo/checked-fetch.js
+// .wrangler/tmp/bundle-F9KZMl/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-ebMujo/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-F9KZMl/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-ebMujo/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-F9KZMl/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-ebMujo/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-F9KZMl/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -414,416 +414,60 @@ var init_auth = __esm({
   }
 });
 
-// utils/usage-tracker.js
-var usage_tracker_exports = {};
-__export(usage_tracker_exports, {
-  checkUsageLimit: () => checkUsageLimit,
-  ensureUsageTables: () => ensureUsageTables,
-  estimateRowBytes: () => estimateRowBytes,
-  getSiteUsage: () => getSiteUsage,
-  handleUsageAPI: () => handleUsageAPI,
-  reconcileSiteUsage: () => reconcileSiteUsage,
-  recordMediaFile: () => recordMediaFile,
-  removeMediaFile: () => removeMediaFile,
-  trackD1Usage: () => trackD1Usage,
-  trackR2Usage: () => trackR2Usage
+// utils/site-db.js
+var site_db_exports = {};
+__export(site_db_exports, {
+  resolveSiteDB: () => resolveSiteDB,
+  resolveSiteDBById: () => resolveSiteDBById,
+  resolveSiteDBBySubdomain: () => resolveSiteDBBySubdomain
 });
-async function ensureUsageTables(env) {
-  try {
-    await env.DB.prepare(`
-      CREATE TABLE IF NOT EXISTS site_usage (
-        site_id TEXT PRIMARY KEY,
-        d1_bytes_used INTEGER DEFAULT 0,
-        r2_bytes_used INTEGER DEFAULT 0,
-        last_updated TEXT DEFAULT (datetime('now')),
-        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
-      )
-    `).run();
-    await env.DB.prepare(`
-      CREATE TABLE IF NOT EXISTS site_media (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        site_id TEXT NOT NULL,
-        storage_key TEXT NOT NULL UNIQUE,
-        size_bytes INTEGER NOT NULL,
-        media_type TEXT DEFAULT 'image',
-        created_at TEXT DEFAULT (datetime('now')),
-        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
-      )
-    `).run();
-    await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_site_media_site ON site_media(site_id)").run();
-    await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_site_media_key ON site_media(storage_key)").run();
-  } catch (e) {
-    console.error("ensureUsageTables error (non-fatal):", e.message || e);
+function resolveSiteDB(env, site) {
+  if (!site)
+    return env.DB;
+  const bindingName = site.d1_binding_name;
+  if (bindingName && env[bindingName]) {
+    return env[bindingName];
   }
+  return env.DB;
 }
-function estimateRowBytes(fields) {
-  let bytes = 100;
-  for (const val of Object.values(fields)) {
-    if (val === null || val === void 0) {
-      bytes += 1;
-    } else if (typeof val === "number") {
-      bytes += 8;
-    } else if (typeof val === "string") {
-      bytes += val.length * 2;
-    } else if (typeof val === "boolean") {
-      bytes += 1;
-    } else {
-      bytes += JSON.stringify(val).length * 2;
-    }
-  }
-  return bytes;
-}
-async function trackD1Usage(env, siteId, byteDelta) {
-  if (!siteId || byteDelta === 0)
-    return;
+async function resolveSiteDBById(env, siteId) {
+  if (!siteId)
+    return env.DB;
   try {
-    await ensureUsageTables(env);
-    await env.DB.prepare(`
-      INSERT INTO site_usage (site_id, d1_bytes_used, r2_bytes_used, last_updated)
-      VALUES (?, MAX(0, ?), 0, datetime('now'))
-      ON CONFLICT(site_id) DO UPDATE SET
-        d1_bytes_used = MAX(0, d1_bytes_used + ?),
-        last_updated = datetime('now')
-    `).bind(siteId, Math.max(0, byteDelta), byteDelta).run();
-  } catch (e) {
-    console.error("trackD1Usage error (non-fatal):", e.message || e);
-  }
-}
-async function trackR2Usage(env, siteId, byteDelta) {
-  if (!siteId || byteDelta === 0)
-    return;
-  try {
-    await ensureUsageTables(env);
-    await env.DB.prepare(`
-      INSERT INTO site_usage (site_id, d1_bytes_used, r2_bytes_used, last_updated)
-      VALUES (?, 0, MAX(0, ?), datetime('now'))
-      ON CONFLICT(site_id) DO UPDATE SET
-        r2_bytes_used = MAX(0, r2_bytes_used + ?),
-        last_updated = datetime('now')
-    `).bind(siteId, Math.max(0, byteDelta), byteDelta).run();
-  } catch (e) {
-    console.error("trackR2Usage error (non-fatal):", e.message || e);
-  }
-}
-async function recordMediaFile(env, siteId, storageKey, sizeBytes, mediaType = "image") {
-  if (!siteId || !storageKey)
-    return;
-  try {
-    await ensureUsageTables(env);
-    const result = await env.DB.prepare(`
-      INSERT OR IGNORE INTO site_media (site_id, storage_key, size_bytes, media_type, created_at)
-      VALUES (?, ?, ?, ?, datetime('now'))
-    `).bind(siteId, storageKey, sizeBytes, mediaType).run();
-    if (result?.meta?.changes > 0) {
-      await trackR2Usage(env, siteId, sizeBytes);
-    }
-  } catch (e) {
-    console.error("recordMediaFile error (non-fatal):", e.message || e);
-  }
-}
-async function removeMediaFile(env, siteId, storageKey) {
-  if (!storageKey)
-    return;
-  try {
-    await ensureUsageTables(env);
-    const record = await env.DB.prepare(
-      "SELECT size_bytes, site_id FROM site_media WHERE storage_key = ?"
-    ).bind(storageKey).first();
-    if (record) {
-      const resolvedSiteId = siteId || record.site_id;
-      await env.DB.prepare("DELETE FROM site_media WHERE storage_key = ?").bind(storageKey).run();
-      await trackR2Usage(env, resolvedSiteId, -record.size_bytes);
-    }
-  } catch (e) {
-    console.error("removeMediaFile error (non-fatal):", e.message || e);
-  }
-}
-async function getSiteUsage(env, siteId) {
-  try {
-    await ensureUsageTables(env);
-    const usage = await env.DB.prepare(
-      "SELECT d1_bytes_used, r2_bytes_used, last_updated FROM site_usage WHERE site_id = ?"
+    const site = await env.DB.prepare(
+      "SELECT d1_database_id, d1_binding_name FROM sites WHERE id = ?"
     ).bind(siteId).first();
-    return {
-      d1BytesUsed: usage?.d1_bytes_used || 0,
-      r2BytesUsed: usage?.r2_bytes_used || 0,
-      lastUpdated: usage?.last_updated || null
-    };
+    if (site && site.d1_binding_name && env[site.d1_binding_name]) {
+      return env[site.d1_binding_name];
+    }
   } catch (e) {
-    console.error("getSiteUsage error:", e.message || e);
-    return { d1BytesUsed: 0, r2BytesUsed: 0, lastUpdated: null };
+    console.error("resolveSiteDBById error (falling back to platform DB):", e.message || e);
   }
+  return env.DB;
 }
-function getSitePlan(site) {
-  const plan = (site.subscription_plan || "free").toLowerCase();
-  if (plan.includes("premium"))
-    return "premium";
-  if (plan.includes("pro"))
-    return "pro";
-  if (plan.includes("basic"))
-    return "basic";
-  if (plan === "trial")
-    return "trial";
-  return "free";
-}
-async function checkUsageLimit(env, siteId, resourceType = "d1", additionalBytes = 0) {
+async function resolveSiteDBBySubdomain(env, subdomain) {
+  if (!subdomain)
+    return env.DB;
   try {
     const site = await env.DB.prepare(
-      "SELECT subscription_plan, settings FROM sites WHERE id = ?"
-    ).bind(siteId).first();
-    if (!site)
-      return { allowed: true, reason: null };
-    const planKey = getSitePlan(site);
-    const limits = PLAN_LIMITS[planKey] || PLAN_LIMITS.free;
-    const usage = await getSiteUsage(env, siteId);
-    const currentBytes = resourceType === "d1" ? usage.d1BytesUsed : usage.r2BytesUsed;
-    const limitBytes = resourceType === "d1" ? limits.d1Bytes : limits.r2Bytes;
-    const newTotal = currentBytes + additionalBytes;
-    if (newTotal <= limitBytes) {
-      return { allowed: true, reason: null };
+      "SELECT id, d1_database_id, d1_binding_name FROM sites WHERE LOWER(subdomain) = LOWER(?)"
+    ).bind(subdomain).first();
+    if (site && site.d1_binding_name && env[site.d1_binding_name]) {
+      return env[site.d1_binding_name];
     }
-    if (limits.allowOverage) {
-      let siteSettings = {};
-      try {
-        if (site.settings)
-          siteSettings = typeof site.settings === "string" ? JSON.parse(site.settings) : site.settings;
-      } catch (_) {
-      }
-      if (siteSettings.overageEnabled) {
-        const overageBytes = Math.max(0, newTotal - limitBytes);
-        const overageGB = overageBytes / (1024 * 1024 * 1024);
-        const rate = resourceType === "d1" ? OVERAGE_RATES.d1PerGB : OVERAGE_RATES.r2PerGB;
-        const overageCost = overageGB * rate;
-        return { allowed: true, overage: true, overageBytes, overageCostINR: overageCost, reason: null };
-      }
-    }
-    const limitMB = (limitBytes / (1024 * 1024)).toFixed(0);
-    const usedMB = (currentBytes / (1024 * 1024)).toFixed(1);
-    return {
-      allowed: false,
-      reason: `Storage limit reached. ${resourceType.toUpperCase()} usage: ${usedMB}MB / ${limitMB}MB. ${limits.allowOverage ? "Enable overage charges in your billing settings to continue, or upgrade your plan." : "Upgrade your plan for more storage."}`
-    };
   } catch (e) {
-    console.error("checkUsageLimit error (non-fatal):", e.message || e);
-    return { allowed: true, reason: null };
+    console.error("resolveSiteDBBySubdomain error (falling back to platform DB):", e.message || e);
   }
+  return env.DB;
 }
-async function reconcileSiteUsage(env, siteId) {
-  try {
-    await ensureUsageTables(env);
-    const tables = ["products", "categories", "orders", "guest_orders", "site_customers", "reviews", "coupons", "customer_addresses", "wishlists", "carts", "page_seo"];
-    let totalD1Bytes = 0;
-    for (const table of tables) {
-      try {
-        const rows = await env.DB.prepare(
-          `SELECT * FROM ${table} WHERE site_id = ?`
-        ).bind(siteId).all();
-        for (const row of rows.results || []) {
-          totalD1Bytes += estimateRowBytes(row);
-        }
-      } catch (e) {
-      }
-    }
-    let totalR2Bytes = 0;
-    const mediaRows = await env.DB.prepare(
-      "SELECT SUM(size_bytes) as total FROM site_media WHERE site_id = ?"
-    ).bind(siteId).first();
-    totalR2Bytes = mediaRows?.total || 0;
-    await env.DB.prepare(`
-      INSERT INTO site_usage (site_id, d1_bytes_used, r2_bytes_used, last_updated)
-      VALUES (?, ?, ?, datetime('now'))
-      ON CONFLICT(site_id) DO UPDATE SET
-        d1_bytes_used = ?,
-        r2_bytes_used = ?,
-        last_updated = datetime('now')
-    `).bind(siteId, totalD1Bytes, totalR2Bytes, totalD1Bytes, totalR2Bytes).run();
-    return { d1BytesUsed: totalD1Bytes, r2BytesUsed: totalR2Bytes };
-  } catch (e) {
-    console.error("reconcileSiteUsage error:", e.message || e);
-    return null;
-  }
-}
-async function handleUsageAPI(request, env, path) {
-  const corsResponse = handleCORS(request);
-  if (corsResponse)
-    return corsResponse;
-  const user = await validateAuth(request, env);
-  if (!user) {
-    return errorResponse("Unauthorized", 401);
-  }
-  const url = new URL(request.url);
-  const siteId = url.searchParams.get("siteId");
-  if (!siteId) {
-    return errorResponse("siteId is required", 400);
-  }
-  if (request.method === "POST") {
-    const action = url.searchParams.get("action");
-    if (action === "reconcile") {
-      return handleReconcile(env, user, siteId);
-    }
-    return handleOverageToggle(request, env, user, siteId);
-  }
-  if (request.method !== "GET") {
-    return errorResponse("Method not allowed", 405);
-  }
-  try {
-    const site = await env.DB.prepare(
-      "SELECT id, subscription_plan, settings FROM sites WHERE id = ? AND user_id = ?"
-    ).bind(siteId, user.id).first();
-    if (!site) {
-      return errorResponse("Site not found or unauthorized", 404);
-    }
-    let usage = await getSiteUsage(env, siteId);
-    if (usage.d1BytesUsed === 0 && usage.r2BytesUsed === 0 && !usage.lastUpdated) {
-      const reconciled = await reconcileSiteUsage(env, siteId);
-      if (reconciled) {
-        usage = { d1BytesUsed: reconciled.d1BytesUsed, r2BytesUsed: reconciled.r2BytesUsed, lastUpdated: (/* @__PURE__ */ new Date()).toISOString() };
-      }
-    } else if (usage.r2BytesUsed === 0) {
-      const mediaTotal = await env.DB.prepare(
-        "SELECT SUM(size_bytes) as total FROM site_media WHERE site_id = ?"
-      ).bind(siteId).first();
-      const r2FromMedia = mediaTotal?.total || 0;
-      if (r2FromMedia > 0) {
-        await env.DB.prepare(`
-          INSERT INTO site_usage (site_id, d1_bytes_used, r2_bytes_used, last_updated)
-          VALUES (?, ?, ?, datetime('now'))
-          ON CONFLICT(site_id) DO UPDATE SET
-            r2_bytes_used = ?,
-            last_updated = datetime('now')
-        `).bind(siteId, usage.d1BytesUsed, r2FromMedia, r2FromMedia).run();
-        usage = { ...usage, r2BytesUsed: r2FromMedia, lastUpdated: (/* @__PURE__ */ new Date()).toISOString() };
-      }
-    }
-    const planKey = getSitePlan(site);
-    const limits = PLAN_LIMITS[planKey] || PLAN_LIMITS.free;
-    let siteSettings = {};
-    try {
-      if (site.settings)
-        siteSettings = typeof site.settings === "string" ? JSON.parse(site.settings) : site.settings;
-    } catch (_) {
-    }
-    const overageEnabled = !!siteSettings.overageEnabled;
-    const d1OverageBytes = Math.max(0, usage.d1BytesUsed - limits.d1Bytes);
-    const r2OverageBytes = Math.max(0, usage.r2BytesUsed - limits.r2Bytes);
-    const d1OverageGB = d1OverageBytes / (1024 * 1024 * 1024);
-    const r2OverageGB = r2OverageBytes / (1024 * 1024 * 1024);
-    let overageCostINR = 0;
-    if (limits.allowOverage && overageEnabled) {
-      overageCostINR = d1OverageGB * OVERAGE_RATES.d1PerGB + r2OverageGB * OVERAGE_RATES.r2PerGB;
-    }
-    return successResponse({
-      plan: planKey,
-      d1: {
-        used: usage.d1BytesUsed,
-        limit: limits.d1Bytes,
-        percentage: limits.d1Bytes > 0 ? Math.min(100, usage.d1BytesUsed / limits.d1Bytes * 100) : 0,
-        overageBytes: d1OverageBytes
-      },
-      r2: {
-        used: usage.r2BytesUsed,
-        limit: limits.r2Bytes,
-        percentage: limits.r2Bytes > 0 ? Math.min(100, usage.r2BytesUsed / limits.r2Bytes * 100) : 0,
-        overageBytes: r2OverageBytes
-      },
-      allowOverage: limits.allowOverage,
-      overageEnabled,
-      overageCostINR: Math.round(overageCostINR * 100) / 100,
-      overageRates: OVERAGE_RATES,
-      lastUpdated: usage.lastUpdated
-    });
-  } catch (error) {
-    console.error("Usage API error:", error);
-    return errorResponse("Failed to fetch usage data", 500);
-  }
-}
-async function handleOverageToggle(request, env, user, siteId) {
-  try {
-    const body = await request.json();
-    const { overageEnabled } = body;
-    if (typeof overageEnabled !== "boolean") {
-      return errorResponse("overageEnabled must be a boolean", 400);
-    }
-    const site = await env.DB.prepare(
-      "SELECT id, subscription_plan, settings FROM sites WHERE id = ? AND user_id = ?"
-    ).bind(siteId, user.id).first();
-    if (!site) {
-      return errorResponse("Site not found or unauthorized", 404);
-    }
-    const planKey = getSitePlan(site);
-    const limits = PLAN_LIMITS[planKey] || PLAN_LIMITS.free;
-    if (!limits.allowOverage) {
-      return errorResponse("Overage charges are only available on the Premium plan", 403);
-    }
-    let siteSettings = {};
-    try {
-      if (site.settings)
-        siteSettings = typeof site.settings === "string" ? JSON.parse(site.settings) : site.settings;
-    } catch (_) {
-    }
-    siteSettings.overageEnabled = overageEnabled;
-    await env.DB.prepare(
-      "UPDATE sites SET settings = ? WHERE id = ?"
-    ).bind(JSON.stringify(siteSettings), siteId).run();
-    return successResponse({ overageEnabled, message: overageEnabled ? "Overage charges enabled. You will be billed for usage beyond your plan limits." : "Overage charges disabled. Your site will be blocked when storage limits are reached." });
-  } catch (error) {
-    console.error("Overage toggle error:", error);
-    return errorResponse("Failed to update overage settings", 500);
-  }
-}
-async function handleReconcile(env, user, siteId) {
-  try {
-    const site = await env.DB.prepare(
-      "SELECT id FROM sites WHERE id = ? AND user_id = ?"
-    ).bind(siteId, user.id).first();
-    if (!site) {
-      return errorResponse("Site not found or unauthorized", 404);
-    }
-    const reconciled = await reconcileSiteUsage(env, siteId);
-    if (!reconciled) {
-      return errorResponse("Failed to reconcile usage", 500);
-    }
-    return successResponse({
-      d1BytesUsed: reconciled.d1BytesUsed,
-      r2BytesUsed: reconciled.r2BytesUsed
-    }, "Usage reconciled successfully");
-  } catch (error) {
-    console.error("Reconcile error:", error);
-    return errorResponse("Failed to reconcile usage", 500);
-  }
-}
-var PLAN_LIMITS, OVERAGE_RATES;
-var init_usage_tracker = __esm({
-  "utils/usage-tracker.js"() {
+var init_site_db = __esm({
+  "utils/site-db.js"() {
     init_checked_fetch();
     init_strip_cf_connecting_ip_header();
     init_modules_watch_stub();
-    init_helpers();
-    init_auth();
-    PLAN_LIMITS = {
-      basic: { d1Bytes: 500 * 1024 * 1024, r2Bytes: 5 * 1024 * 1024 * 1024, allowOverage: false },
-      pro: { d1Bytes: 1.5 * 1024 * 1024 * 1024, r2Bytes: 50 * 1024 * 1024 * 1024, allowOverage: false },
-      premium: { d1Bytes: 3 * 1024 * 1024 * 1024, r2Bytes: 100 * 1024 * 1024 * 1024, allowOverage: true },
-      trial: { d1Bytes: 500 * 1024 * 1024, r2Bytes: 5 * 1024 * 1024 * 1024, allowOverage: false },
-      free: { d1Bytes: 500 * 1024 * 1024, r2Bytes: 5 * 1024 * 1024 * 1024, allowOverage: false }
-    };
-    OVERAGE_RATES = {
-      d1PerGB: 0.75,
-      r2PerGB: 0.015
-    };
-    __name(ensureUsageTables, "ensureUsageTables");
-    __name(estimateRowBytes, "estimateRowBytes");
-    __name(trackD1Usage, "trackD1Usage");
-    __name(trackR2Usage, "trackR2Usage");
-    __name(recordMediaFile, "recordMediaFile");
-    __name(removeMediaFile, "removeMediaFile");
-    __name(getSiteUsage, "getSiteUsage");
-    __name(getSitePlan, "getSitePlan");
-    __name(checkUsageLimit, "checkUsageLimit");
-    __name(reconcileSiteUsage, "reconcileSiteUsage");
-    __name(handleUsageAPI, "handleUsageAPI");
-    __name(handleOverageToggle, "handleOverageToggle");
-    __name(handleReconcile, "handleReconcile");
+    __name(resolveSiteDB, "resolveSiteDB");
+    __name(resolveSiteDBById, "resolveSiteDBById");
+    __name(resolveSiteDBBySubdomain, "resolveSiteDBBySubdomain");
   }
 });
 
@@ -1133,7 +777,8 @@ async function getCategoriesSEO(request, env) {
     const admin = await validateSiteAdmin(request, env, siteId);
     if (!admin)
       return errorResponse("Unauthorized", 401);
-    const result = await env.DB.prepare(
+    const db = await resolveSiteDBById(env, siteId);
+    const result = await db.prepare(
       `SELECT id, name, slug, description, image_url, seo_title, seo_description, seo_og_image
        FROM categories WHERE site_id = ? AND is_active = 1 ORDER BY display_order ASC`
     ).bind(siteId).all();
@@ -1151,7 +796,8 @@ async function saveCategorySEO(request, env, categoryId) {
     const admin = await validateSiteAdmin(request, env, siteId);
     if (!admin)
       return errorResponse("Unauthorized", 401);
-    await env.DB.prepare(
+    const db = await resolveSiteDBById(env, siteId);
+    await db.prepare(
       `UPDATE categories SET
         seo_title = ?, seo_description = ?, seo_og_image = ?,
         updated_at = datetime('now')
@@ -1172,7 +818,8 @@ async function getProductsSEO(request, env) {
     const admin = await validateSiteAdmin(request, env, siteId);
     if (!admin)
       return errorResponse("Unauthorized", 401);
-    const result = await env.DB.prepare(
+    const db = await resolveSiteDBById(env, siteId);
+    const result = await db.prepare(
       `SELECT id, name, slug, short_description, description, thumbnail_url, images, price, seo_title, seo_description, seo_og_image
        FROM products WHERE site_id = ? AND is_active = 1 ORDER BY created_at DESC`
     ).bind(siteId).all();
@@ -1202,7 +849,8 @@ async function saveProductSEO(request, env, productId) {
     const admin = await validateSiteAdmin(request, env, siteId);
     if (!admin)
       return errorResponse("Unauthorized", 401);
-    await env.DB.prepare(
+    const db = await resolveSiteDBById(env, siteId);
+    await db.prepare(
       `UPDATE products SET
         seo_title = ?, seo_description = ?, seo_og_image = ?,
         updated_at = datetime('now')
@@ -1223,7 +871,8 @@ async function getPagesSEO(request, env) {
     const admin = await validateSiteAdmin(request, env, siteId);
     if (!admin)
       return errorResponse("Unauthorized", 401);
-    const result = await env.DB.prepare(
+    const db = await resolveSiteDBById(env, siteId);
+    const result = await db.prepare(
       `SELECT id, page_type, seo_title, seo_description, seo_og_image
        FROM page_seo WHERE site_id = ? ORDER BY page_type ASC`
     ).bind(siteId).all();
@@ -1248,12 +897,12 @@ async function savePageSEO(request, env, pageType) {
     const admin = await validateSiteAdmin(request, env, siteId);
     if (!admin)
       return errorResponse("Unauthorized", 401);
-    const existing = await env.DB.prepare(
+    const db = await resolveSiteDBById(env, siteId);
+    const existing = await db.prepare(
       `SELECT id FROM page_seo WHERE site_id = ? AND page_type = ?`
     ).bind(siteId, pageType).first();
-    const pageSeoData = { seo_title, seo_description, seo_og_image, page_type: pageType };
     if (existing) {
-      await env.DB.prepare(
+      await db.prepare(
         `UPDATE page_seo SET
           seo_title = ?, seo_description = ?, seo_og_image = ?,
           updated_at = datetime('now')
@@ -1261,11 +910,10 @@ async function savePageSEO(request, env, pageType) {
       ).bind(seo_title || null, seo_description || null, seo_og_image || null, existing.id).run();
     } else {
       const id = crypto.randomUUID();
-      await env.DB.prepare(
+      await db.prepare(
         `INSERT INTO page_seo (id, site_id, page_type, seo_title, seo_description, seo_og_image)
          VALUES (?, ?, ?, ?, ?, ?)`
       ).bind(id, siteId, pageType, seo_title || null, seo_description || null, seo_og_image || null).run();
-      await trackD1Usage(env, siteId, estimateRowBytes({ id, site_id: siteId, ...pageSeoData }));
     }
     return jsonResponse({ success: true, message: "Page SEO saved" });
   } catch (err) {
@@ -1387,7 +1035,7 @@ var init_site_admin_worker = __esm({
     init_modules_watch_stub();
     init_helpers();
     init_auth();
-    init_usage_tracker();
+    init_site_db();
     __name(handleSiteAdmin, "handleSiteAdmin");
     __name(verifySiteAdminCode, "verifySiteAdminCode");
     __name(validateSiteAdminToken, "validateSiteAdminToken");
@@ -1410,12 +1058,616 @@ var init_site_admin_worker = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-ebMujo/middleware-loader.entry.ts
+// utils/d1-manager.js
+var d1_manager_exports = {};
+__export(d1_manager_exports, {
+  addBindingAndRedeploy: () => addBindingAndRedeploy,
+  createDatabase: () => createDatabase,
+  deleteDatabase: () => deleteDatabase,
+  getDatabaseSize: () => getDatabaseSize,
+  listAllSiteDatabases: () => listAllSiteDatabases,
+  runSchemaOnDB: () => runSchemaOnDB
+});
+function getCredentials(env) {
+  const apiToken = env.CLOUDFLARE_API_TOKEN;
+  const accountId = env.CLOUDFLARE_ACCOUNT_ID;
+  if (!apiToken || !accountId) {
+    throw new Error("CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID are required");
+  }
+  return { apiToken, accountId };
+}
+function cfHeaders2(apiToken) {
+  return {
+    "Authorization": `Bearer ${apiToken}`,
+    "Content-Type": "application/json"
+  };
+}
+async function createDatabase(env, name) {
+  const { apiToken, accountId } = getCredentials(env);
+  const res = await fetch(`${CF_API_BASE2}/accounts/${accountId}/d1/database`, {
+    method: "POST",
+    headers: cfHeaders2(apiToken),
+    body: JSON.stringify({ name })
+  });
+  const data = await res.json();
+  if (!data.success) {
+    throw new Error(`Failed to create D1 database: ${JSON.stringify(data.errors)}`);
+  }
+  return {
+    id: data.result.uuid,
+    name: data.result.name,
+    created_at: data.result.created_at
+  };
+}
+async function deleteDatabase(env, databaseId) {
+  const { apiToken, accountId } = getCredentials(env);
+  const res = await fetch(`${CF_API_BASE2}/accounts/${accountId}/d1/database/${databaseId}`, {
+    method: "DELETE",
+    headers: cfHeaders2(apiToken)
+  });
+  const data = await res.json();
+  if (!data.success) {
+    throw new Error(`Failed to delete D1 database: ${JSON.stringify(data.errors)}`);
+  }
+  return true;
+}
+async function getDatabaseSize(env, databaseId) {
+  const { apiToken, accountId } = getCredentials(env);
+  const res = await fetch(`${CF_API_BASE2}/accounts/${accountId}/d1/database/${databaseId}`, {
+    method: "GET",
+    headers: cfHeaders2(apiToken)
+  });
+  const data = await res.json();
+  if (!data.success) {
+    throw new Error(`Failed to get D1 database info: ${JSON.stringify(data.errors)}`);
+  }
+  return data.result.file_size || 0;
+}
+async function runSchemaOnDB(env, databaseId, sqlStatements) {
+  const { apiToken, accountId } = getCredentials(env);
+  for (const sql of sqlStatements) {
+    const res = await fetch(`${CF_API_BASE2}/accounts/${accountId}/d1/database/${databaseId}/query`, {
+      method: "POST",
+      headers: cfHeaders2(apiToken),
+      body: JSON.stringify({ sql })
+    });
+    const data = await res.json();
+    if (!data.success) {
+      console.error(`Schema SQL failed: ${sql.substring(0, 80)}...`, data.errors);
+      throw new Error(`Failed to run schema SQL: ${JSON.stringify(data.errors)}`);
+    }
+  }
+  return true;
+}
+async function addBindingAndRedeploy(env, siteId, databaseId, bindingName) {
+  const { apiToken, accountId } = getCredentials(env);
+  const workerName = "saas-platform";
+  const getRes = await fetch(`${CF_API_BASE2}/accounts/${accountId}/workers/scripts/${workerName}/settings`, {
+    method: "GET",
+    headers: cfHeaders2(apiToken)
+  });
+  const getData = await getRes.json();
+  if (!getData.success) {
+    throw new Error(`Failed to get worker settings: ${JSON.stringify(getData.errors)}`);
+  }
+  const currentBindings = getData.result?.bindings || [];
+  const alreadyExists = currentBindings.some((b) => b.name === bindingName);
+  if (alreadyExists) {
+    console.log(`Binding ${bindingName} already exists, skipping redeploy`);
+    return true;
+  }
+  const newBinding = {
+    type: "d1",
+    name: bindingName,
+    id: databaseId
+  };
+  const updatedBindings = [...currentBindings, newBinding];
+  const patchRes = await fetch(`${CF_API_BASE2}/accounts/${accountId}/workers/scripts/${workerName}/settings`, {
+    method: "PATCH",
+    headers: cfHeaders2(apiToken),
+    body: JSON.stringify({
+      bindings: updatedBindings
+    })
+  });
+  const patchData = await patchRes.json();
+  if (!patchData.success) {
+    throw new Error(`Failed to add binding and redeploy: ${JSON.stringify(patchData.errors)}`);
+  }
+  console.log(`Successfully added D1 binding ${bindingName} for site ${siteId} and redeployed worker`);
+  return true;
+}
+async function listAllSiteDatabases(env) {
+  const { apiToken, accountId } = getCredentials(env);
+  const databases = [];
+  let cursor = null;
+  do {
+    const params = new URLSearchParams({ per_page: "50" });
+    if (cursor)
+      params.set("cursor", cursor);
+    const res = await fetch(`${CF_API_BASE2}/accounts/${accountId}/d1/database?${params}`, {
+      method: "GET",
+      headers: cfHeaders2(apiToken)
+    });
+    const data = await res.json();
+    if (!data.success) {
+      throw new Error(`Failed to list D1 databases: ${JSON.stringify(data.errors)}`);
+    }
+    databases.push(...data.result || []);
+    cursor = data.result_info?.cursor || null;
+  } while (cursor);
+  return databases.filter((db) => db.name.startsWith("site-"));
+}
+var CF_API_BASE2;
+var init_d1_manager = __esm({
+  "utils/d1-manager.js"() {
+    init_checked_fetch();
+    init_strip_cf_connecting_ip_header();
+    init_modules_watch_stub();
+    CF_API_BASE2 = "https://api.cloudflare.com/client/v4";
+    __name(getCredentials, "getCredentials");
+    __name(cfHeaders2, "cfHeaders");
+    __name(createDatabase, "createDatabase");
+    __name(deleteDatabase, "deleteDatabase");
+    __name(getDatabaseSize, "getDatabaseSize");
+    __name(runSchemaOnDB, "runSchemaOnDB");
+    __name(addBindingAndRedeploy, "addBindingAndRedeploy");
+    __name(listAllSiteDatabases, "listAllSiteDatabases");
+  }
+});
+
+// utils/usage-tracker.js
+var usage_tracker_exports = {};
+__export(usage_tracker_exports, {
+  checkUsageLimit: () => checkUsageLimit,
+  ensureUsageTables: () => ensureUsageTables,
+  estimateRowBytes: () => estimateRowBytes,
+  getSiteUsage: () => getSiteUsage,
+  handleUsageAPI: () => handleUsageAPI,
+  reconcileSiteUsage: () => reconcileSiteUsage,
+  recordMediaFile: () => recordMediaFile,
+  removeMediaFile: () => removeMediaFile,
+  trackD1Usage: () => trackD1Usage,
+  trackR2Usage: () => trackR2Usage
+});
+async function ensureUsageTables(env) {
+  try {
+    await env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS site_usage (
+        site_id TEXT PRIMARY KEY,
+        d1_bytes_used INTEGER DEFAULT 0,
+        r2_bytes_used INTEGER DEFAULT 0,
+        last_updated TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
+      )
+    `).run();
+    await env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS site_media (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        site_id TEXT NOT NULL,
+        storage_key TEXT NOT NULL UNIQUE,
+        size_bytes INTEGER NOT NULL,
+        media_type TEXT DEFAULT 'image',
+        created_at TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
+      )
+    `).run();
+    await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_site_media_site ON site_media(site_id)").run();
+    await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_site_media_key ON site_media(storage_key)").run();
+  } catch (e) {
+    console.error("ensureUsageTables error (non-fatal):", e.message || e);
+  }
+}
+function estimateRowBytes(fields) {
+  let bytes = 100;
+  for (const val of Object.values(fields)) {
+    if (val === null || val === void 0) {
+      bytes += 1;
+    } else if (typeof val === "number") {
+      bytes += 8;
+    } else if (typeof val === "string") {
+      bytes += val.length * 2;
+    } else if (typeof val === "boolean") {
+      bytes += 1;
+    } else {
+      bytes += JSON.stringify(val).length * 2;
+    }
+  }
+  return bytes;
+}
+async function trackD1Usage(env, siteId, byteDelta) {
+  if (!siteId || byteDelta === 0)
+    return;
+  try {
+    await ensureUsageTables(env);
+    await env.DB.prepare(`
+      INSERT INTO site_usage (site_id, d1_bytes_used, r2_bytes_used, last_updated)
+      VALUES (?, MAX(0, ?), 0, datetime('now'))
+      ON CONFLICT(site_id) DO UPDATE SET
+        d1_bytes_used = MAX(0, d1_bytes_used + ?),
+        last_updated = datetime('now')
+    `).bind(siteId, Math.max(0, byteDelta), byteDelta).run();
+  } catch (e) {
+    console.error("trackD1Usage error (non-fatal):", e.message || e);
+  }
+}
+async function trackR2Usage(env, siteId, byteDelta) {
+  if (!siteId || byteDelta === 0)
+    return;
+  try {
+    await ensureUsageTables(env);
+    await env.DB.prepare(`
+      INSERT INTO site_usage (site_id, d1_bytes_used, r2_bytes_used, last_updated)
+      VALUES (?, 0, MAX(0, ?), datetime('now'))
+      ON CONFLICT(site_id) DO UPDATE SET
+        r2_bytes_used = MAX(0, r2_bytes_used + ?),
+        last_updated = datetime('now')
+    `).bind(siteId, Math.max(0, byteDelta), byteDelta).run();
+  } catch (e) {
+    console.error("trackR2Usage error (non-fatal):", e.message || e);
+  }
+}
+async function recordMediaFile(env, siteId, storageKey, sizeBytes, mediaType = "image") {
+  if (!siteId || !storageKey)
+    return;
+  try {
+    await ensureUsageTables(env);
+    const result = await env.DB.prepare(`
+      INSERT OR IGNORE INTO site_media (site_id, storage_key, size_bytes, media_type, created_at)
+      VALUES (?, ?, ?, ?, datetime('now'))
+    `).bind(siteId, storageKey, sizeBytes, mediaType).run();
+    if (result?.meta?.changes > 0) {
+      await trackR2Usage(env, siteId, sizeBytes);
+    }
+  } catch (e) {
+    console.error("recordMediaFile error (non-fatal):", e.message || e);
+  }
+}
+async function removeMediaFile(env, siteId, storageKey) {
+  if (!storageKey)
+    return;
+  try {
+    await ensureUsageTables(env);
+    const record = await env.DB.prepare(
+      "SELECT size_bytes, site_id FROM site_media WHERE storage_key = ?"
+    ).bind(storageKey).first();
+    if (record) {
+      const resolvedSiteId = siteId || record.site_id;
+      await env.DB.prepare("DELETE FROM site_media WHERE storage_key = ?").bind(storageKey).run();
+      await trackR2Usage(env, resolvedSiteId, -record.size_bytes);
+    }
+  } catch (e) {
+    console.error("removeMediaFile error (non-fatal):", e.message || e);
+  }
+}
+async function getSiteUsage(env, siteId) {
+  try {
+    let d1BytesUsed = 0;
+    try {
+      const site = await env.DB.prepare(
+        "SELECT d1_database_id FROM sites WHERE id = ?"
+      ).bind(siteId).first();
+      if (site && site.d1_database_id) {
+        const { getDatabaseSize: getDatabaseSize2 } = await Promise.resolve().then(() => (init_d1_manager(), d1_manager_exports));
+        d1BytesUsed = await getDatabaseSize2(env, site.d1_database_id);
+      }
+    } catch (d1Err) {
+      console.error("getDatabaseSize error (falling back to estimate):", d1Err.message || d1Err);
+    }
+    if (d1BytesUsed === 0) {
+      try {
+        await ensureUsageTables(env);
+        const usage = await env.DB.prepare(
+          "SELECT d1_bytes_used FROM site_usage WHERE site_id = ?"
+        ).bind(siteId).first();
+        d1BytesUsed = usage?.d1_bytes_used || 0;
+      } catch (_) {
+      }
+    }
+    let r2BytesUsed = 0;
+    try {
+      await ensureUsageTables(env);
+      const usage = await env.DB.prepare(
+        "SELECT r2_bytes_used, last_updated FROM site_usage WHERE site_id = ?"
+      ).bind(siteId).first();
+      r2BytesUsed = usage?.r2_bytes_used || 0;
+      return {
+        d1BytesUsed,
+        r2BytesUsed,
+        lastUpdated: usage?.last_updated || (/* @__PURE__ */ new Date()).toISOString()
+      };
+    } catch (_) {
+    }
+    return {
+      d1BytesUsed,
+      r2BytesUsed: 0,
+      lastUpdated: (/* @__PURE__ */ new Date()).toISOString()
+    };
+  } catch (e) {
+    console.error("getSiteUsage error:", e.message || e);
+    return { d1BytesUsed: 0, r2BytesUsed: 0, lastUpdated: null };
+  }
+}
+function getSitePlan(site) {
+  const plan = (site.subscription_plan || "free").toLowerCase();
+  if (plan.includes("premium"))
+    return "premium";
+  if (plan.includes("pro"))
+    return "pro";
+  if (plan.includes("basic"))
+    return "basic";
+  if (plan === "trial")
+    return "trial";
+  return "free";
+}
+async function checkUsageLimit(env, siteId, resourceType = "d1", additionalBytes = 0) {
+  try {
+    const site = await env.DB.prepare(
+      "SELECT subscription_plan, settings FROM sites WHERE id = ?"
+    ).bind(siteId).first();
+    if (!site)
+      return { allowed: true, reason: null };
+    const planKey = getSitePlan(site);
+    const limits = PLAN_LIMITS[planKey] || PLAN_LIMITS.free;
+    const usage = await getSiteUsage(env, siteId);
+    const currentBytes = resourceType === "d1" ? usage.d1BytesUsed : usage.r2BytesUsed;
+    const limitBytes = resourceType === "d1" ? limits.d1Bytes : limits.r2Bytes;
+    const newTotal = currentBytes + additionalBytes;
+    if (newTotal <= limitBytes) {
+      return { allowed: true, reason: null };
+    }
+    if (limits.allowOverage) {
+      let siteSettings = {};
+      try {
+        if (site.settings)
+          siteSettings = typeof site.settings === "string" ? JSON.parse(site.settings) : site.settings;
+      } catch (_) {
+      }
+      if (siteSettings.overageEnabled) {
+        const overageBytes = Math.max(0, newTotal - limitBytes);
+        const overageGB = overageBytes / (1024 * 1024 * 1024);
+        const rate = resourceType === "d1" ? OVERAGE_RATES.d1PerGB : OVERAGE_RATES.r2PerGB;
+        const overageCost = overageGB * rate;
+        return { allowed: true, overage: true, overageBytes, overageCostINR: overageCost, reason: null };
+      }
+    }
+    const limitMB = (limitBytes / (1024 * 1024)).toFixed(0);
+    const usedMB = (currentBytes / (1024 * 1024)).toFixed(1);
+    return {
+      allowed: false,
+      reason: `Storage limit reached. ${resourceType.toUpperCase()} usage: ${usedMB}MB / ${limitMB}MB. ${limits.allowOverage ? "Enable overage charges in your billing settings to continue, or upgrade your plan." : "Upgrade your plan for more storage."}`
+    };
+  } catch (e) {
+    console.error("checkUsageLimit error (non-fatal):", e.message || e);
+    return { allowed: true, reason: null };
+  }
+}
+async function reconcileSiteUsage(env, siteId) {
+  try {
+    await ensureUsageTables(env);
+    let totalD1Bytes = 0;
+    try {
+      const site = await env.DB.prepare(
+        "SELECT d1_database_id FROM sites WHERE id = ?"
+      ).bind(siteId).first();
+      if (site && site.d1_database_id) {
+        const { getDatabaseSize: getDatabaseSize2 } = await Promise.resolve().then(() => (init_d1_manager(), d1_manager_exports));
+        totalD1Bytes = await getDatabaseSize2(env, site.d1_database_id);
+      }
+    } catch (d1Err) {
+      console.error("getDatabaseSize for reconcile failed:", d1Err.message || d1Err);
+    }
+    let totalR2Bytes = 0;
+    try {
+      const mediaRows = await env.DB.prepare(
+        "SELECT SUM(size_bytes) as total FROM site_media WHERE site_id = ?"
+      ).bind(siteId).first();
+      totalR2Bytes = mediaRows?.total || 0;
+    } catch (_) {
+    }
+    await env.DB.prepare(`
+      INSERT INTO site_usage (site_id, d1_bytes_used, r2_bytes_used, last_updated)
+      VALUES (?, ?, ?, datetime('now'))
+      ON CONFLICT(site_id) DO UPDATE SET
+        d1_bytes_used = ?,
+        r2_bytes_used = ?,
+        last_updated = datetime('now')
+    `).bind(siteId, totalD1Bytes, totalR2Bytes, totalD1Bytes, totalR2Bytes).run();
+    return { d1BytesUsed: totalD1Bytes, r2BytesUsed: totalR2Bytes };
+  } catch (e) {
+    console.error("reconcileSiteUsage error:", e.message || e);
+    return null;
+  }
+}
+async function handleUsageAPI(request, env, path) {
+  const corsResponse = handleCORS(request);
+  if (corsResponse)
+    return corsResponse;
+  const user = await validateAuth(request, env);
+  if (!user) {
+    return errorResponse("Unauthorized", 401);
+  }
+  const url = new URL(request.url);
+  const siteId = url.searchParams.get("siteId");
+  if (!siteId) {
+    return errorResponse("siteId is required", 400);
+  }
+  if (request.method === "POST") {
+    const action = url.searchParams.get("action");
+    if (action === "reconcile") {
+      return handleReconcile(env, user, siteId);
+    }
+    return handleOverageToggle(request, env, user, siteId);
+  }
+  if (request.method !== "GET") {
+    return errorResponse("Method not allowed", 405);
+  }
+  try {
+    const site = await env.DB.prepare(
+      "SELECT id, subscription_plan, settings FROM sites WHERE id = ? AND user_id = ?"
+    ).bind(siteId, user.id).first();
+    if (!site) {
+      return errorResponse("Site not found or unauthorized", 404);
+    }
+    let usage = await getSiteUsage(env, siteId);
+    if (usage.d1BytesUsed === 0 && usage.r2BytesUsed === 0 && !usage.lastUpdated) {
+      const reconciled = await reconcileSiteUsage(env, siteId);
+      if (reconciled) {
+        usage = { d1BytesUsed: reconciled.d1BytesUsed, r2BytesUsed: reconciled.r2BytesUsed, lastUpdated: (/* @__PURE__ */ new Date()).toISOString() };
+      }
+    } else if (usage.r2BytesUsed === 0) {
+      const mediaTotal = await env.DB.prepare(
+        "SELECT SUM(size_bytes) as total FROM site_media WHERE site_id = ?"
+      ).bind(siteId).first();
+      const r2FromMedia = mediaTotal?.total || 0;
+      if (r2FromMedia > 0) {
+        await env.DB.prepare(`
+          INSERT INTO site_usage (site_id, d1_bytes_used, r2_bytes_used, last_updated)
+          VALUES (?, ?, ?, datetime('now'))
+          ON CONFLICT(site_id) DO UPDATE SET
+            r2_bytes_used = ?,
+            last_updated = datetime('now')
+        `).bind(siteId, usage.d1BytesUsed, r2FromMedia, r2FromMedia).run();
+        usage = { ...usage, r2BytesUsed: r2FromMedia, lastUpdated: (/* @__PURE__ */ new Date()).toISOString() };
+      }
+    }
+    const planKey = getSitePlan(site);
+    const limits = PLAN_LIMITS[planKey] || PLAN_LIMITS.free;
+    let siteSettings = {};
+    try {
+      if (site.settings)
+        siteSettings = typeof site.settings === "string" ? JSON.parse(site.settings) : site.settings;
+    } catch (_) {
+    }
+    const overageEnabled = !!siteSettings.overageEnabled;
+    const d1OverageBytes = Math.max(0, usage.d1BytesUsed - limits.d1Bytes);
+    const r2OverageBytes = Math.max(0, usage.r2BytesUsed - limits.r2Bytes);
+    const d1OverageGB = d1OverageBytes / (1024 * 1024 * 1024);
+    const r2OverageGB = r2OverageBytes / (1024 * 1024 * 1024);
+    let overageCostINR = 0;
+    if (limits.allowOverage && overageEnabled) {
+      overageCostINR = d1OverageGB * OVERAGE_RATES.d1PerGB + r2OverageGB * OVERAGE_RATES.r2PerGB;
+    }
+    return successResponse({
+      plan: planKey,
+      d1: {
+        used: usage.d1BytesUsed,
+        limit: limits.d1Bytes,
+        percentage: limits.d1Bytes > 0 ? Math.min(100, usage.d1BytesUsed / limits.d1Bytes * 100) : 0,
+        overageBytes: d1OverageBytes
+      },
+      r2: {
+        used: usage.r2BytesUsed,
+        limit: limits.r2Bytes,
+        percentage: limits.r2Bytes > 0 ? Math.min(100, usage.r2BytesUsed / limits.r2Bytes * 100) : 0,
+        overageBytes: r2OverageBytes
+      },
+      allowOverage: limits.allowOverage,
+      overageEnabled,
+      overageCostINR: Math.round(overageCostINR * 100) / 100,
+      overageRates: OVERAGE_RATES,
+      lastUpdated: usage.lastUpdated
+    });
+  } catch (error) {
+    console.error("Usage API error:", error);
+    return errorResponse("Failed to fetch usage data", 500);
+  }
+}
+async function handleOverageToggle(request, env, user, siteId) {
+  try {
+    const body = await request.json();
+    const { overageEnabled } = body;
+    if (typeof overageEnabled !== "boolean") {
+      return errorResponse("overageEnabled must be a boolean", 400);
+    }
+    const site = await env.DB.prepare(
+      "SELECT id, subscription_plan, settings FROM sites WHERE id = ? AND user_id = ?"
+    ).bind(siteId, user.id).first();
+    if (!site) {
+      return errorResponse("Site not found or unauthorized", 404);
+    }
+    const planKey = getSitePlan(site);
+    const limits = PLAN_LIMITS[planKey] || PLAN_LIMITS.free;
+    if (!limits.allowOverage) {
+      return errorResponse("Overage charges are only available on the Premium plan", 403);
+    }
+    let siteSettings = {};
+    try {
+      if (site.settings)
+        siteSettings = typeof site.settings === "string" ? JSON.parse(site.settings) : site.settings;
+    } catch (_) {
+    }
+    siteSettings.overageEnabled = overageEnabled;
+    await env.DB.prepare(
+      "UPDATE sites SET settings = ? WHERE id = ?"
+    ).bind(JSON.stringify(siteSettings), siteId).run();
+    return successResponse({ overageEnabled, message: overageEnabled ? "Overage charges enabled. You will be billed for usage beyond your plan limits." : "Overage charges disabled. Your site will be blocked when storage limits are reached." });
+  } catch (error) {
+    console.error("Overage toggle error:", error);
+    return errorResponse("Failed to update overage settings", 500);
+  }
+}
+async function handleReconcile(env, user, siteId) {
+  try {
+    const site = await env.DB.prepare(
+      "SELECT id FROM sites WHERE id = ? AND user_id = ?"
+    ).bind(siteId, user.id).first();
+    if (!site) {
+      return errorResponse("Site not found or unauthorized", 404);
+    }
+    const reconciled = await reconcileSiteUsage(env, siteId);
+    if (!reconciled) {
+      return errorResponse("Failed to reconcile usage", 500);
+    }
+    return successResponse({
+      d1BytesUsed: reconciled.d1BytesUsed,
+      r2BytesUsed: reconciled.r2BytesUsed
+    }, "Usage reconciled successfully");
+  } catch (error) {
+    console.error("Reconcile error:", error);
+    return errorResponse("Failed to reconcile usage", 500);
+  }
+}
+var PLAN_LIMITS, OVERAGE_RATES;
+var init_usage_tracker = __esm({
+  "utils/usage-tracker.js"() {
+    init_checked_fetch();
+    init_strip_cf_connecting_ip_header();
+    init_modules_watch_stub();
+    init_helpers();
+    init_auth();
+    PLAN_LIMITS = {
+      basic: { d1Bytes: 500 * 1024 * 1024, r2Bytes: 5 * 1024 * 1024 * 1024, allowOverage: false },
+      pro: { d1Bytes: 1.5 * 1024 * 1024 * 1024, r2Bytes: 50 * 1024 * 1024 * 1024, allowOverage: false },
+      premium: { d1Bytes: 3 * 1024 * 1024 * 1024, r2Bytes: 100 * 1024 * 1024 * 1024, allowOverage: true },
+      trial: { d1Bytes: 500 * 1024 * 1024, r2Bytes: 5 * 1024 * 1024 * 1024, allowOverage: false },
+      free: { d1Bytes: 500 * 1024 * 1024, r2Bytes: 5 * 1024 * 1024 * 1024, allowOverage: false }
+    };
+    OVERAGE_RATES = {
+      d1PerGB: 0.75,
+      r2PerGB: 0.015
+    };
+    __name(ensureUsageTables, "ensureUsageTables");
+    __name(estimateRowBytes, "estimateRowBytes");
+    __name(trackD1Usage, "trackD1Usage");
+    __name(trackR2Usage, "trackR2Usage");
+    __name(recordMediaFile, "recordMediaFile");
+    __name(removeMediaFile, "removeMediaFile");
+    __name(getSiteUsage, "getSiteUsage");
+    __name(getSitePlan, "getSitePlan");
+    __name(checkUsageLimit, "checkUsageLimit");
+    __name(reconcileSiteUsage, "reconcileSiteUsage");
+    __name(handleUsageAPI, "handleUsageAPI");
+    __name(handleOverageToggle, "handleOverageToggle");
+    __name(handleReconcile, "handleReconcile");
+  }
+});
+
+// .wrangler/tmp/bundle-F9KZMl/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-ebMujo/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-F9KZMl/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -2744,7 +2996,349 @@ async function deleteCustomHostname(env, cfHostnameId) {
 __name(deleteCustomHostname, "deleteCustomHostname");
 
 // workers/platform/sites-worker.js
-init_usage_tracker();
+init_d1_manager();
+
+// utils/site-schema.js
+init_checked_fetch();
+init_strip_cf_connecting_ip_header();
+init_modules_watch_stub();
+function getSiteSchemaStatements() {
+  const tables = [
+    `CREATE TABLE IF NOT EXISTS categories (
+      id TEXT PRIMARY KEY,
+      site_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      slug TEXT NOT NULL,
+      parent_id TEXT,
+      description TEXT,
+      subtitle TEXT,
+      show_on_home INTEGER DEFAULT 1,
+      image_url TEXT,
+      display_order INTEGER DEFAULT 0,
+      is_active INTEGER DEFAULT 1,
+      seo_title TEXT,
+      seo_description TEXT,
+      seo_og_image TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(site_id, slug)
+    )`,
+    `CREATE TABLE IF NOT EXISTS products (
+      id TEXT PRIMARY KEY,
+      site_id TEXT NOT NULL,
+      category_id TEXT,
+      name TEXT NOT NULL,
+      slug TEXT NOT NULL,
+      description TEXT,
+      short_description TEXT,
+      price REAL NOT NULL,
+      compare_price REAL,
+      cost_price REAL,
+      sku TEXT,
+      barcode TEXT,
+      stock INTEGER DEFAULT 0,
+      low_stock_threshold INTEGER DEFAULT 5,
+      weight REAL,
+      dimensions TEXT,
+      images TEXT,
+      thumbnail_url TEXT,
+      tags TEXT,
+      is_featured INTEGER DEFAULT 0,
+      is_active INTEGER DEFAULT 1,
+      seo_title TEXT,
+      seo_description TEXT,
+      seo_og_image TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(site_id, slug)
+    )`,
+    `CREATE TABLE IF NOT EXISTS product_variants (
+      id TEXT PRIMARY KEY,
+      product_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      sku TEXT,
+      price REAL NOT NULL,
+      compare_price REAL,
+      stock INTEGER DEFAULT 0,
+      attributes TEXT,
+      image_url TEXT,
+      is_active INTEGER DEFAULT 1,
+      created_at TEXT DEFAULT (datetime('now'))
+    )`,
+    `CREATE TABLE IF NOT EXISTS orders (
+      id TEXT PRIMARY KEY,
+      site_id TEXT NOT NULL,
+      user_id TEXT,
+      order_number TEXT UNIQUE NOT NULL,
+      status TEXT DEFAULT 'pending',
+      items TEXT NOT NULL,
+      subtotal REAL NOT NULL,
+      discount REAL DEFAULT 0,
+      shipping_cost REAL DEFAULT 0,
+      tax REAL DEFAULT 0,
+      total REAL NOT NULL,
+      currency TEXT DEFAULT 'INR',
+      payment_method TEXT,
+      payment_status TEXT DEFAULT 'pending',
+      payment_id TEXT,
+      razorpay_order_id TEXT,
+      razorpay_payment_id TEXT,
+      razorpay_signature TEXT,
+      shipping_address TEXT NOT NULL,
+      billing_address TEXT,
+      customer_name TEXT NOT NULL,
+      customer_email TEXT,
+      customer_phone TEXT NOT NULL,
+      coupon_code TEXT,
+      notes TEXT,
+      tracking_number TEXT,
+      carrier TEXT,
+      shipped_at TEXT,
+      delivered_at TEXT,
+      cancelled_at TEXT,
+      cancellation_reason TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    )`,
+    `CREATE TABLE IF NOT EXISTS guest_orders (
+      id TEXT PRIMARY KEY,
+      site_id TEXT NOT NULL,
+      order_number TEXT UNIQUE NOT NULL,
+      status TEXT DEFAULT 'pending',
+      items TEXT NOT NULL,
+      subtotal REAL NOT NULL,
+      discount REAL DEFAULT 0,
+      shipping_cost REAL DEFAULT 0,
+      tax REAL DEFAULT 0,
+      total REAL NOT NULL,
+      currency TEXT DEFAULT 'INR',
+      payment_method TEXT,
+      payment_status TEXT DEFAULT 'pending',
+      razorpay_order_id TEXT,
+      razorpay_payment_id TEXT,
+      shipping_address TEXT NOT NULL,
+      customer_name TEXT NOT NULL,
+      customer_email TEXT,
+      customer_phone TEXT NOT NULL,
+      tracking_number TEXT,
+      carrier TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    )`,
+    `CREATE TABLE IF NOT EXISTS carts (
+      id TEXT PRIMARY KEY,
+      site_id TEXT NOT NULL,
+      user_id TEXT,
+      session_id TEXT,
+      items TEXT NOT NULL DEFAULT '[]',
+      subtotal REAL DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    )`,
+    `CREATE TABLE IF NOT EXISTS wishlists (
+      id TEXT PRIMARY KEY,
+      site_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      product_id TEXT NOT NULL,
+      created_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(site_id, user_id, product_id)
+    )`,
+    `CREATE TABLE IF NOT EXISTS site_customers (
+      id TEXT PRIMARY KEY,
+      site_id TEXT NOT NULL,
+      email TEXT NOT NULL,
+      password_hash TEXT NOT NULL,
+      name TEXT NOT NULL,
+      phone TEXT,
+      email_verified INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(site_id, email)
+    )`,
+    `CREATE TABLE IF NOT EXISTS site_customer_sessions (
+      id TEXT PRIMARY KEY,
+      customer_id TEXT NOT NULL,
+      site_id TEXT NOT NULL,
+      token TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      created_at TEXT DEFAULT (datetime('now'))
+    )`,
+    `CREATE TABLE IF NOT EXISTS customer_addresses (
+      id TEXT PRIMARY KEY,
+      site_id TEXT NOT NULL,
+      customer_id TEXT NOT NULL,
+      label TEXT DEFAULT 'Home',
+      first_name TEXT NOT NULL,
+      last_name TEXT,
+      phone TEXT,
+      house_number TEXT NOT NULL,
+      road_name TEXT,
+      city TEXT NOT NULL,
+      state TEXT NOT NULL,
+      pin_code TEXT NOT NULL,
+      is_default INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    )`,
+    `CREATE TABLE IF NOT EXISTS customer_password_resets (
+      id TEXT PRIMARY KEY,
+      site_id TEXT NOT NULL,
+      customer_id TEXT NOT NULL,
+      token TEXT NOT NULL UNIQUE,
+      expires_at TEXT NOT NULL,
+      used INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now'))
+    )`,
+    `CREATE TABLE IF NOT EXISTS customer_email_verifications (
+      id TEXT PRIMARY KEY,
+      site_id TEXT NOT NULL,
+      customer_id TEXT NOT NULL,
+      token TEXT NOT NULL UNIQUE,
+      expires_at TEXT NOT NULL,
+      used INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now'))
+    )`,
+    `CREATE TABLE IF NOT EXISTS coupons (
+      id TEXT PRIMARY KEY,
+      site_id TEXT NOT NULL,
+      code TEXT NOT NULL,
+      type TEXT NOT NULL,
+      value REAL NOT NULL,
+      min_order_value REAL DEFAULT 0,
+      max_discount REAL,
+      usage_limit INTEGER,
+      used_count INTEGER DEFAULT 0,
+      starts_at TEXT,
+      expires_at TEXT,
+      is_active INTEGER DEFAULT 1,
+      created_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(site_id, code)
+    )`,
+    `CREATE TABLE IF NOT EXISTS notifications (
+      id TEXT PRIMARY KEY,
+      site_id TEXT NOT NULL,
+      user_id TEXT,
+      push_token TEXT NOT NULL,
+      endpoint TEXT,
+      p256dh TEXT,
+      auth TEXT,
+      is_active INTEGER DEFAULT 1,
+      created_at TEXT DEFAULT (datetime('now'))
+    )`,
+    `CREATE TABLE IF NOT EXISTS reviews (
+      id TEXT PRIMARY KEY,
+      site_id TEXT NOT NULL,
+      product_id TEXT NOT NULL,
+      user_id TEXT,
+      customer_name TEXT NOT NULL,
+      rating INTEGER NOT NULL CHECK(rating >= 1 AND rating <= 5),
+      title TEXT,
+      content TEXT,
+      images TEXT,
+      is_verified INTEGER DEFAULT 0,
+      is_approved INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now'))
+    )`,
+    `CREATE TABLE IF NOT EXISTS page_seo (
+      id TEXT PRIMARY KEY,
+      site_id TEXT NOT NULL,
+      page_type TEXT NOT NULL,
+      seo_title TEXT,
+      seo_description TEXT,
+      seo_og_image TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(site_id, page_type)
+    )`,
+    `CREATE TABLE IF NOT EXISTS site_media (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      site_id TEXT NOT NULL,
+      storage_key TEXT NOT NULL UNIQUE,
+      size_bytes INTEGER NOT NULL,
+      media_type TEXT DEFAULT 'image',
+      created_at TEXT DEFAULT (datetime('now'))
+    )`,
+    `CREATE TABLE IF NOT EXISTS site_usage (
+      site_id TEXT PRIMARY KEY,
+      d1_bytes_used INTEGER DEFAULT 0,
+      r2_bytes_used INTEGER DEFAULT 0,
+      last_updated TEXT DEFAULT (datetime('now'))
+    )`,
+    `CREATE TABLE IF NOT EXISTS activity_log (
+      id TEXT PRIMARY KEY,
+      site_id TEXT,
+      user_id TEXT,
+      action TEXT NOT NULL,
+      entity_type TEXT,
+      entity_id TEXT,
+      details TEXT,
+      ip_address TEXT,
+      user_agent TEXT,
+      created_at TEXT DEFAULT (datetime('now'))
+    )`,
+    `CREATE TABLE IF NOT EXISTS addresses (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      phone TEXT NOT NULL,
+      line1 TEXT NOT NULL,
+      line2 TEXT,
+      city TEXT NOT NULL,
+      state TEXT NOT NULL,
+      pincode TEXT NOT NULL,
+      country TEXT DEFAULT 'India',
+      is_default INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    )`
+  ];
+  const indexes = [
+    "CREATE INDEX IF NOT EXISTS idx_categories_site ON categories(site_id)",
+    "CREATE INDEX IF NOT EXISTS idx_categories_slug ON categories(site_id, slug)",
+    "CREATE INDEX IF NOT EXISTS idx_categories_parent ON categories(parent_id)",
+    "CREATE INDEX IF NOT EXISTS idx_products_site ON products(site_id)",
+    "CREATE INDEX IF NOT EXISTS idx_products_category ON products(category_id)",
+    "CREATE INDEX IF NOT EXISTS idx_products_site_slug ON products(site_id, slug)",
+    "CREATE INDEX IF NOT EXISTS idx_products_featured ON products(site_id, is_featured)",
+    "CREATE INDEX IF NOT EXISTS idx_variants_product ON product_variants(product_id)",
+    "CREATE INDEX IF NOT EXISTS idx_orders_site ON orders(site_id)",
+    "CREATE INDEX IF NOT EXISTS idx_orders_user ON orders(user_id)",
+    "CREATE INDEX IF NOT EXISTS idx_orders_number ON orders(order_number)",
+    "CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(site_id, status)",
+    "CREATE INDEX IF NOT EXISTS idx_orders_created ON orders(site_id, created_at)",
+    "CREATE INDEX IF NOT EXISTS idx_guest_orders_site ON guest_orders(site_id)",
+    "CREATE INDEX IF NOT EXISTS idx_guest_orders_number ON guest_orders(order_number)",
+    "CREATE INDEX IF NOT EXISTS idx_carts_user ON carts(user_id)",
+    "CREATE INDEX IF NOT EXISTS idx_carts_session ON carts(session_id)",
+    "CREATE INDEX IF NOT EXISTS idx_carts_site ON carts(site_id)",
+    "CREATE INDEX IF NOT EXISTS idx_wishlists_user ON wishlists(user_id)",
+    "CREATE INDEX IF NOT EXISTS idx_wishlists_site ON wishlists(site_id)",
+    "CREATE INDEX IF NOT EXISTS idx_site_customers_site ON site_customers(site_id)",
+    "CREATE INDEX IF NOT EXISTS idx_site_customers_email ON site_customers(site_id, email)",
+    "CREATE INDEX IF NOT EXISTS idx_customer_sessions_token ON site_customer_sessions(token)",
+    "CREATE INDEX IF NOT EXISTS idx_customer_sessions_customer ON site_customer_sessions(customer_id)",
+    "CREATE INDEX IF NOT EXISTS idx_customer_addresses_customer ON customer_addresses(customer_id)",
+    "CREATE INDEX IF NOT EXISTS idx_customer_addresses_site ON customer_addresses(site_id)",
+    "CREATE INDEX IF NOT EXISTS idx_customer_pw_reset_token ON customer_password_resets(token)",
+    "CREATE INDEX IF NOT EXISTS idx_customer_email_verify_token ON customer_email_verifications(token)",
+    "CREATE INDEX IF NOT EXISTS idx_coupons_site ON coupons(site_id)",
+    "CREATE INDEX IF NOT EXISTS idx_coupons_code ON coupons(site_id, code)",
+    "CREATE INDEX IF NOT EXISTS idx_notifications_site ON notifications(site_id)",
+    "CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id)",
+    "CREATE INDEX IF NOT EXISTS idx_reviews_product ON reviews(product_id)",
+    "CREATE INDEX IF NOT EXISTS idx_reviews_site ON reviews(site_id)",
+    "CREATE INDEX IF NOT EXISTS idx_activity_site ON activity_log(site_id)",
+    "CREATE INDEX IF NOT EXISTS idx_activity_user ON activity_log(user_id)",
+    "CREATE INDEX IF NOT EXISTS idx_activity_created ON activity_log(created_at)",
+    "CREATE INDEX IF NOT EXISTS idx_site_media_site ON site_media(site_id)",
+    "CREATE INDEX IF NOT EXISTS idx_site_media_key ON site_media(storage_key)",
+    "CREATE INDEX IF NOT EXISTS idx_addresses_user ON addresses(user_id)"
+  ];
+  return [...tables, ...indexes];
+}
+__name(getSiteSchemaStatements, "getSiteSchemaStatements");
+
+// workers/platform/sites-worker.js
 async function handleSites(request, env, path) {
   const corsResponse = handleCORS(request);
   if (corsResponse)
@@ -2864,7 +3458,9 @@ async function getSite(env, user, siteId) {
     if (!site) {
       return errorResponse("Site not found", 404, "NOT_FOUND");
     }
-    const categories = await env.DB.prepare(
+    const { resolveSiteDB: resolveSiteDB2 } = await Promise.resolve().then(() => (init_site_db(), site_db_exports));
+    const siteDB = resolveSiteDB2(env, site);
+    const categories = await siteDB.prepare(
       `SELECT * FROM categories WHERE site_id = ? ORDER BY display_order`
     ).bind(siteId).all();
     return successResponse({ ...site, categories: categories.results });
@@ -3034,6 +3630,30 @@ async function createSite(request, env, user) {
         console.error("Retry category creation failed:", retryError);
       }
     }
+    let d1DatabaseId = null;
+    let d1BindingName = null;
+    try {
+      const shortId = siteId.substring(0, 8);
+      const dbName = `site-${finalSubdomain}-${shortId}`;
+      d1BindingName = `SITE_DB_${shortId.toUpperCase()}`;
+      const dbResult = await createDatabase(env, dbName);
+      d1DatabaseId = dbResult.id;
+      console.log(`Created per-site D1 database: ${dbName} (${d1DatabaseId})`);
+      const schemaStatements = getSiteSchemaStatements();
+      await runSchemaOnDB(env, d1DatabaseId, schemaStatements);
+      console.log(`Schema applied to per-site DB: ${dbName}`);
+      await env.DB.prepare(
+        `UPDATE sites SET d1_database_id = ?, d1_binding_name = ?, updated_at = datetime('now') WHERE id = ?`
+      ).bind(d1DatabaseId, d1BindingName, siteId).run();
+      try {
+        await addBindingAndRedeploy(env, siteId, d1DatabaseId, d1BindingName);
+        console.log(`Worker redeployed with binding ${d1BindingName}`);
+      } catch (redeployErr) {
+        console.error("Worker redeploy failed (non-fatal, will use fallback):", redeployErr.message || redeployErr);
+      }
+    } catch (d1Err) {
+      console.error("Per-site D1 creation failed (non-fatal, using platform DB fallback):", d1Err.message || d1Err);
+    }
     try {
       const activeSub = await env.DB.prepare(
         `SELECT plan, status, current_period_end FROM subscriptions WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1`
@@ -3046,7 +3666,7 @@ async function createSite(request, env, user) {
     } catch (subErr) {
       console.error("Check subscription for new site failed (non-fatal):", subErr);
     }
-    return successResponse({ id: siteId, subdomain: finalSubdomain }, "Site created successfully");
+    return successResponse({ id: siteId, subdomain: finalSubdomain, d1DatabaseId }, "Site created successfully");
   } catch (error) {
     console.error("Create site error:", error);
     if (error.message && error.message.includes("UNIQUE constraint failed")) {
@@ -3082,7 +3702,6 @@ async function createDefaultCategories(env, siteId, businessCategory) {
       `INSERT INTO categories (id, site_id, name, slug, subtitle, show_on_home, display_order, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(parentId, siteId, cat.name, cat.slug, cat.subtitle || null, cat.showOnHome !== void 0 ? cat.showOnHome : 1, order++).run();
-    await trackD1Usage(env, siteId, estimateRowBytes({ id: parentId, site_id: siteId, name: cat.name, slug: cat.slug, subtitle: cat.subtitle }));
     for (const childName of cat.children || []) {
       const childId = generateId();
       const childSlug = `${cat.slug}-${childName.toLowerCase().replace(/\s+/g, "-")}`;
@@ -3090,7 +3709,6 @@ async function createDefaultCategories(env, siteId, businessCategory) {
         `INSERT INTO categories (id, site_id, name, slug, parent_id, show_on_home, display_order, created_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
       ).bind(childId, siteId, childName, childSlug, parentId, 0, order++).run();
-      await trackD1Usage(env, siteId, estimateRowBytes({ id: childId, site_id: siteId, name: childName, slug: childSlug, parent_id: parentId }));
     }
   }
 }
@@ -3109,7 +3727,6 @@ async function createUserCategories(env, siteId, categories) {
       `INSERT INTO categories (id, site_id, name, slug, subtitle, show_on_home, display_order, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(catId, siteId, categoryName, slug, subtitle, showOnHome, order++).run();
-    await trackD1Usage(env, siteId, estimateRowBytes({ id: catId, site_id: siteId, name: categoryName, slug, subtitle }));
   }
 }
 __name(createUserCategories, "createUserCategories");
@@ -3212,10 +3829,18 @@ async function deleteSite(env, user, siteId) {
   }
   try {
     const site = await env.DB.prepare(
-      "SELECT id, subdomain FROM sites WHERE id = ? AND user_id = ?"
+      "SELECT id, subdomain, d1_database_id FROM sites WHERE id = ? AND user_id = ?"
     ).bind(siteId, user.id).first();
     if (!site) {
       return errorResponse("Site not found", 404, "NOT_FOUND");
+    }
+    if (site.d1_database_id) {
+      try {
+        await deleteDatabase(env, site.d1_database_id);
+        console.log(`Deleted per-site D1 database: ${site.d1_database_id}`);
+      } catch (d1Err) {
+        console.error("Failed to delete per-site D1 database (non-fatal):", d1Err.message || d1Err);
+      }
     }
     await env.DB.prepare("DELETE FROM sites WHERE id = ?").bind(siteId).run();
     return successResponse({ subdomain: site.subdomain }, "Site deleted successfully");
@@ -3431,6 +4056,7 @@ init_helpers();
 init_auth();
 init_site_admin_worker();
 init_usage_tracker();
+init_site_db();
 async function handleProducts(request, env, path) {
   const corsResponse = handleCORS(request);
   if (corsResponse)
@@ -3445,7 +4071,7 @@ async function handleProducts(request, env, path) {
     const category = url.searchParams.get("category");
     const categoryId = url.searchParams.get("categoryId");
     if (productId) {
-      return getProduct(env, productId);
+      return getProduct(env, productId, siteId, subdomain);
     }
     return getProducts(env, { siteId, subdomain, category, categoryId, url });
   }
@@ -3500,18 +4126,23 @@ async function getProducts(env, { siteId, subdomain, category, categoryId, url }
     if (!siteId && !subdomain) {
       return errorResponse("siteId or subdomain is required to fetch products");
     }
+    let db;
+    if (siteId) {
+      db = await resolveSiteDBById(env, siteId);
+    } else if (subdomain) {
+      const site = await env.DB.prepare(
+        "SELECT id FROM sites WHERE LOWER(subdomain) = LOWER(?)"
+      ).bind(subdomain).first();
+      if (site) {
+        siteId = site.id;
+      }
+      db = await resolveSiteDBBySubdomain(env, subdomain);
+    }
     let query = "SELECT p.*, c.name as category_name, c.slug as category_slug FROM products p LEFT JOIN categories c ON p.category_id = c.id WHERE p.is_active = 1";
     const bindings = [];
     if (siteId) {
       query += " AND p.site_id = ?";
       bindings.push(siteId);
-    } else if (subdomain) {
-      query = `SELECT p.*, c.name as category_name, c.slug as category_slug 
-               FROM products p 
-               LEFT JOIN categories c ON p.category_id = c.id
-               JOIN sites s ON p.site_id = s.id 
-               WHERE p.is_active = 1 AND LOWER(s.subdomain) = LOWER(?)`;
-      bindings.push(subdomain);
     }
     if (categoryId) {
       query += " AND p.category_id = ?";
@@ -3528,7 +4159,7 @@ async function getProducts(env, { siteId, subdomain, category, categoryId, url }
     const offset = parseInt(url.searchParams.get("offset")) || 0;
     query += " ORDER BY p.created_at DESC LIMIT ? OFFSET ?";
     bindings.push(limit, offset);
-    const products = await env.DB.prepare(query).bind(...bindings).all();
+    const products = await db.prepare(query).bind(...bindings).all();
     const parsedProducts = products.results.map((product) => ({
       ...product,
       images: product.images ? JSON.parse(product.images) : [],
@@ -3541,21 +4172,35 @@ async function getProducts(env, { siteId, subdomain, category, categoryId, url }
   }
 }
 __name(getProducts, "getProducts");
-async function getProduct(env, productId) {
+async function getProduct(env, productId, siteId, subdomain) {
   try {
-    const product = await env.DB.prepare(
-      `SELECT p.*, c.name as category_name, c.slug as category_slug, s.brand_name, s.subdomain
+    if (!siteId && subdomain) {
+      const site = await env.DB.prepare(
+        "SELECT id FROM sites WHERE LOWER(subdomain) = LOWER(?)"
+      ).bind(subdomain).first();
+      if (site)
+        siteId = site.id;
+    }
+    const db = await resolveSiteDBById(env, siteId);
+    const product = await db.prepare(
+      `SELECT p.*, c.name as category_name, c.slug as category_slug
        FROM products p 
        LEFT JOIN categories c ON p.category_id = c.id
-       JOIN sites s ON p.site_id = s.id
        WHERE p.id = ?`
     ).bind(productId).first();
     if (!product) {
       return errorResponse("Product not found", 404, "NOT_FOUND");
     }
+    const siteInfo = await env.DB.prepare(
+      "SELECT brand_name, subdomain FROM sites WHERE id = ?"
+    ).bind(product.site_id).first();
+    if (siteInfo) {
+      product.brand_name = siteInfo.brand_name;
+      product.subdomain = siteInfo.subdomain;
+    }
     let variantResults = [];
     try {
-      const variants = await env.DB.prepare(
+      const variants = await db.prepare(
         "SELECT * FROM product_variants WHERE product_id = ?"
       ).bind(productId).all();
       variantResults = variants.results || [];
@@ -3595,6 +4240,7 @@ async function createProduct(request, env, user) {
     if (!site) {
       return errorResponse("Site not found or unauthorized", 404);
     }
+    const db = await resolveSiteDBById(env, siteId);
     let resolvedThumbnail = thumbnailUrl || null;
     if (!resolvedThumbnail && Array.isArray(images) && images.length > 0) {
       const idx = typeof mainImageIndex === "number" ? mainImageIndex : 0;
@@ -3602,13 +4248,11 @@ async function createProduct(request, env, user) {
     }
     const slug = name.toLowerCase().trim().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-").substring(0, 100);
     const productId = generateId();
-    const rowData = { id: productId, siteId, categoryId, name, slug, description, shortDescription, price, comparePrice, costPrice, sku, stock, weight, dimensions: dimensions ? JSON.stringify(dimensions) : null, images: images ? JSON.stringify(images) : "[]", thumbnailUrl: resolvedThumbnail, tags: tags ? JSON.stringify(tags) : "[]", isFeatured };
-    const estimatedBytes = estimateRowBytes(rowData);
-    const usageCheck = await checkUsageLimit(env, siteId, "d1", estimatedBytes);
+    const usageCheck = await checkUsageLimit(env, siteId, "d1", 0);
     if (!usageCheck.allowed) {
       return errorResponse(usageCheck.reason, 403, "STORAGE_LIMIT");
     }
-    await env.DB.prepare(
+    await db.prepare(
       `INSERT INTO products (id, site_id, category_id, name, slug, description, short_description, price, compare_price, cost_price, sku, stock, low_stock_threshold, weight, dimensions, images, thumbnail_url, tags, is_featured, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(
@@ -3632,7 +4276,6 @@ async function createProduct(request, env, user) {
       tags ? JSON.stringify(tags) : "[]",
       isFeatured ? 1 : 0
     ).run();
-    await trackD1Usage(env, siteId, estimatedBytes);
     return successResponse({ id: productId, slug }, "Product created successfully");
   } catch (error) {
     console.error("Create product error:", error);
@@ -3649,20 +4292,31 @@ async function updateProduct(request, env, user, productId) {
   }
   try {
     let product;
+    let siteId = user._adminSiteId || null;
     if (user._adminSiteId) {
-      product = await env.DB.prepare(
+      const db2 = await resolveSiteDBById(env, user._adminSiteId);
+      product = await db2.prepare(
         "SELECT id, site_id FROM products WHERE id = ? AND site_id = ?"
       ).bind(productId, user._adminSiteId).first();
     } else {
-      product = await env.DB.prepare(
-        `SELECT p.id, p.site_id FROM products p 
-         JOIN sites s ON p.site_id = s.id 
-         WHERE p.id = ? AND s.user_id = ?`
-      ).bind(productId, user.id).first();
+      const userSites = await env.DB.prepare(
+        "SELECT id FROM sites WHERE user_id = ?"
+      ).bind(user.id).all();
+      for (const s of userSites.results || []) {
+        const db2 = await resolveSiteDBById(env, s.id);
+        product = await db2.prepare(
+          "SELECT id, site_id FROM products WHERE id = ? AND site_id = ?"
+        ).bind(productId, s.id).first();
+        if (product) {
+          siteId = s.id;
+          break;
+        }
+      }
     }
     if (!product) {
       return errorResponse("Product not found or unauthorized", 404);
     }
+    const db = await resolveSiteDBById(env, siteId || product.site_id);
     const updates = await request.json();
     const allowedFields = ["name", "description", "short_description", "price", "compare_price", "cost_price", "sku", "stock", "low_stock_threshold", "category_id", "images", "thumbnail_url", "tags", "is_featured", "is_active", "weight", "dimensions"];
     if (updates.images && !updates.thumbnailUrl && !updates.thumbnail_url) {
@@ -3694,7 +4348,7 @@ async function updateProduct(request, env, user, productId) {
     }
     setClause.push('updated_at = datetime("now")');
     values.push(productId);
-    await env.DB.prepare(
+    await db.prepare(
       `UPDATE products SET ${setClause.join(", ")} WHERE id = ?`
     ).bind(...values).run();
     return successResponse(null, "Product updated successfully");
@@ -3710,26 +4364,32 @@ async function deleteProduct(env, user, productId) {
   }
   try {
     let product;
+    let siteId = user._adminSiteId || null;
     if (user._adminSiteId) {
-      product = await env.DB.prepare(
+      const db2 = await resolveSiteDBById(env, user._adminSiteId);
+      product = await db2.prepare(
         "SELECT id FROM products WHERE id = ? AND site_id = ?"
       ).bind(productId, user._adminSiteId).first();
     } else {
-      product = await env.DB.prepare(
-        `SELECT p.id FROM products p 
-         JOIN sites s ON p.site_id = s.id 
-         WHERE p.id = ? AND s.user_id = ?`
-      ).bind(productId, user.id).first();
+      const userSites = await env.DB.prepare(
+        "SELECT id FROM sites WHERE user_id = ?"
+      ).bind(user.id).all();
+      for (const s of userSites.results || []) {
+        const db2 = await resolveSiteDBById(env, s.id);
+        product = await db2.prepare(
+          "SELECT id, site_id FROM products WHERE id = ? AND site_id = ?"
+        ).bind(productId, s.id).first();
+        if (product) {
+          siteId = s.id;
+          break;
+        }
+      }
     }
     if (!product) {
       return errorResponse("Product not found or unauthorized", 404);
     }
-    const fullProduct = await env.DB.prepare("SELECT * FROM products WHERE id = ?").bind(productId).first();
-    await env.DB.prepare("DELETE FROM products WHERE id = ?").bind(productId).run();
-    if (fullProduct) {
-      const rowBytes = estimateRowBytes(fullProduct);
-      await trackD1Usage(env, fullProduct.site_id, -rowBytes);
-    }
+    const db = await resolveSiteDBById(env, siteId);
+    await db.prepare("DELETE FROM products WHERE id = ?").bind(productId).run();
     return successResponse(null, "Product deleted successfully");
   } catch (error) {
     console.error("Delete product error:", error);
@@ -3737,14 +4397,15 @@ async function deleteProduct(env, user, productId) {
   }
 }
 __name(deleteProduct, "deleteProduct");
-async function updateProductStock(env, productId, quantity, operation = "decrement") {
+async function updateProductStock(env, productId, quantity, operation = "decrement", siteId = null) {
   try {
+    const db = await resolveSiteDBById(env, siteId);
     if (operation === "decrement") {
-      await env.DB.prepare(
+      await db.prepare(
         'UPDATE products SET stock = stock - ?, updated_at = datetime("now") WHERE id = ? AND stock >= ?'
       ).bind(quantity, productId, quantity).run();
     } else {
-      await env.DB.prepare(
+      await db.prepare(
         'UPDATE products SET stock = stock + ?, updated_at = datetime("now") WHERE id = ?'
       ).bind(quantity, productId).run();
     }
@@ -3763,6 +4424,7 @@ init_modules_watch_stub();
 init_helpers();
 init_auth();
 init_usage_tracker();
+init_site_db();
 async function handleOrders(request, env, path) {
   const corsResponse = handleCORS(request);
   if (corsResponse)
@@ -3775,7 +4437,7 @@ async function handleOrders(request, env, path) {
     return handleGuestOrder(request, env, method, orderId);
   }
   if (action === "track") {
-    return trackOrder(env, orderId);
+    return trackOrder(env, orderId, request);
   }
   const user = await validateAnyAuth(request, env);
   switch (method) {
@@ -3800,6 +4462,7 @@ async function getOrders(request, env, user) {
     const status = url.searchParams.get("status");
     const limit = parseInt(url.searchParams.get("limit")) || 50;
     const offset = parseInt(url.searchParams.get("offset")) || 0;
+    const db = await resolveSiteDBById(env, siteId);
     let query = "SELECT * FROM orders WHERE 1=1";
     const bindings = [];
     const authHeader = request.headers.get("Authorization");
@@ -3842,7 +4505,7 @@ async function getOrders(request, env, user) {
     }
     query += " ORDER BY created_at DESC LIMIT ? OFFSET ?";
     bindings.push(limit, offset);
-    const orders = await env.DB.prepare(query).bind(...bindings).all();
+    const orders = await db.prepare(query).bind(...bindings).all();
     const parsedOrders = orders.results.map((order) => ({
       ...order,
       items: JSON.parse(order.items),
@@ -3858,11 +4521,14 @@ async function getOrders(request, env, user) {
 __name(getOrders, "getOrders");
 async function getOrder(env, user, orderId, request) {
   try {
+    const url = new URL(request.url);
+    const siteId = url.searchParams.get("siteId");
+    const db = await resolveSiteDBById(env, siteId);
     let query = "SELECT * FROM orders WHERE (id = ? OR order_number = ?)";
     const bindings = [orderId, orderId];
     const authHeader = request ? request.headers.get("Authorization") : null;
     if (authHeader && authHeader.startsWith("SiteAdmin ")) {
-      const orderCheck = await env.DB.prepare(
+      const orderCheck = await db.prepare(
         "SELECT site_id FROM orders WHERE id = ? OR order_number = ?"
       ).bind(orderId, orderId).first();
       if (orderCheck) {
@@ -3880,13 +4546,23 @@ async function getOrder(env, user, orderId, request) {
         query += " AND user_id = ?";
         bindings.push(user.id);
       } else {
-        query += " AND (user_id = ? OR site_id IN (SELECT id FROM sites WHERE user_id = ?))";
-        bindings.push(user.id, user.id);
+        const userSiteIds = await env.DB.prepare(
+          "SELECT id FROM sites WHERE user_id = ?"
+        ).bind(user.id).all();
+        const siteIds = (userSiteIds.results || []).map((s) => s.id);
+        if (siteIds.length > 0) {
+          const placeholders = siteIds.map(() => "?").join(",");
+          query += ` AND (user_id = ? OR site_id IN (${placeholders}))`;
+          bindings.push(user.id, ...siteIds);
+        } else {
+          query += " AND user_id = ?";
+          bindings.push(user.id);
+        }
       }
     } else {
       return errorResponse("Unauthorized", 401, "UNAUTHORIZED");
     }
-    const order = await env.DB.prepare(query).bind(...bindings).first();
+    const order = await db.prepare(query).bind(...bindings).first();
     if (!order) {
       return errorResponse("Order not found", 404, "NOT_FOUND");
     }
@@ -3921,6 +4597,7 @@ async function createOrder(request, env, user) {
       console.error("Order missing fields:", missingFields.join(", "), "Received data keys:", Object.keys(data).join(", "));
       return errorResponse(`Missing required fields: ${missingFields.join(", ")}`);
     }
+    const db = await resolveSiteDBById(env, siteId);
     let subtotal = 0;
     const processedItems = [];
     for (const item of items) {
@@ -3928,7 +4605,7 @@ async function createOrder(request, env, user) {
       if (!itemProductId) {
         return errorResponse("Invalid item: missing product ID", 400);
       }
-      const product = await env.DB.prepare(
+      const product = await db.prepare(
         "SELECT id, name, price, stock, thumbnail_url FROM products WHERE id = ? AND site_id = ?"
       ).bind(itemProductId, siteId).first();
       if (!product) {
@@ -3954,7 +4631,7 @@ async function createOrder(request, env, user) {
     if (couponCode) {
       let coupon = null;
       try {
-        coupon = await env.DB.prepare(
+        coupon = await db.prepare(
           `SELECT * FROM coupons WHERE site_id = ? AND code = ? AND is_active = 1 
            AND (starts_at IS NULL OR starts_at <= datetime('now'))
            AND (expires_at IS NULL OR expires_at > datetime('now'))
@@ -3973,7 +4650,7 @@ async function createOrder(request, env, user) {
           discount = coupon.value;
         }
         appliedCouponCode = couponCode.toUpperCase();
-        await env.DB.prepare(
+        await db.prepare(
           "UPDATE coupons SET used_count = used_count + 1 WHERE id = ?"
         ).bind(coupon.id).run();
       } else {
@@ -4011,13 +4688,11 @@ async function createOrder(request, env, user) {
     const orderNumber = generateOrderNumber();
     const isPendingPayment = paymentMethod === "razorpay";
     const orderStatus = isPendingPayment ? "pending_payment" : data.status || "pending";
-    const orderRowData = { id: orderId, siteId, userId: user?.id, orderNumber, items: JSON.stringify(processedItems), subtotal, discount, shippingCost, tax, total, paymentMethod, status: orderStatus, shippingAddress: JSON.stringify(shippingAddress), customerName, customerEmail, customerPhone, couponCode: appliedCouponCode, notes };
-    const estimatedBytes = estimateRowBytes(orderRowData);
-    const usageCheck = await checkUsageLimit(env, siteId, "d1", estimatedBytes);
+    const usageCheck = await checkUsageLimit(env, siteId, "d1", 0);
     if (!usageCheck.allowed) {
       return errorResponse(usageCheck.reason, 403, "STORAGE_LIMIT");
     }
-    await env.DB.prepare(
+    await db.prepare(
       `INSERT INTO orders (id, site_id, user_id, order_number, items, subtotal, discount, shipping_cost, tax, total, payment_method, status, shipping_address, billing_address, customer_name, customer_email, customer_phone, coupon_code, notes, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(
@@ -4041,10 +4716,9 @@ async function createOrder(request, env, user) {
       appliedCouponCode || null,
       notes || null
     ).run();
-    await trackD1Usage(env, siteId, estimatedBytes);
     if (!isPendingPayment) {
       for (const item of processedItems) {
-        await updateProductStock(env, item.productId, item.quantity, "decrement");
+        await updateProductStock(env, item.productId, item.quantity, "decrement", siteId);
       }
       try {
         await sendOrderEmails(env, siteId, {
@@ -4082,6 +4756,7 @@ async function updateOrderStatus(request, env, user, orderId) {
   }
   try {
     let order;
+    let siteId = null;
     if (user && user.type === "customer") {
       return errorResponse("Customers cannot update order status", 403);
     }
@@ -4089,7 +4764,24 @@ async function updateOrderStatus(request, env, user, orderId) {
     if (authHeader && authHeader.startsWith("SiteAdmin ")) {
       const { validateSiteAdmin: validateSiteAdmin2 } = await Promise.resolve().then(() => (init_site_admin_worker(), site_admin_worker_exports));
       const orderCheck = await env.DB.prepare("SELECT id, site_id FROM orders WHERE id = ?").bind(orderId).first();
-      if (orderCheck) {
+      if (!orderCheck) {
+        const allSites = await env.DB.prepare("SELECT id FROM sites").all();
+        for (const s of allSites.results || []) {
+          const sdb = await resolveSiteDBById(env, s.id);
+          const found = await sdb.prepare("SELECT id, site_id FROM orders WHERE id = ?").bind(orderId).first();
+          if (found) {
+            order = found;
+            siteId = s.id;
+            break;
+          }
+        }
+        if (order) {
+          const admin = await validateSiteAdmin2(request, env, siteId);
+          if (!admin)
+            order = null;
+        }
+      } else {
+        siteId = orderCheck.site_id;
         const admin = await validateSiteAdmin2(request, env, orderCheck.site_id);
         if (admin) {
           order = orderCheck;
@@ -4097,15 +4789,25 @@ async function updateOrderStatus(request, env, user, orderId) {
       }
     }
     if (!order && user) {
-      order = await env.DB.prepare(
-        `SELECT o.id, o.site_id FROM orders o 
-         JOIN sites s ON o.site_id = s.id 
-         WHERE o.id = ? AND s.user_id = ?`
-      ).bind(orderId, user.id).first();
+      const userSites = await env.DB.prepare(
+        "SELECT id FROM sites WHERE user_id = ?"
+      ).bind(user.id).all();
+      for (const s of userSites.results || []) {
+        const sdb = await resolveSiteDBById(env, s.id);
+        const found = await sdb.prepare(
+          "SELECT id, site_id FROM orders WHERE id = ? AND site_id = ?"
+        ).bind(orderId, s.id).first();
+        if (found) {
+          order = found;
+          siteId = s.id;
+          break;
+        }
+      }
     }
     if (!order) {
       return errorResponse("Order not found or unauthorized", 404);
     }
+    const db = await resolveSiteDBById(env, siteId || order.site_id);
     const { status, trackingNumber, carrier, cancellationReason } = await request.json();
     const updates = [];
     const values = [];
@@ -4120,7 +4822,7 @@ async function updateOrderStatus(request, env, user, orderId) {
         updates.push('cancelled_at = datetime("now")');
         if (cancellationReason) {
           try {
-            await env.DB.prepare(
+            await db.prepare(
               `ALTER TABLE orders ADD COLUMN cancellation_reason TEXT`
             ).run();
           } catch {
@@ -4143,12 +4845,12 @@ async function updateOrderStatus(request, env, user, orderId) {
     }
     updates.push('updated_at = datetime("now")');
     values.push(orderId);
-    await env.DB.prepare(
+    await db.prepare(
       `UPDATE orders SET ${updates.join(", ")} WHERE id = ?`
     ).bind(...values).run();
     if (status === "cancelled" && cancellationReason) {
       try {
-        const fullOrder = await env.DB.prepare("SELECT * FROM orders WHERE id = ?").bind(orderId).first();
+        const fullOrder = await db.prepare("SELECT * FROM orders WHERE id = ?").bind(orderId).first();
         if (fullOrder) {
           const site = await env.DB.prepare("SELECT brand_name, email, settings FROM sites WHERE id = ?").bind(fullOrder.site_id).first();
           const siteBrandName = site?.brand_name || "Store";
@@ -4179,7 +4881,7 @@ async function updateOrderStatus(request, env, user, orderId) {
     }
     if (status === "delivered") {
       try {
-        const fullOrder = await env.DB.prepare("SELECT * FROM orders WHERE id = ?").bind(orderId).first();
+        const fullOrder = await db.prepare("SELECT * FROM orders WHERE id = ?").bind(orderId).first();
         if (fullOrder) {
           const site = await env.DB.prepare("SELECT brand_name, email, settings FROM sites WHERE id = ?").bind(fullOrder.site_id).first();
           const siteBrandName = site?.brand_name || "Store";
@@ -4198,7 +4900,7 @@ async function updateOrderStatus(request, env, user, orderId) {
           if (fullOrder.customer_email) {
             try {
               const { html, text } = buildDeliveryCustomerEmail(emailOrder, siteBrandName, ownerEmail);
-              emailJobs.push(sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been delivered! \u{1F4E6}`, html, text).catch((e) => console.error("Delivery customer email send error:", e)));
+              emailJobs.push(sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been delivered!`, html, text).catch((e) => console.error("Delivery customer email send error:", e)));
             } catch (buildErr) {
               console.error("Delivery customer email build error:", buildErr);
             }
@@ -4229,7 +4931,7 @@ async function handleGuestOrder(request, env, method, orderId) {
     return createGuestOrder(request, env);
   }
   if (method === "GET" && orderId) {
-    return getGuestOrder(env, orderId);
+    return getGuestOrder(env, orderId, request);
   }
   return errorResponse("Method not allowed", 405);
 }
@@ -4253,6 +4955,7 @@ async function createGuestOrder(request, env) {
       console.error("Guest order missing fields:", missingFields.join(", "), "Received data keys:", Object.keys(data).join(", "));
       return errorResponse(`Missing required fields: ${missingFields.join(", ")}`);
     }
+    const db = await resolveSiteDBById(env, siteId);
     let subtotal = 0;
     const processedItems = [];
     for (const item of items) {
@@ -4260,7 +4963,7 @@ async function createGuestOrder(request, env) {
       if (!itemProductId) {
         return errorResponse("Invalid item: missing product ID", 400);
       }
-      const product = await env.DB.prepare(
+      const product = await db.prepare(
         "SELECT id, name, price, stock, thumbnail_url FROM products WHERE id = ? AND site_id = ?"
       ).bind(itemProductId, siteId).first();
       if (!product) {
@@ -4282,13 +4985,11 @@ async function createGuestOrder(request, env) {
     const orderNumber = generateOrderNumber();
     const isPendingPayment = paymentMethod === "razorpay";
     const guestOrderStatus = isPendingPayment ? "pending_payment" : "confirmed";
-    const guestRowData = { id: orderId, siteId, orderNumber, items: JSON.stringify(processedItems), subtotal, total, paymentMethod, status: guestOrderStatus, shippingAddress: JSON.stringify(shippingAddress), customerName, customerEmail, customerPhone };
-    const guestEstBytes = estimateRowBytes(guestRowData);
-    const guestUsageCheck = await checkUsageLimit(env, siteId, "d1", guestEstBytes);
+    const guestUsageCheck = await checkUsageLimit(env, siteId, "d1", 0);
     if (!guestUsageCheck.allowed) {
       return errorResponse(guestUsageCheck.reason, 403, "STORAGE_LIMIT");
     }
-    await env.DB.prepare(
+    await db.prepare(
       `INSERT INTO guest_orders (id, site_id, order_number, items, subtotal, total, payment_method, status, shipping_address, customer_name, customer_email, customer_phone, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(
@@ -4305,10 +5006,9 @@ async function createGuestOrder(request, env) {
       customerEmail || null,
       customerPhone
     ).run();
-    await trackD1Usage(env, siteId, guestEstBytes);
     if (!isPendingPayment) {
       for (const item of processedItems) {
-        await updateProductStock(env, item.productId, item.quantity, "decrement");
+        await updateProductStock(env, item.productId, item.quantity, "decrement", siteId);
       }
       try {
         await sendOrderEmails(env, siteId, {
@@ -4336,9 +5036,12 @@ async function createGuestOrder(request, env) {
   }
 }
 __name(createGuestOrder, "createGuestOrder");
-async function getGuestOrder(env, orderNumber) {
+async function getGuestOrder(env, orderNumber, request) {
   try {
-    const order = await env.DB.prepare(
+    const url = request ? new URL(request.url) : null;
+    const siteId = url ? url.searchParams.get("siteId") : null;
+    const db = await resolveSiteDBById(env, siteId);
+    const order = await db.prepare(
       "SELECT * FROM guest_orders WHERE order_number = ? LIMIT 1"
     ).bind(orderNumber).first();
     if (!order) {
@@ -4405,13 +5108,16 @@ async function sendOrderEmails(env, siteId, orderDetails) {
   }
 }
 __name(sendOrderEmails, "sendOrderEmails");
-async function trackOrder(env, orderNumber) {
+async function trackOrder(env, orderNumber, request) {
   try {
-    let order = await env.DB.prepare(
+    const url = request ? new URL(request.url) : null;
+    const siteId = url ? url.searchParams.get("siteId") : null;
+    const db = await resolveSiteDBById(env, siteId);
+    let order = await db.prepare(
       "SELECT order_number, status, tracking_number, carrier, shipped_at, delivered_at, created_at FROM orders WHERE order_number = ?"
     ).bind(orderNumber).first();
     if (!order) {
-      order = await env.DB.prepare(
+      order = await db.prepare(
         "SELECT order_number, status, tracking_number, carrier, created_at FROM guest_orders WHERE order_number = ?"
       ).bind(orderNumber).first();
     }
@@ -4432,7 +5138,7 @@ init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 init_helpers();
 init_auth();
-init_usage_tracker();
+init_site_db();
 async function handleCart(request, env, path) {
   const corsResponse = handleCORS(request);
   if (corsResponse)
@@ -4479,12 +5185,13 @@ async function handleClearCart(request, env, url) {
   if (!user && !sessionId)
     return errorResponse("Authentication or session required");
   try {
+    const db = await resolveSiteDBById(env, siteId);
     if (user) {
-      await env.DB.prepare(
+      await db.prepare(
         `UPDATE carts SET items = '[]', subtotal = 0, updated_at = datetime('now') WHERE site_id = ? AND user_id = ?`
       ).bind(siteId, user.id).run();
     } else {
-      await env.DB.prepare(
+      await db.prepare(
         `UPDATE carts SET items = '[]', subtotal = 0, updated_at = datetime('now') WHERE site_id = ? AND session_id = ?`
       ).bind(siteId, sessionId).run();
     }
@@ -4511,24 +5218,23 @@ async function handleMergeCarts(request, env) {
   }
 }
 __name(handleMergeCarts, "handleMergeCarts");
-async function getOrCreateCart(env, siteId, user, sessionId) {
+async function getOrCreateCart(db, env, siteId, user, sessionId) {
   let cart;
   if (user) {
-    cart = await env.DB.prepare(
+    cart = await db.prepare(
       "SELECT * FROM carts WHERE site_id = ? AND user_id = ?"
     ).bind(siteId, user.id).first();
   } else {
-    cart = await env.DB.prepare(
+    cart = await db.prepare(
       "SELECT * FROM carts WHERE site_id = ? AND session_id = ?"
     ).bind(siteId, sessionId).first();
   }
   if (!cart) {
     const cartId = generateId();
-    await env.DB.prepare(
+    await db.prepare(
       `INSERT INTO carts (id, site_id, user_id, session_id, items, subtotal, created_at)
        VALUES (?, ?, ?, ?, '[]', 0, datetime('now'))`
     ).bind(cartId, siteId, user ? user.id : null, user ? null : sessionId).run();
-    await trackD1Usage(env, siteId, estimateRowBytes({ id: cartId, site_id: siteId, user_id: user?.id, session_id: sessionId, items: "[]", subtotal: 0 }));
     cart = { id: cartId, items: "[]", subtotal: 0 };
   }
   return cart;
@@ -4536,11 +5242,12 @@ async function getOrCreateCart(env, siteId, user, sessionId) {
 __name(getOrCreateCart, "getOrCreateCart");
 async function getCart(env, siteId, user, sessionId) {
   try {
-    const cart = await getOrCreateCart(env, siteId, user, sessionId);
+    const db = await resolveSiteDBById(env, siteId);
+    const cart = await getOrCreateCart(db, env, siteId, user, sessionId);
     const items = JSON.parse(cart.items);
     const enrichedItems = [];
     for (const item of items) {
-      const product = await env.DB.prepare(
+      const product = await db.prepare(
         "SELECT id, name, price, stock, thumbnail_url, images, is_active FROM products WHERE id = ? AND site_id = ?"
       ).bind(item.productId, siteId).first();
       if (product && product.is_active) {
@@ -4582,7 +5289,8 @@ async function addToCart(request, env, siteId, user, sessionId) {
     if (!productId || !quantity || quantity < 1) {
       return errorResponse("Product ID and quantity are required");
     }
-    const product = await env.DB.prepare(
+    const db = await resolveSiteDBById(env, siteId);
+    const product = await db.prepare(
       "SELECT id, stock, is_active FROM products WHERE id = ? AND site_id = ?"
     ).bind(productId, siteId).first();
     if (!product) {
@@ -4594,7 +5302,7 @@ async function addToCart(request, env, siteId, user, sessionId) {
     if (product.stock < quantity) {
       return errorResponse("Insufficient stock", 400, "INSUFFICIENT_STOCK");
     }
-    const cart = await getOrCreateCart(env, siteId, user, sessionId);
+    const cart = await getOrCreateCart(db, env, siteId, user, sessionId);
     const items = JSON.parse(cart.items);
     const existingIndex = items.findIndex(
       (item) => item.productId === productId && JSON.stringify(item.variant) === JSON.stringify(variant)
@@ -4613,7 +5321,7 @@ async function addToCart(request, env, siteId, user, sessionId) {
         addedAt: (/* @__PURE__ */ new Date()).toISOString()
       });
     }
-    await env.DB.prepare(
+    await db.prepare(
       `UPDATE carts SET items = ?, updated_at = datetime('now') WHERE id = ?`
     ).bind(JSON.stringify(items), cart.id).run();
     return successResponse({ itemCount: items.reduce((sum, i) => sum + i.quantity, 0) }, "Item added to cart");
@@ -4629,7 +5337,8 @@ async function updateCartItem(request, env, siteId, user, sessionId) {
     if (!productId) {
       return errorResponse("Product ID is required");
     }
-    const cart = await getOrCreateCart(env, siteId, user, sessionId);
+    const db = await resolveSiteDBById(env, siteId);
+    const cart = await getOrCreateCart(db, env, siteId, user, sessionId);
     const items = JSON.parse(cart.items);
     const existingIndex = items.findIndex(
       (item) => item.productId === productId && JSON.stringify(item.variant) === JSON.stringify(variant)
@@ -4640,7 +5349,7 @@ async function updateCartItem(request, env, siteId, user, sessionId) {
     if (quantity <= 0) {
       items.splice(existingIndex, 1);
     } else {
-      const product = await env.DB.prepare(
+      const product = await db.prepare(
         "SELECT stock FROM products WHERE id = ? AND site_id = ?"
       ).bind(productId, siteId).first();
       if (product && quantity > product.stock) {
@@ -4648,7 +5357,7 @@ async function updateCartItem(request, env, siteId, user, sessionId) {
       }
       items[existingIndex].quantity = quantity;
     }
-    await env.DB.prepare(
+    await db.prepare(
       `UPDATE carts SET items = ?, updated_at = datetime('now') WHERE id = ?`
     ).bind(JSON.stringify(items), cart.id).run();
     return successResponse({ itemCount: items.reduce((sum, i) => sum + i.quantity, 0) }, "Cart updated");
@@ -4666,13 +5375,14 @@ async function removeFromCart(request, env, siteId, user, sessionId) {
     if (!productId) {
       return errorResponse("Product ID is required");
     }
-    const cart = await getOrCreateCart(env, siteId, user, sessionId);
+    const db = await resolveSiteDBById(env, siteId);
+    const cart = await getOrCreateCart(db, env, siteId, user, sessionId);
     const items = JSON.parse(cart.items);
     const parsedVariant = variant ? variant : null;
     const filteredItems = items.filter(
       (item) => !(item.productId === productId && JSON.stringify(item.variant ?? null) === JSON.stringify(parsedVariant))
     );
-    await env.DB.prepare(
+    await db.prepare(
       `UPDATE carts SET items = ?, updated_at = datetime('now') WHERE id = ?`
     ).bind(JSON.stringify(filteredItems), cart.id).run();
     return successResponse({ itemCount: filteredItems.reduce((sum, i) => sum + i.quantity, 0) }, "Item removed from cart");
@@ -4684,12 +5394,13 @@ async function removeFromCart(request, env, siteId, user, sessionId) {
 __name(removeFromCart, "removeFromCart");
 async function mergeCarts(env, siteId, userId, sessionId) {
   try {
-    const guestCart = await env.DB.prepare(
+    const db = await resolveSiteDBById(env, siteId);
+    const guestCart = await db.prepare(
       "SELECT * FROM carts WHERE site_id = ? AND session_id = ?"
     ).bind(siteId, sessionId).first();
     if (!guestCart)
       return;
-    const userCart = await env.DB.prepare(
+    const userCart = await db.prepare(
       "SELECT * FROM carts WHERE site_id = ? AND user_id = ?"
     ).bind(siteId, userId).first();
     const guestItems = JSON.parse(guestCart.items);
@@ -4705,16 +5416,16 @@ async function mergeCarts(env, siteId, userId, sessionId) {
           userItems.push(guestItem);
         }
       }
-      await env.DB.prepare(
+      await db.prepare(
         `UPDATE carts SET items = ?, updated_at = datetime('now') WHERE id = ?`
       ).bind(JSON.stringify(userItems), userCart.id).run();
     } else {
-      await env.DB.prepare(
+      await db.prepare(
         `UPDATE carts SET user_id = ?, session_id = NULL, updated_at = datetime('now') WHERE id = ?`
       ).bind(userId, guestCart.id).run();
       return;
     }
-    await env.DB.prepare("DELETE FROM carts WHERE id = ?").bind(guestCart.id).run();
+    await db.prepare("DELETE FROM carts WHERE id = ?").bind(guestCart.id).run();
   } catch (error) {
     console.error("Merge carts error:", error);
   }
@@ -4727,7 +5438,7 @@ init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 init_helpers();
 init_auth();
-init_usage_tracker();
+init_site_db();
 async function handleWishlist(request, env, path) {
   const corsResponse = handleCORS(request);
   if (corsResponse)
@@ -4771,7 +5482,8 @@ async function checkWishlist(request, env) {
     return errorResponse("siteId and productId are required");
   }
   try {
-    const existing = await env.DB.prepare(
+    const db = await resolveSiteDBById(env, siteId);
+    const existing = await db.prepare(
       "SELECT id FROM wishlists WHERE user_id = ? AND product_id = ? AND site_id = ?"
     ).bind(user.id, productId, siteId).first();
     return successResponse({ inWishlist: !!existing });
@@ -4783,7 +5495,8 @@ async function checkWishlist(request, env) {
 __name(checkWishlist, "checkWishlist");
 async function getWishlist(env, user, siteId) {
   try {
-    const wishlistItems = await env.DB.prepare(
+    const db = await resolveSiteDBById(env, siteId);
+    const wishlistItems = await db.prepare(
       `SELECT w.id, w.product_id, w.created_at,
               p.name, p.price, p.compare_price, p.thumbnail_url, p.images, p.stock, p.is_active
        FROM wishlists w
@@ -4829,24 +5542,24 @@ async function addToWishlist(request, env, user, siteId) {
     if (!productId) {
       return errorResponse("Product ID is required");
     }
-    const product = await env.DB.prepare(
+    const db = await resolveSiteDBById(env, siteId);
+    const product = await db.prepare(
       "SELECT id FROM products WHERE id = ? AND site_id = ? AND is_active = 1"
     ).bind(productId, siteId).first();
     if (!product) {
       return errorResponse("Product not found", 404);
     }
-    const existing = await env.DB.prepare(
+    const existing = await db.prepare(
       "SELECT id FROM wishlists WHERE user_id = ? AND product_id = ? AND site_id = ?"
     ).bind(user.id, productId, siteId).first();
     if (existing) {
       return errorResponse("Product already in wishlist", 400, "ALREADY_EXISTS");
     }
     const wishlistId = generateId();
-    await env.DB.prepare(
+    await db.prepare(
       `INSERT INTO wishlists (id, site_id, user_id, product_id, created_at)
        VALUES (?, ?, ?, ?, datetime('now'))`
     ).bind(wishlistId, siteId, user.id, productId).run();
-    await trackD1Usage(env, siteId, estimateRowBytes({ id: wishlistId, site_id: siteId, user_id: user.id, product_id: productId }));
     return successResponse({ id: wishlistId }, "Added to wishlist");
   } catch (error) {
     console.error("Add to wishlist error:", error);
@@ -4861,15 +5574,10 @@ async function removeFromWishlist(request, env, user, siteId) {
     if (!productId) {
       return errorResponse("Product ID is required");
     }
-    const existing = await env.DB.prepare(
-      "SELECT * FROM wishlists WHERE user_id = ? AND product_id = ? AND site_id = ?"
-    ).bind(user.id, productId, siteId).first();
-    await env.DB.prepare(
+    const db = await resolveSiteDBById(env, siteId);
+    await db.prepare(
       "DELETE FROM wishlists WHERE user_id = ? AND product_id = ? AND site_id = ?"
     ).bind(user.id, productId, siteId).run();
-    if (existing) {
-      await trackD1Usage(env, siteId, -estimateRowBytes(existing));
-    }
     return successResponse(null, "Removed from wishlist");
   } catch (error) {
     console.error("Remove from wishlist error:", error);
@@ -5647,6 +6355,7 @@ init_helpers();
 init_auth();
 init_site_admin_worker();
 init_usage_tracker();
+init_site_db();
 async function handleCategories(request, env, path) {
   const corsResponse = handleCORS(request);
   if (corsResponse)
@@ -5660,7 +6369,7 @@ async function handleCategories(request, env, path) {
     const subdomain = url.searchParams.get("subdomain");
     const slug = url.searchParams.get("slug");
     if (categoryId) {
-      return getCategory(env, categoryId);
+      return getCategory(env, categoryId, siteId, subdomain);
     }
     return getCategories(env, { siteId, subdomain, slug });
   }
@@ -5679,7 +6388,8 @@ async function handleCategories(request, env, path) {
       }
       if (!adminSiteId && (method === "PUT" || method === "DELETE") && categoryId) {
         try {
-          const cat = await env.DB.prepare("SELECT site_id FROM categories WHERE id = ?").bind(categoryId).first();
+          const db = await resolveSiteDBById(env, null);
+          const cat = await db.prepare("SELECT site_id FROM categories WHERE id = ?").bind(categoryId).first();
           if (cat)
             adminSiteId = cat.site_id;
         } catch (e) {
@@ -5710,21 +6420,28 @@ async function handleCategories(request, env, path) {
 __name(handleCategories, "handleCategories");
 async function getCategories(env, { siteId, subdomain, slug }) {
   try {
+    let db;
+    let resolvedSiteId = siteId;
+    if (siteId) {
+      db = await resolveSiteDBById(env, siteId);
+    } else if (subdomain) {
+      db = await resolveSiteDBBySubdomain(env, subdomain);
+      const site = await env.DB.prepare(
+        "SELECT id FROM sites WHERE LOWER(subdomain) = LOWER(?)"
+      ).bind(subdomain).first();
+      if (site)
+        resolvedSiteId = site.id;
+    } else {
+      db = env.DB;
+    }
     let query = `SELECT c.*, 
                    (SELECT COUNT(*) FROM products p WHERE p.category_id = c.id AND p.is_active = 1) as product_count
                  FROM categories c WHERE 1=1`;
     const bindings = [];
-    if (siteId) {
+    if (resolvedSiteId) {
       query += " AND c.site_id = ?";
-      bindings.push(siteId);
-    } else if (subdomain) {
-      query = `SELECT c.*, 
-                 (SELECT COUNT(*) FROM products p WHERE p.category_id = c.id AND p.is_active = 1) as product_count
-               FROM categories c 
-               JOIN sites s ON c.site_id = s.id 
-               WHERE LOWER(s.subdomain) = LOWER(?)`;
-      bindings.push(subdomain);
-    } else {
+      bindings.push(resolvedSiteId);
+    } else if (!siteId && !subdomain) {
       query += " AND 1=0";
     }
     if (slug) {
@@ -5732,7 +6449,7 @@ async function getCategories(env, { siteId, subdomain, slug }) {
       bindings.push(slug);
     }
     query += " ORDER BY c.display_order, c.name";
-    const categories = await env.DB.prepare(query).bind(...bindings).all();
+    const categories = await db.prepare(query).bind(...bindings).all();
     const parentCategories = categories.results.filter((c) => !c.parent_id);
     const result = parentCategories.map((parent) => ({
       ...parent,
@@ -5745,18 +6462,30 @@ async function getCategories(env, { siteId, subdomain, slug }) {
   }
 }
 __name(getCategories, "getCategories");
-async function getCategory(env, categoryId) {
+async function getCategory(env, categoryId, siteId, subdomain) {
   try {
-    const category = await env.DB.prepare(
-      `SELECT c.*, s.subdomain, s.brand_name
-       FROM categories c 
-       JOIN sites s ON c.site_id = s.id 
-       WHERE c.id = ?`
+    if (!siteId && subdomain) {
+      const site = await env.DB.prepare(
+        "SELECT id FROM sites WHERE LOWER(subdomain) = LOWER(?)"
+      ).bind(subdomain).first();
+      if (site)
+        siteId = site.id;
+    }
+    const db = await resolveSiteDBById(env, siteId);
+    const category = await db.prepare(
+      `SELECT * FROM categories WHERE id = ?`
     ).bind(categoryId).first();
     if (!category) {
       return errorResponse("Category not found", 404, "NOT_FOUND");
     }
-    const children = await env.DB.prepare(
+    const siteInfo = await env.DB.prepare(
+      "SELECT subdomain, brand_name FROM sites WHERE id = ?"
+    ).bind(category.site_id).first();
+    if (siteInfo) {
+      category.subdomain = siteInfo.subdomain;
+      category.brand_name = siteInfo.brand_name;
+    }
+    const children = await db.prepare(
       "SELECT * FROM categories WHERE parent_id = ? ORDER BY display_order"
     ).bind(categoryId).all();
     return successResponse({
@@ -5786,21 +6515,20 @@ async function createCategory(request, env, user) {
     if (!site) {
       return errorResponse("Site not found or unauthorized", 404);
     }
+    const db = await resolveSiteDBById(env, siteId);
     const slug = name.toLowerCase().trim().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-");
-    const existing = await env.DB.prepare(
+    const existing = await db.prepare(
       "SELECT id FROM categories WHERE site_id = ? AND slug = ?"
     ).bind(siteId, slug).first();
     if (existing) {
       return errorResponse("Category with this name already exists", 400, "SLUG_EXISTS");
     }
     const categoryId = generateId();
-    const rowData = { id: categoryId, siteId, name, slug, description, subtitle, parentId, imageUrl, displayOrder };
-    const estimatedBytes = estimateRowBytes(rowData);
-    const usageCheck = await checkUsageLimit(env, siteId, "d1", estimatedBytes);
+    const usageCheck = await checkUsageLimit(env, siteId, "d1", 0);
     if (!usageCheck.allowed) {
       return errorResponse(usageCheck.reason, 403, "STORAGE_LIMIT");
     }
-    await env.DB.prepare(
+    await db.prepare(
       `INSERT INTO categories (id, site_id, name, slug, description, subtitle, show_on_home, parent_id, image_url, display_order, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(
@@ -5815,7 +6543,6 @@ async function createCategory(request, env, user) {
       imageUrl || null,
       displayOrder || 0
     ).run();
-    await trackD1Usage(env, siteId, estimatedBytes);
     return successResponse({ id: categoryId, slug }, "Category created successfully");
   } catch (error) {
     console.error("Create category error:", error);
@@ -5828,21 +6555,32 @@ async function updateCategory(request, env, user, categoryId) {
     return errorResponse("Category ID is required");
   }
   try {
+    let siteId = user._adminSiteId || null;
     let category;
     if (user._adminSiteId) {
-      category = await env.DB.prepare(
+      const db2 = await resolveSiteDBById(env, user._adminSiteId);
+      category = await db2.prepare(
         "SELECT id, site_id FROM categories WHERE id = ? AND site_id = ?"
       ).bind(categoryId, user._adminSiteId).first();
     } else {
-      category = await env.DB.prepare(
-        `SELECT c.id, c.site_id FROM categories c 
-         JOIN sites s ON c.site_id = s.id 
-         WHERE c.id = ? AND s.user_id = ?`
-      ).bind(categoryId, user.id).first();
+      const userSites = await env.DB.prepare(
+        "SELECT id FROM sites WHERE user_id = ?"
+      ).bind(user.id).all();
+      for (const s of userSites.results || []) {
+        const db2 = await resolveSiteDBById(env, s.id);
+        category = await db2.prepare(
+          "SELECT id, site_id FROM categories WHERE id = ? AND site_id = ?"
+        ).bind(categoryId, s.id).first();
+        if (category) {
+          siteId = s.id;
+          break;
+        }
+      }
     }
     if (!category) {
       return errorResponse("Category not found or unauthorized", 404);
     }
+    const db = await resolveSiteDBById(env, siteId || category.site_id);
     const updates = await request.json();
     const allowedFields = ["name", "description", "subtitle", "show_on_home", "parent_id", "image_url", "display_order", "is_active"];
     const setClause = [];
@@ -5868,7 +6606,7 @@ async function updateCategory(request, env, user, categoryId) {
     }
     setClause.push('updated_at = datetime("now")');
     values.push(categoryId);
-    await env.DB.prepare(
+    await db.prepare(
       `UPDATE categories SET ${setClause.join(", ")} WHERE id = ?`
     ).bind(...values).run();
     return successResponse(null, "Category updated successfully");
@@ -5883,33 +6621,39 @@ async function deleteCategory(env, user, categoryId) {
     return errorResponse("Category ID is required");
   }
   try {
+    let siteId = user._adminSiteId || null;
     let category;
     if (user._adminSiteId) {
-      category = await env.DB.prepare(
+      const db2 = await resolveSiteDBById(env, user._adminSiteId);
+      category = await db2.prepare(
         "SELECT id FROM categories WHERE id = ? AND site_id = ?"
       ).bind(categoryId, user._adminSiteId).first();
     } else {
-      category = await env.DB.prepare(
-        `SELECT c.id FROM categories c 
-         JOIN sites s ON c.site_id = s.id 
-         WHERE c.id = ? AND s.user_id = ?`
-      ).bind(categoryId, user.id).first();
+      const userSites = await env.DB.prepare(
+        "SELECT id FROM sites WHERE user_id = ?"
+      ).bind(user.id).all();
+      for (const s of userSites.results || []) {
+        const db2 = await resolveSiteDBById(env, s.id);
+        category = await db2.prepare(
+          "SELECT id, site_id FROM categories WHERE id = ? AND site_id = ?"
+        ).bind(categoryId, s.id).first();
+        if (category) {
+          siteId = s.id;
+          break;
+        }
+      }
     }
     if (!category) {
       return errorResponse("Category not found or unauthorized", 404);
     }
-    const fullCategory = await env.DB.prepare("SELECT * FROM categories WHERE id = ?").bind(categoryId).first();
-    await env.DB.prepare(
+    const db = await resolveSiteDBById(env, siteId || category.site_id);
+    await db.prepare(
       "UPDATE categories SET parent_id = NULL WHERE parent_id = ?"
     ).bind(categoryId).run();
-    await env.DB.prepare(
+    await db.prepare(
       "UPDATE products SET category_id = NULL WHERE category_id = ?"
     ).bind(categoryId).run();
-    await env.DB.prepare("DELETE FROM categories WHERE id = ?").bind(categoryId).run();
-    if (fullCategory) {
-      const rowBytes = estimateRowBytes(fullCategory);
-      await trackD1Usage(env, fullCategory.site_id, -rowBytes);
-    }
+    await db.prepare("DELETE FROM categories WHERE id = ?").bind(categoryId).run();
     return successResponse(null, "Category deleted successfully");
   } catch (error) {
     console.error("Delete category error:", error);
@@ -6945,6 +7689,7 @@ init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 init_helpers();
 init_auth();
+init_d1_manager();
 var OWNER_EMAIL = "savannaik090@gmail.com";
 async function isOwner(user, env) {
   if (!user)
@@ -6977,6 +7722,8 @@ async function handleAdmin(request, env, path) {
       return handlePlansManagement(request, env, pathParts);
     case "settings":
       return handleSettingsManagement(request, env);
+    case "databases":
+      return handleDatabaseManagement(request, env, pathParts);
     default:
       return errorResponse("Admin endpoint not found", 404);
   }
@@ -7297,6 +8044,149 @@ async function updateSettings(request, env) {
   }
 }
 __name(updateSettings, "updateSettings");
+async function handleDatabaseManagement(request, env, pathParts) {
+  const subAction = pathParts[3];
+  const method = request.method;
+  if (method === "GET" && !subAction) {
+    return listSiteDatabases(env);
+  }
+  if (method === "GET" && subAction === "sizes") {
+    return getSiteDatabaseSizes(env);
+  }
+  if (method === "POST" && subAction === "provision") {
+    return provisionSiteDatabase(request, env);
+  }
+  if (method === "DELETE" && subAction) {
+    return deleteSiteDatabase(env, subAction);
+  }
+  return errorResponse("Database endpoint not found", 404);
+}
+__name(handleDatabaseManagement, "handleDatabaseManagement");
+async function listSiteDatabases(env) {
+  try {
+    const sites = await env.DB.prepare(
+      `SELECT id, subdomain, brand_name, d1_database_id, d1_binding_name, created_at
+       FROM sites WHERE is_active = 1 ORDER BY created_at DESC`
+    ).all();
+    const siteList = (sites.results || []).map((s) => ({
+      siteId: s.id,
+      subdomain: s.subdomain,
+      brandName: s.brand_name,
+      d1DatabaseId: s.d1_database_id,
+      d1BindingName: s.d1_binding_name,
+      hasPerSiteDB: !!s.d1_database_id,
+      createdAt: s.created_at
+    }));
+    let cfDatabases = [];
+    try {
+      cfDatabases = await listAllSiteDatabases(env);
+    } catch (e) {
+      console.error("Failed to list CF databases:", e.message || e);
+    }
+    return successResponse({
+      sites: siteList,
+      cfDatabases,
+      totalSites: siteList.length,
+      sitesWithDB: siteList.filter((s) => s.hasPerSiteDB).length,
+      sitesWithoutDB: siteList.filter((s) => !s.hasPerSiteDB).length
+    });
+  } catch (error) {
+    console.error("List site databases error:", error);
+    return errorResponse("Failed to list databases", 500);
+  }
+}
+__name(listSiteDatabases, "listSiteDatabases");
+async function getSiteDatabaseSizes(env) {
+  try {
+    const sites = await env.DB.prepare(
+      `SELECT id, subdomain, d1_database_id FROM sites WHERE d1_database_id IS NOT NULL`
+    ).all();
+    const sizeResults = [];
+    for (const site of sites.results || []) {
+      try {
+        const size = await getDatabaseSize(env, site.d1_database_id);
+        sizeResults.push({
+          siteId: site.id,
+          subdomain: site.subdomain,
+          d1DatabaseId: site.d1_database_id,
+          sizeBytes: size,
+          sizeMB: (size / (1024 * 1024)).toFixed(2)
+        });
+      } catch (e) {
+        sizeResults.push({
+          siteId: site.id,
+          subdomain: site.subdomain,
+          d1DatabaseId: site.d1_database_id,
+          error: e.message || "Failed to fetch size"
+        });
+      }
+    }
+    return successResponse(sizeResults);
+  } catch (error) {
+    console.error("Get database sizes error:", error);
+    return errorResponse("Failed to get database sizes", 500);
+  }
+}
+__name(getSiteDatabaseSizes, "getSiteDatabaseSizes");
+async function provisionSiteDatabase(request, env) {
+  try {
+    const { siteId } = await request.json();
+    if (!siteId)
+      return errorResponse("siteId is required");
+    const site = await env.DB.prepare(
+      "SELECT id, subdomain, d1_database_id FROM sites WHERE id = ?"
+    ).bind(siteId).first();
+    if (!site)
+      return errorResponse("Site not found", 404);
+    if (site.d1_database_id)
+      return errorResponse("Site already has a per-site database", 400);
+    const shortId = siteId.substring(0, 8);
+    const dbName = `site-${site.subdomain}-${shortId}`;
+    const d1BindingName = `SITE_DB_${shortId.toUpperCase()}`;
+    const dbResult = await createDatabase(env, dbName);
+    const d1DatabaseId = dbResult.id;
+    const schemaStatements = getSiteSchemaStatements();
+    await runSchemaOnDB(env, d1DatabaseId, schemaStatements);
+    await env.DB.prepare(
+      `UPDATE sites SET d1_database_id = ?, d1_binding_name = ?, updated_at = datetime('now') WHERE id = ?`
+    ).bind(d1DatabaseId, d1BindingName, siteId).run();
+    try {
+      await addBindingAndRedeploy(env, siteId, d1DatabaseId, d1BindingName);
+    } catch (redeployErr) {
+      console.error("Redeploy failed (non-fatal):", redeployErr.message || redeployErr);
+    }
+    return successResponse({
+      siteId,
+      d1DatabaseId,
+      d1BindingName,
+      dbName
+    }, "Database provisioned successfully");
+  } catch (error) {
+    console.error("Provision database error:", error);
+    return errorResponse("Failed to provision database: " + (error.message || "Unknown error"), 500);
+  }
+}
+__name(provisionSiteDatabase, "provisionSiteDatabase");
+async function deleteSiteDatabase(env, siteId) {
+  try {
+    const site = await env.DB.prepare(
+      "SELECT id, d1_database_id FROM sites WHERE id = ?"
+    ).bind(siteId).first();
+    if (!site)
+      return errorResponse("Site not found", 404);
+    if (!site.d1_database_id)
+      return errorResponse("Site has no per-site database", 400);
+    await deleteDatabase(env, site.d1_database_id);
+    await env.DB.prepare(
+      `UPDATE sites SET d1_database_id = NULL, d1_binding_name = NULL, updated_at = datetime('now') WHERE id = ?`
+    ).bind(siteId).run();
+    return successResponse({ siteId }, "Database deleted successfully");
+  } catch (error) {
+    console.error("Delete database error:", error);
+    return errorResponse("Failed to delete database: " + (error.message || "Unknown error"), 500);
+  }
+}
+__name(deleteSiteDatabase, "deleteSiteDatabase");
 
 // workers/index.js
 init_site_admin_worker();
@@ -7509,11 +8399,6 @@ async function createAddress(request, env, customer) {
       sanitizeInput(pinCode),
       isDefault ? 1 : 0
     ).run();
-    try {
-      const { trackD1Usage: trackD1Usage2, estimateRowBytes: estimateRowBytes2 } = await Promise.resolve().then(() => (init_usage_tracker(), usage_tracker_exports));
-      await trackD1Usage2(env, customer.site_id, estimateRowBytes2({ id, site_id: customer.site_id, customer_id: customer.id, label, firstName, lastName, phone, houseNumber, roadName, city, state, pinCode }));
-    } catch (_) {
-    }
     const address = await env.DB.prepare(
       "SELECT * FROM customer_addresses WHERE id = ?"
     ).bind(id).first();
@@ -7589,11 +8474,6 @@ async function deleteAddress(env, customer, addressId) {
     await env.DB.prepare(
       "DELETE FROM customer_addresses WHERE id = ? AND customer_id = ? AND site_id = ?"
     ).bind(addressId, customer.id, customer.site_id).run();
-    try {
-      const { trackD1Usage: trackD1Usage2, estimateRowBytes: estimateRowBytes2 } = await Promise.resolve().then(() => (init_usage_tracker(), usage_tracker_exports));
-      await trackD1Usage2(env, customer.site_id, -estimateRowBytes2(existing));
-    } catch (_) {
-    }
     return successResponse(null, "Address deleted successfully");
   } catch (error) {
     console.error("Error deleting address:", error);
@@ -7639,10 +8519,8 @@ async function handleSignup2(request, env) {
     }
     const customerId = generateId();
     const passwordHash = await hashPassword(password);
-    const { trackD1Usage: trackD1Usage2, estimateRowBytes: estimateRowBytes2, checkUsageLimit: checkUsageLimit2 } = await Promise.resolve().then(() => (init_usage_tracker(), usage_tracker_exports));
-    const rowData = { id: customerId, siteId, email, name, phone };
-    const estimatedBytes = estimateRowBytes2(rowData);
-    const usageCheck = await checkUsageLimit2(env, siteId, "d1", estimatedBytes);
+    const { checkUsageLimit: checkUsageLimit2 } = await Promise.resolve().then(() => (init_usage_tracker(), usage_tracker_exports));
+    const usageCheck = await checkUsageLimit2(env, siteId, "d1", 0);
     if (!usageCheck.allowed) {
       return errorResponse(usageCheck.reason, 403, "STORAGE_LIMIT");
     }
@@ -7651,7 +8529,6 @@ async function handleSignup2(request, env) {
       `INSERT INTO site_customers (id, site_id, email, password_hash, name, phone, email_verified, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(customerId, siteId, email.toLowerCase(), passwordHash, sanitizeInput(name), phone || null, skipVerification ? 1 : 0).run();
-    await trackD1Usage2(env, siteId, estimatedBytes);
     if (!skipVerification) {
       const verifyToken = generateToken(32);
       const verifyExpiry = getExpiryDate(24);
@@ -8915,7 +9792,9 @@ async function ensureTablesExist(env) {
       { col: "domain_verification_token", sql: "ALTER TABLE sites ADD COLUMN domain_verification_token TEXT" },
       { col: "cf_hostname_id", sql: "ALTER TABLE sites ADD COLUMN cf_hostname_id TEXT" },
       { col: "coupon_code", table: "orders", sql: "ALTER TABLE orders ADD COLUMN coupon_code TEXT" },
-      { col: "role", table: "users", sql: "ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'" }
+      { col: "role", table: "users", sql: "ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'" },
+      { col: "d1_database_id", table: "sites", sql: "ALTER TABLE sites ADD COLUMN d1_database_id TEXT" },
+      { col: "d1_binding_name", table: "sites", sql: "ALTER TABLE sites ADD COLUMN d1_binding_name TEXT" }
     ];
     for (const m of migrations) {
       try {
@@ -9243,38 +10122,14 @@ async function handleSiteInfo(request, env) {
     }
     let categoriesResult = [];
     try {
-      const categories = await env.DB.prepare(
+      const { resolveSiteDB: resolveSiteDB2 } = await Promise.resolve().then(() => (init_site_db(), site_db_exports));
+      const siteDB = resolveSiteDB2(env, site);
+      const categories = await siteDB.prepare(
         "SELECT * FROM categories WHERE site_id = ? ORDER BY display_order"
       ).bind(site.id).all();
       categoriesResult = categories.results || [];
     } catch (catError) {
-      console.error("Categories query failed, attempting to auto-create table:", catError);
-      try {
-        await env.DB.prepare(`
-          CREATE TABLE IF NOT EXISTS categories (
-            id TEXT PRIMARY KEY,
-            site_id TEXT NOT NULL,
-            name TEXT NOT NULL,
-            slug TEXT NOT NULL,
-            parent_id TEXT,
-            description TEXT,
-            image_url TEXT,
-            display_order INTEGER DEFAULT 0,
-            is_active INTEGER DEFAULT 1,
-            created_at TEXT DEFAULT (datetime('now')),
-            updated_at TEXT DEFAULT (datetime('now')),
-            FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
-            FOREIGN KEY (parent_id) REFERENCES categories(id) ON DELETE SET NULL,
-            UNIQUE(site_id, slug)
-          )
-        `).run();
-        await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_categories_site ON categories(site_id)").run();
-        await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_categories_slug ON categories(site_id, slug)").run();
-        await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_categories_parent ON categories(parent_id)").run();
-        console.log("Categories table auto-created successfully");
-      } catch (createError) {
-        console.error("Failed to auto-create categories table:", createError);
-      }
+      console.error("Categories query failed:", catError);
     }
     let socialLinks = {};
     let settings = {};
@@ -9304,7 +10159,9 @@ async function handleSiteInfo(request, env) {
     const { razorpayKeySecret, adminVerificationCode, ...publicSettings } = settings;
     let pageSEOResult = [];
     try {
-      const psResult = await env.DB.prepare(
+      const { resolveSiteDB: resolveSiteDB2 } = await Promise.resolve().then(() => (init_site_db(), site_db_exports));
+      const siteDB = resolveSiteDB2(env, site);
+      const psResult = await siteDB.prepare(
         "SELECT page_type, seo_title, seo_description, seo_og_image FROM page_seo WHERE site_id = ?"
       ).bind(site.id).all();
       pageSEOResult = psResult.results || [];
@@ -9382,7 +10239,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-ebMujo/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-F9KZMl/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -9417,7 +10274,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-ebMujo/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-F9KZMl/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

@@ -1,6 +1,6 @@
 import { generateId, jsonResponse, errorResponse, successResponse, handleCORS } from '../../utils/helpers.js';
 import { validateAuth, validateAnyAuth } from '../../utils/auth.js';
-import { trackD1Usage, estimateRowBytes } from '../../utils/usage-tracker.js';
+import { resolveSiteDBById } from '../../utils/site-db.js';
 
 export async function handleWishlist(request, env, path) {
   const corsResponse = handleCORS(request);
@@ -53,7 +53,8 @@ async function checkWishlist(request, env) {
   }
 
   try {
-    const existing = await env.DB.prepare(
+    const db = await resolveSiteDBById(env, siteId);
+    const existing = await db.prepare(
       'SELECT id FROM wishlists WHERE user_id = ? AND product_id = ? AND site_id = ?'
     ).bind(user.id, productId, siteId).first();
 
@@ -66,7 +67,8 @@ async function checkWishlist(request, env) {
 
 async function getWishlist(env, user, siteId) {
   try {
-    const wishlistItems = await env.DB.prepare(
+    const db = await resolveSiteDBById(env, siteId);
+    const wishlistItems = await db.prepare(
       `SELECT w.id, w.product_id, w.created_at,
               p.name, p.price, p.compare_price, p.thumbnail_url, p.images, p.stock, p.is_active
        FROM wishlists w
@@ -114,7 +116,9 @@ async function addToWishlist(request, env, user, siteId) {
       return errorResponse('Product ID is required');
     }
 
-    const product = await env.DB.prepare(
+    const db = await resolveSiteDBById(env, siteId);
+
+    const product = await db.prepare(
       'SELECT id FROM products WHERE id = ? AND site_id = ? AND is_active = 1'
     ).bind(productId, siteId).first();
 
@@ -122,7 +126,7 @@ async function addToWishlist(request, env, user, siteId) {
       return errorResponse('Product not found', 404);
     }
 
-    const existing = await env.DB.prepare(
+    const existing = await db.prepare(
       'SELECT id FROM wishlists WHERE user_id = ? AND product_id = ? AND site_id = ?'
     ).bind(user.id, productId, siteId).first();
 
@@ -131,12 +135,10 @@ async function addToWishlist(request, env, user, siteId) {
     }
 
     const wishlistId = generateId();
-    await env.DB.prepare(
+    await db.prepare(
       `INSERT INTO wishlists (id, site_id, user_id, product_id, created_at)
        VALUES (?, ?, ?, ?, datetime('now'))`
     ).bind(wishlistId, siteId, user.id, productId).run();
-
-    await trackD1Usage(env, siteId, estimateRowBytes({ id: wishlistId, site_id: siteId, user_id: user.id, product_id: productId }));
 
     return successResponse({ id: wishlistId }, 'Added to wishlist');
   } catch (error) {
@@ -154,17 +156,11 @@ async function removeFromWishlist(request, env, user, siteId) {
       return errorResponse('Product ID is required');
     }
 
-    const existing = await env.DB.prepare(
-      'SELECT * FROM wishlists WHERE user_id = ? AND product_id = ? AND site_id = ?'
-    ).bind(user.id, productId, siteId).first();
+    const db = await resolveSiteDBById(env, siteId);
 
-    await env.DB.prepare(
+    await db.prepare(
       'DELETE FROM wishlists WHERE user_id = ? AND product_id = ? AND site_id = ?'
     ).bind(user.id, productId, siteId).run();
-
-    if (existing) {
-      await trackD1Usage(env, siteId, -estimateRowBytes(existing));
-    }
 
     return successResponse(null, 'Removed from wishlist');
   } catch (error) {

@@ -2,7 +2,8 @@ import { generateId, generateOrderNumber, jsonResponse, errorResponse, successRe
 import { validateAuth, validateAnyAuth } from '../../utils/auth.js';
 import { updateProductStock } from './products-worker.js';
 import { sendEmail, buildOrderConfirmationEmail, buildOwnerNotificationEmail, buildCancellationCustomerEmail, buildCancellationOwnerEmail, buildDeliveryCustomerEmail, buildDeliveryOwnerEmail } from '../../utils/email.js';
-import { trackD1Usage, estimateRowBytes, checkUsageLimit } from '../../utils/usage-tracker.js';
+import { checkUsageLimit } from '../../utils/usage-tracker.js';
+import { resolveSiteDBById } from '../../utils/site-db.js';
 
 export async function handleOrders(request, env, path) {
   const corsResponse = handleCORS(request);
@@ -18,7 +19,7 @@ export async function handleOrders(request, env, path) {
   }
 
   if (action === 'track') {
-    return trackOrder(env, orderId);
+    return trackOrder(env, orderId, request);
   }
 
   const user = await validateAnyAuth(request, env);
@@ -45,6 +46,8 @@ async function getOrders(request, env, user) {
     const status = url.searchParams.get('status');
     const limit = parseInt(url.searchParams.get('limit')) || 50;
     const offset = parseInt(url.searchParams.get('offset')) || 0;
+
+    const db = await resolveSiteDBById(env, siteId);
 
     let query = 'SELECT * FROM orders WHERE 1=1';
     const bindings = [];
@@ -95,7 +98,7 @@ async function getOrders(request, env, user) {
     query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
     bindings.push(limit, offset);
 
-    const orders = await env.DB.prepare(query).bind(...bindings).all();
+    const orders = await db.prepare(query).bind(...bindings).all();
 
     const parsedOrders = orders.results.map(order => ({
       ...order,
@@ -113,12 +116,16 @@ async function getOrders(request, env, user) {
 
 async function getOrder(env, user, orderId, request) {
   try {
+    const url = new URL(request.url);
+    const siteId = url.searchParams.get('siteId');
+    const db = await resolveSiteDBById(env, siteId);
+
     let query = 'SELECT * FROM orders WHERE (id = ? OR order_number = ?)';
     const bindings = [orderId, orderId];
 
     const authHeader = request ? request.headers.get('Authorization') : null;
     if (authHeader && authHeader.startsWith('SiteAdmin ')) {
-      const orderCheck = await env.DB.prepare(
+      const orderCheck = await db.prepare(
         'SELECT site_id FROM orders WHERE id = ? OR order_number = ?'
       ).bind(orderId, orderId).first();
       if (orderCheck) {
@@ -136,14 +143,24 @@ async function getOrder(env, user, orderId, request) {
         query += ' AND user_id = ?';
         bindings.push(user.id);
       } else {
-        query += ' AND (user_id = ? OR site_id IN (SELECT id FROM sites WHERE user_id = ?))';
-        bindings.push(user.id, user.id);
+        const userSiteIds = await env.DB.prepare(
+          'SELECT id FROM sites WHERE user_id = ?'
+        ).bind(user.id).all();
+        const siteIds = (userSiteIds.results || []).map(s => s.id);
+        if (siteIds.length > 0) {
+          const placeholders = siteIds.map(() => '?').join(',');
+          query += ` AND (user_id = ? OR site_id IN (${placeholders}))`;
+          bindings.push(user.id, ...siteIds);
+        } else {
+          query += ' AND user_id = ?';
+          bindings.push(user.id);
+        }
       }
     } else {
       return errorResponse('Unauthorized', 401, 'UNAUTHORIZED');
     }
 
-    const order = await env.DB.prepare(query).bind(...bindings).first();
+    const order = await db.prepare(query).bind(...bindings).first();
 
     if (!order) {
       return errorResponse('Order not found', 404, 'NOT_FOUND');
@@ -178,6 +195,8 @@ async function createOrder(request, env, user) {
       return errorResponse(`Missing required fields: ${missingFields.join(', ')}`);
     }
 
+    const db = await resolveSiteDBById(env, siteId);
+
     let subtotal = 0;
     const processedItems = [];
 
@@ -187,7 +206,7 @@ async function createOrder(request, env, user) {
         return errorResponse('Invalid item: missing product ID', 400);
       }
 
-      const product = await env.DB.prepare(
+      const product = await db.prepare(
         'SELECT id, name, price, stock, thumbnail_url FROM products WHERE id = ? AND site_id = ?'
       ).bind(itemProductId, siteId).first();
 
@@ -218,7 +237,7 @@ async function createOrder(request, env, user) {
     if (couponCode) {
       let coupon = null;
       try {
-        coupon = await env.DB.prepare(
+        coupon = await db.prepare(
           `SELECT * FROM coupons WHERE site_id = ? AND code = ? AND is_active = 1 
            AND (starts_at IS NULL OR starts_at <= datetime('now'))
            AND (expires_at IS NULL OR expires_at > datetime('now'))
@@ -238,7 +257,7 @@ async function createOrder(request, env, user) {
           discount = coupon.value;
         }
         appliedCouponCode = couponCode.toUpperCase();
-        await env.DB.prepare(
+        await db.prepare(
           'UPDATE coupons SET used_count = used_count + 1 WHERE id = ?'
         ).bind(coupon.id).run();
       } else {
@@ -279,15 +298,12 @@ async function createOrder(request, env, user) {
     const isPendingPayment = paymentMethod === 'razorpay';
     const orderStatus = isPendingPayment ? 'pending_payment' : (data.status || 'pending');
 
-    const orderRowData = { id: orderId, siteId, userId: user?.id, orderNumber, items: JSON.stringify(processedItems), subtotal, discount, shippingCost, tax, total, paymentMethod, status: orderStatus, shippingAddress: JSON.stringify(shippingAddress), customerName, customerEmail, customerPhone, couponCode: appliedCouponCode, notes };
-    const estimatedBytes = estimateRowBytes(orderRowData);
-
-    const usageCheck = await checkUsageLimit(env, siteId, 'd1', estimatedBytes);
+    const usageCheck = await checkUsageLimit(env, siteId, 'd1', 0);
     if (!usageCheck.allowed) {
       return errorResponse(usageCheck.reason, 403, 'STORAGE_LIMIT');
     }
 
-    await env.DB.prepare(
+    await db.prepare(
       `INSERT INTO orders (id, site_id, user_id, order_number, items, subtotal, discount, shipping_cost, tax, total, payment_method, status, shipping_address, billing_address, customer_name, customer_email, customer_phone, coupon_code, notes, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(
@@ -312,11 +328,9 @@ async function createOrder(request, env, user) {
       notes || null
     ).run();
 
-    await trackD1Usage(env, siteId, estimatedBytes);
-
     if (!isPendingPayment) {
       for (const item of processedItems) {
-        await updateProductStock(env, item.productId, item.quantity, 'decrement');
+        await updateProductStock(env, item.productId, item.quantity, 'decrement', siteId);
       }
 
       try {
@@ -347,6 +361,7 @@ async function updateOrderStatus(request, env, user, orderId) {
 
   try {
     let order;
+    let siteId = null;
     if (user && user.type === 'customer') {
       return errorResponse('Customers cannot update order status', 403);
     }
@@ -355,7 +370,23 @@ async function updateOrderStatus(request, env, user, orderId) {
     if (authHeader && authHeader.startsWith('SiteAdmin ')) {
       const { validateSiteAdmin } = await import('./site-admin-worker.js');
       const orderCheck = await env.DB.prepare('SELECT id, site_id FROM orders WHERE id = ?').bind(orderId).first();
-      if (orderCheck) {
+      if (!orderCheck) {
+        const allSites = await env.DB.prepare('SELECT id FROM sites').all();
+        for (const s of (allSites.results || [])) {
+          const sdb = await resolveSiteDBById(env, s.id);
+          const found = await sdb.prepare('SELECT id, site_id FROM orders WHERE id = ?').bind(orderId).first();
+          if (found) {
+            order = found;
+            siteId = s.id;
+            break;
+          }
+        }
+        if (order) {
+          const admin = await validateSiteAdmin(request, env, siteId);
+          if (!admin) order = null;
+        }
+      } else {
+        siteId = orderCheck.site_id;
         const admin = await validateSiteAdmin(request, env, orderCheck.site_id);
         if (admin) {
           order = orderCheck;
@@ -364,16 +395,28 @@ async function updateOrderStatus(request, env, user, orderId) {
     }
 
     if (!order && user) {
-      order = await env.DB.prepare(
-        `SELECT o.id, o.site_id FROM orders o 
-         JOIN sites s ON o.site_id = s.id 
-         WHERE o.id = ? AND s.user_id = ?`
-      ).bind(orderId, user.id).first();
+      const userSites = await env.DB.prepare(
+        'SELECT id FROM sites WHERE user_id = ?'
+      ).bind(user.id).all();
+      
+      for (const s of (userSites.results || [])) {
+        const sdb = await resolveSiteDBById(env, s.id);
+        const found = await sdb.prepare(
+          'SELECT id, site_id FROM orders WHERE id = ? AND site_id = ?'
+        ).bind(orderId, s.id).first();
+        if (found) {
+          order = found;
+          siteId = s.id;
+          break;
+        }
+      }
     }
 
     if (!order) {
       return errorResponse('Order not found or unauthorized', 404);
     }
+
+    const db = await resolveSiteDBById(env, siteId || order.site_id);
 
     const { status, trackingNumber, carrier, cancellationReason } = await request.json();
 
@@ -392,7 +435,7 @@ async function updateOrderStatus(request, env, user, orderId) {
         updates.push('cancelled_at = datetime("now")');
         if (cancellationReason) {
           try {
-            await env.DB.prepare(
+            await db.prepare(
               `ALTER TABLE orders ADD COLUMN cancellation_reason TEXT`
             ).run();
           } catch {}
@@ -419,13 +462,13 @@ async function updateOrderStatus(request, env, user, orderId) {
     updates.push('updated_at = datetime("now")');
     values.push(orderId);
 
-    await env.DB.prepare(
+    await db.prepare(
       `UPDATE orders SET ${updates.join(', ')} WHERE id = ?`
     ).bind(...values).run();
 
     if (status === 'cancelled' && cancellationReason) {
       try {
-        const fullOrder = await env.DB.prepare('SELECT * FROM orders WHERE id = ?').bind(orderId).first();
+        const fullOrder = await db.prepare('SELECT * FROM orders WHERE id = ?').bind(orderId).first();
         if (fullOrder) {
           const site = await env.DB.prepare('SELECT brand_name, email, settings FROM sites WHERE id = ?').bind(fullOrder.site_id).first();
           const siteBrandName = site?.brand_name || 'Store';
@@ -459,7 +502,7 @@ async function updateOrderStatus(request, env, user, orderId) {
 
     if (status === 'delivered') {
       try {
-        const fullOrder = await env.DB.prepare('SELECT * FROM orders WHERE id = ?').bind(orderId).first();
+        const fullOrder = await db.prepare('SELECT * FROM orders WHERE id = ?').bind(orderId).first();
         if (fullOrder) {
           const site = await env.DB.prepare('SELECT brand_name, email, settings FROM sites WHERE id = ?').bind(fullOrder.site_id).first();
           const siteBrandName = site?.brand_name || 'Store';
@@ -480,7 +523,7 @@ async function updateOrderStatus(request, env, user, orderId) {
           if (fullOrder.customer_email) {
             try {
               const { html, text } = buildDeliveryCustomerEmail(emailOrder, siteBrandName, ownerEmail);
-              emailJobs.push(sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been delivered! 📦`, html, text).catch(e => console.error('Delivery customer email send error:', e)));
+              emailJobs.push(sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been delivered!`, html, text).catch(e => console.error('Delivery customer email send error:', e)));
             } catch (buildErr) {
               console.error('Delivery customer email build error:', buildErr);
             }
@@ -512,7 +555,7 @@ async function handleGuestOrder(request, env, method, orderId) {
     return createGuestOrder(request, env);
   }
   if (method === 'GET' && orderId) {
-    return getGuestOrder(env, orderId);
+    return getGuestOrder(env, orderId, request);
   }
   return errorResponse('Method not allowed', 405);
 }
@@ -534,6 +577,8 @@ async function createGuestOrder(request, env) {
       return errorResponse(`Missing required fields: ${missingFields.join(', ')}`);
     }
 
+    const db = await resolveSiteDBById(env, siteId);
+
     let subtotal = 0;
     const processedItems = [];
 
@@ -543,7 +588,7 @@ async function createGuestOrder(request, env) {
         return errorResponse('Invalid item: missing product ID', 400);
       }
 
-      const product = await env.DB.prepare(
+      const product = await db.prepare(
         'SELECT id, name, price, stock, thumbnail_url FROM products WHERE id = ? AND site_id = ?'
       ).bind(itemProductId, siteId).first();
 
@@ -571,15 +616,12 @@ async function createGuestOrder(request, env) {
     const isPendingPayment = paymentMethod === 'razorpay';
     const guestOrderStatus = isPendingPayment ? 'pending_payment' : 'confirmed';
 
-    const guestRowData = { id: orderId, siteId, orderNumber, items: JSON.stringify(processedItems), subtotal, total, paymentMethod, status: guestOrderStatus, shippingAddress: JSON.stringify(shippingAddress), customerName, customerEmail, customerPhone };
-    const guestEstBytes = estimateRowBytes(guestRowData);
-
-    const guestUsageCheck = await checkUsageLimit(env, siteId, 'd1', guestEstBytes);
+    const guestUsageCheck = await checkUsageLimit(env, siteId, 'd1', 0);
     if (!guestUsageCheck.allowed) {
       return errorResponse(guestUsageCheck.reason, 403, 'STORAGE_LIMIT');
     }
 
-    await env.DB.prepare(
+    await db.prepare(
       `INSERT INTO guest_orders (id, site_id, order_number, items, subtotal, total, payment_method, status, shipping_address, customer_name, customer_email, customer_phone, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(
@@ -597,11 +639,9 @@ async function createGuestOrder(request, env) {
       customerPhone
     ).run();
 
-    await trackD1Usage(env, siteId, guestEstBytes);
-
     if (!isPendingPayment) {
       for (const item of processedItems) {
-        await updateProductStock(env, item.productId, item.quantity, 'decrement');
+        await updateProductStock(env, item.productId, item.quantity, 'decrement', siteId);
       }
 
       try {
@@ -624,9 +664,13 @@ async function createGuestOrder(request, env) {
   }
 }
 
-async function getGuestOrder(env, orderNumber) {
+async function getGuestOrder(env, orderNumber, request) {
   try {
-    const order = await env.DB.prepare(
+    const url = request ? new URL(request.url) : null;
+    const siteId = url ? url.searchParams.get('siteId') : null;
+    const db = await resolveSiteDBById(env, siteId);
+
+    const order = await db.prepare(
       'SELECT * FROM guest_orders WHERE order_number = ? LIMIT 1'
     ).bind(orderNumber).first();
 
@@ -700,14 +744,18 @@ export async function sendOrderEmails(env, siteId, orderDetails) {
   }
 }
 
-async function trackOrder(env, orderNumber) {
+async function trackOrder(env, orderNumber, request) {
   try {
-    let order = await env.DB.prepare(
+    const url = request ? new URL(request.url) : null;
+    const siteId = url ? url.searchParams.get('siteId') : null;
+    const db = await resolveSiteDBById(env, siteId);
+
+    let order = await db.prepare(
       'SELECT order_number, status, tracking_number, carrier, shipped_at, delivered_at, created_at FROM orders WHERE order_number = ?'
     ).bind(orderNumber).first();
 
     if (!order) {
-      order = await env.DB.prepare(
+      order = await db.prepare(
         'SELECT order_number, status, tracking_number, carrier, created_at FROM guest_orders WHERE order_number = ?'
       ).bind(orderNumber).first();
     }

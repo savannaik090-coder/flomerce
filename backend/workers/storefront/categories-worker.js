@@ -1,7 +1,8 @@
 import { generateId, sanitizeInput, jsonResponse, errorResponse, successResponse, handleCORS } from '../../utils/helpers.js';
 import { validateAuth } from '../../utils/auth.js';
 import { validateSiteAdmin } from './site-admin-worker.js';
-import { trackD1Usage, estimateRowBytes, checkUsageLimit } from '../../utils/usage-tracker.js';
+import { checkUsageLimit } from '../../utils/usage-tracker.js';
+import { resolveSiteDBById, resolveSiteDBBySubdomain } from '../../utils/site-db.js';
 
 export async function handleCategories(request, env, path) {
   const corsResponse = handleCORS(request);
@@ -18,7 +19,7 @@ export async function handleCategories(request, env, path) {
     const slug = url.searchParams.get('slug');
     
     if (categoryId) {
-      return getCategory(env, categoryId);
+      return getCategory(env, categoryId, siteId, subdomain);
     }
     return getCategories(env, { siteId, subdomain, slug });
   }
@@ -40,7 +41,8 @@ export async function handleCategories(request, env, path) {
 
       if (!adminSiteId && (method === 'PUT' || method === 'DELETE') && categoryId) {
         try {
-          const cat = await env.DB.prepare('SELECT site_id FROM categories WHERE id = ?').bind(categoryId).first();
+          const db = await resolveSiteDBById(env, null);
+          const cat = await db.prepare('SELECT site_id FROM categories WHERE id = ?').bind(categoryId).first();
           if (cat) adminSiteId = cat.site_id;
         } catch (e) {}
       }
@@ -72,24 +74,30 @@ export async function handleCategories(request, env, path) {
 
 async function getCategories(env, { siteId, subdomain, slug }) {
   try {
+    let db;
+    let resolvedSiteId = siteId;
+
+    if (siteId) {
+      db = await resolveSiteDBById(env, siteId);
+    } else if (subdomain) {
+      db = await resolveSiteDBBySubdomain(env, subdomain);
+      const site = await env.DB.prepare(
+        'SELECT id FROM sites WHERE LOWER(subdomain) = LOWER(?)'
+      ).bind(subdomain).first();
+      if (site) resolvedSiteId = site.id;
+    } else {
+      db = env.DB;
+    }
+
     let query = `SELECT c.*, 
                    (SELECT COUNT(*) FROM products p WHERE p.category_id = c.id AND p.is_active = 1) as product_count
                  FROM categories c WHERE 1=1`;
     const bindings = [];
 
-    if (siteId) {
+    if (resolvedSiteId) {
       query += ' AND c.site_id = ?';
-      bindings.push(siteId);
-    } else if (subdomain) {
-      query = `SELECT c.*, 
-                 (SELECT COUNT(*) FROM products p WHERE p.category_id = c.id AND p.is_active = 1) as product_count
-               FROM categories c 
-               JOIN sites s ON c.site_id = s.id 
-               WHERE LOWER(s.subdomain) = LOWER(?)`;
-      bindings.push(subdomain);
-    } else {
-      // If neither siteId nor subdomain is provided, we can't fetch site-specific categories
-      // But we might want to return nothing instead of all categories
+      bindings.push(resolvedSiteId);
+    } else if (!siteId && !subdomain) {
       query += ' AND 1=0';
     }
 
@@ -100,7 +108,7 @@ async function getCategories(env, { siteId, subdomain, slug }) {
 
     query += ' ORDER BY c.display_order, c.name';
 
-    const categories = await env.DB.prepare(query).bind(...bindings).all();
+    const categories = await db.prepare(query).bind(...bindings).all();
 
     const parentCategories = categories.results.filter(c => !c.parent_id);
     const result = parentCategories.map(parent => ({
@@ -115,20 +123,34 @@ async function getCategories(env, { siteId, subdomain, slug }) {
   }
 }
 
-async function getCategory(env, categoryId) {
+async function getCategory(env, categoryId, siteId, subdomain) {
   try {
-    const category = await env.DB.prepare(
-      `SELECT c.*, s.subdomain, s.brand_name
-       FROM categories c 
-       JOIN sites s ON c.site_id = s.id 
-       WHERE c.id = ?`
+    if (!siteId && subdomain) {
+      const site = await env.DB.prepare(
+        'SELECT id FROM sites WHERE LOWER(subdomain) = LOWER(?)'
+      ).bind(subdomain).first();
+      if (site) siteId = site.id;
+    }
+
+    const db = await resolveSiteDBById(env, siteId);
+
+    const category = await db.prepare(
+      `SELECT * FROM categories WHERE id = ?`
     ).bind(categoryId).first();
 
     if (!category) {
       return errorResponse('Category not found', 404, 'NOT_FOUND');
     }
 
-    const children = await env.DB.prepare(
+    const siteInfo = await env.DB.prepare(
+      'SELECT subdomain, brand_name FROM sites WHERE id = ?'
+    ).bind(category.site_id).first();
+    if (siteInfo) {
+      category.subdomain = siteInfo.subdomain;
+      category.brand_name = siteInfo.brand_name;
+    }
+
+    const children = await db.prepare(
       'SELECT * FROM categories WHERE parent_id = ? ORDER BY display_order'
     ).bind(categoryId).all();
 
@@ -163,9 +185,11 @@ async function createCategory(request, env, user) {
       return errorResponse('Site not found or unauthorized', 404);
     }
 
+    const db = await resolveSiteDBById(env, siteId);
+
     const slug = name.toLowerCase().trim().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-');
     
-    const existing = await env.DB.prepare(
+    const existing = await db.prepare(
       'SELECT id FROM categories WHERE site_id = ? AND slug = ?'
     ).bind(siteId, slug).first();
 
@@ -175,15 +199,12 @@ async function createCategory(request, env, user) {
 
     const categoryId = generateId();
 
-    const rowData = { id: categoryId, siteId, name, slug, description, subtitle, parentId, imageUrl, displayOrder };
-    const estimatedBytes = estimateRowBytes(rowData);
-
-    const usageCheck = await checkUsageLimit(env, siteId, 'd1', estimatedBytes);
+    const usageCheck = await checkUsageLimit(env, siteId, 'd1', 0);
     if (!usageCheck.allowed) {
       return errorResponse(usageCheck.reason, 403, 'STORAGE_LIMIT');
     }
 
-    await env.DB.prepare(
+    await db.prepare(
       `INSERT INTO categories (id, site_id, name, slug, description, subtitle, show_on_home, parent_id, image_url, display_order, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(
@@ -199,8 +220,6 @@ async function createCategory(request, env, user) {
       displayOrder || 0
     ).run();
 
-    await trackD1Usage(env, siteId, estimatedBytes);
-
     return successResponse({ id: categoryId, slug }, 'Category created successfully');
   } catch (error) {
     console.error('Create category error:', error);
@@ -214,22 +233,36 @@ async function updateCategory(request, env, user, categoryId) {
   }
 
   try {
+    let siteId = user._adminSiteId || null;
     let category;
+
     if (user._adminSiteId) {
-      category = await env.DB.prepare(
+      const db = await resolveSiteDBById(env, user._adminSiteId);
+      category = await db.prepare(
         'SELECT id, site_id FROM categories WHERE id = ? AND site_id = ?'
       ).bind(categoryId, user._adminSiteId).first();
     } else {
-      category = await env.DB.prepare(
-        `SELECT c.id, c.site_id FROM categories c 
-         JOIN sites s ON c.site_id = s.id 
-         WHERE c.id = ? AND s.user_id = ?`
-      ).bind(categoryId, user.id).first();
+      const userSites = await env.DB.prepare(
+        'SELECT id FROM sites WHERE user_id = ?'
+      ).bind(user.id).all();
+      
+      for (const s of (userSites.results || [])) {
+        const db = await resolveSiteDBById(env, s.id);
+        category = await db.prepare(
+          'SELECT id, site_id FROM categories WHERE id = ? AND site_id = ?'
+        ).bind(categoryId, s.id).first();
+        if (category) {
+          siteId = s.id;
+          break;
+        }
+      }
     }
 
     if (!category) {
       return errorResponse('Category not found or unauthorized', 404);
     }
+
+    const db = await resolveSiteDBById(env, siteId || category.site_id);
 
     const updates = await request.json();
     const allowedFields = ['name', 'description', 'subtitle', 'show_on_home', 'parent_id', 'image_url', 'display_order', 'is_active'];
@@ -262,7 +295,7 @@ async function updateCategory(request, env, user, categoryId) {
     setClause.push('updated_at = datetime("now")');
     values.push(categoryId);
 
-    await env.DB.prepare(
+    await db.prepare(
       `UPDATE categories SET ${setClause.join(', ')} WHERE id = ?`
     ).bind(...values).run();
 
@@ -279,39 +312,46 @@ async function deleteCategory(env, user, categoryId) {
   }
 
   try {
+    let siteId = user._adminSiteId || null;
     let category;
+
     if (user._adminSiteId) {
-      category = await env.DB.prepare(
+      const db = await resolveSiteDBById(env, user._adminSiteId);
+      category = await db.prepare(
         'SELECT id FROM categories WHERE id = ? AND site_id = ?'
       ).bind(categoryId, user._adminSiteId).first();
     } else {
-      category = await env.DB.prepare(
-        `SELECT c.id FROM categories c 
-         JOIN sites s ON c.site_id = s.id 
-         WHERE c.id = ? AND s.user_id = ?`
-      ).bind(categoryId, user.id).first();
+      const userSites = await env.DB.prepare(
+        'SELECT id FROM sites WHERE user_id = ?'
+      ).bind(user.id).all();
+      
+      for (const s of (userSites.results || [])) {
+        const db = await resolveSiteDBById(env, s.id);
+        category = await db.prepare(
+          'SELECT id, site_id FROM categories WHERE id = ? AND site_id = ?'
+        ).bind(categoryId, s.id).first();
+        if (category) {
+          siteId = s.id;
+          break;
+        }
+      }
     }
 
     if (!category) {
       return errorResponse('Category not found or unauthorized', 404);
     }
 
-    const fullCategory = await env.DB.prepare('SELECT * FROM categories WHERE id = ?').bind(categoryId).first();
+    const db = await resolveSiteDBById(env, siteId || category.site_id);
 
-    await env.DB.prepare(
+    await db.prepare(
       'UPDATE categories SET parent_id = NULL WHERE parent_id = ?'
     ).bind(categoryId).run();
 
-    await env.DB.prepare(
+    await db.prepare(
       'UPDATE products SET category_id = NULL WHERE category_id = ?'
     ).bind(categoryId).run();
 
-    await env.DB.prepare('DELETE FROM categories WHERE id = ?').bind(categoryId).run();
-
-    if (fullCategory) {
-      const rowBytes = estimateRowBytes(fullCategory);
-      await trackD1Usage(env, fullCategory.site_id, -rowBytes);
-    }
+    await db.prepare('DELETE FROM categories WHERE id = ?').bind(categoryId).run();
 
     return successResponse(null, 'Category deleted successfully');
   } catch (error) {

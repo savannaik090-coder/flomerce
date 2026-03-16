@@ -1,6 +1,6 @@
 import { generateId, jsonResponse, errorResponse, successResponse, handleCORS } from '../../utils/helpers.js';
 import { validateAuth, validateAnyAuth } from '../../utils/auth.js';
-import { trackD1Usage, estimateRowBytes } from '../../utils/usage-tracker.js';
+import { resolveSiteDBById } from '../../utils/site-db.js';
 
 
 export async function handleCart(request, env, path) {
@@ -56,12 +56,14 @@ async function handleClearCart(request, env, url) {
   if (!user && !sessionId) return errorResponse('Authentication or session required');
 
   try {
+    const db = await resolveSiteDBById(env, siteId);
+
     if (user) {
-      await env.DB.prepare(
+      await db.prepare(
         `UPDATE carts SET items = '[]', subtotal = 0, updated_at = datetime('now') WHERE site_id = ? AND user_id = ?`
       ).bind(siteId, user.id).run();
     } else {
-      await env.DB.prepare(
+      await db.prepare(
         `UPDATE carts SET items = '[]', subtotal = 0, updated_at = datetime('now') WHERE site_id = ? AND session_id = ?`
       ).bind(siteId, sessionId).run();
     }
@@ -88,27 +90,25 @@ async function handleMergeCarts(request, env) {
   }
 }
 
-async function getOrCreateCart(env, siteId, user, sessionId) {
+async function getOrCreateCart(db, env, siteId, user, sessionId) {
   let cart;
 
   if (user) {
-    cart = await env.DB.prepare(
+    cart = await db.prepare(
       'SELECT * FROM carts WHERE site_id = ? AND user_id = ?'
     ).bind(siteId, user.id).first();
   } else {
-    cart = await env.DB.prepare(
+    cart = await db.prepare(
       'SELECT * FROM carts WHERE site_id = ? AND session_id = ?'
     ).bind(siteId, sessionId).first();
   }
 
   if (!cart) {
     const cartId = generateId();
-    await env.DB.prepare(
+    await db.prepare(
       `INSERT INTO carts (id, site_id, user_id, session_id, items, subtotal, created_at)
        VALUES (?, ?, ?, ?, '[]', 0, datetime('now'))`
     ).bind(cartId, siteId, user ? user.id : null, user ? null : sessionId).run();
-
-    await trackD1Usage(env, siteId, estimateRowBytes({ id: cartId, site_id: siteId, user_id: user?.id, session_id: sessionId, items: '[]', subtotal: 0 }));
 
     cart = { id: cartId, items: '[]', subtotal: 0 };
   }
@@ -118,12 +118,13 @@ async function getOrCreateCart(env, siteId, user, sessionId) {
 
 async function getCart(env, siteId, user, sessionId) {
   try {
-    const cart = await getOrCreateCart(env, siteId, user, sessionId);
+    const db = await resolveSiteDBById(env, siteId);
+    const cart = await getOrCreateCart(db, env, siteId, user, sessionId);
     const items = JSON.parse(cart.items);
 
     const enrichedItems = [];
     for (const item of items) {
-      const product = await env.DB.prepare(
+      const product = await db.prepare(
         'SELECT id, name, price, stock, thumbnail_url, images, is_active FROM products WHERE id = ? AND site_id = ?'
       ).bind(item.productId, siteId).first();
 
@@ -168,7 +169,9 @@ async function addToCart(request, env, siteId, user, sessionId) {
       return errorResponse('Product ID and quantity are required');
     }
 
-    const product = await env.DB.prepare(
+    const db = await resolveSiteDBById(env, siteId);
+
+    const product = await db.prepare(
       'SELECT id, stock, is_active FROM products WHERE id = ? AND site_id = ?'
     ).bind(productId, siteId).first();
 
@@ -184,7 +187,7 @@ async function addToCart(request, env, siteId, user, sessionId) {
       return errorResponse('Insufficient stock', 400, 'INSUFFICIENT_STOCK');
     }
 
-    const cart = await getOrCreateCart(env, siteId, user, sessionId);
+    const cart = await getOrCreateCart(db, env, siteId, user, sessionId);
     const items = JSON.parse(cart.items);
 
     const existingIndex = items.findIndex(item => 
@@ -207,7 +210,7 @@ async function addToCart(request, env, siteId, user, sessionId) {
       });
     }
 
-    await env.DB.prepare(
+    await db.prepare(
       `UPDATE carts SET items = ?, updated_at = datetime('now') WHERE id = ?`
     ).bind(JSON.stringify(items), cart.id).run();
 
@@ -226,7 +229,8 @@ async function updateCartItem(request, env, siteId, user, sessionId) {
       return errorResponse('Product ID is required');
     }
 
-    const cart = await getOrCreateCart(env, siteId, user, sessionId);
+    const db = await resolveSiteDBById(env, siteId);
+    const cart = await getOrCreateCart(db, env, siteId, user, sessionId);
     const items = JSON.parse(cart.items);
 
     const existingIndex = items.findIndex(item => 
@@ -241,7 +245,7 @@ async function updateCartItem(request, env, siteId, user, sessionId) {
     if (quantity <= 0) {
       items.splice(existingIndex, 1);
     } else {
-      const product = await env.DB.prepare(
+      const product = await db.prepare(
         'SELECT stock FROM products WHERE id = ? AND site_id = ?'
       ).bind(productId, siteId).first();
 
@@ -252,7 +256,7 @@ async function updateCartItem(request, env, siteId, user, sessionId) {
       items[existingIndex].quantity = quantity;
     }
 
-    await env.DB.prepare(
+    await db.prepare(
       `UPDATE carts SET items = ?, updated_at = datetime('now') WHERE id = ?`
     ).bind(JSON.stringify(items), cart.id).run();
 
@@ -273,7 +277,8 @@ async function removeFromCart(request, env, siteId, user, sessionId) {
       return errorResponse('Product ID is required');
     }
 
-    const cart = await getOrCreateCart(env, siteId, user, sessionId);
+    const db = await resolveSiteDBById(env, siteId);
+    const cart = await getOrCreateCart(db, env, siteId, user, sessionId);
     const items = JSON.parse(cart.items);
 
     const parsedVariant = variant ? variant : null;
@@ -281,7 +286,7 @@ async function removeFromCart(request, env, siteId, user, sessionId) {
       !(item.productId === productId && JSON.stringify(item.variant ?? null) === JSON.stringify(parsedVariant))
     );
 
-    await env.DB.prepare(
+    await db.prepare(
       `UPDATE carts SET items = ?, updated_at = datetime('now') WHERE id = ?`
     ).bind(JSON.stringify(filteredItems), cart.id).run();
 
@@ -294,13 +299,15 @@ async function removeFromCart(request, env, siteId, user, sessionId) {
 
 export async function mergeCarts(env, siteId, userId, sessionId) {
   try {
-    const guestCart = await env.DB.prepare(
+    const db = await resolveSiteDBById(env, siteId);
+
+    const guestCart = await db.prepare(
       'SELECT * FROM carts WHERE site_id = ? AND session_id = ?'
     ).bind(siteId, sessionId).first();
 
     if (!guestCart) return;
 
-    const userCart = await env.DB.prepare(
+    const userCart = await db.prepare(
       'SELECT * FROM carts WHERE site_id = ? AND user_id = ?'
     ).bind(siteId, userId).first();
 
@@ -322,17 +329,17 @@ export async function mergeCarts(env, siteId, userId, sessionId) {
         }
       }
 
-      await env.DB.prepare(
+      await db.prepare(
         `UPDATE carts SET items = ?, updated_at = datetime('now') WHERE id = ?`
       ).bind(JSON.stringify(userItems), userCart.id).run();
     } else {
-      await env.DB.prepare(
+      await db.prepare(
         `UPDATE carts SET user_id = ?, session_id = NULL, updated_at = datetime('now') WHERE id = ?`
       ).bind(userId, guestCart.id).run();
       return;
     }
 
-    await env.DB.prepare('DELETE FROM carts WHERE id = ?').bind(guestCart.id).run();
+    await db.prepare('DELETE FROM carts WHERE id = ?').bind(guestCart.id).run();
   } catch (error) {
     console.error('Merge carts error:', error);
   }
@@ -340,7 +347,8 @@ export async function mergeCarts(env, siteId, userId, sessionId) {
 
 export async function clearCart(env, siteId, userId) {
   try {
-    await env.DB.prepare(
+    const db = await resolveSiteDBById(env, siteId);
+    await db.prepare(
       `UPDATE carts SET items = '[]', subtotal = 0, updated_at = datetime('now') 
        WHERE site_id = ? AND user_id = ?`
     ).bind(siteId, userId).run();

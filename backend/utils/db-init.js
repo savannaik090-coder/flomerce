@@ -508,6 +508,8 @@ export async function ensureTablesExist(env) {
       { col: 'cf_hostname_id', sql: 'ALTER TABLE sites ADD COLUMN cf_hostname_id TEXT' },
       { col: 'coupon_code', table: 'orders', sql: 'ALTER TABLE orders ADD COLUMN coupon_code TEXT' },
       { col: 'role', table: 'users', sql: "ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'" },
+      { col: 'd1_database_id', table: 'sites', sql: 'ALTER TABLE sites ADD COLUMN d1_database_id TEXT' },
+      { col: 'd1_binding_name', table: 'sites', sql: 'ALTER TABLE sites ADD COLUMN d1_binding_name TEXT' },
     ];
     for (const m of migrations) {
       try {

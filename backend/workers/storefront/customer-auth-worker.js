@@ -222,11 +222,6 @@ async function createAddress(request, env, customer) {
       isDefault ? 1 : 0
     ).run();
 
-    try {
-      const { trackD1Usage, estimateRowBytes } = await import('../../utils/usage-tracker.js');
-      await trackD1Usage(env, customer.site_id, estimateRowBytes({ id, site_id: customer.site_id, customer_id: customer.id, label, firstName, lastName, phone, houseNumber, roadName, city, state, pinCode }));
-    } catch (_) {}
-
     const address = await env.DB.prepare(
       'SELECT * FROM customer_addresses WHERE id = ?'
     ).bind(id).first();
@@ -312,11 +307,6 @@ async function deleteAddress(env, customer, addressId) {
       'DELETE FROM customer_addresses WHERE id = ? AND customer_id = ? AND site_id = ?'
     ).bind(addressId, customer.id, customer.site_id).run();
 
-    try {
-      const { trackD1Usage, estimateRowBytes } = await import('../../utils/usage-tracker.js');
-      await trackD1Usage(env, customer.site_id, -estimateRowBytes(existing));
-    } catch (_) {}
-
     return successResponse(null, 'Address deleted successfully');
   } catch (error) {
     console.error('Error deleting address:', error);
@@ -372,12 +362,9 @@ async function handleSignup(request, env) {
     const customerId = generateId();
     const passwordHash = await hashPassword(password);
 
-    const { trackD1Usage, estimateRowBytes, checkUsageLimit } = await import('../../utils/usage-tracker.js');
+    const { checkUsageLimit } = await import('../../utils/usage-tracker.js');
 
-    const rowData = { id: customerId, siteId, email, name, phone };
-    const estimatedBytes = estimateRowBytes(rowData);
-
-    const usageCheck = await checkUsageLimit(env, siteId, 'd1', estimatedBytes);
+    const usageCheck = await checkUsageLimit(env, siteId, 'd1', 0);
     if (!usageCheck.allowed) {
       return errorResponse(usageCheck.reason, 403, 'STORAGE_LIMIT');
     }
@@ -388,8 +375,6 @@ async function handleSignup(request, env) {
       `INSERT INTO site_customers (id, site_id, email, password_hash, name, phone, email_verified, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(customerId, siteId, email.toLowerCase(), passwordHash, sanitizeInput(name), phone || null, skipVerification ? 1 : 0).run();
-
-    await trackD1Usage(env, siteId, estimatedBytes);
 
     if (!skipVerification) {
       const verifyToken = generateToken(32);

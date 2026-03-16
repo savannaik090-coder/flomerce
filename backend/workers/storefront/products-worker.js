@@ -1,7 +1,8 @@
 import { generateId, sanitizeInput, jsonResponse, errorResponse, successResponse, handleCORS } from '../../utils/helpers.js';
 import { validateAuth } from '../../utils/auth.js';
 import { validateSiteAdmin } from './site-admin-worker.js';
-import { trackD1Usage, estimateRowBytes, checkUsageLimit } from '../../utils/usage-tracker.js';
+import { checkUsageLimit } from '../../utils/usage-tracker.js';
+import { resolveSiteDBById, resolveSiteDBBySubdomain } from '../../utils/site-db.js';
 
 export async function handleProducts(request, env, path) {
   const corsResponse = handleCORS(request);
@@ -19,7 +20,7 @@ export async function handleProducts(request, env, path) {
     const categoryId = url.searchParams.get('categoryId');
     
     if (productId) {
-      return getProduct(env, productId);
+      return getProduct(env, productId, siteId, subdomain);
     }
     return getProducts(env, { siteId, subdomain, category, categoryId, url });
   }
@@ -79,19 +80,25 @@ async function getProducts(env, { siteId, subdomain, category, categoryId, url }
       return errorResponse('siteId or subdomain is required to fetch products');
     }
 
+    let db;
+    if (siteId) {
+      db = await resolveSiteDBById(env, siteId);
+    } else if (subdomain) {
+      const site = await env.DB.prepare(
+        'SELECT id FROM sites WHERE LOWER(subdomain) = LOWER(?)'
+      ).bind(subdomain).first();
+      if (site) {
+        siteId = site.id;
+      }
+      db = await resolveSiteDBBySubdomain(env, subdomain);
+    }
+
     let query = 'SELECT p.*, c.name as category_name, c.slug as category_slug FROM products p LEFT JOIN categories c ON p.category_id = c.id WHERE p.is_active = 1';
     const bindings = [];
 
     if (siteId) {
       query += ' AND p.site_id = ?';
       bindings.push(siteId);
-    } else if (subdomain) {
-      query = `SELECT p.*, c.name as category_name, c.slug as category_slug 
-               FROM products p 
-               LEFT JOIN categories c ON p.category_id = c.id
-               JOIN sites s ON p.site_id = s.id 
-               WHERE p.is_active = 1 AND LOWER(s.subdomain) = LOWER(?)`;
-      bindings.push(subdomain);
     }
 
     if (categoryId) {
@@ -113,7 +120,7 @@ async function getProducts(env, { siteId, subdomain, category, categoryId, url }
     query += ' ORDER BY p.created_at DESC LIMIT ? OFFSET ?';
     bindings.push(limit, offset);
 
-    const products = await env.DB.prepare(query).bind(...bindings).all();
+    const products = await db.prepare(query).bind(...bindings).all();
 
     const parsedProducts = products.results.map(product => ({
       ...product,
@@ -128,13 +135,21 @@ async function getProducts(env, { siteId, subdomain, category, categoryId, url }
   }
 }
 
-async function getProduct(env, productId) {
+async function getProduct(env, productId, siteId, subdomain) {
   try {
-    const product = await env.DB.prepare(
-      `SELECT p.*, c.name as category_name, c.slug as category_slug, s.brand_name, s.subdomain
+    if (!siteId && subdomain) {
+      const site = await env.DB.prepare(
+        'SELECT id FROM sites WHERE LOWER(subdomain) = LOWER(?)'
+      ).bind(subdomain).first();
+      if (site) siteId = site.id;
+    }
+
+    const db = await resolveSiteDBById(env, siteId);
+
+    const product = await db.prepare(
+      `SELECT p.*, c.name as category_name, c.slug as category_slug
        FROM products p 
        LEFT JOIN categories c ON p.category_id = c.id
-       JOIN sites s ON p.site_id = s.id
        WHERE p.id = ?`
     ).bind(productId).first();
 
@@ -142,9 +157,17 @@ async function getProduct(env, productId) {
       return errorResponse('Product not found', 404, 'NOT_FOUND');
     }
 
+    const siteInfo = await env.DB.prepare(
+      'SELECT brand_name, subdomain FROM sites WHERE id = ?'
+    ).bind(product.site_id).first();
+    if (siteInfo) {
+      product.brand_name = siteInfo.brand_name;
+      product.subdomain = siteInfo.subdomain;
+    }
+
     let variantResults = [];
     try {
-      const variants = await env.DB.prepare(
+      const variants = await db.prepare(
         'SELECT * FROM product_variants WHERE product_id = ?'
       ).bind(productId).all();
       variantResults = variants.results || [];
@@ -189,6 +212,8 @@ async function createProduct(request, env, user) {
       return errorResponse('Site not found or unauthorized', 404);
     }
 
+    const db = await resolveSiteDBById(env, siteId);
+
     let resolvedThumbnail = thumbnailUrl || null;
     if (!resolvedThumbnail && Array.isArray(images) && images.length > 0) {
       const idx = typeof mainImageIndex === 'number' ? mainImageIndex : 0;
@@ -198,15 +223,12 @@ async function createProduct(request, env, user) {
     const slug = name.toLowerCase().trim().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').substring(0, 100);
     const productId = generateId();
 
-    const rowData = { id: productId, siteId, categoryId, name, slug, description, shortDescription, price, comparePrice, costPrice, sku, stock, weight, dimensions: dimensions ? JSON.stringify(dimensions) : null, images: images ? JSON.stringify(images) : '[]', thumbnailUrl: resolvedThumbnail, tags: tags ? JSON.stringify(tags) : '[]', isFeatured };
-    const estimatedBytes = estimateRowBytes(rowData);
-
-    const usageCheck = await checkUsageLimit(env, siteId, 'd1', estimatedBytes);
+    const usageCheck = await checkUsageLimit(env, siteId, 'd1', 0);
     if (!usageCheck.allowed) {
       return errorResponse(usageCheck.reason, 403, 'STORAGE_LIMIT');
     }
 
-    await env.DB.prepare(
+    await db.prepare(
       `INSERT INTO products (id, site_id, category_id, name, slug, description, short_description, price, compare_price, cost_price, sku, stock, low_stock_threshold, weight, dimensions, images, thumbnail_url, tags, is_featured, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(
@@ -231,8 +253,6 @@ async function createProduct(request, env, user) {
       isFeatured ? 1 : 0
     ).run();
 
-    await trackD1Usage(env, siteId, estimatedBytes);
-
     return successResponse({ id: productId, slug }, 'Product created successfully');
   } catch (error) {
     console.error('Create product error:', error);
@@ -250,21 +270,35 @@ async function updateProduct(request, env, user, productId) {
 
   try {
     let product;
+    let siteId = user._adminSiteId || null;
+
     if (user._adminSiteId) {
-      product = await env.DB.prepare(
+      const db = await resolveSiteDBById(env, user._adminSiteId);
+      product = await db.prepare(
         'SELECT id, site_id FROM products WHERE id = ? AND site_id = ?'
       ).bind(productId, user._adminSiteId).first();
     } else {
-      product = await env.DB.prepare(
-        `SELECT p.id, p.site_id FROM products p 
-         JOIN sites s ON p.site_id = s.id 
-         WHERE p.id = ? AND s.user_id = ?`
-      ).bind(productId, user.id).first();
+      const userSites = await env.DB.prepare(
+        'SELECT id FROM sites WHERE user_id = ?'
+      ).bind(user.id).all();
+      
+      for (const s of (userSites.results || [])) {
+        const db = await resolveSiteDBById(env, s.id);
+        product = await db.prepare(
+          'SELECT id, site_id FROM products WHERE id = ? AND site_id = ?'
+        ).bind(productId, s.id).first();
+        if (product) {
+          siteId = s.id;
+          break;
+        }
+      }
     }
 
     if (!product) {
       return errorResponse('Product not found or unauthorized', 404);
     }
+
+    const db = await resolveSiteDBById(env, siteId || product.site_id);
 
     const updates = await request.json();
     const allowedFields = ['name', 'description', 'short_description', 'price', 'compare_price', 'cost_price', 'sku', 'stock', 'low_stock_threshold', 'category_id', 'images', 'thumbnail_url', 'tags', 'is_featured', 'is_active', 'weight', 'dimensions'];
@@ -301,7 +335,7 @@ async function updateProduct(request, env, user, productId) {
     setClause.push('updated_at = datetime("now")');
     values.push(productId);
 
-    await env.DB.prepare(
+    await db.prepare(
       `UPDATE products SET ${setClause.join(', ')} WHERE id = ?`
     ).bind(...values).run();
 
@@ -319,29 +353,36 @@ async function deleteProduct(env, user, productId) {
 
   try {
     let product;
+    let siteId = user._adminSiteId || null;
+
     if (user._adminSiteId) {
-      product = await env.DB.prepare(
+      const db = await resolveSiteDBById(env, user._adminSiteId);
+      product = await db.prepare(
         'SELECT id FROM products WHERE id = ? AND site_id = ?'
       ).bind(productId, user._adminSiteId).first();
     } else {
-      product = await env.DB.prepare(
-        `SELECT p.id FROM products p 
-         JOIN sites s ON p.site_id = s.id 
-         WHERE p.id = ? AND s.user_id = ?`
-      ).bind(productId, user.id).first();
+      const userSites = await env.DB.prepare(
+        'SELECT id FROM sites WHERE user_id = ?'
+      ).bind(user.id).all();
+      
+      for (const s of (userSites.results || [])) {
+        const db = await resolveSiteDBById(env, s.id);
+        product = await db.prepare(
+          'SELECT id, site_id FROM products WHERE id = ? AND site_id = ?'
+        ).bind(productId, s.id).first();
+        if (product) {
+          siteId = s.id;
+          break;
+        }
+      }
     }
 
     if (!product) {
       return errorResponse('Product not found or unauthorized', 404);
     }
 
-    const fullProduct = await env.DB.prepare('SELECT * FROM products WHERE id = ?').bind(productId).first();
-    await env.DB.prepare('DELETE FROM products WHERE id = ?').bind(productId).run();
-
-    if (fullProduct) {
-      const rowBytes = estimateRowBytes(fullProduct);
-      await trackD1Usage(env, fullProduct.site_id, -rowBytes);
-    }
+    const db = await resolveSiteDBById(env, siteId);
+    await db.prepare('DELETE FROM products WHERE id = ?').bind(productId).run();
 
     return successResponse(null, 'Product deleted successfully');
   } catch (error) {
@@ -350,14 +391,15 @@ async function deleteProduct(env, user, productId) {
   }
 }
 
-export async function updateProductStock(env, productId, quantity, operation = 'decrement') {
+export async function updateProductStock(env, productId, quantity, operation = 'decrement', siteId = null) {
   try {
+    const db = await resolveSiteDBById(env, siteId);
     if (operation === 'decrement') {
-      await env.DB.prepare(
+      await db.prepare(
         'UPDATE products SET stock = stock - ?, updated_at = datetime("now") WHERE id = ? AND stock >= ?'
       ).bind(quantity, productId, quantity).run();
     } else {
-      await env.DB.prepare(
+      await db.prepare(
         'UPDATE products SET stock = stock + ?, updated_at = datetime("now") WHERE id = ?'
       ).bind(quantity, productId).run();
     }
