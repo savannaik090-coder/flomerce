@@ -213,22 +213,20 @@ export default function DashboardPage() {
                 <h1>My Websites</h1>
               </div>
 
-              {hasNoPlan && (
+              {isExpired && hadSubscription && (
                 <div className="site-card" style={{ display: 'block', marginBottom: '1.5rem', borderColor: '#ef4444', borderWidth: '2px', background: '#fef2f2' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
                     <div>
                       <p style={{ fontWeight: 700, color: '#dc2626', margin: 0 }}>
-                        {isExpired ? 'Your subscription has expired' : 'No active subscription'}
+                        Your subscription has expired
                       </p>
                       <p style={{ fontSize: '0.875rem', color: '#991b1b', margin: '0.25rem 0 0 0' }}>
-                        {isExpired
-                          ? 'Your websites are currently disabled. Subscribe to a plan to restore access.'
-                          : 'You need an active subscription to keep your websites running.'}
+                        Your websites are currently disabled. Subscribe to a plan to restore access.
                       </p>
                     </div>
                     <button className="btn btn-primary" onClick={() => setActivePage('plans')} style={{ marginLeft: 'auto', whiteSpace: 'nowrap' }}>
-                      {isExpired ? 'Renew Plan' : 'Subscribe Now'}
+                      Renew Plan
                     </button>
                   </div>
                 </div>
