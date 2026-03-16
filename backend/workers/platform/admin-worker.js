@@ -1,8 +1,30 @@
 import { errorResponse, successResponse, handleCORS, validateEmail } from '../../utils/helpers.js';
 import { validateAuth } from '../../utils/auth.js';
 
+let _adminMigrated = false;
+
+async function ensureRoleColumn(env) {
+  if (_adminMigrated) return;
+  try {
+    await env.DB.prepare("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'").run();
+  } catch (e) {}
+
+  try {
+    const ownerExists = await env.DB.prepare("SELECT id FROM users WHERE role = 'owner' LIMIT 1").first();
+    if (!ownerExists) {
+      const firstUser = await env.DB.prepare("SELECT id FROM users ORDER BY created_at ASC LIMIT 1").first();
+      if (firstUser) {
+        await env.DB.prepare("UPDATE users SET role = 'owner' WHERE id = ?").bind(firstUser.id).run();
+      }
+    }
+  } catch (e) {}
+
+  _adminMigrated = true;
+}
+
 async function isOwner(user, env) {
   if (!user) return false;
+  await ensureRoleColumn(env);
   const dbUser = await env.DB.prepare('SELECT role FROM users WHERE id = ?').bind(user.id).first();
   if (dbUser && (dbUser.role === 'admin' || dbUser.role === 'owner')) return true;
   return false;
@@ -38,6 +60,7 @@ export async function handleAdmin(request, env, path) {
 }
 
 async function getAdminStats(env) {
+  await ensureRoleColumn(env);
   try {
     let users = [];
     try {
@@ -51,10 +74,17 @@ async function getAdminStats(env) {
       ).all();
       users = usersResult.results || [];
     } catch (e) {
-      const usersResult = await env.DB.prepare(
-        'SELECT id, name, email, role, created_at, email_verified FROM users ORDER BY created_at DESC LIMIT 100'
-      ).all();
-      users = (usersResult.results || []).map(u => ({ ...u, plan: null }));
+      try {
+        const usersResult = await env.DB.prepare(
+          'SELECT id, name, email, role, created_at, email_verified FROM users ORDER BY created_at DESC LIMIT 100'
+        ).all();
+        users = (usersResult.results || []).map(u => ({ ...u, plan: null }));
+      } catch (e2) {
+        const usersResult = await env.DB.prepare(
+          'SELECT id, name, email, created_at, email_verified FROM users ORDER BY created_at DESC LIMIT 100'
+        ).all();
+        users = (usersResult.results || []).map(u => ({ ...u, plan: null, role: null }));
+      }
     }
 
     const sitesResult = await env.DB.prepare(

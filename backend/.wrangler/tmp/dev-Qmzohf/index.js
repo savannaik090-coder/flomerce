@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-HRZnnV/checked-fetch.js
+// .wrangler/tmp/bundle-DpbYNw/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-HRZnnV/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-DpbYNw/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-HRZnnV/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-DpbYNw/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-HRZnnV/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-DpbYNw/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -994,12 +994,12 @@ var init_site_admin_worker = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-HRZnnV/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-DpbYNw/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-HRZnnV/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-DpbYNw/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -6116,9 +6116,31 @@ init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 init_helpers();
 init_auth();
+var _adminMigrated = false;
+async function ensureRoleColumn(env) {
+  if (_adminMigrated)
+    return;
+  try {
+    await env.DB.prepare("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'").run();
+  } catch (e) {
+  }
+  try {
+    const ownerExists = await env.DB.prepare("SELECT id FROM users WHERE role = 'owner' LIMIT 1").first();
+    if (!ownerExists) {
+      const firstUser = await env.DB.prepare("SELECT id FROM users ORDER BY created_at ASC LIMIT 1").first();
+      if (firstUser) {
+        await env.DB.prepare("UPDATE users SET role = 'owner' WHERE id = ?").bind(firstUser.id).run();
+      }
+    }
+  } catch (e) {
+  }
+  _adminMigrated = true;
+}
+__name(ensureRoleColumn, "ensureRoleColumn");
 async function isOwner(user, env) {
   if (!user)
     return false;
+  await ensureRoleColumn(env);
   const dbUser = await env.DB.prepare("SELECT role FROM users WHERE id = ?").bind(user.id).first();
   if (dbUser && (dbUser.role === "admin" || dbUser.role === "owner"))
     return true;
@@ -6152,6 +6174,7 @@ async function handleAdmin(request, env, path) {
 }
 __name(handleAdmin, "handleAdmin");
 async function getAdminStats(env) {
+  await ensureRoleColumn(env);
   try {
     let users = [];
     try {
@@ -6165,10 +6188,17 @@ async function getAdminStats(env) {
       ).all();
       users = usersResult.results || [];
     } catch (e) {
-      const usersResult = await env.DB.prepare(
-        "SELECT id, name, email, role, created_at, email_verified FROM users ORDER BY created_at DESC LIMIT 100"
-      ).all();
-      users = (usersResult.results || []).map((u) => ({ ...u, plan: null }));
+      try {
+        const usersResult = await env.DB.prepare(
+          "SELECT id, name, email, role, created_at, email_verified FROM users ORDER BY created_at DESC LIMIT 100"
+        ).all();
+        users = (usersResult.results || []).map((u) => ({ ...u, plan: null }));
+      } catch (e2) {
+        const usersResult = await env.DB.prepare(
+          "SELECT id, name, email, created_at, email_verified FROM users ORDER BY created_at DESC LIMIT 100"
+        ).all();
+        users = (usersResult.results || []).map((u) => ({ ...u, plan: null, role: null }));
+      }
     }
     const sitesResult = await env.DB.prepare(
       "SELECT id, subdomain, brand_name, user_id, template_id, is_active, created_at FROM sites ORDER BY created_at DESC LIMIT 100"
@@ -7953,7 +7983,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-HRZnnV/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-DpbYNw/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -7988,7 +8018,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-HRZnnV/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-DpbYNw/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

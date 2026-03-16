@@ -32,7 +32,7 @@ export default function OwnerAdminPage() {
       const data = await apiRequest('/api/admin/stats');
       setAdminData(data);
     } catch (e) {
-      setError('Error loading admin data. Please ensure you are logged in as admin.');
+      setError(e.message || 'Error loading admin data. Please ensure you are logged in as admin.');
     } finally {
       setDataLoading(false);
     }
