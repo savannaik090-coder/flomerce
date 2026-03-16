@@ -24,7 +24,7 @@ Fluxe operates on a multi-tenant architecture where all user data is stored in s
 - **Dynamic Content Management:** Homepage categories, hero sliders, welcome banners, "Watch & Buy" shoppable videos, featured video sections, and customer reviews are fully dynamic and configurable via the admin panel.
 - **Product Policies:** Customizable shipping, returns, and care guide policies on product detail pages, with category-based defaults.
 - **Navigation & Footer Customization:** Admins can manage navbar menus, custom footer links, social media links, and bottom navigation bar options.
-- **Subscription Management:** Per-site subscription model with Razorpay integration, automatic 7-day free trial on site creation, and admin-managed plans.
+- **Subscription Management:** Account-level 7-day free trial (covers all sites, unlimited creation during trial). After trial expires, all sites are disabled. Paid subscriptions are per-site (each site needs its own plan). Plans are admin-managed via the admin panel. Razorpay integration for payments.
 - **Admin Panel:** Centralized "Edit Website" section for managing all site content, policies, and SEO. Includes an iframe preview for real-time changes.
 - **Order Flow:** Supports both Cash on Delivery (COD) and Razorpay payments, with distinct flows for order creation, stock management, and email notifications.
 - **Customer Addresses:** Server-side storage and management of customer addresses for logged-in users.

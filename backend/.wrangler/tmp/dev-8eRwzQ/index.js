@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-vJYXxe/checked-fetch.js
+// .wrangler/tmp/bundle-baoW0z/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-vJYXxe/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-baoW0z/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-vJYXxe/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-baoW0z/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-vJYXxe/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-baoW0z/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -994,12 +994,12 @@ var init_site_admin_worker = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-vJYXxe/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-baoW0z/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-vJYXxe/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-baoW0z/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -2615,41 +2615,16 @@ async function createSite(request, env, user) {
       }
     }
     try {
-      const periodEnd = /* @__PURE__ */ new Date();
-      periodEnd.setDate(periodEnd.getDate() + 7);
-      await env.DB.prepare(`
-        CREATE TABLE IF NOT EXISTS subscriptions (
-          id TEXT PRIMARY KEY,
-          user_id TEXT NOT NULL,
-          site_id TEXT,
-          plan TEXT NOT NULL,
-          billing_cycle TEXT NOT NULL,
-          amount REAL NOT NULL,
-          currency TEXT DEFAULT 'INR',
-          status TEXT DEFAULT 'active',
-          razorpay_subscription_id TEXT,
-          current_period_start TEXT,
-          current_period_end TEXT,
-          cancelled_at TEXT,
-          created_at TEXT DEFAULT (datetime('now')),
-          updated_at TEXT DEFAULT (datetime('now')),
-          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-          FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
-        )
-      `).run();
-      try {
-        await env.DB.prepare(`ALTER TABLE subscriptions ADD COLUMN site_id TEXT REFERENCES sites(id) ON DELETE CASCADE`).run();
-      } catch (e) {
+      const activeSub = await env.DB.prepare(
+        `SELECT plan, status, current_period_end FROM subscriptions WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1`
+      ).bind(user.id).first();
+      if (activeSub && activeSub.plan === "trial" && activeSub.current_period_end && new Date(activeSub.current_period_end) > /* @__PURE__ */ new Date()) {
+        await env.DB.prepare(
+          `UPDATE sites SET subscription_plan = 'trial', subscription_expires_at = ?, updated_at = datetime('now') WHERE id = ?`
+        ).bind(activeSub.current_period_end, siteId).run();
       }
-      await env.DB.prepare(
-        `INSERT INTO subscriptions (id, user_id, site_id, plan, billing_cycle, amount, status, current_period_start, current_period_end, created_at)
-         VALUES (?, ?, ?, 'trial', 'monthly', 0, 'active', datetime('now'), ?, datetime('now'))`
-      ).bind(generateId(), user.id, siteId, periodEnd.toISOString()).run();
-      await env.DB.prepare(
-        `UPDATE sites SET subscription_plan = 'trial', subscription_expires_at = ?, updated_at = datetime('now') WHERE id = ?`
-      ).bind(periodEnd.toISOString(), siteId).run();
-    } catch (trialErr) {
-      console.error("Auto-start trial failed (non-fatal):", trialErr);
+    } catch (subErr) {
+      console.error("Check subscription for new site failed (non-fatal):", subErr);
     }
     return successResponse({ id: siteId, subdomain: finalSubdomain }, "Site created successfully");
   } catch (error) {
@@ -5498,6 +5473,11 @@ async function checkAndExpireSubscription(env, userId) {
         await env.DB.prepare(
           `UPDATE subscriptions SET status = 'expired', updated_at = datetime('now') WHERE id = ?`
         ).bind(activeSubscription.id).run();
+        if (activeSubscription.plan === "trial") {
+          await env.DB.prepare(
+            `UPDATE sites SET subscription_plan = 'expired', updated_at = datetime('now') WHERE user_id = ? AND subscription_plan = 'trial'`
+          ).bind(userId).run();
+        }
         return { ...activeSubscription, status: "expired" };
       }
       return activeSubscription;
@@ -5657,56 +5637,48 @@ async function ensureSubscriptionsTable(env) {
 __name(ensureSubscriptionsTable, "ensureSubscriptionsTable");
 async function updateSubscription(request, env, user) {
   try {
-    const { plan, siteId } = await request.json();
+    const { plan } = await request.json();
     if (plan !== "trial") {
       return errorResponse("Only trial activation is allowed through this endpoint. Use Razorpay for paid plans.", 403);
     }
-    if (!siteId) {
-      return errorResponse("Site ID is required to start a trial.", 400);
-    }
-    const site = await env.DB.prepare(
-      `SELECT id FROM sites WHERE id = ? AND user_id = ?`
-    ).bind(siteId, user.id).first();
-    if (!site) {
-      return errorResponse("Site not found or you do not own this site.", 404);
-    }
     await ensureSubscriptionsTable(env);
-    let existingSiteSub = null;
+    let existingActive = null;
     try {
-      existingSiteSub = await env.DB.prepare(
-        `SELECT * FROM subscriptions WHERE site_id = ? AND status = 'active'`
-      ).bind(siteId).first();
-    } catch (e) {
-      console.error("Error checking existing site subscription:", e);
-    }
-    if (existingSiteSub) {
-      return errorResponse("This site already has an active subscription.", 400);
-    }
-    let hadSiteTrial = false;
-    try {
-      const trialCheck = await env.DB.prepare(
-        `SELECT COUNT(*) as count FROM subscriptions WHERE site_id = ? AND plan = 'trial'`
-      ).bind(siteId).first();
-      hadSiteTrial = (trialCheck?.count || 0) > 0;
+      existingActive = await env.DB.prepare(
+        `SELECT * FROM subscriptions WHERE user_id = ? AND status = 'active'`
+      ).bind(user.id).first();
     } catch (e) {
     }
-    if (hadSiteTrial) {
-      return errorResponse("This site has already used its free trial. Please subscribe to a paid plan.", 400);
+    if (existingActive) {
+      return errorResponse("You already have an active subscription.", 400);
+    }
+    const hadTrial = await hasEverHadSubscription(env, user.id);
+    if (hadTrial) {
+      let hadTrialBefore = false;
+      try {
+        const trialCheck = await env.DB.prepare(
+          `SELECT COUNT(*) as count FROM subscriptions WHERE user_id = ? AND plan = 'trial'`
+        ).bind(user.id).first();
+        hadTrialBefore = (trialCheck?.count || 0) > 0;
+      } catch (e) {
+      }
+      if (hadTrialBefore) {
+        return errorResponse("You have already used your free trial. Please subscribe to a paid plan.", 400);
+      }
     }
     const periodEnd = /* @__PURE__ */ new Date();
     periodEnd.setDate(periodEnd.getDate() + 7);
     await env.DB.prepare(
       `INSERT INTO subscriptions (id, user_id, site_id, plan, billing_cycle, amount, status, current_period_start, current_period_end, created_at)
-       VALUES (?, ?, ?, 'trial', 'monthly', 0, 'active', datetime('now'), ?, datetime('now'))`
+       VALUES (?, ?, NULL, 'trial', 'monthly', 0, 'active', datetime('now'), ?, datetime('now'))`
     ).bind(
       generateId(),
       user.id,
-      siteId,
       periodEnd.toISOString()
     ).run();
     await env.DB.prepare(
-      `UPDATE sites SET subscription_plan = 'trial', subscription_expires_at = ?, updated_at = datetime('now') WHERE id = ?`
-    ).bind(periodEnd.toISOString(), siteId).run();
+      `UPDATE sites SET subscription_plan = 'trial', subscription_expires_at = ?, updated_at = datetime('now') WHERE user_id = ?`
+    ).bind(periodEnd.toISOString(), user.id).run();
     return successResponse(null, "Your 7-day free trial has started!");
   } catch (error) {
     console.error("Update subscription error:", error);
@@ -8523,7 +8495,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-vJYXxe/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-baoW0z/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -8558,7 +8530,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-vJYXxe/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-baoW0z/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

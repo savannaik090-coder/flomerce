@@ -313,44 +313,17 @@ async function createSite(request, env, user) {
     }
 
     try {
-      const periodEnd = new Date();
-      periodEnd.setDate(periodEnd.getDate() + 7);
+      const activeSub = await env.DB.prepare(
+        `SELECT plan, status, current_period_end FROM subscriptions WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1`
+      ).bind(user.id).first();
 
-      await env.DB.prepare(`
-        CREATE TABLE IF NOT EXISTS subscriptions (
-          id TEXT PRIMARY KEY,
-          user_id TEXT NOT NULL,
-          site_id TEXT,
-          plan TEXT NOT NULL,
-          billing_cycle TEXT NOT NULL,
-          amount REAL NOT NULL,
-          currency TEXT DEFAULT 'INR',
-          status TEXT DEFAULT 'active',
-          razorpay_subscription_id TEXT,
-          current_period_start TEXT,
-          current_period_end TEXT,
-          cancelled_at TEXT,
-          created_at TEXT DEFAULT (datetime('now')),
-          updated_at TEXT DEFAULT (datetime('now')),
-          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-          FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
-        )
-      `).run();
-
-      try {
-        await env.DB.prepare(`ALTER TABLE subscriptions ADD COLUMN site_id TEXT REFERENCES sites(id) ON DELETE CASCADE`).run();
-      } catch (e) {}
-
-      await env.DB.prepare(
-        `INSERT INTO subscriptions (id, user_id, site_id, plan, billing_cycle, amount, status, current_period_start, current_period_end, created_at)
-         VALUES (?, ?, ?, 'trial', 'monthly', 0, 'active', datetime('now'), ?, datetime('now'))`
-      ).bind(generateId(), user.id, siteId, periodEnd.toISOString()).run();
-
-      await env.DB.prepare(
-        `UPDATE sites SET subscription_plan = 'trial', subscription_expires_at = ?, updated_at = datetime('now') WHERE id = ?`
-      ).bind(periodEnd.toISOString(), siteId).run();
-    } catch (trialErr) {
-      console.error('Auto-start trial failed (non-fatal):', trialErr);
+      if (activeSub && activeSub.plan === 'trial' && activeSub.current_period_end && new Date(activeSub.current_period_end) > new Date()) {
+        await env.DB.prepare(
+          `UPDATE sites SET subscription_plan = 'trial', subscription_expires_at = ?, updated_at = datetime('now') WHERE id = ?`
+        ).bind(activeSub.current_period_end, siteId).run();
+      }
+    } catch (subErr) {
+      console.error('Check subscription for new site failed (non-fatal):', subErr);
     }
 
     return successResponse({ id: siteId, subdomain: finalSubdomain }, 'Site created successfully');

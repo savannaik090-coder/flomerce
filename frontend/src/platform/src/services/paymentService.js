@@ -26,9 +26,9 @@ export async function getUserProfile() {
   return apiRequest('/api/users/profile');
 }
 
-export async function startFreeTrial(siteId) {
+export async function startFreeTrial() {
   return apiRequest('/api/users/subscription', {
     method: 'PATCH',
-    body: JSON.stringify({ plan: 'trial', siteId }),
+    body: JSON.stringify({ plan: 'trial' }),
   });
 }

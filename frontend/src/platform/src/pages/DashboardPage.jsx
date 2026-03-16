@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { getUserSites, deleteSite } from '../services/siteService.js';
-import { getSubscriptionStatus, getUserProfile } from '../services/paymentService.js';
+import { getUserProfile } from '../services/paymentService.js';
 import SiteCard from '../components/SiteCard.jsx';
 import SiteCreationWizard from '../components/SiteCreationWizard.jsx';
 import PlanSelector from '../components/PlanSelector.jsx';
@@ -22,6 +22,7 @@ export default function DashboardPage() {
   const [adminLoading, setAdminLoading] = useState(false);
   const [billingSiteId, setBillingSiteId] = useState(null);
   const [dataLoaded, setDataLoaded] = useState(false);
+  const [showTrialOverlay, setShowTrialOverlay] = useState(false);
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
@@ -107,6 +108,24 @@ export default function DashboardPage() {
 
   const handleSiteCreated = () => {
     loadSites();
+    loadProfile();
+  };
+
+  const handleTrialStarted = () => {
+    setShowTrialOverlay(false);
+    loadProfile();
+    loadSites();
+  };
+
+  const handleCreateSiteClick = () => {
+    const accountStatus = getAccountSubscriptionStatus();
+    if (accountStatus.isTrialActive) {
+      setShowWizard(true);
+    } else if (!accountStatus.hadSubscription) {
+      setShowTrialOverlay(true);
+    } else {
+      setShowWizard(true);
+    }
   };
 
   if (loading) {
@@ -119,15 +138,86 @@ export default function DashboardPage() {
 
   if (!isAuthenticated) return null;
 
+  const getAccountSubscriptionStatus = () => {
+    const plan = profileData?.plan || null;
+    const status = profileData?.status || 'none';
+    const hadSubscription = profileData?.hadSubscription || false;
+    const trialEndDate = profileData?.trialEndDate || null;
+    const isTrialActive = plan === 'trial' && status === 'active';
+    const isTrialExpired = hadSubscription && (status === 'expired' || status === 'none');
+    const isPaidActive = plan && plan !== 'trial' && status === 'active';
+    return { plan, status, hadSubscription, trialEndDate, isTrialActive, isTrialExpired, isPaidActive };
+  };
+
   const getSiteSubscriptionInfo = (site) => {
     const sub = site.subscription || {};
     const plan = sub.plan || site.subscription_plan || null;
     const rawStatus = sub.status || 'none';
     const periodEnd = sub.periodEnd || site.subscription_expires_at || null;
+
+    const accountStatus = getAccountSubscriptionStatus();
+    if (accountStatus.isTrialActive) {
+      return { plan: 'trial', status: 'active', periodEnd: accountStatus.trialEndDate, isActive: true, isExpired: false };
+    }
+
+    if (plan && rawStatus === 'active' && periodEnd && new Date(periodEnd) > new Date()) {
+      return { plan, status: 'active', periodEnd, isActive: true, isExpired: false };
+    }
+
     const isExpired = rawStatus === 'expired' || rawStatus === 'cancelled' || rawStatus === 'paused' || (rawStatus === 'active' && periodEnd && new Date(periodEnd) < new Date());
     const isActive = rawStatus === 'active' && !isExpired;
     const displayStatus = isExpired ? 'expired' : rawStatus;
     return { plan, status: displayStatus, periodEnd, isActive, isExpired };
+  };
+
+  const accountStatus = getAccountSubscriptionStatus();
+
+  const renderTrialBanner = () => {
+    if (!dataLoaded) return null;
+    if (accountStatus.isTrialActive && accountStatus.trialEndDate) {
+      const daysLeft = Math.max(0, Math.ceil((new Date(accountStatus.trialEndDate) - new Date()) / (1000 * 60 * 60 * 24)));
+      return (
+        <div className="site-card" style={{ display: 'block', marginBottom: '1.5rem', borderColor: '#10b981', borderWidth: '2px', background: '#f0fdf4' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            <div style={{ flex: 1 }}>
+              <p style={{ fontWeight: 700, color: '#166534', margin: 0 }}>
+                Free Trial — {daysLeft} day{daysLeft !== 1 ? 's' : ''} remaining
+              </p>
+              <p style={{ fontSize: '0.875rem', color: '#15803d', margin: '0.25rem 0 0 0' }}>
+                Create unlimited websites during your trial. Ends {new Date(accountStatus.trialEndDate).toLocaleDateString()}.
+              </p>
+            </div>
+            <button className="btn btn-primary" onClick={() => setActivePage('billing')} style={{ whiteSpace: 'nowrap', background: '#10b981', borderColor: '#10b981' }}>
+              Upgrade Now
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    if (accountStatus.isTrialExpired && sites.length > 0) {
+      return (
+        <div className="site-card" style={{ display: 'block', marginBottom: '1.5rem', borderColor: '#ef4444', borderWidth: '2px', background: '#fef2f2' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+            <div style={{ flex: 1 }}>
+              <p style={{ fontWeight: 700, color: '#dc2626', margin: 0 }}>
+                Your trial has expired
+              </p>
+              <p style={{ fontSize: '0.875rem', color: '#991b1b', margin: '0.25rem 0 0 0' }}>
+                Your websites are currently disabled. Subscribe to a plan for each site to restore access.
+              </p>
+            </div>
+            <button className="btn btn-primary" onClick={() => setActivePage('billing')} style={{ whiteSpace: 'nowrap' }}>
+              Subscribe Now
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return null;
   };
 
   const renderAdminContent = () => {
@@ -151,8 +241,8 @@ export default function DashboardPage() {
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '1rem', padding: '2rem' }}>
               <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
               <h2 style={{ margin: 0, color: '#dc2626' }}>Subscription Expired</h2>
-              <p style={{ color: '#64748b', textAlign: 'center', maxWidth: '400px' }}>This site's subscription has expired and its admin panel is disabled. Please renew to restore access.</p>
-              <button className="btn btn-primary" onClick={() => handleBillingSite(managedSite.id)}>Renew Subscription</button>
+              <p style={{ color: '#64748b', textAlign: 'center', maxWidth: '400px' }}>This site's subscription has expired and its admin panel is disabled. Please subscribe to a plan to restore access.</p>
+              <button className="btn btn-primary" onClick={() => handleBillingSite(managedSite.id)}>Subscribe Now</button>
             </div>
           ) : (
             <iframe
@@ -301,12 +391,14 @@ export default function DashboardPage() {
                 <h1>My Websites</h1>
               </div>
 
+              {renderTrialBanner()}
+
               {sitesLoading ? (
                 <p style={{ color: 'var(--text-muted)' }}>Loading your websites...</p>
               ) : sites.length === 0 ? (
                 <div className="empty-state">
                   <p>You haven't created any websites yet.</p>
-                  <button className="btn btn-primary" onClick={() => setShowWizard(true)}>Create Your First Website</button>
+                  <button className="btn btn-primary" onClick={handleCreateSiteClick}>Create Your First Website</button>
                 </div>
               ) : (
                 <div className="sites-grid">
@@ -323,7 +415,7 @@ export default function DashboardPage() {
                 </div>
               )}
 
-              <button className="floating-create-btn" onClick={() => setShowWizard(true)}>
+              <button className="floating-create-btn" onClick={handleCreateSiteClick}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                 <span>Create New Site</span>
               </button>
@@ -336,12 +428,24 @@ export default function DashboardPage() {
                 <h1>Billing</h1>
               </div>
 
+              {accountStatus.isTrialActive && (
+                <div className="site-card" style={{ display: 'block', marginBottom: '1.5rem', borderColor: '#10b981', background: '#f0fdf4' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    <span style={{ fontWeight: 700, color: '#166534' }}>Free Trial Active</span>
+                  </div>
+                  <p style={{ fontSize: '0.875rem', color: '#15803d', margin: 0 }}>
+                    Your trial covers all websites and ends on {accountStatus.trialEndDate ? new Date(accountStatus.trialEndDate).toLocaleDateString() : 'N/A'}. Upgrade to a paid plan to continue after the trial.
+                  </p>
+                </div>
+              )}
+
               {sitesLoading ? (
                 <p style={{ color: 'var(--text-muted)' }}>Loading...</p>
               ) : sites.length === 0 ? (
                 <div className="empty-state">
-                  <p>You don't have any websites yet. Create a website first, and a 7-day free trial will start automatically.</p>
-                  <button className="btn btn-primary" onClick={() => { setActivePage('dashboard'); setShowWizard(true); }}>Create a Website</button>
+                  <p>You don't have any websites yet. Create a website to get started.</p>
+                  <button className="btn btn-primary" onClick={() => { setActivePage('dashboard'); handleCreateSiteClick(); }}>Create a Website</button>
                 </div>
               ) : (
                 <div>
@@ -377,7 +481,7 @@ export default function DashboardPage() {
                               siteId={billingSiteId}
                               currentPlan={subInfo.plan}
                               currentStatus={subInfo.isActive ? 'active' : subInfo.status}
-                              onUpgraded={() => { loadSites(); }}
+                              onUpgraded={() => { loadSites(); loadProfile(); }}
                             />
                           </div>
                         );
@@ -406,7 +510,7 @@ export default function DashboardPage() {
                                   )}
                                 </div>
                                 <button className="btn btn-primary" style={{ fontSize: '0.8rem', whiteSpace: 'nowrap' }} onClick={() => setBillingSiteId(site.id)}>
-                                  {subInfo.isExpired || !subInfo.plan ? 'Subscribe' : 'Manage Plan'}
+                                  {subInfo.isExpired || !subInfo.plan ? 'Subscribe' : accountStatus.isTrialActive ? 'Upgrade' : 'Manage Plan'}
                                 </button>
                               </div>
                             </div>
@@ -452,6 +556,15 @@ export default function DashboardPage() {
         <SiteCreationWizard
           onClose={() => setShowWizard(false)}
           onCreated={handleSiteCreated}
+        />
+      )}
+
+      {showTrialOverlay && (
+        <PlanSelector
+          currentPlan={null}
+          currentStatus="none"
+          onUpgraded={handleTrialStarted}
+          isOverlay={true}
         />
       )}
     </div>

@@ -136,13 +136,9 @@ export default function PlanSelector({ siteId, currentPlan, currentStatus, onUpg
   };
 
   const handleStartTrial = async () => {
-    if (!siteId) {
-      alert('No site selected for trial.');
-      return;
-    }
     setUpgrading('trial');
     try {
-      const data = await startFreeTrial(siteId);
+      const data = await startFreeTrial();
       if (data.success || data.message) {
         alert('Your 7-day free trial has started!');
         onUpgraded?.();
@@ -187,12 +183,12 @@ export default function PlanSelector({ siteId, currentPlan, currentStatus, onUpg
       {isOverlay && (
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.5rem' }}>
-            {isExpired ? 'Your Plan Has Expired' : 'Choose Your Plan'}
+            {isExpired ? 'Your Plan Has Expired' : 'Start Your Free Trial'}
           </h2>
           <p style={{ color: '#64748b', fontSize: '0.9rem' }}>
             {isExpired
-              ? 'Your subscription has expired and your website is currently disabled. Subscribe to a plan to restore access.'
-              : 'Pick a plan that fits your needs'}
+              ? 'Your subscription has expired and all your websites are disabled. Subscribe to a plan for each site to restore access.'
+              : 'Start a 7-day free trial to create unlimited websites. No credit card required.'}
           </p>
         </div>
       )}
@@ -225,6 +221,7 @@ export default function PlanSelector({ siteId, currentPlan, currentStatus, onUpg
               <span style={{ fontSize: '0.875rem', color: '#64748b', fontWeight: 500 }}> for 7 days</span>
             </p>
             <ul style={{ listStyle: 'none', padding: 0, marginBottom: '2rem', textAlign: 'left', fontSize: '0.875rem', color: '#64748b' }}>
+              <li style={{ marginBottom: '0.5rem' }}>✓ Create unlimited websites</li>
               <li style={{ marginBottom: '0.5rem' }}>✓ Full access for 7 days</li>
               <li style={{ marginBottom: '0.5rem' }}>✓ No credit card required</li>
               <li style={{ marginBottom: '0.5rem' }}>✓ Upgrade anytime during trial</li>

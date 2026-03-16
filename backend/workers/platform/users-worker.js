@@ -47,6 +47,12 @@ async function checkAndExpireSubscription(env, userId) {
           `UPDATE subscriptions SET status = 'expired', updated_at = datetime('now') WHERE id = ?`
         ).bind(activeSubscription.id).run();
 
+        if (activeSubscription.plan === 'trial') {
+          await env.DB.prepare(
+            `UPDATE sites SET subscription_plan = 'expired', updated_at = datetime('now') WHERE user_id = ? AND subscription_plan = 'trial'`
+          ).bind(userId).run();
+        }
+
         return { ...activeSubscription, status: 'expired' };
       }
       return activeSubscription;
@@ -253,49 +259,37 @@ async function ensureSubscriptionsTable(env) {
 
 async function updateSubscription(request, env, user) {
   try {
-    const { plan, siteId } = await request.json();
+    const { plan } = await request.json();
 
     if (plan !== 'trial') {
       return errorResponse('Only trial activation is allowed through this endpoint. Use Razorpay for paid plans.', 403);
     }
 
-    if (!siteId) {
-      return errorResponse('Site ID is required to start a trial.', 400);
-    }
-
-    const site = await env.DB.prepare(
-      `SELECT id FROM sites WHERE id = ? AND user_id = ?`
-    ).bind(siteId, user.id).first();
-
-    if (!site) {
-      return errorResponse('Site not found or you do not own this site.', 404);
-    }
-
     await ensureSubscriptionsTable(env);
 
-    let existingSiteSub = null;
+    let existingActive = null;
     try {
-      existingSiteSub = await env.DB.prepare(
-        `SELECT * FROM subscriptions WHERE site_id = ? AND status = 'active'`
-      ).bind(siteId).first();
-    } catch (e) {
-      console.error('Error checking existing site subscription:', e);
-    }
-
-    if (existingSiteSub) {
-      return errorResponse('This site already has an active subscription.', 400);
-    }
-
-    let hadSiteTrial = false;
-    try {
-      const trialCheck = await env.DB.prepare(
-        `SELECT COUNT(*) as count FROM subscriptions WHERE site_id = ? AND plan = 'trial'`
-      ).bind(siteId).first();
-      hadSiteTrial = (trialCheck?.count || 0) > 0;
+      existingActive = await env.DB.prepare(
+        `SELECT * FROM subscriptions WHERE user_id = ? AND status = 'active'`
+      ).bind(user.id).first();
     } catch (e) {}
 
-    if (hadSiteTrial) {
-      return errorResponse('This site has already used its free trial. Please subscribe to a paid plan.', 400);
+    if (existingActive) {
+      return errorResponse('You already have an active subscription.', 400);
+    }
+
+    const hadTrial = await hasEverHadSubscription(env, user.id);
+    if (hadTrial) {
+      let hadTrialBefore = false;
+      try {
+        const trialCheck = await env.DB.prepare(
+          `SELECT COUNT(*) as count FROM subscriptions WHERE user_id = ? AND plan = 'trial'`
+        ).bind(user.id).first();
+        hadTrialBefore = (trialCheck?.count || 0) > 0;
+      } catch (e) {}
+      if (hadTrialBefore) {
+        return errorResponse('You have already used your free trial. Please subscribe to a paid plan.', 400);
+      }
     }
 
     const periodEnd = new Date();
@@ -303,17 +297,16 @@ async function updateSubscription(request, env, user) {
 
     await env.DB.prepare(
       `INSERT INTO subscriptions (id, user_id, site_id, plan, billing_cycle, amount, status, current_period_start, current_period_end, created_at)
-       VALUES (?, ?, ?, 'trial', 'monthly', 0, 'active', datetime('now'), ?, datetime('now'))`
+       VALUES (?, ?, NULL, 'trial', 'monthly', 0, 'active', datetime('now'), ?, datetime('now'))`
     ).bind(
       generateId(),
       user.id,
-      siteId,
       periodEnd.toISOString()
     ).run();
 
     await env.DB.prepare(
-      `UPDATE sites SET subscription_plan = 'trial', subscription_expires_at = ?, updated_at = datetime('now') WHERE id = ?`
-    ).bind(periodEnd.toISOString(), siteId).run();
+      `UPDATE sites SET subscription_plan = 'trial', subscription_expires_at = ?, updated_at = datetime('now') WHERE user_id = ?`
+    ).bind(periodEnd.toISOString(), user.id).run();
 
     return successResponse(null, 'Your 7-day free trial has started!');
   } catch (error) {
