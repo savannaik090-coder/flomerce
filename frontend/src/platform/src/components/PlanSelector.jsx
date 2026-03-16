@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { getAvailablePlans, createSubscription, verifySubscriptionPayment, startFreeTrial } from '../services/paymentService.js';
 
-const DURATION_LABELS = { monthly: 'Monthly', '6months': '6 Months', yearly: 'Yearly' };
-const PERIOD_SUFFIX = { monthly: '/mo', '6months': '/6mo', yearly: '/yr' };
+const DURATION_LABELS = { '3months': '3 Months', '6months': '6 Months', yearly: 'Yearly', '3years': '3 Years' };
+const PERIOD_SUFFIX = { '3months': '/3mo', '6months': '/6mo', yearly: '/yr', '3years': '/3yr' };
 
 export default function PlanSelector({ siteId, currentPlan, currentStatus, onUpgraded, isOverlay }) {
-  const [duration, setDuration] = useState('monthly');
+  const [duration, setDuration] = useState(null);
   const [upgrading, setUpgrading] = useState(null);
   const [plans, setPlans] = useState([]);
   const [razorpayKeyId, setRazorpayKeyId] = useState(null);
@@ -20,8 +20,15 @@ export default function PlanSelector({ siteId, currentPlan, currentStatus, onUpg
     try {
       setLoading(true);
       const data = await getAvailablePlans();
-      setPlans(data.plans || []);
+      const loadedPlans = data.plans || [];
+      setPlans(loadedPlans);
       setRazorpayKeyId(data.razorpayKeyId || null);
+      if (!duration && loadedPlans.length > 0) {
+        const cycles = [...new Set(loadedPlans.map(p => p.billing_cycle))];
+        const cycleOrder = ['3months', '6months', 'yearly', '3years'];
+        const sorted = cycles.sort((a, b) => cycleOrder.indexOf(a) - cycleOrder.indexOf(b));
+        setDuration(sorted[0]);
+      }
     } catch (e) {
       setError('Failed to load plans');
     } finally {
@@ -29,7 +36,14 @@ export default function PlanSelector({ siteId, currentPlan, currentStatus, onUpg
     }
   };
 
-  const groupedPlans = plans.reduce((acc, plan) => {
+  const availableDurations = [...new Set(plans.map(p => p.billing_cycle))].sort((a, b) => {
+    const order = ['3months', '6months', 'yearly', '3years'];
+    return order.indexOf(a) - order.indexOf(b);
+  });
+
+  const plansForDuration = plans.filter(p => p.billing_cycle === duration);
+
+  const groupedPlans = plansForDuration.reduce((acc, plan) => {
     const key = plan.plan_name;
     if (!acc[key]) {
       acc[key] = {
@@ -55,8 +69,6 @@ export default function PlanSelector({ siteId, currentPlan, currentStatus, onUpg
   }, {});
 
   const planList = Object.values(groupedPlans).sort((a, b) => a.display_order - b.display_order);
-
-  const availableDurations = [...new Set(plans.map(p => p.billing_cycle))];
 
   const isActive = currentStatus === 'active';
   const currentPlanLower = (isActive && currentPlan) ? currentPlan.toLowerCase() : null;
@@ -244,31 +256,24 @@ export default function PlanSelector({ siteId, currentPlan, currentStatus, onUpg
 
         {planList.map(planGroup => {
           const price = planGroup.prices[duration];
-          const hasPlanForDuration = !!planGroup.plans[duration];
 
           return (
             <div key={planGroup.name} className="site-card plan-card" style={{ position: 'relative', ...(planGroup.is_popular ? { borderColor: 'var(--accent)' } : {}) }}>
               {planGroup.is_popular && <span className="popular-badge">POPULAR</span>}
               <h3 style={{ marginBottom: '0.5rem' }}>{planGroup.name}</h3>
-              {price !== undefined ? (
-                <p style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '1.5rem' }}>
-                  ₹{price}
-                  <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', fontWeight: 500 }}>{PERIOD_SUFFIX[duration] || ''}</span>
-                </p>
-              ) : (
-                <p style={{ fontSize: '1rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
-                  Not available for this cycle
-                </p>
-              )}
+              <p style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '1.5rem' }}>
+                ₹{price}
+                <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', fontWeight: 500 }}>{PERIOD_SUFFIX[duration] || ''}</span>
+              </p>
               <ul style={{ listStyle: 'none', padding: 0, marginBottom: '2rem', textAlign: 'left', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                 {planGroup.features.map((f, i) => (
                   <li key={i} style={{ marginBottom: '0.5rem' }}>✓ {f}</li>
                 ))}
               </ul>
               <button
-                className={`btn ${isButtonDisabled(planGroup) || !hasPlanForDuration ? 'btn-outline' : 'btn-primary'}`}
-                style={{ width: '100%', opacity: isButtonDisabled(planGroup) || !hasPlanForDuration ? 0.6 : 1 }}
-                disabled={isButtonDisabled(planGroup) || !hasPlanForDuration || upgrading !== null}
+                className={`btn ${isButtonDisabled(planGroup) ? 'btn-outline' : 'btn-primary'}`}
+                style={{ width: '100%', opacity: isButtonDisabled(planGroup) ? 0.6 : 1 }}
+                disabled={isButtonDisabled(planGroup) || upgrading !== null}
                 onClick={() => handleUpgrade(planGroup)}
               >
                 {upgrading === planGroup.plans[duration]?.id ? 'Processing...' : getButtonText(planGroup)}

@@ -17,7 +17,7 @@ export default function OwnerAdminPage() {
   const [showPlanForm, setShowPlanForm] = useState(false);
   const [editingPlan, setEditingPlan] = useState(null);
   const [planForm, setPlanForm] = useState({
-    plan_name: '', billing_cycle: 'monthly', display_price: '', razorpay_plan_id: '', features: '', is_popular: false, display_order: 0, plan_tier: 1
+    plan_name: '', billing_cycle: '3months', display_price: '', razorpay_plan_id: '', features: '', is_popular: false, display_order: 0, plan_tier: 1
   });
 
   const [settings, setSettings] = useState({});
@@ -76,7 +76,7 @@ export default function OwnerAdminPage() {
   };
 
   const resetPlanForm = () => {
-    setPlanForm({ plan_name: '', billing_cycle: 'monthly', display_price: '', razorpay_plan_id: '', features: '', is_popular: false, display_order: 0, plan_tier: 1 });
+    setPlanForm({ plan_name: '', billing_cycle: '3months', display_price: '', razorpay_plan_id: '', features: '', is_popular: false, display_order: 0, plan_tier: 1 });
     setEditingPlan(null);
     setShowPlanForm(false);
   };
@@ -404,9 +404,10 @@ export default function OwnerAdminPage() {
                     <div className="oa-form-group">
                       <label>Billing Cycle</label>
                       <select value={planForm.billing_cycle} onChange={e => setPlanForm({ ...planForm, billing_cycle: e.target.value })}>
-                        <option value="monthly">Monthly</option>
+                        <option value="3months">3 Months</option>
                         <option value="6months">6 Months</option>
                         <option value="yearly">Yearly</option>
+                        <option value="3years">3 Years</option>
                       </select>
                     </div>
                     <div className="oa-form-group">

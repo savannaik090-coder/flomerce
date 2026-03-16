@@ -462,7 +462,7 @@ async function createRazorpaySubscription(request, env, user) {
       },
       body: JSON.stringify({
         plan_id: plan.razorpay_plan_id,
-        total_count: plan.billing_cycle === 'monthly' ? 12 : plan.billing_cycle === '6months' ? 4 : 1,
+        total_count: plan.billing_cycle === '3months' ? 8 : plan.billing_cycle === '6months' ? 4 : plan.billing_cycle === 'yearly' ? 2 : 1,
         quantity: 1,
         notes: {
           userId: user.id,
@@ -775,7 +775,7 @@ export async function activateSubscription(env, userId, planName, billingCycle, 
       await env.DB.prepare(`ALTER TABLE subscriptions ADD COLUMN site_id TEXT REFERENCES sites(id) ON DELETE CASCADE`).run();
     } catch (e) {}
 
-    const periodMonths = billingCycle === 'monthly' ? 1 : billingCycle === '6months' ? 6 : 12;
+    const periodMonths = billingCycle === '3months' ? 3 : billingCycle === '6months' ? 6 : billingCycle === 'yearly' ? 12 : 36;
     const periodStart = new Date();
     const periodEnd = new Date(periodStart);
     periodEnd.setMonth(periodEnd.getMonth() + periodMonths);

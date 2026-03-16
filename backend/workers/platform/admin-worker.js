@@ -249,9 +249,9 @@ async function createPlan(request, env) {
       return errorResponse('Plan tier is required (1-10)');
     }
 
-    const validCycles = ['monthly', '6months', 'yearly'];
+    const validCycles = ['3months', '6months', 'yearly', '3years'];
     if (!validCycles.includes(billing_cycle)) {
-      return errorResponse('Billing cycle must be monthly, 6months, or yearly');
+      return errorResponse('Billing cycle must be 3months, 6months, yearly, or 3years');
     }
 
     const id = generateId();
