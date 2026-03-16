@@ -255,7 +255,7 @@ async function createSite(request, env, user) {
       finalSubdomain, 
       sanitizeInput(brandName), 
       category, 
-      templateId || 'template1',
+      templateId || 'storefront',
       logoUrl || null,
       phone || null,
       email || null,

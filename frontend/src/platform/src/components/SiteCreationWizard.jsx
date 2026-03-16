@@ -142,7 +142,7 @@ export default function SiteCreationWizard({ onClose, onCreated }) {
               <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.5rem' }}>Choose Template</label>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 {[
-                  { id: 'template1', name: 'Template 1', img: '/assets/images/template1-preview.jpg' },
+                  { id: 'storefront', name: 'Storefront', img: '/assets/images/storefront-preview.jpg' },
                   { id: 'clothing', name: 'Clothing', img: '/assets/images/clothing-preview.jpg' },
                 ].map(tmpl => (
                   <div

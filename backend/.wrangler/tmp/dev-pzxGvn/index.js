@@ -2564,7 +2564,7 @@ async function createSite(request, env, user) {
       finalSubdomain,
       sanitizeInput(brandName),
       category,
-      templateId || "template1",
+      templateId || "storefront",
       logoUrl || null,
       phone || null,
       email || null,
@@ -6039,7 +6039,7 @@ function buildWebsiteSchema(site, baseUrl) {
 }
 __name(buildWebsiteSchema, "buildWebsiteSchema");
 
-// workers/seo/templates/template1/seo-config.js
+// workers/seo/templates/storefront/seo-config.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -6057,12 +6057,31 @@ var seo_config_default = {
   includeBreadcrumbs: true
 };
 
+// workers/seo/templates/template1/seo-config.js
+init_checked_fetch();
+init_strip_cf_connecting_ip_header();
+init_modules_watch_stub();
+var seo_config_default2 = {
+  titleFormat: "{pageTitle} | {brandName}",
+  fallbackTitle(site) {
+    return `${site.brand_name} | Fluxe Store`;
+  },
+  fallbackDescription(site) {
+    return `Shop at ${site.brand_name}. Browse our collection of products with fast delivery.`;
+  },
+  includeOrganizationSchema: true,
+  includeProductSchema: true,
+  includeCategorySchema: true,
+  includeBreadcrumbs: true
+};
+
 // workers/seo/index.js
 var TEMPLATE_CONFIGS = {
-  template1: seo_config_default
+  storefront: seo_config_default,
+  template1: seo_config_default2
 };
 function loadTemplateConfig(templateId) {
-  return TEMPLATE_CONFIGS[templateId] || TEMPLATE_CONFIGS["template1"];
+  return TEMPLATE_CONFIGS[templateId] || TEMPLATE_CONFIGS["storefront"];
 }
 __name(loadTemplateConfig, "loadTemplateConfig");
 function detectPageType(pathname) {
@@ -7651,7 +7670,7 @@ async function ensureTablesExist(env) {
         subdomain TEXT UNIQUE NOT NULL,
         brand_name TEXT NOT NULL,
         category TEXT NOT NULL,
-        template_id TEXT DEFAULT 'template1',
+        template_id TEXT DEFAULT 'storefront',
         logo_url TEXT,
         favicon_url TEXT,
         primary_color TEXT DEFAULT '#000000',
@@ -8067,6 +8086,10 @@ async function ensureTablesExist(env) {
         await env.DB.prepare(m.sql).run();
       } catch (e) {
       }
+    }
+    try {
+      await env.DB.prepare(`UPDATE sites SET template_id = 'storefront' WHERE template_id = 'template1'`).run();
+    } catch (e) {
     }
     try {
       const wishlistDef = await env.DB.prepare(

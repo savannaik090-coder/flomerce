@@ -53,7 +53,7 @@ export async function ensureTablesExist(env) {
         subdomain TEXT UNIQUE NOT NULL,
         brand_name TEXT NOT NULL,
         category TEXT NOT NULL,
-        template_id TEXT DEFAULT 'template1',
+        template_id TEXT DEFAULT 'storefront',
         logo_url TEXT,
         favicon_url TEXT,
         primary_color TEXT DEFAULT '#000000',
@@ -497,6 +497,10 @@ export async function ensureTablesExist(env) {
       }
     }
 
+
+    try {
+      await env.DB.prepare(`UPDATE sites SET template_id = 'storefront' WHERE template_id = 'template1'`).run();
+    } catch (e) {}
 
     // Migration: Fix wishlists unique constraint to include site_id.
     try {
