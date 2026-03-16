@@ -37,21 +37,26 @@ async function handleProfile(request, env, user) {
 
 async function checkAndExpireSubscription(env, userId) {
   try {
-    const subscription = await env.DB.prepare(
+    const activeSubscription = await env.DB.prepare(
       `SELECT * FROM subscriptions WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1`
     ).bind(userId).first();
 
-    if (!subscription) return null;
+    if (activeSubscription) {
+      if (activeSubscription.current_period_end && new Date(activeSubscription.current_period_end) < new Date()) {
+        await env.DB.prepare(
+          `UPDATE subscriptions SET status = 'expired', updated_at = datetime('now') WHERE id = ?`
+        ).bind(activeSubscription.id).run();
 
-    if (subscription.current_period_end && new Date(subscription.current_period_end) < new Date()) {
-      await env.DB.prepare(
-        `UPDATE subscriptions SET status = 'expired', updated_at = datetime('now') WHERE id = ?`
-      ).bind(subscription.id).run();
-
-      return { ...subscription, status: 'expired' };
+        return { ...activeSubscription, status: 'expired' };
+      }
+      return activeSubscription;
     }
 
-    return subscription;
+    const latestSubscription = await env.DB.prepare(
+      `SELECT * FROM subscriptions WHERE user_id = ? ORDER BY created_at DESC LIMIT 1`
+    ).bind(userId).first();
+
+    return latestSubscription || null;
   } catch (e) {
     console.error('Check/expire subscription error:', e);
     return null;

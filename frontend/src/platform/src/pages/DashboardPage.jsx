@@ -120,7 +120,9 @@ export default function DashboardPage() {
   if (!isAuthenticated) return null;
 
   const currentPlan = profileData?.plan || subscription?.plan || null;
-  const currentStatus = profileData?.status || subscription?.status || 'none';
+  const profileStatus = profileData?.status;
+  const subStatus = subscription?.status;
+  const currentStatus = (profileStatus && profileStatus !== 'none') ? profileStatus : (subStatus && subStatus !== 'none') ? subStatus : profileStatus || subStatus || 'none';
   const hadSubscription = profileData?.hadSubscription || false;
   const isExpired = currentStatus === 'expired';
   const hasNoPlan = !currentPlan || currentStatus === 'none' || currentStatus === 'expired';
