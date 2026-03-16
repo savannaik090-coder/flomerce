@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useNavigate } from 'react-router-dom';
 import { apiRequest } from '../services/api.js';
-import '../styles/dashboard.css';
+import '../styles/owner-admin.css';
 
 export default function OwnerAdminPage() {
   const { isAuthenticated, loading } = useAuth();
@@ -10,9 +10,7 @@ export default function OwnerAdminPage() {
   const [adminData, setAdminData] = useState(null);
   const [error, setError] = useState('');
   const [dataLoading, setDataLoading] = useState(true);
-  const [transferEmail, setTransferEmail] = useState('');
-  const [transferMsg, setTransferMsg] = useState(null);
-  const [transferring, setTransferring] = useState(false);
+  const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
@@ -48,41 +46,24 @@ export default function OwnerAdminPage() {
     }
   };
 
-  const handleTransferOwnership = async (e) => {
-    e.preventDefault();
-    if (!transferEmail.trim()) return;
-    if (!window.confirm(`Are you sure you want to transfer ownership to ${transferEmail}? You will lose admin access.`)) return;
-    setTransferring(true);
-    setTransferMsg(null);
-    try {
-      await apiRequest('/api/admin/transfer-ownership', {
-        method: 'POST',
-        body: JSON.stringify({ newOwnerEmail: transferEmail.trim() }),
-      });
-      setTransferMsg({ type: 'success', text: `Ownership transferred to ${transferEmail}. You will be logged out.` });
-      setTransferEmail('');
-      setTimeout(() => { window.location.href = '/login'; }, 3000);
-    } catch (e) {
-      setTransferMsg({ type: 'error', text: e.message || 'Failed to transfer ownership' });
-    } finally {
-      setTransferring(false);
-    }
-  };
-
   if (loading || dataLoading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', fontFamily: 'Inter, sans-serif' }}>
-        <p>Loading...</p>
+      <div className="oa-loading">
+        <div className="oa-spinner" />
+        <p>Loading admin panel...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="owner-admin-container">
-        <h1>Owner Admin Panel</h1>
-        <div className="card">
-          <p style={{ color: '#ef4444' }}>{error}</p>
+      <div className="oa-page">
+        <div className="oa-header">
+          <h1>Owner Admin Panel</h1>
+          <button className="oa-btn oa-btn-outline" onClick={() => navigate('/dashboard')}>Back</button>
+        </div>
+        <div className="oa-card oa-error-card">
+          <p>{error}</p>
         </div>
       </div>
     );
@@ -91,119 +72,182 @@ export default function OwnerAdminPage() {
   const users = adminData?.users || [];
   const allSites = adminData?.sites || [];
   const currentOwner = adminData?.currentOwner;
+  const totalOrders = adminData?.totalOrders || 0;
 
   return (
-    <div className="owner-admin-container">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 800, margin: 0 }}>Owner Admin Panel</h1>
-        <button className="btn btn-outline" onClick={() => navigate('/dashboard')}>Back to Dashboard</button>
+    <div className="oa-page">
+      <div className="oa-header">
+        <div>
+          <h1>Admin Panel</h1>
+          {currentOwner && (
+            <p className="oa-owner-info">Owner: {currentOwner.name || currentOwner.email}</p>
+          )}
+        </div>
+        <button className="oa-btn oa-btn-outline" onClick={() => navigate('/dashboard')}>Back to Dashboard</button>
       </div>
 
-      <div className="card">
-        <h2 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1rem' }}>System Overview</h2>
-        <div className="stats-grid">
-          <div className="stat-card">
-            <div className="stat-value">{users.length}</div>
-            <div className="stat-label">Total Users</div>
+      <div className="oa-tabs">
+        <button className={`oa-tab ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')}>Overview</button>
+        <button className={`oa-tab ${activeTab === 'users' ? 'active' : ''}`} onClick={() => setActiveTab('users')}>Users</button>
+        <button className={`oa-tab ${activeTab === 'sites' ? 'active' : ''}`} onClick={() => setActiveTab('sites')}>Websites</button>
+      </div>
+
+      {activeTab === 'overview' && (
+        <div className="oa-overview">
+          <div className="oa-stats-grid">
+            <div className="oa-stat-card">
+              <div className="oa-stat-value">{users.length}</div>
+              <div className="oa-stat-label">Total Users</div>
+            </div>
+            <div className="oa-stat-card">
+              <div className="oa-stat-value">{allSites.length}</div>
+              <div className="oa-stat-label">Total Websites</div>
+            </div>
+            <div className="oa-stat-card">
+              <div className="oa-stat-value">{totalOrders}</div>
+              <div className="oa-stat-label">Total Orders</div>
+            </div>
           </div>
-          <div className="stat-card">
-            <div className="stat-value">{allSites.length}</div>
-            <div className="stat-label">Total Websites</div>
+
+          <div className="oa-card">
+            <h3>Recent Users</h3>
+            <div className="oa-list">
+              {users.slice(0, 5).map(u => (
+                <div className="oa-list-item" key={u.id || u.email}>
+                  <div className="oa-list-info">
+                    <span className="oa-list-name">{u.name}</span>
+                    <span className="oa-list-sub">{u.email}</span>
+                  </div>
+                  <span className="oa-badge">{u.plan || 'free'}</span>
+                </div>
+              ))}
+              {users.length === 0 && <p className="oa-empty">No users yet</p>}
+            </div>
+          </div>
+
+          <div className="oa-card">
+            <h3>Recent Websites</h3>
+            <div className="oa-list">
+              {allSites.slice(0, 5).map(s => (
+                <div className="oa-list-item" key={s.id || s.subdomain}>
+                  <div className="oa-list-info">
+                    <span className="oa-list-name">{s.brand_name || s.subdomain}</span>
+                    <span className="oa-list-sub">{s.subdomain}.fluxe.in</span>
+                  </div>
+                  <span className="oa-badge oa-badge-green">Active</span>
+                </div>
+              ))}
+              {allSites.length === 0 && <p className="oa-empty">No websites yet</p>}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
-      <div className="card">
-        <h2 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '0.5rem' }}>Ownership</h2>
-        {currentOwner && (
-          <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
-            Current owner: <strong>{currentOwner.name}</strong> ({currentOwner.email})
-          </p>
-        )}
-        <form onSubmit={handleTransferOwnership} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-          <input
-            type="email"
-            value={transferEmail}
-            onChange={e => setTransferEmail(e.target.value)}
-            placeholder="New owner email..."
-            style={{ flex: 1, minWidth: 200, padding: '8px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14 }}
-          />
-          <button type="submit" className="btn btn-primary" disabled={transferring} style={{ whiteSpace: 'nowrap' }}>
-            {transferring ? 'Transferring...' : 'Transfer Ownership'}
-          </button>
-        </form>
-        {transferMsg && (
-          <p style={{ marginTop: 8, fontSize: 13, color: transferMsg.type === 'success' ? '#16a34a' : '#ef4444' }}>
-            {transferMsg.text}
-          </p>
-        )}
-      </div>
+      {activeTab === 'users' && (
+        <div className="oa-section">
+          <div className="oa-card">
+            <h3>All Users ({users.length})</h3>
+            <div className="oa-table-wrap">
+              <table className="oa-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Plan</th>
+                    <th>Joined</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.map(u => (
+                    <tr key={u.id || u.email}>
+                      <td data-label="Name">{u.name}</td>
+                      <td data-label="Email">{u.email}</td>
+                      <td data-label="Plan"><span className="oa-badge">{u.plan || 'free'}</span></td>
+                      <td data-label="Joined">{u.created_at ? new Date(u.created_at).toLocaleDateString() : '-'}</td>
+                      <td data-label="Action">
+                        {u.email !== currentOwner?.email && (
+                          <button className="oa-btn-sm oa-btn-danger" onClick={() => handleBlockUser(u.id)}>Block</button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                  {users.length === 0 && (
+                    <tr><td colSpan="5" className="oa-empty">No users found</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
 
-      <div className="card">
-        <h2 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '0.5rem' }}>Recent Users</h2>
-        <div style={{ overflowX: 'auto' }}>
-          <table>
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Role</th>
-                <th>Plan</th>
-                <th>Created At</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
+            <div className="oa-card-list-mobile">
               {users.map(u => (
-                <tr key={u.id || u.email}>
-                  <td>{u.name}</td>
-                  <td>{u.email}</td>
-                  <td><span style={{ fontSize: 12, padding: '2px 8px', borderRadius: 4, background: u.role === 'owner' ? '#dbeafe' : '#f1f5f9', color: u.role === 'owner' ? '#1d4ed8' : '#64748b', fontWeight: 600 }}>{u.role || 'user'}</span></td>
-                  <td>{u.plan || 'free'}</td>
-                  <td>{u.created_at ? new Date(u.created_at).toLocaleDateString() : '-'}</td>
-                  <td>
-                    {u.role !== 'owner' && (
-                      <button className="btn-block" onClick={() => handleBlockUser(u.id)}>Block</button>
+                <div className="oa-user-card" key={u.id || u.email}>
+                  <div className="oa-user-card-header">
+                    <div>
+                      <div className="oa-user-card-name">{u.name}</div>
+                      <div className="oa-user-card-email">{u.email}</div>
+                    </div>
+                    <span className="oa-badge">{u.plan || 'free'}</span>
+                  </div>
+                  <div className="oa-user-card-footer">
+                    <span className="oa-user-card-date">Joined {u.created_at ? new Date(u.created_at).toLocaleDateString() : '-'}</span>
+                    {u.email !== currentOwner?.email && (
+                      <button className="oa-btn-sm oa-btn-danger" onClick={() => handleBlockUser(u.id)}>Block</button>
                     )}
-                  </td>
-                </tr>
+                  </div>
+                </div>
               ))}
-              {users.length === 0 && (
-                <tr><td colSpan="6" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No users found</td></tr>
-              )}
-            </tbody>
-          </table>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
 
-      <div className="card">
-        <h2 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '0.5rem' }}>Created Websites</h2>
-        <div style={{ overflowX: 'auto' }}>
-          <table>
-            <thead>
-              <tr>
-                <th>Site Name</th>
-                <th>Subdomain</th>
-                <th>User</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
+      {activeTab === 'sites' && (
+        <div className="oa-section">
+          <div className="oa-card">
+            <h3>All Websites ({allSites.length})</h3>
+            <div className="oa-table-wrap">
+              <table className="oa-table">
+                <thead>
+                  <tr>
+                    <th>Site Name</th>
+                    <th>Subdomain</th>
+                    <th>User ID</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {allSites.map(s => (
+                    <tr key={s.id || s.subdomain}>
+                      <td data-label="Site">{s.brand_name || s.subdomain}</td>
+                      <td data-label="Subdomain">{s.subdomain}.fluxe.in</td>
+                      <td data-label="User">{s.user_id}</td>
+                      <td data-label="Status"><span className="oa-badge oa-badge-green">Active</span></td>
+                    </tr>
+                  ))}
+                  {allSites.length === 0 && (
+                    <tr><td colSpan="4" className="oa-empty">No websites found</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="oa-card-list-mobile">
               {allSites.map(s => (
-                <tr key={s.id || s.subdomain}>
-                  <td>{s.brand_name || s.brandName || s.subdomain}</td>
-                  <td>{s.subdomain}.fluxe.in</td>
-                  <td>{s.user_id}</td>
-                  <td><span className="status-badge status-active">Active</span></td>
-                </tr>
+                <div className="oa-user-card" key={s.id || s.subdomain}>
+                  <div className="oa-user-card-header">
+                    <div>
+                      <div className="oa-user-card-name">{s.brand_name || s.subdomain}</div>
+                      <div className="oa-user-card-email">{s.subdomain}.fluxe.in</div>
+                    </div>
+                    <span className="oa-badge oa-badge-green">Active</span>
+                  </div>
+                </div>
               ))}
-              {allSites.length === 0 && (
-                <tr><td colSpan="4" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No websites found</td></tr>
-              )}
-            </tbody>
-          </table>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

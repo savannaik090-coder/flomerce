@@ -469,18 +469,6 @@ export async function ensureTablesExist(env) {
       }
     }
 
-    try {
-      const ownerCheck = await env.DB.prepare("SELECT id FROM users WHERE role = 'owner' LIMIT 1").first();
-      if (!ownerCheck) {
-        const firstUser = await env.DB.prepare("SELECT id FROM users ORDER BY created_at ASC LIMIT 1").first();
-        if (firstUser) {
-          await env.DB.prepare("UPDATE users SET role = 'owner' WHERE id = ?").bind(firstUser.id).run();
-          console.log('Promoted first user to owner:', firstUser.id);
-        }
-      }
-    } catch (e) {
-      console.error('Owner bootstrap check failed (non-fatal):', e.message || e);
-    }
 
     // Migration: Fix wishlists unique constraint to include site_id.
     try {

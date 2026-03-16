@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-hir3b7/checked-fetch.js
+// .wrangler/tmp/bundle-EAdhi9/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-hir3b7/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-EAdhi9/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-hir3b7/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-EAdhi9/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-hir3b7/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-EAdhi9/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -994,12 +994,12 @@ var init_site_admin_worker = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-hir3b7/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-EAdhi9/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-hir3b7/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-EAdhi9/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -1794,12 +1794,10 @@ async function handleSignup(request, env) {
     const userId = generateId();
     const passwordHash = await hashPassword(password);
     const verificationToken = generateToken();
-    const userCount = await env.DB.prepare("SELECT COUNT(*) as count FROM users").first();
-    const role = !userCount || userCount.count === 0 ? "owner" : "user";
     await env.DB.prepare(
-      `INSERT INTO users (id, email, password_hash, name, phone, role, email_verified, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, 0, datetime('now'))`
-    ).bind(userId, email.toLowerCase(), passwordHash, sanitizeInput(name), phone || null, role).run();
+      `INSERT INTO users (id, email, password_hash, name, phone, email_verified, created_at)
+       VALUES (?, ?, ?, ?, ?, 0, datetime('now'))`
+    ).bind(userId, email.toLowerCase(), passwordHash, sanitizeInput(name), phone || null).run();
     await env.DB.prepare(
       `INSERT INTO email_verifications (id, user_id, token, expires_at)
        VALUES (?, ?, ?, ?)`
@@ -2179,12 +2177,10 @@ async function handleGoogleLogin(request, env) {
     let user = await env.DB.prepare("SELECT id, email, name, password_hash, email_verified FROM users WHERE email = ?").bind(email).first();
     if (!user) {
       const userId = generateId();
-      const userCount = await env.DB.prepare("SELECT COUNT(*) as count FROM users").first();
-      const role = !userCount || userCount.count === 0 ? "owner" : "user";
       await env.DB.prepare(
-        'INSERT INTO users (id, email, password_hash, name, role, email_verified, created_at) VALUES (?, ?, ?, ?, ?, 1, datetime("now"))'
-      ).bind(userId, email, "", payload.name, role).run();
-      user = { id: userId, email, name: payload.name, role, email_verified: 1 };
+        'INSERT INTO users (id, email, password_hash, name, email_verified, created_at) VALUES (?, ?, ?, ?, 1, datetime("now"))'
+      ).bind(userId, email, "", payload.name).run();
+      user = { id: userId, email, name: payload.name, email_verified: 1 };
     } else {
       if (!user.email_verified) {
         await env.DB.prepare("UPDATE users SET email_verified = 1 WHERE id = ?").bind(user.id).run();
@@ -6120,15 +6116,7 @@ var OWNER_EMAIL = "savannaik090@gmail.com";
 async function isOwner(user, env) {
   if (!user)
     return false;
-  if (user.email === OWNER_EMAIL)
-    return true;
-  try {
-    const dbUser = await env.DB.prepare("SELECT role FROM users WHERE id = ?").bind(user.id).first();
-    if (dbUser && (dbUser.role === "admin" || dbUser.role === "owner"))
-      return true;
-  } catch (e) {
-  }
-  return false;
+  return user.email?.toLowerCase() === OWNER_EMAIL.toLowerCase();
 }
 __name(isOwner, "isOwner");
 async function handleAdmin(request, env, path) {
@@ -6162,7 +6150,7 @@ async function getAdminStats(env) {
     let users = [];
     try {
       const usersResult = await env.DB.prepare(
-        `SELECT u.id, u.name, u.email, u.role, u.created_at, u.email_verified,
+        `SELECT u.id, u.name, u.email, u.created_at, u.email_verified,
                 s.plan, s.status as subscription_status
          FROM users u
          LEFT JOIN subscriptions s ON u.id = s.user_id AND s.status = 'active'
@@ -6171,17 +6159,10 @@ async function getAdminStats(env) {
       ).all();
       users = usersResult.results || [];
     } catch (e) {
-      try {
-        const usersResult = await env.DB.prepare(
-          "SELECT id, name, email, role, created_at, email_verified FROM users ORDER BY created_at DESC LIMIT 100"
-        ).all();
-        users = (usersResult.results || []).map((u) => ({ ...u, plan: null }));
-      } catch (e2) {
-        const usersResult = await env.DB.prepare(
-          "SELECT id, name, email, created_at, email_verified FROM users ORDER BY created_at DESC LIMIT 100"
-        ).all();
-        users = (usersResult.results || []).map((u) => ({ ...u, plan: null, role: null }));
-      }
+      const usersResult = await env.DB.prepare(
+        "SELECT id, name, email, created_at, email_verified FROM users ORDER BY created_at DESC LIMIT 100"
+      ).all();
+      users = (usersResult.results || []).map((u) => ({ ...u, plan: null }));
     }
     const sitesResult = await env.DB.prepare(
       "SELECT id, subdomain, brand_name, user_id, template_id, is_active, created_at FROM sites ORDER BY created_at DESC LIMIT 100"
@@ -6193,14 +6174,14 @@ async function getAdminStats(env) {
       totalOrders = ordersCount?.count || 0;
     } catch (e) {
     }
-    const currentOwner = users.find((u) => u.role === "owner") || null;
+    const ownerUser = users.find((u) => u.email === OWNER_EMAIL) || null;
     return successResponse({
       users,
       sites,
       totalUsers: users.length,
       totalSites: sites.length,
       totalOrders,
-      currentOwner: currentOwner ? { id: currentOwner.id, email: currentOwner.email, name: currentOwner.name } : null
+      currentOwner: ownerUser ? { id: ownerUser.id, email: ownerUser.email, name: ownerUser.name } : { email: OWNER_EMAIL }
     });
   } catch (error) {
     console.error("Get admin stats error:", error);
@@ -6244,8 +6225,7 @@ async function handleTransferOwnership(request, env, currentUser) {
     return errorResponse("Method not allowed", 405);
   }
   try {
-    const dbUser = await env.DB.prepare("SELECT role FROM users WHERE id = ?").bind(currentUser.id).first();
-    if (!dbUser || dbUser.role !== "owner") {
+    if (currentUser.email !== OWNER_EMAIL) {
       return errorResponse("Only the current owner can transfer ownership", 403);
     }
     const { newOwnerEmail } = await request.json();
@@ -6264,13 +6244,9 @@ async function handleTransferOwnership(request, env, currentUser) {
     if (newOwner.id === currentUser.id) {
       return errorResponse("You are already the owner");
     }
-    await env.DB.batch([
-      env.DB.prepare("UPDATE users SET role = 'user' WHERE id = ?").bind(currentUser.id),
-      env.DB.prepare("UPDATE users SET role = 'owner' WHERE id = ?").bind(newOwner.id)
-    ]);
     return successResponse(
       { newOwner: { id: newOwner.id, email: newOwner.email, name: newOwner.name } },
-      `Ownership transferred to ${newOwner.email}`
+      `To transfer ownership, update the OWNER_EMAIL constant in admin-worker.js to ${newOwner.email}`
     );
   } catch (error) {
     console.error("Transfer ownership error:", error);
@@ -7502,18 +7478,6 @@ async function ensureTablesExist(env) {
       }
     }
     try {
-      const ownerCheck = await env.DB.prepare("SELECT id FROM users WHERE role = 'owner' LIMIT 1").first();
-      if (!ownerCheck) {
-        const firstUser = await env.DB.prepare("SELECT id FROM users ORDER BY created_at ASC LIMIT 1").first();
-        if (firstUser) {
-          await env.DB.prepare("UPDATE users SET role = 'owner' WHERE id = ?").bind(firstUser.id).run();
-          console.log("Promoted first user to owner:", firstUser.id);
-        }
-      }
-    } catch (e) {
-      console.error("Owner bootstrap check failed (non-fatal):", e.message || e);
-    }
-    try {
       const wishlistDef = await env.DB.prepare(
         `SELECT sql FROM sqlite_master WHERE type='table' AND name='wishlists'`
       ).first();
@@ -7966,7 +7930,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-hir3b7/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-EAdhi9/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -8001,7 +7965,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-hir3b7/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-EAdhi9/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

@@ -123,7 +123,7 @@ Fluxe is a multi-tenant SaaS platform that allows users to create their own e-co
   - Storefront admin panel accepts `?token=` query param for seamless auto-login
   - When on /admin route, storefront App.jsx hides navbar/footer/mobile-nav (admin-only layout)
   - site-router.js sets `Content-Security-Policy: frame-ancestors` to allow embedding from fluxe.in
-- **Platform Super-Admin:** Full JWT auth + role check (admin@fluxe.in or admin/owner role)
+- **Platform Super-Admin:** JWT auth + hardcoded `OWNER_EMAIL` check in `admin-worker.js` (no DB role dependency)
 - **Auth priority in api.js:** SiteAdmin token (sessionStorage) > SiteCustomer token (localStorage)
 - Backend workers accept SiteAdmin auth for CRUD: products-worker, categories-worker, orders-worker, sites-worker (PUT), site-admin set-code
 - **Order Emails:** Confirmation emails (customer + owner) are sent only after payment is confirmed. For COD orders, emails are sent immediately on order creation. For Razorpay orders, emails are sent only after successful payment verification.

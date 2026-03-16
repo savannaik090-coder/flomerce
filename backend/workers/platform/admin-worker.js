@@ -5,12 +5,7 @@ const OWNER_EMAIL = 'savannaik090@gmail.com';
 
 async function isOwner(user, env) {
   if (!user) return false;
-  if (user.email === OWNER_EMAIL) return true;
-  try {
-    const dbUser = await env.DB.prepare('SELECT role FROM users WHERE id = ?').bind(user.id).first();
-    if (dbUser && (dbUser.role === 'admin' || dbUser.role === 'owner')) return true;
-  } catch (e) {}
-  return false;
+  return user.email?.toLowerCase() === OWNER_EMAIL.toLowerCase();
 }
 
 export async function handleAdmin(request, env, path) {
@@ -47,7 +42,7 @@ async function getAdminStats(env) {
     let users = [];
     try {
       const usersResult = await env.DB.prepare(
-        `SELECT u.id, u.name, u.email, u.role, u.created_at, u.email_verified,
+        `SELECT u.id, u.name, u.email, u.created_at, u.email_verified,
                 s.plan, s.status as subscription_status
          FROM users u
          LEFT JOIN subscriptions s ON u.id = s.user_id AND s.status = 'active'
@@ -56,17 +51,10 @@ async function getAdminStats(env) {
       ).all();
       users = usersResult.results || [];
     } catch (e) {
-      try {
-        const usersResult = await env.DB.prepare(
-          'SELECT id, name, email, role, created_at, email_verified FROM users ORDER BY created_at DESC LIMIT 100'
-        ).all();
-        users = (usersResult.results || []).map(u => ({ ...u, plan: null }));
-      } catch (e2) {
-        const usersResult = await env.DB.prepare(
-          'SELECT id, name, email, created_at, email_verified FROM users ORDER BY created_at DESC LIMIT 100'
-        ).all();
-        users = (usersResult.results || []).map(u => ({ ...u, plan: null, role: null }));
-      }
+      const usersResult = await env.DB.prepare(
+        'SELECT id, name, email, created_at, email_verified FROM users ORDER BY created_at DESC LIMIT 100'
+      ).all();
+      users = (usersResult.results || []).map(u => ({ ...u, plan: null }));
     }
 
     const sitesResult = await env.DB.prepare(
@@ -80,7 +68,7 @@ async function getAdminStats(env) {
       totalOrders = ordersCount?.count || 0;
     } catch (e) {}
 
-    const currentOwner = users.find(u => u.role === 'owner') || null;
+    const ownerUser = users.find(u => u.email === OWNER_EMAIL) || null;
 
     return successResponse({
       users,
@@ -88,7 +76,7 @@ async function getAdminStats(env) {
       totalUsers: users.length,
       totalSites: sites.length,
       totalOrders,
-      currentOwner: currentOwner ? { id: currentOwner.id, email: currentOwner.email, name: currentOwner.name } : null,
+      currentOwner: ownerUser ? { id: ownerUser.id, email: ownerUser.email, name: ownerUser.name } : { email: OWNER_EMAIL },
     });
   } catch (error) {
     console.error('Get admin stats error:', error);
@@ -139,8 +127,7 @@ async function handleTransferOwnership(request, env, currentUser) {
   }
 
   try {
-    const dbUser = await env.DB.prepare('SELECT role FROM users WHERE id = ?').bind(currentUser.id).first();
-    if (!dbUser || dbUser.role !== 'owner') {
+    if (currentUser.email !== OWNER_EMAIL) {
       return errorResponse('Only the current owner can transfer ownership', 403);
     }
 
@@ -166,14 +153,9 @@ async function handleTransferOwnership(request, env, currentUser) {
       return errorResponse('You are already the owner');
     }
 
-    await env.DB.batch([
-      env.DB.prepare("UPDATE users SET role = 'user' WHERE id = ?").bind(currentUser.id),
-      env.DB.prepare("UPDATE users SET role = 'owner' WHERE id = ?").bind(newOwner.id),
-    ]);
-
     return successResponse(
       { newOwner: { id: newOwner.id, email: newOwner.email, name: newOwner.name } },
-      `Ownership transferred to ${newOwner.email}`
+      `To transfer ownership, update the OWNER_EMAIL constant in admin-worker.js to ${newOwner.email}`
     );
   } catch (error) {
     console.error('Transfer ownership error:', error);
