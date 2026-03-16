@@ -1,4 +1,4 @@
-import { errorResponse, successResponse, handleCORS, validateEmail } from '../../utils/helpers.js';
+import { generateId, errorResponse, successResponse, handleCORS, validateEmail } from '../../utils/helpers.js';
 import { validateAuth } from '../../utils/auth.js';
 
 const OWNER_EMAIL = 'savannaik090@gmail.com';
@@ -32,6 +32,10 @@ export async function handleAdmin(request, env, path) {
       return handleUserAction(request, env, pathParts);
     case 'transfer-ownership':
       return handleTransferOwnership(request, env, user);
+    case 'plans':
+      return handlePlansManagement(request, env, pathParts);
+    case 'settings':
+      return handleSettingsManagement(request, env);
     default:
       return errorResponse('Admin endpoint not found', 404);
   }
@@ -160,5 +164,216 @@ async function handleTransferOwnership(request, env, currentUser) {
   } catch (error) {
     console.error('Transfer ownership error:', error);
     return errorResponse('Failed to transfer ownership', 500);
+  }
+}
+
+async function ensurePlansTables(env) {
+  await env.DB.prepare(`
+    CREATE TABLE IF NOT EXISTS subscription_plans (
+      id TEXT PRIMARY KEY,
+      plan_name TEXT NOT NULL,
+      billing_cycle TEXT NOT NULL,
+      display_price REAL NOT NULL,
+      razorpay_plan_id TEXT NOT NULL,
+      features TEXT DEFAULT '[]',
+      is_popular INTEGER DEFAULT 0,
+      is_active INTEGER DEFAULT 1,
+      display_order INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    )
+  `).run();
+
+  await env.DB.prepare(`
+    CREATE TABLE IF NOT EXISTS platform_settings (
+      setting_key TEXT PRIMARY KEY,
+      setting_value TEXT NOT NULL,
+      updated_at TEXT DEFAULT (datetime('now'))
+    )
+  `).run();
+}
+
+async function handlePlansManagement(request, env, pathParts) {
+  await ensurePlansTables(env);
+  const planId = pathParts[3];
+
+  if (request.method === 'GET') {
+    return getPlans(env);
+  }
+
+  if (request.method === 'POST') {
+    return createPlan(request, env);
+  }
+
+  if (request.method === 'PUT' && planId) {
+    return updatePlan(request, env, planId);
+  }
+
+  if (request.method === 'DELETE' && planId) {
+    return deletePlan(env, planId);
+  }
+
+  return errorResponse('Method not allowed', 405);
+}
+
+async function getPlans(env) {
+  try {
+    const result = await env.DB.prepare(
+      `SELECT * FROM subscription_plans ORDER BY display_order ASC, plan_name ASC`
+    ).all();
+    const plans = (result.results || []).map(p => ({
+      ...p,
+      features: (() => { try { return JSON.parse(p.features); } catch { return []; } })(),
+    }));
+    return successResponse(plans);
+  } catch (error) {
+    console.error('Get plans error:', error);
+    return errorResponse('Failed to fetch plans', 500);
+  }
+}
+
+async function createPlan(request, env) {
+  try {
+    const { plan_name, billing_cycle, display_price, razorpay_plan_id, features, is_popular, display_order } = await request.json();
+
+    if (!plan_name || !billing_cycle || display_price === undefined || !razorpay_plan_id) {
+      return errorResponse('Plan name, billing cycle, display price, and Razorpay Plan ID are required');
+    }
+
+    const validCycles = ['monthly', '6months', 'yearly'];
+    if (!validCycles.includes(billing_cycle)) {
+      return errorResponse('Billing cycle must be monthly, 6months, or yearly');
+    }
+
+    const id = generateId();
+    await env.DB.prepare(
+      `INSERT INTO subscription_plans (id, plan_name, billing_cycle, display_price, razorpay_plan_id, features, is_popular, display_order, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
+    ).bind(
+      id,
+      plan_name,
+      billing_cycle,
+      display_price,
+      razorpay_plan_id,
+      JSON.stringify(features || []),
+      is_popular ? 1 : 0,
+      display_order || 0
+    ).run();
+
+    return successResponse({ id }, 'Plan created successfully');
+  } catch (error) {
+    console.error('Create plan error:', error);
+    return errorResponse('Failed to create plan', 500);
+  }
+}
+
+async function updatePlan(request, env, planId) {
+  try {
+    const existing = await env.DB.prepare('SELECT * FROM subscription_plans WHERE id = ?').bind(planId).first();
+    if (!existing) {
+      return errorResponse('Plan not found', 404);
+    }
+
+    const updates = await request.json();
+    const { plan_name, billing_cycle, display_price, razorpay_plan_id, features, is_popular, is_active, display_order } = updates;
+
+    await env.DB.prepare(
+      `UPDATE subscription_plans SET
+        plan_name = ?,
+        billing_cycle = ?,
+        display_price = ?,
+        razorpay_plan_id = ?,
+        features = ?,
+        is_popular = ?,
+        is_active = ?,
+        display_order = ?,
+        updated_at = datetime('now')
+      WHERE id = ?`
+    ).bind(
+      plan_name ?? existing.plan_name,
+      billing_cycle ?? existing.billing_cycle,
+      display_price ?? existing.display_price,
+      razorpay_plan_id ?? existing.razorpay_plan_id,
+      features ? JSON.stringify(features) : existing.features,
+      is_popular !== undefined ? (is_popular ? 1 : 0) : existing.is_popular,
+      is_active !== undefined ? (is_active ? 1 : 0) : existing.is_active,
+      display_order ?? existing.display_order,
+      planId
+    ).run();
+
+    return successResponse(null, 'Plan updated successfully');
+  } catch (error) {
+    console.error('Update plan error:', error);
+    return errorResponse('Failed to update plan', 500);
+  }
+}
+
+async function deletePlan(env, planId) {
+  try {
+    const existing = await env.DB.prepare('SELECT * FROM subscription_plans WHERE id = ?').bind(planId).first();
+    if (!existing) {
+      return errorResponse('Plan not found', 404);
+    }
+
+    await env.DB.prepare('DELETE FROM subscription_plans WHERE id = ?').bind(planId).run();
+    return successResponse(null, 'Plan deleted successfully');
+  } catch (error) {
+    console.error('Delete plan error:', error);
+    return errorResponse('Failed to delete plan', 500);
+  }
+}
+
+async function handleSettingsManagement(request, env) {
+  await ensurePlansTables(env);
+
+  if (request.method === 'GET') {
+    return getSettings(env);
+  }
+
+  if (request.method === 'PUT') {
+    return updateSettings(request, env);
+  }
+
+  return errorResponse('Method not allowed', 405);
+}
+
+async function getSettings(env) {
+  try {
+    const result = await env.DB.prepare(
+      `SELECT setting_key, setting_value FROM platform_settings`
+    ).all();
+
+    const settings = {};
+    for (const row of (result.results || [])) {
+      settings[row.setting_key] = row.setting_value;
+    }
+
+    return successResponse(settings);
+  } catch (error) {
+    console.error('Get settings error:', error);
+    return errorResponse('Failed to fetch settings', 500);
+  }
+}
+
+async function updateSettings(request, env) {
+  try {
+    const updates = await request.json();
+
+    const allowedKeys = ['razorpay_key_id'];
+
+    for (const [key, value] of Object.entries(updates)) {
+      if (!allowedKeys.includes(key)) continue;
+
+      await env.DB.prepare(
+        `INSERT INTO platform_settings (setting_key, setting_value, updated_at) 
+         VALUES (?, ?, datetime('now'))
+         ON CONFLICT(setting_key) DO UPDATE SET setting_value = ?, updated_at = datetime('now')`
+      ).bind(key, value, value).run();
+    }
+
+    return successResponse(null, 'Settings updated successfully');
+  } catch (error) {
+    console.error('Update settings error:', error);
+    return errorResponse('Failed to update settings', 500);
   }
 }

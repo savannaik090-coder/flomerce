@@ -9,7 +9,7 @@ Fluxe is a multi-tenant SaaS platform that allows users to create their own e-co
 - **Database:** Cloudflare D1 (SQLite-compatible, shared tables with site_id)
 - **File Storage:** Cloudflare R2
 - **Authentication:** Custom JWT-based system
-- **Payments:** Razorpay integration
+- **Payments:** Razorpay Subscriptions API (subscription-based plans managed from admin panel)
 - **Email:** Resend/SendGrid
 
 ## Project Structure
@@ -55,9 +55,9 @@ Fluxe is a multi-tenant SaaS platform that allows users to create their own e-co
 │   │   │   ├── auth-worker.js   # Signup, login, email verify, password reset
 │   │   │   ├── sites-worker.js  # Site CRUD, categories
 │   │   │   ├── users-worker.js  # Profile, subscription management
-│   │   │   ├── payments-worker.js # Razorpay integration, subscriptions
+│   │   │   ├── payments-worker.js # Razorpay Subscriptions API, webhooks, plan payments
 │   │   │   ├── email-worker.js  # Email sending (Resend/SendGrid)
-│   │   │   └── admin-worker.js  # Platform super-admin (stats, user blocking)
+│   │   │   └── admin-worker.js  # Platform super-admin (stats, user blocking, plan mgmt, settings)
 │   │   └── storefront/          # Storefront/template logic
 │   │       ├── products-worker.js   # Product CRUD (site_id scoped)
 │   │       ├── orders-worker.js     # Order management
@@ -346,6 +346,20 @@ wrangler secret put RESEND_API_KEY      # Or SENDGRID_API_KEY
 - **Admin SEO panel**: Products/Categories tabs auto-populate title, description, and image from actual product/category data. OG image fields use image upload (not URL input) across all tabs (Products, Categories, Pages). Shows "Auto SEO" vs "Custom SEO" badge per item.
 - **Template configs**: `seo/templates/template1/seo-config.js` — each template defines title format, fallback titles, and which schemas to include
 - **Important**: Dynamic `import()` does NOT work in Cloudflare Workers — template configs use static imports registered in `TEMPLATE_CONFIGS` object
+
+## Subscription & Payment System
+- **Razorpay Subscriptions API**: Uses subscription-based billing (not one-time orders) for platform plans
+- **Admin-managed plans**: Plans stored in `subscription_plans` table, fully manageable from Owner Admin Panel
+- **Admin-managed Razorpay Key**: Public key (razorpay_key_id) stored in `platform_settings` table, editable from admin Settings tab
+- **Secret key**: Kept in Cloudflare environment secrets (RAZORPAY_KEY_SECRET), not stored in DB
+- **Webhook handling**: `/api/payments/webhook` endpoint handles subscription.activated, subscription.charged, subscription.cancelled events
+- **Webhook secret**: Stored in Cloudflare environment secrets (RAZORPAY_WEBHOOK_SECRET)
+- **Public plans API**: `/api/payments/plans` (GET, no auth) returns active plans + razorpay public key for frontend
+- **Subscription flow**: User selects plan → backend creates Razorpay subscription → Razorpay checkout modal → verify signature → activate subscription
+- **Admin panel tabs**: Overview, Users, Websites, Plans (CRUD for subscription plans), Settings (Razorpay public key)
+- **Database tables**: `subscription_plans` (plan details + razorpay_plan_id), `platform_settings` (key-value for platform config)
+- **PlanSelector component**: Dynamically fetches plans from API, groups by plan name, shows by billing cycle
+- **Storefront payments**: Still use per-site Razorpay credentials (one-time orders) for customer purchases
 
 ## Storefront Navbar Layout
 - Navbar uses `position: sticky` (not fixed/floating) — sits in normal document flow below the promo banner

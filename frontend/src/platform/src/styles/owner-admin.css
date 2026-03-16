@@ -384,6 +384,135 @@
   }
 }
 
+.oa-btn-primary {
+  background: #2563eb;
+  color: #fff;
+  border-color: #2563eb;
+}
+
+.oa-btn-primary:hover {
+  background: #1d4ed8;
+}
+
+.oa-btn-edit {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
+.oa-btn-edit:hover {
+  background: #c7d2fe;
+}
+
+.oa-btn-toggle {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.oa-btn-toggle:hover {
+  background: #fde68a;
+}
+
+.oa-badge-red {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.oa-badge-popular {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+
+.oa-plan-form-wrap {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.oa-plan-form {
+  font-size: 0.85rem;
+}
+
+.oa-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.oa-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.oa-form-group label {
+  font-weight: 600;
+  font-size: 0.75rem;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.oa-form-group input,
+.oa-form-group select,
+.oa-form-group textarea {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-family: inherit;
+  background: #fff;
+  color: #0f172a;
+  transition: border-color 0.15s;
+}
+
+.oa-form-group input:focus,
+.oa-form-group select:focus,
+.oa-form-group textarea:focus {
+  outline: none;
+  border-color: #2563eb;
+}
+
+.oa-form-group textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.oa-form-check {
+  justify-content: flex-end;
+  flex-direction: row;
+  align-items: center;
+}
+
+.oa-form-check label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  text-transform: none;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.oa-form-check input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #2563eb;
+}
+
+.oa-form-hint {
+  font-size: 0.7rem;
+  color: #94a3b8;
+  margin: 0.2rem 0 0;
+  line-height: 1.4;
+}
+
+@media (max-width: 640px) {
+  .oa-form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (min-width: 641px) {
   .oa-card-list-mobile {
     display: none;

@@ -1,16 +1,20 @@
 import { apiRequest } from './api.js';
 
-export async function initiateSubscriptionPayment(planId, duration) {
+export async function getAvailablePlans() {
+  return apiRequest('/api/payments/plans');
+}
+
+export async function createSubscription(planId) {
   return apiRequest('/api/payments/subscription', {
     method: 'POST',
-    body: JSON.stringify({ planId, billingCycle: duration }),
+    body: JSON.stringify({ planId }),
   });
 }
 
-export async function verifyPayment(paymentId, orderId, signature) {
+export async function verifySubscriptionPayment(data) {
   return apiRequest('/api/payments/verify', {
     method: 'POST',
-    body: JSON.stringify({ paymentId, orderId, signature }),
+    body: JSON.stringify(data),
   });
 }
 
