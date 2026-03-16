@@ -6,6 +6,9 @@ import VerifyEmailPage from './pages/VerifyEmailPage.jsx';
 import ResetPasswordPage from './pages/ResetPasswordPage.jsx';
 import DashboardPage from './pages/DashboardPage.jsx';
 import OwnerAdminPage from './pages/OwnerAdminPage.jsx';
+import TermsPage from './pages/TermsPage.jsx';
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage.jsx';
+import RefundPolicyPage from './pages/RefundPolicyPage.jsx';
 
 export default function App() {
   return (
@@ -17,6 +20,9 @@ export default function App() {
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/dashboard" element={<DashboardPage />} />
       <Route path="/admin" element={<OwnerAdminPage />} />
+      <Route path="/terms" element={<TermsPage />} />
+      <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+      <Route path="/refund-policy" element={<RefundPolicyPage />} />
     </Routes>
   );
 }

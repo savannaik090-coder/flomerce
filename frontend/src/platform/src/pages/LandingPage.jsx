@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar.jsx';
+import '../styles/legal.css';
 
 export default function LandingPage() {
   const [showPwa, setShowPwa] = useState(false);
@@ -37,6 +38,15 @@ export default function LandingPage() {
             <a href="#learn-more" className="btn btn-outline">View Demo</a>
           </div>
         </section>
+
+        <footer className="landing-footer">
+          <div className="landing-footer-links">
+            <Link to="/terms">Terms & Conditions</Link>
+            <Link to="/privacy-policy">Privacy Policy</Link>
+            <Link to="/refund-policy">Refund & Cancellation Policy</Link>
+          </div>
+          <p>&copy; {new Date().getFullYear()} Fluxe. All rights reserved.</p>
+        </footer>
       </div>
 
       <div className={`pwa-install-bar${showPwa ? ' show' : ''}`}>
