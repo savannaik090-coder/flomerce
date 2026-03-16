@@ -21,3 +21,10 @@ export async function verifySubscriptionPayment(data) {
 export async function getSubscriptionStatus() {
   return apiRequest('/api/payments/subscription');
 }
+
+export async function startFreeTrial() {
+  return apiRequest('/api/users/subscription', {
+    method: 'PATCH',
+    body: JSON.stringify({ plan: 'trial', billingCycle: 'monthly', status: 'active' }),
+  });
+}

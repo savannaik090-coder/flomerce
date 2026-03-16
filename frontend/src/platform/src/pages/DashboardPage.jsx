@@ -19,6 +19,8 @@ export default function DashboardPage() {
   const [subscription, setSubscription] = useState(null);
   const [profileData, setProfileData] = useState(null);
   const [managedSite, setManagedSite] = useState(null);
+  const [showPlanOverlay, setShowPlanOverlay] = useState(false);
+  const [dataLoaded, setDataLoaded] = useState(false);
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
@@ -58,11 +60,22 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      loadSites();
-      loadSubscription();
-      loadProfile();
+      Promise.all([loadSites(), loadSubscription(), loadProfile()]).then(() => {
+        setDataLoaded(true);
+      });
     }
   }, [isAuthenticated, loadSites, loadSubscription, loadProfile]);
+
+  useEffect(() => {
+    if (!dataLoaded) return;
+    const hasPlanData = profileData?.plan || subscription?.plan;
+    const plan = hasPlanData || 'free';
+    const planLower = plan.toLowerCase();
+    const dismissed = sessionStorage.getItem('planOverlayDismissed');
+    if (planLower === 'free' && !dismissed) {
+      setShowPlanOverlay(true);
+    }
+  }, [dataLoaded, profileData, subscription]);
 
   const handleDeleteSite = async (siteId) => {
     try {
@@ -90,6 +103,18 @@ export default function DashboardPage() {
   const handleBackToDashboard = () => {
     setManagedSite(null);
     setActivePage('sites');
+  };
+
+  const handlePlanOverlayClose = () => {
+    sessionStorage.setItem('planOverlayDismissed', 'true');
+    setShowPlanOverlay(false);
+  };
+
+  const handlePlanUpgraded = () => {
+    sessionStorage.setItem('planOverlayDismissed', 'true');
+    setShowPlanOverlay(false);
+    loadSubscription();
+    loadProfile();
   };
 
   if (loading) {
@@ -268,6 +293,15 @@ export default function DashboardPage() {
         <SiteCreationWizard
           onClose={() => setShowWizard(false)}
           onCreated={loadSites}
+        />
+      )}
+
+      {showPlanOverlay && (
+        <PlanSelector
+          currentPlan={currentPlan}
+          onUpgraded={handlePlanUpgraded}
+          isOverlay={true}
+          onSkip={handlePlanOverlayClose}
         />
       )}
     </div>
