@@ -369,33 +369,48 @@ async function getUserSubscription(env, user) {
       `SELECT * FROM subscriptions WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1`
     ).bind(user.id).first();
 
-    if (!subscription) {
-      return successResponse({ plan: null, status: 'none' });
-    }
+    if (subscription) {
+      if (subscription.current_period_end && new Date(subscription.current_period_end) < new Date()) {
+        await env.DB.prepare(
+          `UPDATE subscriptions SET status = 'expired', updated_at = datetime('now') WHERE id = ?`
+        ).bind(subscription.id).run();
 
-    if (subscription.current_period_end && new Date(subscription.current_period_end) < new Date()) {
-      await env.DB.prepare(
-        `UPDATE subscriptions SET status = 'expired', updated_at = datetime('now') WHERE id = ?`
-      ).bind(subscription.id).run();
+        return successResponse({
+          id: subscription.id,
+          plan: subscription.plan,
+          billingCycle: subscription.billing_cycle,
+          status: 'expired',
+          currentPeriodEnd: subscription.current_period_end,
+          razorpaySubscriptionId: subscription.razorpay_subscription_id,
+        });
+      }
 
       return successResponse({
         id: subscription.id,
         plan: subscription.plan,
         billingCycle: subscription.billing_cycle,
-        status: 'expired',
+        status: subscription.status,
         currentPeriodEnd: subscription.current_period_end,
         razorpaySubscriptionId: subscription.razorpay_subscription_id,
       });
     }
 
-    return successResponse({
-      id: subscription.id,
-      plan: subscription.plan,
-      billingCycle: subscription.billing_cycle,
-      status: subscription.status,
-      currentPeriodEnd: subscription.current_period_end,
-      razorpaySubscriptionId: subscription.razorpay_subscription_id,
-    });
+    const latestSub = await env.DB.prepare(
+      `SELECT * FROM subscriptions WHERE user_id = ? ORDER BY created_at DESC LIMIT 1`
+    ).bind(user.id).first();
+
+    if (latestSub) {
+      return successResponse({
+        id: latestSub.id,
+        plan: latestSub.plan,
+        billingCycle: latestSub.billing_cycle,
+        status: latestSub.status,
+        currentPeriodEnd: latestSub.current_period_end,
+        razorpaySubscriptionId: latestSub.razorpay_subscription_id,
+      });
+    }
+
+    return successResponse({ plan: null, status: 'none' });
   } catch (error) {
     console.error('Get subscription error:', error);
     return errorResponse('Failed to fetch subscription', 500);
