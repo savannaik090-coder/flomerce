@@ -4979,7 +4979,7 @@ async function handleSubscriptionActivated(env, entity) {
        WHERE ps.razorpay_subscription_id = ?`
     ).bind(subId).first();
     if (pending) {
-      await activateSubscription(env, pending.user_id, pending.plan_name, pending.billing_cycle, null, subId, pending.display_price, pending.site_id || null);
+      await activateSubscription(env, pending.user_id, pending.plan_name, pending.billing_cycle, null, subId, pending.display_price, pending.site_id || null, entity);
       try {
         await env.DB.prepare(`DELETE FROM pending_subscriptions WHERE razorpay_subscription_id = ?`).bind(subId).run();
       } catch {
@@ -4987,7 +4987,7 @@ async function handleSubscriptionActivated(env, entity) {
     } else {
       const notes = entity.notes || {};
       if (notes.userId && notes.planName) {
-        await activateSubscription(env, notes.userId, notes.planName, notes.billingCycle || "monthly", null, subId, null, notes.siteId || null);
+        await activateSubscription(env, notes.userId, notes.planName, notes.billingCycle || "3months", null, subId, null, notes.siteId || null, entity);
       } else {
         console.error("No pending subscription or notes found for:", subId);
       }
@@ -5006,12 +5006,21 @@ async function handleSubscriptionCharged(env, subEntity, paymentEntity) {
       `SELECT * FROM subscriptions WHERE razorpay_subscription_id = ? AND status = 'active'`
     ).bind(subId).first();
     if (existingSub) {
-      const periodMonths = existingSub.billing_cycle === "monthly" ? 1 : existingSub.billing_cycle === "6months" ? 6 : 12;
-      const newEnd = /* @__PURE__ */ new Date();
-      newEnd.setMonth(newEnd.getMonth() + periodMonths);
+      let newEnd;
+      if (subEntity.current_end) {
+        newEnd = new Date(subEntity.current_end * 1e3);
+      } else {
+        const periodMonths = existingSub.billing_cycle === "3months" ? 3 : existingSub.billing_cycle === "6months" ? 6 : existingSub.billing_cycle === "yearly" ? 12 : 36;
+        newEnd = /* @__PURE__ */ new Date();
+        newEnd.setMonth(newEnd.getMonth() + periodMonths);
+      }
+      let newStart;
+      if (subEntity.current_start) {
+        newStart = new Date(subEntity.current_start * 1e3);
+      }
       await env.DB.prepare(
-        `UPDATE subscriptions SET current_period_end = ?, updated_at = datetime('now') WHERE id = ?`
-      ).bind(newEnd.toISOString(), existingSub.id).run();
+        `UPDATE subscriptions SET current_period_start = COALESCE(?, current_period_start), current_period_end = ?, updated_at = datetime('now') WHERE id = ?`
+      ).bind(newStart ? newStart.toISOString() : null, newEnd.toISOString(), existingSub.id).run();
       if (existingSub.site_id) {
         await env.DB.prepare(
           `UPDATE sites SET subscription_expires_at = ?, updated_at = datetime('now') WHERE id = ?`
@@ -5084,7 +5093,7 @@ async function handleSubscriptionPaused(env, entity) {
   }
 }
 __name(handleSubscriptionPaused, "handleSubscriptionPaused");
-async function activateSubscription(env, userId, planName, billingCycle, razorpayPaymentId, razorpaySubscriptionId, amount, siteId) {
+async function activateSubscription(env, userId, planName, billingCycle, razorpayPaymentId, razorpaySubscriptionId, amount, siteId, razorpayEntity) {
   try {
     await env.DB.prepare(`
       CREATE TABLE IF NOT EXISTS subscriptions (
@@ -5110,10 +5119,16 @@ async function activateSubscription(env, userId, planName, billingCycle, razorpa
       await env.DB.prepare(`ALTER TABLE subscriptions ADD COLUMN site_id TEXT REFERENCES sites(id) ON DELETE CASCADE`).run();
     } catch (e) {
     }
-    const periodMonths = billingCycle === "3months" ? 3 : billingCycle === "6months" ? 6 : billingCycle === "yearly" ? 12 : 36;
-    const periodStart = /* @__PURE__ */ new Date();
-    const periodEnd = new Date(periodStart);
-    periodEnd.setMonth(periodEnd.getMonth() + periodMonths);
+    let periodStart, periodEnd;
+    if (razorpayEntity?.current_start && razorpayEntity?.current_end) {
+      periodStart = new Date(razorpayEntity.current_start * 1e3);
+      periodEnd = new Date(razorpayEntity.current_end * 1e3);
+    } else {
+      const periodMonths = billingCycle === "3months" ? 3 : billingCycle === "6months" ? 6 : billingCycle === "yearly" ? 12 : 36;
+      periodStart = /* @__PURE__ */ new Date();
+      periodEnd = new Date(periodStart);
+      periodEnd.setMonth(periodEnd.getMonth() + periodMonths);
+    }
     if (siteId) {
       await env.DB.prepare(
         `UPDATE subscriptions SET status = 'cancelled', cancelled_at = datetime('now') WHERE site_id = ? AND status = 'active'`
