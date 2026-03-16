@@ -4821,7 +4821,7 @@ async function createRazorpaySubscription(request, env, user) {
       },
       body: JSON.stringify({
         plan_id: plan.razorpay_plan_id,
-        total_count: plan.billing_cycle === "3months" ? 8 : plan.billing_cycle === "6months" ? 4 : plan.billing_cycle === "yearly" ? 2 : 1,
+        total_count: plan.billing_cycle === "3months" ? 100 : plan.billing_cycle === "6months" ? 50 : plan.billing_cycle === "yearly" ? 25 : 10,
         quantity: 1,
         notes: {
           userId: user.id,
