@@ -39,7 +39,7 @@ async function sendTestEmail(request, env) {
   const text = `Test Email from Fluxe`;
 
   const sent = await sendEmail(env, email, 'Fluxe Test Email', html, text);
-  if (!sent) return errorResponse('Failed to send test email', 500);
+  if (sent !== true) return errorResponse(typeof sent === 'string' ? sent : 'Failed to send test email', 500);
 
   return successResponse(null, 'Test email sent');
 }
@@ -220,8 +220,8 @@ async function sendContactEmail(request, env) {
 
     const sent = await sendEmail(env, toEmail, `Contact Form - ${brandName || 'Website'}`, html, text);
 
-    if (!sent) {
-      return errorResponse('Failed to send email', 500);
+    if (sent !== true) {
+      return errorResponse(typeof sent === 'string' ? sent : 'Failed to send email', 500);
     }
 
     return successResponse(null, 'Contact form submitted');
@@ -275,8 +275,8 @@ async function sendAppointmentEmail(request, env) {
 
     const sent = await sendEmail(env, toEmail, `Appointment Request - ${brandName || 'Website'}`, html, text);
 
-    if (!sent) {
-      return errorResponse('Failed to send email', 500);
+    if (sent !== true) {
+      return errorResponse(typeof sent === 'string' ? sent : 'Failed to send email', 500);
     }
 
     return successResponse(null, 'Appointment request submitted');

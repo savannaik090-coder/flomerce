@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-I1UrMs/checked-fetch.js
+// .wrangler/tmp/bundle-WKeQlz/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-I1UrMs/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-WKeQlz/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-I1UrMs/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-WKeQlz/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-I1UrMs/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-WKeQlz/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -1381,12 +1381,12 @@ var init_site_admin_worker = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-I1UrMs/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-WKeQlz/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-I1UrMs/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-WKeQlz/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -1416,6 +1416,8 @@ async function sendEmail(env, to, subject, html, text) {
   try {
     if (env.RESEND_API_KEY) {
       const apiKey = env.RESEND_API_KEY.trim();
+      const fromEmail = env.FROM_EMAIL || "noreply@fluxe.in";
+      const fromField = fromEmail.includes("<") ? fromEmail : `Fluxe <${fromEmail}>`;
       const response = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: {
@@ -1423,7 +1425,7 @@ async function sendEmail(env, to, subject, html, text) {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          from: env.FROM_EMAIL || "noreply@fluxe.in",
+          from: fromField,
           to: typeof to === "string" ? [to] : to,
           subject,
           html,
@@ -1432,9 +1434,10 @@ async function sendEmail(env, to, subject, html, text) {
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) {
-        console.error("Resend error:", body);
+        console.error("Resend error:", JSON.stringify(body), "Status:", response.status);
         return body.message || body.error || "Resend API error";
       }
+      console.log("Email sent via Resend to:", to, "Subject:", subject);
       return true;
     }
     if (env.SENDGRID_API_KEY) {
@@ -1460,11 +1463,11 @@ async function sendEmail(env, to, subject, html, text) {
         console.error("SendGrid error:", errorText);
         return errorText || "SendGrid API error";
       }
+      console.log("Email sent via SendGrid to:", to, "Subject:", subject);
       return true;
     }
-    console.log("No email provider configured. Email would be sent to:", to);
-    console.log("Subject:", subject);
-    return true;
+    console.warn("WARNING: No email provider configured (RESEND_API_KEY or SENDGRID_API_KEY missing). Email NOT sent to:", to, "Subject:", subject);
+    return "No email provider configured";
   } catch (error) {
     console.error("Send email error:", error);
     return error.message || "Unknown email sending error";
@@ -1875,8 +1878,8 @@ async function sendTestEmail(request, env) {
   const html = `<h3>Test Email</h3><p>This is a test email from Fluxe.</p>`;
   const text = `Test Email from Fluxe`;
   const sent = await sendEmail2(env, email, "Fluxe Test Email", html, text);
-  if (!sent)
-    return errorResponse("Failed to send test email", 500);
+  if (sent !== true)
+    return errorResponse(typeof sent === "string" ? sent : "Failed to send test email", 500);
   return successResponse(null, "Test email sent");
 }
 __name(sendTestEmail, "sendTestEmail");
@@ -2050,8 +2053,8 @@ Phone: ${phone}` : ""}
 Message:
 ${message}`;
     const sent = await sendEmail2(env, toEmail, `Contact Form - ${brandName || "Website"}`, html, text);
-    if (!sent) {
-      return errorResponse("Failed to send email", 500);
+    if (sent !== true) {
+      return errorResponse(typeof sent === "string" ? sent : "Failed to send email", 500);
     }
     return successResponse(null, "Contact form submitted");
   } catch (error) {
@@ -2105,8 +2108,8 @@ Preferred Time: ${time}` : ""}${notes ? `
 
 Notes: ${notes}` : ""}`;
     const sent = await sendEmail2(env, toEmail, `Appointment Request - ${brandName || "Website"}`, html, text);
-    if (!sent) {
-      return errorResponse("Failed to send email", 500);
+    if (sent !== true) {
+      return errorResponse(typeof sent === "string" ? sent : "Failed to send email", 500);
     }
     return successResponse(null, "Appointment request submitted");
   } catch (error) {
@@ -7664,9 +7667,10 @@ async function handleSignup2(request, env) {
       const baseUrl = getStorefrontUrl(env, site);
       const verifyUrl = `${baseUrl}/verify-email?token=${verifyToken}&email=${encodeURIComponent(email.toLowerCase())}`;
       const emailContent = buildVerificationEmail(site.brand_name, verifyUrl);
-      sendEmail(env, email.toLowerCase(), `Verify your email - ${site.brand_name}`, emailContent.html, emailContent.text).catch((err) => {
-        console.error("Failed to send verification email:", err);
-      });
+      const emailResult = await sendEmail(env, email.toLowerCase(), `Verify your email - ${site.brand_name}`, emailContent.html, emailContent.text);
+      if (emailResult !== true) {
+        console.error("Verification email send failed:", emailResult);
+      }
       return successResponse({
         customer: {
           id: customerId,
@@ -7838,9 +7842,10 @@ async function handleRequestPasswordReset(request, env) {
     const baseUrl = getStorefrontUrl(env, site);
     const resetUrl = `${baseUrl}/reset-password?token=${resetToken}&email=${encodeURIComponent(email.toLowerCase())}`;
     const emailContent = buildPasswordResetEmail(site.brand_name, resetUrl, customer.name);
-    sendEmail(env, email.toLowerCase(), `Reset your password - ${site.brand_name}`, emailContent.html, emailContent.text).catch((err) => {
-      console.error("Failed to send password reset email:", err);
-    });
+    const emailResult = await sendEmail(env, email.toLowerCase(), `Reset your password - ${site.brand_name}`, emailContent.html, emailContent.text);
+    if (emailResult !== true) {
+      console.error("Password reset email send failed:", emailResult);
+    }
     return successResponse(null, "If an account with that email exists, a password reset link has been sent.");
   } catch (error) {
     console.error("Request password reset error:", error);
@@ -7957,9 +7962,10 @@ async function handleResendVerification2(request, env) {
     const baseUrl = getStorefrontUrl(env, site);
     const verifyUrl = `${baseUrl}/verify-email?token=${verifyToken}&email=${encodeURIComponent(email.toLowerCase())}`;
     const emailContent = buildVerificationEmail(site.brand_name, verifyUrl);
-    sendEmail(env, email.toLowerCase(), `Verify your email - ${site.brand_name}`, emailContent.html, emailContent.text).catch((err) => {
-      console.error("Failed to send verification email:", err);
-    });
+    const emailResult = await sendEmail(env, email.toLowerCase(), `Verify your email - ${site.brand_name}`, emailContent.html, emailContent.text);
+    if (emailResult !== true) {
+      console.error("Resend verification email send failed:", emailResult);
+    }
     return successResponse(null, "If an account with that email exists, a verification email has been sent.");
   } catch (error) {
     console.error("Resend verification error:", error);
@@ -9386,7 +9392,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-I1UrMs/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-WKeQlz/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -9421,7 +9427,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-I1UrMs/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-WKeQlz/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

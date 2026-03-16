@@ -402,9 +402,10 @@ async function handleSignup(request, env) {
       const baseUrl = getStorefrontUrl(env, site);
       const verifyUrl = `${baseUrl}/verify-email?token=${verifyToken}&email=${encodeURIComponent(email.toLowerCase())}`;
       const emailContent = buildVerificationEmail(site.brand_name, verifyUrl);
-      sendEmail(env, email.toLowerCase(), `Verify your email - ${site.brand_name}`, emailContent.html, emailContent.text).catch(err => {
-        console.error('Failed to send verification email:', err);
-      });
+      const emailResult = await sendEmail(env, email.toLowerCase(), `Verify your email - ${site.brand_name}`, emailContent.html, emailContent.text);
+      if (emailResult !== true) {
+        console.error('Verification email send failed:', emailResult);
+      }
 
       return successResponse({
         customer: {
@@ -605,9 +606,10 @@ async function handleRequestPasswordReset(request, env) {
     const baseUrl = getStorefrontUrl(env, site);
     const resetUrl = `${baseUrl}/reset-password?token=${resetToken}&email=${encodeURIComponent(email.toLowerCase())}`;
     const emailContent = buildPasswordResetEmail(site.brand_name, resetUrl, customer.name);
-    sendEmail(env, email.toLowerCase(), `Reset your password - ${site.brand_name}`, emailContent.html, emailContent.text).catch(err => {
-      console.error('Failed to send password reset email:', err);
-    });
+    const emailResult = await sendEmail(env, email.toLowerCase(), `Reset your password - ${site.brand_name}`, emailContent.html, emailContent.text);
+    if (emailResult !== true) {
+      console.error('Password reset email send failed:', emailResult);
+    }
 
     return successResponse(null, 'If an account with that email exists, a password reset link has been sent.');
   } catch (error) {
@@ -754,9 +756,10 @@ async function handleResendVerification(request, env) {
     const baseUrl = getStorefrontUrl(env, site);
     const verifyUrl = `${baseUrl}/verify-email?token=${verifyToken}&email=${encodeURIComponent(email.toLowerCase())}`;
     const emailContent = buildVerificationEmail(site.brand_name, verifyUrl);
-    sendEmail(env, email.toLowerCase(), `Verify your email - ${site.brand_name}`, emailContent.html, emailContent.text).catch(err => {
-      console.error('Failed to send verification email:', err);
-    });
+    const emailResult = await sendEmail(env, email.toLowerCase(), `Verify your email - ${site.brand_name}`, emailContent.html, emailContent.text);
+    if (emailResult !== true) {
+      console.error('Resend verification email send failed:', emailResult);
+    }
 
     return successResponse(null, 'If an account with that email exists, a verification email has been sent.');
   } catch (error) {

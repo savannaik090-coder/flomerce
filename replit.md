@@ -37,4 +37,4 @@ Fluxe operates on a multi-tenant architecture where all user data is stored in s
 - **Cloudflare D1:** Primary database.
 - **Cloudflare R2:** Object storage for static assets (images, videos).
 - **Razorpay:** Payment gateway for platform subscriptions and storefront transactions.
-- **Resend/SendGrid:** Email sending services.
+- **Resend/SendGrid:** Email sending services. `RESEND_API_KEY` must be set as a Cloudflare Worker secret (`wrangler secret put RESEND_API_KEY`) for production. The `sendEmail` utility uses `Fluxe <FROM_EMAIL>` as sender, defaults to `noreply@fluxe.in`. If no email provider is configured, emails are NOT sent and a warning is logged. The `from` field uses Resend's display-name format: `Fluxe <noreply@fluxe.in>`.

@@ -2,6 +2,8 @@ export async function sendEmail(env, to, subject, html, text) {
   try {
     if (env.RESEND_API_KEY) {
       const apiKey = env.RESEND_API_KEY.trim();
+      const fromEmail = env.FROM_EMAIL || 'noreply@fluxe.in';
+      const fromField = fromEmail.includes('<') ? fromEmail : `Fluxe <${fromEmail}>`;
       const response = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
@@ -9,7 +11,7 @@ export async function sendEmail(env, to, subject, html, text) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          from: env.FROM_EMAIL || 'noreply@fluxe.in',
+          from: fromField,
           to: typeof to === 'string' ? [to] : to,
           subject,
           html,
@@ -19,9 +21,10 @@ export async function sendEmail(env, to, subject, html, text) {
 
       const body = await response.json().catch(() => ({}));
       if (!response.ok) {
-        console.error('Resend error:', body);
+        console.error('Resend error:', JSON.stringify(body), 'Status:', response.status);
         return body.message || body.error || 'Resend API error';
       }
+      console.log('Email sent via Resend to:', to, 'Subject:', subject);
       return true;
     }
 
@@ -49,12 +52,12 @@ export async function sendEmail(env, to, subject, html, text) {
         console.error('SendGrid error:', errorText);
         return errorText || 'SendGrid API error';
       }
+      console.log('Email sent via SendGrid to:', to, 'Subject:', subject);
       return true;
     }
 
-    console.log('No email provider configured. Email would be sent to:', to);
-    console.log('Subject:', subject);
-    return true;
+    console.warn('WARNING: No email provider configured (RESEND_API_KEY or SENDGRID_API_KEY missing). Email NOT sent to:', to, 'Subject:', subject);
+    return 'No email provider configured';
   } catch (error) {
     console.error('Send email error:', error);
     return error.message || 'Unknown email sending error';
