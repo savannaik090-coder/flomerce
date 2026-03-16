@@ -2,6 +2,7 @@ import { generateId, generateOrderNumber, jsonResponse, errorResponse, successRe
 import { validateAuth, validateAnyAuth } from '../../utils/auth.js';
 import { updateProductStock } from './products-worker.js';
 import { sendEmail, buildOrderConfirmationEmail, buildOwnerNotificationEmail, buildCancellationCustomerEmail, buildCancellationOwnerEmail, buildDeliveryCustomerEmail, buildDeliveryOwnerEmail } from '../../utils/email.js';
+import { trackD1Usage, estimateRowBytes, checkUsageLimit } from '../../utils/usage-tracker.js';
 
 export async function handleOrders(request, env, path) {
   const corsResponse = handleCORS(request);
@@ -278,6 +279,14 @@ async function createOrder(request, env, user) {
     const isPendingPayment = paymentMethod === 'razorpay';
     const orderStatus = isPendingPayment ? 'pending_payment' : (data.status || 'pending');
 
+    const orderRowData = { id: orderId, siteId, userId: user?.id, orderNumber, items: JSON.stringify(processedItems), subtotal, discount, shippingCost, tax, total, paymentMethod, status: orderStatus, shippingAddress: JSON.stringify(shippingAddress), customerName, customerEmail, customerPhone, couponCode: appliedCouponCode, notes };
+    const estimatedBytes = estimateRowBytes(orderRowData);
+
+    const usageCheck = await checkUsageLimit(env, siteId, 'd1', estimatedBytes);
+    if (!usageCheck.allowed) {
+      return errorResponse(usageCheck.reason, 403, 'STORAGE_LIMIT');
+    }
+
     await env.DB.prepare(
       `INSERT INTO orders (id, site_id, user_id, order_number, items, subtotal, discount, shipping_cost, tax, total, payment_method, status, shipping_address, billing_address, customer_name, customer_email, customer_phone, coupon_code, notes, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
@@ -302,6 +311,8 @@ async function createOrder(request, env, user) {
       appliedCouponCode || null,
       notes || null
     ).run();
+
+    trackD1Usage(env, siteId, estimatedBytes).catch(() => {});
 
     if (!isPendingPayment) {
       for (const item of processedItems) {
@@ -560,6 +571,14 @@ async function createGuestOrder(request, env) {
     const isPendingPayment = paymentMethod === 'razorpay';
     const guestOrderStatus = isPendingPayment ? 'pending_payment' : 'confirmed';
 
+    const guestRowData = { id: orderId, siteId, orderNumber, items: JSON.stringify(processedItems), subtotal, total, paymentMethod, status: guestOrderStatus, shippingAddress: JSON.stringify(shippingAddress), customerName, customerEmail, customerPhone };
+    const guestEstBytes = estimateRowBytes(guestRowData);
+
+    const guestUsageCheck = await checkUsageLimit(env, siteId, 'd1', guestEstBytes);
+    if (!guestUsageCheck.allowed) {
+      return errorResponse(guestUsageCheck.reason, 403, 'STORAGE_LIMIT');
+    }
+
     await env.DB.prepare(
       `INSERT INTO guest_orders (id, site_id, order_number, items, subtotal, total, payment_method, status, shipping_address, customer_name, customer_email, customer_phone, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
@@ -577,6 +596,8 @@ async function createGuestOrder(request, env) {
       customerEmail || null,
       customerPhone
     ).run();
+
+    trackD1Usage(env, siteId, guestEstBytes).catch(() => {});
 
     if (!isPendingPayment) {
       for (const item of processedItems) {

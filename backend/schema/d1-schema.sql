@@ -533,3 +533,30 @@ CREATE TABLE IF NOT EXISTS activity_log (
 CREATE INDEX idx_activity_site ON activity_log(site_id);
 CREATE INDEX idx_activity_user ON activity_log(user_id);
 CREATE INDEX idx_activity_created ON activity_log(created_at);
+
+-- =====================================================
+-- SITE USAGE TABLE (Storage usage tracking per site)
+-- =====================================================
+CREATE TABLE IF NOT EXISTS site_usage (
+    site_id TEXT PRIMARY KEY,
+    d1_bytes_used INTEGER DEFAULT 0,
+    r2_bytes_used INTEGER DEFAULT 0,
+    last_updated TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
+);
+
+-- =====================================================
+-- SITE MEDIA TABLE (R2 file size tracking)
+-- =====================================================
+CREATE TABLE IF NOT EXISTS site_media (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    site_id TEXT NOT NULL,
+    storage_key TEXT NOT NULL UNIQUE,
+    size_bytes INTEGER NOT NULL,
+    media_type TEXT DEFAULT 'image',
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_site_media_site ON site_media(site_id);
+CREATE INDEX idx_site_media_key ON site_media(storage_key);

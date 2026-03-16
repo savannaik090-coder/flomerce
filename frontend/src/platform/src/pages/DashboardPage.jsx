@@ -23,6 +23,7 @@ export default function DashboardPage() {
   const [billingSiteId, setBillingSiteId] = useState(null);
   const [dataLoaded, setDataLoaded] = useState(false);
   const [showTrialOverlay, setShowTrialOverlay] = useState(false);
+  const [siteUsage, setSiteUsage] = useState({});
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
@@ -101,9 +102,20 @@ export default function DashboardPage() {
     }
   };
 
+  const loadSiteUsage = useCallback(async (siteId) => {
+    try {
+      const result = await apiRequest(`/api/usage?siteId=${siteId}`);
+      const data = result.data || result;
+      setSiteUsage(prev => ({ ...prev, [siteId]: data }));
+    } catch (e) {
+      console.error('Failed to load usage for site', siteId, e);
+    }
+  }, []);
+
   const handleBillingSite = (siteId) => {
     setBillingSiteId(siteId);
     setActivePage('billing');
+    loadSiteUsage(siteId);
   };
 
   const handleSiteCreated = () => {
@@ -168,6 +180,78 @@ export default function DashboardPage() {
     const isActive = rawStatus === 'active' && !isExpired;
     const displayStatus = isExpired ? 'expired' : rawStatus;
     return { plan, status: displayStatus, periodEnd, isActive, isExpired };
+  };
+
+  const formatBytes = (bytes) => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  };
+
+  const renderUsageBars = (siteId) => {
+    const usage = siteUsage[siteId];
+    if (!usage) return null;
+
+    const d1Pct = Math.min(100, usage.d1?.percentage || 0);
+    const r2Pct = Math.min(100, usage.r2?.percentage || 0);
+    const d1Color = d1Pct > 90 ? '#ef4444' : d1Pct > 70 ? '#f59e0b' : '#10b981';
+    const r2Color = r2Pct > 90 ? '#ef4444' : r2Pct > 70 ? '#f59e0b' : '#10b981';
+
+    return (
+      <div className="site-card" style={{ display: 'block', marginTop: '1rem' }}>
+        <h3 style={{ margin: '0 0 1rem', fontSize: '1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+          Storage Usage
+        </h3>
+
+        <div style={{ marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.375rem' }}>
+            <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>Database (D1)</span>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{formatBytes(usage.d1?.used || 0)} / {formatBytes(usage.d1?.limit || 0)}</span>
+          </div>
+          <div style={{ height: '8px', background: '#e5e7eb', borderRadius: '4px', overflow: 'hidden' }}>
+            <div style={{ height: '100%', width: `${d1Pct}%`, background: d1Color, borderRadius: '4px', transition: 'width 0.5s ease' }} />
+          </div>
+          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0.25rem 0 0' }}>{d1Pct.toFixed(1)}% used</p>
+        </div>
+
+        <div style={{ marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.375rem' }}>
+            <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>Media Storage (R2)</span>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{formatBytes(usage.r2?.used || 0)} / {formatBytes(usage.r2?.limit || 0)}</span>
+          </div>
+          <div style={{ height: '8px', background: '#e5e7eb', borderRadius: '4px', overflow: 'hidden' }}>
+            <div style={{ height: '100%', width: `${r2Pct}%`, background: r2Color, borderRadius: '4px', transition: 'width 0.5s ease' }} />
+          </div>
+          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0.25rem 0 0' }}>{r2Pct.toFixed(1)}% used</p>
+        </div>
+
+        {usage.allowOverage && usage.overageCostINR > 0 && (
+          <div style={{ padding: '0.75rem', background: '#fef3c7', borderRadius: '0.5rem', border: '1px solid #fbbf24' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+              <span style={{ fontSize: '0.875rem', fontWeight: 700, color: '#92400e' }}>Overage Charges</span>
+            </div>
+            <p style={{ fontSize: '0.8rem', color: '#92400e', margin: 0 }}>
+              You have exceeded your plan limits. Current overage: <strong>{'\u20B9'}{usage.overageCostINR.toFixed(2)}</strong>
+            </p>
+            <p style={{ fontSize: '0.7rem', color: '#b45309', margin: '0.25rem 0 0' }}>
+              Rates: {'\u20B9'}0.75/GB (D1) &middot; {'\u20B9'}0.015/GB (R2)
+            </p>
+          </div>
+        )}
+
+        {!usage.allowOverage && (d1Pct >= 90 || r2Pct >= 90) && (
+          <div style={{ padding: '0.75rem', background: '#fef2f2', borderRadius: '0.5rem', border: '1px solid #fca5a5' }}>
+            <p style={{ fontSize: '0.8rem', color: '#991b1b', margin: 0, fontWeight: 600 }}>
+              You are approaching your storage limit. Upgrade your plan for more storage.
+            </p>
+          </div>
+        )}
+      </div>
+    );
   };
 
   const accountStatus = getAccountSubscriptionStatus();
@@ -477,6 +561,7 @@ export default function DashboardPage() {
                                 </p>
                               )}
                             </div>
+                            {renderUsageBars(billingSiteId)}
                             <PlanSelector
                               siteId={billingSiteId}
                               currentPlan={subInfo.plan}
@@ -509,7 +594,7 @@ export default function DashboardPage() {
                                     </p>
                                   )}
                                 </div>
-                                <button className="btn btn-primary" style={{ fontSize: '0.8rem', whiteSpace: 'nowrap' }} onClick={() => setBillingSiteId(site.id)}>
+                                <button className="btn btn-primary" style={{ fontSize: '0.8rem', whiteSpace: 'nowrap' }} onClick={() => { setBillingSiteId(site.id); loadSiteUsage(site.id); }}>
                                   {subInfo.isExpired || !subInfo.plan ? 'Subscribe' : accountStatus.isTrialActive ? 'Upgrade' : 'Manage Plan'}
                                 </button>
                               </div>

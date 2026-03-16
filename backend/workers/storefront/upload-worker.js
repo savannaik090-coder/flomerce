@@ -1,6 +1,7 @@
 import { generateId, jsonResponse, errorResponse, successResponse, handleCORS } from '../../utils/helpers.js';
 import { validateAuth } from '../../utils/auth.js';
 import { validateSiteAdmin } from './site-admin-worker.js';
+import { recordMediaFile, removeMediaFile, checkUsageLimit } from '../../utils/usage-tracker.js';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const MAX_VIDEO_SIZE = 100 * 1024 * 1024;
@@ -109,6 +110,12 @@ async function uploadImage(request, env, url) {
           continue;
         }
 
+        const usageCheck = await checkUsageLimit(env, siteId, 'r2', file.size);
+        if (!usageCheck.allowed) {
+          results.push({ error: usageCheck.reason });
+          continue;
+        }
+
         const ext = MIME_TO_EXT[file.type] || file.type.split('/')[1];
         const key = `sites/${siteId}/images/${generateId()}.${ext}`;
 
@@ -119,6 +126,8 @@ async function uploadImage(request, env, url) {
             cacheControl: 'public, max-age=31536000',
           },
         });
+
+        recordMediaFile(env, siteId, key, file.size, 'image').catch(() => {});
 
         const imageUrl = `/api/upload/image?key=${encodeURIComponent(key)}`;
         results.push({ url: imageUrl, key });
@@ -158,6 +167,11 @@ async function uploadImage(request, env, url) {
       return errorResponse('Image too large (max 10MB)', 400);
     }
 
+    const usageCheck = await checkUsageLimit(env, siteId, 'r2', buffer.length);
+    if (!usageCheck.allowed) {
+      return errorResponse(usageCheck.reason, 403, 'STORAGE_LIMIT');
+    }
+
     const ext = MIME_TO_EXT[mimeType] || mimeType.split('/')[1];
     const key = `sites/${siteId}/images/${generateId()}.${ext}`;
 
@@ -167,6 +181,8 @@ async function uploadImage(request, env, url) {
         cacheControl: 'public, max-age=31536000',
       },
     });
+
+    recordMediaFile(env, siteId, key, buffer.length, 'image').catch(() => {});
 
     const imageUrl = `/api/upload/image?key=${encodeURIComponent(key)}`;
     return successResponse({ url: imageUrl, key }, 'Image uploaded successfully');
@@ -212,6 +228,7 @@ async function deleteImage(request, env, url) {
 
   try {
     await env.STORAGE.delete(key);
+    removeMediaFile(env, siteId, key).catch(() => {});
     return successResponse(null, 'Image deleted successfully');
   } catch (error) {
     console.error('Delete image error:', error);
@@ -243,6 +260,11 @@ async function uploadVideo(request, env, url) {
         return errorResponse(`Video too large: ${(file.size / 1024 / 1024).toFixed(1)}MB (max 100MB)`, 400);
       }
 
+      const usageCheck = await checkUsageLimit(env, siteId, 'r2', file.size);
+      if (!usageCheck.allowed) {
+        return errorResponse(usageCheck.reason, 403, 'STORAGE_LIMIT');
+      }
+
       const ext = file.type === 'video/quicktime' ? 'mov' : file.type.split('/')[1];
       const key = `sites/${siteId}/videos/${generateId()}.${ext}`;
 
@@ -253,6 +275,8 @@ async function uploadVideo(request, env, url) {
           cacheControl: 'public, max-age=31536000',
         },
       });
+
+      recordMediaFile(env, siteId, key, file.size, 'video').catch(() => {});
 
       const videoUrl = `/api/upload/video?key=${encodeURIComponent(key)}`;
       return successResponse({ url: videoUrl, key }, 'Video uploaded successfully');
@@ -301,6 +325,7 @@ async function deleteVideo(request, env, url) {
 
   try {
     await env.STORAGE.delete(key);
+    removeMediaFile(env, siteId, key).catch(() => {});
     return successResponse(null, 'Video deleted successfully');
   } catch (error) {
     console.error('Delete video error:', error);

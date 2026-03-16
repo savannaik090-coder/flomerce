@@ -994,6 +994,324 @@ var init_site_admin_worker = __esm({
   }
 });
 
+// utils/usage-tracker.js
+var usage_tracker_exports = {};
+__export(usage_tracker_exports, {
+  checkUsageLimit: () => checkUsageLimit,
+  ensureUsageTables: () => ensureUsageTables,
+  estimateRowBytes: () => estimateRowBytes,
+  getSiteUsage: () => getSiteUsage,
+  handleUsageAPI: () => handleUsageAPI,
+  reconcileSiteUsage: () => reconcileSiteUsage,
+  recordMediaFile: () => recordMediaFile,
+  removeMediaFile: () => removeMediaFile,
+  trackD1Usage: () => trackD1Usage,
+  trackR2Usage: () => trackR2Usage
+});
+async function ensureUsageTables(env) {
+  try {
+    await env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS site_usage (
+        site_id TEXT PRIMARY KEY,
+        d1_bytes_used INTEGER DEFAULT 0,
+        r2_bytes_used INTEGER DEFAULT 0,
+        last_updated TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
+      )
+    `).run();
+    await env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS site_media (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        site_id TEXT NOT NULL,
+        storage_key TEXT NOT NULL UNIQUE,
+        size_bytes INTEGER NOT NULL,
+        media_type TEXT DEFAULT 'image',
+        created_at TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
+      )
+    `).run();
+    await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_site_media_site ON site_media(site_id)").run();
+    await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_site_media_key ON site_media(storage_key)").run();
+  } catch (e) {
+    console.error("ensureUsageTables error (non-fatal):", e.message || e);
+  }
+}
+function estimateRowBytes(fields) {
+  let bytes = 100;
+  for (const val of Object.values(fields)) {
+    if (val === null || val === void 0) {
+      bytes += 1;
+    } else if (typeof val === "number") {
+      bytes += 8;
+    } else if (typeof val === "string") {
+      bytes += val.length * 2;
+    } else if (typeof val === "boolean") {
+      bytes += 1;
+    } else {
+      bytes += JSON.stringify(val).length * 2;
+    }
+  }
+  return bytes;
+}
+async function trackD1Usage(env, siteId, byteDelta) {
+  if (!siteId || byteDelta === 0)
+    return;
+  try {
+    await ensureUsageTables(env);
+    await env.DB.prepare(`
+      INSERT INTO site_usage (site_id, d1_bytes_used, r2_bytes_used, last_updated)
+      VALUES (?, MAX(0, ?), 0, datetime('now'))
+      ON CONFLICT(site_id) DO UPDATE SET
+        d1_bytes_used = MAX(0, d1_bytes_used + ?),
+        last_updated = datetime('now')
+    `).bind(siteId, Math.max(0, byteDelta), byteDelta).run();
+  } catch (e) {
+    console.error("trackD1Usage error (non-fatal):", e.message || e);
+  }
+}
+async function trackR2Usage(env, siteId, byteDelta) {
+  if (!siteId || byteDelta === 0)
+    return;
+  try {
+    await ensureUsageTables(env);
+    await env.DB.prepare(`
+      INSERT INTO site_usage (site_id, d1_bytes_used, r2_bytes_used, last_updated)
+      VALUES (?, 0, MAX(0, ?), datetime('now'))
+      ON CONFLICT(site_id) DO UPDATE SET
+        r2_bytes_used = MAX(0, r2_bytes_used + ?),
+        last_updated = datetime('now')
+    `).bind(siteId, Math.max(0, byteDelta), byteDelta).run();
+  } catch (e) {
+    console.error("trackR2Usage error (non-fatal):", e.message || e);
+  }
+}
+async function recordMediaFile(env, siteId, storageKey, sizeBytes, mediaType = "image") {
+  if (!siteId || !storageKey)
+    return;
+  try {
+    await ensureUsageTables(env);
+    const result = await env.DB.prepare(`
+      INSERT OR IGNORE INTO site_media (site_id, storage_key, size_bytes, media_type, created_at)
+      VALUES (?, ?, ?, ?, datetime('now'))
+    `).bind(siteId, storageKey, sizeBytes, mediaType).run();
+    if (result?.meta?.changes > 0) {
+      await trackR2Usage(env, siteId, sizeBytes);
+    }
+  } catch (e) {
+    console.error("recordMediaFile error (non-fatal):", e.message || e);
+  }
+}
+async function removeMediaFile(env, siteId, storageKey) {
+  if (!storageKey)
+    return;
+  try {
+    await ensureUsageTables(env);
+    const record = await env.DB.prepare(
+      "SELECT size_bytes, site_id FROM site_media WHERE storage_key = ?"
+    ).bind(storageKey).first();
+    if (record) {
+      const resolvedSiteId = siteId || record.site_id;
+      await env.DB.prepare("DELETE FROM site_media WHERE storage_key = ?").bind(storageKey).run();
+      await trackR2Usage(env, resolvedSiteId, -record.size_bytes);
+    }
+  } catch (e) {
+    console.error("removeMediaFile error (non-fatal):", e.message || e);
+  }
+}
+async function getSiteUsage(env, siteId) {
+  try {
+    await ensureUsageTables(env);
+    const usage = await env.DB.prepare(
+      "SELECT d1_bytes_used, r2_bytes_used, last_updated FROM site_usage WHERE site_id = ?"
+    ).bind(siteId).first();
+    return {
+      d1BytesUsed: usage?.d1_bytes_used || 0,
+      r2BytesUsed: usage?.r2_bytes_used || 0,
+      lastUpdated: usage?.last_updated || null
+    };
+  } catch (e) {
+    console.error("getSiteUsage error:", e.message || e);
+    return { d1BytesUsed: 0, r2BytesUsed: 0, lastUpdated: null };
+  }
+}
+function getSitePlan(site) {
+  const plan = (site.subscription_plan || "free").toLowerCase();
+  if (plan.includes("premium"))
+    return "premium";
+  if (plan.includes("pro"))
+    return "pro";
+  if (plan.includes("basic"))
+    return "basic";
+  if (plan === "trial")
+    return "trial";
+  return "free";
+}
+async function checkUsageLimit(env, siteId, resourceType = "d1", additionalBytes = 0) {
+  try {
+    const site = await env.DB.prepare(
+      "SELECT subscription_plan FROM sites WHERE id = ?"
+    ).bind(siteId).first();
+    if (!site)
+      return { allowed: true, reason: null };
+    const planKey = getSitePlan(site);
+    const limits = PLAN_LIMITS[planKey] || PLAN_LIMITS.free;
+    const usage = await getSiteUsage(env, siteId);
+    const currentBytes = resourceType === "d1" ? usage.d1BytesUsed : usage.r2BytesUsed;
+    const limitBytes = resourceType === "d1" ? limits.d1Bytes : limits.r2Bytes;
+    const newTotal = currentBytes + additionalBytes;
+    if (newTotal <= limitBytes) {
+      return { allowed: true, reason: null };
+    }
+    if (limits.allowOverage) {
+      const overageBytes = Math.max(0, newTotal - limitBytes);
+      const overageGB = overageBytes / (1024 * 1024 * 1024);
+      const rate = resourceType === "d1" ? OVERAGE_RATES.d1PerGB : OVERAGE_RATES.r2PerGB;
+      const overageCost = overageGB * rate;
+      return { allowed: true, overage: true, overageBytes, overageCostINR: overageCost, reason: null };
+    }
+    const limitMB = (limitBytes / (1024 * 1024)).toFixed(0);
+    const usedMB = (currentBytes / (1024 * 1024)).toFixed(1);
+    return {
+      allowed: false,
+      reason: `Storage limit reached. ${resourceType.toUpperCase()} usage: ${usedMB}MB / ${limitMB}MB. Upgrade your plan for more storage.`
+    };
+  } catch (e) {
+    console.error("checkUsageLimit error (non-fatal):", e.message || e);
+    return { allowed: true, reason: null };
+  }
+}
+async function reconcileSiteUsage(env, siteId) {
+  try {
+    await ensureUsageTables(env);
+    const tables = ["products", "categories", "orders", "guest_orders", "site_customers", "reviews", "coupons"];
+    let totalD1Bytes = 0;
+    for (const table of tables) {
+      try {
+        const rows = await env.DB.prepare(
+          `SELECT * FROM ${table} WHERE site_id = ?`
+        ).bind(siteId).all();
+        for (const row of rows.results || []) {
+          totalD1Bytes += estimateRowBytes(row);
+        }
+      } catch (e) {
+      }
+    }
+    let totalR2Bytes = 0;
+    const mediaRows = await env.DB.prepare(
+      "SELECT SUM(size_bytes) as total FROM site_media WHERE site_id = ?"
+    ).bind(siteId).first();
+    totalR2Bytes = mediaRows?.total || 0;
+    await env.DB.prepare(`
+      INSERT INTO site_usage (site_id, d1_bytes_used, r2_bytes_used, last_updated)
+      VALUES (?, ?, ?, datetime('now'))
+      ON CONFLICT(site_id) DO UPDATE SET
+        d1_bytes_used = ?,
+        r2_bytes_used = ?,
+        last_updated = datetime('now')
+    `).bind(siteId, totalD1Bytes, totalR2Bytes, totalD1Bytes, totalR2Bytes).run();
+    return { d1BytesUsed: totalD1Bytes, r2BytesUsed: totalR2Bytes };
+  } catch (e) {
+    console.error("reconcileSiteUsage error:", e.message || e);
+    return null;
+  }
+}
+async function handleUsageAPI(request, env, path) {
+  const corsResponse = handleCORS(request);
+  if (corsResponse)
+    return corsResponse;
+  if (request.method !== "GET") {
+    return errorResponse("Method not allowed", 405);
+  }
+  const user = await validateAuth(request, env);
+  if (!user) {
+    return errorResponse("Unauthorized", 401);
+  }
+  const url = new URL(request.url);
+  const siteId = url.searchParams.get("siteId");
+  if (!siteId) {
+    return errorResponse("siteId is required", 400);
+  }
+  try {
+    const site = await env.DB.prepare(
+      "SELECT id, subscription_plan FROM sites WHERE id = ? AND user_id = ?"
+    ).bind(siteId, user.id).first();
+    if (!site) {
+      return errorResponse("Site not found or unauthorized", 404);
+    }
+    let usage = await getSiteUsage(env, siteId);
+    if (usage.d1BytesUsed === 0 && usage.r2BytesUsed === 0 && !usage.lastUpdated) {
+      const reconciled = await reconcileSiteUsage(env, siteId);
+      if (reconciled) {
+        usage = { d1BytesUsed: reconciled.d1BytesUsed, r2BytesUsed: reconciled.r2BytesUsed, lastUpdated: (/* @__PURE__ */ new Date()).toISOString() };
+      }
+    }
+    const planKey = getSitePlan(site);
+    const limits = PLAN_LIMITS[planKey] || PLAN_LIMITS.free;
+    const d1OverageBytes = Math.max(0, usage.d1BytesUsed - limits.d1Bytes);
+    const r2OverageBytes = Math.max(0, usage.r2BytesUsed - limits.r2Bytes);
+    const d1OverageGB = d1OverageBytes / (1024 * 1024 * 1024);
+    const r2OverageGB = r2OverageBytes / (1024 * 1024 * 1024);
+    let overageCostINR = 0;
+    if (limits.allowOverage) {
+      overageCostINR = d1OverageGB * OVERAGE_RATES.d1PerGB + r2OverageGB * OVERAGE_RATES.r2PerGB;
+    }
+    return successResponse({
+      plan: planKey,
+      d1: {
+        used: usage.d1BytesUsed,
+        limit: limits.d1Bytes,
+        percentage: limits.d1Bytes > 0 ? Math.min(100, usage.d1BytesUsed / limits.d1Bytes * 100) : 0,
+        overageBytes: d1OverageBytes
+      },
+      r2: {
+        used: usage.r2BytesUsed,
+        limit: limits.r2Bytes,
+        percentage: limits.r2Bytes > 0 ? Math.min(100, usage.r2BytesUsed / limits.r2Bytes * 100) : 0,
+        overageBytes: r2OverageBytes
+      },
+      allowOverage: limits.allowOverage,
+      overageCostINR: Math.round(overageCostINR * 100) / 100,
+      overageRates: OVERAGE_RATES,
+      lastUpdated: usage.lastUpdated
+    });
+  } catch (error) {
+    console.error("Usage API error:", error);
+    return errorResponse("Failed to fetch usage data", 500);
+  }
+}
+var PLAN_LIMITS, OVERAGE_RATES;
+var init_usage_tracker = __esm({
+  "utils/usage-tracker.js"() {
+    init_checked_fetch();
+    init_strip_cf_connecting_ip_header();
+    init_modules_watch_stub();
+    init_helpers();
+    init_auth();
+    PLAN_LIMITS = {
+      basic: { d1Bytes: 500 * 1024 * 1024, r2Bytes: 5 * 1024 * 1024 * 1024, allowOverage: false },
+      pro: { d1Bytes: 1.5 * 1024 * 1024 * 1024, r2Bytes: 50 * 1024 * 1024 * 1024, allowOverage: false },
+      premium: { d1Bytes: 3 * 1024 * 1024 * 1024, r2Bytes: 100 * 1024 * 1024 * 1024, allowOverage: true },
+      trial: { d1Bytes: 500 * 1024 * 1024, r2Bytes: 5 * 1024 * 1024 * 1024, allowOverage: false },
+      free: { d1Bytes: 500 * 1024 * 1024, r2Bytes: 5 * 1024 * 1024 * 1024, allowOverage: false }
+    };
+    OVERAGE_RATES = {
+      d1PerGB: 0.75,
+      r2PerGB: 0.015
+    };
+    __name(ensureUsageTables, "ensureUsageTables");
+    __name(estimateRowBytes, "estimateRowBytes");
+    __name(trackD1Usage, "trackD1Usage");
+    __name(trackR2Usage, "trackR2Usage");
+    __name(recordMediaFile, "recordMediaFile");
+    __name(removeMediaFile, "removeMediaFile");
+    __name(getSiteUsage, "getSiteUsage");
+    __name(getSitePlan, "getSitePlan");
+    __name(checkUsageLimit, "checkUsageLimit");
+    __name(reconcileSiteUsage, "reconcileSiteUsage");
+    __name(handleUsageAPI, "handleUsageAPI");
+  }
+});
+
 // .wrangler/tmp/bundle-QUeiHs/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
@@ -3005,6 +3323,7 @@ init_modules_watch_stub();
 init_helpers();
 init_auth();
 init_site_admin_worker();
+init_usage_tracker();
 async function handleProducts(request, env, path) {
   const corsResponse = handleCORS(request);
   if (corsResponse)
@@ -3176,6 +3495,12 @@ async function createProduct(request, env, user) {
     }
     const slug = name.toLowerCase().trim().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-").substring(0, 100);
     const productId = generateId();
+    const rowData = { id: productId, siteId, categoryId, name, slug, description, shortDescription, price, comparePrice, costPrice, sku, stock, weight, dimensions: dimensions ? JSON.stringify(dimensions) : null, images: images ? JSON.stringify(images) : "[]", thumbnailUrl: resolvedThumbnail, tags: tags ? JSON.stringify(tags) : "[]", isFeatured };
+    const estimatedBytes = estimateRowBytes(rowData);
+    const usageCheck = await checkUsageLimit(env, siteId, "d1", estimatedBytes);
+    if (!usageCheck.allowed) {
+      return errorResponse(usageCheck.reason, 403, "STORAGE_LIMIT");
+    }
     await env.DB.prepare(
       `INSERT INTO products (id, site_id, category_id, name, slug, description, short_description, price, compare_price, cost_price, sku, stock, low_stock_threshold, weight, dimensions, images, thumbnail_url, tags, is_featured, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
@@ -3200,6 +3525,8 @@ async function createProduct(request, env, user) {
       tags ? JSON.stringify(tags) : "[]",
       isFeatured ? 1 : 0
     ).run();
+    trackD1Usage(env, siteId, estimatedBytes).catch(() => {
+    });
     return successResponse({ id: productId, slug }, "Product created successfully");
   } catch (error) {
     console.error("Create product error:", error);
@@ -3291,7 +3618,13 @@ async function deleteProduct(env, user, productId) {
     if (!product) {
       return errorResponse("Product not found or unauthorized", 404);
     }
+    const fullProduct = await env.DB.prepare("SELECT * FROM products WHERE id = ?").bind(productId).first();
     await env.DB.prepare("DELETE FROM products WHERE id = ?").bind(productId).run();
+    if (fullProduct) {
+      const rowBytes = estimateRowBytes(fullProduct);
+      trackD1Usage(env, fullProduct.site_id, -rowBytes).catch(() => {
+      });
+    }
     return successResponse(null, "Product deleted successfully");
   } catch (error) {
     console.error("Delete product error:", error);
@@ -3324,6 +3657,7 @@ init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 init_helpers();
 init_auth();
+init_usage_tracker();
 async function handleOrders(request, env, path) {
   const corsResponse = handleCORS(request);
   if (corsResponse)
@@ -3572,6 +3906,12 @@ async function createOrder(request, env, user) {
     const orderNumber = generateOrderNumber();
     const isPendingPayment = paymentMethod === "razorpay";
     const orderStatus = isPendingPayment ? "pending_payment" : data.status || "pending";
+    const orderRowData = { id: orderId, siteId, userId: user?.id, orderNumber, items: JSON.stringify(processedItems), subtotal, discount, shippingCost, tax, total, paymentMethod, status: orderStatus, shippingAddress: JSON.stringify(shippingAddress), customerName, customerEmail, customerPhone, couponCode: appliedCouponCode, notes };
+    const estimatedBytes = estimateRowBytes(orderRowData);
+    const usageCheck = await checkUsageLimit(env, siteId, "d1", estimatedBytes);
+    if (!usageCheck.allowed) {
+      return errorResponse(usageCheck.reason, 403, "STORAGE_LIMIT");
+    }
     await env.DB.prepare(
       `INSERT INTO orders (id, site_id, user_id, order_number, items, subtotal, discount, shipping_cost, tax, total, payment_method, status, shipping_address, billing_address, customer_name, customer_email, customer_phone, coupon_code, notes, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
@@ -3596,6 +3936,8 @@ async function createOrder(request, env, user) {
       appliedCouponCode || null,
       notes || null
     ).run();
+    trackD1Usage(env, siteId, estimatedBytes).catch(() => {
+    });
     if (!isPendingPayment) {
       for (const item of processedItems) {
         await updateProductStock(env, item.productId, item.quantity, "decrement");
@@ -3836,6 +4178,12 @@ async function createGuestOrder(request, env) {
     const orderNumber = generateOrderNumber();
     const isPendingPayment = paymentMethod === "razorpay";
     const guestOrderStatus = isPendingPayment ? "pending_payment" : "confirmed";
+    const guestRowData = { id: orderId, siteId, orderNumber, items: JSON.stringify(processedItems), subtotal, total, paymentMethod, status: guestOrderStatus, shippingAddress: JSON.stringify(shippingAddress), customerName, customerEmail, customerPhone };
+    const guestEstBytes = estimateRowBytes(guestRowData);
+    const guestUsageCheck = await checkUsageLimit(env, siteId, "d1", guestEstBytes);
+    if (!guestUsageCheck.allowed) {
+      return errorResponse(guestUsageCheck.reason, 403, "STORAGE_LIMIT");
+    }
     await env.DB.prepare(
       `INSERT INTO guest_orders (id, site_id, order_number, items, subtotal, total, payment_method, status, shipping_address, customer_name, customer_email, customer_phone, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
@@ -3853,6 +4201,8 @@ async function createGuestOrder(request, env) {
       customerEmail || null,
       customerPhone
     ).run();
+    trackD1Usage(env, siteId, guestEstBytes).catch(() => {
+    });
     if (!isPendingPayment) {
       for (const item of processedItems) {
         await updateProductStock(env, item.productId, item.quantity, "decrement");
@@ -5183,6 +5533,7 @@ init_modules_watch_stub();
 init_helpers();
 init_auth();
 init_site_admin_worker();
+init_usage_tracker();
 async function handleCategories(request, env, path) {
   const corsResponse = handleCORS(request);
   if (corsResponse)
@@ -5330,6 +5681,12 @@ async function createCategory(request, env, user) {
       return errorResponse("Category with this name already exists", 400, "SLUG_EXISTS");
     }
     const categoryId = generateId();
+    const rowData = { id: categoryId, siteId, name, slug, description, subtitle, parentId, imageUrl, displayOrder };
+    const estimatedBytes = estimateRowBytes(rowData);
+    const usageCheck = await checkUsageLimit(env, siteId, "d1", estimatedBytes);
+    if (!usageCheck.allowed) {
+      return errorResponse(usageCheck.reason, 403, "STORAGE_LIMIT");
+    }
     await env.DB.prepare(
       `INSERT INTO categories (id, site_id, name, slug, description, subtitle, show_on_home, parent_id, image_url, display_order, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
@@ -5345,6 +5702,8 @@ async function createCategory(request, env, user) {
       imageUrl || null,
       displayOrder || 0
     ).run();
+    trackD1Usage(env, siteId, estimatedBytes).catch(() => {
+    });
     return successResponse({ id: categoryId, slug }, "Category created successfully");
   } catch (error) {
     console.error("Create category error:", error);
@@ -5427,6 +5786,7 @@ async function deleteCategory(env, user, categoryId) {
     if (!category) {
       return errorResponse("Category not found or unauthorized", 404);
     }
+    const fullCategory = await env.DB.prepare("SELECT * FROM categories WHERE id = ?").bind(categoryId).first();
     await env.DB.prepare(
       "UPDATE categories SET parent_id = NULL WHERE parent_id = ?"
     ).bind(categoryId).run();
@@ -5434,6 +5794,11 @@ async function deleteCategory(env, user, categoryId) {
       "UPDATE products SET category_id = NULL WHERE category_id = ?"
     ).bind(categoryId).run();
     await env.DB.prepare("DELETE FROM categories WHERE id = ?").bind(categoryId).run();
+    if (fullCategory) {
+      const rowBytes = estimateRowBytes(fullCategory);
+      trackD1Usage(env, fullCategory.site_id, -rowBytes).catch(() => {
+      });
+    }
     return successResponse(null, "Category deleted successfully");
   } catch (error) {
     console.error("Delete category error:", error);
@@ -7120,10 +7485,19 @@ async function handleSignup2(request, env) {
     }
     const customerId = generateId();
     const passwordHash = await hashPassword(password);
+    const { trackD1Usage: trackD1Usage2, estimateRowBytes: estimateRowBytes2, checkUsageLimit: checkUsageLimit2 } = await Promise.resolve().then(() => (init_usage_tracker(), usage_tracker_exports));
+    const rowData = { id: customerId, siteId, email, name, phone };
+    const estimatedBytes = estimateRowBytes2(rowData);
+    const usageCheck = await checkUsageLimit2(env, siteId, "d1", estimatedBytes);
+    if (!usageCheck.allowed) {
+      return errorResponse(usageCheck.reason, 403, "STORAGE_LIMIT");
+    }
     await env.DB.prepare(
       `INSERT INTO site_customers (id, site_id, email, password_hash, name, phone, created_at)
        VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(customerId, siteId, email.toLowerCase(), passwordHash, sanitizeInput(name), phone || null).run();
+    trackD1Usage2(env, siteId, estimatedBytes).catch(() => {
+    });
     const token = generateToken(32);
     const expiresAt = getExpiryDate(24 * 7);
     const sessionId = generateId();
@@ -7284,6 +7658,7 @@ init_modules_watch_stub();
 init_helpers();
 init_auth();
 init_site_admin_worker();
+init_usage_tracker();
 var MAX_FILE_SIZE = 10 * 1024 * 1024;
 var MAX_VIDEO_SIZE = 100 * 1024 * 1024;
 var ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/x-icon", "image/vnd.microsoft.icon", "image/svg+xml"];
@@ -7378,6 +7753,11 @@ async function uploadImage(request, env, url) {
           results.push({ error: `File too large: ${(file.size / 1024 / 1024).toFixed(1)}MB (max 10MB)` });
           continue;
         }
+        const usageCheck2 = await checkUsageLimit(env, siteId, "r2", file.size);
+        if (!usageCheck2.allowed) {
+          results.push({ error: usageCheck2.reason });
+          continue;
+        }
         const ext2 = MIME_TO_EXT[file.type] || file.type.split("/")[1];
         const key2 = `sites/${siteId}/images/${generateId()}.${ext2}`;
         const arrayBuffer = await file.arrayBuffer();
@@ -7386,6 +7766,8 @@ async function uploadImage(request, env, url) {
             contentType: file.type,
             cacheControl: "public, max-age=31536000"
           }
+        });
+        recordMediaFile(env, siteId, key2, file.size, "image").catch(() => {
         });
         const imageUrl2 = `/api/upload/image?key=${encodeURIComponent(key2)}`;
         results.push({ url: imageUrl2, key: key2 });
@@ -7419,6 +7801,10 @@ async function uploadImage(request, env, url) {
     if (buffer.length > MAX_FILE_SIZE) {
       return errorResponse("Image too large (max 10MB)", 400);
     }
+    const usageCheck = await checkUsageLimit(env, siteId, "r2", buffer.length);
+    if (!usageCheck.allowed) {
+      return errorResponse(usageCheck.reason, 403, "STORAGE_LIMIT");
+    }
     const ext = MIME_TO_EXT[mimeType] || mimeType.split("/")[1];
     const key = `sites/${siteId}/images/${generateId()}.${ext}`;
     await env.STORAGE.put(key, buffer, {
@@ -7426,6 +7812,8 @@ async function uploadImage(request, env, url) {
         contentType: mimeType,
         cacheControl: "public, max-age=31536000"
       }
+    });
+    recordMediaFile(env, siteId, key, buffer.length, "image").catch(() => {
     });
     const imageUrl = `/api/upload/image?key=${encodeURIComponent(key)}`;
     return successResponse({ url: imageUrl, key }, "Image uploaded successfully");
@@ -7467,6 +7855,8 @@ async function deleteImage(request, env, url) {
   }
   try {
     await env.STORAGE.delete(key);
+    removeMediaFile(env, siteId, key).catch(() => {
+    });
     return successResponse(null, "Image deleted successfully");
   } catch (error) {
     console.error("Delete image error:", error);
@@ -7494,6 +7884,10 @@ async function uploadVideo(request, env, url) {
       if (file.size > MAX_VIDEO_SIZE) {
         return errorResponse(`Video too large: ${(file.size / 1024 / 1024).toFixed(1)}MB (max 100MB)`, 400);
       }
+      const usageCheck = await checkUsageLimit(env, siteId, "r2", file.size);
+      if (!usageCheck.allowed) {
+        return errorResponse(usageCheck.reason, 403, "STORAGE_LIMIT");
+      }
       const ext = file.type === "video/quicktime" ? "mov" : file.type.split("/")[1];
       const key = `sites/${siteId}/videos/${generateId()}.${ext}`;
       const arrayBuffer = await file.arrayBuffer();
@@ -7502,6 +7896,8 @@ async function uploadVideo(request, env, url) {
           contentType: file.type,
           cacheControl: "public, max-age=31536000"
         }
+      });
+      recordMediaFile(env, siteId, key, file.size, "video").catch(() => {
       });
       const videoUrl = `/api/upload/video?key=${encodeURIComponent(key)}`;
       return successResponse({ url: videoUrl, key }, "Video uploaded successfully");
@@ -7546,6 +7942,8 @@ async function deleteVideo(request, env, url) {
   }
   try {
     await env.STORAGE.delete(key);
+    removeMediaFile(env, siteId, key).catch(() => {
+    });
     return successResponse(null, "Video deleted successfully");
   } catch (error) {
     console.error("Delete video error:", error);
@@ -7555,6 +7953,7 @@ async function deleteVideo(request, env, url) {
 __name(deleteVideo, "deleteVideo");
 
 // workers/index.js
+init_usage_tracker();
 init_helpers();
 
 // utils/db-init.js
@@ -8009,6 +8408,22 @@ async function ensureTablesExist(env) {
         plan_id TEXT NOT NULL,
         razorpay_subscription_id TEXT NOT NULL UNIQUE,
         created_at TEXT DEFAULT (datetime('now'))
+      )`,
+      `CREATE TABLE IF NOT EXISTS site_usage (
+        site_id TEXT PRIMARY KEY,
+        d1_bytes_used INTEGER DEFAULT 0,
+        r2_bytes_used INTEGER DEFAULT 0,
+        last_updated TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
+      )`,
+      `CREATE TABLE IF NOT EXISTS site_media (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        site_id TEXT NOT NULL,
+        storage_key TEXT NOT NULL UNIQUE,
+        size_bytes INTEGER NOT NULL,
+        media_type TEXT DEFAULT 'image',
+        created_at TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
       )`
     ];
     const indexes = [
@@ -8060,7 +8475,9 @@ async function ensureTablesExist(env) {
       "CREATE INDEX IF NOT EXISTS idx_activity_site ON activity_log(site_id)",
       "CREATE INDEX IF NOT EXISTS idx_activity_user ON activity_log(user_id)",
       "CREATE INDEX IF NOT EXISTS idx_activity_created ON activity_log(created_at)",
-      "CREATE UNIQUE INDEX IF NOT EXISTS idx_sites_custom_domain ON sites(custom_domain) WHERE custom_domain IS NOT NULL"
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_sites_custom_domain ON sites(custom_domain) WHERE custom_domain IS NOT NULL",
+      "CREATE INDEX IF NOT EXISTS idx_site_media_site ON site_media(site_id)",
+      "CREATE INDEX IF NOT EXISTS idx_site_media_key ON site_media(storage_key)"
     ];
     for (const sql of tables) {
       await env.DB.prepare(sql).run();
@@ -8342,6 +8759,8 @@ async function handleAPI(request, env, path) {
       return handleCustomerAuth(request, env, path);
     case "upload":
       return handleUpload(request, env, path);
+    case "usage":
+      return handleUsageAPI(request, env, path);
     case "health":
       return handleHealth(env);
     case "site":

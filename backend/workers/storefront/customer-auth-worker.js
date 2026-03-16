@@ -306,10 +306,22 @@ async function handleSignup(request, env) {
     const customerId = generateId();
     const passwordHash = await hashPassword(password);
 
+    const { trackD1Usage, estimateRowBytes, checkUsageLimit } = await import('../../utils/usage-tracker.js');
+
+    const rowData = { id: customerId, siteId, email, name, phone };
+    const estimatedBytes = estimateRowBytes(rowData);
+
+    const usageCheck = await checkUsageLimit(env, siteId, 'd1', estimatedBytes);
+    if (!usageCheck.allowed) {
+      return errorResponse(usageCheck.reason, 403, 'STORAGE_LIMIT');
+    }
+
     await env.DB.prepare(
       `INSERT INTO site_customers (id, site_id, email, password_hash, name, phone, created_at)
        VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(customerId, siteId, email.toLowerCase(), passwordHash, sanitizeInput(name), phone || null).run();
+
+    trackD1Usage(env, siteId, estimatedBytes).catch(() => {});
 
     const token = generateToken(32);
     const expiresAt = getExpiryDate(24 * 7);

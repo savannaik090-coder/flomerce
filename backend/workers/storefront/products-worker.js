@@ -1,6 +1,7 @@
 import { generateId, sanitizeInput, jsonResponse, errorResponse, successResponse, handleCORS } from '../../utils/helpers.js';
 import { validateAuth } from '../../utils/auth.js';
 import { validateSiteAdmin } from './site-admin-worker.js';
+import { trackD1Usage, estimateRowBytes, checkUsageLimit } from '../../utils/usage-tracker.js';
 
 export async function handleProducts(request, env, path) {
   const corsResponse = handleCORS(request);
@@ -197,6 +198,14 @@ async function createProduct(request, env, user) {
     const slug = name.toLowerCase().trim().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').substring(0, 100);
     const productId = generateId();
 
+    const rowData = { id: productId, siteId, categoryId, name, slug, description, shortDescription, price, comparePrice, costPrice, sku, stock, weight, dimensions: dimensions ? JSON.stringify(dimensions) : null, images: images ? JSON.stringify(images) : '[]', thumbnailUrl: resolvedThumbnail, tags: tags ? JSON.stringify(tags) : '[]', isFeatured };
+    const estimatedBytes = estimateRowBytes(rowData);
+
+    const usageCheck = await checkUsageLimit(env, siteId, 'd1', estimatedBytes);
+    if (!usageCheck.allowed) {
+      return errorResponse(usageCheck.reason, 403, 'STORAGE_LIMIT');
+    }
+
     await env.DB.prepare(
       `INSERT INTO products (id, site_id, category_id, name, slug, description, short_description, price, compare_price, cost_price, sku, stock, low_stock_threshold, weight, dimensions, images, thumbnail_url, tags, is_featured, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
@@ -221,6 +230,8 @@ async function createProduct(request, env, user) {
       tags ? JSON.stringify(tags) : '[]',
       isFeatured ? 1 : 0
     ).run();
+
+    trackD1Usage(env, siteId, estimatedBytes).catch(() => {});
 
     return successResponse({ id: productId, slug }, 'Product created successfully');
   } catch (error) {
@@ -324,7 +335,13 @@ async function deleteProduct(env, user, productId) {
       return errorResponse('Product not found or unauthorized', 404);
     }
 
+    const fullProduct = await env.DB.prepare('SELECT * FROM products WHERE id = ?').bind(productId).first();
     await env.DB.prepare('DELETE FROM products WHERE id = ?').bind(productId).run();
+
+    if (fullProduct) {
+      const rowBytes = estimateRowBytes(fullProduct);
+      trackD1Usage(env, fullProduct.site_id, -rowBytes).catch(() => {});
+    }
 
     return successResponse(null, 'Product deleted successfully');
   } catch (error) {

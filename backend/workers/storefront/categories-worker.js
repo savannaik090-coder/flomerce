@@ -1,6 +1,7 @@
 import { generateId, sanitizeInput, jsonResponse, errorResponse, successResponse, handleCORS } from '../../utils/helpers.js';
 import { validateAuth } from '../../utils/auth.js';
 import { validateSiteAdmin } from './site-admin-worker.js';
+import { trackD1Usage, estimateRowBytes, checkUsageLimit } from '../../utils/usage-tracker.js';
 
 export async function handleCategories(request, env, path) {
   const corsResponse = handleCORS(request);
@@ -173,7 +174,15 @@ async function createCategory(request, env, user) {
     }
 
     const categoryId = generateId();
-    
+
+    const rowData = { id: categoryId, siteId, name, slug, description, subtitle, parentId, imageUrl, displayOrder };
+    const estimatedBytes = estimateRowBytes(rowData);
+
+    const usageCheck = await checkUsageLimit(env, siteId, 'd1', estimatedBytes);
+    if (!usageCheck.allowed) {
+      return errorResponse(usageCheck.reason, 403, 'STORAGE_LIMIT');
+    }
+
     await env.DB.prepare(
       `INSERT INTO categories (id, site_id, name, slug, description, subtitle, show_on_home, parent_id, image_url, display_order, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
@@ -189,6 +198,8 @@ async function createCategory(request, env, user) {
       imageUrl || null,
       displayOrder || 0
     ).run();
+
+    trackD1Usage(env, siteId, estimatedBytes).catch(() => {});
 
     return successResponse({ id: categoryId, slug }, 'Category created successfully');
   } catch (error) {
@@ -285,6 +296,8 @@ async function deleteCategory(env, user, categoryId) {
       return errorResponse('Category not found or unauthorized', 404);
     }
 
+    const fullCategory = await env.DB.prepare('SELECT * FROM categories WHERE id = ?').bind(categoryId).first();
+
     await env.DB.prepare(
       'UPDATE categories SET parent_id = NULL WHERE parent_id = ?'
     ).bind(categoryId).run();
@@ -294,6 +307,11 @@ async function deleteCategory(env, user, categoryId) {
     ).bind(categoryId).run();
 
     await env.DB.prepare('DELETE FROM categories WHERE id = ?').bind(categoryId).run();
+
+    if (fullCategory) {
+      const rowBytes = estimateRowBytes(fullCategory);
+      trackD1Usage(env, fullCategory.site_id, -rowBytes).catch(() => {});
+    }
 
     return successResponse(null, 'Category deleted successfully');
   } catch (error) {
