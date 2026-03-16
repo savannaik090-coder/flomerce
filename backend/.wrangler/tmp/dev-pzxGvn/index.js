@@ -1149,7 +1149,7 @@ function getSitePlan(site) {
 async function checkUsageLimit(env, siteId, resourceType = "d1", additionalBytes = 0) {
   try {
     const site = await env.DB.prepare(
-      "SELECT subscription_plan FROM sites WHERE id = ?"
+      "SELECT subscription_plan, settings FROM sites WHERE id = ?"
     ).bind(siteId).first();
     if (!site)
       return { allowed: true, reason: null };
@@ -1163,17 +1163,25 @@ async function checkUsageLimit(env, siteId, resourceType = "d1", additionalBytes
       return { allowed: true, reason: null };
     }
     if (limits.allowOverage) {
-      const overageBytes = Math.max(0, newTotal - limitBytes);
-      const overageGB = overageBytes / (1024 * 1024 * 1024);
-      const rate = resourceType === "d1" ? OVERAGE_RATES.d1PerGB : OVERAGE_RATES.r2PerGB;
-      const overageCost = overageGB * rate;
-      return { allowed: true, overage: true, overageBytes, overageCostINR: overageCost, reason: null };
+      let siteSettings = {};
+      try {
+        if (site.settings)
+          siteSettings = typeof site.settings === "string" ? JSON.parse(site.settings) : site.settings;
+      } catch (_) {
+      }
+      if (siteSettings.overageEnabled) {
+        const overageBytes = Math.max(0, newTotal - limitBytes);
+        const overageGB = overageBytes / (1024 * 1024 * 1024);
+        const rate = resourceType === "d1" ? OVERAGE_RATES.d1PerGB : OVERAGE_RATES.r2PerGB;
+        const overageCost = overageGB * rate;
+        return { allowed: true, overage: true, overageBytes, overageCostINR: overageCost, reason: null };
+      }
     }
     const limitMB = (limitBytes / (1024 * 1024)).toFixed(0);
     const usedMB = (currentBytes / (1024 * 1024)).toFixed(1);
     return {
       allowed: false,
-      reason: `Storage limit reached. ${resourceType.toUpperCase()} usage: ${usedMB}MB / ${limitMB}MB. Upgrade your plan for more storage.`
+      reason: `Storage limit reached. ${resourceType.toUpperCase()} usage: ${usedMB}MB / ${limitMB}MB. ${limits.allowOverage ? "Enable overage charges in your billing settings to continue, or upgrade your plan." : "Upgrade your plan for more storage."}`
     };
   } catch (e) {
     console.error("checkUsageLimit error (non-fatal):", e.message || e);
@@ -1219,9 +1227,6 @@ async function handleUsageAPI(request, env, path) {
   const corsResponse = handleCORS(request);
   if (corsResponse)
     return corsResponse;
-  if (request.method !== "GET") {
-    return errorResponse("Method not allowed", 405);
-  }
   const user = await validateAuth(request, env);
   if (!user) {
     return errorResponse("Unauthorized", 401);
@@ -1231,9 +1236,15 @@ async function handleUsageAPI(request, env, path) {
   if (!siteId) {
     return errorResponse("siteId is required", 400);
   }
+  if (request.method === "POST") {
+    return handleOverageToggle(request, env, user, siteId);
+  }
+  if (request.method !== "GET") {
+    return errorResponse("Method not allowed", 405);
+  }
   try {
     const site = await env.DB.prepare(
-      "SELECT id, subscription_plan FROM sites WHERE id = ? AND user_id = ?"
+      "SELECT id, subscription_plan, settings FROM sites WHERE id = ? AND user_id = ?"
     ).bind(siteId, user.id).first();
     if (!site) {
       return errorResponse("Site not found or unauthorized", 404);
@@ -1247,12 +1258,19 @@ async function handleUsageAPI(request, env, path) {
     }
     const planKey = getSitePlan(site);
     const limits = PLAN_LIMITS[planKey] || PLAN_LIMITS.free;
+    let siteSettings = {};
+    try {
+      if (site.settings)
+        siteSettings = typeof site.settings === "string" ? JSON.parse(site.settings) : site.settings;
+    } catch (_) {
+    }
+    const overageEnabled = !!siteSettings.overageEnabled;
     const d1OverageBytes = Math.max(0, usage.d1BytesUsed - limits.d1Bytes);
     const r2OverageBytes = Math.max(0, usage.r2BytesUsed - limits.r2Bytes);
     const d1OverageGB = d1OverageBytes / (1024 * 1024 * 1024);
     const r2OverageGB = r2OverageBytes / (1024 * 1024 * 1024);
     let overageCostINR = 0;
-    if (limits.allowOverage) {
+    if (limits.allowOverage && overageEnabled) {
       overageCostINR = d1OverageGB * OVERAGE_RATES.d1PerGB + r2OverageGB * OVERAGE_RATES.r2PerGB;
     }
     return successResponse({
@@ -1270,6 +1288,7 @@ async function handleUsageAPI(request, env, path) {
         overageBytes: r2OverageBytes
       },
       allowOverage: limits.allowOverage,
+      overageEnabled,
       overageCostINR: Math.round(overageCostINR * 100) / 100,
       overageRates: OVERAGE_RATES,
       lastUpdated: usage.lastUpdated
@@ -1277,6 +1296,40 @@ async function handleUsageAPI(request, env, path) {
   } catch (error) {
     console.error("Usage API error:", error);
     return errorResponse("Failed to fetch usage data", 500);
+  }
+}
+async function handleOverageToggle(request, env, user, siteId) {
+  try {
+    const body = await request.json();
+    const { overageEnabled } = body;
+    if (typeof overageEnabled !== "boolean") {
+      return errorResponse("overageEnabled must be a boolean", 400);
+    }
+    const site = await env.DB.prepare(
+      "SELECT id, subscription_plan, settings FROM sites WHERE id = ? AND user_id = ?"
+    ).bind(siteId, user.id).first();
+    if (!site) {
+      return errorResponse("Site not found or unauthorized", 404);
+    }
+    const planKey = getSitePlan(site);
+    const limits = PLAN_LIMITS[planKey] || PLAN_LIMITS.free;
+    if (!limits.allowOverage) {
+      return errorResponse("Overage charges are only available on the Premium plan", 403);
+    }
+    let siteSettings = {};
+    try {
+      if (site.settings)
+        siteSettings = typeof site.settings === "string" ? JSON.parse(site.settings) : site.settings;
+    } catch (_) {
+    }
+    siteSettings.overageEnabled = overageEnabled;
+    await env.DB.prepare(
+      "UPDATE sites SET settings = ? WHERE id = ?"
+    ).bind(JSON.stringify(siteSettings), siteId).run();
+    return successResponse({ overageEnabled, message: overageEnabled ? "Overage charges enabled. You will be billed for usage beyond your plan limits." : "Overage charges disabled. Your site will be blocked when storage limits are reached." });
+  } catch (error) {
+    console.error("Overage toggle error:", error);
+    return errorResponse("Failed to update overage settings", 500);
   }
 }
 var PLAN_LIMITS, OVERAGE_RATES;
@@ -1309,6 +1362,7 @@ var init_usage_tracker = __esm({
     __name(checkUsageLimit, "checkUsageLimit");
     __name(reconcileSiteUsage, "reconcileSiteUsage");
     __name(handleUsageAPI, "handleUsageAPI");
+    __name(handleOverageToggle, "handleOverageToggle");
   }
 });
 
