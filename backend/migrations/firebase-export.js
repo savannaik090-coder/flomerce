@@ -40,7 +40,7 @@ const COLLECTIONS_TO_MIGRATE = [
       subdomain: doc.data.subdomain,
       brand_name: doc.data.brandName || doc.data.siteName || 'My Store',
       category: doc.data.category || 'jewellery',
-      template_id: doc.data.templateId || 'template1',
+      template_id: doc.data.templateId === 'template1' ? 'storefront' : (doc.data.templateId || 'storefront'),
       logo_url: doc.data.logoUrl || null,
       primary_color: doc.data.primaryColor || '#000000',
       secondary_color: doc.data.secondaryColor || '#ffffff',

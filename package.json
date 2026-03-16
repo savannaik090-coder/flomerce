@@ -8,8 +8,8 @@
     "start": "node run-server.js",
     "dev": "node run-server.js",
     "build": "node build.js",
-    "build:platform": "cd frontend/platform && npm run build",
-    "build:storefront": "cd frontend/storefront-src && npm run build"
+    "build:platform": "cd frontend/src/platform && npm run build",
+    "build:storefront": "cd frontend/src/storefront && npm run build"
   },
   "dependencies": {
     "express": "^4.22.1",

@@ -9,14 +9,10 @@ import {
   buildWebsiteSchema,
 } from './structured-data.js';
 import storefrontConfig from './templates/storefront/seo-config.js';
-import template1Config from './templates/template1/seo-config.js';
-
-// ─── Template config registry ────────────────────────────────────────────────
-// Add new templates here as they are created.
 
 const TEMPLATE_CONFIGS = {
   storefront: storefrontConfig,
-  template1: template1Config,
+  template1: storefrontConfig,
 };
 
 function loadTemplateConfig(templateId) {

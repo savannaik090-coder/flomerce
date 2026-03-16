@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS sites (
     subdomain TEXT UNIQUE NOT NULL,
     brand_name TEXT NOT NULL,
     category TEXT NOT NULL,
-    template_id TEXT DEFAULT 'template1',
+    template_id TEXT DEFAULT 'storefront',
     logo_url TEXT,
     favicon_url TEXT,
     primary_color TEXT DEFAULT '#000000',
