@@ -1,43 +1,15 @@
 import { errorResponse, successResponse, handleCORS, validateEmail } from '../../utils/helpers.js';
 import { validateAuth } from '../../utils/auth.js';
 
-let _adminMigrated = false;
-
-async function ensureRoleColumn(env) {
-  if (_adminMigrated) return;
-  try {
-    await env.DB.prepare("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'").run();
-  } catch (e) {}
-
-  try {
-    await env.DB.prepare("UPDATE users SET role = 'user' WHERE role IS NULL").run();
-  } catch (e) {}
-
-  try {
-    const ownerExists = await env.DB.prepare("SELECT id FROM users WHERE role = 'owner' LIMIT 1").first();
-    if (!ownerExists) {
-      const firstUser = await env.DB.prepare("SELECT id FROM users ORDER BY created_at ASC LIMIT 1").first();
-      if (firstUser) {
-        await env.DB.prepare("UPDATE users SET role = 'owner' WHERE id = ?").bind(firstUser.id).run();
-      }
-    }
-  } catch (e) {}
-
-  _adminMigrated = true;
-}
+const OWNER_EMAIL = 'savannaik090@gmail.com';
 
 async function isOwner(user, env) {
   if (!user) return false;
-  await ensureRoleColumn(env);
-  const dbUser = await env.DB.prepare('SELECT role FROM users WHERE id = ?').bind(user.id).first();
-  if (dbUser && (dbUser.role === 'admin' || dbUser.role === 'owner')) return true;
-
-  const ownerExists = await env.DB.prepare("SELECT id FROM users WHERE role = 'owner' LIMIT 1").first();
-  if (!ownerExists) {
-    await env.DB.prepare("UPDATE users SET role = 'owner' WHERE id = ?").bind(user.id).run();
-    return true;
-  }
-
+  if (user.email === OWNER_EMAIL) return true;
+  try {
+    const dbUser = await env.DB.prepare('SELECT role FROM users WHERE id = ?').bind(user.id).first();
+    if (dbUser && (dbUser.role === 'admin' || dbUser.role === 'owner')) return true;
+  } catch (e) {}
   return false;
 }
 
@@ -71,7 +43,6 @@ export async function handleAdmin(request, env, path) {
 }
 
 async function getAdminStats(env) {
-  await ensureRoleColumn(env);
   try {
     let users = [];
     try {
