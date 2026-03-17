@@ -527,6 +527,20 @@ export async function ensureTablesExist(env) {
       { col: 'migration_locked', table: 'sites', sql: 'ALTER TABLE sites ADD COLUMN migration_locked INTEGER DEFAULT 0' },
       { col: 'baseline_bytes', table: 'site_usage', sql: 'ALTER TABLE site_usage ADD COLUMN baseline_bytes INTEGER DEFAULT 0' },
       { col: 'baseline_updated_at', table: 'site_usage', sql: 'ALTER TABLE site_usage ADD COLUMN baseline_updated_at TEXT' },
+      { col: 'row_size_bytes', table: 'categories', sql: 'ALTER TABLE categories ADD COLUMN row_size_bytes INTEGER DEFAULT 0' },
+      { col: 'row_size_bytes', table: 'products', sql: 'ALTER TABLE products ADD COLUMN row_size_bytes INTEGER DEFAULT 0' },
+      { col: 'row_size_bytes', table: 'product_variants', sql: 'ALTER TABLE product_variants ADD COLUMN row_size_bytes INTEGER DEFAULT 0' },
+      { col: 'row_size_bytes', table: 'orders', sql: 'ALTER TABLE orders ADD COLUMN row_size_bytes INTEGER DEFAULT 0' },
+      { col: 'row_size_bytes', table: 'guest_orders', sql: 'ALTER TABLE guest_orders ADD COLUMN row_size_bytes INTEGER DEFAULT 0' },
+      { col: 'row_size_bytes', table: 'carts', sql: 'ALTER TABLE carts ADD COLUMN row_size_bytes INTEGER DEFAULT 0' },
+      { col: 'row_size_bytes', table: 'wishlists', sql: 'ALTER TABLE wishlists ADD COLUMN row_size_bytes INTEGER DEFAULT 0' },
+      { col: 'row_size_bytes', table: 'site_customers', sql: 'ALTER TABLE site_customers ADD COLUMN row_size_bytes INTEGER DEFAULT 0' },
+      { col: 'row_size_bytes', table: 'customer_addresses', sql: 'ALTER TABLE customer_addresses ADD COLUMN row_size_bytes INTEGER DEFAULT 0' },
+      { col: 'row_size_bytes', table: 'coupons', sql: 'ALTER TABLE coupons ADD COLUMN row_size_bytes INTEGER DEFAULT 0' },
+      { col: 'row_size_bytes', table: 'notifications', sql: 'ALTER TABLE notifications ADD COLUMN row_size_bytes INTEGER DEFAULT 0' },
+      { col: 'row_size_bytes', table: 'reviews', sql: 'ALTER TABLE reviews ADD COLUMN row_size_bytes INTEGER DEFAULT 0' },
+      { col: 'row_size_bytes', table: 'activity_log', sql: 'ALTER TABLE activity_log ADD COLUMN row_size_bytes INTEGER DEFAULT 0' },
+      { col: 'row_size_bytes', table: 'addresses', sql: 'ALTER TABLE addresses ADD COLUMN row_size_bytes INTEGER DEFAULT 0' },
     ];
     for (const m of migrations) {
       try {
