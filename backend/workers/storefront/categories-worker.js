@@ -313,9 +313,6 @@ async function updateCategory(request, env, user, categoryId) {
     }
 
     const oldBytes = category.row_size_bytes || 0;
-    const newBytes = estimateRowBytes(updates);
-    setClause.push('row_size_bytes = ?');
-    values.push(newBytes);
 
     setClause.push('updated_at = datetime("now")');
     values.push(categoryId);
@@ -324,6 +321,11 @@ async function updateCategory(request, env, user, categoryId) {
       `UPDATE categories SET ${setClause.join(', ')} WHERE id = ?`
     ).bind(...values).run();
 
+    const updatedCatRow = await db.prepare('SELECT * FROM categories WHERE id = ?').bind(categoryId).first();
+    const newBytes = updatedCatRow ? estimateRowBytes(updatedCatRow) : oldBytes;
+    if (updatedCatRow) {
+      await db.prepare('UPDATE categories SET row_size_bytes = ? WHERE id = ?').bind(newBytes, categoryId).run();
+    }
     await trackD1Update(env, resolvedSiteId, oldBytes, newBytes);
 
     return successResponse(null, 'Category updated successfully');

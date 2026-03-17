@@ -487,11 +487,7 @@ async function updateOrderStatus(request, env, user, orderId) {
       return errorResponse('No valid fields to update');
     }
 
-    const updateData = { status, trackingNumber, carrier, cancellationReason };
-    const newBytes = estimateRowBytes(updateData);
     const oldBytes = order.row_size_bytes || 0;
-    updates.push('row_size_bytes = ?');
-    values.push(newBytes);
 
     updates.push('updated_at = datetime("now")');
     values.push(orderId);
@@ -500,6 +496,11 @@ async function updateOrderStatus(request, env, user, orderId) {
       `UPDATE orders SET ${updates.join(', ')} WHERE id = ?`
     ).bind(...values).run();
 
+    const updatedOrderRow = await db.prepare('SELECT * FROM orders WHERE id = ?').bind(orderId).first();
+    const newBytes = updatedOrderRow ? estimateRowBytes(updatedOrderRow) : oldBytes;
+    if (updatedOrderRow) {
+      await db.prepare('UPDATE orders SET row_size_bytes = ? WHERE id = ?').bind(newBytes, orderId).run();
+    }
     await trackD1Update(env, resolvedSiteId, oldBytes, newBytes);
 
     if (status === 'cancelled' && cancellationReason) {

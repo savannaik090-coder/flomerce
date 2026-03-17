@@ -3,6 +3,7 @@ import { validateAuth } from '../../utils/auth.js';
 import { updateProductStock } from '../storefront/products-worker.js';
 import { sendOrderEmails } from '../storefront/orders-worker.js';
 import { resolveSiteDBById } from '../../utils/site-db.js';
+import { estimateRowBytes, trackD1Update } from '../../utils/usage-tracker.js';
 import crypto from 'node:crypto';
 
 export async function handlePayments(request, env, path) {
@@ -256,9 +257,16 @@ async function verifyPayment(request, env) {
       }
 
       if (order && orderDb) {
+        const oldOrderBytes = order.row_size_bytes || 0;
         await orderDb.prepare(
           `UPDATE orders SET status = 'paid', payment_status = 'paid', payment_method = 'razorpay', razorpay_order_id = ?, razorpay_payment_id = ?, updated_at = datetime('now') WHERE id = ?`
         ).bind(razorpay_order_id, razorpay_payment_id, dbOrderId).run();
+        const updatedOrder = await orderDb.prepare('SELECT * FROM orders WHERE id = ?').bind(dbOrderId).first();
+        if (updatedOrder && orderSiteId) {
+          const newOrderBytes = estimateRowBytes(updatedOrder);
+          await orderDb.prepare('UPDATE orders SET row_size_bytes = ? WHERE id = ?').bind(newOrderBytes, dbOrderId).run();
+          await trackD1Update(env, orderSiteId, oldOrderBytes, newOrderBytes);
+        }
         await processPostPaymentActions(env, order);
       } else {
         if (orderSiteId) {
@@ -287,9 +295,19 @@ async function verifyPayment(request, env) {
           }
 
           if (guestOrder && guestDb) {
+            const oldGuestBytes = guestOrder.row_size_bytes || 0;
             await guestDb.prepare(
               `UPDATE guest_orders SET status = 'paid', payment_status = 'paid', payment_method = 'razorpay', razorpay_order_id = ?, razorpay_payment_id = ?, updated_at = datetime('now') WHERE id = ?`
             ).bind(razorpay_order_id, razorpay_payment_id, dbOrderId).run();
+            const updatedGuestOrder = await guestDb.prepare('SELECT * FROM guest_orders WHERE id = ?').bind(dbOrderId).first();
+            if (updatedGuestOrder) {
+              const newGuestBytes = estimateRowBytes(updatedGuestOrder);
+              await guestDb.prepare('UPDATE guest_orders SET row_size_bytes = ? WHERE id = ?').bind(newGuestBytes, dbOrderId).run();
+              const guestSiteId = guestOrder.site_id || updatedGuestOrder.site_id;
+              if (guestSiteId) {
+                await trackD1Update(env, guestSiteId, oldGuestBytes, newGuestBytes);
+              }
+            }
             await processPostPaymentActions(env, guestOrder);
           }
         } catch (guestUpdateErr) {

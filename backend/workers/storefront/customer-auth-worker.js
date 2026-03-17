@@ -546,9 +546,20 @@ async function handleRequestPasswordReset(request, env) {
     const oldResets = await db.prepare(
       'SELECT id, row_size_bytes FROM customer_password_resets WHERE customer_id = ? AND site_id = ? AND used = 0'
     ).bind(customer.id, siteId).all();
-    await db.prepare(
-      'UPDATE customer_password_resets SET used = 1 WHERE customer_id = ? AND site_id = ? AND used = 0'
-    ).bind(customer.id, siteId).run();
+    if ((oldResets.results || []).length > 0) {
+      await db.prepare(
+        'UPDATE customer_password_resets SET used = 1 WHERE customer_id = ? AND site_id = ? AND used = 0'
+      ).bind(customer.id, siteId).run();
+      for (const oldReset of (oldResets.results || [])) {
+        const oldResetBytes = oldReset.row_size_bytes || 0;
+        const updatedResetRow = await db.prepare('SELECT * FROM customer_password_resets WHERE id = ?').bind(oldReset.id).first();
+        if (updatedResetRow) {
+          const newResetBytes = estimateRowBytes(updatedResetRow);
+          await db.prepare('UPDATE customer_password_resets SET row_size_bytes = ? WHERE id = ?').bind(newResetBytes, oldReset.id).run();
+          await trackD1Update(env, siteId, oldResetBytes, newResetBytes);
+        }
+      }
+    }
 
     const resetToken = generateToken(32);
     const expiresAt = getExpiryDate(1);
@@ -648,9 +659,16 @@ async function handleResetPassword(request, env) {
       if (custRow?.site_id) await trackD1Update(env, custRow.site_id, custOldBytes, custNewBytes);
     }
 
+    const resetOldBytes = resetRecord.row_size_bytes || 0;
     await db.prepare(
       'UPDATE customer_password_resets SET used = 1 WHERE id = ?'
     ).bind(resetRecord.id).run();
+    const updatedResetRecord = await db.prepare('SELECT * FROM customer_password_resets WHERE id = ?').bind(resetRecord.id).first();
+    if (updatedResetRecord && custRow?.site_id) {
+      const resetNewBytes = estimateRowBytes(updatedResetRecord);
+      await db.prepare('UPDATE customer_password_resets SET row_size_bytes = ? WHERE id = ?').bind(resetNewBytes, resetRecord.id).run();
+      await trackD1Update(env, custRow.site_id, resetOldBytes, resetNewBytes);
+    }
 
     const sessionsToDelete = await db.prepare(
       'SELECT id, row_size_bytes, site_id FROM site_customer_sessions WHERE customer_id = ?'
@@ -735,9 +753,16 @@ async function handleVerifyEmail(request, env) {
       if (verifyCustRow?.site_id) await trackD1Update(env, verifyCustRow.site_id, verifyCustOldBytes, verifyCustNewBytes);
     }
 
+    const verifyOldBytes = verifyRecord.row_size_bytes || 0;
     await db.prepare(
       'UPDATE customer_email_verifications SET used = 1 WHERE id = ?'
     ).bind(verifyRecord.id).run();
+    const updatedVerifyRecord = await db.prepare('SELECT * FROM customer_email_verifications WHERE id = ?').bind(verifyRecord.id).first();
+    if (updatedVerifyRecord && verifyCustRow?.site_id) {
+      const verifyNewBytes = estimateRowBytes(updatedVerifyRecord);
+      await db.prepare('UPDATE customer_email_verifications SET row_size_bytes = ? WHERE id = ?').bind(verifyNewBytes, verifyRecord.id).run();
+      await trackD1Update(env, verifyCustRow.site_id, verifyOldBytes, verifyNewBytes);
+    }
 
     return successResponse(null, 'Email verified successfully. You can now log in.');
   } catch (error) {
@@ -776,9 +801,23 @@ async function handleResendVerification(request, env) {
       'SELECT id, brand_name, subdomain, custom_domain, domain_status FROM sites WHERE id = ?'
     ).bind(siteId).first();
 
-    await db.prepare(
-      'UPDATE customer_email_verifications SET used = 1 WHERE customer_id = ? AND site_id = ? AND used = 0'
-    ).bind(customer.id, siteId).run();
+    const oldVerifications = await db.prepare(
+      'SELECT id, row_size_bytes FROM customer_email_verifications WHERE customer_id = ? AND site_id = ? AND used = 0'
+    ).bind(customer.id, siteId).all();
+    if ((oldVerifications.results || []).length > 0) {
+      await db.prepare(
+        'UPDATE customer_email_verifications SET used = 1 WHERE customer_id = ? AND site_id = ? AND used = 0'
+      ).bind(customer.id, siteId).run();
+      for (const oldVerif of (oldVerifications.results || [])) {
+        const oldVerifBytes = oldVerif.row_size_bytes || 0;
+        const updatedVerifRow = await db.prepare('SELECT * FROM customer_email_verifications WHERE id = ?').bind(oldVerif.id).first();
+        if (updatedVerifRow) {
+          const newVerifBytes = estimateRowBytes(updatedVerifRow);
+          await db.prepare('UPDATE customer_email_verifications SET row_size_bytes = ? WHERE id = ?').bind(newVerifBytes, oldVerif.id).run();
+          await trackD1Update(env, siteId, oldVerifBytes, newVerifBytes);
+        }
+      }
+    }
 
     const verifyToken = generateToken(32);
     const verifyExpiry = getExpiryDate(24);

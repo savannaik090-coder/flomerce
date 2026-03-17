@@ -369,9 +369,6 @@ async function updateProduct(request, env, user, productId) {
     }
 
     const oldBytes = product.row_size_bytes || 0;
-    const newBytes = estimateRowBytes(updates);
-    setClause.push('row_size_bytes = ?');
-    values.push(newBytes);
 
     setClause.push('updated_at = datetime("now")');
     values.push(productId);
@@ -380,6 +377,11 @@ async function updateProduct(request, env, user, productId) {
       `UPDATE products SET ${setClause.join(', ')} WHERE id = ?`
     ).bind(...values).run();
 
+    const updatedProdRow = await db.prepare('SELECT * FROM products WHERE id = ?').bind(productId).first();
+    const newBytes = updatedProdRow ? estimateRowBytes(updatedProdRow) : oldBytes;
+    if (updatedProdRow) {
+      await db.prepare('UPDATE products SET row_size_bytes = ? WHERE id = ?').bind(newBytes, productId).run();
+    }
     await trackD1Update(env, resolvedSiteId, oldBytes, newBytes);
 
     return successResponse(null, 'Product updated successfully');

@@ -4051,14 +4051,16 @@ async function updateProduct(request, env, user, productId) {
       return errorResponse("No valid fields to update");
     }
     const oldBytes = product.row_size_bytes || 0;
-    const newBytes = estimateRowBytes(updates);
-    setClause.push("row_size_bytes = ?");
-    values.push(newBytes);
     setClause.push('updated_at = datetime("now")');
     values.push(productId);
     await db.prepare(
       `UPDATE products SET ${setClause.join(", ")} WHERE id = ?`
     ).bind(...values).run();
+    const updatedProdRow = await db.prepare("SELECT * FROM products WHERE id = ?").bind(productId).first();
+    const newBytes = updatedProdRow ? estimateRowBytes(updatedProdRow) : oldBytes;
+    if (updatedProdRow) {
+      await db.prepare("UPDATE products SET row_size_bytes = ? WHERE id = ?").bind(newBytes, productId).run();
+    }
     await trackD1Update(env, resolvedSiteId, oldBytes, newBytes);
     return successResponse(null, "Product updated successfully");
   } catch (error) {
@@ -4592,16 +4594,17 @@ async function updateOrderStatus(request, env, user, orderId) {
     if (updates.length === 0) {
       return errorResponse("No valid fields to update");
     }
-    const updateData = { status, trackingNumber, carrier, cancellationReason };
-    const newBytes = estimateRowBytes(updateData);
     const oldBytes = order.row_size_bytes || 0;
-    updates.push("row_size_bytes = ?");
-    values.push(newBytes);
     updates.push('updated_at = datetime("now")');
     values.push(orderId);
     await db.prepare(
       `UPDATE orders SET ${updates.join(", ")} WHERE id = ?`
     ).bind(...values).run();
+    const updatedOrderRow = await db.prepare("SELECT * FROM orders WHERE id = ?").bind(orderId).first();
+    const newBytes = updatedOrderRow ? estimateRowBytes(updatedOrderRow) : oldBytes;
+    if (updatedOrderRow) {
+      await db.prepare("UPDATE orders SET row_size_bytes = ? WHERE id = ?").bind(newBytes, orderId).run();
+    }
     await trackD1Update(env, resolvedSiteId, oldBytes, newBytes);
     if (status === "cancelled" && cancellationReason) {
       try {
@@ -5442,6 +5445,7 @@ init_modules_watch_stub();
 init_helpers();
 init_auth();
 init_site_db();
+init_usage_tracker();
 import crypto2 from "node:crypto";
 async function handlePayments(request, env, path) {
   const corsResponse = handleCORS(request);
@@ -5664,9 +5668,16 @@ async function verifyPayment(request, env) {
         }
       }
       if (order && orderDb) {
+        const oldOrderBytes = order.row_size_bytes || 0;
         await orderDb.prepare(
           `UPDATE orders SET status = 'paid', payment_status = 'paid', payment_method = 'razorpay', razorpay_order_id = ?, razorpay_payment_id = ?, updated_at = datetime('now') WHERE id = ?`
         ).bind(razorpay_order_id, razorpay_payment_id, dbOrderId).run();
+        const updatedOrder = await orderDb.prepare("SELECT * FROM orders WHERE id = ?").bind(dbOrderId).first();
+        if (updatedOrder && orderSiteId) {
+          const newOrderBytes = estimateRowBytes(updatedOrder);
+          await orderDb.prepare("UPDATE orders SET row_size_bytes = ? WHERE id = ?").bind(newOrderBytes, dbOrderId).run();
+          await trackD1Update(env, orderSiteId, oldOrderBytes, newOrderBytes);
+        }
         await processPostPaymentActions(env, order);
       } else {
         if (orderSiteId) {
@@ -5693,9 +5704,19 @@ async function verifyPayment(request, env) {
             }
           }
           if (guestOrder && guestDb) {
+            const oldGuestBytes = guestOrder.row_size_bytes || 0;
             await guestDb.prepare(
               `UPDATE guest_orders SET status = 'paid', payment_status = 'paid', payment_method = 'razorpay', razorpay_order_id = ?, razorpay_payment_id = ?, updated_at = datetime('now') WHERE id = ?`
             ).bind(razorpay_order_id, razorpay_payment_id, dbOrderId).run();
+            const updatedGuestOrder = await guestDb.prepare("SELECT * FROM guest_orders WHERE id = ?").bind(dbOrderId).first();
+            if (updatedGuestOrder) {
+              const newGuestBytes = estimateRowBytes(updatedGuestOrder);
+              await guestDb.prepare("UPDATE guest_orders SET row_size_bytes = ? WHERE id = ?").bind(newGuestBytes, dbOrderId).run();
+              const guestSiteId = guestOrder.site_id || updatedGuestOrder.site_id;
+              if (guestSiteId) {
+                await trackD1Update(env, guestSiteId, oldGuestBytes, newGuestBytes);
+              }
+            }
             await processPostPaymentActions(env, guestOrder);
           }
         } catch (guestUpdateErr) {
@@ -6508,14 +6529,16 @@ async function updateCategory(request, env, user, categoryId) {
       return errorResponse("No valid fields to update");
     }
     const oldBytes = category.row_size_bytes || 0;
-    const newBytes = estimateRowBytes(updates);
-    setClause.push("row_size_bytes = ?");
-    values.push(newBytes);
     setClause.push('updated_at = datetime("now")');
     values.push(categoryId);
     await db.prepare(
       `UPDATE categories SET ${setClause.join(", ")} WHERE id = ?`
     ).bind(...values).run();
+    const updatedCatRow = await db.prepare("SELECT * FROM categories WHERE id = ?").bind(categoryId).first();
+    const newBytes = updatedCatRow ? estimateRowBytes(updatedCatRow) : oldBytes;
+    if (updatedCatRow) {
+      await db.prepare("UPDATE categories SET row_size_bytes = ? WHERE id = ?").bind(newBytes, categoryId).run();
+    }
     await trackD1Update(env, resolvedSiteId, oldBytes, newBytes);
     return successResponse(null, "Category updated successfully");
   } catch (error) {
@@ -9273,9 +9296,20 @@ async function handleRequestPasswordReset(request, env) {
     const oldResets = await db.prepare(
       "SELECT id, row_size_bytes FROM customer_password_resets WHERE customer_id = ? AND site_id = ? AND used = 0"
     ).bind(customer.id, siteId).all();
-    await db.prepare(
-      "UPDATE customer_password_resets SET used = 1 WHERE customer_id = ? AND site_id = ? AND used = 0"
-    ).bind(customer.id, siteId).run();
+    if ((oldResets.results || []).length > 0) {
+      await db.prepare(
+        "UPDATE customer_password_resets SET used = 1 WHERE customer_id = ? AND site_id = ? AND used = 0"
+      ).bind(customer.id, siteId).run();
+      for (const oldReset of oldResets.results || []) {
+        const oldResetBytes = oldReset.row_size_bytes || 0;
+        const updatedResetRow = await db.prepare("SELECT * FROM customer_password_resets WHERE id = ?").bind(oldReset.id).first();
+        if (updatedResetRow) {
+          const newResetBytes = estimateRowBytes(updatedResetRow);
+          await db.prepare("UPDATE customer_password_resets SET row_size_bytes = ? WHERE id = ?").bind(newResetBytes, oldReset.id).run();
+          await trackD1Update(env, siteId, oldResetBytes, newResetBytes);
+        }
+      }
+    }
     const resetToken = generateToken(32);
     const expiresAt = getExpiryDate(1);
     const resetId = generateId();
@@ -9359,9 +9393,16 @@ async function handleResetPassword2(request, env) {
       if (custRow?.site_id)
         await trackD1Update(env, custRow.site_id, custOldBytes, custNewBytes);
     }
+    const resetOldBytes = resetRecord.row_size_bytes || 0;
     await db.prepare(
       "UPDATE customer_password_resets SET used = 1 WHERE id = ?"
     ).bind(resetRecord.id).run();
+    const updatedResetRecord = await db.prepare("SELECT * FROM customer_password_resets WHERE id = ?").bind(resetRecord.id).first();
+    if (updatedResetRecord && custRow?.site_id) {
+      const resetNewBytes = estimateRowBytes(updatedResetRecord);
+      await db.prepare("UPDATE customer_password_resets SET row_size_bytes = ? WHERE id = ?").bind(resetNewBytes, resetRecord.id).run();
+      await trackD1Update(env, custRow.site_id, resetOldBytes, resetNewBytes);
+    }
     const sessionsToDelete = await db.prepare(
       "SELECT id, row_size_bytes, site_id FROM site_customer_sessions WHERE customer_id = ?"
     ).bind(resetRecord.customer_id).all();
@@ -9434,9 +9475,16 @@ async function handleVerifyEmail2(request, env) {
       if (verifyCustRow?.site_id)
         await trackD1Update(env, verifyCustRow.site_id, verifyCustOldBytes, verifyCustNewBytes);
     }
+    const verifyOldBytes = verifyRecord.row_size_bytes || 0;
     await db.prepare(
       "UPDATE customer_email_verifications SET used = 1 WHERE id = ?"
     ).bind(verifyRecord.id).run();
+    const updatedVerifyRecord = await db.prepare("SELECT * FROM customer_email_verifications WHERE id = ?").bind(verifyRecord.id).first();
+    if (updatedVerifyRecord && verifyCustRow?.site_id) {
+      const verifyNewBytes = estimateRowBytes(updatedVerifyRecord);
+      await db.prepare("UPDATE customer_email_verifications SET row_size_bytes = ? WHERE id = ?").bind(verifyNewBytes, verifyRecord.id).run();
+      await trackD1Update(env, verifyCustRow.site_id, verifyOldBytes, verifyNewBytes);
+    }
     return successResponse(null, "Email verified successfully. You can now log in.");
   } catch (error) {
     console.error("Verify email error:", error);
@@ -9466,9 +9514,23 @@ async function handleResendVerification2(request, env) {
     const site = await env.DB.prepare(
       "SELECT id, brand_name, subdomain, custom_domain, domain_status FROM sites WHERE id = ?"
     ).bind(siteId).first();
-    await db.prepare(
-      "UPDATE customer_email_verifications SET used = 1 WHERE customer_id = ? AND site_id = ? AND used = 0"
-    ).bind(customer.id, siteId).run();
+    const oldVerifications = await db.prepare(
+      "SELECT id, row_size_bytes FROM customer_email_verifications WHERE customer_id = ? AND site_id = ? AND used = 0"
+    ).bind(customer.id, siteId).all();
+    if ((oldVerifications.results || []).length > 0) {
+      await db.prepare(
+        "UPDATE customer_email_verifications SET used = 1 WHERE customer_id = ? AND site_id = ? AND used = 0"
+      ).bind(customer.id, siteId).run();
+      for (const oldVerif of oldVerifications.results || []) {
+        const oldVerifBytes = oldVerif.row_size_bytes || 0;
+        const updatedVerifRow = await db.prepare("SELECT * FROM customer_email_verifications WHERE id = ?").bind(oldVerif.id).first();
+        if (updatedVerifRow) {
+          const newVerifBytes = estimateRowBytes(updatedVerifRow);
+          await db.prepare("UPDATE customer_email_verifications SET row_size_bytes = ? WHERE id = ?").bind(newVerifBytes, oldVerif.id).run();
+          await trackD1Update(env, siteId, oldVerifBytes, newVerifBytes);
+        }
+      }
+    }
     const verifyToken = generateToken(32);
     const verifyExpiry = getExpiryDate(24);
     const resendVerifyId = generateId();
