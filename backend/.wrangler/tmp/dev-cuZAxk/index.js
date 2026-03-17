@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-eVVNSy/checked-fetch.js
+// .wrangler/tmp/bundle-3mZmA6/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-eVVNSy/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-3mZmA6/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-eVVNSy/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-3mZmA6/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-eVVNSy/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-3mZmA6/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -1753,12 +1753,12 @@ var init_site_admin_worker = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-eVVNSy/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-3mZmA6/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-eVVNSy/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-3mZmA6/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -10856,6 +10856,9 @@ var workers_default = {
       if (path.startsWith("/api/")) {
         return handleAPI(request, env, path);
       }
+      if (path.startsWith("/auth/google/")) {
+        return handleGoogleAuthFlow(request, env, path);
+      }
       const siteResponse = await handleSiteRouting(request, env);
       if (siteResponse) {
         return siteResponse;
@@ -11056,6 +11059,84 @@ async function handleSiteInfo(request, env) {
   }
 }
 __name(handleSiteInfo, "handleSiteInfo");
+async function handleGoogleAuthFlow(request, env, path) {
+  const url = new URL(request.url);
+  const clientId = env.GOOGLE_CLIENT_ID;
+  if (!clientId) {
+    return new Response("Google Sign-In is not configured", { status: 500, headers: { "Content-Type": "text/plain" } });
+  }
+  if (path === "/auth/google/start") {
+    const siteId = url.searchParams.get("siteId") || "";
+    const returnUrl = url.searchParams.get("returnUrl") || "";
+    const mode = url.searchParams.get("mode") || "login";
+    const domain = env.DOMAIN || "fluxe.in";
+    const html = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Sign in with Google - Fluxe</title>
+<style>
+body{margin:0;font-family:'Lato',sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f8f9fa}
+.container{text-align:center;background:#fff;padding:40px;border-radius:12px;box-shadow:0 2px 20px rgba(0,0,0,0.1);max-width:400px;width:90%}
+h2{font-family:'Playfair Display',serif;color:#333;margin-bottom:8px}
+p{color:#777;margin-bottom:24px}
+.error{color:#e74c3c;background:rgba(231,76,60,0.1);border:1px solid #e74c3c;padding:12px;border-radius:6px;margin-top:16px;display:none}
+.loading{color:#666;margin-top:16px;display:none}
+#google-btn{min-height:44px;display:flex;justify-content:center}
+</style>
+<script src="https://accounts.google.com/gsi/client" async defer><\/script>
+</head><body>
+<div class="container">
+<h2>${mode === "signup" ? "Sign Up" : "Sign In"} with Google</h2>
+<p>Choose your Google account to continue</p>
+<div id="google-btn"></div>
+<div class="loading" id="loading">Signing you in...</div>
+<div class="error" id="error"></div>
+</div>
+<script>
+const siteId="${siteId.replace(/"/g, "")}";
+const returnUrl="${returnUrl.replace(/"/g, "")}";
+const domain="${domain}";
+function onCredential(r){
+  document.getElementById('loading').style.display='block';
+  document.getElementById('error').style.display='none';
+  fetch('/api/customer-auth/google-login',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({siteId:siteId,credential:r.credential})
+  }).then(function(res){return res.json()}).then(function(data){
+    if(data.success&&data.data){
+      var d=data.data;
+      var token=d.token;
+      var customer=d.customer;
+      var sep=returnUrl.indexOf('?')>=0?'&':'?';
+      var dest=returnUrl+sep+'google_auth_token='+encodeURIComponent(token)+'&google_auth_customer='+encodeURIComponent(JSON.stringify(customer));
+      window.location.href=dest;
+    }else{
+      showError(data.message||data.error||'Sign-in failed');
+    }
+  }).catch(function(e){showError('Network error. Please try again.')});
+}
+function showError(msg){
+  document.getElementById('loading').style.display='none';
+  var el=document.getElementById('error');el.textContent=msg;el.style.display='block';
+}
+window.onload=function(){
+  if(window.google&&window.google.accounts){
+    google.accounts.id.initialize({client_id:"${clientId}",callback:onCredential,auto_select:false});
+    google.accounts.id.renderButton(document.getElementById('google-btn'),{type:'standard',theme:'outline',size:'large',text:'${mode === "signup" ? "signup_with" : "signin_with"}',width:340});
+  }else{showError('Failed to load Google Sign-In. Please try again.')}
+};
+<\/script></body></html>`;
+    return new Response(html, {
+      headers: {
+        "Content-Type": "text/html; charset=utf-8",
+        "Cache-Control": "no-cache, no-store",
+        ...corsHeaders()
+      }
+    });
+  }
+  return new Response("Not found", { status: 404 });
+}
+__name(handleGoogleAuthFlow, "handleGoogleAuthFlow");
 async function cleanupExpiredData(env) {
   try {
     try {
@@ -11150,7 +11231,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-eVVNSy/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-3mZmA6/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -11185,7 +11266,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-eVVNSy/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-3mZmA6/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;
