@@ -12,17 +12,20 @@ export async function getOrders(siteId, params = {}) {
   return apiRequest(`/api/orders?${query}`);
 }
 
-export async function getOrderById(orderId) {
-  return apiRequest(`/api/orders/${orderId}`);
+export async function getOrderById(orderId, siteId) {
+  const params = siteId ? `?siteId=${siteId}` : '';
+  return apiRequest(`/api/orders/${orderId}${params}`);
 }
 
-export async function updateOrderStatus(orderId, status, extraData = {}) {
-  return apiRequest(`/api/orders/${orderId}`, {
+export async function updateOrderStatus(orderId, status, siteId, extraData = {}) {
+  const params = siteId ? `?siteId=${siteId}` : '';
+  return apiRequest(`/api/orders/${orderId}${params}`, {
     method: 'PUT',
-    body: JSON.stringify({ status, ...extraData }),
+    body: JSON.stringify({ status, siteId, ...extraData }),
   });
 }
 
-export async function trackOrder(orderId) {
-  return apiRequest(`/api/orders/track/${orderId}`);
+export async function trackOrder(orderId, siteId) {
+  const params = siteId ? `?siteId=${siteId}` : '';
+  return apiRequest(`/api/orders/track/${orderId}${params}`);
 }

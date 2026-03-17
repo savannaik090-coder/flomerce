@@ -65,7 +65,7 @@ export default function OrdersSection() {
 
   async function handleStatusUpdate(orderId, newStatus) {
     try {
-      await updateOrderStatus(orderId, newStatus);
+      await updateOrderStatus(orderId, newStatus, siteConfig?.id);
       setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
     } catch (err) {
       alert('Failed to update status: ' + err.message);
@@ -96,7 +96,7 @@ export default function OrdersSection() {
     }
     setCancelling(true);
     try {
-      await updateOrderStatus(cancelModal.id, 'cancelled', { cancellationReason: finalReason });
+      await updateOrderStatus(cancelModal.id, 'cancelled', siteConfig?.id, { cancellationReason: finalReason });
       setOrders(prev => prev.map(o => o.id === cancelModal.id ? { ...o, status: 'cancelled', cancellation_reason: finalReason } : o));
       closeCancelModal();
     } catch (err) {

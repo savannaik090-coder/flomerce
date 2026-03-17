@@ -28,15 +28,17 @@ export async function createProduct(productData) {
   });
 }
 
-export async function updateProduct(productId, productData) {
-  return apiRequest(`/api/products/${productId}`, {
+export async function updateProduct(productId, productData, siteId) {
+  const params = siteId ? `?siteId=${siteId}` : '';
+  return apiRequest(`/api/products/${productId}${params}`, {
     method: 'PUT',
-    body: JSON.stringify(productData),
+    body: JSON.stringify({ ...productData, siteId }),
   });
 }
 
-export async function deleteProduct(productId) {
-  return apiRequest(`/api/products/${productId}`, {
+export async function deleteProduct(productId, siteId) {
+  const params = siteId ? `?siteId=${siteId}` : '';
+  return apiRequest(`/api/products/${productId}${params}`, {
     method: 'DELETE',
   });
 }

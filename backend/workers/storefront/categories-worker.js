@@ -39,11 +39,11 @@ export async function handleCategories(request, env, path) {
         } catch (e) {}
       }
 
-      if (!adminSiteId && (method === 'PUT' || method === 'DELETE') && categoryId) {
+      if (!adminSiteId && method === 'PUT' && categoryId) {
         try {
-          const db = await resolveSiteDBById(env, null);
-          const cat = await db.prepare('SELECT site_id FROM categories WHERE id = ?').bind(categoryId).first();
-          if (cat) adminSiteId = cat.site_id;
+          const cloned = request.clone();
+          const body = await cloned.json();
+          adminSiteId = body.siteId;
         } catch (e) {}
       }
 

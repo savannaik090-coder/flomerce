@@ -146,7 +146,7 @@ export default function ProductForm({ product, onSave, onCancel }) {
         mainImageIndex: form.mainImageIndex,
       };
       if (isEdit) {
-        await updateProduct(product.id, payload);
+        await updateProduct(product.id, payload, siteConfig?.id);
       } else {
         await createProduct(payload);
       }

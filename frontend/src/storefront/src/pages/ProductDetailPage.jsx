@@ -113,7 +113,7 @@ export default function ProductDetailPage() {
   const [reviewImageModal, setReviewImageModal] = useState(null);
 
   useEffect(() => {
-    if (!id) return;
+    if (!id || !siteConfig?.id) return;
 
     async function loadProduct() {
       setLoading(true);
@@ -155,7 +155,7 @@ export default function ProductDetailPage() {
     }
 
     loadProduct();
-  }, [id]);
+  }, [id, siteConfig?.id]);
 
   useSEO({
     title: product?.name,

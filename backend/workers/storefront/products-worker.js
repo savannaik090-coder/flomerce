@@ -41,17 +41,11 @@ export async function handleProducts(request, env, path) {
         } catch (e) {}
       }
 
-      if (!siteId && (method === 'PUT' || method === 'DELETE') && productId) {
+      if (!siteId && method === 'PUT' && productId) {
         try {
-          const allSites = await env.DB.prepare('SELECT id FROM sites').all();
-          for (const s of (allSites.results || [])) {
-            const sdb = await resolveSiteDBById(env, s.id);
-            const prod = await sdb.prepare('SELECT site_id FROM products WHERE id = ?').bind(productId).first();
-            if (prod) {
-              siteId = prod.site_id;
-              break;
-            }
-          }
+          const cloned = request.clone();
+          const body = await cloned.json();
+          siteId = body.siteId;
         } catch (e) {}
       }
 

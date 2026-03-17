@@ -15,15 +15,17 @@ export async function createCategory(categoryData) {
   });
 }
 
-export async function updateCategory(categoryId, categoryData) {
-  return apiRequest(`/api/categories/${categoryId}`, {
+export async function updateCategory(categoryId, categoryData, siteId) {
+  const params = siteId ? `?siteId=${siteId}` : '';
+  return apiRequest(`/api/categories/${categoryId}${params}`, {
     method: 'PUT',
-    body: JSON.stringify(categoryData),
+    body: JSON.stringify({ ...categoryData, siteId }),
   });
 }
 
-export async function deleteCategory(categoryId) {
-  return apiRequest(`/api/categories/${categoryId}`, {
+export async function deleteCategory(categoryId, siteId) {
+  const params = siteId ? `?siteId=${siteId}` : '';
+  return apiRequest(`/api/categories/${categoryId}${params}`, {
     method: 'DELETE',
   });
 }

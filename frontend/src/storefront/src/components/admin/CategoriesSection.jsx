@@ -84,7 +84,7 @@ export default function CategoriesSection({ onSaved }) {
   async function handleDeleteCategory(categoryId) {
     if (!window.confirm('Delete this category? Products in this category will not be deleted.')) return;
     try {
-      await deleteCategory(categoryId);
+      await deleteCategory(categoryId, siteConfig?.id);
       await loadCategories();
       if (onSaved) onSaved();
     } catch (e) {
@@ -100,7 +100,7 @@ export default function CategoriesSection({ onSaved }) {
         name: editCategoryName.trim(),
         slug,
         subtitle: editCategorySubtitle.trim() || null,
-      });
+      }, siteConfig?.id);
       setEditingCategory(null);
       setEditCategoryName('');
       setEditCategorySubtitle('');
@@ -113,7 +113,7 @@ export default function CategoriesSection({ onSaved }) {
 
   async function handleToggleHomepage(categoryId, currentValue) {
     try {
-      await updateCategory(categoryId, { showOnHome: !currentValue });
+      await updateCategory(categoryId, { showOnHome: !currentValue }, siteConfig?.id);
       await loadCategories();
       if (onSaved) onSaved();
     } catch (e) {
@@ -136,7 +136,7 @@ export default function CategoriesSection({ onSaved }) {
       const result = await response.json();
       if (result.success && result.data?.images?.length > 0 && result.data.images[0].url) {
         const imageUrl = result.data.images[0].url;
-        await updateCategory(categoryId, { imageUrl });
+        await updateCategory(categoryId, { imageUrl }, siteConfig?.id);
         await loadCategories();
         if (onSaved) onSaved();
       } else {
@@ -151,7 +151,7 @@ export default function CategoriesSection({ onSaved }) {
 
   async function handleRemoveImage(categoryId) {
     try {
-      await updateCategory(categoryId, { imageUrl: null });
+      await updateCategory(categoryId, { imageUrl: null }, siteConfig?.id);
       await loadCategories();
       if (onSaved) onSaved();
     } catch (e) {

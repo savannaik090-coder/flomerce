@@ -15,8 +15,8 @@ export default function ProductsAdminPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (productId) loadProduct();
-  }, [productId]);
+    if (productId && siteConfig?.id) loadProduct();
+  }, [productId, siteConfig?.id]);
 
   async function loadProduct() {
     setLoading(true);

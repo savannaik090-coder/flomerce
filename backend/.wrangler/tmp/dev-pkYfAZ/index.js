@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-9PBEa7/checked-fetch.js
+// .wrangler/tmp/bundle-H0bjTB/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-9PBEa7/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-H0bjTB/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-9PBEa7/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-H0bjTB/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-9PBEa7/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-H0bjTB/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -1753,12 +1753,12 @@ var init_site_admin_worker = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-9PBEa7/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-H0bjTB/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-9PBEa7/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-H0bjTB/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -3765,17 +3765,11 @@ async function handleProducts(request, env, path) {
         } catch (e) {
         }
       }
-      if (!siteId && (method === "PUT" || method === "DELETE") && productId) {
+      if (!siteId && method === "PUT" && productId) {
         try {
-          const allSites = await env.DB.prepare("SELECT id FROM sites").all();
-          for (const s of allSites.results || []) {
-            const sdb = await resolveSiteDBById(env, s.id);
-            const prod = await sdb.prepare("SELECT site_id FROM products WHERE id = ?").bind(productId).first();
-            if (prod) {
-              siteId = prod.site_id;
-              break;
-            }
-          }
+          const cloned = request.clone();
+          const body = await cloned.json();
+          siteId = body.siteId;
         } catch (e) {
         }
       }
@@ -4517,28 +4511,25 @@ async function updateOrderStatus(request, env, user, orderId) {
     const authHeader = request.headers.get("Authorization");
     if (authHeader && authHeader.startsWith("SiteAdmin ")) {
       const { validateSiteAdmin: validateSiteAdmin2 } = await Promise.resolve().then(() => (init_site_admin_worker(), site_admin_worker_exports));
-      const orderCheck = await env.DB.prepare("SELECT id, site_id FROM orders WHERE id = ?").bind(orderId).first();
-      if (!orderCheck) {
-        const allSites = await env.DB.prepare("SELECT id FROM sites").all();
-        for (const s of allSites.results || []) {
-          const sdb = await resolveSiteDBById(env, s.id);
-          const found = await sdb.prepare("SELECT id, site_id, row_size_bytes FROM orders WHERE id = ?").bind(orderId).first();
+      const url = new URL(request.url);
+      let adminSiteId = url.searchParams.get("siteId");
+      if (!adminSiteId) {
+        try {
+          const cloned = request.clone();
+          const body = await cloned.json();
+          adminSiteId = body.siteId;
+        } catch (e) {
+        }
+      }
+      if (adminSiteId) {
+        const admin = await validateSiteAdmin2(request, env, adminSiteId);
+        if (admin) {
+          const sdb = await resolveSiteDBById(env, adminSiteId);
+          const found = await sdb.prepare("SELECT id, site_id, row_size_bytes FROM orders WHERE id = ? AND site_id = ?").bind(orderId, adminSiteId).first();
           if (found) {
             order = found;
-            siteId = s.id;
-            break;
+            siteId = adminSiteId;
           }
-        }
-        if (order) {
-          const admin = await validateSiteAdmin2(request, env, siteId);
-          if (!admin)
-            order = null;
-        }
-      } else {
-        siteId = orderCheck.site_id;
-        const admin = await validateSiteAdmin2(request, env, orderCheck.site_id);
-        if (admin) {
-          order = orderCheck;
         }
       }
     }
@@ -6284,12 +6275,11 @@ async function handleCategories(request, env, path) {
         } catch (e) {
         }
       }
-      if (!adminSiteId && (method === "PUT" || method === "DELETE") && categoryId) {
+      if (!adminSiteId && method === "PUT" && categoryId) {
         try {
-          const db = await resolveSiteDBById(env, null);
-          const cat = await db.prepare("SELECT site_id FROM categories WHERE id = ?").bind(categoryId).first();
-          if (cat)
-            adminSiteId = cat.site_id;
+          const cloned = request.clone();
+          const body = await cloned.json();
+          adminSiteId = body.siteId;
         } catch (e) {
         }
       }
@@ -10982,7 +10972,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-9PBEa7/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-H0bjTB/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -11017,7 +11007,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-9PBEa7/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-H0bjTB/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

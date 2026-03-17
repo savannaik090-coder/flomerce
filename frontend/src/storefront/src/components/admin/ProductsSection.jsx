@@ -35,7 +35,7 @@ export default function ProductsSection({ onEditProduct, onAddProduct }) {
   async function handleDelete(productId) {
     if (!window.confirm('Are you sure you want to delete this product?')) return;
     try {
-      await deleteProduct(productId);
+      await deleteProduct(productId, siteConfig?.id);
       setProducts(prev => prev.filter(p => p.id !== productId));
     } catch (err) {
       alert('Failed to delete product: ' + err.message);

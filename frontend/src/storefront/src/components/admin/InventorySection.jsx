@@ -26,7 +26,7 @@ export default function InventorySection() {
 
   async function handleStockUpdate(productId, newStock) {
     try {
-      await updateProduct(productId, { stock: parseInt(newStock) || 0 });
+      await updateProduct(productId, { stock: parseInt(newStock) || 0 }, siteConfig?.id);
       setProducts(prev => prev.map(p => p.id === productId ? { ...p, stock: parseInt(newStock) || 0 } : p));
     } catch (err) {
       alert('Failed to update stock: ' + err.message);

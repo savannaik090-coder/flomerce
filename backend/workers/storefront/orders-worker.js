@@ -394,27 +394,24 @@ async function updateOrderStatus(request, env, user, orderId) {
     const authHeader = request.headers.get('Authorization');
     if (authHeader && authHeader.startsWith('SiteAdmin ')) {
       const { validateSiteAdmin } = await import('./site-admin-worker.js');
-      const orderCheck = await env.DB.prepare('SELECT id, site_id FROM orders WHERE id = ?').bind(orderId).first();
-      if (!orderCheck) {
-        const allSites = await env.DB.prepare('SELECT id FROM sites').all();
-        for (const s of (allSites.results || [])) {
-          const sdb = await resolveSiteDBById(env, s.id);
-          const found = await sdb.prepare('SELECT id, site_id, row_size_bytes FROM orders WHERE id = ?').bind(orderId).first();
+      const url = new URL(request.url);
+      let adminSiteId = url.searchParams.get('siteId');
+      if (!adminSiteId) {
+        try {
+          const cloned = request.clone();
+          const body = await cloned.json();
+          adminSiteId = body.siteId;
+        } catch (e) {}
+      }
+      if (adminSiteId) {
+        const admin = await validateSiteAdmin(request, env, adminSiteId);
+        if (admin) {
+          const sdb = await resolveSiteDBById(env, adminSiteId);
+          const found = await sdb.prepare('SELECT id, site_id, row_size_bytes FROM orders WHERE id = ? AND site_id = ?').bind(orderId, adminSiteId).first();
           if (found) {
             order = found;
-            siteId = s.id;
-            break;
+            siteId = adminSiteId;
           }
-        }
-        if (order) {
-          const admin = await validateSiteAdmin(request, env, siteId);
-          if (!admin) order = null;
-        }
-      } else {
-        siteId = orderCheck.site_id;
-        const admin = await validateSiteAdmin(request, env, orderCheck.site_id);
-        if (admin) {
-          order = orderCheck;
         }
       }
     }
