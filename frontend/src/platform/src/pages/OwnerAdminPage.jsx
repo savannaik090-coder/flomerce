@@ -24,6 +24,19 @@ export default function OwnerAdminPage() {
   const [settingsLoading, setSettingsLoading] = useState(false);
   const [settingsForm, setSettingsForm] = useState({ razorpay_key_id: '' });
 
+  const [shards, setShards] = useState([]);
+  const [shardsLoading, setShardsLoading] = useState(false);
+  const [selectedShard, setSelectedShard] = useState(null);
+  const [shardSites, setShardSites] = useState([]);
+  const [shardSitesLoading, setShardSitesLoading] = useState(false);
+  const [showCreateShard, setShowCreateShard] = useState(false);
+  const [newShardName, setNewShardName] = useState('');
+  const [creatingShardLoading, setCreatingShardLoading] = useState(false);
+  const [showMoveSite, setShowMoveSite] = useState(null);
+  const [moveSiteTarget, setMoveSiteTarget] = useState('');
+  const [movingSite, setMovingSite] = useState(false);
+  const [reconcilingShardId, setReconcilingShardId] = useState(null);
+
   useEffect(() => {
     if (!loading && !isAuthenticated) {
       navigate('/login');
@@ -39,6 +52,7 @@ export default function OwnerAdminPage() {
   useEffect(() => {
     if (activeTab === 'plans' && isAuthenticated) loadPlans();
     if (activeTab === 'settings' && isAuthenticated) loadSettings();
+    if (activeTab === 'databases' && isAuthenticated) loadShards();
   }, [activeTab, isAuthenticated]);
 
   const loadAdminData = async () => {
@@ -168,6 +182,146 @@ export default function OwnerAdminPage() {
     }
   };
 
+  const loadShards = async () => {
+    setShardsLoading(true);
+    try {
+      const data = await apiRequest('/api/admin/shards');
+      setShards(data.data || data || []);
+    } catch (e) {
+      console.error('Failed to load shards:', e);
+    } finally {
+      setShardsLoading(false);
+    }
+  };
+
+  const loadShardSites = async (shardId) => {
+    setShardSitesLoading(true);
+    try {
+      const data = await apiRequest(`/api/admin/shards/${shardId}/sites`);
+      setShardSites(data.data?.sites || []);
+    } catch (e) {
+      console.error('Failed to load shard sites:', e);
+      setShardSites([]);
+    } finally {
+      setShardSitesLoading(false);
+    }
+  };
+
+  const handleCreateShard = async (e) => {
+    e.preventDefault();
+    if (!newShardName.trim()) return;
+    setCreatingShardLoading(true);
+    try {
+      const data = await apiRequest('/api/admin/shards', {
+        method: 'POST',
+        body: JSON.stringify({ name: newShardName.trim() }),
+      });
+      const result = data.data || data;
+      if (result.note) {
+        alert(`Shard created. Note: ${result.note}`);
+      } else {
+        alert('Shard created successfully!');
+      }
+      setNewShardName('');
+      setShowCreateShard(false);
+      await loadShards();
+    } catch (e) {
+      alert('Failed to create shard: ' + e.message);
+    } finally {
+      setCreatingShardLoading(false);
+    }
+  };
+
+  const refreshSelectedShard = async () => {
+    const data = await apiRequest('/api/admin/shards');
+    const list = data.data || data || [];
+    setShards(list);
+    if (selectedShard) {
+      const updated = list.find(s => s.id === selectedShard.id);
+      if (updated) {
+        setSelectedShard(updated);
+      } else {
+        setSelectedShard(null);
+        setShardSites([]);
+      }
+    }
+  };
+
+  const handleReconcileShard = async (shardId) => {
+    setReconcilingShardId(shardId);
+    try {
+      await apiRequest(`/api/admin/shards/${shardId}/reconcile`, { method: 'POST' });
+      alert('Shard reconciled successfully!');
+      await refreshSelectedShard();
+      if (selectedShard?.id === shardId) {
+        await loadShardSites(shardId);
+      }
+    } catch (e) {
+      alert('Reconciliation failed: ' + e.message);
+    } finally {
+      setReconcilingShardId(null);
+    }
+  };
+
+  const handleSetActive = async (shardId) => {
+    try {
+      await apiRequest(`/api/admin/shards/${shardId}/set-active`, {
+        method: 'POST',
+        body: JSON.stringify({ active: true }),
+      });
+      await refreshSelectedShard();
+    } catch (e) {
+      alert('Failed to set shard active: ' + e.message);
+    }
+  };
+
+  const handleMoveSite = async () => {
+    if (!showMoveSite || !moveSiteTarget) return;
+    setMovingSite(true);
+    try {
+      await apiRequest('/api/admin/shards/move-site', {
+        method: 'POST',
+        body: JSON.stringify({ siteId: showMoveSite.siteId, targetShardId: moveSiteTarget }),
+      });
+      alert('Site moved successfully!');
+      setShowMoveSite(null);
+      setMoveSiteTarget('');
+      await refreshSelectedShard();
+      if (selectedShard) {
+        await loadShardSites(selectedShard.id);
+      }
+    } catch (e) {
+      alert('Failed to move site: ' + e.message);
+    } finally {
+      setMovingSite(false);
+    }
+  };
+
+  const handleDeleteShard = async (shardId, shardName) => {
+    if (!window.confirm(`Delete shard "${shardName}"? This shard must have zero sites.`)) return;
+    try {
+      await apiRequest(`/api/admin/shards/${shardId}`, { method: 'DELETE' });
+      alert('Shard deleted.');
+      setSelectedShard(null);
+      await loadShards();
+    } catch (e) {
+      alert('Failed to delete shard: ' + e.message);
+    }
+  };
+
+  const handleViewShard = (shard) => {
+    setSelectedShard(shard);
+    loadShardSites(shard.id);
+  };
+
+  const formatBytes = (bytes) => {
+    if (!bytes || bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
   if (loading || dataLoading) {
     return (
       <div className="oa-loading">
@@ -212,6 +366,7 @@ export default function OwnerAdminPage() {
         <button className={`oa-tab ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')}>Overview</button>
         <button className={`oa-tab ${activeTab === 'users' ? 'active' : ''}`} onClick={() => setActiveTab('users')}>Users</button>
         <button className={`oa-tab ${activeTab === 'sites' ? 'active' : ''}`} onClick={() => setActiveTab('sites')}>Websites</button>
+        <button className={`oa-tab ${activeTab === 'databases' ? 'active' : ''}`} onClick={() => setActiveTab('databases')}>Databases</button>
         <button className={`oa-tab ${activeTab === 'plans' ? 'active' : ''}`} onClick={() => setActiveTab('plans')}>Plans</button>
         <button className={`oa-tab ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => setActiveTab('settings')}>Settings</button>
       </div>
@@ -368,6 +523,272 @@ export default function OwnerAdminPage() {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'databases' && (
+        <div className="oa-section">
+          {selectedShard ? (
+            <div>
+              <button className="oa-btn oa-btn-outline" onClick={() => { setSelectedShard(null); setShardSites([]); }} style={{ marginBottom: '1rem' }}>
+                &larr; Back to All Shards
+              </button>
+
+              <div className="oa-card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1rem' }}>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '1.1rem' }}>{selectedShard.database_name}</h3>
+                    <p style={{ margin: '0.25rem 0 0', fontSize: '0.75rem', color: '#64748b' }}>
+                      Binding: <code>{selectedShard.binding_name}</code> &middot; ID: <code style={{ fontSize: '0.65rem' }}>{selectedShard.database_id}</code>
+                    </p>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                    {!selectedShard.is_active && (
+                      <button className="oa-btn-sm oa-btn-edit" onClick={() => handleSetActive(selectedShard.id)}>Set Active</button>
+                    )}
+                    <button
+                      className="oa-btn-sm oa-btn-toggle"
+                      disabled={reconcilingShardId === selectedShard.id}
+                      onClick={() => handleReconcileShard(selectedShard.id)}
+                    >
+                      {reconcilingShardId === selectedShard.id ? 'Reconciling...' : 'Reconcile'}
+                    </button>
+                    <button className="oa-btn-sm oa-btn-danger" onClick={() => handleDeleteShard(selectedShard.id, selectedShard.database_name)}>Delete</button>
+                  </div>
+                </div>
+
+                <div className="oa-db-stats-row">
+                  <div className="oa-db-stat">
+                    <span className="oa-db-stat-label">Size</span>
+                    <span className="oa-db-stat-value">{selectedShard.sizeMB} MB</span>
+                  </div>
+                  <div className="oa-db-stat">
+                    <span className="oa-db-stat-label">Sites</span>
+                    <span className="oa-db-stat-value">{selectedShard.siteCount}</span>
+                  </div>
+                  <div className="oa-db-stat">
+                    <span className="oa-db-stat-label">Status</span>
+                    <span className={`oa-badge ${selectedShard.is_active ? 'oa-badge-green' : ''}`}>{selectedShard.is_active ? 'Active' : 'Inactive'}</span>
+                  </div>
+                  <div className="oa-db-stat">
+                    <span className="oa-db-stat-label">Correction Factor</span>
+                    <span className="oa-db-stat-value">{selectedShard.correction_factor?.toFixed(2) || '1.00'}</span>
+                  </div>
+                </div>
+
+                {selectedShard.isNearLimit && (
+                  <div className="oa-db-alert">
+                    Database is approaching the 10GB D1 limit ({selectedShard.sizeAlertGB} GB). Consider creating a new shard.
+                  </div>
+                )}
+              </div>
+
+              <div className="oa-card" style={{ marginTop: '1rem' }}>
+                <h3>Sites on this Shard ({shardSites.length})</h3>
+                {shardSitesLoading ? (
+                  <p className="oa-empty">Loading sites...</p>
+                ) : shardSites.length === 0 ? (
+                  <p className="oa-empty">No sites on this shard yet</p>
+                ) : (
+                  <>
+                    <div className="oa-table-wrap">
+                      <table className="oa-table">
+                        <thead>
+                          <tr>
+                            <th>Site</th>
+                            <th>D1 Usage</th>
+                            <th>R2 Usage</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {shardSites.map(s => (
+                            <tr key={s.siteId}>
+                              <td data-label="Site">
+                                <div style={{ fontWeight: 600 }}>{s.brandName || s.subdomain}</div>
+                                <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{s.subdomain}.fluxe.in</div>
+                              </td>
+                              <td data-label="D1">{formatBytes(s.d1BytesDisplayed || 0)}</td>
+                              <td data-label="R2">{formatBytes(s.r2BytesUsed || 0)}</td>
+                              <td data-label="Created">{s.createdAt ? new Date(s.createdAt).toLocaleDateString() : '-'}</td>
+                              <td data-label="Actions">
+                                <button
+                                  className="oa-btn-sm oa-btn-edit"
+                                  onClick={() => { setShowMoveSite(s); setMoveSiteTarget(''); }}
+                                  disabled={shards.length < 2}
+                                  title={shards.length < 2 ? 'Need at least 2 shards to move sites' : 'Move to another shard'}
+                                >
+                                  Move
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <div className="oa-card-list-mobile">
+                      {shardSites.map(s => (
+                        <div className="oa-user-card" key={s.siteId}>
+                          <div className="oa-user-card-header">
+                            <div>
+                              <div className="oa-user-card-name">{s.brandName || s.subdomain}</div>
+                              <div className="oa-user-card-email">{s.subdomain}.fluxe.in</div>
+                              <div className="oa-user-card-email">D1: {formatBytes(s.d1BytesDisplayed || 0)} &middot; R2: {formatBytes(s.r2BytesUsed || 0)}</div>
+                            </div>
+                          </div>
+                          <div className="oa-user-card-footer">
+                            <span className="oa-user-card-date">{s.createdAt ? new Date(s.createdAt).toLocaleDateString() : '-'}</span>
+                            <button
+                              className="oa-btn-sm oa-btn-edit"
+                              onClick={() => { setShowMoveSite(s); setMoveSiteTarget(''); }}
+                              disabled={shards.length < 2}
+                            >
+                              Move
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div>
+              <div className="oa-card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  <h3 style={{ margin: 0 }}>Database Shards ({shards.length})</h3>
+                  <button className="oa-btn oa-btn-primary" onClick={() => setShowCreateShard(true)}>+ New Shard</button>
+                </div>
+
+                {showCreateShard && (
+                  <div className="oa-plan-form-wrap" style={{ marginBottom: '1rem' }}>
+                    <form onSubmit={handleCreateShard}>
+                      <h4 style={{ margin: '0 0 0.75rem', fontSize: '0.9rem' }}>Create New Shard Database</h4>
+                      <p style={{ fontSize: '0.75rem', color: '#64748b', margin: '0 0 0.75rem' }}>
+                        This will create a new Cloudflare D1 database, apply the site schema, and register it. New sites will be assigned to the active shard.
+                      </p>
+                      <div className="oa-form-group">
+                        <label>Database Name</label>
+                        <input
+                          type="text"
+                          value={newShardName}
+                          onChange={e => setNewShardName(e.target.value)}
+                          placeholder="e.g. saas-sites-db-2"
+                          required
+                          disabled={creatingShardLoading}
+                        />
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem' }}>
+                        <button type="submit" className="oa-btn oa-btn-primary" disabled={creatingShardLoading}>
+                          {creatingShardLoading ? 'Creating...' : 'Create Shard'}
+                        </button>
+                        <button type="button" className="oa-btn oa-btn-outline" onClick={() => { setShowCreateShard(false); setNewShardName(''); }} disabled={creatingShardLoading}>
+                          Cancel
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                )}
+
+                {shardsLoading ? (
+                  <p className="oa-empty">Loading shards...</p>
+                ) : shards.length === 0 ? (
+                  <div className="oa-empty">
+                    <p>No database shards created yet.</p>
+                    <p style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Create your first shard to start assigning sites to shared databases.</p>
+                  </div>
+                ) : (
+                  <div className="oa-db-grid">
+                    {shards.map(shard => (
+                      <div key={shard.id} className={`oa-db-card ${shard.is_active ? 'oa-db-card-active' : ''}`} onClick={() => handleViewShard(shard)}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
+                          <div>
+                            <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#0f172a' }}>{shard.database_name}</div>
+                            <div style={{ fontSize: '0.7rem', color: '#94a3b8', marginTop: '0.15rem' }}>{shard.binding_name}</div>
+                          </div>
+                          {shard.is_active ? (
+                            <span className="oa-badge oa-badge-green">Active</span>
+                          ) : (
+                            <span className="oa-badge">Inactive</span>
+                          )}
+                        </div>
+                        <div className="oa-db-stats-row">
+                          <div className="oa-db-stat">
+                            <span className="oa-db-stat-label">Size</span>
+                            <span className="oa-db-stat-value">{shard.sizeMB} MB</span>
+                          </div>
+                          <div className="oa-db-stat">
+                            <span className="oa-db-stat-label">Sites</span>
+                            <span className="oa-db-stat-value">{shard.siteCount}</span>
+                          </div>
+                          <div className="oa-db-stat">
+                            <span className="oa-db-stat-label">Factor</span>
+                            <span className="oa-db-stat-value">{shard.correction_factor?.toFixed(2) || '1.00'}</span>
+                          </div>
+                        </div>
+                        {shard.isNearLimit && (
+                          <div className="oa-db-alert">Near 10GB limit!</div>
+                        )}
+                        <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                          {!shard.is_active && (
+                            <button className="oa-btn-sm oa-btn-edit" onClick={(e) => { e.stopPropagation(); handleSetActive(shard.id); }}>Set Active</button>
+                          )}
+                          <button
+                            className="oa-btn-sm oa-btn-toggle"
+                            disabled={reconcilingShardId === shard.id}
+                            onClick={(e) => { e.stopPropagation(); handleReconcileShard(shard.id); }}
+                          >
+                            {reconcilingShardId === shard.id ? 'Reconciling...' : 'Reconcile'}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="oa-card" style={{ marginTop: '1rem' }}>
+                <h3>How Shards Work</h3>
+                <div style={{ fontSize: '0.8rem', color: '#475569', lineHeight: 1.7 }}>
+                  <p><strong>Shards</strong> are shared D1 databases that store site-specific data (products, orders, categories, etc.) for multiple sites with row-level isolation.</p>
+                  <p><strong>Active Shard:</strong> New sites are automatically assigned to the currently active shard. Only one shard can be active at a time.</p>
+                  <p><strong>Reconcile:</strong> Compares estimated usage with actual database size and updates the correction factor for accurate billing.</p>
+                  <p><strong>Move Site:</strong> Migrates a site's data from one shard to another. The site is briefly locked during migration.</p>
+                  <p><strong>Capacity:</strong> Each D1 database supports up to 10GB. Create a new shard when the current one approaches this limit.</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {showMoveSite && (
+        <div className="oa-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="move-site-title" onClick={() => { if (!movingSite) { setShowMoveSite(null); setMoveSiteTarget(''); } }} onKeyDown={e => { if (e.key === 'Escape' && !movingSite) { setShowMoveSite(null); setMoveSiteTarget(''); } }}>
+          <div className="oa-modal" onClick={e => e.stopPropagation()}>
+            <h3 id="move-site-title" style={{ margin: '0 0 0.75rem' }}>Move Site</h3>
+            <p style={{ fontSize: '0.85rem', color: '#475569', margin: '0 0 1rem' }}>
+              Move <strong>{showMoveSite.brandName || showMoveSite.subdomain}</strong> to a different shard database.
+              The site will be briefly locked during migration.
+            </p>
+            <div className="oa-form-group">
+              <label>Target Shard</label>
+              <select value={moveSiteTarget} onChange={e => setMoveSiteTarget(e.target.value)} disabled={movingSite}>
+                <option value="">Select a shard...</option>
+                {shards.filter(s => !selectedShard || s.id !== selectedShard.id).map(s => (
+                  <option key={s.id} value={s.id}>{s.database_name} ({s.binding_name}) - {s.sizeMB} MB, {s.siteCount} sites</option>
+                ))}
+              </select>
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', justifyContent: 'flex-end' }}>
+              <button className="oa-btn oa-btn-outline" onClick={() => { setShowMoveSite(null); setMoveSiteTarget(''); }} disabled={movingSite}>Cancel</button>
+              <button className="oa-btn oa-btn-primary" onClick={handleMoveSite} disabled={!moveSiteTarget || movingSite}>
+                {movingSite ? 'Moving...' : 'Move Site'}
+              </button>
             </div>
           </div>
         </div>
