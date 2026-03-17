@@ -62,6 +62,27 @@ export async function checkMigrationLock(env, siteId) {
   }
 }
 
+export async function getSiteConfig(env, siteId) {
+  if (!siteId) return {};
+  try {
+    const siteDB = await resolveSiteDBById(env, siteId);
+    const config = await siteDB.prepare(
+      'SELECT * FROM site_config WHERE site_id = ?'
+    ).bind(siteId).first();
+    return config || {};
+  } catch (e) {
+    console.error('getSiteConfig error:', e.message || e);
+    return {};
+  }
+}
+
+export async function getSiteWithConfig(env, siteRow) {
+  if (!siteRow || !siteRow.id) return siteRow;
+  const config = await getSiteConfig(env, siteRow.id);
+  const { site_id, ...configData } = config;
+  return { ...siteRow, ...configData };
+}
+
 export async function resolveSiteDBBySubdomain(env, subdomain) {
   if (!subdomain) {
     throw new Error('resolveSiteDBBySubdomain: subdomain is required');

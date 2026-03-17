@@ -1,5 +1,6 @@
 import { jsonResponse, errorResponse, corsHeaders } from '../utils/helpers.js';
 import { applySEO, generateSitemap, generateRobots } from './seo/index.js';
+import { getSiteWithConfig } from '../utils/site-db.js';
 
 
 export async function handleSiteRouting(request, env) {
@@ -30,11 +31,11 @@ export async function handleSiteRouting(request, env) {
     return null;
   }
 
-  let site = null;
+  let siteRow = null;
 
   if (subdomain) {
     try {
-      site = await env.DB.prepare(
+      siteRow = await env.DB.prepare(
         `SELECT * FROM sites WHERE LOWER(subdomain) = LOWER(?) AND is_active = 1`
       ).bind(subdomain).first();
     } catch (error) {
@@ -42,13 +43,23 @@ export async function handleSiteRouting(request, env) {
     }
   }
 
-  if (!site && !hostname.endsWith('fluxe.in') && !hostname.endsWith('pages.dev') && !hostname.includes('localhost') && !hostname.includes('workers.dev')) {
+  if (!siteRow && !hostname.endsWith('fluxe.in') && !hostname.endsWith('pages.dev') && !hostname.includes('localhost') && !hostname.includes('workers.dev')) {
     try {
-      site = await env.DB.prepare(
+      siteRow = await env.DB.prepare(
         `SELECT * FROM sites WHERE custom_domain = ? AND domain_status = 'verified' AND is_active = 1`
       ).bind(hostname.toLowerCase()).first();
     } catch (error) {
       console.error('Site routing custom domain lookup error:', error);
+    }
+  }
+
+  let site = null;
+  if (siteRow) {
+    try {
+      site = await getSiteWithConfig(env, siteRow);
+    } catch (e) {
+      console.error('Failed to load site config:', e);
+      site = siteRow;
     }
   }
 

@@ -2,7 +2,7 @@ import { generateId, jsonResponse, errorResponse, successResponse, handleCORS } 
 import { validateAuth } from '../../utils/auth.js';
 import { updateProductStock } from '../storefront/products-worker.js';
 import { sendOrderEmails } from '../storefront/orders-worker.js';
-import { resolveSiteDBById } from '../../utils/site-db.js';
+import { resolveSiteDBById, getSiteConfig } from '../../utils/site-db.js';
 import { estimateRowBytes, trackD1Update } from '../../utils/usage-tracker.js';
 import crypto from 'node:crypto';
 
@@ -32,9 +32,9 @@ export async function handlePayments(request, env, path) {
 async function getRazorpayCredentials(env, siteId) {
   if (siteId) {
     try {
-      const site = await env.DB.prepare('SELECT settings FROM sites WHERE id = ?').bind(siteId).first();
-      if (site?.settings) {
-        let settings = site.settings;
+      const config = await getSiteConfig(env, siteId);
+      if (config.settings) {
+        let settings = config.settings;
         if (typeof settings === 'string') {
           try { settings = JSON.parse(settings); } catch {}
         }

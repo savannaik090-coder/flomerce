@@ -1,6 +1,6 @@
 import { generateId, generateToken, jsonResponse, errorResponse, successResponse, handleCORS } from '../../utils/helpers.js';
 import { validateAuth } from '../../utils/auth.js';
-import { resolveSiteDBById, checkMigrationLock } from '../../utils/site-db.js';
+import { resolveSiteDBById, checkMigrationLock, getSiteConfig } from '../../utils/site-db.js';
 import { estimateRowBytes, trackD1Write, trackD1Update } from '../../utils/usage-tracker.js';
 
 export async function handleSiteAdmin(request, env, path) {
@@ -45,11 +45,11 @@ async function verifySiteAdminCode(request, env) {
     let site;
     if (siteId) {
       site = await env.DB.prepare(
-        'SELECT id, subdomain, brand_name, settings FROM sites WHERE id = ? AND is_active = 1'
+        'SELECT id, subdomain, brand_name FROM sites WHERE id = ? AND is_active = 1'
       ).bind(siteId).first();
     } else {
       site = await env.DB.prepare(
-        'SELECT id, subdomain, brand_name, settings FROM sites WHERE LOWER(subdomain) = LOWER(?) AND is_active = 1'
+        'SELECT id, subdomain, brand_name FROM sites WHERE LOWER(subdomain) = LOWER(?) AND is_active = 1'
       ).bind(subdomain).first();
     }
 
@@ -57,9 +57,11 @@ async function verifySiteAdminCode(request, env) {
       return errorResponse('Site not found', 404);
     }
 
+    const config = await getSiteConfig(env, site.id);
+
     let settings = {};
     try {
-      if (site.settings) settings = JSON.parse(site.settings);
+      if (config.settings) settings = typeof config.settings === 'string' ? JSON.parse(config.settings) : config.settings;
     } catch (e) {}
 
     const storedCode = settings.adminVerificationCode;
@@ -86,7 +88,7 @@ async function verifySiteAdminCode(request, env) {
       token: adminToken,
       siteId: site.id,
       subdomain: site.subdomain,
-      brandName: site.brand_name,
+      brandName: config.brand_name || site.brand_name,
       expiresAt: expiresAt.toISOString(),
     }, 'Admin access granted');
   } catch (error) {
@@ -142,37 +144,51 @@ async function setSiteAdminCode(request, env) {
     }
 
     const user = await validateAuth(request, env);
-    let site = null;
+    let authorized = false;
 
     if (user) {
-      site = await env.DB.prepare(
-        'SELECT id, settings FROM sites WHERE id = ? AND user_id = ?'
+      const site = await env.DB.prepare(
+        'SELECT id FROM sites WHERE id = ? AND user_id = ?'
       ).bind(siteId, user.id).first();
+      if (site) authorized = true;
     }
 
-    if (!site) {
+    if (!authorized) {
       const siteAdmin = await validateSiteAdmin(request, env, siteId);
-      if (siteAdmin) {
-        site = await env.DB.prepare(
-          'SELECT id, settings FROM sites WHERE id = ?'
-        ).bind(siteId).first();
-      }
+      if (siteAdmin) authorized = true;
     }
 
-    if (!site) {
+    if (!authorized) {
       return errorResponse('Site not found or unauthorized', 404);
     }
 
+    const siteDB = await resolveSiteDBById(env, siteId);
+    const existingConfig = await siteDB.prepare(
+      'SELECT settings, row_size_bytes FROM site_config WHERE site_id = ?'
+    ).bind(siteId).first();
+
     let settings = {};
     try {
-      if (site.settings) settings = JSON.parse(site.settings);
+      if (existingConfig && existingConfig.settings) {
+        settings = typeof existingConfig.settings === 'string' ? JSON.parse(existingConfig.settings) : existingConfig.settings;
+      }
     } catch (e) {}
 
     settings.adminVerificationCode = verificationCode;
+    const oldBytes = existingConfig?.row_size_bytes || 0;
 
-    await env.DB.prepare(
-      `UPDATE sites SET settings = ?, updated_at = datetime('now') WHERE id = ?`
+    await siteDB.prepare(
+      `UPDATE site_config SET settings = ?, updated_at = datetime('now') WHERE site_id = ?`
     ).bind(JSON.stringify(settings), siteId).run();
+
+    const updatedConfig = await siteDB.prepare(
+      'SELECT * FROM site_config WHERE site_id = ?'
+    ).bind(siteId).first();
+    if (updatedConfig) {
+      const newBytes = estimateRowBytes(updatedConfig);
+      await siteDB.prepare('UPDATE site_config SET row_size_bytes = ? WHERE site_id = ?').bind(newBytes, siteId).run();
+      await trackD1Update(env, siteId, oldBytes, newBytes);
+    }
 
     return successResponse(null, 'Admin verification code set successfully');
   } catch (error) {
@@ -205,6 +221,8 @@ async function autoLoginSiteAdmin(request, env) {
       return errorResponse('Site not found or unauthorized', 404);
     }
 
+    const config = await getSiteConfig(env, site.id);
+
     const adminToken = generateToken(32);
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + 24);
@@ -220,7 +238,7 @@ async function autoLoginSiteAdmin(request, env) {
       token: adminToken,
       siteId: site.id,
       subdomain: site.subdomain,
-      brandName: site.brand_name,
+      brandName: config.brand_name || site.brand_name,
       expiresAt: expiresAt.toISOString(),
     }, 'Auto-login token generated');
   } catch (error) {
@@ -253,15 +271,6 @@ async function ensureSiteAdminSessionsTable(env) {
     console.error('Error ensuring site_admin_sessions table:', error);
   }
 }
-
-// ─── SEO Handler ─────────────────────────────────────────────────────────────
-// Routes:
-//   GET  /api/site-admin/seo?siteId=xxx          → get site SEO settings
-//   PUT  /api/site-admin/seo                      → save site SEO settings
-//   GET  /api/site-admin/seo/categories?siteId=x → get all categories with SEO
-//   PUT  /api/site-admin/seo/categories/:id       → save category SEO
-//   GET  /api/site-admin/seo/products?siteId=xxx  → get all products with SEO
-//   PUT  /api/site-admin/seo/products/:id         → save product SEO
 
 async function handleSEO(request, env, pathParts) {
   const subResource = pathParts[3];
@@ -304,11 +313,16 @@ async function getSiteSEO(request, env) {
     const admin = await validateSiteAdmin(request, env, siteId);
     if (!admin) return errorResponse('Unauthorized', 401);
 
-    const site = await env.DB.prepare(
-      `SELECT seo_title, seo_description, seo_og_image, seo_robots, google_verification, favicon_url FROM sites WHERE id = ?`
-    ).bind(siteId).first();
+    const config = await getSiteConfig(env, siteId);
 
-    return jsonResponse({ success: true, data: site || {} });
+    return jsonResponse({ success: true, data: {
+      seo_title: config.seo_title || null,
+      seo_description: config.seo_description || null,
+      seo_og_image: config.seo_og_image || null,
+      seo_robots: config.seo_robots || 'index, follow',
+      google_verification: config.google_verification || null,
+      favicon_url: config.favicon_url || null,
+    }});
   } catch (err) {
     console.error('getSiteSEO error:', err);
     return errorResponse('Failed to fetch SEO settings', 500);
@@ -323,17 +337,32 @@ async function saveSiteSEO(request, env) {
     const admin = await validateSiteAdmin(request, env, siteId);
     if (!admin) return errorResponse('Unauthorized', 401);
 
-    await env.DB.prepare(
-      `UPDATE sites SET
+    const siteDB = await resolveSiteDBById(env, siteId);
+    const existingConfig = await siteDB.prepare(
+      'SELECT row_size_bytes FROM site_config WHERE site_id = ?'
+    ).bind(siteId).first();
+    const oldBytes = existingConfig?.row_size_bytes || 0;
+
+    await siteDB.prepare(
+      `UPDATE site_config SET
         seo_title = ?, seo_description = ?, seo_og_image = ?,
         seo_robots = ?, google_verification = ?, favicon_url = ?,
         updated_at = datetime('now')
-       WHERE id = ?`
+       WHERE site_id = ?`
     ).bind(
       seo_title || null, seo_description || null, seo_og_image || null,
       seo_robots || 'index, follow', google_verification || null, favicon_url || null,
       siteId
     ).run();
+
+    const updatedConfig = await siteDB.prepare(
+      'SELECT * FROM site_config WHERE site_id = ?'
+    ).bind(siteId).first();
+    if (updatedConfig) {
+      const newBytes = estimateRowBytes(updatedConfig);
+      await siteDB.prepare('UPDATE site_config SET row_size_bytes = ? WHERE site_id = ?').bind(newBytes, siteId).run();
+      await trackD1Update(env, siteId, oldBytes, newBytes);
+    }
 
     return jsonResponse({ success: true, message: 'SEO settings saved' });
   } catch (err) {
@@ -573,27 +602,22 @@ async function getSocialTags(request, env) {
     const admin = await validateSiteAdmin(request, env, siteId);
     if (!admin) return errorResponse('Unauthorized', 401);
 
-    const site = await env.DB.prepare(
-      `SELECT seo_title, seo_description, seo_og_image,
-              og_title, og_description, og_image, og_type,
-              twitter_card, twitter_title, twitter_description, twitter_image, twitter_site
-       FROM sites WHERE id = ?`
-    ).bind(siteId).first();
+    const config = await getSiteConfig(env, siteId);
 
     const data = {
-      og_title: site?.og_title || '',
-      og_description: site?.og_description || '',
-      og_image: site?.og_image || '',
-      og_type: site?.og_type || 'website',
-      twitter_card: site?.twitter_card || 'summary_large_image',
-      twitter_title: site?.twitter_title || '',
-      twitter_description: site?.twitter_description || '',
-      twitter_image: site?.twitter_image || '',
-      twitter_site: site?.twitter_site || '',
+      og_title: config.og_title || '',
+      og_description: config.og_description || '',
+      og_image: config.og_image || '',
+      og_type: config.og_type || 'website',
+      twitter_card: config.twitter_card || 'summary_large_image',
+      twitter_title: config.twitter_title || '',
+      twitter_description: config.twitter_description || '',
+      twitter_image: config.twitter_image || '',
+      twitter_site: config.twitter_site || '',
       defaults: {
-        title: site?.seo_title || '',
-        description: site?.seo_description || '',
-        image: site?.seo_og_image || '',
+        title: config.seo_title || '',
+        description: config.seo_description || '',
+        image: config.seo_og_image || '',
       },
     };
 
@@ -613,19 +637,34 @@ async function saveSocialTags(request, env) {
     const admin = await validateSiteAdmin(request, env, siteId);
     if (!admin) return errorResponse('Unauthorized', 401);
 
-    await env.DB.prepare(
-      `UPDATE sites SET
+    const siteDB = await resolveSiteDBById(env, siteId);
+    const existingConfig = await siteDB.prepare(
+      'SELECT row_size_bytes FROM site_config WHERE site_id = ?'
+    ).bind(siteId).first();
+    const oldBytes = existingConfig?.row_size_bytes || 0;
+
+    await siteDB.prepare(
+      `UPDATE site_config SET
         og_title = ?, og_description = ?, og_image = ?, og_type = ?,
         twitter_card = ?, twitter_title = ?, twitter_description = ?, twitter_image = ?, twitter_site = ?,
         updated_at = datetime('now')
-       WHERE id = ?`
+       WHERE site_id = ?`
     ).bind(
       og_title || null, og_description || null, og_image || null, og_type || 'website',
       twitter_card || 'summary_large_image', twitter_title || null, twitter_description || null, twitter_image || null, twitter_site || null,
       siteId
     ).run();
 
-    return jsonResponse({ success: true, message: 'Social media tags saved' });
+    const updatedConfig = await siteDB.prepare(
+      'SELECT * FROM site_config WHERE site_id = ?'
+    ).bind(siteId).first();
+    if (updatedConfig) {
+      const newBytes = estimateRowBytes(updatedConfig);
+      await siteDB.prepare('UPDATE site_config SET row_size_bytes = ? WHERE site_id = ?').bind(newBytes, siteId).run();
+      await trackD1Update(env, siteId, oldBytes, newBytes);
+    }
+
+    return jsonResponse({ success: true, message: 'Social tags saved' });
   } catch (err) {
     console.error('saveSocialTags error:', err);
     return errorResponse('Failed to save social tags', 500);
@@ -633,30 +672,26 @@ async function saveSocialTags(request, env) {
 }
 
 export async function validateSiteAdmin(request, env, siteId) {
-  const user = await validateAuth(request, env);
-  if (user) {
-    const site = await env.DB.prepare(
-      'SELECT id FROM sites WHERE id = ? AND user_id = ?'
-    ).bind(siteId, user.id).first();
-    if (site) return { type: 'owner', userId: user.id };
+  if (!siteId) return null;
+
+  const authHeader = request.headers.get('Authorization') || '';
+  if (!authHeader.startsWith('SiteAdmin ')) return null;
+
+  const token = authHeader.substring(10);
+
+  try {
+    await ensureSiteAdminSessionsTable(env);
+
+    const session = await env.DB.prepare(
+      `SELECT id, site_id, expires_at FROM site_admin_sessions 
+       WHERE token = ? AND site_id = ? AND expires_at > datetime('now')`
+    ).bind(token, siteId).first();
+
+    if (!session) return null;
+
+    return { siteId: session.site_id };
+  } catch (error) {
+    console.error('Validate site admin error:', error);
+    return null;
   }
-
-  const authHeader = request.headers.get('Authorization');
-  if (authHeader && authHeader.startsWith('SiteAdmin ')) {
-    const token = authHeader.substring(10);
-    
-    try {
-      await ensureSiteAdminSessionsTable(env);
-      const session = await env.DB.prepare(
-        `SELECT id, site_id FROM site_admin_sessions 
-         WHERE token = ? AND site_id = ? AND expires_at > datetime('now')`
-      ).bind(token, siteId).first();
-
-      if (session) return { type: 'site-admin', siteId: session.site_id };
-    } catch (error) {
-      console.error('Site admin validation error:', error);
-    }
-  }
-
-  return null;
 }

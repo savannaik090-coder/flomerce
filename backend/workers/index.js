@@ -162,42 +162,39 @@ async function handleSiteInfo(request, env) {
   const hostname = url.hostname;
   const subdomain = url.searchParams.get('subdomain');
 
-  let site = null;
+  let siteRow = null;
 
   try {
     if (subdomain) {
-      site = await env.DB.prepare(
-        `SELECT s.id, s.subdomain, s.brand_name, s.category, s.template_id, 
-                s.logo_url, s.favicon_url, s.primary_color, s.secondary_color,
-                s.phone, s.email, s.address, s.social_links, s.settings,
-                s.custom_domain, s.domain_status, s.domain_verification_token,
-                s.seo_title, s.seo_description, s.seo_og_image, s.seo_robots, s.google_verification,
-                s.og_title, s.og_description, s.og_image, s.og_type,
-                s.twitter_card, s.twitter_title, s.twitter_description, s.twitter_image, s.twitter_site
+      siteRow = await env.DB.prepare(
+        `SELECT s.id, s.subdomain, s.brand_name, s.template_id,
+                s.custom_domain, s.domain_status, s.domain_verification_token
          FROM sites s 
          WHERE LOWER(s.subdomain) = LOWER(?) AND s.is_active = 1`
       ).bind(subdomain).first();
     } else if (!hostname.endsWith('fluxe.in') && !hostname.endsWith('pages.dev') && !hostname.includes('localhost') && !hostname.includes('workers.dev')) {
-      site = await env.DB.prepare(
-        `SELECT s.id, s.subdomain, s.brand_name, s.category, s.template_id, 
-                s.logo_url, s.favicon_url, s.primary_color, s.secondary_color,
-                s.phone, s.email, s.address, s.social_links, s.settings,
-                s.custom_domain, s.domain_status, s.domain_verification_token,
-                s.seo_title, s.seo_description, s.seo_og_image, s.seo_robots, s.google_verification,
-                s.og_title, s.og_description, s.og_image, s.og_type,
-                s.twitter_card, s.twitter_title, s.twitter_description, s.twitter_image, s.twitter_site
+      siteRow = await env.DB.prepare(
+        `SELECT s.id, s.subdomain, s.brand_name, s.template_id,
+                s.custom_domain, s.domain_status, s.domain_verification_token
          FROM sites s 
          WHERE s.custom_domain = ? AND s.domain_status = 'verified' AND s.is_active = 1`
       ).bind(hostname.toLowerCase()).first();
     }
 
-    if (!site) {
+    if (!siteRow) {
       return errorResponse(subdomain ? 'Site not found' : 'Subdomain is required', subdomain ? 404 : 400);
     }
 
+    const siteDB = await resolveSiteDBById(env, siteRow.id);
+    const config = await siteDB.prepare(
+      'SELECT * FROM site_config WHERE site_id = ?'
+    ).bind(siteRow.id).first();
+
+    const { site_id: _sid, row_size_bytes: _rb, ...configData } = (config || {});
+    const site = { ...siteRow, ...configData };
+
     let categoriesResult = [];
     try {
-      const siteDB = await resolveSiteDBById(env, site.id);
       const categories = await siteDB.prepare(
         'SELECT * FROM categories WHERE site_id = ? ORDER BY display_order'
       ).bind(site.id).all();
@@ -209,10 +206,10 @@ async function handleSiteInfo(request, env) {
     let socialLinks = {};
     let settings = {};
     try {
-      if (site.social_links) socialLinks = JSON.parse(site.social_links);
+      if (site.social_links) socialLinks = typeof site.social_links === 'string' ? JSON.parse(site.social_links) : site.social_links;
     } catch (e) {}
     try {
-      if (site.settings) settings = JSON.parse(site.settings);
+      if (site.settings) settings = typeof site.settings === 'string' ? JSON.parse(site.settings) : site.settings;
     } catch (e) {}
 
     if (settings.social) {
@@ -235,7 +232,6 @@ async function handleSiteInfo(request, env) {
 
     let pageSEOResult = [];
     try {
-      const siteDB = await resolveSiteDBById(env, site.id);
       const psResult = await siteDB.prepare(
         'SELECT page_type, seo_title, seo_description, seo_og_image FROM page_seo WHERE site_id = ?'
       ).bind(site.id).all();

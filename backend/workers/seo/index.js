@@ -44,21 +44,13 @@ function buildBaseUrl(request, site) {
 // ─── SEO data fetchers ───────────────────────────────────────────────────────
 
 async function fetchSiteSEO(env, site) {
-  let currency = 'INR';
-  try {
-    const siteRow = await env.DB.prepare(
-      `SELECT currency FROM sites WHERE id = ?`
-    ).bind(site.id).first();
-    if (siteRow?.currency) currency = siteRow.currency;
-  } catch {}
-
   return {
     seo_title: site.seo_title || null,
     seo_description: site.seo_description || null,
     seo_og_image: site.seo_og_image || null,
     seo_robots: site.seo_robots || 'index, follow',
     google_verification: site.google_verification || null,
-    currency,
+    currency: site.currency || 'INR',
   };
 }
 

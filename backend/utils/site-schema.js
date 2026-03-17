@@ -327,6 +327,39 @@ export function getSiteSchemaStatements() {
       created_at TEXT DEFAULT (datetime('now')),
       updated_at TEXT DEFAULT (datetime('now'))
     )`,
+
+    `CREATE TABLE IF NOT EXISTS site_config (
+      site_id TEXT PRIMARY KEY,
+      brand_name TEXT,
+      category TEXT,
+      logo_url TEXT,
+      favicon_url TEXT,
+      primary_color TEXT DEFAULT '#000000',
+      secondary_color TEXT DEFAULT '#ffffff',
+      phone TEXT,
+      email TEXT,
+      address TEXT,
+      social_links TEXT,
+      settings TEXT DEFAULT '{}',
+      currency TEXT DEFAULT 'INR',
+      seo_title TEXT,
+      seo_description TEXT,
+      seo_og_image TEXT,
+      seo_robots TEXT DEFAULT 'index, follow',
+      google_verification TEXT,
+      og_title TEXT,
+      og_description TEXT,
+      og_image TEXT,
+      og_type TEXT DEFAULT 'website',
+      twitter_card TEXT DEFAULT 'summary_large_image',
+      twitter_title TEXT,
+      twitter_description TEXT,
+      twitter_image TEXT,
+      twitter_site TEXT,
+      row_size_bytes INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    )`,
   ];
 
   const indexes = [

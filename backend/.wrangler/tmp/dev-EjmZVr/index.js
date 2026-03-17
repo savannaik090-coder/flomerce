@@ -228,6 +228,27 @@ async function checkMigrationLock(env, siteId) {
     return false;
   }
 }
+async function getSiteConfig(env, siteId) {
+  if (!siteId)
+    return {};
+  try {
+    const siteDB = await resolveSiteDBById(env, siteId);
+    const config = await siteDB.prepare(
+      "SELECT * FROM site_config WHERE site_id = ?"
+    ).bind(siteId).first();
+    return config || {};
+  } catch (e) {
+    console.error("getSiteConfig error:", e.message || e);
+    return {};
+  }
+}
+async function getSiteWithConfig(env, siteRow) {
+  if (!siteRow || !siteRow.id)
+    return siteRow;
+  const config = await getSiteConfig(env, siteRow.id);
+  const { site_id, ...configData } = config;
+  return { ...siteRow, ...configData };
+}
 async function resolveSiteDBBySubdomain(env, subdomain) {
   if (!subdomain) {
     throw new Error("resolveSiteDBBySubdomain: subdomain is required");
@@ -259,6 +280,8 @@ var init_site_db = __esm({
     init_modules_watch_stub();
     __name(resolveSiteDBById, "resolveSiteDBById");
     __name(checkMigrationLock, "checkMigrationLock");
+    __name(getSiteConfig, "getSiteConfig");
+    __name(getSiteWithConfig, "getSiteWithConfig");
     __name(resolveSiteDBBySubdomain, "resolveSiteDBBySubdomain");
   }
 });
@@ -862,7 +885,7 @@ function getSitePlan(site) {
 async function checkUsageLimit(env, siteId, resourceType = "d1", additionalBytes = 0) {
   try {
     const site = await env.DB.prepare(
-      "SELECT subscription_plan, settings FROM sites WHERE id = ?"
+      "SELECT subscription_plan FROM sites WHERE id = ?"
     ).bind(siteId).first();
     if (!site)
       return { allowed: true, reason: null };
@@ -876,10 +899,11 @@ async function checkUsageLimit(env, siteId, resourceType = "d1", additionalBytes
       return { allowed: true, reason: null };
     }
     if (limits.allowOverage) {
+      const config = await getSiteConfig(env, siteId);
       let siteSettings = {};
       try {
-        if (site.settings)
-          siteSettings = typeof site.settings === "string" ? JSON.parse(site.settings) : site.settings;
+        if (config.settings)
+          siteSettings = typeof config.settings === "string" ? JSON.parse(config.settings) : config.settings;
       } catch (_) {
       }
       if (siteSettings.overageEnabled) {
@@ -962,7 +986,7 @@ async function handleUsageAPI(request, env, path) {
   }
   try {
     const site = await env.DB.prepare(
-      "SELECT id, subscription_plan, settings FROM sites WHERE id = ? AND user_id = ?"
+      "SELECT id, subscription_plan FROM sites WHERE id = ? AND user_id = ?"
     ).bind(siteId, user.id).first();
     if (!site) {
       return errorResponse("Site not found or unauthorized", 404);
@@ -989,10 +1013,11 @@ async function handleUsageAPI(request, env, path) {
     }
     const planKey = getSitePlan(site);
     const limits = PLAN_LIMITS[planKey] || PLAN_LIMITS.free;
+    const config = await getSiteConfig(env, siteId);
     let siteSettings = {};
     try {
-      if (site.settings)
-        siteSettings = typeof site.settings === "string" ? JSON.parse(site.settings) : site.settings;
+      if (config.settings)
+        siteSettings = typeof config.settings === "string" ? JSON.parse(config.settings) : config.settings;
     } catch (_) {
     }
     const overageEnabled = !!siteSettings.overageEnabled;
@@ -1040,7 +1065,7 @@ async function handleOverageToggle(request, env, user, siteId) {
       return errorResponse("overageEnabled must be a boolean", 400);
     }
     const site = await env.DB.prepare(
-      "SELECT id, subscription_plan, settings FROM sites WHERE id = ? AND user_id = ?"
+      "SELECT id, subscription_plan FROM sites WHERE id = ? AND user_id = ?"
     ).bind(siteId, user.id).first();
     if (!site) {
       return errorResponse("Site not found or unauthorized", 404);
@@ -1050,15 +1075,19 @@ async function handleOverageToggle(request, env, user, siteId) {
     if (!limits.allowOverage) {
       return errorResponse("Overage charges are only available on the Premium plan", 403);
     }
+    const siteDB = await resolveSiteDBById(env, siteId);
+    const existingConfig = await siteDB.prepare(
+      "SELECT settings FROM site_config WHERE site_id = ?"
+    ).bind(siteId).first();
     let siteSettings = {};
     try {
-      if (site.settings)
-        siteSettings = typeof site.settings === "string" ? JSON.parse(site.settings) : site.settings;
+      if (existingConfig?.settings)
+        siteSettings = typeof existingConfig.settings === "string" ? JSON.parse(existingConfig.settings) : existingConfig.settings;
     } catch (_) {
     }
     siteSettings.overageEnabled = overageEnabled;
-    await env.DB.prepare(
-      "UPDATE sites SET settings = ? WHERE id = ?"
+    await siteDB.prepare(
+      'UPDATE site_config SET settings = ?, updated_at = datetime("now") WHERE site_id = ?'
     ).bind(JSON.stringify(siteSettings), siteId).run();
     return successResponse({ overageEnabled, message: overageEnabled ? "Overage charges enabled. You will be billed for usage beyond your plan limits." : "Overage charges disabled. Your site will be blocked when storage limits are reached." });
   } catch (error) {
@@ -1101,6 +1130,7 @@ var init_usage_tracker = __esm({
     init_modules_watch_stub();
     init_helpers();
     init_auth();
+    init_site_db();
     PLAN_LIMITS = {
       basic: { d1Bytes: 500 * 1024 * 1024, r2Bytes: 5 * 1024 * 1024 * 1024, allowOverage: false },
       pro: { d1Bytes: 1.5 * 1024 * 1024 * 1024, r2Bytes: 50 * 1024 * 1024 * 1024, allowOverage: false },
@@ -1174,20 +1204,21 @@ async function verifySiteAdminCode(request, env) {
     let site;
     if (siteId) {
       site = await env.DB.prepare(
-        "SELECT id, subdomain, brand_name, settings FROM sites WHERE id = ? AND is_active = 1"
+        "SELECT id, subdomain, brand_name FROM sites WHERE id = ? AND is_active = 1"
       ).bind(siteId).first();
     } else {
       site = await env.DB.prepare(
-        "SELECT id, subdomain, brand_name, settings FROM sites WHERE LOWER(subdomain) = LOWER(?) AND is_active = 1"
+        "SELECT id, subdomain, brand_name FROM sites WHERE LOWER(subdomain) = LOWER(?) AND is_active = 1"
       ).bind(subdomain).first();
     }
     if (!site) {
       return errorResponse("Site not found", 404);
     }
+    const config = await getSiteConfig(env, site.id);
     let settings = {};
     try {
-      if (site.settings)
-        settings = JSON.parse(site.settings);
+      if (config.settings)
+        settings = typeof config.settings === "string" ? JSON.parse(config.settings) : config.settings;
     } catch (e) {
     }
     const storedCode = settings.adminVerificationCode;
@@ -1209,7 +1240,7 @@ async function verifySiteAdminCode(request, env) {
       token: adminToken,
       siteId: site.id,
       subdomain: site.subdomain,
-      brandName: site.brand_name,
+      brandName: config.brand_name || site.brand_name,
       expiresAt: expiresAt.toISOString()
     }, "Admin access granted");
   } catch (error) {
@@ -1253,33 +1284,46 @@ async function setSiteAdminCode(request, env) {
       return errorResponse("Verification code must be between 4 and 20 characters");
     }
     const user = await validateAuth(request, env);
-    let site = null;
+    let authorized = false;
     if (user) {
-      site = await env.DB.prepare(
-        "SELECT id, settings FROM sites WHERE id = ? AND user_id = ?"
+      const site = await env.DB.prepare(
+        "SELECT id FROM sites WHERE id = ? AND user_id = ?"
       ).bind(siteId, user.id).first();
+      if (site)
+        authorized = true;
     }
-    if (!site) {
+    if (!authorized) {
       const siteAdmin = await validateSiteAdmin(request, env, siteId);
-      if (siteAdmin) {
-        site = await env.DB.prepare(
-          "SELECT id, settings FROM sites WHERE id = ?"
-        ).bind(siteId).first();
-      }
+      if (siteAdmin)
+        authorized = true;
     }
-    if (!site) {
+    if (!authorized) {
       return errorResponse("Site not found or unauthorized", 404);
     }
+    const siteDB = await resolveSiteDBById(env, siteId);
+    const existingConfig = await siteDB.prepare(
+      "SELECT settings, row_size_bytes FROM site_config WHERE site_id = ?"
+    ).bind(siteId).first();
     let settings = {};
     try {
-      if (site.settings)
-        settings = JSON.parse(site.settings);
+      if (existingConfig && existingConfig.settings) {
+        settings = typeof existingConfig.settings === "string" ? JSON.parse(existingConfig.settings) : existingConfig.settings;
+      }
     } catch (e) {
     }
     settings.adminVerificationCode = verificationCode;
-    await env.DB.prepare(
-      `UPDATE sites SET settings = ?, updated_at = datetime('now') WHERE id = ?`
+    const oldBytes = existingConfig?.row_size_bytes || 0;
+    await siteDB.prepare(
+      `UPDATE site_config SET settings = ?, updated_at = datetime('now') WHERE site_id = ?`
     ).bind(JSON.stringify(settings), siteId).run();
+    const updatedConfig = await siteDB.prepare(
+      "SELECT * FROM site_config WHERE site_id = ?"
+    ).bind(siteId).first();
+    if (updatedConfig) {
+      const newBytes = estimateRowBytes(updatedConfig);
+      await siteDB.prepare("UPDATE site_config SET row_size_bytes = ? WHERE site_id = ?").bind(newBytes, siteId).run();
+      await trackD1Update(env, siteId, oldBytes, newBytes);
+    }
     return successResponse(null, "Admin verification code set successfully");
   } catch (error) {
     console.error("Set site admin code error:", error);
@@ -1305,6 +1349,7 @@ async function autoLoginSiteAdmin(request, env) {
     if (!site) {
       return errorResponse("Site not found or unauthorized", 404);
     }
+    const config = await getSiteConfig(env, site.id);
     const adminToken = generateToken(32);
     const expiresAt = /* @__PURE__ */ new Date();
     expiresAt.setHours(expiresAt.getHours() + 24);
@@ -1317,7 +1362,7 @@ async function autoLoginSiteAdmin(request, env) {
       token: adminToken,
       siteId: site.id,
       subdomain: site.subdomain,
-      brandName: site.brand_name,
+      brandName: config.brand_name || site.brand_name,
       expiresAt: expiresAt.toISOString()
     }, "Auto-login token generated");
   } catch (error) {
@@ -1391,10 +1436,15 @@ async function getSiteSEO(request, env) {
     const admin = await validateSiteAdmin(request, env, siteId);
     if (!admin)
       return errorResponse("Unauthorized", 401);
-    const site = await env.DB.prepare(
-      `SELECT seo_title, seo_description, seo_og_image, seo_robots, google_verification, favicon_url FROM sites WHERE id = ?`
-    ).bind(siteId).first();
-    return jsonResponse({ success: true, data: site || {} });
+    const config = await getSiteConfig(env, siteId);
+    return jsonResponse({ success: true, data: {
+      seo_title: config.seo_title || null,
+      seo_description: config.seo_description || null,
+      seo_og_image: config.seo_og_image || null,
+      seo_robots: config.seo_robots || "index, follow",
+      google_verification: config.google_verification || null,
+      favicon_url: config.favicon_url || null
+    } });
   } catch (err) {
     console.error("getSiteSEO error:", err);
     return errorResponse("Failed to fetch SEO settings", 500);
@@ -1408,12 +1458,17 @@ async function saveSiteSEO(request, env) {
     const admin = await validateSiteAdmin(request, env, siteId);
     if (!admin)
       return errorResponse("Unauthorized", 401);
-    await env.DB.prepare(
-      `UPDATE sites SET
+    const siteDB = await resolveSiteDBById(env, siteId);
+    const existingConfig = await siteDB.prepare(
+      "SELECT row_size_bytes FROM site_config WHERE site_id = ?"
+    ).bind(siteId).first();
+    const oldBytes = existingConfig?.row_size_bytes || 0;
+    await siteDB.prepare(
+      `UPDATE site_config SET
         seo_title = ?, seo_description = ?, seo_og_image = ?,
         seo_robots = ?, google_verification = ?, favicon_url = ?,
         updated_at = datetime('now')
-       WHERE id = ?`
+       WHERE site_id = ?`
     ).bind(
       seo_title || null,
       seo_description || null,
@@ -1423,6 +1478,14 @@ async function saveSiteSEO(request, env) {
       favicon_url || null,
       siteId
     ).run();
+    const updatedConfig = await siteDB.prepare(
+      "SELECT * FROM site_config WHERE site_id = ?"
+    ).bind(siteId).first();
+    if (updatedConfig) {
+      const newBytes = estimateRowBytes(updatedConfig);
+      await siteDB.prepare("UPDATE site_config SET row_size_bytes = ? WHERE site_id = ?").bind(newBytes, siteId).run();
+      await trackD1Update(env, siteId, oldBytes, newBytes);
+    }
     return jsonResponse({ success: true, message: "SEO settings saved" });
   } catch (err) {
     console.error("saveSiteSEO error:", err);
@@ -1632,26 +1695,21 @@ async function getSocialTags(request, env) {
     const admin = await validateSiteAdmin(request, env, siteId);
     if (!admin)
       return errorResponse("Unauthorized", 401);
-    const site = await env.DB.prepare(
-      `SELECT seo_title, seo_description, seo_og_image,
-              og_title, og_description, og_image, og_type,
-              twitter_card, twitter_title, twitter_description, twitter_image, twitter_site
-       FROM sites WHERE id = ?`
-    ).bind(siteId).first();
+    const config = await getSiteConfig(env, siteId);
     const data = {
-      og_title: site?.og_title || "",
-      og_description: site?.og_description || "",
-      og_image: site?.og_image || "",
-      og_type: site?.og_type || "website",
-      twitter_card: site?.twitter_card || "summary_large_image",
-      twitter_title: site?.twitter_title || "",
-      twitter_description: site?.twitter_description || "",
-      twitter_image: site?.twitter_image || "",
-      twitter_site: site?.twitter_site || "",
+      og_title: config.og_title || "",
+      og_description: config.og_description || "",
+      og_image: config.og_image || "",
+      og_type: config.og_type || "website",
+      twitter_card: config.twitter_card || "summary_large_image",
+      twitter_title: config.twitter_title || "",
+      twitter_description: config.twitter_description || "",
+      twitter_image: config.twitter_image || "",
+      twitter_site: config.twitter_site || "",
       defaults: {
-        title: site?.seo_title || "",
-        description: site?.seo_description || "",
-        image: site?.seo_og_image || ""
+        title: config.seo_title || "",
+        description: config.seo_description || "",
+        image: config.seo_og_image || ""
       }
     };
     return jsonResponse({ success: true, data });
@@ -1679,12 +1737,17 @@ async function saveSocialTags(request, env) {
     const admin = await validateSiteAdmin(request, env, siteId);
     if (!admin)
       return errorResponse("Unauthorized", 401);
-    await env.DB.prepare(
-      `UPDATE sites SET
+    const siteDB = await resolveSiteDBById(env, siteId);
+    const existingConfig = await siteDB.prepare(
+      "SELECT row_size_bytes FROM site_config WHERE site_id = ?"
+    ).bind(siteId).first();
+    const oldBytes = existingConfig?.row_size_bytes || 0;
+    await siteDB.prepare(
+      `UPDATE site_config SET
         og_title = ?, og_description = ?, og_image = ?, og_type = ?,
         twitter_card = ?, twitter_title = ?, twitter_description = ?, twitter_image = ?, twitter_site = ?,
         updated_at = datetime('now')
-       WHERE id = ?`
+       WHERE site_id = ?`
     ).bind(
       og_title || null,
       og_description || null,
@@ -1697,37 +1760,40 @@ async function saveSocialTags(request, env) {
       twitter_site || null,
       siteId
     ).run();
-    return jsonResponse({ success: true, message: "Social media tags saved" });
+    const updatedConfig = await siteDB.prepare(
+      "SELECT * FROM site_config WHERE site_id = ?"
+    ).bind(siteId).first();
+    if (updatedConfig) {
+      const newBytes = estimateRowBytes(updatedConfig);
+      await siteDB.prepare("UPDATE site_config SET row_size_bytes = ? WHERE site_id = ?").bind(newBytes, siteId).run();
+      await trackD1Update(env, siteId, oldBytes, newBytes);
+    }
+    return jsonResponse({ success: true, message: "Social tags saved" });
   } catch (err) {
     console.error("saveSocialTags error:", err);
     return errorResponse("Failed to save social tags", 500);
   }
 }
 async function validateSiteAdmin(request, env, siteId) {
-  const user = await validateAuth(request, env);
-  if (user) {
-    const site = await env.DB.prepare(
-      "SELECT id FROM sites WHERE id = ? AND user_id = ?"
-    ).bind(siteId, user.id).first();
-    if (site)
-      return { type: "owner", userId: user.id };
+  if (!siteId)
+    return null;
+  const authHeader = request.headers.get("Authorization") || "";
+  if (!authHeader.startsWith("SiteAdmin "))
+    return null;
+  const token = authHeader.substring(10);
+  try {
+    await ensureSiteAdminSessionsTable(env);
+    const session = await env.DB.prepare(
+      `SELECT id, site_id, expires_at FROM site_admin_sessions 
+       WHERE token = ? AND site_id = ? AND expires_at > datetime('now')`
+    ).bind(token, siteId).first();
+    if (!session)
+      return null;
+    return { siteId: session.site_id };
+  } catch (error) {
+    console.error("Validate site admin error:", error);
+    return null;
   }
-  const authHeader = request.headers.get("Authorization");
-  if (authHeader && authHeader.startsWith("SiteAdmin ")) {
-    const token = authHeader.substring(10);
-    try {
-      await ensureSiteAdminSessionsTable(env);
-      const session = await env.DB.prepare(
-        `SELECT id, site_id FROM site_admin_sessions 
-         WHERE token = ? AND site_id = ? AND expires_at > datetime('now')`
-      ).bind(token, siteId).first();
-      if (session)
-        return { type: "site-admin", siteId: session.site_id };
-    } catch (error) {
-      console.error("Site admin validation error:", error);
-    }
-  }
-  return null;
 }
 var PAGE_TYPES;
 var init_site_admin_worker = __esm({
@@ -3170,8 +3236,8 @@ __name(handleSites, "handleSites");
 async function getUserSites(env, user) {
   try {
     const sites = await env.DB.prepare(
-      `SELECT id, subdomain, brand_name, category, template_id, logo_url, 
-              primary_color, is_active, subscription_plan, subscription_expires_at, created_at,
+      `SELECT id, subdomain, brand_name, template_id,
+              is_active, subscription_plan, subscription_expires_at, created_at,
               custom_domain, domain_status
        FROM sites 
        WHERE user_id = ? 
@@ -3179,6 +3245,7 @@ async function getUserSites(env, user) {
     ).bind(user.id).all();
     const enrichedSites = [];
     for (const site of sites.results) {
+      const config = await getSiteConfig(env, site.id);
       let subscription = { plan: site.subscription_plan || null, status: "none", billingCycle: null, periodStart: null, periodEnd: null };
       try {
         const sub = await env.DB.prepare(
@@ -3208,7 +3275,14 @@ async function getUserSites(env, user) {
         }
       } catch (e) {
       }
-      enrichedSites.push({ ...site, subscription });
+      enrichedSites.push({
+        ...site,
+        brand_name: config.brand_name || site.brand_name,
+        category: config.category || null,
+        logo_url: config.logo_url || null,
+        primary_color: config.primary_color || "#000000",
+        subscription
+      });
     }
     return successResponse(enrichedSites);
   } catch (error) {
@@ -3219,12 +3293,13 @@ async function getUserSites(env, user) {
 __name(getUserSites, "getUserSites");
 async function getSite(env, user, siteId) {
   try {
-    const site = await env.DB.prepare(
+    const siteRow = await env.DB.prepare(
       `SELECT * FROM sites WHERE id = ? AND user_id = ?`
     ).bind(siteId, user.id).first();
-    if (!site) {
+    if (!siteRow) {
       return errorResponse("Site not found", 404, "NOT_FOUND");
     }
+    const site = await getSiteWithConfig(env, siteRow);
     const siteDB = await resolveSiteDBById(env, siteId);
     const categories = await siteDB.prepare(
       `SELECT * FROM categories WHERE site_id = ? ORDER BY display_order`
@@ -3253,39 +3328,54 @@ async function createSite(request, env, user) {
     if (existingSubdomain) {
       return errorResponse("This subdomain is already taken. Please choose a different brand name.", 400, "SUBDOMAIN_TAKEN");
     }
+    const activeShard = await env.DB.prepare(
+      "SELECT id FROM shards WHERE is_active = 1 ORDER BY created_at DESC LIMIT 1"
+    ).first();
+    if (!activeShard) {
+      return errorResponse("No active shard available. Please contact support.", 500);
+    }
     finalSubdomain = subdomain;
     siteId = generateId();
     await env.DB.prepare(
-      `INSERT INTO sites (id, user_id, subdomain, brand_name, category, template_id, logo_url, phone, email, address, primary_color, secondary_color, settings, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+      `INSERT INTO sites (id, user_id, subdomain, brand_name, template_id, shard_id, is_active, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, 1, datetime('now'), datetime('now'))`
     ).bind(
       siteId,
       user.id,
       finalSubdomain,
       sanitizeInput(brandName),
-      category,
       templateId || "storefront",
+      activeShard.id
+    ).run();
+    const siteDB = await resolveSiteDBById(env, siteId);
+    const configData = {
+      site_id: siteId,
+      brand_name: sanitizeInput(brandName),
+      category,
+      logo_url: logoUrl || null,
+      phone: phone || null,
+      email: email || null,
+      address: address || null,
+      primary_color: primaryColor || "#000000",
+      secondary_color: secondaryColor || "#ffffff"
+    };
+    const configBytes = estimateRowBytes(configData);
+    await siteDB.prepare(
+      `INSERT INTO site_config (site_id, brand_name, category, logo_url, phone, email, address, primary_color, secondary_color, settings, row_size_bytes, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, '{}', ?, datetime('now'), datetime('now'))`
+    ).bind(
+      siteId,
+      sanitizeInput(brandName),
+      category,
       logoUrl || null,
       phone || null,
       email || null,
       address || null,
       primaryColor || "#000000",
       secondaryColor || "#ffffff",
-      "{}"
+      configBytes
     ).run();
-    try {
-      const activeShard = await env.DB.prepare(
-        "SELECT id FROM shards WHERE is_active = 1 ORDER BY created_at DESC LIMIT 1"
-      ).first();
-      if (activeShard) {
-        await env.DB.prepare(
-          `UPDATE sites SET shard_id = ?, updated_at = datetime('now') WHERE id = ?`
-        ).bind(activeShard.id, siteId).run();
-        console.log(`Site ${siteId} assigned to shard ${activeShard.id}`);
-      }
-    } catch (shardErr) {
-      console.error("Shard assignment failed (non-fatal, using platform DB):", shardErr.message || shardErr);
-    }
+    await trackD1Write(env, siteId, configBytes);
     try {
       await env.DB.prepare(`
         INSERT INTO site_usage (site_id, d1_bytes_used, r2_bytes_used, baseline_bytes, last_updated)
@@ -3295,7 +3385,6 @@ async function createSite(request, env, user) {
     } catch (usageErr) {
       console.error("Usage init failed (non-fatal):", usageErr.message || usageErr);
     }
-    const siteDB = await resolveSiteDBById(env, siteId);
     try {
       if (categories && categories.length > 0) {
         await createUserCategories(env, siteDB, siteId, categories);
@@ -3390,6 +3479,7 @@ async function createUserCategories(env, db, siteId, categories) {
   }
 }
 __name(createUserCategories, "createUserCategories");
+var CONFIG_FIELDS = ["brand_name", "logo_url", "favicon_url", "primary_color", "secondary_color", "phone", "email", "address", "social_links", "settings", "currency"];
 async function updateSite(request, env, user, siteId) {
   if (!siteId) {
     return errorResponse("Site ID is required");
@@ -3402,18 +3492,20 @@ async function updateSite(request, env, user, siteId) {
       return errorResponse("Site not found", 404, "NOT_FOUND");
     }
     const updates = await request.json();
-    const allowedFields = ["brand_name", "logo_url", "favicon_url", "primary_color", "secondary_color", "phone", "email", "address", "social_links", "settings"];
+    const siteDB = await resolveSiteDBById(env, siteId);
+    const existingConfig = await siteDB.prepare(
+      "SELECT * FROM site_config WHERE site_id = ?"
+    ).bind(siteId).first();
     const setClause = [];
     const values = [];
     for (const [key, value] of Object.entries(updates)) {
       const dbKey = key.replace(/([A-Z])/g, "_$1").toLowerCase();
-      if (allowedFields.includes(dbKey)) {
+      if (CONFIG_FIELDS.includes(dbKey)) {
         if (dbKey === "settings" && typeof value === "object") {
           let existingSettings = {};
           try {
-            const siteRow = await env.DB.prepare("SELECT settings FROM sites WHERE id = ?").bind(siteId).first();
-            if (siteRow && siteRow.settings) {
-              existingSettings = JSON.parse(siteRow.settings);
+            if (existingConfig && existingConfig.settings) {
+              existingSettings = JSON.parse(existingConfig.settings);
             }
           } catch (e) {
           }
@@ -3431,9 +3523,27 @@ async function updateSite(request, env, user, siteId) {
     }
     setClause.push('updated_at = datetime("now")');
     values.push(siteId);
-    await env.DB.prepare(
-      `UPDATE sites SET ${setClause.join(", ")} WHERE id = ?`
+    const oldBytes = existingConfig?.row_size_bytes || 0;
+    await siteDB.prepare(
+      `UPDATE site_config SET ${setClause.join(", ")} WHERE site_id = ?`
     ).bind(...values).run();
+    const updatedConfig = await siteDB.prepare(
+      "SELECT * FROM site_config WHERE site_id = ?"
+    ).bind(siteId).first();
+    if (updatedConfig) {
+      const newBytes = estimateRowBytes(updatedConfig);
+      await siteDB.prepare("UPDATE site_config SET row_size_bytes = ? WHERE site_id = ?").bind(newBytes, siteId).run();
+      await trackD1Update(env, siteId, oldBytes, newBytes);
+    }
+    const brandNameUpdate = Object.entries(updates).find(([key]) => {
+      const dbKey = key.replace(/([A-Z])/g, "_$1").toLowerCase();
+      return dbKey === "brand_name";
+    });
+    if (brandNameUpdate) {
+      await env.DB.prepare(
+        'UPDATE sites SET brand_name = ?, updated_at = datetime("now") WHERE id = ?'
+      ).bind(brandNameUpdate[1], siteId).run();
+    }
     return successResponse(null, "Site updated successfully");
   } catch (error) {
     console.error("Update site error:", error);
@@ -3444,18 +3554,20 @@ __name(updateSite, "updateSite");
 async function updateSiteAsAdmin(request, env, siteId) {
   try {
     const updates = await request.json();
-    const allowedFields = ["brand_name", "logo_url", "favicon_url", "primary_color", "secondary_color", "phone", "email", "address", "social_links", "settings"];
+    const siteDB = await resolveSiteDBById(env, siteId);
+    const existingConfig = await siteDB.prepare(
+      "SELECT * FROM site_config WHERE site_id = ?"
+    ).bind(siteId).first();
     const setClause = [];
     const values = [];
     for (const [key, value] of Object.entries(updates)) {
       const dbKey = key.replace(/([A-Z])/g, "_$1").toLowerCase();
-      if (allowedFields.includes(dbKey)) {
+      if (CONFIG_FIELDS.includes(dbKey)) {
         if (dbKey === "settings" && typeof value === "object") {
           let existingSettings = {};
           try {
-            const site = await env.DB.prepare("SELECT settings FROM sites WHERE id = ?").bind(siteId).first();
-            if (site && site.settings) {
-              existingSettings = JSON.parse(site.settings);
+            if (existingConfig && existingConfig.settings) {
+              existingSettings = JSON.parse(existingConfig.settings);
             }
           } catch (e) {
           }
@@ -3473,9 +3585,27 @@ async function updateSiteAsAdmin(request, env, siteId) {
     }
     setClause.push('updated_at = datetime("now")');
     values.push(siteId);
-    await env.DB.prepare(
-      `UPDATE sites SET ${setClause.join(", ")} WHERE id = ?`
+    const oldBytes = existingConfig?.row_size_bytes || 0;
+    await siteDB.prepare(
+      `UPDATE site_config SET ${setClause.join(", ")} WHERE site_id = ?`
     ).bind(...values).run();
+    const updatedConfig = await siteDB.prepare(
+      "SELECT * FROM site_config WHERE site_id = ?"
+    ).bind(siteId).first();
+    if (updatedConfig) {
+      const newBytes = estimateRowBytes(updatedConfig);
+      await siteDB.prepare("UPDATE site_config SET row_size_bytes = ? WHERE site_id = ?").bind(newBytes, siteId).run();
+      await trackD1Update(env, siteId, oldBytes, newBytes);
+    }
+    const brandNameUpdate = Object.entries(updates).find(([key]) => {
+      const dbKey = key.replace(/([A-Z])/g, "_$1").toLowerCase();
+      return dbKey === "brand_name";
+    });
+    if (brandNameUpdate) {
+      await env.DB.prepare(
+        'UPDATE sites SET brand_name = ?, updated_at = datetime("now") WHERE id = ?'
+      ).bind(brandNameUpdate[1], siteId).run();
+    }
     return successResponse(null, "Site updated successfully");
   } catch (error) {
     console.error("Update site as admin error:", error);
@@ -3498,6 +3628,7 @@ async function deleteSite(env, user, siteId) {
       try {
         const shardDB = await resolveSiteDBById(env, siteId);
         const siteTables = [
+          "site_config",
           "activity_log",
           "page_seo",
           "reviews",
@@ -3633,19 +3764,19 @@ async function handleVerifyDomain(env, siteId) {
       );
       const txtData = await txtResponse.json();
       if (txtData.Answer && txtData.Answer.length > 0) {
-        for (const answer of txtData.Answer) {
-          const val = (answer.data || "").replace(/"/g, "").trim();
-          if (val === expectedToken) {
+        for (const record of txtData.Answer) {
+          const value = (record.data || "").replace(/"/g, "").trim();
+          if (value === expectedToken) {
             txtVerified = true;
             break;
           }
         }
       }
       if (!txtVerified) {
-        errors.push(`TXT record _fluxe-verify.${baseDomain} not found or does not match the expected token.`);
+        errors.push(`TXT record not found. Add a TXT record for _fluxe-verify.${baseDomain} with value: ${expectedToken}`);
       }
-    } catch (e) {
-      errors.push("Failed to check TXT record: " + (e.message || "DNS lookup error"));
+    } catch (dnsErr) {
+      errors.push("Could not verify TXT record: " + dnsErr.message);
     }
     let cnameVerified = false;
     try {
@@ -3655,60 +3786,64 @@ async function handleVerifyDomain(env, siteId) {
       );
       const cnameData = await cnameResponse.json();
       if (cnameData.Answer && cnameData.Answer.length > 0) {
-        for (const answer of cnameData.Answer) {
-          const target = (answer.data || "").replace(/\.$/, "").toLowerCase();
-          if (target === "fluxe.in" || target.endsWith(".fluxe.in")) {
+        for (const record of cnameData.Answer) {
+          const target = (record.data || "").replace(/\.$/, "").toLowerCase();
+          if (target.endsWith(".fluxe.in") || target.endsWith(".pages.dev")) {
             cnameVerified = true;
             break;
           }
         }
       }
       if (!cnameVerified) {
-        const [domainIPs, fluxeIPs] = await Promise.all([
-          resolveDnsA(domain),
-          resolveDnsA("fluxe.in")
-        ]);
-        if (domainIPs.length > 0 && fluxeIPs.length > 0) {
-          cnameVerified = domainIPs.some((ip) => fluxeIPs.includes(ip));
+        const aRecords = await resolveDnsA(domain);
+        if (aRecords.length > 0) {
+          cnameVerified = true;
         }
       }
       if (!cnameVerified) {
-        errors.push(`${domain} does not appear to point to fluxe.in. Please add a CNAME record pointing to fluxe.in.`);
+        errors.push(`CNAME record not found. Add a CNAME record for ${domain} pointing to your .fluxe.in subdomain.`);
       }
-    } catch (e) {
-      errors.push("Failed to check DNS records: " + (e.message || "DNS lookup error"));
+    } catch (dnsErr) {
+      errors.push("Could not verify CNAME record: " + dnsErr.message);
     }
     if (txtVerified && cnameVerified) {
-      let cfHostnameId = null;
       try {
         const cfResult = await registerCustomHostname(env, domain);
-        if (cfResult.success) {
-          cfHostnameId = cfResult.cfHostnameId;
-        } else if (cfResult.reason !== "not_configured") {
-          console.warn("Cloudflare hostname registration warning:", cfResult.reason);
+        if (cfResult && cfResult.id) {
+          await env.DB.prepare(
+            `UPDATE sites SET domain_status = 'verified', cf_hostname_id = ?, updated_at = datetime('now') WHERE id = ?`
+          ).bind(cfResult.id, siteId).run();
+        } else {
+          await env.DB.prepare(
+            `UPDATE sites SET domain_status = 'verified', updated_at = datetime('now') WHERE id = ?`
+          ).bind(siteId).run();
         }
       } catch (cfErr) {
-        console.error("Cloudflare registration failed (non-fatal):", cfErr.message);
+        console.error("CF hostname registration error:", cfErr);
+        const existingHostname = await findCustomHostname(env, domain);
+        if (existingHostname) {
+          await env.DB.prepare(
+            `UPDATE sites SET domain_status = 'verified', cf_hostname_id = ?, updated_at = datetime('now') WHERE id = ?`
+          ).bind(existingHostname.id, siteId).run();
+        } else {
+          await env.DB.prepare(
+            `UPDATE sites SET domain_status = 'verified', updated_at = datetime('now') WHERE id = ?`
+          ).bind(siteId).run();
+        }
       }
-      await env.DB.prepare(
-        `UPDATE sites SET domain_status = 'verified', cf_hostname_id = ?, updated_at = datetime('now') WHERE id = ?`
-      ).bind(cfHostnameId, siteId).run();
       return successResponse({
+        custom_domain: domain,
         domain_status: "verified",
-        txt_verified: true,
-        cname_verified: true
-      }, "Domain verified successfully! Your custom domain is now active.");
-    } else {
-      await env.DB.prepare(
-        `UPDATE sites SET domain_status = 'failed', updated_at = datetime('now') WHERE id = ?`
-      ).bind(siteId).run();
-      return successResponse({
-        domain_status: "failed",
-        txt_verified: txtVerified,
-        cname_verified: cnameVerified,
-        errors
-      }, "Domain verification failed. Please check your DNS records.");
+        verified: true
+      }, "Domain verified and activated successfully!");
     }
+    return successResponse({
+      custom_domain: domain,
+      domain_status: "pending",
+      verified: false,
+      errors,
+      checks: { txt: txtVerified, cname: cnameVerified }
+    }, "Domain verification incomplete. Please check the errors below.");
   } catch (error) {
     console.error("Verify domain error:", error);
     return errorResponse("Failed to verify domain: " + error.message, 500);
@@ -3718,25 +3853,28 @@ __name(handleVerifyDomain, "handleVerifyDomain");
 async function handleRemoveCustomDomain(env, siteId) {
   try {
     const site = await env.DB.prepare(
-      "SELECT id, cf_hostname_id FROM sites WHERE id = ?"
+      "SELECT id, custom_domain, cf_hostname_id FROM sites WHERE id = ?"
     ).bind(siteId).first();
     if (!site) {
       return errorResponse("Site not found", 404, "NOT_FOUND");
+    }
+    if (!site.custom_domain) {
+      return errorResponse("No custom domain configured for this site", 400);
     }
     if (site.cf_hostname_id) {
       try {
         await deleteCustomHostname(env, site.cf_hostname_id);
       } catch (cfErr) {
-        console.error("Cloudflare hostname deletion failed (non-fatal):", cfErr.message);
+        console.error("Failed to delete CF hostname (non-fatal):", cfErr);
       }
     }
     await env.DB.prepare(
       `UPDATE sites SET custom_domain = NULL, domain_status = NULL, domain_verification_token = NULL, cf_hostname_id = NULL, updated_at = datetime('now') WHERE id = ?`
     ).bind(siteId).run();
-    return successResponse(null, "Custom domain removed successfully.");
+    return successResponse(null, "Custom domain removed successfully");
   } catch (error) {
     console.error("Remove custom domain error:", error);
-    return errorResponse("Failed to remove custom domain: " + error.message, 500);
+    return errorResponse("Failed to remove custom domain", 500);
   }
 }
 __name(handleRemoveCustomDomain, "handleRemoveCustomDomain");
@@ -4424,9 +4562,9 @@ async function createOrder(request, env, user) {
         }
       } else {
         try {
-          const site = await env.DB.prepare("SELECT settings FROM sites WHERE id = ?").bind(siteId).first();
-          if (site?.settings) {
-            let siteSettings = site.settings;
+          const siteConfig = await getSiteConfig(env, siteId);
+          if (siteConfig.settings) {
+            let siteSettings = siteConfig.settings;
             if (typeof siteSettings === "string")
               siteSettings = JSON.parse(siteSettings);
             const settingsCoupons = Array.isArray(siteSettings.coupons) ? siteSettings.coupons : [];
@@ -4633,10 +4771,15 @@ async function updateOrderStatus(request, env, user, orderId) {
       try {
         const fullOrder = await db.prepare("SELECT * FROM orders WHERE id = ?").bind(orderId).first();
         if (fullOrder) {
-          const site = await env.DB.prepare("SELECT brand_name, email, settings FROM sites WHERE id = ?").bind(fullOrder.site_id).first();
-          const siteBrandName = site?.brand_name || "Store";
-          const siteSettings = site?.settings ? JSON.parse(site.settings) : {};
-          const ownerEmail = siteSettings.email || siteSettings.ownerEmail || site?.email;
+          const cancelConfig = await getSiteConfig(env, fullOrder.site_id);
+          const siteBrandName = cancelConfig.brand_name || "Store";
+          let cancelSettings = {};
+          try {
+            if (cancelConfig.settings)
+              cancelSettings = typeof cancelConfig.settings === "string" ? JSON.parse(cancelConfig.settings) : cancelConfig.settings;
+          } catch (e) {
+          }
+          const ownerEmail = cancelSettings.email || cancelSettings.ownerEmail || cancelConfig.email;
           const emailOrder = {
             order_number: fullOrder.order_number,
             customer_name: fullOrder.customer_name,
@@ -4664,10 +4807,15 @@ async function updateOrderStatus(request, env, user, orderId) {
       try {
         const fullOrder = await db.prepare("SELECT * FROM orders WHERE id = ?").bind(orderId).first();
         if (fullOrder) {
-          const site = await env.DB.prepare("SELECT brand_name, email, settings FROM sites WHERE id = ?").bind(fullOrder.site_id).first();
-          const siteBrandName = site?.brand_name || "Store";
-          const siteSettings = site?.settings ? JSON.parse(site.settings) : {};
-          const ownerEmail = siteSettings.email || siteSettings.ownerEmail || site?.email;
+          const deliveryConfig = await getSiteConfig(env, fullOrder.site_id);
+          const siteBrandName = deliveryConfig.brand_name || "Store";
+          let deliverySettings = {};
+          try {
+            if (deliveryConfig.settings)
+              deliverySettings = typeof deliveryConfig.settings === "string" ? JSON.parse(deliveryConfig.settings) : deliveryConfig.settings;
+          } catch (e) {
+          }
+          const ownerEmail = deliverySettings.email || deliverySettings.ownerEmail || deliveryConfig.email;
           const emailOrder = {
             order_number: fullOrder.order_number,
             customer_name: fullOrder.customer_name,
@@ -4888,19 +5036,17 @@ async function trackOrder(env, orderId, request) {
 __name(trackOrder, "trackOrder");
 async function sendOrderEmails(env, siteId, orderData) {
   try {
-    const site = await env.DB.prepare(
-      "SELECT brand_name, email, settings FROM sites WHERE id = ?"
-    ).bind(siteId).first();
-    if (!site)
+    const config = await getSiteConfig(env, siteId);
+    if (!config.site_id)
       return;
-    const siteBrandName = site.brand_name || "Store";
+    const siteBrandName = config.brand_name || "Store";
     let siteSettings = {};
     try {
-      if (site.settings)
-        siteSettings = JSON.parse(site.settings);
+      if (config.settings)
+        siteSettings = typeof config.settings === "string" ? JSON.parse(config.settings) : config.settings;
     } catch (e) {
     }
-    const ownerEmail = siteSettings.email || siteSettings.ownerEmail || site.email;
+    const ownerEmail = siteSettings.email || siteSettings.ownerEmail || config.email;
     const emailOrder = {
       order_number: orderData.orderNumber,
       items: orderData.processedItems,
@@ -5501,9 +5647,9 @@ __name(handlePayments, "handlePayments");
 async function getRazorpayCredentials(env, siteId) {
   if (siteId) {
     try {
-      const site = await env.DB.prepare("SELECT settings FROM sites WHERE id = ?").bind(siteId).first();
-      if (site?.settings) {
-        let settings = site.settings;
+      const config = await getSiteConfig(env, siteId);
+      if (config.settings) {
+        let settings = config.settings;
         if (typeof settings === "string") {
           try {
             settings = JSON.parse(settings);
@@ -7281,22 +7427,13 @@ function buildBaseUrl(request, site) {
 }
 __name(buildBaseUrl, "buildBaseUrl");
 async function fetchSiteSEO(env, site) {
-  let currency = "INR";
-  try {
-    const siteRow = await env.DB.prepare(
-      `SELECT currency FROM sites WHERE id = ?`
-    ).bind(site.id).first();
-    if (siteRow?.currency)
-      currency = siteRow.currency;
-  } catch {
-  }
   return {
     seo_title: site.seo_title || null,
     seo_description: site.seo_description || null,
     seo_og_image: site.seo_og_image || null,
     seo_robots: site.seo_robots || "index, follow",
     google_verification: site.google_verification || null,
-    currency
+    currency: site.currency || "INR"
   };
 }
 __name(fetchSiteSEO, "fetchSiteSEO");
@@ -7467,6 +7604,7 @@ async function applySEO(request, env, site, rawHTML) {
 __name(applySEO, "applySEO");
 
 // workers/site-router.js
+init_site_db();
 async function handleSiteRouting(request, env) {
   const url = new URL(request.url);
   const hostname = url.hostname;
@@ -7489,23 +7627,32 @@ async function handleSiteRouting(request, env) {
   if (path.startsWith("/api/")) {
     return null;
   }
-  let site = null;
+  let siteRow = null;
   if (subdomain) {
     try {
-      site = await env.DB.prepare(
+      siteRow = await env.DB.prepare(
         `SELECT * FROM sites WHERE LOWER(subdomain) = LOWER(?) AND is_active = 1`
       ).bind(subdomain).first();
     } catch (error) {
       console.error("Site routing subdomain lookup error:", error);
     }
   }
-  if (!site && !hostname.endsWith("fluxe.in") && !hostname.endsWith("pages.dev") && !hostname.includes("localhost") && !hostname.includes("workers.dev")) {
+  if (!siteRow && !hostname.endsWith("fluxe.in") && !hostname.endsWith("pages.dev") && !hostname.includes("localhost") && !hostname.includes("workers.dev")) {
     try {
-      site = await env.DB.prepare(
+      siteRow = await env.DB.prepare(
         `SELECT * FROM sites WHERE custom_domain = ? AND domain_status = 'verified' AND is_active = 1`
       ).bind(hostname.toLowerCase()).first();
     } catch (error) {
       console.error("Site routing custom domain lookup error:", error);
+    }
+  }
+  let site = null;
+  if (siteRow) {
+    try {
+      site = await getSiteWithConfig(env, siteRow);
+    } catch (e) {
+      console.error("Failed to load site config:", e);
+      site = siteRow;
     }
   }
   if (!site) {
@@ -7973,6 +8120,38 @@ function getSiteSchemaStatements() {
       pincode TEXT NOT NULL,
       country TEXT DEFAULT 'India',
       is_default INTEGER DEFAULT 0,
+      row_size_bytes INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    )`,
+    `CREATE TABLE IF NOT EXISTS site_config (
+      site_id TEXT PRIMARY KEY,
+      brand_name TEXT,
+      category TEXT,
+      logo_url TEXT,
+      favicon_url TEXT,
+      primary_color TEXT DEFAULT '#000000',
+      secondary_color TEXT DEFAULT '#ffffff',
+      phone TEXT,
+      email TEXT,
+      address TEXT,
+      social_links TEXT,
+      settings TEXT DEFAULT '{}',
+      currency TEXT DEFAULT 'INR',
+      seo_title TEXT,
+      seo_description TEXT,
+      seo_og_image TEXT,
+      seo_robots TEXT DEFAULT 'index, follow',
+      google_verification TEXT,
+      og_title TEXT,
+      og_description TEXT,
+      og_image TEXT,
+      og_type TEXT DEFAULT 'website',
+      twitter_card TEXT DEFAULT 'summary_large_image',
+      twitter_title TEXT,
+      twitter_description TEXT,
+      twitter_image TEXT,
+      twitter_site TEXT,
       row_size_bytes INTEGER DEFAULT 0,
       created_at TEXT DEFAULT (datetime('now')),
       updated_at TEXT DEFAULT (datetime('now'))
@@ -8665,6 +8844,7 @@ async function reconcileShardEndpoint(env, shardId) {
 }
 __name(reconcileShardEndpoint, "reconcileShardEndpoint");
 var MIGRATION_TABLES = [
+  "site_config",
   "categories",
   "products",
   "product_variants",
@@ -10183,7 +10363,7 @@ async function ensureTablesExist(env) {
         user_id TEXT NOT NULL,
         subdomain TEXT UNIQUE NOT NULL,
         brand_name TEXT NOT NULL,
-        category TEXT NOT NULL,
+        category TEXT DEFAULT 'general',
         template_id TEXT DEFAULT 'storefront',
         logo_url TEXT,
         favicon_url TEXT,
@@ -10473,39 +10653,34 @@ async function handleSiteInfo(request, env) {
   const url = new URL(request.url);
   const hostname = url.hostname;
   const subdomain = url.searchParams.get("subdomain");
-  let site = null;
+  let siteRow = null;
   try {
     if (subdomain) {
-      site = await env.DB.prepare(
-        `SELECT s.id, s.subdomain, s.brand_name, s.category, s.template_id, 
-                s.logo_url, s.favicon_url, s.primary_color, s.secondary_color,
-                s.phone, s.email, s.address, s.social_links, s.settings,
-                s.custom_domain, s.domain_status, s.domain_verification_token,
-                s.seo_title, s.seo_description, s.seo_og_image, s.seo_robots, s.google_verification,
-                s.og_title, s.og_description, s.og_image, s.og_type,
-                s.twitter_card, s.twitter_title, s.twitter_description, s.twitter_image, s.twitter_site
+      siteRow = await env.DB.prepare(
+        `SELECT s.id, s.subdomain, s.brand_name, s.template_id,
+                s.custom_domain, s.domain_status, s.domain_verification_token
          FROM sites s 
          WHERE LOWER(s.subdomain) = LOWER(?) AND s.is_active = 1`
       ).bind(subdomain).first();
     } else if (!hostname.endsWith("fluxe.in") && !hostname.endsWith("pages.dev") && !hostname.includes("localhost") && !hostname.includes("workers.dev")) {
-      site = await env.DB.prepare(
-        `SELECT s.id, s.subdomain, s.brand_name, s.category, s.template_id, 
-                s.logo_url, s.favicon_url, s.primary_color, s.secondary_color,
-                s.phone, s.email, s.address, s.social_links, s.settings,
-                s.custom_domain, s.domain_status, s.domain_verification_token,
-                s.seo_title, s.seo_description, s.seo_og_image, s.seo_robots, s.google_verification,
-                s.og_title, s.og_description, s.og_image, s.og_type,
-                s.twitter_card, s.twitter_title, s.twitter_description, s.twitter_image, s.twitter_site
+      siteRow = await env.DB.prepare(
+        `SELECT s.id, s.subdomain, s.brand_name, s.template_id,
+                s.custom_domain, s.domain_status, s.domain_verification_token
          FROM sites s 
          WHERE s.custom_domain = ? AND s.domain_status = 'verified' AND s.is_active = 1`
       ).bind(hostname.toLowerCase()).first();
     }
-    if (!site) {
+    if (!siteRow) {
       return errorResponse(subdomain ? "Site not found" : "Subdomain is required", subdomain ? 404 : 400);
     }
+    const siteDB = await resolveSiteDBById(env, siteRow.id);
+    const config = await siteDB.prepare(
+      "SELECT * FROM site_config WHERE site_id = ?"
+    ).bind(siteRow.id).first();
+    const { site_id: _sid, row_size_bytes: _rb, ...configData } = config || {};
+    const site = { ...siteRow, ...configData };
     let categoriesResult = [];
     try {
-      const siteDB = await resolveSiteDBById(env, site.id);
       const categories = await siteDB.prepare(
         "SELECT * FROM categories WHERE site_id = ? ORDER BY display_order"
       ).bind(site.id).all();
@@ -10517,12 +10692,12 @@ async function handleSiteInfo(request, env) {
     let settings = {};
     try {
       if (site.social_links)
-        socialLinks = JSON.parse(site.social_links);
+        socialLinks = typeof site.social_links === "string" ? JSON.parse(site.social_links) : site.social_links;
     } catch (e) {
     }
     try {
       if (site.settings)
-        settings = JSON.parse(site.settings);
+        settings = typeof site.settings === "string" ? JSON.parse(site.settings) : site.settings;
     } catch (e) {
     }
     if (settings.social) {
@@ -10542,7 +10717,6 @@ async function handleSiteInfo(request, env) {
     const googleClientId = env.GOOGLE_CLIENT_ID || null;
     let pageSEOResult = [];
     try {
-      const siteDB = await resolveSiteDBById(env, site.id);
       const psResult = await siteDB.prepare(
         "SELECT page_type, seo_title, seo_description, seo_og_image FROM page_seo WHERE site_id = ?"
       ).bind(site.id).all();

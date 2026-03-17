@@ -1,5 +1,6 @@
 import { jsonResponse, errorResponse, successResponse, handleCORS } from './helpers.js';
 import { validateAuth } from './auth.js';
+import { getSiteConfig, resolveSiteDBById } from './site-db.js';
 
 const PLAN_LIMITS = {
   basic: { d1Bytes: 500 * 1024 * 1024, r2Bytes: 5 * 1024 * 1024 * 1024, allowOverage: false },
@@ -177,7 +178,7 @@ function getSitePlan(site) {
 export async function checkUsageLimit(env, siteId, resourceType = 'd1', additionalBytes = 0) {
   try {
     const site = await env.DB.prepare(
-      'SELECT subscription_plan, settings FROM sites WHERE id = ?'
+      'SELECT subscription_plan FROM sites WHERE id = ?'
     ).bind(siteId).first();
     if (!site) return { allowed: true, reason: null };
 
@@ -194,9 +195,10 @@ export async function checkUsageLimit(env, siteId, resourceType = 'd1', addition
     }
 
     if (limits.allowOverage) {
+      const config = await getSiteConfig(env, siteId);
       let siteSettings = {};
       try {
-        if (site.settings) siteSettings = typeof site.settings === 'string' ? JSON.parse(site.settings) : site.settings;
+        if (config.settings) siteSettings = typeof config.settings === 'string' ? JSON.parse(config.settings) : config.settings;
       } catch (_) {}
 
       if (siteSettings.overageEnabled) {
@@ -293,7 +295,7 @@ export async function handleUsageAPI(request, env, path) {
 
   try {
     const site = await env.DB.prepare(
-      'SELECT id, subscription_plan, settings FROM sites WHERE id = ? AND user_id = ?'
+      'SELECT id, subscription_plan FROM sites WHERE id = ? AND user_id = ?'
     ).bind(siteId, user.id).first();
 
     if (!site) {
@@ -324,9 +326,10 @@ export async function handleUsageAPI(request, env, path) {
     const planKey = getSitePlan(site);
     const limits = PLAN_LIMITS[planKey] || PLAN_LIMITS.free;
 
+    const config = await getSiteConfig(env, siteId);
     let siteSettings = {};
     try {
-      if (site.settings) siteSettings = typeof site.settings === 'string' ? JSON.parse(site.settings) : site.settings;
+      if (config.settings) siteSettings = typeof config.settings === 'string' ? JSON.parse(config.settings) : config.settings;
     } catch (_) {}
 
     const overageEnabled = !!siteSettings.overageEnabled;
@@ -380,7 +383,7 @@ async function handleOverageToggle(request, env, user, siteId) {
     }
 
     const site = await env.DB.prepare(
-      'SELECT id, subscription_plan, settings FROM sites WHERE id = ? AND user_id = ?'
+      'SELECT id, subscription_plan FROM sites WHERE id = ? AND user_id = ?'
     ).bind(siteId, user.id).first();
 
     if (!site) {
@@ -394,15 +397,20 @@ async function handleOverageToggle(request, env, user, siteId) {
       return errorResponse('Overage charges are only available on the Premium plan', 403);
     }
 
+    const siteDB = await resolveSiteDBById(env, siteId);
+    const existingConfig = await siteDB.prepare(
+      'SELECT settings FROM site_config WHERE site_id = ?'
+    ).bind(siteId).first();
+
     let siteSettings = {};
     try {
-      if (site.settings) siteSettings = typeof site.settings === 'string' ? JSON.parse(site.settings) : site.settings;
+      if (existingConfig?.settings) siteSettings = typeof existingConfig.settings === 'string' ? JSON.parse(existingConfig.settings) : existingConfig.settings;
     } catch (_) {}
 
     siteSettings.overageEnabled = overageEnabled;
 
-    await env.DB.prepare(
-      'UPDATE sites SET settings = ? WHERE id = ?'
+    await siteDB.prepare(
+      'UPDATE site_config SET settings = ?, updated_at = datetime("now") WHERE site_id = ?'
     ).bind(JSON.stringify(siteSettings), siteId).run();
 
     return successResponse({ overageEnabled, message: overageEnabled ? 'Overage charges enabled. You will be billed for usage beyond your plan limits.' : 'Overage charges disabled. Your site will be blocked when storage limits are reached.' });

@@ -44,13 +44,15 @@ Fluxe uses a **shared shard-based D1 database architecture**: multiple sites sha
 - users, sessions, sites (with shard_id, migration_locked, d1_database_id, d1_binding_name columns), subscriptions, payments, plans, platform_settings, site_admin_sessions, site_usage (with baseline_bytes, baseline_updated_at), site_media, shards
 
 ### Shard DB Tables (SHARD_1, SHARD_2, etc.)
+- **site_config** (site_id PK) — All site branding, settings, SEO, and social tag data. Holds: brand_name, category, logo_url, favicon_url, primary_color, secondary_color, phone, email, address, social_links, settings (JSON), currency, seo_title, seo_description, seo_og_image, seo_robots, google_verification, og_title, og_description, og_image, og_type, twitter_card, twitter_title, twitter_description, twitter_image, twitter_site
 - categories, products, product_variants, orders, guest_orders, carts, wishlists, site_customers, site_customer_sessions, customer_addresses, customer_password_resets, customer_email_verifications, coupons, notifications, reviews, page_seo, site_media, site_usage, activity_log, addresses
 - All tables include `row_size_bytes INTEGER DEFAULT 0` column for usage tracking
 - All queries filter by `site_id` for tenant isolation
+- **Note:** The platform `sites` table retains old branding/SEO columns but they are no longer written to (except `brand_name` which is synced as a denormalized copy). All reads/writes for site config data go through `site_config` in the shard.
 
 ### Key Utility Files
 - `backend/utils/d1-manager.js` — Cloudflare API calls: createDatabase, deleteDatabase, getDatabaseSize, runSchemaOnDB, addBindingAndRedeploy, listAllSiteDatabases
-- `backend/utils/site-db.js` — DB resolution: resolveSiteDB, resolveSiteDBById, resolveSiteDBBySubdomain (with shard JOIN), checkMigrationLock (used by all storefront workers to block writes during migration)
+- `backend/utils/site-db.js` — DB resolution: resolveSiteDB, resolveSiteDBById, resolveSiteDBBySubdomain (with shard JOIN), checkMigrationLock (used by all storefront workers to block writes during migration), getSiteConfig (fetches site_config from shard), getSiteWithConfig (merges platform site row with shard config)
 - `backend/utils/site-schema.js` — Site table schema definitions with row_size_bytes + ALTER TABLE migrations
 - `backend/utils/usage-tracker.js` — Usage tracking (trackD1Write/Delete/Update), correction factor, reconciliation, limits, overage
 - `backend/utils/db-init.js` — Platform DB initialization (includes shards table, shard_id + migration_locked columns)

@@ -52,7 +52,7 @@ export async function ensureTablesExist(env) {
         user_id TEXT NOT NULL,
         subdomain TEXT UNIQUE NOT NULL,
         brand_name TEXT NOT NULL,
-        category TEXT NOT NULL,
+        category TEXT DEFAULT 'general',
         template_id TEXT DEFAULT 'storefront',
         logo_url TEXT,
         favicon_url TEXT,

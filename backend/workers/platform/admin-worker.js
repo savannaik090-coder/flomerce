@@ -689,6 +689,7 @@ async function reconcileShardEndpoint(env, shardId) {
 }
 
 const MIGRATION_TABLES = [
+  'site_config',
   'categories', 'products', 'product_variants', 'orders', 'guest_orders',
   'carts', 'wishlists', 'site_customers', 'site_customer_sessions',
   'customer_addresses', 'customer_password_resets', 'customer_email_verifications',

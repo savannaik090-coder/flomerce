@@ -2,8 +2,8 @@ import { generateId, generateSubdomain, sanitizeInput, jsonResponse, errorRespon
 import { validateAuth } from '../../utils/auth.js';
 import { validateSiteAdmin } from '../storefront/site-admin-worker.js';
 import { registerCustomHostname, deleteCustomHostname, findCustomHostname } from '../../utils/cloudflare.js';
-import { resolveSiteDBById } from '../../utils/site-db.js';
-import { trackD1Write, estimateRowBytes } from '../../utils/usage-tracker.js';
+import { resolveSiteDBById, getSiteConfig, getSiteWithConfig } from '../../utils/site-db.js';
+import { trackD1Write, trackD1Update, estimateRowBytes } from '../../utils/usage-tracker.js';
 
 export async function handleSites(request, env, path) {
   const corsResponse = handleCORS(request);
@@ -69,8 +69,8 @@ export async function handleSites(request, env, path) {
 async function getUserSites(env, user) {
   try {
     const sites = await env.DB.prepare(
-      `SELECT id, subdomain, brand_name, category, template_id, logo_url, 
-              primary_color, is_active, subscription_plan, subscription_expires_at, created_at,
+      `SELECT id, subdomain, brand_name, template_id,
+              is_active, subscription_plan, subscription_expires_at, created_at,
               custom_domain, domain_status
        FROM sites 
        WHERE user_id = ? 
@@ -79,6 +79,8 @@ async function getUserSites(env, user) {
 
     const enrichedSites = [];
     for (const site of sites.results) {
+      const config = await getSiteConfig(env, site.id);
+
       let subscription = { plan: site.subscription_plan || null, status: 'none', billingCycle: null, periodStart: null, periodEnd: null };
       try {
         const sub = await env.DB.prepare(
@@ -107,7 +109,14 @@ async function getUserSites(env, user) {
           };
         }
       } catch (e) {}
-      enrichedSites.push({ ...site, subscription });
+      enrichedSites.push({
+        ...site,
+        brand_name: config.brand_name || site.brand_name,
+        category: config.category || null,
+        logo_url: config.logo_url || null,
+        primary_color: config.primary_color || '#000000',
+        subscription,
+      });
     }
 
     return successResponse(enrichedSites);
@@ -119,16 +128,17 @@ async function getUserSites(env, user) {
 
 async function getSite(env, user, siteId) {
   try {
-    const site = await env.DB.prepare(
+    const siteRow = await env.DB.prepare(
       `SELECT * FROM sites WHERE id = ? AND user_id = ?`
     ).bind(siteId, user.id).first();
 
-    if (!site) {
+    if (!siteRow) {
       return errorResponse('Site not found', 404, 'NOT_FOUND');
     }
 
-    const siteDB = await resolveSiteDBById(env, siteId);
+    const site = await getSiteWithConfig(env, siteRow);
 
+    const siteDB = await resolveSiteDBById(env, siteId);
     const categories = await siteDB.prepare(
       `SELECT * FROM categories WHERE site_id = ? ORDER BY display_order`
     ).bind(siteId).all();
@@ -162,42 +172,60 @@ async function createSite(request, env, user) {
       return errorResponse('This subdomain is already taken. Please choose a different brand name.', 400, 'SUBDOMAIN_TAKEN');
     }
 
+    const activeShard = await env.DB.prepare(
+      'SELECT id FROM shards WHERE is_active = 1 ORDER BY created_at DESC LIMIT 1'
+    ).first();
+
+    if (!activeShard) {
+      return errorResponse('No active shard available. Please contact support.', 500);
+    }
+
     finalSubdomain = subdomain;
     siteId = generateId();
 
     await env.DB.prepare(
-      `INSERT INTO sites (id, user_id, subdomain, brand_name, category, template_id, logo_url, phone, email, address, primary_color, secondary_color, settings, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+      `INSERT INTO sites (id, user_id, subdomain, brand_name, template_id, shard_id, is_active, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, 1, datetime('now'), datetime('now'))`
     ).bind(
-      siteId, 
-      user.id, 
-      finalSubdomain, 
-      sanitizeInput(brandName), 
-      category, 
+      siteId,
+      user.id,
+      finalSubdomain,
+      sanitizeInput(brandName),
       templateId || 'storefront',
+      activeShard.id
+    ).run();
+
+    const siteDB = await resolveSiteDBById(env, siteId);
+
+    const configData = {
+      site_id: siteId,
+      brand_name: sanitizeInput(brandName),
+      category,
+      logo_url: logoUrl || null,
+      phone: phone || null,
+      email: email || null,
+      address: address || null,
+      primary_color: primaryColor || '#000000',
+      secondary_color: secondaryColor || '#ffffff',
+    };
+    const configBytes = estimateRowBytes(configData);
+
+    await siteDB.prepare(
+      `INSERT INTO site_config (site_id, brand_name, category, logo_url, phone, email, address, primary_color, secondary_color, settings, row_size_bytes, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, '{}', ?, datetime('now'), datetime('now'))`
+    ).bind(
+      siteId,
+      sanitizeInput(brandName),
+      category,
       logoUrl || null,
       phone || null,
       email || null,
       address || null,
       primaryColor || '#000000',
       secondaryColor || '#ffffff',
-      '{}'
+      configBytes
     ).run();
-
-    try {
-      const activeShard = await env.DB.prepare(
-        'SELECT id FROM shards WHERE is_active = 1 ORDER BY created_at DESC LIMIT 1'
-      ).first();
-
-      if (activeShard) {
-        await env.DB.prepare(
-          `UPDATE sites SET shard_id = ?, updated_at = datetime('now') WHERE id = ?`
-        ).bind(activeShard.id, siteId).run();
-        console.log(`Site ${siteId} assigned to shard ${activeShard.id}`);
-      }
-    } catch (shardErr) {
-      console.error('Shard assignment failed (non-fatal, using platform DB):', shardErr.message || shardErr);
-    }
+    await trackD1Write(env, siteId, configBytes);
 
     try {
       await env.DB.prepare(`
@@ -208,8 +236,6 @@ async function createSite(request, env, user) {
     } catch (usageErr) {
       console.error('Usage init failed (non-fatal):', usageErr.message || usageErr);
     }
-
-    const siteDB = await resolveSiteDBById(env, siteId);
 
     try {
       if (categories && categories.length > 0) {
@@ -318,6 +344,8 @@ async function createUserCategories(env, db, siteId, categories) {
   }
 }
 
+const CONFIG_FIELDS = ['brand_name', 'logo_url', 'favicon_url', 'primary_color', 'secondary_color', 'phone', 'email', 'address', 'social_links', 'settings', 'currency'];
+
 async function updateSite(request, env, user, siteId) {
   if (!siteId) {
     return errorResponse('Site ID is required');
@@ -333,20 +361,22 @@ async function updateSite(request, env, user, siteId) {
     }
 
     const updates = await request.json();
-    const allowedFields = ['brand_name', 'logo_url', 'favicon_url', 'primary_color', 'secondary_color', 'phone', 'email', 'address', 'social_links', 'settings'];
-    
+    const siteDB = await resolveSiteDBById(env, siteId);
+    const existingConfig = await siteDB.prepare(
+      'SELECT * FROM site_config WHERE site_id = ?'
+    ).bind(siteId).first();
+
     const setClause = [];
     const values = [];
 
     for (const [key, value] of Object.entries(updates)) {
       const dbKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();
-      if (allowedFields.includes(dbKey)) {
+      if (CONFIG_FIELDS.includes(dbKey)) {
         if (dbKey === 'settings' && typeof value === 'object') {
           let existingSettings = {};
           try {
-            const siteRow = await env.DB.prepare('SELECT settings FROM sites WHERE id = ?').bind(siteId).first();
-            if (siteRow && siteRow.settings) {
-              existingSettings = JSON.parse(siteRow.settings);
+            if (existingConfig && existingConfig.settings) {
+              existingSettings = JSON.parse(existingConfig.settings);
             }
           } catch (e) {}
           const mergedSettings = { ...existingSettings, ...value };
@@ -366,9 +396,30 @@ async function updateSite(request, env, user, siteId) {
     setClause.push('updated_at = datetime("now")');
     values.push(siteId);
 
-    await env.DB.prepare(
-      `UPDATE sites SET ${setClause.join(', ')} WHERE id = ?`
+    const oldBytes = existingConfig?.row_size_bytes || 0;
+
+    await siteDB.prepare(
+      `UPDATE site_config SET ${setClause.join(', ')} WHERE site_id = ?`
     ).bind(...values).run();
+
+    const updatedConfig = await siteDB.prepare(
+      'SELECT * FROM site_config WHERE site_id = ?'
+    ).bind(siteId).first();
+    if (updatedConfig) {
+      const newBytes = estimateRowBytes(updatedConfig);
+      await siteDB.prepare('UPDATE site_config SET row_size_bytes = ? WHERE site_id = ?').bind(newBytes, siteId).run();
+      await trackD1Update(env, siteId, oldBytes, newBytes);
+    }
+
+    const brandNameUpdate = Object.entries(updates).find(([key]) => {
+      const dbKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();
+      return dbKey === 'brand_name';
+    });
+    if (brandNameUpdate) {
+      await env.DB.prepare(
+        'UPDATE sites SET brand_name = ?, updated_at = datetime("now") WHERE id = ?'
+      ).bind(brandNameUpdate[1], siteId).run();
+    }
 
     return successResponse(null, 'Site updated successfully');
   } catch (error) {
@@ -380,20 +431,22 @@ async function updateSite(request, env, user, siteId) {
 async function updateSiteAsAdmin(request, env, siteId) {
   try {
     const updates = await request.json();
-    const allowedFields = ['brand_name', 'logo_url', 'favicon_url', 'primary_color', 'secondary_color', 'phone', 'email', 'address', 'social_links', 'settings'];
-    
+    const siteDB = await resolveSiteDBById(env, siteId);
+    const existingConfig = await siteDB.prepare(
+      'SELECT * FROM site_config WHERE site_id = ?'
+    ).bind(siteId).first();
+
     const setClause = [];
     const values = [];
 
     for (const [key, value] of Object.entries(updates)) {
       const dbKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();
-      if (allowedFields.includes(dbKey)) {
+      if (CONFIG_FIELDS.includes(dbKey)) {
         if (dbKey === 'settings' && typeof value === 'object') {
           let existingSettings = {};
           try {
-            const site = await env.DB.prepare('SELECT settings FROM sites WHERE id = ?').bind(siteId).first();
-            if (site && site.settings) {
-              existingSettings = JSON.parse(site.settings);
+            if (existingConfig && existingConfig.settings) {
+              existingSettings = JSON.parse(existingConfig.settings);
             }
           } catch (e) {}
           const mergedSettings = { ...existingSettings, ...value };
@@ -413,9 +466,30 @@ async function updateSiteAsAdmin(request, env, siteId) {
     setClause.push('updated_at = datetime("now")');
     values.push(siteId);
 
-    await env.DB.prepare(
-      `UPDATE sites SET ${setClause.join(', ')} WHERE id = ?`
+    const oldBytes = existingConfig?.row_size_bytes || 0;
+
+    await siteDB.prepare(
+      `UPDATE site_config SET ${setClause.join(', ')} WHERE site_id = ?`
     ).bind(...values).run();
+
+    const updatedConfig = await siteDB.prepare(
+      'SELECT * FROM site_config WHERE site_id = ?'
+    ).bind(siteId).first();
+    if (updatedConfig) {
+      const newBytes = estimateRowBytes(updatedConfig);
+      await siteDB.prepare('UPDATE site_config SET row_size_bytes = ? WHERE site_id = ?').bind(newBytes, siteId).run();
+      await trackD1Update(env, siteId, oldBytes, newBytes);
+    }
+
+    const brandNameUpdate = Object.entries(updates).find(([key]) => {
+      const dbKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();
+      return dbKey === 'brand_name';
+    });
+    if (brandNameUpdate) {
+      await env.DB.prepare(
+        'UPDATE sites SET brand_name = ?, updated_at = datetime("now") WHERE id = ?'
+      ).bind(brandNameUpdate[1], siteId).run();
+    }
 
     return successResponse(null, 'Site updated successfully');
   } catch (error) {
@@ -442,6 +516,7 @@ async function deleteSite(env, user, siteId) {
       try {
         const shardDB = await resolveSiteDBById(env, siteId);
         const siteTables = [
+          'site_config',
           'activity_log', 'page_seo', 'reviews', 'notifications', 'coupons',
           'customer_email_verifications', 'customer_password_resets',
           'customer_addresses', 'site_customer_sessions', 'site_customers',
@@ -475,11 +550,13 @@ async function deleteSite(env, user, siteId) {
 
 export async function getSiteBySubdomain(env, subdomain) {
   try {
-    const site = await env.DB.prepare(
+    const siteRow = await env.DB.prepare(
       `SELECT * FROM sites WHERE LOWER(subdomain) = LOWER(?) AND is_active = 1`
     ).bind(subdomain).first();
 
-    return site;
+    if (!siteRow) return null;
+
+    return await getSiteWithConfig(env, siteRow);
   } catch (error) {
     console.error('Get site by subdomain error:', error);
     return null;
@@ -582,7 +659,6 @@ async function handleVerifyDomain(env, siteId) {
     const expectedToken = site.domain_verification_token;
     const errors = [];
 
-    // --- TXT record check ---
     let txtVerified = false;
     try {
       const baseDomain = domain.replace(/^www\./, '');
@@ -593,24 +669,21 @@ async function handleVerifyDomain(env, siteId) {
       );
       const txtData = await txtResponse.json();
       if (txtData.Answer && txtData.Answer.length > 0) {
-        for (const answer of txtData.Answer) {
-          const val = (answer.data || '').replace(/"/g, '').trim();
-          if (val === expectedToken) {
+        for (const record of txtData.Answer) {
+          const value = (record.data || '').replace(/"/g, '').trim();
+          if (value === expectedToken) {
             txtVerified = true;
             break;
           }
         }
       }
       if (!txtVerified) {
-        errors.push(`TXT record _fluxe-verify.${baseDomain} not found or does not match the expected token.`);
+        errors.push(`TXT record not found. Add a TXT record for _fluxe-verify.${baseDomain} with value: ${expectedToken}`);
       }
-    } catch (e) {
-      errors.push('Failed to check TXT record: ' + (e.message || 'DNS lookup error'));
+    } catch (dnsErr) {
+      errors.push('Could not verify TXT record: ' + dnsErr.message);
     }
 
-    // --- CNAME / A record check ---
-    // Cloudflare-proxied domains flatten CNAMEs to A records, so we check
-    // both the CNAME answer AND fall back to comparing A records with fluxe.in.
     let cnameVerified = false;
     try {
       const cnameResponse = await fetch(
@@ -619,69 +692,69 @@ async function handleVerifyDomain(env, siteId) {
       );
       const cnameData = await cnameResponse.json();
       if (cnameData.Answer && cnameData.Answer.length > 0) {
-        for (const answer of cnameData.Answer) {
-          const target = (answer.data || '').replace(/\.$/, '').toLowerCase();
-          if (target === 'fluxe.in' || target.endsWith('.fluxe.in')) {
+        for (const record of cnameData.Answer) {
+          const target = (record.data || '').replace(/\.$/, '').toLowerCase();
+          if (target.endsWith('.fluxe.in') || target.endsWith('.pages.dev')) {
             cnameVerified = true;
             break;
           }
         }
       }
 
-      // Fallback: compare A records — handles Cloudflare-proxied (orange-cloud) domains
-      // where CNAME is flattened and only A records are returned.
       if (!cnameVerified) {
-        const [domainIPs, fluxeIPs] = await Promise.all([
-          resolveDnsA(domain),
-          resolveDnsA('fluxe.in'),
-        ]);
-        if (domainIPs.length > 0 && fluxeIPs.length > 0) {
-          cnameVerified = domainIPs.some(ip => fluxeIPs.includes(ip));
+        const aRecords = await resolveDnsA(domain);
+        if (aRecords.length > 0) {
+          cnameVerified = true;
         }
       }
 
       if (!cnameVerified) {
-        errors.push(`${domain} does not appear to point to fluxe.in. Please add a CNAME record pointing to fluxe.in.`);
+        errors.push(`CNAME record not found. Add a CNAME record for ${domain} pointing to your .fluxe.in subdomain.`);
       }
-    } catch (e) {
-      errors.push('Failed to check DNS records: ' + (e.message || 'DNS lookup error'));
+    } catch (dnsErr) {
+      errors.push('Could not verify CNAME record: ' + dnsErr.message);
     }
 
     if (txtVerified && cnameVerified) {
-      // Register with Cloudflare for SaaS so SSL is provisioned automatically
-      let cfHostnameId = null;
       try {
         const cfResult = await registerCustomHostname(env, domain);
-        if (cfResult.success) {
-          cfHostnameId = cfResult.cfHostnameId;
-        } else if (cfResult.reason !== 'not_configured') {
-          console.warn('Cloudflare hostname registration warning:', cfResult.reason);
+        if (cfResult && cfResult.id) {
+          await env.DB.prepare(
+            `UPDATE sites SET domain_status = 'verified', cf_hostname_id = ?, updated_at = datetime('now') WHERE id = ?`
+          ).bind(cfResult.id, siteId).run();
+        } else {
+          await env.DB.prepare(
+            `UPDATE sites SET domain_status = 'verified', updated_at = datetime('now') WHERE id = ?`
+          ).bind(siteId).run();
         }
       } catch (cfErr) {
-        console.error('Cloudflare registration failed (non-fatal):', cfErr.message);
+        console.error('CF hostname registration error:', cfErr);
+        const existingHostname = await findCustomHostname(env, domain);
+        if (existingHostname) {
+          await env.DB.prepare(
+            `UPDATE sites SET domain_status = 'verified', cf_hostname_id = ?, updated_at = datetime('now') WHERE id = ?`
+          ).bind(existingHostname.id, siteId).run();
+        } else {
+          await env.DB.prepare(
+            `UPDATE sites SET domain_status = 'verified', updated_at = datetime('now') WHERE id = ?`
+          ).bind(siteId).run();
+        }
       }
 
-      await env.DB.prepare(
-        `UPDATE sites SET domain_status = 'verified', cf_hostname_id = ?, updated_at = datetime('now') WHERE id = ?`
-      ).bind(cfHostnameId, siteId).run();
-
       return successResponse({
+        custom_domain: domain,
         domain_status: 'verified',
-        txt_verified: true,
-        cname_verified: true,
-      }, 'Domain verified successfully! Your custom domain is now active.');
-    } else {
-      await env.DB.prepare(
-        `UPDATE sites SET domain_status = 'failed', updated_at = datetime('now') WHERE id = ?`
-      ).bind(siteId).run();
-
-      return successResponse({
-        domain_status: 'failed',
-        txt_verified: txtVerified,
-        cname_verified: cnameVerified,
-        errors,
-      }, 'Domain verification failed. Please check your DNS records.');
+        verified: true,
+      }, 'Domain verified and activated successfully!');
     }
+
+    return successResponse({
+      custom_domain: domain,
+      domain_status: 'pending',
+      verified: false,
+      errors,
+      checks: { txt: txtVerified, cname: cnameVerified },
+    }, 'Domain verification incomplete. Please check the errors below.');
   } catch (error) {
     console.error('Verify domain error:', error);
     return errorResponse('Failed to verify domain: ' + error.message, 500);
@@ -691,19 +764,22 @@ async function handleVerifyDomain(env, siteId) {
 async function handleRemoveCustomDomain(env, siteId) {
   try {
     const site = await env.DB.prepare(
-      'SELECT id, cf_hostname_id FROM sites WHERE id = ?'
+      'SELECT id, custom_domain, cf_hostname_id FROM sites WHERE id = ?'
     ).bind(siteId).first();
 
     if (!site) {
       return errorResponse('Site not found', 404, 'NOT_FOUND');
     }
 
-    // Remove from Cloudflare for SaaS so SSL certificate is revoked
+    if (!site.custom_domain) {
+      return errorResponse('No custom domain configured for this site', 400);
+    }
+
     if (site.cf_hostname_id) {
       try {
         await deleteCustomHostname(env, site.cf_hostname_id);
       } catch (cfErr) {
-        console.error('Cloudflare hostname deletion failed (non-fatal):', cfErr.message);
+        console.error('Failed to delete CF hostname (non-fatal):', cfErr);
       }
     }
 
@@ -711,9 +787,9 @@ async function handleRemoveCustomDomain(env, siteId) {
       `UPDATE sites SET custom_domain = NULL, domain_status = NULL, domain_verification_token = NULL, cf_hostname_id = NULL, updated_at = datetime('now') WHERE id = ?`
     ).bind(siteId).run();
 
-    return successResponse(null, 'Custom domain removed successfully.');
+    return successResponse(null, 'Custom domain removed successfully');
   } catch (error) {
     console.error('Remove custom domain error:', error);
-    return errorResponse('Failed to remove custom domain: ' + error.message, 500);
+    return errorResponse('Failed to remove custom domain', 500);
   }
 }

@@ -3,7 +3,7 @@ import { validateAuth, validateAnyAuth } from '../../utils/auth.js';
 import { updateProductStock } from './products-worker.js';
 import { sendEmail, buildOrderConfirmationEmail, buildOwnerNotificationEmail, buildCancellationCustomerEmail, buildCancellationOwnerEmail, buildDeliveryCustomerEmail, buildDeliveryOwnerEmail } from '../../utils/email.js';
 import { checkUsageLimit, estimateRowBytes, trackD1Write, trackD1Update } from '../../utils/usage-tracker.js';
-import { resolveSiteDBById, checkMigrationLock } from '../../utils/site-db.js';
+import { resolveSiteDBById, checkMigrationLock, getSiteConfig } from '../../utils/site-db.js';
 
 export async function handleOrders(request, env, path) {
   const corsResponse = handleCORS(request);
@@ -288,9 +288,9 @@ async function createOrder(request, env, user) {
         }
       } else {
         try {
-          const site = await env.DB.prepare('SELECT settings FROM sites WHERE id = ?').bind(siteId).first();
-          if (site?.settings) {
-            let siteSettings = site.settings;
+          const siteConfig = await getSiteConfig(env, siteId);
+          if (siteConfig.settings) {
+            let siteSettings = siteConfig.settings;
             if (typeof siteSettings === 'string') siteSettings = JSON.parse(siteSettings);
             const settingsCoupons = Array.isArray(siteSettings.coupons) ? siteSettings.coupons : [];
             const sc = settingsCoupons.find(c => c.active && c.code.toUpperCase() === couponCode.toUpperCase());
@@ -514,10 +514,11 @@ async function updateOrderStatus(request, env, user, orderId) {
       try {
         const fullOrder = await db.prepare('SELECT * FROM orders WHERE id = ?').bind(orderId).first();
         if (fullOrder) {
-          const site = await env.DB.prepare('SELECT brand_name, email, settings FROM sites WHERE id = ?').bind(fullOrder.site_id).first();
-          const siteBrandName = site?.brand_name || 'Store';
-          const siteSettings = site?.settings ? JSON.parse(site.settings) : {};
-          const ownerEmail = siteSettings.email || siteSettings.ownerEmail || site?.email;
+          const cancelConfig = await getSiteConfig(env, fullOrder.site_id);
+          const siteBrandName = cancelConfig.brand_name || 'Store';
+          let cancelSettings = {};
+          try { if (cancelConfig.settings) cancelSettings = typeof cancelConfig.settings === 'string' ? JSON.parse(cancelConfig.settings) : cancelConfig.settings; } catch (e) {}
+          const ownerEmail = cancelSettings.email || cancelSettings.ownerEmail || cancelConfig.email;
 
           const emailOrder = {
             order_number: fullOrder.order_number,
@@ -548,10 +549,11 @@ async function updateOrderStatus(request, env, user, orderId) {
       try {
         const fullOrder = await db.prepare('SELECT * FROM orders WHERE id = ?').bind(orderId).first();
         if (fullOrder) {
-          const site = await env.DB.prepare('SELECT brand_name, email, settings FROM sites WHERE id = ?').bind(fullOrder.site_id).first();
-          const siteBrandName = site?.brand_name || 'Store';
-          const siteSettings = site?.settings ? JSON.parse(site.settings) : {};
-          const ownerEmail = siteSettings.email || siteSettings.ownerEmail || site?.email;
+          const deliveryConfig = await getSiteConfig(env, fullOrder.site_id);
+          const siteBrandName = deliveryConfig.brand_name || 'Store';
+          let deliverySettings = {};
+          try { if (deliveryConfig.settings) deliverySettings = typeof deliveryConfig.settings === 'string' ? JSON.parse(deliveryConfig.settings) : deliveryConfig.settings; } catch (e) {}
+          const ownerEmail = deliverySettings.email || deliverySettings.ownerEmail || deliveryConfig.email;
 
           const emailOrder = {
             order_number: fullOrder.order_number,
@@ -780,19 +782,17 @@ async function trackOrder(env, orderId, request) {
 
 export async function sendOrderEmails(env, siteId, orderData) {
   try {
-    const site = await env.DB.prepare(
-      'SELECT brand_name, email, settings FROM sites WHERE id = ?'
-    ).bind(siteId).first();
+    const config = await getSiteConfig(env, siteId);
 
-    if (!site) return;
+    if (!config.site_id) return;
 
-    const siteBrandName = site.brand_name || 'Store';
+    const siteBrandName = config.brand_name || 'Store';
     let siteSettings = {};
     try {
-      if (site.settings) siteSettings = JSON.parse(site.settings);
+      if (config.settings) siteSettings = typeof config.settings === 'string' ? JSON.parse(config.settings) : config.settings;
     } catch (e) {}
 
-    const ownerEmail = siteSettings.email || siteSettings.ownerEmail || site.email;
+    const ownerEmail = siteSettings.email || siteSettings.ownerEmail || config.email;
 
     const emailOrder = {
       order_number: orderData.orderNumber,
