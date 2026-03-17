@@ -231,6 +231,53 @@ export async function ensureTablesExist(env) {
 
     await ensureSEOColumns(env);
 
+    try {
+      const shards = await env.DB.prepare('SELECT id, binding_name FROM shards WHERE is_active = 1').all();
+      for (const shard of (shards.results || [])) {
+        const shardDB = env[shard.binding_name];
+        if (shardDB) {
+          try {
+            await shardDB.prepare(`CREATE TABLE IF NOT EXISTS site_config (
+              site_id TEXT PRIMARY KEY,
+              brand_name TEXT,
+              category TEXT,
+              logo_url TEXT,
+              favicon_url TEXT,
+              primary_color TEXT DEFAULT '#000000',
+              secondary_color TEXT DEFAULT '#ffffff',
+              phone TEXT,
+              email TEXT,
+              address TEXT,
+              social_links TEXT,
+              settings TEXT DEFAULT '{}',
+              currency TEXT DEFAULT 'INR',
+              seo_title TEXT,
+              seo_description TEXT,
+              seo_og_image TEXT,
+              seo_robots TEXT DEFAULT 'index, follow',
+              google_verification TEXT,
+              og_title TEXT,
+              og_description TEXT,
+              og_image TEXT,
+              og_type TEXT DEFAULT 'website',
+              twitter_card TEXT DEFAULT 'summary_large_image',
+              twitter_title TEXT,
+              twitter_description TEXT,
+              twitter_image TEXT,
+              twitter_site TEXT,
+              row_size_bytes INTEGER DEFAULT 0,
+              created_at TEXT DEFAULT (datetime('now')),
+              updated_at TEXT DEFAULT (datetime('now'))
+            )`).run();
+          } catch (e) {
+            console.error(`Failed to ensure site_config on shard ${shard.binding_name}:`, e.message || e);
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Shard site_config migration error (non-fatal):', e.message || e);
+    }
+
     _initialized = true;
     console.log('Database tables initialized successfully');
   } catch (error) {

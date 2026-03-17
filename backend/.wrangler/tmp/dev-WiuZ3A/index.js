@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-F44Oah/checked-fetch.js
+// .wrangler/tmp/bundle-NF8Qdf/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-F44Oah/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-NF8Qdf/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-F44Oah/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-NF8Qdf/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-F44Oah/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-NF8Qdf/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -1827,12 +1827,12 @@ var init_site_admin_worker = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-F44Oah/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-NF8Qdf/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-F44Oah/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-NF8Qdf/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -10529,6 +10529,52 @@ async function ensureTablesExist(env) {
     } catch (e) {
     }
     await ensureSEOColumns(env);
+    try {
+      const shards = await env.DB.prepare("SELECT id, binding_name FROM shards WHERE is_active = 1").all();
+      for (const shard of shards.results || []) {
+        const shardDB = env[shard.binding_name];
+        if (shardDB) {
+          try {
+            await shardDB.prepare(`CREATE TABLE IF NOT EXISTS site_config (
+              site_id TEXT PRIMARY KEY,
+              brand_name TEXT,
+              category TEXT,
+              logo_url TEXT,
+              favicon_url TEXT,
+              primary_color TEXT DEFAULT '#000000',
+              secondary_color TEXT DEFAULT '#ffffff',
+              phone TEXT,
+              email TEXT,
+              address TEXT,
+              social_links TEXT,
+              settings TEXT DEFAULT '{}',
+              currency TEXT DEFAULT 'INR',
+              seo_title TEXT,
+              seo_description TEXT,
+              seo_og_image TEXT,
+              seo_robots TEXT DEFAULT 'index, follow',
+              google_verification TEXT,
+              og_title TEXT,
+              og_description TEXT,
+              og_image TEXT,
+              og_type TEXT DEFAULT 'website',
+              twitter_card TEXT DEFAULT 'summary_large_image',
+              twitter_title TEXT,
+              twitter_description TEXT,
+              twitter_image TEXT,
+              twitter_site TEXT,
+              row_size_bytes INTEGER DEFAULT 0,
+              created_at TEXT DEFAULT (datetime('now')),
+              updated_at TEXT DEFAULT (datetime('now'))
+            )`).run();
+          } catch (e) {
+            console.error(`Failed to ensure site_config on shard ${shard.binding_name}:`, e.message || e);
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Shard site_config migration error (non-fatal):", e.message || e);
+    }
     _initialized = true;
     console.log("Database tables initialized successfully");
   } catch (error) {
@@ -10921,7 +10967,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-F44Oah/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-NF8Qdf/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -10956,7 +11002,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-F44Oah/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-NF8Qdf/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;
