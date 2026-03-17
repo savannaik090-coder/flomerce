@@ -1,4 +1,5 @@
 import { generateId, generateToken, getExpiryDate, isExpired, errorResponse } from './helpers.js';
+import { resolveSiteDBById } from './site-db.js';
 
 const SALT_ROUNDS = 10;
 
@@ -195,20 +196,69 @@ export async function validateAnyAuth(request, env) {
   if (authHeader && authHeader.startsWith('SiteCustomer ')) {
     const token = authHeader.substring(13);
     try {
-      await ensureCustomerTablesExist(env);
+      const url = new URL(request.url);
+      const siteId = url.searchParams.get('siteId');
 
-      const session = await env.DB.prepare(
-        `SELECT cs.customer_id, cs.site_id FROM site_customer_sessions cs
-         WHERE cs.token = ? AND cs.expires_at > datetime('now')`
-      ).bind(token).first();
+      if (siteId) {
+        const db = await resolveSiteDBById(env, siteId);
+        const session = await db.prepare(
+          `SELECT cs.customer_id, cs.site_id FROM site_customer_sessions cs
+           WHERE cs.token = ? AND cs.site_id = ? AND cs.expires_at > datetime('now')`
+        ).bind(token, siteId).first();
 
-      if (session) {
-        const customer = await env.DB.prepare(
-          'SELECT id, site_id, email, name, phone FROM site_customers WHERE id = ?'
-        ).bind(session.customer_id).first();
+        if (session) {
+          const customer = await db.prepare(
+            'SELECT id, site_id, email, name, phone FROM site_customers WHERE id = ? AND site_id = ?'
+          ).bind(session.customer_id, siteId).first();
 
-        if (customer) {
-          return { id: customer.id, email: customer.email, name: customer.name, type: 'customer', siteId: customer.site_id };
+          if (customer) {
+            return { id: customer.id, email: customer.email, name: customer.name, type: 'customer', siteId: customer.site_id };
+          }
+        }
+      } else {
+        const allSites = await env.DB.prepare('SELECT id FROM sites').all();
+        const siteIds = (allSites.results || []).map(s => s.id);
+        const checkedShards = new Set();
+
+        for (const sid of siteIds) {
+          try {
+            const db = await resolveSiteDBById(env, sid);
+            const shardKey = db._binding || sid;
+            if (checkedShards.has(shardKey)) {
+              const session = await db.prepare(
+                `SELECT cs.customer_id, cs.site_id FROM site_customer_sessions cs
+                 WHERE cs.token = ? AND cs.site_id = ? AND cs.expires_at > datetime('now')`
+              ).bind(token, sid).first();
+
+              if (session) {
+                const customer = await db.prepare(
+                  'SELECT id, site_id, email, name, phone FROM site_customers WHERE id = ? AND site_id = ?'
+                ).bind(session.customer_id, sid).first();
+
+                if (customer) {
+                  return { id: customer.id, email: customer.email, name: customer.name, type: 'customer', siteId: customer.site_id };
+                }
+              }
+            } else {
+              checkedShards.add(shardKey);
+              const session = await db.prepare(
+                `SELECT cs.customer_id, cs.site_id FROM site_customer_sessions cs
+                 WHERE cs.token = ? AND cs.expires_at > datetime('now')`
+              ).bind(token).first();
+
+              if (session) {
+                const customer = await db.prepare(
+                  'SELECT id, site_id, email, name, phone FROM site_customers WHERE id = ? AND site_id = ?'
+                ).bind(session.customer_id, session.site_id).first();
+
+                if (customer) {
+                  return { id: customer.id, email: customer.email, name: customer.name, type: 'customer', siteId: customer.site_id };
+                }
+              }
+            }
+          } catch (err) {
+            console.error(`Customer auth check failed for site ${sid}:`, err);
+          }
         }
       }
     } catch (error) {
