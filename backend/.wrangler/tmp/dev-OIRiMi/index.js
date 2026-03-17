@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-hQYk4Z/checked-fetch.js
+// .wrangler/tmp/bundle-atS21X/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-hQYk4Z/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-atS21X/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-hQYk4Z/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-atS21X/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-hQYk4Z/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-atS21X/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -511,593 +511,6 @@ var init_site_db = __esm({
   }
 });
 
-// workers/storefront/site-admin-worker.js
-var site_admin_worker_exports = {};
-__export(site_admin_worker_exports, {
-  handleSiteAdmin: () => handleSiteAdmin,
-  validateSiteAdmin: () => validateSiteAdmin
-});
-async function handleSiteAdmin(request, env, path) {
-  const corsResponse = handleCORS(request);
-  if (corsResponse)
-    return corsResponse;
-  const pathParts = path.split("/").filter(Boolean);
-  const action = pathParts[2];
-  switch (action) {
-    case "verify":
-      return verifySiteAdminCode(request, env);
-    case "validate":
-      return validateSiteAdminToken(request, env);
-    case "set-code":
-      return setSiteAdminCode(request, env);
-    case "auto-login":
-      return autoLoginSiteAdmin(request, env);
-    case "seo":
-      return handleSEO(request, env, pathParts);
-    default:
-      return errorResponse("Site admin endpoint not found", 404);
-  }
-}
-async function verifySiteAdminCode(request, env) {
-  if (request.method !== "POST") {
-    return errorResponse("Method not allowed", 405);
-  }
-  try {
-    const { siteId, subdomain, verificationCode } = await request.json();
-    if (!verificationCode) {
-      return errorResponse("Verification code is required");
-    }
-    if (!siteId && !subdomain) {
-      return errorResponse("Site ID or subdomain is required");
-    }
-    let site;
-    if (siteId) {
-      site = await env.DB.prepare(
-        "SELECT id, subdomain, brand_name, settings FROM sites WHERE id = ? AND is_active = 1"
-      ).bind(siteId).first();
-    } else {
-      site = await env.DB.prepare(
-        "SELECT id, subdomain, brand_name, settings FROM sites WHERE LOWER(subdomain) = LOWER(?) AND is_active = 1"
-      ).bind(subdomain).first();
-    }
-    if (!site) {
-      return errorResponse("Site not found", 404);
-    }
-    let settings = {};
-    try {
-      if (site.settings)
-        settings = JSON.parse(site.settings);
-    } catch (e) {
-    }
-    const storedCode = settings.adminVerificationCode;
-    if (!storedCode) {
-      return errorResponse("Admin verification code not set for this site. Please set it from your dashboard.", 400);
-    }
-    if (verificationCode !== storedCode) {
-      return errorResponse("Invalid verification code", 401);
-    }
-    const adminToken = generateToken(32);
-    const expiresAt = /* @__PURE__ */ new Date();
-    expiresAt.setHours(expiresAt.getHours() + 24);
-    await ensureSiteAdminSessionsTable(env);
-    await env.DB.prepare(
-      `INSERT INTO site_admin_sessions (id, site_id, token, expires_at, created_at)
-       VALUES (?, ?, ?, ?, datetime('now'))`
-    ).bind(generateId(), site.id, adminToken, expiresAt.toISOString()).run();
-    return successResponse({
-      token: adminToken,
-      siteId: site.id,
-      subdomain: site.subdomain,
-      brandName: site.brand_name,
-      expiresAt: expiresAt.toISOString()
-    }, "Admin access granted");
-  } catch (error) {
-    console.error("Verify site admin code error:", error);
-    return errorResponse("Verification failed", 500);
-  }
-}
-async function validateSiteAdminToken(request, env) {
-  if (request.method !== "POST") {
-    return errorResponse("Method not allowed", 405);
-  }
-  try {
-    const { token, siteId } = await request.json();
-    if (!token || !siteId) {
-      return errorResponse("Token and site ID are required");
-    }
-    await ensureSiteAdminSessionsTable(env);
-    const session = await env.DB.prepare(
-      `SELECT id, site_id, expires_at FROM site_admin_sessions 
-       WHERE token = ? AND site_id = ? AND expires_at > datetime('now')`
-    ).bind(token, siteId).first();
-    if (!session) {
-      return errorResponse("Invalid or expired admin token", 401);
-    }
-    return successResponse({ valid: true, siteId: session.site_id }, "Token is valid");
-  } catch (error) {
-    console.error("Validate site admin token error:", error);
-    return errorResponse("Validation failed", 500);
-  }
-}
-async function setSiteAdminCode(request, env) {
-  if (request.method !== "POST") {
-    return errorResponse("Method not allowed", 405);
-  }
-  try {
-    const { siteId, verificationCode } = await request.json();
-    if (!siteId || !verificationCode) {
-      return errorResponse("Site ID and verification code are required");
-    }
-    if (verificationCode.length < 4 || verificationCode.length > 20) {
-      return errorResponse("Verification code must be between 4 and 20 characters");
-    }
-    const user = await validateAuth(request, env);
-    let site = null;
-    if (user) {
-      site = await env.DB.prepare(
-        "SELECT id, settings FROM sites WHERE id = ? AND user_id = ?"
-      ).bind(siteId, user.id).first();
-    }
-    if (!site) {
-      const siteAdmin = await validateSiteAdmin(request, env, siteId);
-      if (siteAdmin) {
-        site = await env.DB.prepare(
-          "SELECT id, settings FROM sites WHERE id = ?"
-        ).bind(siteId).first();
-      }
-    }
-    if (!site) {
-      return errorResponse("Site not found or unauthorized", 404);
-    }
-    let settings = {};
-    try {
-      if (site.settings)
-        settings = JSON.parse(site.settings);
-    } catch (e) {
-    }
-    settings.adminVerificationCode = verificationCode;
-    await env.DB.prepare(
-      `UPDATE sites SET settings = ?, updated_at = datetime('now') WHERE id = ?`
-    ).bind(JSON.stringify(settings), siteId).run();
-    return successResponse(null, "Admin verification code set successfully");
-  } catch (error) {
-    console.error("Set site admin code error:", error);
-    return errorResponse("Failed to set verification code", 500);
-  }
-}
-async function autoLoginSiteAdmin(request, env) {
-  if (request.method !== "POST") {
-    return errorResponse("Method not allowed", 405);
-  }
-  try {
-    const user = await validateAuth(request, env);
-    if (!user) {
-      return errorResponse("Unauthorized", 401);
-    }
-    const { siteId } = await request.json();
-    if (!siteId) {
-      return errorResponse("Site ID is required");
-    }
-    const site = await env.DB.prepare(
-      "SELECT id, subdomain, brand_name FROM sites WHERE id = ? AND user_id = ?"
-    ).bind(siteId, user.id).first();
-    if (!site) {
-      return errorResponse("Site not found or unauthorized", 404);
-    }
-    const adminToken = generateToken(32);
-    const expiresAt = /* @__PURE__ */ new Date();
-    expiresAt.setHours(expiresAt.getHours() + 24);
-    await ensureSiteAdminSessionsTable(env);
-    await env.DB.prepare(
-      `INSERT INTO site_admin_sessions (id, site_id, token, expires_at, created_at)
-       VALUES (?, ?, ?, ?, datetime('now'))`
-    ).bind(generateId(), site.id, adminToken, expiresAt.toISOString()).run();
-    return successResponse({
-      token: adminToken,
-      siteId: site.id,
-      subdomain: site.subdomain,
-      brandName: site.brand_name,
-      expiresAt: expiresAt.toISOString()
-    }, "Auto-login token generated");
-  } catch (error) {
-    console.error("Auto-login site admin error:", error);
-    return errorResponse("Auto-login failed", 500);
-  }
-}
-async function ensureSiteAdminSessionsTable(env) {
-  try {
-    await env.DB.prepare(`
-      CREATE TABLE IF NOT EXISTS site_admin_sessions (
-        id TEXT PRIMARY KEY,
-        site_id TEXT NOT NULL,
-        token TEXT NOT NULL,
-        expires_at TEXT NOT NULL,
-        created_at TEXT DEFAULT (datetime('now')),
-        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
-      )
-    `).run();
-    await env.DB.prepare(
-      "CREATE INDEX IF NOT EXISTS idx_site_admin_sessions_token ON site_admin_sessions(token)"
-    ).run();
-    await env.DB.prepare(
-      "CREATE INDEX IF NOT EXISTS idx_site_admin_sessions_site ON site_admin_sessions(site_id)"
-    ).run();
-  } catch (error) {
-    console.error("Error ensuring site_admin_sessions table:", error);
-  }
-}
-async function handleSEO(request, env, pathParts) {
-  const subResource = pathParts[3];
-  const resourceId = pathParts[4];
-  if (!subResource) {
-    if (request.method === "GET")
-      return getSiteSEO(request, env);
-    if (request.method === "PUT")
-      return saveSiteSEO(request, env);
-  }
-  if (subResource === "categories") {
-    if (request.method === "GET")
-      return getCategoriesSEO(request, env);
-    if (request.method === "PUT" && resourceId)
-      return saveCategorySEO(request, env, resourceId);
-  }
-  if (subResource === "products") {
-    if (request.method === "GET")
-      return getProductsSEO(request, env);
-    if (request.method === "PUT" && resourceId)
-      return saveProductSEO(request, env, resourceId);
-  }
-  if (subResource === "pages") {
-    if (request.method === "GET")
-      return getPagesSEO(request, env);
-    if (request.method === "PUT" && resourceId)
-      return savePageSEO(request, env, resourceId);
-  }
-  if (subResource === "social") {
-    if (request.method === "GET")
-      return getSocialTags(request, env);
-    if (request.method === "PUT")
-      return saveSocialTags(request, env);
-  }
-  return errorResponse("SEO endpoint not found", 404);
-}
-async function getSiteSEO(request, env) {
-  try {
-    const url = new URL(request.url);
-    const siteId = url.searchParams.get("siteId");
-    if (!siteId)
-      return errorResponse("siteId is required");
-    const admin = await validateSiteAdmin(request, env, siteId);
-    if (!admin)
-      return errorResponse("Unauthorized", 401);
-    const site = await env.DB.prepare(
-      `SELECT seo_title, seo_description, seo_og_image, seo_robots, google_verification, favicon_url FROM sites WHERE id = ?`
-    ).bind(siteId).first();
-    return jsonResponse({ success: true, data: site || {} });
-  } catch (err) {
-    console.error("getSiteSEO error:", err);
-    return errorResponse("Failed to fetch SEO settings", 500);
-  }
-}
-async function saveSiteSEO(request, env) {
-  try {
-    const { siteId, seo_title, seo_description, seo_og_image, seo_robots, google_verification, favicon_url } = await request.json();
-    if (!siteId)
-      return errorResponse("siteId is required");
-    const admin = await validateSiteAdmin(request, env, siteId);
-    if (!admin)
-      return errorResponse("Unauthorized", 401);
-    await env.DB.prepare(
-      `UPDATE sites SET
-        seo_title = ?, seo_description = ?, seo_og_image = ?,
-        seo_robots = ?, google_verification = ?, favicon_url = ?,
-        updated_at = datetime('now')
-       WHERE id = ?`
-    ).bind(
-      seo_title || null,
-      seo_description || null,
-      seo_og_image || null,
-      seo_robots || "index, follow",
-      google_verification || null,
-      favicon_url || null,
-      siteId
-    ).run();
-    return jsonResponse({ success: true, message: "SEO settings saved" });
-  } catch (err) {
-    console.error("saveSiteSEO error:", err);
-    return errorResponse("Failed to save SEO settings", 500);
-  }
-}
-async function getCategoriesSEO(request, env) {
-  try {
-    const url = new URL(request.url);
-    const siteId = url.searchParams.get("siteId");
-    if (!siteId)
-      return errorResponse("siteId is required");
-    const admin = await validateSiteAdmin(request, env, siteId);
-    if (!admin)
-      return errorResponse("Unauthorized", 401);
-    const db = await resolveSiteDBById(env, siteId);
-    const result = await db.prepare(
-      `SELECT id, name, slug, description, image_url, seo_title, seo_description, seo_og_image
-       FROM categories WHERE site_id = ? AND is_active = 1 ORDER BY display_order ASC`
-    ).bind(siteId).all();
-    return jsonResponse({ success: true, data: result.results || [] });
-  } catch (err) {
-    console.error("getCategoriesSEO error:", err);
-    return errorResponse("Failed to fetch categories", 500);
-  }
-}
-async function saveCategorySEO(request, env, categoryId) {
-  try {
-    const { siteId, seo_title, seo_description, seo_og_image } = await request.json();
-    if (!siteId)
-      return errorResponse("siteId is required");
-    const admin = await validateSiteAdmin(request, env, siteId);
-    if (!admin)
-      return errorResponse("Unauthorized", 401);
-    const db = await resolveSiteDBById(env, siteId);
-    await db.prepare(
-      `UPDATE categories SET
-        seo_title = ?, seo_description = ?, seo_og_image = ?,
-        updated_at = datetime('now')
-       WHERE id = ? AND site_id = ?`
-    ).bind(seo_title || null, seo_description || null, seo_og_image || null, categoryId, siteId).run();
-    return jsonResponse({ success: true, message: "Category SEO saved" });
-  } catch (err) {
-    console.error("saveCategorySEO error:", err);
-    return errorResponse("Failed to save category SEO", 500);
-  }
-}
-async function getProductsSEO(request, env) {
-  try {
-    const url = new URL(request.url);
-    const siteId = url.searchParams.get("siteId");
-    if (!siteId)
-      return errorResponse("siteId is required");
-    const admin = await validateSiteAdmin(request, env, siteId);
-    if (!admin)
-      return errorResponse("Unauthorized", 401);
-    const db = await resolveSiteDBById(env, siteId);
-    const result = await db.prepare(
-      `SELECT id, name, slug, short_description, description, thumbnail_url, images, price, seo_title, seo_description, seo_og_image
-       FROM products WHERE site_id = ? AND is_active = 1 ORDER BY created_at DESC`
-    ).bind(siteId).all();
-    const products = (result.results || []).map((p) => {
-      if (!p.thumbnail_url && p.images) {
-        try {
-          const imgs = JSON.parse(p.images);
-          if (Array.isArray(imgs) && imgs.length > 0) {
-            p.thumbnail_url = imgs[0];
-          }
-        } catch {
-        }
-      }
-      return p;
-    });
-    return jsonResponse({ success: true, data: products });
-  } catch (err) {
-    console.error("getProductsSEO error:", err);
-    return errorResponse("Failed to fetch products", 500);
-  }
-}
-async function saveProductSEO(request, env, productId) {
-  try {
-    const { siteId, seo_title, seo_description, seo_og_image } = await request.json();
-    if (!siteId)
-      return errorResponse("siteId is required");
-    const admin = await validateSiteAdmin(request, env, siteId);
-    if (!admin)
-      return errorResponse("Unauthorized", 401);
-    const db = await resolveSiteDBById(env, siteId);
-    await db.prepare(
-      `UPDATE products SET
-        seo_title = ?, seo_description = ?, seo_og_image = ?,
-        updated_at = datetime('now')
-       WHERE id = ? AND site_id = ?`
-    ).bind(seo_title || null, seo_description || null, seo_og_image || null, productId, siteId).run();
-    return jsonResponse({ success: true, message: "Product SEO saved" });
-  } catch (err) {
-    console.error("saveProductSEO error:", err);
-    return errorResponse("Failed to save product SEO", 500);
-  }
-}
-async function getPagesSEO(request, env) {
-  try {
-    const url = new URL(request.url);
-    const siteId = url.searchParams.get("siteId");
-    if (!siteId)
-      return errorResponse("siteId is required");
-    const admin = await validateSiteAdmin(request, env, siteId);
-    if (!admin)
-      return errorResponse("Unauthorized", 401);
-    const db = await resolveSiteDBById(env, siteId);
-    const result = await db.prepare(
-      `SELECT id, page_type, seo_title, seo_description, seo_og_image
-       FROM page_seo WHERE site_id = ? ORDER BY page_type ASC`
-    ).bind(siteId).all();
-    const existing = result.results || [];
-    const pages = PAGE_TYPES.map((pt) => {
-      const found = existing.find((e) => e.page_type === pt);
-      return found || { id: null, page_type: pt, seo_title: "", seo_description: "", seo_og_image: "" };
-    });
-    return jsonResponse({ success: true, data: pages });
-  } catch (err) {
-    console.error("getPagesSEO error:", err);
-    return errorResponse("Failed to fetch page SEO", 500);
-  }
-}
-async function savePageSEO(request, env, pageType) {
-  try {
-    const { siteId, seo_title, seo_description, seo_og_image } = await request.json();
-    if (!siteId)
-      return errorResponse("siteId is required");
-    if (!PAGE_TYPES.includes(pageType))
-      return errorResponse("Invalid page type");
-    const admin = await validateSiteAdmin(request, env, siteId);
-    if (!admin)
-      return errorResponse("Unauthorized", 401);
-    const db = await resolveSiteDBById(env, siteId);
-    const existing = await db.prepare(
-      `SELECT id FROM page_seo WHERE site_id = ? AND page_type = ?`
-    ).bind(siteId, pageType).first();
-    if (existing) {
-      await db.prepare(
-        `UPDATE page_seo SET
-          seo_title = ?, seo_description = ?, seo_og_image = ?,
-          updated_at = datetime('now')
-         WHERE id = ?`
-      ).bind(seo_title || null, seo_description || null, seo_og_image || null, existing.id).run();
-    } else {
-      const id = crypto.randomUUID();
-      await db.prepare(
-        `INSERT INTO page_seo (id, site_id, page_type, seo_title, seo_description, seo_og_image)
-         VALUES (?, ?, ?, ?, ?, ?)`
-      ).bind(id, siteId, pageType, seo_title || null, seo_description || null, seo_og_image || null).run();
-    }
-    return jsonResponse({ success: true, message: "Page SEO saved" });
-  } catch (err) {
-    console.error("savePageSEO error:", err);
-    return errorResponse("Failed to save page SEO", 500);
-  }
-}
-async function getSocialTags(request, env) {
-  try {
-    const url = new URL(request.url);
-    const siteId = url.searchParams.get("siteId");
-    if (!siteId)
-      return errorResponse("siteId is required");
-    const admin = await validateSiteAdmin(request, env, siteId);
-    if (!admin)
-      return errorResponse("Unauthorized", 401);
-    const site = await env.DB.prepare(
-      `SELECT seo_title, seo_description, seo_og_image,
-              og_title, og_description, og_image, og_type,
-              twitter_card, twitter_title, twitter_description, twitter_image, twitter_site
-       FROM sites WHERE id = ?`
-    ).bind(siteId).first();
-    const data = {
-      og_title: site?.og_title || "",
-      og_description: site?.og_description || "",
-      og_image: site?.og_image || "",
-      og_type: site?.og_type || "website",
-      twitter_card: site?.twitter_card || "summary_large_image",
-      twitter_title: site?.twitter_title || "",
-      twitter_description: site?.twitter_description || "",
-      twitter_image: site?.twitter_image || "",
-      twitter_site: site?.twitter_site || "",
-      defaults: {
-        title: site?.seo_title || "",
-        description: site?.seo_description || "",
-        image: site?.seo_og_image || ""
-      }
-    };
-    return jsonResponse({ success: true, data });
-  } catch (err) {
-    console.error("getSocialTags error:", err);
-    return errorResponse("Failed to fetch social tags", 500);
-  }
-}
-async function saveSocialTags(request, env) {
-  try {
-    const {
-      siteId,
-      og_title,
-      og_description,
-      og_image,
-      og_type,
-      twitter_card,
-      twitter_title,
-      twitter_description,
-      twitter_image,
-      twitter_site
-    } = await request.json();
-    if (!siteId)
-      return errorResponse("siteId is required");
-    const admin = await validateSiteAdmin(request, env, siteId);
-    if (!admin)
-      return errorResponse("Unauthorized", 401);
-    await env.DB.prepare(
-      `UPDATE sites SET
-        og_title = ?, og_description = ?, og_image = ?, og_type = ?,
-        twitter_card = ?, twitter_title = ?, twitter_description = ?, twitter_image = ?, twitter_site = ?,
-        updated_at = datetime('now')
-       WHERE id = ?`
-    ).bind(
-      og_title || null,
-      og_description || null,
-      og_image || null,
-      og_type || "website",
-      twitter_card || "summary_large_image",
-      twitter_title || null,
-      twitter_description || null,
-      twitter_image || null,
-      twitter_site || null,
-      siteId
-    ).run();
-    return jsonResponse({ success: true, message: "Social media tags saved" });
-  } catch (err) {
-    console.error("saveSocialTags error:", err);
-    return errorResponse("Failed to save social tags", 500);
-  }
-}
-async function validateSiteAdmin(request, env, siteId) {
-  const user = await validateAuth(request, env);
-  if (user) {
-    const site = await env.DB.prepare(
-      "SELECT id FROM sites WHERE id = ? AND user_id = ?"
-    ).bind(siteId, user.id).first();
-    if (site)
-      return { type: "owner", userId: user.id };
-  }
-  const authHeader = request.headers.get("Authorization");
-  if (authHeader && authHeader.startsWith("SiteAdmin ")) {
-    const token = authHeader.substring(10);
-    try {
-      await ensureSiteAdminSessionsTable(env);
-      const session = await env.DB.prepare(
-        `SELECT id, site_id FROM site_admin_sessions 
-         WHERE token = ? AND site_id = ? AND expires_at > datetime('now')`
-      ).bind(token, siteId).first();
-      if (session)
-        return { type: "site-admin", siteId: session.site_id };
-    } catch (error) {
-      console.error("Site admin validation error:", error);
-    }
-  }
-  return null;
-}
-var PAGE_TYPES;
-var init_site_admin_worker = __esm({
-  "workers/storefront/site-admin-worker.js"() {
-    init_checked_fetch();
-    init_strip_cf_connecting_ip_header();
-    init_modules_watch_stub();
-    init_helpers();
-    init_auth();
-    init_site_db();
-    __name(handleSiteAdmin, "handleSiteAdmin");
-    __name(verifySiteAdminCode, "verifySiteAdminCode");
-    __name(validateSiteAdminToken, "validateSiteAdminToken");
-    __name(setSiteAdminCode, "setSiteAdminCode");
-    __name(autoLoginSiteAdmin, "autoLoginSiteAdmin");
-    __name(ensureSiteAdminSessionsTable, "ensureSiteAdminSessionsTable");
-    __name(handleSEO, "handleSEO");
-    __name(getSiteSEO, "getSiteSEO");
-    __name(saveSiteSEO, "saveSiteSEO");
-    __name(getCategoriesSEO, "getCategoriesSEO");
-    __name(saveCategorySEO, "saveCategorySEO");
-    __name(getProductsSEO, "getProductsSEO");
-    __name(saveProductSEO, "saveProductSEO");
-    PAGE_TYPES = ["home", "about", "contact", "privacy", "terms"];
-    __name(getPagesSEO, "getPagesSEO");
-    __name(savePageSEO, "savePageSEO");
-    __name(getSocialTags, "getSocialTags");
-    __name(saveSocialTags, "saveSocialTags");
-    __name(validateSiteAdmin, "validateSiteAdmin");
-  }
-});
-
 // utils/d1-manager.js
 var d1_manager_exports = {};
 __export(d1_manager_exports, {
@@ -1116,7 +529,7 @@ function getCredentials(env) {
   }
   return { apiToken, accountId };
 }
-function cfHeaders2(apiToken) {
+function cfHeaders(apiToken) {
   return {
     "Authorization": `Bearer ${apiToken}`,
     "Content-Type": "application/json"
@@ -1124,9 +537,9 @@ function cfHeaders2(apiToken) {
 }
 async function createDatabase(env, name) {
   const { apiToken, accountId } = getCredentials(env);
-  const res = await fetch(`${CF_API_BASE2}/accounts/${accountId}/d1/database`, {
+  const res = await fetch(`${CF_API_BASE}/accounts/${accountId}/d1/database`, {
     method: "POST",
-    headers: cfHeaders2(apiToken),
+    headers: cfHeaders(apiToken),
     body: JSON.stringify({ name })
   });
   const data = await res.json();
@@ -1141,9 +554,9 @@ async function createDatabase(env, name) {
 }
 async function deleteDatabase(env, databaseId) {
   const { apiToken, accountId } = getCredentials(env);
-  const res = await fetch(`${CF_API_BASE2}/accounts/${accountId}/d1/database/${databaseId}`, {
+  const res = await fetch(`${CF_API_BASE}/accounts/${accountId}/d1/database/${databaseId}`, {
     method: "DELETE",
-    headers: cfHeaders2(apiToken)
+    headers: cfHeaders(apiToken)
   });
   const data = await res.json();
   if (!data.success) {
@@ -1153,9 +566,9 @@ async function deleteDatabase(env, databaseId) {
 }
 async function getDatabaseSize(env, databaseId) {
   const { apiToken, accountId } = getCredentials(env);
-  const res = await fetch(`${CF_API_BASE2}/accounts/${accountId}/d1/database/${databaseId}`, {
+  const res = await fetch(`${CF_API_BASE}/accounts/${accountId}/d1/database/${databaseId}`, {
     method: "GET",
-    headers: cfHeaders2(apiToken)
+    headers: cfHeaders(apiToken)
   });
   const data = await res.json();
   if (!data.success) {
@@ -1178,9 +591,9 @@ async function runSchemaOnDB(env, databaseId, sqlStatements) {
   for (let i = 0; i < coreStatements.length; i += BATCH_SIZE) {
     const batch = coreStatements.slice(i, i + BATCH_SIZE);
     const combinedSql = batch.join(";\n");
-    const res = await fetch(`${CF_API_BASE2}/accounts/${accountId}/d1/database/${databaseId}/query`, {
+    const res = await fetch(`${CF_API_BASE}/accounts/${accountId}/d1/database/${databaseId}/query`, {
       method: "POST",
-      headers: cfHeaders2(apiToken),
+      headers: cfHeaders(apiToken),
       body: JSON.stringify({ sql: combinedSql })
     });
     const data = await res.json();
@@ -1194,9 +607,9 @@ async function runSchemaOnDB(env, databaseId, sqlStatements) {
     const batch = alterStatements.slice(i, i + ALTER_BATCH);
     for (const sql of batch) {
       try {
-        const res = await fetch(`${CF_API_BASE2}/accounts/${accountId}/d1/database/${databaseId}/query`, {
+        const res = await fetch(`${CF_API_BASE}/accounts/${accountId}/d1/database/${databaseId}/query`, {
           method: "POST",
-          headers: cfHeaders2(apiToken),
+          headers: cfHeaders(apiToken),
           body: JSON.stringify({ sql })
         });
         const data = await res.json();
@@ -1217,7 +630,7 @@ async function runSchemaOnDB(env, databaseId, sqlStatements) {
 async function addBindingAndRedeploy(env, siteId, databaseId, bindingName) {
   const { apiToken, accountId } = getCredentials(env);
   const workerName = "saas-platform";
-  const getRes = await fetch(`${CF_API_BASE2}/accounts/${accountId}/workers/scripts/${workerName}/settings`, {
+  const getRes = await fetch(`${CF_API_BASE}/accounts/${accountId}/workers/scripts/${workerName}/settings`, {
     method: "GET",
     headers: { "Authorization": `Bearer ${apiToken}` }
   });
@@ -1243,7 +656,7 @@ async function addBindingAndRedeploy(env, siteId, databaseId, bindingName) {
   const settingsPayload = JSON.stringify({ bindings: updatedBindings });
   const formData = new FormData();
   formData.append("settings", new Blob([settingsPayload], { type: "application/json" }), "blob");
-  const patchRes = await fetch(`${CF_API_BASE2}/accounts/${accountId}/workers/scripts/${workerName}/settings`, {
+  const patchRes = await fetch(`${CF_API_BASE}/accounts/${accountId}/workers/scripts/${workerName}/settings`, {
     method: "PATCH",
     headers: { "Authorization": `Bearer ${apiToken}` },
     body: formData
@@ -1263,9 +676,9 @@ async function listAllSiteDatabases(env) {
     const params = new URLSearchParams({ per_page: "50" });
     if (cursor)
       params.set("cursor", cursor);
-    const res = await fetch(`${CF_API_BASE2}/accounts/${accountId}/d1/database?${params}`, {
+    const res = await fetch(`${CF_API_BASE}/accounts/${accountId}/d1/database?${params}`, {
       method: "GET",
-      headers: cfHeaders2(apiToken)
+      headers: cfHeaders(apiToken)
     });
     const data = await res.json();
     if (!data.success) {
@@ -1276,15 +689,15 @@ async function listAllSiteDatabases(env) {
   } while (cursor);
   return databases.filter((db) => db.name.startsWith("site-"));
 }
-var CF_API_BASE2;
+var CF_API_BASE;
 var init_d1_manager = __esm({
   "utils/d1-manager.js"() {
     init_checked_fetch();
     init_strip_cf_connecting_ip_header();
     init_modules_watch_stub();
-    CF_API_BASE2 = "https://api.cloudflare.com/client/v4";
+    CF_API_BASE = "https://api.cloudflare.com/client/v4";
     __name(getCredentials, "getCredentials");
-    __name(cfHeaders2, "cfHeaders");
+    __name(cfHeaders, "cfHeaders");
     __name(createDatabase, "createDatabase");
     __name(deleteDatabase, "deleteDatabase");
     __name(getDatabaseSize, "getDatabaseSize");
@@ -1738,12 +1151,641 @@ var init_usage_tracker = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-hQYk4Z/middleware-loader.entry.ts
+// workers/storefront/site-admin-worker.js
+var site_admin_worker_exports = {};
+__export(site_admin_worker_exports, {
+  handleSiteAdmin: () => handleSiteAdmin,
+  validateSiteAdmin: () => validateSiteAdmin
+});
+async function handleSiteAdmin(request, env, path) {
+  const corsResponse = handleCORS(request);
+  if (corsResponse)
+    return corsResponse;
+  const pathParts = path.split("/").filter(Boolean);
+  const action = pathParts[2];
+  switch (action) {
+    case "verify":
+      return verifySiteAdminCode(request, env);
+    case "validate":
+      return validateSiteAdminToken(request, env);
+    case "set-code":
+      return setSiteAdminCode(request, env);
+    case "auto-login":
+      return autoLoginSiteAdmin(request, env);
+    case "seo":
+      return handleSEO(request, env, pathParts);
+    default:
+      return errorResponse("Site admin endpoint not found", 404);
+  }
+}
+async function verifySiteAdminCode(request, env) {
+  if (request.method !== "POST") {
+    return errorResponse("Method not allowed", 405);
+  }
+  try {
+    const { siteId, subdomain, verificationCode } = await request.json();
+    if (!verificationCode) {
+      return errorResponse("Verification code is required");
+    }
+    if (!siteId && !subdomain) {
+      return errorResponse("Site ID or subdomain is required");
+    }
+    let site;
+    if (siteId) {
+      site = await env.DB.prepare(
+        "SELECT id, subdomain, brand_name, settings FROM sites WHERE id = ? AND is_active = 1"
+      ).bind(siteId).first();
+    } else {
+      site = await env.DB.prepare(
+        "SELECT id, subdomain, brand_name, settings FROM sites WHERE LOWER(subdomain) = LOWER(?) AND is_active = 1"
+      ).bind(subdomain).first();
+    }
+    if (!site) {
+      return errorResponse("Site not found", 404);
+    }
+    let settings = {};
+    try {
+      if (site.settings)
+        settings = JSON.parse(site.settings);
+    } catch (e) {
+    }
+    const storedCode = settings.adminVerificationCode;
+    if (!storedCode) {
+      return errorResponse("Admin verification code not set for this site. Please set it from your dashboard.", 400);
+    }
+    if (verificationCode !== storedCode) {
+      return errorResponse("Invalid verification code", 401);
+    }
+    const adminToken = generateToken(32);
+    const expiresAt = /* @__PURE__ */ new Date();
+    expiresAt.setHours(expiresAt.getHours() + 24);
+    await ensureSiteAdminSessionsTable(env);
+    await env.DB.prepare(
+      `INSERT INTO site_admin_sessions (id, site_id, token, expires_at, created_at)
+       VALUES (?, ?, ?, ?, datetime('now'))`
+    ).bind(generateId(), site.id, adminToken, expiresAt.toISOString()).run();
+    return successResponse({
+      token: adminToken,
+      siteId: site.id,
+      subdomain: site.subdomain,
+      brandName: site.brand_name,
+      expiresAt: expiresAt.toISOString()
+    }, "Admin access granted");
+  } catch (error) {
+    console.error("Verify site admin code error:", error);
+    return errorResponse("Verification failed", 500);
+  }
+}
+async function validateSiteAdminToken(request, env) {
+  if (request.method !== "POST") {
+    return errorResponse("Method not allowed", 405);
+  }
+  try {
+    const { token, siteId } = await request.json();
+    if (!token || !siteId) {
+      return errorResponse("Token and site ID are required");
+    }
+    await ensureSiteAdminSessionsTable(env);
+    const session = await env.DB.prepare(
+      `SELECT id, site_id, expires_at FROM site_admin_sessions 
+       WHERE token = ? AND site_id = ? AND expires_at > datetime('now')`
+    ).bind(token, siteId).first();
+    if (!session) {
+      return errorResponse("Invalid or expired admin token", 401);
+    }
+    return successResponse({ valid: true, siteId: session.site_id }, "Token is valid");
+  } catch (error) {
+    console.error("Validate site admin token error:", error);
+    return errorResponse("Validation failed", 500);
+  }
+}
+async function setSiteAdminCode(request, env) {
+  if (request.method !== "POST") {
+    return errorResponse("Method not allowed", 405);
+  }
+  try {
+    const { siteId, verificationCode } = await request.json();
+    if (!siteId || !verificationCode) {
+      return errorResponse("Site ID and verification code are required");
+    }
+    if (verificationCode.length < 4 || verificationCode.length > 20) {
+      return errorResponse("Verification code must be between 4 and 20 characters");
+    }
+    const user = await validateAuth(request, env);
+    let site = null;
+    if (user) {
+      site = await env.DB.prepare(
+        "SELECT id, settings FROM sites WHERE id = ? AND user_id = ?"
+      ).bind(siteId, user.id).first();
+    }
+    if (!site) {
+      const siteAdmin = await validateSiteAdmin(request, env, siteId);
+      if (siteAdmin) {
+        site = await env.DB.prepare(
+          "SELECT id, settings FROM sites WHERE id = ?"
+        ).bind(siteId).first();
+      }
+    }
+    if (!site) {
+      return errorResponse("Site not found or unauthorized", 404);
+    }
+    let settings = {};
+    try {
+      if (site.settings)
+        settings = JSON.parse(site.settings);
+    } catch (e) {
+    }
+    settings.adminVerificationCode = verificationCode;
+    await env.DB.prepare(
+      `UPDATE sites SET settings = ?, updated_at = datetime('now') WHERE id = ?`
+    ).bind(JSON.stringify(settings), siteId).run();
+    return successResponse(null, "Admin verification code set successfully");
+  } catch (error) {
+    console.error("Set site admin code error:", error);
+    return errorResponse("Failed to set verification code", 500);
+  }
+}
+async function autoLoginSiteAdmin(request, env) {
+  if (request.method !== "POST") {
+    return errorResponse("Method not allowed", 405);
+  }
+  try {
+    const user = await validateAuth(request, env);
+    if (!user) {
+      return errorResponse("Unauthorized", 401);
+    }
+    const { siteId } = await request.json();
+    if (!siteId) {
+      return errorResponse("Site ID is required");
+    }
+    const site = await env.DB.prepare(
+      "SELECT id, subdomain, brand_name FROM sites WHERE id = ? AND user_id = ?"
+    ).bind(siteId, user.id).first();
+    if (!site) {
+      return errorResponse("Site not found or unauthorized", 404);
+    }
+    const adminToken = generateToken(32);
+    const expiresAt = /* @__PURE__ */ new Date();
+    expiresAt.setHours(expiresAt.getHours() + 24);
+    await ensureSiteAdminSessionsTable(env);
+    await env.DB.prepare(
+      `INSERT INTO site_admin_sessions (id, site_id, token, expires_at, created_at)
+       VALUES (?, ?, ?, ?, datetime('now'))`
+    ).bind(generateId(), site.id, adminToken, expiresAt.toISOString()).run();
+    return successResponse({
+      token: adminToken,
+      siteId: site.id,
+      subdomain: site.subdomain,
+      brandName: site.brand_name,
+      expiresAt: expiresAt.toISOString()
+    }, "Auto-login token generated");
+  } catch (error) {
+    console.error("Auto-login site admin error:", error);
+    return errorResponse("Auto-login failed", 500);
+  }
+}
+async function ensureSiteAdminSessionsTable(env) {
+  try {
+    await env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS site_admin_sessions (
+        id TEXT PRIMARY KEY,
+        site_id TEXT NOT NULL,
+        token TEXT NOT NULL,
+        expires_at TEXT NOT NULL,
+        created_at TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
+      )
+    `).run();
+    await env.DB.prepare(
+      "CREATE INDEX IF NOT EXISTS idx_site_admin_sessions_token ON site_admin_sessions(token)"
+    ).run();
+    await env.DB.prepare(
+      "CREATE INDEX IF NOT EXISTS idx_site_admin_sessions_site ON site_admin_sessions(site_id)"
+    ).run();
+  } catch (error) {
+    console.error("Error ensuring site_admin_sessions table:", error);
+  }
+}
+async function handleSEO(request, env, pathParts) {
+  const subResource = pathParts[3];
+  const resourceId = pathParts[4];
+  if (!subResource) {
+    if (request.method === "GET")
+      return getSiteSEO(request, env);
+    if (request.method === "PUT")
+      return saveSiteSEO(request, env);
+  }
+  if (subResource === "categories") {
+    if (request.method === "GET")
+      return getCategoriesSEO(request, env);
+    if (request.method === "PUT" && resourceId)
+      return saveCategorySEO(request, env, resourceId);
+  }
+  if (subResource === "products") {
+    if (request.method === "GET")
+      return getProductsSEO(request, env);
+    if (request.method === "PUT" && resourceId)
+      return saveProductSEO(request, env, resourceId);
+  }
+  if (subResource === "pages") {
+    if (request.method === "GET")
+      return getPagesSEO(request, env);
+    if (request.method === "PUT" && resourceId)
+      return savePageSEO(request, env, resourceId);
+  }
+  if (subResource === "social") {
+    if (request.method === "GET")
+      return getSocialTags(request, env);
+    if (request.method === "PUT")
+      return saveSocialTags(request, env);
+  }
+  return errorResponse("SEO endpoint not found", 404);
+}
+async function getSiteSEO(request, env) {
+  try {
+    const url = new URL(request.url);
+    const siteId = url.searchParams.get("siteId");
+    if (!siteId)
+      return errorResponse("siteId is required");
+    const admin = await validateSiteAdmin(request, env, siteId);
+    if (!admin)
+      return errorResponse("Unauthorized", 401);
+    const site = await env.DB.prepare(
+      `SELECT seo_title, seo_description, seo_og_image, seo_robots, google_verification, favicon_url FROM sites WHERE id = ?`
+    ).bind(siteId).first();
+    return jsonResponse({ success: true, data: site || {} });
+  } catch (err) {
+    console.error("getSiteSEO error:", err);
+    return errorResponse("Failed to fetch SEO settings", 500);
+  }
+}
+async function saveSiteSEO(request, env) {
+  try {
+    const { siteId, seo_title, seo_description, seo_og_image, seo_robots, google_verification, favicon_url } = await request.json();
+    if (!siteId)
+      return errorResponse("siteId is required");
+    const admin = await validateSiteAdmin(request, env, siteId);
+    if (!admin)
+      return errorResponse("Unauthorized", 401);
+    await env.DB.prepare(
+      `UPDATE sites SET
+        seo_title = ?, seo_description = ?, seo_og_image = ?,
+        seo_robots = ?, google_verification = ?, favicon_url = ?,
+        updated_at = datetime('now')
+       WHERE id = ?`
+    ).bind(
+      seo_title || null,
+      seo_description || null,
+      seo_og_image || null,
+      seo_robots || "index, follow",
+      google_verification || null,
+      favicon_url || null,
+      siteId
+    ).run();
+    return jsonResponse({ success: true, message: "SEO settings saved" });
+  } catch (err) {
+    console.error("saveSiteSEO error:", err);
+    return errorResponse("Failed to save SEO settings", 500);
+  }
+}
+async function getCategoriesSEO(request, env) {
+  try {
+    const url = new URL(request.url);
+    const siteId = url.searchParams.get("siteId");
+    if (!siteId)
+      return errorResponse("siteId is required");
+    const admin = await validateSiteAdmin(request, env, siteId);
+    if (!admin)
+      return errorResponse("Unauthorized", 401);
+    const db = await resolveSiteDBById(env, siteId);
+    const result = await db.prepare(
+      `SELECT id, name, slug, description, image_url, seo_title, seo_description, seo_og_image
+       FROM categories WHERE site_id = ? AND is_active = 1 ORDER BY display_order ASC`
+    ).bind(siteId).all();
+    return jsonResponse({ success: true, data: result.results || [] });
+  } catch (err) {
+    console.error("getCategoriesSEO error:", err);
+    return errorResponse("Failed to fetch categories", 500);
+  }
+}
+async function saveCategorySEO(request, env, categoryId) {
+  try {
+    const { siteId, seo_title, seo_description, seo_og_image } = await request.json();
+    if (!siteId)
+      return errorResponse("siteId is required");
+    const admin = await validateSiteAdmin(request, env, siteId);
+    if (!admin)
+      return errorResponse("Unauthorized", 401);
+    if (await checkMigrationLock(env, siteId)) {
+      return errorResponse("Site is currently being migrated. Please try again shortly.", 423);
+    }
+    const db = await resolveSiteDBById(env, siteId);
+    const oldRow = await db.prepare(
+      "SELECT row_size_bytes FROM categories WHERE id = ? AND site_id = ?"
+    ).bind(categoryId, siteId).first();
+    const oldBytes = oldRow?.row_size_bytes || 0;
+    await db.prepare(
+      `UPDATE categories SET
+        seo_title = ?, seo_description = ?, seo_og_image = ?,
+        updated_at = datetime('now')
+       WHERE id = ? AND site_id = ?`
+    ).bind(seo_title || null, seo_description || null, seo_og_image || null, categoryId, siteId).run();
+    const updatedRow = await db.prepare(
+      "SELECT * FROM categories WHERE id = ? AND site_id = ?"
+    ).bind(categoryId, siteId).first();
+    if (updatedRow) {
+      const newBytes = estimateRowBytes(updatedRow);
+      await db.prepare("UPDATE categories SET row_size_bytes = ? WHERE id = ?").bind(newBytes, categoryId).run();
+      await trackD1Update(env, siteId, oldBytes, newBytes);
+    }
+    return jsonResponse({ success: true, message: "Category SEO saved" });
+  } catch (err) {
+    console.error("saveCategorySEO error:", err);
+    return errorResponse("Failed to save category SEO", 500);
+  }
+}
+async function getProductsSEO(request, env) {
+  try {
+    const url = new URL(request.url);
+    const siteId = url.searchParams.get("siteId");
+    if (!siteId)
+      return errorResponse("siteId is required");
+    const admin = await validateSiteAdmin(request, env, siteId);
+    if (!admin)
+      return errorResponse("Unauthorized", 401);
+    const db = await resolveSiteDBById(env, siteId);
+    const result = await db.prepare(
+      `SELECT id, name, slug, short_description, description, thumbnail_url, images, price, seo_title, seo_description, seo_og_image
+       FROM products WHERE site_id = ? AND is_active = 1 ORDER BY created_at DESC`
+    ).bind(siteId).all();
+    const products = (result.results || []).map((p) => {
+      if (!p.thumbnail_url && p.images) {
+        try {
+          const imgs = JSON.parse(p.images);
+          if (Array.isArray(imgs) && imgs.length > 0) {
+            p.thumbnail_url = imgs[0];
+          }
+        } catch {
+        }
+      }
+      return p;
+    });
+    return jsonResponse({ success: true, data: products });
+  } catch (err) {
+    console.error("getProductsSEO error:", err);
+    return errorResponse("Failed to fetch products", 500);
+  }
+}
+async function saveProductSEO(request, env, productId) {
+  try {
+    const { siteId, seo_title, seo_description, seo_og_image } = await request.json();
+    if (!siteId)
+      return errorResponse("siteId is required");
+    const admin = await validateSiteAdmin(request, env, siteId);
+    if (!admin)
+      return errorResponse("Unauthorized", 401);
+    if (await checkMigrationLock(env, siteId)) {
+      return errorResponse("Site is currently being migrated. Please try again shortly.", 423);
+    }
+    const db = await resolveSiteDBById(env, siteId);
+    const oldRow = await db.prepare(
+      "SELECT row_size_bytes FROM products WHERE id = ? AND site_id = ?"
+    ).bind(productId, siteId).first();
+    const oldBytes = oldRow?.row_size_bytes || 0;
+    await db.prepare(
+      `UPDATE products SET
+        seo_title = ?, seo_description = ?, seo_og_image = ?,
+        updated_at = datetime('now')
+       WHERE id = ? AND site_id = ?`
+    ).bind(seo_title || null, seo_description || null, seo_og_image || null, productId, siteId).run();
+    const updatedRow = await db.prepare(
+      "SELECT * FROM products WHERE id = ? AND site_id = ?"
+    ).bind(productId, siteId).first();
+    if (updatedRow) {
+      const newBytes = estimateRowBytes(updatedRow);
+      await db.prepare("UPDATE products SET row_size_bytes = ? WHERE id = ?").bind(newBytes, productId).run();
+      await trackD1Update(env, siteId, oldBytes, newBytes);
+    }
+    return jsonResponse({ success: true, message: "Product SEO saved" });
+  } catch (err) {
+    console.error("saveProductSEO error:", err);
+    return errorResponse("Failed to save product SEO", 500);
+  }
+}
+async function getPagesSEO(request, env) {
+  try {
+    const url = new URL(request.url);
+    const siteId = url.searchParams.get("siteId");
+    if (!siteId)
+      return errorResponse("siteId is required");
+    const admin = await validateSiteAdmin(request, env, siteId);
+    if (!admin)
+      return errorResponse("Unauthorized", 401);
+    const db = await resolveSiteDBById(env, siteId);
+    const result = await db.prepare(
+      `SELECT id, page_type, seo_title, seo_description, seo_og_image
+       FROM page_seo WHERE site_id = ? ORDER BY page_type ASC`
+    ).bind(siteId).all();
+    const existing = result.results || [];
+    const pages = PAGE_TYPES.map((pt) => {
+      const found = existing.find((e) => e.page_type === pt);
+      return found || { id: null, page_type: pt, seo_title: "", seo_description: "", seo_og_image: "" };
+    });
+    return jsonResponse({ success: true, data: pages });
+  } catch (err) {
+    console.error("getPagesSEO error:", err);
+    return errorResponse("Failed to fetch page SEO", 500);
+  }
+}
+async function savePageSEO(request, env, pageType) {
+  try {
+    const { siteId, seo_title, seo_description, seo_og_image } = await request.json();
+    if (!siteId)
+      return errorResponse("siteId is required");
+    if (!PAGE_TYPES.includes(pageType))
+      return errorResponse("Invalid page type");
+    const admin = await validateSiteAdmin(request, env, siteId);
+    if (!admin)
+      return errorResponse("Unauthorized", 401);
+    if (await checkMigrationLock(env, siteId)) {
+      return errorResponse("Site is currently being migrated. Please try again shortly.", 423);
+    }
+    const db = await resolveSiteDBById(env, siteId);
+    const existing = await db.prepare(
+      `SELECT id, row_size_bytes FROM page_seo WHERE site_id = ? AND page_type = ?`
+    ).bind(siteId, pageType).first();
+    if (existing) {
+      const oldBytes = existing.row_size_bytes || 0;
+      const newData = { id: existing.id, site_id: siteId, page_type: pageType, seo_title, seo_description, seo_og_image };
+      const newBytes = estimateRowBytes(newData);
+      await db.prepare(
+        `UPDATE page_seo SET
+          seo_title = ?, seo_description = ?, seo_og_image = ?,
+          row_size_bytes = ?,
+          updated_at = datetime('now')
+         WHERE id = ?`
+      ).bind(seo_title || null, seo_description || null, seo_og_image || null, newBytes, existing.id).run();
+      await trackD1Update(env, siteId, oldBytes, newBytes);
+    } else {
+      const id = crypto.randomUUID();
+      const rowData = { id, site_id: siteId, page_type: pageType, seo_title, seo_description, seo_og_image };
+      const rowBytes = estimateRowBytes(rowData);
+      await db.prepare(
+        `INSERT INTO page_seo (id, site_id, page_type, seo_title, seo_description, seo_og_image, row_size_bytes)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`
+      ).bind(id, siteId, pageType, seo_title || null, seo_description || null, seo_og_image || null, rowBytes).run();
+      await trackD1Write(env, siteId, rowBytes);
+    }
+    return jsonResponse({ success: true, message: "Page SEO saved" });
+  } catch (err) {
+    console.error("savePageSEO error:", err);
+    return errorResponse("Failed to save page SEO", 500);
+  }
+}
+async function getSocialTags(request, env) {
+  try {
+    const url = new URL(request.url);
+    const siteId = url.searchParams.get("siteId");
+    if (!siteId)
+      return errorResponse("siteId is required");
+    const admin = await validateSiteAdmin(request, env, siteId);
+    if (!admin)
+      return errorResponse("Unauthorized", 401);
+    const site = await env.DB.prepare(
+      `SELECT seo_title, seo_description, seo_og_image,
+              og_title, og_description, og_image, og_type,
+              twitter_card, twitter_title, twitter_description, twitter_image, twitter_site
+       FROM sites WHERE id = ?`
+    ).bind(siteId).first();
+    const data = {
+      og_title: site?.og_title || "",
+      og_description: site?.og_description || "",
+      og_image: site?.og_image || "",
+      og_type: site?.og_type || "website",
+      twitter_card: site?.twitter_card || "summary_large_image",
+      twitter_title: site?.twitter_title || "",
+      twitter_description: site?.twitter_description || "",
+      twitter_image: site?.twitter_image || "",
+      twitter_site: site?.twitter_site || "",
+      defaults: {
+        title: site?.seo_title || "",
+        description: site?.seo_description || "",
+        image: site?.seo_og_image || ""
+      }
+    };
+    return jsonResponse({ success: true, data });
+  } catch (err) {
+    console.error("getSocialTags error:", err);
+    return errorResponse("Failed to fetch social tags", 500);
+  }
+}
+async function saveSocialTags(request, env) {
+  try {
+    const {
+      siteId,
+      og_title,
+      og_description,
+      og_image,
+      og_type,
+      twitter_card,
+      twitter_title,
+      twitter_description,
+      twitter_image,
+      twitter_site
+    } = await request.json();
+    if (!siteId)
+      return errorResponse("siteId is required");
+    const admin = await validateSiteAdmin(request, env, siteId);
+    if (!admin)
+      return errorResponse("Unauthorized", 401);
+    await env.DB.prepare(
+      `UPDATE sites SET
+        og_title = ?, og_description = ?, og_image = ?, og_type = ?,
+        twitter_card = ?, twitter_title = ?, twitter_description = ?, twitter_image = ?, twitter_site = ?,
+        updated_at = datetime('now')
+       WHERE id = ?`
+    ).bind(
+      og_title || null,
+      og_description || null,
+      og_image || null,
+      og_type || "website",
+      twitter_card || "summary_large_image",
+      twitter_title || null,
+      twitter_description || null,
+      twitter_image || null,
+      twitter_site || null,
+      siteId
+    ).run();
+    return jsonResponse({ success: true, message: "Social media tags saved" });
+  } catch (err) {
+    console.error("saveSocialTags error:", err);
+    return errorResponse("Failed to save social tags", 500);
+  }
+}
+async function validateSiteAdmin(request, env, siteId) {
+  const user = await validateAuth(request, env);
+  if (user) {
+    const site = await env.DB.prepare(
+      "SELECT id FROM sites WHERE id = ? AND user_id = ?"
+    ).bind(siteId, user.id).first();
+    if (site)
+      return { type: "owner", userId: user.id };
+  }
+  const authHeader = request.headers.get("Authorization");
+  if (authHeader && authHeader.startsWith("SiteAdmin ")) {
+    const token = authHeader.substring(10);
+    try {
+      await ensureSiteAdminSessionsTable(env);
+      const session = await env.DB.prepare(
+        `SELECT id, site_id FROM site_admin_sessions 
+         WHERE token = ? AND site_id = ? AND expires_at > datetime('now')`
+      ).bind(token, siteId).first();
+      if (session)
+        return { type: "site-admin", siteId: session.site_id };
+    } catch (error) {
+      console.error("Site admin validation error:", error);
+    }
+  }
+  return null;
+}
+var PAGE_TYPES;
+var init_site_admin_worker = __esm({
+  "workers/storefront/site-admin-worker.js"() {
+    init_checked_fetch();
+    init_strip_cf_connecting_ip_header();
+    init_modules_watch_stub();
+    init_helpers();
+    init_auth();
+    init_site_db();
+    init_usage_tracker();
+    __name(handleSiteAdmin, "handleSiteAdmin");
+    __name(verifySiteAdminCode, "verifySiteAdminCode");
+    __name(validateSiteAdminToken, "validateSiteAdminToken");
+    __name(setSiteAdminCode, "setSiteAdminCode");
+    __name(autoLoginSiteAdmin, "autoLoginSiteAdmin");
+    __name(ensureSiteAdminSessionsTable, "ensureSiteAdminSessionsTable");
+    __name(handleSEO, "handleSEO");
+    __name(getSiteSEO, "getSiteSEO");
+    __name(saveSiteSEO, "saveSiteSEO");
+    __name(getCategoriesSEO, "getCategoriesSEO");
+    __name(saveCategorySEO, "saveCategorySEO");
+    __name(getProductsSEO, "getProductsSEO");
+    __name(saveProductSEO, "saveProductSEO");
+    PAGE_TYPES = ["home", "about", "contact", "privacy", "terms"];
+    __name(getPagesSEO, "getPagesSEO");
+    __name(savePageSEO, "savePageSEO");
+    __name(getSocialTags, "getSocialTags");
+    __name(saveSocialTags, "saveSocialTags");
+    __name(validateSiteAdmin, "validateSiteAdmin");
+  }
+});
+
+// .wrangler/tmp/bundle-atS21X/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-hQYk4Z/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-atS21X/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -2988,14 +3030,14 @@ init_site_admin_worker();
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
-var CF_API_BASE = "https://api.cloudflare.com/client/v4";
-function cfHeaders(apiToken) {
+var CF_API_BASE2 = "https://api.cloudflare.com/client/v4";
+function cfHeaders2(apiToken) {
   return {
     "Authorization": `Bearer ${apiToken}`,
     "Content-Type": "application/json"
   };
 }
-__name(cfHeaders, "cfHeaders");
+__name(cfHeaders2, "cfHeaders");
 async function registerCustomHostname(env, hostname) {
   const token = env.CF_API_TOKEN;
   const zoneId = env.CF_ZONE_ID;
@@ -3003,9 +3045,9 @@ async function registerCustomHostname(env, hostname) {
     console.warn("CF_API_TOKEN or CF_ZONE_ID not configured \u2014 skipping Cloudflare hostname registration");
     return { success: false, reason: "not_configured" };
   }
-  const res = await fetch(`${CF_API_BASE}/zones/${zoneId}/custom_hostnames`, {
+  const res = await fetch(`${CF_API_BASE2}/zones/${zoneId}/custom_hostnames`, {
     method: "POST",
-    headers: cfHeaders(token),
+    headers: cfHeaders2(token),
     body: JSON.stringify({
       hostname,
       ssl: {
@@ -3037,8 +3079,8 @@ async function findCustomHostname(env, hostname) {
   if (!token || !zoneId)
     return { success: false, reason: "not_configured" };
   const res = await fetch(
-    `${CF_API_BASE}/zones/${zoneId}/custom_hostnames?hostname=${encodeURIComponent(hostname)}`,
-    { headers: cfHeaders(token) }
+    `${CF_API_BASE2}/zones/${zoneId}/custom_hostnames?hostname=${encodeURIComponent(hostname)}`,
+    { headers: cfHeaders2(token) }
   );
   const data = await res.json();
   if (!res.ok || !data.result?.length) {
@@ -3058,8 +3100,8 @@ async function deleteCustomHostname(env, cfHostnameId) {
     return { success: false, reason: "no_id" };
   }
   const res = await fetch(
-    `${CF_API_BASE}/zones/${zoneId}/custom_hostnames/${cfHostnameId}`,
-    { method: "DELETE", headers: cfHeaders(token) }
+    `${CF_API_BASE2}/zones/${zoneId}/custom_hostnames/${cfHostnameId}`,
+    { method: "DELETE", headers: cfHeaders2(token) }
   );
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
@@ -10910,7 +10952,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-hQYk4Z/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-atS21X/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -10945,7 +10987,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-hQYk4Z/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-atS21X/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

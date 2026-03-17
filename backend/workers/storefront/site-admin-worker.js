@@ -1,6 +1,7 @@
 import { generateId, generateToken, jsonResponse, errorResponse, successResponse, handleCORS } from '../../utils/helpers.js';
 import { validateAuth } from '../../utils/auth.js';
-import { resolveSiteDBById } from '../../utils/site-db.js';
+import { resolveSiteDBById, checkMigrationLock } from '../../utils/site-db.js';
+import { estimateRowBytes, trackD1Write, trackD1Update } from '../../utils/usage-tracker.js';
 
 export async function handleSiteAdmin(request, env, path) {
   const corsResponse = handleCORS(request);
@@ -371,13 +372,32 @@ async function saveCategorySEO(request, env, categoryId) {
     const admin = await validateSiteAdmin(request, env, siteId);
     if (!admin) return errorResponse('Unauthorized', 401);
 
+    if (await checkMigrationLock(env, siteId)) {
+      return errorResponse('Site is currently being migrated. Please try again shortly.', 423);
+    }
+
     const db = await resolveSiteDBById(env, siteId);
+
+    const oldRow = await db.prepare(
+      'SELECT row_size_bytes FROM categories WHERE id = ? AND site_id = ?'
+    ).bind(categoryId, siteId).first();
+    const oldBytes = oldRow?.row_size_bytes || 0;
+
     await db.prepare(
       `UPDATE categories SET
         seo_title = ?, seo_description = ?, seo_og_image = ?,
         updated_at = datetime('now')
        WHERE id = ? AND site_id = ?`
     ).bind(seo_title || null, seo_description || null, seo_og_image || null, categoryId, siteId).run();
+
+    const updatedRow = await db.prepare(
+      'SELECT * FROM categories WHERE id = ? AND site_id = ?'
+    ).bind(categoryId, siteId).first();
+    if (updatedRow) {
+      const newBytes = estimateRowBytes(updatedRow);
+      await db.prepare('UPDATE categories SET row_size_bytes = ? WHERE id = ?').bind(newBytes, categoryId).run();
+      await trackD1Update(env, siteId, oldBytes, newBytes);
+    }
 
     return jsonResponse({ success: true, message: 'Category SEO saved' });
   } catch (err) {
@@ -428,13 +448,32 @@ async function saveProductSEO(request, env, productId) {
     const admin = await validateSiteAdmin(request, env, siteId);
     if (!admin) return errorResponse('Unauthorized', 401);
 
+    if (await checkMigrationLock(env, siteId)) {
+      return errorResponse('Site is currently being migrated. Please try again shortly.', 423);
+    }
+
     const db = await resolveSiteDBById(env, siteId);
+
+    const oldRow = await db.prepare(
+      'SELECT row_size_bytes FROM products WHERE id = ? AND site_id = ?'
+    ).bind(productId, siteId).first();
+    const oldBytes = oldRow?.row_size_bytes || 0;
+
     await db.prepare(
       `UPDATE products SET
         seo_title = ?, seo_description = ?, seo_og_image = ?,
         updated_at = datetime('now')
        WHERE id = ? AND site_id = ?`
     ).bind(seo_title || null, seo_description || null, seo_og_image || null, productId, siteId).run();
+
+    const updatedRow = await db.prepare(
+      'SELECT * FROM products WHERE id = ? AND site_id = ?'
+    ).bind(productId, siteId).first();
+    if (updatedRow) {
+      const newBytes = estimateRowBytes(updatedRow);
+      await db.prepare('UPDATE products SET row_size_bytes = ? WHERE id = ?').bind(newBytes, productId).run();
+      await trackD1Update(env, siteId, oldBytes, newBytes);
+    }
 
     return jsonResponse({ success: true, message: 'Product SEO saved' });
   } catch (err) {
@@ -482,24 +521,40 @@ async function savePageSEO(request, env, pageType) {
     const admin = await validateSiteAdmin(request, env, siteId);
     if (!admin) return errorResponse('Unauthorized', 401);
 
+    if (await checkMigrationLock(env, siteId)) {
+      return errorResponse('Site is currently being migrated. Please try again shortly.', 423);
+    }
+
     const db = await resolveSiteDBById(env, siteId);
     const existing = await db.prepare(
-      `SELECT id FROM page_seo WHERE site_id = ? AND page_type = ?`
+      `SELECT id, row_size_bytes FROM page_seo WHERE site_id = ? AND page_type = ?`
     ).bind(siteId, pageType).first();
 
     if (existing) {
+      const oldBytes = existing.row_size_bytes || 0;
+      const newData = { id: existing.id, site_id: siteId, page_type: pageType, seo_title, seo_description, seo_og_image };
+      const newBytes = estimateRowBytes(newData);
+
       await db.prepare(
         `UPDATE page_seo SET
           seo_title = ?, seo_description = ?, seo_og_image = ?,
+          row_size_bytes = ?,
           updated_at = datetime('now')
          WHERE id = ?`
-      ).bind(seo_title || null, seo_description || null, seo_og_image || null, existing.id).run();
+      ).bind(seo_title || null, seo_description || null, seo_og_image || null, newBytes, existing.id).run();
+
+      await trackD1Update(env, siteId, oldBytes, newBytes);
     } else {
       const id = crypto.randomUUID();
+      const rowData = { id, site_id: siteId, page_type: pageType, seo_title, seo_description, seo_og_image };
+      const rowBytes = estimateRowBytes(rowData);
+
       await db.prepare(
-        `INSERT INTO page_seo (id, site_id, page_type, seo_title, seo_description, seo_og_image)
-         VALUES (?, ?, ?, ?, ?, ?)`
-      ).bind(id, siteId, pageType, seo_title || null, seo_description || null, seo_og_image || null).run();
+        `INSERT INTO page_seo (id, site_id, page_type, seo_title, seo_description, seo_og_image, row_size_bytes)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`
+      ).bind(id, siteId, pageType, seo_title || null, seo_description || null, seo_og_image || null, rowBytes).run();
+
+      await trackD1Write(env, siteId, rowBytes);
     }
 
     return jsonResponse({ success: true, message: 'Page SEO saved' });
