@@ -43,8 +43,15 @@ export async function handleProducts(request, env, path) {
 
       if (!siteId && (method === 'PUT' || method === 'DELETE') && productId) {
         try {
-          const prod = await env.DB.prepare('SELECT site_id FROM products WHERE id = ?').bind(productId).first();
-          if (prod) siteId = prod.site_id;
+          const allSites = await env.DB.prepare('SELECT id FROM sites').all();
+          for (const s of (allSites.results || [])) {
+            const sdb = await resolveSiteDBById(env, s.id);
+            const prod = await sdb.prepare('SELECT site_id FROM products WHERE id = ?').bind(productId).first();
+            if (prod) {
+              siteId = prod.site_id;
+              break;
+            }
+          }
         } catch (e) {}
       }
 

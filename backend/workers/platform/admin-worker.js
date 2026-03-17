@@ -79,8 +79,13 @@ async function getAdminStats(env) {
 
     let totalOrders = 0;
     try {
-      const ordersCount = await env.DB.prepare('SELECT COUNT(*) as count FROM orders').first();
-      totalOrders = ordersCount?.count || 0;
+      for (const s of sites) {
+        try {
+          const sdb = await resolveSiteDBById(env, s.id);
+          const ordersCount = await sdb.prepare('SELECT COUNT(*) as count FROM orders WHERE site_id = ?').bind(s.id).first();
+          totalOrders += ordersCount?.count || 0;
+        } catch (e) {}
+      }
     } catch (e) {}
 
     const ownerUser = users.find(u => ADMIN_EMAILS.some(e => e.toLowerCase() === u.email?.toLowerCase())) || null;

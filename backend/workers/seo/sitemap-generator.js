@@ -1,3 +1,5 @@
+import { resolveSiteDBById } from '../../utils/site-db.js';
+
 export async function generateSitemap(env, site, baseUrl) {
   const urls = [];
 
@@ -19,8 +21,10 @@ export async function generateSitemap(env, site, baseUrl) {
     priority: '0.5',
   });
 
+  const db = await resolveSiteDBById(env, site.id);
+
   try {
-    const categories = await env.DB.prepare(
+    const categories = await db.prepare(
       `SELECT slug, updated_at FROM categories WHERE site_id = ? AND is_active = 1 ORDER BY display_order ASC`
     ).bind(site.id).all();
 
@@ -35,7 +39,7 @@ export async function generateSitemap(env, site, baseUrl) {
   } catch {}
 
   try {
-    const products = await env.DB.prepare(
+    const products = await db.prepare(
       `SELECT slug, updated_at FROM products WHERE site_id = ? AND is_active = 1 ORDER BY created_at DESC`
     ).bind(site.id).all();
 

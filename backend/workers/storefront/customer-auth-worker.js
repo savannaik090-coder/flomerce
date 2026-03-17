@@ -2,7 +2,7 @@ import { generateId, generateToken, getExpiryDate, validateEmail, sanitizeInput,
 import { hashPassword, verifyPassword } from '../../utils/auth.js';
 import { sendEmail } from '../../utils/email.js';
 import { estimateRowBytes, trackD1Write, trackD1Update, trackD1Delete } from '../../utils/usage-tracker.js';
-import { checkMigrationLock } from '../../utils/site-db.js';
+import { resolveSiteDBById, checkMigrationLock } from '../../utils/site-db.js';
 
 export async function handleCustomerAuth(request, env, path) {
   const corsResponse = handleCORS(request);
@@ -40,152 +40,6 @@ export async function handleCustomerAuth(request, env, path) {
   }
 }
 
-async function ensureCustomerTables(env) {
-  try {
-    await env.DB.prepare(`
-      CREATE TABLE IF NOT EXISTS site_customers (
-        id TEXT PRIMARY KEY,
-        site_id TEXT NOT NULL,
-        email TEXT NOT NULL,
-        password_hash TEXT NOT NULL,
-        name TEXT NOT NULL,
-        phone TEXT,
-        email_verified INTEGER DEFAULT 0,
-        created_at TEXT DEFAULT (datetime('now')),
-        updated_at TEXT DEFAULT (datetime('now')),
-        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
-        UNIQUE(site_id, email)
-      )
-    `).run();
-
-    await env.DB.prepare(
-      'CREATE INDEX IF NOT EXISTS idx_site_customers_site ON site_customers(site_id)'
-    ).run();
-    await env.DB.prepare(
-      'CREATE INDEX IF NOT EXISTS idx_site_customers_email ON site_customers(site_id, email)'
-    ).run();
-
-    await env.DB.prepare(`
-      CREATE TABLE IF NOT EXISTS site_customer_sessions (
-        id TEXT PRIMARY KEY,
-        customer_id TEXT NOT NULL,
-        site_id TEXT NOT NULL,
-        token TEXT NOT NULL,
-        expires_at TEXT NOT NULL,
-        created_at TEXT DEFAULT (datetime('now')),
-        FOREIGN KEY (customer_id) REFERENCES site_customers(id) ON DELETE CASCADE,
-        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
-      )
-    `).run();
-
-    await env.DB.prepare(
-      'CREATE INDEX IF NOT EXISTS idx_customer_sessions_token ON site_customer_sessions(token)'
-    ).run();
-    await env.DB.prepare(
-      'CREATE INDEX IF NOT EXISTS idx_customer_sessions_customer ON site_customer_sessions(customer_id)'
-    ).run();
-
-    await env.DB.prepare(`
-      CREATE TABLE IF NOT EXISTS customer_addresses (
-        id TEXT PRIMARY KEY,
-        site_id TEXT NOT NULL,
-        customer_id TEXT NOT NULL,
-        label TEXT DEFAULT 'Home',
-        first_name TEXT NOT NULL,
-        last_name TEXT,
-        phone TEXT,
-        house_number TEXT NOT NULL,
-        road_name TEXT,
-        city TEXT NOT NULL,
-        state TEXT NOT NULL,
-        pin_code TEXT NOT NULL,
-        is_default INTEGER DEFAULT 0,
-        created_at TEXT DEFAULT (datetime('now')),
-        updated_at TEXT DEFAULT (datetime('now')),
-        FOREIGN KEY (customer_id) REFERENCES site_customers(id) ON DELETE CASCADE,
-        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
-      )
-    `).run();
-
-    await env.DB.prepare(
-      'CREATE INDEX IF NOT EXISTS idx_customer_addresses_customer ON customer_addresses(customer_id)'
-    ).run();
-    await env.DB.prepare(
-      'CREATE INDEX IF NOT EXISTS idx_customer_addresses_site ON customer_addresses(site_id)'
-    ).run();
-
-    await env.DB.prepare(`
-      CREATE TABLE IF NOT EXISTS customer_password_resets (
-        id TEXT PRIMARY KEY,
-        site_id TEXT NOT NULL,
-        customer_id TEXT NOT NULL,
-        token TEXT NOT NULL UNIQUE,
-        expires_at TEXT NOT NULL,
-        used INTEGER DEFAULT 0,
-        created_at TEXT DEFAULT (datetime('now'))
-      )
-    `).run();
-
-    await env.DB.prepare(
-      'CREATE INDEX IF NOT EXISTS idx_customer_pw_reset_token ON customer_password_resets(token)'
-    ).run();
-
-    await env.DB.prepare(`
-      CREATE TABLE IF NOT EXISTS customer_email_verifications (
-        id TEXT PRIMARY KEY,
-        site_id TEXT NOT NULL,
-        customer_id TEXT NOT NULL,
-        token TEXT NOT NULL UNIQUE,
-        expires_at TEXT NOT NULL,
-        used INTEGER DEFAULT 0,
-        created_at TEXT DEFAULT (datetime('now'))
-      )
-    `).run();
-
-    await env.DB.prepare(
-      'CREATE INDEX IF NOT EXISTS idx_customer_email_verify_token ON customer_email_verifications(token)'
-    ).run();
-
-    try {
-      await env.DB.prepare(
-        'ALTER TABLE site_customers ADD COLUMN email_verified INTEGER DEFAULT 0'
-      ).run();
-    } catch (_) {}
-
-    try {
-      await env.DB.prepare(
-        'ALTER TABLE site_customers ADD COLUMN row_size_bytes INTEGER DEFAULT 0'
-      ).run();
-    } catch (_) {}
-
-    try {
-      await env.DB.prepare(
-        'ALTER TABLE customer_addresses ADD COLUMN row_size_bytes INTEGER DEFAULT 0'
-      ).run();
-    } catch (_) {}
-
-    try {
-      await env.DB.prepare(
-        'ALTER TABLE site_customer_sessions ADD COLUMN row_size_bytes INTEGER DEFAULT 0'
-      ).run();
-    } catch (_) {}
-
-    try {
-      await env.DB.prepare(
-        'ALTER TABLE customer_password_resets ADD COLUMN row_size_bytes INTEGER DEFAULT 0'
-      ).run();
-    } catch (_) {}
-
-    try {
-      await env.DB.prepare(
-        'ALTER TABLE customer_email_verifications ADD COLUMN row_size_bytes INTEGER DEFAULT 0'
-      ).run();
-    } catch (_) {}
-  } catch (error) {
-    console.error('Error ensuring customer tables:', error);
-  }
-}
-
 async function handleAddresses(request, env, addressId) {
   const customer = await validateCustomerAuth(request, env);
   if (!customer) {
@@ -209,7 +63,8 @@ async function handleAddresses(request, env, addressId) {
 
 async function getAddresses(env, customer) {
   try {
-    const { results } = await env.DB.prepare(
+    const db = await resolveSiteDBById(env, customer.site_id);
+    const { results } = await db.prepare(
       'SELECT * FROM customer_addresses WHERE customer_id = ? AND site_id = ? ORDER BY is_default DESC, created_at DESC'
     ).bind(customer.id, customer.site_id).all();
 
@@ -234,9 +89,10 @@ async function createAddress(request, env, customer) {
     }
 
     const id = generateId();
+    const db = await resolveSiteDBById(env, customer.site_id);
 
     if (isDefault) {
-      await env.DB.prepare(
+      await db.prepare(
         'UPDATE customer_addresses SET is_default = 0 WHERE customer_id = ? AND site_id = ?'
       ).bind(customer.id, customer.site_id).run();
     }
@@ -244,7 +100,7 @@ async function createAddress(request, env, customer) {
     const rowData = { id, site_id: customer.site_id, customer_id: customer.id, label, firstName, lastName, phone, houseNumber, roadName, city, state, pinCode };
     const rowBytes = estimateRowBytes(rowData);
 
-    await env.DB.prepare(
+    await db.prepare(
       `INSERT INTO customer_addresses (id, site_id, customer_id, label, first_name, last_name, phone, house_number, road_name, city, state, pin_code, is_default, row_size_bytes, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
     ).bind(
@@ -264,7 +120,7 @@ async function createAddress(request, env, customer) {
 
     await trackD1Write(env, customer.site_id, rowBytes);
 
-    const address = await env.DB.prepare(
+    const address = await db.prepare(
       'SELECT * FROM customer_addresses WHERE id = ?'
     ).bind(id).first();
 
@@ -281,7 +137,9 @@ async function updateAddress(request, env, customer, addressId) {
       return errorResponse('Site is currently being migrated. Please try again shortly.', 423);
     }
 
-    const existing = await env.DB.prepare(
+    const db = await resolveSiteDBById(env, customer.site_id);
+
+    const existing = await db.prepare(
       'SELECT * FROM customer_addresses WHERE id = ? AND customer_id = ? AND site_id = ?'
     ).bind(addressId, customer.id, customer.site_id).first();
 
@@ -293,7 +151,7 @@ async function updateAddress(request, env, customer, addressId) {
     const { label, firstName, lastName, phone, houseNumber, roadName, city, state, pinCode, isDefault } = body;
 
     if (isDefault) {
-      await env.DB.prepare(
+      await db.prepare(
         'UPDATE customer_addresses SET is_default = 0 WHERE customer_id = ? AND site_id = ?'
       ).bind(customer.id, customer.site_id).run();
     }
@@ -301,7 +159,7 @@ async function updateAddress(request, env, customer, addressId) {
     const oldBytes = existing.row_size_bytes || 0;
     const newBytes = estimateRowBytes(body);
 
-    await env.DB.prepare(
+    await db.prepare(
       `UPDATE customer_addresses SET
         label = COALESCE(?, label),
         first_name = COALESCE(?, first_name),
@@ -335,7 +193,7 @@ async function updateAddress(request, env, customer, addressId) {
 
     await trackD1Update(env, customer.site_id, oldBytes, newBytes);
 
-    const updated = await env.DB.prepare(
+    const updated = await db.prepare(
       'SELECT * FROM customer_addresses WHERE id = ?'
     ).bind(addressId).first();
 
@@ -348,7 +206,9 @@ async function updateAddress(request, env, customer, addressId) {
 
 async function deleteAddress(env, customer, addressId) {
   try {
-    const existing = await env.DB.prepare(
+    const db = await resolveSiteDBById(env, customer.site_id);
+
+    const existing = await db.prepare(
       'SELECT * FROM customer_addresses WHERE id = ? AND customer_id = ? AND site_id = ?'
     ).bind(addressId, customer.id, customer.site_id).first();
 
@@ -358,7 +218,7 @@ async function deleteAddress(env, customer, addressId) {
 
     const bytesToRemove = existing.row_size_bytes || 0;
 
-    await env.DB.prepare(
+    await db.prepare(
       'DELETE FROM customer_addresses WHERE id = ? AND customer_id = ? AND site_id = ?'
     ).bind(addressId, customer.id, customer.site_id).run();
 
@@ -387,7 +247,6 @@ async function handleSignup(request, env) {
   }
 
   try {
-    await ensureCustomerTables(env);
     const { siteId, name, email, password, phone } = await request.json();
 
     if (!siteId || !name || !email || !password) {
@@ -410,7 +269,9 @@ async function handleSignup(request, env) {
       return errorResponse('Store not found', 404);
     }
 
-    const existing = await env.DB.prepare(
+    const db = await resolveSiteDBById(env, siteId);
+
+    const existing = await db.prepare(
       'SELECT id FROM site_customers WHERE site_id = ? AND email = ?'
     ).bind(siteId, email.toLowerCase()).first();
 
@@ -437,7 +298,7 @@ async function handleSignup(request, env) {
 
     const skipVerification = env.SKIP_EMAIL_VERIFICATION === 'true';
 
-    await env.DB.prepare(
+    await db.prepare(
       `INSERT INTO site_customers (id, site_id, email, password_hash, name, phone, email_verified, row_size_bytes, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(customerId, siteId, email.toLowerCase(), passwordHash, sanitizeInput(name), phone || null, skipVerification ? 1 : 0, rowBytes).run();
@@ -450,7 +311,7 @@ async function handleSignup(request, env) {
       const verifyId = generateId();
       const verifyRowData = { id: verifyId, site_id: siteId, customer_id: customerId, token: verifyToken, expires_at: verifyExpiry };
       const verifyRowBytes = estimateRowBytes(verifyRowData);
-      await env.DB.prepare(
+      await db.prepare(
         `INSERT INTO customer_email_verifications (id, site_id, customer_id, token, expires_at, row_size_bytes)
          VALUES (?, ?, ?, ?, ?, ?)`
       ).bind(verifyId, siteId, customerId, verifyToken, verifyExpiry, verifyRowBytes).run();
@@ -480,7 +341,7 @@ async function handleSignup(request, env) {
     const sessRowData = { id: sessionId, customer_id: customerId, site_id: siteId, token, expires_at: expiresAt };
     const sessRowBytes = estimateRowBytes(sessRowData);
 
-    await env.DB.prepare(
+    await db.prepare(
       `INSERT INTO site_customer_sessions (id, customer_id, site_id, token, expires_at, row_size_bytes, created_at)
        VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(sessionId, customerId, siteId, token, expiresAt, sessRowBytes).run();
@@ -506,14 +367,15 @@ async function handleLogin(request, env) {
   }
 
   try {
-    await ensureCustomerTables(env);
     const { siteId, email, password } = await request.json();
 
     if (!siteId || !email || !password) {
       return errorResponse('Site ID, email and password are required');
     }
 
-    const customer = await env.DB.prepare(
+    const db = await resolveSiteDBById(env, siteId);
+
+    const customer = await db.prepare(
       'SELECT id, email, password_hash, name, phone, email_verified FROM site_customers WHERE site_id = ? AND email = ?'
     ).bind(siteId, email.toLowerCase()).first();
 
@@ -537,7 +399,7 @@ async function handleLogin(request, env) {
     const loginSessData = { id: sessionId, customer_id: customer.id, site_id: siteId, token, expires_at: expiresAt };
     const loginSessBytes = estimateRowBytes(loginSessData);
 
-    await env.DB.prepare(
+    await db.prepare(
       `INSERT INTO site_customer_sessions (id, customer_id, site_id, token, expires_at, row_size_bytes, created_at)
        VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(sessionId, customer.id, siteId, token, expiresAt, loginSessBytes).run();
@@ -569,10 +431,11 @@ async function handleLogout(request, env) {
       const authHeader = request.headers.get('Authorization');
       if (authHeader && authHeader.startsWith('SiteCustomer ')) {
         const token = authHeader.substring(13);
-        const sess = await env.DB.prepare(
+        const db = await resolveSiteDBById(env, customer.site_id);
+        const sess = await db.prepare(
           'SELECT row_size_bytes, site_id FROM site_customer_sessions WHERE token = ?'
         ).bind(token).first();
-        await env.DB.prepare(
+        await db.prepare(
           'DELETE FROM site_customer_sessions WHERE token = ?'
         ).bind(token).run();
         if (sess && sess.site_id) {
@@ -621,12 +484,14 @@ async function handleUpdateProfile(request, env) {
 
     const { name, phone } = await request.json();
 
-    const oldRow = await env.DB.prepare(
+    const db = await resolveSiteDBById(env, customer.site_id);
+
+    const oldRow = await db.prepare(
       'SELECT row_size_bytes FROM site_customers WHERE id = ?'
     ).bind(customer.id).first();
     const oldBytes = oldRow?.row_size_bytes || 0;
 
-    await env.DB.prepare(
+    await db.prepare(
       `UPDATE site_customers SET
         name = COALESCE(?, name),
         phone = COALESCE(?, phone),
@@ -634,13 +499,13 @@ async function handleUpdateProfile(request, env) {
        WHERE id = ?`
     ).bind(name ? sanitizeInput(name) : null, phone || null, customer.id).run();
 
-    const updated = await env.DB.prepare(
+    const updated = await db.prepare(
       'SELECT id, email, name, phone FROM site_customers WHERE id = ?'
     ).bind(customer.id).first();
 
     const newBytes = estimateRowBytes(updated || {});
     if (oldBytes !== newBytes) {
-      await env.DB.prepare(
+      await db.prepare(
         'UPDATE site_customers SET row_size_bytes = ? WHERE id = ?'
       ).bind(newBytes, customer.id).run();
       await trackD1Update(env, customer.site_id, oldBytes, newBytes);
@@ -658,14 +523,15 @@ async function handleRequestPasswordReset(request, env) {
   }
 
   try {
-    await ensureCustomerTables(env);
     const { siteId, email } = await request.json();
 
     if (!siteId || !email) {
       return errorResponse('Site ID and email are required');
     }
 
-    const customer = await env.DB.prepare(
+    const db = await resolveSiteDBById(env, siteId);
+
+    const customer = await db.prepare(
       'SELECT id, name FROM site_customers WHERE site_id = ? AND email = ?'
     ).bind(siteId, email.toLowerCase()).first();
 
@@ -677,10 +543,10 @@ async function handleRequestPasswordReset(request, env) {
       'SELECT id, brand_name, subdomain, custom_domain, domain_status FROM sites WHERE id = ?'
     ).bind(siteId).first();
 
-    const oldResets = await env.DB.prepare(
+    const oldResets = await db.prepare(
       'SELECT id, row_size_bytes FROM customer_password_resets WHERE customer_id = ? AND site_id = ? AND used = 0'
     ).bind(customer.id, siteId).all();
-    await env.DB.prepare(
+    await db.prepare(
       'UPDATE customer_password_resets SET used = 1 WHERE customer_id = ? AND site_id = ? AND used = 0'
     ).bind(customer.id, siteId).run();
 
@@ -690,7 +556,7 @@ async function handleRequestPasswordReset(request, env) {
     const resetRowData = { id: resetId, site_id: siteId, customer_id: customer.id, token: resetToken, expires_at: expiresAt };
     const resetRowBytes = estimateRowBytes(resetRowData);
 
-    await env.DB.prepare(
+    await db.prepare(
       `INSERT INTO customer_password_resets (id, site_id, customer_id, token, expires_at, row_size_bytes)
        VALUES (?, ?, ?, ?, ?, ?)`
     ).bind(resetId, siteId, customer.id, resetToken, expiresAt, resetRowBytes).run();
@@ -717,8 +583,7 @@ async function handleResetPassword(request, env) {
   }
 
   try {
-    await ensureCustomerTables(env);
-    const { token, email, password } = await request.json();
+    const { token, email, password, siteId } = await request.json();
 
     if (!token || !email || !password) {
       return errorResponse('Token, email and new password are required');
@@ -728,11 +593,34 @@ async function handleResetPassword(request, env) {
       return errorResponse('Password must be at least 8 characters');
     }
 
-    const resetRecord = await env.DB.prepare(
-      `SELECT pr.*, sc.email as customer_email FROM customer_password_resets pr
-       JOIN site_customers sc ON sc.id = pr.customer_id
-       WHERE pr.token = ? AND pr.used = 0 AND pr.expires_at > datetime('now')`
-    ).bind(token).first();
+    let db = null;
+    let resetRecord = null;
+
+    if (siteId) {
+      db = await resolveSiteDBById(env, siteId);
+      resetRecord = await db.prepare(
+        `SELECT pr.*, sc.email as customer_email FROM customer_password_resets pr
+         JOIN site_customers sc ON sc.id = pr.customer_id
+         WHERE pr.token = ? AND pr.used = 0 AND pr.expires_at > datetime('now')`
+      ).bind(token).first();
+    }
+
+    if (!resetRecord) {
+      const allSites = await env.DB.prepare('SELECT id FROM sites').all();
+      for (const s of (allSites.results || [])) {
+        const sdb = await resolveSiteDBById(env, s.id);
+        const found = await sdb.prepare(
+          `SELECT pr.*, sc.email as customer_email FROM customer_password_resets pr
+           JOIN site_customers sc ON sc.id = pr.customer_id
+           WHERE pr.token = ? AND pr.used = 0 AND pr.expires_at > datetime('now')`
+        ).bind(token).first();
+        if (found) {
+          resetRecord = found;
+          db = sdb;
+          break;
+        }
+      }
+    }
 
     if (!resetRecord) {
       return errorResponse('Invalid or expired reset link. Please request a new password reset.', 400, 'INVALID_TOKEN');
@@ -744,30 +632,30 @@ async function handleResetPassword(request, env) {
 
     const passwordHash = await hashPassword(password);
 
-    const custRow = await env.DB.prepare(
+    const custRow = await db.prepare(
       'SELECT row_size_bytes, site_id FROM site_customers WHERE id = ?'
     ).bind(resetRecord.customer_id).first();
     const custOldBytes = custRow?.row_size_bytes || 0;
 
-    await env.DB.prepare(
+    await db.prepare(
       'UPDATE site_customers SET password_hash = ?, updated_at = datetime(\'now\') WHERE id = ?'
     ).bind(passwordHash, resetRecord.customer_id).run();
 
-    const custUpdated = await env.DB.prepare('SELECT * FROM site_customers WHERE id = ?').bind(resetRecord.customer_id).first();
+    const custUpdated = await db.prepare('SELECT * FROM site_customers WHERE id = ?').bind(resetRecord.customer_id).first();
     if (custUpdated) {
       const custNewBytes = estimateRowBytes(custUpdated);
-      await env.DB.prepare('UPDATE site_customers SET row_size_bytes = ? WHERE id = ?').bind(custNewBytes, resetRecord.customer_id).run();
+      await db.prepare('UPDATE site_customers SET row_size_bytes = ? WHERE id = ?').bind(custNewBytes, resetRecord.customer_id).run();
       if (custRow?.site_id) await trackD1Update(env, custRow.site_id, custOldBytes, custNewBytes);
     }
 
-    await env.DB.prepare(
+    await db.prepare(
       'UPDATE customer_password_resets SET used = 1 WHERE id = ?'
     ).bind(resetRecord.id).run();
 
-    const sessionsToDelete = await env.DB.prepare(
+    const sessionsToDelete = await db.prepare(
       'SELECT id, row_size_bytes, site_id FROM site_customer_sessions WHERE customer_id = ?'
     ).bind(resetRecord.customer_id).all();
-    await env.DB.prepare(
+    await db.prepare(
       'DELETE FROM site_customer_sessions WHERE customer_id = ?'
     ).bind(resetRecord.customer_id).run();
     const totalSessBytes = (sessionsToDelete.results || []).reduce((sum, s) => sum + (s.row_size_bytes || 0), 0);
@@ -788,18 +676,40 @@ async function handleVerifyEmail(request, env) {
   }
 
   try {
-    await ensureCustomerTables(env);
-    const { token, email } = await request.json();
+    const { token, email, siteId } = await request.json();
 
     if (!token) {
       return errorResponse('Verification token is required');
     }
 
-    const verifyRecord = await env.DB.prepare(
-      `SELECT ev.*, sc.email as customer_email FROM customer_email_verifications ev
-       JOIN site_customers sc ON sc.id = ev.customer_id
-       WHERE ev.token = ? AND ev.used = 0 AND ev.expires_at > datetime('now')`
-    ).bind(token).first();
+    let db = null;
+    let verifyRecord = null;
+
+    if (siteId) {
+      db = await resolveSiteDBById(env, siteId);
+      verifyRecord = await db.prepare(
+        `SELECT ev.*, sc.email as customer_email FROM customer_email_verifications ev
+         JOIN site_customers sc ON sc.id = ev.customer_id
+         WHERE ev.token = ? AND ev.used = 0 AND ev.expires_at > datetime('now')`
+      ).bind(token).first();
+    }
+
+    if (!verifyRecord) {
+      const allSites = await env.DB.prepare('SELECT id FROM sites').all();
+      for (const s of (allSites.results || [])) {
+        const sdb = await resolveSiteDBById(env, s.id);
+        const found = await sdb.prepare(
+          `SELECT ev.*, sc.email as customer_email FROM customer_email_verifications ev
+           JOIN site_customers sc ON sc.id = ev.customer_id
+           WHERE ev.token = ? AND ev.used = 0 AND ev.expires_at > datetime('now')`
+        ).bind(token).first();
+        if (found) {
+          verifyRecord = found;
+          db = sdb;
+          break;
+        }
+      }
+    }
 
     if (!verifyRecord) {
       return errorResponse('Invalid or expired verification link. Please request a new verification email.', 400, 'INVALID_TOKEN');
@@ -809,23 +719,23 @@ async function handleVerifyEmail(request, env) {
       return errorResponse('Invalid verification link.', 400, 'INVALID_TOKEN');
     }
 
-    const verifyCustRow = await env.DB.prepare(
+    const verifyCustRow = await db.prepare(
       'SELECT row_size_bytes, site_id FROM site_customers WHERE id = ?'
     ).bind(verifyRecord.customer_id).first();
     const verifyCustOldBytes = verifyCustRow?.row_size_bytes || 0;
 
-    await env.DB.prepare(
+    await db.prepare(
       'UPDATE site_customers SET email_verified = 1, updated_at = datetime(\'now\') WHERE id = ?'
     ).bind(verifyRecord.customer_id).run();
 
-    const verifyCustUpdated = await env.DB.prepare('SELECT * FROM site_customers WHERE id = ?').bind(verifyRecord.customer_id).first();
+    const verifyCustUpdated = await db.prepare('SELECT * FROM site_customers WHERE id = ?').bind(verifyRecord.customer_id).first();
     if (verifyCustUpdated) {
       const verifyCustNewBytes = estimateRowBytes(verifyCustUpdated);
-      await env.DB.prepare('UPDATE site_customers SET row_size_bytes = ? WHERE id = ?').bind(verifyCustNewBytes, verifyRecord.customer_id).run();
+      await db.prepare('UPDATE site_customers SET row_size_bytes = ? WHERE id = ?').bind(verifyCustNewBytes, verifyRecord.customer_id).run();
       if (verifyCustRow?.site_id) await trackD1Update(env, verifyCustRow.site_id, verifyCustOldBytes, verifyCustNewBytes);
     }
 
-    await env.DB.prepare(
+    await db.prepare(
       'UPDATE customer_email_verifications SET used = 1 WHERE id = ?'
     ).bind(verifyRecord.id).run();
 
@@ -842,14 +752,15 @@ async function handleResendVerification(request, env) {
   }
 
   try {
-    await ensureCustomerTables(env);
     const { siteId, email } = await request.json();
 
     if (!siteId || !email) {
       return errorResponse('Site ID and email are required');
     }
 
-    const customer = await env.DB.prepare(
+    const db = await resolveSiteDBById(env, siteId);
+
+    const customer = await db.prepare(
       'SELECT id, name, email_verified FROM site_customers WHERE site_id = ? AND email = ?'
     ).bind(siteId, email.toLowerCase()).first();
 
@@ -865,7 +776,7 @@ async function handleResendVerification(request, env) {
       'SELECT id, brand_name, subdomain, custom_domain, domain_status FROM sites WHERE id = ?'
     ).bind(siteId).first();
 
-    await env.DB.prepare(
+    await db.prepare(
       'UPDATE customer_email_verifications SET used = 1 WHERE customer_id = ? AND site_id = ? AND used = 0'
     ).bind(customer.id, siteId).run();
 
@@ -875,7 +786,7 @@ async function handleResendVerification(request, env) {
     const resendVerifyData = { id: resendVerifyId, site_id: siteId, customer_id: customer.id, token: verifyToken, expires_at: verifyExpiry };
     const resendVerifyBytes = estimateRowBytes(resendVerifyData);
 
-    await env.DB.prepare(
+    await db.prepare(
       `INSERT INTO customer_email_verifications (id, site_id, customer_id, token, expires_at, row_size_bytes)
        VALUES (?, ?, ?, ?, ?, ?)`
     ).bind(resendVerifyId, siteId, customer.id, verifyToken, verifyExpiry, resendVerifyBytes).run();
@@ -970,22 +881,26 @@ export async function validateCustomerAuth(request, env) {
   const token = authHeader.substring(13);
 
   try {
-    await ensureCustomerTables(env);
+    const allSites = await env.DB.prepare('SELECT id FROM sites').all();
+    const siteIds = (allSites.results || []).map(s => s.id);
 
-    const session = await env.DB.prepare(
-      `SELECT cs.customer_id, cs.site_id FROM site_customer_sessions cs
-       WHERE cs.token = ? AND cs.expires_at > datetime('now')`
-    ).bind(token).first();
+    for (const siteId of siteIds) {
+      const db = await resolveSiteDBById(env, siteId);
+      const session = await db.prepare(
+        `SELECT cs.customer_id, cs.site_id FROM site_customer_sessions cs
+         WHERE cs.token = ? AND cs.expires_at > datetime('now')`
+      ).bind(token).first();
 
-    if (!session) {
-      return null;
+      if (session) {
+        const customer = await db.prepare(
+          'SELECT id, site_id, email, name, phone FROM site_customers WHERE id = ?'
+        ).bind(session.customer_id).first();
+
+        return customer;
+      }
     }
 
-    const customer = await env.DB.prepare(
-      'SELECT id, site_id, email, name, phone FROM site_customers WHERE id = ?'
-    ).bind(session.customer_id).first();
-
-    return customer;
+    return null;
   } catch (error) {
     console.error('Customer auth validation error:', error);
     return null;

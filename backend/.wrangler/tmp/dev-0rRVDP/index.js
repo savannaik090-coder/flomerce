@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-eihDQa/checked-fetch.js
+// .wrangler/tmp/bundle-9PBEa7/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-eihDQa/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-9PBEa7/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-eihDQa/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-9PBEa7/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-eihDQa/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-9PBEa7/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -415,32 +415,6 @@ var init_auth = __esm({
 });
 
 // utils/site-db.js
-var site_db_exports = {};
-__export(site_db_exports, {
-  checkMigrationLock: () => checkMigrationLock,
-  resolveSiteDB: () => resolveSiteDB,
-  resolveSiteDBById: () => resolveSiteDBById,
-  resolveSiteDBBySubdomain: () => resolveSiteDBBySubdomain
-});
-function resolveSiteDB(env, site) {
-  if (!site)
-    return env.DB;
-  if (site.shard_id) {
-    try {
-      const bindingName2 = site._shard_binding_name;
-      if (bindingName2 && env[bindingName2]) {
-        return env[bindingName2];
-      }
-    } catch (e) {
-      console.error("resolveSiteDB shard lookup error:", e.message || e);
-    }
-  }
-  const bindingName = site.d1_binding_name;
-  if (bindingName && env[bindingName]) {
-    return env[bindingName];
-  }
-  return env.DB;
-}
 async function resolveSiteDBById(env, siteId) {
   if (!siteId)
     return env.DB;
@@ -504,7 +478,6 @@ var init_site_db = __esm({
     init_checked_fetch();
     init_strip_cf_connecting_ip_header();
     init_modules_watch_stub();
-    __name(resolveSiteDB, "resolveSiteDB");
     __name(resolveSiteDBById, "resolveSiteDBById");
     __name(checkMigrationLock, "checkMigrationLock");
     __name(resolveSiteDBBySubdomain, "resolveSiteDBBySubdomain");
@@ -1780,12 +1753,12 @@ var init_site_admin_worker = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-eihDQa/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-9PBEa7/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-eihDQa/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-9PBEa7/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -3876,9 +3849,15 @@ async function handleProducts(request, env, path) {
       }
       if (!siteId && (method === "PUT" || method === "DELETE") && productId) {
         try {
-          const prod = await env.DB.prepare("SELECT site_id FROM products WHERE id = ?").bind(productId).first();
-          if (prod)
-            siteId = prod.site_id;
+          const allSites = await env.DB.prepare("SELECT id FROM sites").all();
+          for (const s of allSites.results || []) {
+            const sdb = await resolveSiteDBById(env, s.id);
+            const prod = await sdb.prepare("SELECT site_id FROM products WHERE id = ?").bind(productId).first();
+            if (prod) {
+              siteId = prod.site_id;
+              break;
+            }
+          }
         } catch (e) {
         }
       }
@@ -5553,6 +5532,7 @@ init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 init_helpers();
 init_auth();
+init_site_db();
 import crypto2 from "node:crypto";
 async function handlePayments(request, env, path) {
   const corsResponse = handleCORS(request);
@@ -5755,20 +5735,59 @@ async function verifyPayment(request, env) {
     const dbOrderId = paymentTx?.order_id || orderId || null;
     if (dbOrderId) {
       let order = null;
-      order = await env.DB.prepare("SELECT * FROM orders WHERE id = ?").bind(dbOrderId).first();
-      if (order) {
-        await env.DB.prepare(
+      let orderDb = null;
+      let orderSiteId = siteId || null;
+      if (orderSiteId) {
+        orderDb = await resolveSiteDBById(env, orderSiteId);
+        order = await orderDb.prepare("SELECT * FROM orders WHERE id = ?").bind(dbOrderId).first();
+      }
+      if (!order) {
+        const allSites = await env.DB.prepare("SELECT id FROM sites").all();
+        for (const s of allSites.results || []) {
+          const sdb = await resolveSiteDBById(env, s.id);
+          const found = await sdb.prepare("SELECT * FROM orders WHERE id = ?").bind(dbOrderId).first();
+          if (found) {
+            order = found;
+            orderDb = sdb;
+            orderSiteId = s.id;
+            break;
+          }
+        }
+      }
+      if (order && orderDb) {
+        await orderDb.prepare(
           `UPDATE orders SET status = 'paid', payment_status = 'paid', payment_method = 'razorpay', razorpay_order_id = ?, razorpay_payment_id = ?, updated_at = datetime('now') WHERE id = ?`
         ).bind(razorpay_order_id, razorpay_payment_id, dbOrderId).run();
         await processPostPaymentActions(env, order);
       } else {
+        if (orderSiteId) {
+          orderDb = orderDb || await resolveSiteDBById(env, orderSiteId);
+        }
         try {
-          order = await env.DB.prepare("SELECT * FROM guest_orders WHERE id = ?").bind(dbOrderId).first();
-          if (order) {
-            await env.DB.prepare(
+          let guestOrder = null;
+          let guestDb = null;
+          if (orderSiteId && orderDb) {
+            guestOrder = await orderDb.prepare("SELECT * FROM guest_orders WHERE id = ?").bind(dbOrderId).first();
+            if (guestOrder)
+              guestDb = orderDb;
+          }
+          if (!guestOrder) {
+            const allSites = await env.DB.prepare("SELECT id FROM sites").all();
+            for (const s of allSites.results || []) {
+              const sdb = await resolveSiteDBById(env, s.id);
+              const found = await sdb.prepare("SELECT * FROM guest_orders WHERE id = ?").bind(dbOrderId).first();
+              if (found) {
+                guestOrder = found;
+                guestDb = sdb;
+                break;
+              }
+            }
+          }
+          if (guestOrder && guestDb) {
+            await guestDb.prepare(
               `UPDATE guest_orders SET status = 'paid', payment_status = 'paid', payment_method = 'razorpay', razorpay_order_id = ?, razorpay_payment_id = ?, updated_at = datetime('now') WHERE id = ?`
             ).bind(razorpay_order_id, razorpay_payment_id, dbOrderId).run();
-            await processPostPaymentActions(env, order);
+            await processPostPaymentActions(env, guestOrder);
           }
         } catch (guestUpdateErr) {
           console.error("Failed to update guest order status:", guestUpdateErr);
@@ -5831,7 +5850,7 @@ async function processPostPaymentActions(env, order) {
   try {
     const orderItems = typeof order.items === "string" ? JSON.parse(order.items) : order.items;
     for (const item of orderItems) {
-      await updateProductStock(env, item.productId, item.quantity, "decrement");
+      await updateProductStock(env, item.productId, item.quantity, "decrement", order.site_id);
     }
   } catch (stockErr) {
     console.error("Failed to decrement stock after payment:", stockErr);
@@ -7014,6 +7033,7 @@ __name(escapeAttr, "escapeAttr");
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
+init_site_db();
 async function generateSitemap(env, site, baseUrl) {
   const urls2 = [];
   urls2.push({
@@ -7031,8 +7051,9 @@ async function generateSitemap(env, site, baseUrl) {
     changefreq: "monthly",
     priority: "0.5"
   });
+  const db = await resolveSiteDBById(env, site.id);
   try {
-    const categories = await env.DB.prepare(
+    const categories = await db.prepare(
       `SELECT slug, updated_at FROM categories WHERE site_id = ? AND is_active = 1 ORDER BY display_order ASC`
     ).bind(site.id).all();
     for (const cat of categories.results || []) {
@@ -7046,7 +7067,7 @@ async function generateSitemap(env, site, baseUrl) {
   } catch {
   }
   try {
-    const products = await env.DB.prepare(
+    const products = await db.prepare(
       `SELECT slug, updated_at FROM products WHERE site_id = ? AND is_active = 1 ORDER BY created_at DESC`
     ).bind(site.id).all();
     for (const product of products.results || []) {
@@ -7267,6 +7288,7 @@ var seo_config_default = {
 };
 
 // workers/seo/index.js
+init_site_db();
 var TEMPLATE_CONFIGS = {
   storefront: seo_config_default,
   template1: seo_config_default
@@ -7318,9 +7340,9 @@ async function fetchSiteSEO(env, site) {
   };
 }
 __name(fetchSiteSEO, "fetchSiteSEO");
-async function fetchProductSEO(env, site, slug) {
+async function fetchProductSEO(db, site, slug) {
   try {
-    return await env.DB.prepare(
+    return await db.prepare(
       `SELECT id, name, slug, description, short_description, price, stock,
               images, thumbnail_url, seo_title, seo_description, seo_og_image
        FROM products WHERE site_id = ? AND slug = ? AND is_active = 1`
@@ -7330,15 +7352,15 @@ async function fetchProductSEO(env, site, slug) {
   }
 }
 __name(fetchProductSEO, "fetchProductSEO");
-async function fetchCategorySEO(env, site, slug) {
+async function fetchCategorySEO(db, site, slug) {
   try {
-    const category = await env.DB.prepare(
+    const category = await db.prepare(
       `SELECT id, name, slug, description, image_url, seo_title, seo_description, seo_og_image
        FROM categories WHERE site_id = ? AND slug = ? AND is_active = 1`
     ).bind(site.id, slug).first();
     if (!category)
       return { category: null, products: [] };
-    const products = await env.DB.prepare(
+    const products = await db.prepare(
       `SELECT name, slug, thumbnail_url FROM products
        WHERE site_id = ? AND category_id = ? AND is_active = 1
        ORDER BY is_featured DESC, created_at DESC LIMIT 10`
@@ -7349,9 +7371,9 @@ async function fetchCategorySEO(env, site, slug) {
   }
 }
 __name(fetchCategorySEO, "fetchCategorySEO");
-async function fetchPageSEO(env, site, pageType) {
+async function fetchPageSEO(db, site, pageType) {
   try {
-    return await env.DB.prepare(
+    return await db.prepare(
       `SELECT seo_title, seo_description, seo_og_image
        FROM page_seo WHERE site_id = ? AND page_type = ?`
     ).bind(site.id, pageType).first();
@@ -7465,13 +7487,14 @@ async function applySEO(request, env, site, rawHTML) {
     const pageInfo = detectPageType(pathname);
     const templateConfig = loadTemplateConfig(site.template_id);
     const siteSEO = await fetchSiteSEO(env, site);
+    const db = await resolveSiteDBById(env, site.id);
     let pageData = null;
     if (pageInfo.type === "product") {
-      pageData = await fetchProductSEO(env, site, pageInfo.slug);
+      pageData = await fetchProductSEO(db, site, pageInfo.slug);
     } else if (pageInfo.type === "category") {
-      pageData = await fetchCategorySEO(env, site, pageInfo.slug);
+      pageData = await fetchCategorySEO(db, site, pageInfo.slug);
     } else {
-      pageData = await fetchPageSEO(env, site, pageInfo.type);
+      pageData = await fetchPageSEO(db, site, pageInfo.type);
     }
     const siteWithCurrency = { ...site, currency: siteSEO.currency || site.currency || "INR" };
     const tags = buildTags({ pageInfo, site: siteWithCurrency, siteSEO, pageData, templateConfig, baseUrl, canonicalUrl });
@@ -8136,8 +8159,14 @@ async function getAdminStats(env) {
     const sites = sitesResult.results || [];
     let totalOrders = 0;
     try {
-      const ordersCount = await env.DB.prepare("SELECT COUNT(*) as count FROM orders").first();
-      totalOrders = ordersCount?.count || 0;
+      for (const s of sites) {
+        try {
+          const sdb = await resolveSiteDBById(env, s.id);
+          const ordersCount = await sdb.prepare("SELECT COUNT(*) as count FROM orders WHERE site_id = ?").bind(s.id).first();
+          totalOrders += ordersCount?.count || 0;
+        } catch (e) {
+        }
+      }
     } catch (e) {
     }
     const ownerUser = users.find((u) => ADMIN_EMAILS.some((e) => e.toLowerCase() === u.email?.toLowerCase())) || null;
@@ -8908,143 +8937,6 @@ async function handleCustomerAuth(request, env, path) {
   }
 }
 __name(handleCustomerAuth, "handleCustomerAuth");
-async function ensureCustomerTables(env) {
-  try {
-    await env.DB.prepare(`
-      CREATE TABLE IF NOT EXISTS site_customers (
-        id TEXT PRIMARY KEY,
-        site_id TEXT NOT NULL,
-        email TEXT NOT NULL,
-        password_hash TEXT NOT NULL,
-        name TEXT NOT NULL,
-        phone TEXT,
-        email_verified INTEGER DEFAULT 0,
-        created_at TEXT DEFAULT (datetime('now')),
-        updated_at TEXT DEFAULT (datetime('now')),
-        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
-        UNIQUE(site_id, email)
-      )
-    `).run();
-    await env.DB.prepare(
-      "CREATE INDEX IF NOT EXISTS idx_site_customers_site ON site_customers(site_id)"
-    ).run();
-    await env.DB.prepare(
-      "CREATE INDEX IF NOT EXISTS idx_site_customers_email ON site_customers(site_id, email)"
-    ).run();
-    await env.DB.prepare(`
-      CREATE TABLE IF NOT EXISTS site_customer_sessions (
-        id TEXT PRIMARY KEY,
-        customer_id TEXT NOT NULL,
-        site_id TEXT NOT NULL,
-        token TEXT NOT NULL,
-        expires_at TEXT NOT NULL,
-        created_at TEXT DEFAULT (datetime('now')),
-        FOREIGN KEY (customer_id) REFERENCES site_customers(id) ON DELETE CASCADE,
-        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
-      )
-    `).run();
-    await env.DB.prepare(
-      "CREATE INDEX IF NOT EXISTS idx_customer_sessions_token ON site_customer_sessions(token)"
-    ).run();
-    await env.DB.prepare(
-      "CREATE INDEX IF NOT EXISTS idx_customer_sessions_customer ON site_customer_sessions(customer_id)"
-    ).run();
-    await env.DB.prepare(`
-      CREATE TABLE IF NOT EXISTS customer_addresses (
-        id TEXT PRIMARY KEY,
-        site_id TEXT NOT NULL,
-        customer_id TEXT NOT NULL,
-        label TEXT DEFAULT 'Home',
-        first_name TEXT NOT NULL,
-        last_name TEXT,
-        phone TEXT,
-        house_number TEXT NOT NULL,
-        road_name TEXT,
-        city TEXT NOT NULL,
-        state TEXT NOT NULL,
-        pin_code TEXT NOT NULL,
-        is_default INTEGER DEFAULT 0,
-        created_at TEXT DEFAULT (datetime('now')),
-        updated_at TEXT DEFAULT (datetime('now')),
-        FOREIGN KEY (customer_id) REFERENCES site_customers(id) ON DELETE CASCADE,
-        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
-      )
-    `).run();
-    await env.DB.prepare(
-      "CREATE INDEX IF NOT EXISTS idx_customer_addresses_customer ON customer_addresses(customer_id)"
-    ).run();
-    await env.DB.prepare(
-      "CREATE INDEX IF NOT EXISTS idx_customer_addresses_site ON customer_addresses(site_id)"
-    ).run();
-    await env.DB.prepare(`
-      CREATE TABLE IF NOT EXISTS customer_password_resets (
-        id TEXT PRIMARY KEY,
-        site_id TEXT NOT NULL,
-        customer_id TEXT NOT NULL,
-        token TEXT NOT NULL UNIQUE,
-        expires_at TEXT NOT NULL,
-        used INTEGER DEFAULT 0,
-        created_at TEXT DEFAULT (datetime('now'))
-      )
-    `).run();
-    await env.DB.prepare(
-      "CREATE INDEX IF NOT EXISTS idx_customer_pw_reset_token ON customer_password_resets(token)"
-    ).run();
-    await env.DB.prepare(`
-      CREATE TABLE IF NOT EXISTS customer_email_verifications (
-        id TEXT PRIMARY KEY,
-        site_id TEXT NOT NULL,
-        customer_id TEXT NOT NULL,
-        token TEXT NOT NULL UNIQUE,
-        expires_at TEXT NOT NULL,
-        used INTEGER DEFAULT 0,
-        created_at TEXT DEFAULT (datetime('now'))
-      )
-    `).run();
-    await env.DB.prepare(
-      "CREATE INDEX IF NOT EXISTS idx_customer_email_verify_token ON customer_email_verifications(token)"
-    ).run();
-    try {
-      await env.DB.prepare(
-        "ALTER TABLE site_customers ADD COLUMN email_verified INTEGER DEFAULT 0"
-      ).run();
-    } catch (_) {
-    }
-    try {
-      await env.DB.prepare(
-        "ALTER TABLE site_customers ADD COLUMN row_size_bytes INTEGER DEFAULT 0"
-      ).run();
-    } catch (_) {
-    }
-    try {
-      await env.DB.prepare(
-        "ALTER TABLE customer_addresses ADD COLUMN row_size_bytes INTEGER DEFAULT 0"
-      ).run();
-    } catch (_) {
-    }
-    try {
-      await env.DB.prepare(
-        "ALTER TABLE site_customer_sessions ADD COLUMN row_size_bytes INTEGER DEFAULT 0"
-      ).run();
-    } catch (_) {
-    }
-    try {
-      await env.DB.prepare(
-        "ALTER TABLE customer_password_resets ADD COLUMN row_size_bytes INTEGER DEFAULT 0"
-      ).run();
-    } catch (_) {
-    }
-    try {
-      await env.DB.prepare(
-        "ALTER TABLE customer_email_verifications ADD COLUMN row_size_bytes INTEGER DEFAULT 0"
-      ).run();
-    } catch (_) {
-    }
-  } catch (error) {
-    console.error("Error ensuring customer tables:", error);
-  }
-}
-__name(ensureCustomerTables, "ensureCustomerTables");
 async function handleAddresses(request, env, addressId) {
   const customer = await validateCustomerAuth(request, env);
   if (!customer) {
@@ -9065,7 +8957,8 @@ async function handleAddresses(request, env, addressId) {
 __name(handleAddresses, "handleAddresses");
 async function getAddresses(env, customer) {
   try {
-    const { results } = await env.DB.prepare(
+    const db = await resolveSiteDBById(env, customer.site_id);
+    const { results } = await db.prepare(
       "SELECT * FROM customer_addresses WHERE customer_id = ? AND site_id = ? ORDER BY is_default DESC, created_at DESC"
     ).bind(customer.id, customer.site_id).all();
     return successResponse(results || []);
@@ -9086,14 +8979,15 @@ async function createAddress(request, env, customer) {
       return errorResponse("First name, house number, city, state, and PIN code are required");
     }
     const id = generateId();
+    const db = await resolveSiteDBById(env, customer.site_id);
     if (isDefault) {
-      await env.DB.prepare(
+      await db.prepare(
         "UPDATE customer_addresses SET is_default = 0 WHERE customer_id = ? AND site_id = ?"
       ).bind(customer.id, customer.site_id).run();
     }
     const rowData = { id, site_id: customer.site_id, customer_id: customer.id, label, firstName, lastName, phone, houseNumber, roadName, city, state, pinCode };
     const rowBytes = estimateRowBytes(rowData);
-    await env.DB.prepare(
+    await db.prepare(
       `INSERT INTO customer_addresses (id, site_id, customer_id, label, first_name, last_name, phone, house_number, road_name, city, state, pin_code, is_default, row_size_bytes, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
     ).bind(
@@ -9113,7 +9007,7 @@ async function createAddress(request, env, customer) {
       rowBytes
     ).run();
     await trackD1Write(env, customer.site_id, rowBytes);
-    const address = await env.DB.prepare(
+    const address = await db.prepare(
       "SELECT * FROM customer_addresses WHERE id = ?"
     ).bind(id).first();
     return successResponse(address, "Address saved successfully");
@@ -9128,7 +9022,8 @@ async function updateAddress(request, env, customer, addressId) {
     if (await checkMigrationLock(env, customer.site_id)) {
       return errorResponse("Site is currently being migrated. Please try again shortly.", 423);
     }
-    const existing = await env.DB.prepare(
+    const db = await resolveSiteDBById(env, customer.site_id);
+    const existing = await db.prepare(
       "SELECT * FROM customer_addresses WHERE id = ? AND customer_id = ? AND site_id = ?"
     ).bind(addressId, customer.id, customer.site_id).first();
     if (!existing) {
@@ -9137,13 +9032,13 @@ async function updateAddress(request, env, customer, addressId) {
     const body = await request.json();
     const { label, firstName, lastName, phone, houseNumber, roadName, city, state, pinCode, isDefault } = body;
     if (isDefault) {
-      await env.DB.prepare(
+      await db.prepare(
         "UPDATE customer_addresses SET is_default = 0 WHERE customer_id = ? AND site_id = ?"
       ).bind(customer.id, customer.site_id).run();
     }
     const oldBytes = existing.row_size_bytes || 0;
     const newBytes = estimateRowBytes(body);
-    await env.DB.prepare(
+    await db.prepare(
       `UPDATE customer_addresses SET
         label = COALESCE(?, label),
         first_name = COALESCE(?, first_name),
@@ -9175,7 +9070,7 @@ async function updateAddress(request, env, customer, addressId) {
       customer.site_id
     ).run();
     await trackD1Update(env, customer.site_id, oldBytes, newBytes);
-    const updated = await env.DB.prepare(
+    const updated = await db.prepare(
       "SELECT * FROM customer_addresses WHERE id = ?"
     ).bind(addressId).first();
     return successResponse(updated, "Address updated successfully");
@@ -9187,14 +9082,15 @@ async function updateAddress(request, env, customer, addressId) {
 __name(updateAddress, "updateAddress");
 async function deleteAddress(env, customer, addressId) {
   try {
-    const existing = await env.DB.prepare(
+    const db = await resolveSiteDBById(env, customer.site_id);
+    const existing = await db.prepare(
       "SELECT * FROM customer_addresses WHERE id = ? AND customer_id = ? AND site_id = ?"
     ).bind(addressId, customer.id, customer.site_id).first();
     if (!existing) {
       return errorResponse("Address not found", 404);
     }
     const bytesToRemove = existing.row_size_bytes || 0;
-    await env.DB.prepare(
+    await db.prepare(
       "DELETE FROM customer_addresses WHERE id = ? AND customer_id = ? AND site_id = ?"
     ).bind(addressId, customer.id, customer.site_id).run();
     if (bytesToRemove > 0) {
@@ -9220,7 +9116,6 @@ async function handleSignup2(request, env) {
     return errorResponse("Method not allowed", 405);
   }
   try {
-    await ensureCustomerTables(env);
     const { siteId, name, email, password, phone } = await request.json();
     if (!siteId || !name || !email || !password) {
       return errorResponse("Site ID, name, email and password are required");
@@ -9237,7 +9132,8 @@ async function handleSignup2(request, env) {
     if (!site) {
       return errorResponse("Store not found", 404);
     }
-    const existing = await env.DB.prepare(
+    const db = await resolveSiteDBById(env, siteId);
+    const existing = await db.prepare(
       "SELECT id FROM site_customers WHERE site_id = ? AND email = ?"
     ).bind(siteId, email.toLowerCase()).first();
     if (existing) {
@@ -9256,7 +9152,7 @@ async function handleSignup2(request, env) {
       return errorResponse(usageCheck.reason, 403, "STORAGE_LIMIT");
     }
     const skipVerification = env.SKIP_EMAIL_VERIFICATION === "true";
-    await env.DB.prepare(
+    await db.prepare(
       `INSERT INTO site_customers (id, site_id, email, password_hash, name, phone, email_verified, row_size_bytes, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(customerId, siteId, email.toLowerCase(), passwordHash, sanitizeInput(name), phone || null, skipVerification ? 1 : 0, rowBytes).run();
@@ -9267,7 +9163,7 @@ async function handleSignup2(request, env) {
       const verifyId = generateId();
       const verifyRowData = { id: verifyId, site_id: siteId, customer_id: customerId, token: verifyToken, expires_at: verifyExpiry };
       const verifyRowBytes = estimateRowBytes(verifyRowData);
-      await env.DB.prepare(
+      await db.prepare(
         `INSERT INTO customer_email_verifications (id, site_id, customer_id, token, expires_at, row_size_bytes)
          VALUES (?, ?, ?, ?, ?, ?)`
       ).bind(verifyId, siteId, customerId, verifyToken, verifyExpiry, verifyRowBytes).run();
@@ -9293,7 +9189,7 @@ async function handleSignup2(request, env) {
     const sessionId = generateId();
     const sessRowData = { id: sessionId, customer_id: customerId, site_id: siteId, token, expires_at: expiresAt };
     const sessRowBytes = estimateRowBytes(sessRowData);
-    await env.DB.prepare(
+    await db.prepare(
       `INSERT INTO site_customer_sessions (id, customer_id, site_id, token, expires_at, row_size_bytes, created_at)
        VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(sessionId, customerId, siteId, token, expiresAt, sessRowBytes).run();
@@ -9317,12 +9213,12 @@ async function handleLogin2(request, env) {
     return errorResponse("Method not allowed", 405);
   }
   try {
-    await ensureCustomerTables(env);
     const { siteId, email, password } = await request.json();
     if (!siteId || !email || !password) {
       return errorResponse("Site ID, email and password are required");
     }
-    const customer = await env.DB.prepare(
+    const db = await resolveSiteDBById(env, siteId);
+    const customer = await db.prepare(
       "SELECT id, email, password_hash, name, phone, email_verified FROM site_customers WHERE site_id = ? AND email = ?"
     ).bind(siteId, email.toLowerCase()).first();
     if (!customer) {
@@ -9341,7 +9237,7 @@ async function handleLogin2(request, env) {
     const sessionId = generateId();
     const loginSessData = { id: sessionId, customer_id: customer.id, site_id: siteId, token, expires_at: expiresAt };
     const loginSessBytes = estimateRowBytes(loginSessData);
-    await env.DB.prepare(
+    await db.prepare(
       `INSERT INTO site_customer_sessions (id, customer_id, site_id, token, expires_at, row_size_bytes, created_at)
        VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(sessionId, customer.id, siteId, token, expiresAt, loginSessBytes).run();
@@ -9371,10 +9267,11 @@ async function handleLogout2(request, env) {
       const authHeader = request.headers.get("Authorization");
       if (authHeader && authHeader.startsWith("SiteCustomer ")) {
         const token = authHeader.substring(13);
-        const sess = await env.DB.prepare(
+        const db = await resolveSiteDBById(env, customer.site_id);
+        const sess = await db.prepare(
           "SELECT row_size_bytes, site_id FROM site_customer_sessions WHERE token = ?"
         ).bind(token).first();
-        await env.DB.prepare(
+        await db.prepare(
           "DELETE FROM site_customer_sessions WHERE token = ?"
         ).bind(token).run();
         if (sess && sess.site_id) {
@@ -9418,23 +9315,24 @@ async function handleUpdateProfile2(request, env) {
       return errorResponse("Site is currently being migrated. Please try again shortly.", 423);
     }
     const { name, phone } = await request.json();
-    const oldRow = await env.DB.prepare(
+    const db = await resolveSiteDBById(env, customer.site_id);
+    const oldRow = await db.prepare(
       "SELECT row_size_bytes FROM site_customers WHERE id = ?"
     ).bind(customer.id).first();
     const oldBytes = oldRow?.row_size_bytes || 0;
-    await env.DB.prepare(
+    await db.prepare(
       `UPDATE site_customers SET
         name = COALESCE(?, name),
         phone = COALESCE(?, phone),
         updated_at = datetime('now')
        WHERE id = ?`
     ).bind(name ? sanitizeInput(name) : null, phone || null, customer.id).run();
-    const updated = await env.DB.prepare(
+    const updated = await db.prepare(
       "SELECT id, email, name, phone FROM site_customers WHERE id = ?"
     ).bind(customer.id).first();
     const newBytes = estimateRowBytes(updated || {});
     if (oldBytes !== newBytes) {
-      await env.DB.prepare(
+      await db.prepare(
         "UPDATE site_customers SET row_size_bytes = ? WHERE id = ?"
       ).bind(newBytes, customer.id).run();
       await trackD1Update(env, customer.site_id, oldBytes, newBytes);
@@ -9450,12 +9348,12 @@ async function handleRequestPasswordReset(request, env) {
     return errorResponse("Method not allowed", 405);
   }
   try {
-    await ensureCustomerTables(env);
     const { siteId, email } = await request.json();
     if (!siteId || !email) {
       return errorResponse("Site ID and email are required");
     }
-    const customer = await env.DB.prepare(
+    const db = await resolveSiteDBById(env, siteId);
+    const customer = await db.prepare(
       "SELECT id, name FROM site_customers WHERE site_id = ? AND email = ?"
     ).bind(siteId, email.toLowerCase()).first();
     if (!customer) {
@@ -9464,10 +9362,10 @@ async function handleRequestPasswordReset(request, env) {
     const site = await env.DB.prepare(
       "SELECT id, brand_name, subdomain, custom_domain, domain_status FROM sites WHERE id = ?"
     ).bind(siteId).first();
-    const oldResets = await env.DB.prepare(
+    const oldResets = await db.prepare(
       "SELECT id, row_size_bytes FROM customer_password_resets WHERE customer_id = ? AND site_id = ? AND used = 0"
     ).bind(customer.id, siteId).all();
-    await env.DB.prepare(
+    await db.prepare(
       "UPDATE customer_password_resets SET used = 1 WHERE customer_id = ? AND site_id = ? AND used = 0"
     ).bind(customer.id, siteId).run();
     const resetToken = generateToken(32);
@@ -9475,7 +9373,7 @@ async function handleRequestPasswordReset(request, env) {
     const resetId = generateId();
     const resetRowData = { id: resetId, site_id: siteId, customer_id: customer.id, token: resetToken, expires_at: expiresAt };
     const resetRowBytes = estimateRowBytes(resetRowData);
-    await env.DB.prepare(
+    await db.prepare(
       `INSERT INTO customer_password_resets (id, site_id, customer_id, token, expires_at, row_size_bytes)
        VALUES (?, ?, ?, ?, ?, ?)`
     ).bind(resetId, siteId, customer.id, resetToken, expiresAt, resetRowBytes).run();
@@ -9499,19 +9397,39 @@ async function handleResetPassword2(request, env) {
     return errorResponse("Method not allowed", 405);
   }
   try {
-    await ensureCustomerTables(env);
-    const { token, email, password } = await request.json();
+    const { token, email, password, siteId } = await request.json();
     if (!token || !email || !password) {
       return errorResponse("Token, email and new password are required");
     }
     if (password.length < 8) {
       return errorResponse("Password must be at least 8 characters");
     }
-    const resetRecord = await env.DB.prepare(
-      `SELECT pr.*, sc.email as customer_email FROM customer_password_resets pr
-       JOIN site_customers sc ON sc.id = pr.customer_id
-       WHERE pr.token = ? AND pr.used = 0 AND pr.expires_at > datetime('now')`
-    ).bind(token).first();
+    let db = null;
+    let resetRecord = null;
+    if (siteId) {
+      db = await resolveSiteDBById(env, siteId);
+      resetRecord = await db.prepare(
+        `SELECT pr.*, sc.email as customer_email FROM customer_password_resets pr
+         JOIN site_customers sc ON sc.id = pr.customer_id
+         WHERE pr.token = ? AND pr.used = 0 AND pr.expires_at > datetime('now')`
+      ).bind(token).first();
+    }
+    if (!resetRecord) {
+      const allSites = await env.DB.prepare("SELECT id FROM sites").all();
+      for (const s of allSites.results || []) {
+        const sdb = await resolveSiteDBById(env, s.id);
+        const found = await sdb.prepare(
+          `SELECT pr.*, sc.email as customer_email FROM customer_password_resets pr
+           JOIN site_customers sc ON sc.id = pr.customer_id
+           WHERE pr.token = ? AND pr.used = 0 AND pr.expires_at > datetime('now')`
+        ).bind(token).first();
+        if (found) {
+          resetRecord = found;
+          db = sdb;
+          break;
+        }
+      }
+    }
     if (!resetRecord) {
       return errorResponse("Invalid or expired reset link. Please request a new password reset.", 400, "INVALID_TOKEN");
     }
@@ -9519,27 +9437,27 @@ async function handleResetPassword2(request, env) {
       return errorResponse("Invalid reset link.", 400, "INVALID_TOKEN");
     }
     const passwordHash = await hashPassword(password);
-    const custRow = await env.DB.prepare(
+    const custRow = await db.prepare(
       "SELECT row_size_bytes, site_id FROM site_customers WHERE id = ?"
     ).bind(resetRecord.customer_id).first();
     const custOldBytes = custRow?.row_size_bytes || 0;
-    await env.DB.prepare(
+    await db.prepare(
       "UPDATE site_customers SET password_hash = ?, updated_at = datetime('now') WHERE id = ?"
     ).bind(passwordHash, resetRecord.customer_id).run();
-    const custUpdated = await env.DB.prepare("SELECT * FROM site_customers WHERE id = ?").bind(resetRecord.customer_id).first();
+    const custUpdated = await db.prepare("SELECT * FROM site_customers WHERE id = ?").bind(resetRecord.customer_id).first();
     if (custUpdated) {
       const custNewBytes = estimateRowBytes(custUpdated);
-      await env.DB.prepare("UPDATE site_customers SET row_size_bytes = ? WHERE id = ?").bind(custNewBytes, resetRecord.customer_id).run();
+      await db.prepare("UPDATE site_customers SET row_size_bytes = ? WHERE id = ?").bind(custNewBytes, resetRecord.customer_id).run();
       if (custRow?.site_id)
         await trackD1Update(env, custRow.site_id, custOldBytes, custNewBytes);
     }
-    await env.DB.prepare(
+    await db.prepare(
       "UPDATE customer_password_resets SET used = 1 WHERE id = ?"
     ).bind(resetRecord.id).run();
-    const sessionsToDelete = await env.DB.prepare(
+    const sessionsToDelete = await db.prepare(
       "SELECT id, row_size_bytes, site_id FROM site_customer_sessions WHERE customer_id = ?"
     ).bind(resetRecord.customer_id).all();
-    await env.DB.prepare(
+    await db.prepare(
       "DELETE FROM site_customer_sessions WHERE customer_id = ?"
     ).bind(resetRecord.customer_id).run();
     const totalSessBytes = (sessionsToDelete.results || []).reduce((sum, s) => sum + (s.row_size_bytes || 0), 0);
@@ -9558,37 +9476,57 @@ async function handleVerifyEmail2(request, env) {
     return errorResponse("Method not allowed", 405);
   }
   try {
-    await ensureCustomerTables(env);
-    const { token, email } = await request.json();
+    const { token, email, siteId } = await request.json();
     if (!token) {
       return errorResponse("Verification token is required");
     }
-    const verifyRecord = await env.DB.prepare(
-      `SELECT ev.*, sc.email as customer_email FROM customer_email_verifications ev
-       JOIN site_customers sc ON sc.id = ev.customer_id
-       WHERE ev.token = ? AND ev.used = 0 AND ev.expires_at > datetime('now')`
-    ).bind(token).first();
+    let db = null;
+    let verifyRecord = null;
+    if (siteId) {
+      db = await resolveSiteDBById(env, siteId);
+      verifyRecord = await db.prepare(
+        `SELECT ev.*, sc.email as customer_email FROM customer_email_verifications ev
+         JOIN site_customers sc ON sc.id = ev.customer_id
+         WHERE ev.token = ? AND ev.used = 0 AND ev.expires_at > datetime('now')`
+      ).bind(token).first();
+    }
+    if (!verifyRecord) {
+      const allSites = await env.DB.prepare("SELECT id FROM sites").all();
+      for (const s of allSites.results || []) {
+        const sdb = await resolveSiteDBById(env, s.id);
+        const found = await sdb.prepare(
+          `SELECT ev.*, sc.email as customer_email FROM customer_email_verifications ev
+           JOIN site_customers sc ON sc.id = ev.customer_id
+           WHERE ev.token = ? AND ev.used = 0 AND ev.expires_at > datetime('now')`
+        ).bind(token).first();
+        if (found) {
+          verifyRecord = found;
+          db = sdb;
+          break;
+        }
+      }
+    }
     if (!verifyRecord) {
       return errorResponse("Invalid or expired verification link. Please request a new verification email.", 400, "INVALID_TOKEN");
     }
     if (email && verifyRecord.customer_email.toLowerCase() !== email.toLowerCase()) {
       return errorResponse("Invalid verification link.", 400, "INVALID_TOKEN");
     }
-    const verifyCustRow = await env.DB.prepare(
+    const verifyCustRow = await db.prepare(
       "SELECT row_size_bytes, site_id FROM site_customers WHERE id = ?"
     ).bind(verifyRecord.customer_id).first();
     const verifyCustOldBytes = verifyCustRow?.row_size_bytes || 0;
-    await env.DB.prepare(
+    await db.prepare(
       "UPDATE site_customers SET email_verified = 1, updated_at = datetime('now') WHERE id = ?"
     ).bind(verifyRecord.customer_id).run();
-    const verifyCustUpdated = await env.DB.prepare("SELECT * FROM site_customers WHERE id = ?").bind(verifyRecord.customer_id).first();
+    const verifyCustUpdated = await db.prepare("SELECT * FROM site_customers WHERE id = ?").bind(verifyRecord.customer_id).first();
     if (verifyCustUpdated) {
       const verifyCustNewBytes = estimateRowBytes(verifyCustUpdated);
-      await env.DB.prepare("UPDATE site_customers SET row_size_bytes = ? WHERE id = ?").bind(verifyCustNewBytes, verifyRecord.customer_id).run();
+      await db.prepare("UPDATE site_customers SET row_size_bytes = ? WHERE id = ?").bind(verifyCustNewBytes, verifyRecord.customer_id).run();
       if (verifyCustRow?.site_id)
         await trackD1Update(env, verifyCustRow.site_id, verifyCustOldBytes, verifyCustNewBytes);
     }
-    await env.DB.prepare(
+    await db.prepare(
       "UPDATE customer_email_verifications SET used = 1 WHERE id = ?"
     ).bind(verifyRecord.id).run();
     return successResponse(null, "Email verified successfully. You can now log in.");
@@ -9603,12 +9541,12 @@ async function handleResendVerification2(request, env) {
     return errorResponse("Method not allowed", 405);
   }
   try {
-    await ensureCustomerTables(env);
     const { siteId, email } = await request.json();
     if (!siteId || !email) {
       return errorResponse("Site ID and email are required");
     }
-    const customer = await env.DB.prepare(
+    const db = await resolveSiteDBById(env, siteId);
+    const customer = await db.prepare(
       "SELECT id, name, email_verified FROM site_customers WHERE site_id = ? AND email = ?"
     ).bind(siteId, email.toLowerCase()).first();
     if (!customer) {
@@ -9620,7 +9558,7 @@ async function handleResendVerification2(request, env) {
     const site = await env.DB.prepare(
       "SELECT id, brand_name, subdomain, custom_domain, domain_status FROM sites WHERE id = ?"
     ).bind(siteId).first();
-    await env.DB.prepare(
+    await db.prepare(
       "UPDATE customer_email_verifications SET used = 1 WHERE customer_id = ? AND site_id = ? AND used = 0"
     ).bind(customer.id, siteId).run();
     const verifyToken = generateToken(32);
@@ -9628,7 +9566,7 @@ async function handleResendVerification2(request, env) {
     const resendVerifyId = generateId();
     const resendVerifyData = { id: resendVerifyId, site_id: siteId, customer_id: customer.id, token: verifyToken, expires_at: verifyExpiry };
     const resendVerifyBytes = estimateRowBytes(resendVerifyData);
-    await env.DB.prepare(
+    await db.prepare(
       `INSERT INTO customer_email_verifications (id, site_id, customer_id, token, expires_at, row_size_bytes)
        VALUES (?, ?, ?, ?, ?, ?)`
     ).bind(resendVerifyId, siteId, customer.id, verifyToken, verifyExpiry, resendVerifyBytes).run();
@@ -9735,18 +9673,22 @@ async function validateCustomerAuth(request, env) {
   }
   const token = authHeader.substring(13);
   try {
-    await ensureCustomerTables(env);
-    const session = await env.DB.prepare(
-      `SELECT cs.customer_id, cs.site_id FROM site_customer_sessions cs
-       WHERE cs.token = ? AND cs.expires_at > datetime('now')`
-    ).bind(token).first();
-    if (!session) {
-      return null;
+    const allSites = await env.DB.prepare("SELECT id FROM sites").all();
+    const siteIds = (allSites.results || []).map((s) => s.id);
+    for (const siteId of siteIds) {
+      const db = await resolveSiteDBById(env, siteId);
+      const session = await db.prepare(
+        `SELECT cs.customer_id, cs.site_id FROM site_customer_sessions cs
+         WHERE cs.token = ? AND cs.expires_at > datetime('now')`
+      ).bind(token).first();
+      if (session) {
+        const customer = await db.prepare(
+          "SELECT id, site_id, email, name, phone FROM site_customers WHERE id = ?"
+        ).bind(session.customer_id).first();
+        return customer;
+      }
     }
-    const customer = await env.DB.prepare(
-      "SELECT id, site_id, email, name, phone FROM site_customers WHERE id = ?"
-    ).bind(session.customer_id).first();
-    return customer;
+    return null;
   } catch (error) {
     console.error("Customer auth validation error:", error);
     return null;
@@ -10817,6 +10759,7 @@ async function ensureTablesExist(env) {
 __name(ensureTablesExist, "ensureTablesExist");
 
 // workers/index.js
+init_site_db();
 var workers_default = {
   async fetch(request, env, ctx) {
     const corsResponse = handleCORS(request);
@@ -10854,6 +10797,9 @@ var workers_default = {
       console.error("Worker error:", error);
       return errorResponse("Internal server error", 500);
     }
+  },
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(cleanupExpiredData(env));
   }
 };
 async function handleAPI(request, env, path) {
@@ -10957,8 +10903,7 @@ async function handleSiteInfo(request, env) {
     }
     let categoriesResult = [];
     try {
-      const { resolveSiteDBById: resolveSiteDBById2 } = await Promise.resolve().then(() => (init_site_db(), site_db_exports));
-      const siteDB = await resolveSiteDBById2(env, site.id);
+      const siteDB = await resolveSiteDBById(env, site.id);
       const categories = await siteDB.prepare(
         "SELECT * FROM categories WHERE site_id = ? ORDER BY display_order"
       ).bind(site.id).all();
@@ -10994,8 +10939,7 @@ async function handleSiteInfo(request, env) {
     const { razorpayKeySecret, adminVerificationCode, ...publicSettings } = settings;
     let pageSEOResult = [];
     try {
-      const { resolveSiteDBById: resolveSiteDBById2 } = await Promise.resolve().then(() => (init_site_db(), site_db_exports));
-      const siteDB = await resolveSiteDBById2(env, site.id);
+      const siteDB = await resolveSiteDBById(env, site.id);
       const psResult = await siteDB.prepare(
         "SELECT page_type, seo_title, seo_description, seo_og_image FROM page_seo WHERE site_id = ?"
       ).bind(site.id).all();
@@ -11026,6 +10970,52 @@ async function handleSiteInfo(request, env) {
   }
 }
 __name(handleSiteInfo, "handleSiteInfo");
+async function cleanupExpiredData(env) {
+  try {
+    try {
+      await env.DB.prepare(
+        `DELETE FROM sessions WHERE expires_at < datetime('now')`
+      ).run();
+    } catch (e) {
+      console.error("[Cleanup] platform sessions:", e.message || e);
+    }
+    try {
+      await env.DB.prepare(
+        `DELETE FROM email_verifications WHERE (used = 1 OR expires_at < datetime('now'))`
+      ).run();
+    } catch (e) {
+      console.error("[Cleanup] platform email_verifications:", e.message || e);
+    }
+    try {
+      await env.DB.prepare(
+        `DELETE FROM password_resets WHERE (used = 1 OR expires_at < datetime('now'))`
+      ).run();
+    } catch (e) {
+      console.error("[Cleanup] platform password_resets:", e.message || e);
+    }
+    const allSites = await env.DB.prepare("SELECT id FROM sites").all();
+    for (const site of allSites.results || []) {
+      try {
+        const db = await resolveSiteDBById(env, site.id);
+        await db.prepare(
+          `DELETE FROM site_customer_sessions WHERE expires_at < datetime('now')`
+        ).run();
+        await db.prepare(
+          `DELETE FROM customer_password_resets WHERE (used = 1 OR expires_at < datetime('now'))`
+        ).run();
+        await db.prepare(
+          `DELETE FROM customer_email_verifications WHERE (used = 1 OR expires_at < datetime('now'))`
+        ).run();
+      } catch (e) {
+        console.error(`[Cleanup] shard for site ${site.id}:`, e.message || e);
+      }
+    }
+    console.log("[Cleanup] Expired sessions and tokens cleaned up successfully");
+  } catch (error) {
+    console.error("[Cleanup] Error during cleanup:", error);
+  }
+}
+__name(cleanupExpiredData, "cleanupExpiredData");
 
 // node_modules/wrangler/templates/middleware/middleware-ensure-req-body-drained.ts
 init_checked_fetch();
@@ -11074,7 +11064,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-eihDQa/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-9PBEa7/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -11109,7 +11099,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-eihDQa/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-9PBEa7/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

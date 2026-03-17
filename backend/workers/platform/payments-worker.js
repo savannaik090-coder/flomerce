@@ -2,6 +2,7 @@ import { generateId, jsonResponse, errorResponse, successResponse, handleCORS } 
 import { validateAuth } from '../../utils/auth.js';
 import { updateProductStock } from '../storefront/products-worker.js';
 import { sendOrderEmails } from '../storefront/orders-worker.js';
+import { resolveSiteDBById } from '../../utils/site-db.js';
 import crypto from 'node:crypto';
 
 export async function handlePayments(request, env, path) {
@@ -232,20 +233,64 @@ async function verifyPayment(request, env) {
 
     if (dbOrderId) {
       let order = null;
-      order = await env.DB.prepare('SELECT * FROM orders WHERE id = ?').bind(dbOrderId).first();
-      if (order) {
-        await env.DB.prepare(
+      let orderDb = null;
+      let orderSiteId = siteId || null;
+
+      if (orderSiteId) {
+        orderDb = await resolveSiteDBById(env, orderSiteId);
+        order = await orderDb.prepare('SELECT * FROM orders WHERE id = ?').bind(dbOrderId).first();
+      }
+
+      if (!order) {
+        const allSites = await env.DB.prepare('SELECT id FROM sites').all();
+        for (const s of (allSites.results || [])) {
+          const sdb = await resolveSiteDBById(env, s.id);
+          const found = await sdb.prepare('SELECT * FROM orders WHERE id = ?').bind(dbOrderId).first();
+          if (found) {
+            order = found;
+            orderDb = sdb;
+            orderSiteId = s.id;
+            break;
+          }
+        }
+      }
+
+      if (order && orderDb) {
+        await orderDb.prepare(
           `UPDATE orders SET status = 'paid', payment_status = 'paid', payment_method = 'razorpay', razorpay_order_id = ?, razorpay_payment_id = ?, updated_at = datetime('now') WHERE id = ?`
         ).bind(razorpay_order_id, razorpay_payment_id, dbOrderId).run();
         await processPostPaymentActions(env, order);
       } else {
+        if (orderSiteId) {
+          orderDb = orderDb || await resolveSiteDBById(env, orderSiteId);
+        }
         try {
-          order = await env.DB.prepare('SELECT * FROM guest_orders WHERE id = ?').bind(dbOrderId).first();
-          if (order) {
-            await env.DB.prepare(
+          let guestOrder = null;
+          let guestDb = null;
+
+          if (orderSiteId && orderDb) {
+            guestOrder = await orderDb.prepare('SELECT * FROM guest_orders WHERE id = ?').bind(dbOrderId).first();
+            if (guestOrder) guestDb = orderDb;
+          }
+
+          if (!guestOrder) {
+            const allSites = await env.DB.prepare('SELECT id FROM sites').all();
+            for (const s of (allSites.results || [])) {
+              const sdb = await resolveSiteDBById(env, s.id);
+              const found = await sdb.prepare('SELECT * FROM guest_orders WHERE id = ?').bind(dbOrderId).first();
+              if (found) {
+                guestOrder = found;
+                guestDb = sdb;
+                break;
+              }
+            }
+          }
+
+          if (guestOrder && guestDb) {
+            await guestDb.prepare(
               `UPDATE guest_orders SET status = 'paid', payment_status = 'paid', payment_method = 'razorpay', razorpay_order_id = ?, razorpay_payment_id = ?, updated_at = datetime('now') WHERE id = ?`
             ).bind(razorpay_order_id, razorpay_payment_id, dbOrderId).run();
-            await processPostPaymentActions(env, order);
+            await processPostPaymentActions(env, guestOrder);
           }
         } catch (guestUpdateErr) {
           console.error('Failed to update guest order status:', guestUpdateErr);
@@ -322,7 +367,7 @@ async function processPostPaymentActions(env, order) {
   try {
     const orderItems = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
     for (const item of orderItems) {
-      await updateProductStock(env, item.productId, item.quantity, 'decrement');
+      await updateProductStock(env, item.productId, item.quantity, 'decrement', order.site_id);
     }
   } catch (stockErr) {
     console.error('Failed to decrement stock after payment:', stockErr);

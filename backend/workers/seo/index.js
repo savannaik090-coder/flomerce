@@ -9,6 +9,7 @@ import {
   buildWebsiteSchema,
 } from './structured-data.js';
 import storefrontConfig from './templates/storefront/seo-config.js';
+import { resolveSiteDBById } from '../../utils/site-db.js';
 
 const TEMPLATE_CONFIGS = {
   storefront: storefrontConfig,
@@ -61,9 +62,9 @@ async function fetchSiteSEO(env, site) {
   };
 }
 
-async function fetchProductSEO(env, site, slug) {
+async function fetchProductSEO(db, site, slug) {
   try {
-    return await env.DB.prepare(
+    return await db.prepare(
       `SELECT id, name, slug, description, short_description, price, stock,
               images, thumbnail_url, seo_title, seo_description, seo_og_image
        FROM products WHERE site_id = ? AND slug = ? AND is_active = 1`
@@ -73,16 +74,16 @@ async function fetchProductSEO(env, site, slug) {
   }
 }
 
-async function fetchCategorySEO(env, site, slug) {
+async function fetchCategorySEO(db, site, slug) {
   try {
-    const category = await env.DB.prepare(
+    const category = await db.prepare(
       `SELECT id, name, slug, description, image_url, seo_title, seo_description, seo_og_image
        FROM categories WHERE site_id = ? AND slug = ? AND is_active = 1`
     ).bind(site.id, slug).first();
 
     if (!category) return { category: null, products: [] };
 
-    const products = await env.DB.prepare(
+    const products = await db.prepare(
       `SELECT name, slug, thumbnail_url FROM products
        WHERE site_id = ? AND category_id = ? AND is_active = 1
        ORDER BY is_featured DESC, created_at DESC LIMIT 10`
@@ -94,9 +95,9 @@ async function fetchCategorySEO(env, site, slug) {
   }
 }
 
-async function fetchPageSEO(env, site, pageType) {
+async function fetchPageSEO(db, site, pageType) {
   try {
-    return await env.DB.prepare(
+    return await db.prepare(
       `SELECT seo_title, seo_description, seo_og_image
        FROM page_seo WHERE site_id = ? AND page_type = ?`
     ).bind(site.id, pageType).first();
@@ -237,13 +238,15 @@ export async function applySEO(request, env, site, rawHTML) {
     const templateConfig = loadTemplateConfig(site.template_id);
     const siteSEO = await fetchSiteSEO(env, site);
 
+    const db = await resolveSiteDBById(env, site.id);
+
     let pageData = null;
     if (pageInfo.type === 'product') {
-      pageData = await fetchProductSEO(env, site, pageInfo.slug);
+      pageData = await fetchProductSEO(db, site, pageInfo.slug);
     } else if (pageInfo.type === 'category') {
-      pageData = await fetchCategorySEO(env, site, pageInfo.slug);
+      pageData = await fetchCategorySEO(db, site, pageInfo.slug);
     } else {
-      pageData = await fetchPageSEO(env, site, pageInfo.type);
+      pageData = await fetchPageSEO(db, site, pageInfo.type);
     }
 
     const siteWithCurrency = { ...site, currency: siteSEO.currency || site.currency || 'INR' };

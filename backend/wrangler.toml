@@ -51,6 +51,10 @@ binding = "SHARD_1"
 database_name = "saas-sites-db"
 database_id = "da11d91d-13da-43a5-9360-321d880a90d1"
 
+# Scheduled Cleanup (runs daily at 3:00 AM UTC)
+[triggers]
+crons = ["0 3 * * *"]
+
 # R2 Storage Configuration
 # Bucket: saas-platform-s
 [[r2_buckets]]

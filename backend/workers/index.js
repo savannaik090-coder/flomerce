@@ -16,6 +16,7 @@ import { handleUpload } from './storefront/upload-worker.js';
 import { handleUsageAPI } from '../utils/usage-tracker.js';
 import { jsonResponse, errorResponse, corsHeaders, handleCORS } from '../utils/helpers.js';
 import { ensureTablesExist } from '../utils/db-init.js';
+import { resolveSiteDBById } from '../utils/site-db.js';
 
 export default {
   async fetch(request, env, ctx) {
@@ -37,8 +38,6 @@ export default {
         return siteResponse;
       }
 
-      // www.fluxe.in is caught by the *.fluxe.in/* Worker route but belongs
-      // to the Cloudflare Pages project. Proxy it through so Pages can serve it.
       const hostname = url.hostname;
       if (hostname === 'www.fluxe.in' || hostname === 'fluxe.in') {
         const pagesHostname = env.PAGES_HOSTNAME || 'fluxe-8x1.pages.dev';
@@ -62,6 +61,10 @@ export default {
       console.error('Worker error:', error);
       return errorResponse('Internal server error', 500);
     }
+  },
+
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(cleanupExpiredData(env));
   },
 };
 
@@ -190,7 +193,6 @@ async function handleSiteInfo(request, env) {
 
     let categoriesResult = [];
     try {
-      const { resolveSiteDBById } = await import('../utils/site-db.js');
       const siteDB = await resolveSiteDBById(env, site.id);
       const categories = await siteDB.prepare(
         'SELECT * FROM categories WHERE site_id = ? ORDER BY display_order'
@@ -227,7 +229,6 @@ async function handleSiteInfo(request, env) {
 
     let pageSEOResult = [];
     try {
-      const { resolveSiteDBById } = await import('../utils/site-db.js');
       const siteDB = await resolveSiteDBById(env, site.id);
       const psResult = await siteDB.prepare(
         'SELECT page_type, seo_title, seo_description, seo_og_image FROM page_seo WHERE site_id = ?'
@@ -257,5 +258,58 @@ async function handleSiteInfo(request, env) {
   } catch (error) {
     console.error('Get site info error:', error);
     return errorResponse('Failed to fetch site info: ' + error.message, 500);
+  }
+}
+
+async function cleanupExpiredData(env) {
+  try {
+    try {
+      await env.DB.prepare(
+        `DELETE FROM sessions WHERE expires_at < datetime('now')`
+      ).run();
+    } catch (e) {
+      console.error('[Cleanup] platform sessions:', e.message || e);
+    }
+
+    try {
+      await env.DB.prepare(
+        `DELETE FROM email_verifications WHERE (used = 1 OR expires_at < datetime('now'))`
+      ).run();
+    } catch (e) {
+      console.error('[Cleanup] platform email_verifications:', e.message || e);
+    }
+
+    try {
+      await env.DB.prepare(
+        `DELETE FROM password_resets WHERE (used = 1 OR expires_at < datetime('now'))`
+      ).run();
+    } catch (e) {
+      console.error('[Cleanup] platform password_resets:', e.message || e);
+    }
+
+    const allSites = await env.DB.prepare('SELECT id FROM sites').all();
+    for (const site of (allSites.results || [])) {
+      try {
+        const db = await resolveSiteDBById(env, site.id);
+
+        await db.prepare(
+          `DELETE FROM site_customer_sessions WHERE expires_at < datetime('now')`
+        ).run();
+
+        await db.prepare(
+          `DELETE FROM customer_password_resets WHERE (used = 1 OR expires_at < datetime('now'))`
+        ).run();
+
+        await db.prepare(
+          `DELETE FROM customer_email_verifications WHERE (used = 1 OR expires_at < datetime('now'))`
+        ).run();
+      } catch (e) {
+        console.error(`[Cleanup] shard for site ${site.id}:`, e.message || e);
+      }
+    }
+
+    console.log('[Cleanup] Expired sessions and tokens cleaned up successfully');
+  } catch (error) {
+    console.error('[Cleanup] Error during cleanup:', error);
   }
 }
