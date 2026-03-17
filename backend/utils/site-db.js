@@ -1,5 +1,7 @@
 export function resolveSiteDB(env, site) {
-  if (!site) return env.DB;
+  if (!site) {
+    throw new Error('resolveSiteDB: site object is required');
+  }
 
   if (site.shard_id) {
     try {
@@ -17,11 +19,13 @@ export function resolveSiteDB(env, site) {
     return env[bindingName];
   }
 
-  return env.DB;
+  throw new Error(`resolveSiteDB: No shard assigned for site ${site.id || 'unknown'}. Every site must have a shard_id.`);
 }
 
 export async function resolveSiteDBById(env, siteId) {
-  if (!siteId) return env.DB;
+  if (!siteId) {
+    throw new Error('resolveSiteDBById: siteId is required');
+  }
 
   try {
     const site = await env.DB.prepare(
@@ -40,10 +44,10 @@ export async function resolveSiteDBById(env, siteId) {
       }
     }
   } catch (e) {
-    console.error('resolveSiteDBById error (falling back to platform DB):', e.message || e);
+    console.error('resolveSiteDBById error:', e.message || e);
   }
 
-  return env.DB;
+  throw new Error(`resolveSiteDBById: No shard assigned for site ${siteId}. Every site must have a shard_id.`);
 }
 
 export async function checkMigrationLock(env, siteId) {
@@ -59,7 +63,9 @@ export async function checkMigrationLock(env, siteId) {
 }
 
 export async function resolveSiteDBBySubdomain(env, subdomain) {
-  if (!subdomain) return env.DB;
+  if (!subdomain) {
+    throw new Error('resolveSiteDBBySubdomain: subdomain is required');
+  }
 
   try {
     const site = await env.DB.prepare(
@@ -78,8 +84,8 @@ export async function resolveSiteDBBySubdomain(env, subdomain) {
       }
     }
   } catch (e) {
-    console.error('resolveSiteDBBySubdomain error (falling back to platform DB):', e.message || e);
+    console.error('resolveSiteDBBySubdomain error:', e.message || e);
   }
 
-  return env.DB;
+  throw new Error(`resolveSiteDBBySubdomain: No shard assigned for subdomain "${subdomain}". Every site must have a shard_id.`);
 }

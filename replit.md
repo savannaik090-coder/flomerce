@@ -15,10 +15,10 @@ Fluxe uses a **shared shard-based D1 database architecture**: multiple sites sha
 - **Shards Registry:** The `shards` table in the platform DB tracks all shard databases: `id, binding_name (SHARD_1, SHARD_2...), database_id, database_name, is_active, correction_factor, last_reconciled_at`.
 - **Site Assignment:** When a new site is created, it is assigned to the currently active shard (`is_active = 1`). The `shard_id` column on the `sites` table links a site to its shard.
 - **Binding Pattern:** Shards use sequential bindings: `SHARD_1`, `SHARD_2`, etc. Added to the worker via `addBindingAndRedeploy` in `d1-manager.js`.
-- **DB Resolution:** `site-db.js` provides `resolveSiteDB(env, site)`, `resolveSiteDBById(env, siteId)`, and `resolveSiteDBBySubdomain(env, subdomain)`. It looks up the shard binding via a JOIN with the shards table. Falls back to `env.DB` if no shard is assigned (backward compatibility for existing sites).
+- **DB Resolution:** `site-db.js` provides `resolveSiteDB(env, site)`, `resolveSiteDBById(env, siteId)`, and `resolveSiteDBBySubdomain(env, subdomain)`. It looks up the shard binding via a JOIN with the shards table. Throws an error if no shard is assigned — every site must have a valid `shard_id`.
 - **Frontend siteId Routing:** All frontend service functions (`orderService`, `categoryService`, `productService`) accept and pass `siteId` via query params and/or request body. Admin panel callers pass `siteConfig?.id` from `SiteContext`. Backend workers extract `siteId` from query params (GET/DELETE) or body (POST/PUT) for direct shard resolution — no scanning all sites.
 - **Migration Lock:** Sites have a `migration_locked` flag. During shard-to-shard migration, writes are blocked. All storefront workers check `checkMigrationLock()` before write operations and return HTTP 423 if locked.
-- **Backward Compatibility:** Existing sites with `shard_id = NULL` continue to use the platform DB. Legacy `d1_database_id` and `d1_binding_name` columns are still checked as a fallback.
+- **No Fallback:** Sites without a `shard_id` will throw an error — the platform DB is never used as a fallback for site data. Legacy `d1_database_id` and `d1_binding_name` columns are still checked as a secondary lookup before erroring.
 - **Admin Emails:** Both `savannaik090@gmail.com` and `xiyohe3598@indevgo.com` are configured as platform admins in `ADMIN_EMAILS` array in `admin-worker.js`.
 
 ### Usage Tracking with Correction Factor

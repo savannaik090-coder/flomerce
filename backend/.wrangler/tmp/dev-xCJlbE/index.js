@@ -193,8 +193,9 @@ var init_helpers = __esm({
 
 // utils/site-db.js
 async function resolveSiteDBById(env, siteId) {
-  if (!siteId)
-    return env.DB;
+  if (!siteId) {
+    throw new Error("resolveSiteDBById: siteId is required");
+  }
   try {
     const site = await env.DB.prepare(
       `SELECT s.shard_id, s.d1_binding_name, sh.binding_name as shard_binding
@@ -211,9 +212,9 @@ async function resolveSiteDBById(env, siteId) {
       }
     }
   } catch (e) {
-    console.error("resolveSiteDBById error (falling back to platform DB):", e.message || e);
+    console.error("resolveSiteDBById error:", e.message || e);
   }
-  return env.DB;
+  throw new Error(`resolveSiteDBById: No shard assigned for site ${siteId}. Every site must have a shard_id.`);
 }
 async function checkMigrationLock(env, siteId) {
   if (!siteId)
@@ -228,8 +229,9 @@ async function checkMigrationLock(env, siteId) {
   }
 }
 async function resolveSiteDBBySubdomain(env, subdomain) {
-  if (!subdomain)
-    return env.DB;
+  if (!subdomain) {
+    throw new Error("resolveSiteDBBySubdomain: subdomain is required");
+  }
   try {
     const site = await env.DB.prepare(
       `SELECT s.id, s.shard_id, s.d1_binding_name, sh.binding_name as shard_binding
@@ -246,9 +248,9 @@ async function resolveSiteDBBySubdomain(env, subdomain) {
       }
     }
   } catch (e) {
-    console.error("resolveSiteDBBySubdomain error (falling back to platform DB):", e.message || e);
+    console.error("resolveSiteDBBySubdomain error:", e.message || e);
   }
-  return env.DB;
+  throw new Error(`resolveSiteDBBySubdomain: No shard assigned for subdomain "${subdomain}". Every site must have a shard_id.`);
 }
 var init_site_db = __esm({
   "utils/site-db.js"() {
@@ -10122,42 +10124,13 @@ async function ensureSEOColumns(env) {
     `ALTER TABLE sites ADD COLUMN twitter_title TEXT`,
     `ALTER TABLE sites ADD COLUMN twitter_description TEXT`,
     `ALTER TABLE sites ADD COLUMN twitter_image TEXT`,
-    `ALTER TABLE sites ADD COLUMN twitter_site TEXT`,
-    `ALTER TABLE categories ADD COLUMN seo_title TEXT`,
-    `ALTER TABLE categories ADD COLUMN seo_description TEXT`,
-    `ALTER TABLE categories ADD COLUMN seo_og_image TEXT`,
-    `ALTER TABLE products ADD COLUMN seo_title TEXT`,
-    `ALTER TABLE products ADD COLUMN seo_description TEXT`,
-    `ALTER TABLE products ADD COLUMN seo_og_image TEXT`
+    `ALTER TABLE sites ADD COLUMN twitter_site TEXT`
   ];
   for (const sql of alterStatements) {
     try {
       await env.DB.prepare(sql).run();
     } catch {
     }
-  }
-  try {
-    await env.DB.prepare(`
-      CREATE TABLE IF NOT EXISTS page_seo (
-        id TEXT PRIMARY KEY,
-        site_id TEXT NOT NULL,
-        page_type TEXT NOT NULL,
-        seo_title TEXT,
-        seo_description TEXT,
-        seo_og_image TEXT,
-        created_at TEXT DEFAULT (datetime('now')),
-        updated_at TEXT DEFAULT (datetime('now')),
-        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
-        UNIQUE(site_id, page_type)
-      )
-    `).run();
-  } catch {
-  }
-  try {
-    await env.DB.prepare(
-      "CREATE INDEX IF NOT EXISTS idx_page_seo_site ON page_seo(site_id)"
-    ).run();
-  } catch {
   }
 }
 __name(ensureSEOColumns, "ensureSEOColumns");
@@ -10232,206 +10205,6 @@ async function ensureTablesExist(env) {
         updated_at TEXT DEFAULT (datetime('now')),
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       )`,
-      `CREATE TABLE IF NOT EXISTS categories (
-        id TEXT PRIMARY KEY,
-        site_id TEXT NOT NULL,
-        name TEXT NOT NULL,
-        slug TEXT NOT NULL,
-        parent_id TEXT,
-        description TEXT,
-        subtitle TEXT,
-        show_on_home INTEGER DEFAULT 1,
-        image_url TEXT,
-        display_order INTEGER DEFAULT 0,
-        is_active INTEGER DEFAULT 1,
-        created_at TEXT DEFAULT (datetime('now')),
-        updated_at TEXT DEFAULT (datetime('now')),
-        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
-        FOREIGN KEY (parent_id) REFERENCES categories(id) ON DELETE SET NULL,
-        UNIQUE(site_id, slug)
-      )`,
-      `CREATE TABLE IF NOT EXISTS products (
-        id TEXT PRIMARY KEY,
-        site_id TEXT NOT NULL,
-        category_id TEXT,
-        name TEXT NOT NULL,
-        slug TEXT NOT NULL,
-        description TEXT,
-        short_description TEXT,
-        price REAL NOT NULL,
-        compare_price REAL,
-        cost_price REAL,
-        sku TEXT,
-        barcode TEXT,
-        stock INTEGER DEFAULT 0,
-        low_stock_threshold INTEGER DEFAULT 5,
-        weight REAL,
-        dimensions TEXT,
-        images TEXT,
-        thumbnail_url TEXT,
-        tags TEXT,
-        is_featured INTEGER DEFAULT 0,
-        is_active INTEGER DEFAULT 1,
-        created_at TEXT DEFAULT (datetime('now')),
-        updated_at TEXT DEFAULT (datetime('now')),
-        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
-        FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL,
-        UNIQUE(site_id, slug)
-      )`,
-      `CREATE TABLE IF NOT EXISTS product_variants (
-        id TEXT PRIMARY KEY,
-        product_id TEXT NOT NULL,
-        name TEXT NOT NULL,
-        sku TEXT,
-        price REAL NOT NULL,
-        compare_price REAL,
-        stock INTEGER DEFAULT 0,
-        attributes TEXT,
-        image_url TEXT,
-        is_active INTEGER DEFAULT 1,
-        created_at TEXT DEFAULT (datetime('now')),
-        FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
-      )`,
-      `CREATE TABLE IF NOT EXISTS addresses (
-        id TEXT PRIMARY KEY,
-        user_id TEXT NOT NULL,
-        name TEXT NOT NULL,
-        phone TEXT NOT NULL,
-        line1 TEXT NOT NULL,
-        line2 TEXT,
-        city TEXT NOT NULL,
-        state TEXT NOT NULL,
-        pincode TEXT NOT NULL,
-        country TEXT DEFAULT 'India',
-        is_default INTEGER DEFAULT 0,
-        created_at TEXT DEFAULT (datetime('now')),
-        updated_at TEXT DEFAULT (datetime('now')),
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-      )`,
-      `CREATE TABLE IF NOT EXISTS carts (
-        id TEXT PRIMARY KEY,
-        site_id TEXT NOT NULL,
-        user_id TEXT,
-        session_id TEXT,
-        items TEXT NOT NULL DEFAULT '[]',
-        subtotal REAL DEFAULT 0,
-        created_at TEXT DEFAULT (datetime('now')),
-        updated_at TEXT DEFAULT (datetime('now')),
-        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
-      )`,
-      `CREATE TABLE IF NOT EXISTS wishlists (
-        id TEXT PRIMARY KEY,
-        site_id TEXT NOT NULL,
-        user_id TEXT NOT NULL,
-        product_id TEXT NOT NULL,
-        created_at TEXT DEFAULT (datetime('now')),
-        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
-        FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
-        UNIQUE(site_id, user_id, product_id)
-      )`,
-      `CREATE TABLE IF NOT EXISTS orders (
-        id TEXT PRIMARY KEY,
-        site_id TEXT NOT NULL,
-        user_id TEXT,
-        order_number TEXT UNIQUE NOT NULL,
-        status TEXT DEFAULT 'pending',
-        items TEXT NOT NULL,
-        subtotal REAL NOT NULL,
-        discount REAL DEFAULT 0,
-        shipping_cost REAL DEFAULT 0,
-        tax REAL DEFAULT 0,
-        total REAL NOT NULL,
-        currency TEXT DEFAULT 'INR',
-        payment_method TEXT,
-        payment_status TEXT DEFAULT 'pending',
-        payment_id TEXT,
-        razorpay_order_id TEXT,
-        razorpay_payment_id TEXT,
-        razorpay_signature TEXT,
-        shipping_address TEXT NOT NULL,
-        billing_address TEXT,
-        customer_name TEXT NOT NULL,
-        customer_email TEXT,
-        customer_phone TEXT NOT NULL,
-        coupon_code TEXT,
-        notes TEXT,
-        tracking_number TEXT,
-        carrier TEXT,
-        shipped_at TEXT,
-        delivered_at TEXT,
-        cancelled_at TEXT,
-        cancellation_reason TEXT,
-        created_at TEXT DEFAULT (datetime('now')),
-        updated_at TEXT DEFAULT (datetime('now')),
-        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
-      )`,
-      `CREATE TABLE IF NOT EXISTS guest_orders (
-        id TEXT PRIMARY KEY,
-        site_id TEXT NOT NULL,
-        order_number TEXT UNIQUE NOT NULL,
-        status TEXT DEFAULT 'pending',
-        items TEXT NOT NULL,
-        subtotal REAL NOT NULL,
-        discount REAL DEFAULT 0,
-        shipping_cost REAL DEFAULT 0,
-        tax REAL DEFAULT 0,
-        total REAL NOT NULL,
-        currency TEXT DEFAULT 'INR',
-        payment_method TEXT,
-        payment_status TEXT DEFAULT 'pending',
-        razorpay_order_id TEXT,
-        razorpay_payment_id TEXT,
-        shipping_address TEXT NOT NULL,
-        customer_name TEXT NOT NULL,
-        customer_email TEXT,
-        customer_phone TEXT NOT NULL,
-        tracking_number TEXT,
-        carrier TEXT,
-        created_at TEXT DEFAULT (datetime('now')),
-        updated_at TEXT DEFAULT (datetime('now')),
-        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
-      )`,
-      `CREATE TABLE IF NOT EXISTS site_customers (
-        id TEXT PRIMARY KEY,
-        site_id TEXT NOT NULL,
-        email TEXT NOT NULL,
-        password_hash TEXT NOT NULL,
-        name TEXT NOT NULL,
-        phone TEXT,
-        created_at TEXT DEFAULT (datetime('now')),
-        updated_at TEXT DEFAULT (datetime('now')),
-        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
-        UNIQUE(site_id, email)
-      )`,
-      `CREATE TABLE IF NOT EXISTS site_customer_sessions (
-        id TEXT PRIMARY KEY,
-        customer_id TEXT NOT NULL,
-        site_id TEXT NOT NULL,
-        token TEXT NOT NULL,
-        expires_at TEXT NOT NULL,
-        created_at TEXT DEFAULT (datetime('now')),
-        FOREIGN KEY (customer_id) REFERENCES site_customers(id) ON DELETE CASCADE,
-        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
-      )`,
-      `CREATE TABLE IF NOT EXISTS customer_addresses (
-        id TEXT PRIMARY KEY,
-        site_id TEXT NOT NULL,
-        customer_id TEXT NOT NULL,
-        label TEXT DEFAULT 'Home',
-        first_name TEXT NOT NULL,
-        last_name TEXT,
-        phone TEXT,
-        house_number TEXT NOT NULL,
-        road_name TEXT,
-        city TEXT NOT NULL,
-        state TEXT NOT NULL,
-        pin_code TEXT NOT NULL,
-        is_default INTEGER DEFAULT 0,
-        created_at TEXT DEFAULT (datetime('now')),
-        updated_at TEXT DEFAULT (datetime('now')),
-        FOREIGN KEY (customer_id) REFERENCES site_customers(id) ON DELETE CASCADE,
-        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
-      )`,
       `CREATE TABLE IF NOT EXISTS subscriptions (
         id TEXT PRIMARY KEY,
         user_id TEXT NOT NULL,
@@ -10465,66 +10238,7 @@ async function ensureTablesExist(env) {
         error_description TEXT,
         created_at TEXT DEFAULT (datetime('now')),
         FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE SET NULL,
-        FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE SET NULL,
         FOREIGN KEY (subscription_id) REFERENCES subscriptions(id) ON DELETE SET NULL
-      )`,
-      `CREATE TABLE IF NOT EXISTS coupons (
-        id TEXT PRIMARY KEY,
-        site_id TEXT NOT NULL,
-        code TEXT NOT NULL,
-        type TEXT NOT NULL,
-        value REAL NOT NULL,
-        min_order_value REAL DEFAULT 0,
-        max_discount REAL,
-        usage_limit INTEGER,
-        used_count INTEGER DEFAULT 0,
-        starts_at TEXT,
-        expires_at TEXT,
-        is_active INTEGER DEFAULT 1,
-        created_at TEXT DEFAULT (datetime('now')),
-        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
-        UNIQUE(site_id, code)
-      )`,
-      `CREATE TABLE IF NOT EXISTS notifications (
-        id TEXT PRIMARY KEY,
-        site_id TEXT NOT NULL,
-        user_id TEXT,
-        push_token TEXT NOT NULL,
-        endpoint TEXT,
-        p256dh TEXT,
-        auth TEXT,
-        is_active INTEGER DEFAULT 1,
-        created_at TEXT DEFAULT (datetime('now')),
-        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
-      )`,
-      `CREATE TABLE IF NOT EXISTS reviews (
-        id TEXT PRIMARY KEY,
-        site_id TEXT NOT NULL,
-        product_id TEXT NOT NULL,
-        user_id TEXT,
-        customer_name TEXT NOT NULL,
-        rating INTEGER NOT NULL CHECK(rating >= 1 AND rating <= 5),
-        title TEXT,
-        content TEXT,
-        images TEXT,
-        is_verified INTEGER DEFAULT 0,
-        is_approved INTEGER DEFAULT 0,
-        created_at TEXT DEFAULT (datetime('now')),
-        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
-        FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
-      )`,
-      `CREATE TABLE IF NOT EXISTS activity_log (
-        id TEXT PRIMARY KEY,
-        site_id TEXT,
-        user_id TEXT,
-        action TEXT NOT NULL,
-        entity_type TEXT,
-        entity_id TEXT,
-        details TEXT,
-        ip_address TEXT,
-        user_agent TEXT,
-        created_at TEXT DEFAULT (datetime('now')),
-        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
       )`,
       `CREATE TABLE IF NOT EXISTS subscription_plans (
         id TEXT PRIMARY KEY,
@@ -10577,46 +10291,10 @@ async function ensureTablesExist(env) {
       "CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id)",
       "CREATE INDEX IF NOT EXISTS idx_sites_subdomain ON sites(subdomain)",
       "CREATE INDEX IF NOT EXISTS idx_sites_user ON sites(user_id)",
-      "CREATE INDEX IF NOT EXISTS idx_categories_site ON categories(site_id)",
-      "CREATE INDEX IF NOT EXISTS idx_categories_slug ON categories(site_id, slug)",
-      "CREATE INDEX IF NOT EXISTS idx_categories_parent ON categories(parent_id)",
-      "CREATE INDEX IF NOT EXISTS idx_products_site ON products(site_id)",
-      "CREATE INDEX IF NOT EXISTS idx_products_category ON products(category_id)",
-      "CREATE INDEX IF NOT EXISTS idx_products_site_slug ON products(site_id, slug)",
-      "CREATE INDEX IF NOT EXISTS idx_products_featured ON products(site_id, is_featured)",
-      "CREATE INDEX IF NOT EXISTS idx_variants_product ON product_variants(product_id)",
-      "CREATE INDEX IF NOT EXISTS idx_addresses_user ON addresses(user_id)",
-      "CREATE INDEX IF NOT EXISTS idx_carts_user ON carts(user_id)",
-      "CREATE INDEX IF NOT EXISTS idx_carts_session ON carts(session_id)",
-      "CREATE INDEX IF NOT EXISTS idx_carts_site ON carts(site_id)",
-      "CREATE INDEX IF NOT EXISTS idx_wishlists_user ON wishlists(user_id)",
-      "CREATE INDEX IF NOT EXISTS idx_wishlists_site ON wishlists(site_id)",
-      "CREATE INDEX IF NOT EXISTS idx_orders_site ON orders(site_id)",
-      "CREATE INDEX IF NOT EXISTS idx_orders_user ON orders(user_id)",
-      "CREATE INDEX IF NOT EXISTS idx_orders_number ON orders(order_number)",
-      "CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(site_id, status)",
-      "CREATE INDEX IF NOT EXISTS idx_orders_created ON orders(site_id, created_at)",
-      "CREATE INDEX IF NOT EXISTS idx_guest_orders_site ON guest_orders(site_id)",
-      "CREATE INDEX IF NOT EXISTS idx_guest_orders_number ON guest_orders(order_number)",
-      "CREATE INDEX IF NOT EXISTS idx_site_customers_site ON site_customers(site_id)",
-      "CREATE INDEX IF NOT EXISTS idx_site_customers_email ON site_customers(site_id, email)",
-      "CREATE INDEX IF NOT EXISTS idx_customer_sessions_token ON site_customer_sessions(token)",
-      "CREATE INDEX IF NOT EXISTS idx_customer_sessions_customer ON site_customer_sessions(customer_id)",
-      "CREATE INDEX IF NOT EXISTS idx_customer_addresses_customer ON customer_addresses(customer_id)",
-      "CREATE INDEX IF NOT EXISTS idx_customer_addresses_site ON customer_addresses(site_id)",
       "CREATE INDEX IF NOT EXISTS idx_subscriptions_user ON subscriptions(user_id)",
       "CREATE INDEX IF NOT EXISTS idx_subscriptions_status ON subscriptions(status)",
       "CREATE INDEX IF NOT EXISTS idx_transactions_order ON payment_transactions(order_id)",
       "CREATE INDEX IF NOT EXISTS idx_transactions_user ON payment_transactions(user_id)",
-      "CREATE INDEX IF NOT EXISTS idx_coupons_site ON coupons(site_id)",
-      "CREATE INDEX IF NOT EXISTS idx_coupons_code ON coupons(site_id, code)",
-      "CREATE INDEX IF NOT EXISTS idx_notifications_site ON notifications(site_id)",
-      "CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id)",
-      "CREATE INDEX IF NOT EXISTS idx_reviews_product ON reviews(product_id)",
-      "CREATE INDEX IF NOT EXISTS idx_reviews_site ON reviews(site_id)",
-      "CREATE INDEX IF NOT EXISTS idx_activity_site ON activity_log(site_id)",
-      "CREATE INDEX IF NOT EXISTS idx_activity_user ON activity_log(user_id)",
-      "CREATE INDEX IF NOT EXISTS idx_activity_created ON activity_log(created_at)",
       "CREATE UNIQUE INDEX IF NOT EXISTS idx_sites_custom_domain ON sites(custom_domain) WHERE custom_domain IS NOT NULL",
       "CREATE INDEX IF NOT EXISTS idx_site_media_site ON site_media(site_id)",
       "CREATE INDEX IF NOT EXISTS idx_site_media_key ON site_media(storage_key)"
@@ -10643,13 +10321,10 @@ async function ensureTablesExist(env) {
       )
     `).run();
     const migrations = [
-      { col: "subtitle", sql: "ALTER TABLE categories ADD COLUMN subtitle TEXT" },
-      { col: "show_on_home", sql: "ALTER TABLE categories ADD COLUMN show_on_home INTEGER DEFAULT 1" },
       { col: "custom_domain", sql: "ALTER TABLE sites ADD COLUMN custom_domain TEXT" },
       { col: "domain_status", sql: "ALTER TABLE sites ADD COLUMN domain_status TEXT" },
       { col: "domain_verification_token", sql: "ALTER TABLE sites ADD COLUMN domain_verification_token TEXT" },
       { col: "cf_hostname_id", sql: "ALTER TABLE sites ADD COLUMN cf_hostname_id TEXT" },
-      { col: "coupon_code", table: "orders", sql: "ALTER TABLE orders ADD COLUMN coupon_code TEXT" },
       { col: "role", table: "users", sql: "ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'" },
       { col: "d1_database_id", table: "sites", sql: "ALTER TABLE sites ADD COLUMN d1_database_id TEXT" },
       { col: "d1_binding_name", table: "sites", sql: "ALTER TABLE sites ADD COLUMN d1_binding_name TEXT" },
@@ -10657,23 +10332,10 @@ async function ensureTablesExist(env) {
       { col: "migration_locked", table: "sites", sql: "ALTER TABLE sites ADD COLUMN migration_locked INTEGER DEFAULT 0" },
       { col: "baseline_bytes", table: "site_usage", sql: "ALTER TABLE site_usage ADD COLUMN baseline_bytes INTEGER DEFAULT 0" },
       { col: "baseline_updated_at", table: "site_usage", sql: "ALTER TABLE site_usage ADD COLUMN baseline_updated_at TEXT" },
-      { col: "row_size_bytes", table: "categories", sql: "ALTER TABLE categories ADD COLUMN row_size_bytes INTEGER DEFAULT 0" },
-      { col: "row_size_bytes", table: "products", sql: "ALTER TABLE products ADD COLUMN row_size_bytes INTEGER DEFAULT 0" },
-      { col: "row_size_bytes", table: "product_variants", sql: "ALTER TABLE product_variants ADD COLUMN row_size_bytes INTEGER DEFAULT 0" },
-      { col: "row_size_bytes", table: "orders", sql: "ALTER TABLE orders ADD COLUMN row_size_bytes INTEGER DEFAULT 0" },
-      { col: "row_size_bytes", table: "guest_orders", sql: "ALTER TABLE guest_orders ADD COLUMN row_size_bytes INTEGER DEFAULT 0" },
-      { col: "row_size_bytes", table: "carts", sql: "ALTER TABLE carts ADD COLUMN row_size_bytes INTEGER DEFAULT 0" },
-      { col: "row_size_bytes", table: "wishlists", sql: "ALTER TABLE wishlists ADD COLUMN row_size_bytes INTEGER DEFAULT 0" },
-      { col: "row_size_bytes", table: "site_customers", sql: "ALTER TABLE site_customers ADD COLUMN row_size_bytes INTEGER DEFAULT 0" },
-      { col: "row_size_bytes", table: "customer_addresses", sql: "ALTER TABLE customer_addresses ADD COLUMN row_size_bytes INTEGER DEFAULT 0" },
-      { col: "row_size_bytes", table: "site_customer_sessions", sql: "ALTER TABLE site_customer_sessions ADD COLUMN row_size_bytes INTEGER DEFAULT 0" },
-      { col: "row_size_bytes", table: "customer_password_resets", sql: "ALTER TABLE customer_password_resets ADD COLUMN row_size_bytes INTEGER DEFAULT 0" },
-      { col: "row_size_bytes", table: "customer_email_verifications", sql: "ALTER TABLE customer_email_verifications ADD COLUMN row_size_bytes INTEGER DEFAULT 0" },
-      { col: "row_size_bytes", table: "coupons", sql: "ALTER TABLE coupons ADD COLUMN row_size_bytes INTEGER DEFAULT 0" },
-      { col: "row_size_bytes", table: "notifications", sql: "ALTER TABLE notifications ADD COLUMN row_size_bytes INTEGER DEFAULT 0" },
-      { col: "row_size_bytes", table: "reviews", sql: "ALTER TABLE reviews ADD COLUMN row_size_bytes INTEGER DEFAULT 0" },
-      { col: "row_size_bytes", table: "activity_log", sql: "ALTER TABLE activity_log ADD COLUMN row_size_bytes INTEGER DEFAULT 0" },
-      { col: "row_size_bytes", table: "addresses", sql: "ALTER TABLE addresses ADD COLUMN row_size_bytes INTEGER DEFAULT 0" }
+      { col: "row_size_bytes", table: "site_media", sql: "ALTER TABLE site_media ADD COLUMN row_size_bytes INTEGER DEFAULT 0" },
+      { col: "site_id", table: "subscriptions", sql: "ALTER TABLE subscriptions ADD COLUMN site_id TEXT" },
+      { col: "plan_tier", table: "subscription_plans", sql: "ALTER TABLE subscription_plans ADD COLUMN plan_tier INTEGER DEFAULT 0" },
+      { col: "currency", table: "sites", sql: "ALTER TABLE sites ADD COLUMN currency TEXT DEFAULT 'INR'" }
     ];
     for (const m of migrations) {
       try {
@@ -10684,171 +10346,6 @@ async function ensureTablesExist(env) {
     try {
       await env.DB.prepare(`UPDATE sites SET template_id = 'storefront' WHERE template_id = 'template1'`).run();
     } catch (e) {
-    }
-    try {
-      const wishlistDef = await env.DB.prepare(
-        `SELECT sql FROM sqlite_master WHERE type='table' AND name='wishlists'`
-      ).first();
-      if (wishlistDef && wishlistDef.sql && !wishlistDef.sql.includes("site_id, user_id, product_id")) {
-        await env.DB.prepare(`ALTER TABLE wishlists RENAME TO wishlists_old`).run();
-        await env.DB.prepare(`
-          CREATE TABLE wishlists (
-            id TEXT PRIMARY KEY,
-            site_id TEXT NOT NULL,
-            user_id TEXT NOT NULL,
-            product_id TEXT NOT NULL,
-            created_at TEXT DEFAULT (datetime('now')),
-            FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
-            FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
-            UNIQUE(site_id, user_id, product_id)
-          )
-        `).run();
-        await env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_wishlists_user ON wishlists(user_id)`).run();
-        await env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_wishlists_site ON wishlists(site_id)`).run();
-        await env.DB.prepare(`INSERT INTO wishlists SELECT * FROM wishlists_old`).run();
-        await env.DB.prepare(`DROP TABLE wishlists_old`).run();
-        console.log("Wishlists table migrated: unique constraint now includes site_id");
-      }
-    } catch (e) {
-      console.error("Wishlists migration failed (non-fatal):", e.message || e);
-    }
-    const fkMigrations = [
-      {
-        table: "carts",
-        detect: `REFERENCES users`,
-        create: `CREATE TABLE carts (
-          id TEXT PRIMARY KEY, site_id TEXT NOT NULL, user_id TEXT,
-          session_id TEXT, items TEXT NOT NULL DEFAULT '[]',
-          subtotal REAL DEFAULT 0,
-          created_at TEXT DEFAULT (datetime('now')),
-          updated_at TEXT DEFAULT (datetime('now')),
-          FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
-        )`,
-        indexes: [
-          "CREATE INDEX IF NOT EXISTS idx_carts_user ON carts(user_id)",
-          "CREATE INDEX IF NOT EXISTS idx_carts_session ON carts(session_id)",
-          "CREATE INDEX IF NOT EXISTS idx_carts_site ON carts(site_id)"
-        ]
-      },
-      {
-        table: "orders",
-        detect: `REFERENCES users`,
-        create: `CREATE TABLE orders (
-          id TEXT PRIMARY KEY, site_id TEXT NOT NULL, user_id TEXT,
-          order_number TEXT UNIQUE NOT NULL, status TEXT DEFAULT 'pending',
-          items TEXT NOT NULL, subtotal REAL NOT NULL, discount REAL DEFAULT 0,
-          shipping_cost REAL DEFAULT 0, tax REAL DEFAULT 0, total REAL NOT NULL,
-          currency TEXT DEFAULT 'INR', payment_method TEXT,
-          payment_status TEXT DEFAULT 'pending', payment_id TEXT,
-          razorpay_order_id TEXT, razorpay_payment_id TEXT, razorpay_signature TEXT,
-          shipping_address TEXT NOT NULL, billing_address TEXT,
-          customer_name TEXT NOT NULL, customer_email TEXT,
-          customer_phone TEXT NOT NULL, notes TEXT,
-          tracking_number TEXT, carrier TEXT,
-          shipped_at TEXT, delivered_at TEXT, cancelled_at TEXT, cancellation_reason TEXT,
-          created_at TEXT DEFAULT (datetime('now')),
-          updated_at TEXT DEFAULT (datetime('now')),
-          FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
-        )`,
-        indexes: [
-          "CREATE INDEX IF NOT EXISTS idx_orders_site ON orders(site_id)",
-          "CREATE INDEX IF NOT EXISTS idx_orders_user ON orders(user_id)",
-          "CREATE INDEX IF NOT EXISTS idx_orders_number ON orders(order_number)",
-          "CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(site_id, status)",
-          "CREATE INDEX IF NOT EXISTS idx_orders_created ON orders(site_id, created_at)"
-        ]
-      },
-      {
-        table: "reviews",
-        detect: `REFERENCES users`,
-        create: `CREATE TABLE reviews (
-          id TEXT PRIMARY KEY, site_id TEXT NOT NULL, product_id TEXT NOT NULL,
-          user_id TEXT, customer_name TEXT NOT NULL,
-          rating INTEGER NOT NULL CHECK(rating >= 1 AND rating <= 5),
-          title TEXT, content TEXT, images TEXT,
-          is_verified INTEGER DEFAULT 0, is_approved INTEGER DEFAULT 0,
-          created_at TEXT DEFAULT (datetime('now')),
-          FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
-          FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
-        )`,
-        indexes: [
-          "CREATE INDEX IF NOT EXISTS idx_reviews_product ON reviews(product_id)",
-          "CREATE INDEX IF NOT EXISTS idx_reviews_site ON reviews(site_id)"
-        ]
-      },
-      {
-        table: "payment_transactions",
-        detect: `REFERENCES users`,
-        create: `CREATE TABLE payment_transactions (
-          id TEXT PRIMARY KEY, site_id TEXT, user_id TEXT,
-          order_id TEXT, subscription_id TEXT,
-          razorpay_order_id TEXT, razorpay_payment_id TEXT, razorpay_signature TEXT,
-          amount REAL NOT NULL, currency TEXT DEFAULT 'INR',
-          status TEXT DEFAULT 'pending', payment_method TEXT,
-          error_code TEXT, error_description TEXT,
-          created_at TEXT DEFAULT (datetime('now')),
-          FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE SET NULL,
-          FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE SET NULL,
-          FOREIGN KEY (subscription_id) REFERENCES subscriptions(id) ON DELETE SET NULL
-        )`,
-        indexes: [
-          "CREATE INDEX IF NOT EXISTS idx_transactions_order ON payment_transactions(order_id)",
-          "CREATE INDEX IF NOT EXISTS idx_transactions_user ON payment_transactions(user_id)"
-        ]
-      },
-      {
-        table: "activity_log",
-        detect: `REFERENCES users`,
-        create: `CREATE TABLE activity_log (
-          id TEXT PRIMARY KEY, site_id TEXT, user_id TEXT,
-          action TEXT NOT NULL, entity_type TEXT, entity_id TEXT,
-          details TEXT, ip_address TEXT, user_agent TEXT,
-          created_at TEXT DEFAULT (datetime('now')),
-          FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
-        )`,
-        indexes: [
-          "CREATE INDEX IF NOT EXISTS idx_activity_site ON activity_log(site_id)",
-          "CREATE INDEX IF NOT EXISTS idx_activity_user ON activity_log(user_id)",
-          "CREATE INDEX IF NOT EXISTS idx_activity_created ON activity_log(created_at)"
-        ]
-      },
-      {
-        table: "notifications",
-        detect: `REFERENCES users`,
-        create: `CREATE TABLE notifications (
-          id TEXT PRIMARY KEY, site_id TEXT NOT NULL, user_id TEXT,
-          push_token TEXT NOT NULL, endpoint TEXT, p256dh TEXT, auth TEXT,
-          is_active INTEGER DEFAULT 1,
-          created_at TEXT DEFAULT (datetime('now')),
-          FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
-        )`,
-        indexes: [
-          "CREATE INDEX IF NOT EXISTS idx_notifications_site ON notifications(site_id)",
-          "CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id)"
-        ]
-      }
-    ];
-    for (const mig of fkMigrations) {
-      try {
-        const def = await env.DB.prepare(
-          `SELECT sql FROM sqlite_master WHERE type='table' AND name=?`
-        ).bind(mig.table).first();
-        if (def && def.sql && def.sql.includes(mig.detect)) {
-          await env.DB.prepare(`ALTER TABLE ${mig.table} RENAME TO ${mig.table}_old`).run();
-          await env.DB.prepare(mig.create).run();
-          for (const idx of mig.indexes) {
-            try {
-              await env.DB.prepare(idx).run();
-            } catch (_) {
-            }
-          }
-          await env.DB.prepare(`INSERT INTO ${mig.table} SELECT * FROM ${mig.table}_old`).run();
-          await env.DB.prepare(`DROP TABLE ${mig.table}_old`).run();
-          console.log(`${mig.table} table migrated: removed incorrect user_id FK`);
-        }
-      } catch (e) {
-        console.error(`${mig.table} FK migration failed (non-fatal):`, e.message || e);
-      }
     }
     await ensureSEOColumns(env);
     _initialized = true;
