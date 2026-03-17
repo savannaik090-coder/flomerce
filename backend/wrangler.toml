@@ -45,6 +45,12 @@ database_name = "saas-platform-db"
 database_id = "bbddf99e-dd63-4ace-b9d2-274c42404d65"
 migrations_dir = "migrations"
 
+# Shard D1 Databases
+[[d1_databases]]
+binding = "SHARD_1"
+database_name = "saas-sites-db"
+database_id = "da11d91d-13da-43a5-9360-321d880a90d1"
+
 # R2 Storage Configuration
 # Bucket: saas-platform-s
 [[r2_buckets]]

@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-A5GKBh/checked-fetch.js
+// .wrangler/tmp/bundle-a86cOf/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-A5GKBh/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-a86cOf/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-A5GKBh/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-a86cOf/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-A5GKBh/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-a86cOf/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -1151,20 +1151,51 @@ async function getDatabaseSize(env, databaseId) {
 }
 async function runSchemaOnDB(env, databaseId, sqlStatements) {
   const { apiToken, accountId } = getCredentials(env);
+  const coreStatements = [];
+  const alterStatements = [];
   for (const sql of sqlStatements) {
+    if (sql.trim().toUpperCase().startsWith("ALTER TABLE")) {
+      alterStatements.push(sql);
+    } else {
+      coreStatements.push(sql);
+    }
+  }
+  const BATCH_SIZE = 15;
+  for (let i = 0; i < coreStatements.length; i += BATCH_SIZE) {
+    const batch = coreStatements.slice(i, i + BATCH_SIZE);
+    const combinedSql = batch.join(";\n");
     const res = await fetch(`${CF_API_BASE2}/accounts/${accountId}/d1/database/${databaseId}/query`, {
       method: "POST",
       headers: cfHeaders2(apiToken),
-      body: JSON.stringify({ sql })
+      body: JSON.stringify({ sql: combinedSql })
     });
     const data = await res.json();
     if (!data.success) {
-      const isAlterTable = sql.trim().toUpperCase().startsWith("ALTER TABLE");
-      if (isAlterTable) {
-        continue;
+      console.error(`Schema batch failed (statements ${i}-${i + batch.length}):`, data.errors);
+      throw new Error(`Failed to run schema SQL batch: ${JSON.stringify(data.errors)}`);
+    }
+  }
+  const ALTER_BATCH = 10;
+  for (let i = 0; i < alterStatements.length; i += ALTER_BATCH) {
+    const batch = alterStatements.slice(i, i + ALTER_BATCH);
+    for (const sql of batch) {
+      try {
+        const res = await fetch(`${CF_API_BASE2}/accounts/${accountId}/d1/database/${databaseId}/query`, {
+          method: "POST",
+          headers: cfHeaders2(apiToken),
+          body: JSON.stringify({ sql })
+        });
+        const data = await res.json();
+        if (!data.success) {
+          const errStr = JSON.stringify(data.errors || []);
+          if (errStr.includes("duplicate column") || errStr.includes("already exists")) {
+            continue;
+          }
+          console.error(`ALTER failed: ${sql.substring(0, 80)}`, data.errors);
+        }
+      } catch (e) {
+        console.error(`ALTER error: ${sql.substring(0, 80)}`, e.message);
       }
-      console.error(`Schema SQL failed: ${sql.substring(0, 80)}...`, data.errors);
-      throw new Error(`Failed to run schema SQL: ${JSON.stringify(data.errors)}`);
     }
   }
   return true;
@@ -1181,17 +1212,20 @@ async function addBindingAndRedeploy(env, siteId, databaseId, bindingName) {
     throw new Error(`Failed to get worker settings: ${JSON.stringify(getData.errors)}`);
   }
   const currentBindings = getData.result?.bindings || [];
-  const alreadyExists = currentBindings.some((b) => b.name === bindingName);
-  if (alreadyExists) {
-    console.log(`Binding ${bindingName} already exists, skipping redeploy`);
+  const existingBinding = currentBindings.find((b) => b.name === bindingName);
+  if (existingBinding && existingBinding.id === databaseId) {
+    console.log(`Binding ${bindingName} already exists with correct DB ID, skipping redeploy`);
     return true;
   }
-  const newBinding = {
-    type: "d1",
-    name: bindingName,
-    id: databaseId
-  };
-  const updatedBindings = [...currentBindings, newBinding];
+  let updatedBindings;
+  if (existingBinding) {
+    updatedBindings = currentBindings.map(
+      (b) => b.name === bindingName ? { ...b, id: databaseId } : b
+    );
+    console.log(`Updating binding ${bindingName} from ${existingBinding.id} to ${databaseId}`);
+  } else {
+    updatedBindings = [...currentBindings, { type: "d1", name: bindingName, id: databaseId }];
+  }
   const patchRes = await fetch(`${CF_API_BASE2}/accounts/${accountId}/workers/scripts/${workerName}/settings`, {
     method: "PATCH",
     headers: cfHeaders2(apiToken),
@@ -1689,12 +1723,12 @@ var init_usage_tracker = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-A5GKBh/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-a86cOf/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-A5GKBh/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-a86cOf/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -8346,19 +8380,22 @@ async function createShard(request, env) {
       `INSERT INTO shards (id, binding_name, database_id, database_name, is_active, correction_factor, created_at)
        VALUES (?, ?, ?, ?, ?, 1.0, datetime('now'))`
     ).bind(shardId, bindingName, databaseId, name, setActive !== false ? 1 : 0).run();
+    let bindingAdded = false;
     try {
       await addBindingAndRedeploy(env, shardId, databaseId, bindingName);
+      bindingAdded = true;
       console.log(`Worker redeployed with shard binding ${bindingName}`);
     } catch (redeployErr) {
-      console.error("Worker redeploy failed:", redeployErr.message || redeployErr);
-      return errorResponse(`Shard created but worker redeploy failed: ${redeployErr.message}. You may need to manually add the binding.`, 500);
+      console.error("Worker redeploy warning:", redeployErr.message || redeployErr);
     }
     return successResponse({
       shardId,
       bindingName,
       databaseId,
       databaseName: name,
-      isActive: setActive !== false
+      isActive: setActive !== false,
+      bindingAdded,
+      note: bindingAdded ? void 0 : `Shard created but binding not auto-added. Add to wrangler.toml: [[d1_databases]] binding="${bindingName}" database_name="${name}" database_id="${databaseId}"`
     }, `Shard "${name}" created successfully with binding ${bindingName}`);
   } catch (error) {
     console.error("Create shard error:", error);
@@ -10648,7 +10685,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-A5GKBh/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-a86cOf/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -10683,7 +10720,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-A5GKBh/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-a86cOf/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

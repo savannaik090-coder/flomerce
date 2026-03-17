@@ -72,21 +72,56 @@ export async function getDatabaseSize(env, databaseId) {
 export async function runSchemaOnDB(env, databaseId, sqlStatements) {
   const { apiToken, accountId } = getCredentials(env);
 
+  const coreStatements = [];
+  const alterStatements = [];
+
   for (const sql of sqlStatements) {
+    if (sql.trim().toUpperCase().startsWith('ALTER TABLE')) {
+      alterStatements.push(sql);
+    } else {
+      coreStatements.push(sql);
+    }
+  }
+
+  const BATCH_SIZE = 15;
+  for (let i = 0; i < coreStatements.length; i += BATCH_SIZE) {
+    const batch = coreStatements.slice(i, i + BATCH_SIZE);
+    const combinedSql = batch.join(';\n');
+
     const res = await fetch(`${CF_API_BASE}/accounts/${accountId}/d1/database/${databaseId}/query`, {
       method: 'POST',
       headers: cfHeaders(apiToken),
-      body: JSON.stringify({ sql }),
+      body: JSON.stringify({ sql: combinedSql }),
     });
 
     const data = await res.json();
     if (!data.success) {
-      const isAlterTable = sql.trim().toUpperCase().startsWith('ALTER TABLE');
-      if (isAlterTable) {
-        continue;
+      console.error(`Schema batch failed (statements ${i}-${i + batch.length}):`, data.errors);
+      throw new Error(`Failed to run schema SQL batch: ${JSON.stringify(data.errors)}`);
+    }
+  }
+
+  const ALTER_BATCH = 10;
+  for (let i = 0; i < alterStatements.length; i += ALTER_BATCH) {
+    const batch = alterStatements.slice(i, i + ALTER_BATCH);
+    for (const sql of batch) {
+      try {
+        const res = await fetch(`${CF_API_BASE}/accounts/${accountId}/d1/database/${databaseId}/query`, {
+          method: 'POST',
+          headers: cfHeaders(apiToken),
+          body: JSON.stringify({ sql }),
+        });
+        const data = await res.json();
+        if (!data.success) {
+          const errStr = JSON.stringify(data.errors || []);
+          if (errStr.includes('duplicate column') || errStr.includes('already exists')) {
+            continue;
+          }
+          console.error(`ALTER failed: ${sql.substring(0, 80)}`, data.errors);
+        }
+      } catch (e) {
+        console.error(`ALTER error: ${sql.substring(0, 80)}`, e.message);
       }
-      console.error(`Schema SQL failed: ${sql.substring(0, 80)}...`, data.errors);
-      throw new Error(`Failed to run schema SQL: ${JSON.stringify(data.errors)}`);
     }
   }
 
@@ -109,19 +144,21 @@ export async function addBindingAndRedeploy(env, siteId, databaseId, bindingName
 
   const currentBindings = getData.result?.bindings || [];
 
-  const alreadyExists = currentBindings.some(b => b.name === bindingName);
-  if (alreadyExists) {
-    console.log(`Binding ${bindingName} already exists, skipping redeploy`);
+  const existingBinding = currentBindings.find(b => b.name === bindingName);
+  if (existingBinding && existingBinding.id === databaseId) {
+    console.log(`Binding ${bindingName} already exists with correct DB ID, skipping redeploy`);
     return true;
   }
 
-  const newBinding = {
-    type: 'd1',
-    name: bindingName,
-    id: databaseId,
-  };
-
-  const updatedBindings = [...currentBindings, newBinding];
+  let updatedBindings;
+  if (existingBinding) {
+    updatedBindings = currentBindings.map(b =>
+      b.name === bindingName ? { ...b, id: databaseId } : b
+    );
+    console.log(`Updating binding ${bindingName} from ${existingBinding.id} to ${databaseId}`);
+  } else {
+    updatedBindings = [...currentBindings, { type: 'd1', name: bindingName, id: databaseId }];
+  }
 
   const patchRes = await fetch(`${CF_API_BASE}/accounts/${accountId}/workers/scripts/${workerName}/settings`, {
     method: 'PATCH',

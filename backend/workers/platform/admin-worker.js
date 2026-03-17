@@ -630,12 +630,13 @@ async function createShard(request, env) {
        VALUES (?, ?, ?, ?, ?, 1.0, datetime('now'))`
     ).bind(shardId, bindingName, databaseId, name, setActive !== false ? 1 : 0).run();
 
+    let bindingAdded = false;
     try {
       await addBindingAndRedeploy(env, shardId, databaseId, bindingName);
+      bindingAdded = true;
       console.log(`Worker redeployed with shard binding ${bindingName}`);
     } catch (redeployErr) {
-      console.error('Worker redeploy failed:', redeployErr.message || redeployErr);
-      return errorResponse(`Shard created but worker redeploy failed: ${redeployErr.message}. You may need to manually add the binding.`, 500);
+      console.error('Worker redeploy warning:', redeployErr.message || redeployErr);
     }
 
     return successResponse({
@@ -644,6 +645,8 @@ async function createShard(request, env) {
       databaseId,
       databaseName: name,
       isActive: setActive !== false,
+      bindingAdded,
+      note: bindingAdded ? undefined : `Shard created but binding not auto-added. Add to wrangler.toml: [[d1_databases]] binding="${bindingName}" database_name="${name}" database_id="${databaseId}"`,
     }, `Shard "${name}" created successfully with binding ${bindingName}`);
   } catch (error) {
     console.error('Create shard error:', error);

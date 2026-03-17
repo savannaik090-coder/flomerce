@@ -80,6 +80,7 @@ Fluxe uses a **shared shard-based D1 database architecture**: multiple sites sha
 - **Cloudflare Workers:** Backend serverless functions.
 - **Cloudflare D1:** Primary database (platform + shared shard databases).
 - **Cloudflare R2:** Object storage for static assets (images, videos).
-- **Cloudflare REST API:** Used for shard D1 database management (create, delete, query size, run schema, manage worker bindings). Requires `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` environment variables.
+- **Cloudflare REST API:** Used for shard D1 database management (create, delete, query size, run schema, manage worker bindings). Requires `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` as Cloudflare Worker secrets (set via `wrangler secret put`). Schema application batches SQL statements (15 per batch) to stay under Cloudflare's 50-subrequest limit per Worker invocation.
+- **Active Shards:** SHARD_1 = `saas-sites-db` (database_id: `da11d91d-13da-43a5-9360-321d880a90d1`). New sites are automatically assigned to the active shard.
 - **Razorpay:** Payment gateway for platform subscriptions and storefront transactions.
 - **Resend/SendGrid:** Email sending services. `RESEND_API_KEY` must be set as a Cloudflare Worker secret (`wrangler secret put RESEND_API_KEY`) for production. The `sendEmail` utility uses `Fluxe <FROM_EMAIL>` as sender, defaults to `noreply@fluxe.in`. If no email provider is configured, emails are NOT sent and a warning is logged. The `from` field uses Resend's display-name format: `Fluxe <noreply@fluxe.in>`.
