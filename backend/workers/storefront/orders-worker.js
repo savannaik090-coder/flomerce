@@ -765,7 +765,7 @@ async function trackOrder(env, orderId, request) {
   }
 }
 
-async function sendOrderEmails(env, siteId, orderData) {
+export async function sendOrderEmails(env, siteId, orderData) {
   try {
     const site = await env.DB.prepare(
       'SELECT brand_name, email, settings FROM sites WHERE id = ?'

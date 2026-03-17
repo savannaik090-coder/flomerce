@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-zJiOfX/checked-fetch.js
+// .wrangler/tmp/bundle-ApNGZX/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-zJiOfX/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-ApNGZX/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-zJiOfX/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-ApNGZX/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-zJiOfX/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-ApNGZX/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -1738,12 +1738,12 @@ var init_usage_tracker = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-zJiOfX/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-ApNGZX/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-zJiOfX/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-ApNGZX/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -4376,6 +4376,9 @@ async function createOrder(request, env, user) {
       console.error("Order missing fields:", missingFields.join(", "), "Received data keys:", Object.keys(data).join(", "));
       return errorResponse(`Missing required fields: ${missingFields.join(", ")}`);
     }
+    if (await checkMigrationLock(env, siteId)) {
+      return errorResponse("Site is currently being migrated. Please try again shortly.", 423);
+    }
     const db = await resolveSiteDBById(env, siteId);
     let subtotal = 0;
     const processedItems = [];
@@ -4467,13 +4470,15 @@ async function createOrder(request, env, user) {
     const orderNumber = generateOrderNumber();
     const isPendingPayment = paymentMethod === "razorpay";
     const orderStatus = isPendingPayment ? "pending_payment" : data.status || "pending";
-    const usageCheck = await checkUsageLimit(env, siteId, "d1", 0);
+    const rowData = { id: orderId, site_id: siteId, order_number: orderNumber, items: processedItems, subtotal, discount, total, payment_method: paymentMethod, shipping_address: shippingAddress, billing_address: billingAddress, customer_name: customerName, customer_email: customerEmail, customer_phone: customerPhone, coupon_code: appliedCouponCode, notes };
+    const rowBytes = estimateRowBytes(rowData);
+    const usageCheck = await checkUsageLimit(env, siteId, "d1", rowBytes);
     if (!usageCheck.allowed) {
       return errorResponse(usageCheck.reason, 403, "STORAGE_LIMIT");
     }
     await db.prepare(
-      `INSERT INTO orders (id, site_id, user_id, order_number, items, subtotal, discount, shipping_cost, tax, total, payment_method, status, shipping_address, billing_address, customer_name, customer_email, customer_phone, coupon_code, notes, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+      `INSERT INTO orders (id, site_id, user_id, order_number, items, subtotal, discount, shipping_cost, tax, total, payment_method, status, shipping_address, billing_address, customer_name, customer_email, customer_phone, coupon_code, notes, row_size_bytes, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(
       orderId,
       siteId,
@@ -4493,8 +4498,10 @@ async function createOrder(request, env, user) {
       customerEmail || null,
       customerPhone,
       appliedCouponCode || null,
-      notes || null
+      notes || null,
+      rowBytes
     ).run();
+    await trackD1Write(env, siteId, rowBytes);
     if (!isPendingPayment) {
       for (const item of processedItems) {
         await updateProductStock(env, item.productId, item.quantity, "decrement", siteId);
@@ -4547,7 +4554,7 @@ async function updateOrderStatus(request, env, user, orderId) {
         const allSites = await env.DB.prepare("SELECT id FROM sites").all();
         for (const s of allSites.results || []) {
           const sdb = await resolveSiteDBById(env, s.id);
-          const found = await sdb.prepare("SELECT id, site_id FROM orders WHERE id = ?").bind(orderId).first();
+          const found = await sdb.prepare("SELECT id, site_id, row_size_bytes FROM orders WHERE id = ?").bind(orderId).first();
           if (found) {
             order = found;
             siteId = s.id;
@@ -4574,7 +4581,7 @@ async function updateOrderStatus(request, env, user, orderId) {
       for (const s of userSites.results || []) {
         const sdb = await resolveSiteDBById(env, s.id);
         const found = await sdb.prepare(
-          "SELECT id, site_id FROM orders WHERE id = ? AND site_id = ?"
+          "SELECT id, site_id, row_size_bytes FROM orders WHERE id = ? AND site_id = ?"
         ).bind(orderId, s.id).first();
         if (found) {
           order = found;
@@ -4586,7 +4593,11 @@ async function updateOrderStatus(request, env, user, orderId) {
     if (!order) {
       return errorResponse("Order not found or unauthorized", 404);
     }
-    const db = await resolveSiteDBById(env, siteId || order.site_id);
+    const resolvedSiteId = siteId || order.site_id;
+    if (await checkMigrationLock(env, resolvedSiteId)) {
+      return errorResponse("Site is currently being migrated. Please try again shortly.", 423);
+    }
+    const db = await resolveSiteDBById(env, resolvedSiteId);
     const { status, trackingNumber, carrier, cancellationReason } = await request.json();
     const updates = [];
     const values = [];
@@ -4622,11 +4633,17 @@ async function updateOrderStatus(request, env, user, orderId) {
     if (updates.length === 0) {
       return errorResponse("No valid fields to update");
     }
+    const updateData = { status, trackingNumber, carrier, cancellationReason };
+    const newBytes = estimateRowBytes(updateData);
+    const oldBytes = order.row_size_bytes || 0;
+    updates.push("row_size_bytes = ?");
+    values.push(newBytes);
     updates.push('updated_at = datetime("now")');
     values.push(orderId);
     await db.prepare(
       `UPDATE orders SET ${updates.join(", ")} WHERE id = ?`
     ).bind(...values).run();
+    await trackD1Update(env, resolvedSiteId, oldBytes, newBytes);
     if (status === "cancelled" && cancellationReason) {
       try {
         const fullOrder = await db.prepare("SELECT * FROM orders WHERE id = ?").bind(orderId).first();
@@ -4734,6 +4751,9 @@ async function createGuestOrder(request, env) {
       console.error("Guest order missing fields:", missingFields.join(", "), "Received data keys:", Object.keys(data).join(", "));
       return errorResponse(`Missing required fields: ${missingFields.join(", ")}`);
     }
+    if (await checkMigrationLock(env, siteId)) {
+      return errorResponse("Site is currently being migrated. Please try again shortly.", 423);
+    }
     const db = await resolveSiteDBById(env, siteId);
     let subtotal = 0;
     const processedItems = [];
@@ -4762,15 +4782,17 @@ async function createGuestOrder(request, env) {
     const total = subtotal;
     const orderId = generateId();
     const orderNumber = generateOrderNumber();
-    const isPendingPayment = paymentMethod === "razorpay";
-    const guestOrderStatus = isPendingPayment ? "pending_payment" : "confirmed";
-    const guestUsageCheck = await checkUsageLimit(env, siteId, "d1", 0);
-    if (!guestUsageCheck.allowed) {
-      return errorResponse(guestUsageCheck.reason, 403, "STORAGE_LIMIT");
+    const rowData = { id: orderId, site_id: siteId, order_number: orderNumber, items: processedItems, subtotal, total, shipping_address: shippingAddress, customer_name: customerName, customer_email: customerEmail, customer_phone: customerPhone };
+    const rowBytes = estimateRowBytes(rowData);
+    const usageCheck = await checkUsageLimit(env, siteId, "d1", rowBytes);
+    if (!usageCheck.allowed) {
+      return errorResponse(usageCheck.reason, 403, "STORAGE_LIMIT");
     }
+    const isPendingPayment = paymentMethod === "razorpay";
+    const orderStatus = isPendingPayment ? "pending_payment" : "pending";
     await db.prepare(
-      `INSERT INTO guest_orders (id, site_id, order_number, items, subtotal, total, payment_method, status, shipping_address, customer_name, customer_email, customer_phone, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+      `INSERT INTO guest_orders (id, site_id, order_number, items, subtotal, total, payment_method, status, shipping_address, customer_name, customer_email, customer_phone, row_size_bytes, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(
       orderId,
       siteId,
@@ -4779,12 +4801,14 @@ async function createGuestOrder(request, env) {
       subtotal,
       total,
       paymentMethod || "cod",
-      guestOrderStatus,
+      orderStatus,
       JSON.stringify(shippingAddress),
       customerName,
       customerEmail || null,
-      customerPhone
+      customerPhone,
+      rowBytes
     ).run();
+    await trackD1Write(env, siteId, rowBytes);
     if (!isPendingPayment) {
       for (const item of processedItems) {
         await updateProductStock(env, item.productId, item.quantity, "decrement", siteId);
@@ -4793,6 +4817,9 @@ async function createGuestOrder(request, env) {
         await sendOrderEmails(env, siteId, {
           orderNumber,
           processedItems,
+          subtotal,
+          discount: 0,
+          coupon_code: null,
           total,
           paymentMethod,
           customerName,
@@ -4807,29 +4834,29 @@ async function createGuestOrder(request, env) {
     return successResponse({
       id: orderId,
       orderNumber,
-      total
+      total,
+      items: processedItems
     }, "Guest order created successfully");
   } catch (error) {
     console.error("Create guest order error:", error.message || error, error.stack || "");
-    return errorResponse("Failed to create order: " + (error.message || "Unknown error"), 500);
+    return errorResponse("Failed to create guest order: " + (error.message || "Unknown error"), 500);
   }
 }
 __name(createGuestOrder, "createGuestOrder");
-async function getGuestOrder(env, orderNumber, request) {
+async function getGuestOrder(env, orderId, request) {
   try {
-    const url = request ? new URL(request.url) : null;
-    const siteId = url ? url.searchParams.get("siteId") : null;
+    const url = new URL(request.url);
+    const siteId = url.searchParams.get("siteId");
     const db = await resolveSiteDBById(env, siteId);
-    let guestQuery = "SELECT * FROM guest_orders WHERE order_number = ?";
-    const guestBindings = [orderNumber];
+    let query = "SELECT * FROM guest_orders WHERE (id = ? OR order_number = ?)";
+    const bindings = [orderId, orderId];
     if (siteId) {
-      guestQuery += " AND site_id = ?";
-      guestBindings.push(siteId);
+      query += " AND site_id = ?";
+      bindings.push(siteId);
     }
-    guestQuery += " LIMIT 1";
-    const order = await db.prepare(guestQuery).bind(...guestBindings).first();
+    const order = await db.prepare(query).bind(...bindings).first();
     if (!order) {
-      return errorResponse("Order not found", 404);
+      return errorResponse("Order not found", 404, "NOT_FOUND");
     }
     return successResponse({
       ...order,
@@ -4842,79 +4869,30 @@ async function getGuestOrder(env, orderNumber, request) {
   }
 }
 __name(getGuestOrder, "getGuestOrder");
-async function sendOrderEmails(env, siteId, orderDetails) {
-  const { orderNumber, processedItems, total, paymentMethod, customerName, customerEmail, customerPhone, shippingAddress } = orderDetails;
-  const site = await env.DB.prepare("SELECT brand_name, email, settings FROM sites WHERE id = ?").bind(siteId).first();
-  const siteBrandName = site?.brand_name || "Store";
-  const siteSettings = site?.settings ? JSON.parse(site.settings) : {};
-  const ownerEmail = siteSettings.email || siteSettings.ownerEmail || site?.email;
-  console.log("Order email debug:", {
-    customerEmail,
-    ownerEmail,
-    siteSettingsEmail: siteSettings.email,
-    siteEmail: site?.email,
-    hasResendKey: !!env.RESEND_API_KEY,
-    hasSendGridKey: !!env.SENDGRID_API_KEY
-  });
-  const orderForEmail = {
-    order_number: orderNumber,
-    items: processedItems,
-    total,
-    payment_method: paymentMethod || "cod",
-    customer_name: customerName,
-    customer_email: customerEmail,
-    customer_phone: customerPhone,
-    shipping_address: shippingAddress
-  };
-  const emailPromises = [];
-  if (customerEmail) {
-    const { html, text } = buildOrderConfirmationEmail(orderForEmail, siteBrandName, ownerEmail);
-    emailPromises.push(
-      sendEmail(env, customerEmail, `Order Confirmation - ${orderNumber}`, html, text).then((result) => {
-        console.log("Customer email result:", result);
-        if (result !== true)
-          console.error("Customer email failed:", result);
-      }).catch((e) => console.error("Customer email error:", e))
-    );
-  }
-  if (ownerEmail) {
-    const { html, text } = buildOwnerNotificationEmail(orderForEmail, siteBrandName);
-    emailPromises.push(
-      sendEmail(env, ownerEmail, `New Order #${orderNumber} - ${siteBrandName}`, html, text).then((result) => {
-        console.log("Owner email result:", result);
-        if (result !== true)
-          console.error("Owner email failed:", result);
-      }).catch((e) => console.error("Owner email error:", e))
-    );
-  }
-  if (emailPromises.length > 0) {
-    await Promise.all(emailPromises);
-  }
-}
-__name(sendOrderEmails, "sendOrderEmails");
-async function trackOrder(env, orderNumber, request) {
+async function trackOrder(env, orderId, request) {
   try {
-    const url = request ? new URL(request.url) : null;
-    const siteId = url ? url.searchParams.get("siteId") : null;
+    const url = new URL(request.url);
+    const siteId = url.searchParams.get("siteId");
     const db = await resolveSiteDBById(env, siteId);
-    let trackQuery = "SELECT order_number, status, tracking_number, carrier, shipped_at, delivered_at, created_at FROM orders WHERE order_number = ?";
-    const trackBindings = [orderNumber];
+    let order = null;
+    let query = "SELECT id, order_number, status, tracking_number, carrier, shipped_at, delivered_at, created_at FROM orders WHERE (id = ? OR order_number = ?)";
+    const bindings = [orderId, orderId];
     if (siteId) {
-      trackQuery += " AND site_id = ?";
-      trackBindings.push(siteId);
+      query += " AND site_id = ?";
+      bindings.push(siteId);
     }
-    let order = await db.prepare(trackQuery).bind(...trackBindings).first();
+    order = await db.prepare(query).bind(...bindings).first();
     if (!order) {
-      let guestTrackQuery = "SELECT order_number, status, tracking_number, carrier, created_at FROM guest_orders WHERE order_number = ?";
-      const guestTrackBindings = [orderNumber];
+      let guestQuery = "SELECT id, order_number, status, tracking_number, carrier, created_at FROM guest_orders WHERE (id = ? OR order_number = ?)";
+      const guestBindings = [orderId, orderId];
       if (siteId) {
-        guestTrackQuery += " AND site_id = ?";
-        guestTrackBindings.push(siteId);
+        guestQuery += " AND site_id = ?";
+        guestBindings.push(siteId);
       }
-      order = await db.prepare(guestTrackQuery).bind(...guestTrackBindings).first();
+      order = await db.prepare(guestQuery).bind(...guestBindings).first();
     }
     if (!order) {
-      return errorResponse("Order not found", 404);
+      return errorResponse("Order not found", 404, "NOT_FOUND");
     }
     return successResponse(order);
   } catch (error) {
@@ -4923,6 +4901,61 @@ async function trackOrder(env, orderNumber, request) {
   }
 }
 __name(trackOrder, "trackOrder");
+async function sendOrderEmails(env, siteId, orderData) {
+  try {
+    const site = await env.DB.prepare(
+      "SELECT brand_name, email, settings FROM sites WHERE id = ?"
+    ).bind(siteId).first();
+    if (!site)
+      return;
+    const siteBrandName = site.brand_name || "Store";
+    let siteSettings = {};
+    try {
+      if (site.settings)
+        siteSettings = JSON.parse(site.settings);
+    } catch (e) {
+    }
+    const ownerEmail = siteSettings.email || siteSettings.ownerEmail || site.email;
+    const emailOrder = {
+      order_number: orderData.orderNumber,
+      items: orderData.processedItems,
+      subtotal: orderData.subtotal,
+      discount: orderData.discount || 0,
+      coupon_code: orderData.coupon_code || null,
+      total: orderData.total,
+      payment_method: orderData.paymentMethod,
+      customer_name: orderData.customerName,
+      customer_email: orderData.customerEmail,
+      customer_phone: orderData.customerPhone,
+      shipping_address: orderData.shippingAddress
+    };
+    const emailJobs = [];
+    if (orderData.customerEmail) {
+      try {
+        const { html, text } = buildOrderConfirmationEmail(emailOrder, siteBrandName, ownerEmail);
+        emailJobs.push(
+          sendEmail(env, orderData.customerEmail, `Order Confirmed #${orderData.orderNumber} - ${siteBrandName}`, html, text).catch((e) => console.error("Customer email send error:", e))
+        );
+      } catch (buildErr) {
+        console.error("Customer email build error:", buildErr);
+      }
+    }
+    if (ownerEmail) {
+      try {
+        const { html, text } = buildOwnerNotificationEmail(emailOrder, siteBrandName);
+        emailJobs.push(
+          sendEmail(env, ownerEmail, `New Order #${orderData.orderNumber} - ${siteBrandName}`, html, text).catch((e) => console.error("Owner email send error:", e))
+        );
+      } catch (buildErr) {
+        console.error("Owner email build error:", buildErr);
+      }
+    }
+    await Promise.all(emailJobs);
+  } catch (error) {
+    console.error("Send order emails error:", error);
+  }
+}
+__name(sendOrderEmails, "sendOrderEmails");
 
 // workers/storefront/cart-worker.js
 init_checked_fetch();
@@ -4931,6 +4964,7 @@ init_modules_watch_stub();
 init_helpers();
 init_auth();
 init_site_db();
+init_usage_tracker();
 async function handleCart(request, env, path) {
   const corsResponse = handleCORS(request);
   if (corsResponse)
@@ -5023,11 +5057,14 @@ async function getOrCreateCart(db, env, siteId, user, sessionId) {
   }
   if (!cart) {
     const cartId = generateId();
+    const rowData = { id: cartId, site_id: siteId, user_id: user ? user.id : null, session_id: user ? null : sessionId, items: "[]" };
+    const rowBytes = estimateRowBytes(rowData);
     await db.prepare(
-      `INSERT INTO carts (id, site_id, user_id, session_id, items, subtotal, created_at)
-       VALUES (?, ?, ?, ?, '[]', 0, datetime('now'))`
-    ).bind(cartId, siteId, user ? user.id : null, user ? null : sessionId).run();
-    cart = { id: cartId, items: "[]", subtotal: 0 };
+      `INSERT INTO carts (id, site_id, user_id, session_id, items, subtotal, row_size_bytes, created_at)
+       VALUES (?, ?, ?, ?, '[]', 0, ?, datetime('now'))`
+    ).bind(cartId, siteId, user ? user.id : null, user ? null : sessionId, rowBytes).run();
+    await trackD1Write(env, siteId, rowBytes);
+    cart = { id: cartId, items: "[]", subtotal: 0, row_size_bytes: rowBytes };
   }
   return cart;
 }
@@ -5077,6 +5114,9 @@ async function getCart(env, siteId, user, sessionId) {
 __name(getCart, "getCart");
 async function addToCart(request, env, siteId, user, sessionId) {
   try {
+    if (await checkMigrationLock(env, siteId)) {
+      return errorResponse("Site is currently being migrated. Please try again shortly.", 423);
+    }
     const { productId, quantity, variant } = await request.json();
     if (!productId || !quantity || quantity < 1) {
       return errorResponse("Product ID and quantity are required");
@@ -5096,6 +5136,7 @@ async function addToCart(request, env, siteId, user, sessionId) {
     }
     const cart = await getOrCreateCart(db, env, siteId, user, sessionId);
     const items = JSON.parse(cart.items);
+    const oldBytes = cart.row_size_bytes || 0;
     const existingIndex = items.findIndex(
       (item) => item.productId === productId && JSON.stringify(item.variant) === JSON.stringify(variant)
     );
@@ -5113,9 +5154,12 @@ async function addToCart(request, env, siteId, user, sessionId) {
         addedAt: (/* @__PURE__ */ new Date()).toISOString()
       });
     }
+    const newItemsStr = JSON.stringify(items);
+    const newBytes = estimateRowBytes({ items: newItemsStr, cart_id: cart.id });
     await db.prepare(
-      `UPDATE carts SET items = ?, updated_at = datetime('now') WHERE id = ?`
-    ).bind(JSON.stringify(items), cart.id).run();
+      `UPDATE carts SET items = ?, row_size_bytes = ?, updated_at = datetime('now') WHERE id = ?`
+    ).bind(newItemsStr, newBytes, cart.id).run();
+    await trackD1Update(env, siteId, oldBytes, newBytes);
     return successResponse({ itemCount: items.reduce((sum, i) => sum + i.quantity, 0) }, "Item added to cart");
   } catch (error) {
     console.error("Add to cart error:", error);
@@ -5125,6 +5169,9 @@ async function addToCart(request, env, siteId, user, sessionId) {
 __name(addToCart, "addToCart");
 async function updateCartItem(request, env, siteId, user, sessionId) {
   try {
+    if (await checkMigrationLock(env, siteId)) {
+      return errorResponse("Site is currently being migrated. Please try again shortly.", 423);
+    }
     const { productId, quantity, variant } = await request.json();
     if (!productId) {
       return errorResponse("Product ID is required");
@@ -5132,6 +5179,7 @@ async function updateCartItem(request, env, siteId, user, sessionId) {
     const db = await resolveSiteDBById(env, siteId);
     const cart = await getOrCreateCart(db, env, siteId, user, sessionId);
     const items = JSON.parse(cart.items);
+    const oldBytes = cart.row_size_bytes || 0;
     const existingIndex = items.findIndex(
       (item) => item.productId === productId && JSON.stringify(item.variant) === JSON.stringify(variant)
     );
@@ -5149,9 +5197,12 @@ async function updateCartItem(request, env, siteId, user, sessionId) {
       }
       items[existingIndex].quantity = quantity;
     }
+    const newItemsStr = JSON.stringify(items);
+    const newBytes = estimateRowBytes({ items: newItemsStr, cart_id: cart.id });
     await db.prepare(
-      `UPDATE carts SET items = ?, updated_at = datetime('now') WHERE id = ?`
-    ).bind(JSON.stringify(items), cart.id).run();
+      `UPDATE carts SET items = ?, row_size_bytes = ?, updated_at = datetime('now') WHERE id = ?`
+    ).bind(newItemsStr, newBytes, cart.id).run();
+    await trackD1Update(env, siteId, oldBytes, newBytes);
     return successResponse({ itemCount: items.reduce((sum, i) => sum + i.quantity, 0) }, "Cart updated");
   } catch (error) {
     console.error("Update cart error:", error);
@@ -5170,13 +5221,17 @@ async function removeFromCart(request, env, siteId, user, sessionId) {
     const db = await resolveSiteDBById(env, siteId);
     const cart = await getOrCreateCart(db, env, siteId, user, sessionId);
     const items = JSON.parse(cart.items);
+    const oldBytes = cart.row_size_bytes || 0;
     const parsedVariant = variant ? variant : null;
     const filteredItems = items.filter(
       (item) => !(item.productId === productId && JSON.stringify(item.variant ?? null) === JSON.stringify(parsedVariant))
     );
+    const newItemsStr = JSON.stringify(filteredItems);
+    const newBytes = estimateRowBytes({ items: newItemsStr, cart_id: cart.id });
     await db.prepare(
-      `UPDATE carts SET items = ?, updated_at = datetime('now') WHERE id = ?`
-    ).bind(JSON.stringify(filteredItems), cart.id).run();
+      `UPDATE carts SET items = ?, row_size_bytes = ?, updated_at = datetime('now') WHERE id = ?`
+    ).bind(newItemsStr, newBytes, cart.id).run();
+    await trackD1Update(env, siteId, oldBytes, newBytes);
     return successResponse({ itemCount: filteredItems.reduce((sum, i) => sum + i.quantity, 0) }, "Item removed from cart");
   } catch (error) {
     console.error("Remove from cart error:", error);
@@ -5198,6 +5253,7 @@ async function mergeCarts(env, siteId, userId, sessionId) {
     const guestItems = JSON.parse(guestCart.items);
     if (userCart) {
       const userItems = JSON.parse(userCart.items);
+      const oldBytes = userCart.row_size_bytes || 0;
       for (const guestItem of guestItems) {
         const existingIndex = userItems.findIndex(
           (item) => item.productId === guestItem.productId && JSON.stringify(item.variant) === JSON.stringify(guestItem.variant)
@@ -5208,16 +5264,23 @@ async function mergeCarts(env, siteId, userId, sessionId) {
           userItems.push(guestItem);
         }
       }
+      const newItemsStr = JSON.stringify(userItems);
+      const newBytes = estimateRowBytes({ items: newItemsStr, cart_id: userCart.id });
       await db.prepare(
-        `UPDATE carts SET items = ?, updated_at = datetime('now') WHERE id = ?`
-      ).bind(JSON.stringify(userItems), userCart.id).run();
+        `UPDATE carts SET items = ?, row_size_bytes = ?, updated_at = datetime('now') WHERE id = ?`
+      ).bind(newItemsStr, newBytes, userCart.id).run();
+      await trackD1Update(env, siteId, oldBytes, newBytes);
     } else {
       await db.prepare(
         `UPDATE carts SET user_id = ?, session_id = NULL, updated_at = datetime('now') WHERE id = ?`
       ).bind(userId, guestCart.id).run();
       return;
     }
+    const guestBytes = guestCart.row_size_bytes || 0;
     await db.prepare("DELETE FROM carts WHERE id = ?").bind(guestCart.id).run();
+    if (guestBytes > 0) {
+      await trackD1Delete(env, siteId, guestBytes);
+    }
   } catch (error) {
     console.error("Merge carts error:", error);
   }
@@ -5231,6 +5294,7 @@ init_modules_watch_stub();
 init_helpers();
 init_auth();
 init_site_db();
+init_usage_tracker();
 async function handleWishlist(request, env, path) {
   const corsResponse = handleCORS(request);
   if (corsResponse)
@@ -5330,6 +5394,9 @@ async function getWishlist(env, user, siteId) {
 __name(getWishlist, "getWishlist");
 async function addToWishlist(request, env, user, siteId) {
   try {
+    if (await checkMigrationLock(env, siteId)) {
+      return errorResponse("Site is currently being migrated. Please try again shortly.", 423);
+    }
     const { productId } = await request.json();
     if (!productId) {
       return errorResponse("Product ID is required");
@@ -5348,10 +5415,13 @@ async function addToWishlist(request, env, user, siteId) {
       return errorResponse("Product already in wishlist", 400, "ALREADY_EXISTS");
     }
     const wishlistId = generateId();
+    const rowData = { id: wishlistId, site_id: siteId, user_id: user.id, product_id: productId };
+    const rowBytes = estimateRowBytes(rowData);
     await db.prepare(
-      `INSERT INTO wishlists (id, site_id, user_id, product_id, created_at)
-       VALUES (?, ?, ?, ?, datetime('now'))`
-    ).bind(wishlistId, siteId, user.id, productId).run();
+      `INSERT INTO wishlists (id, site_id, user_id, product_id, row_size_bytes, created_at)
+       VALUES (?, ?, ?, ?, ?, datetime('now'))`
+    ).bind(wishlistId, siteId, user.id, productId, rowBytes).run();
+    await trackD1Write(env, siteId, rowBytes);
     return successResponse({ id: wishlistId }, "Added to wishlist");
   } catch (error) {
     console.error("Add to wishlist error:", error);
@@ -5361,15 +5431,27 @@ async function addToWishlist(request, env, user, siteId) {
 __name(addToWishlist, "addToWishlist");
 async function removeFromWishlist(request, env, user, siteId) {
   try {
+    if (await checkMigrationLock(env, siteId)) {
+      return errorResponse("Site is currently being migrated. Please try again shortly.", 423);
+    }
     const url = new URL(request.url);
     const productId = url.searchParams.get("productId");
     if (!productId) {
       return errorResponse("Product ID is required");
     }
     const db = await resolveSiteDBById(env, siteId);
-    await db.prepare(
-      "DELETE FROM wishlists WHERE user_id = ? AND product_id = ? AND site_id = ?"
-    ).bind(user.id, productId, siteId).run();
+    const existing = await db.prepare(
+      "SELECT id, row_size_bytes FROM wishlists WHERE user_id = ? AND product_id = ? AND site_id = ?"
+    ).bind(user.id, productId, siteId).first();
+    if (existing) {
+      await db.prepare(
+        "DELETE FROM wishlists WHERE user_id = ? AND product_id = ? AND site_id = ?"
+      ).bind(user.id, productId, siteId).run();
+      const bytesToRemove = existing.row_size_bytes || 0;
+      if (bytesToRemove > 0) {
+        await trackD1Delete(env, siteId, bytesToRemove);
+      }
+    }
     return successResponse(null, "Removed from wishlist");
   } catch (error) {
     console.error("Remove from wishlist error:", error);
@@ -6300,6 +6382,9 @@ async function createCategory(request, env, user) {
     if (!siteId || !name) {
       return errorResponse("Site ID and name are required");
     }
+    if (await checkMigrationLock(env, siteId)) {
+      return errorResponse("Site is currently being migrated. Please try again shortly.", 423);
+    }
     let site;
     if (user._adminSiteId && user._adminSiteId === siteId) {
       site = await env.DB.prepare("SELECT id FROM sites WHERE id = ?").bind(siteId).first();
@@ -6320,13 +6405,15 @@ async function createCategory(request, env, user) {
       return errorResponse("Category with this name already exists", 400, "SLUG_EXISTS");
     }
     const categoryId = generateId();
-    const usageCheck = await checkUsageLimit(env, siteId, "d1", 0);
+    const rowData = { id: categoryId, site_id: siteId, name, slug, description, subtitle, parent_id: parentId, image_url: imageUrl, display_order: displayOrder };
+    const rowBytes = estimateRowBytes(rowData);
+    const usageCheck = await checkUsageLimit(env, siteId, "d1", rowBytes);
     if (!usageCheck.allowed) {
       return errorResponse(usageCheck.reason, 403, "STORAGE_LIMIT");
     }
     await db.prepare(
-      `INSERT INTO categories (id, site_id, name, slug, description, subtitle, show_on_home, parent_id, image_url, display_order, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+      `INSERT INTO categories (id, site_id, name, slug, description, subtitle, show_on_home, parent_id, image_url, display_order, row_size_bytes, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(
       categoryId,
       siteId,
@@ -6337,8 +6424,10 @@ async function createCategory(request, env, user) {
       showOnHome !== void 0 ? showOnHome ? 1 : 0 : 1,
       parentId || null,
       imageUrl || null,
-      displayOrder || 0
+      displayOrder || 0,
+      rowBytes
     ).run();
+    await trackD1Write(env, siteId, rowBytes);
     return successResponse({ id: categoryId, slug }, "Category created successfully");
   } catch (error) {
     console.error("Create category error:", error);
@@ -6356,7 +6445,7 @@ async function updateCategory(request, env, user, categoryId) {
     if (user._adminSiteId) {
       const db2 = await resolveSiteDBById(env, user._adminSiteId);
       category = await db2.prepare(
-        "SELECT id, site_id FROM categories WHERE id = ? AND site_id = ?"
+        "SELECT id, site_id, row_size_bytes FROM categories WHERE id = ? AND site_id = ?"
       ).bind(categoryId, user._adminSiteId).first();
     } else {
       const userSites = await env.DB.prepare(
@@ -6365,7 +6454,7 @@ async function updateCategory(request, env, user, categoryId) {
       for (const s of userSites.results || []) {
         const db2 = await resolveSiteDBById(env, s.id);
         category = await db2.prepare(
-          "SELECT id, site_id FROM categories WHERE id = ? AND site_id = ?"
+          "SELECT id, site_id, row_size_bytes FROM categories WHERE id = ? AND site_id = ?"
         ).bind(categoryId, s.id).first();
         if (category) {
           siteId = s.id;
@@ -6376,7 +6465,11 @@ async function updateCategory(request, env, user, categoryId) {
     if (!category) {
       return errorResponse("Category not found or unauthorized", 404);
     }
-    const db = await resolveSiteDBById(env, siteId || category.site_id);
+    const resolvedSiteId = siteId || category.site_id;
+    if (await checkMigrationLock(env, resolvedSiteId)) {
+      return errorResponse("Site is currently being migrated. Please try again shortly.", 423);
+    }
+    const db = await resolveSiteDBById(env, resolvedSiteId);
     const updates = await request.json();
     const allowedFields = ["name", "description", "subtitle", "show_on_home", "parent_id", "image_url", "display_order", "is_active"];
     const setClause = [];
@@ -6400,11 +6493,16 @@ async function updateCategory(request, env, user, categoryId) {
     if (setClause.length === 0) {
       return errorResponse("No valid fields to update");
     }
+    const oldBytes = category.row_size_bytes || 0;
+    const newBytes = estimateRowBytes(updates);
+    setClause.push("row_size_bytes = ?");
+    values.push(newBytes);
     setClause.push('updated_at = datetime("now")');
     values.push(categoryId);
     await db.prepare(
       `UPDATE categories SET ${setClause.join(", ")} WHERE id = ?`
     ).bind(...values).run();
+    await trackD1Update(env, resolvedSiteId, oldBytes, newBytes);
     return successResponse(null, "Category updated successfully");
   } catch (error) {
     console.error("Update category error:", error);
@@ -6422,7 +6520,7 @@ async function deleteCategory(env, user, categoryId) {
     if (user._adminSiteId) {
       const db2 = await resolveSiteDBById(env, user._adminSiteId);
       category = await db2.prepare(
-        "SELECT id FROM categories WHERE id = ? AND site_id = ?"
+        "SELECT id, site_id, row_size_bytes FROM categories WHERE id = ? AND site_id = ?"
       ).bind(categoryId, user._adminSiteId).first();
     } else {
       const userSites = await env.DB.prepare(
@@ -6431,7 +6529,7 @@ async function deleteCategory(env, user, categoryId) {
       for (const s of userSites.results || []) {
         const db2 = await resolveSiteDBById(env, s.id);
         category = await db2.prepare(
-          "SELECT id, site_id FROM categories WHERE id = ? AND site_id = ?"
+          "SELECT id, site_id, row_size_bytes FROM categories WHERE id = ? AND site_id = ?"
         ).bind(categoryId, s.id).first();
         if (category) {
           siteId = s.id;
@@ -6442,7 +6540,12 @@ async function deleteCategory(env, user, categoryId) {
     if (!category) {
       return errorResponse("Category not found or unauthorized", 404);
     }
-    const db = await resolveSiteDBById(env, siteId || category.site_id);
+    const resolvedSiteId = siteId || category.site_id;
+    if (await checkMigrationLock(env, resolvedSiteId)) {
+      return errorResponse("Site is currently being migrated. Please try again shortly.", 423);
+    }
+    const db = await resolveSiteDBById(env, resolvedSiteId);
+    const bytesToRemove = category.row_size_bytes || 0;
     await db.prepare(
       "UPDATE categories SET parent_id = NULL WHERE parent_id = ?"
     ).bind(categoryId).run();
@@ -6450,6 +6553,9 @@ async function deleteCategory(env, user, categoryId) {
       "UPDATE products SET category_id = NULL WHERE category_id = ?"
     ).bind(categoryId).run();
     await db.prepare("DELETE FROM categories WHERE id = ?").bind(categoryId).run();
+    if (bytesToRemove > 0) {
+      await trackD1Delete(env, resolvedSiteId, bytesToRemove);
+    }
     return successResponse(null, "Category deleted successfully");
   } catch (error) {
     console.error("Delete category error:", error);
@@ -8679,6 +8785,8 @@ init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 init_helpers();
 init_auth();
+init_usage_tracker();
+init_site_db();
 async function handleCustomerAuth(request, env, path) {
   const corsResponse = handleCORS(request);
   if (corsResponse)
@@ -8815,6 +8923,18 @@ async function ensureCustomerTables(env) {
       ).run();
     } catch (_) {
     }
+    try {
+      await env.DB.prepare(
+        "ALTER TABLE site_customers ADD COLUMN row_size_bytes INTEGER DEFAULT 0"
+      ).run();
+    } catch (_) {
+    }
+    try {
+      await env.DB.prepare(
+        "ALTER TABLE customer_addresses ADD COLUMN row_size_bytes INTEGER DEFAULT 0"
+      ).run();
+    } catch (_) {
+    }
   } catch (error) {
     console.error("Error ensuring customer tables:", error);
   }
@@ -8852,6 +8972,9 @@ async function getAddresses(env, customer) {
 __name(getAddresses, "getAddresses");
 async function createAddress(request, env, customer) {
   try {
+    if (await checkMigrationLock(env, customer.site_id)) {
+      return errorResponse("Site is currently being migrated. Please try again shortly.", 423);
+    }
     const body = await request.json();
     const { label, firstName, lastName, phone, houseNumber, roadName, city, state, pinCode, isDefault } = body;
     if (!firstName || !houseNumber || !city || !state || !pinCode) {
@@ -8863,9 +8986,11 @@ async function createAddress(request, env, customer) {
         "UPDATE customer_addresses SET is_default = 0 WHERE customer_id = ? AND site_id = ?"
       ).bind(customer.id, customer.site_id).run();
     }
+    const rowData = { id, site_id: customer.site_id, customer_id: customer.id, label, firstName, lastName, phone, houseNumber, roadName, city, state, pinCode };
+    const rowBytes = estimateRowBytes(rowData);
     await env.DB.prepare(
-      `INSERT INTO customer_addresses (id, site_id, customer_id, label, first_name, last_name, phone, house_number, road_name, city, state, pin_code, is_default, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
+      `INSERT INTO customer_addresses (id, site_id, customer_id, label, first_name, last_name, phone, house_number, road_name, city, state, pin_code, is_default, row_size_bytes, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
     ).bind(
       id,
       customer.site_id,
@@ -8879,8 +9004,10 @@ async function createAddress(request, env, customer) {
       sanitizeInput(city),
       sanitizeInput(state),
       sanitizeInput(pinCode),
-      isDefault ? 1 : 0
+      isDefault ? 1 : 0,
+      rowBytes
     ).run();
+    await trackD1Write(env, customer.site_id, rowBytes);
     const address = await env.DB.prepare(
       "SELECT * FROM customer_addresses WHERE id = ?"
     ).bind(id).first();
@@ -8893,6 +9020,9 @@ async function createAddress(request, env, customer) {
 __name(createAddress, "createAddress");
 async function updateAddress(request, env, customer, addressId) {
   try {
+    if (await checkMigrationLock(env, customer.site_id)) {
+      return errorResponse("Site is currently being migrated. Please try again shortly.", 423);
+    }
     const existing = await env.DB.prepare(
       "SELECT * FROM customer_addresses WHERE id = ? AND customer_id = ? AND site_id = ?"
     ).bind(addressId, customer.id, customer.site_id).first();
@@ -8906,6 +9036,8 @@ async function updateAddress(request, env, customer, addressId) {
         "UPDATE customer_addresses SET is_default = 0 WHERE customer_id = ? AND site_id = ?"
       ).bind(customer.id, customer.site_id).run();
     }
+    const oldBytes = existing.row_size_bytes || 0;
+    const newBytes = estimateRowBytes(body);
     await env.DB.prepare(
       `UPDATE customer_addresses SET
         label = COALESCE(?, label),
@@ -8918,6 +9050,7 @@ async function updateAddress(request, env, customer, addressId) {
         state = COALESCE(?, state),
         pin_code = COALESCE(?, pin_code),
         is_default = ?,
+        row_size_bytes = ?,
         updated_at = datetime('now')
        WHERE id = ? AND customer_id = ? AND site_id = ?`
     ).bind(
@@ -8931,10 +9064,12 @@ async function updateAddress(request, env, customer, addressId) {
       state ? sanitizeInput(state) : null,
       pinCode ? sanitizeInput(pinCode) : null,
       isDefault ? 1 : 0,
+      newBytes,
       addressId,
       customer.id,
       customer.site_id
     ).run();
+    await trackD1Update(env, customer.site_id, oldBytes, newBytes);
     const updated = await env.DB.prepare(
       "SELECT * FROM customer_addresses WHERE id = ?"
     ).bind(addressId).first();
@@ -8953,9 +9088,13 @@ async function deleteAddress(env, customer, addressId) {
     if (!existing) {
       return errorResponse("Address not found", 404);
     }
+    const bytesToRemove = existing.row_size_bytes || 0;
     await env.DB.prepare(
       "DELETE FROM customer_addresses WHERE id = ? AND customer_id = ? AND site_id = ?"
     ).bind(addressId, customer.id, customer.site_id).run();
+    if (bytesToRemove > 0) {
+      await trackD1Delete(env, customer.site_id, bytesToRemove);
+    }
     return successResponse(null, "Address deleted successfully");
   } catch (error) {
     console.error("Error deleting address:", error);
@@ -9002,15 +9141,21 @@ async function handleSignup2(request, env) {
     const customerId = generateId();
     const passwordHash = await hashPassword(password);
     const { checkUsageLimit: checkUsageLimit2 } = await Promise.resolve().then(() => (init_usage_tracker(), usage_tracker_exports));
-    const usageCheck = await checkUsageLimit2(env, siteId, "d1", 0);
+    if (await checkMigrationLock(env, siteId)) {
+      return errorResponse("Site is currently being migrated. Please try again shortly.", 423);
+    }
+    const rowData = { id: customerId, site_id: siteId, email: email.toLowerCase(), name, phone };
+    const rowBytes = estimateRowBytes(rowData);
+    const usageCheck = await checkUsageLimit2(env, siteId, "d1", rowBytes);
     if (!usageCheck.allowed) {
       return errorResponse(usageCheck.reason, 403, "STORAGE_LIMIT");
     }
     const skipVerification = env.SKIP_EMAIL_VERIFICATION === "true";
     await env.DB.prepare(
-      `INSERT INTO site_customers (id, site_id, email, password_hash, name, phone, email_verified, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
-    ).bind(customerId, siteId, email.toLowerCase(), passwordHash, sanitizeInput(name), phone || null, skipVerification ? 1 : 0).run();
+      `INSERT INTO site_customers (id, site_id, email, password_hash, name, phone, email_verified, row_size_bytes, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+    ).bind(customerId, siteId, email.toLowerCase(), passwordHash, sanitizeInput(name), phone || null, skipVerification ? 1 : 0, rowBytes).run();
+    await trackD1Write(env, siteId, rowBytes);
     if (!skipVerification) {
       const verifyToken = generateToken(32);
       const verifyExpiry = getExpiryDate(24);
@@ -9148,7 +9293,14 @@ async function handleUpdateProfile2(request, env) {
     if (!customer) {
       return errorResponse("Unauthorized", 401);
     }
+    if (await checkMigrationLock(env, customer.site_id)) {
+      return errorResponse("Site is currently being migrated. Please try again shortly.", 423);
+    }
     const { name, phone } = await request.json();
+    const oldRow = await env.DB.prepare(
+      "SELECT row_size_bytes FROM site_customers WHERE id = ?"
+    ).bind(customer.id).first();
+    const oldBytes = oldRow?.row_size_bytes || 0;
     await env.DB.prepare(
       `UPDATE site_customers SET
         name = COALESCE(?, name),
@@ -9159,6 +9311,13 @@ async function handleUpdateProfile2(request, env) {
     const updated = await env.DB.prepare(
       "SELECT id, email, name, phone FROM site_customers WHERE id = ?"
     ).bind(customer.id).first();
+    const newBytes = estimateRowBytes(updated || {});
+    if (oldBytes !== newBytes) {
+      await env.DB.prepare(
+        "UPDATE site_customers SET row_size_bytes = ? WHERE id = ?"
+      ).bind(newBytes, customer.id).run();
+      await trackD1Update(env, customer.site_id, oldBytes, newBytes);
+    }
     return successResponse(updated, "Profile updated successfully");
   } catch (error) {
     return errorResponse("Failed to update profile", 500);
@@ -10737,7 +10896,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-zJiOfX/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-ApNGZX/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -10772,7 +10931,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-zJiOfX/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-ApNGZX/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;
