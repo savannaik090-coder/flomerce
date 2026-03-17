@@ -21,7 +21,7 @@ export default function ProductsAdminPage() {
   async function loadProduct() {
     setLoading(true);
     try {
-      const res = await getProductById(productId);
+      const res = await getProductById(productId, siteConfig?.id);
       setProduct(res.data || res.product || res);
     } catch (err) {
       setError('Failed to load product: ' + err.message);

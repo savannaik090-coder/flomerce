@@ -5,8 +5,9 @@ export async function getProducts(siteId, params = {}) {
   return apiRequest(`/api/products?${query}`);
 }
 
-export async function getProductById(productId) {
-  return apiRequest(`/api/products/${productId}`);
+export async function getProductById(productId, siteId) {
+  const params = siteId ? `?siteId=${siteId}` : '';
+  return apiRequest(`/api/products/${productId}${params}`);
 }
 
 export async function getProductBySlug(siteId, slug) {

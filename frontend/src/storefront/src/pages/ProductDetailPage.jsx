@@ -119,7 +119,7 @@ export default function ProductDetailPage() {
       setLoading(true);
       setError(null);
       try {
-        const result = await productService.getProductById(id);
+        const result = await productService.getProductById(id, siteConfig?.id);
         const prod = result.data || result.product || result;
         if (!prod || !prod.id) {
           setError('Product not found');
