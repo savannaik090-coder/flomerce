@@ -1205,7 +1205,7 @@ async function addBindingAndRedeploy(env, siteId, databaseId, bindingName) {
   const workerName = "saas-platform";
   const getRes = await fetch(`${CF_API_BASE2}/accounts/${accountId}/workers/scripts/${workerName}/settings`, {
     method: "GET",
-    headers: cfHeaders2(apiToken)
+    headers: { "Authorization": `Bearer ${apiToken}` }
   });
   const getData = await getRes.json();
   if (!getData.success) {
@@ -1220,18 +1220,19 @@ async function addBindingAndRedeploy(env, siteId, databaseId, bindingName) {
   let updatedBindings;
   if (existingBinding) {
     updatedBindings = currentBindings.map(
-      (b) => b.name === bindingName ? { ...b, id: databaseId } : b
+      (b) => b.name === bindingName ? { ...b, id: databaseId, database_id: databaseId } : b
     );
     console.log(`Updating binding ${bindingName} from ${existingBinding.id} to ${databaseId}`);
   } else {
     updatedBindings = [...currentBindings, { type: "d1", name: bindingName, id: databaseId }];
   }
+  const settingsPayload = JSON.stringify({ bindings: updatedBindings });
+  const formData = new FormData();
+  formData.append("settings", new Blob([settingsPayload], { type: "application/json" }), "blob");
   const patchRes = await fetch(`${CF_API_BASE2}/accounts/${accountId}/workers/scripts/${workerName}/settings`, {
     method: "PATCH",
-    headers: cfHeaders2(apiToken),
-    body: JSON.stringify({
-      bindings: updatedBindings
-    })
+    headers: { "Authorization": `Bearer ${apiToken}` },
+    body: formData
   });
   const patchData = await patchRes.json();
   if (!patchData.success) {
