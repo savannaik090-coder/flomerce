@@ -447,7 +447,15 @@ async function deleteProduct(env, user, productId) {
 
 export async function updateProductStock(env, productId, quantity, operation = 'decrement', siteId = null) {
   try {
+    if (siteId && await checkMigrationLock(env, siteId)) {
+      console.error('Stock update blocked: site migration in progress');
+      return false;
+    }
+
     const db = await resolveSiteDBById(env, siteId);
+    const oldRow = await db.prepare('SELECT row_size_bytes FROM products WHERE id = ?').bind(productId).first();
+    const oldBytes = oldRow?.row_size_bytes || 0;
+
     if (operation === 'decrement') {
       await db.prepare(
         'UPDATE products SET stock = stock - ?, updated_at = datetime("now") WHERE id = ? AND stock >= ?'
@@ -457,6 +465,14 @@ export async function updateProductStock(env, productId, quantity, operation = '
         'UPDATE products SET stock = stock + ?, updated_at = datetime("now") WHERE id = ?'
       ).bind(quantity, productId).run();
     }
+
+    const updatedRow = await db.prepare('SELECT * FROM products WHERE id = ?').bind(productId).first();
+    if (updatedRow && siteId) {
+      const newBytes = estimateRowBytes(updatedRow);
+      await db.prepare('UPDATE products SET row_size_bytes = ? WHERE id = ?').bind(newBytes, productId).run();
+      await trackD1Update(env, siteId, oldBytes, newBytes);
+    }
+
     return true;
   } catch (error) {
     console.error('Update stock error:', error);

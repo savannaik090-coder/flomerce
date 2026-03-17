@@ -163,6 +163,24 @@ async function ensureCustomerTables(env) {
         'ALTER TABLE customer_addresses ADD COLUMN row_size_bytes INTEGER DEFAULT 0'
       ).run();
     } catch (_) {}
+
+    try {
+      await env.DB.prepare(
+        'ALTER TABLE site_customer_sessions ADD COLUMN row_size_bytes INTEGER DEFAULT 0'
+      ).run();
+    } catch (_) {}
+
+    try {
+      await env.DB.prepare(
+        'ALTER TABLE customer_password_resets ADD COLUMN row_size_bytes INTEGER DEFAULT 0'
+      ).run();
+    } catch (_) {}
+
+    try {
+      await env.DB.prepare(
+        'ALTER TABLE customer_email_verifications ADD COLUMN row_size_bytes INTEGER DEFAULT 0'
+      ).run();
+    } catch (_) {}
   } catch (error) {
     console.error('Error ensuring customer tables:', error);
   }
@@ -429,10 +447,14 @@ async function handleSignup(request, env) {
     if (!skipVerification) {
       const verifyToken = generateToken(32);
       const verifyExpiry = getExpiryDate(24);
+      const verifyId = generateId();
+      const verifyRowData = { id: verifyId, site_id: siteId, customer_id: customerId, token: verifyToken, expires_at: verifyExpiry };
+      const verifyRowBytes = estimateRowBytes(verifyRowData);
       await env.DB.prepare(
-        `INSERT INTO customer_email_verifications (id, site_id, customer_id, token, expires_at)
-         VALUES (?, ?, ?, ?, ?)`
-      ).bind(generateId(), siteId, customerId, verifyToken, verifyExpiry).run();
+        `INSERT INTO customer_email_verifications (id, site_id, customer_id, token, expires_at, row_size_bytes)
+         VALUES (?, ?, ?, ?, ?, ?)`
+      ).bind(verifyId, siteId, customerId, verifyToken, verifyExpiry, verifyRowBytes).run();
+      await trackD1Write(env, siteId, verifyRowBytes);
 
       const baseUrl = getStorefrontUrl(env, site);
       const verifyUrl = `${baseUrl}/verify-email?token=${verifyToken}&email=${encodeURIComponent(email.toLowerCase())}`;
@@ -455,11 +477,14 @@ async function handleSignup(request, env) {
     const token = generateToken(32);
     const expiresAt = getExpiryDate(24 * 7);
     const sessionId = generateId();
+    const sessRowData = { id: sessionId, customer_id: customerId, site_id: siteId, token, expires_at: expiresAt };
+    const sessRowBytes = estimateRowBytes(sessRowData);
 
     await env.DB.prepare(
-      `INSERT INTO site_customer_sessions (id, customer_id, site_id, token, expires_at, created_at)
-       VALUES (?, ?, ?, ?, ?, datetime('now'))`
-    ).bind(sessionId, customerId, siteId, token, expiresAt).run();
+      `INSERT INTO site_customer_sessions (id, customer_id, site_id, token, expires_at, row_size_bytes, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`
+    ).bind(sessionId, customerId, siteId, token, expiresAt, sessRowBytes).run();
+    await trackD1Write(env, siteId, sessRowBytes);
 
     return successResponse({
       customer: {
@@ -509,11 +534,14 @@ async function handleLogin(request, env) {
     const token = generateToken(32);
     const expiresAt = getExpiryDate(24 * 7);
     const sessionId = generateId();
+    const loginSessData = { id: sessionId, customer_id: customer.id, site_id: siteId, token, expires_at: expiresAt };
+    const loginSessBytes = estimateRowBytes(loginSessData);
 
     await env.DB.prepare(
-      `INSERT INTO site_customer_sessions (id, customer_id, site_id, token, expires_at, created_at)
-       VALUES (?, ?, ?, ?, ?, datetime('now'))`
-    ).bind(sessionId, customer.id, siteId, token, expiresAt).run();
+      `INSERT INTO site_customer_sessions (id, customer_id, site_id, token, expires_at, row_size_bytes, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`
+    ).bind(sessionId, customer.id, siteId, token, expiresAt, loginSessBytes).run();
+    await trackD1Write(env, siteId, loginSessBytes);
 
     return successResponse({
       customer: {
@@ -541,9 +569,15 @@ async function handleLogout(request, env) {
       const authHeader = request.headers.get('Authorization');
       if (authHeader && authHeader.startsWith('SiteCustomer ')) {
         const token = authHeader.substring(13);
+        const sess = await env.DB.prepare(
+          'SELECT row_size_bytes, site_id FROM site_customer_sessions WHERE token = ?'
+        ).bind(token).first();
         await env.DB.prepare(
           'DELETE FROM site_customer_sessions WHERE token = ?'
         ).bind(token).run();
+        if (sess && sess.site_id) {
+          await trackD1Delete(env, sess.site_id, sess.row_size_bytes || 0);
+        }
       }
     }
     return successResponse(null, 'Logged out successfully');
@@ -643,17 +677,24 @@ async function handleRequestPasswordReset(request, env) {
       'SELECT id, brand_name, subdomain, custom_domain, domain_status FROM sites WHERE id = ?'
     ).bind(siteId).first();
 
+    const oldResets = await env.DB.prepare(
+      'SELECT id, row_size_bytes FROM customer_password_resets WHERE customer_id = ? AND site_id = ? AND used = 0'
+    ).bind(customer.id, siteId).all();
     await env.DB.prepare(
       'UPDATE customer_password_resets SET used = 1 WHERE customer_id = ? AND site_id = ? AND used = 0'
     ).bind(customer.id, siteId).run();
 
     const resetToken = generateToken(32);
     const expiresAt = getExpiryDate(1);
+    const resetId = generateId();
+    const resetRowData = { id: resetId, site_id: siteId, customer_id: customer.id, token: resetToken, expires_at: expiresAt };
+    const resetRowBytes = estimateRowBytes(resetRowData);
 
     await env.DB.prepare(
-      `INSERT INTO customer_password_resets (id, site_id, customer_id, token, expires_at)
-       VALUES (?, ?, ?, ?, ?)`
-    ).bind(generateId(), siteId, customer.id, resetToken, expiresAt).run();
+      `INSERT INTO customer_password_resets (id, site_id, customer_id, token, expires_at, row_size_bytes)
+       VALUES (?, ?, ?, ?, ?, ?)`
+    ).bind(resetId, siteId, customer.id, resetToken, expiresAt, resetRowBytes).run();
+    await trackD1Write(env, siteId, resetRowBytes);
 
     const baseUrl = getStorefrontUrl(env, site);
     const resetUrl = `${baseUrl}/reset-password?token=${resetToken}&email=${encodeURIComponent(email.toLowerCase())}`;
@@ -703,17 +744,36 @@ async function handleResetPassword(request, env) {
 
     const passwordHash = await hashPassword(password);
 
+    const custRow = await env.DB.prepare(
+      'SELECT row_size_bytes, site_id FROM site_customers WHERE id = ?'
+    ).bind(resetRecord.customer_id).first();
+    const custOldBytes = custRow?.row_size_bytes || 0;
+
     await env.DB.prepare(
       'UPDATE site_customers SET password_hash = ?, updated_at = datetime(\'now\') WHERE id = ?'
     ).bind(passwordHash, resetRecord.customer_id).run();
+
+    const custUpdated = await env.DB.prepare('SELECT * FROM site_customers WHERE id = ?').bind(resetRecord.customer_id).first();
+    if (custUpdated) {
+      const custNewBytes = estimateRowBytes(custUpdated);
+      await env.DB.prepare('UPDATE site_customers SET row_size_bytes = ? WHERE id = ?').bind(custNewBytes, resetRecord.customer_id).run();
+      if (custRow?.site_id) await trackD1Update(env, custRow.site_id, custOldBytes, custNewBytes);
+    }
 
     await env.DB.prepare(
       'UPDATE customer_password_resets SET used = 1 WHERE id = ?'
     ).bind(resetRecord.id).run();
 
+    const sessionsToDelete = await env.DB.prepare(
+      'SELECT id, row_size_bytes, site_id FROM site_customer_sessions WHERE customer_id = ?'
+    ).bind(resetRecord.customer_id).all();
     await env.DB.prepare(
       'DELETE FROM site_customer_sessions WHERE customer_id = ?'
     ).bind(resetRecord.customer_id).run();
+    const totalSessBytes = (sessionsToDelete.results || []).reduce((sum, s) => sum + (s.row_size_bytes || 0), 0);
+    if (totalSessBytes > 0 && custRow?.site_id) {
+      await trackD1Delete(env, custRow.site_id, totalSessBytes);
+    }
 
     return successResponse(null, 'Password reset successfully. You can now log in with your new password.');
   } catch (error) {
@@ -749,9 +809,21 @@ async function handleVerifyEmail(request, env) {
       return errorResponse('Invalid verification link.', 400, 'INVALID_TOKEN');
     }
 
+    const verifyCustRow = await env.DB.prepare(
+      'SELECT row_size_bytes, site_id FROM site_customers WHERE id = ?'
+    ).bind(verifyRecord.customer_id).first();
+    const verifyCustOldBytes = verifyCustRow?.row_size_bytes || 0;
+
     await env.DB.prepare(
       'UPDATE site_customers SET email_verified = 1, updated_at = datetime(\'now\') WHERE id = ?'
     ).bind(verifyRecord.customer_id).run();
+
+    const verifyCustUpdated = await env.DB.prepare('SELECT * FROM site_customers WHERE id = ?').bind(verifyRecord.customer_id).first();
+    if (verifyCustUpdated) {
+      const verifyCustNewBytes = estimateRowBytes(verifyCustUpdated);
+      await env.DB.prepare('UPDATE site_customers SET row_size_bytes = ? WHERE id = ?').bind(verifyCustNewBytes, verifyRecord.customer_id).run();
+      if (verifyCustRow?.site_id) await trackD1Update(env, verifyCustRow.site_id, verifyCustOldBytes, verifyCustNewBytes);
+    }
 
     await env.DB.prepare(
       'UPDATE customer_email_verifications SET used = 1 WHERE id = ?'
@@ -799,11 +871,15 @@ async function handleResendVerification(request, env) {
 
     const verifyToken = generateToken(32);
     const verifyExpiry = getExpiryDate(24);
+    const resendVerifyId = generateId();
+    const resendVerifyData = { id: resendVerifyId, site_id: siteId, customer_id: customer.id, token: verifyToken, expires_at: verifyExpiry };
+    const resendVerifyBytes = estimateRowBytes(resendVerifyData);
 
     await env.DB.prepare(
-      `INSERT INTO customer_email_verifications (id, site_id, customer_id, token, expires_at)
-       VALUES (?, ?, ?, ?, ?)`
-    ).bind(generateId(), siteId, customer.id, verifyToken, verifyExpiry).run();
+      `INSERT INTO customer_email_verifications (id, site_id, customer_id, token, expires_at, row_size_bytes)
+       VALUES (?, ?, ?, ?, ?, ?)`
+    ).bind(resendVerifyId, siteId, customer.id, verifyToken, verifyExpiry, resendVerifyBytes).run();
+    await trackD1Write(env, siteId, resendVerifyBytes);
 
     const baseUrl = getStorefrontUrl(env, site);
     const verifyUrl = `${baseUrl}/verify-email?token=${verifyToken}&email=${encodeURIComponent(email.toLowerCase())}`;

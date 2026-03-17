@@ -268,9 +268,17 @@ async function createOrder(request, env, user) {
           discount = coupon.value;
         }
         appliedCouponCode = couponCode.toUpperCase();
+        const oldCouponRow = await db.prepare('SELECT row_size_bytes FROM coupons WHERE id = ?').bind(coupon.id).first();
+        const oldCouponBytes = oldCouponRow?.row_size_bytes || 0;
         await db.prepare(
           'UPDATE coupons SET used_count = used_count + 1 WHERE id = ?'
         ).bind(coupon.id).run();
+        const updatedCoupon = await db.prepare('SELECT * FROM coupons WHERE id = ?').bind(coupon.id).first();
+        if (updatedCoupon) {
+          const newCouponBytes = estimateRowBytes(updatedCoupon);
+          await db.prepare('UPDATE coupons SET row_size_bytes = ? WHERE id = ?').bind(newCouponBytes, coupon.id).run();
+          await trackD1Update(env, siteId, oldCouponBytes, newCouponBytes);
+        }
       } else {
         try {
           const site = await env.DB.prepare('SELECT settings FROM sites WHERE id = ?').bind(siteId).first();

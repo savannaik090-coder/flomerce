@@ -298,9 +298,9 @@ async function createSite(request, env, user) {
 
     try {
       if (categories && categories.length > 0) {
-        await createUserCategories(siteDB, siteId, categories);
+        await createUserCategories(env, siteDB, siteId, categories);
       } else if (category) {
-        await createDefaultCategories(siteDB, siteId, category);
+        await createDefaultCategories(env, siteDB, siteId, category);
       }
     } catch (catError) {
       console.error('Category creation failed (non-fatal):', catError.message || catError);
@@ -330,7 +330,7 @@ async function createSite(request, env, user) {
   }
 }
 
-async function createDefaultCategories(db, siteId, businessCategory) {
+async function createDefaultCategories(env, db, siteId, businessCategory) {
   const categoryTemplates = {
     jewellery: [
       { name: 'New Arrivals', slug: 'new-arrivals', subtitle: 'Discover our latest exquisite collections', showOnHome: 1, children: [] },
@@ -354,23 +354,29 @@ async function createDefaultCategories(db, siteId, businessCategory) {
 
   for (const cat of categories) {
     const parentId = generateId();
+    const parentData = { id: parentId, site_id: siteId, name: cat.name, slug: cat.slug, subtitle: cat.subtitle || null };
+    const parentBytes = estimateRowBytes(parentData);
     await db.prepare(
-      `INSERT INTO categories (id, site_id, name, slug, subtitle, show_on_home, display_order, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
-    ).bind(parentId, siteId, cat.name, cat.slug, cat.subtitle || null, cat.showOnHome !== undefined ? cat.showOnHome : 1, order++).run();
+      `INSERT INTO categories (id, site_id, name, slug, subtitle, show_on_home, display_order, row_size_bytes, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+    ).bind(parentId, siteId, cat.name, cat.slug, cat.subtitle || null, cat.showOnHome !== undefined ? cat.showOnHome : 1, order++, parentBytes).run();
+    await trackD1Write(env, siteId, parentBytes);
 
     for (const childName of (cat.children || [])) {
       const childId = generateId();
       const childSlug = `${cat.slug}-${childName.toLowerCase().replace(/\s+/g, '-')}`;
+      const childData = { id: childId, site_id: siteId, name: childName, slug: childSlug, parent_id: parentId };
+      const childBytes = estimateRowBytes(childData);
       await db.prepare(
-        `INSERT INTO categories (id, site_id, name, slug, parent_id, show_on_home, display_order, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
-      ).bind(childId, siteId, childName, childSlug, parentId, 0, order++).run();
+        `INSERT INTO categories (id, site_id, name, slug, parent_id, show_on_home, display_order, row_size_bytes, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+      ).bind(childId, siteId, childName, childSlug, parentId, 0, order++, childBytes).run();
+      await trackD1Write(env, siteId, childBytes);
     }
   }
 }
 
-async function createUserCategories(db, siteId, categories) {
+async function createUserCategories(env, db, siteId, categories) {
   let order = 0;
   for (let cat of categories) {
     let categoryName = typeof cat === 'string' ? cat : (cat.name || cat.label);
@@ -387,10 +393,13 @@ async function createUserCategories(db, siteId, categories) {
     const showOnHome = (typeof cat === 'object' && cat.showOnHome !== undefined) ? (cat.showOnHome ? 1 : 0) : 1;
     
     const catId = generateId();
+    const catData = { id: catId, site_id: siteId, name: categoryName, slug, subtitle };
+    const catBytes = estimateRowBytes(catData);
     await db.prepare(
-      `INSERT INTO categories (id, site_id, name, slug, subtitle, show_on_home, display_order, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
-    ).bind(catId, siteId, categoryName, slug, subtitle, showOnHome, order++).run();
+      `INSERT INTO categories (id, site_id, name, slug, subtitle, show_on_home, display_order, row_size_bytes, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+    ).bind(catId, siteId, categoryName, slug, subtitle, showOnHome, order++, catBytes).run();
+    await trackD1Write(env, siteId, catBytes);
   }
 }
 

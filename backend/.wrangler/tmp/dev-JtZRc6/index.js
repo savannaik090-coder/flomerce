@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-atS21X/checked-fetch.js
+// .wrangler/tmp/bundle-iNU7tF/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-atS21X/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-iNU7tF/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-atS21X/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-iNU7tF/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-atS21X/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-iNU7tF/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -1780,12 +1780,12 @@ var init_site_admin_worker = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-atS21X/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-iNU7tF/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-atS21X/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-iNU7tF/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -3390,9 +3390,9 @@ async function createSite(request, env, user) {
     const siteDB = await resolveSiteDBById(env, siteId);
     try {
       if (categories && categories.length > 0) {
-        await createUserCategories(siteDB, siteId, categories);
+        await createUserCategories(env, siteDB, siteId, categories);
       } else if (category) {
-        await createDefaultCategories(siteDB, siteId, category);
+        await createDefaultCategories(env, siteDB, siteId, category);
       }
     } catch (catError) {
       console.error("Category creation failed (non-fatal):", catError.message || catError);
@@ -3419,7 +3419,7 @@ async function createSite(request, env, user) {
   }
 }
 __name(createSite, "createSite");
-async function createDefaultCategories(db, siteId, businessCategory) {
+async function createDefaultCategories(env, db, siteId, businessCategory) {
   const categoryTemplates = {
     jewellery: [
       { name: "New Arrivals", slug: "new-arrivals", subtitle: "Discover our latest exquisite collections", showOnHome: 1, children: [] },
@@ -3441,22 +3441,28 @@ async function createDefaultCategories(db, siteId, businessCategory) {
   let order = 0;
   for (const cat of categories) {
     const parentId = generateId();
+    const parentData = { id: parentId, site_id: siteId, name: cat.name, slug: cat.slug, subtitle: cat.subtitle || null };
+    const parentBytes = estimateRowBytes(parentData);
     await db.prepare(
-      `INSERT INTO categories (id, site_id, name, slug, subtitle, show_on_home, display_order, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
-    ).bind(parentId, siteId, cat.name, cat.slug, cat.subtitle || null, cat.showOnHome !== void 0 ? cat.showOnHome : 1, order++).run();
+      `INSERT INTO categories (id, site_id, name, slug, subtitle, show_on_home, display_order, row_size_bytes, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+    ).bind(parentId, siteId, cat.name, cat.slug, cat.subtitle || null, cat.showOnHome !== void 0 ? cat.showOnHome : 1, order++, parentBytes).run();
+    await trackD1Write(env, siteId, parentBytes);
     for (const childName of cat.children || []) {
       const childId = generateId();
       const childSlug = `${cat.slug}-${childName.toLowerCase().replace(/\s+/g, "-")}`;
+      const childData = { id: childId, site_id: siteId, name: childName, slug: childSlug, parent_id: parentId };
+      const childBytes = estimateRowBytes(childData);
       await db.prepare(
-        `INSERT INTO categories (id, site_id, name, slug, parent_id, show_on_home, display_order, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
-      ).bind(childId, siteId, childName, childSlug, parentId, 0, order++).run();
+        `INSERT INTO categories (id, site_id, name, slug, parent_id, show_on_home, display_order, row_size_bytes, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+      ).bind(childId, siteId, childName, childSlug, parentId, 0, order++, childBytes).run();
+      await trackD1Write(env, siteId, childBytes);
     }
   }
 }
 __name(createDefaultCategories, "createDefaultCategories");
-async function createUserCategories(db, siteId, categories) {
+async function createUserCategories(env, db, siteId, categories) {
   let order = 0;
   for (let cat of categories) {
     let categoryName = typeof cat === "string" ? cat : cat.name || cat.label;
@@ -3466,10 +3472,13 @@ async function createUserCategories(db, siteId, categories) {
     const subtitle = typeof cat === "object" && cat.subtitle ? cat.subtitle : null;
     const showOnHome = typeof cat === "object" && cat.showOnHome !== void 0 ? cat.showOnHome ? 1 : 0 : 1;
     const catId = generateId();
+    const catData = { id: catId, site_id: siteId, name: categoryName, slug, subtitle };
+    const catBytes = estimateRowBytes(catData);
     await db.prepare(
-      `INSERT INTO categories (id, site_id, name, slug, subtitle, show_on_home, display_order, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
-    ).bind(catId, siteId, categoryName, slug, subtitle, showOnHome, order++).run();
+      `INSERT INTO categories (id, site_id, name, slug, subtitle, show_on_home, display_order, row_size_bytes, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+    ).bind(catId, siteId, categoryName, slug, subtitle, showOnHome, order++, catBytes).run();
+    await trackD1Write(env, siteId, catBytes);
   }
 }
 __name(createUserCategories, "createUserCategories");
@@ -4216,7 +4225,13 @@ async function deleteProduct(env, user, productId) {
 __name(deleteProduct, "deleteProduct");
 async function updateProductStock(env, productId, quantity, operation = "decrement", siteId = null) {
   try {
+    if (siteId && await checkMigrationLock(env, siteId)) {
+      console.error("Stock update blocked: site migration in progress");
+      return false;
+    }
     const db = await resolveSiteDBById(env, siteId);
+    const oldRow = await db.prepare("SELECT row_size_bytes FROM products WHERE id = ?").bind(productId).first();
+    const oldBytes = oldRow?.row_size_bytes || 0;
     if (operation === "decrement") {
       await db.prepare(
         'UPDATE products SET stock = stock - ?, updated_at = datetime("now") WHERE id = ? AND stock >= ?'
@@ -4225,6 +4240,12 @@ async function updateProductStock(env, productId, quantity, operation = "decreme
       await db.prepare(
         'UPDATE products SET stock = stock + ?, updated_at = datetime("now") WHERE id = ?'
       ).bind(quantity, productId).run();
+    }
+    const updatedRow = await db.prepare("SELECT * FROM products WHERE id = ?").bind(productId).first();
+    if (updatedRow && siteId) {
+      const newBytes = estimateRowBytes(updatedRow);
+      await db.prepare("UPDATE products SET row_size_bytes = ? WHERE id = ?").bind(newBytes, productId).run();
+      await trackD1Update(env, siteId, oldBytes, newBytes);
     }
     return true;
   } catch (error) {
@@ -4474,9 +4495,17 @@ async function createOrder(request, env, user) {
           discount = coupon.value;
         }
         appliedCouponCode = couponCode.toUpperCase();
+        const oldCouponRow = await db.prepare("SELECT row_size_bytes FROM coupons WHERE id = ?").bind(coupon.id).first();
+        const oldCouponBytes = oldCouponRow?.row_size_bytes || 0;
         await db.prepare(
           "UPDATE coupons SET used_count = used_count + 1 WHERE id = ?"
         ).bind(coupon.id).run();
+        const updatedCoupon = await db.prepare("SELECT * FROM coupons WHERE id = ?").bind(coupon.id).first();
+        if (updatedCoupon) {
+          const newCouponBytes = estimateRowBytes(updatedCoupon);
+          await db.prepare("UPDATE coupons SET row_size_bytes = ? WHERE id = ?").bind(newCouponBytes, coupon.id).run();
+          await trackD1Update(env, siteId, oldCouponBytes, newCouponBytes);
+        }
       } else {
         try {
           const site = await env.DB.prepare("SELECT settings FROM sites WHERE id = ?").bind(siteId).first();
@@ -5053,15 +5082,28 @@ async function handleClearCart(request, env, url) {
   if (!user && !sessionId)
     return errorResponse("Authentication or session required");
   try {
+    if (await checkMigrationLock(env, siteId)) {
+      return errorResponse("Site is currently being migrated. Please try again shortly.", 423);
+    }
     const db = await resolveSiteDBById(env, siteId);
+    let cart = null;
     if (user) {
-      await db.prepare(
-        `UPDATE carts SET items = '[]', subtotal = 0, updated_at = datetime('now') WHERE site_id = ? AND user_id = ?`
-      ).bind(siteId, user.id).run();
+      cart = await db.prepare(
+        "SELECT id, row_size_bytes FROM carts WHERE site_id = ? AND user_id = ?"
+      ).bind(siteId, user.id).first();
     } else {
+      cart = await db.prepare(
+        "SELECT id, row_size_bytes FROM carts WHERE site_id = ? AND session_id = ?"
+      ).bind(siteId, sessionId).first();
+    }
+    if (cart) {
+      const oldBytes = cart.row_size_bytes || 0;
+      const emptyCartData = { id: cart.id, site_id: siteId, items: "[]", subtotal: 0 };
+      const newBytes = estimateRowBytes(emptyCartData);
       await db.prepare(
-        `UPDATE carts SET items = '[]', subtotal = 0, updated_at = datetime('now') WHERE site_id = ? AND session_id = ?`
-      ).bind(siteId, sessionId).run();
+        `UPDATE carts SET items = '[]', subtotal = 0, row_size_bytes = ?, updated_at = datetime('now') WHERE id = ?`
+      ).bind(newBytes, cart.id).run();
+      await trackD1Update(env, siteId, oldBytes, newBytes);
     }
     return successResponse(null, "Cart cleared");
   } catch (error) {
@@ -5254,6 +5296,9 @@ async function updateCartItem(request, env, siteId, user, sessionId) {
 __name(updateCartItem, "updateCartItem");
 async function removeFromCart(request, env, siteId, user, sessionId) {
   try {
+    if (await checkMigrationLock(env, siteId)) {
+      return errorResponse("Site is currently being migrated. Please try again shortly.", 423);
+    }
     const url = new URL(request.url);
     const productId = url.searchParams.get("productId");
     const variant = url.searchParams.get("variant");
@@ -8977,6 +9022,24 @@ async function ensureCustomerTables(env) {
       ).run();
     } catch (_) {
     }
+    try {
+      await env.DB.prepare(
+        "ALTER TABLE site_customer_sessions ADD COLUMN row_size_bytes INTEGER DEFAULT 0"
+      ).run();
+    } catch (_) {
+    }
+    try {
+      await env.DB.prepare(
+        "ALTER TABLE customer_password_resets ADD COLUMN row_size_bytes INTEGER DEFAULT 0"
+      ).run();
+    } catch (_) {
+    }
+    try {
+      await env.DB.prepare(
+        "ALTER TABLE customer_email_verifications ADD COLUMN row_size_bytes INTEGER DEFAULT 0"
+      ).run();
+    } catch (_) {
+    }
   } catch (error) {
     console.error("Error ensuring customer tables:", error);
   }
@@ -9201,10 +9264,14 @@ async function handleSignup2(request, env) {
     if (!skipVerification) {
       const verifyToken = generateToken(32);
       const verifyExpiry = getExpiryDate(24);
+      const verifyId = generateId();
+      const verifyRowData = { id: verifyId, site_id: siteId, customer_id: customerId, token: verifyToken, expires_at: verifyExpiry };
+      const verifyRowBytes = estimateRowBytes(verifyRowData);
       await env.DB.prepare(
-        `INSERT INTO customer_email_verifications (id, site_id, customer_id, token, expires_at)
-         VALUES (?, ?, ?, ?, ?)`
-      ).bind(generateId(), siteId, customerId, verifyToken, verifyExpiry).run();
+        `INSERT INTO customer_email_verifications (id, site_id, customer_id, token, expires_at, row_size_bytes)
+         VALUES (?, ?, ?, ?, ?, ?)`
+      ).bind(verifyId, siteId, customerId, verifyToken, verifyExpiry, verifyRowBytes).run();
+      await trackD1Write(env, siteId, verifyRowBytes);
       const baseUrl = getStorefrontUrl(env, site);
       const verifyUrl = `${baseUrl}/verify-email?token=${verifyToken}&email=${encodeURIComponent(email.toLowerCase())}`;
       const emailContent = buildVerificationEmail(site.brand_name, verifyUrl);
@@ -9224,10 +9291,13 @@ async function handleSignup2(request, env) {
     const token = generateToken(32);
     const expiresAt = getExpiryDate(24 * 7);
     const sessionId = generateId();
+    const sessRowData = { id: sessionId, customer_id: customerId, site_id: siteId, token, expires_at: expiresAt };
+    const sessRowBytes = estimateRowBytes(sessRowData);
     await env.DB.prepare(
-      `INSERT INTO site_customer_sessions (id, customer_id, site_id, token, expires_at, created_at)
-       VALUES (?, ?, ?, ?, ?, datetime('now'))`
-    ).bind(sessionId, customerId, siteId, token, expiresAt).run();
+      `INSERT INTO site_customer_sessions (id, customer_id, site_id, token, expires_at, row_size_bytes, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`
+    ).bind(sessionId, customerId, siteId, token, expiresAt, sessRowBytes).run();
+    await trackD1Write(env, siteId, sessRowBytes);
     return successResponse({
       customer: {
         id: customerId,
@@ -9269,10 +9339,13 @@ async function handleLogin2(request, env) {
     const token = generateToken(32);
     const expiresAt = getExpiryDate(24 * 7);
     const sessionId = generateId();
+    const loginSessData = { id: sessionId, customer_id: customer.id, site_id: siteId, token, expires_at: expiresAt };
+    const loginSessBytes = estimateRowBytes(loginSessData);
     await env.DB.prepare(
-      `INSERT INTO site_customer_sessions (id, customer_id, site_id, token, expires_at, created_at)
-       VALUES (?, ?, ?, ?, ?, datetime('now'))`
-    ).bind(sessionId, customer.id, siteId, token, expiresAt).run();
+      `INSERT INTO site_customer_sessions (id, customer_id, site_id, token, expires_at, row_size_bytes, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`
+    ).bind(sessionId, customer.id, siteId, token, expiresAt, loginSessBytes).run();
+    await trackD1Write(env, siteId, loginSessBytes);
     return successResponse({
       customer: {
         id: customer.id,
@@ -9298,9 +9371,15 @@ async function handleLogout2(request, env) {
       const authHeader = request.headers.get("Authorization");
       if (authHeader && authHeader.startsWith("SiteCustomer ")) {
         const token = authHeader.substring(13);
+        const sess = await env.DB.prepare(
+          "SELECT row_size_bytes, site_id FROM site_customer_sessions WHERE token = ?"
+        ).bind(token).first();
         await env.DB.prepare(
           "DELETE FROM site_customer_sessions WHERE token = ?"
         ).bind(token).run();
+        if (sess && sess.site_id) {
+          await trackD1Delete(env, sess.site_id, sess.row_size_bytes || 0);
+        }
       }
     }
     return successResponse(null, "Logged out successfully");
@@ -9385,15 +9464,22 @@ async function handleRequestPasswordReset(request, env) {
     const site = await env.DB.prepare(
       "SELECT id, brand_name, subdomain, custom_domain, domain_status FROM sites WHERE id = ?"
     ).bind(siteId).first();
+    const oldResets = await env.DB.prepare(
+      "SELECT id, row_size_bytes FROM customer_password_resets WHERE customer_id = ? AND site_id = ? AND used = 0"
+    ).bind(customer.id, siteId).all();
     await env.DB.prepare(
       "UPDATE customer_password_resets SET used = 1 WHERE customer_id = ? AND site_id = ? AND used = 0"
     ).bind(customer.id, siteId).run();
     const resetToken = generateToken(32);
     const expiresAt = getExpiryDate(1);
+    const resetId = generateId();
+    const resetRowData = { id: resetId, site_id: siteId, customer_id: customer.id, token: resetToken, expires_at: expiresAt };
+    const resetRowBytes = estimateRowBytes(resetRowData);
     await env.DB.prepare(
-      `INSERT INTO customer_password_resets (id, site_id, customer_id, token, expires_at)
-       VALUES (?, ?, ?, ?, ?)`
-    ).bind(generateId(), siteId, customer.id, resetToken, expiresAt).run();
+      `INSERT INTO customer_password_resets (id, site_id, customer_id, token, expires_at, row_size_bytes)
+       VALUES (?, ?, ?, ?, ?, ?)`
+    ).bind(resetId, siteId, customer.id, resetToken, expiresAt, resetRowBytes).run();
+    await trackD1Write(env, siteId, resetRowBytes);
     const baseUrl = getStorefrontUrl(env, site);
     const resetUrl = `${baseUrl}/reset-password?token=${resetToken}&email=${encodeURIComponent(email.toLowerCase())}`;
     const emailContent = buildPasswordResetEmail(site.brand_name, resetUrl, customer.name);
@@ -9433,15 +9519,33 @@ async function handleResetPassword2(request, env) {
       return errorResponse("Invalid reset link.", 400, "INVALID_TOKEN");
     }
     const passwordHash = await hashPassword(password);
+    const custRow = await env.DB.prepare(
+      "SELECT row_size_bytes, site_id FROM site_customers WHERE id = ?"
+    ).bind(resetRecord.customer_id).first();
+    const custOldBytes = custRow?.row_size_bytes || 0;
     await env.DB.prepare(
       "UPDATE site_customers SET password_hash = ?, updated_at = datetime('now') WHERE id = ?"
     ).bind(passwordHash, resetRecord.customer_id).run();
+    const custUpdated = await env.DB.prepare("SELECT * FROM site_customers WHERE id = ?").bind(resetRecord.customer_id).first();
+    if (custUpdated) {
+      const custNewBytes = estimateRowBytes(custUpdated);
+      await env.DB.prepare("UPDATE site_customers SET row_size_bytes = ? WHERE id = ?").bind(custNewBytes, resetRecord.customer_id).run();
+      if (custRow?.site_id)
+        await trackD1Update(env, custRow.site_id, custOldBytes, custNewBytes);
+    }
     await env.DB.prepare(
       "UPDATE customer_password_resets SET used = 1 WHERE id = ?"
     ).bind(resetRecord.id).run();
+    const sessionsToDelete = await env.DB.prepare(
+      "SELECT id, row_size_bytes, site_id FROM site_customer_sessions WHERE customer_id = ?"
+    ).bind(resetRecord.customer_id).all();
     await env.DB.prepare(
       "DELETE FROM site_customer_sessions WHERE customer_id = ?"
     ).bind(resetRecord.customer_id).run();
+    const totalSessBytes = (sessionsToDelete.results || []).reduce((sum, s) => sum + (s.row_size_bytes || 0), 0);
+    if (totalSessBytes > 0 && custRow?.site_id) {
+      await trackD1Delete(env, custRow.site_id, totalSessBytes);
+    }
     return successResponse(null, "Password reset successfully. You can now log in with your new password.");
   } catch (error) {
     console.error("Reset password error:", error);
@@ -9470,9 +9574,20 @@ async function handleVerifyEmail2(request, env) {
     if (email && verifyRecord.customer_email.toLowerCase() !== email.toLowerCase()) {
       return errorResponse("Invalid verification link.", 400, "INVALID_TOKEN");
     }
+    const verifyCustRow = await env.DB.prepare(
+      "SELECT row_size_bytes, site_id FROM site_customers WHERE id = ?"
+    ).bind(verifyRecord.customer_id).first();
+    const verifyCustOldBytes = verifyCustRow?.row_size_bytes || 0;
     await env.DB.prepare(
       "UPDATE site_customers SET email_verified = 1, updated_at = datetime('now') WHERE id = ?"
     ).bind(verifyRecord.customer_id).run();
+    const verifyCustUpdated = await env.DB.prepare("SELECT * FROM site_customers WHERE id = ?").bind(verifyRecord.customer_id).first();
+    if (verifyCustUpdated) {
+      const verifyCustNewBytes = estimateRowBytes(verifyCustUpdated);
+      await env.DB.prepare("UPDATE site_customers SET row_size_bytes = ? WHERE id = ?").bind(verifyCustNewBytes, verifyRecord.customer_id).run();
+      if (verifyCustRow?.site_id)
+        await trackD1Update(env, verifyCustRow.site_id, verifyCustOldBytes, verifyCustNewBytes);
+    }
     await env.DB.prepare(
       "UPDATE customer_email_verifications SET used = 1 WHERE id = ?"
     ).bind(verifyRecord.id).run();
@@ -9510,10 +9625,14 @@ async function handleResendVerification2(request, env) {
     ).bind(customer.id, siteId).run();
     const verifyToken = generateToken(32);
     const verifyExpiry = getExpiryDate(24);
+    const resendVerifyId = generateId();
+    const resendVerifyData = { id: resendVerifyId, site_id: siteId, customer_id: customer.id, token: verifyToken, expires_at: verifyExpiry };
+    const resendVerifyBytes = estimateRowBytes(resendVerifyData);
     await env.DB.prepare(
-      `INSERT INTO customer_email_verifications (id, site_id, customer_id, token, expires_at)
-       VALUES (?, ?, ?, ?, ?)`
-    ).bind(generateId(), siteId, customer.id, verifyToken, verifyExpiry).run();
+      `INSERT INTO customer_email_verifications (id, site_id, customer_id, token, expires_at, row_size_bytes)
+       VALUES (?, ?, ?, ?, ?, ?)`
+    ).bind(resendVerifyId, siteId, customer.id, verifyToken, verifyExpiry, resendVerifyBytes).run();
+    await trackD1Write(env, siteId, resendVerifyBytes);
     const baseUrl = getStorefrontUrl(env, site);
     const verifyUrl = `${baseUrl}/verify-email?token=${verifyToken}&email=${encodeURIComponent(email.toLowerCase())}`;
     const emailContent = buildVerificationEmail(site.brand_name, verifyUrl);
@@ -10503,6 +10622,9 @@ async function ensureTablesExist(env) {
       { col: "row_size_bytes", table: "wishlists", sql: "ALTER TABLE wishlists ADD COLUMN row_size_bytes INTEGER DEFAULT 0" },
       { col: "row_size_bytes", table: "site_customers", sql: "ALTER TABLE site_customers ADD COLUMN row_size_bytes INTEGER DEFAULT 0" },
       { col: "row_size_bytes", table: "customer_addresses", sql: "ALTER TABLE customer_addresses ADD COLUMN row_size_bytes INTEGER DEFAULT 0" },
+      { col: "row_size_bytes", table: "site_customer_sessions", sql: "ALTER TABLE site_customer_sessions ADD COLUMN row_size_bytes INTEGER DEFAULT 0" },
+      { col: "row_size_bytes", table: "customer_password_resets", sql: "ALTER TABLE customer_password_resets ADD COLUMN row_size_bytes INTEGER DEFAULT 0" },
+      { col: "row_size_bytes", table: "customer_email_verifications", sql: "ALTER TABLE customer_email_verifications ADD COLUMN row_size_bytes INTEGER DEFAULT 0" },
       { col: "row_size_bytes", table: "coupons", sql: "ALTER TABLE coupons ADD COLUMN row_size_bytes INTEGER DEFAULT 0" },
       { col: "row_size_bytes", table: "notifications", sql: "ALTER TABLE notifications ADD COLUMN row_size_bytes INTEGER DEFAULT 0" },
       { col: "row_size_bytes", table: "reviews", sql: "ALTER TABLE reviews ADD COLUMN row_size_bytes INTEGER DEFAULT 0" },
@@ -10952,7 +11074,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-atS21X/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-iNU7tF/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -10987,7 +11109,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-atS21X/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-iNU7tF/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

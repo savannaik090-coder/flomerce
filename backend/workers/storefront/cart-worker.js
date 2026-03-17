@@ -57,17 +57,35 @@ async function handleClearCart(request, env, url) {
   if (!user && !sessionId) return errorResponse('Authentication or session required');
 
   try {
+    if (await checkMigrationLock(env, siteId)) {
+      return errorResponse('Site is currently being migrated. Please try again shortly.', 423);
+    }
+
     const db = await resolveSiteDBById(env, siteId);
 
+    let cart = null;
     if (user) {
-      await db.prepare(
-        `UPDATE carts SET items = '[]', subtotal = 0, updated_at = datetime('now') WHERE site_id = ? AND user_id = ?`
-      ).bind(siteId, user.id).run();
+      cart = await db.prepare(
+        'SELECT id, row_size_bytes FROM carts WHERE site_id = ? AND user_id = ?'
+      ).bind(siteId, user.id).first();
     } else {
-      await db.prepare(
-        `UPDATE carts SET items = '[]', subtotal = 0, updated_at = datetime('now') WHERE site_id = ? AND session_id = ?`
-      ).bind(siteId, sessionId).run();
+      cart = await db.prepare(
+        'SELECT id, row_size_bytes FROM carts WHERE site_id = ? AND session_id = ?'
+      ).bind(siteId, sessionId).first();
     }
+
+    if (cart) {
+      const oldBytes = cart.row_size_bytes || 0;
+      const emptyCartData = { id: cart.id, site_id: siteId, items: '[]', subtotal: 0 };
+      const newBytes = estimateRowBytes(emptyCartData);
+
+      await db.prepare(
+        `UPDATE carts SET items = '[]', subtotal = 0, row_size_bytes = ?, updated_at = datetime('now') WHERE id = ?`
+      ).bind(newBytes, cart.id).run();
+
+      await trackD1Update(env, siteId, oldBytes, newBytes);
+    }
+
     return successResponse(null, 'Cart cleared');
   } catch (error) {
     console.error('Clear cart error:', error);
@@ -295,6 +313,10 @@ async function updateCartItem(request, env, siteId, user, sessionId) {
 
 async function removeFromCart(request, env, siteId, user, sessionId) {
   try {
+    if (await checkMigrationLock(env, siteId)) {
+      return errorResponse('Site is currently being migrated. Please try again shortly.', 423);
+    }
+
     const url = new URL(request.url);
     const productId = url.searchParams.get('productId');
     const variant = url.searchParams.get('variant');
@@ -390,10 +412,20 @@ export async function mergeCarts(env, siteId, userId, sessionId) {
 export async function clearCart(env, siteId, userId) {
   try {
     const db = await resolveSiteDBById(env, siteId);
-    await db.prepare(
-      `UPDATE carts SET items = '[]', subtotal = 0, updated_at = datetime('now') 
-       WHERE site_id = ? AND user_id = ?`
-    ).bind(siteId, userId).run();
+    const cart = await db.prepare(
+      'SELECT id, row_size_bytes FROM carts WHERE site_id = ? AND user_id = ?'
+    ).bind(siteId, userId).first();
+
+    if (cart) {
+      const oldBytes = cart.row_size_bytes || 0;
+      const newBytes = estimateRowBytes({ id: cart.id, site_id: siteId, items: '[]', subtotal: 0 });
+
+      await db.prepare(
+        `UPDATE carts SET items = '[]', subtotal = 0, row_size_bytes = ?, updated_at = datetime('now') WHERE id = ?`
+      ).bind(newBytes, cart.id).run();
+
+      await trackD1Update(env, siteId, oldBytes, newBytes);
+    }
   } catch (error) {
     console.error('Clear cart error:', error);
   }
