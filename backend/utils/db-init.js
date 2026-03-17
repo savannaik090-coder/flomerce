@@ -499,6 +499,19 @@ export async function ensureTablesExist(env) {
       }
     }
 
+    await env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS shards (
+        id TEXT PRIMARY KEY,
+        binding_name TEXT UNIQUE NOT NULL,
+        database_id TEXT UNIQUE NOT NULL,
+        database_name TEXT NOT NULL,
+        is_active INTEGER DEFAULT 1,
+        correction_factor REAL DEFAULT 1.0,
+        last_reconciled_at TEXT,
+        created_at TEXT DEFAULT (datetime('now'))
+      )
+    `).run();
+
     const migrations = [
       { col: 'subtitle', sql: 'ALTER TABLE categories ADD COLUMN subtitle TEXT' },
       { col: 'show_on_home', sql: 'ALTER TABLE categories ADD COLUMN show_on_home INTEGER DEFAULT 1' },
@@ -510,6 +523,10 @@ export async function ensureTablesExist(env) {
       { col: 'role', table: 'users', sql: "ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'" },
       { col: 'd1_database_id', table: 'sites', sql: 'ALTER TABLE sites ADD COLUMN d1_database_id TEXT' },
       { col: 'd1_binding_name', table: 'sites', sql: 'ALTER TABLE sites ADD COLUMN d1_binding_name TEXT' },
+      { col: 'shard_id', table: 'sites', sql: 'ALTER TABLE sites ADD COLUMN shard_id TEXT' },
+      { col: 'migration_locked', table: 'sites', sql: 'ALTER TABLE sites ADD COLUMN migration_locked INTEGER DEFAULT 0' },
+      { col: 'baseline_bytes', table: 'site_usage', sql: 'ALTER TABLE site_usage ADD COLUMN baseline_bytes INTEGER DEFAULT 0' },
+      { col: 'baseline_updated_at', table: 'site_usage', sql: 'ALTER TABLE site_usage ADD COLUMN baseline_updated_at TEXT' },
     ];
     for (const m of migrations) {
       try {

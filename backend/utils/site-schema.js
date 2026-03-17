@@ -15,6 +15,7 @@ export function getSiteSchemaStatements() {
       seo_title TEXT,
       seo_description TEXT,
       seo_og_image TEXT,
+      row_size_bytes INTEGER DEFAULT 0,
       created_at TEXT DEFAULT (datetime('now')),
       updated_at TEXT DEFAULT (datetime('now')),
       UNIQUE(site_id, slug)
@@ -45,6 +46,7 @@ export function getSiteSchemaStatements() {
       seo_title TEXT,
       seo_description TEXT,
       seo_og_image TEXT,
+      row_size_bytes INTEGER DEFAULT 0,
       created_at TEXT DEFAULT (datetime('now')),
       updated_at TEXT DEFAULT (datetime('now')),
       UNIQUE(site_id, slug)
@@ -61,6 +63,7 @@ export function getSiteSchemaStatements() {
       attributes TEXT,
       image_url TEXT,
       is_active INTEGER DEFAULT 1,
+      row_size_bytes INTEGER DEFAULT 0,
       created_at TEXT DEFAULT (datetime('now'))
     )`,
 
@@ -96,6 +99,7 @@ export function getSiteSchemaStatements() {
       delivered_at TEXT,
       cancelled_at TEXT,
       cancellation_reason TEXT,
+      row_size_bytes INTEGER DEFAULT 0,
       created_at TEXT DEFAULT (datetime('now')),
       updated_at TEXT DEFAULT (datetime('now'))
     )`,
@@ -122,6 +126,7 @@ export function getSiteSchemaStatements() {
       customer_phone TEXT NOT NULL,
       tracking_number TEXT,
       carrier TEXT,
+      row_size_bytes INTEGER DEFAULT 0,
       created_at TEXT DEFAULT (datetime('now')),
       updated_at TEXT DEFAULT (datetime('now'))
     )`,
@@ -133,6 +138,7 @@ export function getSiteSchemaStatements() {
       session_id TEXT,
       items TEXT NOT NULL DEFAULT '[]',
       subtotal REAL DEFAULT 0,
+      row_size_bytes INTEGER DEFAULT 0,
       created_at TEXT DEFAULT (datetime('now')),
       updated_at TEXT DEFAULT (datetime('now'))
     )`,
@@ -142,6 +148,7 @@ export function getSiteSchemaStatements() {
       site_id TEXT NOT NULL,
       user_id TEXT NOT NULL,
       product_id TEXT NOT NULL,
+      row_size_bytes INTEGER DEFAULT 0,
       created_at TEXT DEFAULT (datetime('now')),
       UNIQUE(site_id, user_id, product_id)
     )`,
@@ -154,6 +161,7 @@ export function getSiteSchemaStatements() {
       name TEXT NOT NULL,
       phone TEXT,
       email_verified INTEGER DEFAULT 0,
+      row_size_bytes INTEGER DEFAULT 0,
       created_at TEXT DEFAULT (datetime('now')),
       updated_at TEXT DEFAULT (datetime('now')),
       UNIQUE(site_id, email)
@@ -165,6 +173,7 @@ export function getSiteSchemaStatements() {
       site_id TEXT NOT NULL,
       token TEXT NOT NULL,
       expires_at TEXT NOT NULL,
+      row_size_bytes INTEGER DEFAULT 0,
       created_at TEXT DEFAULT (datetime('now'))
     )`,
 
@@ -182,6 +191,7 @@ export function getSiteSchemaStatements() {
       state TEXT NOT NULL,
       pin_code TEXT NOT NULL,
       is_default INTEGER DEFAULT 0,
+      row_size_bytes INTEGER DEFAULT 0,
       created_at TEXT DEFAULT (datetime('now')),
       updated_at TEXT DEFAULT (datetime('now'))
     )`,
@@ -193,6 +203,7 @@ export function getSiteSchemaStatements() {
       token TEXT NOT NULL UNIQUE,
       expires_at TEXT NOT NULL,
       used INTEGER DEFAULT 0,
+      row_size_bytes INTEGER DEFAULT 0,
       created_at TEXT DEFAULT (datetime('now'))
     )`,
 
@@ -203,6 +214,7 @@ export function getSiteSchemaStatements() {
       token TEXT NOT NULL UNIQUE,
       expires_at TEXT NOT NULL,
       used INTEGER DEFAULT 0,
+      row_size_bytes INTEGER DEFAULT 0,
       created_at TEXT DEFAULT (datetime('now'))
     )`,
 
@@ -219,6 +231,7 @@ export function getSiteSchemaStatements() {
       starts_at TEXT,
       expires_at TEXT,
       is_active INTEGER DEFAULT 1,
+      row_size_bytes INTEGER DEFAULT 0,
       created_at TEXT DEFAULT (datetime('now')),
       UNIQUE(site_id, code)
     )`,
@@ -232,6 +245,7 @@ export function getSiteSchemaStatements() {
       p256dh TEXT,
       auth TEXT,
       is_active INTEGER DEFAULT 1,
+      row_size_bytes INTEGER DEFAULT 0,
       created_at TEXT DEFAULT (datetime('now'))
     )`,
 
@@ -247,6 +261,7 @@ export function getSiteSchemaStatements() {
       images TEXT,
       is_verified INTEGER DEFAULT 0,
       is_approved INTEGER DEFAULT 0,
+      row_size_bytes INTEGER DEFAULT 0,
       created_at TEXT DEFAULT (datetime('now'))
     )`,
 
@@ -257,6 +272,7 @@ export function getSiteSchemaStatements() {
       seo_title TEXT,
       seo_description TEXT,
       seo_og_image TEXT,
+      row_size_bytes INTEGER DEFAULT 0,
       created_at TEXT DEFAULT (datetime('now')),
       updated_at TEXT DEFAULT (datetime('now')),
       UNIQUE(site_id, page_type)
@@ -268,6 +284,7 @@ export function getSiteSchemaStatements() {
       storage_key TEXT NOT NULL UNIQUE,
       size_bytes INTEGER NOT NULL,
       media_type TEXT DEFAULT 'image',
+      row_size_bytes INTEGER DEFAULT 0,
       created_at TEXT DEFAULT (datetime('now'))
     )`,
 
@@ -275,6 +292,8 @@ export function getSiteSchemaStatements() {
       site_id TEXT PRIMARY KEY,
       d1_bytes_used INTEGER DEFAULT 0,
       r2_bytes_used INTEGER DEFAULT 0,
+      baseline_bytes INTEGER DEFAULT 0,
+      baseline_updated_at TEXT,
       last_updated TEXT DEFAULT (datetime('now'))
     )`,
 
@@ -288,6 +307,7 @@ export function getSiteSchemaStatements() {
       details TEXT,
       ip_address TEXT,
       user_agent TEXT,
+      row_size_bytes INTEGER DEFAULT 0,
       created_at TEXT DEFAULT (datetime('now'))
     )`,
 
@@ -303,6 +323,7 @@ export function getSiteSchemaStatements() {
       pincode TEXT NOT NULL,
       country TEXT DEFAULT 'India',
       is_default INTEGER DEFAULT 0,
+      row_size_bytes INTEGER DEFAULT 0,
       created_at TEXT DEFAULT (datetime('now')),
       updated_at TEXT DEFAULT (datetime('now'))
     )`,
@@ -351,5 +372,29 @@ export function getSiteSchemaStatements() {
     'CREATE INDEX IF NOT EXISTS idx_addresses_user ON addresses(user_id)',
   ];
 
-  return [...tables, ...indexes];
+  const addColumnMigrations = [
+    'ALTER TABLE categories ADD COLUMN row_size_bytes INTEGER DEFAULT 0',
+    'ALTER TABLE products ADD COLUMN row_size_bytes INTEGER DEFAULT 0',
+    'ALTER TABLE product_variants ADD COLUMN row_size_bytes INTEGER DEFAULT 0',
+    'ALTER TABLE orders ADD COLUMN row_size_bytes INTEGER DEFAULT 0',
+    'ALTER TABLE guest_orders ADD COLUMN row_size_bytes INTEGER DEFAULT 0',
+    'ALTER TABLE carts ADD COLUMN row_size_bytes INTEGER DEFAULT 0',
+    'ALTER TABLE wishlists ADD COLUMN row_size_bytes INTEGER DEFAULT 0',
+    'ALTER TABLE site_customers ADD COLUMN row_size_bytes INTEGER DEFAULT 0',
+    'ALTER TABLE site_customer_sessions ADD COLUMN row_size_bytes INTEGER DEFAULT 0',
+    'ALTER TABLE customer_addresses ADD COLUMN row_size_bytes INTEGER DEFAULT 0',
+    'ALTER TABLE customer_password_resets ADD COLUMN row_size_bytes INTEGER DEFAULT 0',
+    'ALTER TABLE customer_email_verifications ADD COLUMN row_size_bytes INTEGER DEFAULT 0',
+    'ALTER TABLE coupons ADD COLUMN row_size_bytes INTEGER DEFAULT 0',
+    'ALTER TABLE notifications ADD COLUMN row_size_bytes INTEGER DEFAULT 0',
+    'ALTER TABLE reviews ADD COLUMN row_size_bytes INTEGER DEFAULT 0',
+    'ALTER TABLE page_seo ADD COLUMN row_size_bytes INTEGER DEFAULT 0',
+    'ALTER TABLE site_media ADD COLUMN row_size_bytes INTEGER DEFAULT 0',
+    'ALTER TABLE activity_log ADD COLUMN row_size_bytes INTEGER DEFAULT 0',
+    'ALTER TABLE addresses ADD COLUMN row_size_bytes INTEGER DEFAULT 0',
+    'ALTER TABLE site_usage ADD COLUMN baseline_bytes INTEGER DEFAULT 0',
+    'ALTER TABLE site_usage ADD COLUMN baseline_updated_at TEXT',
+  ];
+
+  return [...tables, ...indexes, ...addColumnMigrations];
 }

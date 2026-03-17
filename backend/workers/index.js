@@ -190,8 +190,8 @@ async function handleSiteInfo(request, env) {
 
     let categoriesResult = [];
     try {
-      const { resolveSiteDB } = await import('../utils/site-db.js');
-      const siteDB = resolveSiteDB(env, site);
+      const { resolveSiteDBById } = await import('../utils/site-db.js');
+      const siteDB = await resolveSiteDBById(env, site.id);
       const categories = await siteDB.prepare(
         'SELECT * FROM categories WHERE site_id = ? ORDER BY display_order'
       ).bind(site.id).all();
@@ -227,8 +227,8 @@ async function handleSiteInfo(request, env) {
 
     let pageSEOResult = [];
     try {
-      const { resolveSiteDB } = await import('../utils/site-db.js');
-      const siteDB = resolveSiteDB(env, site);
+      const { resolveSiteDBById } = await import('../utils/site-db.js');
+      const siteDB = await resolveSiteDBById(env, site.id);
       const psResult = await siteDB.prepare(
         'SELECT page_type, seo_title, seo_description, seo_og_image FROM page_seo WHERE site_id = ?'
       ).bind(site.id).all();

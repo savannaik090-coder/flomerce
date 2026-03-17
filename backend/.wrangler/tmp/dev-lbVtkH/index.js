@@ -424,6 +424,16 @@ __export(site_db_exports, {
 function resolveSiteDB(env, site) {
   if (!site)
     return env.DB;
+  if (site.shard_id) {
+    try {
+      const bindingName2 = site._shard_binding_name;
+      if (bindingName2 && env[bindingName2]) {
+        return env[bindingName2];
+      }
+    } catch (e) {
+      console.error("resolveSiteDB shard lookup error:", e.message || e);
+    }
+  }
   const bindingName = site.d1_binding_name;
   if (bindingName && env[bindingName]) {
     return env[bindingName];
@@ -435,10 +445,18 @@ async function resolveSiteDBById(env, siteId) {
     return env.DB;
   try {
     const site = await env.DB.prepare(
-      "SELECT d1_database_id, d1_binding_name FROM sites WHERE id = ?"
+      `SELECT s.shard_id, s.d1_binding_name, sh.binding_name as shard_binding
+       FROM sites s
+       LEFT JOIN shards sh ON s.shard_id = sh.id
+       WHERE s.id = ?`
     ).bind(siteId).first();
-    if (site && site.d1_binding_name && env[site.d1_binding_name]) {
-      return env[site.d1_binding_name];
+    if (site) {
+      if (site.shard_binding && env[site.shard_binding]) {
+        return env[site.shard_binding];
+      }
+      if (site.d1_binding_name && env[site.d1_binding_name]) {
+        return env[site.d1_binding_name];
+      }
     }
   } catch (e) {
     console.error("resolveSiteDBById error (falling back to platform DB):", e.message || e);
@@ -450,10 +468,18 @@ async function resolveSiteDBBySubdomain(env, subdomain) {
     return env.DB;
   try {
     const site = await env.DB.prepare(
-      "SELECT id, d1_database_id, d1_binding_name FROM sites WHERE LOWER(subdomain) = LOWER(?)"
+      `SELECT s.id, s.shard_id, s.d1_binding_name, sh.binding_name as shard_binding
+       FROM sites s
+       LEFT JOIN shards sh ON s.shard_id = sh.id
+       WHERE LOWER(s.subdomain) = LOWER(?)`
     ).bind(subdomain).first();
-    if (site && site.d1_binding_name && env[site.d1_binding_name]) {
-      return env[site.d1_binding_name];
+    if (site) {
+      if (site.shard_binding && env[site.shard_binding]) {
+        return env[site.shard_binding];
+      }
+      if (site.d1_binding_name && env[site.d1_binding_name]) {
+        return env[site.d1_binding_name];
+      }
     }
   } catch (e) {
     console.error("resolveSiteDBBySubdomain error (falling back to platform DB):", e.message || e);
@@ -1133,6 +1159,10 @@ async function runSchemaOnDB(env, databaseId, sqlStatements) {
     });
     const data = await res.json();
     if (!data.success) {
+      const isAlterTable = sql.trim().toUpperCase().startsWith("ALTER TABLE");
+      if (isAlterTable) {
+        continue;
+      }
       console.error(`Schema SQL failed: ${sql.substring(0, 80)}...`, data.errors);
       throw new Error(`Failed to run schema SQL: ${JSON.stringify(data.errors)}`);
     }
@@ -1219,85 +1249,86 @@ var init_d1_manager = __esm({
 var usage_tracker_exports = {};
 __export(usage_tracker_exports, {
   checkUsageLimit: () => checkUsageLimit,
-  ensureUsageTables: () => ensureUsageTables,
   estimateRowBytes: () => estimateRowBytes,
+  getShardCorrectionFactor: () => getShardCorrectionFactor,
   getSiteUsage: () => getSiteUsage,
   handleUsageAPI: () => handleUsageAPI,
-  reconcileSiteUsage: () => reconcileSiteUsage,
+  reconcileShard: () => reconcileShard,
   recordMediaFile: () => recordMediaFile,
   removeMediaFile: () => removeMediaFile,
+  trackD1Delete: () => trackD1Delete,
+  trackD1Update: () => trackD1Update,
   trackD1Usage: () => trackD1Usage,
+  trackD1Write: () => trackD1Write,
   trackR2Usage: () => trackR2Usage
 });
-async function ensureUsageTables(env) {
+function estimateRowBytes(data) {
+  return Math.ceil(JSON.stringify(data).length * 1.2);
+}
+async function trackD1Write(env, siteId, bytesAdded) {
+  if (!siteId || !bytesAdded || bytesAdded <= 0)
+    return;
   try {
     await env.DB.prepare(`
-      CREATE TABLE IF NOT EXISTS site_usage (
-        site_id TEXT PRIMARY KEY,
-        d1_bytes_used INTEGER DEFAULT 0,
-        r2_bytes_used INTEGER DEFAULT 0,
-        last_updated TEXT DEFAULT (datetime('now')),
-        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
-      )
-    `).run();
-    await env.DB.prepare(`
-      CREATE TABLE IF NOT EXISTS site_media (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        site_id TEXT NOT NULL,
-        storage_key TEXT NOT NULL UNIQUE,
-        size_bytes INTEGER NOT NULL,
-        media_type TEXT DEFAULT 'image',
-        created_at TEXT DEFAULT (datetime('now')),
-        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
-      )
-    `).run();
-    await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_site_media_site ON site_media(site_id)").run();
-    await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_site_media_key ON site_media(storage_key)").run();
+      INSERT INTO site_usage (site_id, d1_bytes_used, r2_bytes_used, baseline_bytes, last_updated)
+      VALUES (?, ?, 0, 0, datetime('now'))
+      ON CONFLICT(site_id) DO UPDATE SET
+        d1_bytes_used = d1_bytes_used + ?,
+        last_updated = datetime('now')
+    `).bind(siteId, bytesAdded, bytesAdded).run();
   } catch (e) {
-    console.error("ensureUsageTables error (non-fatal):", e.message || e);
+    console.error("trackD1Write error (non-fatal):", e.message || e);
   }
 }
-function estimateRowBytes(fields) {
-  let bytes = 100;
-  for (const val of Object.values(fields)) {
-    if (val === null || val === void 0) {
-      bytes += 1;
-    } else if (typeof val === "number") {
-      bytes += 8;
-    } else if (typeof val === "string") {
-      bytes += val.length * 2;
-    } else if (typeof val === "boolean") {
-      bytes += 1;
-    } else {
-      bytes += JSON.stringify(val).length * 2;
-    }
+async function trackD1Delete(env, siteId, bytesRemoved) {
+  if (!siteId || !bytesRemoved || bytesRemoved <= 0)
+    return;
+  try {
+    await env.DB.prepare(`
+      INSERT INTO site_usage (site_id, d1_bytes_used, r2_bytes_used, baseline_bytes, last_updated)
+      VALUES (?, 0, 0, 0, datetime('now'))
+      ON CONFLICT(site_id) DO UPDATE SET
+        d1_bytes_used = MAX(0, d1_bytes_used - ?),
+        last_updated = datetime('now')
+    `).bind(siteId, bytesRemoved).run();
+  } catch (e) {
+    console.error("trackD1Delete error (non-fatal):", e.message || e);
   }
-  return bytes;
+}
+async function trackD1Update(env, siteId, oldBytes, newBytes) {
+  if (!siteId)
+    return;
+  const delta = newBytes - oldBytes;
+  if (delta === 0)
+    return;
+  try {
+    await env.DB.prepare(`
+      INSERT INTO site_usage (site_id, d1_bytes_used, r2_bytes_used, baseline_bytes, last_updated)
+      VALUES (?, MAX(0, ?), 0, 0, datetime('now'))
+      ON CONFLICT(site_id) DO UPDATE SET
+        d1_bytes_used = MAX(0, d1_bytes_used + ?),
+        last_updated = datetime('now')
+    `).bind(siteId, Math.max(0, delta), delta).run();
+  } catch (e) {
+    console.error("trackD1Update error (non-fatal):", e.message || e);
+  }
 }
 async function trackD1Usage(env, siteId, byteDelta) {
   if (!siteId || byteDelta === 0)
     return;
-  try {
-    await ensureUsageTables(env);
-    await env.DB.prepare(`
-      INSERT INTO site_usage (site_id, d1_bytes_used, r2_bytes_used, last_updated)
-      VALUES (?, MAX(0, ?), 0, datetime('now'))
-      ON CONFLICT(site_id) DO UPDATE SET
-        d1_bytes_used = MAX(0, d1_bytes_used + ?),
-        last_updated = datetime('now')
-    `).bind(siteId, Math.max(0, byteDelta), byteDelta).run();
-  } catch (e) {
-    console.error("trackD1Usage error (non-fatal):", e.message || e);
+  if (byteDelta > 0) {
+    await trackD1Write(env, siteId, byteDelta);
+  } else {
+    await trackD1Delete(env, siteId, Math.abs(byteDelta));
   }
 }
 async function trackR2Usage(env, siteId, byteDelta) {
   if (!siteId || byteDelta === 0)
     return;
   try {
-    await ensureUsageTables(env);
     await env.DB.prepare(`
-      INSERT INTO site_usage (site_id, d1_bytes_used, r2_bytes_used, last_updated)
-      VALUES (?, 0, MAX(0, ?), datetime('now'))
+      INSERT INTO site_usage (site_id, d1_bytes_used, r2_bytes_used, baseline_bytes, last_updated)
+      VALUES (?, 0, MAX(0, ?), 0, datetime('now'))
       ON CONFLICT(site_id) DO UPDATE SET
         r2_bytes_used = MAX(0, r2_bytes_used + ?),
         last_updated = datetime('now')
@@ -1310,7 +1341,6 @@ async function recordMediaFile(env, siteId, storageKey, sizeBytes, mediaType = "
   if (!siteId || !storageKey)
     return;
   try {
-    await ensureUsageTables(env);
     const result = await env.DB.prepare(`
       INSERT OR IGNORE INTO site_media (site_id, storage_key, size_bytes, media_type, created_at)
       VALUES (?, ?, ?, ?, datetime('now'))
@@ -1326,7 +1356,6 @@ async function removeMediaFile(env, siteId, storageKey) {
   if (!storageKey)
     return;
   try {
-    await ensureUsageTables(env);
     const record = await env.DB.prepare(
       "SELECT size_bytes, site_id FROM site_media WHERE storage_key = ?"
     ).bind(storageKey).first();
@@ -1339,52 +1368,40 @@ async function removeMediaFile(env, siteId, storageKey) {
     console.error("removeMediaFile error (non-fatal):", e.message || e);
   }
 }
+async function getShardCorrectionFactor(env, siteId) {
+  try {
+    const result = await env.DB.prepare(
+      `SELECT sh.correction_factor
+       FROM sites s
+       JOIN shards sh ON s.shard_id = sh.id
+       WHERE s.id = ?`
+    ).bind(siteId).first();
+    return result?.correction_factor || 1;
+  } catch (e) {
+    return 1;
+  }
+}
 async function getSiteUsage(env, siteId) {
   try {
-    let d1BytesUsed = 0;
-    try {
-      const site = await env.DB.prepare(
-        "SELECT d1_database_id FROM sites WHERE id = ?"
-      ).bind(siteId).first();
-      if (site && site.d1_database_id) {
-        const { getDatabaseSize: getDatabaseSize2 } = await Promise.resolve().then(() => (init_d1_manager(), d1_manager_exports));
-        d1BytesUsed = await getDatabaseSize2(env, site.d1_database_id);
-      }
-    } catch (d1Err) {
-      console.error("getDatabaseSize error (falling back to estimate):", d1Err.message || d1Err);
-    }
-    if (d1BytesUsed === 0) {
-      try {
-        await ensureUsageTables(env);
-        const usage = await env.DB.prepare(
-          "SELECT d1_bytes_used FROM site_usage WHERE site_id = ?"
-        ).bind(siteId).first();
-        d1BytesUsed = usage?.d1_bytes_used || 0;
-      } catch (_) {
-      }
-    }
-    let r2BytesUsed = 0;
-    try {
-      await ensureUsageTables(env);
-      const usage = await env.DB.prepare(
-        "SELECT r2_bytes_used, last_updated FROM site_usage WHERE site_id = ?"
-      ).bind(siteId).first();
-      r2BytesUsed = usage?.r2_bytes_used || 0;
-      return {
-        d1BytesUsed,
-        r2BytesUsed,
-        lastUpdated: usage?.last_updated || (/* @__PURE__ */ new Date()).toISOString()
-      };
-    } catch (_) {
-    }
+    const usage = await env.DB.prepare(
+      "SELECT d1_bytes_used, r2_bytes_used, baseline_bytes, last_updated FROM site_usage WHERE site_id = ?"
+    ).bind(siteId).first();
+    const rawD1 = usage?.d1_bytes_used || 0;
+    const baseline = usage?.baseline_bytes || 0;
+    const r2BytesUsed = usage?.r2_bytes_used || 0;
+    const correctionFactor = await getShardCorrectionFactor(env, siteId);
+    const displayD1 = Math.ceil((baseline + rawD1) * correctionFactor);
     return {
-      d1BytesUsed,
-      r2BytesUsed: 0,
-      lastUpdated: (/* @__PURE__ */ new Date()).toISOString()
+      d1BytesUsed: displayD1,
+      d1BytesRaw: rawD1,
+      baselineBytes: baseline,
+      correctionFactor,
+      r2BytesUsed,
+      lastUpdated: usage?.last_updated || (/* @__PURE__ */ new Date()).toISOString()
     };
   } catch (e) {
     console.error("getSiteUsage error:", e.message || e);
-    return { d1BytesUsed: 0, r2BytesUsed: 0, lastUpdated: null };
+    return { d1BytesUsed: 0, d1BytesRaw: 0, baselineBytes: 0, correctionFactor: 1, r2BytesUsed: 0, lastUpdated: null };
   }
 }
 function getSitePlan(site) {
@@ -1441,40 +1458,39 @@ async function checkUsageLimit(env, siteId, resourceType = "d1", additionalBytes
     return { allowed: true, reason: null };
   }
 }
-async function reconcileSiteUsage(env, siteId) {
+async function reconcileShard(env, shardId) {
   try {
-    await ensureUsageTables(env);
-    let totalD1Bytes = 0;
-    try {
-      const site = await env.DB.prepare(
-        "SELECT d1_database_id FROM sites WHERE id = ?"
-      ).bind(siteId).first();
-      if (site && site.d1_database_id) {
-        const { getDatabaseSize: getDatabaseSize2 } = await Promise.resolve().then(() => (init_d1_manager(), d1_manager_exports));
-        totalD1Bytes = await getDatabaseSize2(env, site.d1_database_id);
-      }
-    } catch (d1Err) {
-      console.error("getDatabaseSize for reconcile failed:", d1Err.message || d1Err);
+    const shard = await env.DB.prepare(
+      "SELECT id, database_id, binding_name FROM shards WHERE id = ?"
+    ).bind(shardId).first();
+    if (!shard)
+      return null;
+    const { getDatabaseSize: getDatabaseSize2 } = await Promise.resolve().then(() => (init_d1_manager(), d1_manager_exports));
+    const actualSize = await getDatabaseSize2(env, shard.database_id);
+    const sitesResult = await env.DB.prepare(
+      "SELECT site_id, d1_bytes_used, baseline_bytes FROM site_usage WHERE site_id IN (SELECT id FROM sites WHERE shard_id = ?)"
+    ).bind(shardId).all();
+    let totalEstimated = 0;
+    for (const s of sitesResult.results || []) {
+      totalEstimated += (s.d1_bytes_used || 0) + (s.baseline_bytes || 0);
     }
-    let totalR2Bytes = 0;
-    try {
-      const mediaRows = await env.DB.prepare(
-        "SELECT SUM(size_bytes) as total FROM site_media WHERE site_id = ?"
-      ).bind(siteId).first();
-      totalR2Bytes = mediaRows?.total || 0;
-    } catch (_) {
+    let correctionFactor = 1;
+    if (totalEstimated >= ONE_MB) {
+      correctionFactor = actualSize / totalEstimated;
+      correctionFactor = Math.min(Math.max(correctionFactor, 0.8), 1.5);
     }
-    await env.DB.prepare(`
-      INSERT INTO site_usage (site_id, d1_bytes_used, r2_bytes_used, last_updated)
-      VALUES (?, ?, ?, datetime('now'))
-      ON CONFLICT(site_id) DO UPDATE SET
-        d1_bytes_used = ?,
-        r2_bytes_used = ?,
-        last_updated = datetime('now')
-    `).bind(siteId, totalD1Bytes, totalR2Bytes, totalD1Bytes, totalR2Bytes).run();
-    return { d1BytesUsed: totalD1Bytes, r2BytesUsed: totalR2Bytes };
+    await env.DB.prepare(
+      `UPDATE shards SET correction_factor = ?, last_reconciled_at = datetime('now') WHERE id = ?`
+    ).bind(correctionFactor, shardId).run();
+    return {
+      shardId,
+      actualSizeBytes: actualSize,
+      totalEstimatedBytes: totalEstimated,
+      correctionFactor,
+      siteCount: (sitesResult.results || []).length
+    };
   } catch (e) {
-    console.error("reconcileSiteUsage error:", e.message || e);
+    console.error("reconcileShard error:", e.message || e);
     return null;
   }
 }
@@ -1508,26 +1524,24 @@ async function handleUsageAPI(request, env, path) {
     if (!site) {
       return errorResponse("Site not found or unauthorized", 404);
     }
-    let usage = await getSiteUsage(env, siteId);
-    if (usage.d1BytesUsed === 0 && usage.r2BytesUsed === 0 && !usage.lastUpdated) {
-      const reconciled = await reconcileSiteUsage(env, siteId);
-      if (reconciled) {
-        usage = { d1BytesUsed: reconciled.d1BytesUsed, r2BytesUsed: reconciled.r2BytesUsed, lastUpdated: (/* @__PURE__ */ new Date()).toISOString() };
-      }
-    } else if (usage.r2BytesUsed === 0) {
-      const mediaTotal = await env.DB.prepare(
-        "SELECT SUM(size_bytes) as total FROM site_media WHERE site_id = ?"
-      ).bind(siteId).first();
-      const r2FromMedia = mediaTotal?.total || 0;
-      if (r2FromMedia > 0) {
-        await env.DB.prepare(`
-          INSERT INTO site_usage (site_id, d1_bytes_used, r2_bytes_used, last_updated)
-          VALUES (?, ?, ?, datetime('now'))
-          ON CONFLICT(site_id) DO UPDATE SET
-            r2_bytes_used = ?,
-            last_updated = datetime('now')
-        `).bind(siteId, usage.d1BytesUsed, r2FromMedia, r2FromMedia).run();
-        usage = { ...usage, r2BytesUsed: r2FromMedia, lastUpdated: (/* @__PURE__ */ new Date()).toISOString() };
+    const usage = await getSiteUsage(env, siteId);
+    if (usage.r2BytesUsed === 0) {
+      try {
+        const mediaTotal = await env.DB.prepare(
+          "SELECT SUM(size_bytes) as total FROM site_media WHERE site_id = ?"
+        ).bind(siteId).first();
+        const r2FromMedia = mediaTotal?.total || 0;
+        if (r2FromMedia > 0) {
+          await env.DB.prepare(`
+            INSERT INTO site_usage (site_id, d1_bytes_used, r2_bytes_used, baseline_bytes, last_updated)
+            VALUES (?, 0, ?, 0, datetime('now'))
+            ON CONFLICT(site_id) DO UPDATE SET
+              r2_bytes_used = ?,
+              last_updated = datetime('now')
+          `).bind(siteId, r2FromMedia, r2FromMedia).run();
+          usage.r2BytesUsed = r2FromMedia;
+        }
+      } catch (_) {
       }
     }
     const planKey = getSitePlan(site);
@@ -1551,6 +1565,9 @@ async function handleUsageAPI(request, env, path) {
       plan: planKey,
       d1: {
         used: usage.d1BytesUsed,
+        raw: usage.d1BytesRaw,
+        baseline: usage.baselineBytes,
+        correctionFactor: usage.correctionFactor,
         limit: limits.d1Bytes,
         percentage: limits.d1Bytes > 0 ? Math.min(100, usage.d1BytesUsed / limits.d1Bytes * 100) : 0,
         overageBytes: d1OverageBytes
@@ -1609,25 +1626,31 @@ async function handleOverageToggle(request, env, user, siteId) {
 async function handleReconcile(env, user, siteId) {
   try {
     const site = await env.DB.prepare(
-      "SELECT id FROM sites WHERE id = ? AND user_id = ?"
+      "SELECT id, shard_id FROM sites WHERE id = ? AND user_id = ?"
     ).bind(siteId, user.id).first();
     if (!site) {
       return errorResponse("Site not found or unauthorized", 404);
     }
-    const reconciled = await reconcileSiteUsage(env, siteId);
+    if (!site.shard_id) {
+      return errorResponse("Site is not on a shard", 400);
+    }
+    const reconciled = await reconcileShard(env, site.shard_id);
     if (!reconciled) {
       return errorResponse("Failed to reconcile usage", 500);
     }
+    const usage = await getSiteUsage(env, siteId);
     return successResponse({
-      d1BytesUsed: reconciled.d1BytesUsed,
-      r2BytesUsed: reconciled.r2BytesUsed
+      d1BytesUsed: usage.d1BytesUsed,
+      r2BytesUsed: usage.r2BytesUsed,
+      correctionFactor: reconciled.correctionFactor,
+      shardActualSize: reconciled.actualSizeBytes
     }, "Usage reconciled successfully");
   } catch (error) {
     console.error("Reconcile error:", error);
     return errorResponse("Failed to reconcile usage", 500);
   }
 }
-var PLAN_LIMITS, OVERAGE_RATES;
+var PLAN_LIMITS, OVERAGE_RATES, ONE_MB;
 var init_usage_tracker = __esm({
   "utils/usage-tracker.js"() {
     init_checked_fetch();
@@ -1646,16 +1669,20 @@ var init_usage_tracker = __esm({
       d1PerGB: 0.75,
       r2PerGB: 0.015
     };
-    __name(ensureUsageTables, "ensureUsageTables");
+    ONE_MB = 1024 * 1024;
     __name(estimateRowBytes, "estimateRowBytes");
+    __name(trackD1Write, "trackD1Write");
+    __name(trackD1Delete, "trackD1Delete");
+    __name(trackD1Update, "trackD1Update");
     __name(trackD1Usage, "trackD1Usage");
     __name(trackR2Usage, "trackR2Usage");
     __name(recordMediaFile, "recordMediaFile");
     __name(removeMediaFile, "removeMediaFile");
+    __name(getShardCorrectionFactor, "getShardCorrectionFactor");
     __name(getSiteUsage, "getSiteUsage");
     __name(getSitePlan, "getSitePlan");
     __name(checkUsageLimit, "checkUsageLimit");
-    __name(reconcileSiteUsage, "reconcileSiteUsage");
+    __name(reconcileShard, "reconcileShard");
     __name(handleUsageAPI, "handleUsageAPI");
     __name(handleOverageToggle, "handleOverageToggle");
     __name(handleReconcile, "handleReconcile");
@@ -2996,349 +3023,8 @@ async function deleteCustomHostname(env, cfHostnameId) {
 __name(deleteCustomHostname, "deleteCustomHostname");
 
 // workers/platform/sites-worker.js
-init_d1_manager();
-
-// utils/site-schema.js
-init_checked_fetch();
-init_strip_cf_connecting_ip_header();
-init_modules_watch_stub();
-function getSiteSchemaStatements() {
-  const tables = [
-    `CREATE TABLE IF NOT EXISTS categories (
-      id TEXT PRIMARY KEY,
-      site_id TEXT NOT NULL,
-      name TEXT NOT NULL,
-      slug TEXT NOT NULL,
-      parent_id TEXT,
-      description TEXT,
-      subtitle TEXT,
-      show_on_home INTEGER DEFAULT 1,
-      image_url TEXT,
-      display_order INTEGER DEFAULT 0,
-      is_active INTEGER DEFAULT 1,
-      seo_title TEXT,
-      seo_description TEXT,
-      seo_og_image TEXT,
-      created_at TEXT DEFAULT (datetime('now')),
-      updated_at TEXT DEFAULT (datetime('now')),
-      UNIQUE(site_id, slug)
-    )`,
-    `CREATE TABLE IF NOT EXISTS products (
-      id TEXT PRIMARY KEY,
-      site_id TEXT NOT NULL,
-      category_id TEXT,
-      name TEXT NOT NULL,
-      slug TEXT NOT NULL,
-      description TEXT,
-      short_description TEXT,
-      price REAL NOT NULL,
-      compare_price REAL,
-      cost_price REAL,
-      sku TEXT,
-      barcode TEXT,
-      stock INTEGER DEFAULT 0,
-      low_stock_threshold INTEGER DEFAULT 5,
-      weight REAL,
-      dimensions TEXT,
-      images TEXT,
-      thumbnail_url TEXT,
-      tags TEXT,
-      is_featured INTEGER DEFAULT 0,
-      is_active INTEGER DEFAULT 1,
-      seo_title TEXT,
-      seo_description TEXT,
-      seo_og_image TEXT,
-      created_at TEXT DEFAULT (datetime('now')),
-      updated_at TEXT DEFAULT (datetime('now')),
-      UNIQUE(site_id, slug)
-    )`,
-    `CREATE TABLE IF NOT EXISTS product_variants (
-      id TEXT PRIMARY KEY,
-      product_id TEXT NOT NULL,
-      name TEXT NOT NULL,
-      sku TEXT,
-      price REAL NOT NULL,
-      compare_price REAL,
-      stock INTEGER DEFAULT 0,
-      attributes TEXT,
-      image_url TEXT,
-      is_active INTEGER DEFAULT 1,
-      created_at TEXT DEFAULT (datetime('now'))
-    )`,
-    `CREATE TABLE IF NOT EXISTS orders (
-      id TEXT PRIMARY KEY,
-      site_id TEXT NOT NULL,
-      user_id TEXT,
-      order_number TEXT UNIQUE NOT NULL,
-      status TEXT DEFAULT 'pending',
-      items TEXT NOT NULL,
-      subtotal REAL NOT NULL,
-      discount REAL DEFAULT 0,
-      shipping_cost REAL DEFAULT 0,
-      tax REAL DEFAULT 0,
-      total REAL NOT NULL,
-      currency TEXT DEFAULT 'INR',
-      payment_method TEXT,
-      payment_status TEXT DEFAULT 'pending',
-      payment_id TEXT,
-      razorpay_order_id TEXT,
-      razorpay_payment_id TEXT,
-      razorpay_signature TEXT,
-      shipping_address TEXT NOT NULL,
-      billing_address TEXT,
-      customer_name TEXT NOT NULL,
-      customer_email TEXT,
-      customer_phone TEXT NOT NULL,
-      coupon_code TEXT,
-      notes TEXT,
-      tracking_number TEXT,
-      carrier TEXT,
-      shipped_at TEXT,
-      delivered_at TEXT,
-      cancelled_at TEXT,
-      cancellation_reason TEXT,
-      created_at TEXT DEFAULT (datetime('now')),
-      updated_at TEXT DEFAULT (datetime('now'))
-    )`,
-    `CREATE TABLE IF NOT EXISTS guest_orders (
-      id TEXT PRIMARY KEY,
-      site_id TEXT NOT NULL,
-      order_number TEXT UNIQUE NOT NULL,
-      status TEXT DEFAULT 'pending',
-      items TEXT NOT NULL,
-      subtotal REAL NOT NULL,
-      discount REAL DEFAULT 0,
-      shipping_cost REAL DEFAULT 0,
-      tax REAL DEFAULT 0,
-      total REAL NOT NULL,
-      currency TEXT DEFAULT 'INR',
-      payment_method TEXT,
-      payment_status TEXT DEFAULT 'pending',
-      razorpay_order_id TEXT,
-      razorpay_payment_id TEXT,
-      shipping_address TEXT NOT NULL,
-      customer_name TEXT NOT NULL,
-      customer_email TEXT,
-      customer_phone TEXT NOT NULL,
-      tracking_number TEXT,
-      carrier TEXT,
-      created_at TEXT DEFAULT (datetime('now')),
-      updated_at TEXT DEFAULT (datetime('now'))
-    )`,
-    `CREATE TABLE IF NOT EXISTS carts (
-      id TEXT PRIMARY KEY,
-      site_id TEXT NOT NULL,
-      user_id TEXT,
-      session_id TEXT,
-      items TEXT NOT NULL DEFAULT '[]',
-      subtotal REAL DEFAULT 0,
-      created_at TEXT DEFAULT (datetime('now')),
-      updated_at TEXT DEFAULT (datetime('now'))
-    )`,
-    `CREATE TABLE IF NOT EXISTS wishlists (
-      id TEXT PRIMARY KEY,
-      site_id TEXT NOT NULL,
-      user_id TEXT NOT NULL,
-      product_id TEXT NOT NULL,
-      created_at TEXT DEFAULT (datetime('now')),
-      UNIQUE(site_id, user_id, product_id)
-    )`,
-    `CREATE TABLE IF NOT EXISTS site_customers (
-      id TEXT PRIMARY KEY,
-      site_id TEXT NOT NULL,
-      email TEXT NOT NULL,
-      password_hash TEXT NOT NULL,
-      name TEXT NOT NULL,
-      phone TEXT,
-      email_verified INTEGER DEFAULT 0,
-      created_at TEXT DEFAULT (datetime('now')),
-      updated_at TEXT DEFAULT (datetime('now')),
-      UNIQUE(site_id, email)
-    )`,
-    `CREATE TABLE IF NOT EXISTS site_customer_sessions (
-      id TEXT PRIMARY KEY,
-      customer_id TEXT NOT NULL,
-      site_id TEXT NOT NULL,
-      token TEXT NOT NULL,
-      expires_at TEXT NOT NULL,
-      created_at TEXT DEFAULT (datetime('now'))
-    )`,
-    `CREATE TABLE IF NOT EXISTS customer_addresses (
-      id TEXT PRIMARY KEY,
-      site_id TEXT NOT NULL,
-      customer_id TEXT NOT NULL,
-      label TEXT DEFAULT 'Home',
-      first_name TEXT NOT NULL,
-      last_name TEXT,
-      phone TEXT,
-      house_number TEXT NOT NULL,
-      road_name TEXT,
-      city TEXT NOT NULL,
-      state TEXT NOT NULL,
-      pin_code TEXT NOT NULL,
-      is_default INTEGER DEFAULT 0,
-      created_at TEXT DEFAULT (datetime('now')),
-      updated_at TEXT DEFAULT (datetime('now'))
-    )`,
-    `CREATE TABLE IF NOT EXISTS customer_password_resets (
-      id TEXT PRIMARY KEY,
-      site_id TEXT NOT NULL,
-      customer_id TEXT NOT NULL,
-      token TEXT NOT NULL UNIQUE,
-      expires_at TEXT NOT NULL,
-      used INTEGER DEFAULT 0,
-      created_at TEXT DEFAULT (datetime('now'))
-    )`,
-    `CREATE TABLE IF NOT EXISTS customer_email_verifications (
-      id TEXT PRIMARY KEY,
-      site_id TEXT NOT NULL,
-      customer_id TEXT NOT NULL,
-      token TEXT NOT NULL UNIQUE,
-      expires_at TEXT NOT NULL,
-      used INTEGER DEFAULT 0,
-      created_at TEXT DEFAULT (datetime('now'))
-    )`,
-    `CREATE TABLE IF NOT EXISTS coupons (
-      id TEXT PRIMARY KEY,
-      site_id TEXT NOT NULL,
-      code TEXT NOT NULL,
-      type TEXT NOT NULL,
-      value REAL NOT NULL,
-      min_order_value REAL DEFAULT 0,
-      max_discount REAL,
-      usage_limit INTEGER,
-      used_count INTEGER DEFAULT 0,
-      starts_at TEXT,
-      expires_at TEXT,
-      is_active INTEGER DEFAULT 1,
-      created_at TEXT DEFAULT (datetime('now')),
-      UNIQUE(site_id, code)
-    )`,
-    `CREATE TABLE IF NOT EXISTS notifications (
-      id TEXT PRIMARY KEY,
-      site_id TEXT NOT NULL,
-      user_id TEXT,
-      push_token TEXT NOT NULL,
-      endpoint TEXT,
-      p256dh TEXT,
-      auth TEXT,
-      is_active INTEGER DEFAULT 1,
-      created_at TEXT DEFAULT (datetime('now'))
-    )`,
-    `CREATE TABLE IF NOT EXISTS reviews (
-      id TEXT PRIMARY KEY,
-      site_id TEXT NOT NULL,
-      product_id TEXT NOT NULL,
-      user_id TEXT,
-      customer_name TEXT NOT NULL,
-      rating INTEGER NOT NULL CHECK(rating >= 1 AND rating <= 5),
-      title TEXT,
-      content TEXT,
-      images TEXT,
-      is_verified INTEGER DEFAULT 0,
-      is_approved INTEGER DEFAULT 0,
-      created_at TEXT DEFAULT (datetime('now'))
-    )`,
-    `CREATE TABLE IF NOT EXISTS page_seo (
-      id TEXT PRIMARY KEY,
-      site_id TEXT NOT NULL,
-      page_type TEXT NOT NULL,
-      seo_title TEXT,
-      seo_description TEXT,
-      seo_og_image TEXT,
-      created_at TEXT DEFAULT (datetime('now')),
-      updated_at TEXT DEFAULT (datetime('now')),
-      UNIQUE(site_id, page_type)
-    )`,
-    `CREATE TABLE IF NOT EXISTS site_media (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      site_id TEXT NOT NULL,
-      storage_key TEXT NOT NULL UNIQUE,
-      size_bytes INTEGER NOT NULL,
-      media_type TEXT DEFAULT 'image',
-      created_at TEXT DEFAULT (datetime('now'))
-    )`,
-    `CREATE TABLE IF NOT EXISTS site_usage (
-      site_id TEXT PRIMARY KEY,
-      d1_bytes_used INTEGER DEFAULT 0,
-      r2_bytes_used INTEGER DEFAULT 0,
-      last_updated TEXT DEFAULT (datetime('now'))
-    )`,
-    `CREATE TABLE IF NOT EXISTS activity_log (
-      id TEXT PRIMARY KEY,
-      site_id TEXT,
-      user_id TEXT,
-      action TEXT NOT NULL,
-      entity_type TEXT,
-      entity_id TEXT,
-      details TEXT,
-      ip_address TEXT,
-      user_agent TEXT,
-      created_at TEXT DEFAULT (datetime('now'))
-    )`,
-    `CREATE TABLE IF NOT EXISTS addresses (
-      id TEXT PRIMARY KEY,
-      user_id TEXT NOT NULL,
-      name TEXT NOT NULL,
-      phone TEXT NOT NULL,
-      line1 TEXT NOT NULL,
-      line2 TEXT,
-      city TEXT NOT NULL,
-      state TEXT NOT NULL,
-      pincode TEXT NOT NULL,
-      country TEXT DEFAULT 'India',
-      is_default INTEGER DEFAULT 0,
-      created_at TEXT DEFAULT (datetime('now')),
-      updated_at TEXT DEFAULT (datetime('now'))
-    )`
-  ];
-  const indexes = [
-    "CREATE INDEX IF NOT EXISTS idx_categories_site ON categories(site_id)",
-    "CREATE INDEX IF NOT EXISTS idx_categories_slug ON categories(site_id, slug)",
-    "CREATE INDEX IF NOT EXISTS idx_categories_parent ON categories(parent_id)",
-    "CREATE INDEX IF NOT EXISTS idx_products_site ON products(site_id)",
-    "CREATE INDEX IF NOT EXISTS idx_products_category ON products(category_id)",
-    "CREATE INDEX IF NOT EXISTS idx_products_site_slug ON products(site_id, slug)",
-    "CREATE INDEX IF NOT EXISTS idx_products_featured ON products(site_id, is_featured)",
-    "CREATE INDEX IF NOT EXISTS idx_variants_product ON product_variants(product_id)",
-    "CREATE INDEX IF NOT EXISTS idx_orders_site ON orders(site_id)",
-    "CREATE INDEX IF NOT EXISTS idx_orders_user ON orders(user_id)",
-    "CREATE INDEX IF NOT EXISTS idx_orders_number ON orders(order_number)",
-    "CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(site_id, status)",
-    "CREATE INDEX IF NOT EXISTS idx_orders_created ON orders(site_id, created_at)",
-    "CREATE INDEX IF NOT EXISTS idx_guest_orders_site ON guest_orders(site_id)",
-    "CREATE INDEX IF NOT EXISTS idx_guest_orders_number ON guest_orders(order_number)",
-    "CREATE INDEX IF NOT EXISTS idx_carts_user ON carts(user_id)",
-    "CREATE INDEX IF NOT EXISTS idx_carts_session ON carts(session_id)",
-    "CREATE INDEX IF NOT EXISTS idx_carts_site ON carts(site_id)",
-    "CREATE INDEX IF NOT EXISTS idx_wishlists_user ON wishlists(user_id)",
-    "CREATE INDEX IF NOT EXISTS idx_wishlists_site ON wishlists(site_id)",
-    "CREATE INDEX IF NOT EXISTS idx_site_customers_site ON site_customers(site_id)",
-    "CREATE INDEX IF NOT EXISTS idx_site_customers_email ON site_customers(site_id, email)",
-    "CREATE INDEX IF NOT EXISTS idx_customer_sessions_token ON site_customer_sessions(token)",
-    "CREATE INDEX IF NOT EXISTS idx_customer_sessions_customer ON site_customer_sessions(customer_id)",
-    "CREATE INDEX IF NOT EXISTS idx_customer_addresses_customer ON customer_addresses(customer_id)",
-    "CREATE INDEX IF NOT EXISTS idx_customer_addresses_site ON customer_addresses(site_id)",
-    "CREATE INDEX IF NOT EXISTS idx_customer_pw_reset_token ON customer_password_resets(token)",
-    "CREATE INDEX IF NOT EXISTS idx_customer_email_verify_token ON customer_email_verifications(token)",
-    "CREATE INDEX IF NOT EXISTS idx_coupons_site ON coupons(site_id)",
-    "CREATE INDEX IF NOT EXISTS idx_coupons_code ON coupons(site_id, code)",
-    "CREATE INDEX IF NOT EXISTS idx_notifications_site ON notifications(site_id)",
-    "CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id)",
-    "CREATE INDEX IF NOT EXISTS idx_reviews_product ON reviews(product_id)",
-    "CREATE INDEX IF NOT EXISTS idx_reviews_site ON reviews(site_id)",
-    "CREATE INDEX IF NOT EXISTS idx_activity_site ON activity_log(site_id)",
-    "CREATE INDEX IF NOT EXISTS idx_activity_user ON activity_log(user_id)",
-    "CREATE INDEX IF NOT EXISTS idx_activity_created ON activity_log(created_at)",
-    "CREATE INDEX IF NOT EXISTS idx_site_media_site ON site_media(site_id)",
-    "CREATE INDEX IF NOT EXISTS idx_site_media_key ON site_media(storage_key)",
-    "CREATE INDEX IF NOT EXISTS idx_addresses_user ON addresses(user_id)"
-  ];
-  return [...tables, ...indexes];
-}
-__name(getSiteSchemaStatements, "getSiteSchemaStatements");
-
-// workers/platform/sites-worker.js
+init_site_db();
+init_usage_tracker();
 async function handleSites(request, env, path) {
   const corsResponse = handleCORS(request);
   if (corsResponse)
@@ -3458,8 +3144,7 @@ async function getSite(env, user, siteId) {
     if (!site) {
       return errorResponse("Site not found", 404, "NOT_FOUND");
     }
-    const { resolveSiteDB: resolveSiteDB2 } = await Promise.resolve().then(() => (init_site_db(), site_db_exports));
-    const siteDB = resolveSiteDB2(env, site);
+    const siteDB = await resolveSiteDBById(env, siteId);
     const categories = await siteDB.prepare(
       `SELECT * FROM categories WHERE site_id = ? ORDER BY display_order`
     ).bind(siteId).all();
@@ -3590,69 +3275,36 @@ async function createSite(request, env, user) {
       JSON.stringify(defaultSettings)
     ).run();
     try {
+      const activeShard = await env.DB.prepare(
+        "SELECT id FROM shards WHERE is_active = 1 ORDER BY created_at DESC LIMIT 1"
+      ).first();
+      if (activeShard) {
+        await env.DB.prepare(
+          `UPDATE sites SET shard_id = ?, updated_at = datetime('now') WHERE id = ?`
+        ).bind(activeShard.id, siteId).run();
+        console.log(`Site ${siteId} assigned to shard ${activeShard.id}`);
+      }
+    } catch (shardErr) {
+      console.error("Shard assignment failed (non-fatal, using platform DB):", shardErr.message || shardErr);
+    }
+    try {
+      await env.DB.prepare(`
+        INSERT INTO site_usage (site_id, d1_bytes_used, r2_bytes_used, baseline_bytes, last_updated)
+        VALUES (?, 0, 0, 0, datetime('now'))
+        ON CONFLICT(site_id) DO NOTHING
+      `).bind(siteId).run();
+    } catch (usageErr) {
+      console.error("Usage init failed (non-fatal):", usageErr.message || usageErr);
+    }
+    const siteDB = await resolveSiteDBById(env, siteId);
+    try {
       if (categories && categories.length > 0) {
-        await createUserCategories(env, siteId, categories);
+        await createUserCategories(siteDB, siteId, categories);
       } else if (category) {
-        await createDefaultCategories(env, siteId, category);
+        await createDefaultCategories(siteDB, siteId, category);
       }
     } catch (catError) {
-      console.error("Category creation failed, attempting to auto-create table:", catError);
-      try {
-        await env.DB.prepare(`
-          CREATE TABLE IF NOT EXISTS categories (
-            id TEXT PRIMARY KEY,
-            site_id TEXT NOT NULL,
-            name TEXT NOT NULL,
-            slug TEXT NOT NULL,
-            parent_id TEXT,
-            description TEXT,
-            subtitle TEXT,
-            show_on_home INTEGER DEFAULT 1,
-            image_url TEXT,
-            display_order INTEGER DEFAULT 0,
-            is_active INTEGER DEFAULT 1,
-            created_at TEXT DEFAULT (datetime('now')),
-            updated_at TEXT DEFAULT (datetime('now')),
-            FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
-            FOREIGN KEY (parent_id) REFERENCES categories(id) ON DELETE SET NULL,
-            UNIQUE(site_id, slug)
-          )
-        `).run();
-        await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_categories_site ON categories(site_id)").run();
-        await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_categories_slug ON categories(site_id, slug)").run();
-        await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_categories_parent ON categories(parent_id)").run();
-        if (categories && categories.length > 0) {
-          await createUserCategories(env, siteId, categories);
-        } else if (category) {
-          await createDefaultCategories(env, siteId, category);
-        }
-      } catch (retryError) {
-        console.error("Retry category creation failed:", retryError);
-      }
-    }
-    let d1DatabaseId = null;
-    let d1BindingName = null;
-    try {
-      const shortId = siteId.substring(0, 8);
-      const dbName = `site-${finalSubdomain}-${shortId}`;
-      d1BindingName = `SITE_DB_${shortId.toUpperCase()}`;
-      const dbResult = await createDatabase(env, dbName);
-      d1DatabaseId = dbResult.id;
-      console.log(`Created per-site D1 database: ${dbName} (${d1DatabaseId})`);
-      const schemaStatements = getSiteSchemaStatements();
-      await runSchemaOnDB(env, d1DatabaseId, schemaStatements);
-      console.log(`Schema applied to per-site DB: ${dbName}`);
-      await env.DB.prepare(
-        `UPDATE sites SET d1_database_id = ?, d1_binding_name = ?, updated_at = datetime('now') WHERE id = ?`
-      ).bind(d1DatabaseId, d1BindingName, siteId).run();
-      try {
-        await addBindingAndRedeploy(env, siteId, d1DatabaseId, d1BindingName);
-        console.log(`Worker redeployed with binding ${d1BindingName}`);
-      } catch (redeployErr) {
-        console.error("Worker redeploy failed (non-fatal, will use fallback):", redeployErr.message || redeployErr);
-      }
-    } catch (d1Err) {
-      console.error("Per-site D1 creation failed (non-fatal, using platform DB fallback):", d1Err.message || d1Err);
+      console.error("Category creation failed (non-fatal):", catError.message || catError);
     }
     try {
       const activeSub = await env.DB.prepare(
@@ -3666,7 +3318,7 @@ async function createSite(request, env, user) {
     } catch (subErr) {
       console.error("Check subscription for new site failed (non-fatal):", subErr);
     }
-    return successResponse({ id: siteId, subdomain: finalSubdomain, d1DatabaseId }, "Site created successfully");
+    return successResponse({ id: siteId, subdomain: finalSubdomain }, "Site created successfully");
   } catch (error) {
     console.error("Create site error:", error);
     if (error.message && error.message.includes("UNIQUE constraint failed")) {
@@ -3676,7 +3328,7 @@ async function createSite(request, env, user) {
   }
 }
 __name(createSite, "createSite");
-async function createDefaultCategories(env, siteId, businessCategory) {
+async function createDefaultCategories(db, siteId, businessCategory) {
   const categoryTemplates = {
     jewellery: [
       { name: "New Arrivals", slug: "new-arrivals", subtitle: "Discover our latest exquisite collections", showOnHome: 1, children: [] },
@@ -3698,14 +3350,14 @@ async function createDefaultCategories(env, siteId, businessCategory) {
   let order = 0;
   for (const cat of categories) {
     const parentId = generateId();
-    await env.DB.prepare(
+    await db.prepare(
       `INSERT INTO categories (id, site_id, name, slug, subtitle, show_on_home, display_order, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(parentId, siteId, cat.name, cat.slug, cat.subtitle || null, cat.showOnHome !== void 0 ? cat.showOnHome : 1, order++).run();
     for (const childName of cat.children || []) {
       const childId = generateId();
       const childSlug = `${cat.slug}-${childName.toLowerCase().replace(/\s+/g, "-")}`;
-      await env.DB.prepare(
+      await db.prepare(
         `INSERT INTO categories (id, site_id, name, slug, parent_id, show_on_home, display_order, created_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
       ).bind(childId, siteId, childName, childSlug, parentId, 0, order++).run();
@@ -3713,7 +3365,7 @@ async function createDefaultCategories(env, siteId, businessCategory) {
   }
 }
 __name(createDefaultCategories, "createDefaultCategories");
-async function createUserCategories(env, siteId, categories) {
+async function createUserCategories(db, siteId, categories) {
   let order = 0;
   for (let cat of categories) {
     let categoryName = typeof cat === "string" ? cat : cat.name || cat.label;
@@ -3723,7 +3375,7 @@ async function createUserCategories(env, siteId, categories) {
     const subtitle = typeof cat === "object" && cat.subtitle ? cat.subtitle : null;
     const showOnHome = typeof cat === "object" && cat.showOnHome !== void 0 ? cat.showOnHome ? 1 : 0 : 1;
     const catId = generateId();
-    await env.DB.prepare(
+    await db.prepare(
       `INSERT INTO categories (id, site_id, name, slug, subtitle, show_on_home, display_order, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(catId, siteId, categoryName, slug, subtitle, showOnHome, order++).run();
@@ -3829,18 +3481,51 @@ async function deleteSite(env, user, siteId) {
   }
   try {
     const site = await env.DB.prepare(
-      "SELECT id, subdomain, d1_database_id FROM sites WHERE id = ? AND user_id = ?"
+      "SELECT id, subdomain, shard_id, d1_database_id FROM sites WHERE id = ? AND user_id = ?"
     ).bind(siteId, user.id).first();
     if (!site) {
       return errorResponse("Site not found", 404, "NOT_FOUND");
     }
-    if (site.d1_database_id) {
+    if (site.shard_id) {
       try {
-        await deleteDatabase(env, site.d1_database_id);
-        console.log(`Deleted per-site D1 database: ${site.d1_database_id}`);
-      } catch (d1Err) {
-        console.error("Failed to delete per-site D1 database (non-fatal):", d1Err.message || d1Err);
+        const shardDB = await resolveSiteDBById(env, siteId);
+        const siteTables = [
+          "activity_log",
+          "page_seo",
+          "reviews",
+          "notifications",
+          "coupons",
+          "customer_email_verifications",
+          "customer_password_resets",
+          "customer_addresses",
+          "site_customer_sessions",
+          "site_customers",
+          "wishlists",
+          "carts",
+          "guest_orders",
+          "orders",
+          "product_variants",
+          "products",
+          "categories",
+          "site_media",
+          "site_usage",
+          "addresses"
+        ];
+        for (const table of siteTables) {
+          try {
+            await shardDB.prepare(`DELETE FROM ${table} WHERE site_id = ?`).bind(siteId).run();
+          } catch (e) {
+          }
+        }
+        console.log(`Cleaned site data from shard for site ${siteId}`);
+      } catch (shardErr) {
+        console.error("Shard cleanup failed (non-fatal):", shardErr.message || shardErr);
       }
+    }
+    try {
+      await env.DB.prepare("DELETE FROM site_usage WHERE site_id = ?").bind(siteId).run();
+      await env.DB.prepare("DELETE FROM site_media WHERE site_id = ?").bind(siteId).run();
+    } catch (e) {
     }
     await env.DB.prepare("DELETE FROM sites WHERE id = ?").bind(siteId).run();
     return successResponse({ subdomain: site.subdomain }, "Site deleted successfully");
@@ -4182,12 +3867,16 @@ async function getProduct(env, productId, siteId, subdomain) {
         siteId = site.id;
     }
     const db = await resolveSiteDBById(env, siteId);
-    const product = await db.prepare(
-      `SELECT p.*, c.name as category_name, c.slug as category_slug
+    let productQuery = `SELECT p.*, c.name as category_name, c.slug as category_slug
        FROM products p 
        LEFT JOIN categories c ON p.category_id = c.id
-       WHERE p.id = ?`
-    ).bind(productId).first();
+       WHERE p.id = ?`;
+    const productBindings = [productId];
+    if (siteId) {
+      productQuery += " AND p.site_id = ?";
+      productBindings.push(siteId);
+    }
+    const product = await db.prepare(productQuery).bind(...productBindings).first();
     if (!product) {
       return errorResponse("Product not found", 404, "NOT_FOUND");
     }
@@ -4526,11 +4215,15 @@ async function getOrder(env, user, orderId, request) {
     const db = await resolveSiteDBById(env, siteId);
     let query = "SELECT * FROM orders WHERE (id = ? OR order_number = ?)";
     const bindings = [orderId, orderId];
+    if (siteId) {
+      query += " AND site_id = ?";
+      bindings.push(siteId);
+    }
     const authHeader = request ? request.headers.get("Authorization") : null;
     if (authHeader && authHeader.startsWith("SiteAdmin ")) {
-      const orderCheck = await db.prepare(
-        "SELECT site_id FROM orders WHERE id = ? OR order_number = ?"
-      ).bind(orderId, orderId).first();
+      const orderCheckQuery = siteId ? "SELECT site_id FROM orders WHERE (id = ? OR order_number = ?) AND site_id = ?" : "SELECT site_id FROM orders WHERE id = ? OR order_number = ?";
+      const orderCheckBindings = siteId ? [orderId, orderId, siteId] : [orderId, orderId];
+      const orderCheck = await db.prepare(orderCheckQuery).bind(...orderCheckBindings).first();
       if (orderCheck) {
         const { validateSiteAdmin: validateSiteAdmin2 } = await Promise.resolve().then(() => (init_site_admin_worker(), site_admin_worker_exports));
         const admin = await validateSiteAdmin2(request, env, orderCheck.site_id);
@@ -5041,9 +4734,14 @@ async function getGuestOrder(env, orderNumber, request) {
     const url = request ? new URL(request.url) : null;
     const siteId = url ? url.searchParams.get("siteId") : null;
     const db = await resolveSiteDBById(env, siteId);
-    const order = await db.prepare(
-      "SELECT * FROM guest_orders WHERE order_number = ? LIMIT 1"
-    ).bind(orderNumber).first();
+    let guestQuery = "SELECT * FROM guest_orders WHERE order_number = ?";
+    const guestBindings = [orderNumber];
+    if (siteId) {
+      guestQuery += " AND site_id = ?";
+      guestBindings.push(siteId);
+    }
+    guestQuery += " LIMIT 1";
+    const order = await db.prepare(guestQuery).bind(...guestBindings).first();
     if (!order) {
       return errorResponse("Order not found", 404);
     }
@@ -5113,13 +4811,21 @@ async function trackOrder(env, orderNumber, request) {
     const url = request ? new URL(request.url) : null;
     const siteId = url ? url.searchParams.get("siteId") : null;
     const db = await resolveSiteDBById(env, siteId);
-    let order = await db.prepare(
-      "SELECT order_number, status, tracking_number, carrier, shipped_at, delivered_at, created_at FROM orders WHERE order_number = ?"
-    ).bind(orderNumber).first();
+    let trackQuery = "SELECT order_number, status, tracking_number, carrier, shipped_at, delivered_at, created_at FROM orders WHERE order_number = ?";
+    const trackBindings = [orderNumber];
+    if (siteId) {
+      trackQuery += " AND site_id = ?";
+      trackBindings.push(siteId);
+    }
+    let order = await db.prepare(trackQuery).bind(...trackBindings).first();
     if (!order) {
-      order = await db.prepare(
-        "SELECT order_number, status, tracking_number, carrier, created_at FROM guest_orders WHERE order_number = ?"
-      ).bind(orderNumber).first();
+      let guestTrackQuery = "SELECT order_number, status, tracking_number, carrier, created_at FROM guest_orders WHERE order_number = ?";
+      const guestTrackBindings = [orderNumber];
+      if (siteId) {
+        guestTrackQuery += " AND site_id = ?";
+        guestTrackBindings.push(siteId);
+      }
+      order = await db.prepare(guestTrackQuery).bind(...guestTrackBindings).first();
     }
     if (!order) {
       return errorResponse("Order not found", 404);
@@ -6472,9 +6178,13 @@ async function getCategory(env, categoryId, siteId, subdomain) {
         siteId = site.id;
     }
     const db = await resolveSiteDBById(env, siteId);
-    const category = await db.prepare(
-      `SELECT * FROM categories WHERE id = ?`
-    ).bind(categoryId).first();
+    let catQuery = "SELECT * FROM categories WHERE id = ?";
+    const catBindings = [categoryId];
+    if (siteId) {
+      catQuery += " AND site_id = ?";
+      catBindings.push(siteId);
+    }
+    const category = await db.prepare(catQuery).bind(...catBindings).first();
     if (!category) {
       return errorResponse("Category not found", 404, "NOT_FOUND");
     }
@@ -7690,11 +7400,402 @@ init_modules_watch_stub();
 init_helpers();
 init_auth();
 init_d1_manager();
-var OWNER_EMAIL = "savannaik090@gmail.com";
+
+// utils/site-schema.js
+init_checked_fetch();
+init_strip_cf_connecting_ip_header();
+init_modules_watch_stub();
+function getSiteSchemaStatements() {
+  const tables = [
+    `CREATE TABLE IF NOT EXISTS categories (
+      id TEXT PRIMARY KEY,
+      site_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      slug TEXT NOT NULL,
+      parent_id TEXT,
+      description TEXT,
+      subtitle TEXT,
+      show_on_home INTEGER DEFAULT 1,
+      image_url TEXT,
+      display_order INTEGER DEFAULT 0,
+      is_active INTEGER DEFAULT 1,
+      seo_title TEXT,
+      seo_description TEXT,
+      seo_og_image TEXT,
+      row_size_bytes INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(site_id, slug)
+    )`,
+    `CREATE TABLE IF NOT EXISTS products (
+      id TEXT PRIMARY KEY,
+      site_id TEXT NOT NULL,
+      category_id TEXT,
+      name TEXT NOT NULL,
+      slug TEXT NOT NULL,
+      description TEXT,
+      short_description TEXT,
+      price REAL NOT NULL,
+      compare_price REAL,
+      cost_price REAL,
+      sku TEXT,
+      barcode TEXT,
+      stock INTEGER DEFAULT 0,
+      low_stock_threshold INTEGER DEFAULT 5,
+      weight REAL,
+      dimensions TEXT,
+      images TEXT,
+      thumbnail_url TEXT,
+      tags TEXT,
+      is_featured INTEGER DEFAULT 0,
+      is_active INTEGER DEFAULT 1,
+      seo_title TEXT,
+      seo_description TEXT,
+      seo_og_image TEXT,
+      row_size_bytes INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(site_id, slug)
+    )`,
+    `CREATE TABLE IF NOT EXISTS product_variants (
+      id TEXT PRIMARY KEY,
+      product_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      sku TEXT,
+      price REAL NOT NULL,
+      compare_price REAL,
+      stock INTEGER DEFAULT 0,
+      attributes TEXT,
+      image_url TEXT,
+      is_active INTEGER DEFAULT 1,
+      row_size_bytes INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now'))
+    )`,
+    `CREATE TABLE IF NOT EXISTS orders (
+      id TEXT PRIMARY KEY,
+      site_id TEXT NOT NULL,
+      user_id TEXT,
+      order_number TEXT UNIQUE NOT NULL,
+      status TEXT DEFAULT 'pending',
+      items TEXT NOT NULL,
+      subtotal REAL NOT NULL,
+      discount REAL DEFAULT 0,
+      shipping_cost REAL DEFAULT 0,
+      tax REAL DEFAULT 0,
+      total REAL NOT NULL,
+      currency TEXT DEFAULT 'INR',
+      payment_method TEXT,
+      payment_status TEXT DEFAULT 'pending',
+      payment_id TEXT,
+      razorpay_order_id TEXT,
+      razorpay_payment_id TEXT,
+      razorpay_signature TEXT,
+      shipping_address TEXT NOT NULL,
+      billing_address TEXT,
+      customer_name TEXT NOT NULL,
+      customer_email TEXT,
+      customer_phone TEXT NOT NULL,
+      coupon_code TEXT,
+      notes TEXT,
+      tracking_number TEXT,
+      carrier TEXT,
+      shipped_at TEXT,
+      delivered_at TEXT,
+      cancelled_at TEXT,
+      cancellation_reason TEXT,
+      row_size_bytes INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    )`,
+    `CREATE TABLE IF NOT EXISTS guest_orders (
+      id TEXT PRIMARY KEY,
+      site_id TEXT NOT NULL,
+      order_number TEXT UNIQUE NOT NULL,
+      status TEXT DEFAULT 'pending',
+      items TEXT NOT NULL,
+      subtotal REAL NOT NULL,
+      discount REAL DEFAULT 0,
+      shipping_cost REAL DEFAULT 0,
+      tax REAL DEFAULT 0,
+      total REAL NOT NULL,
+      currency TEXT DEFAULT 'INR',
+      payment_method TEXT,
+      payment_status TEXT DEFAULT 'pending',
+      razorpay_order_id TEXT,
+      razorpay_payment_id TEXT,
+      shipping_address TEXT NOT NULL,
+      customer_name TEXT NOT NULL,
+      customer_email TEXT,
+      customer_phone TEXT NOT NULL,
+      tracking_number TEXT,
+      carrier TEXT,
+      row_size_bytes INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    )`,
+    `CREATE TABLE IF NOT EXISTS carts (
+      id TEXT PRIMARY KEY,
+      site_id TEXT NOT NULL,
+      user_id TEXT,
+      session_id TEXT,
+      items TEXT NOT NULL DEFAULT '[]',
+      subtotal REAL DEFAULT 0,
+      row_size_bytes INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    )`,
+    `CREATE TABLE IF NOT EXISTS wishlists (
+      id TEXT PRIMARY KEY,
+      site_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      product_id TEXT NOT NULL,
+      row_size_bytes INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(site_id, user_id, product_id)
+    )`,
+    `CREATE TABLE IF NOT EXISTS site_customers (
+      id TEXT PRIMARY KEY,
+      site_id TEXT NOT NULL,
+      email TEXT NOT NULL,
+      password_hash TEXT NOT NULL,
+      name TEXT NOT NULL,
+      phone TEXT,
+      email_verified INTEGER DEFAULT 0,
+      row_size_bytes INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(site_id, email)
+    )`,
+    `CREATE TABLE IF NOT EXISTS site_customer_sessions (
+      id TEXT PRIMARY KEY,
+      customer_id TEXT NOT NULL,
+      site_id TEXT NOT NULL,
+      token TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      row_size_bytes INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now'))
+    )`,
+    `CREATE TABLE IF NOT EXISTS customer_addresses (
+      id TEXT PRIMARY KEY,
+      site_id TEXT NOT NULL,
+      customer_id TEXT NOT NULL,
+      label TEXT DEFAULT 'Home',
+      first_name TEXT NOT NULL,
+      last_name TEXT,
+      phone TEXT,
+      house_number TEXT NOT NULL,
+      road_name TEXT,
+      city TEXT NOT NULL,
+      state TEXT NOT NULL,
+      pin_code TEXT NOT NULL,
+      is_default INTEGER DEFAULT 0,
+      row_size_bytes INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    )`,
+    `CREATE TABLE IF NOT EXISTS customer_password_resets (
+      id TEXT PRIMARY KEY,
+      site_id TEXT NOT NULL,
+      customer_id TEXT NOT NULL,
+      token TEXT NOT NULL UNIQUE,
+      expires_at TEXT NOT NULL,
+      used INTEGER DEFAULT 0,
+      row_size_bytes INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now'))
+    )`,
+    `CREATE TABLE IF NOT EXISTS customer_email_verifications (
+      id TEXT PRIMARY KEY,
+      site_id TEXT NOT NULL,
+      customer_id TEXT NOT NULL,
+      token TEXT NOT NULL UNIQUE,
+      expires_at TEXT NOT NULL,
+      used INTEGER DEFAULT 0,
+      row_size_bytes INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now'))
+    )`,
+    `CREATE TABLE IF NOT EXISTS coupons (
+      id TEXT PRIMARY KEY,
+      site_id TEXT NOT NULL,
+      code TEXT NOT NULL,
+      type TEXT NOT NULL,
+      value REAL NOT NULL,
+      min_order_value REAL DEFAULT 0,
+      max_discount REAL,
+      usage_limit INTEGER,
+      used_count INTEGER DEFAULT 0,
+      starts_at TEXT,
+      expires_at TEXT,
+      is_active INTEGER DEFAULT 1,
+      row_size_bytes INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(site_id, code)
+    )`,
+    `CREATE TABLE IF NOT EXISTS notifications (
+      id TEXT PRIMARY KEY,
+      site_id TEXT NOT NULL,
+      user_id TEXT,
+      push_token TEXT NOT NULL,
+      endpoint TEXT,
+      p256dh TEXT,
+      auth TEXT,
+      is_active INTEGER DEFAULT 1,
+      row_size_bytes INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now'))
+    )`,
+    `CREATE TABLE IF NOT EXISTS reviews (
+      id TEXT PRIMARY KEY,
+      site_id TEXT NOT NULL,
+      product_id TEXT NOT NULL,
+      user_id TEXT,
+      customer_name TEXT NOT NULL,
+      rating INTEGER NOT NULL CHECK(rating >= 1 AND rating <= 5),
+      title TEXT,
+      content TEXT,
+      images TEXT,
+      is_verified INTEGER DEFAULT 0,
+      is_approved INTEGER DEFAULT 0,
+      row_size_bytes INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now'))
+    )`,
+    `CREATE TABLE IF NOT EXISTS page_seo (
+      id TEXT PRIMARY KEY,
+      site_id TEXT NOT NULL,
+      page_type TEXT NOT NULL,
+      seo_title TEXT,
+      seo_description TEXT,
+      seo_og_image TEXT,
+      row_size_bytes INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(site_id, page_type)
+    )`,
+    `CREATE TABLE IF NOT EXISTS site_media (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      site_id TEXT NOT NULL,
+      storage_key TEXT NOT NULL UNIQUE,
+      size_bytes INTEGER NOT NULL,
+      media_type TEXT DEFAULT 'image',
+      row_size_bytes INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now'))
+    )`,
+    `CREATE TABLE IF NOT EXISTS site_usage (
+      site_id TEXT PRIMARY KEY,
+      d1_bytes_used INTEGER DEFAULT 0,
+      r2_bytes_used INTEGER DEFAULT 0,
+      baseline_bytes INTEGER DEFAULT 0,
+      baseline_updated_at TEXT,
+      last_updated TEXT DEFAULT (datetime('now'))
+    )`,
+    `CREATE TABLE IF NOT EXISTS activity_log (
+      id TEXT PRIMARY KEY,
+      site_id TEXT,
+      user_id TEXT,
+      action TEXT NOT NULL,
+      entity_type TEXT,
+      entity_id TEXT,
+      details TEXT,
+      ip_address TEXT,
+      user_agent TEXT,
+      row_size_bytes INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now'))
+    )`,
+    `CREATE TABLE IF NOT EXISTS addresses (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      phone TEXT NOT NULL,
+      line1 TEXT NOT NULL,
+      line2 TEXT,
+      city TEXT NOT NULL,
+      state TEXT NOT NULL,
+      pincode TEXT NOT NULL,
+      country TEXT DEFAULT 'India',
+      is_default INTEGER DEFAULT 0,
+      row_size_bytes INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    )`
+  ];
+  const indexes = [
+    "CREATE INDEX IF NOT EXISTS idx_categories_site ON categories(site_id)",
+    "CREATE INDEX IF NOT EXISTS idx_categories_slug ON categories(site_id, slug)",
+    "CREATE INDEX IF NOT EXISTS idx_categories_parent ON categories(parent_id)",
+    "CREATE INDEX IF NOT EXISTS idx_products_site ON products(site_id)",
+    "CREATE INDEX IF NOT EXISTS idx_products_category ON products(category_id)",
+    "CREATE INDEX IF NOT EXISTS idx_products_site_slug ON products(site_id, slug)",
+    "CREATE INDEX IF NOT EXISTS idx_products_featured ON products(site_id, is_featured)",
+    "CREATE INDEX IF NOT EXISTS idx_variants_product ON product_variants(product_id)",
+    "CREATE INDEX IF NOT EXISTS idx_orders_site ON orders(site_id)",
+    "CREATE INDEX IF NOT EXISTS idx_orders_user ON orders(user_id)",
+    "CREATE INDEX IF NOT EXISTS idx_orders_number ON orders(order_number)",
+    "CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(site_id, status)",
+    "CREATE INDEX IF NOT EXISTS idx_orders_created ON orders(site_id, created_at)",
+    "CREATE INDEX IF NOT EXISTS idx_guest_orders_site ON guest_orders(site_id)",
+    "CREATE INDEX IF NOT EXISTS idx_guest_orders_number ON guest_orders(order_number)",
+    "CREATE INDEX IF NOT EXISTS idx_carts_user ON carts(user_id)",
+    "CREATE INDEX IF NOT EXISTS idx_carts_session ON carts(session_id)",
+    "CREATE INDEX IF NOT EXISTS idx_carts_site ON carts(site_id)",
+    "CREATE INDEX IF NOT EXISTS idx_wishlists_user ON wishlists(user_id)",
+    "CREATE INDEX IF NOT EXISTS idx_wishlists_site ON wishlists(site_id)",
+    "CREATE INDEX IF NOT EXISTS idx_site_customers_site ON site_customers(site_id)",
+    "CREATE INDEX IF NOT EXISTS idx_site_customers_email ON site_customers(site_id, email)",
+    "CREATE INDEX IF NOT EXISTS idx_customer_sessions_token ON site_customer_sessions(token)",
+    "CREATE INDEX IF NOT EXISTS idx_customer_sessions_customer ON site_customer_sessions(customer_id)",
+    "CREATE INDEX IF NOT EXISTS idx_customer_addresses_customer ON customer_addresses(customer_id)",
+    "CREATE INDEX IF NOT EXISTS idx_customer_addresses_site ON customer_addresses(site_id)",
+    "CREATE INDEX IF NOT EXISTS idx_customer_pw_reset_token ON customer_password_resets(token)",
+    "CREATE INDEX IF NOT EXISTS idx_customer_email_verify_token ON customer_email_verifications(token)",
+    "CREATE INDEX IF NOT EXISTS idx_coupons_site ON coupons(site_id)",
+    "CREATE INDEX IF NOT EXISTS idx_coupons_code ON coupons(site_id, code)",
+    "CREATE INDEX IF NOT EXISTS idx_notifications_site ON notifications(site_id)",
+    "CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id)",
+    "CREATE INDEX IF NOT EXISTS idx_reviews_product ON reviews(product_id)",
+    "CREATE INDEX IF NOT EXISTS idx_reviews_site ON reviews(site_id)",
+    "CREATE INDEX IF NOT EXISTS idx_activity_site ON activity_log(site_id)",
+    "CREATE INDEX IF NOT EXISTS idx_activity_user ON activity_log(user_id)",
+    "CREATE INDEX IF NOT EXISTS idx_activity_created ON activity_log(created_at)",
+    "CREATE INDEX IF NOT EXISTS idx_site_media_site ON site_media(site_id)",
+    "CREATE INDEX IF NOT EXISTS idx_site_media_key ON site_media(storage_key)",
+    "CREATE INDEX IF NOT EXISTS idx_addresses_user ON addresses(user_id)"
+  ];
+  const addColumnMigrations = [
+    "ALTER TABLE categories ADD COLUMN row_size_bytes INTEGER DEFAULT 0",
+    "ALTER TABLE products ADD COLUMN row_size_bytes INTEGER DEFAULT 0",
+    "ALTER TABLE product_variants ADD COLUMN row_size_bytes INTEGER DEFAULT 0",
+    "ALTER TABLE orders ADD COLUMN row_size_bytes INTEGER DEFAULT 0",
+    "ALTER TABLE guest_orders ADD COLUMN row_size_bytes INTEGER DEFAULT 0",
+    "ALTER TABLE carts ADD COLUMN row_size_bytes INTEGER DEFAULT 0",
+    "ALTER TABLE wishlists ADD COLUMN row_size_bytes INTEGER DEFAULT 0",
+    "ALTER TABLE site_customers ADD COLUMN row_size_bytes INTEGER DEFAULT 0",
+    "ALTER TABLE site_customer_sessions ADD COLUMN row_size_bytes INTEGER DEFAULT 0",
+    "ALTER TABLE customer_addresses ADD COLUMN row_size_bytes INTEGER DEFAULT 0",
+    "ALTER TABLE customer_password_resets ADD COLUMN row_size_bytes INTEGER DEFAULT 0",
+    "ALTER TABLE customer_email_verifications ADD COLUMN row_size_bytes INTEGER DEFAULT 0",
+    "ALTER TABLE coupons ADD COLUMN row_size_bytes INTEGER DEFAULT 0",
+    "ALTER TABLE notifications ADD COLUMN row_size_bytes INTEGER DEFAULT 0",
+    "ALTER TABLE reviews ADD COLUMN row_size_bytes INTEGER DEFAULT 0",
+    "ALTER TABLE page_seo ADD COLUMN row_size_bytes INTEGER DEFAULT 0",
+    "ALTER TABLE site_media ADD COLUMN row_size_bytes INTEGER DEFAULT 0",
+    "ALTER TABLE activity_log ADD COLUMN row_size_bytes INTEGER DEFAULT 0",
+    "ALTER TABLE addresses ADD COLUMN row_size_bytes INTEGER DEFAULT 0",
+    "ALTER TABLE site_usage ADD COLUMN baseline_bytes INTEGER DEFAULT 0",
+    "ALTER TABLE site_usage ADD COLUMN baseline_updated_at TEXT"
+  ];
+  return [...tables, ...indexes, ...addColumnMigrations];
+}
+__name(getSiteSchemaStatements, "getSiteSchemaStatements");
+
+// workers/platform/admin-worker.js
+init_usage_tracker();
+init_site_db();
+var ADMIN_EMAILS = [
+  "savannaik090@gmail.com",
+  "xiyohe3598@indevgo.com"
+];
 async function isOwner(user, env) {
   if (!user)
     return false;
-  return user.email?.toLowerCase() === OWNER_EMAIL.toLowerCase();
+  return ADMIN_EMAILS.some((e) => e.toLowerCase() === user.email?.toLowerCase());
 }
 __name(isOwner, "isOwner");
 async function handleAdmin(request, env, path) {
@@ -7724,6 +7825,8 @@ async function handleAdmin(request, env, path) {
       return handleSettingsManagement(request, env);
     case "databases":
       return handleDatabaseManagement(request, env, pathParts);
+    case "shards":
+      return handleShardManagement(request, env, pathParts);
     default:
       return errorResponse("Admin endpoint not found", 404);
   }
@@ -7758,14 +7861,14 @@ async function getAdminStats(env) {
       totalOrders = ordersCount?.count || 0;
     } catch (e) {
     }
-    const ownerUser = users.find((u) => u.email === OWNER_EMAIL) || null;
+    const ownerUser = users.find((u) => ADMIN_EMAILS.some((e) => e.toLowerCase() === u.email?.toLowerCase())) || null;
     return successResponse({
       users,
       sites,
       totalUsers: users.length,
       totalSites: sites.length,
       totalOrders,
-      currentOwner: ownerUser ? { id: ownerUser.id, email: ownerUser.email, name: ownerUser.name } : { email: OWNER_EMAIL }
+      currentOwner: ownerUser ? { id: ownerUser.id, email: ownerUser.email, name: ownerUser.name } : { email: ADMIN_EMAILS[0] }
     });
   } catch (error) {
     console.error("Get admin stats error:", error);
@@ -7809,8 +7912,8 @@ async function handleTransferOwnership(request, env, currentUser) {
     return errorResponse("Method not allowed", 405);
   }
   try {
-    if (currentUser.email !== OWNER_EMAIL) {
-      return errorResponse("Only the current owner can transfer ownership", 403);
+    if (currentUser.email.toLowerCase() !== ADMIN_EMAILS[0].toLowerCase()) {
+      return errorResponse("Only the primary owner can transfer ownership", 403);
     }
     const { newOwnerEmail } = await request.json();
     if (!newOwnerEmail) {
@@ -7830,7 +7933,7 @@ async function handleTransferOwnership(request, env, currentUser) {
     }
     return successResponse(
       { newOwner: { id: newOwner.id, email: newOwner.email, name: newOwner.name } },
-      `To transfer ownership, update the OWNER_EMAIL constant in admin-worker.js to ${newOwner.email}`
+      `To transfer ownership, update the ADMIN_EMAILS array in admin-worker.js to include ${newOwner.email}`
     );
   } catch (error) {
     console.error("Transfer ownership error:", error);
@@ -8053,42 +8156,36 @@ async function handleDatabaseManagement(request, env, pathParts) {
   if (method === "GET" && subAction === "sizes") {
     return getSiteDatabaseSizes(env);
   }
-  if (method === "POST" && subAction === "provision") {
-    return provisionSiteDatabase(request, env);
-  }
-  if (method === "DELETE" && subAction) {
-    return deleteSiteDatabase(env, subAction);
-  }
   return errorResponse("Database endpoint not found", 404);
 }
 __name(handleDatabaseManagement, "handleDatabaseManagement");
 async function listSiteDatabases(env) {
   try {
     const sites = await env.DB.prepare(
-      `SELECT id, subdomain, brand_name, d1_database_id, d1_binding_name, created_at
-       FROM sites WHERE is_active = 1 ORDER BY created_at DESC`
+      `SELECT s.id, s.subdomain, s.brand_name, s.shard_id, s.d1_database_id, s.d1_binding_name, s.created_at,
+              sh.binding_name as shard_binding, sh.database_name as shard_name
+       FROM sites s
+       LEFT JOIN shards sh ON s.shard_id = sh.id
+       WHERE s.is_active = 1 ORDER BY s.created_at DESC`
     ).all();
     const siteList = (sites.results || []).map((s) => ({
       siteId: s.id,
       subdomain: s.subdomain,
       brandName: s.brand_name,
+      shardId: s.shard_id,
+      shardBinding: s.shard_binding,
+      shardName: s.shard_name,
       d1DatabaseId: s.d1_database_id,
       d1BindingName: s.d1_binding_name,
+      hasShardDB: !!s.shard_id,
       hasPerSiteDB: !!s.d1_database_id,
       createdAt: s.created_at
     }));
-    let cfDatabases = [];
-    try {
-      cfDatabases = await listAllSiteDatabases(env);
-    } catch (e) {
-      console.error("Failed to list CF databases:", e.message || e);
-    }
     return successResponse({
       sites: siteList,
-      cfDatabases,
       totalSites: siteList.length,
-      sitesWithDB: siteList.filter((s) => s.hasPerSiteDB).length,
-      sitesWithoutDB: siteList.filter((s) => !s.hasPerSiteDB).length
+      sitesOnShards: siteList.filter((s) => s.hasShardDB).length,
+      sitesOnPlatformDB: siteList.filter((s) => !s.hasShardDB && !s.hasPerSiteDB).length
     });
   } catch (error) {
     console.error("List site databases error:", error);
@@ -8098,25 +8195,22 @@ async function listSiteDatabases(env) {
 __name(listSiteDatabases, "listSiteDatabases");
 async function getSiteDatabaseSizes(env) {
   try {
-    const sites = await env.DB.prepare(
-      `SELECT id, subdomain, d1_database_id FROM sites WHERE d1_database_id IS NOT NULL`
-    ).all();
+    const shards = await env.DB.prepare("SELECT id, database_id, database_name, binding_name FROM shards").all();
     const sizeResults = [];
-    for (const site of sites.results || []) {
+    for (const shard of shards.results || []) {
       try {
-        const size = await getDatabaseSize(env, site.d1_database_id);
+        const size = await getDatabaseSize(env, shard.database_id);
         sizeResults.push({
-          siteId: site.id,
-          subdomain: site.subdomain,
-          d1DatabaseId: site.d1_database_id,
+          shardId: shard.id,
+          databaseName: shard.database_name,
+          bindingName: shard.binding_name,
           sizeBytes: size,
           sizeMB: (size / (1024 * 1024)).toFixed(2)
         });
       } catch (e) {
         sizeResults.push({
-          siteId: site.id,
-          subdomain: site.subdomain,
-          d1DatabaseId: site.d1_database_id,
+          shardId: shard.id,
+          databaseName: shard.database_name,
           error: e.message || "Failed to fetch size"
         });
       }
@@ -8128,65 +8222,364 @@ async function getSiteDatabaseSizes(env) {
   }
 }
 __name(getSiteDatabaseSizes, "getSiteDatabaseSizes");
-async function provisionSiteDatabase(request, env) {
+async function handleShardManagement(request, env, pathParts) {
+  const method = request.method;
+  const shardId = pathParts[3];
+  const subAction = pathParts[4];
+  if (method === "GET" && !shardId) {
+    return listShards(env);
+  }
+  if (method === "GET" && shardId === "sites" && !subAction) {
+    return errorResponse("Shard ID required", 400);
+  }
+  if (method === "GET" && shardId && subAction === "sites") {
+    return listShardSites(env, shardId);
+  }
+  if (method === "POST" && !shardId) {
+    return createShard(request, env);
+  }
+  if (method === "POST" && shardId === "move-site") {
+    return moveSiteBetweenShards(request, env);
+  }
+  if (method === "POST" && shardId && subAction === "reconcile") {
+    return reconcileShardEndpoint(env, shardId);
+  }
+  if (method === "POST" && shardId && subAction === "set-active") {
+    return setShardActive(request, env, shardId);
+  }
+  if (method === "DELETE" && shardId) {
+    return deleteShardEndpoint(env, shardId);
+  }
+  return errorResponse("Shard endpoint not found", 404);
+}
+__name(handleShardManagement, "handleShardManagement");
+async function listShards(env) {
   try {
-    const { siteId } = await request.json();
-    if (!siteId)
-      return errorResponse("siteId is required");
+    const result = await env.DB.prepare(
+      "SELECT * FROM shards ORDER BY created_at ASC"
+    ).all();
+    const shards = [];
+    for (const shard of result.results || []) {
+      let sizeBytes = 0;
+      let sizeMB = "0.00";
+      try {
+        sizeBytes = await getDatabaseSize(env, shard.database_id);
+        sizeMB = (sizeBytes / (1024 * 1024)).toFixed(2);
+      } catch (e) {
+      }
+      const siteCount = await env.DB.prepare(
+        "SELECT COUNT(*) as count FROM sites WHERE shard_id = ?"
+      ).bind(shard.id).first();
+      shards.push({
+        ...shard,
+        sizeBytes,
+        sizeMB,
+        siteCount: siteCount?.count || 0,
+        sizeAlertGB: (sizeBytes / (1024 * 1024 * 1024)).toFixed(3),
+        isNearLimit: sizeBytes > 8 * 1024 * 1024 * 1024
+      });
+    }
+    return successResponse(shards);
+  } catch (error) {
+    console.error("List shards error:", error);
+    return errorResponse("Failed to list shards", 500);
+  }
+}
+__name(listShards, "listShards");
+async function listShardSites(env, shardId) {
+  try {
+    const sites = await env.DB.prepare(
+      `SELECT s.id, s.subdomain, s.brand_name, s.template_id, s.is_active, s.migration_locked, s.created_at,
+              u.d1_bytes_used, u.r2_bytes_used, u.baseline_bytes
+       FROM sites s
+       LEFT JOIN site_usage u ON s.id = u.site_id
+       WHERE s.shard_id = ?
+       ORDER BY s.created_at DESC`
+    ).bind(shardId).all();
+    const shard = await env.DB.prepare("SELECT correction_factor FROM shards WHERE id = ?").bind(shardId).first();
+    const factor = shard?.correction_factor || 1;
+    const siteList = (sites.results || []).map((s) => {
+      const raw = s.d1_bytes_used || 0;
+      const baseline = s.baseline_bytes || 0;
+      const displayed = Math.ceil((baseline + raw) * factor);
+      return {
+        siteId: s.id,
+        subdomain: s.subdomain,
+        brandName: s.brand_name,
+        templateId: s.template_id,
+        isActive: s.is_active,
+        migrationLocked: s.migration_locked,
+        d1BytesRaw: raw,
+        baselineBytes: baseline,
+        d1BytesDisplayed: displayed,
+        r2BytesUsed: s.r2_bytes_used || 0,
+        createdAt: s.created_at
+      };
+    });
+    return successResponse({ sites: siteList, correctionFactor: factor });
+  } catch (error) {
+    console.error("List shard sites error:", error);
+    return errorResponse("Failed to list shard sites", 500);
+  }
+}
+__name(listShardSites, "listShardSites");
+async function createShard(request, env) {
+  try {
+    const { name, setActive } = await request.json();
+    if (!name) {
+      return errorResponse("Database name is required");
+    }
+    const existingCount = await env.DB.prepare("SELECT COUNT(*) as count FROM shards").first();
+    const shardNumber = (existingCount?.count || 0) + 1;
+    const bindingName = `SHARD_${shardNumber}`;
+    const dbResult = await createDatabase(env, name);
+    const databaseId = dbResult.id;
+    console.log(`Created shard D1 database: ${name} (${databaseId})`);
+    const schemaStatements = getSiteSchemaStatements();
+    await runSchemaOnDB(env, databaseId, schemaStatements);
+    console.log(`Schema applied to shard DB: ${name}`);
+    const shardId = generateId();
+    if (setActive !== false) {
+      await env.DB.prepare("UPDATE shards SET is_active = 0").run();
+    }
+    await env.DB.prepare(
+      `INSERT INTO shards (id, binding_name, database_id, database_name, is_active, correction_factor, created_at)
+       VALUES (?, ?, ?, ?, ?, 1.0, datetime('now'))`
+    ).bind(shardId, bindingName, databaseId, name, setActive !== false ? 1 : 0).run();
+    try {
+      await addBindingAndRedeploy(env, shardId, databaseId, bindingName);
+      console.log(`Worker redeployed with shard binding ${bindingName}`);
+    } catch (redeployErr) {
+      console.error("Worker redeploy failed:", redeployErr.message || redeployErr);
+      return errorResponse(`Shard created but worker redeploy failed: ${redeployErr.message}. You may need to manually add the binding.`, 500);
+    }
+    return successResponse({
+      shardId,
+      bindingName,
+      databaseId,
+      databaseName: name,
+      isActive: setActive !== false
+    }, `Shard "${name}" created successfully with binding ${bindingName}`);
+  } catch (error) {
+    console.error("Create shard error:", error);
+    return errorResponse("Failed to create shard: " + (error.message || "Unknown error"), 500);
+  }
+}
+__name(createShard, "createShard");
+async function setShardActive(request, env, shardId) {
+  try {
+    const shard = await env.DB.prepare("SELECT id FROM shards WHERE id = ?").bind(shardId).first();
+    if (!shard)
+      return errorResponse("Shard not found", 404);
+    await env.DB.prepare("UPDATE shards SET is_active = 0").run();
+    await env.DB.prepare("UPDATE shards SET is_active = 1 WHERE id = ?").bind(shardId).run();
+    return successResponse({ shardId }, "Shard set as active");
+  } catch (error) {
+    console.error("Set shard active error:", error);
+    return errorResponse("Failed to set shard active", 500);
+  }
+}
+__name(setShardActive, "setShardActive");
+async function reconcileShardEndpoint(env, shardId) {
+  try {
+    const result = await reconcileShard(env, shardId);
+    if (!result) {
+      return errorResponse("Failed to reconcile shard", 500);
+    }
+    return successResponse(result, "Shard reconciled successfully");
+  } catch (error) {
+    console.error("Reconcile shard error:", error);
+    return errorResponse("Failed to reconcile shard", 500);
+  }
+}
+__name(reconcileShardEndpoint, "reconcileShardEndpoint");
+var MIGRATION_TABLES = [
+  "categories",
+  "products",
+  "product_variants",
+  "orders",
+  "guest_orders",
+  "carts",
+  "wishlists",
+  "site_customers",
+  "site_customer_sessions",
+  "customer_addresses",
+  "customer_password_resets",
+  "customer_email_verifications",
+  "coupons",
+  "notifications",
+  "reviews",
+  "page_seo",
+  "site_media",
+  "site_usage",
+  "activity_log",
+  "addresses"
+];
+async function moveSiteBetweenShards(request, env) {
+  try {
+    const { siteId, targetShardId } = await request.json();
+    if (!siteId || !targetShardId) {
+      return errorResponse("siteId and targetShardId are required");
+    }
     const site = await env.DB.prepare(
-      "SELECT id, subdomain, d1_database_id FROM sites WHERE id = ?"
+      "SELECT id, subdomain, shard_id, migration_locked FROM sites WHERE id = ?"
     ).bind(siteId).first();
     if (!site)
       return errorResponse("Site not found", 404);
-    if (site.d1_database_id)
-      return errorResponse("Site already has a per-site database", 400);
-    const shortId = siteId.substring(0, 8);
-    const dbName = `site-${site.subdomain}-${shortId}`;
-    const d1BindingName = `SITE_DB_${shortId.toUpperCase()}`;
-    const dbResult = await createDatabase(env, dbName);
-    const d1DatabaseId = dbResult.id;
-    const schemaStatements = getSiteSchemaStatements();
-    await runSchemaOnDB(env, d1DatabaseId, schemaStatements);
+    if (site.migration_locked)
+      return errorResponse("Site is currently being migrated", 423);
+    if (site.shard_id === targetShardId)
+      return errorResponse("Site is already on this shard", 400);
+    const targetShard = await env.DB.prepare(
+      "SELECT id, binding_name, database_id FROM shards WHERE id = ?"
+    ).bind(targetShardId).first();
+    if (!targetShard)
+      return errorResponse("Target shard not found", 404);
+    const sourceShardId = site.shard_id;
+    if (!sourceShardId)
+      return errorResponse("Site is not on any shard (still on platform DB). Cannot migrate.", 400);
+    const sourceShard = await env.DB.prepare(
+      "SELECT id, binding_name FROM shards WHERE id = ?"
+    ).bind(sourceShardId).first();
+    if (!sourceShard)
+      return errorResponse("Source shard not found", 404);
+    const sourceDB = env[sourceShard.binding_name];
+    const targetDB = env[targetShard.binding_name];
+    if (!sourceDB)
+      return errorResponse(`Source shard binding ${sourceShard.binding_name} not found in env`, 500);
+    if (!targetDB)
+      return errorResponse(`Target shard binding ${targetShard.binding_name} not found in env`, 500);
     await env.DB.prepare(
-      `UPDATE sites SET d1_database_id = ?, d1_binding_name = ?, updated_at = datetime('now') WHERE id = ?`
-    ).bind(d1DatabaseId, d1BindingName, siteId).run();
+      "UPDATE sites SET migration_locked = 1, updated_at = datetime('now') WHERE id = ?"
+    ).bind(siteId).run();
+    const migrationStats = {};
+    let migrationError = null;
     try {
-      await addBindingAndRedeploy(env, siteId, d1DatabaseId, d1BindingName);
-    } catch (redeployErr) {
-      console.error("Redeploy failed (non-fatal):", redeployErr.message || redeployErr);
+      for (const table of MIGRATION_TABLES) {
+        let copied = 0;
+        let offset = 0;
+        const batchSize = 1e3;
+        while (true) {
+          let rows;
+          try {
+            const result = await sourceDB.prepare(
+              `SELECT * FROM ${table} WHERE site_id = ? LIMIT ? OFFSET ?`
+            ).bind(siteId, batchSize, offset).all();
+            rows = result.results || [];
+          } catch (e) {
+            break;
+          }
+          if (rows.length === 0)
+            break;
+          for (const row of rows) {
+            const columns = Object.keys(row);
+            const placeholders = columns.map(() => "?").join(", ");
+            const values = columns.map((c) => row[c]);
+            try {
+              await targetDB.prepare(
+                `INSERT OR REPLACE INTO ${table} (${columns.join(", ")}) VALUES (${placeholders})`
+              ).bind(...values).run();
+              copied++;
+            } catch (insertErr) {
+              console.error(`Migration insert error for ${table}:`, insertErr.message);
+            }
+          }
+          offset += batchSize;
+          if (rows.length < batchSize)
+            break;
+        }
+        migrationStats[table] = copied;
+      }
+      for (const table of MIGRATION_TABLES) {
+        let sourceCount = 0;
+        let targetCount = 0;
+        try {
+          const sc = await sourceDB.prepare(`SELECT COUNT(*) as c FROM ${table} WHERE site_id = ?`).bind(siteId).first();
+          sourceCount = sc?.c || 0;
+        } catch (e) {
+        }
+        try {
+          const tc = await targetDB.prepare(`SELECT COUNT(*) as c FROM ${table} WHERE site_id = ?`).bind(siteId).first();
+          targetCount = tc?.c || 0;
+        } catch (e) {
+        }
+        if (sourceCount > 0 && targetCount < sourceCount) {
+          throw new Error(`Verification failed for ${table}: source=${sourceCount}, target=${targetCount}`);
+        }
+      }
+      const usage = await env.DB.prepare(
+        "SELECT d1_bytes_used, baseline_bytes FROM site_usage WHERE site_id = ?"
+      ).bind(siteId).first();
+      const oldBaseline = usage?.baseline_bytes || 0;
+      const oldTracked = usage?.d1_bytes_used || 0;
+      const newBaseline = oldBaseline + oldTracked;
+      await env.DB.prepare(
+        `UPDATE site_usage SET baseline_bytes = ?, d1_bytes_used = 0, baseline_updated_at = datetime('now'), last_updated = datetime('now') WHERE site_id = ?`
+      ).bind(newBaseline, siteId).run();
+      await env.DB.prepare(
+        "UPDATE sites SET shard_id = ?, updated_at = datetime('now') WHERE id = ?"
+      ).bind(targetShardId, siteId).run();
+      for (const table of MIGRATION_TABLES) {
+        try {
+          await sourceDB.prepare(`DELETE FROM ${table} WHERE site_id = ?`).bind(siteId).run();
+        } catch (e) {
+        }
+      }
+    } catch (err) {
+      migrationError = err.message || "Unknown migration error";
+      console.error("Migration failed, rolling back:", migrationError);
+      for (const table of MIGRATION_TABLES) {
+        try {
+          await targetDB.prepare(`DELETE FROM ${table} WHERE site_id = ?`).bind(siteId).run();
+        } catch (e) {
+        }
+      }
+    }
+    await env.DB.prepare(
+      "UPDATE sites SET migration_locked = 0, updated_at = datetime('now') WHERE id = ?"
+    ).bind(siteId).run();
+    if (migrationError) {
+      return errorResponse(`Migration failed and was rolled back: ${migrationError}`, 500);
     }
     return successResponse({
       siteId,
-      d1DatabaseId,
-      d1BindingName,
-      dbName
-    }, "Database provisioned successfully");
+      fromShard: sourceShardId,
+      toShard: targetShardId,
+      tables: migrationStats
+    }, `Site ${site.subdomain} migrated successfully`);
   } catch (error) {
-    console.error("Provision database error:", error);
-    return errorResponse("Failed to provision database: " + (error.message || "Unknown error"), 500);
+    console.error("Move site error:", error);
+    try {
+      const { siteId } = await request.clone().json();
+      if (siteId) {
+        await env.DB.prepare("UPDATE sites SET migration_locked = 0 WHERE id = ?").bind(siteId).run();
+      }
+    } catch (e) {
+    }
+    return errorResponse("Failed to move site: " + (error.message || "Unknown error"), 500);
   }
 }
-__name(provisionSiteDatabase, "provisionSiteDatabase");
-async function deleteSiteDatabase(env, siteId) {
+__name(moveSiteBetweenShards, "moveSiteBetweenShards");
+async function deleteShardEndpoint(env, shardId) {
   try {
-    const site = await env.DB.prepare(
-      "SELECT id, d1_database_id FROM sites WHERE id = ?"
-    ).bind(siteId).first();
-    if (!site)
-      return errorResponse("Site not found", 404);
-    if (!site.d1_database_id)
-      return errorResponse("Site has no per-site database", 400);
-    await deleteDatabase(env, site.d1_database_id);
-    await env.DB.prepare(
-      `UPDATE sites SET d1_database_id = NULL, d1_binding_name = NULL, updated_at = datetime('now') WHERE id = ?`
-    ).bind(siteId).run();
-    return successResponse({ siteId }, "Database deleted successfully");
+    const shard = await env.DB.prepare("SELECT * FROM shards WHERE id = ?").bind(shardId).first();
+    if (!shard)
+      return errorResponse("Shard not found", 404);
+    const siteCount = await env.DB.prepare(
+      "SELECT COUNT(*) as count FROM sites WHERE shard_id = ?"
+    ).bind(shardId).first();
+    if (siteCount?.count > 0) {
+      return errorResponse(`Cannot delete shard with ${siteCount.count} sites. Move all sites first.`, 400);
+    }
+    await deleteDatabase(env, shard.database_id);
+    await env.DB.prepare("DELETE FROM shards WHERE id = ?").bind(shardId).run();
+    return successResponse({ shardId }, "Shard deleted successfully");
   } catch (error) {
-    console.error("Delete database error:", error);
-    return errorResponse("Failed to delete database: " + (error.message || "Unknown error"), 500);
+    console.error("Delete shard error:", error);
+    return errorResponse("Failed to delete shard: " + (error.message || "Unknown error"), 500);
   }
 }
-__name(deleteSiteDatabase, "deleteSiteDatabase");
+__name(deleteShardEndpoint, "deleteShardEndpoint");
 
 // workers/index.js
 init_site_admin_worker();
@@ -9784,6 +10177,18 @@ async function ensureTablesExist(env) {
       } catch (e) {
       }
     }
+    await env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS shards (
+        id TEXT PRIMARY KEY,
+        binding_name TEXT UNIQUE NOT NULL,
+        database_id TEXT UNIQUE NOT NULL,
+        database_name TEXT NOT NULL,
+        is_active INTEGER DEFAULT 1,
+        correction_factor REAL DEFAULT 1.0,
+        last_reconciled_at TEXT,
+        created_at TEXT DEFAULT (datetime('now'))
+      )
+    `).run();
     const migrations = [
       { col: "subtitle", sql: "ALTER TABLE categories ADD COLUMN subtitle TEXT" },
       { col: "show_on_home", sql: "ALTER TABLE categories ADD COLUMN show_on_home INTEGER DEFAULT 1" },
@@ -9794,7 +10199,11 @@ async function ensureTablesExist(env) {
       { col: "coupon_code", table: "orders", sql: "ALTER TABLE orders ADD COLUMN coupon_code TEXT" },
       { col: "role", table: "users", sql: "ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'" },
       { col: "d1_database_id", table: "sites", sql: "ALTER TABLE sites ADD COLUMN d1_database_id TEXT" },
-      { col: "d1_binding_name", table: "sites", sql: "ALTER TABLE sites ADD COLUMN d1_binding_name TEXT" }
+      { col: "d1_binding_name", table: "sites", sql: "ALTER TABLE sites ADD COLUMN d1_binding_name TEXT" },
+      { col: "shard_id", table: "sites", sql: "ALTER TABLE sites ADD COLUMN shard_id TEXT" },
+      { col: "migration_locked", table: "sites", sql: "ALTER TABLE sites ADD COLUMN migration_locked INTEGER DEFAULT 0" },
+      { col: "baseline_bytes", table: "site_usage", sql: "ALTER TABLE site_usage ADD COLUMN baseline_bytes INTEGER DEFAULT 0" },
+      { col: "baseline_updated_at", table: "site_usage", sql: "ALTER TABLE site_usage ADD COLUMN baseline_updated_at TEXT" }
     ];
     for (const m of migrations) {
       try {
@@ -10122,8 +10531,8 @@ async function handleSiteInfo(request, env) {
     }
     let categoriesResult = [];
     try {
-      const { resolveSiteDB: resolveSiteDB2 } = await Promise.resolve().then(() => (init_site_db(), site_db_exports));
-      const siteDB = resolveSiteDB2(env, site);
+      const { resolveSiteDBById: resolveSiteDBById2 } = await Promise.resolve().then(() => (init_site_db(), site_db_exports));
+      const siteDB = await resolveSiteDBById2(env, site.id);
       const categories = await siteDB.prepare(
         "SELECT * FROM categories WHERE site_id = ? ORDER BY display_order"
       ).bind(site.id).all();
@@ -10159,8 +10568,8 @@ async function handleSiteInfo(request, env) {
     const { razorpayKeySecret, adminVerificationCode, ...publicSettings } = settings;
     let pageSEOResult = [];
     try {
-      const { resolveSiteDB: resolveSiteDB2 } = await Promise.resolve().then(() => (init_site_db(), site_db_exports));
-      const siteDB = resolveSiteDB2(env, site);
+      const { resolveSiteDBById: resolveSiteDBById2 } = await Promise.resolve().then(() => (init_site_db(), site_db_exports));
+      const siteDB = await resolveSiteDBById2(env, site.id);
       const psResult = await siteDB.prepare(
         "SELECT page_type, seo_title, seo_description, seo_og_image FROM page_seo WHERE site_id = ?"
       ).bind(site.id).all();

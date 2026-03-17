@@ -2,8 +2,8 @@ import { generateId, generateSubdomain, sanitizeInput, jsonResponse, errorRespon
 import { validateAuth } from '../../utils/auth.js';
 import { validateSiteAdmin } from '../storefront/site-admin-worker.js';
 import { registerCustomHostname, deleteCustomHostname, findCustomHostname } from '../../utils/cloudflare.js';
-import { createDatabase, deleteDatabase, runSchemaOnDB, addBindingAndRedeploy } from '../../utils/d1-manager.js';
-import { getSiteSchemaStatements } from '../../utils/site-schema.js';
+import { resolveSiteDBById } from '../../utils/site-db.js';
+import { trackD1Write, estimateRowBytes } from '../../utils/usage-tracker.js';
 
 export async function handleSites(request, env, path) {
   const corsResponse = handleCORS(request);
@@ -127,8 +127,7 @@ async function getSite(env, user, siteId) {
       return errorResponse('Site not found', 404, 'NOT_FOUND');
     }
 
-    const { resolveSiteDB } = await import('../../utils/site-db.js');
-    const siteDB = resolveSiteDB(env, site);
+    const siteDB = await resolveSiteDBById(env, siteId);
 
     const categories = await siteDB.prepare(
       `SELECT * FROM categories WHERE site_id = ? ORDER BY display_order`
@@ -270,81 +269,41 @@ async function createSite(request, env, user) {
       JSON.stringify(defaultSettings)
     ).run();
 
-    // Try to create categories but don't fail if it errors
     try {
-      if (categories && categories.length > 0) {
-        await createUserCategories(env, siteId, categories);
-      } else if (category) {
-        await createDefaultCategories(env, siteId, category);
-      }
-    } catch (catError) {
-      console.error('Category creation failed, attempting to auto-create table:', catError);
-      
-      try {
-        await env.DB.prepare(`
-          CREATE TABLE IF NOT EXISTS categories (
-            id TEXT PRIMARY KEY,
-            site_id TEXT NOT NULL,
-            name TEXT NOT NULL,
-            slug TEXT NOT NULL,
-            parent_id TEXT,
-            description TEXT,
-            subtitle TEXT,
-            show_on_home INTEGER DEFAULT 1,
-            image_url TEXT,
-            display_order INTEGER DEFAULT 0,
-            is_active INTEGER DEFAULT 1,
-            created_at TEXT DEFAULT (datetime('now')),
-            updated_at TEXT DEFAULT (datetime('now')),
-            FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
-            FOREIGN KEY (parent_id) REFERENCES categories(id) ON DELETE SET NULL,
-            UNIQUE(site_id, slug)
-          )
-        `).run();
-        
-        await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_categories_site ON categories(site_id)').run();
-        await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_categories_slug ON categories(site_id, slug)').run();
-        await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_categories_parent ON categories(parent_id)').run();
+      const activeShard = await env.DB.prepare(
+        'SELECT id FROM shards WHERE is_active = 1 ORDER BY created_at DESC LIMIT 1'
+      ).first();
 
-        // Retry creation
-        if (categories && categories.length > 0) {
-          await createUserCategories(env, siteId, categories);
-        } else if (category) {
-          await createDefaultCategories(env, siteId, category);
-        }
-      } catch (retryError) {
-        console.error('Retry category creation failed:', retryError);
+      if (activeShard) {
+        await env.DB.prepare(
+          `UPDATE sites SET shard_id = ?, updated_at = datetime('now') WHERE id = ?`
+        ).bind(activeShard.id, siteId).run();
+        console.log(`Site ${siteId} assigned to shard ${activeShard.id}`);
       }
+    } catch (shardErr) {
+      console.error('Shard assignment failed (non-fatal, using platform DB):', shardErr.message || shardErr);
     }
 
-    let d1DatabaseId = null;
-    let d1BindingName = null;
+    try {
+      await env.DB.prepare(`
+        INSERT INTO site_usage (site_id, d1_bytes_used, r2_bytes_used, baseline_bytes, last_updated)
+        VALUES (?, 0, 0, 0, datetime('now'))
+        ON CONFLICT(site_id) DO NOTHING
+      `).bind(siteId).run();
+    } catch (usageErr) {
+      console.error('Usage init failed (non-fatal):', usageErr.message || usageErr);
+    }
+
+    const siteDB = await resolveSiteDBById(env, siteId);
 
     try {
-      const shortId = siteId.substring(0, 8);
-      const dbName = `site-${finalSubdomain}-${shortId}`;
-      d1BindingName = `SITE_DB_${shortId.toUpperCase()}`;
-
-      const dbResult = await createDatabase(env, dbName);
-      d1DatabaseId = dbResult.id;
-      console.log(`Created per-site D1 database: ${dbName} (${d1DatabaseId})`);
-
-      const schemaStatements = getSiteSchemaStatements();
-      await runSchemaOnDB(env, d1DatabaseId, schemaStatements);
-      console.log(`Schema applied to per-site DB: ${dbName}`);
-
-      await env.DB.prepare(
-        `UPDATE sites SET d1_database_id = ?, d1_binding_name = ?, updated_at = datetime('now') WHERE id = ?`
-      ).bind(d1DatabaseId, d1BindingName, siteId).run();
-
-      try {
-        await addBindingAndRedeploy(env, siteId, d1DatabaseId, d1BindingName);
-        console.log(`Worker redeployed with binding ${d1BindingName}`);
-      } catch (redeployErr) {
-        console.error('Worker redeploy failed (non-fatal, will use fallback):', redeployErr.message || redeployErr);
+      if (categories && categories.length > 0) {
+        await createUserCategories(siteDB, siteId, categories);
+      } else if (category) {
+        await createDefaultCategories(siteDB, siteId, category);
       }
-    } catch (d1Err) {
-      console.error('Per-site D1 creation failed (non-fatal, using platform DB fallback):', d1Err.message || d1Err);
+    } catch (catError) {
+      console.error('Category creation failed (non-fatal):', catError.message || catError);
     }
 
     try {
@@ -361,7 +320,7 @@ async function createSite(request, env, user) {
       console.error('Check subscription for new site failed (non-fatal):', subErr);
     }
 
-    return successResponse({ id: siteId, subdomain: finalSubdomain, d1DatabaseId }, 'Site created successfully');
+    return successResponse({ id: siteId, subdomain: finalSubdomain }, 'Site created successfully');
   } catch (error) {
     console.error('Create site error:', error);
     if (error.message && error.message.includes('UNIQUE constraint failed')) {
@@ -371,7 +330,7 @@ async function createSite(request, env, user) {
   }
 }
 
-async function createDefaultCategories(env, siteId, businessCategory) {
+async function createDefaultCategories(db, siteId, businessCategory) {
   const categoryTemplates = {
     jewellery: [
       { name: 'New Arrivals', slug: 'new-arrivals', subtitle: 'Discover our latest exquisite collections', showOnHome: 1, children: [] },
@@ -395,7 +354,7 @@ async function createDefaultCategories(env, siteId, businessCategory) {
 
   for (const cat of categories) {
     const parentId = generateId();
-    await env.DB.prepare(
+    await db.prepare(
       `INSERT INTO categories (id, site_id, name, slug, subtitle, show_on_home, display_order, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(parentId, siteId, cat.name, cat.slug, cat.subtitle || null, cat.showOnHome !== undefined ? cat.showOnHome : 1, order++).run();
@@ -403,7 +362,7 @@ async function createDefaultCategories(env, siteId, businessCategory) {
     for (const childName of (cat.children || [])) {
       const childId = generateId();
       const childSlug = `${cat.slug}-${childName.toLowerCase().replace(/\s+/g, '-')}`;
-      await env.DB.prepare(
+      await db.prepare(
         `INSERT INTO categories (id, site_id, name, slug, parent_id, show_on_home, display_order, created_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
       ).bind(childId, siteId, childName, childSlug, parentId, 0, order++).run();
@@ -411,7 +370,7 @@ async function createDefaultCategories(env, siteId, businessCategory) {
   }
 }
 
-async function createUserCategories(env, siteId, categories) {
+async function createUserCategories(db, siteId, categories) {
   let order = 0;
   for (let cat of categories) {
     let categoryName = typeof cat === 'string' ? cat : (cat.name || cat.label);
@@ -428,7 +387,7 @@ async function createUserCategories(env, siteId, categories) {
     const showOnHome = (typeof cat === 'object' && cat.showOnHome !== undefined) ? (cat.showOnHome ? 1 : 0) : 1;
     
     const catId = generateId();
-    await env.DB.prepare(
+    await db.prepare(
       `INSERT INTO categories (id, site_id, name, slug, subtitle, show_on_home, display_order, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(catId, siteId, categoryName, slug, subtitle, showOnHome, order++).run();
@@ -548,21 +507,38 @@ async function deleteSite(env, user, siteId) {
 
   try {
     const site = await env.DB.prepare(
-      'SELECT id, subdomain, d1_database_id FROM sites WHERE id = ? AND user_id = ?'
+      'SELECT id, subdomain, shard_id, d1_database_id FROM sites WHERE id = ? AND user_id = ?'
     ).bind(siteId, user.id).first();
 
     if (!site) {
       return errorResponse('Site not found', 404, 'NOT_FOUND');
     }
 
-    if (site.d1_database_id) {
+    if (site.shard_id) {
       try {
-        await deleteDatabase(env, site.d1_database_id);
-        console.log(`Deleted per-site D1 database: ${site.d1_database_id}`);
-      } catch (d1Err) {
-        console.error('Failed to delete per-site D1 database (non-fatal):', d1Err.message || d1Err);
+        const shardDB = await resolveSiteDBById(env, siteId);
+        const siteTables = [
+          'activity_log', 'page_seo', 'reviews', 'notifications', 'coupons',
+          'customer_email_verifications', 'customer_password_resets',
+          'customer_addresses', 'site_customer_sessions', 'site_customers',
+          'wishlists', 'carts', 'guest_orders', 'orders',
+          'product_variants', 'products', 'categories', 'site_media', 'site_usage', 'addresses'
+        ];
+        for (const table of siteTables) {
+          try {
+            await shardDB.prepare(`DELETE FROM ${table} WHERE site_id = ?`).bind(siteId).run();
+          } catch (e) {}
+        }
+        console.log(`Cleaned site data from shard for site ${siteId}`);
+      } catch (shardErr) {
+        console.error('Shard cleanup failed (non-fatal):', shardErr.message || shardErr);
       }
     }
+
+    try {
+      await env.DB.prepare('DELETE FROM site_usage WHERE site_id = ?').bind(siteId).run();
+      await env.DB.prepare('DELETE FROM site_media WHERE site_id = ?').bind(siteId).run();
+    } catch (e) {}
 
     await env.DB.prepare('DELETE FROM sites WHERE id = ?').bind(siteId).run();
 

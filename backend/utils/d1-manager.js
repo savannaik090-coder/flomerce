@@ -81,6 +81,10 @@ export async function runSchemaOnDB(env, databaseId, sqlStatements) {
 
     const data = await res.json();
     if (!data.success) {
+      const isAlterTable = sql.trim().toUpperCase().startsWith('ALTER TABLE');
+      if (isAlterTable) {
+        continue;
+      }
       console.error(`Schema SQL failed: ${sql.substring(0, 80)}...`, data.errors);
       throw new Error(`Failed to run schema SQL: ${JSON.stringify(data.errors)}`);
     }

@@ -134,9 +134,13 @@ async function getCategory(env, categoryId, siteId, subdomain) {
 
     const db = await resolveSiteDBById(env, siteId);
 
-    const category = await db.prepare(
-      `SELECT * FROM categories WHERE id = ?`
-    ).bind(categoryId).first();
+    let catQuery = 'SELECT * FROM categories WHERE id = ?';
+    const catBindings = [categoryId];
+    if (siteId) {
+      catQuery += ' AND site_id = ?';
+      catBindings.push(siteId);
+    }
+    const category = await db.prepare(catQuery).bind(...catBindings).first();
 
     if (!category) {
       return errorResponse('Category not found', 404, 'NOT_FOUND');

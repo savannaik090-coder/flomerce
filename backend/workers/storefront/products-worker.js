@@ -146,12 +146,16 @@ async function getProduct(env, productId, siteId, subdomain) {
 
     const db = await resolveSiteDBById(env, siteId);
 
-    const product = await db.prepare(
-      `SELECT p.*, c.name as category_name, c.slug as category_slug
+    let productQuery = `SELECT p.*, c.name as category_name, c.slug as category_slug
        FROM products p 
        LEFT JOIN categories c ON p.category_id = c.id
-       WHERE p.id = ?`
-    ).bind(productId).first();
+       WHERE p.id = ?`;
+    const productBindings = [productId];
+    if (siteId) {
+      productQuery += ' AND p.site_id = ?';
+      productBindings.push(siteId);
+    }
+    const product = await db.prepare(productQuery).bind(...productBindings).first();
 
     if (!product) {
       return errorResponse('Product not found', 404, 'NOT_FOUND');

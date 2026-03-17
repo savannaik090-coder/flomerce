@@ -14,78 +14,74 @@ const OVERAGE_RATES = {
   r2PerGB: 0.015,
 };
 
-export async function ensureUsageTables(env) {
+const ONE_MB = 1024 * 1024;
+
+export function estimateRowBytes(data) {
+  return Math.ceil(JSON.stringify(data).length * 1.2);
+}
+
+export async function trackD1Write(env, siteId, bytesAdded) {
+  if (!siteId || !bytesAdded || bytesAdded <= 0) return;
   try {
     await env.DB.prepare(`
-      CREATE TABLE IF NOT EXISTS site_usage (
-        site_id TEXT PRIMARY KEY,
-        d1_bytes_used INTEGER DEFAULT 0,
-        r2_bytes_used INTEGER DEFAULT 0,
-        last_updated TEXT DEFAULT (datetime('now')),
-        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
-      )
-    `).run();
-
-    await env.DB.prepare(`
-      CREATE TABLE IF NOT EXISTS site_media (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        site_id TEXT NOT NULL,
-        storage_key TEXT NOT NULL UNIQUE,
-        size_bytes INTEGER NOT NULL,
-        media_type TEXT DEFAULT 'image',
-        created_at TEXT DEFAULT (datetime('now')),
-        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
-      )
-    `).run();
-
-    await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_site_media_site ON site_media(site_id)').run();
-    await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_site_media_key ON site_media(storage_key)').run();
+      INSERT INTO site_usage (site_id, d1_bytes_used, r2_bytes_used, baseline_bytes, last_updated)
+      VALUES (?, ?, 0, 0, datetime('now'))
+      ON CONFLICT(site_id) DO UPDATE SET
+        d1_bytes_used = d1_bytes_used + ?,
+        last_updated = datetime('now')
+    `).bind(siteId, bytesAdded, bytesAdded).run();
   } catch (e) {
-    console.error('ensureUsageTables error (non-fatal):', e.message || e);
+    console.error('trackD1Write error (non-fatal):', e.message || e);
   }
 }
 
-export function estimateRowBytes(fields) {
-  let bytes = 100;
-  for (const val of Object.values(fields)) {
-    if (val === null || val === undefined) {
-      bytes += 1;
-    } else if (typeof val === 'number') {
-      bytes += 8;
-    } else if (typeof val === 'string') {
-      bytes += val.length * 2;
-    } else if (typeof val === 'boolean') {
-      bytes += 1;
-    } else {
-      bytes += JSON.stringify(val).length * 2;
-    }
+export async function trackD1Delete(env, siteId, bytesRemoved) {
+  if (!siteId || !bytesRemoved || bytesRemoved <= 0) return;
+  try {
+    await env.DB.prepare(`
+      INSERT INTO site_usage (site_id, d1_bytes_used, r2_bytes_used, baseline_bytes, last_updated)
+      VALUES (?, 0, 0, 0, datetime('now'))
+      ON CONFLICT(site_id) DO UPDATE SET
+        d1_bytes_used = MAX(0, d1_bytes_used - ?),
+        last_updated = datetime('now')
+    `).bind(siteId, bytesRemoved).run();
+  } catch (e) {
+    console.error('trackD1Delete error (non-fatal):', e.message || e);
   }
-  return bytes;
+}
+
+export async function trackD1Update(env, siteId, oldBytes, newBytes) {
+  if (!siteId) return;
+  const delta = newBytes - oldBytes;
+  if (delta === 0) return;
+  try {
+    await env.DB.prepare(`
+      INSERT INTO site_usage (site_id, d1_bytes_used, r2_bytes_used, baseline_bytes, last_updated)
+      VALUES (?, MAX(0, ?), 0, 0, datetime('now'))
+      ON CONFLICT(site_id) DO UPDATE SET
+        d1_bytes_used = MAX(0, d1_bytes_used + ?),
+        last_updated = datetime('now')
+    `).bind(siteId, Math.max(0, delta), delta).run();
+  } catch (e) {
+    console.error('trackD1Update error (non-fatal):', e.message || e);
+  }
 }
 
 export async function trackD1Usage(env, siteId, byteDelta) {
   if (!siteId || byteDelta === 0) return;
-  try {
-    await ensureUsageTables(env);
-    await env.DB.prepare(`
-      INSERT INTO site_usage (site_id, d1_bytes_used, r2_bytes_used, last_updated)
-      VALUES (?, MAX(0, ?), 0, datetime('now'))
-      ON CONFLICT(site_id) DO UPDATE SET
-        d1_bytes_used = MAX(0, d1_bytes_used + ?),
-        last_updated = datetime('now')
-    `).bind(siteId, Math.max(0, byteDelta), byteDelta).run();
-  } catch (e) {
-    console.error('trackD1Usage error (non-fatal):', e.message || e);
+  if (byteDelta > 0) {
+    await trackD1Write(env, siteId, byteDelta);
+  } else {
+    await trackD1Delete(env, siteId, Math.abs(byteDelta));
   }
 }
 
 export async function trackR2Usage(env, siteId, byteDelta) {
   if (!siteId || byteDelta === 0) return;
   try {
-    await ensureUsageTables(env);
     await env.DB.prepare(`
-      INSERT INTO site_usage (site_id, d1_bytes_used, r2_bytes_used, last_updated)
-      VALUES (?, 0, MAX(0, ?), datetime('now'))
+      INSERT INTO site_usage (site_id, d1_bytes_used, r2_bytes_used, baseline_bytes, last_updated)
+      VALUES (?, 0, MAX(0, ?), 0, datetime('now'))
       ON CONFLICT(site_id) DO UPDATE SET
         r2_bytes_used = MAX(0, r2_bytes_used + ?),
         last_updated = datetime('now')
@@ -98,7 +94,6 @@ export async function trackR2Usage(env, siteId, byteDelta) {
 export async function recordMediaFile(env, siteId, storageKey, sizeBytes, mediaType = 'image') {
   if (!siteId || !storageKey) return;
   try {
-    await ensureUsageTables(env);
     const result = await env.DB.prepare(`
       INSERT OR IGNORE INTO site_media (site_id, storage_key, size_bytes, media_type, created_at)
       VALUES (?, ?, ?, ?, datetime('now'))
@@ -114,7 +109,6 @@ export async function recordMediaFile(env, siteId, storageKey, sizeBytes, mediaT
 export async function removeMediaFile(env, siteId, storageKey) {
   if (!storageKey) return;
   try {
-    await ensureUsageTables(env);
     const record = await env.DB.prepare(
       'SELECT size_bytes, site_id FROM site_media WHERE storage_key = ?'
     ).bind(storageKey).first();
@@ -129,56 +123,45 @@ export async function removeMediaFile(env, siteId, storageKey) {
   }
 }
 
+export async function getShardCorrectionFactor(env, siteId) {
+  try {
+    const result = await env.DB.prepare(
+      `SELECT sh.correction_factor
+       FROM sites s
+       JOIN shards sh ON s.shard_id = sh.id
+       WHERE s.id = ?`
+    ).bind(siteId).first();
+    return result?.correction_factor || 1.0;
+  } catch (e) {
+    return 1.0;
+  }
+}
+
 export async function getSiteUsage(env, siteId) {
   try {
-    let d1BytesUsed = 0;
+    const usage = await env.DB.prepare(
+      'SELECT d1_bytes_used, r2_bytes_used, baseline_bytes, last_updated FROM site_usage WHERE site_id = ?'
+    ).bind(siteId).first();
 
-    try {
-      const site = await env.DB.prepare(
-        'SELECT d1_database_id FROM sites WHERE id = ?'
-      ).bind(siteId).first();
+    const rawD1 = usage?.d1_bytes_used || 0;
+    const baseline = usage?.baseline_bytes || 0;
+    const r2BytesUsed = usage?.r2_bytes_used || 0;
 
-      if (site && site.d1_database_id) {
-        const { getDatabaseSize } = await import('./d1-manager.js');
-        d1BytesUsed = await getDatabaseSize(env, site.d1_database_id);
-      }
-    } catch (d1Err) {
-      console.error('getDatabaseSize error (falling back to estimate):', d1Err.message || d1Err);
-    }
+    const correctionFactor = await getShardCorrectionFactor(env, siteId);
 
-    if (d1BytesUsed === 0) {
-      try {
-        await ensureUsageTables(env);
-        const usage = await env.DB.prepare(
-          'SELECT d1_bytes_used FROM site_usage WHERE site_id = ?'
-        ).bind(siteId).first();
-        d1BytesUsed = usage?.d1_bytes_used || 0;
-      } catch (_) {}
-    }
-
-    let r2BytesUsed = 0;
-    try {
-      await ensureUsageTables(env);
-      const usage = await env.DB.prepare(
-        'SELECT r2_bytes_used, last_updated FROM site_usage WHERE site_id = ?'
-      ).bind(siteId).first();
-      r2BytesUsed = usage?.r2_bytes_used || 0;
-
-      return {
-        d1BytesUsed,
-        r2BytesUsed,
-        lastUpdated: usage?.last_updated || new Date().toISOString(),
-      };
-    } catch (_) {}
+    const displayD1 = Math.ceil((baseline + rawD1) * correctionFactor);
 
     return {
-      d1BytesUsed,
-      r2BytesUsed: 0,
-      lastUpdated: new Date().toISOString(),
+      d1BytesUsed: displayD1,
+      d1BytesRaw: rawD1,
+      baselineBytes: baseline,
+      correctionFactor,
+      r2BytesUsed,
+      lastUpdated: usage?.last_updated || new Date().toISOString(),
     };
   } catch (e) {
     console.error('getSiteUsage error:', e.message || e);
-    return { d1BytesUsed: 0, r2BytesUsed: 0, lastUpdated: null };
+    return { d1BytesUsed: 0, d1BytesRaw: 0, baselineBytes: 0, correctionFactor: 1.0, r2BytesUsed: 0, lastUpdated: null };
   }
 }
 
@@ -237,45 +220,45 @@ export async function checkUsageLimit(env, siteId, resourceType = 'd1', addition
   }
 }
 
-export async function reconcileSiteUsage(env, siteId) {
+export async function reconcileShard(env, shardId) {
   try {
-    await ensureUsageTables(env);
+    const shard = await env.DB.prepare(
+      'SELECT id, database_id, binding_name FROM shards WHERE id = ?'
+    ).bind(shardId).first();
 
-    let totalD1Bytes = 0;
+    if (!shard) return null;
 
-    try {
-      const site = await env.DB.prepare(
-        'SELECT d1_database_id FROM sites WHERE id = ?'
-      ).bind(siteId).first();
+    const { getDatabaseSize } = await import('./d1-manager.js');
+    const actualSize = await getDatabaseSize(env, shard.database_id);
 
-      if (site && site.d1_database_id) {
-        const { getDatabaseSize } = await import('./d1-manager.js');
-        totalD1Bytes = await getDatabaseSize(env, site.d1_database_id);
-      }
-    } catch (d1Err) {
-      console.error('getDatabaseSize for reconcile failed:', d1Err.message || d1Err);
+    const sitesResult = await env.DB.prepare(
+      'SELECT site_id, d1_bytes_used, baseline_bytes FROM site_usage WHERE site_id IN (SELECT id FROM sites WHERE shard_id = ?)'
+    ).bind(shardId).all();
+
+    let totalEstimated = 0;
+    for (const s of (sitesResult.results || [])) {
+      totalEstimated += (s.d1_bytes_used || 0) + (s.baseline_bytes || 0);
     }
 
-    let totalR2Bytes = 0;
-    try {
-      const mediaRows = await env.DB.prepare(
-        'SELECT SUM(size_bytes) as total FROM site_media WHERE site_id = ?'
-      ).bind(siteId).first();
-      totalR2Bytes = mediaRows?.total || 0;
-    } catch (_) {}
+    let correctionFactor = 1.0;
+    if (totalEstimated >= ONE_MB) {
+      correctionFactor = actualSize / totalEstimated;
+      correctionFactor = Math.min(Math.max(correctionFactor, 0.8), 1.5);
+    }
 
-    await env.DB.prepare(`
-      INSERT INTO site_usage (site_id, d1_bytes_used, r2_bytes_used, last_updated)
-      VALUES (?, ?, ?, datetime('now'))
-      ON CONFLICT(site_id) DO UPDATE SET
-        d1_bytes_used = ?,
-        r2_bytes_used = ?,
-        last_updated = datetime('now')
-    `).bind(siteId, totalD1Bytes, totalR2Bytes, totalD1Bytes, totalR2Bytes).run();
+    await env.DB.prepare(
+      `UPDATE shards SET correction_factor = ?, last_reconciled_at = datetime('now') WHERE id = ?`
+    ).bind(correctionFactor, shardId).run();
 
-    return { d1BytesUsed: totalD1Bytes, r2BytesUsed: totalR2Bytes };
+    return {
+      shardId,
+      actualSizeBytes: actualSize,
+      totalEstimatedBytes: totalEstimated,
+      correctionFactor,
+      siteCount: (sitesResult.results || []).length,
+    };
   } catch (e) {
-    console.error('reconcileSiteUsage error:', e.message || e);
+    console.error('reconcileShard error:', e.message || e);
     return null;
   }
 }
@@ -317,28 +300,25 @@ export async function handleUsageAPI(request, env, path) {
       return errorResponse('Site not found or unauthorized', 404);
     }
 
-    let usage = await getSiteUsage(env, siteId);
+    const usage = await getSiteUsage(env, siteId);
 
-    if (usage.d1BytesUsed === 0 && usage.r2BytesUsed === 0 && !usage.lastUpdated) {
-      const reconciled = await reconcileSiteUsage(env, siteId);
-      if (reconciled) {
-        usage = { d1BytesUsed: reconciled.d1BytesUsed, r2BytesUsed: reconciled.r2BytesUsed, lastUpdated: new Date().toISOString() };
-      }
-    } else if (usage.r2BytesUsed === 0) {
-      const mediaTotal = await env.DB.prepare(
-        'SELECT SUM(size_bytes) as total FROM site_media WHERE site_id = ?'
-      ).bind(siteId).first();
-      const r2FromMedia = mediaTotal?.total || 0;
-      if (r2FromMedia > 0) {
-        await env.DB.prepare(`
-          INSERT INTO site_usage (site_id, d1_bytes_used, r2_bytes_used, last_updated)
-          VALUES (?, ?, ?, datetime('now'))
-          ON CONFLICT(site_id) DO UPDATE SET
-            r2_bytes_used = ?,
-            last_updated = datetime('now')
-        `).bind(siteId, usage.d1BytesUsed, r2FromMedia, r2FromMedia).run();
-        usage = { ...usage, r2BytesUsed: r2FromMedia, lastUpdated: new Date().toISOString() };
-      }
+    if (usage.r2BytesUsed === 0) {
+      try {
+        const mediaTotal = await env.DB.prepare(
+          'SELECT SUM(size_bytes) as total FROM site_media WHERE site_id = ?'
+        ).bind(siteId).first();
+        const r2FromMedia = mediaTotal?.total || 0;
+        if (r2FromMedia > 0) {
+          await env.DB.prepare(`
+            INSERT INTO site_usage (site_id, d1_bytes_used, r2_bytes_used, baseline_bytes, last_updated)
+            VALUES (?, 0, ?, 0, datetime('now'))
+            ON CONFLICT(site_id) DO UPDATE SET
+              r2_bytes_used = ?,
+              last_updated = datetime('now')
+          `).bind(siteId, r2FromMedia, r2FromMedia).run();
+          usage.r2BytesUsed = r2FromMedia;
+        }
+      } catch (_) {}
     }
 
     const planKey = getSitePlan(site);
@@ -365,6 +345,9 @@ export async function handleUsageAPI(request, env, path) {
       plan: planKey,
       d1: {
         used: usage.d1BytesUsed,
+        raw: usage.d1BytesRaw,
+        baseline: usage.baselineBytes,
+        correctionFactor: usage.correctionFactor,
         limit: limits.d1Bytes,
         percentage: limits.d1Bytes > 0 ? Math.min(100, (usage.d1BytesUsed / limits.d1Bytes) * 100) : 0,
         overageBytes: d1OverageBytes,
@@ -432,21 +415,29 @@ async function handleOverageToggle(request, env, user, siteId) {
 async function handleReconcile(env, user, siteId) {
   try {
     const site = await env.DB.prepare(
-      'SELECT id FROM sites WHERE id = ? AND user_id = ?'
+      'SELECT id, shard_id FROM sites WHERE id = ? AND user_id = ?'
     ).bind(siteId, user.id).first();
 
     if (!site) {
       return errorResponse('Site not found or unauthorized', 404);
     }
 
-    const reconciled = await reconcileSiteUsage(env, siteId);
+    if (!site.shard_id) {
+      return errorResponse('Site is not on a shard', 400);
+    }
+
+    const reconciled = await reconcileShard(env, site.shard_id);
     if (!reconciled) {
       return errorResponse('Failed to reconcile usage', 500);
     }
 
+    const usage = await getSiteUsage(env, siteId);
+
     return successResponse({
-      d1BytesUsed: reconciled.d1BytesUsed,
-      r2BytesUsed: reconciled.r2BytesUsed,
+      d1BytesUsed: usage.d1BytesUsed,
+      r2BytesUsed: usage.r2BytesUsed,
+      correctionFactor: reconciled.correctionFactor,
+      shardActualSize: reconciled.actualSizeBytes,
     }, 'Usage reconciled successfully');
   } catch (error) {
     console.error('Reconcile error:', error);

@@ -123,11 +123,18 @@ async function getOrder(env, user, orderId, request) {
     let query = 'SELECT * FROM orders WHERE (id = ? OR order_number = ?)';
     const bindings = [orderId, orderId];
 
+    if (siteId) {
+      query += ' AND site_id = ?';
+      bindings.push(siteId);
+    }
+
     const authHeader = request ? request.headers.get('Authorization') : null;
     if (authHeader && authHeader.startsWith('SiteAdmin ')) {
-      const orderCheck = await db.prepare(
-        'SELECT site_id FROM orders WHERE id = ? OR order_number = ?'
-      ).bind(orderId, orderId).first();
+      const orderCheckQuery = siteId
+        ? 'SELECT site_id FROM orders WHERE (id = ? OR order_number = ?) AND site_id = ?'
+        : 'SELECT site_id FROM orders WHERE id = ? OR order_number = ?';
+      const orderCheckBindings = siteId ? [orderId, orderId, siteId] : [orderId, orderId];
+      const orderCheck = await db.prepare(orderCheckQuery).bind(...orderCheckBindings).first();
       if (orderCheck) {
         const { validateSiteAdmin } = await import('./site-admin-worker.js');
         const admin = await validateSiteAdmin(request, env, orderCheck.site_id);
@@ -670,9 +677,14 @@ async function getGuestOrder(env, orderNumber, request) {
     const siteId = url ? url.searchParams.get('siteId') : null;
     const db = await resolveSiteDBById(env, siteId);
 
-    const order = await db.prepare(
-      'SELECT * FROM guest_orders WHERE order_number = ? LIMIT 1'
-    ).bind(orderNumber).first();
+    let guestQuery = 'SELECT * FROM guest_orders WHERE order_number = ?';
+    const guestBindings = [orderNumber];
+    if (siteId) {
+      guestQuery += ' AND site_id = ?';
+      guestBindings.push(siteId);
+    }
+    guestQuery += ' LIMIT 1';
+    const order = await db.prepare(guestQuery).bind(...guestBindings).first();
 
     if (!order) {
       return errorResponse('Order not found', 404);
@@ -750,14 +762,22 @@ async function trackOrder(env, orderNumber, request) {
     const siteId = url ? url.searchParams.get('siteId') : null;
     const db = await resolveSiteDBById(env, siteId);
 
-    let order = await db.prepare(
-      'SELECT order_number, status, tracking_number, carrier, shipped_at, delivered_at, created_at FROM orders WHERE order_number = ?'
-    ).bind(orderNumber).first();
+    let trackQuery = 'SELECT order_number, status, tracking_number, carrier, shipped_at, delivered_at, created_at FROM orders WHERE order_number = ?';
+    const trackBindings = [orderNumber];
+    if (siteId) {
+      trackQuery += ' AND site_id = ?';
+      trackBindings.push(siteId);
+    }
+    let order = await db.prepare(trackQuery).bind(...trackBindings).first();
 
     if (!order) {
-      order = await db.prepare(
-        'SELECT order_number, status, tracking_number, carrier, created_at FROM guest_orders WHERE order_number = ?'
-      ).bind(orderNumber).first();
+      let guestTrackQuery = 'SELECT order_number, status, tracking_number, carrier, created_at FROM guest_orders WHERE order_number = ?';
+      const guestTrackBindings = [orderNumber];
+      if (siteId) {
+        guestTrackQuery += ' AND site_id = ?';
+        guestTrackBindings.push(siteId);
+      }
+      order = await db.prepare(guestTrackQuery).bind(...guestTrackBindings).first();
     }
 
     if (!order) {
