@@ -184,13 +184,14 @@ async function createSite(request, env, user) {
     siteId = generateId();
 
     await env.DB.prepare(
-      `INSERT INTO sites (id, user_id, subdomain, brand_name, template_id, shard_id, is_active, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, 1, datetime('now'), datetime('now'))`
+      `INSERT INTO sites (id, user_id, subdomain, brand_name, category, template_id, shard_id, is_active, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 1, datetime('now'), datetime('now'))`
     ).bind(
       siteId,
       user.id,
       finalSubdomain,
       sanitizeInput(brandName),
+      category,
       templateId || 'storefront',
       activeShard.id
     ).run();
