@@ -530,6 +530,17 @@ async function handleGoogleLogin(request, env) {
       return errorResponse('Invalid client ID', 401);
     }
 
+    const validIssuers = ['accounts.google.com', 'https://accounts.google.com'];
+    if (!validIssuers.includes(payload.iss)) {
+      console.error('Invalid issuer:', payload.iss);
+      return errorResponse('Invalid token issuer', 401);
+    }
+
+    if (!payload.email || payload.email_verified !== 'true') {
+      console.error('Google email not verified or missing');
+      return errorResponse('Google account email is not verified', 401);
+    }
+
     const email = payload.email.toLowerCase();
     let user = await env.DB.prepare('SELECT id, email, name, password_hash, email_verified FROM users WHERE email = ?').bind(email).first();
 

@@ -227,6 +227,8 @@ async function handleSiteInfo(request, env) {
 
     const { razorpayKeySecret, adminVerificationCode, ...publicSettings } = settings;
 
+    const googleClientId = env.GOOGLE_CLIENT_ID || null;
+
     let pageSEOResult = [];
     try {
       const siteDB = await resolveSiteDBById(env, site.id);
@@ -253,6 +255,7 @@ async function handleSiteInfo(request, env) {
         settings: publicSettings,
         categories: categoriesResult,
         pageSEO,
+        googleClientId,
       },
     });
   } catch (error) {

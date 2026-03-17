@@ -21,6 +21,8 @@ export async function handleCustomerAuth(request, env, path) {
       return handleSignup(request, env);
     case 'login':
       return handleLogin(request, env);
+    case 'google-login':
+      return handleCustomerGoogleLogin(request, env);
     case 'logout':
       return handleLogout(request, env);
     case 'me':
@@ -383,6 +385,10 @@ async function handleLogin(request, env) {
       return errorResponse('Invalid email or password', 401, 'INVALID_CREDENTIALS');
     }
 
+    if (!customer.password_hash) {
+      return errorResponse('This account uses Google sign-in. Please log in with Google.', 401, 'USE_GOOGLE_LOGIN');
+    }
+
     const isValid = await verifyPassword(password, customer.password_hash);
     if (!isValid) {
       return errorResponse('Invalid email or password', 401, 'INVALID_CREDENTIALS');
@@ -417,6 +423,121 @@ async function handleLogin(request, env) {
   } catch (error) {
     console.error('Customer login error:', error);
     return errorResponse('Login failed', 500);
+  }
+}
+
+async function handleCustomerGoogleLogin(request, env) {
+  if (request.method !== 'POST') return errorResponse('Method not allowed', 405);
+
+  try {
+    const { siteId, credential } = await request.json();
+    if (!siteId || !credential) return errorResponse('Site ID and credential are required', 400);
+
+    const clientId = env.GOOGLE_CLIENT_ID;
+    if (!clientId) {
+      console.error('GOOGLE_CLIENT_ID not set in environment');
+      return errorResponse('Google Sign-In is not configured', 500);
+    }
+
+    const googleRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${credential}`);
+    const payload = await googleRes.json();
+
+    if (!googleRes.ok) {
+      console.error('Google token validation failed:', payload);
+      return errorResponse(payload.error_description || 'Invalid Google token', 401);
+    }
+
+    if (payload.aud !== clientId) {
+      console.error('Audience mismatch. Expected:', clientId, 'Got:', payload.aud);
+      return errorResponse('Invalid client ID', 401);
+    }
+
+    const validIssuers = ['accounts.google.com', 'https://accounts.google.com'];
+    if (!validIssuers.includes(payload.iss)) {
+      console.error('Invalid issuer:', payload.iss);
+      return errorResponse('Invalid token issuer', 401);
+    }
+
+    if (!payload.email || payload.email_verified !== 'true') {
+      console.error('Google email not verified or missing');
+      return errorResponse('Google account email is not verified', 401);
+    }
+
+    const site = await env.DB.prepare(
+      'SELECT id, brand_name, subdomain FROM sites WHERE id = ? AND is_active = 1'
+    ).bind(siteId).first();
+    if (!site) return errorResponse('Store not found', 404);
+
+    const db = await resolveSiteDBById(env, siteId);
+    const email = payload.email.toLowerCase();
+    const googleName = payload.name || email.split('@')[0];
+
+    let customer = await db.prepare(
+      'SELECT id, email, name, phone, email_verified, password_hash FROM site_customers WHERE site_id = ? AND email = ?'
+    ).bind(siteId, email).first();
+
+    if (!customer) {
+      if (await checkMigrationLock(env, siteId)) {
+        return errorResponse('Site is currently being migrated. Please try again shortly.', 423);
+      }
+
+      const { checkUsageLimit } = await import('../../utils/usage-tracker.js');
+      const customerId = generateId();
+      const rowData = { id: customerId, site_id: siteId, email, name: googleName };
+      const rowBytes = estimateRowBytes(rowData);
+
+      const usageCheck = await checkUsageLimit(env, siteId, 'd1', rowBytes);
+      if (!usageCheck.allowed) {
+        return errorResponse(usageCheck.reason, 403, 'STORAGE_LIMIT');
+      }
+
+      await db.prepare(
+        `INSERT INTO site_customers (id, site_id, email, password_hash, name, email_verified, row_size_bytes, created_at)
+         VALUES (?, ?, ?, '', ?, 1, ?, datetime('now'))`
+      ).bind(customerId, siteId, email, sanitizeInput(googleName), rowBytes).run();
+      await trackD1Write(env, siteId, rowBytes);
+
+      customer = { id: customerId, email, name: googleName, phone: null, email_verified: 1 };
+    } else {
+      if (!customer.email_verified) {
+        const oldBytes = customer.row_size_bytes || 0;
+        await db.prepare(
+          'UPDATE site_customers SET email_verified = 1, updated_at = datetime(\'now\') WHERE id = ?'
+        ).bind(customer.id).run();
+        const updatedCust = await db.prepare('SELECT * FROM site_customers WHERE id = ?').bind(customer.id).first();
+        if (updatedCust) {
+          const newBytes = estimateRowBytes(updatedCust);
+          await db.prepare('UPDATE site_customers SET row_size_bytes = ? WHERE id = ?').bind(newBytes, customer.id).run();
+          await trackD1Update(env, siteId, oldBytes, newBytes);
+        }
+        customer.email_verified = 1;
+      }
+    }
+
+    const token = generateToken(32);
+    const expiresAt = getExpiryDate(24 * 7);
+    const sessionId = generateId();
+    const sessData = { id: sessionId, customer_id: customer.id, site_id: siteId, token, expires_at: expiresAt };
+    const sessBytes = estimateRowBytes(sessData);
+
+    await db.prepare(
+      `INSERT INTO site_customer_sessions (id, customer_id, site_id, token, expires_at, row_size_bytes, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`
+    ).bind(sessionId, customer.id, siteId, token, expiresAt, sessBytes).run();
+    await trackD1Write(env, siteId, sessBytes);
+
+    return successResponse({
+      customer: {
+        id: customer.id,
+        email: customer.email,
+        name: customer.name,
+        phone: customer.phone || null,
+      },
+      token,
+    }, 'Google login successful');
+  } catch (error) {
+    console.error('Customer Google login error:', error);
+    return errorResponse(error.message || 'Google login failed', 500);
   }
 }
 

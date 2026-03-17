@@ -129,6 +129,7 @@ export function SiteProvider({ children }) {
       };
 
       config.pageSEO = data.pageSEO || {};
+      config.googleClientId = data.googleClientId || null;
 
       setSiteConfig(config);
       setPreviewSettings(null);

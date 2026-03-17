@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { SiteContext } from '../context/SiteContext.jsx';
 import { AuthContext } from '../context/AuthContext.jsx';
@@ -16,12 +16,69 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [showVerificationPopup, setShowVerificationPopup] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const googleBtnRef = useRef(null);
+  const googleInitialized = useRef(false);
 
   useEffect(() => {
     if (isAuthenticated) {
       navigate('/', { replace: true });
     }
   }, [isAuthenticated, navigate]);
+
+  const handleGoogleCredential = useCallback(async (response) => {
+    if (!response.credential) return;
+    setGoogleLoading(true);
+    setError('');
+    try {
+      const result = await authService.googleLogin(siteConfig?.id, response.credential);
+      const userData = result.customer || result.data;
+      const token = result.token;
+      login(userData, token);
+      navigate('/');
+    } catch (err) {
+      setError(err.message || 'Google sign-up failed. Please try again.');
+    } finally {
+      setGoogleLoading(false);
+    }
+  }, [siteConfig, login, navigate]);
+
+  useEffect(() => {
+    const clientId = siteConfig?.googleClientId;
+    if (!clientId || googleInitialized.current) return;
+
+    function initGoogle() {
+      if (!window.google?.accounts?.id || !googleBtnRef.current) return;
+      window.google.accounts.id.initialize({
+        client_id: clientId,
+        callback: handleGoogleCredential,
+        auto_select: false,
+      });
+      window.google.accounts.id.renderButton(googleBtnRef.current, {
+        type: 'standard',
+        theme: 'outline',
+        size: 'large',
+        text: 'signup_with',
+        width: googleBtnRef.current.offsetWidth || 340,
+      });
+      googleInitialized.current = true;
+    }
+
+    if (window.google?.accounts?.id) {
+      initGoogle();
+      return;
+    }
+
+    if (!document.getElementById('google-gsi-script')) {
+      const script = document.createElement('script');
+      script.id = 'google-gsi-script';
+      script.src = 'https://accounts.google.com/gsi/client';
+      script.async = true;
+      script.defer = true;
+      script.onload = initGoogle;
+      document.head.appendChild(script);
+    }
+  }, [siteConfig?.googleClientId, handleGoogleCredential]);
 
   const validate = () => {
     const errs = {};
@@ -65,10 +122,6 @@ export default function SignupPage() {
     navigate('/login');
   };
 
-  const handleGoogleSignup = () => {
-    setError('Google Sign-Up is not yet configured for this store.');
-  };
-
   return (
     <div style={{ minHeight: '80vh' }}>
       <section style={{ maxWidth: 600, margin: '40px auto 60px', backgroundColor: '#fff', padding: 30, borderRadius: 5, boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
@@ -105,18 +158,24 @@ export default function SignupPage() {
           </button>
         </form>
 
-        <div style={{ display: 'flex', alignItems: 'center', margin: '20px 0', color: '#777', fontFamily: "'Lato', sans-serif" }}>
-          <div style={{ flex: 1, borderBottom: '1px solid #ddd' }} />
-          <span style={{ padding: '0 10px' }}>Or continue with</span>
-          <div style={{ flex: 1, borderBottom: '1px solid #ddd' }} />
-        </div>
+        {siteConfig?.googleClientId && (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', margin: '20px 0', color: '#777', fontFamily: "'Lato', sans-serif" }}>
+              <div style={{ flex: 1, borderBottom: '1px solid #ddd' }} />
+              <span style={{ padding: '0 10px' }}>Or continue with</span>
+              <div style={{ flex: 1, borderBottom: '1px solid #ddd' }} />
+            </div>
 
-        <div style={{ marginBottom: 20 }}>
-          <button onClick={handleGoogleSignup} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', padding: 12, backgroundColor: '#fff', border: '1px solid #ddd', borderRadius: 4, fontFamily: "'Lato', sans-serif", fontSize: 16, color: '#333', cursor: 'pointer' }}>
-            <img src="https://cdn-icons-png.flaticon.com/128/300/300221.png" alt="Google" style={{ width: 20, marginRight: 10 }} />
-            Sign up with Google
-          </button>
-        </div>
+            <div style={{ marginBottom: 20, display: 'flex', justifyContent: 'center', minHeight: 44, position: 'relative' }}>
+              {googleLoading && (
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.8)', zIndex: 1, borderRadius: 4 }}>
+                  <span style={{ fontFamily: "'Lato', sans-serif", fontSize: 14, color: '#666' }}>Signing in...</span>
+                </div>
+              )}
+              <div ref={googleBtnRef} style={{ width: '100%' }} />
+            </div>
+          </>
+        )}
 
         <div style={{ textAlign: 'center', marginTop: 20, fontFamily: "'Lato', sans-serif", fontSize: 14, color: '#777' }}>
           Already have an account? <Link to="/login" style={{ color: '#c8a97e', textDecoration: 'none' }}>Log in</Link>

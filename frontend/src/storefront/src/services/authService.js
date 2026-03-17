@@ -93,3 +93,14 @@ export async function resendVerification(email, siteId) {
     body: JSON.stringify({ email, siteId }),
   });
 }
+
+export async function googleLogin(siteId, credential) {
+  const data = await apiRequest('/api/customer-auth/google-login', {
+    method: 'POST',
+    body: JSON.stringify({ siteId, credential }),
+  });
+  if (data.token) {
+    setAuthToken(data.token);
+  }
+  return data;
+}
