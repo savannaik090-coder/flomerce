@@ -27,7 +27,8 @@ export async function handleCart(request, env, path) {
     return errorResponse('Site ID is required');
   }
 
-  const user = await validateAnyAuth(request, env);
+  const db = await resolveSiteDBById(env, siteId);
+  const user = await validateAnyAuth(request, env, { siteId, db });
   const sessionId = request.headers.get('X-Session-ID') || url.searchParams.get('sessionId');
 
   if (!user && !sessionId) {
@@ -49,19 +50,20 @@ export async function handleCart(request, env, path) {
 }
 
 async function handleClearCart(request, env, url) {
-  const user = await validateAnyAuth(request, env);
   const siteId = url.searchParams.get('siteId');
   const sessionId = url.searchParams.get('sessionId');
 
   if (!siteId) return errorResponse('Site ID is required');
+
+  const db = await resolveSiteDBById(env, siteId);
+  const user = await validateAnyAuth(request, env, { siteId, db });
+
   if (!user && !sessionId) return errorResponse('Authentication or session required');
 
   try {
     if (await checkMigrationLock(env, siteId)) {
       return errorResponse('Site is currently being migrated. Please try again shortly.', 423);
     }
-
-    const db = await resolveSiteDBById(env, siteId);
 
     let cart = null;
     if (user) {
@@ -94,13 +96,21 @@ async function handleClearCart(request, env, url) {
 }
 
 async function handleMergeCarts(request, env) {
-  const user = await validateAnyAuth(request, env);
+  const url = new URL(request.url);
+  const urlSiteId = url.searchParams.get('siteId');
+
+  const clonedRequest = request.clone();
+  const body = await clonedRequest.json();
+  const siteId = urlSiteId || body.siteId;
+  const sessionId = body.sessionId;
+
+  if (!siteId || !sessionId) return errorResponse('siteId and sessionId are required');
+
+  const db = await resolveSiteDBById(env, siteId);
+  const user = await validateAnyAuth(request, env, { siteId, db });
   if (!user) return errorResponse('Authentication required', 401);
 
   try {
-    const { siteId, sessionId } = await request.json();
-    if (!siteId || !sessionId) return errorResponse('siteId and sessionId are required');
-
     await mergeCarts(env, siteId, user.id, sessionId);
     return successResponse(null, 'Carts merged');
   } catch (error) {

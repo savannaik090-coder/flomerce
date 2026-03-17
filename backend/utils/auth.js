@@ -190,17 +190,16 @@ export async function requireAuth(request, env) {
   return user;
 }
 
-export async function validateAnyAuth(request, env) {
+export async function validateAnyAuth(request, env, { siteId: providedSiteId, db: providedDb } = {}) {
   const authHeader = request.headers.get('Authorization');
 
   if (authHeader && authHeader.startsWith('SiteCustomer ')) {
     const token = authHeader.substring(13);
     try {
-      const url = new URL(request.url);
-      const siteId = url.searchParams.get('siteId');
+      const siteId = providedSiteId || new URL(request.url).searchParams.get('siteId');
 
       if (siteId) {
-        const db = await resolveSiteDBById(env, siteId);
+        const db = providedDb || await resolveSiteDBById(env, siteId);
         const session = await db.prepare(
           `SELECT cs.customer_id, cs.site_id FROM site_customer_sessions cs
            WHERE cs.token = ? AND cs.site_id = ? AND cs.expires_at > datetime('now')`

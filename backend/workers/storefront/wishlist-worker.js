@@ -9,52 +9,53 @@ export async function handleWishlist(request, env, path) {
 
   const pathParts = path.split('/').filter(Boolean);
   const subAction = pathParts[2];
-
-  if (subAction === 'check') {
-    return checkWishlist(request, env);
-  }
-
-  const user = await validateAnyAuth(request, env);
-  if (!user) {
-    return errorResponse('Unauthorized', 401, 'UNAUTHORIZED');
-  }
-
-  const method = request.method;
   const url = new URL(request.url);
   const siteId = url.searchParams.get('siteId');
+
+  if (subAction === 'check') {
+    return checkWishlist(request, env, siteId);
+  }
 
   if (!siteId) {
     return errorResponse('Site ID is required');
   }
 
+  const db = await resolveSiteDBById(env, siteId);
+  const user = await validateAnyAuth(request, env, { siteId, db });
+  if (!user) {
+    return errorResponse('Unauthorized', 401, 'UNAUTHORIZED');
+  }
+
+  const method = request.method;
+
   switch (method) {
     case 'GET':
-      return getWishlist(env, user, siteId);
+      return getWishlist(env, user, siteId, db);
     case 'POST':
-      return addToWishlist(request, env, user, siteId);
+      return addToWishlist(request, env, user, siteId, db);
     case 'DELETE':
-      return removeFromWishlist(request, env, user, siteId);
+      return removeFromWishlist(request, env, user, siteId, db);
     default:
       return errorResponse('Method not allowed', 405);
   }
 }
 
-async function checkWishlist(request, env) {
-  const user = await validateAnyAuth(request, env);
-  if (!user) {
-    return successResponse({ inWishlist: false });
-  }
-
+async function checkWishlist(request, env, siteId) {
   const url = new URL(request.url);
-  const siteId = url.searchParams.get('siteId');
+  if (!siteId) siteId = url.searchParams.get('siteId');
   const productId = url.searchParams.get('productId');
 
   if (!siteId || !productId) {
     return errorResponse('siteId and productId are required');
   }
 
+  const db = await resolveSiteDBById(env, siteId);
+  const user = await validateAnyAuth(request, env, { siteId, db });
+  if (!user) {
+    return successResponse({ inWishlist: false });
+  }
+
   try {
-    const db = await resolveSiteDBById(env, siteId);
     const existing = await db.prepare(
       'SELECT id FROM wishlists WHERE user_id = ? AND product_id = ? AND site_id = ?'
     ).bind(user.id, productId, siteId).first();
@@ -66,9 +67,8 @@ async function checkWishlist(request, env) {
   }
 }
 
-async function getWishlist(env, user, siteId) {
+async function getWishlist(env, user, siteId, db) {
   try {
-    const db = await resolveSiteDBById(env, siteId);
     const wishlistItems = await db.prepare(
       `SELECT w.id, w.product_id, w.created_at,
               p.name, p.price, p.compare_price, p.thumbnail_url, p.images, p.stock, p.is_active
@@ -109,7 +109,7 @@ async function getWishlist(env, user, siteId) {
   }
 }
 
-async function addToWishlist(request, env, user, siteId) {
+async function addToWishlist(request, env, user, siteId, db) {
   try {
     if (await checkMigrationLock(env, siteId)) {
       return errorResponse('Site is currently being migrated. Please try again shortly.', 423);
@@ -120,8 +120,6 @@ async function addToWishlist(request, env, user, siteId) {
     if (!productId) {
       return errorResponse('Product ID is required');
     }
-
-    const db = await resolveSiteDBById(env, siteId);
 
     const product = await db.prepare(
       'SELECT id FROM products WHERE id = ? AND site_id = ? AND is_active = 1'
@@ -157,7 +155,7 @@ async function addToWishlist(request, env, user, siteId) {
   }
 }
 
-async function removeFromWishlist(request, env, user, siteId) {
+async function removeFromWishlist(request, env, user, siteId, db) {
   try {
     if (await checkMigrationLock(env, siteId)) {
       return errorResponse('Site is currently being migrated. Please try again shortly.', 423);
@@ -169,8 +167,6 @@ async function removeFromWishlist(request, env, user, siteId) {
     if (!productId) {
       return errorResponse('Product ID is required');
     }
-
-    const db = await resolveSiteDBById(env, siteId);
 
     const existing = await db.prepare(
       'SELECT id, row_size_bytes FROM wishlists WHERE user_id = ? AND product_id = ? AND site_id = ?'

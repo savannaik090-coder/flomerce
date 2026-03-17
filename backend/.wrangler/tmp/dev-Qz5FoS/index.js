@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-LtVO0e/checked-fetch.js
+// .wrangler/tmp/bundle-4Ldpnx/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-LtVO0e/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-4Ldpnx/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-LtVO0e/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-4Ldpnx/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-LtVO0e/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-4Ldpnx/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -402,15 +402,14 @@ async function validateAuth(request, env) {
   ).bind(payload.userId).first();
   return user;
 }
-async function validateAnyAuth(request, env) {
+async function validateAnyAuth(request, env, { siteId: providedSiteId, db: providedDb } = {}) {
   const authHeader = request.headers.get("Authorization");
   if (authHeader && authHeader.startsWith("SiteCustomer ")) {
     const token = authHeader.substring(13);
     try {
-      const url = new URL(request.url);
-      const siteId = url.searchParams.get("siteId");
+      const siteId = providedSiteId || new URL(request.url).searchParams.get("siteId");
       if (siteId) {
-        const db = await resolveSiteDBById(env, siteId);
+        const db = providedDb || await resolveSiteDBById(env, siteId);
         const session = await db.prepare(
           `SELECT cs.customer_id, cs.site_id FROM site_customer_sessions cs
            WHERE cs.token = ? AND cs.site_id = ? AND cs.expires_at > datetime('now')`
@@ -1760,12 +1759,12 @@ var init_site_admin_worker = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-LtVO0e/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-4Ldpnx/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-LtVO0e/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-4Ldpnx/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -4186,13 +4185,19 @@ async function handleOrders(request, env, path) {
   if (action === "track") {
     return trackOrder(env, orderId, request);
   }
-  const user = await validateAnyAuth(request, env);
+  const url = new URL(request.url);
+  const siteId = url.searchParams.get("siteId");
+  let db = null;
+  if (siteId) {
+    db = await resolveSiteDBById(env, siteId);
+  }
+  const user = await validateAnyAuth(request, env, { siteId, db });
   switch (method) {
     case "GET":
       if (orderId) {
-        return getOrder(env, user, orderId, request);
+        return getOrder(env, user, orderId, request, db);
       }
-      return getOrders(request, env, user);
+      return getOrders(request, env, user, db);
     case "POST":
       return createOrder(request, env, user);
     case "PUT":
@@ -4202,14 +4207,14 @@ async function handleOrders(request, env, path) {
   }
 }
 __name(handleOrders, "handleOrders");
-async function getOrders(request, env, user) {
+async function getOrders(request, env, user, preResolvedDb) {
   try {
     const url = new URL(request.url);
     const siteId = url.searchParams.get("siteId");
     const status = url.searchParams.get("status");
     const limit = parseInt(url.searchParams.get("limit")) || 50;
     const offset = parseInt(url.searchParams.get("offset")) || 0;
-    const db = await resolveSiteDBById(env, siteId);
+    const db = preResolvedDb || await resolveSiteDBById(env, siteId);
     let query = "SELECT * FROM orders WHERE 1=1";
     const bindings = [];
     const authHeader = request.headers.get("Authorization");
@@ -4266,11 +4271,11 @@ async function getOrders(request, env, user) {
   }
 }
 __name(getOrders, "getOrders");
-async function getOrder(env, user, orderId, request) {
+async function getOrder(env, user, orderId, request, preResolvedDb) {
   try {
     const url = new URL(request.url);
     const siteId = url.searchParams.get("siteId");
-    const db = await resolveSiteDBById(env, siteId);
+    const db = preResolvedDb || await resolveSiteDBById(env, siteId);
     let query = "SELECT * FROM orders WHERE (id = ? OR order_number = ?)";
     const bindings = [orderId, orderId];
     if (siteId) {
@@ -4961,7 +4966,8 @@ async function handleCart(request, env, path) {
   if (!siteId) {
     return errorResponse("Site ID is required");
   }
-  const user = await validateAnyAuth(request, env);
+  const db = await resolveSiteDBById(env, siteId);
+  const user = await validateAnyAuth(request, env, { siteId, db });
   const sessionId = request.headers.get("X-Session-ID") || url.searchParams.get("sessionId");
   if (!user && !sessionId) {
     return errorResponse("User authentication or session ID required");
@@ -4981,18 +4987,18 @@ async function handleCart(request, env, path) {
 }
 __name(handleCart, "handleCart");
 async function handleClearCart(request, env, url) {
-  const user = await validateAnyAuth(request, env);
   const siteId = url.searchParams.get("siteId");
   const sessionId = url.searchParams.get("sessionId");
   if (!siteId)
     return errorResponse("Site ID is required");
+  const db = await resolveSiteDBById(env, siteId);
+  const user = await validateAnyAuth(request, env, { siteId, db });
   if (!user && !sessionId)
     return errorResponse("Authentication or session required");
   try {
     if (await checkMigrationLock(env, siteId)) {
       return errorResponse("Site is currently being migrated. Please try again shortly.", 423);
     }
-    const db = await resolveSiteDBById(env, siteId);
     let cart = null;
     if (user) {
       cart = await db.prepare(
@@ -5020,13 +5026,19 @@ async function handleClearCart(request, env, url) {
 }
 __name(handleClearCart, "handleClearCart");
 async function handleMergeCarts(request, env) {
-  const user = await validateAnyAuth(request, env);
+  const url = new URL(request.url);
+  const urlSiteId = url.searchParams.get("siteId");
+  const clonedRequest = request.clone();
+  const body = await clonedRequest.json();
+  const siteId = urlSiteId || body.siteId;
+  const sessionId = body.sessionId;
+  if (!siteId || !sessionId)
+    return errorResponse("siteId and sessionId are required");
+  const db = await resolveSiteDBById(env, siteId);
+  const user = await validateAnyAuth(request, env, { siteId, db });
   if (!user)
     return errorResponse("Authentication required", 401);
   try {
-    const { siteId, sessionId } = await request.json();
-    if (!siteId || !sessionId)
-      return errorResponse("siteId and sessionId are required");
     await mergeCarts(env, siteId, user.id, sessionId);
     return successResponse(null, "Carts merged");
   } catch (error) {
@@ -5295,44 +5307,46 @@ async function handleWishlist(request, env, path) {
     return corsResponse;
   const pathParts = path.split("/").filter(Boolean);
   const subAction = pathParts[2];
+  const url = new URL(request.url);
+  const siteId = url.searchParams.get("siteId");
   if (subAction === "check") {
-    return checkWishlist(request, env);
+    return checkWishlist(request, env, siteId);
   }
-  const user = await validateAnyAuth(request, env);
+  if (!siteId) {
+    return errorResponse("Site ID is required");
+  }
+  const db = await resolveSiteDBById(env, siteId);
+  const user = await validateAnyAuth(request, env, { siteId, db });
   if (!user) {
     return errorResponse("Unauthorized", 401, "UNAUTHORIZED");
   }
   const method = request.method;
-  const url = new URL(request.url);
-  const siteId = url.searchParams.get("siteId");
-  if (!siteId) {
-    return errorResponse("Site ID is required");
-  }
   switch (method) {
     case "GET":
-      return getWishlist(env, user, siteId);
+      return getWishlist(env, user, siteId, db);
     case "POST":
-      return addToWishlist(request, env, user, siteId);
+      return addToWishlist(request, env, user, siteId, db);
     case "DELETE":
-      return removeFromWishlist(request, env, user, siteId);
+      return removeFromWishlist(request, env, user, siteId, db);
     default:
       return errorResponse("Method not allowed", 405);
   }
 }
 __name(handleWishlist, "handleWishlist");
-async function checkWishlist(request, env) {
-  const user = await validateAnyAuth(request, env);
-  if (!user) {
-    return successResponse({ inWishlist: false });
-  }
+async function checkWishlist(request, env, siteId) {
   const url = new URL(request.url);
-  const siteId = url.searchParams.get("siteId");
+  if (!siteId)
+    siteId = url.searchParams.get("siteId");
   const productId = url.searchParams.get("productId");
   if (!siteId || !productId) {
     return errorResponse("siteId and productId are required");
   }
+  const db = await resolveSiteDBById(env, siteId);
+  const user = await validateAnyAuth(request, env, { siteId, db });
+  if (!user) {
+    return successResponse({ inWishlist: false });
+  }
   try {
-    const db = await resolveSiteDBById(env, siteId);
     const existing = await db.prepare(
       "SELECT id FROM wishlists WHERE user_id = ? AND product_id = ? AND site_id = ?"
     ).bind(user.id, productId, siteId).first();
@@ -5343,9 +5357,8 @@ async function checkWishlist(request, env) {
   }
 }
 __name(checkWishlist, "checkWishlist");
-async function getWishlist(env, user, siteId) {
+async function getWishlist(env, user, siteId, db) {
   try {
-    const db = await resolveSiteDBById(env, siteId);
     const wishlistItems = await db.prepare(
       `SELECT w.id, w.product_id, w.created_at,
               p.name, p.price, p.compare_price, p.thumbnail_url, p.images, p.stock, p.is_active
@@ -5386,7 +5399,7 @@ async function getWishlist(env, user, siteId) {
   }
 }
 __name(getWishlist, "getWishlist");
-async function addToWishlist(request, env, user, siteId) {
+async function addToWishlist(request, env, user, siteId, db) {
   try {
     if (await checkMigrationLock(env, siteId)) {
       return errorResponse("Site is currently being migrated. Please try again shortly.", 423);
@@ -5395,7 +5408,6 @@ async function addToWishlist(request, env, user, siteId) {
     if (!productId) {
       return errorResponse("Product ID is required");
     }
-    const db = await resolveSiteDBById(env, siteId);
     const product = await db.prepare(
       "SELECT id FROM products WHERE id = ? AND site_id = ? AND is_active = 1"
     ).bind(productId, siteId).first();
@@ -5423,7 +5435,7 @@ async function addToWishlist(request, env, user, siteId) {
   }
 }
 __name(addToWishlist, "addToWishlist");
-async function removeFromWishlist(request, env, user, siteId) {
+async function removeFromWishlist(request, env, user, siteId, db) {
   try {
     if (await checkMigrationLock(env, siteId)) {
       return errorResponse("Site is currently being migrated. Please try again shortly.", 423);
@@ -5433,7 +5445,6 @@ async function removeFromWishlist(request, env, user, siteId) {
     if (!productId) {
       return errorResponse("Product ID is required");
     }
-    const db = await resolveSiteDBById(env, siteId);
     const existing = await db.prepare(
       "SELECT id, row_size_bytes FROM wishlists WHERE user_id = ? AND product_id = ? AND site_id = ?"
     ).bind(user.id, productId, siteId).first();
@@ -11238,7 +11249,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-LtVO0e/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-4Ldpnx/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -11273,7 +11284,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-LtVO0e/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-4Ldpnx/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

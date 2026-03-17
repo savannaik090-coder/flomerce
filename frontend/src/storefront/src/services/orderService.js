@@ -1,7 +1,8 @@
 import { apiRequest } from './api.js';
 
 export async function createOrder(orderData) {
-  return apiRequest('/api/orders', {
+  const siteParam = orderData.siteId ? `?siteId=${orderData.siteId}` : '';
+  return apiRequest(`/api/orders${siteParam}`, {
     method: 'POST',
     body: JSON.stringify(orderData),
   });

@@ -31,7 +31,7 @@ export async function clearCart(siteId) {
 }
 
 export async function mergeCarts(siteId) {
-  return apiRequest('/api/cart/merge', {
+  return apiRequest(`/api/cart/merge?siteId=${siteId}`, {
     method: 'POST',
     body: JSON.stringify({ siteId, sessionId: getSessionId() }),
   });

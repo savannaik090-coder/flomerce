@@ -22,14 +22,21 @@ export async function handleOrders(request, env, path) {
     return trackOrder(env, orderId, request);
   }
 
-  const user = await validateAnyAuth(request, env);
+  const url = new URL(request.url);
+  const siteId = url.searchParams.get('siteId');
+
+  let db = null;
+  if (siteId) {
+    db = await resolveSiteDBById(env, siteId);
+  }
+  const user = await validateAnyAuth(request, env, { siteId, db });
 
   switch (method) {
     case 'GET':
       if (orderId) {
-        return getOrder(env, user, orderId, request);
+        return getOrder(env, user, orderId, request, db);
       }
-      return getOrders(request, env, user);
+      return getOrders(request, env, user, db);
     case 'POST':
       return createOrder(request, env, user);
     case 'PUT':
@@ -39,7 +46,7 @@ export async function handleOrders(request, env, path) {
   }
 }
 
-async function getOrders(request, env, user) {
+async function getOrders(request, env, user, preResolvedDb) {
   try {
     const url = new URL(request.url);
     const siteId = url.searchParams.get('siteId');
@@ -47,7 +54,7 @@ async function getOrders(request, env, user) {
     const limit = parseInt(url.searchParams.get('limit')) || 50;
     const offset = parseInt(url.searchParams.get('offset')) || 0;
 
-    const db = await resolveSiteDBById(env, siteId);
+    const db = preResolvedDb || await resolveSiteDBById(env, siteId);
 
     let query = 'SELECT * FROM orders WHERE 1=1';
     const bindings = [];
@@ -114,11 +121,11 @@ async function getOrders(request, env, user) {
   }
 }
 
-async function getOrder(env, user, orderId, request) {
+async function getOrder(env, user, orderId, request, preResolvedDb) {
   try {
     const url = new URL(request.url);
     const siteId = url.searchParams.get('siteId');
-    const db = await resolveSiteDBById(env, siteId);
+    const db = preResolvedDb || await resolveSiteDBById(env, siteId);
 
     let query = 'SELECT * FROM orders WHERE (id = ? OR order_number = ?)';
     const bindings = [orderId, orderId];
