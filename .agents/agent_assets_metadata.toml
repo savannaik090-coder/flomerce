@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "hgjova_qvIjGRD-NjdZij"
+uri = "file://DATABASE_ARCHITECTURE.md"
+type = "text"
+title = "Fluxe Database Architecture Reference"
