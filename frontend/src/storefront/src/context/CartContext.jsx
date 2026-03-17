@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useCallback, useContext } from 'react';
+import React, { createContext, useState, useEffect, useCallback, useContext, useRef } from 'react';
 import { SiteContext } from './SiteContext.jsx';
 import { AuthContext } from './AuthContext.jsx';
 import * as cartService from '../services/cartService.js';
@@ -25,6 +25,7 @@ export function CartProvider({ children }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [cartCount, setCartCount] = useState(0);
+  const pendingOps = useRef(new Set());
 
   const fetchCart = useCallback(async () => {
     if (!siteConfig?.id) return;
@@ -62,13 +63,42 @@ export function CartProvider({ children }) {
 
   const addToCart = useCallback(async (product, quantity = 1) => {
     if (!siteConfig?.id) return;
+    if (pendingOps.current.has(`add-${product.id}`)) return;
+
+    const optimisticItem = {
+      productId: product.id,
+      product_id: product.id,
+      name: product.name,
+      product_name: product.name,
+      price: product.price,
+      product_price: product.price,
+      thumbnail: product.images?.[0] || product.thumbnail_url || product.image_url,
+      product_image: product.images?.[0] || product.thumbnail_url || product.image_url,
+      image_url: product.images?.[0] || product.thumbnail_url || product.image_url,
+      quantity,
+    };
 
     if (isAuthenticated) {
+      setItems(prev => {
+        const existing = prev.find(i => (i.productId || i.product_id) === product.id);
+        if (existing) {
+          return prev.map(i =>
+            (i.productId || i.product_id) === product.id
+              ? { ...i, quantity: (i.quantity || 1) + quantity }
+              : i
+          );
+        }
+        return [...prev, optimisticItem];
+      });
+
+      pendingOps.current.add(`add-${product.id}`);
       try {
         await cartService.addToCart(siteConfig.id, product.id, quantity);
-        await fetchCart();
       } catch (err) {
         console.error('Failed to add to cart:', err);
+        await fetchCart();
+      } finally {
+        pendingOps.current.delete(`add-${product.id}`);
       }
     } else {
       const local = getLocalCart();
@@ -76,18 +106,7 @@ export function CartProvider({ children }) {
       if (existing) {
         existing.quantity += quantity;
       } else {
-        local.push({
-          productId: product.id,
-          product_id: product.id,
-          name: product.name,
-          product_name: product.name,
-          price: product.price,
-          product_price: product.price,
-          thumbnail: product.images?.[0] || product.thumbnail_url || product.image_url,
-          product_image: product.images?.[0] || product.thumbnail_url || product.image_url,
-          image_url: product.images?.[0] || product.thumbnail_url || product.image_url,
-          quantity,
-        });
+        local.push(optimisticItem);
       }
       setLocalCart(local);
       setItems([...local]);
@@ -98,11 +117,19 @@ export function CartProvider({ children }) {
     if (quantity <= 0) return removeItem(productId);
 
     if (isAuthenticated && siteConfig?.id) {
+      setItems(prev =>
+        prev.map(i =>
+          (i.productId || i.product_id) === productId
+            ? { ...i, quantity }
+            : i
+        )
+      );
+
       try {
         await cartService.updateCartItem(siteConfig.id, productId, quantity);
-        await fetchCart();
       } catch (err) {
         console.error('Failed to update cart:', err);
+        await fetchCart();
       }
     } else {
       const local = getLocalCart();
@@ -116,12 +143,19 @@ export function CartProvider({ children }) {
   }, [isAuthenticated, siteConfig?.id, fetchCart]);
 
   const removeItem = useCallback(async (productId) => {
+    if (pendingOps.current.has(`remove-${productId}`)) return;
+
     if (isAuthenticated && siteConfig?.id) {
+      setItems(prev => prev.filter(i => (i.productId || i.product_id) !== productId));
+
+      pendingOps.current.add(`remove-${productId}`);
       try {
         await cartService.removeFromCart(siteConfig.id, productId);
-        await fetchCart();
       } catch (err) {
         console.error('Failed to remove from cart:', err);
+        await fetchCart();
+      } finally {
+        pendingOps.current.delete(`remove-${productId}`);
       }
     } else {
       const local = getLocalCart().filter(i => i.productId !== productId);
@@ -131,16 +165,18 @@ export function CartProvider({ children }) {
   }, [isAuthenticated, siteConfig?.id, fetchCart]);
 
   const clearAll = useCallback(async () => {
+    setItems([]);
+    setLocalCart([]);
+
     if (isAuthenticated && siteConfig?.id) {
       try {
         await cartService.clearCart(siteConfig.id);
       } catch (err) {
         console.error('Failed to clear cart:', err);
+        await fetchCart();
       }
     }
-    setLocalCart([]);
-    setItems([]);
-  }, [isAuthenticated, siteConfig?.id]);
+  }, [isAuthenticated, siteConfig?.id, fetchCart]);
 
   const subtotal = items.reduce((sum, item) => sum + (item.price || 0) * (item.quantity || 1), 0);
 
