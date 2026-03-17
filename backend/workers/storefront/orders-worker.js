@@ -2,8 +2,8 @@ import { generateId, generateOrderNumber, jsonResponse, errorResponse, successRe
 import { validateAuth, validateAnyAuth } from '../../utils/auth.js';
 import { updateProductStock } from './products-worker.js';
 import { sendEmail, buildOrderConfirmationEmail, buildOwnerNotificationEmail, buildCancellationCustomerEmail, buildCancellationOwnerEmail, buildDeliveryCustomerEmail, buildDeliveryOwnerEmail } from '../../utils/email.js';
-import { checkUsageLimit } from '../../utils/usage-tracker.js';
-import { resolveSiteDBById } from '../../utils/site-db.js';
+import { checkUsageLimit, estimateRowBytes, trackD1Write, trackD1Update } from '../../utils/usage-tracker.js';
+import { resolveSiteDBById, checkMigrationLock } from '../../utils/site-db.js';
 
 export async function handleOrders(request, env, path) {
   const corsResponse = handleCORS(request);
@@ -202,6 +202,10 @@ async function createOrder(request, env, user) {
       return errorResponse(`Missing required fields: ${missingFields.join(', ')}`);
     }
 
+    if (await checkMigrationLock(env, siteId)) {
+      return errorResponse('Site is currently being migrated. Please try again shortly.', 423);
+    }
+
     const db = await resolveSiteDBById(env, siteId);
 
     let subtotal = 0;
@@ -305,14 +309,17 @@ async function createOrder(request, env, user) {
     const isPendingPayment = paymentMethod === 'razorpay';
     const orderStatus = isPendingPayment ? 'pending_payment' : (data.status || 'pending');
 
-    const usageCheck = await checkUsageLimit(env, siteId, 'd1', 0);
+    const rowData = { id: orderId, site_id: siteId, order_number: orderNumber, items: processedItems, subtotal, discount, total, payment_method: paymentMethod, shipping_address: shippingAddress, billing_address: billingAddress, customer_name: customerName, customer_email: customerEmail, customer_phone: customerPhone, coupon_code: appliedCouponCode, notes };
+    const rowBytes = estimateRowBytes(rowData);
+
+    const usageCheck = await checkUsageLimit(env, siteId, 'd1', rowBytes);
     if (!usageCheck.allowed) {
       return errorResponse(usageCheck.reason, 403, 'STORAGE_LIMIT');
     }
 
     await db.prepare(
-      `INSERT INTO orders (id, site_id, user_id, order_number, items, subtotal, discount, shipping_cost, tax, total, payment_method, status, shipping_address, billing_address, customer_name, customer_email, customer_phone, coupon_code, notes, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+      `INSERT INTO orders (id, site_id, user_id, order_number, items, subtotal, discount, shipping_cost, tax, total, payment_method, status, shipping_address, billing_address, customer_name, customer_email, customer_phone, coupon_code, notes, row_size_bytes, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(
       orderId,
       siteId,
@@ -332,8 +339,11 @@ async function createOrder(request, env, user) {
       customerEmail || null,
       customerPhone,
       appliedCouponCode || null,
-      notes || null
+      notes || null,
+      rowBytes
     ).run();
+
+    await trackD1Write(env, siteId, rowBytes);
 
     if (!isPendingPayment) {
       for (const item of processedItems) {
@@ -381,7 +391,7 @@ async function updateOrderStatus(request, env, user, orderId) {
         const allSites = await env.DB.prepare('SELECT id FROM sites').all();
         for (const s of (allSites.results || [])) {
           const sdb = await resolveSiteDBById(env, s.id);
-          const found = await sdb.prepare('SELECT id, site_id FROM orders WHERE id = ?').bind(orderId).first();
+          const found = await sdb.prepare('SELECT id, site_id, row_size_bytes FROM orders WHERE id = ?').bind(orderId).first();
           if (found) {
             order = found;
             siteId = s.id;
@@ -409,7 +419,7 @@ async function updateOrderStatus(request, env, user, orderId) {
       for (const s of (userSites.results || [])) {
         const sdb = await resolveSiteDBById(env, s.id);
         const found = await sdb.prepare(
-          'SELECT id, site_id FROM orders WHERE id = ? AND site_id = ?'
+          'SELECT id, site_id, row_size_bytes FROM orders WHERE id = ? AND site_id = ?'
         ).bind(orderId, s.id).first();
         if (found) {
           order = found;
@@ -423,7 +433,13 @@ async function updateOrderStatus(request, env, user, orderId) {
       return errorResponse('Order not found or unauthorized', 404);
     }
 
-    const db = await resolveSiteDBById(env, siteId || order.site_id);
+    const resolvedSiteId = siteId || order.site_id;
+
+    if (await checkMigrationLock(env, resolvedSiteId)) {
+      return errorResponse('Site is currently being migrated. Please try again shortly.', 423);
+    }
+
+    const db = await resolveSiteDBById(env, resolvedSiteId);
 
     const { status, trackingNumber, carrier, cancellationReason } = await request.json();
 
@@ -466,12 +482,20 @@ async function updateOrderStatus(request, env, user, orderId) {
       return errorResponse('No valid fields to update');
     }
 
+    const updateData = { status, trackingNumber, carrier, cancellationReason };
+    const newBytes = estimateRowBytes(updateData);
+    const oldBytes = order.row_size_bytes || 0;
+    updates.push('row_size_bytes = ?');
+    values.push(newBytes);
+
     updates.push('updated_at = datetime("now")');
     values.push(orderId);
 
     await db.prepare(
       `UPDATE orders SET ${updates.join(', ')} WHERE id = ?`
     ).bind(...values).run();
+
+    await trackD1Update(env, resolvedSiteId, oldBytes, newBytes);
 
     if (status === 'cancelled' && cancellationReason) {
       try {
@@ -584,6 +608,10 @@ async function createGuestOrder(request, env) {
       return errorResponse(`Missing required fields: ${missingFields.join(', ')}`);
     }
 
+    if (await checkMigrationLock(env, siteId)) {
+      return errorResponse('Site is currently being migrated. Please try again shortly.', 423);
+    }
+
     const db = await resolveSiteDBById(env, siteId);
 
     let subtotal = 0;
@@ -620,31 +648,28 @@ async function createGuestOrder(request, env) {
     const orderId = generateId();
     const orderNumber = generateOrderNumber();
 
-    const isPendingPayment = paymentMethod === 'razorpay';
-    const guestOrderStatus = isPendingPayment ? 'pending_payment' : 'confirmed';
+    const rowData = { id: orderId, site_id: siteId, order_number: orderNumber, items: processedItems, subtotal, total, shipping_address: shippingAddress, customer_name: customerName, customer_email: customerEmail, customer_phone: customerPhone };
+    const rowBytes = estimateRowBytes(rowData);
 
-    const guestUsageCheck = await checkUsageLimit(env, siteId, 'd1', 0);
-    if (!guestUsageCheck.allowed) {
-      return errorResponse(guestUsageCheck.reason, 403, 'STORAGE_LIMIT');
+    const usageCheck = await checkUsageLimit(env, siteId, 'd1', rowBytes);
+    if (!usageCheck.allowed) {
+      return errorResponse(usageCheck.reason, 403, 'STORAGE_LIMIT');
     }
 
+    const isPendingPayment = paymentMethod === 'razorpay';
+    const orderStatus = isPendingPayment ? 'pending_payment' : 'pending';
+
     await db.prepare(
-      `INSERT INTO guest_orders (id, site_id, order_number, items, subtotal, total, payment_method, status, shipping_address, customer_name, customer_email, customer_phone, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+      `INSERT INTO guest_orders (id, site_id, order_number, items, subtotal, total, payment_method, status, shipping_address, customer_name, customer_email, customer_phone, row_size_bytes, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(
-      orderId,
-      siteId,
-      orderNumber,
-      JSON.stringify(processedItems),
-      subtotal,
-      total,
-      paymentMethod || 'cod',
-      guestOrderStatus,
-      JSON.stringify(shippingAddress),
-      customerName,
-      customerEmail || null,
-      customerPhone
+      orderId, siteId, orderNumber, JSON.stringify(processedItems), subtotal, total,
+      paymentMethod || 'cod', orderStatus,
+      JSON.stringify(shippingAddress), customerName, customerEmail || null, customerPhone,
+      rowBytes
     ).run();
+
+    await trackD1Write(env, siteId, rowBytes);
 
     if (!isPendingPayment) {
       for (const item of processedItems) {
@@ -653,7 +678,7 @@ async function createGuestOrder(request, env) {
 
       try {
         await sendOrderEmails(env, siteId, {
-          orderNumber, processedItems, total, paymentMethod, customerName, customerEmail, customerPhone, shippingAddress
+          orderNumber, processedItems, subtotal, discount: 0, coupon_code: null, total, paymentMethod, customerName, customerEmail, customerPhone, shippingAddress
         });
       } catch (emailErr) {
         console.error('Guest order email notification error:', emailErr);
@@ -664,30 +689,32 @@ async function createGuestOrder(request, env) {
       id: orderId,
       orderNumber,
       total,
+      items: processedItems,
     }, 'Guest order created successfully');
   } catch (error) {
     console.error('Create guest order error:', error.message || error, error.stack || '');
-    return errorResponse('Failed to create order: ' + (error.message || 'Unknown error'), 500);
+    return errorResponse('Failed to create guest order: ' + (error.message || 'Unknown error'), 500);
   }
 }
 
-async function getGuestOrder(env, orderNumber, request) {
+async function getGuestOrder(env, orderId, request) {
   try {
-    const url = request ? new URL(request.url) : null;
-    const siteId = url ? url.searchParams.get('siteId') : null;
+    const url = new URL(request.url);
+    const siteId = url.searchParams.get('siteId');
     const db = await resolveSiteDBById(env, siteId);
 
-    let guestQuery = 'SELECT * FROM guest_orders WHERE order_number = ?';
-    const guestBindings = [orderNumber];
+    let query = 'SELECT * FROM guest_orders WHERE (id = ? OR order_number = ?)';
+    const bindings = [orderId, orderId];
+
     if (siteId) {
-      guestQuery += ' AND site_id = ?';
-      guestBindings.push(siteId);
+      query += ' AND site_id = ?';
+      bindings.push(siteId);
     }
-    guestQuery += ' LIMIT 1';
-    const order = await db.prepare(guestQuery).bind(...guestBindings).first();
+
+    const order = await db.prepare(query).bind(...bindings).first();
 
     if (!order) {
-      return errorResponse('Order not found', 404);
+      return errorResponse('Order not found', 404, 'NOT_FOUND');
     }
 
     return successResponse({
@@ -701,92 +728,101 @@ async function getGuestOrder(env, orderNumber, request) {
   }
 }
 
-export async function sendOrderEmails(env, siteId, orderDetails) {
-  const { orderNumber, processedItems, total, paymentMethod, customerName, customerEmail, customerPhone, shippingAddress } = orderDetails;
-
-  const site = await env.DB.prepare('SELECT brand_name, email, settings FROM sites WHERE id = ?').bind(siteId).first();
-  const siteBrandName = site?.brand_name || 'Store';
-  const siteSettings = site?.settings ? JSON.parse(site.settings) : {};
-  const ownerEmail = siteSettings.email || siteSettings.ownerEmail || site?.email;
-
-  console.log('Order email debug:', {
-    customerEmail,
-    ownerEmail,
-    siteSettingsEmail: siteSettings.email,
-    siteEmail: site?.email,
-    hasResendKey: !!env.RESEND_API_KEY,
-    hasSendGridKey: !!env.SENDGRID_API_KEY,
-  });
-
-  const orderForEmail = {
-    order_number: orderNumber,
-    items: processedItems,
-    total,
-    payment_method: paymentMethod || 'cod',
-    customer_name: customerName,
-    customer_email: customerEmail,
-    customer_phone: customerPhone,
-    shipping_address: shippingAddress,
-  };
-
-  const emailPromises = [];
-
-  if (customerEmail) {
-    const { html, text } = buildOrderConfirmationEmail(orderForEmail, siteBrandName, ownerEmail);
-    emailPromises.push(
-      sendEmail(env, customerEmail, `Order Confirmation - ${orderNumber}`, html, text).then(result => {
-        console.log('Customer email result:', result);
-        if (result !== true) console.error('Customer email failed:', result);
-      }).catch(e => console.error('Customer email error:', e))
-    );
-  }
-
-  if (ownerEmail) {
-    const { html, text } = buildOwnerNotificationEmail(orderForEmail, siteBrandName);
-    emailPromises.push(
-      sendEmail(env, ownerEmail, `New Order #${orderNumber} - ${siteBrandName}`, html, text).then(result => {
-        console.log('Owner email result:', result);
-        if (result !== true) console.error('Owner email failed:', result);
-      }).catch(e => console.error('Owner email error:', e))
-    );
-  }
-
-  if (emailPromises.length > 0) {
-    await Promise.all(emailPromises);
-  }
-}
-
-async function trackOrder(env, orderNumber, request) {
+async function trackOrder(env, orderId, request) {
   try {
-    const url = request ? new URL(request.url) : null;
-    const siteId = url ? url.searchParams.get('siteId') : null;
+    const url = new URL(request.url);
+    const siteId = url.searchParams.get('siteId');
     const db = await resolveSiteDBById(env, siteId);
 
-    let trackQuery = 'SELECT order_number, status, tracking_number, carrier, shipped_at, delivered_at, created_at FROM orders WHERE order_number = ?';
-    const trackBindings = [orderNumber];
+    let order = null;
+
+    let query = 'SELECT id, order_number, status, tracking_number, carrier, shipped_at, delivered_at, created_at FROM orders WHERE (id = ? OR order_number = ?)';
+    const bindings = [orderId, orderId];
     if (siteId) {
-      trackQuery += ' AND site_id = ?';
-      trackBindings.push(siteId);
+      query += ' AND site_id = ?';
+      bindings.push(siteId);
     }
-    let order = await db.prepare(trackQuery).bind(...trackBindings).first();
+    order = await db.prepare(query).bind(...bindings).first();
 
     if (!order) {
-      let guestTrackQuery = 'SELECT order_number, status, tracking_number, carrier, created_at FROM guest_orders WHERE order_number = ?';
-      const guestTrackBindings = [orderNumber];
+      let guestQuery = 'SELECT id, order_number, status, tracking_number, carrier, created_at FROM guest_orders WHERE (id = ? OR order_number = ?)';
+      const guestBindings = [orderId, orderId];
       if (siteId) {
-        guestTrackQuery += ' AND site_id = ?';
-        guestTrackBindings.push(siteId);
+        guestQuery += ' AND site_id = ?';
+        guestBindings.push(siteId);
       }
-      order = await db.prepare(guestTrackQuery).bind(...guestTrackBindings).first();
+      order = await db.prepare(guestQuery).bind(...guestBindings).first();
     }
 
     if (!order) {
-      return errorResponse('Order not found', 404);
+      return errorResponse('Order not found', 404, 'NOT_FOUND');
     }
 
     return successResponse(order);
   } catch (error) {
     console.error('Track order error:', error);
     return errorResponse('Failed to track order', 500);
+  }
+}
+
+async function sendOrderEmails(env, siteId, orderData) {
+  try {
+    const site = await env.DB.prepare(
+      'SELECT brand_name, email, settings FROM sites WHERE id = ?'
+    ).bind(siteId).first();
+
+    if (!site) return;
+
+    const siteBrandName = site.brand_name || 'Store';
+    let siteSettings = {};
+    try {
+      if (site.settings) siteSettings = JSON.parse(site.settings);
+    } catch (e) {}
+
+    const ownerEmail = siteSettings.email || siteSettings.ownerEmail || site.email;
+
+    const emailOrder = {
+      order_number: orderData.orderNumber,
+      items: orderData.processedItems,
+      subtotal: orderData.subtotal,
+      discount: orderData.discount || 0,
+      coupon_code: orderData.coupon_code || null,
+      total: orderData.total,
+      payment_method: orderData.paymentMethod,
+      customer_name: orderData.customerName,
+      customer_email: orderData.customerEmail,
+      customer_phone: orderData.customerPhone,
+      shipping_address: orderData.shippingAddress,
+    };
+
+    const emailJobs = [];
+
+    if (orderData.customerEmail) {
+      try {
+        const { html, text } = buildOrderConfirmationEmail(emailOrder, siteBrandName, ownerEmail);
+        emailJobs.push(
+          sendEmail(env, orderData.customerEmail, `Order Confirmed #${orderData.orderNumber} - ${siteBrandName}`, html, text)
+            .catch(e => console.error('Customer email send error:', e))
+        );
+      } catch (buildErr) {
+        console.error('Customer email build error:', buildErr);
+      }
+    }
+
+    if (ownerEmail) {
+      try {
+        const { html, text } = buildOwnerNotificationEmail(emailOrder, siteBrandName);
+        emailJobs.push(
+          sendEmail(env, ownerEmail, `New Order #${orderData.orderNumber} - ${siteBrandName}`, html, text)
+            .catch(e => console.error('Owner email send error:', e))
+        );
+      } catch (buildErr) {
+        console.error('Owner email build error:', buildErr);
+      }
+    }
+
+    await Promise.all(emailJobs);
+  } catch (error) {
+    console.error('Send order emails error:', error);
   }
 }

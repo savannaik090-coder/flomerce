@@ -1,6 +1,7 @@
 import { generateId, jsonResponse, errorResponse, successResponse, handleCORS } from '../../utils/helpers.js';
 import { validateAuth, validateAnyAuth } from '../../utils/auth.js';
-import { resolveSiteDBById } from '../../utils/site-db.js';
+import { resolveSiteDBById, checkMigrationLock } from '../../utils/site-db.js';
+import { estimateRowBytes, trackD1Write, trackD1Update, trackD1Delete } from '../../utils/usage-tracker.js';
 
 
 export async function handleCart(request, env, path) {
@@ -105,12 +106,17 @@ async function getOrCreateCart(db, env, siteId, user, sessionId) {
 
   if (!cart) {
     const cartId = generateId();
-    await db.prepare(
-      `INSERT INTO carts (id, site_id, user_id, session_id, items, subtotal, created_at)
-       VALUES (?, ?, ?, ?, '[]', 0, datetime('now'))`
-    ).bind(cartId, siteId, user ? user.id : null, user ? null : sessionId).run();
+    const rowData = { id: cartId, site_id: siteId, user_id: user ? user.id : null, session_id: user ? null : sessionId, items: '[]' };
+    const rowBytes = estimateRowBytes(rowData);
 
-    cart = { id: cartId, items: '[]', subtotal: 0 };
+    await db.prepare(
+      `INSERT INTO carts (id, site_id, user_id, session_id, items, subtotal, row_size_bytes, created_at)
+       VALUES (?, ?, ?, ?, '[]', 0, ?, datetime('now'))`
+    ).bind(cartId, siteId, user ? user.id : null, user ? null : sessionId, rowBytes).run();
+
+    await trackD1Write(env, siteId, rowBytes);
+
+    cart = { id: cartId, items: '[]', subtotal: 0, row_size_bytes: rowBytes };
   }
 
   return cart;
@@ -163,6 +169,10 @@ async function getCart(env, siteId, user, sessionId) {
 
 async function addToCart(request, env, siteId, user, sessionId) {
   try {
+    if (await checkMigrationLock(env, siteId)) {
+      return errorResponse('Site is currently being migrated. Please try again shortly.', 423);
+    }
+
     const { productId, quantity, variant } = await request.json();
 
     if (!productId || !quantity || quantity < 1) {
@@ -189,6 +199,7 @@ async function addToCart(request, env, siteId, user, sessionId) {
 
     const cart = await getOrCreateCart(db, env, siteId, user, sessionId);
     const items = JSON.parse(cart.items);
+    const oldBytes = cart.row_size_bytes || 0;
 
     const existingIndex = items.findIndex(item => 
       item.productId === productId && 
@@ -210,9 +221,14 @@ async function addToCart(request, env, siteId, user, sessionId) {
       });
     }
 
+    const newItemsStr = JSON.stringify(items);
+    const newBytes = estimateRowBytes({ items: newItemsStr, cart_id: cart.id });
+
     await db.prepare(
-      `UPDATE carts SET items = ?, updated_at = datetime('now') WHERE id = ?`
-    ).bind(JSON.stringify(items), cart.id).run();
+      `UPDATE carts SET items = ?, row_size_bytes = ?, updated_at = datetime('now') WHERE id = ?`
+    ).bind(newItemsStr, newBytes, cart.id).run();
+
+    await trackD1Update(env, siteId, oldBytes, newBytes);
 
     return successResponse({ itemCount: items.reduce((sum, i) => sum + i.quantity, 0) }, 'Item added to cart');
   } catch (error) {
@@ -223,6 +239,10 @@ async function addToCart(request, env, siteId, user, sessionId) {
 
 async function updateCartItem(request, env, siteId, user, sessionId) {
   try {
+    if (await checkMigrationLock(env, siteId)) {
+      return errorResponse('Site is currently being migrated. Please try again shortly.', 423);
+    }
+
     const { productId, quantity, variant } = await request.json();
 
     if (!productId) {
@@ -232,6 +252,7 @@ async function updateCartItem(request, env, siteId, user, sessionId) {
     const db = await resolveSiteDBById(env, siteId);
     const cart = await getOrCreateCart(db, env, siteId, user, sessionId);
     const items = JSON.parse(cart.items);
+    const oldBytes = cart.row_size_bytes || 0;
 
     const existingIndex = items.findIndex(item => 
       item.productId === productId && 
@@ -256,9 +277,14 @@ async function updateCartItem(request, env, siteId, user, sessionId) {
       items[existingIndex].quantity = quantity;
     }
 
+    const newItemsStr = JSON.stringify(items);
+    const newBytes = estimateRowBytes({ items: newItemsStr, cart_id: cart.id });
+
     await db.prepare(
-      `UPDATE carts SET items = ?, updated_at = datetime('now') WHERE id = ?`
-    ).bind(JSON.stringify(items), cart.id).run();
+      `UPDATE carts SET items = ?, row_size_bytes = ?, updated_at = datetime('now') WHERE id = ?`
+    ).bind(newItemsStr, newBytes, cart.id).run();
+
+    await trackD1Update(env, siteId, oldBytes, newBytes);
 
     return successResponse({ itemCount: items.reduce((sum, i) => sum + i.quantity, 0) }, 'Cart updated');
   } catch (error) {
@@ -280,15 +306,21 @@ async function removeFromCart(request, env, siteId, user, sessionId) {
     const db = await resolveSiteDBById(env, siteId);
     const cart = await getOrCreateCart(db, env, siteId, user, sessionId);
     const items = JSON.parse(cart.items);
+    const oldBytes = cart.row_size_bytes || 0;
 
     const parsedVariant = variant ? variant : null;
     const filteredItems = items.filter(item => 
       !(item.productId === productId && JSON.stringify(item.variant ?? null) === JSON.stringify(parsedVariant))
     );
 
+    const newItemsStr = JSON.stringify(filteredItems);
+    const newBytes = estimateRowBytes({ items: newItemsStr, cart_id: cart.id });
+
     await db.prepare(
-      `UPDATE carts SET items = ?, updated_at = datetime('now') WHERE id = ?`
-    ).bind(JSON.stringify(filteredItems), cart.id).run();
+      `UPDATE carts SET items = ?, row_size_bytes = ?, updated_at = datetime('now') WHERE id = ?`
+    ).bind(newItemsStr, newBytes, cart.id).run();
+
+    await trackD1Update(env, siteId, oldBytes, newBytes);
 
     return successResponse({ itemCount: filteredItems.reduce((sum, i) => sum + i.quantity, 0) }, 'Item removed from cart');
   } catch (error) {
@@ -315,6 +347,7 @@ export async function mergeCarts(env, siteId, userId, sessionId) {
 
     if (userCart) {
       const userItems = JSON.parse(userCart.items);
+      const oldBytes = userCart.row_size_bytes || 0;
 
       for (const guestItem of guestItems) {
         const existingIndex = userItems.findIndex(item => 
@@ -329,9 +362,14 @@ export async function mergeCarts(env, siteId, userId, sessionId) {
         }
       }
 
+      const newItemsStr = JSON.stringify(userItems);
+      const newBytes = estimateRowBytes({ items: newItemsStr, cart_id: userCart.id });
+
       await db.prepare(
-        `UPDATE carts SET items = ?, updated_at = datetime('now') WHERE id = ?`
-      ).bind(JSON.stringify(userItems), userCart.id).run();
+        `UPDATE carts SET items = ?, row_size_bytes = ?, updated_at = datetime('now') WHERE id = ?`
+      ).bind(newItemsStr, newBytes, userCart.id).run();
+
+      await trackD1Update(env, siteId, oldBytes, newBytes);
     } else {
       await db.prepare(
         `UPDATE carts SET user_id = ?, session_id = NULL, updated_at = datetime('now') WHERE id = ?`
@@ -339,7 +377,11 @@ export async function mergeCarts(env, siteId, userId, sessionId) {
       return;
     }
 
+    const guestBytes = guestCart.row_size_bytes || 0;
     await db.prepare('DELETE FROM carts WHERE id = ?').bind(guestCart.id).run();
+    if (guestBytes > 0) {
+      await trackD1Delete(env, siteId, guestBytes);
+    }
   } catch (error) {
     console.error('Merge carts error:', error);
   }

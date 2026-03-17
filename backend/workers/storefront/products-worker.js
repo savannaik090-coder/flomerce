@@ -1,8 +1,8 @@
 import { generateId, sanitizeInput, jsonResponse, errorResponse, successResponse, handleCORS } from '../../utils/helpers.js';
 import { validateAuth } from '../../utils/auth.js';
 import { validateSiteAdmin } from './site-admin-worker.js';
-import { checkUsageLimit } from '../../utils/usage-tracker.js';
-import { resolveSiteDBById, resolveSiteDBBySubdomain } from '../../utils/site-db.js';
+import { checkUsageLimit, estimateRowBytes, trackD1Write, trackD1Delete, trackD1Update } from '../../utils/usage-tracker.js';
+import { resolveSiteDBById, resolveSiteDBBySubdomain, checkMigrationLock } from '../../utils/site-db.js';
 
 export async function handleProducts(request, env, path) {
   const corsResponse = handleCORS(request);
@@ -146,6 +146,8 @@ async function getProduct(env, productId, siteId, subdomain) {
 
     const db = await resolveSiteDBById(env, siteId);
 
+    let product = null;
+
     let productQuery = `SELECT p.*, c.name as category_name, c.slug as category_slug
        FROM products p 
        LEFT JOIN categories c ON p.category_id = c.id
@@ -155,7 +157,20 @@ async function getProduct(env, productId, siteId, subdomain) {
       productQuery += ' AND p.site_id = ?';
       productBindings.push(siteId);
     }
-    const product = await db.prepare(productQuery).bind(...productBindings).first();
+    product = await db.prepare(productQuery).bind(...productBindings).first();
+
+    if (!product) {
+      let slugQuery = `SELECT p.*, c.name as category_name, c.slug as category_slug
+         FROM products p 
+         LEFT JOIN categories c ON p.category_id = c.id
+         WHERE p.slug = ?`;
+      const slugBindings = [productId];
+      if (siteId) {
+        slugQuery += ' AND p.site_id = ?';
+        slugBindings.push(siteId);
+      }
+      product = await db.prepare(slugQuery).bind(...slugBindings).first();
+    }
 
     if (!product) {
       return errorResponse('Product not found', 404, 'NOT_FOUND');
@@ -173,7 +188,7 @@ async function getProduct(env, productId, siteId, subdomain) {
     try {
       const variants = await db.prepare(
         'SELECT * FROM product_variants WHERE product_id = ?'
-      ).bind(productId).all();
+      ).bind(product.id).all();
       variantResults = variants.results || [];
     } catch (_) {}
 
@@ -203,6 +218,10 @@ async function createProduct(request, env, user) {
       return errorResponse('Site ID, name and price are required');
     }
 
+    if (await checkMigrationLock(env, siteId)) {
+      return errorResponse('Site is currently being migrated. Please try again shortly.', 423);
+    }
+
     let site;
     if (user._adminSiteId && user._adminSiteId === siteId) {
       site = await env.DB.prepare('SELECT id FROM sites WHERE id = ?').bind(siteId).first();
@@ -227,14 +246,17 @@ async function createProduct(request, env, user) {
     const slug = name.toLowerCase().trim().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').substring(0, 100);
     const productId = generateId();
 
-    const usageCheck = await checkUsageLimit(env, siteId, 'd1', 0);
+    const rowData = { id: productId, site_id: siteId, category_id: categoryId, name, slug, description, short_description: shortDescription, price, compare_price: comparePrice, cost_price: costPrice, sku, stock, images, thumbnail_url: resolvedThumbnail, tags, is_featured: isFeatured, weight, dimensions };
+    const rowBytes = estimateRowBytes(rowData);
+
+    const usageCheck = await checkUsageLimit(env, siteId, 'd1', rowBytes);
     if (!usageCheck.allowed) {
       return errorResponse(usageCheck.reason, 403, 'STORAGE_LIMIT');
     }
 
     await db.prepare(
-      `INSERT INTO products (id, site_id, category_id, name, slug, description, short_description, price, compare_price, cost_price, sku, stock, low_stock_threshold, weight, dimensions, images, thumbnail_url, tags, is_featured, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+      `INSERT INTO products (id, site_id, category_id, name, slug, description, short_description, price, compare_price, cost_price, sku, stock, low_stock_threshold, weight, dimensions, images, thumbnail_url, tags, is_featured, row_size_bytes, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(
       productId,
       siteId,
@@ -254,8 +276,11 @@ async function createProduct(request, env, user) {
       images ? JSON.stringify(images) : '[]',
       resolvedThumbnail,
       tags ? JSON.stringify(tags) : '[]',
-      isFeatured ? 1 : 0
+      isFeatured ? 1 : 0,
+      rowBytes
     ).run();
+
+    await trackD1Write(env, siteId, rowBytes);
 
     return successResponse({ id: productId, slug }, 'Product created successfully');
   } catch (error) {
@@ -279,7 +304,7 @@ async function updateProduct(request, env, user, productId) {
     if (user._adminSiteId) {
       const db = await resolveSiteDBById(env, user._adminSiteId);
       product = await db.prepare(
-        'SELECT id, site_id FROM products WHERE id = ? AND site_id = ?'
+        'SELECT id, site_id, row_size_bytes FROM products WHERE id = ? AND site_id = ?'
       ).bind(productId, user._adminSiteId).first();
     } else {
       const userSites = await env.DB.prepare(
@@ -289,7 +314,7 @@ async function updateProduct(request, env, user, productId) {
       for (const s of (userSites.results || [])) {
         const db = await resolveSiteDBById(env, s.id);
         product = await db.prepare(
-          'SELECT id, site_id FROM products WHERE id = ? AND site_id = ?'
+          'SELECT id, site_id, row_size_bytes FROM products WHERE id = ? AND site_id = ?'
         ).bind(productId, s.id).first();
         if (product) {
           siteId = s.id;
@@ -302,7 +327,13 @@ async function updateProduct(request, env, user, productId) {
       return errorResponse('Product not found or unauthorized', 404);
     }
 
-    const db = await resolveSiteDBById(env, siteId || product.site_id);
+    const resolvedSiteId = siteId || product.site_id;
+
+    if (await checkMigrationLock(env, resolvedSiteId)) {
+      return errorResponse('Site is currently being migrated. Please try again shortly.', 423);
+    }
+
+    const db = await resolveSiteDBById(env, resolvedSiteId);
 
     const updates = await request.json();
     const allowedFields = ['name', 'description', 'short_description', 'price', 'compare_price', 'cost_price', 'sku', 'stock', 'low_stock_threshold', 'category_id', 'images', 'thumbnail_url', 'tags', 'is_featured', 'is_active', 'weight', 'dimensions'];
@@ -336,12 +367,19 @@ async function updateProduct(request, env, user, productId) {
       return errorResponse('No valid fields to update');
     }
 
+    const oldBytes = product.row_size_bytes || 0;
+    const newBytes = estimateRowBytes(updates);
+    setClause.push('row_size_bytes = ?');
+    values.push(newBytes);
+
     setClause.push('updated_at = datetime("now")');
     values.push(productId);
 
     await db.prepare(
       `UPDATE products SET ${setClause.join(', ')} WHERE id = ?`
     ).bind(...values).run();
+
+    await trackD1Update(env, resolvedSiteId, oldBytes, newBytes);
 
     return successResponse(null, 'Product updated successfully');
   } catch (error) {
@@ -362,7 +400,7 @@ async function deleteProduct(env, user, productId) {
     if (user._adminSiteId) {
       const db = await resolveSiteDBById(env, user._adminSiteId);
       product = await db.prepare(
-        'SELECT id FROM products WHERE id = ? AND site_id = ?'
+        'SELECT id, site_id, row_size_bytes FROM products WHERE id = ? AND site_id = ?'
       ).bind(productId, user._adminSiteId).first();
     } else {
       const userSites = await env.DB.prepare(
@@ -372,7 +410,7 @@ async function deleteProduct(env, user, productId) {
       for (const s of (userSites.results || [])) {
         const db = await resolveSiteDBById(env, s.id);
         product = await db.prepare(
-          'SELECT id, site_id FROM products WHERE id = ? AND site_id = ?'
+          'SELECT id, site_id, row_size_bytes FROM products WHERE id = ? AND site_id = ?'
         ).bind(productId, s.id).first();
         if (product) {
           siteId = s.id;
@@ -385,8 +423,20 @@ async function deleteProduct(env, user, productId) {
       return errorResponse('Product not found or unauthorized', 404);
     }
 
-    const db = await resolveSiteDBById(env, siteId);
+    const resolvedSiteId = siteId || product.site_id;
+
+    if (await checkMigrationLock(env, resolvedSiteId)) {
+      return errorResponse('Site is currently being migrated. Please try again shortly.', 423);
+    }
+
+    const db = await resolveSiteDBById(env, resolvedSiteId);
+    const bytesToRemove = product.row_size_bytes || 0;
+
     await db.prepare('DELETE FROM products WHERE id = ?').bind(productId).run();
+
+    if (bytesToRemove > 0) {
+      await trackD1Delete(env, resolvedSiteId, bytesToRemove);
+    }
 
     return successResponse(null, 'Product deleted successfully');
   } catch (error) {

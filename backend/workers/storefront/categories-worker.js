@@ -1,8 +1,8 @@
 import { generateId, sanitizeInput, jsonResponse, errorResponse, successResponse, handleCORS } from '../../utils/helpers.js';
 import { validateAuth } from '../../utils/auth.js';
 import { validateSiteAdmin } from './site-admin-worker.js';
-import { checkUsageLimit } from '../../utils/usage-tracker.js';
-import { resolveSiteDBById, resolveSiteDBBySubdomain } from '../../utils/site-db.js';
+import { checkUsageLimit, estimateRowBytes, trackD1Write, trackD1Delete, trackD1Update } from '../../utils/usage-tracker.js';
+import { resolveSiteDBById, resolveSiteDBBySubdomain, checkMigrationLock } from '../../utils/site-db.js';
 
 export async function handleCategories(request, env, path) {
   const corsResponse = handleCORS(request);
@@ -176,6 +176,10 @@ async function createCategory(request, env, user) {
       return errorResponse('Site ID and name are required');
     }
 
+    if (await checkMigrationLock(env, siteId)) {
+      return errorResponse('Site is currently being migrated. Please try again shortly.', 423);
+    }
+
     let site;
     if (user._adminSiteId && user._adminSiteId === siteId) {
       site = await env.DB.prepare('SELECT id FROM sites WHERE id = ?').bind(siteId).first();
@@ -203,14 +207,17 @@ async function createCategory(request, env, user) {
 
     const categoryId = generateId();
 
-    const usageCheck = await checkUsageLimit(env, siteId, 'd1', 0);
+    const rowData = { id: categoryId, site_id: siteId, name, slug, description, subtitle, parent_id: parentId, image_url: imageUrl, display_order: displayOrder };
+    const rowBytes = estimateRowBytes(rowData);
+
+    const usageCheck = await checkUsageLimit(env, siteId, 'd1', rowBytes);
     if (!usageCheck.allowed) {
       return errorResponse(usageCheck.reason, 403, 'STORAGE_LIMIT');
     }
 
     await db.prepare(
-      `INSERT INTO categories (id, site_id, name, slug, description, subtitle, show_on_home, parent_id, image_url, display_order, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+      `INSERT INTO categories (id, site_id, name, slug, description, subtitle, show_on_home, parent_id, image_url, display_order, row_size_bytes, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(
       categoryId,
       siteId,
@@ -221,8 +228,11 @@ async function createCategory(request, env, user) {
       showOnHome !== undefined ? (showOnHome ? 1 : 0) : 1,
       parentId || null,
       imageUrl || null,
-      displayOrder || 0
+      displayOrder || 0,
+      rowBytes
     ).run();
+
+    await trackD1Write(env, siteId, rowBytes);
 
     return successResponse({ id: categoryId, slug }, 'Category created successfully');
   } catch (error) {
@@ -243,7 +253,7 @@ async function updateCategory(request, env, user, categoryId) {
     if (user._adminSiteId) {
       const db = await resolveSiteDBById(env, user._adminSiteId);
       category = await db.prepare(
-        'SELECT id, site_id FROM categories WHERE id = ? AND site_id = ?'
+        'SELECT id, site_id, row_size_bytes FROM categories WHERE id = ? AND site_id = ?'
       ).bind(categoryId, user._adminSiteId).first();
     } else {
       const userSites = await env.DB.prepare(
@@ -253,7 +263,7 @@ async function updateCategory(request, env, user, categoryId) {
       for (const s of (userSites.results || [])) {
         const db = await resolveSiteDBById(env, s.id);
         category = await db.prepare(
-          'SELECT id, site_id FROM categories WHERE id = ? AND site_id = ?'
+          'SELECT id, site_id, row_size_bytes FROM categories WHERE id = ? AND site_id = ?'
         ).bind(categoryId, s.id).first();
         if (category) {
           siteId = s.id;
@@ -266,7 +276,13 @@ async function updateCategory(request, env, user, categoryId) {
       return errorResponse('Category not found or unauthorized', 404);
     }
 
-    const db = await resolveSiteDBById(env, siteId || category.site_id);
+    const resolvedSiteId = siteId || category.site_id;
+
+    if (await checkMigrationLock(env, resolvedSiteId)) {
+      return errorResponse('Site is currently being migrated. Please try again shortly.', 423);
+    }
+
+    const db = await resolveSiteDBById(env, resolvedSiteId);
 
     const updates = await request.json();
     const allowedFields = ['name', 'description', 'subtitle', 'show_on_home', 'parent_id', 'image_url', 'display_order', 'is_active'];
@@ -296,12 +312,19 @@ async function updateCategory(request, env, user, categoryId) {
       return errorResponse('No valid fields to update');
     }
 
+    const oldBytes = category.row_size_bytes || 0;
+    const newBytes = estimateRowBytes(updates);
+    setClause.push('row_size_bytes = ?');
+    values.push(newBytes);
+
     setClause.push('updated_at = datetime("now")');
     values.push(categoryId);
 
     await db.prepare(
       `UPDATE categories SET ${setClause.join(', ')} WHERE id = ?`
     ).bind(...values).run();
+
+    await trackD1Update(env, resolvedSiteId, oldBytes, newBytes);
 
     return successResponse(null, 'Category updated successfully');
   } catch (error) {
@@ -322,7 +345,7 @@ async function deleteCategory(env, user, categoryId) {
     if (user._adminSiteId) {
       const db = await resolveSiteDBById(env, user._adminSiteId);
       category = await db.prepare(
-        'SELECT id FROM categories WHERE id = ? AND site_id = ?'
+        'SELECT id, site_id, row_size_bytes FROM categories WHERE id = ? AND site_id = ?'
       ).bind(categoryId, user._adminSiteId).first();
     } else {
       const userSites = await env.DB.prepare(
@@ -332,7 +355,7 @@ async function deleteCategory(env, user, categoryId) {
       for (const s of (userSites.results || [])) {
         const db = await resolveSiteDBById(env, s.id);
         category = await db.prepare(
-          'SELECT id, site_id FROM categories WHERE id = ? AND site_id = ?'
+          'SELECT id, site_id, row_size_bytes FROM categories WHERE id = ? AND site_id = ?'
         ).bind(categoryId, s.id).first();
         if (category) {
           siteId = s.id;
@@ -345,7 +368,14 @@ async function deleteCategory(env, user, categoryId) {
       return errorResponse('Category not found or unauthorized', 404);
     }
 
-    const db = await resolveSiteDBById(env, siteId || category.site_id);
+    const resolvedSiteId = siteId || category.site_id;
+
+    if (await checkMigrationLock(env, resolvedSiteId)) {
+      return errorResponse('Site is currently being migrated. Please try again shortly.', 423);
+    }
+
+    const db = await resolveSiteDBById(env, resolvedSiteId);
+    const bytesToRemove = category.row_size_bytes || 0;
 
     await db.prepare(
       'UPDATE categories SET parent_id = NULL WHERE parent_id = ?'
@@ -356,6 +386,10 @@ async function deleteCategory(env, user, categoryId) {
     ).bind(categoryId).run();
 
     await db.prepare('DELETE FROM categories WHERE id = ?').bind(categoryId).run();
+
+    if (bytesToRemove > 0) {
+      await trackD1Delete(env, resolvedSiteId, bytesToRemove);
+    }
 
     return successResponse(null, 'Category deleted successfully');
   } catch (error) {

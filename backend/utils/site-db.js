@@ -46,6 +46,18 @@ export async function resolveSiteDBById(env, siteId) {
   return env.DB;
 }
 
+export async function checkMigrationLock(env, siteId) {
+  if (!siteId) return false;
+  try {
+    const site = await env.DB.prepare(
+      'SELECT migration_locked FROM sites WHERE id = ?'
+    ).bind(siteId).first();
+    return !!(site && site.migration_locked);
+  } catch (e) {
+    return false;
+  }
+}
+
 export async function resolveSiteDBBySubdomain(env, subdomain) {
   if (!subdomain) return env.DB;
 

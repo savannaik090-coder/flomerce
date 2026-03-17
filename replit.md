@@ -16,7 +16,7 @@ Fluxe uses a **shared shard-based D1 database architecture**: multiple sites sha
 - **Site Assignment:** When a new site is created, it is assigned to the currently active shard (`is_active = 1`). The `shard_id` column on the `sites` table links a site to its shard.
 - **Binding Pattern:** Shards use sequential bindings: `SHARD_1`, `SHARD_2`, etc. Added to the worker via `addBindingAndRedeploy` in `d1-manager.js`.
 - **DB Resolution:** `site-db.js` provides `resolveSiteDB(env, site)`, `resolveSiteDBById(env, siteId)`, and `resolveSiteDBBySubdomain(env, subdomain)`. It looks up the shard binding via a JOIN with the shards table. Falls back to `env.DB` if no shard is assigned (backward compatibility for existing sites).
-- **Migration Lock:** Sites have a `migration_locked` flag. During shard-to-shard migration, writes are blocked.
+- **Migration Lock:** Sites have a `migration_locked` flag. During shard-to-shard migration, writes are blocked. All storefront workers check `checkMigrationLock()` before write operations and return HTTP 423 if locked.
 - **Backward Compatibility:** Existing sites with `shard_id = NULL` continue to use the platform DB. Legacy `d1_database_id` and `d1_binding_name` columns are still checked as a fallback.
 - **Admin Emails:** Both `savannaik090@gmail.com` and `xiyohe3598@indevgo.com` are configured as platform admins in `ADMIN_EMAILS` array in `admin-worker.js`.
 
@@ -49,7 +49,7 @@ Fluxe uses a **shared shard-based D1 database architecture**: multiple sites sha
 
 ### Key Utility Files
 - `backend/utils/d1-manager.js` — Cloudflare API calls: createDatabase, deleteDatabase, getDatabaseSize, runSchemaOnDB, addBindingAndRedeploy, listAllSiteDatabases
-- `backend/utils/site-db.js` — DB resolution: resolveSiteDB, resolveSiteDBById, resolveSiteDBBySubdomain (with shard JOIN)
+- `backend/utils/site-db.js` — DB resolution: resolveSiteDB, resolveSiteDBById, resolveSiteDBBySubdomain (with shard JOIN), checkMigrationLock (used by all storefront workers to block writes during migration)
 - `backend/utils/site-schema.js` — Site table schema definitions with row_size_bytes + ALTER TABLE migrations
 - `backend/utils/usage-tracker.js` — Usage tracking (trackD1Write/Delete/Update), correction factor, reconciliation, limits, overage
 - `backend/utils/db-init.js` — Platform DB initialization (includes shards table, shard_id + migration_locked columns)

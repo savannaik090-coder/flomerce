@@ -1,6 +1,7 @@
 import { generateId, jsonResponse, errorResponse, successResponse, handleCORS } from '../../utils/helpers.js';
 import { validateAuth, validateAnyAuth } from '../../utils/auth.js';
-import { resolveSiteDBById } from '../../utils/site-db.js';
+import { resolveSiteDBById, checkMigrationLock } from '../../utils/site-db.js';
+import { estimateRowBytes, trackD1Write, trackD1Delete } from '../../utils/usage-tracker.js';
 
 export async function handleWishlist(request, env, path) {
   const corsResponse = handleCORS(request);
@@ -110,6 +111,10 @@ async function getWishlist(env, user, siteId) {
 
 async function addToWishlist(request, env, user, siteId) {
   try {
+    if (await checkMigrationLock(env, siteId)) {
+      return errorResponse('Site is currently being migrated. Please try again shortly.', 423);
+    }
+
     const { productId } = await request.json();
 
     if (!productId) {
@@ -135,10 +140,15 @@ async function addToWishlist(request, env, user, siteId) {
     }
 
     const wishlistId = generateId();
+    const rowData = { id: wishlistId, site_id: siteId, user_id: user.id, product_id: productId };
+    const rowBytes = estimateRowBytes(rowData);
+
     await db.prepare(
-      `INSERT INTO wishlists (id, site_id, user_id, product_id, created_at)
-       VALUES (?, ?, ?, ?, datetime('now'))`
-    ).bind(wishlistId, siteId, user.id, productId).run();
+      `INSERT INTO wishlists (id, site_id, user_id, product_id, row_size_bytes, created_at)
+       VALUES (?, ?, ?, ?, ?, datetime('now'))`
+    ).bind(wishlistId, siteId, user.id, productId, rowBytes).run();
+
+    await trackD1Write(env, siteId, rowBytes);
 
     return successResponse({ id: wishlistId }, 'Added to wishlist');
   } catch (error) {
@@ -149,6 +159,10 @@ async function addToWishlist(request, env, user, siteId) {
 
 async function removeFromWishlist(request, env, user, siteId) {
   try {
+    if (await checkMigrationLock(env, siteId)) {
+      return errorResponse('Site is currently being migrated. Please try again shortly.', 423);
+    }
+
     const url = new URL(request.url);
     const productId = url.searchParams.get('productId');
 
@@ -158,9 +172,20 @@ async function removeFromWishlist(request, env, user, siteId) {
 
     const db = await resolveSiteDBById(env, siteId);
 
-    await db.prepare(
-      'DELETE FROM wishlists WHERE user_id = ? AND product_id = ? AND site_id = ?'
-    ).bind(user.id, productId, siteId).run();
+    const existing = await db.prepare(
+      'SELECT id, row_size_bytes FROM wishlists WHERE user_id = ? AND product_id = ? AND site_id = ?'
+    ).bind(user.id, productId, siteId).first();
+
+    if (existing) {
+      await db.prepare(
+        'DELETE FROM wishlists WHERE user_id = ? AND product_id = ? AND site_id = ?'
+      ).bind(user.id, productId, siteId).run();
+
+      const bytesToRemove = existing.row_size_bytes || 0;
+      if (bytesToRemove > 0) {
+        await trackD1Delete(env, siteId, bytesToRemove);
+      }
+    }
 
     return successResponse(null, 'Removed from wishlist');
   } catch (error) {

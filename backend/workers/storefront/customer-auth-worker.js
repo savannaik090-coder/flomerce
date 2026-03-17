@@ -1,6 +1,8 @@
 import { generateId, generateToken, getExpiryDate, validateEmail, sanitizeInput, jsonResponse, errorResponse, successResponse, handleCORS } from '../../utils/helpers.js';
 import { hashPassword, verifyPassword } from '../../utils/auth.js';
 import { sendEmail } from '../../utils/email.js';
+import { estimateRowBytes, trackD1Write, trackD1Update, trackD1Delete } from '../../utils/usage-tracker.js';
+import { checkMigrationLock } from '../../utils/site-db.js';
 
 export async function handleCustomerAuth(request, env, path) {
   const corsResponse = handleCORS(request);
@@ -149,6 +151,18 @@ async function ensureCustomerTables(env) {
         'ALTER TABLE site_customers ADD COLUMN email_verified INTEGER DEFAULT 0'
       ).run();
     } catch (_) {}
+
+    try {
+      await env.DB.prepare(
+        'ALTER TABLE site_customers ADD COLUMN row_size_bytes INTEGER DEFAULT 0'
+      ).run();
+    } catch (_) {}
+
+    try {
+      await env.DB.prepare(
+        'ALTER TABLE customer_addresses ADD COLUMN row_size_bytes INTEGER DEFAULT 0'
+      ).run();
+    } catch (_) {}
   } catch (error) {
     console.error('Error ensuring customer tables:', error);
   }
@@ -190,6 +204,10 @@ async function getAddresses(env, customer) {
 
 async function createAddress(request, env, customer) {
   try {
+    if (await checkMigrationLock(env, customer.site_id)) {
+      return errorResponse('Site is currently being migrated. Please try again shortly.', 423);
+    }
+
     const body = await request.json();
     const { label, firstName, lastName, phone, houseNumber, roadName, city, state, pinCode, isDefault } = body;
 
@@ -205,9 +223,12 @@ async function createAddress(request, env, customer) {
       ).bind(customer.id, customer.site_id).run();
     }
 
+    const rowData = { id, site_id: customer.site_id, customer_id: customer.id, label, firstName, lastName, phone, houseNumber, roadName, city, state, pinCode };
+    const rowBytes = estimateRowBytes(rowData);
+
     await env.DB.prepare(
-      `INSERT INTO customer_addresses (id, site_id, customer_id, label, first_name, last_name, phone, house_number, road_name, city, state, pin_code, is_default, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
+      `INSERT INTO customer_addresses (id, site_id, customer_id, label, first_name, last_name, phone, house_number, road_name, city, state, pin_code, is_default, row_size_bytes, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
     ).bind(
       id, customer.site_id, customer.id,
       sanitizeInput(label || 'Home'),
@@ -219,8 +240,11 @@ async function createAddress(request, env, customer) {
       sanitizeInput(city),
       sanitizeInput(state),
       sanitizeInput(pinCode),
-      isDefault ? 1 : 0
+      isDefault ? 1 : 0,
+      rowBytes
     ).run();
+
+    await trackD1Write(env, customer.site_id, rowBytes);
 
     const address = await env.DB.prepare(
       'SELECT * FROM customer_addresses WHERE id = ?'
@@ -235,6 +259,10 @@ async function createAddress(request, env, customer) {
 
 async function updateAddress(request, env, customer, addressId) {
   try {
+    if (await checkMigrationLock(env, customer.site_id)) {
+      return errorResponse('Site is currently being migrated. Please try again shortly.', 423);
+    }
+
     const existing = await env.DB.prepare(
       'SELECT * FROM customer_addresses WHERE id = ? AND customer_id = ? AND site_id = ?'
     ).bind(addressId, customer.id, customer.site_id).first();
@@ -252,6 +280,9 @@ async function updateAddress(request, env, customer, addressId) {
       ).bind(customer.id, customer.site_id).run();
     }
 
+    const oldBytes = existing.row_size_bytes || 0;
+    const newBytes = estimateRowBytes(body);
+
     await env.DB.prepare(
       `UPDATE customer_addresses SET
         label = COALESCE(?, label),
@@ -264,6 +295,7 @@ async function updateAddress(request, env, customer, addressId) {
         state = COALESCE(?, state),
         pin_code = COALESCE(?, pin_code),
         is_default = ?,
+        row_size_bytes = ?,
         updated_at = datetime('now')
        WHERE id = ? AND customer_id = ? AND site_id = ?`
     ).bind(
@@ -277,10 +309,13 @@ async function updateAddress(request, env, customer, addressId) {
       state ? sanitizeInput(state) : null,
       pinCode ? sanitizeInput(pinCode) : null,
       isDefault ? 1 : 0,
+      newBytes,
       addressId,
       customer.id,
       customer.site_id
     ).run();
+
+    await trackD1Update(env, customer.site_id, oldBytes, newBytes);
 
     const updated = await env.DB.prepare(
       'SELECT * FROM customer_addresses WHERE id = ?'
@@ -303,9 +338,15 @@ async function deleteAddress(env, customer, addressId) {
       return errorResponse('Address not found', 404);
     }
 
+    const bytesToRemove = existing.row_size_bytes || 0;
+
     await env.DB.prepare(
       'DELETE FROM customer_addresses WHERE id = ? AND customer_id = ? AND site_id = ?'
     ).bind(addressId, customer.id, customer.site_id).run();
+
+    if (bytesToRemove > 0) {
+      await trackD1Delete(env, customer.site_id, bytesToRemove);
+    }
 
     return successResponse(null, 'Address deleted successfully');
   } catch (error) {
@@ -364,7 +405,14 @@ async function handleSignup(request, env) {
 
     const { checkUsageLimit } = await import('../../utils/usage-tracker.js');
 
-    const usageCheck = await checkUsageLimit(env, siteId, 'd1', 0);
+    if (await checkMigrationLock(env, siteId)) {
+      return errorResponse('Site is currently being migrated. Please try again shortly.', 423);
+    }
+
+    const rowData = { id: customerId, site_id: siteId, email: email.toLowerCase(), name, phone };
+    const rowBytes = estimateRowBytes(rowData);
+
+    const usageCheck = await checkUsageLimit(env, siteId, 'd1', rowBytes);
     if (!usageCheck.allowed) {
       return errorResponse(usageCheck.reason, 403, 'STORAGE_LIMIT');
     }
@@ -372,9 +420,11 @@ async function handleSignup(request, env) {
     const skipVerification = env.SKIP_EMAIL_VERIFICATION === 'true';
 
     await env.DB.prepare(
-      `INSERT INTO site_customers (id, site_id, email, password_hash, name, phone, email_verified, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
-    ).bind(customerId, siteId, email.toLowerCase(), passwordHash, sanitizeInput(name), phone || null, skipVerification ? 1 : 0).run();
+      `INSERT INTO site_customers (id, site_id, email, password_hash, name, phone, email_verified, row_size_bytes, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+    ).bind(customerId, siteId, email.toLowerCase(), passwordHash, sanitizeInput(name), phone || null, skipVerification ? 1 : 0, rowBytes).run();
+
+    await trackD1Write(env, siteId, rowBytes);
 
     if (!skipVerification) {
       const verifyToken = generateToken(32);
@@ -531,7 +581,16 @@ async function handleUpdateProfile(request, env) {
       return errorResponse('Unauthorized', 401);
     }
 
+    if (await checkMigrationLock(env, customer.site_id)) {
+      return errorResponse('Site is currently being migrated. Please try again shortly.', 423);
+    }
+
     const { name, phone } = await request.json();
+
+    const oldRow = await env.DB.prepare(
+      'SELECT row_size_bytes FROM site_customers WHERE id = ?'
+    ).bind(customer.id).first();
+    const oldBytes = oldRow?.row_size_bytes || 0;
 
     await env.DB.prepare(
       `UPDATE site_customers SET
@@ -544,6 +603,14 @@ async function handleUpdateProfile(request, env) {
     const updated = await env.DB.prepare(
       'SELECT id, email, name, phone FROM site_customers WHERE id = ?'
     ).bind(customer.id).first();
+
+    const newBytes = estimateRowBytes(updated || {});
+    if (oldBytes !== newBytes) {
+      await env.DB.prepare(
+        'UPDATE site_customers SET row_size_bytes = ? WHERE id = ?'
+      ).bind(newBytes, customer.id).run();
+      await trackD1Update(env, customer.site_id, oldBytes, newBytes);
+    }
 
     return successResponse(updated, 'Profile updated successfully');
   } catch (error) {
