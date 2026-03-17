@@ -113,11 +113,19 @@ The central routing table — maps subdomains to shards and stores site configur
 | updated_at | TEXT | Last update timestamp |
 
 **The `settings` JSON column contains:**
-- `razorpayKeyId` — Site-specific Razorpay public key
-- `razorpayKeySecret` — Site-specific Razorpay secret key
-- `adminVerificationCode` — Code for site admin access
-- `social` — Social media link overrides
-- Other per-site configuration
+- Starts as `{}` for new sites — default content (featured video text, shipping policies, care guides, about page, etc.) is hardcoded in the frontend React components per store category
+- Only gets populated when the admin edits settings through the admin panel
+- Possible keys after editing:
+  - `razorpayKeyId` — Site-specific Razorpay public key
+  - `razorpayKeySecret` — Site-specific Razorpay secret key
+  - `adminVerificationCode` — Code for site admin access
+  - `social` — Social media link overrides
+  - `featuredVideoTitle`, `featuredVideoDescription`, `featuredVideoChatButtonText` — Featured video section
+  - `shippingRegions`, `shippingCharges`, `shippingDeliveryTime`, `shippingTracking` — Shipping info
+  - `returnPolicy`, `returnReplacements`, `returnMandatory` — Return policy
+  - `careGuideWashing`, `careGuideCleaning`, `careGuideMaintenance` — Product care guide
+  - `aboutPage` — About page content (heroSubtitle, storyText, sections)
+  - `showAboutUs`, `showFeaturedVideo` — Section visibility toggles
 
 ### `shards`
 Registry of all shard databases.
