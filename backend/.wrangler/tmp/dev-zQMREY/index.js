@@ -3549,30 +3549,40 @@ async function getUserSites(env, user) {
       const config = await getSiteConfig(env, site.id);
       let subscription = { plan: site.subscription_plan || null, status: "none", billingCycle: null, periodStart: null, periodEnd: null };
       try {
-        const sub = await env.DB.prepare(
-          `SELECT plan, status, billing_cycle, current_period_start, current_period_end FROM subscriptions WHERE site_id = ? ORDER BY created_at DESC LIMIT 1`
-        ).bind(site.id).first();
-        if (sub) {
-          let subStatus = sub.status;
-          if (subStatus === "active" && sub.current_period_end && new Date(sub.current_period_end) < /* @__PURE__ */ new Date()) {
-            subStatus = "expired";
-          }
+        if (site.subscription_plan === "enterprise") {
           subscription = {
-            plan: sub.plan,
-            status: subStatus,
-            billingCycle: sub.billing_cycle,
-            periodStart: sub.current_period_start,
-            periodEnd: sub.current_period_end
-          };
-        } else if (site.subscription_plan && site.subscription_expires_at) {
-          const isExpired2 = new Date(site.subscription_expires_at) < /* @__PURE__ */ new Date();
-          subscription = {
-            plan: site.subscription_plan,
-            status: isExpired2 ? "expired" : "active",
+            plan: "enterprise",
+            status: "active",
             billingCycle: null,
             periodStart: null,
-            periodEnd: site.subscription_expires_at
+            periodEnd: site.subscription_expires_at || "2099-12-31T23:59:59"
           };
+        } else {
+          const sub = await env.DB.prepare(
+            `SELECT plan, status, billing_cycle, current_period_start, current_period_end FROM subscriptions WHERE site_id = ? AND status != 'enterprise_override' ORDER BY created_at DESC LIMIT 1`
+          ).bind(site.id).first();
+          if (sub) {
+            let subStatus = sub.status;
+            if (subStatus === "active" && sub.current_period_end && new Date(sub.current_period_end) < /* @__PURE__ */ new Date()) {
+              subStatus = "expired";
+            }
+            subscription = {
+              plan: sub.plan,
+              status: subStatus,
+              billingCycle: sub.billing_cycle,
+              periodStart: sub.current_period_start,
+              periodEnd: sub.current_period_end
+            };
+          } else if (site.subscription_plan && site.subscription_expires_at) {
+            const isExpired2 = new Date(site.subscription_expires_at) < /* @__PURE__ */ new Date();
+            subscription = {
+              plan: site.subscription_plan,
+              status: isExpired2 ? "expired" : "active",
+              billingCycle: null,
+              periodStart: null,
+              periodEnd: site.subscription_expires_at
+            };
+          }
         }
       } catch (e) {
       }
@@ -9569,6 +9579,12 @@ async function assignEnterpriseSite(request, env, user) {
     await env.DB.prepare(
       `UPDATE sites SET subscription_plan = 'enterprise', subscription_expires_at = '2099-12-31T23:59:59', is_active = 1, updated_at = datetime('now') WHERE id = ?`
     ).bind(siteId).run();
+    try {
+      await env.DB.prepare(
+        `UPDATE subscriptions SET status = 'enterprise_override', updated_at = datetime('now') WHERE site_id = ? AND status = 'active'`
+      ).bind(siteId).run();
+    } catch (e) {
+    }
     return successResponse({ siteId, subdomain: site.subdomain }, "Site assigned as enterprise");
   } catch (error) {
     console.error("Assign enterprise error:", error);
@@ -9582,10 +9598,24 @@ async function removeEnterpriseSite(request, env) {
     if (!siteId)
       return errorResponse("siteId is required", 400);
     await env.DB.prepare("DELETE FROM enterprise_sites WHERE site_id = ?").bind(siteId).run();
-    await env.DB.prepare(
-      `UPDATE sites SET subscription_plan = 'free', subscription_expires_at = NULL, updated_at = datetime('now') WHERE id = ?`
-    ).bind(siteId).run();
-    return successResponse({ siteId }, "Enterprise status removed");
+    let restoredPlan = "free";
+    try {
+      const oldSub = await env.DB.prepare(
+        `SELECT id, plan, current_period_end FROM subscriptions WHERE site_id = ? AND status = 'enterprise_override' ORDER BY created_at DESC LIMIT 1`
+      ).bind(siteId).first();
+      if (oldSub && oldSub.current_period_end && new Date(oldSub.current_period_end) > /* @__PURE__ */ new Date()) {
+        await env.DB.prepare(`UPDATE subscriptions SET status = 'active', updated_at = datetime('now') WHERE id = ?`).bind(oldSub.id).run();
+        await env.DB.prepare(`UPDATE subscriptions SET status = 'expired', updated_at = datetime('now') WHERE site_id = ? AND status = 'enterprise_override' AND id != ?`).bind(siteId, oldSub.id).run();
+        await env.DB.prepare(`UPDATE sites SET subscription_plan = ?, subscription_expires_at = ?, updated_at = datetime('now') WHERE id = ?`).bind(oldSub.plan, oldSub.current_period_end, siteId).run();
+        restoredPlan = oldSub.plan;
+      } else {
+        await env.DB.prepare(`UPDATE subscriptions SET status = 'expired', updated_at = datetime('now') WHERE site_id = ? AND status = 'enterprise_override'`).bind(siteId).run();
+        await env.DB.prepare(`UPDATE sites SET subscription_plan = 'free', subscription_expires_at = NULL, updated_at = datetime('now') WHERE id = ?`).bind(siteId).run();
+      }
+    } catch (e) {
+      await env.DB.prepare(`UPDATE sites SET subscription_plan = 'free', subscription_expires_at = NULL, updated_at = datetime('now') WHERE id = ?`).bind(siteId).run();
+    }
+    return successResponse({ siteId, restoredPlan }, "Enterprise status removed");
   } catch (error) {
     return errorResponse("Failed to remove enterprise: " + error.message, 500);
   }

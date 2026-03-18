@@ -115,30 +115,40 @@ async function getUserSites(env, user) {
 
       let subscription = { plan: site.subscription_plan || null, status: 'none', billingCycle: null, periodStart: null, periodEnd: null };
       try {
-        const sub = await env.DB.prepare(
-          `SELECT plan, status, billing_cycle, current_period_start, current_period_end FROM subscriptions WHERE site_id = ? ORDER BY created_at DESC LIMIT 1`
-        ).bind(site.id).first();
-        if (sub) {
-          let subStatus = sub.status;
-          if (subStatus === 'active' && sub.current_period_end && new Date(sub.current_period_end) < new Date()) {
-            subStatus = 'expired';
-          }
+        if (site.subscription_plan === 'enterprise') {
           subscription = {
-            plan: sub.plan,
-            status: subStatus,
-            billingCycle: sub.billing_cycle,
-            periodStart: sub.current_period_start,
-            periodEnd: sub.current_period_end,
-          };
-        } else if (site.subscription_plan && site.subscription_expires_at) {
-          const isExpired = new Date(site.subscription_expires_at) < new Date();
-          subscription = {
-            plan: site.subscription_plan,
-            status: isExpired ? 'expired' : 'active',
+            plan: 'enterprise',
+            status: 'active',
             billingCycle: null,
             periodStart: null,
-            periodEnd: site.subscription_expires_at,
+            periodEnd: site.subscription_expires_at || '2099-12-31T23:59:59',
           };
+        } else {
+          const sub = await env.DB.prepare(
+            `SELECT plan, status, billing_cycle, current_period_start, current_period_end FROM subscriptions WHERE site_id = ? AND status != 'enterprise_override' ORDER BY created_at DESC LIMIT 1`
+          ).bind(site.id).first();
+          if (sub) {
+            let subStatus = sub.status;
+            if (subStatus === 'active' && sub.current_period_end && new Date(sub.current_period_end) < new Date()) {
+              subStatus = 'expired';
+            }
+            subscription = {
+              plan: sub.plan,
+              status: subStatus,
+              billingCycle: sub.billing_cycle,
+              periodStart: sub.current_period_start,
+              periodEnd: sub.current_period_end,
+            };
+          } else if (site.subscription_plan && site.subscription_expires_at) {
+            const isExpired = new Date(site.subscription_expires_at) < new Date();
+            subscription = {
+              plan: site.subscription_plan,
+              status: isExpired ? 'expired' : 'active',
+              billingCycle: null,
+              periodStart: null,
+              periodEnd: site.subscription_expires_at,
+            };
+          }
         }
       } catch (e) {}
       enrichedSites.push({
