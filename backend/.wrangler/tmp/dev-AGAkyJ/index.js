@@ -1883,6 +1883,7 @@ async function listStaff(env, siteId) {
     ).bind(siteId).all();
     const staff = (result.results || []).map((s) => ({
       ...s,
+      is_active: s.is_active === 1 || s.is_active === true,
       permissions: (() => {
         try {
           return typeof s.permissions === "string" ? JSON.parse(s.permissions) : s.permissions || [];
@@ -1909,7 +1910,7 @@ async function getStaffMember(env, siteId, staffId) {
       permissions = typeof staff.permissions === "string" ? JSON.parse(staff.permissions) : staff.permissions || [];
     } catch {
     }
-    return successResponse({ ...staff, permissions });
+    return successResponse({ ...staff, is_active: staff.is_active === 1 || staff.is_active === true, permissions });
   } catch (error) {
     console.error("Get staff error:", error);
     return errorResponse("Failed to get staff member", 500);

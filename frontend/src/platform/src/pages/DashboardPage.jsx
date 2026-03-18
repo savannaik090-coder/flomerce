@@ -962,8 +962,8 @@ export default function DashboardPage() {
                             <div style={{ flex: 1, minWidth: '200px' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
                                 <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>{staff.name}</h3>
-                                <span style={{ fontSize: '0.7rem', padding: '0.125rem 0.5rem', borderRadius: '1rem', fontWeight: 600, background: staff.is_active !== false ? '#dcfce7' : '#fee2e2', color: staff.is_active !== false ? '#166534' : '#991b1b' }}>
-                                  {staff.is_active !== false ? 'Active' : 'Inactive'}
+                                <span style={{ fontSize: '0.7rem', padding: '0.125rem 0.5rem', borderRadius: '1rem', fontWeight: 600, background: (staff.is_active !== false && staff.is_active !== 0) ? '#dcfce7' : '#fee2e2', color: (staff.is_active !== false && staff.is_active !== 0) ? '#166534' : '#991b1b' }}>
+                                  {(staff.is_active !== false && staff.is_active !== 0) ? 'Active' : 'Inactive'}
                                 </span>
                               </div>
                               <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>{staff.email}</p>
@@ -978,7 +978,7 @@ export default function DashboardPage() {
                             <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
                               <button className="btn btn-outline" style={{ fontSize: '0.8rem', padding: '0.375rem 0.75rem' }} onClick={() => {
                                 const perms = typeof staff.permissions === 'string' ? JSON.parse(staff.permissions) : (staff.permissions || []);
-                                setStaffForm({ id: staff.id, name: staff.name, email: staff.email, password: '', permissions: perms, is_active: staff.is_active !== false });
+                                setStaffForm({ id: staff.id, name: staff.name, email: staff.email, password: '', permissions: perms, is_active: staff.is_active !== false && staff.is_active !== 0 });
                                 setStaffMsg('');
                                 setStaffError('');
                               }}>Edit</button>
