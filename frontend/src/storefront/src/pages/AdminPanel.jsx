@@ -127,6 +127,9 @@ export default function AdminPanel() {
         setIsOwner(data.isOwner !== false);
         setAdminToken(token);
         setVerified(true);
+        if (data.isOwner === false && data.permissions && data.permissions.length > 0) {
+          setActiveSection(data.permissions[0]);
+        }
         const url = new URL(window.location);
         url.searchParams.delete('token');
         window.history.replaceState({}, '', url.pathname);
@@ -179,6 +182,9 @@ export default function AdminPanel() {
         setIsOwner(false);
         setAdminToken(token);
         setVerified(true);
+        if (perms && perms.length > 0) {
+          setActiveSection(perms[0]);
+        }
       } else {
         setLoginError(result.error || result.message || 'Invalid email or password');
       }
