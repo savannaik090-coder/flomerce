@@ -23,7 +23,7 @@ export default function DashboardPage() {
   const [billingSiteId, setBillingSiteId] = useState(null);
   const [dataLoaded, setDataLoaded] = useState(false);
   const [showPlanOverlay, setShowPlanOverlay] = useState(false);
-  const [showInitialPlanOverlay, setShowInitialPlanOverlay] = useState(false);
+  const [showPlanOverlayHideTrial, setShowPlanOverlayHideTrial] = useState(true);
   const [pendingSiteData, setPendingSiteData] = useState(null);
   const [siteUsage, setSiteUsage] = useState({});
 
@@ -61,18 +61,6 @@ export default function DashboardPage() {
       });
     }
   }, [isAuthenticated, loadSites, loadProfile]);
-
-  useEffect(() => {
-    if (dataLoaded && profileData) {
-      const plan = profileData.plan || null;
-      const status = profileData.status || 'none';
-      const hadSub = profileData.hadSubscription || false;
-      const isTrialActive = plan === 'trial' && status === 'active';
-      if (!isTrialActive && !hadSub) {
-        setShowInitialPlanOverlay(true);
-      }
-    }
-  }, [dataLoaded, profileData]);
 
   const handleDeleteSite = async (siteId) => {
     try {
@@ -149,14 +137,10 @@ export default function DashboardPage() {
     await Promise.all([loadSites(), loadProfile()]);
   };
 
-  const handleInitialPlanDone = () => {
-    setShowInitialPlanOverlay(false);
-    loadProfile();
-    loadSites();
-  };
-
   const handleNeedsPlan = (formData) => {
     setPendingSiteData(formData);
+    const hadSub = profileData?.hadSubscription || false;
+    setShowPlanOverlayHideTrial(hadSub);
     setShowPlanOverlay(true);
   };
 
@@ -765,23 +749,14 @@ export default function DashboardPage() {
         />
       )}
 
-      {showInitialPlanOverlay && (
-        <PlanSelector
-          currentPlan={null}
-          currentStatus="none"
-          onUpgraded={handleInitialPlanDone}
-          isOverlay={true}
-          isFirstTime={true}
-        />
-      )}
-
       {showPlanOverlay && (
         <PlanSelector
           currentPlan={null}
           currentStatus="none"
           onUpgraded={handlePlanOverlayDone}
           isOverlay={true}
-          hideTrial={true}
+          hideTrial={showPlanOverlayHideTrial}
+          isFirstTime={!profileData?.hadSubscription}
           onClose={handlePlanOverlayClose}
         />
       )}
