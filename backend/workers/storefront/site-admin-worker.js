@@ -1,7 +1,9 @@
 import { generateId, generateToken, jsonResponse, errorResponse, successResponse, handleCORS } from '../../utils/helpers.js';
-import { validateAuth } from '../../utils/auth.js';
+import { validateAuth, hashPassword, verifyPassword } from '../../utils/auth.js';
 import { resolveSiteDBById, checkMigrationLock, getSiteConfig } from '../../utils/site-db.js';
 import { estimateRowBytes, trackD1Write, trackD1Update } from '../../utils/usage-tracker.js';
+
+const ALL_PERMISSIONS = ['products', 'inventory', 'orders', 'customers', 'analytics', 'website', 'seo', 'notifications', 'settings'];
 
 export async function handleSiteAdmin(request, env, path) {
   const corsResponse = handleCORS(request);
@@ -11,12 +13,10 @@ export async function handleSiteAdmin(request, env, path) {
   const action = pathParts[2];
 
   switch (action) {
-    case 'verify':
-      return verifySiteAdminCode(request, env);
+    case 'staff-login':
+      return staffLogin(request, env);
     case 'validate':
       return validateSiteAdminToken(request, env);
-    case 'set-code':
-      return setSiteAdminCode(request, env);
     case 'auto-login':
       return autoLoginSiteAdmin(request, env);
     case 'seo':
@@ -26,16 +26,16 @@ export async function handleSiteAdmin(request, env, path) {
   }
 }
 
-async function verifySiteAdminCode(request, env) {
+async function staffLogin(request, env) {
   if (request.method !== 'POST') {
     return errorResponse('Method not allowed', 405);
   }
 
   try {
-    const { siteId, subdomain, verificationCode } = await request.json();
+    const { siteId, subdomain, email, password } = await request.json();
 
-    if (!verificationCode) {
-      return errorResponse('Verification code is required');
+    if (!email || !password) {
+      return errorResponse('Email and password are required');
     }
 
     if (!siteId && !subdomain) {
@@ -57,20 +57,28 @@ async function verifySiteAdminCode(request, env) {
       return errorResponse('Site not found', 404);
     }
 
-    const config = await getSiteConfig(env, site.id);
+    const staff = await env.DB.prepare(
+      'SELECT id, site_id, email, password_hash, name, permissions, is_active FROM site_staff WHERE site_id = ? AND LOWER(email) = LOWER(?)'
+    ).bind(site.id, email.trim()).first();
 
-    let settings = {};
-    try {
-      if (config.settings) settings = typeof config.settings === 'string' ? JSON.parse(config.settings) : config.settings;
-    } catch (e) {}
-
-    const storedCode = settings.adminVerificationCode;
-    if (!storedCode) {
-      return errorResponse('Admin verification code not set for this site. Please set it from your dashboard.', 400);
+    if (!staff) {
+      return errorResponse('Invalid email or password', 401);
     }
 
-    if (verificationCode !== storedCode) {
-      return errorResponse('Invalid verification code', 401);
+    if (!staff.is_active) {
+      return errorResponse('Your account has been deactivated. Contact the store owner.', 403);
+    }
+
+    const passwordValid = await verifyPassword(password, staff.password_hash);
+    if (!passwordValid) {
+      return errorResponse('Invalid email or password', 401);
+    }
+
+    let permissions = [];
+    try {
+      permissions = typeof staff.permissions === 'string' ? JSON.parse(staff.permissions) : (staff.permissions || []);
+    } catch (e) {
+      permissions = [];
     }
 
     const adminToken = generateToken(32);
@@ -80,9 +88,11 @@ async function verifySiteAdminCode(request, env) {
     await ensureSiteAdminSessionsTable(env);
 
     await env.DB.prepare(
-      `INSERT INTO site_admin_sessions (id, site_id, token, expires_at, created_at)
-       VALUES (?, ?, ?, ?, datetime('now'))`
-    ).bind(generateId(), site.id, adminToken, expiresAt.toISOString()).run();
+      `INSERT INTO site_admin_sessions (id, site_id, token, staff_id, permissions, expires_at, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`
+    ).bind(generateId(), site.id, adminToken, staff.id, JSON.stringify(permissions), expiresAt.toISOString()).run();
+
+    const config = await getSiteConfig(env, site.id);
 
     return successResponse({
       token: adminToken,
@@ -90,10 +100,12 @@ async function verifySiteAdminCode(request, env) {
       subdomain: site.subdomain,
       brandName: config.brand_name || site.brand_name,
       expiresAt: expiresAt.toISOString(),
-    }, 'Admin access granted');
+      permissions,
+      staffName: staff.name,
+    }, 'Staff login successful');
   } catch (error) {
-    console.error('Verify site admin code error:', error);
-    return errorResponse('Verification failed', 500);
+    console.error('Staff login error:', error);
+    return errorResponse('Login failed', 500);
   }
 }
 
@@ -112,7 +124,7 @@ async function validateSiteAdminToken(request, env) {
     await ensureSiteAdminSessionsTable(env);
 
     const session = await env.DB.prepare(
-      `SELECT id, site_id, expires_at FROM site_admin_sessions 
+      `SELECT id, site_id, staff_id, permissions, expires_at FROM site_admin_sessions 
        WHERE token = ? AND site_id = ? AND expires_at > datetime('now')`
     ).bind(token, siteId).first();
 
@@ -120,80 +132,24 @@ async function validateSiteAdminToken(request, env) {
       return errorResponse('Invalid or expired admin token', 401);
     }
 
-    return successResponse({ valid: true, siteId: session.site_id }, 'Token is valid');
+    let permissions = null;
+    if (session.staff_id && session.permissions) {
+      try {
+        permissions = JSON.parse(session.permissions);
+      } catch (e) {
+        permissions = [];
+      }
+    }
+
+    return successResponse({
+      valid: true,
+      siteId: session.site_id,
+      permissions,
+      isOwner: !session.staff_id,
+    }, 'Token is valid');
   } catch (error) {
     console.error('Validate site admin token error:', error);
     return errorResponse('Validation failed', 500);
-  }
-}
-
-async function setSiteAdminCode(request, env) {
-  if (request.method !== 'POST') {
-    return errorResponse('Method not allowed', 405);
-  }
-
-  try {
-    const { siteId, verificationCode } = await request.json();
-
-    if (!siteId || !verificationCode) {
-      return errorResponse('Site ID and verification code are required');
-    }
-
-    if (verificationCode.length < 4 || verificationCode.length > 20) {
-      return errorResponse('Verification code must be between 4 and 20 characters');
-    }
-
-    const user = await validateAuth(request, env);
-    let authorized = false;
-
-    if (user) {
-      const site = await env.DB.prepare(
-        'SELECT id FROM sites WHERE id = ? AND user_id = ?'
-      ).bind(siteId, user.id).first();
-      if (site) authorized = true;
-    }
-
-    if (!authorized) {
-      const siteAdmin = await validateSiteAdmin(request, env, siteId);
-      if (siteAdmin) authorized = true;
-    }
-
-    if (!authorized) {
-      return errorResponse('Site not found or unauthorized', 404);
-    }
-
-    const siteDB = await resolveSiteDBById(env, siteId);
-    const existingConfig = await siteDB.prepare(
-      'SELECT settings, row_size_bytes FROM site_config WHERE site_id = ?'
-    ).bind(siteId).first();
-
-    let settings = {};
-    try {
-      if (existingConfig && existingConfig.settings) {
-        settings = typeof existingConfig.settings === 'string' ? JSON.parse(existingConfig.settings) : existingConfig.settings;
-      }
-    } catch (e) {}
-
-    settings.adminVerificationCode = verificationCode;
-    const oldBytes = existingConfig?.row_size_bytes || 0;
-
-    await siteDB.prepare(
-      `UPDATE site_config SET settings = ?, updated_at = datetime('now') WHERE site_id = ?`
-    ).bind(JSON.stringify(settings), siteId).run();
-
-    const updatedConfig = await siteDB.prepare(
-      'SELECT * FROM site_config WHERE site_id = ?'
-    ).bind(siteId).first();
-    if (updatedConfig) {
-      const newBytes = estimateRowBytes(updatedConfig);
-      await siteDB.prepare('UPDATE site_config SET row_size_bytes = ? WHERE site_id = ?').bind(newBytes, siteId).run();
-      await trackD1Update(env, siteId, oldBytes, newBytes);
-    }
-
-    return successResponse(null, 'Admin verification code set successfully');
-  } catch (error) {
-    console.error('Set site admin code error:', error);
-    return errorResponse('Failed to set verification code', 500);
   }
 }
 
@@ -230,9 +186,9 @@ async function autoLoginSiteAdmin(request, env) {
     await ensureSiteAdminSessionsTable(env);
 
     await env.DB.prepare(
-      `INSERT INTO site_admin_sessions (id, site_id, token, expires_at, created_at)
-       VALUES (?, ?, ?, ?, datetime('now'))`
-    ).bind(generateId(), site.id, adminToken, expiresAt.toISOString()).run();
+      `INSERT INTO site_admin_sessions (id, site_id, token, staff_id, permissions, expires_at, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`
+    ).bind(generateId(), site.id, adminToken, null, null, expiresAt.toISOString()).run();
 
     return successResponse({
       token: adminToken,
@@ -240,6 +196,8 @@ async function autoLoginSiteAdmin(request, env) {
       subdomain: site.subdomain,
       brandName: config.brand_name || site.brand_name,
       expiresAt: expiresAt.toISOString(),
+      permissions: null,
+      isOwner: true,
     }, 'Auto-login token generated');
   } catch (error) {
     console.error('Auto-login site admin error:', error);
@@ -254,6 +212,8 @@ async function ensureSiteAdminSessionsTable(env) {
         id TEXT PRIMARY KEY,
         site_id TEXT NOT NULL,
         token TEXT NOT NULL,
+        staff_id TEXT,
+        permissions TEXT,
         expires_at TEXT NOT NULL,
         created_at TEXT DEFAULT (datetime('now')),
         FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
@@ -312,6 +272,7 @@ async function getSiteSEO(request, env) {
 
     const admin = await validateSiteAdmin(request, env, siteId);
     if (!admin) return errorResponse('Unauthorized', 401);
+    if (!hasPermission(admin, 'seo')) return errorResponse('You do not have permission to access SEO settings', 403);
 
     const config = await getSiteConfig(env, siteId);
 
@@ -336,6 +297,7 @@ async function saveSiteSEO(request, env) {
 
     const admin = await validateSiteAdmin(request, env, siteId);
     if (!admin) return errorResponse('Unauthorized', 401);
+    if (!hasPermission(admin, 'seo')) return errorResponse('You do not have permission to modify SEO settings', 403);
 
     const siteDB = await resolveSiteDBById(env, siteId);
     const existingConfig = await siteDB.prepare(
@@ -379,6 +341,7 @@ async function getCategoriesSEO(request, env) {
 
     const admin = await validateSiteAdmin(request, env, siteId);
     if (!admin) return errorResponse('Unauthorized', 401);
+    if (!hasPermission(admin, 'seo')) return errorResponse('You do not have permission to access SEO settings', 403);
 
     const db = await resolveSiteDBById(env, siteId);
     const result = await db.prepare(
@@ -400,6 +363,7 @@ async function saveCategorySEO(request, env, categoryId) {
 
     const admin = await validateSiteAdmin(request, env, siteId);
     if (!admin) return errorResponse('Unauthorized', 401);
+    if (!hasPermission(admin, 'seo')) return errorResponse('You do not have permission to modify SEO settings', 403);
 
     if (await checkMigrationLock(env, siteId)) {
       return errorResponse('Site is currently being migrated. Please try again shortly.', 423);
@@ -443,6 +407,7 @@ async function getProductsSEO(request, env) {
 
     const admin = await validateSiteAdmin(request, env, siteId);
     if (!admin) return errorResponse('Unauthorized', 401);
+    if (!hasPermission(admin, 'seo')) return errorResponse('You do not have permission to access SEO settings', 403);
 
     const db = await resolveSiteDBById(env, siteId);
     const result = await db.prepare(
@@ -476,6 +441,7 @@ async function saveProductSEO(request, env, productId) {
 
     const admin = await validateSiteAdmin(request, env, siteId);
     if (!admin) return errorResponse('Unauthorized', 401);
+    if (!hasPermission(admin, 'seo')) return errorResponse('You do not have permission to modify SEO settings', 403);
 
     if (await checkMigrationLock(env, siteId)) {
       return errorResponse('Site is currently being migrated. Please try again shortly.', 423);
@@ -521,6 +487,7 @@ async function getPagesSEO(request, env) {
 
     const admin = await validateSiteAdmin(request, env, siteId);
     if (!admin) return errorResponse('Unauthorized', 401);
+    if (!hasPermission(admin, 'seo')) return errorResponse('You do not have permission to access SEO settings', 403);
 
     const db = await resolveSiteDBById(env, siteId);
     const result = await db.prepare(
@@ -549,6 +516,7 @@ async function savePageSEO(request, env, pageType) {
 
     const admin = await validateSiteAdmin(request, env, siteId);
     if (!admin) return errorResponse('Unauthorized', 401);
+    if (!hasPermission(admin, 'seo')) return errorResponse('You do not have permission to modify SEO settings', 403);
 
     if (await checkMigrationLock(env, siteId)) {
       return errorResponse('Site is currently being migrated. Please try again shortly.', 423);
@@ -601,6 +569,7 @@ async function getSocialTags(request, env) {
 
     const admin = await validateSiteAdmin(request, env, siteId);
     if (!admin) return errorResponse('Unauthorized', 401);
+    if (!hasPermission(admin, 'seo')) return errorResponse('You do not have permission to access SEO settings', 403);
 
     const config = await getSiteConfig(env, siteId);
 
@@ -636,6 +605,7 @@ async function saveSocialTags(request, env) {
 
     const admin = await validateSiteAdmin(request, env, siteId);
     if (!admin) return errorResponse('Unauthorized', 401);
+    if (!hasPermission(admin, 'seo')) return errorResponse('You do not have permission to modify SEO settings', 403);
 
     const siteDB = await resolveSiteDBById(env, siteId);
     const existingConfig = await siteDB.prepare(
@@ -671,6 +641,13 @@ async function saveSocialTags(request, env) {
   }
 }
 
+export function hasPermission(admin, section) {
+  if (!admin) return false;
+  if (admin.isOwner) return true;
+  if (!admin.permissions) return true;
+  return admin.permissions.includes(section);
+}
+
 export async function validateSiteAdmin(request, env, siteId) {
   if (!siteId) return null;
 
@@ -683,15 +660,259 @@ export async function validateSiteAdmin(request, env, siteId) {
     await ensureSiteAdminSessionsTable(env);
 
     const session = await env.DB.prepare(
-      `SELECT id, site_id, expires_at FROM site_admin_sessions 
+      `SELECT id, site_id, staff_id, permissions, expires_at FROM site_admin_sessions 
        WHERE token = ? AND site_id = ? AND expires_at > datetime('now')`
     ).bind(token, siteId).first();
 
     if (!session) return null;
 
-    return { siteId: session.site_id };
+    const isOwner = !session.staff_id;
+    let permissions = null;
+
+    if (!isOwner && session.permissions) {
+      try {
+        permissions = JSON.parse(session.permissions);
+      } catch (e) {
+        permissions = [];
+      }
+    }
+
+    return { siteId: session.site_id, staffId: session.staff_id || null, isOwner, permissions };
   } catch (error) {
     console.error('Validate site admin error:', error);
     return null;
+  }
+}
+
+export async function handleStaffCRUD(request, env, siteId, staffAction, staffId) {
+  const corsResponse = handleCORS(request);
+  if (corsResponse) return corsResponse;
+
+  const user = await validateAuth(request, env);
+  if (!user) return errorResponse('Unauthorized', 401, 'UNAUTHORIZED');
+
+  const site = await env.DB.prepare(
+    'SELECT id FROM sites WHERE id = ? AND user_id = ?'
+  ).bind(siteId, user.id).first();
+  if (!site) return errorResponse('Site not found or unauthorized', 404);
+
+  const method = request.method;
+
+  if (method === 'GET' && !staffId) {
+    return listStaff(env, siteId);
+  }
+
+  if (method === 'GET' && staffId) {
+    return getStaffMember(env, siteId, staffId);
+  }
+
+  if (method === 'POST' && !staffId) {
+    return addStaff(request, env, siteId);
+  }
+
+  if (method === 'PUT' && staffId) {
+    return updateStaff(request, env, siteId, staffId);
+  }
+
+  if (method === 'DELETE' && staffId) {
+    return deleteStaff(env, siteId, staffId);
+  }
+
+  return errorResponse('Method not allowed', 405);
+}
+
+async function listStaff(env, siteId) {
+  try {
+    const result = await env.DB.prepare(
+      'SELECT id, site_id, email, name, permissions, is_active, created_at, updated_at FROM site_staff WHERE site_id = ? ORDER BY created_at DESC'
+    ).bind(siteId).all();
+
+    const staff = (result.results || []).map(s => ({
+      ...s,
+      permissions: (() => {
+        try { return typeof s.permissions === 'string' ? JSON.parse(s.permissions) : (s.permissions || []); } catch { return []; }
+      })(),
+    }));
+
+    return successResponse(staff);
+  } catch (error) {
+    console.error('List staff error:', error);
+    return errorResponse('Failed to list staff', 500);
+  }
+}
+
+async function getStaffMember(env, siteId, staffId) {
+  try {
+    const staff = await env.DB.prepare(
+      'SELECT id, site_id, email, name, permissions, is_active, created_at, updated_at FROM site_staff WHERE id = ? AND site_id = ?'
+    ).bind(staffId, siteId).first();
+
+    if (!staff) return errorResponse('Staff member not found', 404);
+
+    let permissions = [];
+    try { permissions = typeof staff.permissions === 'string' ? JSON.parse(staff.permissions) : (staff.permissions || []); } catch {}
+
+    return successResponse({ ...staff, permissions });
+  } catch (error) {
+    console.error('Get staff error:', error);
+    return errorResponse('Failed to get staff member', 500);
+  }
+}
+
+async function addStaff(request, env, siteId) {
+  try {
+    const { email, name, password, permissions } = await request.json();
+
+    if (!email || !name || !password) {
+      return errorResponse('Email, name, and password are required');
+    }
+
+    if (password.length < 6) {
+      return errorResponse('Password must be at least 6 characters');
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return errorResponse('Invalid email address');
+    }
+
+    const validPerms = (permissions || []).filter(p => ALL_PERMISSIONS.includes(p));
+
+    const existing = await env.DB.prepare(
+      'SELECT id FROM site_staff WHERE site_id = ? AND LOWER(email) = LOWER(?)'
+    ).bind(siteId, email.trim()).first();
+
+    if (existing) {
+      return errorResponse('A staff member with this email already exists for this site', 400);
+    }
+
+    const passwordHash = await hashPassword(password);
+    const id = generateId();
+
+    await env.DB.prepare(
+      `INSERT INTO site_staff (id, site_id, email, password_hash, name, permissions, is_active, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, 1, datetime('now'), datetime('now'))`
+    ).bind(id, siteId, email.trim().toLowerCase(), passwordHash, name.trim(), JSON.stringify(validPerms)).run();
+
+    return successResponse({
+      id,
+      site_id: siteId,
+      email: email.trim().toLowerCase(),
+      name: name.trim(),
+      permissions: validPerms,
+      is_active: 1,
+    }, 'Staff member added successfully');
+  } catch (error) {
+    console.error('Add staff error:', error);
+    if (error.message && error.message.includes('UNIQUE constraint')) {
+      return errorResponse('A staff member with this email already exists', 400);
+    }
+    return errorResponse('Failed to add staff member', 500);
+  }
+}
+
+async function updateStaff(request, env, siteId, staffId) {
+  try {
+    const existing = await env.DB.prepare(
+      'SELECT id FROM site_staff WHERE id = ? AND site_id = ?'
+    ).bind(staffId, siteId).first();
+
+    if (!existing) return errorResponse('Staff member not found', 404);
+
+    const updates = await request.json();
+    const setClauses = [];
+    const values = [];
+
+    if (updates.name !== undefined) {
+      setClauses.push('name = ?');
+      values.push(updates.name.trim());
+    }
+
+    if (updates.email !== undefined) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(updates.email)) {
+        return errorResponse('Invalid email address');
+      }
+      const emailConflict = await env.DB.prepare(
+        'SELECT id FROM site_staff WHERE site_id = ? AND LOWER(email) = LOWER(?) AND id != ?'
+      ).bind(siteId, updates.email.trim(), staffId).first();
+      if (emailConflict) {
+        return errorResponse('Another staff member with this email already exists', 400);
+      }
+      setClauses.push('email = ?');
+      values.push(updates.email.trim().toLowerCase());
+    }
+
+    if (updates.password !== undefined && updates.password.length > 0) {
+      if (updates.password.length < 6) {
+        return errorResponse('Password must be at least 6 characters');
+      }
+      const passwordHash = await hashPassword(updates.password);
+      setClauses.push('password_hash = ?');
+      values.push(passwordHash);
+    }
+
+    if (updates.permissions !== undefined) {
+      const validPerms = (updates.permissions || []).filter(p => ALL_PERMISSIONS.includes(p));
+      setClauses.push('permissions = ?');
+      values.push(JSON.stringify(validPerms));
+    }
+
+    if (updates.is_active !== undefined) {
+      setClauses.push('is_active = ?');
+      values.push(updates.is_active ? 1 : 0);
+    }
+
+    if (setClauses.length === 0) {
+      return errorResponse('No valid fields to update');
+    }
+
+    setClauses.push('updated_at = datetime("now")');
+    values.push(staffId, siteId);
+
+    await env.DB.prepare(
+      `UPDATE site_staff SET ${setClauses.join(', ')} WHERE id = ? AND site_id = ?`
+    ).bind(...values).run();
+
+    if (updates.permissions !== undefined || updates.is_active === false || updates.password) {
+      await env.DB.prepare(
+        'DELETE FROM site_admin_sessions WHERE staff_id = ? AND site_id = ?'
+      ).bind(staffId, siteId).run();
+    }
+
+    const updated = await env.DB.prepare(
+      'SELECT id, site_id, email, name, permissions, is_active, created_at, updated_at FROM site_staff WHERE id = ? AND site_id = ?'
+    ).bind(staffId, siteId).first();
+
+    let permissions = [];
+    try { permissions = typeof updated.permissions === 'string' ? JSON.parse(updated.permissions) : (updated.permissions || []); } catch {}
+
+    return successResponse({ ...updated, permissions }, 'Staff member updated successfully');
+  } catch (error) {
+    console.error('Update staff error:', error);
+    return errorResponse('Failed to update staff member', 500);
+  }
+}
+
+async function deleteStaff(env, siteId, staffId) {
+  try {
+    const existing = await env.DB.prepare(
+      'SELECT id FROM site_staff WHERE id = ? AND site_id = ?'
+    ).bind(staffId, siteId).first();
+
+    if (!existing) return errorResponse('Staff member not found', 404);
+
+    await env.DB.prepare(
+      'DELETE FROM site_admin_sessions WHERE staff_id = ? AND site_id = ?'
+    ).bind(staffId, siteId).run();
+
+    await env.DB.prepare(
+      'DELETE FROM site_staff WHERE id = ? AND site_id = ?'
+    ).bind(staffId, siteId).run();
+
+    return successResponse(null, 'Staff member removed successfully');
+  } catch (error) {
+    console.error('Delete staff error:', error);
+    return errorResponse('Failed to remove staff member', 500);
   }
 }

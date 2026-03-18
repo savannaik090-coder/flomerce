@@ -223,6 +223,20 @@ export async function ensureTablesExist(env) {
         created_at TEXT DEFAULT (datetime('now')),
         FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
       )`,
+
+      `CREATE TABLE IF NOT EXISTS site_staff (
+        id TEXT PRIMARY KEY,
+        site_id TEXT NOT NULL,
+        email TEXT NOT NULL,
+        password_hash TEXT NOT NULL,
+        name TEXT NOT NULL,
+        permissions TEXT DEFAULT '[]',
+        is_active INTEGER DEFAULT 1,
+        created_at TEXT DEFAULT (datetime('now')),
+        updated_at TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
+        UNIQUE(site_id, email)
+      )`,
     ];
 
     const indexes = [
@@ -241,6 +255,8 @@ export async function ensureTablesExist(env) {
       'CREATE UNIQUE INDEX IF NOT EXISTS idx_sites_custom_domain ON sites(custom_domain) WHERE custom_domain IS NOT NULL',
       'CREATE INDEX IF NOT EXISTS idx_site_media_site ON site_media(site_id)',
       'CREATE INDEX IF NOT EXISTS idx_site_media_key ON site_media(storage_key)',
+      'CREATE INDEX IF NOT EXISTS idx_site_staff_site ON site_staff(site_id)',
+      'CREATE INDEX IF NOT EXISTS idx_site_staff_email ON site_staff(site_id, email)',
     ];
 
     for (const sql of tables) {
@@ -274,6 +290,8 @@ export async function ensureTablesExist(env) {
       { col: 'row_size_bytes', table: 'site_media', sql: 'ALTER TABLE site_media ADD COLUMN row_size_bytes INTEGER DEFAULT 0' },
       { col: 'site_id', table: 'subscriptions', sql: 'ALTER TABLE subscriptions ADD COLUMN site_id TEXT' },
       { col: 'plan_tier', table: 'subscription_plans', sql: 'ALTER TABLE subscription_plans ADD COLUMN plan_tier INTEGER DEFAULT 0' },
+      { col: 'staff_id', table: 'site_admin_sessions', sql: 'ALTER TABLE site_admin_sessions ADD COLUMN staff_id TEXT' },
+      { col: 'permissions', table: 'site_admin_sessions', sql: 'ALTER TABLE site_admin_sessions ADD COLUMN permissions TEXT' },
     ];
     for (const m of migrations) {
       try {

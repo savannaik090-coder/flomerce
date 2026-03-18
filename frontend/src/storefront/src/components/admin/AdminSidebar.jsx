@@ -1,7 +1,7 @@
 import React from 'react';
 
 const navItems = [
-  { id: 'dashboard', icon: 'fa-chart-line', label: 'Dashboard' },
+  { id: 'dashboard', icon: 'fa-chart-line', label: 'Dashboard', alwaysVisible: true },
   { id: 'products', icon: 'fa-box', label: 'Products' },
   { id: 'inventory', icon: 'fa-warehouse', label: 'Inventory' },
   { id: 'orders', icon: 'fa-shopping-bag', label: 'Orders', badgeKey: 'pendingOrders' },
@@ -13,7 +13,13 @@ const navItems = [
   { id: 'settings', icon: 'fa-cog', label: 'Settings' },
 ];
 
-export default function AdminSidebar({ activeSection, onSectionChange, isOpen, onClose, brandName, badges }) {
+export default function AdminSidebar({ activeSection, onSectionChange, isOpen, onClose, brandName, badges, permissions, isOwner }) {
+  const visibleItems = navItems.filter(item => {
+    if (item.alwaysVisible) return true;
+    if (isOwner || !permissions) return true;
+    return permissions.includes(item.id);
+  });
+
   return (
     <>
       <aside className={`admin-sidebar${isOpen ? ' show' : ''}`}>
@@ -27,7 +33,7 @@ export default function AdminSidebar({ activeSection, onSectionChange, isOpen, o
           </div>
         </div>
         <nav className="sidebar-nav">
-          {navItems.map(item => (
+          {visibleItems.map(item => (
             <button
               key={item.id}
               className={`nav-item${activeSection === item.id ? ' active' : ''}`}

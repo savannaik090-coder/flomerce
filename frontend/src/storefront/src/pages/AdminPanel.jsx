@@ -23,9 +23,19 @@ export default function AdminPanel() {
     return !!token && siteId === siteConfig?.id;
   });
   const [adminToken, setAdminToken] = useState(() => sessionStorage.getItem('site_admin_token') || '');
-  const [codeInput, setCodeInput] = useState('');
-  const [codeError, setCodeError] = useState('');
-  const [codeLoading, setCodeLoading] = useState(false);
+  const [permissions, setPermissions] = useState(() => {
+    try {
+      const stored = sessionStorage.getItem('site_admin_permissions');
+      return stored ? JSON.parse(stored) : null;
+    } catch { return null; }
+  });
+  const [isOwner, setIsOwner] = useState(() => {
+    return sessionStorage.getItem('site_admin_is_owner') === 'true';
+  });
+  const [emailInput, setEmailInput] = useState('');
+  const [passwordInput, setPasswordInput] = useState('');
+  const [loginError, setLoginError] = useState('');
+  const [loginLoading, setLoginLoading] = useState(false);
   const [autoLoginLoading, setAutoLoginLoading] = useState(false);
   const [activeSection, setActiveSection] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -40,6 +50,12 @@ export default function AdminPanel() {
     }
   }, [siteConfig?.id]);
 
+  function hasPermission(section) {
+    if (isOwner) return true;
+    if (!permissions) return true;
+    return permissions.includes(section);
+  }
+
   async function handleAutoLogin(token) {
     setAutoLoginLoading(true);
     try {
@@ -51,21 +67,31 @@ export default function AdminPanel() {
       });
       const result = await response.json();
       if (result.success) {
+        const data = result.data || result;
         sessionStorage.setItem('site_admin_token', token);
         sessionStorage.setItem('site_admin_site_id', siteConfig?.id);
+        sessionStorage.setItem('site_admin_is_owner', String(data.isOwner !== false));
+        if (data.permissions) {
+          sessionStorage.setItem('site_admin_permissions', JSON.stringify(data.permissions));
+          setPermissions(data.permissions);
+        } else {
+          sessionStorage.removeItem('site_admin_permissions');
+          setPermissions(null);
+        }
+        setIsOwner(data.isOwner !== false);
         setAdminToken(token);
         setVerified(true);
         const url = new URL(window.location);
         url.searchParams.delete('token');
         window.history.replaceState({}, '', url.pathname);
       } else {
-        setCodeError('Auto-login token is invalid or expired. Please enter your verification code.');
+        setLoginError('Auto-login token is invalid or expired. Please log in.');
         const url = new URL(window.location);
         url.searchParams.delete('token');
         window.history.replaceState({}, '', url.pathname);
       }
     } catch (err) {
-      setCodeError('Auto-login failed. Please enter your verification code.');
+      setLoginError('Auto-login failed. Please log in.');
       const url = new URL(window.location);
       url.searchParams.delete('token');
       window.history.replaceState({}, '', url.pathname);
@@ -74,43 +100,60 @@ export default function AdminPanel() {
     }
   }
 
-  async function handleVerify(e) {
+  async function handleLogin(e) {
     e.preventDefault();
-    setCodeError('');
-    setCodeLoading(true);
+    setLoginError('');
+    setLoginLoading(true);
     try {
       const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
-      const response = await fetch(`${API_BASE}/api/site-admin/verify`, {
+      const response = await fetch(`${API_BASE}/api/site-admin/staff-login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           siteId: siteConfig?.id,
           subdomain: siteConfig?.subdomain,
-          verificationCode: codeInput,
+          email: emailInput.trim(),
+          password: passwordInput,
         }),
       });
       const result = await response.json();
-      if (result.success && result.data?.token) {
-        sessionStorage.setItem('site_admin_token', result.data.token);
+      if (result.success && (result.data?.token || result.token)) {
+        const data = result.data || result;
+        const token = data.token;
+        sessionStorage.setItem('site_admin_token', token);
         sessionStorage.setItem('site_admin_site_id', siteConfig?.id);
-        setAdminToken(result.data.token);
+        const perms = data.permissions || null;
+        if (perms) {
+          sessionStorage.setItem('site_admin_permissions', JSON.stringify(perms));
+        } else {
+          sessionStorage.removeItem('site_admin_permissions');
+        }
+        sessionStorage.setItem('site_admin_is_owner', 'false');
+        setPermissions(perms);
+        setIsOwner(false);
+        setAdminToken(token);
         setVerified(true);
       } else {
-        setCodeError(result.error || 'Invalid verification code');
+        setLoginError(result.error || result.message || 'Invalid email or password');
       }
     } catch (err) {
-      setCodeError('Verification failed. Please try again.');
+      setLoginError('Login failed. Please try again.');
     } finally {
-      setCodeLoading(false);
+      setLoginLoading(false);
     }
   }
 
   function handleLogout() {
     sessionStorage.removeItem('site_admin_token');
     sessionStorage.removeItem('site_admin_site_id');
+    sessionStorage.removeItem('site_admin_permissions');
+    sessionStorage.removeItem('site_admin_is_owner');
     setAdminToken('');
     setVerified(false);
-    setCodeInput('');
+    setPermissions(null);
+    setIsOwner(false);
+    setEmailInput('');
+    setPasswordInput('');
   }
 
   if (autoLoginLoading) {
@@ -133,21 +176,28 @@ export default function AdminPanel() {
             <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
               <i className="fas fa-lock" style={{ color: '#2563eb', fontSize: 22 }} />
             </div>
-            <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8, color: '#0f172a' }}>Admin Panel</h1>
-            <p style={{ color: '#64748b', fontSize: 14 }}>Enter your verification code to access the admin panel.</p>
+            <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8, color: '#0f172a' }}>Staff Login</h1>
+            <p style={{ color: '#64748b', fontSize: 14 }}>Enter your email and password to access the admin panel.</p>
           </div>
-          <form onSubmit={handleVerify}>
+          <form onSubmit={handleLogin}>
             <input
-              type="password"
-              placeholder="Verification code"
-              value={codeInput}
-              onChange={e => { setCodeInput(e.target.value); setCodeError(''); }}
-              style={{ width: '100%', padding: '12px 16px', border: `1px solid ${codeError ? '#ef4444' : '#e2e8f0'}`, borderRadius: 8, fontSize: 15, marginBottom: 8, boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' }}
+              type="email"
+              placeholder="Email address"
+              value={emailInput}
+              onChange={e => { setEmailInput(e.target.value); setLoginError(''); }}
+              style={{ width: '100%', padding: '12px 16px', border: `1px solid ${loginError ? '#ef4444' : '#e2e8f0'}`, borderRadius: 8, fontSize: 15, marginBottom: 12, boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' }}
               autoFocus
             />
-            {codeError && <p style={{ color: '#ef4444', fontSize: 13, marginBottom: 12 }}>{codeError}</p>}
-            <button type="submit" disabled={codeLoading} style={{ width: '100%', padding: '12px', background: '#2563eb', color: 'white', border: 'none', borderRadius: 8, fontSize: 15, fontWeight: 600, cursor: codeLoading ? 'not-allowed' : 'pointer', marginTop: 8, fontFamily: 'inherit' }}>
-              {codeLoading ? 'Verifying...' : 'Access Admin Panel'}
+            <input
+              type="password"
+              placeholder="Password"
+              value={passwordInput}
+              onChange={e => { setPasswordInput(e.target.value); setLoginError(''); }}
+              style={{ width: '100%', padding: '12px 16px', border: `1px solid ${loginError ? '#ef4444' : '#e2e8f0'}`, borderRadius: 8, fontSize: 15, marginBottom: 8, boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' }}
+            />
+            {loginError && <p style={{ color: '#ef4444', fontSize: 13, marginBottom: 12 }}>{loginError}</p>}
+            <button type="submit" disabled={loginLoading} style={{ width: '100%', padding: '12px', background: '#2563eb', color: 'white', border: 'none', borderRadius: 8, fontSize: 15, fontWeight: 600, cursor: loginLoading ? 'not-allowed' : 'pointer', marginTop: 8, fontFamily: 'inherit' }}>
+              {loginLoading ? 'Logging in...' : 'Log In'}
             </button>
           </form>
         </div>
@@ -184,6 +234,8 @@ export default function AdminPanel() {
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         brandName={siteConfig?.brand_name || siteConfig?.brandName}
+        permissions={permissions}
+        isOwner={isOwner}
       />
 
       <div className="admin-main">
@@ -207,7 +259,7 @@ export default function AdminPanel() {
 
         <div className="admin-content">
           {activeSection === 'dashboard' && <DashboardSection />}
-          {activeSection === 'products' && (
+          {activeSection === 'products' && hasPermission('products') && (
             showProductForm ? (
               <ProductForm
                 product={editingProduct}
@@ -221,14 +273,14 @@ export default function AdminPanel() {
               />
             )
           )}
-          {activeSection === 'inventory' && <InventorySection />}
-          {activeSection === 'orders' && <OrdersSection />}
-          {activeSection === 'customers' && <CustomersSection />}
-          {activeSection === 'analytics' && <AnalyticsSection />}
-          {activeSection === 'website' && <WebsiteContentSection />}
-          {activeSection === 'seo' && <SEOSection />}
-          {activeSection === 'notifications' && <PushNotificationsSection />}
-          {activeSection === 'settings' && <SettingsSection />}
+          {activeSection === 'inventory' && hasPermission('inventory') && <InventorySection />}
+          {activeSection === 'orders' && hasPermission('orders') && <OrdersSection />}
+          {activeSection === 'customers' && hasPermission('customers') && <CustomersSection />}
+          {activeSection === 'analytics' && hasPermission('analytics') && <AnalyticsSection />}
+          {activeSection === 'website' && hasPermission('website') && <WebsiteContentSection />}
+          {activeSection === 'seo' && hasPermission('seo') && <SEOSection />}
+          {activeSection === 'notifications' && hasPermission('notifications') && <PushNotificationsSection />}
+          {activeSection === 'settings' && hasPermission('settings') && <SettingsSection />}
         </div>
       </div>
     </div>

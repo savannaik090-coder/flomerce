@@ -26,6 +26,13 @@ export default function DashboardPage() {
   const [showPlanOverlayHideTrial, setShowPlanOverlayHideTrial] = useState(true);
   const [pendingSiteData, setPendingSiteData] = useState(null);
   const [siteUsage, setSiteUsage] = useState({});
+  const [staffList, setStaffList] = useState([]);
+  const [staffLoading, setStaffLoading] = useState(false);
+  const [staffSiteId, setStaffSiteId] = useState(null);
+  const [staffForm, setStaffForm] = useState(null);
+  const [staffSaving, setStaffSaving] = useState(false);
+  const [staffError, setStaffError] = useState('');
+  const [staffMsg, setStaffMsg] = useState('');
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
@@ -172,6 +179,109 @@ export default function DashboardPage() {
 
   const handleCreateSiteClick = () => {
     setShowWizard(true);
+  };
+
+  const PERMISSION_OPTIONS = [
+    { id: 'products', label: 'Products' },
+    { id: 'inventory', label: 'Inventory' },
+    { id: 'orders', label: 'Orders' },
+    { id: 'customers', label: 'Customers' },
+    { id: 'analytics', label: 'Analytics' },
+    { id: 'website', label: 'Website' },
+    { id: 'seo', label: 'SEO' },
+    { id: 'notifications', label: 'Notifications' },
+    { id: 'settings', label: 'Settings' },
+  ];
+
+  const loadStaff = useCallback(async (siteId) => {
+    setStaffLoading(true);
+    setStaffError('');
+    try {
+      const result = await apiRequest(`/api/sites/${siteId}/staff`);
+      setStaffList(result.data || result.staff || []);
+    } catch (e) {
+      setStaffError('Failed to load staff: ' + e.message);
+      setStaffList([]);
+    } finally {
+      setStaffLoading(false);
+    }
+  }, []);
+
+  const handleStaffSite = (siteId) => {
+    setStaffSiteId(siteId);
+    setActivePage('staff');
+    setStaffForm(null);
+    setStaffMsg('');
+    setStaffError('');
+    loadStaff(siteId);
+  };
+
+  const handleStaffFormChange = (field, value) => {
+    setStaffForm(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleTogglePermission = (permId) => {
+    setStaffForm(prev => {
+      const perms = prev.permissions || [];
+      return { ...prev, permissions: perms.includes(permId) ? perms.filter(p => p !== permId) : [...perms, permId] };
+    });
+  };
+
+  const handleSaveStaff = async (e) => {
+    e.preventDefault();
+    if (!staffForm || !staffSiteId) return;
+    setStaffSaving(true);
+    setStaffError('');
+    setStaffMsg('');
+    try {
+      const isEdit = !!staffForm.id;
+      const body = {
+        name: staffForm.name,
+        email: staffForm.email,
+        permissions: staffForm.permissions || [],
+        is_active: staffForm.is_active !== false,
+      };
+      if (staffForm.password) body.password = staffForm.password;
+
+      if (isEdit) {
+        await apiRequest(`/api/sites/${staffSiteId}/staff`, {
+          method: 'PUT',
+          body: JSON.stringify({ staffId: staffForm.id, ...body }),
+        });
+        setStaffMsg('Staff member updated successfully.');
+      } else {
+        if (!staffForm.password || staffForm.password.length < 6) {
+          setStaffError('Password must be at least 6 characters.');
+          setStaffSaving(false);
+          return;
+        }
+        await apiRequest(`/api/sites/${staffSiteId}/staff`, {
+          method: 'POST',
+          body: JSON.stringify(body),
+        });
+        setStaffMsg('Staff member added successfully.');
+      }
+      setStaffForm(null);
+      await loadStaff(staffSiteId);
+    } catch (e) {
+      setStaffError(e.message || 'Failed to save staff member.');
+    } finally {
+      setStaffSaving(false);
+    }
+  };
+
+  const handleDeleteStaff = async (staffId) => {
+    if (!window.confirm('Are you sure you want to remove this staff member?')) return;
+    try {
+      await apiRequest(`/api/sites/${staffSiteId}/staff`, {
+        method: 'DELETE',
+        body: JSON.stringify({ staffId }),
+      });
+      setStaffMsg('Staff member removed.');
+      await loadStaff(staffSiteId);
+    } catch (e) {
+      setStaffError('Failed to remove staff: ' + e.message);
+    }
   };
 
   if (loading) {
@@ -541,6 +651,12 @@ export default function DashboardPage() {
               </button>
             </li>
             <li>
+              <button className={`nav-link${activePage === 'staff' ? ' active' : ''}`} onClick={() => { setManagedSite(null); setManagedAdminUrl(null); setStaffSiteId(null); setStaffForm(null); setActivePage('staff'); }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                Staff
+              </button>
+            </li>
+            <li>
               <button className={`nav-link${activePage === 'account' ? ' active' : ''}`} onClick={() => { setManagedSite(null); setManagedAdminUrl(null); setActivePage('account'); }}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
                 Account
@@ -562,6 +678,10 @@ export default function DashboardPage() {
         <button className={`mobile-nav-item${activePage === 'billing' ? ' active' : ''}`} onClick={() => { setManagedSite(null); setManagedAdminUrl(null); setActivePage('billing'); }}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
           <span>Billing</span>
+        </button>
+        <button className={`mobile-nav-item${activePage === 'staff' ? ' active' : ''}`} onClick={() => { setManagedSite(null); setManagedAdminUrl(null); setStaffSiteId(null); setStaffForm(null); setActivePage('staff'); }}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+          <span>Staff</span>
         </button>
         <button className={`mobile-nav-item${activePage === 'account' ? ' active' : ''}`} onClick={() => { setManagedSite(null); setManagedAdminUrl(null); setActivePage('account'); }}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
@@ -705,6 +825,161 @@ export default function DashboardPage() {
                           </div>
                         );
                       })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activePage === 'staff' && (
+            <div>
+              <div className="header">
+                <h1>Staff Management</h1>
+              </div>
+
+              {!staffSiteId ? (
+                sitesLoading ? (
+                  <p style={{ color: 'var(--text-muted)' }}>Loading sites...</p>
+                ) : sites.length === 0 ? (
+                  <div className="empty-state">
+                    <p>Create a website first to manage staff.</p>
+                    <button className="btn btn-primary" onClick={() => { setActivePage('dashboard'); handleCreateSiteClick(); }}>Create a Website</button>
+                  </div>
+                ) : (
+                  <div>
+                    <p style={{ color: 'var(--text-muted)', marginBottom: '1rem' }}>Select a site to manage its staff members.</p>
+                    <div className="billing-sites-list">
+                      {sites.map(site => (
+                        <div key={site.id} className="site-card" style={{ display: 'block', marginBottom: '1rem', cursor: 'pointer' }} onClick={() => handleStaffSite(site.id)}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                              <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 700 }}>{site.brand_name || site.subdomain}</h3>
+                              <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>https://{site.subdomain}.fluxe.in</p>
+                            </div>
+                            <button className="btn btn-primary" style={{ fontSize: '0.8rem' }}>Manage Staff</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              ) : (
+                <div>
+                  <button className="btn btn-outline" onClick={() => { setStaffSiteId(null); setStaffForm(null); }} style={{ marginBottom: '1.5rem', gap: '0.375rem' }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                    Back to All Sites
+                  </button>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                    <h2 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 700 }}>
+                      {(() => { const s = sites.find(s => s.id === staffSiteId); return s ? (s.brand_name || s.subdomain) : ''; })()} - Staff
+                    </h2>
+                    {!staffForm && (
+                      <button className="btn btn-primary" style={{ fontSize: '0.875rem' }} onClick={() => setStaffForm({ name: '', email: '', password: '', permissions: [...PERMISSION_OPTIONS.map(p => p.id)], is_active: true })}>
+                        Add Staff Member
+                      </button>
+                    )}
+                  </div>
+
+                  {staffMsg && (
+                    <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '0.5rem', padding: '0.75rem 1rem', color: '#166534', fontSize: '0.875rem', marginBottom: '1rem' }}>
+                      {staffMsg}
+                    </div>
+                  )}
+                  {staffError && (
+                    <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '0.5rem', padding: '0.75rem 1rem', color: '#dc2626', fontSize: '0.875rem', marginBottom: '1rem' }}>
+                      {staffError}
+                    </div>
+                  )}
+
+                  {staffForm && (
+                    <div className="site-card" style={{ display: 'block', marginBottom: '1.5rem' }}>
+                      <h3 style={{ margin: '0 0 1rem', fontSize: '1rem', fontWeight: 700 }}>{staffForm.id ? 'Edit Staff Member' : 'Add Staff Member'}</h3>
+                      <form onSubmit={handleSaveStaff}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                          <div>
+                            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.375rem', textTransform: 'uppercase' }}>Name</label>
+                            <input type="text" required value={staffForm.name || ''} onChange={e => handleStaffFormChange('name', e.target.value)} style={{ width: '100%', padding: '0.625rem 0.75rem', border: '1px solid #e2e8f0', borderRadius: '0.375rem', fontSize: '0.875rem', boxSizing: 'border-box' }} />
+                          </div>
+                          <div>
+                            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.375rem', textTransform: 'uppercase' }}>Email</label>
+                            <input type="email" required value={staffForm.email || ''} onChange={e => handleStaffFormChange('email', e.target.value)} style={{ width: '100%', padding: '0.625rem 0.75rem', border: '1px solid #e2e8f0', borderRadius: '0.375rem', fontSize: '0.875rem', boxSizing: 'border-box' }} />
+                          </div>
+                        </div>
+                        <div style={{ marginBottom: '1rem' }}>
+                          <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.375rem', textTransform: 'uppercase' }}>{staffForm.id ? 'New Password (leave empty to keep current)' : 'Password'}</label>
+                          <input type="password" value={staffForm.password || ''} onChange={e => handleStaffFormChange('password', e.target.value)} required={!staffForm.id} minLength={6} placeholder={staffForm.id ? 'Leave empty to keep current' : 'Min 6 characters'} style={{ width: '100%', maxWidth: '320px', padding: '0.625rem 0.75rem', border: '1px solid #e2e8f0', borderRadius: '0.375rem', fontSize: '0.875rem', boxSizing: 'border-box' }} />
+                        </div>
+                        <div style={{ marginBottom: '1rem' }}>
+                          <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Permissions</label>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                            {PERMISSION_OPTIONS.map(perm => {
+                              const checked = (staffForm.permissions || []).includes(perm.id);
+                              return (
+                                <label key={perm.id} style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', padding: '0.5rem 0.75rem', border: `1px solid ${checked ? '#2563eb' : '#e2e8f0'}`, borderRadius: '0.375rem', cursor: 'pointer', background: checked ? '#eff6ff' : '#fff', fontSize: '0.8125rem', fontWeight: 500, transition: 'all 0.15s', userSelect: 'none' }}>
+                                  <input type="checkbox" checked={checked} onChange={() => handleTogglePermission(perm.id)} style={{ accentColor: '#2563eb' }} />
+                                  {perm.label}
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </div>
+                        {staffForm.id && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem', padding: '0.75rem', background: '#f8fafc', borderRadius: '0.375rem' }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', fontSize: '0.875rem', fontWeight: 500, cursor: 'pointer' }}>
+                              <input type="checkbox" checked={staffForm.is_active !== false} onChange={e => handleStaffFormChange('is_active', e.target.checked)} style={{ accentColor: '#10b981' }} />
+                              Active
+                            </label>
+                          </div>
+                        )}
+                        <div style={{ display: 'flex', gap: '0.75rem' }}>
+                          <button type="submit" className="btn btn-primary" disabled={staffSaving}>{staffSaving ? 'Saving...' : staffForm.id ? 'Update' : 'Add Staff'}</button>
+                          <button type="button" className="btn btn-outline" onClick={() => setStaffForm(null)}>Cancel</button>
+                        </div>
+                      </form>
+                    </div>
+                  )}
+
+                  {staffLoading ? (
+                    <p style={{ color: 'var(--text-muted)' }}>Loading staff...</p>
+                  ) : staffList.length === 0 && !staffForm ? (
+                    <div className="empty-state">
+                      <p>No staff members yet. Add your first staff member to let others help manage your store.</p>
+                    </div>
+                  ) : (
+                    <div>
+                      {staffList.map(staff => (
+                        <div key={staff.id} className="site-card" style={{ display: 'block', marginBottom: '0.75rem' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', flexWrap: 'wrap' }}>
+                            <div style={{ flex: 1, minWidth: '200px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>{staff.name}</h3>
+                                <span style={{ fontSize: '0.7rem', padding: '0.125rem 0.5rem', borderRadius: '1rem', fontWeight: 600, background: staff.is_active !== false ? '#dcfce7' : '#fee2e2', color: staff.is_active !== false ? '#166534' : '#991b1b' }}>
+                                  {staff.is_active !== false ? 'Active' : 'Inactive'}
+                                </span>
+                              </div>
+                              <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>{staff.email}</p>
+                              {staff.permissions && (
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem', marginTop: '0.5rem' }}>
+                                  {(typeof staff.permissions === 'string' ? JSON.parse(staff.permissions) : staff.permissions).map(p => (
+                                    <span key={p} style={{ fontSize: '0.6875rem', padding: '0.125rem 0.5rem', background: '#f1f5f9', color: '#475569', borderRadius: '0.25rem', fontWeight: 500 }}>{p}</span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                            <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
+                              <button className="btn btn-outline" style={{ fontSize: '0.8rem', padding: '0.375rem 0.75rem' }} onClick={() => {
+                                const perms = typeof staff.permissions === 'string' ? JSON.parse(staff.permissions) : (staff.permissions || []);
+                                setStaffForm({ id: staff.id, name: staff.name, email: staff.email, password: '', permissions: perms, is_active: staff.is_active !== false });
+                                setStaffMsg('');
+                                setStaffError('');
+                              }}>Edit</button>
+                              <button className="btn btn-outline" style={{ fontSize: '0.8rem', padding: '0.375rem 0.75rem', color: '#ef4444', borderColor: '#fecaca' }} onClick={() => handleDeleteStaff(staff.id)}>Remove</button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>

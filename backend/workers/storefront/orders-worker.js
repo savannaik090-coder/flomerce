@@ -63,9 +63,12 @@ async function getOrders(request, env, user, preResolvedDb) {
     let isSiteAdmin = false;
 
     if (authHeader && authHeader.startsWith('SiteAdmin ') && siteId) {
-      const { validateSiteAdmin } = await import('./site-admin-worker.js');
+      const { validateSiteAdmin, hasPermission } = await import('./site-admin-worker.js');
       const admin = await validateSiteAdmin(request, env, siteId);
       if (admin) {
+        if (!hasPermission(admin, 'orders')) {
+          return errorResponse('You do not have permission to access orders', 403);
+        }
         isSiteAdmin = true;
       }
     }
@@ -143,9 +146,9 @@ async function getOrder(env, user, orderId, request, preResolvedDb) {
       const orderCheckBindings = siteId ? [orderId, orderId, siteId] : [orderId, orderId];
       const orderCheck = await db.prepare(orderCheckQuery).bind(...orderCheckBindings).first();
       if (orderCheck) {
-        const { validateSiteAdmin } = await import('./site-admin-worker.js');
+        const { validateSiteAdmin, hasPermission } = await import('./site-admin-worker.js');
         const admin = await validateSiteAdmin(request, env, orderCheck.site_id);
-        if (admin) {
+        if (admin && hasPermission(admin, 'orders')) {
           query += ' AND site_id = ?';
           bindings.push(orderCheck.site_id);
         } else {
@@ -400,7 +403,7 @@ async function updateOrderStatus(request, env, user, orderId) {
 
     const authHeader = request.headers.get('Authorization');
     if (authHeader && authHeader.startsWith('SiteAdmin ')) {
-      const { validateSiteAdmin } = await import('./site-admin-worker.js');
+      const { validateSiteAdmin, hasPermission } = await import('./site-admin-worker.js');
       const url = new URL(request.url);
       let adminSiteId = url.searchParams.get('siteId');
       if (!adminSiteId) {
@@ -412,7 +415,7 @@ async function updateOrderStatus(request, env, user, orderId) {
       }
       if (adminSiteId) {
         const admin = await validateSiteAdmin(request, env, adminSiteId);
-        if (admin) {
+        if (admin && hasPermission(admin, 'orders')) {
           const sdb = await resolveSiteDBById(env, adminSiteId);
           const found = await sdb.prepare('SELECT id, site_id, row_size_bytes FROM orders WHERE id = ? AND site_id = ?').bind(orderId, adminSiteId).first();
           if (found) {

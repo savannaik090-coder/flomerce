@@ -1,6 +1,6 @@
 import { generateId, generateSubdomain, sanitizeInput, jsonResponse, errorResponse, successResponse, handleCORS } from '../../utils/helpers.js';
 import { validateAuth } from '../../utils/auth.js';
-import { validateSiteAdmin } from '../storefront/site-admin-worker.js';
+import { validateSiteAdmin, handleStaffCRUD } from '../storefront/site-admin-worker.js';
 import { registerCustomHostname, deleteCustomHostname, findCustomHostname } from '../../utils/cloudflare.js';
 import { resolveSiteDBById, getSiteConfig, getSiteWithConfig } from '../../utils/site-db.js';
 import { trackD1Write, trackD1Update, estimateRowBytes } from '../../utils/usage-tracker.js';
@@ -13,6 +13,11 @@ export async function handleSites(request, env, path) {
   const pathParts = path.split('/').filter(Boolean);
   const siteId = pathParts[2];
   const subResource = pathParts[3];
+
+  if (siteId && subResource === 'staff') {
+    const staffId = pathParts[4] || null;
+    return handleStaffCRUD(request, env, siteId, subResource, staffId);
+  }
 
   if (siteId && (subResource === 'custom-domain' || subResource === 'verify-domain')) {
     let authorized = false;

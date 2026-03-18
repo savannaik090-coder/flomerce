@@ -1,6 +1,6 @@
 import { generateId, sanitizeInput, jsonResponse, errorResponse, successResponse, handleCORS } from '../../utils/helpers.js';
 import { validateAuth } from '../../utils/auth.js';
-import { validateSiteAdmin } from './site-admin-worker.js';
+import { validateSiteAdmin, hasPermission } from './site-admin-worker.js';
 import { checkUsageLimit, estimateRowBytes, trackD1Write, trackD1Delete, trackD1Update } from '../../utils/usage-tracker.js';
 import { resolveSiteDBById, resolveSiteDBBySubdomain, checkMigrationLock } from '../../utils/site-db.js';
 
@@ -50,7 +50,7 @@ export async function handleCategories(request, env, path) {
       if (adminSiteId) {
         const admin = await validateSiteAdmin(request, env, adminSiteId);
         if (admin) {
-          user = { id: admin.userId || 'site-admin', _adminSiteId: adminSiteId };
+          user = { id: admin.staffId || 'site-admin', _adminSiteId: adminSiteId, _adminPermissions: admin };
         }
       }
     }
@@ -60,12 +60,17 @@ export async function handleCategories(request, env, path) {
     return errorResponse('Unauthorized', 401, 'UNAUTHORIZED');
   }
 
+  const adminPerms = user._adminPermissions;
+
   switch (method) {
     case 'POST':
+      if (adminPerms && !hasPermission(adminPerms, 'website')) return errorResponse('You do not have permission to manage categories', 403);
       return createCategory(request, env, user);
     case 'PUT':
+      if (adminPerms && !hasPermission(adminPerms, 'website')) return errorResponse('You do not have permission to manage categories', 403);
       return updateCategory(request, env, user, categoryId);
     case 'DELETE':
+      if (adminPerms && !hasPermission(adminPerms, 'website')) return errorResponse('You do not have permission to manage categories', 403);
       return deleteCategory(env, user, categoryId);
     default:
       return errorResponse('Method not allowed', 405);

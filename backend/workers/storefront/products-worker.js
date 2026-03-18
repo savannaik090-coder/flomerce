@@ -1,6 +1,6 @@
 import { generateId, sanitizeInput, jsonResponse, errorResponse, successResponse, handleCORS } from '../../utils/helpers.js';
 import { validateAuth } from '../../utils/auth.js';
-import { validateSiteAdmin } from './site-admin-worker.js';
+import { validateSiteAdmin, hasPermission } from './site-admin-worker.js';
 import { checkUsageLimit, estimateRowBytes, trackD1Write, trackD1Delete, trackD1Update } from '../../utils/usage-tracker.js';
 import { resolveSiteDBById, resolveSiteDBBySubdomain, checkMigrationLock } from '../../utils/site-db.js';
 
@@ -53,7 +53,7 @@ export async function handleProducts(request, env, path) {
         const admin = await validateSiteAdmin(request, env, siteId);
         if (admin) {
           adminSiteId = siteId;
-          user = { id: admin.userId || 'site-admin', _adminSiteId: siteId };
+          user = { id: admin.staffId || 'site-admin', _adminSiteId: siteId, _adminPermissions: admin };
         }
       }
     }
@@ -63,12 +63,17 @@ export async function handleProducts(request, env, path) {
     return errorResponse('Unauthorized', 401, 'UNAUTHORIZED');
   }
 
+  const adminPerms = user._adminPermissions;
+
   switch (method) {
     case 'POST':
+      if (adminPerms && !hasPermission(adminPerms, 'products')) return errorResponse('You do not have permission to manage products', 403);
       return createProduct(request, env, user);
     case 'PUT':
+      if (adminPerms && !hasPermission(adminPerms, 'products')) return errorResponse('You do not have permission to manage products', 403);
       return updateProduct(request, env, user, productId);
     case 'DELETE':
+      if (adminPerms && !hasPermission(adminPerms, 'products')) return errorResponse('You do not have permission to manage products', 403);
       return deleteProduct(env, user, productId);
     default:
       return errorResponse('Method not allowed', 405);

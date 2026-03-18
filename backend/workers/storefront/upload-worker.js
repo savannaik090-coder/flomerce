@@ -64,7 +64,7 @@ async function authenticateAdmin(request, env, siteId) {
   if (authHeader && authHeader.startsWith('SiteAdmin ') && siteId) {
     const admin = await validateSiteAdmin(request, env, siteId);
     if (admin) {
-      return { id: admin.userId || 'site-admin', _adminSiteId: siteId };
+      return { id: admin.staffId || 'site-admin', _adminSiteId: siteId, _adminPermissions: admin };
     }
   }
 
@@ -73,7 +73,7 @@ async function authenticateAdmin(request, env, siteId) {
     const site = await env.DB.prepare(
       'SELECT id FROM sites WHERE id = ? AND user_id = ?'
     ).bind(siteId, user.id).first();
-    if (site) return { ...user, _adminSiteId: siteId };
+    if (site) return { ...user, _adminSiteId: siteId, _adminPermissions: { isOwner: true } };
     return null;
   }
 

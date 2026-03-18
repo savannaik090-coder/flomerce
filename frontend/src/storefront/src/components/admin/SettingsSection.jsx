@@ -16,8 +16,6 @@ export default function SettingsSection() {
   const [razorpayKeyId, setRazorpayKeyId] = useState('');
   const [razorpayKeySecret, setRazorpayKeySecret] = useState('');
   const [codEnabled, setCodEnabled] = useState(true);
-  const [verificationCode, setVerificationCode] = useState('');
-  const [verificationCodeMsg, setVerificationCodeMsg] = useState('');
   const [loading, setLoading] = useState(true);
 
   const [customDomain, setCustomDomain] = useState('');
@@ -145,36 +143,6 @@ export default function SettingsSection() {
       setMessage('Failed to save settings: ' + e.message);
     } finally {
       setSaving(false);
-    }
-  }
-
-  async function handleSetVerificationCode() {
-    if (!verificationCode.trim()) return;
-    if (verificationCode.length < 4 || verificationCode.length > 20) {
-      setVerificationCodeMsg('Code must be 4-20 characters.');
-      return;
-    }
-    setVerificationCodeMsg('');
-    try {
-      const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
-      const token = sessionStorage.getItem('site_admin_token');
-      const response = await fetch(`${API_BASE}/api/site-admin/set-code`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': token ? `SiteAdmin ${token}` : '',
-        },
-        body: JSON.stringify({ siteId: siteConfig.id, verificationCode: verificationCode.trim() }),
-      });
-      const result = await response.json();
-      if (response.ok && result.success) {
-        setVerificationCode('');
-        setVerificationCodeMsg('Verification code set successfully!');
-      } else {
-        setVerificationCodeMsg('Failed: ' + (result.error || 'Unknown error'));
-      }
-    } catch (e) {
-      setVerificationCodeMsg('Failed: ' + e.message);
     }
   }
 
@@ -568,29 +536,6 @@ export default function SettingsSection() {
           {saving ? 'Saving...' : 'Save Settings'}
         </button>
       </form>
-
-      <div className="card" style={{ marginBottom: 20 }}>
-        <div className="card-header"><h3 className="card-title">Admin Panel Access</h3></div>
-        <div className="card-content">
-          <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>Set a verification code for direct admin panel access. Keep this code private.</p>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <input
-              type="text"
-              value={verificationCode}
-              onChange={(e) => setVerificationCode(e.target.value)}
-              placeholder="e.g. mycode123 (4-20 characters)"
-              maxLength={20}
-              style={{ flex: 1, padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }}
-            />
-            <button type="button" className="btn btn-primary" onClick={handleSetVerificationCode} style={{ whiteSpace: 'nowrap' }}>Set Code</button>
-          </div>
-          {verificationCodeMsg && (
-            <p style={{ color: verificationCodeMsg.includes('success') ? '#16a34a' : '#ef4444', fontSize: 13, marginTop: 8 }}>
-              {verificationCodeMsg}
-            </p>
-          )}
-        </div>
-      </div>
 
     </div>
   );
