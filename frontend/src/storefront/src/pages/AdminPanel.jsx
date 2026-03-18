@@ -52,7 +52,7 @@ export default function AdminPanel() {
 
   function hasPermission(section) {
     if (isOwner) return true;
-    if (!permissions) return true;
+    if (!permissions) return false;
     return permissions.includes(section);
   }
 
@@ -143,7 +143,19 @@ export default function AdminPanel() {
     }
   }
 
-  function handleLogout() {
+  async function handleLogout() {
+    const token = sessionStorage.getItem('site_admin_token');
+    if (token) {
+      try {
+        const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
+        await fetch(`${API_BASE}/api/site-admin/staff-logout`, {
+          method: 'POST',
+          headers: { 'Authorization': `SiteAdmin ${token}` },
+        });
+      } catch (e) {
+        console.warn('Server-side logout failed:', e);
+      }
+    }
     sessionStorage.removeItem('site_admin_token');
     sessionStorage.removeItem('site_admin_site_id');
     sessionStorage.removeItem('site_admin_permissions');

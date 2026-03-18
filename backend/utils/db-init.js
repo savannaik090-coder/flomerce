@@ -292,6 +292,8 @@ export async function ensureTablesExist(env) {
       { col: 'plan_tier', table: 'subscription_plans', sql: 'ALTER TABLE subscription_plans ADD COLUMN plan_tier INTEGER DEFAULT 0' },
       { col: 'staff_id', table: 'site_admin_sessions', sql: 'ALTER TABLE site_admin_sessions ADD COLUMN staff_id TEXT' },
       { col: 'permissions', table: 'site_admin_sessions', sql: 'ALTER TABLE site_admin_sessions ADD COLUMN permissions TEXT' },
+      { col: 'failed_login_attempts', table: 'site_staff', sql: 'ALTER TABLE site_staff ADD COLUMN failed_login_attempts INTEGER DEFAULT 0' },
+      { col: 'locked_until', table: 'site_staff', sql: 'ALTER TABLE site_staff ADD COLUMN locked_until TEXT' },
     ];
     for (const m of migrations) {
       try {

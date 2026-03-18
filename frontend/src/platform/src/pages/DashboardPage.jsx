@@ -244,9 +244,9 @@ export default function DashboardPage() {
       if (staffForm.password) body.password = staffForm.password;
 
       if (isEdit) {
-        await apiRequest(`/api/sites/${staffSiteId}/staff`, {
+        await apiRequest(`/api/sites/${staffSiteId}/staff/${staffForm.id}`, {
           method: 'PUT',
-          body: JSON.stringify({ staffId: staffForm.id, ...body }),
+          body: JSON.stringify(body),
         });
         setStaffMsg('Staff member updated successfully.');
       } else {
@@ -273,9 +273,8 @@ export default function DashboardPage() {
   const handleDeleteStaff = async (staffId) => {
     if (!window.confirm('Are you sure you want to remove this staff member?')) return;
     try {
-      await apiRequest(`/api/sites/${staffSiteId}/staff`, {
+      await apiRequest(`/api/sites/${staffSiteId}/staff/${staffId}`, {
         method: 'DELETE',
-        body: JSON.stringify({ staffId }),
       });
       setStaffMsg('Staff member removed.');
       await loadStaff(staffSiteId);

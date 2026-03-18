@@ -16,7 +16,8 @@ const navItems = [
 export default function AdminSidebar({ activeSection, onSectionChange, isOpen, onClose, brandName, badges, permissions, isOwner }) {
   const visibleItems = navItems.filter(item => {
     if (item.alwaysVisible) return true;
-    if (isOwner || !permissions) return true;
+    if (isOwner) return true;
+    if (!permissions) return false;
     return permissions.includes(item.id);
   });
 

@@ -1183,6 +1183,8 @@ async function handleSiteAdmin(request, env, path) {
       return validateSiteAdminToken(request, env);
     case "auto-login":
       return autoLoginSiteAdmin(request, env);
+    case "staff-logout":
+      return staffLogout(request, env);
     case "seo":
       return handleSEO(request, env, pathParts);
     default:
@@ -1215,7 +1217,7 @@ async function staffLogin(request, env) {
       return errorResponse("Site not found", 404);
     }
     const staff = await env.DB.prepare(
-      "SELECT id, site_id, email, password_hash, name, permissions, is_active FROM site_staff WHERE site_id = ? AND LOWER(email) = LOWER(?)"
+      "SELECT id, site_id, email, password_hash, name, permissions, is_active, failed_login_attempts, locked_until FROM site_staff WHERE site_id = ? AND LOWER(email) = LOWER(?)"
     ).bind(site.id, email.trim()).first();
     if (!staff) {
       return errorResponse("Invalid email or password", 401);
@@ -1223,10 +1225,26 @@ async function staffLogin(request, env) {
     if (!staff.is_active) {
       return errorResponse("Your account has been deactivated. Contact the store owner.", 403);
     }
+    if (staff.locked_until && new Date(staff.locked_until) > /* @__PURE__ */ new Date()) {
+      const remainingMs = new Date(staff.locked_until) - /* @__PURE__ */ new Date();
+      const remainingMins = Math.ceil(remainingMs / 6e4);
+      return errorResponse(`Too many failed login attempts. Account locked for ${remainingMins} more minute(s).`, 429);
+    }
     const passwordValid = await verifyPassword(password, staff.password_hash);
     if (!passwordValid) {
+      const attempts = (staff.failed_login_attempts || 0) + 1;
+      const lockedUntil = attempts >= 5 ? new Date(Date.now() + 15 * 60 * 1e3).toISOString() : null;
+      await env.DB.prepare(
+        "UPDATE site_staff SET failed_login_attempts = ?, locked_until = ? WHERE id = ?"
+      ).bind(attempts, lockedUntil, staff.id).run();
+      if (attempts >= 5) {
+        return errorResponse("Too many failed login attempts. Account locked for 15 minutes.", 429);
+      }
       return errorResponse("Invalid email or password", 401);
     }
+    await env.DB.prepare(
+      "UPDATE site_staff SET failed_login_attempts = 0, locked_until = NULL WHERE id = ?"
+    ).bind(staff.id).run();
     let permissions = [];
     try {
       permissions = typeof staff.permissions === "string" ? JSON.parse(staff.permissions) : staff.permissions || [];
@@ -1236,7 +1254,6 @@ async function staffLogin(request, env) {
     const adminToken = generateToken(32);
     const expiresAt = /* @__PURE__ */ new Date();
     expiresAt.setHours(expiresAt.getHours() + 24);
-    await ensureSiteAdminSessionsTable(env);
     await env.DB.prepare(
       `INSERT INTO site_admin_sessions (id, site_id, token, staff_id, permissions, expires_at, created_at)
        VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`
@@ -1265,18 +1282,25 @@ async function validateSiteAdminToken(request, env) {
     if (!token || !siteId) {
       return errorResponse("Token and site ID are required");
     }
-    await ensureSiteAdminSessionsTable(env);
     const session = await env.DB.prepare(
-      `SELECT id, site_id, staff_id, permissions, expires_at FROM site_admin_sessions 
+      `SELECT id, site_id, staff_id, expires_at FROM site_admin_sessions 
        WHERE token = ? AND site_id = ? AND expires_at > datetime('now')`
     ).bind(token, siteId).first();
     if (!session) {
       return errorResponse("Invalid or expired admin token", 401);
     }
+    const isOwner2 = !session.staff_id;
     let permissions = null;
-    if (session.staff_id && session.permissions) {
+    if (!isOwner2) {
+      const staff = await env.DB.prepare(
+        "SELECT is_active, permissions FROM site_staff WHERE id = ? AND site_id = ?"
+      ).bind(session.staff_id, siteId).first();
+      if (!staff || !staff.is_active) {
+        await env.DB.prepare("DELETE FROM site_admin_sessions WHERE id = ?").bind(session.id).run();
+        return errorResponse("Your account has been deactivated. Contact the store owner.", 403);
+      }
       try {
-        permissions = JSON.parse(session.permissions);
+        permissions = typeof staff.permissions === "string" ? JSON.parse(staff.permissions) : staff.permissions || [];
       } catch (e) {
         permissions = [];
       }
@@ -1285,7 +1309,7 @@ async function validateSiteAdminToken(request, env) {
       valid: true,
       siteId: session.site_id,
       permissions,
-      isOwner: !session.staff_id
+      isOwner: isOwner2
     }, "Token is valid");
   } catch (error) {
     console.error("Validate site admin token error:", error);
@@ -1332,6 +1356,23 @@ async function autoLoginSiteAdmin(request, env) {
   } catch (error) {
     console.error("Auto-login site admin error:", error);
     return errorResponse("Auto-login failed", 500);
+  }
+}
+async function staffLogout(request, env) {
+  if (request.method !== "POST") {
+    return errorResponse("Method not allowed", 405);
+  }
+  try {
+    const authHeader = request.headers.get("Authorization") || "";
+    if (!authHeader.startsWith("SiteAdmin ")) {
+      return successResponse(null, "Logged out");
+    }
+    const token = authHeader.substring(10);
+    await env.DB.prepare("DELETE FROM site_admin_sessions WHERE token = ?").bind(token).run();
+    return successResponse(null, "Logged out successfully");
+  } catch (error) {
+    console.error("Staff logout error:", error);
+    return successResponse(null, "Logged out");
   }
 }
 async function ensureSiteAdminSessionsTable(env) {
@@ -1766,7 +1807,7 @@ function hasPermission(admin, section) {
   if (admin.isOwner)
     return true;
   if (!admin.permissions)
-    return true;
+    return false;
   return admin.permissions.includes(section);
 }
 async function validateSiteAdmin(request, env, siteId) {
@@ -1777,18 +1818,24 @@ async function validateSiteAdmin(request, env, siteId) {
     return null;
   const token = authHeader.substring(10);
   try {
-    await ensureSiteAdminSessionsTable(env);
     const session = await env.DB.prepare(
-      `SELECT id, site_id, staff_id, permissions, expires_at FROM site_admin_sessions 
+      `SELECT id, site_id, staff_id, expires_at FROM site_admin_sessions 
        WHERE token = ? AND site_id = ? AND expires_at > datetime('now')`
     ).bind(token, siteId).first();
     if (!session)
       return null;
     const isOwner2 = !session.staff_id;
     let permissions = null;
-    if (!isOwner2 && session.permissions) {
+    if (!isOwner2) {
+      const staff = await env.DB.prepare(
+        "SELECT is_active, permissions FROM site_staff WHERE id = ? AND site_id = ?"
+      ).bind(session.staff_id, siteId).first();
+      if (!staff || !staff.is_active) {
+        await env.DB.prepare("DELETE FROM site_admin_sessions WHERE id = ?").bind(session.id).run();
+        return null;
+      }
       try {
-        permissions = JSON.parse(session.permissions);
+        permissions = typeof staff.permissions === "string" ? JSON.parse(staff.permissions) : staff.permissions || [];
       } catch (e) {
         permissions = [];
       }
@@ -2016,6 +2063,7 @@ var init_site_admin_worker = __esm({
     __name(staffLogin, "staffLogin");
     __name(validateSiteAdminToken, "validateSiteAdminToken");
     __name(autoLoginSiteAdmin, "autoLoginSiteAdmin");
+    __name(staffLogout, "staffLogout");
     __name(ensureSiteAdminSessionsTable, "ensureSiteAdminSessionsTable");
     __name(handleSEO, "handleSEO");
     __name(getSiteSEO, "getSiteSEO");
@@ -10837,7 +10885,9 @@ async function ensureTablesExist(env) {
       { col: "site_id", table: "subscriptions", sql: "ALTER TABLE subscriptions ADD COLUMN site_id TEXT" },
       { col: "plan_tier", table: "subscription_plans", sql: "ALTER TABLE subscription_plans ADD COLUMN plan_tier INTEGER DEFAULT 0" },
       { col: "staff_id", table: "site_admin_sessions", sql: "ALTER TABLE site_admin_sessions ADD COLUMN staff_id TEXT" },
-      { col: "permissions", table: "site_admin_sessions", sql: "ALTER TABLE site_admin_sessions ADD COLUMN permissions TEXT" }
+      { col: "permissions", table: "site_admin_sessions", sql: "ALTER TABLE site_admin_sessions ADD COLUMN permissions TEXT" },
+      { col: "failed_login_attempts", table: "site_staff", sql: "ALTER TABLE site_staff ADD COLUMN failed_login_attempts INTEGER DEFAULT 0" },
+      { col: "locked_until", table: "site_staff", sql: "ALTER TABLE site_staff ADD COLUMN locked_until TEXT" }
     ];
     for (const m of migrations) {
       try {

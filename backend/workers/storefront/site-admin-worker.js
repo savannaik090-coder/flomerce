@@ -19,6 +19,8 @@ export async function handleSiteAdmin(request, env, path) {
       return validateSiteAdminToken(request, env);
     case 'auto-login':
       return autoLoginSiteAdmin(request, env);
+    case 'staff-logout':
+      return staffLogout(request, env);
     case 'seo':
       return handleSEO(request, env, pathParts);
     default:
@@ -58,7 +60,7 @@ async function staffLogin(request, env) {
     }
 
     const staff = await env.DB.prepare(
-      'SELECT id, site_id, email, password_hash, name, permissions, is_active FROM site_staff WHERE site_id = ? AND LOWER(email) = LOWER(?)'
+      'SELECT id, site_id, email, password_hash, name, permissions, is_active, failed_login_attempts, locked_until FROM site_staff WHERE site_id = ? AND LOWER(email) = LOWER(?)'
     ).bind(site.id, email.trim()).first();
 
     if (!staff) {
@@ -69,10 +71,28 @@ async function staffLogin(request, env) {
       return errorResponse('Your account has been deactivated. Contact the store owner.', 403);
     }
 
+    if (staff.locked_until && new Date(staff.locked_until) > new Date()) {
+      const remainingMs = new Date(staff.locked_until) - new Date();
+      const remainingMins = Math.ceil(remainingMs / 60000);
+      return errorResponse(`Too many failed login attempts. Account locked for ${remainingMins} more minute(s).`, 429);
+    }
+
     const passwordValid = await verifyPassword(password, staff.password_hash);
     if (!passwordValid) {
+      const attempts = (staff.failed_login_attempts || 0) + 1;
+      const lockedUntil = attempts >= 5 ? new Date(Date.now() + 15 * 60 * 1000).toISOString() : null;
+      await env.DB.prepare(
+        'UPDATE site_staff SET failed_login_attempts = ?, locked_until = ? WHERE id = ?'
+      ).bind(attempts, lockedUntil, staff.id).run();
+      if (attempts >= 5) {
+        return errorResponse('Too many failed login attempts. Account locked for 15 minutes.', 429);
+      }
       return errorResponse('Invalid email or password', 401);
     }
+
+    await env.DB.prepare(
+      'UPDATE site_staff SET failed_login_attempts = 0, locked_until = NULL WHERE id = ?'
+    ).bind(staff.id).run();
 
     let permissions = [];
     try {
@@ -84,8 +104,6 @@ async function staffLogin(request, env) {
     const adminToken = generateToken(32);
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + 24);
-
-    await ensureSiteAdminSessionsTable(env);
 
     await env.DB.prepare(
       `INSERT INTO site_admin_sessions (id, site_id, token, staff_id, permissions, expires_at, created_at)
@@ -121,10 +139,8 @@ async function validateSiteAdminToken(request, env) {
       return errorResponse('Token and site ID are required');
     }
 
-    await ensureSiteAdminSessionsTable(env);
-
     const session = await env.DB.prepare(
-      `SELECT id, site_id, staff_id, permissions, expires_at FROM site_admin_sessions 
+      `SELECT id, site_id, staff_id, expires_at FROM site_admin_sessions 
        WHERE token = ? AND site_id = ? AND expires_at > datetime('now')`
     ).bind(token, siteId).first();
 
@@ -132,10 +148,21 @@ async function validateSiteAdminToken(request, env) {
       return errorResponse('Invalid or expired admin token', 401);
     }
 
+    const isOwner = !session.staff_id;
     let permissions = null;
-    if (session.staff_id && session.permissions) {
+
+    if (!isOwner) {
+      const staff = await env.DB.prepare(
+        'SELECT is_active, permissions FROM site_staff WHERE id = ? AND site_id = ?'
+      ).bind(session.staff_id, siteId).first();
+
+      if (!staff || !staff.is_active) {
+        await env.DB.prepare('DELETE FROM site_admin_sessions WHERE id = ?').bind(session.id).run();
+        return errorResponse('Your account has been deactivated. Contact the store owner.', 403);
+      }
+
       try {
-        permissions = JSON.parse(session.permissions);
+        permissions = typeof staff.permissions === 'string' ? JSON.parse(staff.permissions) : (staff.permissions || []);
       } catch (e) {
         permissions = [];
       }
@@ -145,7 +172,7 @@ async function validateSiteAdminToken(request, env) {
       valid: true,
       siteId: session.site_id,
       permissions,
-      isOwner: !session.staff_id,
+      isOwner,
     }, 'Token is valid');
   } catch (error) {
     console.error('Validate site admin token error:', error);
@@ -202,6 +229,27 @@ async function autoLoginSiteAdmin(request, env) {
   } catch (error) {
     console.error('Auto-login site admin error:', error);
     return errorResponse('Auto-login failed', 500);
+  }
+}
+
+async function staffLogout(request, env) {
+  if (request.method !== 'POST') {
+    return errorResponse('Method not allowed', 405);
+  }
+
+  try {
+    const authHeader = request.headers.get('Authorization') || '';
+    if (!authHeader.startsWith('SiteAdmin ')) {
+      return successResponse(null, 'Logged out');
+    }
+
+    const token = authHeader.substring(10);
+    await env.DB.prepare('DELETE FROM site_admin_sessions WHERE token = ?').bind(token).run();
+
+    return successResponse(null, 'Logged out successfully');
+  } catch (error) {
+    console.error('Staff logout error:', error);
+    return successResponse(null, 'Logged out');
   }
 }
 
@@ -644,7 +692,7 @@ async function saveSocialTags(request, env) {
 export function hasPermission(admin, section) {
   if (!admin) return false;
   if (admin.isOwner) return true;
-  if (!admin.permissions) return true;
+  if (!admin.permissions) return false;
   return admin.permissions.includes(section);
 }
 
@@ -657,10 +705,8 @@ export async function validateSiteAdmin(request, env, siteId) {
   const token = authHeader.substring(10);
 
   try {
-    await ensureSiteAdminSessionsTable(env);
-
     const session = await env.DB.prepare(
-      `SELECT id, site_id, staff_id, permissions, expires_at FROM site_admin_sessions 
+      `SELECT id, site_id, staff_id, expires_at FROM site_admin_sessions 
        WHERE token = ? AND site_id = ? AND expires_at > datetime('now')`
     ).bind(token, siteId).first();
 
@@ -669,9 +715,18 @@ export async function validateSiteAdmin(request, env, siteId) {
     const isOwner = !session.staff_id;
     let permissions = null;
 
-    if (!isOwner && session.permissions) {
+    if (!isOwner) {
+      const staff = await env.DB.prepare(
+        'SELECT is_active, permissions FROM site_staff WHERE id = ? AND site_id = ?'
+      ).bind(session.staff_id, siteId).first();
+
+      if (!staff || !staff.is_active) {
+        await env.DB.prepare('DELETE FROM site_admin_sessions WHERE id = ?').bind(session.id).run();
+        return null;
+      }
+
       try {
-        permissions = JSON.parse(session.permissions);
+        permissions = typeof staff.permissions === 'string' ? JSON.parse(staff.permissions) : (staff.permissions || []);
       } catch (e) {
         permissions = [];
       }
