@@ -225,7 +225,8 @@ async function serveStorefrontApp(request, env, path, site) {
     rawHTML = await response.text();
   }
 
-  const seoHTML = await applySEO(request, env, site, rawHTML);
+  const isAdminPath = path.startsWith('/admin');
+  const seoHTML = isAdminPath ? rawHTML : await applySEO(request, env, site, rawHTML);
 
   return new Response(seoHTML, {
     headers: {

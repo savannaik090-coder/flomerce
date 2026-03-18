@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import React, { useContext, useEffect } from 'react';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import { useSiteConfig } from './hooks/useSiteConfig.js';
 import { PanelContext } from './context/PanelContext.jsx';
@@ -9,6 +9,7 @@ import SearchOverlay from './components/layout/SearchOverlay.jsx';
 import CartPanel from './components/cart/CartPanel.jsx';
 import WishlistPanel from './components/wishlist/WishlistPanel.jsx';
 import WhatsAppButton from './components/ui/WhatsAppButton.jsx';
+import PageLoadingBar from './components/ui/PageLoadingBar.jsx';
 import './styles/variables.css';
 import './styles/navbar.css';
 import './styles/footer.css';
@@ -38,14 +39,15 @@ const VerifyEmailPage = React.lazy(() => import('./pages/VerifyEmailPage.jsx'));
 const PrivacyPolicyPage = React.lazy(() => import('./pages/PrivacyPolicyPage.jsx'));
 const TermsPage = React.lazy(() => import('./pages/TermsPage.jsx'));
 
-function LoadingFallback() {
+function removePreloader() {
+  const el = document.getElementById('fluxe-preloader');
+  if (el) el.remove();
+}
+
+function PageLoading() {
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-      <div style={{ textAlign: 'center' }}>
-        <div style={{ width: 40, height: 40, border: '3px solid #eee', borderTop: '3px solid #000', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 16px' }} />
-        <p>Loading...</p>
-      </div>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    <div style={{ minHeight: '60vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+      <PageLoadingBar />
     </div>
   );
 }
@@ -79,6 +81,10 @@ export default function App() {
   const { cartOpen, openCart, closeCart, wishlistOpen, openWishlist, closeWishlist, searchOpen, openSearch, closeSearch } = useContext(PanelContext);
   const location = useLocation();
 
+  useEffect(() => {
+    if (!loading) removePreloader();
+  }, [loading]);
+
   if (loading) return <SiteLoadingScreen />;
   if (error) return <SiteErrorScreen error={error} />;
 
@@ -86,7 +92,7 @@ export default function App() {
 
   if (isAdminRoute) {
     return (
-      <React.Suspense fallback={<LoadingFallback />}>
+      <React.Suspense fallback={<PageLoading />}>
         <Routes>
           <Route path="/admin" element={<AdminPanel />} />
           <Route path="/admin/products" element={<ProductsAdminPage />} />
@@ -104,7 +110,7 @@ export default function App() {
       />
 
       <main>
-        <React.Suspense fallback={<LoadingFallback />}>
+        <React.Suspense fallback={<PageLoading />}>
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/category/:slug" element={<CategoryPage />} />
