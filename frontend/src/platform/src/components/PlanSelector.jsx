@@ -4,7 +4,7 @@ import { getAvailablePlans, createSubscription, verifySubscriptionPayment, start
 const DURATION_LABELS = { '3months': '3 Months', '6months': '6 Months', yearly: 'Yearly', '3years': '3 Years' };
 const PERIOD_SUFFIX = { '3months': '/3mo', '6months': '/6mo', yearly: '/yr', '3years': '/3yr' };
 
-export default function PlanSelector({ siteId, currentPlan, currentStatus, onUpgraded, isOverlay, hideTrial, onClose }) {
+export default function PlanSelector({ siteId, currentPlan, currentStatus, onUpgraded, isOverlay, hideTrial, onClose, isFirstTime }) {
   const [duration, setDuration] = useState(null);
   const [upgrading, setUpgrading] = useState(null);
   const [plans, setPlans] = useState([]);
@@ -200,14 +200,16 @@ export default function PlanSelector({ siteId, currentPlan, currentStatus, onUpg
       {isOverlay && (
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.5rem' }}>
-            {hideTrial ? 'Choose a Plan for Your Website' : isExpired ? 'Your Plan Has Expired' : 'Start Your Free Trial'}
+            {hideTrial ? 'Choose a Plan for Your Website' : isFirstTime ? 'Choose a Plan to Get Started' : isExpired ? 'Your Plan Has Expired' : 'Start Your Free Trial'}
           </h2>
           <p style={{ color: '#64748b', fontSize: '0.9rem' }}>
             {hideTrial
               ? 'Your website has been created! Subscribe to a plan to activate it.'
-              : isExpired
-                ? 'Your subscription has expired and all your websites are disabled. Subscribe to a plan for each site to restore access.'
-                : 'Start a 7-day free trial to create unlimited websites. No credit card required.'}
+              : isFirstTime
+                ? 'Start with a free trial or subscribe to a plan to create and manage your websites.'
+                : isExpired
+                  ? 'Your subscription has expired and all your websites are disabled. Subscribe to a plan for each site to restore access.'
+                  : 'Start a 7-day free trial to create unlimited websites. No credit card required.'}
           </p>
         </div>
       )}

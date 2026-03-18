@@ -771,6 +771,7 @@ export default function DashboardPage() {
           currentStatus="none"
           onUpgraded={handleInitialPlanDone}
           isOverlay={true}
+          isFirstTime={true}
         />
       )}
 
