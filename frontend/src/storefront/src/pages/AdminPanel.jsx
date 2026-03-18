@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useCallback, useRef } from 'react';
 import { SiteContext } from '../context/SiteContext.jsx';
 import AdminSidebar from '../components/admin/AdminSidebar.jsx';
 import DashboardSection from '../components/admin/DashboardSection.jsx';
@@ -42,6 +42,51 @@ export default function AdminPanel() {
   const [editingProduct, setEditingProduct] = useState(null);
   const [addingProduct, setAddingProduct] = useState(false);
 
+  const refreshingRef = useRef(false);
+
+  const refreshPermissions = useCallback(async () => {
+    const token = sessionStorage.getItem('site_admin_token');
+    const siteId = siteConfig?.id;
+    if (!token || !siteId || refreshingRef.current) return;
+
+    refreshingRef.current = true;
+    try {
+      const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
+      const response = await fetch(`${API_BASE}/api/site-admin/validate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, siteId }),
+      });
+      const result = await response.json();
+      if (result.success) {
+        const data = result.data || result;
+        const newPerms = data.permissions || null;
+        const newIsOwner = data.isOwner !== false;
+        if (newPerms) {
+          sessionStorage.setItem('site_admin_permissions', JSON.stringify(newPerms));
+        } else {
+          sessionStorage.removeItem('site_admin_permissions');
+        }
+        sessionStorage.setItem('site_admin_is_owner', String(newIsOwner));
+        setPermissions(newPerms);
+        setIsOwner(newIsOwner);
+      } else {
+        sessionStorage.removeItem('site_admin_token');
+        sessionStorage.removeItem('site_admin_site_id');
+        sessionStorage.removeItem('site_admin_permissions');
+        sessionStorage.removeItem('site_admin_is_owner');
+        setVerified(false);
+        setAdminToken('');
+        setPermissions(null);
+        setIsOwner(false);
+      }
+    } catch (e) {
+      console.warn('Permission refresh failed:', e);
+    } finally {
+      refreshingRef.current = false;
+    }
+  }, [siteConfig?.id]);
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const tokenParam = params.get('token');
@@ -49,6 +94,22 @@ export default function AdminPanel() {
       handleAutoLogin(tokenParam);
     }
   }, [siteConfig?.id]);
+
+  useEffect(() => {
+    if (!verified || !siteConfig?.id) return;
+
+    const interval = setInterval(refreshPermissions, 30000);
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') refreshPermissions();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [verified, siteConfig?.id, refreshPermissions]);
 
   function hasPermission(section) {
     if (isOwner) return true;
@@ -221,6 +282,7 @@ export default function AdminPanel() {
     setActiveSection(section);
     setAddingProduct(false);
     setEditingProduct(null);
+    refreshPermissions();
   }
 
   const showProductForm = addingProduct || editingProduct;
