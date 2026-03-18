@@ -183,16 +183,30 @@ export default function PlanSelector({ siteId, currentPlan, currentStatus, onUpg
     return false;
   };
 
-  if (loading) {
-    return <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>Loading plans...</div>;
-  }
+  if (loading || error || planList.length === 0) {
+    const inner = loading
+      ? <div style={{ textAlign: 'center', padding: '3rem 2rem', color: '#64748b' }}>
+          <div style={{ width: '36px', height: '36px', border: '3px solid #e5e7eb', borderTopColor: '#2563eb', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 1rem' }} />
+          Loading plans...
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        </div>
+      : error
+        ? <div style={{ textAlign: 'center', padding: '3rem 2rem', color: '#dc2626' }}>{error}</div>
+        : <div style={{ textAlign: 'center', padding: '3rem 2rem', color: '#64748b' }}>No plans available at the moment.</div>;
 
-  if (error) {
-    return <div style={{ textAlign: 'center', padding: '2rem', color: '#dc2626' }}>{error}</div>;
-  }
-
-  if (planList.length === 0) {
-    return <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>No plans available at the moment.</div>;
+    if (isOverlay) {
+      return (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '900px', position: 'relative' }}>
+            {onClose && (
+              <button onClick={onClose} style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b', lineHeight: 1 }}>×</button>
+            )}
+            {inner}
+          </div>
+        </div>
+      );
+    }
+    return inner;
   }
 
   const content = (
