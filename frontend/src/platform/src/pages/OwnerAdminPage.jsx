@@ -1280,42 +1280,64 @@ export default function OwnerAdminPage() {
                   {(!enterpriseSiteUsage.invoices || enterpriseSiteUsage.invoices.length === 0) ? (
                     <p className="oa-empty">No invoices yet. Use "Snapshot" to record current month usage.</p>
                   ) : (
-                    <div className="oa-table-wrap">
-                      <table className="oa-table">
-                        <thead>
-                          <tr>
-                            <th>Month</th>
-                            <th>D1 Overage</th>
-                            <th>R2 Overage</th>
-                            <th>Total Cost</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {enterpriseSiteUsage.invoices.map(inv => (
-                            <tr key={inv.year_month}>
-                              <td data-label="Month">{inv.year_month}</td>
-                              <td data-label="D1">{formatBytes(inv.d1_overage_bytes)} (₹{inv.d1_cost_inr?.toFixed(2)})</td>
-                              <td data-label="R2">{formatBytes(inv.r2_overage_bytes)} (₹{inv.r2_cost_inr?.toFixed(2)})</td>
-                              <td data-label="Total" style={{ fontWeight: 700 }}>₹{inv.total_cost_inr?.toFixed(2)}</td>
-                              <td data-label="Status">
-                                <span className={`oa-badge ${inv.status === 'paid' ? 'oa-badge-green' : 'oa-badge-red'}`}>
-                                  {inv.status === 'paid' ? 'Paid' : 'Unpaid'}
-                                </span>
-                                {inv.paid_at && <div style={{ fontSize: '0.65rem', color: '#94a3b8' }}>{new Date(inv.paid_at).toLocaleDateString()}</div>}
-                              </td>
-                              <td data-label="Actions">
-                                {inv.status !== 'paid' && (
-                                  <button className="oa-btn-sm oa-btn-edit" onClick={() => handleMarkPaid(enterpriseSelectedSite, inv.year_month)}>Mark Paid</button>
-                                )}
-                                {inv.notes && <div style={{ fontSize: '0.65rem', color: '#94a3b8', marginTop: '0.25rem' }}>{inv.notes}</div>}
-                              </td>
+                    <>
+                      <div className="oa-table-wrap">
+                        <table className="oa-table">
+                          <thead>
+                            <tr>
+                              <th>Month</th>
+                              <th>D1 Overage</th>
+                              <th>R2 Overage</th>
+                              <th>Total Cost</th>
+                              <th>Status</th>
+                              <th>Actions</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                          </thead>
+                          <tbody>
+                            {enterpriseSiteUsage.invoices.map(inv => (
+                              <tr key={inv.year_month}>
+                                <td data-label="Month">{inv.year_month}</td>
+                                <td data-label="D1">{formatBytes(inv.d1_overage_bytes || 0)} (₹{(inv.d1_cost_inr || 0).toFixed(2)})</td>
+                                <td data-label="R2">{formatBytes(inv.r2_overage_bytes || 0)} (₹{(inv.r2_cost_inr || 0).toFixed(2)})</td>
+                                <td data-label="Total" style={{ fontWeight: 700 }}>₹{(inv.total_cost_inr || 0).toFixed(2)}</td>
+                                <td data-label="Status">
+                                  <span className={`oa-badge ${inv.status === 'paid' ? 'oa-badge-green' : 'oa-badge-red'}`}>
+                                    {inv.status === 'paid' ? 'Paid' : 'Unpaid'}
+                                  </span>
+                                  {inv.paid_at && <div style={{ fontSize: '0.65rem', color: '#94a3b8' }}>{new Date(inv.paid_at).toLocaleDateString()}</div>}
+                                </td>
+                                <td data-label="Actions">
+                                  {inv.status !== 'paid' && (
+                                    <button className="oa-btn-sm oa-btn-edit" onClick={() => handleMarkPaid(enterpriseSelectedSite, inv.year_month)}>Mark Paid</button>
+                                  )}
+                                  {inv.notes && <div style={{ fontSize: '0.65rem', color: '#94a3b8', marginTop: '0.25rem' }}>{inv.notes}</div>}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      <div className="oa-card-list-mobile">
+                        {enterpriseSiteUsage.invoices.map(inv => (
+                          <div className="oa-user-card" key={inv.year_month}>
+                            <div className="oa-user-card-header">
+                              <div className="oa-user-card-name">{inv.year_month}</div>
+                              <span className={`oa-badge ${inv.status === 'paid' ? 'oa-badge-green' : 'oa-badge-red'}`}>
+                                {inv.status === 'paid' ? 'Paid' : 'Unpaid'}
+                              </span>
+                            </div>
+                            <div className="oa-user-card-email">D1: ₹{(inv.d1_cost_inr || 0).toFixed(2)} · R2: ₹{(inv.r2_cost_inr || 0).toFixed(2)}</div>
+                            <div style={{ fontWeight: 700, fontSize: '0.85rem', margin: '0.25rem 0' }}>Total: ₹{(inv.total_cost_inr || 0).toFixed(2)}</div>
+                            {inv.paid_at && <div className="oa-user-card-date">Paid: {new Date(inv.paid_at).toLocaleDateString()}</div>}
+                            {inv.notes && <div className="oa-user-card-date">Notes: {inv.notes}</div>}
+                            {inv.status !== 'paid' && (
+                              <button className="oa-btn-sm oa-btn-edit" style={{ marginTop: '0.5rem' }} onClick={() => handleMarkPaid(enterpriseSelectedSite, inv.year_month)}>Mark Paid</button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </>
                   )}
                 </>
               )}
