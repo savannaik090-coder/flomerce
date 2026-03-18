@@ -73,6 +73,12 @@ export default function AdminPanel() {
             sessionStorage.setItem('site_admin_is_owner', String(newIsOwner));
             setPermissions(newPerms);
             setIsOwner(newIsOwner);
+            if (!newIsOwner && newPerms) {
+              setActiveSection(prev => {
+                if (!newPerms.includes(prev)) return newPerms[0] || prev;
+                return prev;
+              });
+            }
           } else {
             sessionStorage.removeItem('site_admin_token');
             sessionStorage.removeItem('site_admin_site_id');
@@ -310,7 +316,7 @@ export default function AdminPanel() {
         </header>
 
         <div className="admin-content">
-          {activeSection === 'dashboard' && <DashboardSection />}
+          {activeSection === 'dashboard' && hasPermission('dashboard') && <DashboardSection />}
           {activeSection === 'products' && hasPermission('products') && (
             showProductForm ? (
               <ProductForm
