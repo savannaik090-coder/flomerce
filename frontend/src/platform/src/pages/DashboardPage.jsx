@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
-import { getUserSites, deleteSite } from '../services/siteService.js';
+import { getUserSites, deleteSite, createSite } from '../services/siteService.js';
 import { getUserProfile } from '../services/paymentService.js';
 import SiteCard from '../components/SiteCard.jsx';
 import SiteCreationWizard from '../components/SiteCreationWizard.jsx';
@@ -22,7 +22,8 @@ export default function DashboardPage() {
   const [adminLoading, setAdminLoading] = useState(false);
   const [billingSiteId, setBillingSiteId] = useState(null);
   const [dataLoaded, setDataLoaded] = useState(false);
-  const [planOverlaySiteId, setPlanOverlaySiteId] = useState(null);
+  const [showPlanOverlay, setShowPlanOverlay] = useState(false);
+  const [pendingSiteData, setPendingSiteData] = useState(null);
   const [siteUsage, setSiteUsage] = useState({});
 
   useEffect(() => {
@@ -131,20 +132,40 @@ export default function DashboardPage() {
     loadSiteUsage(siteId);
   };
 
-  const handleSiteCreated = async (createdSite) => {
+  const handleSiteCreated = async () => {
     await Promise.all([loadSites(), loadProfile()]);
-    if (createdSite?.id) {
-      const freshStatus = getAccountSubscriptionStatus();
-      if (!freshStatus.isTrialActive) {
-        setPlanOverlaySiteId(createdSite.id);
+  };
+
+  const handleNeedsPlan = (formData) => {
+    setPendingSiteData(formData);
+    setShowPlanOverlay(true);
+  };
+
+  const handlePlanOverlayDone = async () => {
+    setShowPlanOverlay(false);
+    if (pendingSiteData) {
+      try {
+        const result = await createSite(pendingSiteData);
+        if (result.success || result.site) {
+          setPendingSiteData(null);
+          await Promise.all([loadSites(), loadProfile()]);
+        } else {
+          alert('Failed to create website: ' + (result.message || result.error || 'Unknown error'));
+          setPendingSiteData(null);
+        }
+      } catch (err) {
+        alert('Failed to create website: ' + (err.message || 'Unknown error'));
+        setPendingSiteData(null);
       }
+    } else {
+      loadProfile();
+      loadSites();
     }
   };
 
-  const handlePlanOverlayDone = () => {
-    setPlanOverlaySiteId(null);
-    loadProfile();
-    loadSites();
+  const handlePlanOverlayClose = () => {
+    setShowPlanOverlay(false);
+    setPendingSiteData(null);
   };
 
   const handleCreateSiteClick = () => {
@@ -720,18 +741,19 @@ export default function DashboardPage() {
         <SiteCreationWizard
           onClose={() => setShowWizard(false)}
           onCreated={handleSiteCreated}
+          onNeedsPlan={handleNeedsPlan}
+          isTrialActive={getAccountSubscriptionStatus().isTrialActive}
         />
       )}
 
-      {planOverlaySiteId && (
+      {showPlanOverlay && (
         <PlanSelector
-          siteId={planOverlaySiteId}
           currentPlan={null}
           currentStatus="none"
           onUpgraded={handlePlanOverlayDone}
           isOverlay={true}
           hideTrial={true}
-          onClose={() => setPlanOverlaySiteId(null)}
+          onClose={handlePlanOverlayClose}
         />
       )}
     </div>

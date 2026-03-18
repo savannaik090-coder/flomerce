@@ -19,7 +19,7 @@ const DEFAULT_CATEGORIES = {
   ],
 };
 
-export default function SiteCreationWizard({ onClose, onCreated }) {
+export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, isTrialActive }) {
   const [step, setStep] = useState(1);
   const [businessCategory, setBusinessCategory] = useState(null);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
@@ -55,36 +55,49 @@ export default function SiteCreationWizard({ onClose, onCreated }) {
     setCategories(updated);
   };
 
-  const handleCreate = async () => {
+  const buildFormData = async () => {
     const validCategories = categories.filter(c => c.name.trim());
     if (validCategories.length === 0) {
       setError('Add at least one category');
+      return null;
+    }
+    let logoBase64 = null;
+    if (logoFile) {
+      logoBase64 = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.readAsDataURL(logoFile);
+      });
+    }
+    return {
+      subdomain: subdomain.toLowerCase().replace(/[^a-z0-9-]/g, ''),
+      brandName,
+      templateId: selectedTemplate,
+      category: businessCategory,
+      logo: logoBase64,
+      categories: validCategories.map(c => ({
+        name: c.name.trim(),
+        subtitle: c.subtitle.trim() || null,
+        showOnHome: true,
+        slug: c.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
+      })),
+    };
+  };
+
+  const handleCreate = async () => {
+    setError('');
+    const formData = await buildFormData();
+    if (!formData) return;
+
+    if (!isTrialActive) {
+      onNeedsPlan(formData);
+      onClose();
       return;
     }
+
     setCreating(true);
-    setError('');
     try {
-      let logoBase64 = null;
-      if (logoFile) {
-        logoBase64 = await new Promise((resolve) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result);
-          reader.readAsDataURL(logoFile);
-        });
-      }
-      const result = await createSite({
-        subdomain: subdomain.toLowerCase().replace(/[^a-z0-9-]/g, ''),
-        brandName,
-        templateId: selectedTemplate,
-        category: businessCategory,
-        logo: logoBase64,
-        categories: validCategories.map(c => ({
-          name: c.name.trim(),
-          subtitle: c.subtitle.trim() || null,
-          showOnHome: true,
-          slug: c.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
-        })),
-      });
+      const result = await createSite(formData);
       if (result.success || result.site) {
         onCreated(result.data || result.site || result);
         onClose();
