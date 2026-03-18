@@ -794,8 +794,7 @@ export default function DashboardPage() {
                               )}
                               <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.75rem' }}>
                                 <button className="btn btn-primary" style={{ fontSize: '0.875rem', padding: '0.5rem 1.25rem' }} onClick={() => { setPlanOverlaySiteId(billingSiteId); setShowPlanOverlayHideTrial(!!profileData?.hadSubscription); setShowPlanOverlay(true); }}>
-                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
-                                  {subInfo.isActive && subInfo.plan !== 'trial' ? 'Change Plan' : 'Upgrade Plan'}
+                                  {subInfo.isActive && subInfo.plan !== 'trial' ? 'Change' : 'Upgrade'}
                                 </button>
                               </div>
                             </div>
