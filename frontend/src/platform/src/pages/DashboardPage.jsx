@@ -499,7 +499,7 @@ export default function DashboardPage() {
                 <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>https://{site.subdomain}.fluxe.in</p>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span className={`plan-status-pill ${subInfo.isActive ? 'status-active' : 'status-expired'}`}>
-                    {subInfo.plan ? (subInfo.plan === 'trial' ? 'Trial' : subInfo.plan) : 'No Plan'} - {subInfo.isActive ? 'Active' : subInfo.status === 'expired' ? 'Expired' : 'None'}
+                    {subInfo.plan ? (subInfo.plan === 'trial' ? 'Trial' : subInfo.plan) : 'Inactive'} - {subInfo.isActive ? 'Active' : subInfo.plan ? 'Expired' : 'No Subscription'}
                   </span>
                   <button className="btn btn-primary" style={{ fontSize: '0.8rem', padding: '0.5rem 1rem' }}>
                     Open Admin
@@ -654,7 +654,7 @@ export default function DashboardPage() {
                                   <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>https://{site.subdomain}.fluxe.in</p>
                                 </div>
                                 <span className={`plan-status-pill ${subInfo.isActive ? 'status-active' : 'status-expired'}`}>
-                                  {subInfo.plan ? (subInfo.plan === 'trial' ? 'Trial' : subInfo.plan) : 'No Plan'} - {subInfo.isActive ? 'Active' : 'Expired'}
+                                  {subInfo.plan ? (subInfo.plan === 'trial' ? 'Trial' : subInfo.plan) : 'Inactive'} - {subInfo.isActive ? 'Active' : subInfo.plan ? 'Expired' : 'No Subscription'}
                                 </span>
                               </div>
                               {subInfo.periodEnd && subInfo.isActive && (
@@ -689,7 +689,7 @@ export default function DashboardPage() {
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                                 <div style={{ textAlign: 'right' }}>
                                   <span className={`plan-status-pill ${subInfo.isActive ? 'status-active' : 'status-expired'}`}>
-                                    {subInfo.plan ? (subInfo.plan === 'trial' ? 'Trial' : subInfo.plan) : 'No Plan'}
+                                    {subInfo.plan ? (subInfo.plan === 'trial' ? 'Trial' : subInfo.plan) : 'Inactive'}
                                   </span>
                                   {subInfo.periodEnd && subInfo.isActive && (
                                     <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0.25rem 0 0' }}>

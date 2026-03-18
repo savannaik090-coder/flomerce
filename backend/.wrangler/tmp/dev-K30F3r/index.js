@@ -7665,8 +7665,9 @@ async function handleSiteRouting(request, env) {
     });
   }
   try {
-    const isExpired2 = site.subscription_expires_at && new Date(site.subscription_expires_at) < /* @__PURE__ */ new Date();
-    if (isExpired2) {
+    const hasNoPlan = !site.subscription_plan || !site.subscription_expires_at;
+    const isPlanExpired = site.subscription_expires_at && new Date(site.subscription_expires_at) < /* @__PURE__ */ new Date();
+    if (hasNoPlan || isPlanExpired) {
       return new Response(
         `<html>
           <head>
@@ -7681,8 +7682,8 @@ async function handleSiteRouting(request, env) {
           </head>
           <body>
             <div class="container">
-              <h1>Site Disabled</h1>
-              <p>The subscription for <strong>${site.brand_name || subdomain}</strong> has expired. Please contact the site owner or renew the plan to restore access.</p>
+              <h1>Site Unavailable</h1>
+              <p>${isPlanExpired ? `The subscription for <strong>${site.brand_name || subdomain}</strong> has expired. Please contact the site owner to renew the plan and restore access.` : `<strong>${site.brand_name || subdomain}</strong> is not currently available. Please contact the site owner for more information.`}</p>
               <a href="https://fluxe.in" class="btn">Go to Fluxe</a>
             </div>
           </body>

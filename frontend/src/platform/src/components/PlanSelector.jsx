@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { getAvailablePlans, createSubscription, verifySubscriptionPayment, startFreeTrial } from '../services/paymentService.js';
+import { deleteSite } from '../services/siteService.js';
 
 const DURATION_LABELS = { '3months': '3 Months', '6months': '6 Months', yearly: 'Yearly', '3years': '3 Years' };
 const PERIOD_SUFFIX = { '3months': '/3mo', '6months': '/6mo', yearly: '/yr', '3years': '/3yr' };
@@ -81,14 +82,27 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
   const isExpired = currentStatus === 'expired' || currentStatus === 'none';
   const showTrialCard = !hideTrial && isExpired && currentPlanLower !== 'trial' && currentPlan !== 'trial';
 
+  const createdSiteIdRef = useRef(null);
+  const paymentSucceededRef = useRef(false);
+
   const resolveSiteId = async () => {
     if (initialSiteId) return initialSiteId;
     if (onCreateSite) {
       const newSiteId = await onCreateSite();
       if (!newSiteId) throw new Error('Failed to create website');
+      createdSiteIdRef.current = newSiteId;
       return newSiteId;
     }
     return null;
+  };
+
+  const cleanupOrphanSite = async () => {
+    if (createdSiteIdRef.current && !paymentSucceededRef.current) {
+      try {
+        await deleteSite(createdSiteIdRef.current);
+      } catch (e) {}
+      createdSiteIdRef.current = null;
+    }
   };
 
   const handleUpgrade = async (planGroup) => {
@@ -104,12 +118,14 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
     }
 
     setUpgrading(selectedPlan.id);
+    paymentSucceededRef.current = false;
     try {
       const resolvedSiteId = await resolveSiteId();
       const res = await createSubscription(selectedPlan.id, resolvedSiteId);
 
       if (!res.subscriptionId) {
         alert('Failed to create subscription: ' + (res.error || 'Unknown error'));
+        await cleanupOrphanSite();
         return;
       }
 
@@ -126,18 +142,22 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
               razorpay_signature: response.razorpay_signature,
             });
             if (verifyRes.verified || verifyRes.success) {
+              paymentSucceededRef.current = true;
               alert('Payment successful! Your plan has been upgraded.');
               onUpgraded?.();
             } else {
               alert('Payment verification failed. Please contact support.');
+              await cleanupOrphanSite();
             }
           } catch (verifyErr) {
             alert('Payment verification failed. Please contact support.');
+            await cleanupOrphanSite();
           }
         },
         theme: { color: '#2563eb' },
         modal: {
-          ondismiss: function () {
+          ondismiss: async function () {
+            await cleanupOrphanSite();
             setUpgrading(null);
           },
         },
@@ -157,6 +177,7 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
       }
     } catch (e) {
       alert('Failed to process: ' + (e.message || 'Please try again.'));
+      await cleanupOrphanSite();
     } finally {
       setUpgrading(null);
     }

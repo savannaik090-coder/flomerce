@@ -28,7 +28,7 @@ export default function SiteCard({ site, onDelete, onManage, onBilling, subscrip
     if (sub.isExpired) {
       return { text: 'Expired', bg: '#fee2e2', color: '#dc2626' };
     }
-    return { text: 'No Plan', bg: '#f3f4f6', color: '#6b7280' };
+    return { text: 'Inactive', bg: '#fee2e2', color: '#dc2626' };
   };
 
   const badge = getStatusBadge();
@@ -61,7 +61,7 @@ export default function SiteCard({ site, onDelete, onManage, onBilling, subscrip
       <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
         {onBilling && (
           <button className="btn btn-outline" onClick={onBilling} style={{ flex: 1, fontSize: '0.75rem' }}>
-            {sub.isExpired ? 'Subscribe' : 'Billing'}
+            {sub.isExpired || !sub.plan ? 'Subscribe' : 'Billing'}
           </button>
         )}
         <button className="btn btn-danger" onClick={handleDelete} disabled={deleting} style={{ flex: 1, fontSize: '0.75rem' }}>
