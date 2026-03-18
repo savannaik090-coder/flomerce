@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-3sHd7z/checked-fetch.js
+// .wrangler/tmp/bundle-k5qroR/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-3sHd7z/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-k5qroR/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-3sHd7z/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-k5qroR/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-3sHd7z/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-k5qroR/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -1827,12 +1827,12 @@ var init_site_admin_worker = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-3sHd7z/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-k5qroR/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-3sHd7z/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-k5qroR/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -10285,39 +10285,89 @@ init_helpers();
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
-
-// workers/seo/migrations.js
-init_checked_fetch();
-init_strip_cf_connecting_ip_header();
-init_modules_watch_stub();
-async function ensureSEOColumns(env) {
-  const alterStatements = [
-    `ALTER TABLE sites ADD COLUMN seo_title TEXT`,
-    `ALTER TABLE sites ADD COLUMN seo_description TEXT`,
-    `ALTER TABLE sites ADD COLUMN seo_og_image TEXT`,
-    `ALTER TABLE sites ADD COLUMN seo_robots TEXT DEFAULT 'index, follow'`,
-    `ALTER TABLE sites ADD COLUMN google_verification TEXT`,
-    `ALTER TABLE sites ADD COLUMN og_title TEXT`,
-    `ALTER TABLE sites ADD COLUMN og_description TEXT`,
-    `ALTER TABLE sites ADD COLUMN og_image TEXT`,
-    `ALTER TABLE sites ADD COLUMN og_type TEXT DEFAULT 'website'`,
-    `ALTER TABLE sites ADD COLUMN twitter_card TEXT DEFAULT 'summary_large_image'`,
-    `ALTER TABLE sites ADD COLUMN twitter_title TEXT`,
-    `ALTER TABLE sites ADD COLUMN twitter_description TEXT`,
-    `ALTER TABLE sites ADD COLUMN twitter_image TEXT`,
-    `ALTER TABLE sites ADD COLUMN twitter_site TEXT`
-  ];
-  for (const sql of alterStatements) {
-    try {
-      await env.DB.prepare(sql).run();
-    } catch {
+var _initialized = false;
+async function migrateSitesTable(env) {
+  try {
+    const done = await env.DB.prepare(
+      "SELECT setting_value FROM platform_settings WHERE setting_key = 'sites_table_migrated_v2'"
+    ).first();
+    if (done)
+      return;
+  } catch (e) {
+  }
+  try {
+    const colCheck = await env.DB.prepare("PRAGMA table_info(sites)").all();
+    const columns = (colCheck.results || []).map((c) => c.name);
+    if (!columns.includes("logo_url") && !columns.includes("settings")) {
+      try {
+        await env.DB.prepare(
+          "INSERT INTO platform_settings (setting_key, setting_value) VALUES ('sites_table_migrated_v2', '1') ON CONFLICT(setting_key) DO UPDATE SET setting_value = '1'"
+        ).run();
+      } catch (e) {
+      }
+      return;
     }
+    const keepCols = [
+      "id",
+      "user_id",
+      "subdomain",
+      "brand_name",
+      "category",
+      "template_id",
+      "is_active",
+      "subscription_plan",
+      "subscription_expires_at",
+      "custom_domain",
+      "domain_status",
+      "domain_verification_token",
+      "cf_hostname_id",
+      "shard_id",
+      "migration_locked",
+      "d1_database_id",
+      "d1_binding_name",
+      "created_at",
+      "updated_at"
+    ];
+    const existingKeep = keepCols.filter((c) => columns.includes(c));
+    const colList = existingKeep.join(", ");
+    await env.DB.prepare(`CREATE TABLE IF NOT EXISTS sites_clean (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      subdomain TEXT UNIQUE NOT NULL,
+      brand_name TEXT NOT NULL,
+      category TEXT DEFAULT 'general',
+      template_id TEXT DEFAULT 'storefront',
+      is_active INTEGER DEFAULT 1,
+      subscription_plan TEXT DEFAULT 'free',
+      subscription_expires_at TEXT,
+      custom_domain TEXT,
+      domain_status TEXT,
+      domain_verification_token TEXT,
+      cf_hostname_id TEXT,
+      shard_id TEXT,
+      migration_locked INTEGER DEFAULT 0,
+      d1_database_id TEXT,
+      d1_binding_name TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )`).run();
+    await env.DB.prepare(`INSERT INTO sites_clean (${colList}) SELECT ${colList} FROM sites`).run();
+    await env.DB.prepare("DROP TABLE sites").run();
+    await env.DB.prepare("ALTER TABLE sites_clean RENAME TO sites").run();
+    await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_sites_subdomain ON sites(subdomain)").run();
+    await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_sites_user ON sites(user_id)").run();
+    await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_sites_custom_domain ON sites(custom_domain)").run();
+    await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_sites_shard ON sites(shard_id)").run();
+    await env.DB.prepare(
+      "INSERT INTO platform_settings (setting_key, setting_value) VALUES ('sites_table_migrated_v2', '1') ON CONFLICT(setting_key) DO UPDATE SET setting_value = '1'"
+    ).run();
+    console.log("Sites table migrated: removed unused config columns");
+  } catch (e) {
+    console.error("Sites table migration error:", e.message || e);
   }
 }
-__name(ensureSEOColumns, "ensureSEOColumns");
-
-// utils/db-init.js
-var _initialized = false;
+__name(migrateSitesTable, "migrateSitesTable");
 async function ensureTablesExist(env) {
   if (_initialized)
     return;
@@ -10366,15 +10416,6 @@ async function ensureTablesExist(env) {
         brand_name TEXT NOT NULL,
         category TEXT DEFAULT 'general',
         template_id TEXT DEFAULT 'storefront',
-        logo_url TEXT,
-        favicon_url TEXT,
-        primary_color TEXT DEFAULT '#000000',
-        secondary_color TEXT DEFAULT '#ffffff',
-        phone TEXT,
-        email TEXT,
-        address TEXT,
-        social_links TEXT,
-        settings TEXT,
         is_active INTEGER DEFAULT 1,
         subscription_plan TEXT DEFAULT 'free',
         subscription_expires_at TEXT,
@@ -10382,6 +10423,10 @@ async function ensureTablesExist(env) {
         domain_status TEXT,
         domain_verification_token TEXT,
         cf_hostname_id TEXT,
+        shard_id TEXT,
+        migration_locked INTEGER DEFAULT 0,
+        d1_database_id TEXT,
+        d1_binding_name TEXT,
         created_at TEXT DEFAULT (datetime('now')),
         updated_at TEXT DEFAULT (datetime('now')),
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -10502,21 +10547,12 @@ async function ensureTablesExist(env) {
       )
     `).run();
     const migrations = [
-      { col: "custom_domain", sql: "ALTER TABLE sites ADD COLUMN custom_domain TEXT" },
-      { col: "domain_status", sql: "ALTER TABLE sites ADD COLUMN domain_status TEXT" },
-      { col: "domain_verification_token", sql: "ALTER TABLE sites ADD COLUMN domain_verification_token TEXT" },
-      { col: "cf_hostname_id", sql: "ALTER TABLE sites ADD COLUMN cf_hostname_id TEXT" },
       { col: "role", table: "users", sql: "ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'" },
-      { col: "d1_database_id", table: "sites", sql: "ALTER TABLE sites ADD COLUMN d1_database_id TEXT" },
-      { col: "d1_binding_name", table: "sites", sql: "ALTER TABLE sites ADD COLUMN d1_binding_name TEXT" },
-      { col: "shard_id", table: "sites", sql: "ALTER TABLE sites ADD COLUMN shard_id TEXT" },
-      { col: "migration_locked", table: "sites", sql: "ALTER TABLE sites ADD COLUMN migration_locked INTEGER DEFAULT 0" },
       { col: "baseline_bytes", table: "site_usage", sql: "ALTER TABLE site_usage ADD COLUMN baseline_bytes INTEGER DEFAULT 0" },
       { col: "baseline_updated_at", table: "site_usage", sql: "ALTER TABLE site_usage ADD COLUMN baseline_updated_at TEXT" },
       { col: "row_size_bytes", table: "site_media", sql: "ALTER TABLE site_media ADD COLUMN row_size_bytes INTEGER DEFAULT 0" },
       { col: "site_id", table: "subscriptions", sql: "ALTER TABLE subscriptions ADD COLUMN site_id TEXT" },
-      { col: "plan_tier", table: "subscription_plans", sql: "ALTER TABLE subscription_plans ADD COLUMN plan_tier INTEGER DEFAULT 0" },
-      { col: "currency", table: "sites", sql: "ALTER TABLE sites ADD COLUMN currency TEXT DEFAULT 'INR'" }
+      { col: "plan_tier", table: "subscription_plans", sql: "ALTER TABLE subscription_plans ADD COLUMN plan_tier INTEGER DEFAULT 0" }
     ];
     for (const m of migrations) {
       try {
@@ -10528,7 +10564,7 @@ async function ensureTablesExist(env) {
       await env.DB.prepare(`UPDATE sites SET template_id = 'storefront' WHERE template_id = 'template1'`).run();
     } catch (e) {
     }
-    await ensureSEOColumns(env);
+    await migrateSitesTable(env);
     try {
       const shards = await env.DB.prepare("SELECT id, binding_name FROM shards WHERE is_active = 1").all();
       for (const shard of shards.results || []) {
@@ -10967,7 +11003,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-3sHd7z/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-k5qroR/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -11002,7 +11038,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-3sHd7z/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-k5qroR/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

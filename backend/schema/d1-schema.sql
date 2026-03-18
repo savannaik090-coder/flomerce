@@ -75,25 +75,17 @@ CREATE TABLE IF NOT EXISTS sites (
     brand_name TEXT NOT NULL,
     category TEXT DEFAULT 'general',
     template_id TEXT DEFAULT 'storefront',
-    logo_url TEXT,
-    favicon_url TEXT,
-    primary_color TEXT DEFAULT '#000000',
-    secondary_color TEXT DEFAULT '#ffffff',
-    phone TEXT,
-    email TEXT,
-    address TEXT,
-    social_links TEXT,
-    settings TEXT,
-    -- SEO fields
-    seo_title TEXT,
-    seo_description TEXT,
-    seo_og_image TEXT,
-    seo_robots TEXT DEFAULT 'index, follow',
-    google_verification TEXT,
-
     is_active INTEGER DEFAULT 1,
     subscription_plan TEXT DEFAULT 'free',
     subscription_expires_at TEXT,
+    custom_domain TEXT,
+    domain_status TEXT,
+    domain_verification_token TEXT,
+    cf_hostname_id TEXT,
+    shard_id TEXT,
+    migration_locked INTEGER DEFAULT 0,
+    d1_database_id TEXT,
+    d1_binding_name TEXT,
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now')),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -101,6 +93,8 @@ CREATE TABLE IF NOT EXISTS sites (
 
 CREATE INDEX idx_sites_subdomain ON sites(subdomain);
 CREATE INDEX idx_sites_user ON sites(user_id);
+CREATE INDEX idx_sites_custom_domain ON sites(custom_domain);
+CREATE INDEX idx_sites_shard ON sites(shard_id);
 
 -- =====================================================
 -- CATEGORIES TABLE (Dynamic categories per site)
