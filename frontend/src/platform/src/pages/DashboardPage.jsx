@@ -334,6 +334,12 @@ export default function DashboardPage() {
     return { plan, status: displayStatus, periodEnd, isActive, isExpired };
   };
 
+  const formatPlanName = (plan) => {
+    if (!plan) return 'Inactive';
+    if (plan === 'trial') return 'Trial';
+    return plan.charAt(0).toUpperCase() + plan.slice(1);
+  };
+
   const formatBytes = (bytes) => {
     if (bytes === 0) return '0 B';
     const k = 1024;
@@ -529,7 +535,7 @@ export default function DashboardPage() {
             <span className="manage-site-name" style={{ marginLeft: 'auto' }}>{managedSite.brand_name || managedSite.brandName || managedSite.subdomain}</span>
             {siteInfo.plan && (
               <span className={`plan-status-pill ${siteInfo.isActive ? 'status-active' : 'status-expired'}`} style={{ marginLeft: '0.5rem' }}>
-                {siteInfo.plan === 'trial' ? 'Trial' : siteInfo.plan} - {siteInfo.isActive ? 'Active' : 'Expired'}
+                {formatPlanName(siteInfo.plan)} - {siteInfo.isActive ? 'Active' : 'Expired'}
               </span>
             )}
           </div>
@@ -609,7 +615,7 @@ export default function DashboardPage() {
                 <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>https://{site.subdomain}.fluxe.in</p>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span className={`plan-status-pill ${subInfo.isActive ? 'status-active' : 'status-expired'}`}>
-                    {subInfo.plan ? (subInfo.plan === 'trial' ? 'Trial' : subInfo.plan) : 'Inactive'} - {subInfo.isActive ? 'Active' : subInfo.plan ? 'Expired' : 'No Subscription'}
+                    {formatPlanName(subInfo.plan)} - {subInfo.isActive ? 'Active' : subInfo.plan ? 'Expired' : 'No Subscription'}
                   </span>
                   <button className="btn btn-primary" style={{ fontSize: '0.8rem', padding: '0.5rem 1rem' }}>
                     Open Admin
@@ -776,19 +782,26 @@ export default function DashboardPage() {
                                   <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>https://{site.subdomain}.fluxe.in</p>
                                 </div>
                                 <span className={`plan-status-pill ${subInfo.isActive ? 'status-active' : 'status-expired'}`}>
-                                  {subInfo.plan ? (subInfo.plan === 'trial' ? 'Trial' : subInfo.plan) : 'Inactive'} - {subInfo.isActive ? 'Active' : subInfo.plan ? 'Expired' : 'No Subscription'}
+                                  {formatPlanName(subInfo.plan)} - {subInfo.isActive ? 'Active' : subInfo.plan ? 'Expired' : 'No Subscription'}
                                 </span>
                               </div>
-                              {subInfo.periodEnd && subInfo.isActive && (
+                              {subInfo.periodEnd && subInfo.isActive && subInfo.plan !== 'enterprise' && (
                                 <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: '0 0 1rem 0' }}>
                                   {subInfo.plan === 'trial' ? 'Trial ends' : 'Renews'}: {new Date(subInfo.periodEnd).toLocaleDateString()}
                                 </p>
                               )}
+                              {subInfo.plan === 'enterprise' && subInfo.isActive && (
+                                <p style={{ fontSize: '0.875rem', color: '#5b21b6', margin: '0 0 1rem 0', fontWeight: 500 }}>
+                                  Managed enterprise plan
+                                </p>
+                              )}
+                              {subInfo.plan !== 'enterprise' && (
                               <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.75rem' }}>
                                 <button className="btn btn-primary" style={{ fontSize: '0.875rem', padding: '0.5rem 1.25rem' }} onClick={() => { setPlanOverlaySiteId(billingSiteId); setShowPlanOverlayHideTrial(!!profileData?.hadSubscription); setShowPlanOverlay(true); }}>
                                   {subInfo.isActive && subInfo.plan !== 'trial' ? 'Change Plan' : 'Upgrade'}
                                 </button>
                               </div>
+                              )}
                             </div>
                             {renderUsageBars(billingSiteId)}
                           </div>
@@ -809,17 +822,19 @@ export default function DashboardPage() {
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                                 <div style={{ textAlign: 'right' }}>
                                   <span className={`plan-status-pill ${subInfo.isActive ? 'status-active' : 'status-expired'}`}>
-                                    {subInfo.plan ? (subInfo.plan === 'trial' ? 'Trial' : subInfo.plan) : 'Inactive'}
+                                    {formatPlanName(subInfo.plan)}
                                   </span>
-                                  {subInfo.periodEnd && subInfo.isActive && (
+                                  {subInfo.periodEnd && subInfo.isActive && subInfo.plan !== 'enterprise' && (
                                     <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0.25rem 0 0' }}>
                                       {subInfo.plan === 'trial' ? 'Ends' : 'Renews'}: {new Date(subInfo.periodEnd).toLocaleDateString()}
                                     </p>
                                   )}
                                 </div>
+                                {subInfo.plan !== 'enterprise' && (
                                 <button className="btn btn-primary" style={{ fontSize: '0.8rem', whiteSpace: 'nowrap' }} onClick={() => { setBillingSiteId(site.id); loadSiteUsage(site.id); }}>
                                   {subInfo.isExpired || !subInfo.plan ? 'Subscribe' : accountStatus.isTrialActive ? 'Upgrade' : 'Manage Plan'}
                                 </button>
+                                )}
                               </div>
                             </div>
                           </div>
