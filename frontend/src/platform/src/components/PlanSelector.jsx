@@ -253,7 +253,7 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
           </h2>
           <p style={{ color: '#64748b', fontSize: '0.9rem' }}>
             {hideTrial
-              ? 'Your website has been created! Subscribe to a plan to activate it.'
+              ? 'Subscribe to a plan to create and activate your website.'
               : isFirstTime
                 ? 'Start with a free trial or subscribe to a plan to create and manage your websites.'
                 : isExpired
