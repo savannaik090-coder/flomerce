@@ -29,7 +29,7 @@ Fluxe uses a **shared shard-based D1 database architecture**: multiple sites sha
 - **Display Formula:** `displayed_d1 = (baseline_bytes + d1_bytes_used) * correction_factor`
 - **Reconciliation:** Admin-triggered via `POST /api/admin/shards/{shardId}/reconcile`. Updates the shard's correction_factor.
 - **R2 Tracking:** Via `site_media` table and `recordMediaFile`/`removeMediaFile` functions.
-- **Plan Limits:** Basic 500MB D1/5GB R2, Pro 1.5GB/50GB, Premium 3GB/100GB. Overage available on Premium only.
+- **Plan Limits:** Basic 500MB D1/5GB R2, Standard 1GB/15GB, Pro 2GB/50GB, Enterprise 2GB/50GB (with overage). Enterprise sites are manually assigned by admin — not self-serve.
 
 ### Admin Shard Management API
 - `GET /api/admin/shards` — List all shards with sizes and site counts
@@ -41,7 +41,7 @@ Fluxe uses a **shared shard-based D1 database architecture**: multiple sites sha
 - `DELETE /api/admin/shards/{shardId}` — Delete empty shard
 
 ### Platform DB Tables (env.DB)
-- users, sessions, sites (with shard_id, migration_locked, d1_database_id, d1_binding_name columns), subscriptions, payments, plans, platform_settings, site_admin_sessions, site_usage (with baseline_bytes, baseline_updated_at), site_media, shards
+- users, sessions, sites (with shard_id, migration_locked, d1_database_id, d1_binding_name columns), subscriptions, payments, plans, platform_settings, site_admin_sessions, site_usage (with baseline_bytes, baseline_updated_at), site_media, shards, enterprise_sites, enterprise_usage_monthly, staff_members
 
 ### Shard DB Tables (SHARD_1, SHARD_2, etc.)
 - **site_config** (site_id PK) — All site branding, settings, SEO, and social tag data. Holds: brand_name, category, logo_url, favicon_url, primary_color, secondary_color, phone, email, address, social_links, settings (JSON), currency, seo_title, seo_description, seo_og_image, seo_robots, google_verification, og_title, og_description, og_image, og_type, twitter_card, twitter_title, twitter_description, twitter_image, twitter_site
@@ -78,7 +78,8 @@ Fluxe uses a **shared shard-based D1 database architecture**: multiple sites sha
 - **Admin Panel:** Centralized "Edit Website" section for managing all site content, policies, and SEO. Includes an iframe preview for real-time changes.
 - **Order Flow:** Supports both Cash on Delivery (COD) and Razorpay payments, with distinct flows for order creation, stock management, and email notifications.
 - **Customer Addresses:** Server-side storage and management of customer addresses for logged-in users.
-- **Storage Usage Tracking:** Row-level byte tracking with per-shard correction factor. R2 tracking via `site_media` table. Plan limits: Basic 500MB D1/5GB R2, Pro 1.5GB/50GB, Premium 3GB/100GB. Basic/Pro hard-block at limit. Premium users must opt-in to overage charges via billing toggle. Overage rates: ₹0.75/GB D1, ₹0.015/GB R2. API: `GET /api/usage?siteId=...` (read), `POST /api/usage?siteId=...` (toggle overage), `POST /api/usage?siteId=...&action=reconcile` (force recalculation).
+- **Storage Usage Tracking:** Row-level byte tracking with per-shard correction factor. R2 tracking via `site_media` table. Plan limits: Basic 500MB/5GB, Standard 1GB/15GB, Pro 2GB/50GB, Enterprise 2GB/50GB+overage. Basic/Standard/Pro hard-block at limit. Enterprise sites always allow overage (bypass toggle). Overage rates configurable in admin (defaults: ₹0.75/GB D1, ₹0.015/GB R2). API: `GET /api/usage?siteId=...` (read), `POST /api/usage?siteId=...` (toggle overage), `POST /api/usage?siteId=...&action=reconcile` (force recalculation).
+- **Enterprise Management:** Admin assigns sites to enterprise plan via `enterprise_sites` table. Monthly overage snapshots in `enterprise_usage_monthly`. Admin can configure overage rates, view per-site usage/invoices, and mark invoices paid. Enterprise sites show overage cost and payment history in user dashboard billing section.
 - **Admin Shard Management:** Create/list/reconcile/move/delete shards via `/api/admin/shards/*` endpoints. Replaces old per-site database management.
 
 ## External Dependencies

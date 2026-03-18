@@ -37,6 +37,15 @@ export default function OwnerAdminPage() {
   const [movingSite, setMovingSite] = useState(false);
   const [reconcilingShardId, setReconcilingShardId] = useState(null);
 
+  const [enterpriseSites, setEnterpriseSites] = useState([]);
+  const [enterpriseLoading, setEnterpriseLoading] = useState(false);
+  const [enterpriseRates, setEnterpriseRates] = useState({ d1PerGB: 0.75, r2PerGB: 0.015 });
+  const [enterpriseAssignId, setEnterpriseAssignId] = useState('');
+  const [enterpriseAssignNotes, setEnterpriseAssignNotes] = useState('');
+  const [enterpriseSelectedSite, setEnterpriseSelectedSite] = useState(null);
+  const [enterpriseSiteUsage, setEnterpriseSiteUsage] = useState(null);
+  const [enterpriseUsageLoading, setEnterpriseUsageLoading] = useState(false);
+
   useEffect(() => {
     if (!loading && !isAuthenticated) {
       navigate('/login');
@@ -53,6 +62,7 @@ export default function OwnerAdminPage() {
     if (activeTab === 'plans' && isAuthenticated) loadPlans();
     if (activeTab === 'settings' && isAuthenticated) loadSettings();
     if (activeTab === 'databases' && isAuthenticated) loadShards();
+    if (activeTab === 'enterprise' && isAuthenticated) loadEnterpriseSites();
   }, [activeTab, isAuthenticated]);
 
   const loadAdminData = async () => {
@@ -188,6 +198,106 @@ export default function OwnerAdminPage() {
       await loadSettings();
     } catch (e) {
       alert('Failed to save settings: ' + e.message);
+    }
+  };
+
+  const loadEnterpriseSites = async () => {
+    setEnterpriseLoading(true);
+    try {
+      const data = await apiRequest('/api/admin/enterprise');
+      const d = data.data || data;
+      setEnterpriseSites(d.sites || []);
+      if (d.rates) setEnterpriseRates(d.rates);
+    } catch (e) {
+      console.error('Failed to load enterprise sites:', e);
+    } finally {
+      setEnterpriseLoading(false);
+    }
+  };
+
+  const handleAssignEnterprise = async (e) => {
+    e.preventDefault();
+    if (!enterpriseAssignId.trim()) return;
+    try {
+      await apiRequest('/api/admin/enterprise/assign', {
+        method: 'POST',
+        body: JSON.stringify({ siteId: enterpriseAssignId.trim(), notes: enterpriseAssignNotes.trim() || null }),
+      });
+      setEnterpriseAssignId('');
+      setEnterpriseAssignNotes('');
+      await loadEnterpriseSites();
+    } catch (e) {
+      alert('Failed to assign: ' + e.message);
+    }
+  };
+
+  const handleRemoveEnterprise = async (siteId) => {
+    if (!window.confirm('Remove enterprise status from this site? It will be set back to free plan.')) return;
+    try {
+      await apiRequest('/api/admin/enterprise/remove', {
+        method: 'POST',
+        body: JSON.stringify({ siteId }),
+      });
+      if (enterpriseSelectedSite === siteId) {
+        setEnterpriseSelectedSite(null);
+        setEnterpriseSiteUsage(null);
+      }
+      await loadEnterpriseSites();
+    } catch (e) {
+      alert('Failed to remove: ' + e.message);
+    }
+  };
+
+  const loadEnterpriseSiteUsage = async (siteId) => {
+    setEnterpriseSelectedSite(siteId);
+    setEnterpriseUsageLoading(true);
+    try {
+      const data = await apiRequest(`/api/admin/enterprise/usage?siteId=${siteId}`);
+      setEnterpriseSiteUsage(data.data || data);
+    } catch (e) {
+      console.error('Failed to load enterprise usage:', e);
+    } finally {
+      setEnterpriseUsageLoading(false);
+    }
+  };
+
+  const handleSnapshotUsage = async (siteId) => {
+    if (!window.confirm('Snapshot current month usage for this site? This will record the current overage charges.')) return;
+    try {
+      await apiRequest('/api/admin/enterprise/snapshot', {
+        method: 'POST',
+        body: JSON.stringify({ siteId }),
+      });
+      alert('Usage snapshot saved!');
+      await loadEnterpriseSiteUsage(siteId);
+    } catch (e) {
+      alert('Failed to snapshot: ' + e.message);
+    }
+  };
+
+  const handleMarkPaid = async (siteId, yearMonth) => {
+    const notes = window.prompt('Add a payment note (optional):');
+    if (notes === null) return;
+    try {
+      await apiRequest('/api/admin/enterprise/mark-paid', {
+        method: 'POST',
+        body: JSON.stringify({ siteId, yearMonth, notes: notes || null }),
+      });
+      await loadEnterpriseSiteUsage(siteId);
+    } catch (e) {
+      alert('Failed to mark as paid: ' + e.message);
+    }
+  };
+
+  const handleSaveOverageRates = async () => {
+    try {
+      await apiRequest('/api/admin/enterprise/rates', {
+        method: 'PUT',
+        body: JSON.stringify(enterpriseRates),
+      });
+      alert('Overage rates updated!');
+    } catch (e) {
+      alert('Failed to update rates: ' + e.message);
     }
   };
 
@@ -377,6 +487,7 @@ export default function OwnerAdminPage() {
         <button className={`oa-tab ${activeTab === 'sites' ? 'active' : ''}`} onClick={() => setActiveTab('sites')}>Websites</button>
         <button className={`oa-tab ${activeTab === 'databases' ? 'active' : ''}`} onClick={() => setActiveTab('databases')}>Databases</button>
         <button className={`oa-tab ${activeTab === 'plans' ? 'active' : ''}`} onClick={() => setActiveTab('plans')}>Plans</button>
+        <button className={`oa-tab ${activeTab === 'enterprise' ? 'active' : ''}`} onClick={() => setActiveTab('enterprise')}>Enterprise</button>
         <button className={`oa-tab ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => setActiveTab('settings')}>Settings</button>
       </div>
 
@@ -958,6 +1069,196 @@ export default function OwnerAdminPage() {
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'enterprise' && (
+        <div className="oa-section">
+          <div className="oa-card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h3 style={{ margin: 0 }}>Enterprise Sites ({enterpriseSites.length})</h3>
+            </div>
+
+            <form onSubmit={handleAssignEnterprise} style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+              <input
+                type="text"
+                value={enterpriseAssignId}
+                onChange={e => setEnterpriseAssignId(e.target.value)}
+                placeholder="Site ID to assign"
+                style={{ flex: '1 1 200px', minWidth: '200px' }}
+                required
+              />
+              <input
+                type="text"
+                value={enterpriseAssignNotes}
+                onChange={e => setEnterpriseAssignNotes(e.target.value)}
+                placeholder="Notes (optional)"
+                style={{ flex: '1 1 200px', minWidth: '150px' }}
+              />
+              <button type="submit" className="oa-btn oa-btn-primary">Assign Enterprise</button>
+            </form>
+
+            {enterpriseLoading ? (
+              <p className="oa-empty">Loading enterprise sites...</p>
+            ) : enterpriseSites.length === 0 ? (
+              <p className="oa-empty">No enterprise sites assigned yet.</p>
+            ) : (
+              <div className="oa-table-wrap">
+                <table className="oa-table">
+                  <thead>
+                    <tr>
+                      <th>Site</th>
+                      <th>Owner</th>
+                      <th>D1 Usage</th>
+                      <th>R2 Usage</th>
+                      <th>Current Overage</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {enterpriseSites.map(site => (
+                      <tr key={site.siteId}>
+                        <td data-label="Site">
+                          <div>{site.brandName || site.subdomain}</div>
+                          <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{site.siteId}</div>
+                        </td>
+                        <td data-label="Owner">
+                          <div>{site.userName || '—'}</div>
+                          <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{site.userEmail}</div>
+                        </td>
+                        <td data-label="D1">{formatBytes(site.d1Used)} / {formatBytes(site.d1Limit)}</td>
+                        <td data-label="R2">{formatBytes(site.r2Used)} / {formatBytes(site.r2Limit)}</td>
+                        <td data-label="Overage">
+                          {site.currentMonthCost > 0 ? (
+                            <span style={{ color: '#dc2626', fontWeight: 700 }}>₹{site.currentMonthCost.toFixed(2)}</span>
+                          ) : (
+                            <span style={{ color: '#10b981' }}>₹0.00</span>
+                          )}
+                        </td>
+                        <td data-label="Actions">
+                          <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                            <button className="oa-btn-sm oa-btn-edit" onClick={() => loadEnterpriseSiteUsage(site.siteId)}>Details</button>
+                            <button className="oa-btn-sm oa-btn-toggle" onClick={() => handleSnapshotUsage(site.siteId)}>Snapshot</button>
+                            <button className="oa-btn-sm oa-btn-danger" onClick={() => handleRemoveEnterprise(site.siteId)}>Remove</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {enterpriseSelectedSite && enterpriseSiteUsage && (
+            <div className="oa-card" style={{ marginTop: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <h3 style={{ margin: 0 }}>{enterpriseSiteUsage.brandName || enterpriseSiteUsage.subdomain} — Usage Details</h3>
+                <button className="oa-btn oa-btn-outline" onClick={() => { setEnterpriseSelectedSite(null); setEnterpriseSiteUsage(null); }}>Close</button>
+              </div>
+
+              {enterpriseUsageLoading ? (
+                <p className="oa-empty">Loading usage...</p>
+              ) : (
+                <>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+                    <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '0.5rem', border: '1px solid #e2e8f0' }}>
+                      <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '0.25rem' }}>Database (D1)</div>
+                      <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>{formatBytes(enterpriseSiteUsage.d1Used)} / {formatBytes(enterpriseSiteUsage.d1Limit)}</div>
+                      {enterpriseSiteUsage.d1Overage > 0 && (
+                        <div style={{ fontSize: '0.75rem', color: '#dc2626', marginTop: '0.25rem' }}>Overage: {formatBytes(enterpriseSiteUsage.d1Overage)} (₹{enterpriseSiteUsage.d1CostINR})</div>
+                      )}
+                    </div>
+                    <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '0.5rem', border: '1px solid #e2e8f0' }}>
+                      <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '0.25rem' }}>File Storage (R2)</div>
+                      <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>{formatBytes(enterpriseSiteUsage.r2Used)} / {formatBytes(enterpriseSiteUsage.r2Limit)}</div>
+                      {enterpriseSiteUsage.r2Overage > 0 && (
+                        <div style={{ fontSize: '0.75rem', color: '#dc2626', marginTop: '0.25rem' }}>Overage: {formatBytes(enterpriseSiteUsage.r2Overage)} (₹{enterpriseSiteUsage.r2CostINR})</div>
+                      )}
+                    </div>
+                    <div style={{ padding: '1rem', background: enterpriseSiteUsage.currentMonthCost > 0 ? '#fef2f2' : '#f0fdf4', borderRadius: '0.5rem', border: `1px solid ${enterpriseSiteUsage.currentMonthCost > 0 ? '#fecaca' : '#bbf7d0'}` }}>
+                      <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '0.25rem' }}>Current Month Total</div>
+                      <div style={{ fontSize: '1.25rem', fontWeight: 800, color: enterpriseSiteUsage.currentMonthCost > 0 ? '#dc2626' : '#10b981' }}>₹{enterpriseSiteUsage.currentMonthCost.toFixed(2)}</div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}>
+                    <button className="oa-btn oa-btn-primary" onClick={() => handleSnapshotUsage(enterpriseSelectedSite)}>Snapshot Current Month</button>
+                  </div>
+
+                  <h4 style={{ marginBottom: '0.75rem' }}>Invoice History</h4>
+                  {(!enterpriseSiteUsage.invoices || enterpriseSiteUsage.invoices.length === 0) ? (
+                    <p className="oa-empty">No invoices yet. Use "Snapshot" to record current month usage.</p>
+                  ) : (
+                    <div className="oa-table-wrap">
+                      <table className="oa-table">
+                        <thead>
+                          <tr>
+                            <th>Month</th>
+                            <th>D1 Overage</th>
+                            <th>R2 Overage</th>
+                            <th>Total Cost</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {enterpriseSiteUsage.invoices.map(inv => (
+                            <tr key={inv.year_month}>
+                              <td data-label="Month">{inv.year_month}</td>
+                              <td data-label="D1">{formatBytes(inv.d1_overage_bytes)} (₹{inv.d1_cost_inr?.toFixed(2)})</td>
+                              <td data-label="R2">{formatBytes(inv.r2_overage_bytes)} (₹{inv.r2_cost_inr?.toFixed(2)})</td>
+                              <td data-label="Total" style={{ fontWeight: 700 }}>₹{inv.total_cost_inr?.toFixed(2)}</td>
+                              <td data-label="Status">
+                                <span className={`oa-badge ${inv.status === 'paid' ? 'oa-badge-green' : 'oa-badge-red'}`}>
+                                  {inv.status === 'paid' ? 'Paid' : 'Unpaid'}
+                                </span>
+                                {inv.paid_at && <div style={{ fontSize: '0.65rem', color: '#94a3b8' }}>{new Date(inv.paid_at).toLocaleDateString()}</div>}
+                              </td>
+                              <td data-label="Actions">
+                                {inv.status !== 'paid' && (
+                                  <button className="oa-btn-sm oa-btn-edit" onClick={() => handleMarkPaid(enterpriseSelectedSite, inv.year_month)}>Mark Paid</button>
+                                )}
+                                {inv.notes && <div style={{ fontSize: '0.65rem', color: '#94a3b8', marginTop: '0.25rem' }}>{inv.notes}</div>}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+
+          <div className="oa-card" style={{ marginTop: '1rem' }}>
+            <h3>Overage Rates</h3>
+            <p style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '1rem' }}>
+              Configure the per-GB overage charges for enterprise sites. These rates are used to calculate monthly overage costs.
+            </p>
+            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+              <div className="oa-form-group" style={{ flex: '1 1 200px' }}>
+                <label>D1 (Database) — ₹ per GB</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={enterpriseRates.d1PerGB}
+                  onChange={e => setEnterpriseRates({ ...enterpriseRates, d1PerGB: parseFloat(e.target.value) || 0 })}
+                />
+              </div>
+              <div className="oa-form-group" style={{ flex: '1 1 200px' }}>
+                <label>R2 (File Storage) — ₹ per GB</label>
+                <input
+                  type="number"
+                  step="0.001"
+                  value={enterpriseRates.r2PerGB}
+                  onChange={e => setEnterpriseRates({ ...enterpriseRates, r2PerGB: parseFloat(e.target.value) || 0 })}
+                />
+              </div>
+              <button className="oa-btn oa-btn-primary" onClick={handleSaveOverageRates}>Save Rates</button>
+            </div>
           </div>
         </div>
       )}

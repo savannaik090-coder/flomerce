@@ -6,15 +6,37 @@ const PLAN_LIMITS = {
   basic: { d1Bytes: 500 * 1024 * 1024, r2Bytes: 5 * 1024 * 1024 * 1024, allowOverage: false },
   standard: { d1Bytes: 1 * 1024 * 1024 * 1024, r2Bytes: 15 * 1024 * 1024 * 1024, allowOverage: false },
   pro: { d1Bytes: 2 * 1024 * 1024 * 1024, r2Bytes: 50 * 1024 * 1024 * 1024, allowOverage: false },
-  enterprise: { d1Bytes: 5 * 1024 * 1024 * 1024, r2Bytes: 150 * 1024 * 1024 * 1024, allowOverage: true },
+  enterprise: { d1Bytes: 2 * 1024 * 1024 * 1024, r2Bytes: 50 * 1024 * 1024 * 1024, allowOverage: true },
   trial: { d1Bytes: 500 * 1024 * 1024, r2Bytes: 5 * 1024 * 1024 * 1024, allowOverage: false },
   free: { d1Bytes: 500 * 1024 * 1024, r2Bytes: 5 * 1024 * 1024 * 1024, allowOverage: false },
 };
 
-const OVERAGE_RATES = {
+const DEFAULT_OVERAGE_RATES = {
   d1PerGB: 0.75,
   r2PerGB: 0.015,
 };
+
+async function getOverageRates(env) {
+  try {
+    const result = await env.DB.prepare(
+      `SELECT setting_key, setting_value FROM platform_settings WHERE setting_key IN ('overage_rate_d1_per_gb', 'overage_rate_r2_per_gb')`
+    ).all();
+    const rates = { ...DEFAULT_OVERAGE_RATES };
+    for (const row of (result.results || [])) {
+      if (row.setting_key === 'overage_rate_d1_per_gb') {
+        const v = parseFloat(row.setting_value);
+        if (!isNaN(v) && v >= 0) rates.d1PerGB = v;
+      }
+      if (row.setting_key === 'overage_rate_r2_per_gb') {
+        const v = parseFloat(row.setting_value);
+        if (!isNaN(v) && v >= 0) rates.r2PerGB = v;
+      }
+    }
+    return rates;
+  } catch (e) {
+    return { ...DEFAULT_OVERAGE_RATES };
+  }
+}
 
 const ONE_MB = 1024 * 1024;
 
@@ -196,6 +218,21 @@ export async function checkUsageLimit(env, siteId, resourceType = 'd1', addition
       return { allowed: true, reason: null };
     }
 
+    let isEnterpriseSite = false;
+    try {
+      const entCheck = await env.DB.prepare('SELECT site_id FROM enterprise_sites WHERE site_id = ?').bind(siteId).first();
+      isEnterpriseSite = !!entCheck;
+    } catch (_) {}
+
+    if (isEnterpriseSite) {
+      const overageBytes = Math.max(0, newTotal - limitBytes);
+      const overageGB = overageBytes / (1024 * 1024 * 1024);
+      const rates = await getOverageRates(env);
+      const rate = resourceType === 'd1' ? rates.d1PerGB : rates.r2PerGB;
+      const overageCost = overageGB * rate;
+      return { allowed: true, overage: true, overageBytes, overageCostINR: overageCost, reason: null };
+    }
+
     if (limits.allowOverage) {
       const config = await getSiteConfig(env, siteId);
       let siteSettings = {};
@@ -206,7 +243,8 @@ export async function checkUsageLimit(env, siteId, resourceType = 'd1', addition
       if (siteSettings.overageEnabled) {
         const overageBytes = Math.max(0, newTotal - limitBytes);
         const overageGB = overageBytes / (1024 * 1024 * 1024);
-        const rate = resourceType === 'd1' ? OVERAGE_RATES.d1PerGB : OVERAGE_RATES.r2PerGB;
+        const rates = await getOverageRates(env);
+        const rate = resourceType === 'd1' ? rates.d1PerGB : rates.r2PerGB;
         const overageCost = overageGB * rate;
         return { allowed: true, overage: true, overageBytes, overageCostINR: overageCost, reason: null };
       }
@@ -341,13 +379,29 @@ export async function handleUsageAPI(request, env, path) {
     const d1OverageGB = d1OverageBytes / (1024 * 1024 * 1024);
     const r2OverageGB = r2OverageBytes / (1024 * 1024 * 1024);
 
+    const rates = await getOverageRates(env);
+
+    let isEnterprise = false;
+    let enterpriseInvoices = [];
+    try {
+      const entCheck = await env.DB.prepare('SELECT site_id FROM enterprise_sites WHERE site_id = ?').bind(siteId).first();
+      isEnterprise = !!entCheck;
+      if (isEnterprise) {
+        const invResult = await env.DB.prepare(
+          'SELECT year_month, d1_overage_bytes, r2_overage_bytes, d1_cost_inr, r2_cost_inr, total_cost_inr, status, paid_at, snapshot_at FROM enterprise_usage_monthly WHERE site_id = ? ORDER BY year_month DESC LIMIT 12'
+        ).bind(siteId).all();
+        enterpriseInvoices = invResult.results || [];
+      }
+    } catch (_) {}
+
     let overageCostINR = 0;
-    if (limits.allowOverage && overageEnabled) {
-      overageCostINR = (d1OverageGB * OVERAGE_RATES.d1PerGB) + (r2OverageGB * OVERAGE_RATES.r2PerGB);
+    if (isEnterprise || (limits.allowOverage && overageEnabled)) {
+      overageCostINR = (d1OverageGB * rates.d1PerGB) + (r2OverageGB * rates.r2PerGB);
     }
 
     return successResponse({
       plan: planKey,
+      isEnterprise,
       d1: {
         used: usage.d1BytesUsed,
         raw: usage.d1BytesRaw,
@@ -363,10 +417,11 @@ export async function handleUsageAPI(request, env, path) {
         percentage: limits.r2Bytes > 0 ? Math.min(100, (usage.r2BytesUsed / limits.r2Bytes) * 100) : 0,
         overageBytes: r2OverageBytes,
       },
-      allowOverage: limits.allowOverage,
-      overageEnabled,
+      allowOverage: limits.allowOverage || isEnterprise,
+      overageEnabled: overageEnabled || isEnterprise,
       overageCostINR: Math.round(overageCostINR * 100) / 100,
-      overageRates: OVERAGE_RATES,
+      overageRates: rates,
+      enterpriseInvoices,
       lastUpdated: usage.lastUpdated,
     });
   } catch (error) {

@@ -2,7 +2,7 @@ import { generateId, errorResponse, successResponse, handleCORS, validateEmail }
 import { validateAuth } from '../../utils/auth.js';
 import { listAllSiteDatabases, getDatabaseSize, deleteDatabase, createDatabase, runSchemaOnDB, addBindingAndRedeploy } from '../../utils/d1-manager.js';
 import { getSiteSchemaStatements } from '../../utils/site-schema.js';
-import { reconcileShard, estimateRowBytes, trackD1Write } from '../../utils/usage-tracker.js';
+import { reconcileShard, estimateRowBytes, trackD1Write, getSiteUsage } from '../../utils/usage-tracker.js';
 import { resolveSiteDBById } from '../../utils/site-db.js';
 
 const ADMIN_EMAILS = [
@@ -47,6 +47,8 @@ export async function handleAdmin(request, env, path) {
       return handleDatabaseManagement(request, env, pathParts);
     case 'shards':
       return handleShardManagement(request, env, pathParts);
+    case 'enterprise':
+      return handleEnterpriseManagement(request, env, pathParts, user);
     default:
       return errorResponse('Admin endpoint not found', 404);
   }
@@ -856,6 +858,393 @@ async function moveSiteBetweenShards(request, env) {
     } catch (e) {}
 
     return errorResponse('Failed to move site: ' + (error.message || 'Unknown error'), 500);
+  }
+}
+
+async function ensureEnterpriseTables(env) {
+  await env.DB.prepare(`
+    CREATE TABLE IF NOT EXISTS enterprise_sites (
+      site_id TEXT PRIMARY KEY,
+      assigned_at TEXT DEFAULT (datetime('now')),
+      assigned_by TEXT,
+      notes TEXT,
+      FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
+    )
+  `).run();
+
+  await env.DB.prepare(`
+    CREATE TABLE IF NOT EXISTS enterprise_usage_monthly (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      site_id TEXT NOT NULL,
+      year_month TEXT NOT NULL,
+      d1_overage_bytes INTEGER DEFAULT 0,
+      r2_overage_bytes INTEGER DEFAULT 0,
+      d1_cost_inr REAL DEFAULT 0,
+      r2_cost_inr REAL DEFAULT 0,
+      total_cost_inr REAL DEFAULT 0,
+      status TEXT DEFAULT 'unpaid',
+      paid_at TEXT,
+      notes TEXT,
+      snapshot_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
+      UNIQUE(site_id, year_month)
+    )
+  `).run();
+}
+
+async function handleEnterpriseManagement(request, env, pathParts, user) {
+  await ensureEnterpriseTables(env);
+  const subAction = pathParts[3];
+  const method = request.method;
+
+  if (method === 'GET' && !subAction) {
+    return listEnterpriseSites(env);
+  }
+
+  if (method === 'GET' && subAction === 'rates') {
+    return getOverageRates(env);
+  }
+
+  if (method === 'PUT' && subAction === 'rates') {
+    return updateOverageRates(request, env);
+  }
+
+  if (method === 'GET' && subAction === 'usage') {
+    const url = new URL(request.url);
+    const siteId = url.searchParams.get('siteId');
+    if (!siteId) return errorResponse('siteId required', 400);
+    return getEnterpriseSiteUsage(env, siteId);
+  }
+
+  if (method === 'GET' && subAction === 'invoices') {
+    const url = new URL(request.url);
+    const siteId = url.searchParams.get('siteId');
+    return getEnterpriseInvoices(env, siteId);
+  }
+
+  if (method === 'POST' && subAction === 'assign') {
+    return assignEnterpriseSite(request, env, user);
+  }
+
+  if (method === 'POST' && subAction === 'remove') {
+    return removeEnterpriseSite(request, env);
+  }
+
+  if (method === 'POST' && subAction === 'snapshot') {
+    return snapshotEnterpriseUsage(request, env);
+  }
+
+  if (method === 'POST' && subAction === 'mark-paid') {
+    return markInvoicePaid(request, env);
+  }
+
+  return errorResponse('Enterprise endpoint not found', 404);
+}
+
+async function getOverageRates(env) {
+  try {
+    const result = await env.DB.prepare(
+      `SELECT setting_key, setting_value FROM platform_settings WHERE setting_key IN ('overage_rate_d1_per_gb', 'overage_rate_r2_per_gb')`
+    ).all();
+    const rates = { d1PerGB: 0.75, r2PerGB: 0.015 };
+    for (const row of (result.results || [])) {
+      if (row.setting_key === 'overage_rate_d1_per_gb') { const v = parseFloat(row.setting_value); if (!isNaN(v) && v >= 0) rates.d1PerGB = v; }
+      if (row.setting_key === 'overage_rate_r2_per_gb') { const v = parseFloat(row.setting_value); if (!isNaN(v) && v >= 0) rates.r2PerGB = v; }
+    }
+    return successResponse(rates);
+  } catch (e) {
+    return successResponse({ d1PerGB: 0.75, r2PerGB: 0.015 });
+  }
+}
+
+async function updateOverageRates(request, env) {
+  try {
+    const { d1PerGB, r2PerGB } = await request.json();
+    await ensurePlansTables(env);
+
+    if (d1PerGB !== undefined && (isNaN(parseFloat(d1PerGB)) || parseFloat(d1PerGB) < 0)) {
+      return errorResponse('d1PerGB must be a non-negative number', 400);
+    }
+    if (r2PerGB !== undefined && (isNaN(parseFloat(r2PerGB)) || parseFloat(r2PerGB) < 0)) {
+      return errorResponse('r2PerGB must be a non-negative number', 400);
+    }
+
+    if (d1PerGB !== undefined) {
+      await env.DB.prepare(
+        `INSERT INTO platform_settings (setting_key, setting_value, updated_at) VALUES ('overage_rate_d1_per_gb', ?, datetime('now'))
+         ON CONFLICT(setting_key) DO UPDATE SET setting_value = ?, updated_at = datetime('now')`
+      ).bind(String(d1PerGB), String(d1PerGB)).run();
+    }
+    if (r2PerGB !== undefined) {
+      await env.DB.prepare(
+        `INSERT INTO platform_settings (setting_key, setting_value, updated_at) VALUES ('overage_rate_r2_per_gb', ?, datetime('now'))
+         ON CONFLICT(setting_key) DO UPDATE SET setting_value = ?, updated_at = datetime('now')`
+      ).bind(String(r2PerGB), String(r2PerGB)).run();
+    }
+
+    return successResponse(null, 'Overage rates updated');
+  } catch (error) {
+    return errorResponse('Failed to update rates: ' + error.message, 500);
+  }
+}
+
+async function listEnterpriseSites(env) {
+  try {
+    const result = await env.DB.prepare(`
+      SELECT es.site_id, es.assigned_at, es.assigned_by, es.notes,
+             s.subdomain, s.brand_name, s.user_id,
+             u.name as user_name, u.email as user_email,
+             su.d1_bytes_used, su.r2_bytes_used, su.last_updated as usage_updated
+      FROM enterprise_sites es
+      JOIN sites s ON es.site_id = s.id
+      LEFT JOIN users u ON s.user_id = u.id
+      LEFT JOIN site_usage su ON es.site_id = su.site_id
+      ORDER BY es.assigned_at DESC
+    `).all();
+
+    const ratesResult = await env.DB.prepare(
+      `SELECT setting_key, setting_value FROM platform_settings WHERE setting_key IN ('overage_rate_d1_per_gb', 'overage_rate_r2_per_gb')`
+    ).all();
+    const rates = { d1PerGB: 0.75, r2PerGB: 0.015 };
+    for (const row of (ratesResult.results || [])) {
+      if (row.setting_key === 'overage_rate_d1_per_gb') { const v = parseFloat(row.setting_value); if (!isNaN(v) && v >= 0) rates.d1PerGB = v; }
+      if (row.setting_key === 'overage_rate_r2_per_gb') { const v = parseFloat(row.setting_value); if (!isNaN(v) && v >= 0) rates.r2PerGB = v; }
+    }
+
+    const d1LimitBytes = 2 * 1024 * 1024 * 1024;
+    const r2LimitBytes = 50 * 1024 * 1024 * 1024;
+
+    const sites = await Promise.all((result.results || []).map(async (row) => {
+      const usage = await getSiteUsage(env, row.site_id);
+      const d1Used = usage.d1BytesUsed;
+      const r2Used = usage.r2BytesUsed;
+      const d1Overage = Math.max(0, d1Used - d1LimitBytes);
+      const r2Overage = Math.max(0, r2Used - r2LimitBytes);
+      const d1Cost = (d1Overage / (1024 * 1024 * 1024)) * rates.d1PerGB;
+      const r2Cost = (r2Overage / (1024 * 1024 * 1024)) * rates.r2PerGB;
+
+      return {
+        siteId: row.site_id,
+        subdomain: row.subdomain,
+        brandName: row.brand_name,
+        userId: row.user_id,
+        userName: row.user_name,
+        userEmail: row.user_email,
+        assignedAt: row.assigned_at,
+        assignedBy: row.assigned_by,
+        notes: row.notes,
+        d1Used, r2Used,
+        d1Limit: d1LimitBytes,
+        r2Limit: r2LimitBytes,
+        d1Overage, r2Overage,
+        currentMonthCost: Math.round((d1Cost + r2Cost) * 100) / 100,
+        d1CostINR: Math.round(d1Cost * 100) / 100,
+        r2CostINR: Math.round(r2Cost * 100) / 100,
+        usageUpdated: row.usage_updated,
+      };
+    }));
+
+    return successResponse({ sites, rates });
+  } catch (error) {
+    console.error('List enterprise sites error:', error);
+    return errorResponse('Failed to list enterprise sites', 500);
+  }
+}
+
+async function assignEnterpriseSite(request, env, user) {
+  try {
+    const { siteId, notes } = await request.json();
+    if (!siteId) return errorResponse('siteId is required', 400);
+
+    const site = await env.DB.prepare('SELECT id, subdomain, brand_name FROM sites WHERE id = ?').bind(siteId).first();
+    if (!site) return errorResponse('Site not found', 404);
+
+    await env.DB.prepare(`
+      INSERT INTO enterprise_sites (site_id, assigned_at, assigned_by, notes)
+      VALUES (?, datetime('now'), ?, ?)
+      ON CONFLICT(site_id) DO UPDATE SET assigned_by = ?, notes = ?, assigned_at = datetime('now')
+    `).bind(siteId, user.email, notes || null, user.email, notes || null).run();
+
+    await env.DB.prepare(
+      `UPDATE sites SET subscription_plan = 'enterprise', subscription_expires_at = '2099-12-31T23:59:59', is_active = 1, updated_at = datetime('now') WHERE id = ?`
+    ).bind(siteId).run();
+
+    return successResponse({ siteId, subdomain: site.subdomain }, 'Site assigned as enterprise');
+  } catch (error) {
+    console.error('Assign enterprise error:', error);
+    return errorResponse('Failed to assign enterprise: ' + error.message, 500);
+  }
+}
+
+async function removeEnterpriseSite(request, env) {
+  try {
+    const { siteId } = await request.json();
+    if (!siteId) return errorResponse('siteId is required', 400);
+
+    await env.DB.prepare('DELETE FROM enterprise_sites WHERE site_id = ?').bind(siteId).run();
+
+    await env.DB.prepare(
+      `UPDATE sites SET subscription_plan = 'free', subscription_expires_at = NULL, updated_at = datetime('now') WHERE id = ?`
+    ).bind(siteId).run();
+
+    return successResponse({ siteId }, 'Enterprise status removed');
+  } catch (error) {
+    return errorResponse('Failed to remove enterprise: ' + error.message, 500);
+  }
+}
+
+async function getEnterpriseSiteUsage(env, siteId) {
+  try {
+    const site = await env.DB.prepare(`
+      SELECT es.site_id, s.subdomain, s.brand_name
+      FROM enterprise_sites es
+      JOIN sites s ON es.site_id = s.id
+      WHERE es.site_id = ?
+    `).bind(siteId).first();
+
+    if (!site) return errorResponse('Enterprise site not found', 404);
+
+    const usage = await getSiteUsage(env, siteId);
+
+    const ratesResult = await env.DB.prepare(
+      `SELECT setting_key, setting_value FROM platform_settings WHERE setting_key IN ('overage_rate_d1_per_gb', 'overage_rate_r2_per_gb')`
+    ).all();
+    const rates = { d1PerGB: 0.75, r2PerGB: 0.015 };
+    for (const row of (ratesResult.results || [])) {
+      if (row.setting_key === 'overage_rate_d1_per_gb') { const v = parseFloat(row.setting_value); if (!isNaN(v) && v >= 0) rates.d1PerGB = v; }
+      if (row.setting_key === 'overage_rate_r2_per_gb') { const v = parseFloat(row.setting_value); if (!isNaN(v) && v >= 0) rates.r2PerGB = v; }
+    }
+
+    const d1LimitBytes = 2 * 1024 * 1024 * 1024;
+    const r2LimitBytes = 50 * 1024 * 1024 * 1024;
+    const d1Used = usage.d1BytesUsed;
+    const r2Used = usage.r2BytesUsed;
+    const d1Overage = Math.max(0, d1Used - d1LimitBytes);
+    const r2Overage = Math.max(0, r2Used - r2LimitBytes);
+    const d1Cost = (d1Overage / (1024 * 1024 * 1024)) * rates.d1PerGB;
+    const r2Cost = (r2Overage / (1024 * 1024 * 1024)) * rates.r2PerGB;
+
+    const invoices = await env.DB.prepare(
+      `SELECT * FROM enterprise_usage_monthly WHERE site_id = ? ORDER BY year_month DESC LIMIT 24`
+    ).bind(siteId).all();
+
+    return successResponse({
+      siteId,
+      subdomain: site.subdomain,
+      brandName: site.brand_name,
+      d1Used, r2Used,
+      d1Limit: d1LimitBytes,
+      r2Limit: r2LimitBytes,
+      d1Overage, r2Overage,
+      currentMonthCost: Math.round((d1Cost + r2Cost) * 100) / 100,
+      d1CostINR: Math.round(d1Cost * 100) / 100,
+      r2CostINR: Math.round(r2Cost * 100) / 100,
+      rates,
+      invoices: (invoices.results || []),
+      usageUpdated: usage.lastUpdated,
+    });
+  } catch (error) {
+    console.error('Get enterprise usage error:', error);
+    return errorResponse('Failed to get enterprise usage', 500);
+  }
+}
+
+async function getEnterpriseInvoices(env, siteId) {
+  try {
+    let query = `SELECT eum.*, s.subdomain, s.brand_name
+                 FROM enterprise_usage_monthly eum
+                 JOIN sites s ON eum.site_id = s.id`;
+    const bindings = [];
+
+    if (siteId) {
+      query += ' WHERE eum.site_id = ?';
+      bindings.push(siteId);
+    }
+    query += ' ORDER BY eum.year_month DESC LIMIT 100';
+
+    const stmt = bindings.length > 0
+      ? env.DB.prepare(query).bind(...bindings)
+      : env.DB.prepare(query);
+
+    const result = await stmt.all();
+    return successResponse({ invoices: result.results || [] });
+  } catch (error) {
+    return errorResponse('Failed to get invoices', 500);
+  }
+}
+
+async function snapshotEnterpriseUsage(request, env) {
+  try {
+    const { siteId, yearMonth } = await request.json();
+    if (!siteId) return errorResponse('siteId is required', 400);
+
+    const now = new Date();
+    const month = yearMonth || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+    const entCheck = await env.DB.prepare('SELECT site_id FROM enterprise_sites WHERE site_id = ?').bind(siteId).first();
+    if (!entCheck) return errorResponse('Enterprise site not found', 404);
+
+    const usage = await getSiteUsage(env, siteId);
+
+    const ratesResult = await env.DB.prepare(
+      `SELECT setting_key, setting_value FROM platform_settings WHERE setting_key IN ('overage_rate_d1_per_gb', 'overage_rate_r2_per_gb')`
+    ).all();
+    const rates = { d1PerGB: 0.75, r2PerGB: 0.015 };
+    for (const row of (ratesResult.results || [])) {
+      if (row.setting_key === 'overage_rate_d1_per_gb') { const v = parseFloat(row.setting_value); if (!isNaN(v) && v >= 0) rates.d1PerGB = v; }
+      if (row.setting_key === 'overage_rate_r2_per_gb') { const v = parseFloat(row.setting_value); if (!isNaN(v) && v >= 0) rates.r2PerGB = v; }
+    }
+
+    const d1LimitBytes = 2 * 1024 * 1024 * 1024;
+    const r2LimitBytes = 50 * 1024 * 1024 * 1024;
+    const d1Used = usage.d1BytesUsed;
+    const r2Used = usage.r2BytesUsed;
+    const d1Overage = Math.max(0, d1Used - d1LimitBytes);
+    const r2Overage = Math.max(0, r2Used - r2LimitBytes);
+    const d1Cost = (d1Overage / (1024 * 1024 * 1024)) * rates.d1PerGB;
+    const r2Cost = (r2Overage / (1024 * 1024 * 1024)) * rates.r2PerGB;
+    const totalCost = Math.round((d1Cost + r2Cost) * 100) / 100;
+
+    await env.DB.prepare(`
+      INSERT INTO enterprise_usage_monthly (site_id, year_month, d1_overage_bytes, r2_overage_bytes, d1_cost_inr, r2_cost_inr, total_cost_inr, status, snapshot_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'unpaid', datetime('now'))
+      ON CONFLICT(site_id, year_month) DO UPDATE SET
+        d1_overage_bytes = ?, r2_overage_bytes = ?,
+        d1_cost_inr = ?, r2_cost_inr = ?, total_cost_inr = ?,
+        snapshot_at = datetime('now')
+    `).bind(
+      siteId, month,
+      d1Overage, r2Overage,
+      Math.round(d1Cost * 100) / 100, Math.round(r2Cost * 100) / 100, totalCost,
+      d1Overage, r2Overage,
+      Math.round(d1Cost * 100) / 100, Math.round(r2Cost * 100) / 100, totalCost
+    ).run();
+
+    return successResponse({ siteId, yearMonth: month, totalCost }, 'Usage snapshot saved');
+  } catch (error) {
+    console.error('Snapshot error:', error);
+    return errorResponse('Failed to snapshot usage: ' + error.message, 500);
+  }
+}
+
+async function markInvoicePaid(request, env) {
+  try {
+    const { siteId, yearMonth, notes } = await request.json();
+    if (!siteId || !yearMonth) return errorResponse('siteId and yearMonth required', 400);
+
+    const invoice = await env.DB.prepare(
+      'SELECT * FROM enterprise_usage_monthly WHERE site_id = ? AND year_month = ?'
+    ).bind(siteId, yearMonth).first();
+
+    if (!invoice) return errorResponse('Invoice not found', 404);
+
+    await env.DB.prepare(
+      `UPDATE enterprise_usage_monthly SET status = 'paid', paid_at = datetime('now'), notes = ? WHERE site_id = ? AND year_month = ?`
+    ).bind(notes || null, siteId, yearMonth).run();
+
+    return successResponse({ siteId, yearMonth }, 'Invoice marked as paid');
+  } catch (error) {
+    return errorResponse('Failed to mark paid: ' + error.message, 500);
   }
 }
 

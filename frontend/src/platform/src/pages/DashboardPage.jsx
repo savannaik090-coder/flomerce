@@ -470,6 +470,53 @@ export default function DashboardPage() {
             </p>
           </div>
         )}
+
+        {usage.isEnterprise && (
+          <div style={{ marginTop: '1rem' }}>
+            {usage.overageCostINR > 0 && (
+              <div style={{ padding: '0.75rem', background: '#fef3c7', borderRadius: '0.5rem', border: '1px solid #fbbf24', marginBottom: '0.75rem' }}>
+                <div style={{ fontSize: '0.875rem', fontWeight: 700, color: '#92400e', marginBottom: '0.25rem' }}>Current Month Overage</div>
+                <p style={{ fontSize: '0.9rem', color: '#92400e', margin: 0 }}>
+                  ₹{usage.overageCostINR.toFixed(2)}
+                </p>
+              </div>
+            )}
+
+            {usage.enterpriseInvoices && usage.enterpriseInvoices.length > 0 && (
+              <div style={{ marginTop: '0.75rem' }}>
+                <h4 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.5rem' }}>Payment History</h4>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', fontSize: '0.8rem', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                        <th style={{ textAlign: 'left', padding: '0.5rem', color: '#64748b', fontWeight: 600 }}>Month</th>
+                        <th style={{ textAlign: 'right', padding: '0.5rem', color: '#64748b', fontWeight: 600 }}>Amount</th>
+                        <th style={{ textAlign: 'center', padding: '0.5rem', color: '#64748b', fontWeight: 600 }}>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {usage.enterpriseInvoices.map(inv => (
+                        <tr key={inv.year_month} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                          <td style={{ padding: '0.5rem' }}>{inv.year_month}</td>
+                          <td style={{ padding: '0.5rem', textAlign: 'right', fontWeight: 600 }}>₹{inv.total_cost_inr?.toFixed(2)}</td>
+                          <td style={{ padding: '0.5rem', textAlign: 'center' }}>
+                            <span style={{
+                              display: 'inline-block', padding: '0.15rem 0.5rem', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 700,
+                              background: inv.status === 'paid' ? '#dcfce7' : '#fef2f2',
+                              color: inv.status === 'paid' ? '#166534' : '#991b1b',
+                            }}>
+                              {inv.status === 'paid' ? 'Paid' : 'Unpaid'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     );
   };
