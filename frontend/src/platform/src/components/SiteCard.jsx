@@ -20,8 +20,11 @@ export default function SiteCard({ site, onDelete, onManage, onBilling, subscrip
     }
   };
 
+  const isEnterprise = sub.plan === 'enterprise';
+
   const getStatusBadge = () => {
     if (sub.isActive) {
+      if (isEnterprise) return { text: 'Enterprise', bg: '#ede9fe', color: '#5b21b6' };
       const label = sub.plan === 'trial' ? 'Trial' : sub.plan || 'Active';
       return { text: label, bg: '#dcfce7', color: '#166534' };
     }
@@ -47,7 +50,7 @@ export default function SiteCard({ site, onDelete, onManage, onBilling, subscrip
         {createdAt && <span>{createdAt}</span>}
         <span style={{ marginLeft: 'auto', background: badge.bg, color: badge.color, padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>{badge.text}</span>
       </div>
-      {sub.isActive && sub.periodEnd && (
+      {sub.isActive && sub.periodEnd && !isEnterprise && (
         <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.75rem', margin: '0 0 0.75rem 0' }}>
           {sub.plan === 'trial' ? 'Trial ends' : 'Renews'}: {new Date(sub.periodEnd).toLocaleDateString()}
         </p>
@@ -59,7 +62,7 @@ export default function SiteCard({ site, onDelete, onManage, onBilling, subscrip
         </button>
       </div>
       <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-        {onBilling && (
+        {onBilling && !isEnterprise && (
           <button className="btn btn-outline" onClick={onBilling} style={{ flex: 1, fontSize: '0.75rem' }}>
             {sub.isExpired || !sub.plan ? 'Subscribe' : 'Billing'}
           </button>
