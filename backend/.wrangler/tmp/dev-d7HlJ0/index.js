@@ -872,10 +872,12 @@ async function getSiteUsage(env, siteId) {
 }
 function getSitePlan(site) {
   const plan = (site.subscription_plan || "free").toLowerCase();
-  if (plan.includes("premium"))
-    return "premium";
+  if (plan.includes("enterprise"))
+    return "enterprise";
   if (plan.includes("pro"))
     return "pro";
+  if (plan.includes("standard"))
+    return "standard";
   if (plan.includes("basic"))
     return "basic";
   if (plan === "trial")
@@ -1073,7 +1075,7 @@ async function handleOverageToggle(request, env, user, siteId) {
     const planKey = getSitePlan(site);
     const limits = PLAN_LIMITS[planKey] || PLAN_LIMITS.free;
     if (!limits.allowOverage) {
-      return errorResponse("Overage charges are only available on the Premium plan", 403);
+      return errorResponse("Overage charges are only available on the Enterprise plan", 403);
     }
     const siteDB = await resolveSiteDBById(env, siteId);
     const existingConfig = await siteDB.prepare(
