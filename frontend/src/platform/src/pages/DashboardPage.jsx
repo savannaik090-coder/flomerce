@@ -794,7 +794,7 @@ export default function DashboardPage() {
                               )}
                               <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.75rem' }}>
                                 <button className="btn btn-primary" style={{ fontSize: '0.875rem', padding: '0.5rem 1.25rem' }} onClick={() => { setPlanOverlaySiteId(billingSiteId); setShowPlanOverlayHideTrial(!!profileData?.hadSubscription); setShowPlanOverlay(true); }}>
-                                  {subInfo.isActive && subInfo.plan !== 'trial' ? 'Change' : 'Upgrade'}
+                                  {subInfo.isActive && subInfo.plan !== 'trial' ? 'Change Plan' : 'Upgrade'}
                                 </button>
                               </div>
                             </div>
