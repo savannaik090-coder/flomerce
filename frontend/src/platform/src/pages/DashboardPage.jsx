@@ -24,7 +24,7 @@ export default function DashboardPage() {
   const [dataLoaded, setDataLoaded] = useState(false);
   const [showPlanOverlay, setShowPlanOverlay] = useState(false);
   const [showPlanOverlayHideTrial, setShowPlanOverlayHideTrial] = useState(true);
-  const [pendingSiteData, setPendingSiteData] = useState(null);
+  const [pendingSiteId, setPendingSiteId] = useState(null);
   const [siteUsage, setSiteUsage] = useState({});
 
   useEffect(() => {
@@ -137,38 +137,35 @@ export default function DashboardPage() {
     await Promise.all([loadSites(), loadProfile()]);
   };
 
-  const handleNeedsPlan = (formData) => {
-    setPendingSiteData(formData);
-    const hadSub = profileData?.hadSubscription || false;
-    setShowPlanOverlayHideTrial(hadSub);
-    setShowPlanOverlay(true);
+  const handleNeedsPlan = async (formData) => {
+    try {
+      const result = await createSite(formData);
+      if (result.success || result.site) {
+        const newSite = result.site || result.data || result;
+        const newSiteId = newSite.id || newSite.siteId;
+        setPendingSiteId(newSiteId);
+        await loadSites();
+        const hadSub = profileData?.hadSubscription || false;
+        setShowPlanOverlayHideTrial(hadSub);
+        setShowPlanOverlay(true);
+      } else {
+        alert('Failed to create website: ' + (result.message || result.error || 'Unknown error'));
+      }
+    } catch (err) {
+      alert('Failed to create website: ' + (err.message || 'Unknown error'));
+    }
   };
 
   const handlePlanOverlayDone = async () => {
     setShowPlanOverlay(false);
-    if (pendingSiteData) {
-      try {
-        const result = await createSite(pendingSiteData);
-        if (result.success || result.site) {
-          setPendingSiteData(null);
-          await Promise.all([loadSites(), loadProfile()]);
-        } else {
-          alert('Failed to create website: ' + (result.message || result.error || 'Unknown error'));
-          setPendingSiteData(null);
-        }
-      } catch (err) {
-        alert('Failed to create website: ' + (err.message || 'Unknown error'));
-        setPendingSiteData(null);
-      }
-    } else {
-      loadProfile();
-      loadSites();
-    }
+    setPendingSiteId(null);
+    await Promise.all([loadSites(), loadProfile()]);
   };
 
   const handlePlanOverlayClose = () => {
     setShowPlanOverlay(false);
-    setPendingSiteData(null);
+    setPendingSiteId(null);
+    loadSites();
   };
 
   const handleCreateSiteClick = () => {
@@ -670,6 +667,7 @@ export default function DashboardPage() {
                               currentPlan={subInfo.plan}
                               currentStatus={subInfo.isActive ? 'active' : subInfo.status}
                               onUpgraded={() => { loadSites(); loadProfile(); }}
+                              hideTrial={!!profileData?.hadSubscription}
                             />
                           </div>
                         );
@@ -751,6 +749,7 @@ export default function DashboardPage() {
 
       {showPlanOverlay && (
         <PlanSelector
+          siteId={pendingSiteId}
           currentPlan={null}
           currentStatus="none"
           onUpgraded={handlePlanOverlayDone}
