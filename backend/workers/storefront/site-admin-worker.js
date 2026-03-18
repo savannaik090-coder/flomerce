@@ -3,7 +3,7 @@ import { validateAuth, hashPassword, verifyPassword } from '../../utils/auth.js'
 import { resolveSiteDBById, checkMigrationLock, getSiteConfig } from '../../utils/site-db.js';
 import { estimateRowBytes, trackD1Write, trackD1Update } from '../../utils/usage-tracker.js';
 
-const ALL_PERMISSIONS = ['products', 'inventory', 'orders', 'customers', 'analytics', 'website', 'seo', 'notifications', 'settings'];
+const ALL_PERMISSIONS = ['dashboard', 'products', 'inventory', 'orders', 'customers', 'analytics', 'website', 'seo', 'notifications', 'settings'];
 
 export async function handleSiteAdmin(request, env, path) {
   const corsResponse = handleCORS(request);
@@ -832,6 +832,9 @@ async function addStaff(request, env, siteId) {
     }
 
     const validPerms = (permissions || []).filter(p => ALL_PERMISSIONS.includes(p));
+    if (validPerms.length === 0) {
+      return errorResponse('At least one permission must be selected');
+    }
 
     const existing = await env.DB.prepare(
       'SELECT id FROM site_staff WHERE site_id = ? AND LOWER(email) = LOWER(?)'
@@ -909,6 +912,9 @@ async function updateStaff(request, env, siteId, staffId) {
 
     if (updates.permissions !== undefined) {
       const validPerms = (updates.permissions || []).filter(p => ALL_PERMISSIONS.includes(p));
+      if (validPerms.length === 0) {
+        return errorResponse('At least one permission must be selected');
+      }
       setClauses.push('permissions = ?');
       values.push(JSON.stringify(validPerms));
     }

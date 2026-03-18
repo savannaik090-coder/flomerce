@@ -1929,6 +1929,9 @@ async function addStaff(request, env, siteId) {
       return errorResponse("Invalid email address");
     }
     const validPerms = (permissions || []).filter((p) => ALL_PERMISSIONS.includes(p));
+    if (validPerms.length === 0) {
+      return errorResponse("At least one permission must be selected");
+    }
     const existing = await env.DB.prepare(
       "SELECT id FROM site_staff WHERE site_id = ? AND LOWER(email) = LOWER(?)"
     ).bind(siteId, email.trim()).first();
@@ -1995,6 +1998,9 @@ async function updateStaff(request, env, siteId, staffId) {
     }
     if (updates.permissions !== void 0) {
       const validPerms = (updates.permissions || []).filter((p) => ALL_PERMISSIONS.includes(p));
+      if (validPerms.length === 0) {
+        return errorResponse("At least one permission must be selected");
+      }
       setClauses.push("permissions = ?");
       values.push(JSON.stringify(validPerms));
     }
@@ -2058,7 +2064,7 @@ var init_site_admin_worker = __esm({
     init_auth();
     init_site_db();
     init_usage_tracker();
-    ALL_PERMISSIONS = ["products", "inventory", "orders", "customers", "analytics", "website", "seo", "notifications", "settings"];
+    ALL_PERMISSIONS = ["dashboard", "products", "inventory", "orders", "customers", "analytics", "website", "seo", "notifications", "settings"];
     __name(handleSiteAdmin, "handleSiteAdmin");
     __name(staffLogin, "staffLogin");
     __name(validateSiteAdminToken, "validateSiteAdminToken");

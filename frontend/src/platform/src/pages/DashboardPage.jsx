@@ -182,6 +182,7 @@ export default function DashboardPage() {
   };
 
   const PERMISSION_OPTIONS = [
+    { id: 'dashboard', label: 'Dashboard' },
     { id: 'products', label: 'Products' },
     { id: 'inventory', label: 'Inventory' },
     { id: 'orders', label: 'Orders' },
@@ -223,7 +224,12 @@ export default function DashboardPage() {
   const handleTogglePermission = (permId) => {
     setStaffForm(prev => {
       const perms = prev.permissions || [];
-      return { ...prev, permissions: perms.includes(permId) ? perms.filter(p => p !== permId) : [...perms, permId] };
+      if (perms.includes(permId)) {
+        const newPerms = perms.filter(p => p !== permId);
+        if (newPerms.length === 0) return prev;
+        return { ...prev, permissions: newPerms };
+      }
+      return { ...prev, permissions: [...perms, permId] };
     });
   };
 
@@ -915,14 +921,16 @@ export default function DashboardPage() {
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                             {PERMISSION_OPTIONS.map(perm => {
                               const checked = (staffForm.permissions || []).includes(perm.id);
+                              const isLast = checked && (staffForm.permissions || []).length === 1;
                               return (
-                                <label key={perm.id} style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', padding: '0.5rem 0.75rem', border: `1px solid ${checked ? '#2563eb' : '#e2e8f0'}`, borderRadius: '0.375rem', cursor: 'pointer', background: checked ? '#eff6ff' : '#fff', fontSize: '0.8125rem', fontWeight: 500, transition: 'all 0.15s', userSelect: 'none' }}>
-                                  <input type="checkbox" checked={checked} onChange={() => handleTogglePermission(perm.id)} style={{ accentColor: '#2563eb' }} />
+                                <label key={perm.id} style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', padding: '0.5rem 0.75rem', border: `1px solid ${checked ? '#2563eb' : '#e2e8f0'}`, borderRadius: '0.375rem', cursor: isLast ? 'not-allowed' : 'pointer', background: checked ? '#eff6ff' : '#fff', fontSize: '0.8125rem', fontWeight: 500, transition: 'all 0.15s', userSelect: 'none', opacity: isLast ? 0.7 : 1 }}>
+                                  <input type="checkbox" checked={checked} onChange={() => handleTogglePermission(perm.id)} style={{ accentColor: '#2563eb' }} disabled={isLast} />
                                   {perm.label}
                                 </label>
                               );
                             })}
                           </div>
+                          <p style={{ fontSize: '0.7rem', color: '#9ca3af', marginTop: '0.375rem', marginBottom: 0 }}>At least one permission is required.</p>
                         </div>
                         {staffForm.id && (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem', padding: '0.75rem', background: '#f8fafc', borderRadius: '0.375rem' }}>

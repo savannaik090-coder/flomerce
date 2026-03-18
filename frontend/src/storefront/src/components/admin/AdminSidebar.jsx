@@ -1,7 +1,7 @@
 import React from 'react';
 
 const navItems = [
-  { id: 'dashboard', icon: 'fa-chart-line', label: 'Dashboard', alwaysVisible: true },
+  { id: 'dashboard', icon: 'fa-chart-line', label: 'Dashboard' },
   { id: 'products', icon: 'fa-box', label: 'Products' },
   { id: 'inventory', icon: 'fa-warehouse', label: 'Inventory' },
   { id: 'orders', icon: 'fa-shopping-bag', label: 'Orders', badgeKey: 'pendingOrders' },
@@ -15,7 +15,6 @@ const navItems = [
 
 export default function AdminSidebar({ activeSection, onSectionChange, isOpen, onClose, brandName, badges, permissions, isOwner }) {
   const visibleItems = navItems.filter(item => {
-    if (item.alwaysVisible) return true;
     if (isOwner) return true;
     if (!permissions) return false;
     return permissions.includes(item.id);
