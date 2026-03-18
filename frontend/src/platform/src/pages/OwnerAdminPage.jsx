@@ -1166,50 +1166,77 @@ export default function OwnerAdminPage() {
             ) : enterpriseSites.length === 0 ? (
               <p className="oa-empty">No enterprise sites assigned yet.</p>
             ) : (
-              <div className="oa-table-wrap">
-                <table className="oa-table">
-                  <thead>
-                    <tr>
-                      <th>Site</th>
-                      <th>Owner</th>
-                      <th>D1 Usage</th>
-                      <th>R2 Usage</th>
-                      <th>Current Overage</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {enterpriseSites.map(site => (
-                      <tr key={site.siteId}>
-                        <td data-label="Site">
-                          <div>{site.brandName || site.subdomain}</div>
-                          <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{site.subdomain}.fluxe.in</div>
-                        </td>
-                        <td data-label="Owner">
-                          <div>{site.userName || '—'}</div>
-                          <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{site.userEmail}</div>
-                        </td>
-                        <td data-label="D1">{formatBytes(site.d1Used)} / {formatBytes(site.d1Limit)}</td>
-                        <td data-label="R2">{formatBytes(site.r2Used)} / {formatBytes(site.r2Limit)}</td>
-                        <td data-label="Overage">
-                          {site.currentMonthCost > 0 ? (
-                            <span style={{ color: '#dc2626', fontWeight: 700 }}>₹{site.currentMonthCost.toFixed(2)}</span>
-                          ) : (
-                            <span style={{ color: '#10b981' }}>₹0.00</span>
-                          )}
-                        </td>
-                        <td data-label="Actions">
-                          <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                            <button className="oa-btn-sm oa-btn-edit" onClick={() => loadEnterpriseSiteUsage(site.siteId)}>Details</button>
-                            <button className="oa-btn-sm oa-btn-toggle" onClick={() => handleSnapshotUsage(site.siteId)}>Snapshot</button>
-                            <button className="oa-btn-sm oa-btn-danger" onClick={() => handleRemoveEnterprise(site.siteId)}>Remove</button>
-                          </div>
-                        </td>
+              <>
+                <div className="oa-table-wrap">
+                  <table className="oa-table">
+                    <thead>
+                      <tr>
+                        <th>Site</th>
+                        <th>Owner</th>
+                        <th>D1 Usage</th>
+                        <th>R2 Usage</th>
+                        <th>Current Overage</th>
+                        <th>Actions</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {enterpriseSites.map(site => (
+                        <tr key={site.siteId}>
+                          <td data-label="Site">
+                            <div>{site.brandName || site.subdomain}</div>
+                            <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{site.subdomain}.fluxe.in</div>
+                          </td>
+                          <td data-label="Owner">
+                            <div>{site.userName || '—'}</div>
+                            <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{site.userEmail}</div>
+                          </td>
+                          <td data-label="D1">{formatBytes(site.d1Used || 0)} / {formatBytes(site.d1Limit || 0)}</td>
+                          <td data-label="R2">{formatBytes(site.r2Used || 0)} / {formatBytes(site.r2Limit || 0)}</td>
+                          <td data-label="Overage">
+                            {(site.currentMonthCost || 0) > 0 ? (
+                              <span style={{ color: '#dc2626', fontWeight: 700 }}>₹{(site.currentMonthCost || 0).toFixed(2)}</span>
+                            ) : (
+                              <span style={{ color: '#10b981' }}>₹0.00</span>
+                            )}
+                          </td>
+                          <td data-label="Actions">
+                            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                              <button className="oa-btn-sm oa-btn-edit" onClick={() => loadEnterpriseSiteUsage(site.siteId)}>Details</button>
+                              <button className="oa-btn-sm oa-btn-toggle" onClick={() => handleSnapshotUsage(site.siteId)}>Snapshot</button>
+                              <button className="oa-btn-sm oa-btn-danger" onClick={() => handleRemoveEnterprise(site.siteId)}>Remove</button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="oa-card-list-mobile">
+                  {enterpriseSites.map(site => (
+                    <div className="oa-user-card" key={site.siteId}>
+                      <div className="oa-user-card-header">
+                        <div>
+                          <div className="oa-user-card-name">{site.brandName || site.subdomain}</div>
+                          <div className="oa-user-card-email">{site.subdomain}.fluxe.in</div>
+                        </div>
+                        <span className={`oa-badge ${(site.currentMonthCost || 0) > 0 ? 'oa-badge-red' : 'oa-badge-green'}`}>
+                          {(site.currentMonthCost || 0) > 0 ? `₹${(site.currentMonthCost || 0).toFixed(2)} overage` : '₹0.00'}
+                        </span>
+                      </div>
+                      <div className="oa-user-card-email">Owner: {site.userName || '—'} ({site.userEmail})</div>
+                      <div className="oa-user-card-email">D1: {formatBytes(site.d1Used || 0)} / {formatBytes(site.d1Limit || 0)} · R2: {formatBytes(site.r2Used || 0)} / {formatBytes(site.r2Limit || 0)}</div>
+                      {site.assignedBy && <div className="oa-user-card-date">Assigned by: {site.assignedBy}</div>}
+                      {site.notes && <div className="oa-user-card-date">Notes: {site.notes}</div>}
+                      <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+                        <button className="oa-btn-sm oa-btn-edit" onClick={() => loadEnterpriseSiteUsage(site.siteId)}>Details</button>
+                        <button className="oa-btn-sm oa-btn-toggle" onClick={() => handleSnapshotUsage(site.siteId)}>Snapshot</button>
+                        <button className="oa-btn-sm oa-btn-danger" onClick={() => handleRemoveEnterprise(site.siteId)}>Remove</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
             )}
           </div>
 
