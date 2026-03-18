@@ -4,7 +4,7 @@ import { getAvailablePlans, createSubscription, verifySubscriptionPayment, start
 const DURATION_LABELS = { '3months': '3 Months', '6months': '6 Months', yearly: 'Yearly', '3years': '3 Years' };
 const PERIOD_SUFFIX = { '3months': '/3mo', '6months': '/6mo', yearly: '/yr', '3years': '/3yr' };
 
-export default function PlanSelector({ siteId, currentPlan, currentStatus, onUpgraded, isOverlay }) {
+export default function PlanSelector({ siteId, currentPlan, currentStatus, onUpgraded, isOverlay, hideTrial, onClose }) {
   const [duration, setDuration] = useState(null);
   const [upgrading, setUpgrading] = useState(null);
   const [plans, setPlans] = useState([]);
@@ -79,7 +79,7 @@ export default function PlanSelector({ siteId, currentPlan, currentStatus, onUpg
   })();
 
   const isExpired = currentStatus === 'expired' || currentStatus === 'none';
-  const showTrialCard = isExpired && currentPlanLower !== 'trial' && currentPlan !== 'trial';
+  const showTrialCard = !hideTrial && isExpired && currentPlanLower !== 'trial' && currentPlan !== 'trial';
 
   const handleUpgrade = async (planGroup) => {
     const selectedPlan = planGroup.plans[duration];
@@ -200,12 +200,14 @@ export default function PlanSelector({ siteId, currentPlan, currentStatus, onUpg
       {isOverlay && (
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.5rem' }}>
-            {isExpired ? 'Your Plan Has Expired' : 'Start Your Free Trial'}
+            {hideTrial ? 'Choose a Plan for Your Website' : isExpired ? 'Your Plan Has Expired' : 'Start Your Free Trial'}
           </h2>
           <p style={{ color: '#64748b', fontSize: '0.9rem' }}>
-            {isExpired
-              ? 'Your subscription has expired and all your websites are disabled. Subscribe to a plan for each site to restore access.'
-              : 'Start a 7-day free trial to create unlimited websites. No credit card required.'}
+            {hideTrial
+              ? 'Your website has been created! Subscribe to a plan to activate it.'
+              : isExpired
+                ? 'Your subscription has expired and all your websites are disabled. Subscribe to a plan for each site to restore access.'
+                : 'Start a 7-day free trial to create unlimited websites. No credit card required.'}
           </p>
         </div>
       )}
@@ -288,7 +290,19 @@ export default function PlanSelector({ siteId, currentPlan, currentStatus, onUpg
   if (isOverlay) {
     return (
       <div className="modal-overlay">
-        <div className="modal-content" style={{ maxWidth: '900px' }}>
+        <div className="modal-content" style={{ maxWidth: '900px', position: 'relative' }}>
+          {onClose && (
+            <button
+              onClick={onClose}
+              style={{
+                position: 'absolute', top: '1rem', right: '1rem',
+                background: 'none', border: 'none', fontSize: '1.5rem',
+                cursor: 'pointer', color: '#64748b', lineHeight: 1
+              }}
+            >
+              ×
+            </button>
+          )}
           {content}
         </div>
       </div>

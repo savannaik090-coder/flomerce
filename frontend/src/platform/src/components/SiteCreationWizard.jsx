@@ -86,7 +86,7 @@ export default function SiteCreationWizard({ onClose, onCreated }) {
         })),
       });
       if (result.success || result.site) {
-        onCreated();
+        onCreated(result.data || result.site || result);
         onClose();
       } else {
         setError(result.message || result.error || 'Failed to create site');

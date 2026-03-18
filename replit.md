@@ -48,7 +48,7 @@ Fluxe uses a **shared shard-based D1 database architecture**: multiple sites sha
 - categories, products, product_variants, orders, guest_orders, carts, wishlists, site_customers, site_customer_sessions, customer_addresses, customer_password_resets, customer_email_verifications, coupons, notifications, reviews, page_seo, site_media, site_usage, activity_log, addresses
 - All tables include `row_size_bytes INTEGER DEFAULT 0` column for usage tracking
 - All queries filter by `site_id` for tenant isolation
-- **Note:** The platform `sites` table retains old branding/SEO columns but they are no longer written to (except `brand_name` which is synced as a denormalized copy). All reads/writes for site config data go through `site_config` in the shard.
+- **Note:** The platform `sites` table was migrated to remove all old branding/SEO/settings columns (auto-migration in `db-init.js`). Only routing/billing columns remain: id, user_id, subdomain, brand_name, category, template_id, is_active, subscription_plan, subscription_expires_at, custom_domain, domain_status, domain_verification_token, cf_hostname_id, shard_id, migration_locked, d1_database_id, d1_binding_name, created_at, updated_at. All site config data goes through `site_config` in the shard.
 
 ### Key Utility Files
 - `backend/utils/d1-manager.js` — Cloudflare API calls: createDatabase, deleteDatabase, getDatabaseSize, runSchemaOnDB, addBindingAndRedeploy, listAllSiteDatabases
@@ -74,7 +74,7 @@ Fluxe uses a **shared shard-based D1 database architecture**: multiple sites sha
 - **Dynamic Content Management:** Homepage categories, hero sliders, welcome banners, "Watch & Buy" shoppable videos, featured video sections, and customer reviews are fully dynamic and configurable via the admin panel.
 - **Product Policies:** Customizable shipping, returns, and care guide policies on product detail pages, with category-based defaults.
 - **Navigation & Footer Customization:** Admins can manage navbar menus, custom footer links, social media links, and bottom navigation bar options.
-- **Subscription Management:** Account-level 7-day free trial (covers all sites, unlimited creation during trial). After trial expires, all sites are disabled. Paid subscriptions are per-site (each site needs its own plan). Plans are admin-managed via the admin panel. Razorpay integration for payments.
+- **Subscription Management:** Account-level 7-day free trial (covers all sites, unlimited creation during trial). After trial expires, all sites are disabled. Paid subscriptions are per-site (each site needs its own plan). Plans are admin-managed via the admin panel. Razorpay integration for payments. **Site creation flow:** "Create Website" always opens the wizard (no plan check upfront). After filling in all details and clicking "Create Website", if the user is NOT on an active trial, a plan overlay (without trial option) is shown so they can subscribe for the new site. Trial users create freely.
 - **Admin Panel:** Centralized "Edit Website" section for managing all site content, policies, and SEO. Includes an iframe preview for real-time changes.
 - **Order Flow:** Supports both Cash on Delivery (COD) and Razorpay payments, with distinct flows for order creation, stock management, and email notifications.
 - **Customer Addresses:** Server-side storage and management of customer addresses for logged-in users.

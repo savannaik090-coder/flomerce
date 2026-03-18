@@ -22,7 +22,7 @@ export default function DashboardPage() {
   const [adminLoading, setAdminLoading] = useState(false);
   const [billingSiteId, setBillingSiteId] = useState(null);
   const [dataLoaded, setDataLoaded] = useState(false);
-  const [showTrialOverlay, setShowTrialOverlay] = useState(false);
+  const [planOverlaySiteId, setPlanOverlaySiteId] = useState(null);
   const [siteUsage, setSiteUsage] = useState({});
 
   useEffect(() => {
@@ -131,26 +131,24 @@ export default function DashboardPage() {
     loadSiteUsage(siteId);
   };
 
-  const handleSiteCreated = () => {
-    loadSites();
-    loadProfile();
+  const handleSiteCreated = async (createdSite) => {
+    await Promise.all([loadSites(), loadProfile()]);
+    if (createdSite?.id) {
+      const freshStatus = getAccountSubscriptionStatus();
+      if (!freshStatus.isTrialActive) {
+        setPlanOverlaySiteId(createdSite.id);
+      }
+    }
   };
 
-  const handleTrialStarted = () => {
-    setShowTrialOverlay(false);
+  const handlePlanOverlayDone = () => {
+    setPlanOverlaySiteId(null);
     loadProfile();
     loadSites();
   };
 
   const handleCreateSiteClick = () => {
-    const accountStatus = getAccountSubscriptionStatus();
-    if (accountStatus.isTrialActive) {
-      setShowWizard(true);
-    } else if (!accountStatus.hadSubscription) {
-      setShowTrialOverlay(true);
-    } else {
-      setShowWizard(true);
-    }
+    setShowWizard(true);
   };
 
   if (loading) {
@@ -725,12 +723,15 @@ export default function DashboardPage() {
         />
       )}
 
-      {showTrialOverlay && (
+      {planOverlaySiteId && (
         <PlanSelector
+          siteId={planOverlaySiteId}
           currentPlan={null}
           currentStatus="none"
-          onUpgraded={handleTrialStarted}
+          onUpgraded={handlePlanOverlayDone}
           isOverlay={true}
+          hideTrial={true}
+          onClose={() => setPlanOverlaySiteId(null)}
         />
       )}
     </div>
