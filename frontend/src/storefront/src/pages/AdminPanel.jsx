@@ -47,6 +47,11 @@ export default function AdminPanel() {
   const [addingProduct, setAddingProduct] = useState(false);
 
   useEffect(() => {
+    const brandName = siteConfig?.brandName || siteConfig?.brand_name || 'Store';
+    document.title = `Admin Panel | ${brandName}`;
+  }, [siteConfig]);
+
+  useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const tokenParam = params.get('token');
     if (tokenParam && siteConfig?.id && !verified) {
