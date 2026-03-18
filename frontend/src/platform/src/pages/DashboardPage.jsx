@@ -650,13 +650,13 @@ export default function DashboardPage() {
               </button>
             </li>
             <li>
-              <button className={`nav-link${activePage === 'billing' ? ' active' : ''}`} onClick={() => { setManagedSite(null); setManagedAdminUrl(null); setActivePage('billing'); }}>
+              <button className={`nav-link${activePage === 'billing' ? ' active' : ''}`} onClick={() => { setManagedSite(null); setManagedAdminUrl(null); if (sites.length === 1) { setBillingSiteId(sites[0].id); } else { setBillingSiteId(null); } setActivePage('billing'); }}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
                 Billing
               </button>
             </li>
             <li>
-              <button className={`nav-link${activePage === 'staff' ? ' active' : ''}`} onClick={() => { setManagedSite(null); setManagedAdminUrl(null); setStaffSiteId(null); setStaffForm(null); setActivePage('staff'); }}>
+              <button className={`nav-link${activePage === 'staff' ? ' active' : ''}`} onClick={() => { setManagedSite(null); setManagedAdminUrl(null); if (sites.length === 1) { setStaffSiteId(null); setStaffForm(null); handleStaffSite(sites[0].id); } else { setStaffSiteId(null); setStaffForm(null); } setActivePage('staff'); }}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
                 Staff
               </button>
@@ -680,11 +680,11 @@ export default function DashboardPage() {
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
           <span>Admin</span>
         </button>
-        <button className={`mobile-nav-item${activePage === 'billing' ? ' active' : ''}`} onClick={() => { setManagedSite(null); setManagedAdminUrl(null); setActivePage('billing'); }}>
+        <button className={`mobile-nav-item${activePage === 'billing' ? ' active' : ''}`} onClick={() => { setManagedSite(null); setManagedAdminUrl(null); if (sites.length === 1) { setBillingSiteId(sites[0].id); } else { setBillingSiteId(null); } setActivePage('billing'); }}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
           <span>Billing</span>
         </button>
-        <button className={`mobile-nav-item${activePage === 'staff' ? ' active' : ''}`} onClick={() => { setManagedSite(null); setManagedAdminUrl(null); setStaffSiteId(null); setStaffForm(null); setActivePage('staff'); }}>
+        <button className={`mobile-nav-item${activePage === 'staff' ? ' active' : ''}`} onClick={() => { setManagedSite(null); setManagedAdminUrl(null); if (sites.length === 1) { setStaffSiteId(null); setStaffForm(null); handleStaffSite(sites[0].id); } else { setStaffSiteId(null); setStaffForm(null); } setActivePage('staff'); }}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
           <span>Staff</span>
         </button>
@@ -762,10 +762,12 @@ export default function DashboardPage() {
                 <div>
                   {billingSiteId ? (
                     <div>
+                      {sites.length > 1 && (
                       <button className="btn btn-outline" onClick={() => setBillingSiteId(null)} style={{ marginBottom: '1.5rem', gap: '0.375rem' }}>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
                         Back to All Sites
                       </button>
+                    )}
                       {(() => {
                         const site = sites.find(s => s.id === billingSiteId);
                         if (!site) return <p>Site not found.</p>;
@@ -871,10 +873,12 @@ export default function DashboardPage() {
                 )
               ) : (
                 <div>
-                  <button className="btn btn-outline" onClick={() => { setStaffSiteId(null); setStaffForm(null); }} style={{ marginBottom: '1.5rem', gap: '0.375rem' }}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-                    Back to All Sites
-                  </button>
+                  {sites.length > 1 && (
+                    <button className="btn btn-outline" onClick={() => { setStaffSiteId(null); setStaffForm(null); }} style={{ marginBottom: '1.5rem', gap: '0.375rem' }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                      Back to All Sites
+                    </button>
+                  )}
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                     <h2 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 700 }}>
