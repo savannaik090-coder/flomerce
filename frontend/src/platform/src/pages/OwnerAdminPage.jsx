@@ -40,11 +40,14 @@ export default function OwnerAdminPage() {
   const [enterpriseSites, setEnterpriseSites] = useState([]);
   const [enterpriseLoading, setEnterpriseLoading] = useState(false);
   const [enterpriseRates, setEnterpriseRates] = useState({ d1PerGB: 0.75, r2PerGB: 0.015 });
-  const [enterpriseAssignId, setEnterpriseAssignId] = useState('');
   const [enterpriseAssignNotes, setEnterpriseAssignNotes] = useState('');
   const [enterpriseSelectedSite, setEnterpriseSelectedSite] = useState(null);
   const [enterpriseSiteUsage, setEnterpriseSiteUsage] = useState(null);
   const [enterpriseUsageLoading, setEnterpriseUsageLoading] = useState(false);
+  const [enterpriseSearchQuery, setEnterpriseSearchQuery] = useState('');
+  const [enterpriseSearchResults, setEnterpriseSearchResults] = useState([]);
+  const [enterpriseSearchLoading, setEnterpriseSearchLoading] = useState(false);
+  const [enterpriseSelectedAssignSite, setEnterpriseSelectedAssignSite] = useState(null);
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
@@ -215,15 +218,34 @@ export default function OwnerAdminPage() {
     }
   };
 
+  const handleEnterpriseSearch = async (query) => {
+    setEnterpriseSearchQuery(query);
+    if (query.trim().length < 2) {
+      setEnterpriseSearchResults([]);
+      return;
+    }
+    setEnterpriseSearchLoading(true);
+    try {
+      const data = await apiRequest(`/api/admin/enterprise/search?q=${encodeURIComponent(query.trim())}`);
+      setEnterpriseSearchResults((data.data || data).sites || []);
+    } catch (e) {
+      console.error('Enterprise search error:', e);
+    } finally {
+      setEnterpriseSearchLoading(false);
+    }
+  };
+
   const handleAssignEnterprise = async (e) => {
     e.preventDefault();
-    if (!enterpriseAssignId.trim()) return;
+    if (!enterpriseSelectedAssignSite) return;
     try {
       await apiRequest('/api/admin/enterprise/assign', {
         method: 'POST',
-        body: JSON.stringify({ siteId: enterpriseAssignId.trim(), notes: enterpriseAssignNotes.trim() || null }),
+        body: JSON.stringify({ siteId: enterpriseSelectedAssignSite.id, notes: enterpriseAssignNotes.trim() || null }),
       });
-      setEnterpriseAssignId('');
+      setEnterpriseSelectedAssignSite(null);
+      setEnterpriseSearchQuery('');
+      setEnterpriseSearchResults([]);
       setEnterpriseAssignNotes('');
       await loadEnterpriseSites();
     } catch (e) {
@@ -1080,24 +1102,64 @@ export default function OwnerAdminPage() {
               <h3 style={{ margin: 0 }}>Enterprise Sites ({enterpriseSites.length})</h3>
             </div>
 
-            <form onSubmit={handleAssignEnterprise} style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-              <input
-                type="text"
-                value={enterpriseAssignId}
-                onChange={e => setEnterpriseAssignId(e.target.value)}
-                placeholder="Site ID to assign"
-                style={{ flex: '1 1 200px', minWidth: '200px' }}
-                required
-              />
-              <input
-                type="text"
-                value={enterpriseAssignNotes}
-                onChange={e => setEnterpriseAssignNotes(e.target.value)}
-                placeholder="Notes (optional)"
-                style={{ flex: '1 1 200px', minWidth: '150px' }}
-              />
-              <button type="submit" className="oa-btn oa-btn-primary">Assign Enterprise</button>
-            </form>
+            <div style={{ marginBottom: '1.5rem', position: 'relative' }}>
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: enterpriseSelectedAssignSite ? '0.75rem' : 0 }}>
+                <div style={{ flex: '1 1 250px', position: 'relative' }}>
+                  <input
+                    type="text"
+                    value={enterpriseSearchQuery}
+                    onChange={e => handleEnterpriseSearch(e.target.value)}
+                    placeholder="Search by subdomain or brand name..."
+                    style={{ width: '100%' }}
+                  />
+                  {enterpriseSearchResults.length > 0 && !enterpriseSelectedAssignSite && (
+                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1px solid #e2e8f0', borderRadius: '0.5rem', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', zIndex: 50, maxHeight: '240px', overflowY: 'auto', marginTop: '0.25rem' }}>
+                      {enterpriseSearchResults.map(site => (
+                        <div
+                          key={site.id}
+                          onClick={() => {
+                            if (site.is_enterprise) return;
+                            setEnterpriseSelectedAssignSite(site);
+                            setEnterpriseSearchQuery('');
+                            setEnterpriseSearchResults([]);
+                          }}
+                          style={{ padding: '0.6rem 0.75rem', cursor: site.is_enterprise ? 'default' : 'pointer', borderBottom: '1px solid #f1f5f9', background: site.is_enterprise ? '#f8fafc' : 'white', opacity: site.is_enterprise ? 0.6 : 1 }}
+                          onMouseEnter={e => { if (!site.is_enterprise) e.currentTarget.style.background = '#f0f9ff'; }}
+                          onMouseLeave={e => { if (!site.is_enterprise) e.currentTarget.style.background = 'white'; }}
+                        >
+                          <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>
+                            {site.brand_name || site.subdomain}
+                            {site.is_enterprise ? <span style={{ marginLeft: '0.5rem', fontSize: '0.7rem', color: '#7c3aed', background: '#ede9fe', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>Already Enterprise</span> : null}
+                          </div>
+                          <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{site.subdomain}.fluxe.in &middot; {site.user_email || 'No owner'}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {enterpriseSearchLoading && <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.25rem' }}>Searching...</div>}
+                  {enterpriseSearchQuery.length >= 2 && !enterpriseSearchLoading && enterpriseSearchResults.length === 0 && !enterpriseSelectedAssignSite && (
+                    <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '0.25rem' }}>No sites found</div>
+                  )}
+                </div>
+              </div>
+              {enterpriseSelectedAssignSite && (
+                <form onSubmit={handleAssignEnterprise} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', padding: '0.75rem', background: '#f0f9ff', borderRadius: '0.5rem', border: '1px solid #bae6fd' }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{enterpriseSelectedAssignSite.brand_name || enterpriseSelectedAssignSite.subdomain}</div>
+                    <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{enterpriseSelectedAssignSite.subdomain}.fluxe.in &middot; {enterpriseSelectedAssignSite.user_email || 'No owner'}</div>
+                  </div>
+                  <input
+                    type="text"
+                    value={enterpriseAssignNotes}
+                    onChange={e => setEnterpriseAssignNotes(e.target.value)}
+                    placeholder="Notes (optional)"
+                    style={{ flex: '0 1 200px', minWidth: '120px' }}
+                  />
+                  <button type="submit" className="oa-btn oa-btn-primary">Assign Enterprise</button>
+                  <button type="button" className="oa-btn oa-btn-outline" onClick={() => { setEnterpriseSelectedAssignSite(null); setEnterpriseSearchQuery(''); }}>Cancel</button>
+                </form>
+              )}
+            </div>
 
             {enterpriseLoading ? (
               <p className="oa-empty">Loading enterprise sites...</p>
@@ -1121,7 +1183,7 @@ export default function OwnerAdminPage() {
                       <tr key={site.siteId}>
                         <td data-label="Site">
                           <div>{site.brandName || site.subdomain}</div>
-                          <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{site.siteId}</div>
+                          <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{site.subdomain}.fluxe.in</div>
                         </td>
                         <td data-label="Owner">
                           <div>{site.userName || '—'}</div>

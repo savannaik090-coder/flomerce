@@ -380,90 +380,7 @@ export default function DashboardPage() {
           <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0.25rem 0 0' }}>{r2Pct.toFixed(1)}% used</p>
         </div>
 
-        {usage.allowOverage && (
-          <div style={{ padding: '0.75rem', background: usage.overageEnabled ? '#f0fdf4' : '#f8fafc', borderRadius: '0.5rem', border: `1px solid ${usage.overageEnabled ? '#86efac' : '#e2e8f0'}`, marginBottom: '0.75rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
-              <div style={{ flex: 1 }}>
-                <span style={{ fontSize: '0.875rem', fontWeight: 700, color: usage.overageEnabled ? '#166534' : '#334155' }}>
-                  Allow Overage Charges
-                </span>
-                <p style={{ fontSize: '0.75rem', color: '#64748b', margin: '0.25rem 0 0' }}>
-                  {usage.overageEnabled
-                    ? 'Your site will continue working beyond plan limits. You will be billed for extra usage.'
-                    : 'Your site will be disabled if storage limits are exceeded. Enable to allow extra usage with billing.'}
-                </p>
-              </div>
-              <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '24px', flexShrink: 0, cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  checked={usage.overageEnabled || false}
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      if (window.confirm('Enable overage charges? You will be billed at \u20B90.75/GB for database and \u20B90.015/GB for media storage beyond your plan limits.')) {
-                        toggleOverage(siteId, true);
-                      } else {
-                        e.target.checked = false;
-                      }
-                    } else {
-                      toggleOverage(siteId, false);
-                    }
-                  }}
-                  style={{ opacity: 0, width: 0, height: 0 }}
-                />
-                <span style={{
-                  position: 'absolute', cursor: 'pointer', top: 0, left: 0, right: 0, bottom: 0,
-                  background: usage.overageEnabled ? '#10b981' : '#cbd5e1',
-                  borderRadius: '12px', transition: 'background 0.3s',
-                }} />
-                <span style={{
-                  position: 'absolute', content: '""', height: '18px', width: '18px',
-                  left: usage.overageEnabled ? '23px' : '3px', bottom: '3px',
-                  background: 'white', borderRadius: '50%', transition: 'left 0.3s',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                }} />
-              </label>
-            </div>
-            {usage.overageEnabled && (
-              <p style={{ fontSize: '0.7rem', color: '#64748b', margin: '0.5rem 0 0', borderTop: '1px solid #e2e8f0', paddingTop: '0.5rem' }}>
-                Rates: {'\u20B9'}0.75/GB (Database) &middot; {'\u20B9'}0.015/GB (Media)
-              </p>
-            )}
-          </div>
-        )}
-
-        {usage.allowOverage && usage.overageEnabled && usage.overageCostINR > 0 && (
-          <div style={{ padding: '0.75rem', background: '#fef3c7', borderRadius: '0.5rem', border: '1px solid #fbbf24', marginBottom: '0.75rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-              <span style={{ fontSize: '0.875rem', fontWeight: 700, color: '#92400e' }}>Overage Charges</span>
-            </div>
-            <p style={{ fontSize: '0.8rem', color: '#92400e', margin: 0 }}>
-              You have exceeded your plan limits. Current overage: <strong>{'\u20B9'}{usage.overageCostINR.toFixed(2)}</strong>
-            </p>
-          </div>
-        )}
-
-        {usage.allowOverage && !usage.overageEnabled && (d1Pct >= 100 || r2Pct >= 100) && (
-          <div style={{ padding: '0.75rem', background: '#fef2f2', borderRadius: '0.5rem', border: '1px solid #fca5a5' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
-              <span style={{ fontSize: '0.875rem', fontWeight: 700, color: '#991b1b' }}>Site Disabled — Storage Limit Reached</span>
-            </div>
-            <p style={{ fontSize: '0.8rem', color: '#991b1b', margin: 0 }}>
-              Your site has been blocked because storage limits are exceeded. Enable overage charges above or upgrade your plan to restore access.
-            </p>
-          </div>
-        )}
-
-        {usage.allowOverage && !usage.overageEnabled && (d1Pct >= 90 && d1Pct < 100 || r2Pct >= 90 && r2Pct < 100) && d1Pct < 100 && r2Pct < 100 && (
-          <div style={{ padding: '0.75rem', background: '#fef3c7', borderRadius: '0.5rem', border: '1px solid #fbbf24' }}>
-            <p style={{ fontSize: '0.8rem', color: '#92400e', margin: 0, fontWeight: 600 }}>
-              Approaching storage limit. Enable overage charges or upgrade your plan to avoid disruption.
-            </p>
-          </div>
-        )}
-
-        {!usage.allowOverage && (d1Pct >= 90 || r2Pct >= 90) && (
+        {!usage.isEnterprise && (d1Pct >= 90 || r2Pct >= 90) && (
           <div style={{ padding: '0.75rem', background: '#fef2f2', borderRadius: '0.5rem', border: '1px solid #fca5a5' }}>
             <p style={{ fontSize: '0.8rem', color: '#991b1b', margin: 0, fontWeight: 600 }}>
               You are approaching your storage limit. Upgrade your plan for more storage.
@@ -473,12 +390,36 @@ export default function DashboardPage() {
 
         {usage.isEnterprise && (
           <div style={{ marginTop: '1rem' }}>
+            <div style={{ padding: '0.75rem', background: '#f5f3ff', borderRadius: '0.5rem', border: '1px solid #c4b5fd', marginBottom: '0.75rem' }}>
+              <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#5b21b6' }}>Enterprise Plan</span>
+              <p style={{ fontSize: '0.75rem', color: '#6d28d9', margin: '0.25rem 0 0' }}>
+                Overage is always allowed. Usage beyond included limits is billed monthly.
+              </p>
+            </div>
+
             {usage.overageCostINR > 0 && (
               <div style={{ padding: '0.75rem', background: '#fef3c7', borderRadius: '0.5rem', border: '1px solid #fbbf24', marginBottom: '0.75rem' }}>
-                <div style={{ fontSize: '0.875rem', fontWeight: 700, color: '#92400e', marginBottom: '0.25rem' }}>Current Month Overage</div>
-                <p style={{ fontSize: '0.9rem', color: '#92400e', margin: 0 }}>
-                  ₹{usage.overageCostINR.toFixed(2)}
-                </p>
+                <div style={{ fontSize: '0.875rem', fontWeight: 700, color: '#92400e', marginBottom: '0.5rem' }}>Current Month Overage</div>
+                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
+                  {(usage.d1?.overageCostINR || 0) > 0 && (
+                    <div style={{ fontSize: '0.8rem', color: '#92400e' }}>
+                      Database (D1): <strong>{formatBytes(usage.d1?.overageBytes || 0)}</strong> over — <strong>{'\u20B9'}{(usage.d1?.overageCostINR || 0).toFixed(2)}</strong>
+                    </div>
+                  )}
+                  {(usage.r2?.overageCostINR || 0) > 0 && (
+                    <div style={{ fontSize: '0.8rem', color: '#92400e' }}>
+                      Media (R2): <strong>{formatBytes(usage.r2?.overageBytes || 0)}</strong> over — <strong>{'\u20B9'}{(usage.r2?.overageCostINR || 0).toFixed(2)}</strong>
+                    </div>
+                  )}
+                </div>
+                <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#92400e' }}>
+                  Total: {'\u20B9'}{usage.overageCostINR.toFixed(2)}
+                </div>
+                {usage.overageRates && (
+                  <p style={{ fontSize: '0.7rem', color: '#a16207', margin: '0.5rem 0 0', borderTop: '1px solid #fde68a', paddingTop: '0.35rem' }}>
+                    Rates: {'\u20B9'}{usage.overageRates.d1PerGB}/GB (Database) &middot; {'\u20B9'}{usage.overageRates.r2PerGB}/GB (Media)
+                  </p>
+                )}
               </div>
             )}
 
@@ -490,7 +431,9 @@ export default function DashboardPage() {
                     <thead>
                       <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                         <th style={{ textAlign: 'left', padding: '0.5rem', color: '#64748b', fontWeight: 600 }}>Month</th>
-                        <th style={{ textAlign: 'right', padding: '0.5rem', color: '#64748b', fontWeight: 600 }}>Amount</th>
+                        <th style={{ textAlign: 'right', padding: '0.5rem', color: '#64748b', fontWeight: 600 }}>D1 Overage</th>
+                        <th style={{ textAlign: 'right', padding: '0.5rem', color: '#64748b', fontWeight: 600 }}>R2 Overage</th>
+                        <th style={{ textAlign: 'right', padding: '0.5rem', color: '#64748b', fontWeight: 600 }}>Total</th>
                         <th style={{ textAlign: 'center', padding: '0.5rem', color: '#64748b', fontWeight: 600 }}>Status</th>
                       </tr>
                     </thead>
@@ -498,7 +441,9 @@ export default function DashboardPage() {
                       {usage.enterpriseInvoices.map(inv => (
                         <tr key={inv.year_month} style={{ borderBottom: '1px solid #f1f5f9' }}>
                           <td style={{ padding: '0.5rem' }}>{inv.year_month}</td>
-                          <td style={{ padding: '0.5rem', textAlign: 'right', fontWeight: 600 }}>₹{inv.total_cost_inr?.toFixed(2)}</td>
+                          <td style={{ padding: '0.5rem', textAlign: 'right' }}>{'\u20B9'}{inv.d1_cost_inr?.toFixed(2)}</td>
+                          <td style={{ padding: '0.5rem', textAlign: 'right' }}>{'\u20B9'}{inv.r2_cost_inr?.toFixed(2)}</td>
+                          <td style={{ padding: '0.5rem', textAlign: 'right', fontWeight: 600 }}>{'\u20B9'}{inv.total_cost_inr?.toFixed(2)}</td>
                           <td style={{ padding: '0.5rem', textAlign: 'center' }}>
                             <span style={{
                               display: 'inline-block', padding: '0.15rem 0.5rem', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 700,

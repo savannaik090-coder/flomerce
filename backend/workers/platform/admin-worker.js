@@ -938,6 +938,13 @@ async function handleEnterpriseManagement(request, env, pathParts, user) {
     return markInvoicePaid(request, env);
   }
 
+  if (method === 'GET' && subAction === 'search') {
+    const url = new URL(request.url);
+    const q = (url.searchParams.get('q') || '').trim();
+    if (!q || q.length < 2) return errorResponse('Search query must be at least 2 characters', 400);
+    return searchSitesForEnterprise(env, q);
+  }
+
   return errorResponse('Enterprise endpoint not found', 404);
 }
 
@@ -1245,6 +1252,28 @@ async function markInvoicePaid(request, env) {
     return successResponse({ siteId, yearMonth }, 'Invoice marked as paid');
   } catch (error) {
     return errorResponse('Failed to mark paid: ' + error.message, 500);
+  }
+}
+
+async function searchSitesForEnterprise(env, query) {
+  try {
+    const searchPattern = `%${query}%`;
+    const result = await env.DB.prepare(`
+      SELECT s.id, s.subdomain, s.brand_name, s.subscription_plan, s.is_active,
+             u.name as user_name, u.email as user_email,
+             CASE WHEN es.site_id IS NOT NULL THEN 1 ELSE 0 END as is_enterprise
+      FROM sites s
+      LEFT JOIN users u ON s.user_id = u.id
+      LEFT JOIN enterprise_sites es ON s.id = es.site_id
+      WHERE s.subdomain LIKE ? OR s.brand_name LIKE ?
+      ORDER BY s.brand_name ASC
+      LIMIT 20
+    `).bind(searchPattern, searchPattern).all();
+
+    return successResponse({ sites: result.results || [] });
+  } catch (error) {
+    console.error('Search sites error:', error);
+    return errorResponse('Failed to search sites', 500);
   }
 }
 

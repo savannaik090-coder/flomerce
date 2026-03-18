@@ -937,28 +937,11 @@ async function checkUsageLimit(env, siteId, resourceType = "d1", additionalBytes
       const overageCost = overageGB * rate;
       return { allowed: true, overage: true, overageBytes, overageCostINR: overageCost, reason: null };
     }
-    if (limits.allowOverage) {
-      const config = await getSiteConfig(env, siteId);
-      let siteSettings = {};
-      try {
-        if (config.settings)
-          siteSettings = typeof config.settings === "string" ? JSON.parse(config.settings) : config.settings;
-      } catch (_) {
-      }
-      if (siteSettings.overageEnabled) {
-        const overageBytes = Math.max(0, newTotal - limitBytes);
-        const overageGB = overageBytes / (1024 * 1024 * 1024);
-        const rates = await getOverageRates(env);
-        const rate = resourceType === "d1" ? rates.d1PerGB : rates.r2PerGB;
-        const overageCost = overageGB * rate;
-        return { allowed: true, overage: true, overageBytes, overageCostINR: overageCost, reason: null };
-      }
-    }
     const limitMB = (limitBytes / (1024 * 1024)).toFixed(0);
     const usedMB = (currentBytes / (1024 * 1024)).toFixed(1);
     return {
       allowed: false,
-      reason: `Storage limit reached. ${resourceType.toUpperCase()} usage: ${usedMB}MB / ${limitMB}MB. ${limits.allowOverage ? "Enable overage charges in your billing settings to continue, or upgrade your plan." : "Upgrade your plan for more storage."}`
+      reason: `Storage limit reached. ${resourceType.toUpperCase()} usage: ${usedMB}MB / ${limitMB}MB. Upgrade your plan for more storage.`
     };
   } catch (e) {
     console.error("checkUsageLimit error (non-fatal):", e.message || e);
@@ -1053,14 +1036,6 @@ async function handleUsageAPI(request, env, path) {
     }
     const planKey = getSitePlan(site);
     const limits = PLAN_LIMITS[planKey] || PLAN_LIMITS.free;
-    const config = await getSiteConfig(env, siteId);
-    let siteSettings = {};
-    try {
-      if (config.settings)
-        siteSettings = typeof config.settings === "string" ? JSON.parse(config.settings) : config.settings;
-    } catch (_) {
-    }
-    const overageEnabled = !!siteSettings.overageEnabled;
     const d1OverageBytes = Math.max(0, usage.d1BytesUsed - limits.d1Bytes);
     const r2OverageBytes = Math.max(0, usage.r2BytesUsed - limits.r2Bytes);
     const d1OverageGB = d1OverageBytes / (1024 * 1024 * 1024);
@@ -1080,8 +1055,12 @@ async function handleUsageAPI(request, env, path) {
     } catch (_) {
     }
     let overageCostINR = 0;
-    if (isEnterprise || limits.allowOverage && overageEnabled) {
-      overageCostINR = d1OverageGB * rates.d1PerGB + r2OverageGB * rates.r2PerGB;
+    let d1CostINR = 0;
+    let r2CostINR = 0;
+    if (isEnterprise) {
+      d1CostINR = d1OverageGB * rates.d1PerGB;
+      r2CostINR = r2OverageGB * rates.r2PerGB;
+      overageCostINR = d1CostINR + r2CostINR;
     }
     return successResponse({
       plan: planKey,
@@ -1093,16 +1072,18 @@ async function handleUsageAPI(request, env, path) {
         correctionFactor: usage.correctionFactor,
         limit: limits.d1Bytes,
         percentage: limits.d1Bytes > 0 ? Math.min(100, usage.d1BytesUsed / limits.d1Bytes * 100) : 0,
-        overageBytes: d1OverageBytes
+        overageBytes: d1OverageBytes,
+        overageCostINR: isEnterprise ? Math.round(d1CostINR * 100) / 100 : 0
       },
       r2: {
         used: usage.r2BytesUsed,
         limit: limits.r2Bytes,
         percentage: limits.r2Bytes > 0 ? Math.min(100, usage.r2BytesUsed / limits.r2Bytes * 100) : 0,
-        overageBytes: r2OverageBytes
+        overageBytes: r2OverageBytes,
+        overageCostINR: isEnterprise ? Math.round(r2CostINR * 100) / 100 : 0
       },
-      allowOverage: limits.allowOverage || isEnterprise,
-      overageEnabled: overageEnabled || isEnterprise,
+      allowOverage: false,
+      overageEnabled: false,
       overageCostINR: Math.round(overageCostINR * 100) / 100,
       overageRates: rates,
       enterpriseInvoices,
@@ -1114,42 +1095,7 @@ async function handleUsageAPI(request, env, path) {
   }
 }
 async function handleOverageToggle(request, env, user, siteId) {
-  try {
-    const body = await request.json();
-    const { overageEnabled } = body;
-    if (typeof overageEnabled !== "boolean") {
-      return errorResponse("overageEnabled must be a boolean", 400);
-    }
-    const site = await env.DB.prepare(
-      "SELECT id, subscription_plan FROM sites WHERE id = ? AND user_id = ?"
-    ).bind(siteId, user.id).first();
-    if (!site) {
-      return errorResponse("Site not found or unauthorized", 404);
-    }
-    const planKey = getSitePlan(site);
-    const limits = PLAN_LIMITS[planKey] || PLAN_LIMITS.free;
-    if (!limits.allowOverage) {
-      return errorResponse("Overage charges are only available on the Enterprise plan", 403);
-    }
-    const siteDB = await resolveSiteDBById(env, siteId);
-    const existingConfig = await siteDB.prepare(
-      "SELECT settings FROM site_config WHERE site_id = ?"
-    ).bind(siteId).first();
-    let siteSettings = {};
-    try {
-      if (existingConfig?.settings)
-        siteSettings = typeof existingConfig.settings === "string" ? JSON.parse(existingConfig.settings) : existingConfig.settings;
-    } catch (_) {
-    }
-    siteSettings.overageEnabled = overageEnabled;
-    await siteDB.prepare(
-      'UPDATE site_config SET settings = ?, updated_at = datetime("now") WHERE site_id = ?'
-    ).bind(JSON.stringify(siteSettings), siteId).run();
-    return successResponse({ overageEnabled, message: overageEnabled ? "Overage charges enabled. You will be billed for usage beyond your plan limits." : "Overage charges disabled. Your site will be blocked when storage limits are reached." });
-  } catch (error) {
-    console.error("Overage toggle error:", error);
-    return errorResponse("Failed to update overage settings", 500);
-  }
+  return errorResponse("Overage toggle is not available. Enterprise overage is managed by the platform admin.", 403);
 }
 async function handleReconcile(env, user, siteId) {
   try {
@@ -1186,12 +1132,11 @@ var init_usage_tracker = __esm({
     init_modules_watch_stub();
     init_helpers();
     init_auth();
-    init_site_db();
     PLAN_LIMITS = {
       basic: { d1Bytes: 500 * 1024 * 1024, r2Bytes: 5 * 1024 * 1024 * 1024, allowOverage: false },
       standard: { d1Bytes: 1 * 1024 * 1024 * 1024, r2Bytes: 15 * 1024 * 1024 * 1024, allowOverage: false },
       pro: { d1Bytes: 2 * 1024 * 1024 * 1024, r2Bytes: 50 * 1024 * 1024 * 1024, allowOverage: false },
-      enterprise: { d1Bytes: 2 * 1024 * 1024 * 1024, r2Bytes: 50 * 1024 * 1024 * 1024, allowOverage: true },
+      enterprise: { d1Bytes: 2 * 1024 * 1024 * 1024, r2Bytes: 50 * 1024 * 1024 * 1024, allowOverage: false },
       trial: { d1Bytes: 500 * 1024 * 1024, r2Bytes: 5 * 1024 * 1024 * 1024, allowOverage: false },
       free: { d1Bytes: 500 * 1024 * 1024, r2Bytes: 5 * 1024 * 1024 * 1024, allowOverage: false }
     };
@@ -9478,6 +9423,13 @@ async function handleEnterpriseManagement(request, env, pathParts, user) {
   if (method === "POST" && subAction === "mark-paid") {
     return markInvoicePaid(request, env);
   }
+  if (method === "GET" && subAction === "search") {
+    const url = new URL(request.url);
+    const q = (url.searchParams.get("q") || "").trim();
+    if (!q || q.length < 2)
+      return errorResponse("Search query must be at least 2 characters", 400);
+    return searchSitesForEnterprise(env, q);
+  }
   return errorResponse("Enterprise endpoint not found", 404);
 }
 __name(handleEnterpriseManagement, "handleEnterpriseManagement");
@@ -9802,6 +9754,27 @@ async function markInvoicePaid(request, env) {
   }
 }
 __name(markInvoicePaid, "markInvoicePaid");
+async function searchSitesForEnterprise(env, query) {
+  try {
+    const searchPattern = `%${query}%`;
+    const result = await env.DB.prepare(`
+      SELECT s.id, s.subdomain, s.brand_name, s.subscription_plan, s.is_active,
+             u.name as user_name, u.email as user_email,
+             CASE WHEN es.site_id IS NOT NULL THEN 1 ELSE 0 END as is_enterprise
+      FROM sites s
+      LEFT JOIN users u ON s.user_id = u.id
+      LEFT JOIN enterprise_sites es ON s.id = es.site_id
+      WHERE s.subdomain LIKE ? OR s.brand_name LIKE ?
+      ORDER BY s.brand_name ASC
+      LIMIT 20
+    `).bind(searchPattern, searchPattern).all();
+    return successResponse({ sites: result.results || [] });
+  } catch (error) {
+    console.error("Search sites error:", error);
+    return errorResponse("Failed to search sites", 500);
+  }
+}
+__name(searchSitesForEnterprise, "searchSitesForEnterprise");
 async function deleteShardEndpoint(env, shardId) {
   try {
     const shard = await env.DB.prepare("SELECT * FROM shards WHERE id = ?").bind(shardId).first();
@@ -11349,6 +11322,33 @@ async function ensureTablesExist(env) {
         correction_factor REAL DEFAULT 1.0,
         last_reconciled_at TEXT,
         created_at TEXT DEFAULT (datetime('now'))
+      )
+    `).run();
+    await env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS enterprise_sites (
+        site_id TEXT PRIMARY KEY,
+        assigned_at TEXT DEFAULT (datetime('now')),
+        assigned_by TEXT,
+        notes TEXT,
+        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
+      )
+    `).run();
+    await env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS enterprise_usage_monthly (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        site_id TEXT NOT NULL,
+        year_month TEXT NOT NULL,
+        d1_overage_bytes INTEGER DEFAULT 0,
+        r2_overage_bytes INTEGER DEFAULT 0,
+        d1_cost_inr REAL DEFAULT 0,
+        r2_cost_inr REAL DEFAULT 0,
+        total_cost_inr REAL DEFAULT 0,
+        status TEXT DEFAULT 'unpaid',
+        paid_at TEXT,
+        notes TEXT,
+        snapshot_at TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
+        UNIQUE(site_id, year_month)
       )
     `).run();
     const migrations = [
