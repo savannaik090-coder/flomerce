@@ -54,6 +54,12 @@ export async function handleSites(request, env, path) {
     return errorResponse('Unauthorized', 401, 'UNAUTHORIZED');
   }
 
+  if (method === 'GET' && siteId === 'check-subdomain') {
+    const url = new URL(request.url);
+    const sub = url.searchParams.get('subdomain');
+    return checkSubdomainAvailability(env, sub);
+  }
+
   switch (method) {
     case 'GET':
       return siteId ? getSite(env, user, siteId) : getUserSites(env, user);
@@ -63,6 +69,27 @@ export async function handleSites(request, env, path) {
       return deleteSite(env, user, siteId);
     default:
       return errorResponse('Method not allowed', 405);
+  }
+}
+
+async function checkSubdomainAvailability(env, subdomain) {
+  if (!subdomain || subdomain.length < 3) {
+    return jsonResponse({ available: false, reason: 'Subdomain must be at least 3 characters' });
+  }
+  if (!/^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(subdomain) && subdomain.length > 1) {
+    return jsonResponse({ available: false, reason: 'Only lowercase letters, numbers, and hyphens allowed' });
+  }
+  try {
+    const existing = await env.DB.prepare(
+      'SELECT id FROM sites WHERE LOWER(subdomain) = ?'
+    ).bind(subdomain.toLowerCase()).first();
+    if (existing) {
+      return jsonResponse({ available: false, reason: 'This subdomain is already taken' });
+    }
+    return jsonResponse({ available: true });
+  } catch (error) {
+    console.error('Check subdomain error:', error);
+    return errorResponse('Failed to check subdomain', 500);
   }
 }
 
@@ -162,6 +189,13 @@ async function createSite(request, env, user) {
 
     if (!brandName) {
       return errorResponse('Brand name is required');
+    }
+
+    if (subdomain.length < 3) {
+      return errorResponse('Subdomain must be at least 3 characters', 400, 'INVALID_SUBDOMAIN');
+    }
+    if (!/^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(subdomain)) {
+      return errorResponse('Subdomain can only contain lowercase letters, numbers, and hyphens (not at start/end)', 400, 'INVALID_SUBDOMAIN');
     }
 
     const existingSubdomain = await env.DB.prepare(

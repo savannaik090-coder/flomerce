@@ -28,6 +28,10 @@ export async function deleteSite(siteId) {
   });
 }
 
+export async function checkSubdomain(subdomain) {
+  return apiRequest(`/api/sites/check-subdomain?subdomain=${encodeURIComponent(subdomain)}`);
+}
+
 export async function getSiteBySubdomain(subdomain) {
   return apiRequest(`/api/site?subdomain=${encodeURIComponent(subdomain)}`);
 }

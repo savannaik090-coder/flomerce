@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { createSite } from '../services/siteService.js';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { createSite, checkSubdomain } from '../services/siteService.js';
 
 const BUSINESS_CATEGORIES = [
   { id: 'jewellery', name: 'Jewellery', icon: '💎' },
@@ -29,6 +29,47 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
   const [categories, setCategories] = useState([]);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
+  const [subdomainStatus, setSubdomainStatus] = useState(null);
+  const [checkingSubdomain, setCheckingSubdomain] = useState(false);
+  const debounceRef = useRef(null);
+  const latestCheckRef = useRef('');
+
+  const validateSubdomain = useCallback((value) => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    latestCheckRef.current = value;
+    if (!value || value.length < 3) {
+      setSubdomainStatus(value ? { available: false, reason: 'Must be at least 3 characters' } : null);
+      setCheckingSubdomain(false);
+      return;
+    }
+    if (!/^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(value)) {
+      setSubdomainStatus({ available: false, reason: 'Only lowercase letters, numbers, and hyphens (not at start/end)' });
+      setCheckingSubdomain(false);
+      return;
+    }
+    setCheckingSubdomain(true);
+    setSubdomainStatus(null);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const result = await checkSubdomain(value);
+        if (latestCheckRef.current === value) {
+          setSubdomainStatus(result);
+        }
+      } catch {
+        if (latestCheckRef.current === value) {
+          setSubdomainStatus({ available: false, reason: 'Unable to verify. Try again.' });
+        }
+      } finally {
+        if (latestCheckRef.current === value) {
+          setCheckingSubdomain(false);
+        }
+      }
+    }, 500);
+  }, []);
+
+  useEffect(() => {
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, []);
 
   const handleBusinessCategorySelect = (catId) => {
     setBusinessCategory(catId);
@@ -178,11 +219,30 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
                   type="text"
                   placeholder="my-awesome-shop"
                   value={subdomain}
-                  onChange={(e) => setSubdomain(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                  onChange={(e) => {
+                    const val = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '');
+                    setSubdomain(val);
+                    validateSubdomain(val);
+                  }}
+                  style={{
+                    borderColor: subdomainStatus
+                      ? subdomainStatus.available ? '#16a34a' : '#dc2626'
+                      : undefined,
+                  }}
                 />
-                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                  {subdomain && `${subdomain}.fluxe.in`}
-                </span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.25rem' }}>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                    {subdomain && `${subdomain}.fluxe.in`}
+                  </span>
+                  {checkingSubdomain && (
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Checking...</span>
+                  )}
+                  {!checkingSubdomain && subdomainStatus && (
+                    <span style={{ fontSize: '0.75rem', color: subdomainStatus.available ? '#16a34a' : '#dc2626', fontWeight: 600 }}>
+                      {subdomainStatus.available ? 'Available' : subdomainStatus.reason}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
             <div className="form-group" style={{ marginTop: '1rem' }}>
@@ -205,7 +265,7 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
             </div>
             <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
               <button className="btn btn-outline" onClick={() => setStep(1)} style={{ flex: 1 }}>Back</button>
-              <button className="btn btn-primary" onClick={() => setStep(3)} disabled={!subdomain || !brandName || !selectedTemplate} style={{ flex: 1 }}>Next: Categories</button>
+              <button className="btn btn-primary" onClick={() => setStep(3)} disabled={!subdomain || !brandName || !selectedTemplate || checkingSubdomain || !subdomainStatus?.available} style={{ flex: 1 }}>Next: Categories</button>
             </div>
           </div>
         )}
