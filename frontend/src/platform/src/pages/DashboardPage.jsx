@@ -23,6 +23,7 @@ export default function DashboardPage() {
   const [billingSiteId, setBillingSiteId] = useState(null);
   const [dataLoaded, setDataLoaded] = useState(false);
   const [showPlanOverlay, setShowPlanOverlay] = useState(false);
+  const [showInitialPlanOverlay, setShowInitialPlanOverlay] = useState(false);
   const [pendingSiteData, setPendingSiteData] = useState(null);
   const [siteUsage, setSiteUsage] = useState({});
 
@@ -60,6 +61,18 @@ export default function DashboardPage() {
       });
     }
   }, [isAuthenticated, loadSites, loadProfile]);
+
+  useEffect(() => {
+    if (dataLoaded && profileData) {
+      const plan = profileData.plan || null;
+      const status = profileData.status || 'none';
+      const hadSub = profileData.hadSubscription || false;
+      const isTrialActive = plan === 'trial' && status === 'active';
+      if (!isTrialActive && !hadSub) {
+        setShowInitialPlanOverlay(true);
+      }
+    }
+  }, [dataLoaded, profileData]);
 
   const handleDeleteSite = async (siteId) => {
     try {
@@ -134,6 +147,12 @@ export default function DashboardPage() {
 
   const handleSiteCreated = async () => {
     await Promise.all([loadSites(), loadProfile()]);
+  };
+
+  const handleInitialPlanDone = () => {
+    setShowInitialPlanOverlay(false);
+    loadProfile();
+    loadSites();
   };
 
   const handleNeedsPlan = (formData) => {
@@ -743,6 +762,15 @@ export default function DashboardPage() {
           onCreated={handleSiteCreated}
           onNeedsPlan={handleNeedsPlan}
           isTrialActive={getAccountSubscriptionStatus().isTrialActive}
+        />
+      )}
+
+      {showInitialPlanOverlay && (
+        <PlanSelector
+          currentPlan={null}
+          currentStatus="none"
+          onUpgraded={handleInitialPlanDone}
+          isOverlay={true}
         />
       )}
 
