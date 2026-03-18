@@ -4,7 +4,7 @@ import { getAvailablePlans, createSubscription, verifySubscriptionPayment, start
 const DURATION_LABELS = { '3months': '3 Months', '6months': '6 Months', yearly: 'Yearly', '3years': '3 Years' };
 const PERIOD_SUFFIX = { '3months': '/3mo', '6months': '/6mo', yearly: '/yr', '3years': '/3yr' };
 
-export default function PlanSelector({ siteId, currentPlan, currentStatus, onUpgraded, isOverlay, hideTrial, onClose, isFirstTime }) {
+export default function PlanSelector({ siteId: initialSiteId, currentPlan, currentStatus, onUpgraded, isOverlay, hideTrial, onClose, isFirstTime, onCreateSite }) {
   const [duration, setDuration] = useState(null);
   const [upgrading, setUpgrading] = useState(null);
   const [plans, setPlans] = useState([]);
@@ -81,6 +81,16 @@ export default function PlanSelector({ siteId, currentPlan, currentStatus, onUpg
   const isExpired = currentStatus === 'expired' || currentStatus === 'none';
   const showTrialCard = !hideTrial && isExpired && currentPlanLower !== 'trial' && currentPlan !== 'trial';
 
+  const resolveSiteId = async () => {
+    if (initialSiteId) return initialSiteId;
+    if (onCreateSite) {
+      const newSiteId = await onCreateSite();
+      if (!newSiteId) throw new Error('Failed to create website');
+      return newSiteId;
+    }
+    return null;
+  };
+
   const handleUpgrade = async (planGroup) => {
     const selectedPlan = planGroup.plans[duration];
     if (!selectedPlan) {
@@ -95,7 +105,8 @@ export default function PlanSelector({ siteId, currentPlan, currentStatus, onUpg
 
     setUpgrading(selectedPlan.id);
     try {
-      const res = await createSubscription(selectedPlan.id, siteId);
+      const resolvedSiteId = await resolveSiteId();
+      const res = await createSubscription(selectedPlan.id, resolvedSiteId);
 
       if (!res.subscriptionId) {
         alert('Failed to create subscription: ' + (res.error || 'Unknown error'));
@@ -145,7 +156,7 @@ export default function PlanSelector({ siteId, currentPlan, currentStatus, onUpg
         rzp.open();
       }
     } catch (e) {
-      alert('Failed to process upgrade. Please try again.');
+      alert('Failed to process: ' + (e.message || 'Please try again.'));
     } finally {
       setUpgrading(null);
     }
@@ -156,6 +167,9 @@ export default function PlanSelector({ siteId, currentPlan, currentStatus, onUpg
     try {
       const data = await startFreeTrial();
       if (data.success || data.message) {
+        if (onCreateSite) {
+          await onCreateSite();
+        }
         alert('Your 7-day free trial has started!');
         onUpgraded?.();
       } else {

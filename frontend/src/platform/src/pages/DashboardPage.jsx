@@ -24,7 +24,7 @@ export default function DashboardPage() {
   const [dataLoaded, setDataLoaded] = useState(false);
   const [showPlanOverlay, setShowPlanOverlay] = useState(false);
   const [showPlanOverlayHideTrial, setShowPlanOverlayHideTrial] = useState(true);
-  const [pendingSiteId, setPendingSiteId] = useState(null);
+  const [pendingSiteData, setPendingSiteData] = useState(null);
   const [siteUsage, setSiteUsage] = useState({});
 
   useEffect(() => {
@@ -137,35 +137,37 @@ export default function DashboardPage() {
     await Promise.all([loadSites(), loadProfile()]);
   };
 
-  const handleNeedsPlan = async (formData) => {
+  const handleNeedsPlan = (formData) => {
+    setPendingSiteData(formData);
+    const hadSub = profileData?.hadSubscription || false;
+    setShowPlanOverlayHideTrial(hadSub);
+    setShowPlanOverlay(true);
+  };
+
+  const handleCreatePendingSite = async () => {
+    if (!pendingSiteData) return null;
     try {
-      const result = await createSite(formData);
+      const result = await createSite(pendingSiteData);
       if (result.success || result.site) {
         const newSite = result.site || result.data || result;
-        const newSiteId = newSite.id || newSite.siteId;
-        setPendingSiteId(newSiteId);
-        await loadSites();
-        const hadSub = profileData?.hadSubscription || false;
-        setShowPlanOverlayHideTrial(hadSub);
-        setShowPlanOverlay(true);
+        return newSite.id || newSite.siteId;
       } else {
-        alert('Failed to create website: ' + (result.message || result.error || 'Unknown error'));
+        throw new Error(result.message || result.error || 'Failed to create website');
       }
     } catch (err) {
-      alert('Failed to create website: ' + (err.message || 'Unknown error'));
+      throw err;
     }
   };
 
   const handlePlanOverlayDone = async () => {
     setShowPlanOverlay(false);
-    setPendingSiteId(null);
+    setPendingSiteData(null);
     await Promise.all([loadSites(), loadProfile()]);
   };
 
   const handlePlanOverlayClose = () => {
     setShowPlanOverlay(false);
-    setPendingSiteId(null);
-    loadSites();
+    setPendingSiteData(null);
   };
 
   const handleCreateSiteClick = () => {
@@ -749,7 +751,6 @@ export default function DashboardPage() {
 
       {showPlanOverlay && (
         <PlanSelector
-          siteId={pendingSiteId}
           currentPlan={null}
           currentStatus="none"
           onUpgraded={handlePlanOverlayDone}
@@ -757,6 +758,7 @@ export default function DashboardPage() {
           hideTrial={showPlanOverlayHideTrial}
           isFirstTime={!profileData?.hadSubscription}
           onClose={handlePlanOverlayClose}
+          onCreateSite={pendingSiteData ? handleCreatePendingSite : null}
         />
       )}
     </div>
