@@ -95,7 +95,7 @@ export default function OwnerAdminPage() {
     setShowPlanForm(false);
   };
 
-  const TIER_LABELS = { 1: 'Tier 1 (Basic)', 2: 'Tier 2 (Standard)', 3: 'Tier 3 (Pro)', 4: 'Tier 4 (Premium)', 5: 'Tier 5 (Enterprise)' };
+  const TIER_LABELS = { 1: 'Tier 1 (Basic)', 2: 'Tier 2 (Standard)', 3: 'Tier 3 (Pro)', 4: 'Tier 4 (Enterprise)' };
 
   const handlePlanSubmit = async (e) => {
     e.preventDefault();
@@ -163,7 +163,12 @@ export default function OwnerAdminPage() {
       const data = await apiRequest('/api/admin/settings');
       const s = data.data || data || {};
       setSettings(s);
-      setSettingsForm({ razorpay_key_id: s.razorpay_key_id || '' });
+      setSettingsForm({
+        razorpay_key_id: s.razorpay_key_id || '',
+        enterprise_enabled: s.enterprise_enabled === 'true',
+        enterprise_message: s.enterprise_message || '',
+        enterprise_email: s.enterprise_email || '',
+      });
     } catch (e) {
       console.error('Failed to load settings:', e);
     } finally {
@@ -174,7 +179,11 @@ export default function OwnerAdminPage() {
   const handleSettingsSave = async (e) => {
     e.preventDefault();
     try {
-      await apiRequest('/api/admin/settings', { method: 'PUT', body: JSON.stringify(settingsForm) });
+      const payload = {
+        ...settingsForm,
+        enterprise_enabled: String(settingsForm.enterprise_enabled),
+      };
+      await apiRequest('/api/admin/settings', { method: 'PUT', body: JSON.stringify(payload) });
       alert('Settings saved successfully!');
       await loadSettings();
     } catch (e) {
@@ -988,6 +997,49 @@ export default function OwnerAdminPage() {
                 <button type="submit" className="oa-btn oa-btn-primary" style={{ marginTop: '1rem' }}>Save Settings</button>
               </form>
             )}
+          </div>
+
+          <div className="oa-card" style={{ marginTop: '1rem' }}>
+            <h3>Enterprise Plan Settings</h3>
+            <p style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '1rem' }}>
+              Configure the Enterprise "Contact Us" card shown on the plan selection page.
+            </p>
+            <div className="oa-form-group">
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={settingsForm.enterprise_enabled}
+                  onChange={e => setSettingsForm({ ...settingsForm, enterprise_enabled: e.target.checked })}
+                />
+                Show Enterprise plan card
+              </label>
+              <p className="oa-form-hint">When enabled, an Enterprise "Contact Us" card will appear alongside your regular plans.</p>
+            </div>
+            {settingsForm.enterprise_enabled && (
+              <>
+                <div className="oa-form-group" style={{ marginTop: '0.75rem' }}>
+                  <label>Enterprise Message</label>
+                  <textarea
+                    rows="3"
+                    value={settingsForm.enterprise_message}
+                    onChange={e => setSettingsForm({ ...settingsForm, enterprise_message: e.target.value })}
+                    placeholder="e.g. Need a custom solution for your business? Get in touch with our team for tailored enterprise plans."
+                  />
+                  <p className="oa-form-hint">The message displayed on the Enterprise card. Leave empty for a default message.</p>
+                </div>
+                <div className="oa-form-group" style={{ marginTop: '0.75rem' }}>
+                  <label>Contact Email</label>
+                  <input
+                    type="email"
+                    value={settingsForm.enterprise_email}
+                    onChange={e => setSettingsForm({ ...settingsForm, enterprise_email: e.target.value })}
+                    placeholder="e.g. enterprise@fluxe.in"
+                  />
+                  <p className="oa-form-hint">The email address for the "Contact Us" button on the Enterprise card.</p>
+                </div>
+              </>
+            )}
+            <button type="button" className="oa-btn oa-btn-primary" style={{ marginTop: '1rem' }} onClick={handleSettingsSave}>Save Enterprise Settings</button>
           </div>
 
           <div className="oa-card" style={{ marginTop: '1rem' }}>

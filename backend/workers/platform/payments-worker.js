@@ -604,9 +604,22 @@ async function getPublicPlans(request, env) {
 
     const platformKeyId = await getPlatformRazorpayKeyId(env);
 
+    let enterpriseConfig = { enabled: false, message: '', email: '' };
+    try {
+      const settingsResult = await env.DB.prepare(
+        `SELECT setting_key, setting_value FROM platform_settings WHERE setting_key IN ('enterprise_enabled', 'enterprise_message', 'enterprise_email')`
+      ).all();
+      for (const row of (settingsResult.results || [])) {
+        if (row.setting_key === 'enterprise_enabled') enterpriseConfig.enabled = row.setting_value === 'true';
+        if (row.setting_key === 'enterprise_message') enterpriseConfig.message = row.setting_value;
+        if (row.setting_key === 'enterprise_email') enterpriseConfig.email = row.setting_value;
+      }
+    } catch (e) {}
+
     return successResponse({
       plans,
       razorpayKeyId: platformKeyId || env.RAZORPAY_KEY_ID || null,
+      enterpriseConfig,
     });
   } catch (error) {
     console.error('Get public plans error:', error);

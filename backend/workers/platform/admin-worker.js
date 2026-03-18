@@ -387,7 +387,7 @@ async function updateSettings(request, env) {
   try {
     const updates = await request.json();
 
-    const allowedKeys = ['razorpay_key_id'];
+    const allowedKeys = ['razorpay_key_id', 'enterprise_enabled', 'enterprise_message', 'enterprise_email'];
 
     for (const [key, value] of Object.entries(updates)) {
       if (!allowedKeys.includes(key)) continue;

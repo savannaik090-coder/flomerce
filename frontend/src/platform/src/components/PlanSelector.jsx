@@ -12,6 +12,7 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
   const [razorpayKeyId, setRazorpayKeyId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [enterpriseConfig, setEnterpriseConfig] = useState({ enabled: false, message: '', email: '' });
 
   useEffect(() => {
     loadPlans();
@@ -24,6 +25,7 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
       const loadedPlans = data.plans || [];
       setPlans(loadedPlans);
       setRazorpayKeyId(data.razorpayKeyId || null);
+      if (data.enterpriseConfig) setEnterpriseConfig(data.enterpriseConfig);
       if (!duration && loadedPlans.length > 0) {
         const cycles = [...new Set(loadedPlans.map(p => p.billing_cycle))];
         const cycleOrder = ['3months', '6months', 'yearly', '3years'];
@@ -218,7 +220,9 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
     return false;
   };
 
-  if (loading || error || planList.length === 0) {
+  const hasContent = planList.filter(p => p.plan_tier < 4).length > 0 || enterpriseConfig.enabled;
+
+  if (loading || error || (!hasContent && planList.length === 0)) {
     const inner = loading
       ? <div style={{ textAlign: 'center', padding: '3rem 2rem', color: '#64748b' }}>
           <div style={{ width: '36px', height: '36px', border: '3px solid #e5e7eb', borderTopColor: '#2563eb', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 1rem' }} />
@@ -307,7 +311,7 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
           </div>
         )}
 
-        {planList.map(planGroup => {
+        {planList.filter(p => p.plan_tier < 4).map(planGroup => {
           const price = planGroup.prices[duration];
 
           return (
@@ -334,6 +338,32 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
             </div>
           );
         })}
+
+        {enterpriseConfig.enabled && (
+          <div className="site-card plan-card" style={{ position: 'relative', borderColor: '#6366f1', borderWidth: '2px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <span style={{
+              position: 'absolute', top: '-12px', left: '50%', transform: 'translateX(-50%)',
+              background: '#6366f1', color: 'white', padding: '2px 12px', borderRadius: '12px',
+              fontSize: '0.75rem', fontWeight: 700
+            }}>ENTERPRISE</span>
+            <div>
+              <h3 style={{ marginBottom: '0.5rem' }}>Enterprise</h3>
+              <p style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '1rem' }}>
+                Custom
+              </p>
+              <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '1.5rem', lineHeight: 1.6 }}>
+                {enterpriseConfig.message || 'Need a custom solution for your business? Get in touch with our team for a tailored enterprise plan.'}
+              </p>
+            </div>
+            <a
+              href={`mailto:${enterpriseConfig.email || 'enterprise@fluxe.in'}`}
+              className="btn btn-primary"
+              style={{ width: '100%', textAlign: 'center', textDecoration: 'none', background: '#6366f1', borderColor: '#6366f1' }}
+            >
+              Contact Us
+            </a>
+          </div>
+        )}
       </div>
     </div>
   );
