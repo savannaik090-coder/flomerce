@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useSiteConfig } from '../../hooks/useSiteConfig.js';
 import { useCart } from '../../hooks/useCart.js';
-import { formatINR } from '../../utils/priceFormatter.js';
+import { useCurrency } from '../../hooks/useCurrency.js';
 import { resolveImageUrl } from '../../utils/imageUrl.js';
 import * as productService from '../../services/productService.js';
 
 export default function ProductShowcase() {
   const { siteConfig } = useSiteConfig();
   const { addToCart } = useCart();
+  const { formatAmount } = useCurrency();
   const [products, setProducts] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState(null);
 
@@ -73,7 +74,7 @@ export default function ProductShowcase() {
                   />
                   <div className="showcase-product-info">
                     <div className="showcase-product-name">{product.name}</div>
-                    <div className="showcase-product-price">{formatINR(product.price)}</div>
+                    <div className="showcase-product-price">{formatAmount(product.price)}</div>
                   </div>
                 </Link>
               ))}
@@ -108,7 +109,7 @@ export default function ProductShowcase() {
             />
             <div className="popup-product-details">
               <h3 className="popup-product-name">{selectedProduct.name}</h3>
-              <div className="popup-product-price">{formatINR(selectedProduct.price)}</div>
+              <div className="popup-product-price">{formatAmount(selectedProduct.price)}</div>
               <p className="popup-product-description">{selectedProduct.description || ''}</p>
               <div className="popup-action-buttons">
                 <button

@@ -5,7 +5,7 @@ import { PanelContext } from '../context/PanelContext.jsx';
 import { useCart } from '../hooks/useCart.js';
 import { useWishlist } from '../hooks/useWishlist.js';
 import { useSEO } from '../hooks/useSEO.js';
-import { formatINR } from '../utils/priceFormatter.js';
+import { useCurrency } from '../hooks/useCurrency.js';
 import * as productService from '../services/productService.js';
 import ProductGallery from '../components/product/ProductGallery.jsx';
 import RelatedProducts from '../components/product/RelatedProducts.jsx';
@@ -106,6 +106,7 @@ export default function ProductDetailPage() {
   const { openCart, openWishlist } = useContext(PanelContext);
   const { addToCart } = useCart();
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
+  const { formatAmount } = useCurrency();
 
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -298,7 +299,7 @@ export default function ProductDetailPage() {
           <div className="product-detail-info">
             <h1 className="product-title">{product.name}</h1>
             <div className="price">
-              <span className="product-price">{formatINR(effectivePrice)}</span>
+              <span className="product-price">{formatAmount(effectivePrice)}</span>
             </div>
 
             <div className="product-meta">
@@ -371,7 +372,7 @@ export default function ProductDetailPage() {
                       onClick={() => { setSelectedPricedOptions(prev => ({ ...prev, [opt.label]: { name: val.name, price: val.price } })); setLastSelectedPricedOption({ name: val.name, price: val.price }); setOptionError(null); }}
                     >
                       {val.name}
-                      {Number(val.price) > 0 && <span className="product-option-price-badge">{formatINR(val.price)}</span>}
+                      {Number(val.price) > 0 && <span className="product-option-price-badge">{formatAmount(val.price)}</span>}
                     </button>
                   ))}
                 </div>

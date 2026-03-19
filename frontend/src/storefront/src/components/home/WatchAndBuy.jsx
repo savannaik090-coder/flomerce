@@ -2,11 +2,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useSiteConfig } from '../../hooks/useSiteConfig.js';
 import { getProducts } from '../../services/productService.js';
-import { formatINR } from '../../utils/priceFormatter.js';
+import { useCurrency } from '../../hooks/useCurrency.js';
 import { resolveImageUrl } from '../../utils/imageUrl.js';
 
 export default function WatchAndBuy() {
   const { siteConfig } = useSiteConfig();
+  const { formatAmount } = useCurrency();
   const [videos, setVideos] = useState([]);
   const [productMap, setProductMap] = useState({});
   const [playingIdx, setPlayingIdx] = useState(null);
@@ -161,7 +162,7 @@ export default function WatchAndBuy() {
                       <div className="wb-product-info">
                         <div className="wb-product-name">{product.name}</div>
                         {product.price && (
-                          <div className="wb-product-price">{formatINR(product.price)}</div>
+                          <div className="wb-product-price">{formatAmount(product.price)}</div>
                         )}
                       </div>
                     </Link>
