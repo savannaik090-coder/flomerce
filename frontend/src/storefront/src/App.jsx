@@ -2,6 +2,7 @@ import React, { useContext, useEffect } from 'react';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import { useSiteConfig } from './hooks/useSiteConfig.js';
 import { PanelContext } from './context/PanelContext.jsx';
+import usePageTracker from './hooks/usePageTracker.js';
 import Navbar from './components/layout/Navbar.jsx';
 import Footer from './components/layout/Footer.jsx';
 import MobileBottomNav from './components/layout/MobileBottomNav.jsx';
@@ -80,6 +81,8 @@ export default function App() {
   const { siteConfig, loading, error } = useSiteConfig();
   const { cartOpen, openCart, closeCart, wishlistOpen, openWishlist, closeWishlist, searchOpen, openSearch, closeSearch } = useContext(PanelContext);
   const location = useLocation();
+
+  usePageTracker();
 
   useEffect(() => {
     if (!loading) removePreloader();

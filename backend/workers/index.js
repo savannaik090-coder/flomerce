@@ -13,6 +13,7 @@ import { handleAdmin } from './platform/admin-worker.js';
 import { handleSiteAdmin } from './storefront/site-admin-worker.js';
 import { handleCustomerAuth } from './storefront/customer-auth-worker.js';
 import { handleUpload } from './storefront/upload-worker.js';
+import { handleAnalytics } from './storefront/analytics-worker.js';
 import { handleUsageAPI } from '../utils/usage-tracker.js';
 import { jsonResponse, errorResponse, corsHeaders, handleCORS } from '../utils/helpers.js';
 import { ensureTablesExist } from '../utils/db-init.js';
@@ -123,6 +124,9 @@ async function handleAPI(request, env, path) {
 
     case 'upload':
       return handleUpload(request, env, path);
+
+    case 'analytics':
+      return handleAnalytics(request, env, path);
 
     case 'usage':
       return handleUsageAPI(request, env, path);
