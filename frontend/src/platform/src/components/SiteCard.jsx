@@ -1,4 +1,4 @@
-export default function SiteCard({ site, onManage, onBilling, subscriptionInfo }) {
+export default function SiteCard({ site, onManage, subscriptionInfo }) {
   const siteName = site.brand_name || site.brandName || site.subdomain;
   const siteUrl = `https://${site.subdomain}.fluxe.in`;
   const createdAt = site.created_at ? new Date(site.created_at).toLocaleDateString() : '';
@@ -48,13 +48,6 @@ export default function SiteCard({ site, onManage, onBilling, subscriptionInfo }
           Manage
         </button>
       </div>
-      {onBilling && !isEnterprise && (
-        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-          <button className="btn btn-outline" onClick={onBilling} style={{ flex: 1, fontSize: '0.75rem' }}>
-            {sub.isExpired || !sub.plan ? 'Subscribe' : 'Billing'}
-          </button>
-        </div>
-      )}
     </div>
   );
 }

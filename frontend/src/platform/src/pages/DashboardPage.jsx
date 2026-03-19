@@ -745,7 +745,6 @@ export default function DashboardPage() {
                       key={site.id}
                       site={site}
                       onManage={() => handleManageSite(site)}
-                      onBilling={() => handleBillingSite(site.id)}
                       subscriptionInfo={getSiteSubscriptionInfo(site)}
                     />
                   ))}
