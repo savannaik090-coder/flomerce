@@ -426,7 +426,7 @@ export default function CheckoutPage() {
                             }
                             return parts.length > 0 ? <div style={{ fontSize: 11, color: '#888', marginTop: 1 }}>{parts.join(' \u2022 ')}</div> : null;
                           })()}
-                          <div style={{ fontSize: 13, color: '#888', marginTop: 2 }}>Qty: {qty} \u00D7 {formatAmount(price)}</div>
+                          <div style={{ fontSize: 13, color: '#888', marginTop: 2 }}>Qty: {qty} × {formatAmount(price)}</div>
                         </div>
                         <div style={{ fontWeight: 700, color: '#7a4012', fontSize: 14, flexShrink: 0 }}>{formatAmount(price * qty)}</div>
                       </div>
