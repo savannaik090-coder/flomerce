@@ -181,14 +181,8 @@ export default function ProductDetailPage() {
 
   const effectivePrice = React.useMemo(() => {
     if (!product) return 0;
-    let price = product.price;
-    if (selectedPricedOptions) {
-      for (const val of Object.values(selectedPricedOptions)) {
-        price += Number(val.price || 0);
-      }
-    }
-    return price;
-  }, [product?.price, selectedPricedOptions]);
+    return product.price;
+  }, [product?.price]);
 
   const filteredImageIndices = React.useMemo(() => {
     if (!selectedColor || !productOptions?.imageColorMap) return null;
