@@ -245,18 +245,25 @@ async function createOrder(request, env, user) {
       const validatedSelectedOptions = item.selectedOptions ? { ...item.selectedOptions } : null;
       if (validatedSelectedOptions?.pricedOptions && productOptions?.pricedOptions) {
         const validatedPriced = {};
-        for (const [label, clientVal] of Object.entries(validatedSelectedOptions.pricedOptions)) {
+        const pricedEntries = Object.entries(validatedSelectedOptions.pricedOptions);
+        for (const [label, clientVal] of pricedEntries) {
           const optGroup = productOptions.pricedOptions.find(o => o.label === label);
           if (optGroup) {
             const dbVal = optGroup.values.find(v => v.name === clientVal.name);
             if (dbVal) {
               const serverPrice = Number(dbVal.price || 0);
-              effectivePrice += serverPrice;
               validatedPriced[label] = { name: dbVal.name, price: serverPrice };
             }
           }
         }
         validatedSelectedOptions.pricedOptions = validatedPriced;
+        const lastEntry = pricedEntries[pricedEntries.length - 1];
+        if (lastEntry) {
+          const [label] = lastEntry;
+          if (validatedPriced[label] && Number(validatedPriced[label].price) > 0) {
+            effectivePrice = Number(validatedPriced[label].price);
+          }
+        }
       }
 
       const itemTotal = effectivePrice * item.quantity;
@@ -677,18 +684,25 @@ async function createGuestOrder(request, env) {
       const validatedSelectedOptions = item.selectedOptions ? { ...item.selectedOptions } : null;
       if (validatedSelectedOptions?.pricedOptions && productOptions?.pricedOptions) {
         const validatedPriced = {};
-        for (const [label, clientVal] of Object.entries(validatedSelectedOptions.pricedOptions)) {
+        const pricedEntries = Object.entries(validatedSelectedOptions.pricedOptions);
+        for (const [label, clientVal] of pricedEntries) {
           const optGroup = productOptions.pricedOptions.find(o => o.label === label);
           if (optGroup) {
             const dbVal = optGroup.values.find(v => v.name === clientVal.name);
             if (dbVal) {
               const serverPrice = Number(dbVal.price || 0);
-              effectivePrice += serverPrice;
               validatedPriced[label] = { name: dbVal.name, price: serverPrice };
             }
           }
         }
         validatedSelectedOptions.pricedOptions = validatedPriced;
+        const lastEntry = pricedEntries[pricedEntries.length - 1];
+        if (lastEntry) {
+          const [label] = lastEntry;
+          if (validatedPriced[label] && Number(validatedPriced[label].price) > 0) {
+            effectivePrice = Number(validatedPriced[label].price);
+          }
+        }
       }
 
       const itemTotal = effectivePrice * item.quantity;

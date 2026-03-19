@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-jBqTUL/checked-fetch.js
+// .wrangler/tmp/bundle-C59aU1/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-jBqTUL/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-C59aU1/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-jBqTUL/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-C59aU1/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-jBqTUL/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-C59aU1/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -2116,12 +2116,12 @@ var init_site_admin_worker = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-jBqTUL/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-C59aU1/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-jBqTUL/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-C59aU1/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -5032,18 +5032,25 @@ async function createOrder(request, env, user) {
       const validatedSelectedOptions = item.selectedOptions ? { ...item.selectedOptions } : null;
       if (validatedSelectedOptions?.pricedOptions && productOptions?.pricedOptions) {
         const validatedPriced = {};
-        for (const [label, clientVal] of Object.entries(validatedSelectedOptions.pricedOptions)) {
+        const pricedEntries = Object.entries(validatedSelectedOptions.pricedOptions);
+        for (const [label, clientVal] of pricedEntries) {
           const optGroup = productOptions.pricedOptions.find((o) => o.label === label);
           if (optGroup) {
             const dbVal = optGroup.values.find((v) => v.name === clientVal.name);
             if (dbVal) {
               const serverPrice = Number(dbVal.price || 0);
-              effectivePrice += serverPrice;
               validatedPriced[label] = { name: dbVal.name, price: serverPrice };
             }
           }
         }
         validatedSelectedOptions.pricedOptions = validatedPriced;
+        const lastEntry = pricedEntries[pricedEntries.length - 1];
+        if (lastEntry) {
+          const [label] = lastEntry;
+          if (validatedPriced[label] && Number(validatedPriced[label].price) > 0) {
+            effectivePrice = Number(validatedPriced[label].price);
+          }
+        }
       }
       const itemTotal = effectivePrice * item.quantity;
       subtotal += itemTotal;
@@ -5441,18 +5448,25 @@ async function createGuestOrder(request, env) {
       const validatedSelectedOptions = item.selectedOptions ? { ...item.selectedOptions } : null;
       if (validatedSelectedOptions?.pricedOptions && productOptions?.pricedOptions) {
         const validatedPriced = {};
-        for (const [label, clientVal] of Object.entries(validatedSelectedOptions.pricedOptions)) {
+        const pricedEntries = Object.entries(validatedSelectedOptions.pricedOptions);
+        for (const [label, clientVal] of pricedEntries) {
           const optGroup = productOptions.pricedOptions.find((o) => o.label === label);
           if (optGroup) {
             const dbVal = optGroup.values.find((v) => v.name === clientVal.name);
             if (dbVal) {
               const serverPrice = Number(dbVal.price || 0);
-              effectivePrice += serverPrice;
               validatedPriced[label] = { name: dbVal.name, price: serverPrice };
             }
           }
         }
         validatedSelectedOptions.pricedOptions = validatedPriced;
+        const lastEntry = pricedEntries[pricedEntries.length - 1];
+        if (lastEntry) {
+          const [label] = lastEntry;
+          if (validatedPriced[label] && Number(validatedPriced[label].price) > 0) {
+            effectivePrice = Number(validatedPriced[label].price);
+          }
+        }
       }
       const itemTotal = effectivePrice * item.quantity;
       subtotal += itemTotal;
@@ -5799,12 +5813,15 @@ async function getCart(env, siteId, user, sessionId) {
         let effectivePrice = product.price;
         const productOptions = product.options ? JSON.parse(product.options) : null;
         if (item.selectedOptions?.pricedOptions && productOptions?.pricedOptions) {
-          for (const [label, clientVal] of Object.entries(item.selectedOptions.pricedOptions)) {
+          const pricedEntries = Object.entries(item.selectedOptions.pricedOptions);
+          const lastEntry = pricedEntries[pricedEntries.length - 1];
+          if (lastEntry) {
+            const [label, clientVal] = lastEntry;
             const optGroup = productOptions.pricedOptions.find((o) => o.label === label);
             if (optGroup) {
               const dbVal = optGroup.values.find((v) => v.name === clientVal.name);
-              if (dbVal)
-                effectivePrice += Number(dbVal.price || 0);
+              if (dbVal && Number(dbVal.price) > 0)
+                effectivePrice = Number(dbVal.price);
             }
           }
         }
@@ -12223,7 +12240,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-jBqTUL/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-C59aU1/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -12258,7 +12275,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-jBqTUL/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-C59aU1/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

@@ -174,11 +174,14 @@ async function getCart(env, siteId, user, sessionId) {
         let effectivePrice = product.price;
         const productOptions = product.options ? JSON.parse(product.options) : null;
         if (item.selectedOptions?.pricedOptions && productOptions?.pricedOptions) {
-          for (const [label, clientVal] of Object.entries(item.selectedOptions.pricedOptions)) {
+          const pricedEntries = Object.entries(item.selectedOptions.pricedOptions);
+          const lastEntry = pricedEntries[pricedEntries.length - 1];
+          if (lastEntry) {
+            const [label, clientVal] = lastEntry;
             const optGroup = productOptions.pricedOptions.find(o => o.label === label);
             if (optGroup) {
               const dbVal = optGroup.values.find(v => v.name === clientVal.name);
-              if (dbVal) effectivePrice += Number(dbVal.price || 0);
+              if (dbVal && Number(dbVal.price) > 0) effectivePrice = Number(dbVal.price);
             }
           }
         }

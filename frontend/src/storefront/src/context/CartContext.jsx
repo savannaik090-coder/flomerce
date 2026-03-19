@@ -81,8 +81,10 @@ export function CartProvider({ children }) {
 
     let effectivePrice = product.price;
     if (selectedOptions?.pricedOptions) {
-      for (const val of Object.values(selectedOptions.pricedOptions)) {
-        effectivePrice += Number(val.price || 0);
+      const pricedValues = Object.values(selectedOptions.pricedOptions);
+      const lastPriced = pricedValues[pricedValues.length - 1];
+      if (lastPriced && Number(lastPriced.price) > 0) {
+        effectivePrice = Number(lastPriced.price);
       }
     }
 
