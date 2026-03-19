@@ -16,6 +16,7 @@ export default function SettingsSection() {
   const [razorpayKeyId, setRazorpayKeyId] = useState('');
   const [razorpayKeySecret, setRazorpayKeySecret] = useState('');
   const [codEnabled, setCodEnabled] = useState(true);
+  const [defaultCurrency, setDefaultCurrency] = useState('INR');
   const [loading, setLoading] = useState(true);
 
   const [currentSubdomain, setCurrentSubdomain] = useState('');
@@ -100,6 +101,7 @@ export default function SettingsSection() {
         setRazorpayKeyId(settings.razorpayKeyId || '');
         setRazorpayKeySecret(settings.razorpayKeySecret || '');
         setCodEnabled(settings.codEnabled !== false);
+        setDefaultCurrency(settings.defaultCurrency || 'INR');
         if (data.custom_domain) {
           setCustomDomain(data.custom_domain);
           setDomainInput(data.custom_domain);
@@ -126,6 +128,7 @@ export default function SettingsSection() {
         email,
         address,
         codEnabled,
+        defaultCurrency,
       };
       if (razorpayKeyId) {
         settings.razorpayKeyId = razorpayKeyId;
@@ -575,6 +578,31 @@ export default function SettingsSection() {
               <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Address</label>
               <textarea value={address} onChange={(e) => setAddress(e.target.value)} rows={2} placeholder="Store address" style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }} />
             </div>
+          </div>
+        </div>
+
+        <div className="card" style={{ marginBottom: 20 }}>
+          <div className="card-header">
+            <h3 className="card-title">Default Currency</h3>
+          </div>
+          <div className="card-content">
+            <p style={{ fontSize: 13, color: '#64748b', marginBottom: 12 }}>
+              Set the default currency for your store. All prices on your website, admin panel, and email notifications will be shown in this currency.
+            </p>
+            <select
+              value={defaultCurrency}
+              onChange={e => setDefaultCurrency(e.target.value)}
+              style={{ width: '100%', maxWidth: 300, padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, fontFamily: 'inherit', background: '#fff' }}
+            >
+              <option value="INR">🇮🇳 INR — Indian Rupee (₹)</option>
+              <option value="USD">🇺🇸 USD — US Dollar ($)</option>
+              <option value="EUR">🇪🇺 EUR — Euro (€)</option>
+              <option value="GBP">🇬🇧 GBP — British Pound (£)</option>
+              <option value="AED">🇦🇪 AED — UAE Dirham</option>
+              <option value="CAD">🇨🇦 CAD — Canadian Dollar</option>
+              <option value="AUD">🇦🇺 AUD — Australian Dollar</option>
+              <option value="SAR">🇸🇦 SAR — Saudi Riyal</option>
+            </select>
           </div>
         </div>
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
+import { useCurrency } from '../../hooks/useCurrency.js';
 import { getOrders, updateOrderStatus } from '../../services/orderService.js';
 
 const CANCEL_REASONS = [
@@ -32,6 +33,7 @@ function getStatusLabel(status) {
 
 export default function OrdersSection() {
   const { siteConfig } = useContext(SiteContext);
+  const { formatAmount } = useCurrency();
   const [orders, setOrders] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -202,7 +204,7 @@ export default function OrdersSection() {
                           </td>
                           <td style={{ whiteSpace: 'nowrap' }}>{order.customer_phone || '—'}</td>
                           <td>{items.length > 0 ? `${items.length} item${items.length !== 1 ? 's' : ''}` : '—'}</td>
-                          <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>₹{parseFloat(order.total || order.total_amount || 0).toLocaleString('en-IN')}</td>
+                          <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{formatAmount(parseFloat(order.total || order.total_amount || 0))}</td>
                           <td style={{ textTransform: 'capitalize' }}>
                             {order.payment_method === 'cod' ? 'Cash on Delivery' : (order.payment_method || '—')}
                           </td>
@@ -280,15 +282,15 @@ export default function OrdersSection() {
                                           }
                                           if (item.selectedOptions.pricedOptions) {
                                             for (const [label, val] of Object.entries(item.selectedOptions.pricedOptions)) {
-                                              const priceSuffix = Number(val.price || 0) > 0 ? ` (Rs.${Number(val.price).toLocaleString('en-IN')})` : '';
+                                              const priceSuffix = Number(val.price || 0) > 0 ? ` (${formatAmount(Number(val.price))})` : '';
                                               parts.push(`${label}: ${val.name}${priceSuffix}`);
                                             }
                                           }
                                           return parts.length > 0 ? <div style={{ fontSize: 11, color: '#888', marginTop: 1 }}>{parts.join(' \u2022 ')}</div> : null;
                                         })()}
                                         <div style={{ fontSize: 12, color: '#555' }}>
-                                          Rs.{parseFloat(item.price || 0).toLocaleString('en-IN')} x {item.quantity}
-                                          <span style={{ fontWeight: 600, marginLeft: 6 }}>= Rs.{parseFloat((item.price || 0) * (item.quantity || 1)).toLocaleString('en-IN')}</span>
+                                          {formatAmount(parseFloat(item.price || 0))} x {item.quantity}
+                                          <span style={{ fontWeight: 600, marginLeft: 6 }}>= {formatAmount(parseFloat((item.price || 0) * (item.quantity || 1)))}</span>
                                         </div>
                                       </div>
                                     </div>
@@ -297,15 +299,15 @@ export default function OrdersSection() {
                                     {parseFloat(order.discount || 0) > 0 && (
                                       <>
                                         <div style={{ fontSize: 13, color: '#555', marginBottom: 2 }}>
-                                          Subtotal: ₹{parseFloat(order.subtotal || order.total || 0).toLocaleString('en-IN')}
+                                          Subtotal: {formatAmount(parseFloat(order.subtotal || order.total || 0))}
                                         </div>
                                         <div style={{ fontSize: 13, color: '#16a34a', marginBottom: 4 }}>
-                                          Coupon{order.coupon_code ? ` (${order.coupon_code})` : ''}: −₹{parseFloat(order.discount || 0).toLocaleString('en-IN')}
+                                          Coupon{order.coupon_code ? ` (${order.coupon_code})` : ''}: −{formatAmount(parseFloat(order.discount || 0))}
                                         </div>
                                       </>
                                     )}
                                     <div style={{ fontWeight: 700, fontSize: 14 }}>
-                                      Total: ₹{parseFloat(order.total || 0).toLocaleString('en-IN')}
+                                      Total: {formatAmount(parseFloat(order.total || 0))}
                                     </div>
                                   </div>
                                 </div>

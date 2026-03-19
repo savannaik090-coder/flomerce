@@ -1,4 +1,5 @@
-import React, { createContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useState, useEffect, useCallback, useContext } from 'react';
+import { SiteContext } from './SiteContext.jsx';
 import { getExchangeRates, detectUserCurrency, formatPrice as formatPriceFn, convertPrice } from '../services/currencyService.js';
 
 export const CurrencyContext = createContext(null);
@@ -6,24 +7,26 @@ export const CurrencyContext = createContext(null);
 const CURRENCY_PREF_KEY = 'preferred_currency';
 
 export function CurrencyProvider({ children }) {
-  const [currency, setCurrencyState] = useState(localStorage.getItem(CURRENCY_PREF_KEY) || 'INR');
+  const { siteConfig } = useContext(SiteContext);
+  const siteDefaultCurrency = siteConfig?.settings?.defaultCurrency || 'INR';
+
+  const [currency, setCurrencyState] = useState(() => {
+    return localStorage.getItem(CURRENCY_PREF_KEY) || siteDefaultCurrency;
+  });
   const [rates, setRates] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!localStorage.getItem(CURRENCY_PREF_KEY)) {
+      setCurrencyState(siteDefaultCurrency);
+    }
+  }, [siteDefaultCurrency]);
+
+  useEffect(() => {
     async function init() {
       try {
-        const [fetchedRates, detectedCurrency] = await Promise.all([
-          getExchangeRates(),
-          !localStorage.getItem(CURRENCY_PREF_KEY) ? detectUserCurrency() : Promise.resolve(null),
-        ]);
-
+        const fetchedRates = await getExchangeRates();
         setRates(fetchedRates);
-
-        if (detectedCurrency && !localStorage.getItem(CURRENCY_PREF_KEY)) {
-          setCurrencyState(detectedCurrency);
-          localStorage.setItem(CURRENCY_PREF_KEY, detectedCurrency);
-        }
       } catch (err) {
         console.error('Currency init error:', err);
       } finally {

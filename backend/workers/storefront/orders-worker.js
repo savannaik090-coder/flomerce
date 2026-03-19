@@ -551,6 +551,7 @@ async function updateOrderStatus(request, env, user, orderId) {
           let cancelSettings = {};
           try { if (cancelConfig.settings) cancelSettings = typeof cancelConfig.settings === 'string' ? JSON.parse(cancelConfig.settings) : cancelConfig.settings; } catch (e) {}
           const ownerEmail = cancelSettings.email || cancelSettings.ownerEmail || cancelConfig.email;
+          const cancelCurrency = cancelSettings.defaultCurrency || 'INR';
 
           const emailOrder = {
             order_number: fullOrder.order_number,
@@ -563,11 +564,11 @@ async function updateOrderStatus(request, env, user, orderId) {
 
           const emailJobs = [];
           if (fullOrder.customer_email) {
-            const { html, text } = buildCancellationCustomerEmail(emailOrder, siteBrandName, cancellationReason, ownerEmail);
+            const { html, text } = buildCancellationCustomerEmail(emailOrder, siteBrandName, cancellationReason, ownerEmail, cancelCurrency);
             emailJobs.push(sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been cancelled`, html, text).catch(e => console.error('Cancellation customer email error:', e)));
           }
           if (ownerEmail) {
-            const { html, text } = buildCancellationOwnerEmail(emailOrder, siteBrandName, cancellationReason);
+            const { html, text } = buildCancellationOwnerEmail(emailOrder, siteBrandName, cancellationReason, cancelCurrency);
             emailJobs.push(sendEmail(env, ownerEmail, `Order #${fullOrder.order_number} cancelled - ${siteBrandName}`, html, text).catch(e => console.error('Cancellation owner email error:', e)));
           }
           await Promise.all(emailJobs);
@@ -586,6 +587,7 @@ async function updateOrderStatus(request, env, user, orderId) {
           let deliverySettings = {};
           try { if (deliveryConfig.settings) deliverySettings = typeof deliveryConfig.settings === 'string' ? JSON.parse(deliveryConfig.settings) : deliveryConfig.settings; } catch (e) {}
           const ownerEmail = deliverySettings.email || deliverySettings.ownerEmail || deliveryConfig.email;
+          const deliveryCurrency = deliverySettings.defaultCurrency || 'INR';
 
           const emailOrder = {
             order_number: fullOrder.order_number,
@@ -600,7 +602,7 @@ async function updateOrderStatus(request, env, user, orderId) {
           const emailJobs = [];
           if (fullOrder.customer_email) {
             try {
-              const { html, text } = buildDeliveryCustomerEmail(emailOrder, siteBrandName, ownerEmail);
+              const { html, text } = buildDeliveryCustomerEmail(emailOrder, siteBrandName, ownerEmail, deliveryCurrency);
               emailJobs.push(sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been delivered!`, html, text).catch(e => console.error('Delivery customer email send error:', e)));
             } catch (buildErr) {
               console.error('Delivery customer email build error:', buildErr);
@@ -608,7 +610,7 @@ async function updateOrderStatus(request, env, user, orderId) {
           }
           if (ownerEmail) {
             try {
-              const { html, text } = buildDeliveryOwnerEmail(emailOrder, siteBrandName);
+              const { html, text } = buildDeliveryOwnerEmail(emailOrder, siteBrandName, deliveryCurrency);
               emailJobs.push(sendEmail(env, ownerEmail, `Order #${fullOrder.order_number} delivered - ${siteBrandName}`, html, text).catch(e => console.error('Delivery owner email send error:', e)));
             } catch (buildErr) {
               console.error('Delivery owner email build error:', buildErr);
@@ -854,6 +856,7 @@ export async function sendOrderEmails(env, siteId, orderData) {
     } catch (e) {}
 
     const ownerEmail = siteSettings.email || siteSettings.ownerEmail || config.email;
+    const currency = siteSettings.defaultCurrency || 'INR';
 
     const emailOrder = {
       order_number: orderData.orderNumber,
@@ -873,7 +876,7 @@ export async function sendOrderEmails(env, siteId, orderData) {
 
     if (orderData.customerEmail) {
       try {
-        const { html, text } = buildOrderConfirmationEmail(emailOrder, siteBrandName, ownerEmail);
+        const { html, text } = buildOrderConfirmationEmail(emailOrder, siteBrandName, ownerEmail, currency);
         emailJobs.push(
           sendEmail(env, orderData.customerEmail, `Order Confirmed #${orderData.orderNumber} - ${siteBrandName}`, html, text)
             .catch(e => console.error('Customer email send error:', e))
@@ -885,7 +888,7 @@ export async function sendOrderEmails(env, siteId, orderData) {
 
     if (ownerEmail) {
       try {
-        const { html, text } = buildOwnerNotificationEmail(emailOrder, siteBrandName);
+        const { html, text } = buildOwnerNotificationEmail(emailOrder, siteBrandName, currency);
         emailJobs.push(
           sendEmail(env, ownerEmail, `New Order #${orderData.orderNumber} - ${siteBrandName}`, html, text)
             .catch(e => console.error('Owner email send error:', e))

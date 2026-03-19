@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-lLL5te/checked-fetch.js
+// .wrangler/tmp/bundle-QvaioI/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-lLL5te/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-QvaioI/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-lLL5te/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-QvaioI/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-lLL5te/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-QvaioI/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -2116,12 +2116,12 @@ var init_site_admin_worker = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-lLL5te/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-QvaioI/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-lLL5te/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-QvaioI/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -2147,6 +2147,33 @@ init_auth();
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
+var CURRENCY_SYMBOLS = {
+  INR: "\u20B9",
+  USD: "$",
+  EUR: "\u20AC",
+  GBP: "\xA3",
+  AED: "\u062F.\u0625",
+  CAD: "CA$",
+  AUD: "A$",
+  SAR: "\uFDFC"
+};
+function formatCurrency(amount, currency = "INR") {
+  const sym = CURRENCY_SYMBOLS[currency] || currency + " ";
+  const num = Number(amount || 0);
+  if (currency === "INR") {
+    return `${sym}${num.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
+  return `${sym}${num.toFixed(2)}`;
+}
+__name(formatCurrency, "formatCurrency");
+function formatCurrencyHtml(amount, currency = "INR") {
+  if (currency === "INR") {
+    const num = Number(amount || 0);
+    return `&#8377;${num.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
+  return formatCurrency(amount, currency);
+}
+__name(formatCurrencyHtml, "formatCurrencyHtml");
 async function sendEmail(env, to, subject, html, text) {
   try {
     if (env.RESEND_API_KEY) {
@@ -2209,7 +2236,7 @@ async function sendEmail(env, to, subject, html, text) {
   }
 }
 __name(sendEmail, "sendEmail");
-function formatSelectedOptions(selectedOptions) {
+function formatSelectedOptions(selectedOptions, currency = "INR") {
   if (!selectedOptions)
     return "";
   const parts = [];
@@ -2222,21 +2249,23 @@ function formatSelectedOptions(selectedOptions) {
   }
   if (selectedOptions.pricedOptions) {
     for (const [label, val] of Object.entries(selectedOptions.pricedOptions)) {
-      const priceSuffix = Number(val.price || 0) > 0 ? ` (+&#8377;${Number(val.price).toFixed(0)})` : "";
+      const priceSuffix = Number(val.price || 0) > 0 ? ` (${formatCurrencyHtml(val.price, currency)})` : "";
       parts.push(`${label}: ${val.name}${priceSuffix}`);
     }
   }
   return parts.length > 0 ? `<div style="font-size: 12px; color: #888; margin-top: 2px;">${parts.join(" &bull; ")}</div>` : "";
 }
 __name(formatSelectedOptions, "formatSelectedOptions");
-function buildOrderConfirmationEmail(order, brandName, ownerEmail) {
+function buildOrderConfirmationEmail(order, brandName, ownerEmail, currency = "INR") {
   const items = typeof order.items === "string" ? JSON.parse(order.items) : order.items;
+  const fmtH = /* @__PURE__ */ __name((amt) => formatCurrencyHtml(amt, currency), "fmtH");
+  const fmt = /* @__PURE__ */ __name((amt) => formatCurrency(amt, currency), "fmt");
   const itemsHtml = items.map((item) => `
     <tr>
-      <td style="padding: 12px 16px; border-bottom: 1px solid #f0f0f0; font-size: 14px;">${item.name}${formatSelectedOptions(item.selectedOptions)}</td>
+      <td style="padding: 12px 16px; border-bottom: 1px solid #f0f0f0; font-size: 14px;">${item.name}${formatSelectedOptions(item.selectedOptions, currency)}</td>
       <td style="padding: 12px 16px; border-bottom: 1px solid #f0f0f0; text-align: center; font-size: 14px;">${item.quantity}</td>
-      <td style="padding: 12px 16px; border-bottom: 1px solid #f0f0f0; text-align: right; font-size: 14px; font-weight: 600;">&#8377;${Number(item.price).toFixed(2)}</td>
-      <td style="padding: 12px 16px; border-bottom: 1px solid #f0f0f0; text-align: right; font-size: 14px; font-weight: 600;">&#8377;${(Number(item.price) * Number(item.quantity)).toFixed(2)}</td>
+      <td style="padding: 12px 16px; border-bottom: 1px solid #f0f0f0; text-align: right; font-size: 14px; font-weight: 600;">${fmtH(item.price)}</td>
+      <td style="padding: 12px 16px; border-bottom: 1px solid #f0f0f0; text-align: right; font-size: 14px; font-weight: 600;">${fmtH(Number(item.price) * Number(item.quantity))}</td>
     </tr>
   `).join("");
   const shippingAddress = typeof order.shipping_address === "string" ? JSON.parse(order.shipping_address) : order.shipping_address || order.shippingAddress;
@@ -2287,13 +2316,13 @@ function buildOrderConfirmationEmail(order, brandName, ownerEmail) {
     const coupon = order.coupon_code || "";
     if (disc > 0) {
       return `<div style="padding: 16px; background: #f8f9fa; border-radius: 8px; margin-top: 16px; text-align: right;">
-                <div style="font-size: 14px; color: #555; margin-bottom: 4px;">Subtotal: <strong>&#8377;${sub.toFixed(2)}</strong></div>
-                <div style="font-size: 14px; color: #16a34a; margin-bottom: 8px;">Coupon${coupon ? ` (${coupon})` : ""}: <strong>-&#8377;${disc.toFixed(2)}</strong></div>
-                <div style="font-size: 18px; font-weight: 700; color: #0f172a; border-top: 1px solid #e2e8f0; padding-top: 8px;">Total: &#8377;${tot.toFixed(2)}</div>
+                <div style="font-size: 14px; color: #555; margin-bottom: 4px;">Subtotal: <strong>${fmtH(sub)}</strong></div>
+                <div style="font-size: 14px; color: #16a34a; margin-bottom: 8px;">Coupon${coupon ? ` (${coupon})` : ""}: <strong>-${fmtH(disc)}</strong></div>
+                <div style="font-size: 18px; font-weight: 700; color: #0f172a; border-top: 1px solid #e2e8f0; padding-top: 8px;">Total: ${fmtH(tot)}</div>
               </div>`;
     }
     return `<div style="text-align: right; padding: 16px; background: #f8f9fa; border-radius: 8px; margin-top: 16px;">
-              <span style="font-size: 18px; font-weight: 700; color: #0f172a;">Total: &#8377;${tot.toFixed(2)}</span>
+              <span style="font-size: 18px; font-weight: 700; color: #0f172a;">Total: ${fmtH(tot)}</span>
             </div>`;
   })()}
 
@@ -2315,20 +2344,20 @@ function buildOrderConfirmationEmail(order, brandName, ownerEmail) {
   const _disc = Number(order.discount || 0);
   const _coupon = order.coupon_code || "";
   const discountLine = _disc > 0 ? `
-Subtotal: Rs.${Number(order.subtotal || order.total).toFixed(2)}
-Coupon${_coupon ? ` (${_coupon})` : ""}: -Rs.${_disc.toFixed(2)}` : "";
+Subtotal: ${fmt(Number(order.subtotal || order.total))}
+Coupon${_coupon ? ` (${_coupon})` : ""}: -${fmt(_disc)}` : "";
   const text = `Order Confirmation
 
 Thank you for your order!
 Order Number: ${order.order_number || order.orderNumber}${discountLine}
-Total: Rs.${Number(order.total).toFixed(2)}
+Total: ${fmt(order.total)}
 Payment: ${order.payment_method === "cod" || order.paymentMethod === "cod" ? "Cash on Delivery" : "Online Payment"}
 
 Your order is now being prepared.`;
   return { html, text };
 }
 __name(buildOrderConfirmationEmail, "buildOrderConfirmationEmail");
-function buildCancellationCustomerEmail(order, brandName, reason, ownerEmail) {
+function buildCancellationCustomerEmail(order, brandName, reason, ownerEmail, currency = "INR") {
   const contactLine = ownerEmail ? `For any questions or to request a refund, please contact us at <a href="mailto:${ownerEmail}" style="color:#c0392b;">${ownerEmail}</a>.` : "For any questions or to request a refund, please reply to this email.";
   const html = `
     <!DOCTYPE html>
@@ -2351,7 +2380,7 @@ function buildCancellationCustomerEmail(order, brandName, reason, ownerEmail) {
             <div style="font-size: 15px; color: #333;">${reason || "No reason provided"}</div>
           </div>
           <div style="padding: 16px; background: #f8f9fa; border-radius: 8px; font-size: 14px; color: #555;">
-            <strong>Order Total:</strong> &#8377;${Number(order.total || 0).toFixed(2)}<br>
+            <strong>Order Total:</strong> ${formatCurrencyHtml(order.total, currency)}<br>
             <strong>Payment Method:</strong> ${order.payment_method === "cod" ? "Cash on Delivery" : "Online Payment"}
           </div>
           <p style="margin-top: 24px; color: #64748b; font-size: 14px; line-height: 1.6;">If you paid online and a refund is applicable, it will be processed within 5\u20137 business days. ${contactLine}</p>
@@ -2367,13 +2396,13 @@ function buildCancellationCustomerEmail(order, brandName, reason, ownerEmail) {
 
 Your order #${order.order_number || order.orderNumber} has been cancelled.
 Reason: ${reason || "No reason provided"}
-Total: Rs.${Number(order.total || 0).toFixed(2)}
+Total: ${formatCurrency(order.total, currency)}
 
 ${ownerEmail ? "Contact us at: " + ownerEmail : "Please reply to this email for any queries."}`;
   return { html, text };
 }
 __name(buildCancellationCustomerEmail, "buildCancellationCustomerEmail");
-function buildDeliveryCustomerEmail(order, brandName, ownerEmail) {
+function buildDeliveryCustomerEmail(order, brandName, ownerEmail, currency = "INR") {
   let items = [];
   try {
     items = typeof order.items === "string" ? JSON.parse(order.items) : order.items || [];
@@ -2384,9 +2413,9 @@ function buildDeliveryCustomerEmail(order, brandName, ownerEmail) {
   }
   const itemsHtml = items.map((item) => `
     <tr>
-      <td style="padding: 10px 16px; border-bottom: 1px solid #f0f0f0; font-size: 14px;">${item.name}${formatSelectedOptions(item.selectedOptions)}</td>
+      <td style="padding: 10px 16px; border-bottom: 1px solid #f0f0f0; font-size: 14px;">${item.name}${formatSelectedOptions(item.selectedOptions, currency)}</td>
       <td style="padding: 10px 16px; border-bottom: 1px solid #f0f0f0; text-align: center; font-size: 14px;">${item.quantity}</td>
-      <td style="padding: 10px 16px; border-bottom: 1px solid #f0f0f0; text-align: right; font-size: 14px; font-weight: 600;">&#8377;${(Number(item.price) * Number(item.quantity)).toFixed(2)}</td>
+      <td style="padding: 10px 16px; border-bottom: 1px solid #f0f0f0; text-align: right; font-size: 14px; font-weight: 600;">${formatCurrencyHtml(Number(item.price) * Number(item.quantity), currency)}</td>
     </tr>
   `).join("");
   const contactLine = ownerEmail ? `If you have any issues with your order, contact us at <a href="mailto:${ownerEmail}" style="color:#27ae60;">${ownerEmail}</a>.` : "If you have any issues with your order, please reply to this email.";
@@ -2418,7 +2447,7 @@ function buildDeliveryCustomerEmail(order, brandName, ownerEmail) {
             <tbody>${itemsHtml}</tbody>
           </table>
           <div style="text-align: right; padding: 12px 16px; background: #f0fdf4; border-radius: 8px; font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 24px;">
-            Total Paid: &#8377;${Number(order.total || 0).toFixed(2)}
+            Total Paid: ${formatCurrencyHtml(order.total, currency)}
           </div>` : ""}
           <div style="margin: 24px 0; padding: 20px; background: #f0fdf4; border-radius: 10px; text-align: center;">
             <p style="margin: 0 0 8px; font-size: 16px; font-weight: 600; color: #166534;">Enjoying your purchase?</p>
@@ -2437,13 +2466,13 @@ function buildDeliveryCustomerEmail(order, brandName, ownerEmail) {
 
 We hope you love your purchase. We'd love to hear your feedback \u2014 please leave a review!
 
-Total Paid: Rs.${Number(order.total || 0).toFixed(2)}
+Total Paid: ${formatCurrency(order.total, currency)}
 
 ${ownerEmail ? "For any issues, contact: " + ownerEmail : ""}`;
   return { html, text };
 }
 __name(buildDeliveryCustomerEmail, "buildDeliveryCustomerEmail");
-function buildDeliveryOwnerEmail(order, brandName) {
+function buildDeliveryOwnerEmail(order, brandName, currency = "INR") {
   const html = `
     <!DOCTYPE html>
     <html>
@@ -2460,7 +2489,7 @@ function buildDeliveryOwnerEmail(order, brandName) {
             <strong>Customer:</strong> ${order.customer_name || "N/A"}<br>
             <strong>Email:</strong> ${order.customer_email || "N/A"}<br>
             <strong>Phone:</strong> ${order.customer_phone || "N/A"}<br>
-            <strong>Total:</strong> &#8377;${Number(order.total || 0).toFixed(2)}<br>
+            <strong>Total:</strong> ${formatCurrencyHtml(order.total, currency)}<br>
             <strong>Payment:</strong> ${order.payment_method === "cod" ? "Cash on Delivery" : "Online Payment"}
           </div>
           <p style="margin-top: 20px; color: #64748b; font-size: 14px;">The customer has been notified and prompted to leave a review. Keep up the great work!</p>
@@ -2476,11 +2505,11 @@ function buildDeliveryOwnerEmail(order, brandName) {
 
 Order #${order.order_number} has been marked as delivered.
 Customer: ${order.customer_name || ""}
-Total: Rs.${Number(order.total || 0).toFixed(2)}`;
+Total: ${formatCurrency(order.total, currency)}`;
   return { html, text };
 }
 __name(buildDeliveryOwnerEmail, "buildDeliveryOwnerEmail");
-function buildCancellationOwnerEmail(order, brandName, reason) {
+function buildCancellationOwnerEmail(order, brandName, reason, currency = "INR") {
   const html = `
     <!DOCTYPE html>
     <html>
@@ -2502,7 +2531,7 @@ function buildCancellationOwnerEmail(order, brandName, reason) {
             <strong>Customer:</strong> ${order.customer_name || "N/A"}<br>
             <strong>Email:</strong> ${order.customer_email || "N/A"}<br>
             <strong>Phone:</strong> ${order.customer_phone || "N/A"}<br>
-            <strong>Total:</strong> &#8377;${Number(order.total || 0).toFixed(2)}
+            <strong>Total:</strong> ${formatCurrencyHtml(order.total, currency)}
           </div>
         </div>
         <div style="background: #f8f9fa; padding: 16px 32px; text-align: center; font-size: 12px; color: #94a3b8;">
@@ -2517,17 +2546,17 @@ function buildCancellationOwnerEmail(order, brandName, reason) {
 Order #${order.order_number || order.orderNumber} has been cancelled.
 Reason: ${reason || "No reason provided"}
 Customer: ${order.customer_name || ""}
-Total: Rs.${Number(order.total || 0).toFixed(2)}`;
+Total: ${formatCurrency(order.total, currency)}`;
   return { html, text };
 }
 __name(buildCancellationOwnerEmail, "buildCancellationOwnerEmail");
-function buildOwnerNotificationEmail(order, brandName) {
+function buildOwnerNotificationEmail(order, brandName, currency = "INR") {
   const items = typeof order.items === "string" ? JSON.parse(order.items) : order.items;
   const itemsHtml = items.map((item) => `
     <tr>
-      <td style="padding: 10px 16px; border-bottom: 1px solid #f0f0f0; font-size: 14px;">${item.name}${formatSelectedOptions(item.selectedOptions)}</td>
+      <td style="padding: 10px 16px; border-bottom: 1px solid #f0f0f0; font-size: 14px;">${item.name}${formatSelectedOptions(item.selectedOptions, currency)}</td>
       <td style="padding: 10px 16px; border-bottom: 1px solid #f0f0f0; text-align: center; font-size: 14px;">${item.quantity}</td>
-      <td style="padding: 10px 16px; border-bottom: 1px solid #f0f0f0; text-align: right; font-size: 14px;">&#8377;${(Number(item.price) * Number(item.quantity)).toFixed(2)}</td>
+      <td style="padding: 10px 16px; border-bottom: 1px solid #f0f0f0; text-align: right; font-size: 14px;">${formatCurrencyHtml(Number(item.price) * Number(item.quantity), currency)}</td>
     </tr>
   `).join("");
   const shippingAddress = typeof order.shipping_address === "string" ? JSON.parse(order.shipping_address) : order.shipping_address || order.shippingAddress;
@@ -2545,8 +2574,8 @@ function buildOwnerNotificationEmail(order, brandName) {
           <div style="display: flex; gap: 16px; margin-bottom: 20px;">
             <div style="padding: 12px 16px; background: #f0fdf4; border-radius: 8px; flex: 1;">
               <div style="font-size: 12px; color: #059669; text-transform: uppercase; font-weight: 600;">Total Amount</div>
-              <div style="font-size: 22px; font-weight: 700; color: #0f172a;">&#8377;${Number(order.total).toFixed(2)}</div>
-              ${Number(order.discount || 0) > 0 ? `<div style="font-size: 12px; color: #16a34a; margin-top: 4px;">Coupon${order.coupon_code ? ` (${order.coupon_code})` : ""}: -&#8377;${Number(order.discount).toFixed(2)} off</div>` : ""}
+              <div style="font-size: 22px; font-weight: 700; color: #0f172a;">${formatCurrencyHtml(order.total, currency)}</div>
+              ${Number(order.discount || 0) > 0 ? `<div style="font-size: 12px; color: #16a34a; margin-top: 4px;">Coupon${order.coupon_code ? ` (${order.coupon_code})` : ""}: -${formatCurrencyHtml(order.discount, currency)} off</div>` : ""}
             </div>
           </div>
 
@@ -2590,7 +2619,7 @@ function buildOwnerNotificationEmail(order, brandName) {
   const text = `New Order Received!
 
 Order #${order.order_number || order.orderNumber}
-Total: Rs.${Number(order.total).toFixed(2)}
+Total: ${formatCurrency(order.total, currency)}
 Customer: ${order.customer_name || ""}
 Phone: ${order.customer_phone || ""}
 Payment: ${order.payment_method === "cod" ? "Cash on Delivery" : "Online Payment"}`;
@@ -5321,6 +5350,7 @@ async function updateOrderStatus(request, env, user, orderId) {
           } catch (e) {
           }
           const ownerEmail = cancelSettings.email || cancelSettings.ownerEmail || cancelConfig.email;
+          const cancelCurrency = cancelSettings.defaultCurrency || "INR";
           const emailOrder = {
             order_number: fullOrder.order_number,
             customer_name: fullOrder.customer_name,
@@ -5331,11 +5361,11 @@ async function updateOrderStatus(request, env, user, orderId) {
           };
           const emailJobs = [];
           if (fullOrder.customer_email) {
-            const { html, text } = buildCancellationCustomerEmail(emailOrder, siteBrandName, cancellationReason, ownerEmail);
+            const { html, text } = buildCancellationCustomerEmail(emailOrder, siteBrandName, cancellationReason, ownerEmail, cancelCurrency);
             emailJobs.push(sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been cancelled`, html, text).catch((e) => console.error("Cancellation customer email error:", e)));
           }
           if (ownerEmail) {
-            const { html, text } = buildCancellationOwnerEmail(emailOrder, siteBrandName, cancellationReason);
+            const { html, text } = buildCancellationOwnerEmail(emailOrder, siteBrandName, cancellationReason, cancelCurrency);
             emailJobs.push(sendEmail(env, ownerEmail, `Order #${fullOrder.order_number} cancelled - ${siteBrandName}`, html, text).catch((e) => console.error("Cancellation owner email error:", e)));
           }
           await Promise.all(emailJobs);
@@ -5357,6 +5387,7 @@ async function updateOrderStatus(request, env, user, orderId) {
           } catch (e) {
           }
           const ownerEmail = deliverySettings.email || deliverySettings.ownerEmail || deliveryConfig.email;
+          const deliveryCurrency = deliverySettings.defaultCurrency || "INR";
           const emailOrder = {
             order_number: fullOrder.order_number,
             customer_name: fullOrder.customer_name,
@@ -5369,7 +5400,7 @@ async function updateOrderStatus(request, env, user, orderId) {
           const emailJobs = [];
           if (fullOrder.customer_email) {
             try {
-              const { html, text } = buildDeliveryCustomerEmail(emailOrder, siteBrandName, ownerEmail);
+              const { html, text } = buildDeliveryCustomerEmail(emailOrder, siteBrandName, ownerEmail, deliveryCurrency);
               emailJobs.push(sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been delivered!`, html, text).catch((e) => console.error("Delivery customer email send error:", e)));
             } catch (buildErr) {
               console.error("Delivery customer email build error:", buildErr);
@@ -5377,7 +5408,7 @@ async function updateOrderStatus(request, env, user, orderId) {
           }
           if (ownerEmail) {
             try {
-              const { html, text } = buildDeliveryOwnerEmail(emailOrder, siteBrandName);
+              const { html, text } = buildDeliveryOwnerEmail(emailOrder, siteBrandName, deliveryCurrency);
               emailJobs.push(sendEmail(env, ownerEmail, `Order #${fullOrder.order_number} delivered - ${siteBrandName}`, html, text).catch((e) => console.error("Delivery owner email send error:", e)));
             } catch (buildErr) {
               console.error("Delivery owner email build error:", buildErr);
@@ -5616,6 +5647,7 @@ async function sendOrderEmails(env, siteId, orderData) {
     } catch (e) {
     }
     const ownerEmail = siteSettings.email || siteSettings.ownerEmail || config.email;
+    const currency = siteSettings.defaultCurrency || "INR";
     const emailOrder = {
       order_number: orderData.orderNumber,
       items: orderData.processedItems,
@@ -5632,7 +5664,7 @@ async function sendOrderEmails(env, siteId, orderData) {
     const emailJobs = [];
     if (orderData.customerEmail) {
       try {
-        const { html, text } = buildOrderConfirmationEmail(emailOrder, siteBrandName, ownerEmail);
+        const { html, text } = buildOrderConfirmationEmail(emailOrder, siteBrandName, ownerEmail, currency);
         emailJobs.push(
           sendEmail(env, orderData.customerEmail, `Order Confirmed #${orderData.orderNumber} - ${siteBrandName}`, html, text).catch((e) => console.error("Customer email send error:", e))
         );
@@ -5642,7 +5674,7 @@ async function sendOrderEmails(env, siteId, orderData) {
     }
     if (ownerEmail) {
       try {
-        const { html, text } = buildOwnerNotificationEmail(emailOrder, siteBrandName);
+        const { html, text } = buildOwnerNotificationEmail(emailOrder, siteBrandName, currency);
         emailJobs.push(
           sendEmail(env, ownerEmail, `New Order #${orderData.orderNumber} - ${siteBrandName}`, html, text).catch((e) => console.error("Owner email send error:", e))
         );
@@ -12240,7 +12272,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-lLL5te/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-QvaioI/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -12275,7 +12307,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-lLL5te/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-QvaioI/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

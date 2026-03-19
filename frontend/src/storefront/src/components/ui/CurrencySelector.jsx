@@ -9,6 +9,7 @@ const CURRENCIES = [
   { code: 'AED', flag: '🇦🇪', name: 'UAE Dirham' },
   { code: 'CAD', flag: '🇨🇦', name: 'Canadian Dollar' },
   { code: 'AUD', flag: '🇦🇺', name: 'Australian Dollar' },
+  { code: 'SAR', flag: '🇸🇦', name: 'Saudi Riyal' },
 ];
 
 export default function CurrencySelector() {
