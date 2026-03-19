@@ -52,7 +52,7 @@
     justify-content: space-between;
     padding: 10px 15px;
     width: 100%;
-    height: 65px;
+    min-height: 65px;
     background: #f8f8f5;
     box-sizing: border-box;
 }
@@ -76,8 +76,6 @@
     text-shadow: none;
     flex-shrink: 0;
     max-width: 40%;
-    height: 100%;
-    overflow: hidden;
 }
 
 .brand-text {
@@ -322,7 +320,7 @@
 
 @media (min-width: 992px) {
     .nav-container {
-        height: 75px;
+        min-height: 75px;
         padding: 10px 20px;
     }
     .hamburger { display: none !important; }
