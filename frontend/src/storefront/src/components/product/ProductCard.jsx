@@ -78,24 +78,6 @@ export default function ProductCard({ product, variant = 'grid', onWishlistToggl
               No image
             </div>
           )}
-          {product.compare_price && product.compare_price > product.price && (
-            <div
-              className="product-badge"
-              style={{
-                position: 'absolute',
-                top: '10px',
-                left: '10px',
-                background: '#e53e3e',
-                color: '#fff',
-                padding: '4px 10px',
-                fontSize: '11px',
-                fontWeight: 600,
-                borderRadius: '3px',
-              }}
-            >
-              SAVE {Math.round(((product.compare_price - product.price) / product.compare_price) * 100)}%
-            </div>
-          )}
           {product.stock !== undefined && product.stock <= 0 && (
             <div
               style={{
@@ -171,32 +153,6 @@ export default function ProductCard({ product, variant = 'grid', onWishlistToggl
             >
               {formatINR(product.price)}
             </span>
-            {product.compare_price && product.compare_price > product.price && (
-              <>
-                <span
-                  className="original-price"
-                  style={{
-                    fontSize: '13px',
-                    color: '#999',
-                    textDecoration: 'line-through',
-                    marginLeft: '8px',
-                  }}
-                >
-                  {formatINR(product.compare_price)}
-                </span>
-                <span
-                  className="discount-tag"
-                  style={{
-                    fontSize: '12px',
-                    color: '#e53e3e',
-                    marginLeft: '6px',
-                    fontWeight: 600,
-                  }}
-                >
-                  -{Math.round(((product.compare_price - product.price) / product.compare_price) * 100)}%
-                </span>
-              </>
-            )}
           </div>
         </div>
       </Link>
