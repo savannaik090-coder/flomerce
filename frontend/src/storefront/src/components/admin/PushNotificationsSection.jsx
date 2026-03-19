@@ -18,6 +18,7 @@ export default function PushNotificationsSection() {
     message: '',
     imageUrl: '',
     link: '',
+    customLink: false,
     target: 'all',
   });
 
@@ -126,7 +127,7 @@ export default function PushNotificationsSection() {
       if (data?.success) {
         const { sent, failed, total } = data.data || {};
         setSuccess(`Notification sent to ${sent} of ${total} subscriber${total !== 1 ? 's' : ''}${failed > 0 ? ` (${failed} failed)` : ''}.`);
-        setForm({ title: '', message: '', imageUrl: '', link: '', target: 'all' });
+        setForm({ title: '', message: '', imageUrl: '', link: '', customLink: false, target: 'all' });
         loadStats();
       } else {
         setError(data?.message || data?.error || 'Failed to send notification.');
@@ -303,14 +304,54 @@ export default function PushNotificationsSection() {
                 )}
               </div>
               <div style={{ marginBottom: 16 }}>
-                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Link (optional)</label>
-                <input
-                  type="text"
-                  placeholder="/products or https://..."
-                  value={form.link}
-                  onChange={e => setForm(p => ({ ...p, link: e.target.value }))}
-                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box' }}
-                />
+                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Redirect To (optional)</label>
+                <select
+                  value={form.customLink ? '__custom__' : form.link}
+                  onChange={e => {
+                    const val = e.target.value;
+                    if (val === '__custom__') {
+                      setForm(p => ({ ...p, link: '', customLink: true }));
+                    } else {
+                      setForm(p => ({ ...p, link: val, customLink: false }));
+                    }
+                  }}
+                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, background: 'white', boxSizing: 'border-box' }}
+                >
+                  <option value="">None (no redirect)</option>
+                  <optgroup label="Pages">
+                    <option value="/">Home</option>
+                    <option value="/about">About Us</option>
+                    <option value="/contact">Contact</option>
+                    <option value="/cart">Cart</option>
+                    <option value="/wishlist">Wishlist</option>
+                    <option value="/book-appointment">Book Appointment</option>
+                    <option value="/order-track">Track Order</option>
+                    <option value="/profile">My Profile</option>
+                  </optgroup>
+                  {(siteConfig?.categories || []).length > 0 && (
+                    <optgroup label="Categories">
+                      {(siteConfig.categories || []).map(cat => {
+                        const name = typeof cat === 'string' ? cat : cat.name || '';
+                        const slug = typeof cat === 'string'
+                          ? cat.toLowerCase().trim().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-')
+                          : cat.slug || name.toLowerCase().trim().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-');
+                        return <option key={slug} value={`/category/${slug}`}>{name}</option>;
+                      })}
+                    </optgroup>
+                  )}
+                  <optgroup label="Other">
+                    <option value="__custom__">Custom URL...</option>
+                  </optgroup>
+                </select>
+                {form.customLink && (
+                  <input
+                    type="text"
+                    placeholder="https://... or /page-path"
+                    value={form.link}
+                    onChange={e => setForm(p => ({ ...p, link: e.target.value }))}
+                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', marginTop: 8 }}
+                  />
+                )}
               </div>
               <div style={{ marginBottom: 20 }}>
                 <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Target Audience</label>
