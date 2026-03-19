@@ -160,7 +160,7 @@ export default function ProductForm({ product, onSave, onCancel }) {
   function validate() {
     const errs = {};
     if (!form.name.trim()) errs.name = 'Product name is required.';
-    if (!form.price || parseFloat(form.price) < 1) errs.price = 'Price must be at least \u20B91.';
+    if (!form.price || parseFloat(form.price) < 1) errs.price = 'Price must be at least 1.';
     if (form.stock === '' || parseInt(form.stock) < 0) errs.stock = 'Stock quantity is required.';
     if (!form.category_id) errs.category_id = 'Please select a category.';
     if (!form.description.trim()) errs.description = 'Description is required.';
@@ -174,7 +174,13 @@ export default function ProductForm({ product, onSave, onCancel }) {
     setSaving(true);
     setErrors({});
     try {
-      const cleanedOptions = hasAnyOptions(options) ? options : null;
+      const cleanedOptions = hasAnyOptions(options) ? {
+        ...options,
+        pricedOptions: options.pricedOptions.map(opt => ({
+          ...opt,
+          values: opt.values.map(v => ({ ...v, price: Number(v.price) || 0 })),
+        })),
+      } : null;
       const payload = {
         siteId: siteConfig.id,
         name: form.name.trim(),
@@ -327,7 +333,7 @@ export default function ProductForm({ product, onSave, onCancel }) {
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
               <div>
-                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Price (\u20B9) *</label>
+                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Price *</label>
                 <input
                   type="number"
                   min="1"
@@ -656,7 +662,7 @@ export default function ProductForm({ product, onSave, onCancel }) {
             <button
               type="button"
               style={addBtnStyle}
-              onClick={() => setOptions(prev => ({ ...prev, pricedOptions: [...prev.pricedOptions, { label: '', values: [{ name: '', price: 0 }] }] }))}
+              onClick={() => setOptions(prev => ({ ...prev, pricedOptions: [...prev.pricedOptions, { label: '', values: [{ name: '', price: '' }] }] }))}
             >
               <i className="fas fa-plus" style={{ marginRight: 6 }} />Add Priced Option Group
             </button>
@@ -703,19 +709,20 @@ export default function ProductForm({ product, onSave, onCancel }) {
                             style={{ flex: 1, padding: '6px 8px', border: '1px solid #e2e8f0', borderRadius: 4, fontSize: 12, boxSizing: 'border-box' }}
                           />
                           <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                            <span style={{ fontSize: 12, color: '#64748b' }}>+\u20B9</span>
                             <input
                               type="number"
                               min="0"
-                              value={val.price}
+                              value={val.price === 0 || val.price === '' ? '' : val.price}
                               onChange={e => {
                                 const newOpts = [...options.pricedOptions];
                                 const newVals = [...newOpts[gIdx].values];
-                                newVals[vIdx] = { ...newVals[vIdx], price: parseFloat(e.target.value) || 0 };
+                                const raw = e.target.value;
+                                newVals[vIdx] = { ...newVals[vIdx], price: raw === '' ? '' : parseFloat(raw) || 0 };
                                 newOpts[gIdx] = { ...newOpts[gIdx], values: newVals };
                                 setOptions(prev => ({ ...prev, pricedOptions: newOpts }));
                               }}
-                              style={{ width: 70, padding: '6px 8px', border: '1px solid #e2e8f0', borderRadius: 4, fontSize: 12, boxSizing: 'border-box' }}
+                              placeholder="Price"
+                              style={{ width: 80, padding: '6px 8px', border: '1px solid #e2e8f0', borderRadius: 4, fontSize: 12, boxSizing: 'border-box' }}
                             />
                           </div>
                           {opt.values.length > 1 && (
@@ -731,7 +738,7 @@ export default function ProductForm({ product, onSave, onCancel }) {
                       ))}
                       <button type="button" onClick={() => {
                         const newOpts = [...options.pricedOptions];
-                        newOpts[gIdx] = { ...newOpts[gIdx], values: [...newOpts[gIdx].values, { name: '', price: 0 }] };
+                        newOpts[gIdx] = { ...newOpts[gIdx], values: [...newOpts[gIdx].values, { name: '', price: '' }] };
                         setOptions(prev => ({ ...prev, pricedOptions: newOpts }));
                       }} style={{ ...addBtnStyle, alignSelf: 'flex-start', padding: '4px 10px', fontSize: 11 }}>+ Value</button>
                     </div>

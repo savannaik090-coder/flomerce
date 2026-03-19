@@ -14,7 +14,7 @@ import '../styles/product-detail.css';
 const POLICY_DEFAULTS = {
   jewellery: {
     shippingRegions: 'We ship across India and select international destinations',
-    shippingCharges: 'Free shipping on orders above \u20B92,000. Standard shipping \u20B999 for orders below \u20B92,000',
+    shippingCharges: 'Free shipping on orders above Rs.2,000. Standard shipping Rs.99 for orders below Rs.2,000',
     shippingDeliveryTime: '5-7 business days for domestic orders. 10-15 business days for international orders',
     shippingTracking: 'Real-time tracking via SMS and email once your order is dispatched',
     returnPolicy: '7-day return policy for unused and undamaged items in original packaging. Custom or personalized jewellery is non-returnable',
@@ -26,7 +26,7 @@ const POLICY_DEFAULTS = {
   },
   clothing: {
     shippingRegions: 'We deliver across India with express and standard shipping options',
-    shippingCharges: 'Free shipping on orders above \u20B9999. Standard shipping \u20B979 for orders below \u20B9999',
+    shippingCharges: 'Free shipping on orders above Rs.999. Standard shipping Rs.79 for orders below Rs.999',
     shippingDeliveryTime: '3-5 business days for metro cities. 5-7 business days for other locations',
     shippingTracking: 'Track your order in real-time via SMS, email, and WhatsApp updates',
     returnPolicy: '15-day easy return and exchange policy for unused items with original tags attached',
@@ -38,7 +38,7 @@ const POLICY_DEFAULTS = {
   },
   electronics: {
     shippingRegions: 'Pan-India delivery available. Select products eligible for international shipping',
-    shippingCharges: 'Free shipping on all orders above \u20B91,500. Flat \u20B9149 for smaller orders',
+    shippingCharges: 'Free shipping on all orders above Rs.1,500. Flat Rs.149 for smaller orders',
     shippingDeliveryTime: '2-4 business days for metros. 5-7 business days for other pin codes',
     shippingTracking: 'Real-time order tracking via our website, SMS, and email notifications',
     returnPolicy: '7-day replacement policy for manufacturing defects. No return on opened software or accessories',
@@ -52,7 +52,7 @@ const POLICY_DEFAULTS = {
 
 const POLICY_FALLBACK = {
   shippingRegions: 'We ship across India and select international destinations',
-  shippingCharges: 'Free shipping on orders above \u20B91,500. Standard shipping charges apply for smaller orders',
+  shippingCharges: 'Free shipping on orders above Rs.1,500. Standard shipping charges apply for smaller orders',
   shippingDeliveryTime: '5-7 business days for standard delivery. Express delivery available in select cities',
   shippingTracking: 'Real-time tracking updates via SMS and email after dispatch',
   returnPolicy: '7-day return policy for unused items in original packaging with tags intact',
@@ -378,7 +378,7 @@ export default function ProductDetailPage() {
                       onClick={() => { setSelectedPricedOptions(prev => ({ ...prev, [opt.label]: { name: val.name, price: val.price } })); setOptionError(null); }}
                     >
                       {val.name}
-                      {Number(val.price) > 0 && <span className="product-option-price-badge">+{formatINR(val.price)}</span>}
+                      {Number(val.price) > 0 && <span className="product-option-price-badge">{formatINR(val.price)}</span>}
                     </button>
                   ))}
                 </div>
