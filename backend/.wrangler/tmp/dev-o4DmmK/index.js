@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-WLE5t9/checked-fetch.js
+// .wrangler/tmp/bundle-P2RZOu/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-WLE5t9/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-P2RZOu/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-WLE5t9/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-P2RZOu/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-WLE5t9/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-P2RZOu/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -2116,12 +2116,12 @@ var init_site_admin_worker = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-WLE5t9/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-P2RZOu/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-WLE5t9/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-P2RZOu/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -4643,8 +4643,19 @@ async function handleStats(request, env) {
 __name(handleStats, "handleStats");
 async function handleSend(request, env) {
   try {
+    let toAbsoluteUrl = function(url) {
+      if (!url)
+        return null;
+      url = url.trim();
+      if (/^https?:\/\//i.test(url))
+        return url;
+      if (url.startsWith("//"))
+        return "https:" + url;
+      return siteOrigin + (url.startsWith("/") ? url : "/" + url);
+    };
+    __name(toAbsoluteUrl, "toAbsoluteUrl");
     const body = await request.json();
-    const { siteId, title, message, imageUrl, link, target } = body;
+    const { siteId, title, message, imageUrl, link, target, buttonLabel, buttonLink } = body;
     if (!siteId || !title || !message) {
       return errorResponse("siteId, title, and message are required", 400);
     }
@@ -4659,6 +4670,9 @@ async function handleSend(request, env) {
     }
     const db = await resolveSiteDBById(env, siteId);
     const siteIcon = await getSiteIcon(env, siteId);
+    const site = await env.DB.prepare("SELECT subdomain, custom_domain FROM sites WHERE id = ?").bind(siteId).first();
+    const domain = env.DOMAIN || "fluxe.in";
+    const siteOrigin = site?.custom_domain ? `https://${site.custom_domain}` : `https://${site?.subdomain || "store"}.${domain}`;
     let query = "SELECT endpoint, p256dh, auth FROM notifications WHERE site_id = ? AND is_active = 1";
     const params = [siteId];
     if (target === "loggedin") {
@@ -4671,11 +4685,19 @@ async function handleSend(request, env) {
     if (subscriptions.length === 0) {
       return jsonResponse({ success: true, data: { sent: 0, failed: 0, message: "No subscribers found" } });
     }
-    const payload = { title, body: message, icon: siteIcon || "/icon-192.png", badge: siteIcon || "/badge-72.png" };
+    const iconUrl = toAbsoluteUrl(siteIcon) || toAbsoluteUrl("/icon-192.png");
+    const payload = { title, body: message, icon: iconUrl, badge: iconUrl };
     if (imageUrl)
-      payload.image = imageUrl;
+      payload.image = toAbsoluteUrl(imageUrl);
     if (link)
       payload.data = { url: link };
+    if (buttonLabel && buttonLink) {
+      payload.actions = [{ action: "cta", title: buttonLabel }];
+      payload.data = payload.data || {};
+      payload.data.actionUrls = { cta: buttonLink };
+      if (!payload.data.url)
+        payload.data.url = buttonLink;
+    }
     let sent = 0;
     let failed = 0;
     const expiredEndpoints = [];
@@ -13110,7 +13132,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-WLE5t9/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-P2RZOu/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -13145,7 +13167,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-WLE5t9/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-P2RZOu/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

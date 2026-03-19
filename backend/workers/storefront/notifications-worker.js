@@ -148,7 +148,7 @@ async function handleStats(request, env) {
 async function handleSend(request, env) {
   try {
     const body = await request.json();
-    const { siteId, title, message, imageUrl, link, target } = body;
+    const { siteId, title, message, imageUrl, link, target, buttonLabel, buttonLink } = body;
 
     if (!siteId || !title || !message) {
       return errorResponse('siteId, title, and message are required', 400);
@@ -168,6 +168,20 @@ async function handleSend(request, env) {
     const db = await resolveSiteDBById(env, siteId);
     const siteIcon = await getSiteIcon(env, siteId);
 
+    const site = await env.DB.prepare('SELECT subdomain, custom_domain FROM sites WHERE id = ?').bind(siteId).first();
+    const domain = env.DOMAIN || 'fluxe.in';
+    const siteOrigin = site?.custom_domain
+      ? `https://${site.custom_domain}`
+      : `https://${site?.subdomain || 'store'}.${domain}`;
+
+    function toAbsoluteUrl(url) {
+      if (!url) return null;
+      url = url.trim();
+      if (/^https?:\/\//i.test(url)) return url;
+      if (url.startsWith('//')) return 'https:' + url;
+      return siteOrigin + (url.startsWith('/') ? url : '/' + url);
+    }
+
     let query = 'SELECT endpoint, p256dh, auth FROM notifications WHERE site_id = ? AND is_active = 1';
     const params = [siteId];
 
@@ -184,9 +198,17 @@ async function handleSend(request, env) {
       return jsonResponse({ success: true, data: { sent: 0, failed: 0, message: 'No subscribers found' } });
     }
 
-    const payload = { title, body: message, icon: siteIcon || '/icon-192.png', badge: siteIcon || '/badge-72.png' };
-    if (imageUrl) payload.image = imageUrl;
+    const iconUrl = toAbsoluteUrl(siteIcon) || toAbsoluteUrl('/icon-192.png');
+    const payload = { title, body: message, icon: iconUrl, badge: iconUrl };
+    if (imageUrl) payload.image = toAbsoluteUrl(imageUrl);
     if (link) payload.data = { url: link };
+
+    if (buttonLabel && buttonLink) {
+      payload.actions = [{ action: 'cta', title: buttonLabel }];
+      payload.data = payload.data || {};
+      payload.data.actionUrls = { cta: buttonLink };
+      if (!payload.data.url) payload.data.url = buttonLink;
+    }
 
     let sent = 0;
     let failed = 0;

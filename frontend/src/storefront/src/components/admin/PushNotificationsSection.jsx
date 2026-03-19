@@ -19,6 +19,9 @@ export default function PushNotificationsSection() {
     imageUrl: '',
     link: '',
     customLink: false,
+    buttonLabel: '',
+    buttonLink: '',
+    buttonCustomLink: false,
     target: 'all',
   });
 
@@ -112,22 +115,27 @@ export default function PushNotificationsSection() {
     setError('');
     setSuccess('');
     try {
+      const sendBody = {
+        siteId: siteConfig.id,
+        title: form.title,
+        message: form.message,
+        imageUrl: form.imageUrl || undefined,
+        link: form.link || undefined,
+        target: form.target,
+      };
+      if (form.buttonLabel && form.buttonLink) {
+        sendBody.buttonLabel = form.buttonLabel;
+        sendBody.buttonLink = form.buttonLink;
+      }
       const data = await apiRequest('/api/notifications/send', {
         method: 'POST',
-        body: JSON.stringify({
-          siteId: siteConfig.id,
-          title: form.title,
-          message: form.message,
-          imageUrl: form.imageUrl || undefined,
-          link: form.link || undefined,
-          target: form.target,
-        }),
+        body: JSON.stringify(sendBody),
       });
 
       if (data?.success) {
         const { sent, failed, total } = data.data || {};
         setSuccess(`Notification sent to ${sent} of ${total} subscriber${total !== 1 ? 's' : ''}${failed > 0 ? ` (${failed} failed)` : ''}.`);
-        setForm({ title: '', message: '', imageUrl: '', link: '', customLink: false, target: 'all' });
+        setForm({ title: '', message: '', imageUrl: '', link: '', customLink: false, buttonLabel: '', buttonLink: '', buttonCustomLink: false, target: 'all' });
         loadStats();
       } else {
         setError(data?.message || data?.error || 'Failed to send notification.');
@@ -161,6 +169,63 @@ export default function PushNotificationsSection() {
   }
 
   const isConfigured = !!siteConfig?.vapidPublicKey;
+
+  const categories = siteConfig?.categories || [];
+
+  function renderRedirectSelect(label, value, isCustom, valueKey, customKey) {
+    return (
+      <div style={{ marginBottom: 16 }}>
+        <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>{label}</label>
+        <select
+          value={isCustom ? '__custom__' : value}
+          onChange={e => {
+            const val = e.target.value;
+            if (val === '__custom__') {
+              setForm(p => ({ ...p, [valueKey]: '', [customKey]: true }));
+            } else {
+              setForm(p => ({ ...p, [valueKey]: val, [customKey]: false }));
+            }
+          }}
+          style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, background: 'white', boxSizing: 'border-box' }}
+        >
+          <option value="">None (no redirect)</option>
+          <optgroup label="Pages">
+            <option value="/">Home</option>
+            <option value="/about">About Us</option>
+            <option value="/contact">Contact</option>
+            <option value="/cart">Cart</option>
+            <option value="/wishlist">Wishlist</option>
+            <option value="/book-appointment">Book Appointment</option>
+            <option value="/order-track">Track Order</option>
+            <option value="/profile">My Profile</option>
+          </optgroup>
+          {categories.length > 0 && (
+            <optgroup label="Categories">
+              {categories.map(cat => {
+                const name = typeof cat === 'string' ? cat : cat.name || '';
+                const slug = typeof cat === 'string'
+                  ? cat.toLowerCase().trim().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-')
+                  : cat.slug || name.toLowerCase().trim().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-');
+                return <option key={slug} value={`/category/${slug}`}>{name}</option>;
+              })}
+            </optgroup>
+          )}
+          <optgroup label="Other">
+            <option value="__custom__">Custom URL...</option>
+          </optgroup>
+        </select>
+        {isCustom && (
+          <input
+            type="text"
+            placeholder="https://... or /page-path"
+            value={value}
+            onChange={e => setForm(p => ({ ...p, [valueKey]: e.target.value }))}
+            style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', marginTop: 8 }}
+          />
+        )}
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -303,55 +368,25 @@ export default function PushNotificationsSection() {
                   </button>
                 )}
               </div>
-              <div style={{ marginBottom: 16 }}>
-                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Redirect To (optional)</label>
-                <select
-                  value={form.customLink ? '__custom__' : form.link}
-                  onChange={e => {
-                    const val = e.target.value;
-                    if (val === '__custom__') {
-                      setForm(p => ({ ...p, link: '', customLink: true }));
-                    } else {
-                      setForm(p => ({ ...p, link: val, customLink: false }));
-                    }
-                  }}
-                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, background: 'white', boxSizing: 'border-box' }}
-                >
-                  <option value="">None (no redirect)</option>
-                  <optgroup label="Pages">
-                    <option value="/">Home</option>
-                    <option value="/about">About Us</option>
-                    <option value="/contact">Contact</option>
-                    <option value="/cart">Cart</option>
-                    <option value="/wishlist">Wishlist</option>
-                    <option value="/book-appointment">Book Appointment</option>
-                    <option value="/order-track">Track Order</option>
-                    <option value="/profile">My Profile</option>
-                  </optgroup>
-                  {(siteConfig?.categories || []).length > 0 && (
-                    <optgroup label="Categories">
-                      {(siteConfig.categories || []).map(cat => {
-                        const name = typeof cat === 'string' ? cat : cat.name || '';
-                        const slug = typeof cat === 'string'
-                          ? cat.toLowerCase().trim().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-')
-                          : cat.slug || name.toLowerCase().trim().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-');
-                        return <option key={slug} value={`/category/${slug}`}>{name}</option>;
-                      })}
-                    </optgroup>
-                  )}
-                  <optgroup label="Other">
-                    <option value="__custom__">Custom URL...</option>
-                  </optgroup>
-                </select>
-                {form.customLink && (
+              {renderRedirectSelect('Redirect To (optional)', form.link, form.customLink, 'link', 'customLink')}
+              <div style={{ marginBottom: 16, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: 16 }}>
+                <label style={{ display: 'block', fontWeight: 600, marginBottom: 10, fontSize: 13 }}>
+                  <i className="fas fa-mouse-pointer" style={{ marginRight: 6, color: '#64748b' }} />
+                  Action Button (optional)
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: form.buttonLabel ? 10 : 0 }}>
                   <input
                     type="text"
-                    placeholder="https://... or /page-path"
-                    value={form.link}
-                    onChange={e => setForm(p => ({ ...p, link: e.target.value }))}
-                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', marginTop: 8 }}
+                    placeholder="Button label (e.g. Shop Now)"
+                    value={form.buttonLabel}
+                    onChange={e => setForm(p => ({ ...p, buttonLabel: e.target.value }))}
+                    style={{ padding: '9px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, boxSizing: 'border-box' }}
                   />
-                )}
+                  <div style={{ fontSize: 11, color: '#94a3b8', display: 'flex', alignItems: 'center' }}>
+                    Shows a clickable button on the notification
+                  </div>
+                </div>
+                {form.buttonLabel && renderRedirectSelect('Button redirects to', form.buttonLink, form.buttonCustomLink, 'buttonLink', 'buttonCustomLink')}
               </div>
               <div style={{ marginBottom: 20 }}>
                 <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Target Audience</label>

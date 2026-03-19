@@ -19,13 +19,17 @@ self.addEventListener('push', (event) => {
   const title = data.title || 'Notification';
   const options = {
     body: data.body || data.message || '',
-    icon: data.icon || '/icon-192.png',
-    badge: data.badge || '/badge-72.png',
+    icon: data.icon || undefined,
+    badge: data.badge || undefined,
     image: data.image || undefined,
     data: data.data || {},
     vibrate: [200, 100, 200],
     requireInteraction: false,
   };
+
+  if (data.actions && Array.isArray(data.actions)) {
+    options.actions = data.actions;
+  }
 
   if (data.data?.url) {
     options.data.url = data.data.url;
@@ -37,8 +41,19 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
 
-  const url = event.notification.data?.url;
+  let url = event.notification.data?.url;
+
+  if (event.action && event.notification.data?.actionUrls) {
+    url = event.notification.data.actionUrls[event.action] || url;
+  }
+
   if (!url) return;
+
+  try {
+    url = new URL(url, self.location.origin).href;
+  } catch (e) {
+    return;
+  }
 
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
