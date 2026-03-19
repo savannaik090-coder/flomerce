@@ -125,7 +125,7 @@ async function getUserSites(env, user) {
           };
         } else {
           const sub = await env.DB.prepare(
-            `SELECT plan, status, billing_cycle, current_period_start, current_period_end FROM subscriptions WHERE site_id = ? AND status != 'enterprise_override' ORDER BY created_at DESC LIMIT 1`
+            `SELECT plan, status, billing_cycle, current_period_start, current_period_end, razorpay_subscription_id FROM subscriptions WHERE site_id = ? AND status != 'enterprise_override' ORDER BY created_at DESC LIMIT 1`
           ).bind(site.id).first();
           if (sub) {
             let subStatus = sub.status;
@@ -138,6 +138,7 @@ async function getUserSites(env, user) {
               billingCycle: sub.billing_cycle,
               periodStart: sub.current_period_start,
               periodEnd: sub.current_period_end,
+              hasRazorpay: !!sub.razorpay_subscription_id,
             };
           } else if (site.subscription_plan && site.subscription_expires_at) {
             const isExpired = new Date(site.subscription_expires_at) < new Date();

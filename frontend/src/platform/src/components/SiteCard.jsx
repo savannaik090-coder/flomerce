@@ -5,11 +5,15 @@ export default function SiteCard({ site, onManage, subscriptionInfo }) {
   const hasCustomDomain = site.custom_domain && site.domain_status === 'verified';
   const customDomainUrl = hasCustomDomain ? `https://${site.custom_domain}` : null;
 
-  const sub = subscriptionInfo || { plan: null, status: 'none', isActive: false, isExpired: false };
+  const sub = subscriptionInfo || { plan: null, status: 'none', isActive: false, isExpired: false, isCancelled: false };
 
   const isEnterprise = sub.plan === 'enterprise';
 
   const getStatusBadge = () => {
+    if (sub.isCancelled && sub.isActive) {
+      const label = sub.plan ? sub.plan.charAt(0).toUpperCase() + sub.plan.slice(1) + ' - Cancelling' : 'Cancelling';
+      return { text: label, bg: '#fef3c7', color: '#92400e' };
+    }
     if (sub.isActive) {
       if (isEnterprise) return { text: 'Enterprise', bg: '#ede9fe', color: '#5b21b6' };
       const label = sub.plan === 'trial' ? 'Trial' : (sub.plan ? sub.plan.charAt(0).toUpperCase() + sub.plan.slice(1) : 'Active');
@@ -41,8 +45,8 @@ export default function SiteCard({ site, onManage, subscriptionInfo }) {
         <span style={{ marginLeft: 'auto', background: badge.bg, color: badge.color, padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>{badge.text}</span>
       </div>
       {sub.isActive && sub.periodEnd && !isEnterprise && (
-        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.75rem', margin: '0 0 0.75rem 0' }}>
-          {sub.plan === 'trial' ? 'Trial ends' : 'Renews'}: {new Date(sub.periodEnd).toLocaleDateString()}
+        <p style={{ fontSize: '0.75rem', color: sub.isCancelled ? '#92400e' : 'var(--text-muted)', marginBottom: '0.75rem', margin: '0 0 0.75rem 0' }}>
+          {sub.isCancelled ? 'Ends' : sub.plan === 'trial' ? 'Trial ends' : 'Renews'}: {new Date(sub.periodEnd).toLocaleDateString()}
         </p>
       )}
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>

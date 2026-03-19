@@ -4,6 +4,7 @@ import { listAllSiteDatabases, getDatabaseSize, deleteDatabase, createDatabase, 
 import { getSiteSchemaStatements } from '../../utils/site-schema.js';
 import { reconcileShard, estimateRowBytes, trackD1Write, getSiteUsage } from '../../utils/usage-tracker.js';
 import { resolveSiteDBById } from '../../utils/site-db.js';
+import { cancelRazorpaySubscription } from './payments-worker.js';
 
 const ADMIN_EMAILS = [
   'savannaik090@gmail.com',
@@ -1087,6 +1088,17 @@ async function assignEnterpriseSite(request, env, user) {
     const site = await env.DB.prepare('SELECT id, subdomain, brand_name FROM sites WHERE id = ?').bind(siteId).first();
     if (!site) return errorResponse('Site not found', 404);
 
+    const activeSub = await env.DB.prepare(
+      `SELECT id, razorpay_subscription_id FROM subscriptions WHERE site_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1`
+    ).bind(siteId).first();
+
+    if (activeSub?.razorpay_subscription_id) {
+      const razorpayCancelled = await cancelRazorpaySubscription(env, activeSub.razorpay_subscription_id);
+      if (!razorpayCancelled) {
+        return errorResponse('Failed to cancel existing Razorpay subscription. Cannot assign enterprise until recurring billing is stopped. Please try again or cancel the subscription manually in the Razorpay dashboard first.', 500);
+      }
+    }
+
     await env.DB.prepare(`
       INSERT INTO enterprise_sites (site_id, assigned_at, assigned_by, notes)
       VALUES (?, datetime('now'), ?, ?)
@@ -1097,11 +1109,11 @@ async function assignEnterpriseSite(request, env, user) {
       `UPDATE sites SET subscription_plan = 'enterprise', subscription_expires_at = '2099-12-31T23:59:59', is_active = 1, updated_at = datetime('now') WHERE id = ?`
     ).bind(siteId).run();
 
-    try {
+    if (activeSub) {
       await env.DB.prepare(
         `UPDATE subscriptions SET status = 'enterprise_override', updated_at = datetime('now') WHERE site_id = ? AND status = 'active'`
       ).bind(siteId).run();
-    } catch (e) {}
+    }
 
     return successResponse({ siteId, subdomain: site.subdomain }, 'Site assigned as enterprise');
   } catch (error) {

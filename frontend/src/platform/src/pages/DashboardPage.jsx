@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { getUserSites, deleteSite, createSite } from '../services/siteService.js';
-import { getUserProfile } from '../services/paymentService.js';
+import { getUserProfile, cancelSubscription } from '../services/paymentService.js';
 import SiteCard from '../components/SiteCard.jsx';
 import SiteCreationWizard from '../components/SiteCreationWizard.jsx';
 import PlanSelector from '../components/PlanSelector.jsx';
@@ -37,6 +37,8 @@ export default function DashboardPage() {
   const [deleteModal, setDeleteModal] = useState(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [cancellingSubscription, setCancellingSubscription] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(null);
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
@@ -154,6 +156,20 @@ export default function DashboardPage() {
       alert('Failed to update overage setting. Please try again.');
     }
   }, [loadSiteUsage]);
+
+  const handleCancelSubscription = async (siteId) => {
+    setCancellingSubscription(true);
+    try {
+      await cancelSubscription(siteId);
+      setShowCancelModal(null);
+      await loadSites();
+      await loadProfile();
+    } catch (e) {
+      alert(e.message || 'Failed to cancel subscription. Please try again.');
+    } finally {
+      setCancellingSubscription(false);
+    }
+  };
 
   const handleBillingSite = (siteId) => {
     setBillingSiteId(siteId);
@@ -338,24 +354,29 @@ export default function DashboardPage() {
     const plan = sub.plan || site.subscription_plan || null;
     const rawStatus = sub.status || 'none';
     const periodEnd = sub.periodEnd || site.subscription_expires_at || null;
+    const hasRazorpay = sub.hasRazorpay || false;
 
     if (plan === 'enterprise') {
-      return { plan: 'enterprise', status: 'active', periodEnd: null, isActive: true, isExpired: false };
+      return { plan: 'enterprise', status: 'active', periodEnd: null, isActive: true, isExpired: false, isCancelled: false, hasRazorpay: false };
+    }
+
+    if (rawStatus === 'cancelled' && periodEnd && new Date(periodEnd) > new Date()) {
+      return { plan, status: 'cancelled', periodEnd, isActive: true, isExpired: false, isCancelled: true, hasRazorpay };
     }
 
     if (plan && rawStatus === 'active' && periodEnd && new Date(periodEnd) > new Date()) {
-      return { plan, status: 'active', periodEnd, isActive: true, isExpired: false };
+      return { plan, status: 'active', periodEnd, isActive: true, isExpired: false, isCancelled: false, hasRazorpay };
     }
 
     const accountStatus = getAccountSubscriptionStatus();
     if (accountStatus.isTrialActive && (!plan || plan === 'trial' || plan === 'free' || rawStatus !== 'active')) {
-      return { plan: 'trial', status: 'active', periodEnd: accountStatus.trialEndDate, isActive: true, isExpired: false };
+      return { plan: 'trial', status: 'active', periodEnd: accountStatus.trialEndDate, isActive: true, isExpired: false, isCancelled: false, hasRazorpay: false };
     }
 
     const isExpired = rawStatus === 'expired' || rawStatus === 'cancelled' || rawStatus === 'paused' || (rawStatus === 'active' && periodEnd && new Date(periodEnd) < new Date());
     const isActive = rawStatus === 'active' && !isExpired;
     const displayStatus = isExpired ? 'expired' : rawStatus;
-    return { plan, status: displayStatus, periodEnd, isActive, isExpired };
+    return { plan, status: displayStatus, periodEnd, isActive, isExpired, isCancelled: rawStatus === 'cancelled', hasRazorpay };
   };
 
   const formatPlanName = (plan) => {
@@ -804,11 +825,16 @@ export default function DashboardPage() {
                                   <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700 }}>{site.brand_name || site.subdomain}</h2>
                                   <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>https://{site.subdomain}.fluxe.in</p>
                                 </div>
-                                <span className={`plan-status-pill ${subInfo.isActive ? 'status-active' : 'status-expired'}`}>
-                                  {subInfo.isActive ? formatPlanName(subInfo.plan) + ' - Active' : subInfo.plan && subInfo.plan !== 'expired' ? formatPlanName(subInfo.plan) + ' - Expired' : subInfo.plan === 'expired' ? 'Expired' : 'No Subscription'}
+                                <span className={`plan-status-pill ${subInfo.isCancelled ? 'status-cancelled' : subInfo.isActive ? 'status-active' : 'status-expired'}`} style={subInfo.isCancelled ? { background: '#fef3c7', color: '#92400e' } : {}}>
+                                  {subInfo.isCancelled ? formatPlanName(subInfo.plan) + ' - Cancelling' : subInfo.isActive ? formatPlanName(subInfo.plan) + ' - Active' : subInfo.plan && subInfo.plan !== 'expired' ? formatPlanName(subInfo.plan) + ' - Expired' : subInfo.plan === 'expired' ? 'Expired' : 'No Subscription'}
                                 </span>
                               </div>
-                              {subInfo.periodEnd && subInfo.isActive && subInfo.plan !== 'enterprise' && (
+                              {subInfo.isCancelled && subInfo.periodEnd && (
+                                <p style={{ fontSize: '0.875rem', color: '#92400e', margin: '0 0 1rem 0' }}>
+                                  Your plan is cancelled and will expire on {new Date(subInfo.periodEnd).toLocaleDateString()}. You can continue using all features until then.
+                                </p>
+                              )}
+                              {!subInfo.isCancelled && subInfo.periodEnd && subInfo.isActive && subInfo.plan !== 'enterprise' && (
                                 <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: '0 0 1rem 0' }}>
                                   {subInfo.plan === 'trial' ? 'Trial ends' : 'Renews'}: {new Date(subInfo.periodEnd).toLocaleDateString()}
                                 </p>
@@ -819,10 +845,17 @@ export default function DashboardPage() {
                                 </p>
                               )}
                               {subInfo.plan !== 'enterprise' && (
-                              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.75rem' }}>
+                              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.75rem', gap: '0.75rem' }}>
+                                {subInfo.isActive && !subInfo.isCancelled && subInfo.plan !== 'trial' && subInfo.hasRazorpay && (
+                                  <button className="btn btn-outline" style={{ fontSize: '0.875rem', padding: '0.5rem 1.25rem', color: '#ef4444', borderColor: '#fecaca' }} onClick={() => setShowCancelModal(billingSiteId)}>
+                                    Cancel Subscription
+                                  </button>
+                                )}
+                                {!subInfo.isCancelled && (
                                 <button className="btn btn-primary" style={{ fontSize: '0.875rem', padding: '0.5rem 1.25rem' }} onClick={() => { setPlanOverlaySiteId(billingSiteId); setShowPlanOverlayHideTrial(!!profileData?.hadSubscription); setShowPlanOverlay(true); }}>
                                   {subInfo.isActive && subInfo.plan !== 'trial' ? 'Change Plan' : 'Upgrade'}
                                 </button>
+                                )}
                               </div>
                               )}
                             </div>
@@ -844,17 +877,22 @@ export default function DashboardPage() {
                               </div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                                 <div style={{ textAlign: 'right' }}>
-                                  <span className={`plan-status-pill ${subInfo.isActive ? 'status-active' : 'status-expired'}`}>
-                                    {formatPlanName(subInfo.plan)}
+                                  <span className={`plan-status-pill ${subInfo.isCancelled ? 'status-cancelled' : subInfo.isActive ? 'status-active' : 'status-expired'}`} style={subInfo.isCancelled ? { background: '#fef3c7', color: '#92400e' } : {}}>
+                                    {subInfo.isCancelled ? formatPlanName(subInfo.plan) + ' - Cancelling' : formatPlanName(subInfo.plan)}
                                   </span>
-                                  {subInfo.periodEnd && subInfo.isActive && subInfo.plan !== 'enterprise' && (
+                                  {subInfo.isCancelled && subInfo.periodEnd && (
+                                    <p style={{ fontSize: '0.75rem', color: '#92400e', margin: '0.25rem 0 0' }}>
+                                      Ends: {new Date(subInfo.periodEnd).toLocaleDateString()}
+                                    </p>
+                                  )}
+                                  {!subInfo.isCancelled && subInfo.periodEnd && subInfo.isActive && subInfo.plan !== 'enterprise' && (
                                     <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0.25rem 0 0' }}>
                                       {subInfo.plan === 'trial' ? 'Ends' : 'Renews'}: {new Date(subInfo.periodEnd).toLocaleDateString()}
                                     </p>
                                   )}
                                 </div>
                                 <button className="btn btn-primary" style={{ fontSize: '0.8rem', whiteSpace: 'nowrap' }} onClick={() => { setBillingSiteId(site.id); loadSiteUsage(site.id); }}>
-                                  {subInfo.plan === 'enterprise' ? 'View Usage' : subInfo.isExpired || !subInfo.plan ? 'Subscribe' : accountStatus.isTrialActive ? 'Upgrade' : 'Manage Plan'}
+                                  {subInfo.plan === 'enterprise' ? 'View Usage' : subInfo.isExpired || !subInfo.plan ? 'Subscribe' : 'Manage Plan'}
                                 </button>
                               </div>
                             </div>
@@ -1104,6 +1142,29 @@ export default function DashboardPage() {
         />
       )}
 
+      {showCancelModal && (
+        <div className="modal-overlay" onClick={() => !cancellingSubscription && setShowCancelModal(null)}>
+          <div className="modal-content delete-confirm-modal" onClick={e => e.stopPropagation()}>
+            <div className="delete-modal-icon">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+            </div>
+            <h2 className="delete-modal-title">Cancel Subscription</h2>
+            <p className="delete-modal-desc">
+              Are you sure you want to cancel your subscription? You will continue to have access to all features until the end of your current billing period. No further charges will be made.
+            </p>
+            <div className="delete-modal-actions">
+              <button className="btn btn-outline" onClick={() => setShowCancelModal(null)} disabled={cancellingSubscription}>Keep Subscription</button>
+              <button
+                className="btn btn-danger"
+                onClick={() => handleCancelSubscription(showCancelModal)}
+                disabled={cancellingSubscription}
+              >
+                {cancellingSubscription ? 'Cancelling...' : 'Yes, Cancel'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {deleteModal && (
         <div className="modal-overlay" onClick={closeDeleteModal}>
           <div className="modal-content delete-confirm-modal" onClick={e => e.stopPropagation()}>

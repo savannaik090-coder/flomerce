@@ -32,3 +32,10 @@ export async function startFreeTrial() {
     body: JSON.stringify({ plan: 'trial' }),
   });
 }
+
+export async function cancelSubscription(siteId) {
+  return apiRequest('/api/payments/cancel-subscription', {
+    method: 'POST',
+    body: JSON.stringify({ siteId }),
+  });
+}

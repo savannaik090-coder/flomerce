@@ -20,6 +20,8 @@ export async function handlePayments(request, env, path) {
       return verifyPayment(request, env);
     case 'subscription':
       return handleSubscription(request, env);
+    case 'cancel-subscription':
+      return handleCancelSubscription(request, env);
     case 'plans':
       return getPublicPlans(request, env);
     case 'webhook':
@@ -424,6 +426,89 @@ async function handleSubscription(request, env) {
   }
 
   return errorResponse('Method not allowed', 405);
+}
+
+async function handleCancelSubscription(request, env) {
+  if (request.method !== 'POST') return errorResponse('Method not allowed', 405);
+
+  const user = await validateAuth(request, env);
+  if (!user) return errorResponse('Unauthorized', 401);
+
+  try {
+    const { siteId } = await request.json();
+    if (!siteId) return errorResponse('siteId is required', 400);
+
+    const site = await env.DB.prepare(
+      `SELECT id FROM sites WHERE id = ? AND user_id = ?`
+    ).bind(siteId, user.id).first();
+    if (!site) return errorResponse('Site not found or you do not own this site', 403);
+
+    const activeSub = await env.DB.prepare(
+      `SELECT * FROM subscriptions WHERE site_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1`
+    ).bind(siteId).first();
+
+    if (!activeSub) return errorResponse('No active subscription found for this site', 404);
+
+    if (activeSub.plan === 'trial') return errorResponse('Trial subscriptions cannot be cancelled', 400);
+
+    if (activeSub.razorpay_subscription_id) {
+      const cancelled = await cancelRazorpaySubscription(env, activeSub.razorpay_subscription_id);
+      if (!cancelled) {
+        return errorResponse('Failed to cancel subscription with payment provider. Please try again.', 500);
+      }
+    }
+
+    await env.DB.prepare(
+      `UPDATE subscriptions SET status = 'cancelled', cancelled_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`
+    ).bind(activeSub.id).run();
+
+    return successResponse({
+      siteId,
+      plan: activeSub.plan,
+      periodEnd: activeSub.current_period_end,
+    }, 'Subscription cancelled. You can continue using your plan until ' + (activeSub.current_period_end ? new Date(activeSub.current_period_end).toLocaleDateString() : 'the end of your billing period') + '.');
+  } catch (error) {
+    console.error('Cancel subscription error:', error);
+    return errorResponse('Failed to cancel subscription', 500);
+  }
+}
+
+export async function cancelRazorpaySubscription(env, razorpaySubscriptionId) {
+  try {
+    const platformKeyId = await getPlatformRazorpayKeyId(env);
+    const keyId = platformKeyId || env.RAZORPAY_KEY_ID;
+    const keySecret = env.RAZORPAY_KEY_SECRET;
+
+    if (!keyId || !keySecret) {
+      console.error('Razorpay credentials not configured for cancellation');
+      return false;
+    }
+
+    const response = await fetch(`https://api.razorpay.com/v1/subscriptions/${razorpaySubscriptionId}/cancel`, {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Basic ' + btoa(`${keyId}:${keySecret}`),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ cancel_at_cycle_end: 1 }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Razorpay cancel error:', errorText);
+      const errorData = (() => { try { return JSON.parse(errorText); } catch { return null; } })();
+      if (errorData?.error?.code === 'BAD_REQUEST_ERROR' && errorText.includes('already cancelled')) {
+        return true;
+      }
+      return false;
+    }
+
+    console.log('Razorpay subscription cancelled:', razorpaySubscriptionId);
+    return true;
+  } catch (error) {
+    console.error('cancelRazorpaySubscription error:', error);
+    return false;
+  }
 }
 
 async function getUserSubscription(env, user) {

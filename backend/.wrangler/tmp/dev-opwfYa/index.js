@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-xi2zuN/checked-fetch.js
+// .wrangler/tmp/bundle-5iiFie/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-xi2zuN/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-5iiFie/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-xi2zuN/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-5iiFie/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-xi2zuN/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-5iiFie/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -2098,12 +2098,12 @@ var init_site_admin_worker = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-xi2zuN/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-5iiFie/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-xi2zuN/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-5iiFie/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -3559,7 +3559,7 @@ async function getUserSites(env, user) {
           };
         } else {
           const sub = await env.DB.prepare(
-            `SELECT plan, status, billing_cycle, current_period_start, current_period_end FROM subscriptions WHERE site_id = ? AND status != 'enterprise_override' ORDER BY created_at DESC LIMIT 1`
+            `SELECT plan, status, billing_cycle, current_period_start, current_period_end, razorpay_subscription_id FROM subscriptions WHERE site_id = ? AND status != 'enterprise_override' ORDER BY created_at DESC LIMIT 1`
           ).bind(site.id).first();
           if (sub) {
             let subStatus = sub.status;
@@ -3571,7 +3571,8 @@ async function getUserSites(env, user) {
               status: subStatus,
               billingCycle: sub.billing_cycle,
               periodStart: sub.current_period_start,
-              periodEnd: sub.current_period_end
+              periodEnd: sub.current_period_end,
+              hasRazorpay: !!sub.razorpay_subscription_id
             };
           } else if (site.subscription_plan && site.subscription_expires_at) {
             const isExpired2 = new Date(site.subscription_expires_at) < /* @__PURE__ */ new Date();
@@ -5963,6 +5964,8 @@ async function handlePayments(request, env, path) {
       return verifyPayment(request, env);
     case "subscription":
       return handleSubscription(request, env);
+    case "cancel-subscription":
+      return handleCancelSubscription(request, env);
     case "plans":
       return getPublicPlans(request, env);
     case "webhook":
@@ -6320,6 +6323,88 @@ async function handleSubscription(request, env) {
   return errorResponse("Method not allowed", 405);
 }
 __name(handleSubscription, "handleSubscription");
+async function handleCancelSubscription(request, env) {
+  if (request.method !== "POST")
+    return errorResponse("Method not allowed", 405);
+  const user = await validateAuth(request, env);
+  if (!user)
+    return errorResponse("Unauthorized", 401);
+  try {
+    const { siteId } = await request.json();
+    if (!siteId)
+      return errorResponse("siteId is required", 400);
+    const site = await env.DB.prepare(
+      `SELECT id FROM sites WHERE id = ? AND user_id = ?`
+    ).bind(siteId, user.id).first();
+    if (!site)
+      return errorResponse("Site not found or you do not own this site", 403);
+    const activeSub = await env.DB.prepare(
+      `SELECT * FROM subscriptions WHERE site_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1`
+    ).bind(siteId).first();
+    if (!activeSub)
+      return errorResponse("No active subscription found for this site", 404);
+    if (activeSub.plan === "trial")
+      return errorResponse("Trial subscriptions cannot be cancelled", 400);
+    if (activeSub.razorpay_subscription_id) {
+      const cancelled = await cancelRazorpaySubscription(env, activeSub.razorpay_subscription_id);
+      if (!cancelled) {
+        return errorResponse("Failed to cancel subscription with payment provider. Please try again.", 500);
+      }
+    }
+    await env.DB.prepare(
+      `UPDATE subscriptions SET status = 'cancelled', cancelled_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`
+    ).bind(activeSub.id).run();
+    return successResponse({
+      siteId,
+      plan: activeSub.plan,
+      periodEnd: activeSub.current_period_end
+    }, "Subscription cancelled. You can continue using your plan until " + (activeSub.current_period_end ? new Date(activeSub.current_period_end).toLocaleDateString() : "the end of your billing period") + ".");
+  } catch (error) {
+    console.error("Cancel subscription error:", error);
+    return errorResponse("Failed to cancel subscription", 500);
+  }
+}
+__name(handleCancelSubscription, "handleCancelSubscription");
+async function cancelRazorpaySubscription(env, razorpaySubscriptionId) {
+  try {
+    const platformKeyId = await getPlatformRazorpayKeyId(env);
+    const keyId = platformKeyId || env.RAZORPAY_KEY_ID;
+    const keySecret = env.RAZORPAY_KEY_SECRET;
+    if (!keyId || !keySecret) {
+      console.error("Razorpay credentials not configured for cancellation");
+      return false;
+    }
+    const response = await fetch(`https://api.razorpay.com/v1/subscriptions/${razorpaySubscriptionId}/cancel`, {
+      method: "POST",
+      headers: {
+        "Authorization": "Basic " + btoa(`${keyId}:${keySecret}`),
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ cancel_at_cycle_end: 1 })
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Razorpay cancel error:", errorText);
+      const errorData = (() => {
+        try {
+          return JSON.parse(errorText);
+        } catch {
+          return null;
+        }
+      })();
+      if (errorData?.error?.code === "BAD_REQUEST_ERROR" && errorText.includes("already cancelled")) {
+        return true;
+      }
+      return false;
+    }
+    console.log("Razorpay subscription cancelled:", razorpaySubscriptionId);
+    return true;
+  } catch (error) {
+    console.error("cancelRazorpaySubscription error:", error);
+    return false;
+  }
+}
+__name(cancelRazorpaySubscription, "cancelRazorpaySubscription");
 async function getUserSubscription(env, user) {
   try {
     const subscription = await env.DB.prepare(
@@ -9604,6 +9689,15 @@ async function assignEnterpriseSite(request, env, user) {
     const site = await env.DB.prepare("SELECT id, subdomain, brand_name FROM sites WHERE id = ?").bind(siteId).first();
     if (!site)
       return errorResponse("Site not found", 404);
+    const activeSub = await env.DB.prepare(
+      `SELECT id, razorpay_subscription_id FROM subscriptions WHERE site_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1`
+    ).bind(siteId).first();
+    if (activeSub?.razorpay_subscription_id) {
+      const razorpayCancelled = await cancelRazorpaySubscription(env, activeSub.razorpay_subscription_id);
+      if (!razorpayCancelled) {
+        return errorResponse("Failed to cancel existing Razorpay subscription. Cannot assign enterprise until recurring billing is stopped. Please try again or cancel the subscription manually in the Razorpay dashboard first.", 500);
+      }
+    }
     await env.DB.prepare(`
       INSERT INTO enterprise_sites (site_id, assigned_at, assigned_by, notes)
       VALUES (?, datetime('now'), ?, ?)
@@ -9612,11 +9706,10 @@ async function assignEnterpriseSite(request, env, user) {
     await env.DB.prepare(
       `UPDATE sites SET subscription_plan = 'enterprise', subscription_expires_at = '2099-12-31T23:59:59', is_active = 1, updated_at = datetime('now') WHERE id = ?`
     ).bind(siteId).run();
-    try {
+    if (activeSub) {
       await env.DB.prepare(
         `UPDATE subscriptions SET status = 'enterprise_override', updated_at = datetime('now') WHERE site_id = ? AND status = 'active'`
       ).bind(siteId).run();
-    } catch (e) {
     }
     return successResponse({ siteId, subdomain: site.subdomain }, "Site assigned as enterprise");
   } catch (error) {
@@ -11877,7 +11970,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-xi2zuN/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-5iiFie/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -11912,7 +12005,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-xi2zuN/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-5iiFie/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;
