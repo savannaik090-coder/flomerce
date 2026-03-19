@@ -296,10 +296,10 @@ export default function SettingsSection() {
       const result = await response.json();
       if (response.ok && result.success) {
         setCurrentSubdomain(newSub);
-        setSubdomainMsg('Subdomain renamed successfully! Redirecting to ' + newSub + '.fluxe.in...');
+        setSubdomainMsg('Subdomain renamed successfully!');
         setTimeout(() => {
-          window.location.href = 'https://' + newSub + '.fluxe.in/storefront/admin';
-        }, 1500);
+          window.location.reload();
+        }, 1000);
       } else {
         setSubdomainError(result.error || 'Failed to rename subdomain');
       }
