@@ -3,7 +3,8 @@ import { getAvailablePlans, createSubscription, verifySubscriptionPayment, start
 import { deleteSite } from '../services/siteService.js';
 
 const DURATION_LABELS = { '3months': '3 Months', '6months': '6 Months', yearly: 'Yearly', '3years': '3 Years' };
-const PERIOD_SUFFIX = { '3months': '/3mo', '6months': '/6mo', yearly: '/yr', '3years': '/3yr' };
+const DURATION_MONTHS = { '3months': 3, '6months': 6, yearly: 12, '3years': 36 };
+const DURATION_TEXT = { '3months': '3 months', '6months': '6 months', yearly: '1 year', '3years': '3 years' };
 
 export default function PlanSelector({ siteId: initialSiteId, currentPlan, currentStatus, onUpgraded, isOverlay, hideTrial, onClose, isFirstTime, onCreateSite }) {
   const [duration, setDuration] = useState(null);
@@ -318,10 +319,17 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
             <div key={planGroup.name} className="site-card plan-card" style={{ position: 'relative', ...(planGroup.is_popular ? { borderColor: 'var(--accent)' } : {}) }}>
               {planGroup.is_popular && <span className="popular-badge">POPULAR</span>}
               <h3 style={{ marginBottom: '0.5rem' }}>{planGroup.name}</h3>
-              <p style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '1.5rem' }}>
-                ₹{price}
-                <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', fontWeight: 500 }}>{PERIOD_SUFFIX[duration] || ''}</span>
-              </p>
+              <div style={{ marginBottom: '1.5rem' }}>
+                <p style={{ fontSize: '1.5rem', fontWeight: 800, margin: 0 }}>
+                  ₹{price}
+                  <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', fontWeight: 500 }}> / {DURATION_TEXT[duration] || duration}</span>
+                </p>
+                {DURATION_MONTHS[duration] > 1 && (
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0.25rem 0 0', fontWeight: 500 }}>
+                    (₹{Math.round(price / DURATION_MONTHS[duration])}/month)
+                  </p>
+                )}
+              </div>
               <ul style={{ listStyle: 'none', padding: 0, marginBottom: '2rem', textAlign: 'left', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                 {planGroup.features.map((f, i) => (
                   <li key={i} style={{ marginBottom: '0.5rem' }}>✓ {f}</li>
