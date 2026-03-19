@@ -207,6 +207,10 @@ async function ensurePlansTables(env) {
     await env.DB.prepare(`ALTER TABLE subscription_plans ADD COLUMN plan_tier INTEGER DEFAULT 1`).run();
   } catch (e) {}
 
+  try {
+    await env.DB.prepare(`ALTER TABLE subscription_plans ADD COLUMN original_price REAL DEFAULT NULL`).run();
+  } catch (e) {}
+
   await env.DB.prepare(`
     CREATE TABLE IF NOT EXISTS platform_settings (
       setting_key TEXT PRIMARY KEY,
@@ -257,7 +261,7 @@ async function getPlans(env) {
 
 async function createPlan(request, env) {
   try {
-    const { plan_name, billing_cycle, display_price, razorpay_plan_id, features, is_popular, display_order, plan_tier } = await request.json();
+    const { plan_name, billing_cycle, display_price, original_price, razorpay_plan_id, features, is_popular, display_order, plan_tier } = await request.json();
 
     if (!plan_name || !billing_cycle || display_price === undefined || !razorpay_plan_id) {
       return errorResponse('Plan name, billing cycle, display price, and Razorpay Plan ID are required');
@@ -272,15 +276,22 @@ async function createPlan(request, env) {
       return errorResponse('Billing cycle must be 3months, 6months, yearly, or 3years');
     }
 
+    if (original_price != null && original_price !== '' && original_price !== 0) {
+      const op = parseFloat(original_price);
+      if (!isFinite(op) || op <= 0) return errorResponse('Original price must be a positive number');
+      if (op <= parseFloat(display_price)) return errorResponse('Original price must be greater than the display (discounted) price');
+    }
+
     const id = generateId();
     await env.DB.prepare(
-      `INSERT INTO subscription_plans (id, plan_name, billing_cycle, display_price, razorpay_plan_id, features, is_popular, display_order, plan_tier, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
+      `INSERT INTO subscription_plans (id, plan_name, billing_cycle, display_price, original_price, razorpay_plan_id, features, is_popular, display_order, plan_tier, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
     ).bind(
       id,
       plan_name,
       billing_cycle,
       display_price,
+      original_price || null,
       razorpay_plan_id,
       JSON.stringify(features || []),
       is_popular ? 1 : 0,
@@ -303,13 +314,22 @@ async function updatePlan(request, env, planId) {
     }
 
     const updates = await request.json();
-    const { plan_name, billing_cycle, display_price, razorpay_plan_id, features, is_popular, is_active, display_order, plan_tier } = updates;
+    const { plan_name, billing_cycle, display_price, original_price, razorpay_plan_id, features, is_popular, is_active, display_order, plan_tier } = updates;
+
+    const effectiveOriginal = original_price !== undefined ? original_price : existing.original_price;
+    const effectiveDisplay = display_price ?? existing.display_price;
+    if (effectiveOriginal != null && effectiveOriginal !== '' && effectiveOriginal !== 0) {
+      const op = parseFloat(effectiveOriginal);
+      if (!isFinite(op) || op <= 0) return errorResponse('Original price must be a positive number');
+      if (op <= parseFloat(effectiveDisplay)) return errorResponse('Original price must be greater than the display (discounted) price');
+    }
 
     await env.DB.prepare(
       `UPDATE subscription_plans SET
         plan_name = ?,
         billing_cycle = ?,
         display_price = ?,
+        original_price = ?,
         razorpay_plan_id = ?,
         features = ?,
         is_popular = ?,
@@ -322,6 +342,7 @@ async function updatePlan(request, env, planId) {
       plan_name ?? existing.plan_name,
       billing_cycle ?? existing.billing_cycle,
       display_price ?? existing.display_price,
+      original_price !== undefined ? (original_price || null) : (existing.original_price ?? null),
       razorpay_plan_id ?? existing.razorpay_plan_id,
       features ? JSON.stringify(features) : existing.features,
       is_popular !== undefined ? (is_popular ? 1 : 0) : existing.is_popular,

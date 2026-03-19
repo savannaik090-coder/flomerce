@@ -17,7 +17,7 @@ export default function OwnerAdminPage() {
   const [showPlanForm, setShowPlanForm] = useState(false);
   const [editingPlan, setEditingPlan] = useState(null);
   const [planForm, setPlanForm] = useState({
-    plan_name: '', billing_cycle: '3months', display_price: '', razorpay_plan_id: '', features: '', is_popular: false, display_order: 0, plan_tier: 1
+    plan_name: '', billing_cycle: '3months', display_price: '', original_price: '', razorpay_plan_id: '', features: '', is_popular: false, display_order: 0, plan_tier: 1
   });
 
   const [settings, setSettings] = useState({});
@@ -103,7 +103,7 @@ export default function OwnerAdminPage() {
   };
 
   const resetPlanForm = () => {
-    setPlanForm({ plan_name: '', billing_cycle: '3months', display_price: '', razorpay_plan_id: '', features: '', is_popular: false, display_order: 0, plan_tier: 1 });
+    setPlanForm({ plan_name: '', billing_cycle: '3months', display_price: '', original_price: '', razorpay_plan_id: '', features: '', is_popular: false, display_order: 0, plan_tier: 1 });
     setEditingPlan(null);
     setShowPlanForm(false);
   };
@@ -116,6 +116,7 @@ export default function OwnerAdminPage() {
       const body = {
         ...planForm,
         display_price: parseFloat(planForm.display_price),
+        original_price: planForm.original_price ? parseFloat(planForm.original_price) : null,
         display_order: parseInt(planForm.display_order) || 0,
         plan_tier: parseInt(planForm.plan_tier) || 1,
         features: planForm.features ? planForm.features.split('\n').filter(f => f.trim()) : [],
@@ -138,6 +139,7 @@ export default function OwnerAdminPage() {
       plan_name: plan.plan_name,
       billing_cycle: plan.billing_cycle,
       display_price: plan.display_price,
+      original_price: plan.original_price || '',
       razorpay_plan_id: plan.razorpay_plan_id,
       features: Array.isArray(plan.features) ? plan.features.join('\n') : '',
       is_popular: !!plan.is_popular,
@@ -975,7 +977,12 @@ export default function OwnerAdminPage() {
                     </div>
                     <div className="oa-form-group">
                       <label>Display Price (₹)</label>
-                      <input type="number" step="0.01" value={planForm.display_price} onChange={e => setPlanForm({ ...planForm, display_price: e.target.value })} placeholder="e.g. 99" required />
+                      <input type="number" step="0.01" value={planForm.display_price} onChange={e => setPlanForm({ ...planForm, display_price: e.target.value })} placeholder="e.g. 2100" required />
+                    </div>
+                    <div className="oa-form-group">
+                      <label>Original Price (₹) — optional</label>
+                      <input type="number" step="0.01" value={planForm.original_price} onChange={e => setPlanForm({ ...planForm, original_price: e.target.value })} placeholder="e.g. 2800 (shown as strikethrough)" />
+                      <p style={{ fontSize: '0.7rem', color: '#94a3b8', margin: '0.25rem 0 0' }}>If set, this price is shown crossed out next to the discounted price.</p>
                     </div>
                     <div className="oa-form-group">
                       <label>Razorpay Plan ID</label>
@@ -1036,7 +1043,10 @@ export default function OwnerAdminPage() {
                             </span>
                           </td>
                           <td data-label="Cycle">{p.billing_cycle}</td>
-                          <td data-label="Price">₹{p.display_price}</td>
+                          <td data-label="Price">
+                            {p.original_price ? <><span style={{ textDecoration: 'line-through', color: '#94a3b8', marginRight: '0.4rem' }}>₹{p.original_price}</span></> : null}
+                            ₹{p.display_price}
+                          </td>
                           <td data-label="Plan ID" style={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>{p.razorpay_plan_id}</td>
                           <td data-label="Status">
                             <span className={`oa-badge ${p.is_active ? 'oa-badge-green' : 'oa-badge-red'}`}>
@@ -1069,7 +1079,7 @@ export default function OwnerAdminPage() {
                           </div>
                           <div className="oa-user-card-email">
                             <span className="oa-badge" style={{ background: '#e0e7ff', color: '#3730a3', marginRight: '0.5rem' }}>{TIER_LABELS[p.plan_tier] || `Tier ${p.plan_tier || 1}`}</span>
-                            {p.billing_cycle} - ₹{p.display_price}
+                            {p.billing_cycle} - {p.original_price ? <><span style={{ textDecoration: 'line-through', color: '#94a3b8', marginRight: '0.3rem' }}>₹{p.original_price}</span></> : null}₹{p.display_price}
                           </div>
                           <div className="oa-user-card-email" style={{ fontFamily: 'monospace' }}>{p.razorpay_plan_id}</div>
                         </div>

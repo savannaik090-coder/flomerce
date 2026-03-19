@@ -61,6 +61,8 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
       };
     }
     acc[key].prices[plan.billing_cycle] = plan.display_price;
+    acc[key].original_prices = acc[key].original_prices || {};
+    if (plan.original_price) acc[key].original_prices[plan.billing_cycle] = plan.original_price;
     acc[key].plans[plan.billing_cycle] = plan;
     if (plan.is_popular) acc[key].is_popular = true;
     if (plan.display_order != null && plan.display_order < acc[key].display_order) {
@@ -314,15 +316,27 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
 
         {planList.filter(p => p.plan_tier < 4).map(planGroup => {
           const price = planGroup.prices[duration];
+          const originalPrice = planGroup.original_prices?.[duration];
+          const savingsPercent = originalPrice ? Math.round(((originalPrice - price) / originalPrice) * 100) : 0;
 
           return (
             <div key={planGroup.name} className="site-card plan-card" style={{ position: 'relative', ...(planGroup.is_popular ? { borderColor: 'var(--accent)' } : {}) }}>
               {planGroup.is_popular && <span className="popular-badge">POPULAR</span>}
               <h3 style={{ marginBottom: '0.5rem' }}>{planGroup.name}</h3>
               <div style={{ marginBottom: '1.5rem' }}>
+                {originalPrice ? (
+                  <p style={{ fontSize: '0.95rem', color: '#94a3b8', margin: '0 0 0.15rem', fontWeight: 500 }}>
+                    <span style={{ textDecoration: 'line-through' }}>₹{originalPrice}</span>
+                  </p>
+                ) : null}
                 <p style={{ fontSize: '1.5rem', fontWeight: 800, margin: 0 }}>
                   ₹{price}
                   <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', fontWeight: 500 }}> / {DURATION_TEXT[duration] || duration}</span>
+                  {savingsPercent > 0 && (
+                    <span style={{ fontSize: '0.7rem', background: '#dcfce7', color: '#16a34a', padding: '2px 8px', borderRadius: '12px', marginLeft: '0.5rem', fontWeight: 700 }}>
+                      {savingsPercent}% OFF
+                    </span>
+                  )}
                 </p>
                 {DURATION_MONTHS[duration] > 1 && (
                   <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0.25rem 0 0', fontWeight: 500 }}>

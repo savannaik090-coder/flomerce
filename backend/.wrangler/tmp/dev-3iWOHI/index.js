@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-1Ihfdh/checked-fetch.js
+// .wrangler/tmp/bundle-GGYBte/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-1Ihfdh/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-GGYBte/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-1Ihfdh/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-GGYBte/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-1Ihfdh/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-GGYBte/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -2098,12 +2098,12 @@ var init_site_admin_worker = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-1Ihfdh/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-GGYBte/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-1Ihfdh/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-GGYBte/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -6471,7 +6471,7 @@ async function getPublicPlans(request, env) {
   }
   try {
     const plansResult = await env.DB.prepare(
-      `SELECT id, plan_name, billing_cycle, display_price, features, is_popular, display_order, plan_tier 
+      `SELECT id, plan_name, billing_cycle, display_price, original_price, features, is_popular, display_order, plan_tier 
        FROM subscription_plans WHERE is_active = 1 ORDER BY display_order ASC, plan_name ASC`
     ).all();
     const plans = (plansResult.results || []).map((p) => ({
@@ -8764,6 +8764,10 @@ async function ensurePlansTables(env) {
     await env.DB.prepare(`ALTER TABLE subscription_plans ADD COLUMN plan_tier INTEGER DEFAULT 1`).run();
   } catch (e) {
   }
+  try {
+    await env.DB.prepare(`ALTER TABLE subscription_plans ADD COLUMN original_price REAL DEFAULT NULL`).run();
+  } catch (e) {
+  }
   await env.DB.prepare(`
     CREATE TABLE IF NOT EXISTS platform_settings (
       setting_key TEXT PRIMARY KEY,
@@ -8815,7 +8819,7 @@ async function getPlans(env) {
 __name(getPlans, "getPlans");
 async function createPlan(request, env) {
   try {
-    const { plan_name, billing_cycle, display_price, razorpay_plan_id, features, is_popular, display_order, plan_tier } = await request.json();
+    const { plan_name, billing_cycle, display_price, original_price, razorpay_plan_id, features, is_popular, display_order, plan_tier } = await request.json();
     if (!plan_name || !billing_cycle || display_price === void 0 || !razorpay_plan_id) {
       return errorResponse("Plan name, billing cycle, display price, and Razorpay Plan ID are required");
     }
@@ -8826,15 +8830,23 @@ async function createPlan(request, env) {
     if (!validCycles.includes(billing_cycle)) {
       return errorResponse("Billing cycle must be 3months, 6months, yearly, or 3years");
     }
+    if (original_price != null && original_price !== "" && original_price !== 0) {
+      const op = parseFloat(original_price);
+      if (!isFinite(op) || op <= 0)
+        return errorResponse("Original price must be a positive number");
+      if (op <= parseFloat(display_price))
+        return errorResponse("Original price must be greater than the display (discounted) price");
+    }
     const id = generateId();
     await env.DB.prepare(
-      `INSERT INTO subscription_plans (id, plan_name, billing_cycle, display_price, razorpay_plan_id, features, is_popular, display_order, plan_tier, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
+      `INSERT INTO subscription_plans (id, plan_name, billing_cycle, display_price, original_price, razorpay_plan_id, features, is_popular, display_order, plan_tier, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
     ).bind(
       id,
       plan_name,
       billing_cycle,
       display_price,
+      original_price || null,
       razorpay_plan_id,
       JSON.stringify(features || []),
       is_popular ? 1 : 0,
@@ -8855,12 +8867,22 @@ async function updatePlan(request, env, planId) {
       return errorResponse("Plan not found", 404);
     }
     const updates = await request.json();
-    const { plan_name, billing_cycle, display_price, razorpay_plan_id, features, is_popular, is_active, display_order, plan_tier } = updates;
+    const { plan_name, billing_cycle, display_price, original_price, razorpay_plan_id, features, is_popular, is_active, display_order, plan_tier } = updates;
+    const effectiveOriginal = original_price !== void 0 ? original_price : existing.original_price;
+    const effectiveDisplay = display_price ?? existing.display_price;
+    if (effectiveOriginal != null && effectiveOriginal !== "" && effectiveOriginal !== 0) {
+      const op = parseFloat(effectiveOriginal);
+      if (!isFinite(op) || op <= 0)
+        return errorResponse("Original price must be a positive number");
+      if (op <= parseFloat(effectiveDisplay))
+        return errorResponse("Original price must be greater than the display (discounted) price");
+    }
     await env.DB.prepare(
       `UPDATE subscription_plans SET
         plan_name = ?,
         billing_cycle = ?,
         display_price = ?,
+        original_price = ?,
         razorpay_plan_id = ?,
         features = ?,
         is_popular = ?,
@@ -8873,6 +8895,7 @@ async function updatePlan(request, env, planId) {
       plan_name ?? existing.plan_name,
       billing_cycle ?? existing.billing_cycle,
       display_price ?? existing.display_price,
+      original_price !== void 0 ? original_price || null : existing.original_price ?? null,
       razorpay_plan_id ?? existing.razorpay_plan_id,
       features ? JSON.stringify(features) : existing.features,
       is_popular !== void 0 ? is_popular ? 1 : 0 : existing.is_popular,
@@ -11264,6 +11287,7 @@ async function ensureTablesExist(env) {
         plan_name TEXT NOT NULL,
         billing_cycle TEXT NOT NULL,
         display_price REAL NOT NULL,
+        original_price REAL DEFAULT NULL,
         razorpay_plan_id TEXT NOT NULL,
         features TEXT DEFAULT '[]',
         is_popular INTEGER DEFAULT 0,
@@ -11388,6 +11412,7 @@ async function ensureTablesExist(env) {
       { col: "row_size_bytes", table: "site_media", sql: "ALTER TABLE site_media ADD COLUMN row_size_bytes INTEGER DEFAULT 0" },
       { col: "site_id", table: "subscriptions", sql: "ALTER TABLE subscriptions ADD COLUMN site_id TEXT" },
       { col: "plan_tier", table: "subscription_plans", sql: "ALTER TABLE subscription_plans ADD COLUMN plan_tier INTEGER DEFAULT 0" },
+      { col: "original_price", table: "subscription_plans", sql: "ALTER TABLE subscription_plans ADD COLUMN original_price REAL DEFAULT NULL" },
       { col: "staff_id", table: "site_admin_sessions", sql: "ALTER TABLE site_admin_sessions ADD COLUMN staff_id TEXT" },
       { col: "permissions", table: "site_admin_sessions", sql: "ALTER TABLE site_admin_sessions ADD COLUMN permissions TEXT" },
       { col: "failed_login_attempts", table: "site_staff", sql: "ALTER TABLE site_staff ADD COLUMN failed_login_attempts INTEGER DEFAULT 0" },
@@ -11842,7 +11867,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-1Ihfdh/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-GGYBte/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -11877,7 +11902,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-1Ihfdh/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-GGYBte/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;
