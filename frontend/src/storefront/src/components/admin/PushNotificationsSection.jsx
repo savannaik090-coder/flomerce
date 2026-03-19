@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
-import { apiRequest } from '../../services/api.js';
+import { apiRequest, getApiUrl } from '../../services/api.js';
 
 export default function PushNotificationsSection() {
   const { siteConfig } = useContext(SiteContext);
@@ -10,6 +10,8 @@ export default function PushNotificationsSection() {
   const [savingSettings, setSavingSettings] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef(null);
 
   const [form, setForm] = useState({
     title: '',
@@ -54,6 +56,48 @@ export default function PushNotificationsSection() {
       }
     } catch (err) {
       console.warn('Failed to load push settings:', err.message);
+    }
+  }
+
+  async function handleImageUpload(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (!allowed.includes(file.type)) {
+      setError('Please upload a JPG, PNG, WebP, or GIF image.');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Image must be under 5MB.');
+      return;
+    }
+
+    setUploading(true);
+    setError('');
+    try {
+      const formData = new FormData();
+      formData.append('images', file, file.name);
+
+      const token = sessionStorage.getItem('site_admin_token');
+      const response = await fetch(getApiUrl(`/api/upload/image?siteId=${siteConfig.id}`), {
+        method: 'POST',
+        headers: { 'Authorization': token ? `SiteAdmin ${token}` : '' },
+        body: formData,
+      });
+      const result = await response.json();
+      if (result.success && result.data?.images?.length > 0 && result.data.images[0].url) {
+        const imgUrl = result.data.images[0].url;
+        setForm(p => ({ ...p, imageUrl: imgUrl.startsWith('http') ? imgUrl : getApiUrl(imgUrl) }));
+      } else {
+        setError(result.error || result.message || 'Failed to upload image.');
+      }
+    } catch (err) {
+      setError('Failed to upload image: ' + err.message);
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   }
 
@@ -206,14 +250,57 @@ export default function PushNotificationsSection() {
                 />
               </div>
               <div style={{ marginBottom: 16 }}>
-                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Image URL (optional)</label>
+                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Image (optional)</label>
                 <input
-                  type="url"
-                  placeholder="https://..."
-                  value={form.imageUrl}
-                  onChange={e => setForm(p => ({ ...p, imageUrl: e.target.value }))}
-                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box' }}
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  onChange={handleImageUpload}
+                  style={{ display: 'none' }}
                 />
+                {form.imageUrl ? (
+                  <div style={{ position: 'relative', display: 'inline-block' }}>
+                    <img
+                      src={form.imageUrl}
+                      alt="Notification"
+                      style={{ width: '100%', maxHeight: 160, objectFit: 'cover', borderRadius: 8, border: '1px solid #e2e8f0' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setForm(p => ({ ...p, imageUrl: '' }))}
+                      style={{
+                        position: 'absolute', top: 6, right: 6,
+                        width: 28, height: 28, borderRadius: '50%',
+                        background: 'rgba(0,0,0,0.6)', color: 'white',
+                        border: 'none', cursor: 'pointer', display: 'flex',
+                        alignItems: 'center', justifyContent: 'center', fontSize: 14,
+                      }}
+                    >
+                      <i className="fas fa-times" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    style={{
+                      width: '100%', padding: '20px 12px',
+                      border: '2px dashed #e2e8f0', borderRadius: 8,
+                      background: '#f8fafc', cursor: uploading ? 'not-allowed' : 'pointer',
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+                      color: '#64748b', fontSize: 13, transition: 'border-color 0.2s',
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.borderColor = '#94a3b8'}
+                    onMouseLeave={e => e.currentTarget.style.borderColor = '#e2e8f0'}
+                  >
+                    {uploading ? (
+                      <><i className="fas fa-spinner fa-spin" style={{ fontSize: 18 }} /><span>Uploading...</span></>
+                    ) : (
+                      <><i className="fas fa-cloud-upload-alt" style={{ fontSize: 18 }} /><span>Click to upload image</span><span style={{ fontSize: 11, color: '#94a3b8' }}>JPG, PNG, WebP, GIF up to 5MB</span></>
+                    )}
+                  </button>
+                )}
               </div>
               <div style={{ marginBottom: 16 }}>
                 <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Link (optional)</label>
@@ -240,7 +327,7 @@ export default function PushNotificationsSection() {
               <button
                 type="submit"
                 className="btn btn-primary"
-                disabled={sending || !isConfigured}
+                disabled={sending || !isConfigured || uploading}
                 style={{ width: '100%' }}
               >
                 {sending ? <><i className="fas fa-spinner fa-spin" style={{ marginRight: 8 }} />Sending...</> : <><i className="fas fa-paper-plane" style={{ marginRight: 8 }} />Send Notification</>}

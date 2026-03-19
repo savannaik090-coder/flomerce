@@ -4,6 +4,21 @@ import { validateSiteAdmin } from './site-admin-worker.js';
 import { sendWebPush } from '../../utils/web-push.js';
 import { trackD1Write, trackD1Delete } from '../../utils/usage-tracker.js';
 
+async function getSiteIcon(env, siteId) {
+  try {
+    const db = await resolveSiteDBById(env, siteId);
+    const config = await db.prepare('SELECT favicon_url, logo_url FROM site_config WHERE site_id = ?').bind(siteId).first();
+    if (config?.favicon_url) return config.favicon_url;
+    if (config?.logo_url) return config.logo_url;
+  } catch (e) {}
+  try {
+    const site = await env.DB.prepare('SELECT favicon_url, logo_url FROM sites WHERE id = ?').bind(siteId).first();
+    if (site?.favicon_url) return site.favicon_url;
+    if (site?.logo_url) return site.logo_url;
+  } catch (e) {}
+  return null;
+}
+
 export async function handleNotifications(request, env, path) {
   const url = new URL(request.url);
   const pathParts = path.split('/').filter(Boolean);
@@ -151,6 +166,7 @@ async function handleSend(request, env) {
     }
 
     const db = await resolveSiteDBById(env, siteId);
+    const siteIcon = await getSiteIcon(env, siteId);
 
     let query = 'SELECT endpoint, p256dh, auth FROM notifications WHERE site_id = ? AND is_active = 1';
     const params = [siteId];
@@ -168,7 +184,7 @@ async function handleSend(request, env) {
       return jsonResponse({ success: true, data: { sent: 0, failed: 0, message: 'No subscribers found' } });
     }
 
-    const payload = { title, body: message, icon: '/icon-192.png', badge: '/badge-72.png' };
+    const payload = { title, body: message, icon: siteIcon || '/icon-192.png', badge: siteIcon || '/badge-72.png' };
     if (imageUrl) payload.image = imageUrl;
     if (link) payload.data = { url: link };
 
@@ -306,6 +322,11 @@ export async function triggerAutoNotification(env, siteId, type, payload) {
 
     const enabledMap = { newProduct: notifSettings.newProducts, priceDrop: notifSettings.priceDrops, backInStock: notifSettings.backInStock };
     if (!enabledMap[type]) return;
+
+    if (payload.icon === '/icon-192.png' || !payload.icon) {
+      const siteIcon = await getSiteIcon(env, siteId);
+      if (siteIcon) payload.icon = siteIcon;
+    }
 
     const vapidPublicKey = env.VAPID_PUBLIC_KEY;
     const vapidPrivateKey = env.VAPID_PRIVATE_KEY;

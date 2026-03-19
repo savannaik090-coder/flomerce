@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-fIW9Mq/checked-fetch.js
+// .wrangler/tmp/bundle-jPdv9I/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-fIW9Mq/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-jPdv9I/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-fIW9Mq/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-jPdv9I/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-fIW9Mq/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-jPdv9I/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -2116,12 +2116,12 @@ var init_site_admin_worker = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-fIW9Mq/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-jPdv9I/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-fIW9Mq/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-jPdv9I/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -4507,6 +4507,27 @@ __name(sendWebPush, "sendWebPush");
 
 // workers/storefront/notifications-worker.js
 init_usage_tracker();
+async function getSiteIcon(env, siteId) {
+  try {
+    const db = await resolveSiteDBById(env, siteId);
+    const config = await db.prepare("SELECT favicon_url, logo_url FROM site_config WHERE site_id = ?").bind(siteId).first();
+    if (config?.favicon_url)
+      return config.favicon_url;
+    if (config?.logo_url)
+      return config.logo_url;
+  } catch (e) {
+  }
+  try {
+    const site = await env.DB.prepare("SELECT favicon_url, logo_url FROM sites WHERE id = ?").bind(siteId).first();
+    if (site?.favicon_url)
+      return site.favicon_url;
+    if (site?.logo_url)
+      return site.logo_url;
+  } catch (e) {
+  }
+  return null;
+}
+__name(getSiteIcon, "getSiteIcon");
 async function handleNotifications(request, env, path) {
   const url = new URL(request.url);
   const pathParts = path.split("/").filter(Boolean);
@@ -4637,6 +4658,7 @@ async function handleSend(request, env) {
       return errorResponse("Push notifications not configured (VAPID_PRIVATE_KEY missing)", 500);
     }
     const db = await resolveSiteDBById(env, siteId);
+    const siteIcon = await getSiteIcon(env, siteId);
     let query = "SELECT endpoint, p256dh, auth FROM notifications WHERE site_id = ? AND is_active = 1";
     const params = [siteId];
     if (target === "loggedin") {
@@ -4649,7 +4671,7 @@ async function handleSend(request, env) {
     if (subscriptions.length === 0) {
       return jsonResponse({ success: true, data: { sent: 0, failed: 0, message: "No subscribers found" } });
     }
-    const payload = { title, body: message, icon: "/icon-192.png", badge: "/badge-72.png" };
+    const payload = { title, body: message, icon: siteIcon || "/icon-192.png", badge: siteIcon || "/badge-72.png" };
     if (imageUrl)
       payload.image = imageUrl;
     if (link)
@@ -4783,6 +4805,11 @@ async function triggerAutoNotification(env, siteId, type, payload) {
     const enabledMap = { newProduct: notifSettings.newProducts, priceDrop: notifSettings.priceDrops, backInStock: notifSettings.backInStock };
     if (!enabledMap[type])
       return;
+    if (payload.icon === "/icon-192.png" || !payload.icon) {
+      const siteIcon = await getSiteIcon(env, siteId);
+      if (siteIcon)
+        payload.icon = siteIcon;
+    }
     const vapidPublicKey = env.VAPID_PUBLIC_KEY;
     const vapidPrivateKey = env.VAPID_PRIVATE_KEY;
     const vapidSubject = env.VAPID_SUBJECT || "mailto:noreply@fluxe.in";
@@ -13083,7 +13110,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-fIW9Mq/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-jPdv9I/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -13118,7 +13145,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-fIW9Mq/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-jPdv9I/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;
