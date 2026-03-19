@@ -102,8 +102,8 @@ async function encryptPayload(plaintext, p256dhBase64, authBase64) {
 
   const prk = await hkdfExtract(salt, ikm);
 
-  const cekInfo = concat(enc.encode('Content-Encoding: aes128gcm\x00'), new Uint8Array([1]));
-  const nonceInfo = concat(enc.encode('Content-Encoding: nonce\x00'), new Uint8Array([1]));
+  const cekInfo = enc.encode('Content-Encoding: aes128gcm\x00');
+  const nonceInfo = enc.encode('Content-Encoding: nonce\x00');
 
   const cek = await hkdfExpand(prk, cekInfo, 16);
   const nonce = await hkdfExpand(prk, nonceInfo, 12);

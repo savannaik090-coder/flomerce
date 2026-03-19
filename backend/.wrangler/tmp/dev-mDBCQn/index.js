@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-sGpAcT/checked-fetch.js
+// .wrangler/tmp/bundle-fIW9Mq/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-sGpAcT/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-fIW9Mq/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-sGpAcT/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-fIW9Mq/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-sGpAcT/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-fIW9Mq/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -2116,12 +2116,12 @@ var init_site_admin_worker = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-sGpAcT/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-fIW9Mq/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-sGpAcT/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-fIW9Mq/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -4435,8 +4435,8 @@ async function encryptPayload(plaintext, p256dhBase64, authBase64) {
   const ikm = await hkdfExpand(prkKey, keyInfo, 32);
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const prk = await hkdfExtract(salt, ikm);
-  const cekInfo = concat(enc.encode("Content-Encoding: aes128gcm\0"), new Uint8Array([1]));
-  const nonceInfo = concat(enc.encode("Content-Encoding: nonce\0"), new Uint8Array([1]));
+  const cekInfo = enc.encode("Content-Encoding: aes128gcm\0");
+  const nonceInfo = enc.encode("Content-Encoding: nonce\0");
   const cek = await hkdfExpand(prk, cekInfo, 16);
   const nonce = await hkdfExpand(prk, nonceInfo, 12);
   const plaintextBytes = typeof plaintext === "string" ? enc.encode(plaintext) : plaintext;
@@ -4527,10 +4527,6 @@ async function handleNotifications(request, env, path) {
     case "send":
       if (request.method === "POST")
         return handleSend(request, env);
-      break;
-    case "test-send":
-      if (request.method === "POST")
-        return handleTestSend(request, env);
       break;
     case "settings":
       if (request.method === "GET")
@@ -4820,53 +4816,6 @@ async function triggerAutoNotification(env, siteId, type, payload) {
   }
 }
 __name(triggerAutoNotification, "triggerAutoNotification");
-async function handleTestSend(request, env) {
-  try {
-    const body = await request.json();
-    const siteId = body.siteId || "1";
-    const vapidPublicKey = env.VAPID_PUBLIC_KEY;
-    const vapidPrivateKey = env.VAPID_PRIVATE_KEY;
-    const vapidSubject = env.VAPID_SUBJECT || "mailto:noreply@fluxe.in";
-    if (!vapidPrivateKey) {
-      return jsonResponse({ success: false, error: "VAPID_PRIVATE_KEY missing" });
-    }
-    const db = await resolveSiteDBById(env, siteId);
-    const subsResult = await db.prepare(
-      "SELECT id, endpoint, p256dh, auth, user_id, is_active, created_at FROM notifications WHERE site_id = ? LIMIT 10"
-    ).bind(siteId).all();
-    const subs = subsResult.results || [];
-    if (subs.length === 0) {
-      return jsonResponse({ success: false, error: "No subscriptions found in DB", dbQuery: "notifications table empty for site " + siteId });
-    }
-    const results = [];
-    for (const sub of subs) {
-      const subInfo = {
-        id: sub.id,
-        endpoint: sub.endpoint ? sub.endpoint.substring(0, 80) + "..." : "NULL",
-        p256dh: sub.p256dh ? sub.p256dh.substring(0, 20) + "..." : "NULL",
-        auth: sub.auth ? sub.auth.substring(0, 10) + "..." : "NULL",
-        is_active: sub.is_active,
-        user_id: sub.user_id
-      };
-      if (!sub.endpoint || !sub.p256dh || !sub.auth) {
-        results.push({ ...subInfo, status: "SKIPPED", reason: "missing endpoint/p256dh/auth" });
-        continue;
-      }
-      try {
-        const payload = { title: "Test from Fluxe", body: "If you see this, push works!", icon: "/icon-192.png" };
-        const res = await sendWebPush(sub, payload, vapidPublicKey, vapidPrivateKey, vapidSubject);
-        const resBody = await res.text().catch(() => "");
-        results.push({ ...subInfo, status: res.status, statusText: res.statusText, responseBody: resBody.substring(0, 300) });
-      } catch (e) {
-        results.push({ ...subInfo, status: "ERROR", error: e.message, stack: e.stack?.substring(0, 200) });
-      }
-    }
-    return jsonResponse({ success: true, vapidConfigured: true, subscriptionCount: subs.length, results });
-  } catch (err) {
-    return jsonResponse({ success: false, error: err.message, stack: err.stack?.substring(0, 300) });
-  }
-}
-__name(handleTestSend, "handleTestSend");
 
 // workers/storefront/products-worker.js
 async function handleProducts(request, env, path) {
@@ -13134,7 +13083,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-sGpAcT/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-fIW9Mq/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -13169,7 +13118,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-sGpAcT/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-fIW9Mq/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;
