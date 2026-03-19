@@ -34,6 +34,9 @@ export default function DashboardPage() {
   const [staffSaving, setStaffSaving] = useState(false);
   const [staffError, setStaffError] = useState('');
   const [staffMsg, setStaffMsg] = useState('');
+  const [deleteModal, setDeleteModal] = useState(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
@@ -70,16 +73,33 @@ export default function DashboardPage() {
     }
   }, [isAuthenticated, loadSites, loadProfile]);
 
-  const handleDeleteSite = async (siteId) => {
+  const openDeleteModal = (site) => {
+    setDeleteModal(site);
+    setDeleteConfirmText('');
+    setDeleteLoading(false);
+  };
+
+  const closeDeleteModal = () => {
+    setDeleteModal(null);
+    setDeleteConfirmText('');
+    setDeleteLoading(false);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteModal) return;
+    setDeleteLoading(true);
     try {
-      const result = await deleteSite(siteId);
+      const result = await deleteSite(deleteModal.id);
       if (result.success) {
+        closeDeleteModal();
         await loadSites();
       } else {
         alert('Failed to delete site: ' + (result.error || 'Unknown error'));
+        setDeleteLoading(false);
       }
     } catch (e) {
       alert('Failed to delete site: ' + e.message);
+      setDeleteLoading(false);
     }
   };
 
@@ -718,7 +738,6 @@ export default function DashboardPage() {
                     <SiteCard
                       key={site.id}
                       site={site}
-                      onDelete={handleDeleteSite}
                       onManage={() => handleManageSite(site)}
                       onBilling={() => handleBillingSite(site.id)}
                       subscriptionInfo={getSiteSubscriptionInfo(site)}
@@ -1029,6 +1048,32 @@ export default function DashboardPage() {
                   </div>
                 </div>
               </div>
+
+              {sites.length > 0 && (
+                <div className="site-card" style={{ display: 'block', maxWidth: '500px', marginTop: '1.5rem' }}>
+                  <h2 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                    Your Websites
+                  </h2>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    {sites.map(site => (
+                      <div key={site.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontWeight: 600, fontSize: '0.9rem', color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{site.brand_name || site.brandName || site.subdomain}</div>
+                          <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{site.subdomain}.fluxe.in</div>
+                        </div>
+                        <button
+                          className="btn btn-outline"
+                          style={{ fontSize: '0.7rem', padding: '0.3rem 0.75rem', color: '#ef4444', borderColor: '#fecaca', whiteSpace: 'nowrap', flexShrink: 0 }}
+                          onClick={() => openDeleteModal(site)}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </main>
@@ -1055,6 +1100,40 @@ export default function DashboardPage() {
           onClose={handlePlanOverlayClose}
           onCreateSite={pendingSiteData ? handleCreatePendingSite : null}
         />
+      )}
+
+      {deleteModal && (
+        <div className="modal-overlay" onClick={closeDeleteModal}>
+          <div className="modal-content delete-confirm-modal" onClick={e => e.stopPropagation()}>
+            <div className="delete-modal-icon">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+            </div>
+            <h2 className="delete-modal-title">Delete Website</h2>
+            <p className="delete-modal-desc">
+              This will permanently delete <strong>{deleteModal.brand_name || deleteModal.brandName || deleteModal.subdomain}</strong> and all its data including products, orders, and customers. This action cannot be undone.
+            </p>
+            <div className="delete-modal-field">
+              <label>Type <strong>{deleteModal.subdomain}.fluxe.in</strong> to confirm</label>
+              <input
+                type="text"
+                value={deleteConfirmText}
+                onChange={e => setDeleteConfirmText(e.target.value)}
+                placeholder={`${deleteModal.subdomain}.fluxe.in`}
+                autoFocus
+              />
+            </div>
+            <div className="delete-modal-actions">
+              <button className="btn btn-outline" onClick={closeDeleteModal} disabled={deleteLoading}>Cancel</button>
+              <button
+                className="btn btn-danger"
+                disabled={deleteConfirmText.trim() !== `${deleteModal.subdomain}.fluxe.in` || deleteLoading}
+                onClick={handleConfirmDelete}
+              >
+                {deleteLoading ? 'Deleting...' : 'Delete Permanently'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

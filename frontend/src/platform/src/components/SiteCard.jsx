@@ -1,7 +1,4 @@
-import { useState } from 'react';
-
-export default function SiteCard({ site, onDelete, onManage, onBilling, subscriptionInfo }) {
-  const [deleting, setDeleting] = useState(false);
+export default function SiteCard({ site, onManage, onBilling, subscriptionInfo }) {
   const siteName = site.brand_name || site.brandName || site.subdomain;
   const siteUrl = `https://${site.subdomain}.fluxe.in`;
   const createdAt = site.created_at ? new Date(site.created_at).toLocaleDateString() : '';
@@ -9,16 +6,6 @@ export default function SiteCard({ site, onDelete, onManage, onBilling, subscrip
   const customDomainUrl = hasCustomDomain ? `https://${site.custom_domain}` : null;
 
   const sub = subscriptionInfo || { plan: null, status: 'none', isActive: false, isExpired: false };
-
-  const handleDelete = async () => {
-    if (!window.confirm('Are you sure you want to delete this website?')) return;
-    setDeleting(true);
-    try {
-      await onDelete(site.id);
-    } finally {
-      setDeleting(false);
-    }
-  };
 
   const isEnterprise = sub.plan === 'enterprise';
 
@@ -61,16 +48,13 @@ export default function SiteCard({ site, onDelete, onManage, onBilling, subscrip
           Manage
         </button>
       </div>
-      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-        {onBilling && !isEnterprise && (
+      {onBilling && !isEnterprise && (
+        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
           <button className="btn btn-outline" onClick={onBilling} style={{ flex: 1, fontSize: '0.75rem' }}>
             {sub.isExpired || !sub.plan ? 'Subscribe' : 'Billing'}
           </button>
-        )}
-        <button className="btn btn-danger" onClick={handleDelete} disabled={deleting} style={{ flex: 1, fontSize: '0.75rem' }}>
-          {deleting ? 'Deleting...' : 'Delete'}
-        </button>
-      </div>
+        </div>
+      )}
     </div>
   );
 }
