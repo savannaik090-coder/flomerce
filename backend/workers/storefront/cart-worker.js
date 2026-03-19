@@ -1,6 +1,6 @@
 import { generateId, jsonResponse, errorResponse, successResponse, handleCORS } from '../../utils/helpers.js';
 import { validateAuth, validateAnyAuth } from '../../utils/auth.js';
-import { resolveSiteDBById, checkMigrationLock } from '../../utils/site-db.js';
+import { resolveSiteDBById, checkMigrationLock, ensureProductOptionsColumn } from '../../utils/site-db.js';
 import { estimateRowBytes, trackD1Write, trackD1Update, trackD1Delete } from '../../utils/usage-tracker.js';
 
 
@@ -153,6 +153,7 @@ async function getOrCreateCart(db, env, siteId, user, sessionId) {
 async function getCart(env, siteId, user, sessionId) {
   try {
     const db = await resolveSiteDBById(env, siteId);
+    await ensureProductOptionsColumn(db, siteId);
     const cart = await getOrCreateCart(db, env, siteId, user, sessionId);
     const items = JSON.parse(cart.items);
 

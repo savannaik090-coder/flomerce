@@ -133,7 +133,22 @@ export default function ProductForm({ product, onSave, onCancel }) {
       }
     } else {
       setForm(DEFAULT_FORM);
-      setOptions(DEFAULT_OPTIONS);
+      try {
+        const saved = localStorage.getItem('product_options_template');
+        if (saved) {
+          const tmpl = JSON.parse(saved);
+          setOptions({
+            colors: tmpl.colors || [],
+            imageColorMap: {},
+            customOptions: tmpl.customOptions || [],
+            pricedOptions: tmpl.pricedOptions || [],
+          });
+        } else {
+          setOptions(DEFAULT_OPTIONS);
+        }
+      } catch {
+        setOptions(DEFAULT_OPTIONS);
+      }
     }
   }, [product]);
 
@@ -177,6 +192,15 @@ export default function ProductForm({ product, onSave, onCancel }) {
         await updateProduct(product.id, payload, siteConfig?.id);
       } else {
         await createProduct(payload);
+      }
+      if (hasAnyOptions(options)) {
+        try {
+          localStorage.setItem('product_options_template', JSON.stringify({
+            colors: options.colors,
+            customOptions: options.customOptions,
+            pricedOptions: options.pricedOptions,
+          }));
+        } catch {}
       }
       onSave && onSave();
     } catch (err) {
@@ -450,37 +474,27 @@ export default function ProductForm({ product, onSave, onCancel }) {
                       </div>
                       {options.colors.length > 0 && (
                         <div style={{ padding: '4px 6px', background: '#f0f4ff', borderTop: '1px solid #e2e8f0' }}>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-                            {options.colors.map(c => {
-                              const isTagged = imgColors.includes(c.name);
-                              return (
-                                <button
-                                  key={c.name}
-                                  type="button"
-                                  onClick={() => {
-                                    setOptions(prev => {
-                                      const map = { ...prev.imageColorMap };
-                                      const current = map[String(idx)] || [];
-                                      if (isTagged) {
-                                        map[String(idx)] = current.filter(n => n !== c.name);
-                                      } else {
-                                        map[String(idx)] = [...current, c.name];
-                                      }
-                                      return { ...prev, imageColorMap: map };
-                                    });
-                                  }}
-                                  style={{
-                                    width: 18, height: 18, borderRadius: '50%',
-                                    border: isTagged ? '2px solid #2563eb' : '1px solid #ccc',
-                                    background: c.hex || '#ccc',
-                                    cursor: 'pointer', padding: 0,
-                                    boxShadow: isTagged ? '0 0 0 2px rgba(37,99,235,0.3)' : 'none',
-                                  }}
-                                  title={`${isTagged ? 'Remove' : 'Tag'} ${c.name}`}
-                                />
-                              );
-                            })}
-                          </div>
+                          <select
+                            value={imgColors[0] || ''}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setOptions(prev => {
+                                const map = { ...prev.imageColorMap };
+                                if (val) {
+                                  map[String(idx)] = [val];
+                                } else {
+                                  delete map[String(idx)];
+                                }
+                                return { ...prev, imageColorMap: map };
+                              });
+                            }}
+                            style={{ width: '100%', padding: '3px 4px', fontSize: 11, border: '1px solid #cbd5e1', borderRadius: 4, background: 'white', cursor: 'pointer' }}
+                          >
+                            <option value="">Assign Color</option>
+                            {options.colors.filter(c => c.name).map(c => (
+                              <option key={c.name} value={c.name}>{c.name}</option>
+                            ))}
+                          </select>
                         </div>
                       )}
                     </div>
@@ -556,7 +570,7 @@ export default function ProductForm({ product, onSave, onCancel }) {
                 {form.images.length > 0 && options.colors.some(c => c.name) && (
                   <p style={{ fontSize: 12, color: '#64748b', margin: '4px 0 0' }}>
                     <i className="fas fa-info-circle" style={{ marginRight: 4 }} />
-                    Click color circles on each image thumbnail above to tag images with colors.
+                    Use the "Assign Color" dropdown on each image above to tag it with a color.
                   </p>
                 )}
               </div>

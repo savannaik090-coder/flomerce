@@ -2,7 +2,7 @@ import { generateId, sanitizeInput, jsonResponse, errorResponse, successResponse
 import { validateAuth } from '../../utils/auth.js';
 import { validateSiteAdmin, hasPermission } from './site-admin-worker.js';
 import { checkUsageLimit, estimateRowBytes, trackD1Write, trackD1Delete, trackD1Update } from '../../utils/usage-tracker.js';
-import { resolveSiteDBById, resolveSiteDBBySubdomain, checkMigrationLock } from '../../utils/site-db.js';
+import { resolveSiteDBById, resolveSiteDBBySubdomain, checkMigrationLock, ensureProductOptionsColumn } from '../../utils/site-db.js';
 
 export async function handleProducts(request, env, path) {
   const corsResponse = handleCORS(request);
@@ -244,6 +244,7 @@ async function createProduct(request, env, user) {
     }
 
     const db = await resolveSiteDBById(env, siteId);
+    await ensureProductOptionsColumn(db, siteId);
 
     let resolvedThumbnail = thumbnailUrl || null;
     if (!resolvedThumbnail && Array.isArray(images) && images.length > 0) {
@@ -263,7 +264,7 @@ async function createProduct(request, env, user) {
       return errorResponse(usageCheck.reason, 403, 'STORAGE_LIMIT');
     }
 
-    await db.prepare(
+    const runInsert = () => db.prepare(
       `INSERT INTO products (id, site_id, category_id, name, slug, description, short_description, price, compare_price, cost_price, sku, stock, low_stock_threshold, weight, dimensions, images, thumbnail_url, tags, is_featured, options, row_size_bytes, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(
@@ -289,6 +290,17 @@ async function createProduct(request, env, user) {
       optionsStr,
       rowBytes
     ).run();
+
+    try {
+      await runInsert();
+    } catch (insertErr) {
+      if (insertErr.message && insertErr.message.includes('options')) {
+        await ensureProductOptionsColumn(db, siteId);
+        await runInsert();
+      } else {
+        throw insertErr;
+      }
+    }
 
     await trackD1Write(env, siteId, rowBytes);
 
@@ -382,9 +394,20 @@ async function updateProduct(request, env, user, productId) {
     setClause.push('updated_at = datetime("now")');
     values.push(productId);
 
-    await db.prepare(
+    const runUpdate = () => db.prepare(
       `UPDATE products SET ${setClause.join(', ')} WHERE id = ?`
     ).bind(...values).run();
+
+    try {
+      await runUpdate();
+    } catch (updateErr) {
+      if (updateErr.message && updateErr.message.includes('options')) {
+        await ensureProductOptionsColumn(db, resolvedSiteId);
+        await runUpdate();
+      } else {
+        throw updateErr;
+      }
+    }
 
     const updatedProdRow = await db.prepare('SELECT * FROM products WHERE id = ?').bind(productId).first();
     const newBytes = updatedProdRow ? estimateRowBytes(updatedProdRow) : oldBytes;

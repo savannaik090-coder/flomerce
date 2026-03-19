@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-uSbUK1/checked-fetch.js
+// .wrangler/tmp/bundle-THJe6r/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-uSbUK1/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-THJe6r/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-uSbUK1/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-THJe6r/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-uSbUK1/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-THJe6r/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -192,6 +192,21 @@ var init_helpers = __esm({
 });
 
 // utils/site-db.js
+async function ensureProductOptionsColumn(db, cacheKey) {
+  const key = cacheKey || "default";
+  if (_migratedDBs.has(key))
+    return;
+  try {
+    const cols = await db.prepare("PRAGMA table_info(products)").all();
+    const hasOptions = cols.results?.some((c) => c.name === "options");
+    if (!hasOptions) {
+      await db.prepare("ALTER TABLE products ADD COLUMN options TEXT").run();
+    }
+    _migratedDBs.add(key);
+  } catch (e) {
+    console.error("ensureProductOptionsColumn error:", e.message || e);
+  }
+}
 async function resolveSiteDBById(env, siteId) {
   if (!siteId) {
     throw new Error("resolveSiteDBById: siteId is required");
@@ -273,11 +288,14 @@ async function resolveSiteDBBySubdomain(env, subdomain) {
   }
   throw new Error(`resolveSiteDBBySubdomain: No shard assigned for subdomain "${subdomain}". Every site must have a shard_id.`);
 }
+var _migratedDBs;
 var init_site_db = __esm({
   "utils/site-db.js"() {
     init_checked_fetch();
     init_strip_cf_connecting_ip_header();
     init_modules_watch_stub();
+    _migratedDBs = /* @__PURE__ */ new Set();
+    __name(ensureProductOptionsColumn, "ensureProductOptionsColumn");
     __name(resolveSiteDBById, "resolveSiteDBById");
     __name(checkMigrationLock, "checkMigrationLock");
     __name(getSiteConfig, "getSiteConfig");
@@ -2098,12 +2116,12 @@ var init_site_admin_worker = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-uSbUK1/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-THJe6r/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-uSbUK1/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-THJe6r/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -4483,6 +4501,7 @@ async function createProduct(request, env, user) {
       return errorResponse("Site not found or unauthorized", 404);
     }
     const db = await resolveSiteDBById(env, siteId);
+    await ensureProductOptionsColumn(db, siteId);
     let resolvedThumbnail = thumbnailUrl || null;
     if (!resolvedThumbnail && Array.isArray(images) && images.length > 0) {
       const idx = typeof mainImageIndex === "number" ? mainImageIndex : 0;
@@ -4497,7 +4516,7 @@ async function createProduct(request, env, user) {
     if (!usageCheck.allowed) {
       return errorResponse(usageCheck.reason, 403, "STORAGE_LIMIT");
     }
-    await db.prepare(
+    const runInsert = /* @__PURE__ */ __name(() => db.prepare(
       `INSERT INTO products (id, site_id, category_id, name, slug, description, short_description, price, compare_price, cost_price, sku, stock, low_stock_threshold, weight, dimensions, images, thumbnail_url, tags, is_featured, options, row_size_bytes, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(
@@ -4522,7 +4541,17 @@ async function createProduct(request, env, user) {
       isFeatured ? 1 : 0,
       optionsStr,
       rowBytes
-    ).run();
+    ).run(), "runInsert");
+    try {
+      await runInsert();
+    } catch (insertErr) {
+      if (insertErr.message && insertErr.message.includes("options")) {
+        await ensureProductOptionsColumn(db, siteId);
+        await runInsert();
+      } else {
+        throw insertErr;
+      }
+    }
     await trackD1Write(env, siteId, rowBytes);
     return successResponse({ id: productId, slug }, "Product created successfully");
   } catch (error) {
@@ -4601,9 +4630,19 @@ async function updateProduct(request, env, user, productId) {
     const oldBytes = product.row_size_bytes || 0;
     setClause.push('updated_at = datetime("now")');
     values.push(productId);
-    await db.prepare(
+    const runUpdate = /* @__PURE__ */ __name(() => db.prepare(
       `UPDATE products SET ${setClause.join(", ")} WHERE id = ?`
-    ).bind(...values).run();
+    ).bind(...values).run(), "runUpdate");
+    try {
+      await runUpdate();
+    } catch (updateErr) {
+      if (updateErr.message && updateErr.message.includes("options")) {
+        await ensureProductOptionsColumn(db, resolvedSiteId);
+        await runUpdate();
+      } else {
+        throw updateErr;
+      }
+    }
     const updatedProdRow = await db.prepare("SELECT * FROM products WHERE id = ?").bind(productId).first();
     const newBytes = updatedProdRow ? estimateRowBytes(updatedProdRow) : oldBytes;
     if (updatedProdRow) {
@@ -4893,6 +4932,7 @@ async function createOrder(request, env, user) {
       return errorResponse("Site is currently being migrated. Please try again shortly.", 423);
     }
     const db = await resolveSiteDBById(env, siteId);
+    await ensureProductOptionsColumn(db, siteId);
     let subtotal = 0;
     const processedItems = [];
     for (const item of items) {
@@ -5304,6 +5344,7 @@ async function createGuestOrder(request, env) {
       return errorResponse("Site is currently being migrated. Please try again shortly.", 423);
     }
     const db = await resolveSiteDBById(env, siteId);
+    await ensureProductOptionsColumn(db, siteId);
     let subtotal = 0;
     const processedItems = [];
     for (const item of items) {
@@ -5659,6 +5700,7 @@ __name(getOrCreateCart, "getOrCreateCart");
 async function getCart(env, siteId, user, sessionId) {
   try {
     const db = await resolveSiteDBById(env, siteId);
+    await ensureProductOptionsColumn(db, siteId);
     const cart = await getOrCreateCart(db, env, siteId, user, sessionId);
     const items = JSON.parse(cart.items);
     const enrichedItems = [];
@@ -12103,7 +12145,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-uSbUK1/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-THJe6r/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -12138,7 +12180,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-uSbUK1/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-THJe6r/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

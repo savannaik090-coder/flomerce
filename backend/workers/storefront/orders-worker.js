@@ -3,7 +3,7 @@ import { validateAuth, validateAnyAuth } from '../../utils/auth.js';
 import { updateProductStock } from './products-worker.js';
 import { sendEmail, buildOrderConfirmationEmail, buildOwnerNotificationEmail, buildCancellationCustomerEmail, buildCancellationOwnerEmail, buildDeliveryCustomerEmail, buildDeliveryOwnerEmail } from '../../utils/email.js';
 import { checkUsageLimit, estimateRowBytes, trackD1Write, trackD1Update } from '../../utils/usage-tracker.js';
-import { resolveSiteDBById, checkMigrationLock, getSiteConfig } from '../../utils/site-db.js';
+import { resolveSiteDBById, checkMigrationLock, getSiteConfig, ensureProductOptionsColumn } from '../../utils/site-db.js';
 
 export async function handleOrders(request, env, path) {
   const corsResponse = handleCORS(request);
@@ -217,6 +217,7 @@ async function createOrder(request, env, user) {
     }
 
     const db = await resolveSiteDBById(env, siteId);
+    await ensureProductOptionsColumn(db, siteId);
 
     let subtotal = 0;
     const processedItems = [];
@@ -652,6 +653,7 @@ async function createGuestOrder(request, env) {
     }
 
     const db = await resolveSiteDBById(env, siteId);
+    await ensureProductOptionsColumn(db, siteId);
 
     let subtotal = 0;
     const processedItems = [];

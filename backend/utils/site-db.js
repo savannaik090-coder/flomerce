@@ -1,3 +1,20 @@
+const _migratedDBs = new Set();
+
+export async function ensureProductOptionsColumn(db, cacheKey) {
+  const key = cacheKey || 'default';
+  if (_migratedDBs.has(key)) return;
+  try {
+    const cols = await db.prepare("PRAGMA table_info(products)").all();
+    const hasOptions = cols.results?.some(c => c.name === 'options');
+    if (!hasOptions) {
+      await db.prepare("ALTER TABLE products ADD COLUMN options TEXT").run();
+    }
+    _migratedDBs.add(key);
+  } catch (e) {
+    console.error('ensureProductOptionsColumn error:', e.message || e);
+  }
+}
+
 export function resolveSiteDB(env, site) {
   if (!site) {
     throw new Error('resolveSiteDB: site object is required');
