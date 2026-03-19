@@ -580,8 +580,8 @@ export default function DashboardPage() {
             </button>
             <span className="manage-site-name" style={{ marginLeft: 'auto' }}>{managedSite.brand_name || managedSite.brandName || managedSite.subdomain}</span>
             {siteInfo.plan && (
-              <span className={`plan-status-pill ${siteInfo.isActive ? 'status-active' : 'status-expired'}`} style={{ marginLeft: '0.5rem' }}>
-                {siteInfo.isActive ? formatPlanName(siteInfo.plan) + ' - Active' : siteInfo.plan !== 'expired' ? formatPlanName(siteInfo.plan) + ' - Expired' : 'Expired'}
+              <span className={`plan-status-pill ${siteInfo.isCancelled ? 'status-cancelled' : siteInfo.isActive ? 'status-active' : 'status-expired'}`} style={siteInfo.isCancelled ? { marginLeft: '0.5rem', background: '#fef3c7', color: '#92400e' } : { marginLeft: '0.5rem' }}>
+                {siteInfo.isCancelled ? formatPlanName(siteInfo.plan) + ' - Cancelling' : siteInfo.isActive ? formatPlanName(siteInfo.plan) + ' - Active' : siteInfo.plan !== 'expired' ? formatPlanName(siteInfo.plan) + ' - Expired' : 'Expired'}
               </span>
             )}
           </div>
