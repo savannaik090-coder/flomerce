@@ -32,6 +32,8 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
   const [editingName, setEditingName] = useState('');
   const hasLoadedRef = useRef(false);
   const [logoUrl, setLogoUrl] = useState('');
+  const [logoSize, setLogoSize] = useState(44);
+  const [logoPosition, setLogoPosition] = useState('left');
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const logoInputRef = useRef(null);
 
@@ -46,6 +48,11 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
     if (!hasLoadedRef.current || !onPreviewUpdate) return;
     onPreviewUpdate({ navbarMenus });
   }, [navbarMenus]);
+
+  useEffect(() => {
+    if (!hasLoadedRef.current || !onPreviewUpdate) return;
+    onPreviewUpdate({ logoSize, logoPosition });
+  }, [logoSize, logoPosition]);
 
   async function loadCategories() {
     try {
@@ -68,6 +75,8 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
         }
         setNavbarMenus(settings.navbarMenus || []);
         setLogoUrl(result.data.logo_url || '');
+        setLogoSize(settings.logoSize || 44);
+        setLogoPosition(settings.logoPosition || 'left');
       }
     } catch (e) {
       console.error('Failed to load navbar config:', e);
@@ -157,7 +166,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
           'Content-Type': 'application/json',
           'Authorization': token ? `SiteAdmin ${token}` : '',
         },
-        body: JSON.stringify({ settings: { navbarMenus: cleanMenus }, logoUrl: logoUrl || null }),
+        body: JSON.stringify({ settings: { navbarMenus: cleanMenus, logoSize, logoPosition }, logoUrl: logoUrl || null }),
       });
       const result = await response.json();
       if (response.ok && result.success) {
@@ -383,6 +392,114 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
             )}
           </div>
         </div>
+
+        {logoUrl && (
+          <div className="card" style={{ marginBottom: 20 }}>
+            <div className="card-header">
+              <h3 className="card-title">Logo Settings</h3>
+            </div>
+            <div className="card-content">
+              <div style={{ marginBottom: 20 }}>
+                <label style={{ display: 'block', fontWeight: 600, fontSize: 13, color: '#334155', marginBottom: 8 }}>
+                  Logo Size
+                </label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                  <span style={{ fontSize: 12, color: '#94a3b8', whiteSpace: 'nowrap' }}>Small</span>
+                  <div style={{ flex: 1, position: 'relative' }}>
+                    <input
+                      type="range"
+                      min="20"
+                      max="80"
+                      step="1"
+                      value={logoSize}
+                      onChange={(e) => setLogoSize(Number(e.target.value))}
+                      style={{ width: '100%', cursor: 'pointer', accentColor: '#2563eb' }}
+                    />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 2 }}>
+                      <span style={{ fontSize: 10, color: '#cbd5e1' }}>20px</span>
+                      <span style={{ fontSize: 10, color: '#cbd5e1' }}>80px</span>
+                    </div>
+                  </div>
+                  <span style={{ fontSize: 12, color: '#94a3b8', whiteSpace: 'nowrap' }}>Large</span>
+                  <div style={{
+                    background: '#f1f5f9',
+                    borderRadius: 6,
+                    padding: '4px 10px',
+                    fontWeight: 600,
+                    fontSize: 13,
+                    color: '#334155',
+                    minWidth: 44,
+                    textAlign: 'center',
+                  }}>
+                    {logoSize}px
+                  </div>
+                </div>
+                <div style={{
+                  marginTop: 12,
+                  padding: 12,
+                  background: '#f8fafc',
+                  borderRadius: 8,
+                  border: '1px solid #e2e8f0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minHeight: 60,
+                }}>
+                  <img
+                    src={logoUrl}
+                    alt="Size preview"
+                    style={{ height: logoSize, width: 'auto', maxWidth: '100%', objectFit: 'contain' }}
+                    onError={e => { e.target.style.display = 'none'; }}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontWeight: 600, fontSize: 13, color: '#334155', marginBottom: 8 }}>
+                  Logo Position
+                </label>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  {[
+                    { value: 'left', label: 'Left', icon: 'fa-align-left' },
+                    { value: 'center', label: 'Center', icon: 'fa-align-center' },
+                  ].map(opt => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setLogoPosition(opt.value)}
+                      style={{
+                        flex: 1,
+                        padding: '10px 16px',
+                        borderRadius: 8,
+                        border: `2px solid ${logoPosition === opt.value ? '#2563eb' : '#e2e8f0'}`,
+                        background: logoPosition === opt.value ? '#eff6ff' : '#fff',
+                        color: logoPosition === opt.value ? '#2563eb' : '#64748b',
+                        fontWeight: 600,
+                        fontSize: 13,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 8,
+                        fontFamily: 'inherit',
+                        transition: 'all 0.2s ease',
+                      }}
+                    >
+                      <i className={`fas ${opt.icon}`} style={{ fontSize: 14 }} />
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 8, marginBottom: 0 }}>
+                  <i className="fas fa-info-circle" style={{ marginRight: 4 }} />
+                  {logoPosition === 'center'
+                    ? 'Logo will be centered in the navbar. On mobile, it stays in its default position.'
+                    : 'Logo will appear on the left side of the navbar (default).'}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="card" style={{ marginBottom: 20 }}>
           <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

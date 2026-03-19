@@ -97,7 +97,28 @@
     display: block;
 }
 
+.brand--center {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-left: 0;
+    margin-right: 0;
+}
+
+.nav-container--logo-center {
+    position: relative;
+}
+
+.nav-container--logo-center .nav-menu {
+    order: 1;
+}
+
+.nav-container--logo-center .nav-icons {
+    order: 2;
+}
+
 .brand:hover { color: #b8905f; transform: translateY(-1px); }
+.brand--center:hover { transform: translateX(-50%) translateY(-1px); }
 .brand:hover .brand-logo { transform: scale(1.05); }
 
 .hamburger {
@@ -339,7 +360,6 @@
         background-color: transparent !important;
     }
     .brand { order: 0; max-width: 35%; }
-    .brand-logo { height: 50px; }
     .nav-menu { order: 1; flex: 1; justify-content: center; }
     .nav-icons { order: 2; display: flex !important; }
     .icon-link {
@@ -388,7 +408,6 @@
         font-size: 36px;
         max-width: 45%;
     }
-    .brand-logo { height: 40px; }
     .nav-icons { order: 2; display: flex; min-width: 140px; }
     .icon-link { margin-left: 12px; font-size: 22px; }
     .wishlist-count, .cart-count {
@@ -506,8 +525,17 @@
         max-width: 50%;
         margin-left: 6px;
     }
-    .brand-logo { height: 34px; }
     .brand-text { font-size: 18px; }
     .nav-icons { min-width: auto; }
     .icon-link { margin-left: 8px; }
+}
+
+@media (max-width: 991px) {
+    .brand--center {
+        position: static;
+        transform: none;
+    }
+    .nav-container--logo-center .nav-menu {
+        order: unset;
+    }
 }

@@ -33,6 +33,9 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
   const orderTrackUrl = settings.orderTrackUrl || '';
   const showBookAppointment = settings.showBookAppointment !== false;
   const showContact = settings.showContact !== false;
+  const logoSize = Math.min(80, Math.max(20, Number(settings.logoSize) || 44));
+  const logoPosition = settings.logoPosition || 'left';
+  const isCentered = logoPosition === 'center';
 
   const assignedCategorySlugs = new Set();
   if (hasCustomNavbar) {
@@ -85,17 +88,18 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
       })()}
 
       <nav className="navbar">
-        <div className="nav-container">
+        <div className={`nav-container${isCentered ? ' nav-container--logo-center' : ''}`}>
           <div className="hamburger" onClick={() => setMenuOpen(true)}>
             <img src="/images/icons/bars-staggered (2).png" alt="Menu" style={{ width: 25, height: 25 }} />
           </div>
 
-          <Link to="/" className="brand">
+          <Link to="/" className={`brand${isCentered ? ' brand--center' : ''}`}>
             {siteConfig?.logoUrl ? (
               <img
                 src={siteConfig.logoUrl}
                 alt={siteConfig?.brandName || 'Store'}
                 className="brand-logo"
+                style={{ height: logoSize }}
                 onError={(e) => { e.target.style.display = 'none'; const txt = e.target.nextElementSibling; if (txt) txt.style.display = 'block'; }}
               />
             ) : null}
