@@ -181,8 +181,15 @@ export default function ProductDetailPage() {
 
   const effectivePrice = React.useMemo(() => {
     if (!product) return 0;
+    const pricedValues = Object.values(selectedPricedOptions || {});
+    if (pricedValues.length > 0) {
+      const lastSelected = pricedValues[pricedValues.length - 1];
+      if (Number(lastSelected.price) > 0) {
+        return Number(lastSelected.price);
+      }
+    }
     return product.price;
-  }, [product?.price]);
+  }, [product?.price, selectedPricedOptions]);
 
   const filteredImageIndices = React.useMemo(() => {
     if (!selectedColor || !productOptions?.imageColorMap) return null;
