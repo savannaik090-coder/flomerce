@@ -31,6 +31,9 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
   const [editingMenuId, setEditingMenuId] = useState(null);
   const [editingName, setEditingName] = useState('');
   const hasLoadedRef = useRef(false);
+  const [logoUrl, setLogoUrl] = useState('');
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const logoInputRef = useRef(null);
 
   useEffect(() => {
     if (siteConfig?.id) {
@@ -64,6 +67,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
           try { settings = JSON.parse(settings); } catch (e) { settings = {}; }
         }
         setNavbarMenus(settings.navbarMenus || []);
+        setLogoUrl(result.data.logo_url || '');
       }
     } catch (e) {
       console.error('Failed to load navbar config:', e);
@@ -88,6 +92,49 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
     return null;
   }
 
+  async function handleLogoUpload(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml'];
+    if (!allowed.includes(file.type)) {
+      setStatus('error:Please upload a valid image file (JPG, PNG, WebP, GIF, or SVG)');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setStatus('error:Image must be less than 10MB');
+      return;
+    }
+    setUploadingLogo(true);
+    setStatus('');
+    try {
+      const token = sessionStorage.getItem('site_admin_token');
+      const formData = new FormData();
+      formData.append('images', file, file.name);
+      const res = await fetch(`${API_BASE}/api/upload/image?siteId=${siteConfig.id}`, {
+        method: 'POST',
+        headers: { 'Authorization': token ? `SiteAdmin ${token}` : '' },
+        body: formData,
+      });
+      const result = await res.json();
+      if (result.success && result.data?.images?.[0]?.url) {
+        setLogoUrl(result.data.images[0].url);
+        if (onPreviewUpdate) onPreviewUpdate({ logoUrl: result.data.images[0].url });
+      } else {
+        setStatus('error:' + (result.error || 'Failed to upload logo'));
+      }
+    } catch (err) {
+      setStatus('error:Failed to upload logo: ' + err.message);
+    } finally {
+      setUploadingLogo(false);
+      if (logoInputRef.current) logoInputRef.current.value = '';
+    }
+  }
+
+  function handleRemoveLogo() {
+    setLogoUrl('');
+    if (onPreviewUpdate) onPreviewUpdate({ logoUrl: '' });
+  }
+
   async function handleSave(e) {
     e.preventDefault();
     const validationError = validateMenus();
@@ -110,7 +157,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
           'Content-Type': 'application/json',
           'Authorization': token ? `SiteAdmin ${token}` : '',
         },
-        body: JSON.stringify({ settings: { navbarMenus: cleanMenus } }),
+        body: JSON.stringify({ settings: { navbarMenus: cleanMenus }, logoUrl: logoUrl || null }),
       });
       const result = await response.json();
       if (response.ok && result.success) {
@@ -257,6 +304,86 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
   return (
     <div style={{ maxWidth: 750 }}>
       <form onSubmit={handleSave}>
+        <div className="card" style={{ marginBottom: 20 }}>
+          <div className="card-header">
+            <h3 className="card-title">Store Logo</h3>
+          </div>
+          <div className="card-content">
+            <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
+              Upload a logo to display in the navbar instead of your brand name. For best results, use a transparent PNG or SVG.
+            </p>
+            <input
+              ref={logoInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml"
+              onChange={handleLogoUpload}
+              style={{ display: 'none' }}
+            />
+            {logoUrl ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: 16, background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                <div style={{ flex: '0 0 auto', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 6, padding: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 50, maxWidth: 200 }}>
+                  <img
+                    src={logoUrl}
+                    alt="Store logo"
+                    style={{ maxHeight: 48, maxWidth: 180, objectFit: 'contain' }}
+                    onError={e => { e.target.style.display = 'none'; }}
+                  />
+                </div>
+                <div style={{ flex: 1, fontSize: 13, color: '#475569' }}>
+                  Logo is active. It will display in the navbar instead of your brand name.
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    type="button"
+                    onClick={() => logoInputRef.current?.click()}
+                    disabled={uploadingLogo}
+                    style={{ padding: '7px 14px', borderRadius: 6, border: '1px solid #e2e8f0', background: '#fff', color: '#334155', fontWeight: 500, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}
+                  >
+                    <i className="fas fa-sync-alt" style={{ marginRight: 5, fontSize: 10 }} />
+                    Replace
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleRemoveLogo}
+                    style={{ padding: '7px 14px', borderRadius: 6, border: '1px solid #fecaca', background: '#fff', color: '#ef4444', fontWeight: 500, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}
+                  >
+                    <i className="fas fa-trash" style={{ marginRight: 5, fontSize: 10 }} />
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div
+                onClick={() => !uploadingLogo && logoInputRef.current?.click()}
+                style={{
+                  textAlign: 'center',
+                  padding: '30px 20px',
+                  color: '#94a3b8',
+                  border: '2px dashed #e2e8f0',
+                  borderRadius: 8,
+                  cursor: uploadingLogo ? 'default' : 'pointer',
+                  transition: 'border-color 0.2s, background 0.2s',
+                }}
+                onMouseEnter={e => { if (!uploadingLogo) { e.currentTarget.style.borderColor = '#2563eb'; e.currentTarget.style.background = '#f0f9ff'; } }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.background = 'transparent'; }}
+              >
+                {uploadingLogo ? (
+                  <>
+                    <div className="spinner" style={{ margin: '0 auto 12px' }} />
+                    <p style={{ fontSize: 13, margin: 0 }}>Uploading logo...</p>
+                  </>
+                ) : (
+                  <>
+                    <i className="fas fa-image" style={{ fontSize: 28, marginBottom: 10, display: 'block' }} />
+                    <p style={{ fontSize: 14, margin: '0 0 4px 0', fontWeight: 500 }}>Click to upload a logo</p>
+                    <p style={{ fontSize: 12, margin: 0 }}>PNG, SVG, JPG, WebP, or GIF (max 10MB). Currently showing your brand name as text.</p>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
         <div className="card" style={{ marginBottom: 20 }}>
           <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h3 className="card-title">Navbar Menu Groups</h3>

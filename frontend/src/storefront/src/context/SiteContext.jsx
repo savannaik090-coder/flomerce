@@ -151,7 +151,12 @@ export function SiteProvider({ children }) {
   }
 
   const effectiveSiteConfig = previewSettings && siteConfig
-    ? { ...siteConfig, settings: { ...(siteConfig.settings || {}), ...previewSettings } }
+    ? (() => {
+        const { logoUrl: pLogoUrl, ...settingsOverrides } = previewSettings;
+        const merged = { ...siteConfig, settings: { ...(siteConfig.settings || {}), ...settingsOverrides } };
+        if (pLogoUrl !== undefined) merged.logoUrl = pLogoUrl || null;
+        return merged;
+      })()
     : siteConfig;
 
   return (

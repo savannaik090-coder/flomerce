@@ -96,10 +96,10 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
                 src={siteConfig.logoUrl}
                 alt={siteConfig?.brandName || 'Store'}
                 className="brand-logo"
-                onError={(e) => { e.target.style.display = 'none'; e.target.nextElementSibling.style.display = 'block'; }}
+                onError={(e) => { e.target.style.display = 'none'; const txt = e.target.nextElementSibling; if (txt) txt.style.display = 'block'; }}
               />
             ) : null}
-            <span className="brand-text" style={{ display: siteConfig?.logoUrl ? 'none' : 'block', fontFamily: "'Playfair Display', serif", fontSize: 24, fontWeight: 'bold', color: '#000' }}>
+            <span className="brand-text" style={{ display: siteConfig?.logoUrl ? 'none' : 'block' }}>
               {siteConfig?.brandName || 'Store'}
             </span>
           </Link>

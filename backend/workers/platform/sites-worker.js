@@ -203,7 +203,9 @@ async function createSite(request, env, user) {
   
   try {
     const body = await request.json();
-    const { brandName, categories, templateId, logoUrl, phone, email, address, primaryColor, secondaryColor } = body;
+    const { brandName, categories, templateId, phone, email, address, primaryColor, secondaryColor } = body;
+    let logoUrl = body.logoUrl || null;
+    const logoBase64 = body.logo || null;
     const category = body.category || 'general';
     const subdomain = (body.subdomain || generateSubdomain(brandName)).toLowerCase().trim();
 
@@ -251,6 +253,33 @@ async function createSite(request, env, user) {
     ).run();
 
     const siteDB = await resolveSiteDBById(env, siteId);
+
+    if (logoBase64 && !logoUrl && logoBase64.startsWith('data:')) {
+      try {
+        const matches = logoBase64.match(/^data:([^;]+);base64,(.+)$/);
+        if (matches) {
+          const mimeType = matches[1];
+          const base64Data = matches[2];
+          const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml'];
+          const mimeToExt = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif', 'image/svg+xml': 'svg' };
+          if (allowedTypes.includes(mimeType)) {
+            const binaryString = atob(base64Data);
+            const buffer = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+              buffer[i] = binaryString.charCodeAt(i);
+            }
+            const ext = mimeToExt[mimeType] || 'png';
+            const key = `sites/${siteId}/images/${generateId()}.${ext}`;
+            await env.STORAGE.put(key, buffer, {
+              httpMetadata: { contentType: mimeType, cacheControl: 'public, max-age=31536000' },
+            });
+            logoUrl = `/api/upload/image?key=${encodeURIComponent(key)}`;
+          }
+        }
+      } catch (e) {
+        console.error('Failed to upload logo during site creation:', e);
+      }
+    }
 
     const configData = {
       site_id: siteId,

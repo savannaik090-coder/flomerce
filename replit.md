@@ -43,6 +43,7 @@ Fluxe employs a shared shard-based D1 database architecture where multiple sites
 - **UI/UX:** Templates with extensive admin customization.
 - **SEO:** Dual-layer architecture with server-side rendering and client-side management. SEO data is primarily sourced from shard DBs.
 - **Push Notifications:** Full Web Push Protocol (VAPID) implementation using Cloudflare Workers' Web Crypto API, with service worker for client-side handling and admin panel for management and auto-triggers (new product, price drop).
+- **Store Logo:** Uploaded during site creation (base64 → R2) or via Admin Panel > Edit Website > Navbar tab. Stored as `logo_url` in `site_config`. Navbar renders the logo image when available, falling back to brand name text. Logo is responsive across desktop/tablet/mobile breakpoints.
 
 ### Key Features
 - **Dynamic Content:** Configurable homepage elements (sliders, banners, videos), product policies, navigation, and footer customization.
