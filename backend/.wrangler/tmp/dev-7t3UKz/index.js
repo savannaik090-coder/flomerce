@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-gZ6NKv/checked-fetch.js
+// .wrangler/tmp/bundle-f3vd4T/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-gZ6NKv/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-f3vd4T/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-gZ6NKv/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-f3vd4T/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-gZ6NKv/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-f3vd4T/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -2098,12 +2098,12 @@ var init_site_admin_worker = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-gZ6NKv/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-f3vd4T/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-gZ6NKv/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-f3vd4T/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -3455,7 +3455,7 @@ async function handleSites(request, env, path) {
     const staffId = pathParts[4] || null;
     return handleStaffCRUD(request, env, siteId, subResource, staffId);
   }
-  if (siteId && (subResource === "custom-domain" || subResource === "verify-domain")) {
+  if (siteId && (subResource === "custom-domain" || subResource === "verify-domain" || subResource === "rename-subdomain")) {
     let authorized = false;
     const user2 = await validateAuth(request, env);
     if (user2) {
@@ -3478,6 +3478,11 @@ async function handleSites(request, env, path) {
     if (subResource === "verify-domain") {
       if (method === "POST")
         return handleVerifyDomain(env, siteId);
+      return errorResponse("Method not allowed", 405);
+    }
+    if (subResource === "rename-subdomain") {
+      if (method === "PUT")
+        return handleRenameSubdomain(request, env, siteId);
       return errorResponse("Method not allowed", 405);
     }
   }
@@ -4197,6 +4202,44 @@ async function handleRemoveCustomDomain(env, siteId) {
   }
 }
 __name(handleRemoveCustomDomain, "handleRemoveCustomDomain");
+async function handleRenameSubdomain(request, env, siteId) {
+  try {
+    const { subdomain } = await request.json();
+    if (!subdomain) {
+      return errorResponse("Subdomain is required", 400);
+    }
+    const newSubdomain = subdomain.toLowerCase().trim();
+    if (newSubdomain.length < 3) {
+      return errorResponse("Subdomain must be at least 3 characters", 400);
+    }
+    if (!/^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(newSubdomain) && newSubdomain.length > 1) {
+      return errorResponse("Only lowercase letters, numbers, and hyphens allowed. Must start and end with a letter or number.", 400);
+    }
+    const site = await env.DB.prepare(
+      "SELECT id, subdomain FROM sites WHERE id = ?"
+    ).bind(siteId).first();
+    if (!site) {
+      return errorResponse("Site not found", 404, "NOT_FOUND");
+    }
+    if (site.subdomain === newSubdomain) {
+      return errorResponse("New subdomain is the same as current one", 400);
+    }
+    const existing = await env.DB.prepare(
+      "SELECT id FROM sites WHERE LOWER(subdomain) = ? AND id != ?"
+    ).bind(newSubdomain, siteId).first();
+    if (existing) {
+      return errorResponse("This subdomain is already taken", 400, "SUBDOMAIN_TAKEN");
+    }
+    await env.DB.prepare(
+      `UPDATE sites SET subdomain = ?, updated_at = datetime('now') WHERE id = ?`
+    ).bind(newSubdomain, siteId).run();
+    return successResponse({ subdomain: newSubdomain }, "Subdomain renamed successfully");
+  } catch (error) {
+    console.error("Rename subdomain error:", error);
+    return errorResponse("Failed to rename subdomain", 500);
+  }
+}
+__name(handleRenameSubdomain, "handleRenameSubdomain");
 
 // workers/storefront/products-worker.js
 init_checked_fetch();
@@ -11969,7 +12012,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-gZ6NKv/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-f3vd4T/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -12004,7 +12047,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-gZ6NKv/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-f3vd4T/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

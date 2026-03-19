@@ -19,7 +19,7 @@ export async function handleSites(request, env, path) {
     return handleStaffCRUD(request, env, siteId, subResource, staffId);
   }
 
-  if (siteId && (subResource === 'custom-domain' || subResource === 'verify-domain')) {
+  if (siteId && (subResource === 'custom-domain' || subResource === 'verify-domain' || subResource === 'rename-subdomain')) {
     let authorized = false;
     const user = await validateAuth(request, env);
     if (user) {
@@ -38,6 +38,10 @@ export async function handleSites(request, env, path) {
     }
     if (subResource === 'verify-domain') {
       if (method === 'POST') return handleVerifyDomain(env, siteId);
+      return errorResponse('Method not allowed', 405);
+    }
+    if (subResource === 'rename-subdomain') {
+      if (method === 'PUT') return handleRenameSubdomain(request, env, siteId);
       return errorResponse('Method not allowed', 405);
     }
   }
@@ -842,5 +846,52 @@ async function handleRemoveCustomDomain(env, siteId) {
   } catch (error) {
     console.error('Remove custom domain error:', error);
     return errorResponse('Failed to remove custom domain', 500);
+  }
+}
+
+async function handleRenameSubdomain(request, env, siteId) {
+  try {
+    const { subdomain } = await request.json();
+    if (!subdomain) {
+      return errorResponse('Subdomain is required', 400);
+    }
+
+    const newSubdomain = subdomain.toLowerCase().trim();
+
+    if (newSubdomain.length < 3) {
+      return errorResponse('Subdomain must be at least 3 characters', 400);
+    }
+    if (!/^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(newSubdomain) && newSubdomain.length > 1) {
+      return errorResponse('Only lowercase letters, numbers, and hyphens allowed. Must start and end with a letter or number.', 400);
+    }
+
+    const site = await env.DB.prepare(
+      'SELECT id, subdomain FROM sites WHERE id = ?'
+    ).bind(siteId).first();
+
+    if (!site) {
+      return errorResponse('Site not found', 404, 'NOT_FOUND');
+    }
+
+    if (site.subdomain === newSubdomain) {
+      return errorResponse('New subdomain is the same as current one', 400);
+    }
+
+    const existing = await env.DB.prepare(
+      'SELECT id FROM sites WHERE LOWER(subdomain) = ? AND id != ?'
+    ).bind(newSubdomain, siteId).first();
+
+    if (existing) {
+      return errorResponse('This subdomain is already taken', 400, 'SUBDOMAIN_TAKEN');
+    }
+
+    await env.DB.prepare(
+      `UPDATE sites SET subdomain = ?, updated_at = datetime('now') WHERE id = ?`
+    ).bind(newSubdomain, siteId).run();
+
+    return successResponse({ subdomain: newSubdomain }, 'Subdomain renamed successfully');
+  } catch (error) {
+    console.error('Rename subdomain error:', error);
+    return errorResponse('Failed to rename subdomain', 500);
   }
 }

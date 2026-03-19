@@ -18,6 +18,13 @@ export default function SettingsSection() {
   const [codEnabled, setCodEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
 
+  const [currentSubdomain, setCurrentSubdomain] = useState('');
+  const [subdomainInput, setSubdomainInput] = useState('');
+  const [subdomainSaving, setSubdomainSaving] = useState(false);
+  const [subdomainMsg, setSubdomainMsg] = useState('');
+  const [subdomainError, setSubdomainError] = useState('');
+  const [showSubdomainConfirm, setShowSubdomainConfirm] = useState(false);
+
   const [customDomain, setCustomDomain] = useState('');
   const [domainStatus, setDomainStatus] = useState(null);
   const [domainToken, setDomainToken] = useState('');
@@ -81,6 +88,10 @@ export default function SettingsSection() {
           try { settings = JSON.parse(settings); } catch (e) { settings = {}; }
         }
         setBrandName(data.brand_name || data.brandName || '');
+        if (data.subdomain) {
+          setCurrentSubdomain(data.subdomain);
+          setSubdomainInput(data.subdomain);
+        }
         setPhone(settings.phone || data.phone || '');
         setWhatsapp(settings.whatsapp || '');
         setShowFloatingButton(settings.showFloatingButton !== false);
@@ -250,6 +261,53 @@ export default function SettingsSection() {
     }
   }
 
+  async function handleRenameSubdomain() {
+    const newSub = subdomainInput.trim().toLowerCase();
+    if (!newSub || newSub === currentSubdomain) {
+      setSubdomainError('Enter a different subdomain');
+      setShowSubdomainConfirm(false);
+      return;
+    }
+    if (newSub.length < 3) {
+      setSubdomainError('Subdomain must be at least 3 characters');
+      setShowSubdomainConfirm(false);
+      return;
+    }
+    if (!/^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(newSub) && newSub.length > 1) {
+      setSubdomainError('Only lowercase letters, numbers, and hyphens allowed. Must start and end with a letter or number.');
+      setShowSubdomainConfirm(false);
+      return;
+    }
+    setSubdomainError('');
+    setSubdomainMsg('');
+    setSubdomainSaving(true);
+    setShowSubdomainConfirm(false);
+    try {
+      const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
+      const token = sessionStorage.getItem('site_admin_token');
+      const response = await fetch(`${API_BASE}/api/sites/${siteConfig.id}/rename-subdomain`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `SiteAdmin ${token}` : '',
+        },
+        body: JSON.stringify({ subdomain: newSub }),
+      });
+      const result = await response.json();
+      if (response.ok && result.success) {
+        setCurrentSubdomain(newSub);
+        setSubdomainMsg('Subdomain renamed successfully! Your store is now at ' + newSub + '.fluxe.in');
+        if (refetchSite) refetchSite();
+      } else {
+        setSubdomainError(result.error || 'Failed to rename subdomain');
+      }
+    } catch (e) {
+      setSubdomainError('Failed to rename subdomain: ' + e.message);
+    } finally {
+      setSubdomainSaving(false);
+    }
+  }
+
   function copyToClipboard(text) {
     navigator.clipboard.writeText(text).catch(() => {});
   }
@@ -258,6 +316,52 @@ export default function SettingsSection() {
 
   return (
     <div style={{ maxWidth: 700 }}>
+      <div className="card" style={{ marginBottom: 20 }}>
+        <div className="card-header"><h3 className="card-title">Store URL</h3></div>
+        <div className="card-content">
+          <p style={{ fontSize: 13, color: '#64748b', marginBottom: 12 }}>
+            Your store is currently accessible at <a href={`https://${currentSubdomain}.fluxe.in`} target="_blank" rel="noopener noreferrer" style={{ fontWeight: 600, color: '#2563eb' }}>{currentSubdomain}.fluxe.in</a>
+          </p>
+          <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Subdomain</label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
+            <input
+              type="text"
+              value={subdomainInput}
+              onChange={(e) => { setSubdomainInput(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '')); setSubdomainError(''); setSubdomainMsg(''); setShowSubdomainConfirm(false); }}
+              placeholder="my-store"
+              style={{ flex: 1, padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: '6px 0 0 6px', fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }}
+            />
+            <span style={{ padding: '10px 12px', background: '#f1f5f9', border: '1px solid #e2e8f0', borderLeft: 'none', borderRadius: '0 6px 6px 0', fontSize: 14, color: '#64748b', whiteSpace: 'nowrap' }}>.fluxe.in</span>
+          </div>
+          {subdomainInput && subdomainInput !== currentSubdomain && !showSubdomainConfirm && !subdomainSaving && (
+            <button type="button" className="btn btn-primary" onClick={() => setShowSubdomainConfirm(true)} style={{ marginTop: 12, fontSize: 13 }}>
+              Change Subdomain
+            </button>
+          )}
+          {showSubdomainConfirm && (
+            <div style={{ marginTop: 12, padding: '14px 16px', borderRadius: 8, background: '#fffbeb', border: '1px solid #fde68a' }}>
+              <p style={{ fontSize: 13, fontWeight: 600, color: '#92400e', marginBottom: 8 }}>Are you sure?</p>
+              <p style={{ fontSize: 12, color: '#92400e', marginBottom: 12 }}>
+                Changing your subdomain will update your store URL from <strong>{currentSubdomain}.fluxe.in</strong> to <strong>{subdomainInput.trim()}.fluxe.in</strong>. The old URL will stop working immediately.
+              </p>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button type="button" className="btn btn-primary" onClick={handleRenameSubdomain} disabled={subdomainSaving} style={{ fontSize: 13, background: '#f59e0b', borderColor: '#f59e0b' }}>
+                  {subdomainSaving ? 'Renaming...' : 'Yes, Rename'}
+                </button>
+                <button type="button" className="btn btn-outline" onClick={() => { setShowSubdomainConfirm(false); setSubdomainInput(currentSubdomain); }} style={{ fontSize: 13 }}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+          {subdomainSaving && !showSubdomainConfirm && (
+            <p style={{ fontSize: 13, color: '#64748b', marginTop: 8 }}>Renaming subdomain...</p>
+          )}
+          {subdomainMsg && <p style={{ color: '#16a34a', fontSize: 13, marginTop: 8 }}>{subdomainMsg}</p>}
+          {subdomainError && <p style={{ color: '#ef4444', fontSize: 13, marginTop: 8 }}>{subdomainError}</p>}
+        </div>
+      </div>
+
       <div className="card" style={{ marginBottom: 20 }}>
         <div className="card-header"><h3 className="card-title">Custom Domain</h3></div>
         <div className="card-content">
