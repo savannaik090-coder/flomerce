@@ -52,7 +52,7 @@
     justify-content: space-between;
     padding: 10px 15px;
     width: 100%;
-    min-height: 65px;
+    height: 65px;
     background: #f8f8f5;
     box-sizing: border-box;
 }
@@ -65,17 +65,19 @@
     text-decoration: none;
     margin-right: 20px;
     margin-left: 15px;
-    padding: 8px 0 3px 0;
+    padding: 0;
     min-width: 0;
     order: 0;
     position: relative;
-    transition: all 0.3s ease;
+    transition: color 0.3s ease;
     letter-spacing: 1px;
     display: flex;
     align-items: center;
     text-shadow: none;
     flex-shrink: 0;
     max-width: 40%;
+    height: 100%;
+    overflow: hidden;
 }
 
 .brand-text {
@@ -89,11 +91,9 @@
 }
 
 .brand-logo {
-    height: 44px;
     width: auto;
     max-width: 100%;
     object-fit: contain;
-    transition: all 0.3s ease;
     display: block;
 }
 
@@ -103,10 +103,16 @@
     transform: translateX(-50%);
     margin-left: 0;
     margin-right: 0;
+    max-width: 40%;
+    z-index: 1;
 }
 
 .nav-container--logo-center {
     position: relative;
+}
+
+.nav-container--logo-center .hamburger {
+    order: 0;
 }
 
 .nav-container--logo-center .nav-menu {
@@ -117,9 +123,8 @@
     order: 2;
 }
 
-.brand:hover { color: #b8905f; transform: translateY(-1px); }
-.brand--center:hover { transform: translateX(-50%) translateY(-1px); }
-.brand:hover .brand-logo { transform: scale(1.05); }
+.brand:hover { color: #b8905f; }
+.brand:hover .brand-logo { opacity: 0.85; }
 
 .hamburger {
     display: none;
@@ -317,8 +322,7 @@
 
 @media (min-width: 992px) {
     .nav-container {
-        height: auto;
-        min-height: 75px;
+        height: 75px;
         padding: 10px 20px;
     }
     .hamburger { display: none !important; }
@@ -360,6 +364,8 @@
         background-color: transparent !important;
     }
     .brand { order: 0; max-width: 35%; }
+    .brand--center { max-width: 40%; }
+    .nav-container--logo-center .nav-menu { margin-left: auto; }
     .nav-menu { order: 1; flex: 1; justify-content: center; }
     .nav-icons { order: 2; display: flex !important; }
     .icon-link {
@@ -518,6 +524,13 @@
         color: #c59d5f;
         background-color: rgba(196, 157, 95, 0.05);
     }
+    .brand--center {
+        position: static;
+        transform: none;
+    }
+    .nav-container--logo-center .nav-menu {
+        order: unset;
+    }
 }
 
 @media (max-width: 480px) {
@@ -528,14 +541,4 @@
     .brand-text { font-size: 18px; }
     .nav-icons { min-width: auto; }
     .icon-link { margin-left: 8px; }
-}
-
-@media (max-width: 991px) {
-    .brand--center {
-        position: static;
-        transform: none;
-    }
-    .nav-container--logo-center .nav-menu {
-        order: unset;
-    }
 }
