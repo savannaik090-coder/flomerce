@@ -78,7 +78,7 @@ export default function ProductCard({ product, variant = 'grid', onWishlistToggl
               No image
             </div>
           )}
-          {product.discount_percentage > 0 && (
+          {product.compare_price && product.compare_price > product.price && (
             <div
               className="product-badge"
               style={{
@@ -93,7 +93,7 @@ export default function ProductCard({ product, variant = 'grid', onWishlistToggl
                 borderRadius: '3px',
               }}
             >
-              SAVE {product.discount_percentage}%
+              SAVE {Math.round(((product.compare_price - product.price) / product.compare_price) * 100)}%
             </div>
           )}
           {product.stock !== undefined && product.stock <= 0 && (
@@ -171,7 +171,7 @@ export default function ProductCard({ product, variant = 'grid', onWishlistToggl
             >
               {formatINR(product.price)}
             </span>
-            {product.original_price && product.original_price > product.price && (
+            {product.compare_price && product.compare_price > product.price && (
               <>
                 <span
                   className="original-price"
@@ -182,7 +182,7 @@ export default function ProductCard({ product, variant = 'grid', onWishlistToggl
                     marginLeft: '8px',
                   }}
                 >
-                  {formatINR(product.original_price)}
+                  {formatINR(product.compare_price)}
                 </span>
                 <span
                   className="discount-tag"
@@ -193,7 +193,7 @@ export default function ProductCard({ product, variant = 'grid', onWishlistToggl
                     fontWeight: 600,
                   }}
                 >
-                  -{Math.round(((product.original_price - product.price) / product.original_price) * 100)}%
+                  -{Math.round(((product.compare_price - product.price) / product.compare_price) * 100)}%
                 </span>
               </>
             )}

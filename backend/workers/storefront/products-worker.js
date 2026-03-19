@@ -390,7 +390,9 @@ async function updateProduct(request, env, user, productId) {
       const dbKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();
       if (allowedFields.includes(dbKey)) {
         setClause.push(`${dbKey} = ?`);
-        if (Array.isArray(value) || typeof value === 'object') {
+        if (value === null || value === undefined) {
+          values.push(null);
+        } else if (Array.isArray(value) || typeof value === 'object') {
           values.push(JSON.stringify(value));
         } else if (typeof value === 'boolean') {
           values.push(value ? 1 : 0);

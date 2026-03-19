@@ -301,9 +301,14 @@ export default function ProductDetailPage() {
             <h1 className="product-title">{product.name}</h1>
             <div className="price">
               <span className="product-price">{formatINR(effectivePrice)}</span>
-              {effectivePrice !== product.price && (
-                <span style={{ fontSize: 13, color: '#94a3b8', marginLeft: 8, textDecoration: 'line-through' }}>
-                  {formatINR(product.price)}
+              {product.compare_price && product.compare_price > effectivePrice && (
+                <span style={{ fontSize: 15, color: '#94a3b8', marginLeft: 8, textDecoration: 'line-through' }}>
+                  {formatINR(product.compare_price)}
+                </span>
+              )}
+              {product.compare_price && product.compare_price > effectivePrice && (
+                <span style={{ fontSize: 13, color: '#e53e3e', marginLeft: 6, fontWeight: 600 }}>
+                  -{Math.round(((product.compare_price - effectivePrice) / product.compare_price) * 100)}% OFF
                 </span>
               )}
             </div>

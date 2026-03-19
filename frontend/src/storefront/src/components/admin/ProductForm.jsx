@@ -7,6 +7,7 @@ import { getApiUrl } from '../../services/api.js';
 const DEFAULT_FORM = {
   name: '',
   price: '',
+  comparePrice: '',
   stock: '',
   category_id: '',
   description: '',
@@ -115,6 +116,7 @@ export default function ProductForm({ product, onSave, onCancel }) {
       setForm({
         name: product.name || '',
         price: product.price || '',
+        comparePrice: product.compare_price || '',
         stock: product.stock ?? '',
         category_id: product.category_id || '',
         description: product.description || '',
@@ -161,6 +163,9 @@ export default function ProductForm({ product, onSave, onCancel }) {
     const errs = {};
     if (!form.name.trim()) errs.name = 'Product name is required.';
     if (!form.price || parseFloat(form.price) < 1) errs.price = 'Price must be at least 1.';
+    if (form.comparePrice && parseFloat(form.comparePrice) > 0 && parseFloat(form.comparePrice) <= parseFloat(form.price)) {
+      errs.comparePrice = 'Original price must be higher than selling price.';
+    }
     if (form.stock === '' || parseInt(form.stock) < 0) errs.stock = 'Stock quantity is required.';
     if (!form.category_id) errs.category_id = 'Please select a category.';
     if (!form.description.trim()) errs.description = 'Description is required.';
@@ -185,6 +190,7 @@ export default function ProductForm({ product, onSave, onCancel }) {
         siteId: siteConfig.id,
         name: form.name.trim(),
         price: parseFloat(form.price),
+        comparePrice: form.comparePrice ? parseFloat(form.comparePrice) : null,
         stock: parseInt(form.stock),
         categoryId: form.category_id,
         description: form.description.trim(),
@@ -331,9 +337,9 @@ export default function ProductForm({ product, onSave, onCancel }) {
               {errors.name && <p style={{ color: '#ef4444', fontSize: 12, marginTop: 4 }}>{errors.name}</p>}
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 16 }}>
               <div>
-                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Price *</label>
+                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Selling Price *</label>
                 <input
                   type="number"
                   min="1"
@@ -344,6 +350,20 @@ export default function ProductForm({ product, onSave, onCancel }) {
                   style={{ width: '100%', padding: '10px 12px', border: `1px solid ${errors.price ? '#ef4444' : '#e2e8f0'}`, borderRadius: 6, fontSize: 14, boxSizing: 'border-box' }}
                 />
                 {errors.price && <p style={{ color: '#ef4444', fontSize: 12, marginTop: 4 }}>{errors.price}</p>}
+              </div>
+              <div>
+                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Original Price</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={form.comparePrice}
+                  onChange={e => setForm(p => ({ ...p, comparePrice: e.target.value }))}
+                  placeholder="0.00"
+                  style={{ width: '100%', padding: '10px 12px', border: `1px solid ${errors.comparePrice ? '#ef4444' : '#e2e8f0'}`, borderRadius: 6, fontSize: 14, boxSizing: 'border-box' }}
+                />
+                {errors.comparePrice && <p style={{ color: '#ef4444', fontSize: 12, marginTop: 4 }}>{errors.comparePrice}</p>}
+                <p style={{ color: '#94a3b8', fontSize: 11, marginTop: 4 }}>Higher price shown with strikethrough</p>
               </div>
               <div>
                 <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Stock Quantity *</label>
