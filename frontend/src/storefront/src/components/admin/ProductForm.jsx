@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
-import { createProduct, updateProduct } from '../../services/productService.js';
+import { createProduct, updateProduct, getOptionsTemplate, saveOptionsTemplate } from '../../services/productService.js';
 import { getCategories } from '../../services/categoryService.js';
 import { getApiUrl } from '../../services/api.js';
 
@@ -133,21 +133,19 @@ export default function ProductForm({ product, onSave, onCancel }) {
       }
     } else {
       setForm(DEFAULT_FORM);
-      try {
-        const saved = localStorage.getItem('product_options_template');
-        if (saved) {
-          const tmpl = JSON.parse(saved);
-          setOptions({
-            colors: tmpl.colors || [],
-            imageColorMap: {},
-            customOptions: tmpl.customOptions || [],
-            pricedOptions: tmpl.pricedOptions || [],
-          });
-        } else {
-          setOptions(DEFAULT_OPTIONS);
-        }
-      } catch {
-        setOptions(DEFAULT_OPTIONS);
+      setOptions(DEFAULT_OPTIONS);
+      if (siteConfig?.id) {
+        getOptionsTemplate(siteConfig.id).then(res => {
+          const tmpl = res?.template;
+          if (tmpl) {
+            setOptions({
+              colors: tmpl.colors || [],
+              imageColorMap: {},
+              customOptions: tmpl.customOptions || [],
+              pricedOptions: tmpl.pricedOptions || [],
+            });
+          }
+        }).catch(() => {});
       }
     }
   }, [product]);
@@ -193,14 +191,12 @@ export default function ProductForm({ product, onSave, onCancel }) {
       } else {
         await createProduct(payload);
       }
-      if (hasAnyOptions(options)) {
-        try {
-          localStorage.setItem('product_options_template', JSON.stringify({
-            colors: options.colors,
-            customOptions: options.customOptions,
-            pricedOptions: options.pricedOptions,
-          }));
-        } catch {}
+      if (hasAnyOptions(options) && siteConfig?.id) {
+        saveOptionsTemplate(siteConfig.id, {
+          colors: options.colors,
+          customOptions: options.customOptions,
+          pricedOptions: options.pricedOptions,
+        }).catch(() => {});
       }
       onSave && onSave();
     } catch (err) {

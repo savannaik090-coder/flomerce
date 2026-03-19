@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-THJe6r/checked-fetch.js
+// .wrangler/tmp/bundle-P6GMQW/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-THJe6r/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-P6GMQW/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-THJe6r/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-P6GMQW/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-THJe6r/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-P6GMQW/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -2116,12 +2116,12 @@ var init_site_admin_worker = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-THJe6r/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-P6GMQW/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-THJe6r/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-P6GMQW/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -4296,6 +4296,14 @@ async function handleProducts(request, env, path) {
   const method = request.method;
   const pathParts = path.split("/").filter(Boolean);
   const productId = pathParts[2];
+  if (productId === "options-template") {
+    if (method === "GET") {
+      return getOptionsTemplate(request, env, url);
+    }
+    if (method === "PUT") {
+      return saveOptionsTemplate(request, env);
+    }
+  }
   if (method === "GET") {
     const siteId = url.searchParams.get("siteId");
     const subdomain = url.searchParams.get("subdomain");
@@ -4507,7 +4515,13 @@ async function createProduct(request, env, user) {
       const idx = typeof mainImageIndex === "number" ? mainImageIndex : 0;
       resolvedThumbnail = images[idx] || images[0] || null;
     }
-    const slug = name.toLowerCase().trim().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-").substring(0, 100);
+    let slug = name.toLowerCase().trim().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-").substring(0, 100);
+    const existingSlug = await db.prepare(
+      "SELECT id FROM products WHERE site_id = ? AND slug = ?"
+    ).bind(siteId, slug).first();
+    if (existingSlug) {
+      slug = slug.substring(0, 90) + "-" + Date.now().toString(36);
+    }
     const productId = generateId();
     const optionsStr = options ? JSON.stringify(options) : null;
     const rowData = { id: productId, site_id: siteId, category_id: categoryId, name, slug, description, short_description: shortDescription, price, compare_price: comparePrice, cost_price: costPrice, sku, stock, images, thumbnail_url: resolvedThumbnail, tags, is_featured: isFeatured, weight, dimensions, options: optionsStr };
@@ -4734,6 +4748,68 @@ async function updateProductStock(env, productId, quantity, operation = "decreme
   }
 }
 __name(updateProductStock, "updateProductStock");
+async function getOptionsTemplate(request, env, url) {
+  try {
+    const siteId = url.searchParams.get("siteId");
+    if (!siteId)
+      return errorResponse("siteId is required");
+    const user = await validateAuth(request, env);
+    const authHeader = request.headers.get("Authorization");
+    let authorized = !!user;
+    if (!authorized && authHeader && authHeader.startsWith("SiteAdmin ")) {
+      const admin = await validateSiteAdmin(request, env, siteId);
+      authorized = !!admin;
+    }
+    if (!authorized)
+      return errorResponse("Unauthorized", 401);
+    const db = await resolveSiteDBById(env, siteId);
+    const config = await db.prepare("SELECT settings FROM site_config WHERE site_id = ?").bind(siteId).first();
+    let settings = {};
+    if (config?.settings) {
+      try {
+        settings = JSON.parse(config.settings);
+      } catch {
+      }
+    }
+    return successResponse({ template: settings.productOptionsTemplate || null });
+  } catch (error) {
+    console.error("Get options template error:", error);
+    return errorResponse("Failed to load options template", 500);
+  }
+}
+__name(getOptionsTemplate, "getOptionsTemplate");
+async function saveOptionsTemplate(request, env) {
+  try {
+    const { siteId, template } = await request.json();
+    if (!siteId)
+      return errorResponse("siteId is required");
+    const user = await validateAuth(request, env);
+    const authHeader = request.headers.get("Authorization");
+    let authorized = !!user;
+    if (!authorized && authHeader && authHeader.startsWith("SiteAdmin ")) {
+      const admin = await validateSiteAdmin(request, env, siteId);
+      authorized = !!admin;
+    }
+    if (!authorized)
+      return errorResponse("Unauthorized", 401);
+    const db = await resolveSiteDBById(env, siteId);
+    const config = await db.prepare("SELECT settings FROM site_config WHERE site_id = ?").bind(siteId).first();
+    let settings = {};
+    if (config?.settings) {
+      try {
+        settings = JSON.parse(config.settings);
+      } catch {
+      }
+    }
+    settings.productOptionsTemplate = template || null;
+    await db.prepare('UPDATE site_config SET settings = ?, updated_at = datetime("now") WHERE site_id = ?').bind(JSON.stringify(settings), siteId).run();
+    return successResponse(null, "Options template saved");
+  } catch (error) {
+    console.error("Save options template error:", error);
+    return errorResponse("Failed to save options template", 500);
+  }
+}
+__name(saveOptionsTemplate, "saveOptionsTemplate");
 
 // workers/storefront/orders-worker.js
 init_checked_fetch();
@@ -12145,7 +12221,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-THJe6r/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-P6GMQW/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -12180,7 +12256,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-THJe6r/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-P6GMQW/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

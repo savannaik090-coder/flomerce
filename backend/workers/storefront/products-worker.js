@@ -13,6 +13,15 @@ export async function handleProducts(request, env, path) {
   const pathParts = path.split('/').filter(Boolean);
   const productId = pathParts[2];
 
+  if (productId === 'options-template') {
+    if (method === 'GET') {
+      return getOptionsTemplate(request, env, url);
+    }
+    if (method === 'PUT') {
+      return saveOptionsTemplate(request, env);
+    }
+  }
+
   if (method === 'GET') {
     const siteId = url.searchParams.get('siteId');
     const subdomain = url.searchParams.get('subdomain');
@@ -252,7 +261,13 @@ async function createProduct(request, env, user) {
       resolvedThumbnail = images[idx] || images[0] || null;
     }
 
-    const slug = name.toLowerCase().trim().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').substring(0, 100);
+    let slug = name.toLowerCase().trim().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').substring(0, 100);
+    const existingSlug = await db.prepare(
+      'SELECT id FROM products WHERE site_id = ? AND slug = ?'
+    ).bind(siteId, slug).first();
+    if (existingSlug) {
+      slug = slug.substring(0, 90) + '-' + Date.now().toString(36);
+    }
     const productId = generateId();
 
     const optionsStr = options ? JSON.stringify(options) : null;
@@ -512,5 +527,62 @@ export async function updateProductStock(env, productId, quantity, operation = '
   } catch (error) {
     console.error('Update stock error:', error);
     return false;
+  }
+}
+
+async function getOptionsTemplate(request, env, url) {
+  try {
+    const siteId = url.searchParams.get('siteId');
+    if (!siteId) return errorResponse('siteId is required');
+
+    const user = await validateAuth(request, env);
+    const authHeader = request.headers.get('Authorization');
+    let authorized = !!user;
+    if (!authorized && authHeader && authHeader.startsWith('SiteAdmin ')) {
+      const admin = await validateSiteAdmin(request, env, siteId);
+      authorized = !!admin;
+    }
+    if (!authorized) return errorResponse('Unauthorized', 401);
+
+    const db = await resolveSiteDBById(env, siteId);
+    const config = await db.prepare('SELECT settings FROM site_config WHERE site_id = ?').bind(siteId).first();
+    let settings = {};
+    if (config?.settings) {
+      try { settings = JSON.parse(config.settings); } catch {}
+    }
+    return successResponse({ template: settings.productOptionsTemplate || null });
+  } catch (error) {
+    console.error('Get options template error:', error);
+    return errorResponse('Failed to load options template', 500);
+  }
+}
+
+async function saveOptionsTemplate(request, env) {
+  try {
+    const { siteId, template } = await request.json();
+    if (!siteId) return errorResponse('siteId is required');
+
+    const user = await validateAuth(request, env);
+    const authHeader = request.headers.get('Authorization');
+    let authorized = !!user;
+    if (!authorized && authHeader && authHeader.startsWith('SiteAdmin ')) {
+      const admin = await validateSiteAdmin(request, env, siteId);
+      authorized = !!admin;
+    }
+    if (!authorized) return errorResponse('Unauthorized', 401);
+
+    const db = await resolveSiteDBById(env, siteId);
+    const config = await db.prepare('SELECT settings FROM site_config WHERE site_id = ?').bind(siteId).first();
+    let settings = {};
+    if (config?.settings) {
+      try { settings = JSON.parse(config.settings); } catch {}
+    }
+    settings.productOptionsTemplate = template || null;
+    await db.prepare('UPDATE site_config SET settings = ?, updated_at = datetime("now") WHERE site_id = ?')
+      .bind(JSON.stringify(settings), siteId).run();
+    return successResponse(null, 'Options template saved');
+  } catch (error) {
+    console.error('Save options template error:', error);
+    return errorResponse('Failed to save options template', 500);
   }
 }

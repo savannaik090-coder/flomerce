@@ -42,3 +42,14 @@ export async function deleteProduct(productId, siteId) {
     method: 'DELETE',
   });
 }
+
+export async function getOptionsTemplate(siteId) {
+  return apiRequest(`/api/products/options-template?siteId=${siteId}`);
+}
+
+export async function saveOptionsTemplate(siteId, template) {
+  return apiRequest('/api/products/options-template', {
+    method: 'PUT',
+    body: JSON.stringify({ siteId, template }),
+  });
+}
