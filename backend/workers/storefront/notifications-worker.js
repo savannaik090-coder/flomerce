@@ -22,6 +22,9 @@ export async function handleNotifications(request, env, path) {
     case 'send':
       if (request.method === 'POST') return handleSend(request, env);
       break;
+    case 'test-send':
+      if (request.method === 'POST') return handleTestSend(request, env);
+      break;
     case 'settings':
       if (request.method === 'GET') return handleGetSettings(request, env);
       if (request.method === 'POST') return handleSaveSettings(request, env);
@@ -337,5 +340,60 @@ export async function triggerAutoNotification(env, siteId, type, payload) {
     }
   } catch (err) {
     console.error('[Notifications] Auto-trigger error:', err);
+  }
+}
+
+async function handleTestSend(request, env) {
+  try {
+    const body = await request.json();
+    const siteId = body.siteId || '1';
+
+    const vapidPublicKey = env.VAPID_PUBLIC_KEY;
+    const vapidPrivateKey = env.VAPID_PRIVATE_KEY;
+    const vapidSubject = env.VAPID_SUBJECT || 'mailto:noreply@fluxe.in';
+
+    if (!vapidPrivateKey) {
+      return jsonResponse({ success: false, error: 'VAPID_PRIVATE_KEY missing' });
+    }
+
+    const db = await resolveSiteDBById(env, siteId);
+    const subsResult = await db.prepare(
+      'SELECT id, endpoint, p256dh, auth, user_id, is_active, created_at FROM notifications WHERE site_id = ? LIMIT 10'
+    ).bind(siteId).all();
+    const subs = subsResult.results || [];
+
+    if (subs.length === 0) {
+      return jsonResponse({ success: false, error: 'No subscriptions found in DB', dbQuery: 'notifications table empty for site ' + siteId });
+    }
+
+    const results = [];
+    for (const sub of subs) {
+      const subInfo = {
+        id: sub.id,
+        endpoint: sub.endpoint ? sub.endpoint.substring(0, 80) + '...' : 'NULL',
+        p256dh: sub.p256dh ? sub.p256dh.substring(0, 20) + '...' : 'NULL',
+        auth: sub.auth ? sub.auth.substring(0, 10) + '...' : 'NULL',
+        is_active: sub.is_active,
+        user_id: sub.user_id,
+      };
+
+      if (!sub.endpoint || !sub.p256dh || !sub.auth) {
+        results.push({ ...subInfo, status: 'SKIPPED', reason: 'missing endpoint/p256dh/auth' });
+        continue;
+      }
+
+      try {
+        const payload = { title: 'Test from Fluxe', body: 'If you see this, push works!', icon: '/icon-192.png' };
+        const res = await sendWebPush(sub, payload, vapidPublicKey, vapidPrivateKey, vapidSubject);
+        const resBody = await res.text().catch(() => '');
+        results.push({ ...subInfo, status: res.status, statusText: res.statusText, responseBody: resBody.substring(0, 300) });
+      } catch (e) {
+        results.push({ ...subInfo, status: 'ERROR', error: e.message, stack: e.stack?.substring(0, 200) });
+      }
+    }
+
+    return jsonResponse({ success: true, vapidConfigured: true, subscriptionCount: subs.length, results });
+  } catch (err) {
+    return jsonResponse({ success: false, error: err.message, stack: err.stack?.substring(0, 300) });
   }
 }
