@@ -1,3 +1,23 @@
+function derToRaw(derSig) {
+  if (derSig[0] !== 0x30) return derSig;
+  let offset = 2;
+  if (derSig[1] & 0x80) offset += (derSig[1] & 0x7f);
+
+  function readInt(pos) {
+    if (derSig[pos] !== 0x02) return { val: new Uint8Array(32), next: pos };
+    const len = derSig[pos + 1];
+    let start = pos + 2;
+    let intBytes = derSig.slice(start, start + len);
+    while (intBytes.length < 32) intBytes = concat(new Uint8Array([0]), intBytes);
+    if (intBytes.length > 32) intBytes = intBytes.slice(intBytes.length - 32);
+    return { val: intBytes, next: start + len };
+  }
+
+  const r = readInt(offset);
+  const s = readInt(r.next);
+  return concat(r.val, s.val);
+}
+
 function base64urlDecode(str) {
   const b64 = str.replace(/-/g, '+').replace(/_/g, '/');
   const pad = b64.length % 4 === 0 ? '' : '='.repeat(4 - (b64.length % 4));
@@ -131,13 +151,16 @@ async function buildVapidHeaders(endpoint, subject, publicKeyBase64, privateKeyJ
     false, ['sign']
   );
 
-  const signature = await crypto.subtle.sign(
+  const rawSignature = await crypto.subtle.sign(
     { name: 'ECDSA', hash: 'SHA-256' },
     privateKey,
     enc.encode(signingInput)
   );
 
-  const jwt = `${signingInput}.${base64urlEncode(new Uint8Array(signature))}`;
+  const sigBytes = new Uint8Array(rawSignature);
+  const finalSig = sigBytes.length !== 64 ? derToRaw(sigBytes) : sigBytes;
+
+  const jwt = `${signingInput}.${base64urlEncode(finalSig)}`;
 
   return {
     Authorization: `vapid t=${jwt},k=${publicKeyBase64}`,

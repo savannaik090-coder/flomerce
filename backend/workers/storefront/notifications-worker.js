@@ -189,7 +189,8 @@ async function handleSend(request, env) {
               expiredEndpoints.push(sub.endpoint);
               failed++;
             } else {
-              console.warn('[Notifications] Push failed with status', res.status, 'for endpoint', sub.endpoint.substring(0, 50));
+              const errBody = await res.text().catch(() => '');
+              console.warn('[Notifications] Push failed:', res.status, errBody.substring(0, 200), 'endpoint:', sub.endpoint.substring(0, 60));
               failed++;
             }
           } catch (e) {

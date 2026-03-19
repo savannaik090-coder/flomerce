@@ -68,7 +68,7 @@ export default function usePushNotifications() {
 
       const keys = subscription.toJSON().keys;
 
-      await fetch(getApiUrl('/api/notifications/subscribe'), {
+      const resp = await fetch(getApiUrl('/api/notifications/subscribe'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -79,6 +79,12 @@ export default function usePushNotifications() {
           userId: customer?.id || null,
         }),
       });
+
+      const result = await resp.json().catch(() => ({}));
+      if (!resp.ok || !result.success) {
+        console.warn('[Push] Subscribe API failed:', result);
+        return false;
+      }
 
       setIsSubscribed(true);
       setShowPrompt(false);

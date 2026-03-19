@@ -26,6 +26,8 @@ FROM_EMAIL = "noreply@fluxe.in"
 PAGES_HOSTNAME = "fluxe-8x1.pages.dev"
 VAPID_PUBLIC_KEY = "BBFtjftWOpbgmrZGuPuWePb0ZIEyDz9pVppnsZqwMXewpiu3-JQy5nbBtqOjftgv8332Oy4i94j6NUBDphTh08s"
 VAPID_SUBJECT = "mailto:noreply@fluxe.in"
+# VAPID_PRIVATE_KEY for local dev only — in production, set as secret: wrangler secret put VAPID_PRIVATE_KEY
+VAPID_PRIVATE_KEY = '{"key_ops":["sign"],"ext":true,"kty":"EC","x":"EW2N-1Y6luCatka4-5Z49vRkgTIPP2lWmmexmrAxd7A","y":"piu3-JQy5nbBtqOjftgv8332Oy4i94j6NUBDphTh08s","crv":"P-256","d":"xV4-1G0eDRkIDRvHNXrg9fPQQqlK3EeHmKdN_O37G9k"}'
 # Cloudflare for SaaS — custom domain SSL provisioning
 # CF_ZONE_ID: Zone ID for fluxe.in (find in Cloudflare dashboard → Overview → right sidebar)
 # CF_API_TOKEN must be set as a secret: cd backend && npx wrangler secret put CF_API_TOKEN
