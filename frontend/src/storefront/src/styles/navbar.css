@@ -95,22 +95,18 @@
     display: block;
 }
 
-.brand--center {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    margin-left: 0;
-    margin-right: 0;
-    max-width: 40%;
-    z-index: 1;
-}
-
 .nav-container--logo-center {
-    position: relative;
+    flex-wrap: wrap;
+    justify-content: center;
 }
 
-.nav-container--logo-center .hamburger {
+.nav-container--logo-center .brand--center {
     order: 0;
+    width: 100%;
+    max-width: 100%;
+    justify-content: center;
+    margin: 0;
+    flex-shrink: 1;
 }
 
 .nav-container--logo-center .nav-menu {
@@ -362,7 +358,16 @@
         background-color: transparent !important;
     }
     .brand { order: 0; max-width: 35%; }
-    .brand--center { max-width: 40%; }
+    .nav-container--logo-center { flex-wrap: nowrap; }
+    .nav-container--logo-center .brand--center {
+        width: auto;
+        max-width: 40%;
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        margin: 0;
+        z-index: 1;
+    }
     .nav-container--logo-center .nav-menu { margin-left: auto; }
     .nav-menu { order: 1; flex: 1; justify-content: center; }
     .nav-icons { order: 2; display: flex !important; }
@@ -522,12 +527,11 @@
         color: #c59d5f;
         background-color: rgba(196, 157, 95, 0.05);
     }
-    .brand--center {
-        position: static;
-        transform: none;
-    }
-    .nav-container--logo-center .nav-menu {
-        order: unset;
+    .nav-container--logo-center .brand--center {
+        width: auto;
+        max-width: 45%;
+        justify-content: center;
+        margin: 0 auto;
     }
 }
 
