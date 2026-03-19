@@ -48,7 +48,7 @@ async function checkAndExpireSubscription(env, userId) {
         ).bind(trialSub.id).run();
 
         await env.DB.prepare(
-          `UPDATE sites SET subscription_plan = 'expired', updated_at = datetime('now') WHERE user_id = ? AND subscription_plan = 'trial'`
+          `UPDATE sites SET subscription_plan = 'expired', updated_at = datetime('now') WHERE user_id = ? AND subscription_plan = 'trial' AND COALESCE(subscription_plan, '') != 'enterprise'`
         ).bind(userId).run();
 
         return { ...trialSub, status: 'expired' };
@@ -95,8 +95,8 @@ async function checkAndExpireSiteSubscription(env, siteId) {
         ).bind(activeSub.id).run();
 
         await env.DB.prepare(
-          `UPDATE sites SET subscription_plan = 'expired', updated_at = datetime('now') WHERE id = ?`
-        ).bind(siteId).run();
+          `UPDATE sites SET subscription_expires_at = ?, updated_at = datetime('now') WHERE id = ? AND COALESCE(subscription_plan, '') != 'enterprise'`
+        ).bind(activeSub.current_period_end, siteId).run();
 
         return { ...activeSub, status: 'expired' };
       }

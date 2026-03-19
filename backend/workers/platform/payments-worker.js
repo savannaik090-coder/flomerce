@@ -757,11 +757,11 @@ async function handleSubscriptionCharged(env, subEntity, paymentEntity) {
 
       if (existingSub.site_id) {
         await env.DB.prepare(
-          `UPDATE sites SET subscription_expires_at = ?, updated_at = datetime('now') WHERE id = ?`
+          `UPDATE sites SET subscription_expires_at = ?, updated_at = datetime('now') WHERE id = ? AND COALESCE(subscription_plan, '') != 'enterprise'`
         ).bind(newEnd.toISOString(), existingSub.site_id).run();
       } else {
         await env.DB.prepare(
-          `UPDATE sites SET subscription_expires_at = ?, updated_at = datetime('now') WHERE user_id = ?`
+          `UPDATE sites SET subscription_expires_at = ?, updated_at = datetime('now') WHERE user_id = ? AND COALESCE(subscription_plan, '') != 'enterprise'`
         ).bind(newEnd.toISOString(), existingSub.user_id).run();
       }
 
@@ -788,11 +788,11 @@ async function handleSubscriptionCancelled(env, entity) {
 
       if (sub.site_id) {
         await env.DB.prepare(
-          `UPDATE sites SET subscription_plan = 'expired', subscription_expires_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`
+          `UPDATE sites SET subscription_expires_at = datetime('now'), updated_at = datetime('now') WHERE id = ? AND COALESCE(subscription_plan, '') != 'enterprise'`
         ).bind(sub.site_id).run();
       } else {
         await env.DB.prepare(
-          `UPDATE sites SET subscription_plan = 'expired', subscription_expires_at = datetime('now'), updated_at = datetime('now') WHERE user_id = ?`
+          `UPDATE sites SET subscription_expires_at = datetime('now'), updated_at = datetime('now') WHERE user_id = ? AND COALESCE(subscription_plan, '') != 'enterprise'`
         ).bind(sub.user_id).run();
       }
     }
@@ -819,11 +819,11 @@ async function handleSubscriptionPaused(env, entity) {
 
       if (sub.site_id) {
         await env.DB.prepare(
-          `UPDATE sites SET subscription_plan = 'paused', subscription_expires_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`
+          `UPDATE sites SET subscription_expires_at = datetime('now'), updated_at = datetime('now') WHERE id = ? AND COALESCE(subscription_plan, '') != 'enterprise'`
         ).bind(sub.site_id).run();
       } else {
         await env.DB.prepare(
-          `UPDATE sites SET subscription_plan = 'paused', subscription_expires_at = datetime('now'), updated_at = datetime('now') WHERE user_id = ?`
+          `UPDATE sites SET subscription_expires_at = datetime('now'), updated_at = datetime('now') WHERE user_id = ? AND COALESCE(subscription_plan, '') != 'enterprise'`
         ).bind(sub.user_id).run();
       }
     }

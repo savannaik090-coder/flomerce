@@ -348,7 +348,7 @@ export default function DashboardPage() {
     }
 
     const accountStatus = getAccountSubscriptionStatus();
-    if (accountStatus.isTrialActive && (!plan || plan === 'trial' || plan === 'expired' || rawStatus !== 'active')) {
+    if (accountStatus.isTrialActive && (!plan || plan === 'trial' || plan === 'free' || rawStatus !== 'active')) {
       return { plan: 'trial', status: 'active', periodEnd: accountStatus.trialEndDate, isActive: true, isExpired: false };
     }
 
@@ -359,9 +359,8 @@ export default function DashboardPage() {
   };
 
   const formatPlanName = (plan) => {
-    if (!plan || plan === 'free') return 'Inactive';
+    if (!plan || plan === 'free' || plan === 'expired' || plan === 'paused') return 'Inactive';
     if (plan === 'trial') return 'Trial';
-    if (plan === 'expired') return 'Expired';
     if (plan === 'enterprise') return 'Enterprise';
     return plan.charAt(0).toUpperCase() + plan.slice(1);
   };

@@ -12,11 +12,14 @@ export default function SiteCard({ site, onManage, subscriptionInfo }) {
   const getStatusBadge = () => {
     if (sub.isActive) {
       if (isEnterprise) return { text: 'Enterprise', bg: '#ede9fe', color: '#5b21b6' };
-      const label = sub.plan === 'trial' ? 'Trial' : sub.plan || 'Active';
+      const label = sub.plan === 'trial' ? 'Trial' : (sub.plan ? sub.plan.charAt(0).toUpperCase() + sub.plan.slice(1) : 'Active');
       return { text: label, bg: '#dcfce7', color: '#166534' };
     }
     if (sub.isExpired) {
-      return { text: 'Expired', bg: '#fee2e2', color: '#dc2626' };
+      const planLabel = sub.plan && sub.plan !== 'expired' && sub.plan !== 'free' && sub.plan !== 'paused'
+        ? sub.plan.charAt(0).toUpperCase() + sub.plan.slice(1) + ' - Expired'
+        : 'Expired';
+      return { text: planLabel, bg: '#fee2e2', color: '#dc2626' };
     }
     return { text: 'Inactive', bg: '#fee2e2', color: '#dc2626' };
   };
