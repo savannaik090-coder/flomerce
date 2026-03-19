@@ -114,6 +114,7 @@ export default function ProductDetailPage() {
   const [selectedColor, setSelectedColor] = useState(null);
   const [selectedCustomOptions, setSelectedCustomOptions] = useState({});
   const [selectedPricedOptions, setSelectedPricedOptions] = useState({});
+  const [lastSelectedPricedOption, setLastSelectedPricedOption] = useState(null);
   const [optionError, setOptionError] = useState(null);
 
   useEffect(() => {
@@ -181,15 +182,11 @@ export default function ProductDetailPage() {
 
   const effectivePrice = React.useMemo(() => {
     if (!product) return 0;
-    const pricedValues = Object.values(selectedPricedOptions || {});
-    if (pricedValues.length > 0) {
-      const lastSelected = pricedValues[pricedValues.length - 1];
-      if (Number(lastSelected.price) > 0) {
-        return Number(lastSelected.price);
-      }
+    if (lastSelectedPricedOption && Number(lastSelectedPricedOption.price) > 0) {
+      return Number(lastSelectedPricedOption.price);
     }
     return product.price;
-  }, [product?.price, selectedPricedOptions]);
+  }, [product?.price, lastSelectedPricedOption]);
 
   const filteredImageIndices = React.useMemo(() => {
     if (!selectedColor || !productOptions?.imageColorMap) return null;
@@ -371,7 +368,7 @@ export default function ProductDetailPage() {
                       key={val.name}
                       type="button"
                       className={`product-option-chip${selectedPricedOptions[opt.label]?.name === val.name ? ' selected' : ''}`}
-                      onClick={() => { setSelectedPricedOptions(prev => ({ ...prev, [opt.label]: { name: val.name, price: val.price } })); setOptionError(null); }}
+                      onClick={() => { setSelectedPricedOptions(prev => ({ ...prev, [opt.label]: { name: val.name, price: val.price } })); setLastSelectedPricedOption({ name: val.name, price: val.price }); setOptionError(null); }}
                     >
                       {val.name}
                       {Number(val.price) > 0 && <span className="product-option-price-badge">{formatINR(val.price)}</span>}
