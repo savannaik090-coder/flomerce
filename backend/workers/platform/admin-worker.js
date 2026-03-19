@@ -1129,25 +1129,15 @@ async function removeEnterpriseSite(request, env) {
 
     await env.DB.prepare('DELETE FROM enterprise_sites WHERE site_id = ?').bind(siteId).run();
 
-    let restoredPlan = 'free';
-    try {
-      const oldSub = await env.DB.prepare(
-        `SELECT id, plan, current_period_end FROM subscriptions WHERE site_id = ? AND status = 'enterprise_override' ORDER BY created_at DESC LIMIT 1`
-      ).bind(siteId).first();
-      if (oldSub && oldSub.current_period_end && new Date(oldSub.current_period_end) > new Date()) {
-        await env.DB.prepare(`UPDATE subscriptions SET status = 'active', updated_at = datetime('now') WHERE id = ?`).bind(oldSub.id).run();
-        await env.DB.prepare(`UPDATE subscriptions SET status = 'expired', updated_at = datetime('now') WHERE site_id = ? AND status = 'enterprise_override' AND id != ?`).bind(siteId, oldSub.id).run();
-        await env.DB.prepare(`UPDATE sites SET subscription_plan = ?, subscription_expires_at = ?, updated_at = datetime('now') WHERE id = ?`).bind(oldSub.plan, oldSub.current_period_end, siteId).run();
-        restoredPlan = oldSub.plan;
-      } else {
-        await env.DB.prepare(`UPDATE subscriptions SET status = 'expired', updated_at = datetime('now') WHERE site_id = ? AND status = 'enterprise_override'`).bind(siteId).run();
-        await env.DB.prepare(`UPDATE sites SET subscription_plan = NULL, subscription_expires_at = NULL, updated_at = datetime('now') WHERE id = ?`).bind(siteId).run();
-      }
-    } catch (e) {
-      await env.DB.prepare(`UPDATE sites SET subscription_plan = NULL, subscription_expires_at = NULL, updated_at = datetime('now') WHERE id = ?`).bind(siteId).run();
-    }
+    await env.DB.prepare(
+      `UPDATE subscriptions SET status = 'expired', updated_at = datetime('now') WHERE site_id = ? AND status = 'enterprise_override'`
+    ).bind(siteId).run();
 
-    return successResponse({ siteId, restoredPlan }, 'Enterprise status removed');
+    await env.DB.prepare(
+      `UPDATE sites SET subscription_plan = NULL, subscription_expires_at = NULL, updated_at = datetime('now') WHERE id = ?`
+    ).bind(siteId).run();
+
+    return successResponse({ siteId }, 'Enterprise status removed. The site has no active plan — the user will need to subscribe to a new plan.');
   } catch (error) {
     return errorResponse('Failed to remove enterprise: ' + error.message, 500);
   }

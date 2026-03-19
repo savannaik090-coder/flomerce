@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-5iiFie/checked-fetch.js
+// .wrangler/tmp/bundle-gZ6NKv/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-5iiFie/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-gZ6NKv/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-5iiFie/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-gZ6NKv/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-5iiFie/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-gZ6NKv/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -2098,12 +2098,12 @@ var init_site_admin_worker = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-5iiFie/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-gZ6NKv/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-5iiFie/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-gZ6NKv/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -6814,6 +6814,16 @@ async function activateSubscription(env, userId, planName, billingCycle, razorpa
       periodEnd = new Date(periodStart);
       periodEnd.setMonth(periodEnd.getMonth() + periodMonths);
     }
+    const oldSubs = siteId ? (await env.DB.prepare(`SELECT id, razorpay_subscription_id FROM subscriptions WHERE site_id = ? AND status = 'active'`).bind(siteId).all()).results || [] : (await env.DB.prepare(`SELECT id, razorpay_subscription_id FROM subscriptions WHERE user_id = ? AND status = 'active'`).bind(userId).all()).results || [];
+    for (const oldSub of oldSubs) {
+      if (oldSub.razorpay_subscription_id && oldSub.razorpay_subscription_id !== razorpaySubscriptionId) {
+        const cancelled = await cancelRazorpaySubscription(env, oldSub.razorpay_subscription_id);
+        if (!cancelled) {
+          console.error(`Failed to cancel old Razorpay subscription ${oldSub.razorpay_subscription_id} during plan upgrade to ${planName}. Aborting activation.`);
+          return false;
+        }
+      }
+    }
     if (siteId) {
       await env.DB.prepare(
         `UPDATE subscriptions SET status = 'cancelled', cancelled_at = datetime('now') WHERE site_id = ? AND status = 'active'`
@@ -9724,24 +9734,13 @@ async function removeEnterpriseSite(request, env) {
     if (!siteId)
       return errorResponse("siteId is required", 400);
     await env.DB.prepare("DELETE FROM enterprise_sites WHERE site_id = ?").bind(siteId).run();
-    let restoredPlan = "free";
-    try {
-      const oldSub = await env.DB.prepare(
-        `SELECT id, plan, current_period_end FROM subscriptions WHERE site_id = ? AND status = 'enterprise_override' ORDER BY created_at DESC LIMIT 1`
-      ).bind(siteId).first();
-      if (oldSub && oldSub.current_period_end && new Date(oldSub.current_period_end) > /* @__PURE__ */ new Date()) {
-        await env.DB.prepare(`UPDATE subscriptions SET status = 'active', updated_at = datetime('now') WHERE id = ?`).bind(oldSub.id).run();
-        await env.DB.prepare(`UPDATE subscriptions SET status = 'expired', updated_at = datetime('now') WHERE site_id = ? AND status = 'enterprise_override' AND id != ?`).bind(siteId, oldSub.id).run();
-        await env.DB.prepare(`UPDATE sites SET subscription_plan = ?, subscription_expires_at = ?, updated_at = datetime('now') WHERE id = ?`).bind(oldSub.plan, oldSub.current_period_end, siteId).run();
-        restoredPlan = oldSub.plan;
-      } else {
-        await env.DB.prepare(`UPDATE subscriptions SET status = 'expired', updated_at = datetime('now') WHERE site_id = ? AND status = 'enterprise_override'`).bind(siteId).run();
-        await env.DB.prepare(`UPDATE sites SET subscription_plan = NULL, subscription_expires_at = NULL, updated_at = datetime('now') WHERE id = ?`).bind(siteId).run();
-      }
-    } catch (e) {
-      await env.DB.prepare(`UPDATE sites SET subscription_plan = NULL, subscription_expires_at = NULL, updated_at = datetime('now') WHERE id = ?`).bind(siteId).run();
-    }
-    return successResponse({ siteId, restoredPlan }, "Enterprise status removed");
+    await env.DB.prepare(
+      `UPDATE subscriptions SET status = 'expired', updated_at = datetime('now') WHERE site_id = ? AND status = 'enterprise_override'`
+    ).bind(siteId).run();
+    await env.DB.prepare(
+      `UPDATE sites SET subscription_plan = NULL, subscription_expires_at = NULL, updated_at = datetime('now') WHERE id = ?`
+    ).bind(siteId).run();
+    return successResponse({ siteId }, "Enterprise status removed. The site has no active plan \u2014 the user will need to subscribe to a new plan.");
   } catch (error) {
     return errorResponse("Failed to remove enterprise: " + error.message, 500);
   }
@@ -11970,7 +11969,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-5iiFie/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-gZ6NKv/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -12005,7 +12004,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-5iiFie/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-gZ6NKv/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;
