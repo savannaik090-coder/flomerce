@@ -17,6 +17,7 @@ export default function SettingsSection() {
   const [razorpayKeySecret, setRazorpayKeySecret] = useState('');
   const [codEnabled, setCodEnabled] = useState(true);
   const [defaultCurrency, setDefaultCurrency] = useState('INR');
+  const [showCurrencySelector, setShowCurrencySelector] = useState(true);
   const [loading, setLoading] = useState(true);
 
   const [currentSubdomain, setCurrentSubdomain] = useState('');
@@ -102,6 +103,7 @@ export default function SettingsSection() {
         setRazorpayKeySecret(settings.razorpayKeySecret || '');
         setCodEnabled(settings.codEnabled !== false);
         setDefaultCurrency(settings.defaultCurrency || 'INR');
+        setShowCurrencySelector(settings.showCurrencySelector !== false);
         if (data.custom_domain) {
           setCustomDomain(data.custom_domain);
           setDomainInput(data.custom_domain);
@@ -129,6 +131,7 @@ export default function SettingsSection() {
         address,
         codEnabled,
         defaultCurrency,
+        showCurrencySelector,
       };
       if (razorpayKeyId) {
         settings.razorpayKeyId = razorpayKeyId;
@@ -603,6 +606,19 @@ export default function SettingsSection() {
               <option value="AUD">🇦🇺 AUD — Australian Dollar</option>
               <option value="SAR">🇸🇦 SAR — Saudi Riyal</option>
             </select>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, paddingTop: 16, borderTop: '1px solid #f1f5f9' }}>
+              <div>
+                <label style={{ fontWeight: 600, fontSize: 13, display: 'block' }}>Show Currency Selector</label>
+                <span style={{ fontSize: 12, color: '#94a3b8' }}>Toggle the currency selector on the bottom navigation bar</span>
+              </div>
+              <label style={{ position: 'relative', display: 'inline-block', width: 44, height: 24, cursor: 'pointer' }}>
+                <input type="checkbox" checked={showCurrencySelector} onChange={() => setShowCurrencySelector(!showCurrencySelector)} style={{ opacity: 0, width: 0, height: 0 }} />
+                <span style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: showCurrencySelector ? '#10b981' : '#cbd5e1', borderRadius: 24, transition: 'background-color 0.2s' }}>
+                  <span style={{ position: 'absolute', left: showCurrencySelector ? 22 : 2, top: 2, width: 20, height: 20, backgroundColor: '#fff', borderRadius: '50%', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+                </span>
+              </label>
+            </div>
           </div>
         </div>
 

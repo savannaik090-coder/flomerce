@@ -17,7 +17,6 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
   const [youtube, setYoutube] = useState('');
 
   const [shopRedirect, setShopRedirect] = useState('');
-  const [showCurrency, setShowCurrency] = useState(true);
 
   const [showAppBanner, setShowAppBanner] = useState(false);
   const [showAppStore, setShowAppStore] = useState(true);
@@ -41,11 +40,11 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
       social,
       footer: {
         social,
-        bottomNav: { shopRedirect, showCurrency },
+        bottomNav: { shopRedirect },
         appBanner: { show: showAppBanner, showAppStore, showPlayStore, appStoreUrl, playStoreUrl },
       },
     });
-  }, [instagram, facebook, twitter, youtube, shopRedirect, showCurrency, showAppBanner, showAppStore, showPlayStore, appStoreUrl, playStoreUrl]);
+  }, [instagram, facebook, twitter, youtube, shopRedirect, showAppBanner, showAppStore, showPlayStore, appStoreUrl, playStoreUrl]);
 
   async function loadCategories() {
     try {
@@ -79,7 +78,6 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
 
         const bottomNav = footer.bottomNav || {};
         setShopRedirect(bottomNav.shopRedirect || '');
-        setShowCurrency(bottomNav.showCurrency !== false);
 
         const appBanner = footer.appBanner || {};
         setShowAppBanner(appBanner.show === true);
@@ -107,7 +105,7 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
           social: { instagram: instagram, facebook: facebook, twitter: twitter, youtube: youtube },
           footer: {
             social: { instagram: instagram, facebook: facebook, twitter: twitter, youtube: youtube },
-            bottomNav: { shopRedirect: shopRedirect, showCurrency: showCurrency },
+            bottomNav: { shopRedirect: shopRedirect },
             appBanner: { show: showAppBanner, showAppStore: showAppStore, showPlayStore: showPlayStore, appStoreUrl: appStoreUrl, playStoreUrl: playStoreUrl },
           },
         },
@@ -265,18 +263,6 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
             </select>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <label style={{ fontWeight: 600, fontSize: 13, display: 'block' }}>Show Currency Selector</label>
-              <span style={{ fontSize: 12, color: '#94a3b8' }}>Toggle the currency icon on the bottom navigation</span>
-            </div>
-            <label style={{ position: 'relative', display: 'inline-block', width: 44, height: 24, cursor: 'pointer' }}>
-              <input type="checkbox" checked={showCurrency} onChange={function () { setShowCurrency(!showCurrency); }} style={{ opacity: 0, width: 0, height: 0 }} />
-              <span style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: showCurrency ? '#10b981' : '#cbd5e1', borderRadius: 24, transition: 'background-color 0.2s' }}>
-                <span style={{ position: 'absolute', left: showCurrency ? 22 : 2, top: 2, width: 20, height: 20, backgroundColor: '#fff', borderRadius: '50%', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
-              </span>
-            </label>
-          </div>
         </div>
       </div>
 

@@ -21,7 +21,7 @@ export default function MobileBottomNav({ onCartOpen }) {
   const footerSettings = siteConfig?.settings?.footer || {};
   const bottomNav = footerSettings.bottomNav || {};
   const shopRedirect = bottomNav.shopRedirect || '/';
-  const showCurrency = bottomNav.showCurrency !== false;
+  const showCurrency = siteConfig?.settings?.showCurrencySelector !== false;
 
   return (
     <nav className="bottom-nav">
