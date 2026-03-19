@@ -159,7 +159,7 @@ async function getCart(env, siteId, user, sessionId) {
     const enrichedItems = [];
     for (const item of items) {
       const product = await db.prepare(
-        'SELECT id, name, price, stock, thumbnail_url, images, is_active FROM products WHERE id = ? AND site_id = ?'
+        'SELECT id, name, price, stock, thumbnail_url, images, is_active, options FROM products WHERE id = ? AND site_id = ?'
       ).bind(item.productId, siteId).first();
 
       if (product && product.is_active) {
@@ -170,13 +170,26 @@ async function getCart(env, siteId, user, sessionId) {
             if (Array.isArray(imgs) && imgs.length > 0) imageUrl = imgs[0];
           } catch {}
         }
+        let effectivePrice = product.price;
+        const productOptions = product.options ? JSON.parse(product.options) : null;
+        if (item.selectedOptions?.pricedOptions && productOptions?.pricedOptions) {
+          for (const [label, clientVal] of Object.entries(item.selectedOptions.pricedOptions)) {
+            const optGroup = productOptions.pricedOptions.find(o => o.label === label);
+            if (optGroup) {
+              const dbVal = optGroup.values.find(v => v.name === clientVal.name);
+              if (dbVal) effectivePrice += Number(dbVal.price || 0);
+            }
+          }
+        }
         enrichedItems.push({
           ...item,
           name: product.name,
-          price: product.price,
+          price: effectivePrice,
+          basePrice: product.price,
           thumbnail: imageUrl,
           inStock: product.stock >= item.quantity,
           availableStock: product.stock,
+          selectedOptions: item.selectedOptions || null,
         });
       }
     }
@@ -201,7 +214,7 @@ async function addToCart(request, env, siteId, user, sessionId) {
       return errorResponse('Site is currently being migrated. Please try again shortly.', 423);
     }
 
-    const { productId, quantity, variant } = await request.json();
+    const { productId, quantity, variant, selectedOptions } = await request.json();
 
     if (!productId || !quantity || quantity < 1) {
       return errorResponse('Product ID and quantity are required');
@@ -229,9 +242,11 @@ async function addToCart(request, env, siteId, user, sessionId) {
     const items = JSON.parse(cart.items);
     const oldBytes = cart.row_size_bytes || 0;
 
+    const optionsKey = selectedOptions ? JSON.stringify(selectedOptions) : null;
     const existingIndex = items.findIndex(item => 
       item.productId === productId && 
-      JSON.stringify(item.variant) === JSON.stringify(variant)
+      JSON.stringify(item.variant) === JSON.stringify(variant) &&
+      JSON.stringify(item.selectedOptions || null) === optionsKey
     );
 
     if (existingIndex >= 0) {
@@ -245,6 +260,7 @@ async function addToCart(request, env, siteId, user, sessionId) {
         productId,
         quantity,
         variant: variant || null,
+        selectedOptions: selectedOptions || null,
         addedAt: new Date().toISOString(),
       });
     }
@@ -271,7 +287,7 @@ async function updateCartItem(request, env, siteId, user, sessionId) {
       return errorResponse('Site is currently being migrated. Please try again shortly.', 423);
     }
 
-    const { productId, quantity, variant } = await request.json();
+    const { productId, quantity, variant, selectedOptions } = await request.json();
 
     if (!productId) {
       return errorResponse('Product ID is required');
@@ -282,9 +298,11 @@ async function updateCartItem(request, env, siteId, user, sessionId) {
     const items = JSON.parse(cart.items);
     const oldBytes = cart.row_size_bytes || 0;
 
+    const optionsKey = selectedOptions ? JSON.stringify(selectedOptions) : null;
     const existingIndex = items.findIndex(item => 
       item.productId === productId && 
-      JSON.stringify(item.variant) === JSON.stringify(variant)
+      JSON.stringify(item.variant) === JSON.stringify(variant) &&
+      JSON.stringify(item.selectedOptions || null) === optionsKey
     );
 
     if (existingIndex < 0) {
@@ -330,6 +348,7 @@ async function removeFromCart(request, env, siteId, user, sessionId) {
     const url = new URL(request.url);
     const productId = url.searchParams.get('productId');
     const variant = url.searchParams.get('variant');
+    const optionsParam = url.searchParams.get('selectedOptions');
 
     if (!productId) {
       return errorResponse('Product ID is required');
@@ -341,9 +360,13 @@ async function removeFromCart(request, env, siteId, user, sessionId) {
     const oldBytes = cart.row_size_bytes || 0;
 
     const parsedVariant = variant ? variant : null;
-    const filteredItems = items.filter(item => 
-      !(item.productId === productId && JSON.stringify(item.variant ?? null) === JSON.stringify(parsedVariant))
-    );
+    const parsedOptions = optionsParam ? optionsParam : null;
+    const filteredItems = items.filter(item => {
+      if (item.productId !== productId) return true;
+      if (JSON.stringify(item.variant ?? null) !== JSON.stringify(parsedVariant)) return true;
+      if (parsedOptions && JSON.stringify(item.selectedOptions || null) !== parsedOptions) return true;
+      return false;
+    });
 
     const newItemsStr = JSON.stringify(filteredItems);
     const newBytes = estimateRowBytes({ items: newItemsStr, cart_id: cart.id });
@@ -384,7 +407,8 @@ export async function mergeCarts(env, siteId, userId, sessionId) {
       for (const guestItem of guestItems) {
         const existingIndex = userItems.findIndex(item => 
           item.productId === guestItem.productId && 
-          JSON.stringify(item.variant) === JSON.stringify(guestItem.variant)
+          JSON.stringify(item.variant) === JSON.stringify(guestItem.variant) &&
+          JSON.stringify(item.selectedOptions || null) === JSON.stringify(guestItem.selectedOptions || null)
         );
 
         if (existingIndex >= 0) {

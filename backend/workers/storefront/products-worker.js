@@ -132,6 +132,7 @@ async function getProducts(env, { siteId, subdomain, category, categoryId, url }
       ...product,
       images: product.images ? JSON.parse(product.images) : [],
       tags: product.tags ? JSON.parse(product.tags) : [],
+      options: product.options ? JSON.parse(product.options) : null,
     }));
 
     return successResponse(parsedProducts);
@@ -202,6 +203,7 @@ async function getProduct(env, productId, siteId, subdomain) {
       ...product,
       images: product.images ? JSON.parse(product.images) : [],
       tags: product.tags ? JSON.parse(product.tags) : [],
+      options: product.options ? JSON.parse(product.options) : null,
       variants: variantResults.map(v => ({
         ...v,
         attributes: v.attributes ? JSON.parse(v.attributes) : {},
@@ -218,7 +220,7 @@ async function getProduct(env, productId, siteId, subdomain) {
 async function createProduct(request, env, user) {
   try {
     const data = await request.json();
-    const { siteId, name, description, shortDescription, price, comparePrice, costPrice, sku, stock, categoryId, images, thumbnailUrl, mainImageIndex, tags, isFeatured, weight, dimensions } = data;
+    const { siteId, name, description, shortDescription, price, comparePrice, costPrice, sku, stock, categoryId, images, thumbnailUrl, mainImageIndex, tags, isFeatured, weight, dimensions, options } = data;
 
     if (!siteId || !name || price === undefined) {
       return errorResponse('Site ID, name and price are required');
@@ -252,7 +254,8 @@ async function createProduct(request, env, user) {
     const slug = name.toLowerCase().trim().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').substring(0, 100);
     const productId = generateId();
 
-    const rowData = { id: productId, site_id: siteId, category_id: categoryId, name, slug, description, short_description: shortDescription, price, compare_price: comparePrice, cost_price: costPrice, sku, stock, images, thumbnail_url: resolvedThumbnail, tags, is_featured: isFeatured, weight, dimensions };
+    const optionsStr = options ? JSON.stringify(options) : null;
+    const rowData = { id: productId, site_id: siteId, category_id: categoryId, name, slug, description, short_description: shortDescription, price, compare_price: comparePrice, cost_price: costPrice, sku, stock, images, thumbnail_url: resolvedThumbnail, tags, is_featured: isFeatured, weight, dimensions, options: optionsStr };
     const rowBytes = estimateRowBytes(rowData);
 
     const usageCheck = await checkUsageLimit(env, siteId, 'd1', rowBytes);
@@ -261,8 +264,8 @@ async function createProduct(request, env, user) {
     }
 
     await db.prepare(
-      `INSERT INTO products (id, site_id, category_id, name, slug, description, short_description, price, compare_price, cost_price, sku, stock, low_stock_threshold, weight, dimensions, images, thumbnail_url, tags, is_featured, row_size_bytes, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+      `INSERT INTO products (id, site_id, category_id, name, slug, description, short_description, price, compare_price, cost_price, sku, stock, low_stock_threshold, weight, dimensions, images, thumbnail_url, tags, is_featured, options, row_size_bytes, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(
       productId,
       siteId,
@@ -283,6 +286,7 @@ async function createProduct(request, env, user) {
       resolvedThumbnail,
       tags ? JSON.stringify(tags) : '[]',
       isFeatured ? 1 : 0,
+      optionsStr,
       rowBytes
     ).run();
 
@@ -342,7 +346,7 @@ async function updateProduct(request, env, user, productId) {
     const db = await resolveSiteDBById(env, resolvedSiteId);
 
     const updates = await request.json();
-    const allowedFields = ['name', 'description', 'short_description', 'price', 'compare_price', 'cost_price', 'sku', 'stock', 'low_stock_threshold', 'category_id', 'images', 'thumbnail_url', 'tags', 'is_featured', 'is_active', 'weight', 'dimensions'];
+    const allowedFields = ['name', 'description', 'short_description', 'price', 'compare_price', 'cost_price', 'sku', 'stock', 'low_stock_threshold', 'category_id', 'images', 'thumbnail_url', 'tags', 'is_featured', 'is_active', 'weight', 'dimensions', 'options'];
     
     if (updates.images && !updates.thumbnailUrl && !updates.thumbnail_url) {
       const imgs = Array.isArray(updates.images) ? updates.images : [];

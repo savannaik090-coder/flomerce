@@ -270,9 +270,25 @@ export default function OrdersSection() {
                                       <div style={{ flex: 1 }}>
                                         <div style={{ fontWeight: 500, fontSize: 13 }}>{item.name}</div>
                                         {item.variant && <div style={{ fontSize: 11, color: '#888' }}>{item.variant}</div>}
+                                        {item.selectedOptions && (() => {
+                                          const parts = [];
+                                          if (item.selectedOptions.color) parts.push(`Color: ${item.selectedOptions.color}`);
+                                          if (item.selectedOptions.customOptions) {
+                                            for (const [label, value] of Object.entries(item.selectedOptions.customOptions)) {
+                                              parts.push(`${label}: ${value}`);
+                                            }
+                                          }
+                                          if (item.selectedOptions.pricedOptions) {
+                                            for (const [label, val] of Object.entries(item.selectedOptions.pricedOptions)) {
+                                              const priceSuffix = Number(val.price || 0) > 0 ? ` (+\u20B9${Number(val.price).toLocaleString('en-IN')})` : '';
+                                              parts.push(`${label}: ${val.name}${priceSuffix}`);
+                                            }
+                                          }
+                                          return parts.length > 0 ? <div style={{ fontSize: 11, color: '#888', marginTop: 1 }}>{parts.join(' \u2022 ')}</div> : null;
+                                        })()}
                                         <div style={{ fontSize: 12, color: '#555' }}>
-                                          ₹{parseFloat(item.price || 0).toLocaleString('en-IN')} × {item.quantity}
-                                          <span style={{ fontWeight: 600, marginLeft: 6 }}>= ₹{parseFloat((item.price || 0) * (item.quantity || 1)).toLocaleString('en-IN')}</span>
+                                          \u20B9{parseFloat(item.price || 0).toLocaleString('en-IN')} \u00D7 {item.quantity}
+                                          <span style={{ fontWeight: 600, marginLeft: 6 }}>= \u20B9{parseFloat((item.price || 0) * (item.quantity || 1)).toLocaleString('en-IN')}</span>
                                         </div>
                                       </div>
                                     </div>

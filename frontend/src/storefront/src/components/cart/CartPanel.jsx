@@ -16,8 +16,30 @@ function getItemName(item) {
   return item.product_name || item.name || '';
 }
 
+function SelectedOptionsDisplay({ selectedOptions }) {
+  if (!selectedOptions) return null;
+  const parts = [];
+  if (selectedOptions.color) parts.push(`Color: ${selectedOptions.color}`);
+  if (selectedOptions.customOptions) {
+    for (const [label, value] of Object.entries(selectedOptions.customOptions)) {
+      parts.push(`${label}: ${value}`);
+    }
+  }
+  if (selectedOptions.pricedOptions) {
+    for (const [label, val] of Object.entries(selectedOptions.pricedOptions)) {
+      parts.push(`${label}: ${val.name}`);
+    }
+  }
+  if (parts.length === 0) return null;
+  return (
+    <div style={{ fontSize: 11, color: '#888', marginTop: 2, lineHeight: 1.4 }}>
+      {parts.join(' \u2022 ')}
+    </div>
+  );
+}
+
 export default function CartPanel({ isOpen, onClose }) {
-  const { items, subtotal, updateQuantity, removeItem } = useContext(CartContext);
+  const { items, subtotal, updateQuantity, removeItem, cartItemKey } = useContext(CartContext);
   const { formatAmount } = useCurrency();
   const navigate = useNavigate();
 
@@ -34,10 +56,11 @@ export default function CartPanel({ isOpen, onClose }) {
           {items.length === 0 ? (
             <div className="empty-cart-message">Your cart is empty</div>
           ) : (
-            items.map((item) => {
+            items.map((item, idx) => {
               const itemId = item.productId || item.product_id || item.id;
+              const itemKey = cartItemKey ? cartItemKey(item) : itemId;
               return (
-              <div className="cart-item" key={itemId}>
+              <div className="cart-item" key={itemKey || idx}>
                 <div className="cart-item-image">
                   <img
                     src={resolveImageUrl(getItemImage(item))}
@@ -47,15 +70,16 @@ export default function CartPanel({ isOpen, onClose }) {
                 </div>
                 <div className="cart-item-details">
                   <div className="cart-item-name">{getItemName(item)}</div>
+                  <SelectedOptionsDisplay selectedOptions={item.selectedOptions} />
                   <div className="cart-item-price">{formatAmount(getItemPrice(item))}</div>
                   <div className="cart-item-quantity">
-                    <button className="quantity-btn" onClick={() => updateQuantity(itemId, (item.quantity || 1) - 1)}>-</button>
+                    <button className="quantity-btn" onClick={() => updateQuantity(itemKey, (item.quantity || 1) - 1, item.selectedOptions)}>-</button>
                     <input type="text" className="quantity-input" value={item.quantity || 1} readOnly />
-                    <button className="quantity-btn" onClick={() => updateQuantity(itemId, (item.quantity || 1) + 1)}>+</button>
+                    <button className="quantity-btn" onClick={() => updateQuantity(itemKey, (item.quantity || 1) + 1, item.selectedOptions)}>+</button>
                   </div>
                   <div className="cart-item-total">{formatAmount(getItemPrice(item) * (item.quantity || 1))}</div>
                 </div>
-                <button className="remove-item-btn" onClick={() => removeItem(itemId)}>
+                <button className="remove-item-btn" onClick={() => removeItem(itemKey, item.selectedOptions)}>
                   <i className="fas fa-times"></i>
                 </button>
               </div>

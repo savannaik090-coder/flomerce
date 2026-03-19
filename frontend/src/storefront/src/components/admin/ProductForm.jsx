@@ -14,6 +14,13 @@ const DEFAULT_FORM = {
   mainImageIndex: 0,
 };
 
+const DEFAULT_OPTIONS = {
+  colors: [],
+  imageColorMap: {},
+  customOptions: [],
+  pricedOptions: [],
+};
+
 function compressImageToBlob(file, quality = 0.8, maxWidth = 1200) {
   return new Promise((resolve) => {
     const img = new Image();
@@ -75,9 +82,17 @@ async function uploadImagesToR2(files, siteId, quality) {
   return urls;
 }
 
+function hasAnyOptions(opts) {
+  if (!opts) return false;
+  return (opts.colors && opts.colors.length > 0) ||
+    (opts.customOptions && opts.customOptions.length > 0) ||
+    (opts.pricedOptions && opts.pricedOptions.length > 0);
+}
+
 export default function ProductForm({ product, onSave, onCancel }) {
   const { siteConfig } = useContext(SiteContext);
   const [form, setForm] = useState(DEFAULT_FORM);
+  const [options, setOptions] = useState(DEFAULT_OPTIONS);
   const [categories, setCategories] = useState([]);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
@@ -106,8 +121,19 @@ export default function ProductForm({ product, onSave, onCancel }) {
         images: imgs,
         mainImageIndex: product.main_image_index || 0,
       });
+      if (product.options && typeof product.options === 'object') {
+        setOptions({
+          colors: product.options.colors || [],
+          imageColorMap: product.options.imageColorMap || {},
+          customOptions: product.options.customOptions || [],
+          pricedOptions: product.options.pricedOptions || [],
+        });
+      } else {
+        setOptions(DEFAULT_OPTIONS);
+      }
     } else {
       setForm(DEFAULT_FORM);
+      setOptions(DEFAULT_OPTIONS);
     }
   }, [product]);
 
@@ -121,7 +147,7 @@ export default function ProductForm({ product, onSave, onCancel }) {
   function validate() {
     const errs = {};
     if (!form.name.trim()) errs.name = 'Product name is required.';
-    if (!form.price || parseFloat(form.price) < 1) errs.price = 'Price must be at least ₹1.';
+    if (!form.price || parseFloat(form.price) < 1) errs.price = 'Price must be at least \u20B91.';
     if (form.stock === '' || parseInt(form.stock) < 0) errs.stock = 'Stock quantity is required.';
     if (!form.category_id) errs.category_id = 'Please select a category.';
     if (!form.description.trim()) errs.description = 'Description is required.';
@@ -135,6 +161,7 @@ export default function ProductForm({ product, onSave, onCancel }) {
     setSaving(true);
     setErrors({});
     try {
+      const cleanedOptions = hasAnyOptions(options) ? options : null;
       const payload = {
         siteId: siteConfig.id,
         name: form.name.trim(),
@@ -144,6 +171,7 @@ export default function ProductForm({ product, onSave, onCancel }) {
         description: form.description.trim(),
         images: form.images,
         mainImageIndex: form.mainImageIndex,
+        options: cleanedOptions,
       };
       if (isEdit) {
         await updateProduct(product.id, payload, siteConfig?.id);
@@ -195,6 +223,17 @@ export default function ProductForm({ product, onSave, onCancel }) {
       const imgs = prev.images.filter((_, i) => i !== idx);
       return { ...prev, images: imgs, mainImageIndex: Math.min(prev.mainImageIndex, imgs.length - 1) };
     });
+    setOptions(prev => {
+      const newMap = { ...prev.imageColorMap };
+      delete newMap[String(idx)];
+      const remapped = {};
+      for (const [k, v] of Object.entries(newMap)) {
+        const ki = parseInt(k);
+        if (ki > idx) remapped[String(ki - 1)] = v;
+        else remapped[k] = v;
+      }
+      return { ...prev, imageColorMap: remapped };
+    });
   }
 
   function moveImage(idx, dir) {
@@ -209,6 +248,17 @@ export default function ProductForm({ product, onSave, onCancel }) {
         mainImageIndex: prev.mainImageIndex === idx ? newIdx : prev.mainImageIndex === newIdx ? idx : prev.mainImageIndex,
       };
     });
+    setOptions(prev => {
+      const newIdx = idx + dir;
+      const newMap = { ...prev.imageColorMap };
+      const aColors = newMap[String(idx)];
+      const bColors = newMap[String(newIdx)];
+      if (aColors) newMap[String(newIdx)] = aColors;
+      else delete newMap[String(newIdx)];
+      if (bColors) newMap[String(idx)] = bColors;
+      else delete newMap[String(idx)];
+      return { ...prev, imageColorMap: newMap };
+    });
   }
 
   function getImageSrc(img) {
@@ -217,6 +267,12 @@ export default function ProductForm({ product, onSave, onCancel }) {
     }
     return getApiUrl(img);
   }
+
+  const sectionCardStyle = { marginBottom: 20 };
+  const sectionHeaderStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center' };
+  const addBtnStyle = { background: 'none', border: '1px dashed #94a3b8', borderRadius: 6, padding: '6px 14px', cursor: 'pointer', fontSize: 13, color: '#64748b', fontWeight: 500 };
+  const removeBtnStyle = { background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontSize: 14, padding: '2px 6px' };
+  const chipStyle = (active) => ({ display: 'inline-block', padding: '4px 10px', borderRadius: 20, border: `1px solid ${active ? '#2563eb' : '#e2e8f0'}`, background: active ? '#eff6ff' : '#f8fafc', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, color: active ? '#2563eb' : '#64748b', marginRight: 4, marginBottom: 4 });
 
   return (
     <div style={{ maxWidth: 700 }}>
@@ -251,7 +307,7 @@ export default function ProductForm({ product, onSave, onCancel }) {
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
               <div>
-                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Price (₹) *</label>
+                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Price (\u20B9) *</label>
                 <input
                   type="number"
                   min="1"
@@ -367,28 +423,307 @@ export default function ProductForm({ product, onSave, onCancel }) {
 
             {form.images.length > 0 && (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 12 }}>
-                {form.images.map((img, idx) => (
-                  <div key={idx} style={{ position: 'relative', border: `2px solid ${form.mainImageIndex === idx ? '#2563eb' : '#e2e8f0'}`, borderRadius: 8, overflow: 'hidden' }}>
-                    <img src={getImageSrc(img)} alt={`Product ${idx + 1}`} style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', display: 'block' }} />
-                    {form.mainImageIndex === idx && (
-                      <div style={{ position: 'absolute', top: 4, left: 4, background: '#2563eb', color: 'white', fontSize: 10, padding: '2px 6px', borderRadius: 4 }}>Main</div>
-                    )}
-                    <div style={{ position: 'absolute', top: 4, right: 4, display: 'flex', gap: 2 }}>
-                      <button type="button" onClick={() => setForm(p => ({ ...p, mainImageIndex: idx }))} title="Set as main" style={{ width: 22, height: 22, borderRadius: 4, background: 'white', border: '1px solid #e2e8f0', cursor: 'pointer', fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <i className="fas fa-star" style={{ color: form.mainImageIndex === idx ? '#f59e0b' : '#94a3b8' }} />
-                      </button>
-                      <button type="button" onClick={() => removeImage(idx)} title="Remove" style={{ width: 22, height: 22, borderRadius: 4, background: 'white', border: '1px solid #e2e8f0', cursor: 'pointer', fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <i className="fas fa-times" style={{ color: '#ef4444' }} />
+                {form.images.map((img, idx) => {
+                  const imgColors = options.imageColorMap[String(idx)] || [];
+                  return (
+                    <div key={idx} style={{ position: 'relative', border: `2px solid ${form.mainImageIndex === idx ? '#2563eb' : '#e2e8f0'}`, borderRadius: 8, overflow: 'hidden' }}>
+                      <img src={getImageSrc(img)} alt={`Product ${idx + 1}`} style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', display: 'block' }} />
+                      {form.mainImageIndex === idx && (
+                        <div style={{ position: 'absolute', top: 4, left: 4, background: '#2563eb', color: 'white', fontSize: 10, padding: '2px 6px', borderRadius: 4 }}>Main</div>
+                      )}
+                      <div style={{ position: 'absolute', top: 4, right: 4, display: 'flex', gap: 2 }}>
+                        <button type="button" onClick={() => setForm(p => ({ ...p, mainImageIndex: idx }))} title="Set as main" style={{ width: 22, height: 22, borderRadius: 4, background: 'white', border: '1px solid #e2e8f0', cursor: 'pointer', fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <i className="fas fa-star" style={{ color: form.mainImageIndex === idx ? '#f59e0b' : '#94a3b8' }} />
+                        </button>
+                        <button type="button" onClick={() => removeImage(idx)} title="Remove" style={{ width: 22, height: 22, borderRadius: 4, background: 'white', border: '1px solid #e2e8f0', cursor: 'pointer', fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <i className="fas fa-times" style={{ color: '#ef4444' }} />
+                        </button>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'center', gap: 2, padding: '4px 2px', background: '#f8fafc' }}>
+                        <button type="button" onClick={() => moveImage(idx, -1)} disabled={idx === 0} style={{ background: 'none', border: 'none', cursor: idx === 0 ? 'not-allowed' : 'pointer', fontSize: 12, color: idx === 0 ? '#cbd5e1' : '#64748b', padding: '0 4px' }}>
+                          <i className="fas fa-chevron-left" />
+                        </button>
+                        <span style={{ fontSize: 11, color: '#94a3b8' }}>{idx + 1}</span>
+                        <button type="button" onClick={() => moveImage(idx, 1)} disabled={idx === form.images.length - 1} style={{ background: 'none', border: 'none', cursor: idx === form.images.length - 1 ? 'not-allowed' : 'pointer', fontSize: 12, color: idx === form.images.length - 1 ? '#cbd5e1' : '#64748b', padding: '0 4px' }}>
+                          <i className="fas fa-chevron-right" />
+                        </button>
+                      </div>
+                      {options.colors.length > 0 && (
+                        <div style={{ padding: '4px 6px', background: '#f0f4ff', borderTop: '1px solid #e2e8f0' }}>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+                            {options.colors.map(c => {
+                              const isTagged = imgColors.includes(c.name);
+                              return (
+                                <button
+                                  key={c.name}
+                                  type="button"
+                                  onClick={() => {
+                                    setOptions(prev => {
+                                      const map = { ...prev.imageColorMap };
+                                      const current = map[String(idx)] || [];
+                                      if (isTagged) {
+                                        map[String(idx)] = current.filter(n => n !== c.name);
+                                      } else {
+                                        map[String(idx)] = [...current, c.name];
+                                      }
+                                      return { ...prev, imageColorMap: map };
+                                    });
+                                  }}
+                                  style={{
+                                    width: 18, height: 18, borderRadius: '50%',
+                                    border: isTagged ? '2px solid #2563eb' : '1px solid #ccc',
+                                    background: c.hex || '#ccc',
+                                    cursor: 'pointer', padding: 0,
+                                    boxShadow: isTagged ? '0 0 0 2px rgba(37,99,235,0.3)' : 'none',
+                                  }}
+                                  title={`${isTagged ? 'Remove' : 'Tag'} ${c.name}`}
+                                />
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="card" style={sectionCardStyle}>
+          <div className="card-header" style={sectionHeaderStyle}>
+            <h3 className="card-title">Color Options</h3>
+            <button
+              type="button"
+              style={addBtnStyle}
+              onClick={() => setOptions(prev => ({ ...prev, colors: [...prev.colors, { name: '', hex: '#000000' }] }))}
+            >
+              <i className="fas fa-plus" style={{ marginRight: 6 }} />Add Color
+            </button>
+          </div>
+          <div className="card-content">
+            {options.colors.length === 0 ? (
+              <p style={{ color: '#94a3b8', fontSize: 13, margin: 0 }}>No colors defined. Add colors to let customers filter images by color.</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {options.colors.map((color, idx) => (
+                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <input
+                      type="color"
+                      value={color.hex || '#000000'}
+                      onChange={e => {
+                        const newColors = [...options.colors];
+                        newColors[idx] = { ...newColors[idx], hex: e.target.value };
+                        setOptions(prev => ({ ...prev, colors: newColors }));
+                      }}
+                      style={{ width: 36, height: 36, border: '1px solid #e2e8f0', borderRadius: 6, cursor: 'pointer', padding: 2 }}
+                    />
+                    <input
+                      type="text"
+                      value={color.name}
+                      onChange={e => {
+                        const oldName = options.colors[idx].name;
+                        const newName = e.target.value;
+                        const newColors = [...options.colors];
+                        newColors[idx] = { ...newColors[idx], name: newName };
+                        const newMap = { ...options.imageColorMap };
+                        for (const [k, v] of Object.entries(newMap)) {
+                          newMap[k] = v.map(n => n === oldName ? newName : n);
+                        }
+                        setOptions(prev => ({ ...prev, colors: newColors, imageColorMap: newMap }));
+                      }}
+                      placeholder="Color name (e.g. Rose Gold)"
+                      style={{ flex: 1, padding: '8px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, boxSizing: 'border-box' }}
+                    />
+                    <button
+                      type="button"
+                      style={removeBtnStyle}
+                      onClick={() => {
+                        const removedName = options.colors[idx].name;
+                        const newColors = options.colors.filter((_, i) => i !== idx);
+                        const newMap = { ...options.imageColorMap };
+                        for (const [k, v] of Object.entries(newMap)) {
+                          newMap[k] = v.filter(n => n !== removedName);
+                        }
+                        setOptions(prev => ({ ...prev, colors: newColors, imageColorMap: newMap }));
+                      }}
+                    >
+                      <i className="fas fa-trash" />
+                    </button>
+                  </div>
+                ))}
+                {form.images.length > 0 && options.colors.some(c => c.name) && (
+                  <p style={{ fontSize: 12, color: '#64748b', margin: '4px 0 0' }}>
+                    <i className="fas fa-info-circle" style={{ marginRight: 4 }} />
+                    Click color circles on each image thumbnail above to tag images with colors.
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="card" style={sectionCardStyle}>
+          <div className="card-header" style={sectionHeaderStyle}>
+            <h3 className="card-title">Custom Options</h3>
+            <button
+              type="button"
+              style={addBtnStyle}
+              onClick={() => setOptions(prev => ({ ...prev, customOptions: [...prev.customOptions, { label: '', values: [''] }] }))}
+            >
+              <i className="fas fa-plus" style={{ marginRight: 6 }} />Add Option Group
+            </button>
+          </div>
+          <div className="card-content">
+            {options.customOptions.length === 0 ? (
+              <p style={{ color: '#94a3b8', fontSize: 13, margin: 0 }}>No custom options. Add options like Size, Weight, etc. that don't affect price.</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {options.customOptions.map((opt, gIdx) => (
+                  <div key={gIdx} style={{ padding: 12, border: '1px solid #e2e8f0', borderRadius: 8, background: '#fafbfc' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                      <input
+                        type="text"
+                        value={opt.label}
+                        onChange={e => {
+                          const newOpts = [...options.customOptions];
+                          newOpts[gIdx] = { ...newOpts[gIdx], label: e.target.value };
+                          setOptions(prev => ({ ...prev, customOptions: newOpts }));
+                        }}
+                        placeholder="Option name (e.g. Size, Weight)"
+                        style={{ flex: 1, padding: '8px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, fontWeight: 600, boxSizing: 'border-box' }}
+                      />
+                      <button type="button" style={removeBtnStyle} onClick={() => {
+                        setOptions(prev => ({ ...prev, customOptions: prev.customOptions.filter((_, i) => i !== gIdx) }));
+                      }}>
+                        <i className="fas fa-trash" />
                       </button>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'center', gap: 2, padding: '4px 2px', background: '#f8fafc' }}>
-                      <button type="button" onClick={() => moveImage(idx, -1)} disabled={idx === 0} style={{ background: 'none', border: 'none', cursor: idx === 0 ? 'not-allowed' : 'pointer', fontSize: 12, color: idx === 0 ? '#cbd5e1' : '#64748b', padding: '0 4px' }}>
-                        <i className="fas fa-chevron-left" />
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+                      {opt.values.map((val, vIdx) => (
+                        <div key={vIdx} style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                          <input
+                            type="text"
+                            value={val}
+                            onChange={e => {
+                              const newOpts = [...options.customOptions];
+                              const newVals = [...newOpts[gIdx].values];
+                              newVals[vIdx] = e.target.value;
+                              newOpts[gIdx] = { ...newOpts[gIdx], values: newVals };
+                              setOptions(prev => ({ ...prev, customOptions: newOpts }));
+                            }}
+                            placeholder="Value"
+                            style={{ width: 80, padding: '6px 8px', border: '1px solid #e2e8f0', borderRadius: 4, fontSize: 12, boxSizing: 'border-box' }}
+                          />
+                          {opt.values.length > 1 && (
+                            <button type="button" onClick={() => {
+                              const newOpts = [...options.customOptions];
+                              newOpts[gIdx] = { ...newOpts[gIdx], values: newOpts[gIdx].values.filter((_, i) => i !== vIdx) };
+                              setOptions(prev => ({ ...prev, customOptions: newOpts }));
+                            }} style={{ ...removeBtnStyle, fontSize: 11, padding: '0 2px' }}>
+                              <i className="fas fa-times" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                      <button type="button" onClick={() => {
+                        const newOpts = [...options.customOptions];
+                        newOpts[gIdx] = { ...newOpts[gIdx], values: [...newOpts[gIdx].values, ''] };
+                        setOptions(prev => ({ ...prev, customOptions: newOpts }));
+                      }} style={{ ...addBtnStyle, padding: '4px 10px', fontSize: 11 }}>+ Value</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="card" style={sectionCardStyle}>
+          <div className="card-header" style={sectionHeaderStyle}>
+            <h3 className="card-title">Priced Options</h3>
+            <button
+              type="button"
+              style={addBtnStyle}
+              onClick={() => setOptions(prev => ({ ...prev, pricedOptions: [...prev.pricedOptions, { label: '', values: [{ name: '', price: 0 }] }] }))}
+            >
+              <i className="fas fa-plus" style={{ marginRight: 6 }} />Add Priced Option Group
+            </button>
+          </div>
+          <div className="card-content">
+            {options.pricedOptions.length === 0 ? (
+              <p style={{ color: '#94a3b8', fontSize: 13, margin: 0 }}>No priced options. Add options like Dupatta, Chain Type, etc. that add to the base price.</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {options.pricedOptions.map((opt, gIdx) => (
+                  <div key={gIdx} style={{ padding: 12, border: '1px solid #e2e8f0', borderRadius: 8, background: '#fafbfc' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                      <input
+                        type="text"
+                        value={opt.label}
+                        onChange={e => {
+                          const newOpts = [...options.pricedOptions];
+                          newOpts[gIdx] = { ...newOpts[gIdx], label: e.target.value };
+                          setOptions(prev => ({ ...prev, pricedOptions: newOpts }));
+                        }}
+                        placeholder="Option name (e.g. Dupatta, Chain Type)"
+                        style={{ flex: 1, padding: '8px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, fontWeight: 600, boxSizing: 'border-box' }}
+                      />
+                      <button type="button" style={removeBtnStyle} onClick={() => {
+                        setOptions(prev => ({ ...prev, pricedOptions: prev.pricedOptions.filter((_, i) => i !== gIdx) }));
+                      }}>
+                        <i className="fas fa-trash" />
                       </button>
-                      <span style={{ fontSize: 11, color: '#94a3b8' }}>{idx + 1}</span>
-                      <button type="button" onClick={() => moveImage(idx, 1)} disabled={idx === form.images.length - 1} style={{ background: 'none', border: 'none', cursor: idx === form.images.length - 1 ? 'not-allowed' : 'pointer', fontSize: 12, color: idx === form.images.length - 1 ? '#cbd5e1' : '#64748b', padding: '0 4px' }}>
-                        <i className="fas fa-chevron-right" />
-                      </button>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {opt.values.map((val, vIdx) => (
+                        <div key={vIdx} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <input
+                            type="text"
+                            value={val.name}
+                            onChange={e => {
+                              const newOpts = [...options.pricedOptions];
+                              const newVals = [...newOpts[gIdx].values];
+                              newVals[vIdx] = { ...newVals[vIdx], name: e.target.value };
+                              newOpts[gIdx] = { ...newOpts[gIdx], values: newVals };
+                              setOptions(prev => ({ ...prev, pricedOptions: newOpts }));
+                            }}
+                            placeholder="Name (e.g. Silk Dupatta)"
+                            style={{ flex: 1, padding: '6px 8px', border: '1px solid #e2e8f0', borderRadius: 4, fontSize: 12, boxSizing: 'border-box' }}
+                          />
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                            <span style={{ fontSize: 12, color: '#64748b' }}>+\u20B9</span>
+                            <input
+                              type="number"
+                              min="0"
+                              value={val.price}
+                              onChange={e => {
+                                const newOpts = [...options.pricedOptions];
+                                const newVals = [...newOpts[gIdx].values];
+                                newVals[vIdx] = { ...newVals[vIdx], price: parseFloat(e.target.value) || 0 };
+                                newOpts[gIdx] = { ...newOpts[gIdx], values: newVals };
+                                setOptions(prev => ({ ...prev, pricedOptions: newOpts }));
+                              }}
+                              style={{ width: 70, padding: '6px 8px', border: '1px solid #e2e8f0', borderRadius: 4, fontSize: 12, boxSizing: 'border-box' }}
+                            />
+                          </div>
+                          {opt.values.length > 1 && (
+                            <button type="button" onClick={() => {
+                              const newOpts = [...options.pricedOptions];
+                              newOpts[gIdx] = { ...newOpts[gIdx], values: newOpts[gIdx].values.filter((_, i) => i !== vIdx) };
+                              setOptions(prev => ({ ...prev, pricedOptions: newOpts }));
+                            }} style={removeBtnStyle}>
+                              <i className="fas fa-times" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                      <button type="button" onClick={() => {
+                        const newOpts = [...options.pricedOptions];
+                        newOpts[gIdx] = { ...newOpts[gIdx], values: [...newOpts[gIdx].values, { name: '', price: 0 }] };
+                        setOptions(prev => ({ ...prev, pricedOptions: newOpts }));
+                      }} style={{ ...addBtnStyle, alignSelf: 'flex-start', padding: '4px 10px', fontSize: 11 }}>+ Value</button>
                     </div>
                   </div>
                 ))}

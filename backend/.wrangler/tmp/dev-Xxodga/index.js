@@ -2191,11 +2191,31 @@ async function sendEmail(env, to, subject, html, text) {
   }
 }
 __name(sendEmail, "sendEmail");
+function formatSelectedOptions(selectedOptions) {
+  if (!selectedOptions)
+    return "";
+  const parts = [];
+  if (selectedOptions.color)
+    parts.push(`Color: ${selectedOptions.color}`);
+  if (selectedOptions.customOptions) {
+    for (const [label, value] of Object.entries(selectedOptions.customOptions)) {
+      parts.push(`${label}: ${value}`);
+    }
+  }
+  if (selectedOptions.pricedOptions) {
+    for (const [label, val] of Object.entries(selectedOptions.pricedOptions)) {
+      const priceSuffix = Number(val.price || 0) > 0 ? ` (+&#8377;${Number(val.price).toFixed(0)})` : "";
+      parts.push(`${label}: ${val.name}${priceSuffix}`);
+    }
+  }
+  return parts.length > 0 ? `<div style="font-size: 12px; color: #888; margin-top: 2px;">${parts.join(" &bull; ")}</div>` : "";
+}
+__name(formatSelectedOptions, "formatSelectedOptions");
 function buildOrderConfirmationEmail(order, brandName, ownerEmail) {
   const items = typeof order.items === "string" ? JSON.parse(order.items) : order.items;
   const itemsHtml = items.map((item) => `
     <tr>
-      <td style="padding: 12px 16px; border-bottom: 1px solid #f0f0f0; font-size: 14px;">${item.name}</td>
+      <td style="padding: 12px 16px; border-bottom: 1px solid #f0f0f0; font-size: 14px;">${item.name}${formatSelectedOptions(item.selectedOptions)}</td>
       <td style="padding: 12px 16px; border-bottom: 1px solid #f0f0f0; text-align: center; font-size: 14px;">${item.quantity}</td>
       <td style="padding: 12px 16px; border-bottom: 1px solid #f0f0f0; text-align: right; font-size: 14px; font-weight: 600;">&#8377;${Number(item.price).toFixed(2)}</td>
       <td style="padding: 12px 16px; border-bottom: 1px solid #f0f0f0; text-align: right; font-size: 14px; font-weight: 600;">&#8377;${(Number(item.price) * Number(item.quantity)).toFixed(2)}</td>
@@ -2346,7 +2366,7 @@ function buildDeliveryCustomerEmail(order, brandName, ownerEmail) {
   }
   const itemsHtml = items.map((item) => `
     <tr>
-      <td style="padding: 10px 16px; border-bottom: 1px solid #f0f0f0; font-size: 14px;">${item.name}</td>
+      <td style="padding: 10px 16px; border-bottom: 1px solid #f0f0f0; font-size: 14px;">${item.name}${formatSelectedOptions(item.selectedOptions)}</td>
       <td style="padding: 10px 16px; border-bottom: 1px solid #f0f0f0; text-align: center; font-size: 14px;">${item.quantity}</td>
       <td style="padding: 10px 16px; border-bottom: 1px solid #f0f0f0; text-align: right; font-size: 14px; font-weight: 600;">&#8377;${(Number(item.price) * Number(item.quantity)).toFixed(2)}</td>
     </tr>
@@ -2487,7 +2507,7 @@ function buildOwnerNotificationEmail(order, brandName) {
   const items = typeof order.items === "string" ? JSON.parse(order.items) : order.items;
   const itemsHtml = items.map((item) => `
     <tr>
-      <td style="padding: 10px 16px; border-bottom: 1px solid #f0f0f0; font-size: 14px;">${item.name}</td>
+      <td style="padding: 10px 16px; border-bottom: 1px solid #f0f0f0; font-size: 14px;">${item.name}${formatSelectedOptions(item.selectedOptions)}</td>
       <td style="padding: 10px 16px; border-bottom: 1px solid #f0f0f0; text-align: center; font-size: 14px;">${item.quantity}</td>
       <td style="padding: 10px 16px; border-bottom: 1px solid #f0f0f0; text-align: right; font-size: 14px;">&#8377;${(Number(item.price) * Number(item.quantity)).toFixed(2)}</td>
     </tr>
@@ -4363,7 +4383,8 @@ async function getProducts(env, { siteId, subdomain, category, categoryId, url }
     const parsedProducts = products.results.map((product) => ({
       ...product,
       images: product.images ? JSON.parse(product.images) : [],
-      tags: product.tags ? JSON.parse(product.tags) : []
+      tags: product.tags ? JSON.parse(product.tags) : [],
+      options: product.options ? JSON.parse(product.options) : null
     }));
     return successResponse(parsedProducts);
   } catch (error) {
@@ -4427,6 +4448,7 @@ async function getProduct(env, productId, siteId, subdomain) {
       ...product,
       images: product.images ? JSON.parse(product.images) : [],
       tags: product.tags ? JSON.parse(product.tags) : [],
+      options: product.options ? JSON.parse(product.options) : null,
       variants: variantResults.map((v) => ({
         ...v,
         attributes: v.attributes ? JSON.parse(v.attributes) : {}
@@ -4442,7 +4464,7 @@ __name(getProduct, "getProduct");
 async function createProduct(request, env, user) {
   try {
     const data = await request.json();
-    const { siteId, name, description, shortDescription, price, comparePrice, costPrice, sku, stock, categoryId, images, thumbnailUrl, mainImageIndex, tags, isFeatured, weight, dimensions } = data;
+    const { siteId, name, description, shortDescription, price, comparePrice, costPrice, sku, stock, categoryId, images, thumbnailUrl, mainImageIndex, tags, isFeatured, weight, dimensions, options } = data;
     if (!siteId || !name || price === void 0) {
       return errorResponse("Site ID, name and price are required");
     }
@@ -4468,15 +4490,16 @@ async function createProduct(request, env, user) {
     }
     const slug = name.toLowerCase().trim().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-").substring(0, 100);
     const productId = generateId();
-    const rowData = { id: productId, site_id: siteId, category_id: categoryId, name, slug, description, short_description: shortDescription, price, compare_price: comparePrice, cost_price: costPrice, sku, stock, images, thumbnail_url: resolvedThumbnail, tags, is_featured: isFeatured, weight, dimensions };
+    const optionsStr = options ? JSON.stringify(options) : null;
+    const rowData = { id: productId, site_id: siteId, category_id: categoryId, name, slug, description, short_description: shortDescription, price, compare_price: comparePrice, cost_price: costPrice, sku, stock, images, thumbnail_url: resolvedThumbnail, tags, is_featured: isFeatured, weight, dimensions, options: optionsStr };
     const rowBytes = estimateRowBytes(rowData);
     const usageCheck = await checkUsageLimit(env, siteId, "d1", rowBytes);
     if (!usageCheck.allowed) {
       return errorResponse(usageCheck.reason, 403, "STORAGE_LIMIT");
     }
     await db.prepare(
-      `INSERT INTO products (id, site_id, category_id, name, slug, description, short_description, price, compare_price, cost_price, sku, stock, low_stock_threshold, weight, dimensions, images, thumbnail_url, tags, is_featured, row_size_bytes, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+      `INSERT INTO products (id, site_id, category_id, name, slug, description, short_description, price, compare_price, cost_price, sku, stock, low_stock_threshold, weight, dimensions, images, thumbnail_url, tags, is_featured, options, row_size_bytes, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(
       productId,
       siteId,
@@ -4497,6 +4520,7 @@ async function createProduct(request, env, user) {
       resolvedThumbnail,
       tags ? JSON.stringify(tags) : "[]",
       isFeatured ? 1 : 0,
+      optionsStr,
       rowBytes
     ).run();
     await trackD1Write(env, siteId, rowBytes);
@@ -4546,7 +4570,7 @@ async function updateProduct(request, env, user, productId) {
     }
     const db = await resolveSiteDBById(env, resolvedSiteId);
     const updates = await request.json();
-    const allowedFields = ["name", "description", "short_description", "price", "compare_price", "cost_price", "sku", "stock", "low_stock_threshold", "category_id", "images", "thumbnail_url", "tags", "is_featured", "is_active", "weight", "dimensions"];
+    const allowedFields = ["name", "description", "short_description", "price", "compare_price", "cost_price", "sku", "stock", "low_stock_threshold", "category_id", "images", "thumbnail_url", "tags", "is_featured", "is_active", "weight", "dimensions", "options"];
     if (updates.images && !updates.thumbnailUrl && !updates.thumbnail_url) {
       const imgs = Array.isArray(updates.images) ? updates.images : [];
       const idx = typeof updates.mainImageIndex === "number" ? updates.mainImageIndex : 0;
@@ -4877,7 +4901,7 @@ async function createOrder(request, env, user) {
         return errorResponse("Invalid item: missing product ID", 400);
       }
       const product = await db.prepare(
-        "SELECT id, name, price, stock, thumbnail_url FROM products WHERE id = ? AND site_id = ?"
+        "SELECT id, name, price, stock, thumbnail_url, options FROM products WHERE id = ? AND site_id = ?"
       ).bind(itemProductId, siteId).first();
       if (!product) {
         return errorResponse(`Product not found: ${itemProductId}`, 400);
@@ -4885,16 +4909,36 @@ async function createOrder(request, env, user) {
       if (product.stock !== null && product.stock < item.quantity) {
         return errorResponse(`Insufficient stock for ${product.name}`, 400, "INSUFFICIENT_STOCK");
       }
-      const itemTotal = product.price * item.quantity;
+      let effectivePrice = product.price;
+      const productOptions = product.options ? JSON.parse(product.options) : null;
+      const validatedSelectedOptions = item.selectedOptions ? { ...item.selectedOptions } : null;
+      if (validatedSelectedOptions?.pricedOptions && productOptions?.pricedOptions) {
+        const validatedPriced = {};
+        for (const [label, clientVal] of Object.entries(validatedSelectedOptions.pricedOptions)) {
+          const optGroup = productOptions.pricedOptions.find((o) => o.label === label);
+          if (optGroup) {
+            const dbVal = optGroup.values.find((v) => v.name === clientVal.name);
+            if (dbVal) {
+              const serverPrice = Number(dbVal.price || 0);
+              effectivePrice += serverPrice;
+              validatedPriced[label] = { name: dbVal.name, price: serverPrice };
+            }
+          }
+        }
+        validatedSelectedOptions.pricedOptions = validatedPriced;
+      }
+      const itemTotal = effectivePrice * item.quantity;
       subtotal += itemTotal;
       processedItems.push({
         productId: product.id,
         name: product.name,
-        price: product.price,
+        price: effectivePrice,
+        basePrice: product.price,
         quantity: item.quantity,
         total: itemTotal,
         thumbnail: product.thumbnail_url,
-        variant: item.variant || null
+        variant: item.variant || null,
+        selectedOptions: validatedSelectedOptions
       });
     }
     let discount = 0;
@@ -5268,20 +5312,40 @@ async function createGuestOrder(request, env) {
         return errorResponse("Invalid item: missing product ID", 400);
       }
       const product = await db.prepare(
-        "SELECT id, name, price, stock, thumbnail_url FROM products WHERE id = ? AND site_id = ?"
+        "SELECT id, name, price, stock, thumbnail_url, options FROM products WHERE id = ? AND site_id = ?"
       ).bind(itemProductId, siteId).first();
       if (!product) {
         return errorResponse(`Product not found: ${itemProductId}`, 400);
       }
-      const itemTotal = product.price * item.quantity;
+      let effectivePrice = product.price;
+      const productOptions = product.options ? JSON.parse(product.options) : null;
+      const validatedSelectedOptions = item.selectedOptions ? { ...item.selectedOptions } : null;
+      if (validatedSelectedOptions?.pricedOptions && productOptions?.pricedOptions) {
+        const validatedPriced = {};
+        for (const [label, clientVal] of Object.entries(validatedSelectedOptions.pricedOptions)) {
+          const optGroup = productOptions.pricedOptions.find((o) => o.label === label);
+          if (optGroup) {
+            const dbVal = optGroup.values.find((v) => v.name === clientVal.name);
+            if (dbVal) {
+              const serverPrice = Number(dbVal.price || 0);
+              effectivePrice += serverPrice;
+              validatedPriced[label] = { name: dbVal.name, price: serverPrice };
+            }
+          }
+        }
+        validatedSelectedOptions.pricedOptions = validatedPriced;
+      }
+      const itemTotal = effectivePrice * item.quantity;
       subtotal += itemTotal;
       processedItems.push({
         productId: product.id,
         name: product.name,
-        price: product.price,
+        price: effectivePrice,
+        basePrice: product.price,
         quantity: item.quantity,
         total: itemTotal,
-        thumbnail: product.thumbnail_url
+        thumbnail: product.thumbnail_url,
+        selectedOptions: validatedSelectedOptions
       });
     }
     const total = subtotal;
@@ -5600,7 +5664,7 @@ async function getCart(env, siteId, user, sessionId) {
     const enrichedItems = [];
     for (const item of items) {
       const product = await db.prepare(
-        "SELECT id, name, price, stock, thumbnail_url, images, is_active FROM products WHERE id = ? AND site_id = ?"
+        "SELECT id, name, price, stock, thumbnail_url, images, is_active, options FROM products WHERE id = ? AND site_id = ?"
       ).bind(item.productId, siteId).first();
       if (product && product.is_active) {
         let imageUrl = product.thumbnail_url;
@@ -5612,13 +5676,27 @@ async function getCart(env, siteId, user, sessionId) {
           } catch {
           }
         }
+        let effectivePrice = product.price;
+        const productOptions = product.options ? JSON.parse(product.options) : null;
+        if (item.selectedOptions?.pricedOptions && productOptions?.pricedOptions) {
+          for (const [label, clientVal] of Object.entries(item.selectedOptions.pricedOptions)) {
+            const optGroup = productOptions.pricedOptions.find((o) => o.label === label);
+            if (optGroup) {
+              const dbVal = optGroup.values.find((v) => v.name === clientVal.name);
+              if (dbVal)
+                effectivePrice += Number(dbVal.price || 0);
+            }
+          }
+        }
         enrichedItems.push({
           ...item,
           name: product.name,
-          price: product.price,
+          price: effectivePrice,
+          basePrice: product.price,
           thumbnail: imageUrl,
           inStock: product.stock >= item.quantity,
-          availableStock: product.stock
+          availableStock: product.stock,
+          selectedOptions: item.selectedOptions || null
         });
       }
     }
@@ -5640,7 +5718,7 @@ async function addToCart(request, env, siteId, user, sessionId) {
     if (await checkMigrationLock(env, siteId)) {
       return errorResponse("Site is currently being migrated. Please try again shortly.", 423);
     }
-    const { productId, quantity, variant } = await request.json();
+    const { productId, quantity, variant, selectedOptions } = await request.json();
     if (!productId || !quantity || quantity < 1) {
       return errorResponse("Product ID and quantity are required");
     }
@@ -5660,8 +5738,9 @@ async function addToCart(request, env, siteId, user, sessionId) {
     const cart = await getOrCreateCart(db, env, siteId, user, sessionId);
     const items = JSON.parse(cart.items);
     const oldBytes = cart.row_size_bytes || 0;
+    const optionsKey = selectedOptions ? JSON.stringify(selectedOptions) : null;
     const existingIndex = items.findIndex(
-      (item) => item.productId === productId && JSON.stringify(item.variant) === JSON.stringify(variant)
+      (item) => item.productId === productId && JSON.stringify(item.variant) === JSON.stringify(variant) && JSON.stringify(item.selectedOptions || null) === optionsKey
     );
     if (existingIndex >= 0) {
       const newQuantity = items[existingIndex].quantity + quantity;
@@ -5674,6 +5753,7 @@ async function addToCart(request, env, siteId, user, sessionId) {
         productId,
         quantity,
         variant: variant || null,
+        selectedOptions: selectedOptions || null,
         addedAt: (/* @__PURE__ */ new Date()).toISOString()
       });
     }
@@ -5695,7 +5775,7 @@ async function updateCartItem(request, env, siteId, user, sessionId) {
     if (await checkMigrationLock(env, siteId)) {
       return errorResponse("Site is currently being migrated. Please try again shortly.", 423);
     }
-    const { productId, quantity, variant } = await request.json();
+    const { productId, quantity, variant, selectedOptions } = await request.json();
     if (!productId) {
       return errorResponse("Product ID is required");
     }
@@ -5703,8 +5783,9 @@ async function updateCartItem(request, env, siteId, user, sessionId) {
     const cart = await getOrCreateCart(db, env, siteId, user, sessionId);
     const items = JSON.parse(cart.items);
     const oldBytes = cart.row_size_bytes || 0;
+    const optionsKey = selectedOptions ? JSON.stringify(selectedOptions) : null;
     const existingIndex = items.findIndex(
-      (item) => item.productId === productId && JSON.stringify(item.variant) === JSON.stringify(variant)
+      (item) => item.productId === productId && JSON.stringify(item.variant) === JSON.stringify(variant) && JSON.stringify(item.selectedOptions || null) === optionsKey
     );
     if (existingIndex < 0) {
       return errorResponse("Item not found in cart", 404);
@@ -5741,6 +5822,7 @@ async function removeFromCart(request, env, siteId, user, sessionId) {
     const url = new URL(request.url);
     const productId = url.searchParams.get("productId");
     const variant = url.searchParams.get("variant");
+    const optionsParam = url.searchParams.get("selectedOptions");
     if (!productId) {
       return errorResponse("Product ID is required");
     }
@@ -5749,9 +5831,16 @@ async function removeFromCart(request, env, siteId, user, sessionId) {
     const items = JSON.parse(cart.items);
     const oldBytes = cart.row_size_bytes || 0;
     const parsedVariant = variant ? variant : null;
-    const filteredItems = items.filter(
-      (item) => !(item.productId === productId && JSON.stringify(item.variant ?? null) === JSON.stringify(parsedVariant))
-    );
+    const parsedOptions = optionsParam ? optionsParam : null;
+    const filteredItems = items.filter((item) => {
+      if (item.productId !== productId)
+        return true;
+      if (JSON.stringify(item.variant ?? null) !== JSON.stringify(parsedVariant))
+        return true;
+      if (parsedOptions && JSON.stringify(item.selectedOptions || null) !== parsedOptions)
+        return true;
+      return false;
+    });
     const newItemsStr = JSON.stringify(filteredItems);
     const newBytes = estimateRowBytes({ items: newItemsStr, cart_id: cart.id });
     await db.prepare(
@@ -5782,7 +5871,7 @@ async function mergeCarts(env, siteId, userId, sessionId) {
       const oldBytes = userCart.row_size_bytes || 0;
       for (const guestItem of guestItems) {
         const existingIndex = userItems.findIndex(
-          (item) => item.productId === guestItem.productId && JSON.stringify(item.variant) === JSON.stringify(guestItem.variant)
+          (item) => item.productId === guestItem.productId && JSON.stringify(item.variant) === JSON.stringify(guestItem.variant) && JSON.stringify(item.selectedOptions || null) === JSON.stringify(guestItem.selectedOptions || null)
         );
         if (existingIndex >= 0) {
           userItems[existingIndex].quantity += guestItem.quantity;
@@ -8721,7 +8810,8 @@ function getSiteSchemaStatements() {
     "ALTER TABLE activity_log ADD COLUMN row_size_bytes INTEGER DEFAULT 0",
     "ALTER TABLE addresses ADD COLUMN row_size_bytes INTEGER DEFAULT 0",
     "ALTER TABLE site_usage ADD COLUMN baseline_bytes INTEGER DEFAULT 0",
-    "ALTER TABLE site_usage ADD COLUMN baseline_updated_at TEXT"
+    "ALTER TABLE site_usage ADD COLUMN baseline_updated_at TEXT",
+    "ALTER TABLE products ADD COLUMN options TEXT"
   ];
   return [...tables, ...indexes, ...addColumnMigrations];
 }

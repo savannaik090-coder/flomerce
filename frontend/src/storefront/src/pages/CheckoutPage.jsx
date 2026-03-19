@@ -21,7 +21,7 @@ const INDIAN_STATES = [
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
-  const { items, subtotal, updateQuantity, removeItem, clearAll } = useContext(CartContext);
+  const { items, subtotal, updateQuantity, removeItem, clearAll, cartItemKey } = useContext(CartContext);
   const { user, isAuthenticated } = useContext(AuthContext);
   const { siteConfig } = useContext(SiteContext);
   const { formatAmount } = useContext(CurrencyContext);
@@ -241,6 +241,7 @@ export default function CheckoutPage() {
         price: item.price || item.product_price,
         quantity: item.quantity || 1,
         image: resolveImageUrl(item.thumbnail || item.image_url || item.product_image || ''),
+        selectedOptions: item.selectedOptions || null,
       })),
       total: finalTotal,
       subtotal,
@@ -410,7 +411,22 @@ export default function CheckoutPage() {
                         )}
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontWeight: 600, fontSize: 14, color: '#1a1a1a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.product_name || item.name}</div>
-                          <div style={{ fontSize: 13, color: '#888', marginTop: 2 }}>Qty: {qty} × {formatAmount(price)}</div>
+                          {item.selectedOptions && (() => {
+                            const parts = [];
+                            if (item.selectedOptions.color) parts.push(`Color: ${item.selectedOptions.color}`);
+                            if (item.selectedOptions.customOptions) {
+                              for (const [label, value] of Object.entries(item.selectedOptions.customOptions)) {
+                                parts.push(`${label}: ${value}`);
+                              }
+                            }
+                            if (item.selectedOptions.pricedOptions) {
+                              for (const [label, val] of Object.entries(item.selectedOptions.pricedOptions)) {
+                                parts.push(`${label}: ${val.name}`);
+                              }
+                            }
+                            return parts.length > 0 ? <div style={{ fontSize: 11, color: '#888', marginTop: 1 }}>{parts.join(' \u2022 ')}</div> : null;
+                          })()}
+                          <div style={{ fontSize: 13, color: '#888', marginTop: 2 }}>Qty: {qty} \u00D7 {formatAmount(price)}</div>
                         </div>
                         <div style={{ fontWeight: 700, color: '#7a4012', fontSize: 14, flexShrink: 0 }}>{formatAmount(price * qty)}</div>
                       </div>
@@ -524,9 +540,9 @@ export default function CheckoutPage() {
             {items.map((item, index) => {
               const price = item.product_price || item.price || 0;
               const qty = item.quantity || 1;
-              const itemId = item.productId || item.product_id || item.id;
+              const itemKey = cartItemKey ? cartItemKey(item) : (item.productId || item.product_id || item.id);
               return (
-                <div key={itemId || index} style={{ display: 'flex', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #f0f0f0', gap: 12 }}>
+                <div key={itemKey || index} style={{ display: 'flex', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #f0f0f0', gap: 12 }}>
                   {(item.thumbnail || item.product_image || item.image_url) && resolveImageUrl(item.thumbnail || item.product_image || item.image_url) && (
                     <div style={{ width: 60, height: 60, borderRadius: 6, overflow: 'hidden', flexShrink: 0 }}>
                       <img src={resolveImageUrl(item.thumbnail || item.product_image || item.image_url)} alt={item.product_name || item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -534,18 +550,33 @@ export default function CheckoutPage() {
                   )}
                   <div style={{ flex: 1 }}>
                     <h6 style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>{item.product_name || item.name}</h6>
+                    {item.selectedOptions && (() => {
+                      const parts = [];
+                      if (item.selectedOptions.color) parts.push(`Color: ${item.selectedOptions.color}`);
+                      if (item.selectedOptions.customOptions) {
+                        for (const [label, value] of Object.entries(item.selectedOptions.customOptions)) {
+                          parts.push(`${label}: ${value}`);
+                        }
+                      }
+                      if (item.selectedOptions.pricedOptions) {
+                        for (const [label, val] of Object.entries(item.selectedOptions.pricedOptions)) {
+                          parts.push(`${label}: ${val.name}`);
+                        }
+                      }
+                      return parts.length > 0 ? <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>{parts.join(' \u2022 ')}</div> : null;
+                    })()}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <span style={{ fontSize: 14 }}>{formatAmount(price)}</span>
                         <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #dee2e6', borderRadius: 4, overflow: 'hidden', height: 30 }}>
-                          <button type="button" onClick={() => updateQuantity(itemId, qty - 1)} style={{ width: 28, height: 28, border: 'none', background: '#f8f9fa', cursor: 'pointer', fontWeight: 'bold' }}>-</button>
+                          <button type="button" onClick={() => updateQuantity(itemKey, qty - 1, item.selectedOptions)} style={{ width: 28, height: 28, border: 'none', background: '#f8f9fa', cursor: 'pointer', fontWeight: 'bold' }}>-</button>
                           <span style={{ padding: '0 8px', fontSize: 14, fontWeight: 500 }}>{qty}</span>
-                          <button type="button" onClick={() => updateQuantity(itemId, qty + 1)} style={{ width: 28, height: 28, border: 'none', background: '#f8f9fa', cursor: 'pointer', fontWeight: 'bold' }}>+</button>
+                          <button type="button" onClick={() => updateQuantity(itemKey, qty + 1, item.selectedOptions)} style={{ width: 28, height: 28, border: 'none', background: '#f8f9fa', cursor: 'pointer', fontWeight: 'bold' }}>+</button>
                         </div>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         <span style={{ fontWeight: 600, color: '#9c7c38' }}>{formatAmount(price * qty)}</span>
-                        <button type="button" onClick={() => removeItem(itemId)} style={{ background: 'none', border: 'none', color: '#999', cursor: 'pointer', fontSize: 18 }}>x</button>
+                        <button type="button" onClick={() => removeItem(itemKey, item.selectedOptions)} style={{ background: 'none', border: 'none', color: '#999', cursor: 'pointer', fontSize: 18 }}>x</button>
                       </div>
                     </div>
                   </div>

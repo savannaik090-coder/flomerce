@@ -4,22 +4,24 @@ export async function getCart(siteId) {
   return apiRequest(`/api/cart?siteId=${siteId}&sessionId=${getSessionId()}`);
 }
 
-export async function addToCart(siteId, productId, quantity = 1, variant = null) {
+export async function addToCart(siteId, productId, quantity = 1, variant = null, selectedOptions = null) {
   return apiRequest(`/api/cart?siteId=${siteId}`, {
     method: 'POST',
-    body: JSON.stringify({ productId, quantity, variant, sessionId: getSessionId() }),
+    body: JSON.stringify({ productId, quantity, variant, selectedOptions, sessionId: getSessionId() }),
   });
 }
 
-export async function updateCartItem(siteId, productId, quantity, variant = null) {
+export async function updateCartItem(siteId, productId, quantity, variant = null, selectedOptions = null) {
   return apiRequest(`/api/cart?siteId=${siteId}`, {
     method: 'PUT',
-    body: JSON.stringify({ productId, quantity, variant, sessionId: getSessionId() }),
+    body: JSON.stringify({ productId, quantity, variant, selectedOptions, sessionId: getSessionId() }),
   });
 }
 
-export async function removeFromCart(siteId, productId) {
-  return apiRequest(`/api/cart?siteId=${siteId}&productId=${productId}&sessionId=${getSessionId()}`, {
+export async function removeFromCart(siteId, productId, selectedOptions = null) {
+  let url = `/api/cart?siteId=${siteId}&productId=${productId}&sessionId=${getSessionId()}`;
+  if (selectedOptions) url += `&selectedOptions=${encodeURIComponent(JSON.stringify(selectedOptions))}`;
+  return apiRequest(url, {
     method: 'DELETE',
   });
 }

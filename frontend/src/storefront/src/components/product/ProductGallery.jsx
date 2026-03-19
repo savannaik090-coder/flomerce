@@ -2,20 +2,29 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import { resolveImageUrl } from '../../utils/imageUrl.js';
 
-export default function ProductGallery({ images, productName }) {
+export default function ProductGallery({ images, productName, filteredImageIndices }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [zoomOpen, setZoomOpen] = useState(false);
   const [zoomIndex, setZoomIndex] = useState(0);
   const mainImageRef = useRef(null);
   const touchStartX = useRef(null);
 
-  const parsedImages = React.useMemo(() => {
+  const allParsedImages = React.useMemo(() => {
     if (!images || images.length === 0) return [];
     return images.map((img, i) => {
       const rawUrl = typeof img === 'string' ? img : (img.url || img);
-      return { url: resolveImageUrl(rawUrl), alt: (typeof img === 'object' && img.alt) || `${productName || 'Product'} ${i + 1}` };
+      return { url: resolveImageUrl(rawUrl), alt: (typeof img === 'object' && img.alt) || `${productName || 'Product'} ${i + 1}`, originalIndex: i };
     }).filter(img => img.url);
   }, [images, productName]);
+
+  const parsedImages = React.useMemo(() => {
+    if (!filteredImageIndices || filteredImageIndices.length === 0) return allParsedImages;
+    return allParsedImages.filter(img => filteredImageIndices.includes(img.originalIndex));
+  }, [allParsedImages, filteredImageIndices]);
+
+  useEffect(() => {
+    setActiveIndex(0);
+  }, [filteredImageIndices]);
 
   const hasMultipleImages = parsedImages.length > 1;
 

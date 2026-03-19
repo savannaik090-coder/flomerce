@@ -228,7 +228,7 @@ async function createOrder(request, env, user) {
       }
 
       const product = await db.prepare(
-        'SELECT id, name, price, stock, thumbnail_url FROM products WHERE id = ? AND site_id = ?'
+        'SELECT id, name, price, stock, thumbnail_url, options FROM products WHERE id = ? AND site_id = ?'
       ).bind(itemProductId, siteId).first();
 
       if (!product) {
@@ -239,17 +239,38 @@ async function createOrder(request, env, user) {
         return errorResponse(`Insufficient stock for ${product.name}`, 400, 'INSUFFICIENT_STOCK');
       }
 
-      const itemTotal = product.price * item.quantity;
+      let effectivePrice = product.price;
+      const productOptions = product.options ? JSON.parse(product.options) : null;
+      const validatedSelectedOptions = item.selectedOptions ? { ...item.selectedOptions } : null;
+      if (validatedSelectedOptions?.pricedOptions && productOptions?.pricedOptions) {
+        const validatedPriced = {};
+        for (const [label, clientVal] of Object.entries(validatedSelectedOptions.pricedOptions)) {
+          const optGroup = productOptions.pricedOptions.find(o => o.label === label);
+          if (optGroup) {
+            const dbVal = optGroup.values.find(v => v.name === clientVal.name);
+            if (dbVal) {
+              const serverPrice = Number(dbVal.price || 0);
+              effectivePrice += serverPrice;
+              validatedPriced[label] = { name: dbVal.name, price: serverPrice };
+            }
+          }
+        }
+        validatedSelectedOptions.pricedOptions = validatedPriced;
+      }
+
+      const itemTotal = effectivePrice * item.quantity;
       subtotal += itemTotal;
 
       processedItems.push({
         productId: product.id,
         name: product.name,
-        price: product.price,
+        price: effectivePrice,
+        basePrice: product.price,
         quantity: item.quantity,
         total: itemTotal,
         thumbnail: product.thumbnail_url,
         variant: item.variant || null,
+        selectedOptions: validatedSelectedOptions,
       });
     }
 
@@ -642,23 +663,44 @@ async function createGuestOrder(request, env) {
       }
 
       const product = await db.prepare(
-        'SELECT id, name, price, stock, thumbnail_url FROM products WHERE id = ? AND site_id = ?'
+        'SELECT id, name, price, stock, thumbnail_url, options FROM products WHERE id = ? AND site_id = ?'
       ).bind(itemProductId, siteId).first();
 
       if (!product) {
         return errorResponse(`Product not found: ${itemProductId}`, 400);
       }
 
-      const itemTotal = product.price * item.quantity;
+      let effectivePrice = product.price;
+      const productOptions = product.options ? JSON.parse(product.options) : null;
+      const validatedSelectedOptions = item.selectedOptions ? { ...item.selectedOptions } : null;
+      if (validatedSelectedOptions?.pricedOptions && productOptions?.pricedOptions) {
+        const validatedPriced = {};
+        for (const [label, clientVal] of Object.entries(validatedSelectedOptions.pricedOptions)) {
+          const optGroup = productOptions.pricedOptions.find(o => o.label === label);
+          if (optGroup) {
+            const dbVal = optGroup.values.find(v => v.name === clientVal.name);
+            if (dbVal) {
+              const serverPrice = Number(dbVal.price || 0);
+              effectivePrice += serverPrice;
+              validatedPriced[label] = { name: dbVal.name, price: serverPrice };
+            }
+          }
+        }
+        validatedSelectedOptions.pricedOptions = validatedPriced;
+      }
+
+      const itemTotal = effectivePrice * item.quantity;
       subtotal += itemTotal;
 
       processedItems.push({
         productId: product.id,
         name: product.name,
-        price: product.price,
+        price: effectivePrice,
+        basePrice: product.price,
         quantity: item.quantity,
         total: itemTotal,
         thumbnail: product.thumbnail_url,
+        selectedOptions: validatedSelectedOptions,
       });
     }
 

@@ -111,6 +111,10 @@ export default function ProductDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [reviewImageModal, setReviewImageModal] = useState(null);
+  const [selectedColor, setSelectedColor] = useState(null);
+  const [selectedCustomOptions, setSelectedCustomOptions] = useState({});
+  const [selectedPricedOptions, setSelectedPricedOptions] = useState({});
+  const [optionError, setOptionError] = useState(null);
 
   useEffect(() => {
     if (!id || !siteConfig?.id) return;
@@ -169,15 +173,73 @@ export default function ProductDetailPage() {
     } : null,
   });
 
+  const productOptions = product?.options || null;
+  const hasColors = productOptions?.colors?.length > 0;
+  const hasCustomOptions = productOptions?.customOptions?.length > 0;
+  const hasPricedOptions = productOptions?.pricedOptions?.length > 0;
+  const hasAnyOptions = hasColors || hasCustomOptions || hasPricedOptions;
+
+  const effectivePrice = React.useMemo(() => {
+    if (!product) return 0;
+    let price = product.price;
+    if (selectedPricedOptions) {
+      for (const val of Object.values(selectedPricedOptions)) {
+        price += Number(val.price || 0);
+      }
+    }
+    return price;
+  }, [product?.price, selectedPricedOptions]);
+
+  const filteredImageIndices = React.useMemo(() => {
+    if (!selectedColor || !productOptions?.imageColorMap) return null;
+    const indices = [];
+    for (const [idx, colors] of Object.entries(productOptions.imageColorMap)) {
+      if (colors.includes(selectedColor)) indices.push(parseInt(idx));
+    }
+    return indices.length > 0 ? indices : null;
+  }, [selectedColor, productOptions?.imageColorMap]);
+
+  function buildSelectedOptions() {
+    const opts = {};
+    if (selectedColor) opts.color = selectedColor;
+    if (Object.keys(selectedCustomOptions).length > 0) opts.customOptions = { ...selectedCustomOptions };
+    if (Object.keys(selectedPricedOptions).length > 0) opts.pricedOptions = { ...selectedPricedOptions };
+    return Object.keys(opts).length > 0 ? opts : null;
+  }
+
+  function validateOptions() {
+    if (!hasAnyOptions) return true;
+    const missing = [];
+    if (hasColors && !selectedColor) missing.push('Color');
+    if (hasCustomOptions) {
+      for (const opt of productOptions.customOptions) {
+        if (!selectedCustomOptions[opt.label]) missing.push(opt.label);
+      }
+    }
+    if (hasPricedOptions) {
+      for (const opt of productOptions.pricedOptions) {
+        if (!selectedPricedOptions[opt.label]) missing.push(opt.label);
+      }
+    }
+    if (missing.length > 0) {
+      setOptionError(`Please select: ${missing.join(', ')}`);
+      return false;
+    }
+    setOptionError(null);
+    return true;
+  }
+
   function handleAddToCart() {
     if (!product) return;
-    addToCart(product, 1);
+    if (!validateOptions()) return;
+    addToCart(product, 1, buildSelectedOptions());
     openCart();
   }
 
   async function handleBuyNow() {
     if (!product) return;
-    await addToCart(product, 1);
+    if (!validateOptions()) return;
+    await addToCart(product, 1, buildSelectedOptions());
     navigate('/checkout');
   }
 
@@ -231,13 +293,19 @@ export default function ProductDetailPage() {
         <ProductGallery
           images={product.images}
           productName={product.name}
+          filteredImageIndices={filteredImageIndices}
         />
 
         <div className="product-detail-right">
           <div className="product-detail-info">
             <h1 className="product-title">{product.name}</h1>
             <div className="price">
-              <span className="product-price">{formatINR(product.price)}</span>
+              <span className="product-price">{formatINR(effectivePrice)}</span>
+              {effectivePrice !== product.price && (
+                <span style={{ fontSize: 13, color: '#94a3b8', marginLeft: 8, textDecoration: 'line-through' }}>
+                  {formatINR(product.price)}
+                </span>
+              )}
             </div>
 
             <div className="product-meta">
@@ -258,6 +326,71 @@ export default function ProductDetailPage() {
                 </div>
               )}
             </div>
+
+            {hasColors && (
+              <div className="product-option-section">
+                <label className="product-option-label">Color</label>
+                <div className="product-color-swatches">
+                  {productOptions.colors.map(c => (
+                    <button
+                      key={c.name}
+                      type="button"
+                      className={`product-color-swatch${selectedColor === c.name ? ' selected' : ''}`}
+                      style={{ background: c.hex || '#ccc' }}
+                      onClick={() => { setSelectedColor(c.name); setOptionError(null); }}
+                      title={c.name}
+                    >
+                      {selectedColor === c.name && <i className="fas fa-check" style={{ color: 'white', fontSize: 10, textShadow: '0 0 2px rgba(0,0,0,0.5)' }} />}
+                    </button>
+                  ))}
+                </div>
+                {selectedColor && <span className="product-option-selected">{selectedColor}</span>}
+              </div>
+            )}
+
+            {hasCustomOptions && productOptions.customOptions.map(opt => (
+              <div key={opt.label} className="product-option-section">
+                <label className="product-option-label">{opt.label}</label>
+                <div className="product-option-chips">
+                  {opt.values.filter(v => v).map(val => (
+                    <button
+                      key={val}
+                      type="button"
+                      className={`product-option-chip${selectedCustomOptions[opt.label] === val ? ' selected' : ''}`}
+                      onClick={() => { setSelectedCustomOptions(prev => ({ ...prev, [opt.label]: val })); setOptionError(null); }}
+                    >
+                      {val}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+
+            {hasPricedOptions && productOptions.pricedOptions.map(opt => (
+              <div key={opt.label} className="product-option-section">
+                <label className="product-option-label">{opt.label}</label>
+                <div className="product-option-chips">
+                  {opt.values.filter(v => v.name).map(val => (
+                    <button
+                      key={val.name}
+                      type="button"
+                      className={`product-option-chip${selectedPricedOptions[opt.label]?.name === val.name ? ' selected' : ''}`}
+                      onClick={() => { setSelectedPricedOptions(prev => ({ ...prev, [opt.label]: { name: val.name, price: val.price } })); setOptionError(null); }}
+                    >
+                      {val.name}
+                      {Number(val.price) > 0 && <span className="product-option-price-badge">+{formatINR(val.price)}</span>}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+
+            {optionError && (
+              <div className="product-option-error">
+                <i className="fas fa-exclamation-circle" style={{ marginRight: 6 }} />
+                {optionError}
+              </div>
+            )}
 
             {product.description && (
               <div className="product-description-section product-description-inline">

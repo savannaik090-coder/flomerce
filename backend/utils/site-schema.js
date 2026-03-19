@@ -427,6 +427,7 @@ export function getSiteSchemaStatements() {
     'ALTER TABLE addresses ADD COLUMN row_size_bytes INTEGER DEFAULT 0',
     'ALTER TABLE site_usage ADD COLUMN baseline_bytes INTEGER DEFAULT 0',
     'ALTER TABLE site_usage ADD COLUMN baseline_updated_at TEXT',
+    'ALTER TABLE products ADD COLUMN options TEXT',
   ];
 
   return [...tables, ...indexes, ...addColumnMigrations];
