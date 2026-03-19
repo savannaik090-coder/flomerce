@@ -130,6 +130,7 @@ export function SiteProvider({ children }) {
 
       config.pageSEO = data.pageSEO || {};
       config.googleClientId = data.googleClientId || null;
+      config.vapidPublicKey = data.vapidPublicKey || null;
 
       setSiteConfig(config);
       setPreviewSettings(null);

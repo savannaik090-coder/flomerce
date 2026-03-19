@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-n0UbDi/checked-fetch.js
+// .wrangler/tmp/bundle-JPDHmj/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-n0UbDi/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-JPDHmj/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-n0UbDi/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-JPDHmj/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-n0UbDi/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-JPDHmj/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -2116,12 +2116,12 @@ var init_site_admin_worker = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-n0UbDi/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-JPDHmj/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-n0UbDi/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-JPDHmj/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -4317,6 +4317,480 @@ init_auth();
 init_site_admin_worker();
 init_usage_tracker();
 init_site_db();
+
+// workers/storefront/notifications-worker.js
+init_checked_fetch();
+init_strip_cf_connecting_ip_header();
+init_modules_watch_stub();
+init_site_db();
+init_helpers();
+init_site_admin_worker();
+
+// utils/web-push.js
+init_checked_fetch();
+init_strip_cf_connecting_ip_header();
+init_modules_watch_stub();
+function base64urlDecode(str) {
+  const b64 = str.replace(/-/g, "+").replace(/_/g, "/");
+  const pad = b64.length % 4 === 0 ? "" : "=".repeat(4 - b64.length % 4);
+  return Uint8Array.from(atob(b64 + pad), (c) => c.charCodeAt(0));
+}
+__name(base64urlDecode, "base64urlDecode");
+function base64urlEncode(buf) {
+  const bytes = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+  let str = "";
+  for (const b of bytes)
+    str += String.fromCharCode(b);
+  return btoa(str).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+}
+__name(base64urlEncode, "base64urlEncode");
+function concat(...arrays) {
+  const len = arrays.reduce((s, a) => s + a.length, 0);
+  const out = new Uint8Array(len);
+  let offset = 0;
+  for (const a of arrays) {
+    out.set(a, offset);
+    offset += a.length;
+  }
+  return out;
+}
+__name(concat, "concat");
+async function hmacSha256(keyBytes, data) {
+  const key = await crypto.subtle.importKey("raw", keyBytes, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const sig = await crypto.subtle.sign("HMAC", key, data);
+  return new Uint8Array(sig);
+}
+__name(hmacSha256, "hmacSha256");
+async function hkdfExtract(salt, ikm) {
+  return hmacSha256(salt, ikm);
+}
+__name(hkdfExtract, "hkdfExtract");
+async function hkdfExpand(prk, info, length) {
+  const infoBytes = typeof info === "string" ? new TextEncoder().encode(info) : info;
+  const t = new Uint8Array(0);
+  let okm = new Uint8Array(0);
+  let prev = t;
+  let counter = 1;
+  while (okm.length < length) {
+    const input = concat(prev, infoBytes, new Uint8Array([counter++]));
+    prev = await hmacSha256(prk, input);
+    okm = concat(okm, prev);
+  }
+  return okm.slice(0, length);
+}
+__name(hkdfExpand, "hkdfExpand");
+async function encryptPayload(plaintext, p256dhBase64, authBase64) {
+  const receiverPublicKeyRaw = base64urlDecode(p256dhBase64);
+  const authSecret = base64urlDecode(authBase64);
+  const receiverPublicKey = await crypto.subtle.importKey(
+    "raw",
+    receiverPublicKeyRaw,
+    { name: "ECDH", namedCurve: "P-256" },
+    false,
+    []
+  );
+  const senderKeyPair = await crypto.subtle.generateKey(
+    { name: "ECDH", namedCurve: "P-256" },
+    true,
+    ["deriveBits"]
+  );
+  const senderPublicKeyRaw = new Uint8Array(await crypto.subtle.exportKey("raw", senderKeyPair.publicKey));
+  const ecdhSharedBits = await crypto.subtle.deriveBits(
+    { name: "ECDH", public: receiverPublicKey },
+    senderKeyPair.privateKey,
+    256
+  );
+  const ecdhShared = new Uint8Array(ecdhSharedBits);
+  const enc = new TextEncoder();
+  const keyInfo = concat(
+    enc.encode("WebPush: info\0"),
+    receiverPublicKeyRaw,
+    senderPublicKeyRaw
+  );
+  const prkKey = await hkdfExtract(authSecret, ecdhShared);
+  const ikm = await hkdfExpand(prkKey, keyInfo, 32);
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const prk = await hkdfExtract(salt, ikm);
+  const cekInfo = concat(enc.encode("Content-Encoding: aes128gcm\0"), new Uint8Array([1]));
+  const nonceInfo = concat(enc.encode("Content-Encoding: nonce\0"), new Uint8Array([1]));
+  const cek = await hkdfExpand(prk, cekInfo, 16);
+  const nonce = await hkdfExpand(prk, nonceInfo, 12);
+  const plaintextBytes = typeof plaintext === "string" ? enc.encode(plaintext) : plaintext;
+  const paddedPlaintext = concat(plaintextBytes, new Uint8Array([2]));
+  const aesKey = await crypto.subtle.importKey("raw", cek, { name: "AES-GCM" }, false, ["encrypt"]);
+  const ciphertext = await crypto.subtle.encrypt(
+    { name: "AES-GCM", iv: nonce },
+    aesKey,
+    paddedPlaintext
+  );
+  const recordSize = new DataView(new ArrayBuffer(4));
+  recordSize.setUint32(0, 4096, false);
+  const header = concat(
+    salt,
+    new Uint8Array(recordSize.buffer),
+    new Uint8Array([senderPublicKeyRaw.length]),
+    senderPublicKeyRaw
+  );
+  return concat(header, new Uint8Array(ciphertext));
+}
+__name(encryptPayload, "encryptPayload");
+async function buildVapidHeaders(endpoint, subject, publicKeyBase64, privateKeyJWK) {
+  const audience = new URL(endpoint).origin;
+  const expiration = Math.floor(Date.now() / 1e3) + 12 * 3600;
+  const enc = new TextEncoder();
+  const headerObj = { typ: "JWT", alg: "ES256" };
+  const payloadObj = { aud: audience, exp: expiration, sub: subject };
+  const headerB64 = base64urlEncode(enc.encode(JSON.stringify(headerObj)));
+  const payloadB64 = base64urlEncode(enc.encode(JSON.stringify(payloadObj)));
+  const signingInput = `${headerB64}.${payloadB64}`;
+  const jwk = typeof privateKeyJWK === "string" ? JSON.parse(privateKeyJWK) : privateKeyJWK;
+  const privateKey = await crypto.subtle.importKey(
+    "jwk",
+    jwk,
+    { name: "ECDSA", namedCurve: "P-256" },
+    false,
+    ["sign"]
+  );
+  const signature = await crypto.subtle.sign(
+    { name: "ECDSA", hash: "SHA-256" },
+    privateKey,
+    enc.encode(signingInput)
+  );
+  const jwt = `${signingInput}.${base64urlEncode(new Uint8Array(signature))}`;
+  return {
+    Authorization: `vapid t=${jwt},k=${publicKeyBase64}`,
+    "Content-Encoding": "aes128gcm",
+    "Content-Type": "application/octet-stream",
+    TTL: "86400"
+  };
+}
+__name(buildVapidHeaders, "buildVapidHeaders");
+async function sendWebPush(subscription, payload, vapidPublicKey, vapidPrivateKeyJWK, vapidSubject) {
+  const { endpoint, p256dh, auth } = subscription;
+  const payloadStr = typeof payload === "object" ? JSON.stringify(payload) : payload;
+  const encryptedBody = await encryptPayload(payloadStr, p256dh, auth);
+  const vapidHeaders = await buildVapidHeaders(endpoint, vapidSubject, vapidPublicKey, vapidPrivateKeyJWK);
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: vapidHeaders,
+    body: encryptedBody
+  });
+  return response;
+}
+__name(sendWebPush, "sendWebPush");
+
+// workers/storefront/notifications-worker.js
+init_usage_tracker();
+async function handleNotifications(request, env, path) {
+  const url = new URL(request.url);
+  const pathParts = path.split("/").filter(Boolean);
+  const action = pathParts[2];
+  switch (action) {
+    case "subscribe":
+      if (request.method === "POST")
+        return handleSubscribe(request, env);
+      break;
+    case "unsubscribe":
+      if (request.method === "POST" || request.method === "DELETE")
+        return handleUnsubscribe(request, env);
+      break;
+    case "stats":
+      if (request.method === "GET")
+        return handleStats(request, env);
+      break;
+    case "send":
+      if (request.method === "POST")
+        return handleSend(request, env);
+      break;
+    case "settings":
+      if (request.method === "GET")
+        return handleGetSettings(request, env);
+      if (request.method === "POST")
+        return handleSaveSettings(request, env);
+      break;
+  }
+  return errorResponse("Notifications endpoint not found", 404);
+}
+__name(handleNotifications, "handleNotifications");
+async function handleSubscribe(request, env) {
+  try {
+    const body = await request.json();
+    const { siteId, endpoint, p256dh, auth, userId } = body;
+    if (!siteId || !endpoint || !p256dh || !auth) {
+      return errorResponse("siteId, endpoint, p256dh, and auth are required", 400);
+    }
+    const db = await resolveSiteDBById(env, siteId);
+    const existing = await db.prepare(
+      "SELECT id FROM notifications WHERE site_id = ? AND endpoint = ?"
+    ).bind(siteId, endpoint).first();
+    if (existing) {
+      await db.prepare(
+        `UPDATE notifications SET p256dh = ?, auth = ?, user_id = ?, is_active = 1
+         WHERE site_id = ? AND endpoint = ?`
+      ).bind(p256dh, auth, userId || null, siteId, endpoint).run();
+      return jsonResponse({ success: true, message: "Subscription updated" });
+    }
+    const id = crypto.randomUUID();
+    const rowBytes = 200 + endpoint.length + p256dh.length + auth.length;
+    await db.prepare(
+      `INSERT INTO notifications (id, site_id, user_id, push_token, endpoint, p256dh, auth, is_active, row_size_bytes, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, datetime('now'))`
+    ).bind(id, siteId, userId || null, "", endpoint, p256dh, auth, rowBytes).run();
+    await trackD1Write(env, siteId, rowBytes);
+    return jsonResponse({ success: true, message: "Subscribed successfully" });
+  } catch (err) {
+    console.error("[Notifications] Subscribe error:", err);
+    return errorResponse("Failed to subscribe: " + err.message, 500);
+  }
+}
+__name(handleSubscribe, "handleSubscribe");
+async function handleUnsubscribe(request, env) {
+  try {
+    const body = await request.json();
+    const { siteId, endpoint } = body;
+    if (!siteId || !endpoint) {
+      return errorResponse("siteId and endpoint are required", 400);
+    }
+    const db = await resolveSiteDBById(env, siteId);
+    const existing = await db.prepare(
+      "SELECT id, row_size_bytes FROM notifications WHERE site_id = ? AND endpoint = ?"
+    ).bind(siteId, endpoint).first();
+    if (existing) {
+      await db.prepare(
+        "DELETE FROM notifications WHERE site_id = ? AND endpoint = ?"
+      ).bind(siteId, endpoint).run();
+      await trackD1Delete(env, siteId, existing.row_size_bytes || 200);
+    }
+    return jsonResponse({ success: true, message: "Unsubscribed successfully" });
+  } catch (err) {
+    console.error("[Notifications] Unsubscribe error:", err);
+    return errorResponse("Failed to unsubscribe: " + err.message, 500);
+  }
+}
+__name(handleUnsubscribe, "handleUnsubscribe");
+async function handleStats(request, env) {
+  try {
+    const url = new URL(request.url);
+    const siteId = url.searchParams.get("siteId");
+    if (!siteId)
+      return errorResponse("siteId is required", 400);
+    const admin = await validateSiteAdmin(request, env, siteId);
+    if (!admin)
+      return errorResponse("Admin authentication required", 401);
+    const db = await resolveSiteDBById(env, siteId);
+    const totalResult = await db.prepare(
+      "SELECT COUNT(*) as count FROM notifications WHERE site_id = ? AND is_active = 1"
+    ).bind(siteId).first();
+    const loggedInResult = await db.prepare(
+      "SELECT COUNT(*) as count FROM notifications WHERE site_id = ? AND is_active = 1 AND user_id IS NOT NULL"
+    ).bind(siteId).first();
+    const total = totalResult?.count || 0;
+    const loggedIn = loggedInResult?.count || 0;
+    const guests = total - loggedIn;
+    return jsonResponse({ success: true, data: { total, loggedIn, guests } });
+  } catch (err) {
+    console.error("[Notifications] Stats error:", err);
+    return errorResponse("Failed to fetch stats: " + err.message, 500);
+  }
+}
+__name(handleStats, "handleStats");
+async function handleSend(request, env) {
+  try {
+    const body = await request.json();
+    const { siteId, title, message, imageUrl, link, target } = body;
+    if (!siteId || !title || !message) {
+      return errorResponse("siteId, title, and message are required", 400);
+    }
+    const admin = await validateSiteAdmin(request, env, siteId);
+    if (!admin)
+      return errorResponse("Admin authentication required", 401);
+    const vapidPublicKey = env.VAPID_PUBLIC_KEY;
+    const vapidPrivateKey = env.VAPID_PRIVATE_KEY;
+    const vapidSubject = env.VAPID_SUBJECT || "mailto:noreply@fluxe.in";
+    if (!vapidPrivateKey) {
+      return errorResponse("Push notifications not configured (VAPID_PRIVATE_KEY missing)", 500);
+    }
+    const db = await resolveSiteDBById(env, siteId);
+    let query = "SELECT endpoint, p256dh, auth FROM notifications WHERE site_id = ? AND is_active = 1";
+    const params = [siteId];
+    if (target === "loggedin") {
+      query += " AND user_id IS NOT NULL";
+    } else if (target === "guests") {
+      query += " AND user_id IS NULL";
+    }
+    const subscriptionsResult = await db.prepare(query).bind(...params).all();
+    const subscriptions = subscriptionsResult.results || [];
+    if (subscriptions.length === 0) {
+      return jsonResponse({ success: true, data: { sent: 0, failed: 0, message: "No subscribers found" } });
+    }
+    const payload = { title, body: message, icon: "/icon-192.png", badge: "/badge-72.png" };
+    if (imageUrl)
+      payload.image = imageUrl;
+    if (link)
+      payload.data = { url: link };
+    let sent = 0;
+    let failed = 0;
+    const expiredEndpoints = [];
+    const batchSize = 50;
+    for (let i = 0; i < subscriptions.length; i += batchSize) {
+      const batch = subscriptions.slice(i, i + batchSize);
+      await Promise.allSettled(
+        batch.map(async (sub) => {
+          try {
+            const res = await sendWebPush(sub, payload, vapidPublicKey, vapidPrivateKey, vapidSubject);
+            if (res.status === 201 || res.status === 200) {
+              sent++;
+            } else if (res.status === 410 || res.status === 404) {
+              expiredEndpoints.push(sub.endpoint);
+              failed++;
+            } else {
+              console.warn("[Notifications] Push failed with status", res.status, "for endpoint", sub.endpoint.substring(0, 50));
+              failed++;
+            }
+          } catch (e) {
+            console.error("[Notifications] Push send error:", e.message);
+            failed++;
+          }
+        })
+      );
+    }
+    if (expiredEndpoints.length > 0) {
+      for (const ep of expiredEndpoints) {
+        try {
+          await db.prepare("DELETE FROM notifications WHERE site_id = ? AND endpoint = ?").bind(siteId, ep).run();
+        } catch (e) {
+        }
+      }
+    }
+    return jsonResponse({
+      success: true,
+      data: { sent, failed, total: subscriptions.length, message: `Notification sent to ${sent} subscriber${sent !== 1 ? "s" : ""}` }
+    });
+  } catch (err) {
+    console.error("[Notifications] Send error:", err);
+    return errorResponse("Failed to send notifications: " + err.message, 500);
+  }
+}
+__name(handleSend, "handleSend");
+async function handleGetSettings(request, env) {
+  try {
+    const url = new URL(request.url);
+    const siteId = url.searchParams.get("siteId");
+    if (!siteId)
+      return errorResponse("siteId is required", 400);
+    const admin = await validateSiteAdmin(request, env, siteId);
+    if (!admin)
+      return errorResponse("Admin authentication required", 401);
+    const db = await resolveSiteDBById(env, siteId);
+    let config = null;
+    try {
+      config = await db.prepare("SELECT settings FROM site_config WHERE site_id = ?").bind(siteId).first();
+    } catch (e) {
+    }
+    let settings = {};
+    try {
+      if (config?.settings)
+        settings = JSON.parse(config.settings);
+    } catch (e) {
+    }
+    const notifSettings = settings.pushNotifications || {
+      newProducts: true,
+      priceDrops: true,
+      backInStock: true
+    };
+    return jsonResponse({ success: true, data: notifSettings });
+  } catch (err) {
+    console.error("[Notifications] Get settings error:", err);
+    return errorResponse("Failed to get settings: " + err.message, 500);
+  }
+}
+__name(handleGetSettings, "handleGetSettings");
+async function handleSaveSettings(request, env) {
+  try {
+    const body = await request.json();
+    const { siteId, newProducts, priceDrops, backInStock } = body;
+    if (!siteId)
+      return errorResponse("siteId is required", 400);
+    const admin = await validateSiteAdmin(request, env, siteId);
+    if (!admin)
+      return errorResponse("Admin authentication required", 401);
+    const db = await resolveSiteDBById(env, siteId);
+    let config = null;
+    try {
+      config = await db.prepare("SELECT settings FROM site_config WHERE site_id = ?").bind(siteId).first();
+    } catch (e) {
+    }
+    let settings = {};
+    try {
+      if (config?.settings)
+        settings = JSON.parse(config.settings);
+    } catch (e) {
+    }
+    settings.pushNotifications = { newProducts: !!newProducts, priceDrops: !!priceDrops, backInStock: !!backInStock };
+    await db.prepare(
+      `INSERT INTO site_config (site_id, settings) VALUES (?, ?)
+       ON CONFLICT(site_id) DO UPDATE SET settings = excluded.settings`
+    ).bind(siteId, JSON.stringify(settings)).run();
+    return jsonResponse({ success: true, message: "Settings saved" });
+  } catch (err) {
+    console.error("[Notifications] Save settings error:", err);
+    return errorResponse("Failed to save settings: " + err.message, 500);
+  }
+}
+__name(handleSaveSettings, "handleSaveSettings");
+async function triggerAutoNotification(env, siteId, type, payload) {
+  try {
+    const db = await resolveSiteDBById(env, siteId);
+    let config = null;
+    try {
+      config = await db.prepare("SELECT settings FROM site_config WHERE site_id = ?").bind(siteId).first();
+    } catch (e) {
+    }
+    let settings = {};
+    try {
+      if (config?.settings)
+        settings = JSON.parse(config.settings);
+    } catch (e) {
+    }
+    const notifSettings = settings.pushNotifications || { newProducts: true, priceDrops: true, backInStock: true };
+    const enabledMap = { newProduct: notifSettings.newProducts, priceDrop: notifSettings.priceDrops, backInStock: notifSettings.backInStock };
+    if (!enabledMap[type])
+      return;
+    const vapidPublicKey = env.VAPID_PUBLIC_KEY;
+    const vapidPrivateKey = env.VAPID_PRIVATE_KEY;
+    const vapidSubject = env.VAPID_SUBJECT || "mailto:noreply@fluxe.in";
+    if (!vapidPrivateKey)
+      return;
+    const subscriptionsResult = await db.prepare(
+      "SELECT endpoint, p256dh, auth FROM notifications WHERE site_id = ? AND is_active = 1"
+    ).bind(siteId).all();
+    const subscriptions = subscriptionsResult.results || [];
+    if (subscriptions.length === 0)
+      return;
+    const expiredEndpoints = [];
+    await Promise.allSettled(
+      subscriptions.map(async (sub) => {
+        try {
+          const res = await sendWebPush(sub, payload, vapidPublicKey, vapidPrivateKey, vapidSubject);
+          if (res.status === 410 || res.status === 404)
+            expiredEndpoints.push(sub.endpoint);
+        } catch (e) {
+        }
+      })
+    );
+    for (const ep of expiredEndpoints) {
+      try {
+        await db.prepare("DELETE FROM notifications WHERE site_id = ? AND endpoint = ?").bind(siteId, ep).run();
+      } catch (e) {
+      }
+    }
+  } catch (err) {
+    console.error("[Notifications] Auto-trigger error:", err);
+  }
+}
+__name(triggerAutoNotification, "triggerAutoNotification");
+
+// workers/storefront/products-worker.js
 async function handleProducts(request, env, path) {
   const corsResponse = handleCORS(request);
   if (corsResponse)
@@ -4596,6 +5070,13 @@ async function createProduct(request, env, user) {
       }
     }
     await trackD1Write(env, siteId, rowBytes);
+    triggerAutoNotification(env, siteId, "newProduct", {
+      title: "New Arrival!",
+      body: `Check out our new product: ${sanitizeInput(name)}`,
+      icon: resolvedThumbnail || "/icon-192.png",
+      data: { url: `/product/${productId}` }
+    }).catch(() => {
+    });
     return successResponse({ id: productId, slug }, "Product created successfully");
   } catch (error) {
     console.error("Create product error:", error);
@@ -4643,6 +5124,14 @@ async function updateProduct(request, env, user, productId) {
     const db = await resolveSiteDBById(env, resolvedSiteId);
     const updates = await request.json();
     const allowedFields = ["name", "description", "short_description", "price", "compare_price", "cost_price", "sku", "stock", "low_stock_threshold", "category_id", "images", "thumbnail_url", "tags", "is_featured", "is_active", "weight", "dimensions", "options"];
+    let oldProductData = null;
+    const needsOldData = updates.price !== void 0 || updates.stock !== void 0;
+    if (needsOldData) {
+      try {
+        oldProductData = await db.prepare("SELECT name, price, stock, thumbnail_url FROM products WHERE id = ?").bind(productId).first();
+      } catch (e) {
+      }
+    }
     if (updates.images && !updates.thumbnailUrl && !updates.thumbnail_url) {
       const imgs = Array.isArray(updates.images) ? updates.images : [];
       const idx = typeof updates.mainImageIndex === "number" ? updates.mainImageIndex : 0;
@@ -4694,6 +5183,29 @@ async function updateProduct(request, env, user, productId) {
       await db.prepare("UPDATE products SET row_size_bytes = ? WHERE id = ?").bind(newBytes, productId).run();
     }
     await trackD1Update(env, resolvedSiteId, oldBytes, newBytes);
+    if (oldProductData && updatedProdRow) {
+      const prodName = updatedProdRow.name || oldProductData.name || "Product";
+      const prodThumb = updatedProdRow.thumbnail_url || oldProductData.thumbnail_url || "/icon-192.png";
+      const prodLink = `/product/${productId}`;
+      if (updates.price !== void 0 && typeof oldProductData.price === "number" && typeof updatedProdRow.price === "number" && updatedProdRow.price < oldProductData.price) {
+        triggerAutoNotification(env, resolvedSiteId, "priceDrop", {
+          title: "Price Drop!",
+          body: `${prodName} is now cheaper. Don't miss out!`,
+          icon: prodThumb,
+          data: { url: prodLink }
+        }).catch(() => {
+        });
+      }
+      if (updates.stock !== void 0 && (oldProductData.stock === 0 || oldProductData.stock === null) && updatedProdRow.stock > 0) {
+        triggerAutoNotification(env, resolvedSiteId, "backInStock", {
+          title: "Back in Stock!",
+          body: `${prodName} is available again. Grab it before it sells out!`,
+          icon: prodThumb,
+          data: { url: prodLink }
+        }).catch(() => {
+        });
+      }
+    }
     return successResponse(null, "Product updated successfully");
   } catch (error) {
     console.error("Update product error:", error);
@@ -11602,7 +12114,7 @@ async function handleAnalytics(request, env, path) {
     return handleTrack(request, env);
   }
   if (action === "stats" && request.method === "GET") {
-    return handleStats(request, env, url);
+    return handleStats2(request, env, url);
   }
   return errorResponse("Not found", 404);
 }
@@ -11630,7 +12142,7 @@ async function handleTrack(request, env) {
   }
 }
 __name(handleTrack, "handleTrack");
-async function handleStats(request, env, url) {
+async function handleStats2(request, env, url) {
   const siteId = url.searchParams.get("siteId");
   const period = url.searchParams.get("period") || "7days";
   if (!siteId) {
@@ -11762,7 +12274,7 @@ async function handleStats(request, env, url) {
     });
   }
 }
-__name(handleStats, "handleStats");
+__name(handleStats2, "handleStats");
 
 // workers/index.js
 init_usage_tracker();
@@ -12240,6 +12752,8 @@ async function handleAPI(request, env, path) {
       return handleUpload(request, env, path);
     case "analytics":
       return handleAnalytics(request, env, path);
+    case "notifications":
+      return handleNotifications(request, env, path);
     case "usage":
       return handleUsageAPI(request, env, path);
     case "health":
@@ -12335,6 +12849,7 @@ async function handleSiteInfo(request, env) {
     }
     const { razorpayKeySecret, adminVerificationCode, ...publicSettings } = settings;
     const googleClientId = env.GOOGLE_CLIENT_ID || null;
+    const vapidPublicKey = env.VAPID_PUBLIC_KEY || null;
     let pageSEOResult = [];
     try {
       const psResult = await siteDB.prepare(
@@ -12359,7 +12874,8 @@ async function handleSiteInfo(request, env) {
         settings: publicSettings,
         categories: categoriesResult,
         pageSEO,
-        googleClientId
+        googleClientId,
+        vapidPublicKey
       }
     });
   } catch (error) {
@@ -12540,7 +13056,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-n0UbDi/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-JPDHmj/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -12575,7 +13091,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-n0UbDi/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-JPDHmj/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

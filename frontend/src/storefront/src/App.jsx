@@ -11,6 +11,8 @@ import CartPanel from './components/cart/CartPanel.jsx';
 import WishlistPanel from './components/wishlist/WishlistPanel.jsx';
 import WhatsAppButton from './components/ui/WhatsAppButton.jsx';
 import PageLoadingBar from './components/ui/PageLoadingBar.jsx';
+import PushPrompt from './components/ui/PushPrompt.jsx';
+import usePushNotifications from './hooks/usePushNotifications.js';
 import './styles/variables.css';
 import './styles/navbar.css';
 import './styles/footer.css';
@@ -81,6 +83,7 @@ export default function App() {
   const { siteConfig, loading, error } = useSiteConfig();
   const { cartOpen, openCart, closeCart, wishlistOpen, openWishlist, closeWishlist, searchOpen, openSearch, closeSearch } = useContext(PanelContext);
   const location = useLocation();
+  const { showPrompt, subscribe, dismissPrompt } = usePushNotifications();
 
   usePageTracker();
 
@@ -143,6 +146,7 @@ export default function App() {
       <SearchOverlay isOpen={searchOpen} onClose={closeSearch} />
       <CartPanel isOpen={cartOpen} onClose={closeCart} />
       <WishlistPanel isOpen={wishlistOpen} onClose={closeWishlist} />
+      {showPrompt && <PushPrompt onAllow={subscribe} onDismiss={dismissPrompt} />}
     </>
   );
 }

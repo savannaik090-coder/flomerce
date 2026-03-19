@@ -77,6 +77,17 @@ Fluxe uses a **shared shard-based D1 database architecture**: multiple sites sha
 - **Payments Worker:** `payment_transactions`, `subscriptions`, `subscription_plans`, `pending_subscriptions` stay in the platform DB. Order lookups in `verifyPayment` search shard DBs for `orders` and `guest_orders`.
 - **Cleanup:** The worker exports a `scheduled` handler that cleans up expired platform sessions/tokens and expired shard customer sessions/password resets/email verifications. Configure via Cloudflare cron triggers (e.g., daily).
 
+### Push Notifications
+- **Web Push Protocol:** Fully implemented using the VAPID standard (RFC 8291). No third-party service like Firebase needed — works natively in all modern browsers (Chrome, Firefox, Edge, Safari 16.4+).
+- **VAPID Keys:** `VAPID_PUBLIC_KEY` is stored in `wrangler.toml [vars]`. `VAPID_PRIVATE_KEY` (JWK format) must be stored as a Cloudflare Worker secret: `cd backend && npx wrangler secret put VAPID_PRIVATE_KEY`. Enter the JWK JSON string as the value.
+- **Service Worker:** `frontend/src/storefront/public/sw.js` receives push events and shows notifications. Handles notification click → opens the linked URL.
+- **Subscription Prompt:** A `PushPrompt` component appears in the storefront 5 seconds after page load (only if permission is `default`). The `usePushNotifications` hook in `hooks/usePushNotifications.js` manages service worker registration, subscription, and unsubscription. State stored in `localStorage` under `push_subscription_state`.
+- **Backend Worker:** `backend/workers/storefront/notifications-worker.js` handles: `POST /api/notifications/subscribe`, `POST /api/notifications/unsubscribe`, `GET /api/notifications/stats?siteId=`, `POST /api/notifications/send`, `GET /api/notifications/settings?siteId=`, `POST /api/notifications/settings`.
+- **Crypto:** `backend/utils/web-push.js` implements the full Web Push encryption (RFC 8291/8188: ECDH key agreement, HKDF key derivation, AES-128-GCM payload encryption, VAPID JWT signing with ES256) using the Web Crypto API built into Cloudflare Workers.
+- **Admin Panel:** `PushNotificationsSection.jsx` shows real subscriber counts, sends actual push notifications to all/logged-in/guest subscribers, saves auto-notification settings.
+- **Auto-Triggers:** `triggerAutoNotification()` is called from `products-worker.js` for: new product creation (newProduct), price drop (priceDrop when new price < old price), back in stock (backInStock when stock restores from 0).
+- **`vapidPublicKey`** is exposed via the `/api/site` endpoint and stored in `SiteContext` for browser subscription use.
+
 ### Key Features
 - **Dynamic Content Management:** Homepage categories, hero sliders, welcome banners, "Watch & Buy" shoppable videos, featured video sections, and customer reviews are fully dynamic and configurable via the admin panel.
 - **Product Policies:** Customizable shipping, returns, and care guide policies on product detail pages, with category-based defaults.

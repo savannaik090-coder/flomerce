@@ -24,6 +24,8 @@ DOMAIN = "fluxe.in"
 APP_URL = "https://fluxe.in"
 FROM_EMAIL = "noreply@fluxe.in"
 PAGES_HOSTNAME = "fluxe-8x1.pages.dev"
+VAPID_PUBLIC_KEY = "BBFtjftWOpbgmrZGuPuWePb0ZIEyDz9pVppnsZqwMXewpiu3-JQy5nbBtqOjftgv8332Oy4i94j6NUBDphTh08s"
+VAPID_SUBJECT = "mailto:noreply@fluxe.in"
 # Cloudflare for SaaS — custom domain SSL provisioning
 # CF_ZONE_ID: Zone ID for fluxe.in (find in Cloudflare dashboard → Overview → right sidebar)
 # CF_API_TOKEN must be set as a secret: cd backend && npx wrangler secret put CF_API_TOKEN

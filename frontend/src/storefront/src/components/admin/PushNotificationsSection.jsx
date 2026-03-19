@@ -7,6 +7,7 @@ export default function PushNotificationsSection() {
   const [stats, setStats] = useState({ loggedIn: 0, guests: 0, total: 0 });
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [savingSettings, setSavingSettings] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
 
@@ -25,12 +26,35 @@ export default function PushNotificationsSection() {
   });
 
   useEffect(() => {
-    loadStats();
+    if (siteConfig?.id) {
+      loadStats();
+      loadSettings();
+    }
   }, [siteConfig?.id]);
 
   async function loadStats() {
-    setLoading(false);
-    setStats({ loggedIn: 24, guests: 118, total: 142 });
+    setLoading(true);
+    try {
+      const data = await apiRequest(`/api/notifications/stats?siteId=${siteConfig.id}`);
+      if (data?.success && data.data) {
+        setStats(data.data);
+      }
+    } catch (err) {
+      console.warn('Failed to load push stats:', err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function loadSettings() {
+    try {
+      const data = await apiRequest(`/api/notifications/settings?siteId=${siteConfig.id}`);
+      if (data?.success && data.data) {
+        setAutoSettings(data.data);
+      }
+    } catch (err) {
+      console.warn('Failed to load push settings:', err.message);
+    }
   }
 
   async function handleSend(e) {
@@ -43,9 +67,26 @@ export default function PushNotificationsSection() {
     setError('');
     setSuccess('');
     try {
-      await new Promise(r => setTimeout(r, 1000));
-      setSuccess(`Notification "${form.title}" sent to ${form.target === 'all' ? stats.total : form.target === 'loggedin' ? stats.loggedIn : stats.guests} subscribers.`);
-      setForm({ title: '', message: '', imageUrl: '', link: '', target: 'all' });
+      const data = await apiRequest('/api/notifications/send', {
+        method: 'POST',
+        body: JSON.stringify({
+          siteId: siteConfig.id,
+          title: form.title,
+          message: form.message,
+          imageUrl: form.imageUrl || undefined,
+          link: form.link || undefined,
+          target: form.target,
+        }),
+      });
+
+      if (data?.success) {
+        const { sent, failed, total } = data.data || {};
+        setSuccess(`Notification sent to ${sent} of ${total} subscriber${total !== 1 ? 's' : ''}${failed > 0 ? ` (${failed} failed)` : ''}.`);
+        setForm({ title: '', message: '', imageUrl: '', link: '', target: 'all' });
+        loadStats();
+      } else {
+        setError(data?.message || data?.error || 'Failed to send notification.');
+      }
     } catch (err) {
       setError('Failed to send notification: ' + err.message);
     } finally {
@@ -53,13 +94,39 @@ export default function PushNotificationsSection() {
     }
   }
 
+  async function handleToggleAutoSetting(key) {
+    const updated = { ...autoSettings, [key]: !autoSettings[key] };
+    setAutoSettings(updated);
+    setSavingSettings(true);
+    try {
+      await apiRequest('/api/notifications/settings', {
+        method: 'POST',
+        body: JSON.stringify({ siteId: siteConfig.id, ...updated }),
+      });
+    } catch (err) {
+      console.warn('Failed to save push settings:', err.message);
+      setAutoSettings(autoSettings);
+    } finally {
+      setSavingSettings(false);
+    }
+  }
+
   if (loading) {
     return <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}><div className="spinner" /></div>;
   }
 
+  const isConfigured = !!siteConfig?.vapidPublicKey;
+
   return (
     <div>
       <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 24 }}>Push Notifications</h2>
+
+      {!isConfigured && (
+        <div style={{ background: '#fefce8', border: '1px solid #fef08a', borderRadius: 10, padding: '14px 18px', marginBottom: 24, color: '#92400e', fontSize: 14 }}>
+          <i className="fas fa-exclamation-triangle" style={{ marginRight: 8 }} />
+          Push notifications are not yet configured on this platform. Contact support to enable them.
+        </div>
+      )}
 
       <div className="stats-grid" style={{ marginBottom: 24 }}>
         <div className="stat-card">
@@ -108,6 +175,11 @@ export default function PushNotificationsSection() {
             {error && (
               <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '12px 16px', color: '#dc2626', marginBottom: 16, fontSize: 14 }}>
                 <i className="fas fa-exclamation-circle" style={{ marginRight: 8 }} />{error}
+              </div>
+            )}
+            {stats.total === 0 && !error && (
+              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '12px 16px', color: '#64748b', marginBottom: 16, fontSize: 13 }}>
+                <i className="fas fa-info-circle" style={{ marginRight: 8 }} />No subscribers yet. Customers will see a prompt to subscribe when they visit your store.
               </div>
             )}
             <form onSubmit={handleSend}>
@@ -168,7 +240,7 @@ export default function PushNotificationsSection() {
               <button
                 type="submit"
                 className="btn btn-primary"
-                disabled={sending}
+                disabled={sending || !isConfigured}
                 style={{ width: '100%' }}
               >
                 {sending ? <><i className="fas fa-spinner fa-spin" style={{ marginRight: 8 }} />Sending...</> : <><i className="fas fa-paper-plane" style={{ marginRight: 8 }} />Send Notification</>}
@@ -179,7 +251,10 @@ export default function PushNotificationsSection() {
 
         <div className="card">
           <div className="card-header">
-            <h3 className="card-title">Automatic Notifications</h3>
+            <h3 className="card-title">
+              Automatic Notifications
+              {savingSettings && <span style={{ fontSize: 12, color: '#94a3b8', fontWeight: 400, marginLeft: 8 }}><i className="fas fa-spinner fa-spin" style={{ marginRight: 4 }} />Saving...</span>}
+            </h3>
           </div>
           <div className="card-content">
             <p style={{ fontSize: 13, color: '#64748b', marginBottom: 20 }}>
@@ -201,7 +276,7 @@ export default function PushNotificationsSection() {
                   </div>
                 </div>
                 <button
-                  onClick={() => setAutoSettings(p => ({ ...p, [item.key]: !p[item.key] }))}
+                  onClick={() => handleToggleAutoSetting(item.key)}
                   style={{
                     width: 44,
                     height: 24,

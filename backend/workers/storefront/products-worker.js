@@ -3,6 +3,7 @@ import { validateAuth } from '../../utils/auth.js';
 import { validateSiteAdmin, hasPermission } from './site-admin-worker.js';
 import { checkUsageLimit, estimateRowBytes, trackD1Write, trackD1Delete, trackD1Update } from '../../utils/usage-tracker.js';
 import { resolveSiteDBById, resolveSiteDBBySubdomain, checkMigrationLock, ensureProductOptionsColumn } from '../../utils/site-db.js';
+import { triggerAutoNotification } from './notifications-worker.js';
 
 export async function handleProducts(request, env, path) {
   const corsResponse = handleCORS(request);
@@ -319,6 +320,13 @@ async function createProduct(request, env, user) {
 
     await trackD1Write(env, siteId, rowBytes);
 
+    triggerAutoNotification(env, siteId, 'newProduct', {
+      title: 'New Arrival!',
+      body: `Check out our new product: ${sanitizeInput(name)}`,
+      icon: resolvedThumbnail || '/icon-192.png',
+      data: { url: `/product/${productId}` },
+    }).catch(() => {});
+
     return successResponse({ id: productId, slug }, 'Product created successfully');
   } catch (error) {
     console.error('Create product error:', error);
@@ -374,6 +382,14 @@ async function updateProduct(request, env, user, productId) {
 
     const updates = await request.json();
     const allowedFields = ['name', 'description', 'short_description', 'price', 'compare_price', 'cost_price', 'sku', 'stock', 'low_stock_threshold', 'category_id', 'images', 'thumbnail_url', 'tags', 'is_featured', 'is_active', 'weight', 'dimensions', 'options'];
+
+    let oldProductData = null;
+    const needsOldData = updates.price !== undefined || updates.stock !== undefined;
+    if (needsOldData) {
+      try {
+        oldProductData = await db.prepare('SELECT name, price, stock, thumbnail_url FROM products WHERE id = ?').bind(productId).first();
+      } catch (e) {}
+    }
     
     if (updates.images && !updates.thumbnailUrl && !updates.thumbnail_url) {
       const imgs = Array.isArray(updates.images) ? updates.images : [];
@@ -432,6 +448,30 @@ async function updateProduct(request, env, user, productId) {
       await db.prepare('UPDATE products SET row_size_bytes = ? WHERE id = ?').bind(newBytes, productId).run();
     }
     await trackD1Update(env, resolvedSiteId, oldBytes, newBytes);
+
+    if (oldProductData && updatedProdRow) {
+      const prodName = updatedProdRow.name || oldProductData.name || 'Product';
+      const prodThumb = updatedProdRow.thumbnail_url || oldProductData.thumbnail_url || '/icon-192.png';
+      const prodLink = `/product/${productId}`;
+
+      if (updates.price !== undefined && typeof oldProductData.price === 'number' && typeof updatedProdRow.price === 'number' && updatedProdRow.price < oldProductData.price) {
+        triggerAutoNotification(env, resolvedSiteId, 'priceDrop', {
+          title: 'Price Drop!',
+          body: `${prodName} is now cheaper. Don't miss out!`,
+          icon: prodThumb,
+          data: { url: prodLink },
+        }).catch(() => {});
+      }
+
+      if (updates.stock !== undefined && (oldProductData.stock === 0 || oldProductData.stock === null) && updatedProdRow.stock > 0) {
+        triggerAutoNotification(env, resolvedSiteId, 'backInStock', {
+          title: 'Back in Stock!',
+          body: `${prodName} is available again. Grab it before it sells out!`,
+          icon: prodThumb,
+          data: { url: prodLink },
+        }).catch(() => {});
+      }
+    }
 
     return successResponse(null, 'Product updated successfully');
   } catch (error) {
