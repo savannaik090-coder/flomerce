@@ -660,8 +660,8 @@ export default function DashboardPage() {
                 <h3 style={{ marginBottom: '0.25rem', fontSize: '1.125rem', fontWeight: 700 }}>{site.brand_name || site.subdomain}</h3>
                 <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>https://{site.subdomain}.fluxe.in</p>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span className={`plan-status-pill ${subInfo.isActive ? 'status-active' : 'status-expired'}`}>
-                    {subInfo.isActive ? formatPlanName(subInfo.plan) + ' - Active' : subInfo.plan && subInfo.plan !== 'expired' ? formatPlanName(subInfo.plan) + ' - Expired' : subInfo.plan === 'expired' ? 'Expired' : 'No Subscription'}
+                  <span className={`plan-status-pill ${subInfo.isCancelled ? 'status-cancelled' : subInfo.isActive ? 'status-active' : 'status-expired'}`} style={subInfo.isCancelled ? { background: '#fef3c7', color: '#92400e' } : {}}>
+                    {subInfo.isCancelled ? formatPlanName(subInfo.plan) + ' - Cancelling' : subInfo.isActive ? formatPlanName(subInfo.plan) + ' - Active' : subInfo.plan && subInfo.plan !== 'expired' ? formatPlanName(subInfo.plan) + ' - Expired' : subInfo.plan === 'expired' ? 'Expired' : 'No Subscription'}
                   </span>
                   <button className="btn btn-primary" style={{ fontSize: '0.8rem', padding: '0.5rem 1rem' }}>
                     Open Admin
