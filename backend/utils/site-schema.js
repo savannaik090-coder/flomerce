@@ -41,6 +41,7 @@ export function getSiteSchemaStatements() {
       images TEXT,
       thumbnail_url TEXT,
       tags TEXT,
+      options TEXT,
       is_featured INTEGER DEFAULT 0,
       is_active INTEGER DEFAULT 1,
       seo_title TEXT,
