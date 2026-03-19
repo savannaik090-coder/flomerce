@@ -37,6 +37,25 @@ async function handleProfile(request, env, user) {
 
 async function checkAndExpireSubscription(env, userId) {
   try {
+    const trialSub = await env.DB.prepare(
+      `SELECT * FROM subscriptions WHERE user_id = ? AND plan = 'trial' AND status = 'active' ORDER BY created_at DESC LIMIT 1`
+    ).bind(userId).first();
+
+    if (trialSub) {
+      if (trialSub.current_period_end && new Date(trialSub.current_period_end) < new Date()) {
+        await env.DB.prepare(
+          `UPDATE subscriptions SET status = 'expired', updated_at = datetime('now') WHERE id = ?`
+        ).bind(trialSub.id).run();
+
+        await env.DB.prepare(
+          `UPDATE sites SET subscription_plan = 'expired', updated_at = datetime('now') WHERE user_id = ? AND subscription_plan = 'trial'`
+        ).bind(userId).run();
+
+        return { ...trialSub, status: 'expired' };
+      }
+      return trialSub;
+    }
+
     const activeSubscription = await env.DB.prepare(
       `SELECT * FROM subscriptions WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1`
     ).bind(userId).first();
@@ -46,12 +65,6 @@ async function checkAndExpireSubscription(env, userId) {
         await env.DB.prepare(
           `UPDATE subscriptions SET status = 'expired', updated_at = datetime('now') WHERE id = ?`
         ).bind(activeSubscription.id).run();
-
-        if (activeSubscription.plan === 'trial') {
-          await env.DB.prepare(
-            `UPDATE sites SET subscription_plan = 'expired', updated_at = datetime('now') WHERE user_id = ? AND subscription_plan = 'trial'`
-          ).bind(userId).run();
-        }
 
         return { ...activeSubscription, status: 'expired' };
       }
@@ -305,7 +318,7 @@ async function updateSubscription(request, env, user) {
     ).run();
 
     await env.DB.prepare(
-      `UPDATE sites SET subscription_plan = 'trial', subscription_expires_at = ?, updated_at = datetime('now') WHERE user_id = ?`
+      `UPDATE sites SET subscription_plan = 'trial', subscription_expires_at = ?, updated_at = datetime('now') WHERE user_id = ? AND COALESCE(subscription_plan, '') != 'enterprise'`
     ).bind(periodEnd.toISOString(), user.id).run();
 
     return successResponse(null, 'Your 7-day free trial has started!');

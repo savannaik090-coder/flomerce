@@ -339,13 +339,17 @@ export default function DashboardPage() {
     const rawStatus = sub.status || 'none';
     const periodEnd = sub.periodEnd || site.subscription_expires_at || null;
 
-    const accountStatus = getAccountSubscriptionStatus();
-    if (accountStatus.isTrialActive) {
-      return { plan: 'trial', status: 'active', periodEnd: accountStatus.trialEndDate, isActive: true, isExpired: false };
+    if (plan === 'enterprise') {
+      return { plan: 'enterprise', status: 'active', periodEnd: null, isActive: true, isExpired: false };
     }
 
     if (plan && rawStatus === 'active' && periodEnd && new Date(periodEnd) > new Date()) {
       return { plan, status: 'active', periodEnd, isActive: true, isExpired: false };
+    }
+
+    const accountStatus = getAccountSubscriptionStatus();
+    if (accountStatus.isTrialActive && (!plan || plan === 'trial' || plan === 'expired' || rawStatus !== 'active')) {
+      return { plan: 'trial', status: 'active', periodEnd: accountStatus.trialEndDate, isActive: true, isExpired: false };
     }
 
     const isExpired = rawStatus === 'expired' || rawStatus === 'cancelled' || rawStatus === 'paused' || (rawStatus === 'active' && periodEnd && new Date(periodEnd) < new Date());
@@ -355,8 +359,10 @@ export default function DashboardPage() {
   };
 
   const formatPlanName = (plan) => {
-    if (!plan) return 'Inactive';
+    if (!plan || plan === 'free') return 'Inactive';
     if (plan === 'trial') return 'Trial';
+    if (plan === 'expired') return 'Expired';
+    if (plan === 'enterprise') return 'Enterprise';
     return plan.charAt(0).toUpperCase() + plan.slice(1);
   };
 
@@ -555,7 +561,7 @@ export default function DashboardPage() {
             <span className="manage-site-name" style={{ marginLeft: 'auto' }}>{managedSite.brand_name || managedSite.brandName || managedSite.subdomain}</span>
             {siteInfo.plan && (
               <span className={`plan-status-pill ${siteInfo.isActive ? 'status-active' : 'status-expired'}`} style={{ marginLeft: '0.5rem' }}>
-                {formatPlanName(siteInfo.plan)} - {siteInfo.isActive ? 'Active' : 'Expired'}
+                {siteInfo.isActive ? formatPlanName(siteInfo.plan) + ' - Active' : siteInfo.plan !== 'expired' ? formatPlanName(siteInfo.plan) + ' - Expired' : 'Expired'}
               </span>
             )}
           </div>
@@ -635,7 +641,7 @@ export default function DashboardPage() {
                 <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>https://{site.subdomain}.fluxe.in</p>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span className={`plan-status-pill ${subInfo.isActive ? 'status-active' : 'status-expired'}`}>
-                    {formatPlanName(subInfo.plan)} - {subInfo.isActive ? 'Active' : subInfo.plan ? 'Expired' : 'No Subscription'}
+                    {subInfo.isActive ? formatPlanName(subInfo.plan) + ' - Active' : subInfo.plan && subInfo.plan !== 'expired' ? formatPlanName(subInfo.plan) + ' - Expired' : subInfo.plan === 'expired' ? 'Expired' : 'No Subscription'}
                   </span>
                   <button className="btn btn-primary" style={{ fontSize: '0.8rem', padding: '0.5rem 1rem' }}>
                     Open Admin
@@ -801,7 +807,7 @@ export default function DashboardPage() {
                                   <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>https://{site.subdomain}.fluxe.in</p>
                                 </div>
                                 <span className={`plan-status-pill ${subInfo.isActive ? 'status-active' : 'status-expired'}`}>
-                                  {formatPlanName(subInfo.plan)} - {subInfo.isActive ? 'Active' : subInfo.plan ? 'Expired' : 'No Subscription'}
+                                  {subInfo.isActive ? formatPlanName(subInfo.plan) + ' - Active' : subInfo.plan && subInfo.plan !== 'expired' ? formatPlanName(subInfo.plan) + ' - Expired' : subInfo.plan === 'expired' ? 'Expired' : 'No Subscription'}
                                 </span>
                               </div>
                               {subInfo.periodEnd && subInfo.isActive && subInfo.plan !== 'enterprise' && (
@@ -849,11 +855,9 @@ export default function DashboardPage() {
                                     </p>
                                   )}
                                 </div>
-                                {subInfo.plan !== 'enterprise' && (
                                 <button className="btn btn-primary" style={{ fontSize: '0.8rem', whiteSpace: 'nowrap' }} onClick={() => { setBillingSiteId(site.id); loadSiteUsage(site.id); }}>
-                                  {subInfo.isExpired || !subInfo.plan ? 'Subscribe' : accountStatus.isTrialActive ? 'Upgrade' : 'Manage Plan'}
+                                  {subInfo.plan === 'enterprise' ? 'View Usage' : subInfo.isExpired || !subInfo.plan ? 'Subscribe' : accountStatus.isTrialActive ? 'Upgrade' : 'Manage Plan'}
                                 </button>
-                                )}
                               </div>
                             </div>
                           </div>

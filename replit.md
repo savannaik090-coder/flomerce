@@ -20,6 +20,9 @@ Fluxe uses a **shared shard-based D1 database architecture**: multiple sites sha
 - **Migration Lock:** Sites have a `migration_locked` flag. During shard-to-shard migration, writes are blocked. All storefront workers check `checkMigrationLock()` before write operations and return HTTP 423 if locked.
 - **No Fallback:** Sites without a `shard_id` will throw an error — the platform DB is never used as a fallback for site data. Legacy `d1_database_id` and `d1_binding_name` columns are still checked as a secondary lookup before erroring.
 - **Admin Emails:** Both `savannaik090@gmail.com` and `xiyohe3598@indevgo.com` are configured as platform admins in `ADMIN_EMAILS` array in `admin-worker.js`.
+- **Enterprise Plan Protection:** All SQL queries that update `subscription_plan` in bulk (trial activation, trial expiry, paid plan activation) include `AND subscription_plan != 'enterprise'` to prevent overwriting enterprise status. Enterprise sites are always protected from trial/plan cascade updates.
+- **Subscription Priority:** `checkAndExpireSubscription` prioritizes trial (account-level) subscriptions first, then falls back to other active subscriptions. This ensures the profile correctly reports trial status.
+- **Frontend Plan Resolution Order:** `getSiteSubscriptionInfo` checks enterprise first (always active), then paid active subscriptions, then falls back to account-level trial status only for sites without their own active paid plan.
 
 ### Usage Tracking with Correction Factor
 - **Row-Level Tracking:** Every table has a `row_size_bytes` column. `estimateRowBytes()` estimates size at write time.

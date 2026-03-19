@@ -6758,11 +6758,11 @@ async function activateSubscription(env, userId, planName, billingCycle, razorpa
     ).bind(userId).run();
     if (siteId) {
       await env.DB.prepare(
-        `UPDATE sites SET subscription_plan = ?, subscription_expires_at = ?, updated_at = datetime('now') WHERE id = ?`
+        `UPDATE sites SET subscription_plan = ?, subscription_expires_at = ?, updated_at = datetime('now') WHERE id = ? AND COALESCE(subscription_plan, '') != 'enterprise'`
       ).bind(planName, periodEnd.toISOString(), siteId).run();
     } else {
       await env.DB.prepare(
-        `UPDATE sites SET subscription_plan = ?, subscription_expires_at = ?, updated_at = datetime('now') WHERE user_id = ?`
+        `UPDATE sites SET subscription_plan = ?, subscription_expires_at = ?, updated_at = datetime('now') WHERE user_id = ? AND COALESCE(subscription_plan, '') != 'enterprise'`
       ).bind(planName, periodEnd.toISOString(), userId).run();
     }
     console.log(`Subscription activated: user=${userId}, site=${siteId || "all"}, plan=${planName}, cycle=${billingCycle}`);
@@ -7165,6 +7165,21 @@ async function handleProfile(request, env, user) {
 __name(handleProfile, "handleProfile");
 async function checkAndExpireSubscription(env, userId) {
   try {
+    const trialSub = await env.DB.prepare(
+      `SELECT * FROM subscriptions WHERE user_id = ? AND plan = 'trial' AND status = 'active' ORDER BY created_at DESC LIMIT 1`
+    ).bind(userId).first();
+    if (trialSub) {
+      if (trialSub.current_period_end && new Date(trialSub.current_period_end) < /* @__PURE__ */ new Date()) {
+        await env.DB.prepare(
+          `UPDATE subscriptions SET status = 'expired', updated_at = datetime('now') WHERE id = ?`
+        ).bind(trialSub.id).run();
+        await env.DB.prepare(
+          `UPDATE sites SET subscription_plan = 'expired', updated_at = datetime('now') WHERE user_id = ? AND subscription_plan = 'trial'`
+        ).bind(userId).run();
+        return { ...trialSub, status: "expired" };
+      }
+      return trialSub;
+    }
     const activeSubscription = await env.DB.prepare(
       `SELECT * FROM subscriptions WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1`
     ).bind(userId).first();
@@ -7173,11 +7188,6 @@ async function checkAndExpireSubscription(env, userId) {
         await env.DB.prepare(
           `UPDATE subscriptions SET status = 'expired', updated_at = datetime('now') WHERE id = ?`
         ).bind(activeSubscription.id).run();
-        if (activeSubscription.plan === "trial") {
-          await env.DB.prepare(
-            `UPDATE sites SET subscription_plan = 'expired', updated_at = datetime('now') WHERE user_id = ? AND subscription_plan = 'trial'`
-          ).bind(userId).run();
-        }
         return { ...activeSubscription, status: "expired" };
       }
       return activeSubscription;
@@ -7377,7 +7387,7 @@ async function updateSubscription(request, env, user) {
       periodEnd.toISOString()
     ).run();
     await env.DB.prepare(
-      `UPDATE sites SET subscription_plan = 'trial', subscription_expires_at = ?, updated_at = datetime('now') WHERE user_id = ?`
+      `UPDATE sites SET subscription_plan = 'trial', subscription_expires_at = ?, updated_at = datetime('now') WHERE user_id = ? AND COALESCE(subscription_plan, '') != 'enterprise'`
     ).bind(periodEnd.toISOString(), user.id).run();
     return successResponse(null, "Your 7-day free trial has started!");
   } catch (error) {
@@ -9633,10 +9643,10 @@ async function removeEnterpriseSite(request, env) {
         restoredPlan = oldSub.plan;
       } else {
         await env.DB.prepare(`UPDATE subscriptions SET status = 'expired', updated_at = datetime('now') WHERE site_id = ? AND status = 'enterprise_override'`).bind(siteId).run();
-        await env.DB.prepare(`UPDATE sites SET subscription_plan = 'free', subscription_expires_at = NULL, updated_at = datetime('now') WHERE id = ?`).bind(siteId).run();
+        await env.DB.prepare(`UPDATE sites SET subscription_plan = NULL, subscription_expires_at = NULL, updated_at = datetime('now') WHERE id = ?`).bind(siteId).run();
       }
     } catch (e) {
-      await env.DB.prepare(`UPDATE sites SET subscription_plan = 'free', subscription_expires_at = NULL, updated_at = datetime('now') WHERE id = ?`).bind(siteId).run();
+      await env.DB.prepare(`UPDATE sites SET subscription_plan = NULL, subscription_expires_at = NULL, updated_at = datetime('now') WHERE id = ?`).bind(siteId).run();
     }
     return successResponse({ siteId, restoredPlan }, "Enterprise status removed");
   } catch (error) {

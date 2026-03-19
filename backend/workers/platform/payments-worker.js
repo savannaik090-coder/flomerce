@@ -905,11 +905,11 @@ export async function activateSubscription(env, userId, planName, billingCycle, 
 
     if (siteId) {
       await env.DB.prepare(
-        `UPDATE sites SET subscription_plan = ?, subscription_expires_at = ?, updated_at = datetime('now') WHERE id = ?`
+        `UPDATE sites SET subscription_plan = ?, subscription_expires_at = ?, updated_at = datetime('now') WHERE id = ? AND COALESCE(subscription_plan, '') != 'enterprise'`
       ).bind(planName, periodEnd.toISOString(), siteId).run();
     } else {
       await env.DB.prepare(
-        `UPDATE sites SET subscription_plan = ?, subscription_expires_at = ?, updated_at = datetime('now') WHERE user_id = ?`
+        `UPDATE sites SET subscription_plan = ?, subscription_expires_at = ?, updated_at = datetime('now') WHERE user_id = ? AND COALESCE(subscription_plan, '') != 'enterprise'`
       ).bind(planName, periodEnd.toISOString(), userId).run();
     }
 

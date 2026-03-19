@@ -1129,10 +1129,10 @@ async function removeEnterpriseSite(request, env) {
         restoredPlan = oldSub.plan;
       } else {
         await env.DB.prepare(`UPDATE subscriptions SET status = 'expired', updated_at = datetime('now') WHERE site_id = ? AND status = 'enterprise_override'`).bind(siteId).run();
-        await env.DB.prepare(`UPDATE sites SET subscription_plan = 'free', subscription_expires_at = NULL, updated_at = datetime('now') WHERE id = ?`).bind(siteId).run();
+        await env.DB.prepare(`UPDATE sites SET subscription_plan = NULL, subscription_expires_at = NULL, updated_at = datetime('now') WHERE id = ?`).bind(siteId).run();
       }
     } catch (e) {
-      await env.DB.prepare(`UPDATE sites SET subscription_plan = 'free', subscription_expires_at = NULL, updated_at = datetime('now') WHERE id = ?`).bind(siteId).run();
+      await env.DB.prepare(`UPDATE sites SET subscription_plan = NULL, subscription_expires_at = NULL, updated_at = datetime('now') WHERE id = ?`).bind(siteId).run();
     }
 
     return successResponse({ siteId, restoredPlan }, 'Enterprise status removed');
