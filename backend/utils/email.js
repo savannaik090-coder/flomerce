@@ -24,30 +24,40 @@ export async function sendEmail(env, to, subject, html, text) {
     if (env.SENDER_API_KEY) {
       const apiKey = env.SENDER_API_KEY.trim();
       const fromEmail = env.FROM_EMAIL || 'noreply@fluxe.in';
-      const toList = typeof to === 'string' ? [{ email: to }] : to.map(e => typeof e === 'string' ? { email: e } : e);
-      const response = await fetch('https://api.sender.net/v2/emails', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify({
-          from: { email: fromEmail, name: 'Fluxe' },
-          to: toList,
-          subject,
-          html,
-          text,
-        }),
-      });
 
-      const body = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        console.error('Sender error:', JSON.stringify(body), 'Status:', response.status);
-        return body.message || body.error || 'Sender API error';
+      const recipients = typeof to === 'string'
+        ? [{ email: to }]
+        : Array.isArray(to)
+          ? to.map(e => typeof e === 'string' ? { email: e } : e)
+          : [to];
+
+      let allSuccess = true;
+      for (const recipient of recipients) {
+        const response = await fetch('https://api.sender.net/v2/message/send', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: JSON.stringify({
+            from: { email: fromEmail, name: 'Fluxe' },
+            to: { email: recipient.email, name: recipient.name || '' },
+            subject,
+            html,
+            text,
+          }),
+        });
+
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          console.error('Sender error for', recipient.email, ':', JSON.stringify(body), 'Status:', response.status);
+          allSuccess = false;
+        } else {
+          console.log('Email sent via Sender to:', recipient.email, 'Subject:', subject);
+        }
       }
-      console.log('Email sent via Sender to:', to, 'Subject:', subject);
-      return true;
+      return allSuccess ? true : 'Some emails failed to send';
     }
 
     console.warn('WARNING: No email provider configured (SENDER_API_KEY missing). Email NOT sent to:', to, 'Subject:', subject);
