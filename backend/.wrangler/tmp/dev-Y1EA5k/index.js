@@ -12909,6 +12909,9 @@ async function handleUpload(request, env, path) {
   if (action === "image" && method === "POST") {
     return uploadImage(request, env, url);
   }
+  if (action === "return-photo" && method === "POST") {
+    return uploadReturnPhoto(request, env, url);
+  }
   if (action === "image" && method === "DELETE") {
     return deleteImage(request, env, url);
   }
@@ -13041,6 +13044,49 @@ async function uploadImage(request, env, url) {
   }
 }
 __name(uploadImage, "uploadImage");
+var RETURN_PHOTO_MAX_SIZE = 5 * 1024 * 1024;
+var RETURN_PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"];
+async function uploadReturnPhoto(request, env, url) {
+  const siteId = url.searchParams.get("siteId");
+  if (!siteId)
+    return errorResponse("siteId is required", 400);
+  try {
+    const contentType = request.headers.get("content-type") || "";
+    if (!contentType.includes("multipart/form-data")) {
+      return errorResponse("multipart/form-data required", 400);
+    }
+    const formData = await request.formData();
+    const file = formData.get("photo");
+    if (!file || !file.size)
+      return errorResponse("No photo provided", 400);
+    if (!RETURN_PHOTO_TYPES.includes(file.type)) {
+      return errorResponse(`Invalid file type: ${file.type}. Only JPEG, PNG, and WebP allowed.`, 400);
+    }
+    if (file.size > RETURN_PHOTO_MAX_SIZE) {
+      return errorResponse(`File too large: ${(file.size / 1024 / 1024).toFixed(1)}MB (max 5MB)`, 400);
+    }
+    const usageCheck = await checkUsageLimit(env, siteId, "r2", file.size);
+    if (!usageCheck.allowed) {
+      return errorResponse(usageCheck.reason, 403, "STORAGE_LIMIT");
+    }
+    const ext = MIME_TO_EXT[file.type] || "jpg";
+    const key = `sites/${siteId}/returns/${generateId()}.${ext}`;
+    const arrayBuffer = await file.arrayBuffer();
+    await env.STORAGE.put(key, arrayBuffer, {
+      httpMetadata: {
+        contentType: file.type,
+        cacheControl: "public, max-age=31536000"
+      }
+    });
+    await recordMediaFile(env, siteId, key, file.size, "image");
+    const imageUrl = `/api/upload/image?key=${encodeURIComponent(key)}`;
+    return successResponse({ url: imageUrl, key }, "Return photo uploaded");
+  } catch (error) {
+    console.error("Return photo upload error:", error);
+    return errorResponse("Failed to upload photo: " + error.message, 500);
+  }
+}
+__name(uploadReturnPhoto, "uploadReturnPhoto");
 async function serveImage(env, key) {
   try {
     const object = await env.STORAGE.get(key);

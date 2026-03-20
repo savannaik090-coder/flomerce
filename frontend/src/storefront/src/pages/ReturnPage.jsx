@@ -91,8 +91,8 @@ export default function ReturnPage() {
       const newPhotos = [];
       for (const file of files) {
         const formData = new FormData();
-        formData.append('image', file);
-        const resp = await fetch(`${API_BASE}/api/upload/image?siteId=${siteConfig.id}`, {
+        formData.append('photo', file);
+        const resp = await fetch(`${API_BASE}/api/upload/return-photo?siteId=${siteConfig.id}`, {
           method: 'POST',
           body: formData,
         });

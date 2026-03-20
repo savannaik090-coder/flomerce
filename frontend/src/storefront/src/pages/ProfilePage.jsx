@@ -164,8 +164,8 @@ export default function ProfilePage() {
       const newPhotos = [];
       for (const file of files) {
         const formData = new FormData();
-        formData.append('image', file);
-        const resp = await fetch(`${API_BASE}/api/upload/image?siteId=${siteConfig.id}`, { method: 'POST', body: formData });
+        formData.append('photo', file);
+        const resp = await fetch(`${API_BASE}/api/upload/return-photo?siteId=${siteConfig.id}`, { method: 'POST', body: formData });
         const result = await resp.json();
         if (result.success && result.data?.url) newPhotos.push(result.data.url);
       }
