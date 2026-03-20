@@ -21,47 +21,43 @@ function formatCurrencyHtml(amount, currency = 'INR') {
 
 export async function sendEmail(env, to, subject, html, text) {
   try {
-    if (env.SENDER_API_KEY) {
-      const apiKey = env.SENDER_API_KEY.trim();
-      const fromEmail = env.FROM_EMAIL || 'noreply@fluxe.in';
-
-      const recipients = typeof to === 'string'
-        ? [{ email: to }]
-        : Array.isArray(to)
-          ? to.map(e => typeof e === 'string' ? { email: e } : e)
-          : [to];
-
-      let allSuccess = true;
-      for (const recipient of recipients) {
-        const response = await fetch('https://api.sender.net/v2/message/send', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          },
-          body: JSON.stringify({
-            from: { email: fromEmail, name: 'Fluxe' },
-            to: { email: recipient.email, name: recipient.name || '' },
-            subject,
-            html,
-            text,
-          }),
-        });
-
-        const body = await response.json().catch(() => ({}));
-        if (!response.ok) {
-          console.error('Sender error for', recipient.email, ':', JSON.stringify(body), 'Status:', response.status);
-          allSuccess = false;
-        } else {
-          console.log('Email sent via Sender to:', recipient.email, 'Subject:', subject);
-        }
-      }
-      return allSuccess ? true : 'Some emails failed to send';
+    const apiKey = (env.BREVO_API_KEY || env.SENDER_API_KEY || '').trim();
+    if (!apiKey) {
+      console.warn('WARNING: No email provider configured (BREVO_API_KEY missing). Email NOT sent to:', to, 'Subject:', subject);
+      return 'No email provider configured';
     }
 
-    console.warn('WARNING: No email provider configured (SENDER_API_KEY missing). Email NOT sent to:', to, 'Subject:', subject);
-    return 'No email provider configured';
+    const fromEmail = env.FROM_EMAIL || 'noreply@fluxe.in';
+
+    const recipients = typeof to === 'string'
+      ? [{ email: to }]
+      : Array.isArray(to)
+        ? to.map(e => typeof e === 'string' ? { email: e } : e)
+        : [to];
+
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'accept': 'application/json',
+        'api-key': apiKey,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        sender: { email: fromEmail, name: 'Fluxe' },
+        to: recipients.map(r => ({ email: r.email, name: r.name || '' })),
+        subject,
+        htmlContent: html,
+        textContent: text,
+      }),
+    });
+
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      console.error('Brevo error:', JSON.stringify(body), 'Status:', response.status);
+      return body.message || 'Brevo API error';
+    }
+    console.log('Email sent via Brevo to:', recipients.map(r => r.email).join(', '), 'Subject:', subject);
+    return true;
   } catch (error) {
     console.error('Send email error:', error);
     return error.message || 'Unknown email sending error';
