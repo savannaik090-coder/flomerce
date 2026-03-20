@@ -23,8 +23,7 @@ export async function sendEmail(env, to, subject, html, text) {
   try {
     const apiKey = (env.BREVO_API_KEY || '').trim();
     if (!apiKey) {
-      console.error('EMAIL FAILED: BREVO_API_KEY is not set in env. Email NOT sent to:', to, 'Subject:', subject);
-      console.error('Available env keys:', Object.keys(env).filter(k => !k.startsWith('__') && typeof env[k] !== 'object').join(', '));
+      console.warn('WARNING: No email provider configured (BREVO_API_KEY missing). Email NOT sent to:', to, 'Subject:', subject);
       return 'No email provider configured';
     }
 
@@ -54,13 +53,13 @@ export async function sendEmail(env, to, subject, html, text) {
 
     const body = await response.json().catch(() => ({}));
     if (!response.ok) {
-      console.error('Brevo API error:', JSON.stringify(body), 'Status:', response.status, 'To:', to, 'Subject:', subject);
+      console.error('Brevo error:', JSON.stringify(body), 'Status:', response.status);
       return body.message || 'Brevo API error';
     }
     console.log('Email sent via Brevo to:', recipients.map(r => r.email).join(', '), 'Subject:', subject);
     return true;
   } catch (error) {
-    console.error('Send email exception:', error.message || error, 'To:', to, 'Subject:', subject);
+    console.error('Send email error:', error);
     return error.message || 'Unknown email sending error';
   }
 }
