@@ -337,6 +337,14 @@ export default function OrdersSection() {
                           <td>
                             <div style={{ fontSize: 13 }}>{ret.reason}</div>
                             {ret.reason_detail && <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>{ret.reason_detail}</div>}
+                            <div style={{ display: 'flex', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
+                              {ret.resolution && (
+                                <span style={{ fontSize: 11, padding: '1px 6px', borderRadius: 8, background: ret.resolution === 'replacement' ? '#ede9fe' : '#dbeafe', color: ret.resolution === 'replacement' ? '#6d28d9' : '#1d4ed8', fontWeight: 600 }}>
+                                  {ret.resolution === 'replacement' ? 'Replacement' : 'Refund'}
+                                </span>
+                              )}
+                              {(() => { try { const p = typeof ret.photos === 'string' ? JSON.parse(ret.photos) : ret.photos; return p && p.length > 0 ? <span style={{ fontSize: 11, color: '#64748b' }}><i className="fas fa-camera" style={{ fontSize: 10 }} /> {p.length} photo{p.length > 1 ? 's' : ''}</span> : null; } catch { return null; } })()}
+                            </div>
                           </td>
                           <td>
                             <span style={{ display: 'inline-block', background: getReturnStatusColor(ret.status), color: '#fff', borderRadius: 12, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>
@@ -390,9 +398,34 @@ export default function OrdersSection() {
                 <div style={{ marginBottom: 16 }}>
                   <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Reason from customer</label>
                   <div style={{ padding: '10px 12px', background: '#f8fafc', borderRadius: 6, fontSize: 13, color: '#334155', border: '1px solid #e2e8f0' }}>
-                    {returnModal.reason}{returnModal.reason_detail ? ` - ${returnModal.reason_detail}` : ''}
+                    {returnModal.reason}{returnModal.reason_detail ? ` — ${returnModal.reason_detail}` : ''}
                   </div>
                 </div>
+                {returnModal.resolution && (
+                  <div style={{ marginBottom: 16 }}>
+                    <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Preferred Resolution</label>
+                    <span style={{ display: 'inline-block', padding: '4px 12px', borderRadius: 12, fontSize: 13, fontWeight: 600, background: returnModal.resolution === 'replacement' ? '#ede9fe' : '#dbeafe', color: returnModal.resolution === 'replacement' ? '#6d28d9' : '#1d4ed8' }}>
+                      {returnModal.resolution === 'replacement' ? 'Replacement' : 'Refund'}
+                    </span>
+                  </div>
+                )}
+                {(() => {
+                  let photoList = [];
+                  try { photoList = typeof returnModal.photos === 'string' ? JSON.parse(returnModal.photos) : (returnModal.photos || []); } catch {}
+                  if (!photoList || photoList.length === 0) return null;
+                  return (
+                    <div style={{ marginBottom: 16 }}>
+                      <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Photos from customer ({photoList.length})</label>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                        {photoList.filter(u => typeof u === 'string' && u.startsWith('https://')).map((url, idx) => (
+                          <a key={idx} href={url} target="_blank" rel="noopener noreferrer">
+                            <img src={url} alt={`Return photo ${idx + 1}`} style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 6, border: '1px solid #e2e8f0', cursor: 'pointer' }} />
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
                 {returnAction === 'refunded' && (
                   <div style={{ marginBottom: 16 }}>
                     <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Refund Amount</label>

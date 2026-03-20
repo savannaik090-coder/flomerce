@@ -727,6 +727,25 @@ export default function SettingsSection() {
                 />
                 <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>Customers can request a return within this many days after their order is delivered</p>
               </div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', border: '1px solid #e2e8f0', borderRadius: 8, marginTop: 12, background: replacementEnabled ? '#f0fdf4' : '#f8fafc' }}>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 14, color: '#1e293b' }}>Allow Replacement Option</div>
+                  <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>Customers can choose between refund or replacement when returning</div>
+                </div>
+                <label style={{ position: 'relative', display: 'inline-block', width: 44, height: 24, flexShrink: 0 }}>
+                  <input type="checkbox" checked={replacementEnabled} onChange={e => setReplacementEnabled(e.target.checked)} style={{ opacity: 0, width: 0, height: 0 }} />
+                  <span style={{
+                    position: 'absolute', cursor: 'pointer', inset: 0, borderRadius: 24, transition: '0.3s',
+                    background: replacementEnabled ? '#22c55e' : '#cbd5e1',
+                  }}>
+                    <span style={{
+                      position: 'absolute', left: replacementEnabled ? 22 : 2, top: 2, width: 20, height: 20,
+                      background: '#fff', borderRadius: '50%', transition: '0.3s',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                    }} />
+                  </span>
+                </label>
+              </div>
             )}
           </div>
         </div>
