@@ -44,6 +44,7 @@
     width: 100%;
     z-index: 1000;
     padding: 0;
+    overflow: visible;
 }
 
 .nav-container {
@@ -52,9 +53,10 @@
     justify-content: space-between;
     padding: 0 15px;
     width: 100%;
-    min-height: 65px;
+    height: 65px;
     background: #f8f8f5;
     box-sizing: border-box;
+    overflow: visible;
 }
 
 .brand {
@@ -76,6 +78,8 @@
     text-shadow: none;
     flex-shrink: 0;
     max-width: 40%;
+    overflow: visible;
+    z-index: 2;
 }
 
 .brand-text {
@@ -316,7 +320,7 @@
 
 @media (min-width: 992px) {
     .nav-container {
-        min-height: 75px;
+        height: 75px;
         padding: 0 20px;
     }
     .hamburger { display: none !important; }
