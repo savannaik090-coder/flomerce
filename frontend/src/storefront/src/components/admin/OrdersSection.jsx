@@ -343,7 +343,7 @@ export default function OrdersSection() {
                     </thead>
                     <tbody>
                       {filteredReturns.map(ret => (
-                        <tr key={ret.id}>
+                        <tr key={ret.id} onClick={() => setReturnDetailModal(ret)} style={{ cursor: 'pointer' }}>
                           <td style={{ fontWeight: 600 }}>#{ret.order_number || ret.order_id?.slice(-6)}</td>
                           <td>
                             <div style={{ fontWeight: 500 }}>{ret.customer_name || 'N/A'}</div>
@@ -369,10 +369,7 @@ export default function OrdersSection() {
                           <td>{ret.refund_amount ? formatAmount(ret.refund_amount) : '—'}</td>
                           <td style={{ whiteSpace: 'nowrap' }}>{new Date(ret.created_at).toLocaleDateString()}</td>
                           <td>
-                            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                              <button className="btn btn-sm" style={{ background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: 4, padding: '4px 8px', cursor: 'pointer', fontSize: 11, color: '#475569' }} onClick={() => setReturnDetailModal(ret)} title="View Details">
-                                <i className="fas fa-eye" />
-                              </button>
+                            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }} onClick={e => e.stopPropagation()}>
                               {ret.status === 'requested' && (
                                 <>
                                   <button className="btn btn-sm btn-success" onClick={() => { setReturnModal(ret); setReturnAction('approved'); setReturnNote(''); setReturnRefundAmount(''); }} title="Approve">
@@ -623,7 +620,7 @@ export default function OrdersSection() {
                     </thead>
                     <tbody>
                       {filteredCancellations.map(canc => (
-                        <tr key={canc.id}>
+                        <tr key={canc.id} onClick={() => setCancDetailModal(canc)} style={{ cursor: 'pointer' }}>
                           <td style={{ fontWeight: 600 }}>#{canc.order_number || canc.order_id?.slice(-6)}</td>
                           <td>
                             <div style={{ fontWeight: 500 }}>{canc.customer_name || 'N/A'}</div>
@@ -640,10 +637,7 @@ export default function OrdersSection() {
                           </td>
                           <td style={{ whiteSpace: 'nowrap' }}>{new Date(canc.created_at).toLocaleDateString()}</td>
                           <td>
-                            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                              <button className="btn btn-sm" style={{ background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: 4, padding: '4px 8px', cursor: 'pointer', fontSize: 11, color: '#475569' }} onClick={() => setCancDetailModal(canc)} title="View Details">
-                                <i className="fas fa-eye" />
-                              </button>
+                            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }} onClick={e => e.stopPropagation()}>
                               {canc.status === 'requested' && (
                                 <>
                                   <button className="btn btn-sm btn-success" onClick={() => { setCancellationModal(canc); setCancellationAction('approved'); setCancellationNote(''); }} title="Approve">
