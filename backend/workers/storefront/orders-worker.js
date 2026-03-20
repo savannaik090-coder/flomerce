@@ -613,22 +613,7 @@ async function updateOrderStatus(request, env, user, orderId) {
 }
 
 async function sendStatusUpdateEmails(env, fullOrder, status, cancellationReason, trackingNumber, carrier) {
-  let config = await getSiteConfig(env, fullOrder.site_id);
-  if (!config.site_id) {
-    const siteRow = await env.DB.prepare('SELECT * FROM sites WHERE id = ?').bind(fullOrder.site_id).first();
-    if (siteRow) {
-      config = {
-        site_id: siteRow.id,
-        brand_name: siteRow.brand_name,
-        email: siteRow.email,
-        settings: siteRow.settings || '{}',
-      };
-      console.log('sendStatusUpdateEmails: site_config missing, fell back to platform sites table for site:', fullOrder.site_id);
-    } else {
-      console.error('sendStatusUpdateEmails: No site found for siteId:', fullOrder.site_id);
-      return;
-    }
-  }
+  const config = await getSiteConfig(env, fullOrder.site_id);
   const siteBrandName = config.brand_name || 'Store';
   let siteSettings = {};
   try { if (config.settings) siteSettings = typeof config.settings === 'string' ? JSON.parse(config.settings) : config.settings; } catch (e) {}
@@ -1306,23 +1291,9 @@ function buildReturnStatusEmail(ret, brandName, status, adminNote) {
 
 export async function sendOrderEmails(env, siteId, orderData) {
   try {
-    let config = await getSiteConfig(env, siteId);
+    const config = await getSiteConfig(env, siteId);
 
-    if (!config.site_id) {
-      const siteRow = await env.DB.prepare('SELECT * FROM sites WHERE id = ?').bind(siteId).first();
-      if (siteRow) {
-        config = {
-          site_id: siteRow.id,
-          brand_name: siteRow.brand_name,
-          email: siteRow.email,
-          settings: siteRow.settings || '{}',
-        };
-        console.log('sendOrderEmails: site_config missing, fell back to platform sites table for site:', siteId);
-      } else {
-        console.error('sendOrderEmails: No site found in platform DB for siteId:', siteId);
-        return;
-      }
-    }
+    if (!config.site_id) return;
 
     const siteBrandName = config.brand_name || 'Store';
     let siteSettings = {};
@@ -1359,8 +1330,6 @@ export async function sendOrderEmails(env, siteId, orderData) {
       } catch (buildErr) {
         console.error('Owner email build error:', buildErr);
       }
-    } else {
-      console.warn('sendOrderEmails: No owner email found for site:', siteId);
     }
 
     await Promise.all(emailJobs);
