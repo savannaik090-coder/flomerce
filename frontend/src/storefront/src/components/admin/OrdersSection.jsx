@@ -461,9 +461,13 @@ export default function OrdersSection() {
             </div>
           )}
 
-          {returnDetailModal && (
+          {returnDetailModal && (() => {
+            const order = orders.find(o => o.id === returnDetailModal.order_id) || {};
+            const orderItems = Array.isArray(order.items) ? order.items : parseJsonSafe(returnDetailModal.items);
+            const address = order.shipping_address || {};
+            return (
             <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
-              <div style={{ background: '#fff', borderRadius: 10, padding: 28, width: '90%', maxWidth: 540, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}>
+              <div style={{ background: '#fff', borderRadius: 10, padding: 28, width: '90%', maxWidth: 640, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, paddingBottom: 15, borderBottom: '1px solid #eee' }}>
                   <h3 style={{ margin: 0, fontSize: 18, color: '#1a1a1a' }}>Return Details</h3>
                   <button onClick={() => setReturnDetailModal(null)} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#999' }}>&times;</button>
@@ -475,7 +479,7 @@ export default function OrdersSection() {
                     <div style={{ fontSize: 15, fontWeight: 700 }}>#{returnDetailModal.order_number}</div>
                   </div>
                   <div>
-                    <div style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>Status</div>
+                    <div style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>Return Status</div>
                     <span style={{ display: 'inline-block', background: getReturnStatusColor(returnDetailModal.status), color: '#fff', borderRadius: 12, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>
                       {getReturnStatusLabel(returnDetailModal.status)}
                     </span>
@@ -514,24 +518,84 @@ export default function OrdersSection() {
                   </div>
                 </div>
 
-                {(() => {
-                  const items = parseJsonSafe(returnDetailModal.items);
-                  if (items.length === 0) return null;
-                  return (
-                    <div style={{ marginBottom: 16 }}>
-                      <div style={{ fontSize: 12, color: '#64748b', marginBottom: 6, fontWeight: 600 }}>Order Items</div>
-                      {items.map((item, idx) => (
-                        <div key={idx} style={{ display: 'flex', gap: 10, padding: '8px 0', borderBottom: idx < items.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
-                          {safeImageUrl(item.image) && <img src={safeImageUrl(item.image)} alt="" style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 4, flexShrink: 0 }} />}
-                          <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: 13, fontWeight: 500 }}>{item.name}</div>
-                            <div style={{ fontSize: 12, color: '#64748b' }}>Qty: {item.quantity} &middot; {formatAmount(item.price)}</div>
+                <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', marginBottom: 16 }}>
+                  <div style={{ flex: 1, minWidth: 220 }}>
+                    <div style={{ fontWeight: 700, marginBottom: 10, color: '#333', fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5 }}>Order Items</div>
+                    {orderItems.length > 0 ? orderItems.map((item, idx) => (
+                      <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, paddingBottom: 10, borderBottom: '1px solid #eee' }}>
+                        {(item.thumbnail || item.image) && (
+                          <img src={item.thumbnail || item.image} alt={item.name} style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 4, border: '1px solid #eee' }} />
+                        )}
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 500, fontSize: 13 }}>{item.name}</div>
+                          {item.variant && <div style={{ fontSize: 11, color: '#888' }}>{item.variant}</div>}
+                          {item.selectedOptions && (() => {
+                            const parts = [];
+                            if (item.selectedOptions.color) parts.push(`Color: ${item.selectedOptions.color}`);
+                            if (item.selectedOptions.customOptions) {
+                              for (const [label, value] of Object.entries(item.selectedOptions.customOptions)) {
+                                parts.push(`${label}: ${value}`);
+                              }
+                            }
+                            if (item.selectedOptions.pricedOptions) {
+                              for (const [label, val] of Object.entries(item.selectedOptions.pricedOptions)) {
+                                const priceSuffix = Number(val.price || 0) > 0 ? ` (${formatAmount(Number(val.price))})` : '';
+                                parts.push(`${label}: ${val.name}${priceSuffix}`);
+                              }
+                            }
+                            return parts.length > 0 ? <div style={{ fontSize: 11, color: '#888', marginTop: 1 }}>{parts.join(' \u2022 ')}</div> : null;
+                          })()}
+                          <div style={{ fontSize: 12, color: '#555' }}>
+                            {formatAmount(parseFloat(item.price || 0))} x {item.quantity}
+                            <span style={{ fontWeight: 600, marginLeft: 6 }}>= {formatAmount(parseFloat((item.price || 0) * (item.quantity || 1)))}</span>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  );
-                })()}
+                      </div>
+                    )) : <div style={{ color: '#999', fontSize: 13 }}>No item details available</div>}
+                    {order.total && (
+                      <div style={{ paddingTop: 8, borderTop: '2px solid #eee', textAlign: 'right' }}>
+                        {parseFloat(order.discount || 0) > 0 && (
+                          <>
+                            <div style={{ fontSize: 13, color: '#555', marginBottom: 2 }}>
+                              Subtotal: {formatAmount(parseFloat(order.subtotal || order.total || 0))}
+                            </div>
+                            <div style={{ fontSize: 13, color: '#16a34a', marginBottom: 4 }}>
+                              Coupon{order.coupon_code ? ` (${order.coupon_code})` : ''}: −{formatAmount(parseFloat(order.discount || 0))}
+                            </div>
+                          </>
+                        )}
+                        <div style={{ fontWeight: 700, fontSize: 14 }}>
+                          Total: {formatAmount(parseFloat(order.total || 0))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ minWidth: 200 }}>
+                    <div style={{ fontWeight: 700, marginBottom: 10, color: '#333', fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5 }}>Shipping Address</div>
+                    {address && Object.keys(address).length > 0 ? (
+                      <div style={{ fontSize: 13, lineHeight: 1.8, color: '#444' }}>
+                        <div style={{ fontWeight: 600 }}>{address.name || returnDetailModal.customer_name}</div>
+                        {address.phone && <div>📞 {address.phone}</div>}
+                        {address.address && <div>{address.address}</div>}
+                        {(address.city || address.state) && <div>{[address.city, address.state].filter(Boolean).join(', ')}{address.pinCode ? ' – ' + address.pinCode : ''}</div>}
+                      </div>
+                    ) : (
+                      <div style={{ color: '#999', fontSize: 13 }}>No address on file</div>
+                    )}
+
+                    <div style={{ fontWeight: 700, marginBottom: 10, marginTop: 16, color: '#333', fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5 }}>Payment Info</div>
+                    {order.payment_method ? (
+                      <div style={{ fontSize: 13, lineHeight: 1.8, color: '#444' }}>
+                        <div><span style={{ color: '#888' }}>Method:</span> {order.payment_method === 'cod' ? 'Cash on Delivery' : (order.payment_method || '—')}</div>
+                        {order.razorpay_payment_id && <div style={{ wordBreak: 'break-all' }}><span style={{ color: '#888' }}>Payment ID:</span> {order.razorpay_payment_id}</div>}
+                        {order.notes && <div><span style={{ color: '#888' }}>Notes:</span> {order.notes}</div>}
+                      </div>
+                    ) : (
+                      <div style={{ color: '#999', fontSize: 13 }}>No payment info available</div>
+                    )}
+                  </div>
+                </div>
 
                 {(() => {
                   const photos = parseJsonSafe(returnDetailModal.photos);
@@ -574,7 +638,8 @@ export default function OrdersSection() {
                 </div>
               </div>
             </div>
-          )}
+            );
+          })()}
         </div>
       ) : activeView === 'cancellations' ? (
         <div>
@@ -698,9 +763,13 @@ export default function OrdersSection() {
             </div>
           )}
 
-          {cancDetailModal && (
+          {cancDetailModal && (() => {
+            const order = orders.find(o => o.id === cancDetailModal.order_id) || {};
+            const orderItems = Array.isArray(order.items) ? order.items : parseJsonSafe(cancDetailModal.items);
+            const address = order.shipping_address || {};
+            return (
             <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
-              <div style={{ background: '#fff', borderRadius: 10, padding: 28, width: '90%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}>
+              <div style={{ background: '#fff', borderRadius: 10, padding: 28, width: '90%', maxWidth: 640, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, paddingBottom: 15, borderBottom: '1px solid #eee' }}>
                   <h3 style={{ margin: 0, fontSize: 18, color: '#1a1a1a' }}>Cancellation Details</h3>
                   <button onClick={() => setCancDetailModal(null)} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#999' }}>&times;</button>
@@ -712,7 +781,7 @@ export default function OrdersSection() {
                     <div style={{ fontSize: 15, fontWeight: 700 }}>#{cancDetailModal.order_number}</div>
                   </div>
                   <div>
-                    <div style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>Status</div>
+                    <div style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>Cancellation Status</div>
                     <span style={{ display: 'inline-block', background: getCancelStatusColor(cancDetailModal.status), color: '#fff', borderRadius: 12, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>
                       {getCancelStatusLabel(cancDetailModal.status)}
                     </span>
@@ -737,24 +806,84 @@ export default function OrdersSection() {
                   </div>
                 </div>
 
-                {(() => {
-                  const items = parseJsonSafe(cancDetailModal.items);
-                  if (items.length === 0) return null;
-                  return (
-                    <div style={{ marginBottom: 16 }}>
-                      <div style={{ fontSize: 12, color: '#64748b', marginBottom: 6, fontWeight: 600 }}>Order Items</div>
-                      {items.map((item, idx) => (
-                        <div key={idx} style={{ display: 'flex', gap: 10, padding: '8px 0', borderBottom: idx < items.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
-                          {safeImageUrl(item.image) && <img src={safeImageUrl(item.image)} alt="" style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 4, flexShrink: 0 }} />}
-                          <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: 13, fontWeight: 500 }}>{item.name}</div>
-                            <div style={{ fontSize: 12, color: '#64748b' }}>Qty: {item.quantity} &middot; {formatAmount(item.price)}</div>
+                <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', marginBottom: 16 }}>
+                  <div style={{ flex: 1, minWidth: 220 }}>
+                    <div style={{ fontWeight: 700, marginBottom: 10, color: '#333', fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5 }}>Order Items</div>
+                    {orderItems.length > 0 ? orderItems.map((item, idx) => (
+                      <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, paddingBottom: 10, borderBottom: '1px solid #eee' }}>
+                        {(item.thumbnail || item.image) && (
+                          <img src={item.thumbnail || item.image} alt={item.name} style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 4, border: '1px solid #eee' }} />
+                        )}
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 500, fontSize: 13 }}>{item.name}</div>
+                          {item.variant && <div style={{ fontSize: 11, color: '#888' }}>{item.variant}</div>}
+                          {item.selectedOptions && (() => {
+                            const parts = [];
+                            if (item.selectedOptions.color) parts.push(`Color: ${item.selectedOptions.color}`);
+                            if (item.selectedOptions.customOptions) {
+                              for (const [label, value] of Object.entries(item.selectedOptions.customOptions)) {
+                                parts.push(`${label}: ${value}`);
+                              }
+                            }
+                            if (item.selectedOptions.pricedOptions) {
+                              for (const [label, val] of Object.entries(item.selectedOptions.pricedOptions)) {
+                                const priceSuffix = Number(val.price || 0) > 0 ? ` (${formatAmount(Number(val.price))})` : '';
+                                parts.push(`${label}: ${val.name}${priceSuffix}`);
+                              }
+                            }
+                            return parts.length > 0 ? <div style={{ fontSize: 11, color: '#888', marginTop: 1 }}>{parts.join(' \u2022 ')}</div> : null;
+                          })()}
+                          <div style={{ fontSize: 12, color: '#555' }}>
+                            {formatAmount(parseFloat(item.price || 0))} x {item.quantity}
+                            <span style={{ fontWeight: 600, marginLeft: 6 }}>= {formatAmount(parseFloat((item.price || 0) * (item.quantity || 1)))}</span>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  );
-                })()}
+                      </div>
+                    )) : <div style={{ color: '#999', fontSize: 13 }}>No item details available</div>}
+                    {order.total && (
+                      <div style={{ paddingTop: 8, borderTop: '2px solid #eee', textAlign: 'right' }}>
+                        {parseFloat(order.discount || 0) > 0 && (
+                          <>
+                            <div style={{ fontSize: 13, color: '#555', marginBottom: 2 }}>
+                              Subtotal: {formatAmount(parseFloat(order.subtotal || order.total || 0))}
+                            </div>
+                            <div style={{ fontSize: 13, color: '#16a34a', marginBottom: 4 }}>
+                              Coupon{order.coupon_code ? ` (${order.coupon_code})` : ''}: −{formatAmount(parseFloat(order.discount || 0))}
+                            </div>
+                          </>
+                        )}
+                        <div style={{ fontWeight: 700, fontSize: 14 }}>
+                          Total: {formatAmount(parseFloat(order.total || 0))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ minWidth: 200 }}>
+                    <div style={{ fontWeight: 700, marginBottom: 10, color: '#333', fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5 }}>Shipping Address</div>
+                    {address && Object.keys(address).length > 0 ? (
+                      <div style={{ fontSize: 13, lineHeight: 1.8, color: '#444' }}>
+                        <div style={{ fontWeight: 600 }}>{address.name || cancDetailModal.customer_name}</div>
+                        {address.phone && <div>📞 {address.phone}</div>}
+                        {address.address && <div>{address.address}</div>}
+                        {(address.city || address.state) && <div>{[address.city, address.state].filter(Boolean).join(', ')}{address.pinCode ? ' – ' + address.pinCode : ''}</div>}
+                      </div>
+                    ) : (
+                      <div style={{ color: '#999', fontSize: 13 }}>No address on file</div>
+                    )}
+
+                    <div style={{ fontWeight: 700, marginBottom: 10, marginTop: 16, color: '#333', fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5 }}>Payment Info</div>
+                    {order.payment_method ? (
+                      <div style={{ fontSize: 13, lineHeight: 1.8, color: '#444' }}>
+                        <div><span style={{ color: '#888' }}>Method:</span> {order.payment_method === 'cod' ? 'Cash on Delivery' : (order.payment_method || '—')}</div>
+                        {order.razorpay_payment_id && <div style={{ wordBreak: 'break-all' }}><span style={{ color: '#888' }}>Payment ID:</span> {order.razorpay_payment_id}</div>}
+                        {order.notes && <div><span style={{ color: '#888' }}>Notes:</span> {order.notes}</div>}
+                      </div>
+                    ) : (
+                      <div style={{ color: '#999', fontSize: 13 }}>No payment info available</div>
+                    )}
+                  </div>
+                </div>
 
                 {cancDetailModal.admin_note && (
                   <div style={{ marginBottom: 16 }}>
@@ -776,7 +905,8 @@ export default function OrdersSection() {
                 </div>
               </div>
             </div>
-          )}
+            );
+          })()}
         </div>
       ) : (
       <>
