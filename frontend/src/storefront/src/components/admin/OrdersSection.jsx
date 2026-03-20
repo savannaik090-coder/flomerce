@@ -35,6 +35,19 @@ function getStatusLabel(status) {
   return status || 'Pending';
 }
 
+function parseJsonSafe(val) {
+  if (!val) return [];
+  if (Array.isArray(val)) return val;
+  try { const parsed = JSON.parse(val); return Array.isArray(parsed) ? parsed : []; } catch { return []; }
+}
+
+function safeImageUrl(url) {
+  if (!url || typeof url !== 'string') return null;
+  if (url.startsWith('/api/')) return url;
+  if (url.startsWith('https://')) return url;
+  return null;
+}
+
 export default function OrdersSection() {
   const { siteConfig } = useContext(SiteContext);
   const { formatAmount } = useCurrency();
@@ -61,6 +74,7 @@ export default function OrdersSection() {
   const [returnNote, setReturnNote] = useState('');
   const [returnRefundAmount, setReturnRefundAmount] = useState('');
   const [returnUpdating, setReturnUpdating] = useState(false);
+  const [returnDetailModal, setReturnDetailModal] = useState(null);
 
   const [cancellations, setCancellations] = useState([]);
   const [cancellationsLoading, setCancellationsLoading] = useState(false);
@@ -69,6 +83,7 @@ export default function OrdersSection() {
   const [cancellationAction, setCancellationAction] = useState('');
   const [cancellationNote, setCancellationNote] = useState('');
   const [cancellationUpdating, setCancellationUpdating] = useState(false);
+  const [cancDetailModal, setCancDetailModal] = useState(null);
 
   const returnsEnabled = (() => {
     try {
@@ -355,6 +370,9 @@ export default function OrdersSection() {
                           <td style={{ whiteSpace: 'nowrap' }}>{new Date(ret.created_at).toLocaleDateString()}</td>
                           <td>
                             <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                              <button className="btn btn-sm" style={{ background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: 4, padding: '4px 8px', cursor: 'pointer', fontSize: 11, color: '#475569' }} onClick={() => setReturnDetailModal(ret)} title="View Details">
+                                <i className="fas fa-eye" />
+                              </button>
                               {ret.status === 'requested' && (
                                 <>
                                   <button className="btn btn-sm btn-success" onClick={() => { setReturnModal(ret); setReturnAction('approved'); setReturnNote(''); setReturnRefundAmount(''); }} title="Approve">
@@ -417,7 +435,7 @@ export default function OrdersSection() {
                     <div style={{ marginBottom: 16 }}>
                       <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Photos from customer ({photoList.length})</label>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                        {photoList.filter(u => typeof u === 'string' && u.startsWith('https://')).map((url, idx) => (
+                        {photoList.map(safeImageUrl).filter(Boolean).map((url, idx) => (
                           <a key={idx} href={url} target="_blank" rel="noopener noreferrer">
                             <img src={url} alt={`Return photo ${idx + 1}`} style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 6, border: '1px solid #e2e8f0', cursor: 'pointer' }} />
                           </a>
@@ -441,6 +459,121 @@ export default function OrdersSection() {
                   <button onClick={handleReturnAction} disabled={returnUpdating || (returnAction === 'refunded' && !returnRefundAmount)} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: returnAction === 'rejected' ? '#e53935' : returnAction === 'refunded' ? '#2563eb' : '#22c55e', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600, opacity: returnUpdating ? 0.7 : 1 }}>
                     {returnUpdating ? 'Processing...' : returnAction === 'approved' ? 'Approve Return' : returnAction === 'rejected' ? 'Reject Return' : 'Mark Refunded'}
                   </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {returnDetailModal && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
+              <div style={{ background: '#fff', borderRadius: 10, padding: 28, width: '90%', maxWidth: 540, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, paddingBottom: 15, borderBottom: '1px solid #eee' }}>
+                  <h3 style={{ margin: 0, fontSize: 18, color: '#1a1a1a' }}>Return Details</h3>
+                  <button onClick={() => setReturnDetailModal(null)} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#999' }}>&times;</button>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+                  <div>
+                    <div style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>Order</div>
+                    <div style={{ fontSize: 15, fontWeight: 700 }}>#{returnDetailModal.order_number}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>Status</div>
+                    <span style={{ display: 'inline-block', background: getReturnStatusColor(returnDetailModal.status), color: '#fff', borderRadius: 12, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>
+                      {getReturnStatusLabel(returnDetailModal.status)}
+                    </span>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>Customer</div>
+                    <div style={{ fontSize: 14, fontWeight: 500 }}>{returnDetailModal.customer_name || 'N/A'}</div>
+                    {returnDetailModal.customer_email && <div style={{ fontSize: 12, color: '#64748b' }}>{returnDetailModal.customer_email}</div>}
+                    {returnDetailModal.customer_phone && <div style={{ fontSize: 12, color: '#64748b' }}>{returnDetailModal.customer_phone}</div>}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>Requested</div>
+                    <div style={{ fontSize: 14 }}>{new Date(returnDetailModal.created_at).toLocaleString()}</div>
+                  </div>
+                  {returnDetailModal.resolution && (
+                    <div>
+                      <div style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>Resolution</div>
+                      <span style={{ display: 'inline-block', background: returnDetailModal.resolution === 'replacement' ? '#8b5cf6' : '#2563eb', color: '#fff', borderRadius: 12, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>
+                        {returnDetailModal.resolution === 'replacement' ? 'Replacement' : 'Refund'}
+                      </span>
+                    </div>
+                  )}
+                  {returnDetailModal.refund_amount && (
+                    <div>
+                      <div style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>Refund Amount</div>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: '#2563eb' }}>{formatAmount(returnDetailModal.refund_amount)}</div>
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ fontSize: 12, color: '#64748b', marginBottom: 4, fontWeight: 600 }}>Reason</div>
+                  <div style={{ padding: '10px 12px', background: '#f8fafc', borderRadius: 6, fontSize: 13, color: '#334155', border: '1px solid #e2e8f0' }}>
+                    <div style={{ fontWeight: 600 }}>{returnDetailModal.reason}</div>
+                    {returnDetailModal.reason_detail && <div style={{ marginTop: 6, color: '#475569' }}>{returnDetailModal.reason_detail}</div>}
+                  </div>
+                </div>
+
+                {(() => {
+                  const items = parseJsonSafe(returnDetailModal.items);
+                  if (items.length === 0) return null;
+                  return (
+                    <div style={{ marginBottom: 16 }}>
+                      <div style={{ fontSize: 12, color: '#64748b', marginBottom: 6, fontWeight: 600 }}>Order Items</div>
+                      {items.map((item, idx) => (
+                        <div key={idx} style={{ display: 'flex', gap: 10, padding: '8px 0', borderBottom: idx < items.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
+                          {safeImageUrl(item.image) && <img src={safeImageUrl(item.image)} alt="" style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 4, flexShrink: 0 }} />}
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: 13, fontWeight: 500 }}>{item.name}</div>
+                            <div style={{ fontSize: 12, color: '#64748b' }}>Qty: {item.quantity} &middot; {formatAmount(item.price)}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+
+                {(() => {
+                  const photos = parseJsonSafe(returnDetailModal.photos);
+                  const validPhotos = photos.map(safeImageUrl).filter(Boolean);
+                  if (validPhotos.length === 0) return null;
+                  return (
+                    <div style={{ marginBottom: 16 }}>
+                      <div style={{ fontSize: 12, color: '#64748b', marginBottom: 6, fontWeight: 600 }}>Customer Photos ({validPhotos.length})</div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                        {validPhotos.map((url, idx) => (
+                          <a key={idx} href={url} target="_blank" rel="noopener noreferrer">
+                            <img src={url} alt={`Return photo ${idx + 1}`} style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 6, border: '1px solid #e2e8f0', cursor: 'pointer' }} />
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {returnDetailModal.admin_note && (
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ fontSize: 12, color: '#64748b', marginBottom: 4, fontWeight: 600 }}>Admin Note</div>
+                    <div style={{ padding: '10px 12px', background: '#fffbeb', borderRadius: 6, fontSize: 13, color: '#92400e', border: '1px solid #fde68a' }}>
+                      {returnDetailModal.admin_note}
+                    </div>
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                  <button onClick={() => setReturnDetailModal(null)} style={{ padding: '9px 20px', borderRadius: 6, border: '1px solid #ddd', background: '#f5f5f5', cursor: 'pointer', fontSize: 14 }}>Close</button>
+                  {returnDetailModal.status === 'requested' && (
+                    <>
+                      <button onClick={() => { setReturnDetailModal(null); setReturnModal(returnDetailModal); setReturnAction('approved'); setReturnNote(''); setReturnRefundAmount(''); }} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#22c55e', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Approve</button>
+                      <button onClick={() => { setReturnDetailModal(null); setReturnModal(returnDetailModal); setReturnAction('rejected'); setReturnNote(''); }} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#e53935', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Reject</button>
+                    </>
+                  )}
+                  {returnDetailModal.status === 'approved' && (
+                    <button onClick={() => { setReturnDetailModal(null); setReturnModal(returnDetailModal); setReturnAction('refunded'); setReturnNote(''); setReturnRefundAmount(returnDetailModal.refund_amount || ''); }} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Refund</button>
+                  )}
                 </div>
               </div>
             </div>
@@ -508,6 +641,9 @@ export default function OrdersSection() {
                           <td style={{ whiteSpace: 'nowrap' }}>{new Date(canc.created_at).toLocaleDateString()}</td>
                           <td>
                             <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                              <button className="btn btn-sm" style={{ background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: 4, padding: '4px 8px', cursor: 'pointer', fontSize: 11, color: '#475569' }} onClick={() => setCancDetailModal(canc)} title="View Details">
+                                <i className="fas fa-eye" />
+                              </button>
                               {canc.status === 'requested' && (
                                 <>
                                   <button className="btn btn-sm btn-success" onClick={() => { setCancellationModal(canc); setCancellationAction('approved'); setCancellationNote(''); }} title="Approve">
@@ -563,6 +699,86 @@ export default function OrdersSection() {
                   <button onClick={handleCancellationAction} disabled={cancellationUpdating} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: cancellationAction === 'rejected' ? '#e53935' : '#22c55e', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600, opacity: cancellationUpdating ? 0.7 : 1 }}>
                     {cancellationUpdating ? 'Processing...' : cancellationAction === 'approved' ? 'Approve Cancellation' : 'Reject Cancellation'}
                   </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {cancDetailModal && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
+              <div style={{ background: '#fff', borderRadius: 10, padding: 28, width: '90%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, paddingBottom: 15, borderBottom: '1px solid #eee' }}>
+                  <h3 style={{ margin: 0, fontSize: 18, color: '#1a1a1a' }}>Cancellation Details</h3>
+                  <button onClick={() => setCancDetailModal(null)} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#999' }}>&times;</button>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+                  <div>
+                    <div style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>Order</div>
+                    <div style={{ fontSize: 15, fontWeight: 700 }}>#{cancDetailModal.order_number}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>Status</div>
+                    <span style={{ display: 'inline-block', background: getCancelStatusColor(cancDetailModal.status), color: '#fff', borderRadius: 12, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>
+                      {getCancelStatusLabel(cancDetailModal.status)}
+                    </span>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>Customer</div>
+                    <div style={{ fontSize: 14, fontWeight: 500 }}>{cancDetailModal.customer_name || 'N/A'}</div>
+                    {cancDetailModal.customer_email && <div style={{ fontSize: 12, color: '#64748b' }}>{cancDetailModal.customer_email}</div>}
+                    {cancDetailModal.customer_phone && <div style={{ fontSize: 12, color: '#64748b' }}>{cancDetailModal.customer_phone}</div>}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>Requested</div>
+                    <div style={{ fontSize: 14 }}>{new Date(cancDetailModal.created_at).toLocaleString()}</div>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ fontSize: 12, color: '#64748b', marginBottom: 4, fontWeight: 600 }}>Reason</div>
+                  <div style={{ padding: '10px 12px', background: '#f8fafc', borderRadius: 6, fontSize: 13, color: '#334155', border: '1px solid #e2e8f0' }}>
+                    <div style={{ fontWeight: 600 }}>{cancDetailModal.reason}</div>
+                    {cancDetailModal.reason_detail && <div style={{ marginTop: 6, color: '#475569' }}>{cancDetailModal.reason_detail}</div>}
+                  </div>
+                </div>
+
+                {(() => {
+                  const items = parseJsonSafe(cancDetailModal.items);
+                  if (items.length === 0) return null;
+                  return (
+                    <div style={{ marginBottom: 16 }}>
+                      <div style={{ fontSize: 12, color: '#64748b', marginBottom: 6, fontWeight: 600 }}>Order Items</div>
+                      {items.map((item, idx) => (
+                        <div key={idx} style={{ display: 'flex', gap: 10, padding: '8px 0', borderBottom: idx < items.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
+                          {safeImageUrl(item.image) && <img src={safeImageUrl(item.image)} alt="" style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 4, flexShrink: 0 }} />}
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: 13, fontWeight: 500 }}>{item.name}</div>
+                            <div style={{ fontSize: 12, color: '#64748b' }}>Qty: {item.quantity} &middot; {formatAmount(item.price)}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+
+                {cancDetailModal.admin_note && (
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ fontSize: 12, color: '#64748b', marginBottom: 4, fontWeight: 600 }}>Admin Note</div>
+                    <div style={{ padding: '10px 12px', background: '#fffbeb', borderRadius: 6, fontSize: 13, color: '#92400e', border: '1px solid #fde68a' }}>
+                      {cancDetailModal.admin_note}
+                    </div>
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                  <button onClick={() => setCancDetailModal(null)} style={{ padding: '9px 20px', borderRadius: 6, border: '1px solid #ddd', background: '#f5f5f5', cursor: 'pointer', fontSize: 14 }}>Close</button>
+                  {cancDetailModal.status === 'requested' && (
+                    <>
+                      <button onClick={() => { setCancDetailModal(null); setCancellationModal(cancDetailModal); setCancellationAction('approved'); setCancellationNote(''); }} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#22c55e', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Approve</button>
+                      <button onClick={() => { setCancDetailModal(null); setCancellationModal(cancDetailModal); setCancellationAction('rejected'); setCancellationNote(''); }} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#e53935', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Reject</button>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
