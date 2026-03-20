@@ -2178,7 +2178,8 @@ async function sendEmail(env, to, subject, html, text) {
   try {
     const apiKey = (env.BREVO_API_KEY || "").trim();
     if (!apiKey) {
-      console.warn("WARNING: No email provider configured (BREVO_API_KEY missing). Email NOT sent to:", to, "Subject:", subject);
+      console.error("EMAIL FAILED: BREVO_API_KEY is not set in env. Email NOT sent to:", to, "Subject:", subject);
+      console.error("Available env keys:", Object.keys(env).filter((k) => !k.startsWith("__") && typeof env[k] !== "object").join(", "));
       return "No email provider configured";
     }
     const fromEmail = env.FROM_EMAIL || "noreply@fluxe.in";
@@ -2200,13 +2201,13 @@ async function sendEmail(env, to, subject, html, text) {
     });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) {
-      console.error("Brevo error:", JSON.stringify(body), "Status:", response.status);
+      console.error("Brevo API error:", JSON.stringify(body), "Status:", response.status, "To:", to, "Subject:", subject);
       return body.message || "Brevo API error";
     }
     console.log("Email sent via Brevo to:", recipients.map((r) => r.email).join(", "), "Subject:", subject);
     return true;
   } catch (error) {
-    console.error("Send email error:", error);
+    console.error("Send email exception:", error.message || error, "To:", to, "Subject:", subject);
     return error.message || "Unknown email sending error";
   }
 }
@@ -6125,7 +6126,22 @@ async function updateOrderStatus(request, env, user, orderId) {
 }
 __name(updateOrderStatus, "updateOrderStatus");
 async function sendStatusUpdateEmails(env, fullOrder, status, cancellationReason, trackingNumber, carrier) {
-  const config = await getSiteConfig(env, fullOrder.site_id);
+  let config = await getSiteConfig(env, fullOrder.site_id);
+  if (!config.site_id) {
+    const siteRow = await env.DB.prepare("SELECT * FROM sites WHERE id = ?").bind(fullOrder.site_id).first();
+    if (siteRow) {
+      config = {
+        site_id: siteRow.id,
+        brand_name: siteRow.brand_name,
+        email: siteRow.email,
+        settings: siteRow.settings || "{}"
+      };
+      console.log("sendStatusUpdateEmails: site_config missing, fell back to platform sites table for site:", fullOrder.site_id);
+    } else {
+      console.error("sendStatusUpdateEmails: No site found for siteId:", fullOrder.site_id);
+      return;
+    }
+  }
   const siteBrandName = config.brand_name || "Store";
   let siteSettings = {};
   try {
@@ -6821,9 +6837,22 @@ Status: ${label}${adminNote ? "\nNote: " + adminNote : ""}`;
 __name(buildReturnStatusEmail, "buildReturnStatusEmail");
 async function sendOrderEmails(env, siteId, orderData) {
   try {
-    const config = await getSiteConfig(env, siteId);
-    if (!config.site_id)
-      return;
+    let config = await getSiteConfig(env, siteId);
+    if (!config.site_id) {
+      const siteRow = await env.DB.prepare("SELECT * FROM sites WHERE id = ?").bind(siteId).first();
+      if (siteRow) {
+        config = {
+          site_id: siteRow.id,
+          brand_name: siteRow.brand_name,
+          email: siteRow.email,
+          settings: siteRow.settings || "{}"
+        };
+        console.log("sendOrderEmails: site_config missing, fell back to platform sites table for site:", siteId);
+      } else {
+        console.error("sendOrderEmails: No site found in platform DB for siteId:", siteId);
+        return;
+      }
+    }
     const siteBrandName = config.brand_name || "Store";
     let siteSettings = {};
     try {
@@ -6856,6 +6885,8 @@ async function sendOrderEmails(env, siteId, orderData) {
       } catch (buildErr) {
         console.error("Owner email build error:", buildErr);
       }
+    } else {
+      console.warn("sendOrderEmails: No owner email found for site:", siteId);
     }
     await Promise.all(emailJobs);
   } catch (error) {
