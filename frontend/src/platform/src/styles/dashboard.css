@@ -530,7 +530,7 @@
   .manage-content {
     height: 100vh;
     min-height: auto;
-    padding-bottom: calc(env(safe-area-inset-bottom) + 4.5rem);
+    padding-bottom: calc(env(safe-area-inset-bottom) + 3.5rem);
     box-sizing: border-box;
   }
 }
