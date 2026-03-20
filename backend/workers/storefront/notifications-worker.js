@@ -199,7 +199,7 @@ async function handleSend(request, env) {
     }
 
     const iconUrl = toAbsoluteUrl(siteIcon) || toAbsoluteUrl('/icon-192.png');
-    const payload = { title, body: message, icon: iconUrl, badge: iconUrl };
+    const payload = { title, body: message, icon: iconUrl };
     if (imageUrl) payload.image = toAbsoluteUrl(imageUrl);
     if (link) payload.data = { url: link };
 

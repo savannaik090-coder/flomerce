@@ -4714,7 +4714,7 @@ async function handleSend(request, env) {
       return jsonResponse({ success: true, data: { sent: 0, failed: 0, message: "No subscribers found" } });
     }
     const iconUrl = toAbsoluteUrl(siteIcon) || toAbsoluteUrl("/icon-192.png");
-    const payload = { title, body: message, icon: iconUrl, badge: iconUrl };
+    const payload = { title, body: message, icon: iconUrl };
     if (imageUrl)
       payload.image = toAbsoluteUrl(imageUrl);
     if (link)

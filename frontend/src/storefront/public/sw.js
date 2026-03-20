@@ -20,7 +20,6 @@ self.addEventListener('push', (event) => {
   const options = {
     body: data.body || data.message || '',
     icon: data.icon || undefined,
-    badge: data.badge || undefined,
     image: data.image || undefined,
     data: data.data || {},
     vibrate: [200, 100, 200],
