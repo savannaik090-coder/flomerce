@@ -33,7 +33,7 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
   const orderTrackUrl = settings.orderTrackUrl || '';
   const showBookAppointment = settings.showBookAppointment !== false;
   const showContact = settings.showContact !== false;
-  const logoSize = Math.min(80, Math.max(20, Number(settings.logoSize) || 44));
+  const logoSize = Math.min(250, Math.max(40, Number(settings.logoSize) || 120));
   const logoPosition = settings.logoPosition || 'left';
   const isCentered = logoPosition === 'center';
 
@@ -99,7 +99,7 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
                 src={siteConfig.logoUrl}
                 alt={siteConfig?.brandName || 'Store'}
                 className="brand-logo"
-                style={{ height: logoSize }}
+                style={{ width: logoSize, height: 'auto' }}
                 onError={(e) => { e.target.style.display = 'none'; const txt = e.target.nextElementSibling; if (txt) txt.style.display = 'block'; }}
               />
             ) : null}

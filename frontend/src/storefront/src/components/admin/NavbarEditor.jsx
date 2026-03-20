@@ -32,7 +32,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
   const [editingName, setEditingName] = useState('');
   const hasLoadedRef = useRef(false);
   const [logoUrl, setLogoUrl] = useState('');
-  const [logoSize, setLogoSize] = useState(44);
+  const [logoSize, setLogoSize] = useState(120);
   const [logoPosition, setLogoPosition] = useState('left');
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const logoInputRef = useRef(null);
@@ -75,7 +75,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
         }
         setNavbarMenus(settings.navbarMenus || []);
         setLogoUrl(result.data.logo_url || '');
-        setLogoSize(settings.logoSize || 44);
+        setLogoSize(settings.logoSize || 120);
         setLogoPosition(settings.logoPosition || 'left');
       }
     } catch (e) {
@@ -408,17 +408,13 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
                   <div style={{ flex: 1, position: 'relative' }}>
                     <input
                       type="range"
-                      min="20"
-                      max="80"
+                      min="40"
+                      max="250"
                       step="1"
                       value={logoSize}
                       onChange={(e) => setLogoSize(Number(e.target.value))}
                       style={{ width: '100%', cursor: 'pointer', accentColor: '#2563eb' }}
                     />
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 2 }}>
-                      <span style={{ fontSize: 10, color: '#cbd5e1' }}>20px</span>
-                      <span style={{ fontSize: 10, color: '#cbd5e1' }}>80px</span>
-                    </div>
                   </div>
                   <span style={{ fontSize: 12, color: '#94a3b8', whiteSpace: 'nowrap' }}>Large</span>
                   <div style={{
@@ -434,6 +430,10 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
                     {logoSize}px
                   </div>
                 </div>
+                <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 6, marginBottom: 0 }}>
+                  <i className="fas fa-info-circle" style={{ marginRight: 4 }} />
+                  Controls the logo width. If your logo has transparent space around it, try cropping it before uploading for best results.
+                </p>
                 <div style={{
                   marginTop: 12,
                   padding: 12,
@@ -448,7 +448,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
                   <img
                     src={logoUrl}
                     alt="Size preview"
-                    style={{ height: logoSize, width: 'auto', maxWidth: '100%', objectFit: 'contain' }}
+                    style={{ width: logoSize, height: 'auto', maxWidth: '100%', objectFit: 'contain' }}
                     onError={e => { e.target.style.display = 'none'; }}
                   />
                 </div>
