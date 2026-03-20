@@ -527,6 +527,12 @@
   .manage-site-name {
     font-size: 0.875rem;
   }
+  .manage-content {
+    height: 100vh;
+    min-height: auto;
+    padding-bottom: calc(env(safe-area-inset-bottom) + 4.5rem);
+    box-sizing: border-box;
+  }
 }
 
 .delete-confirm-modal {
