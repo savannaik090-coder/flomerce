@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { useCurrency } from '../../hooks/useCurrency.js';
-import { getOrders, updateOrderStatus, getReturns, updateReturn } from '../../services/orderService.js';
+import { getOrders, updateOrderStatus, getReturns, updateReturn, getCancellations, updateCancellation } from '../../services/orderService.js';
 
 const CANCEL_REASONS = [
   'Item out of stock',
@@ -62,11 +62,27 @@ export default function OrdersSection() {
   const [returnRefundAmount, setReturnRefundAmount] = useState('');
   const [returnUpdating, setReturnUpdating] = useState(false);
 
+  const [cancellations, setCancellations] = useState([]);
+  const [cancellationsLoading, setCancellationsLoading] = useState(false);
+  const [cancellationStatusFilter, setCancellationStatusFilter] = useState('all');
+  const [cancellationModal, setCancellationModal] = useState(null);
+  const [cancellationAction, setCancellationAction] = useState('');
+  const [cancellationNote, setCancellationNote] = useState('');
+  const [cancellationUpdating, setCancellationUpdating] = useState(false);
+
   const returnsEnabled = (() => {
     try {
       const s = siteConfig?.settings;
       const parsed = typeof s === 'string' ? JSON.parse(s) : (s || {});
       return parsed.returnsEnabled === true;
+    } catch { return false; }
+  })();
+
+  const cancellationEnabled = (() => {
+    try {
+      const s = siteConfig?.settings;
+      const parsed = typeof s === 'string' ? JSON.parse(s) : (s || {});
+      return parsed.cancellationEnabled === true;
     } catch { return false; }
   })();
 
@@ -76,6 +92,7 @@ export default function OrdersSection() {
 
   useEffect(() => {
     if (activeView === 'returns' && siteConfig?.id) loadReturns();
+    if (activeView === 'cancellations' && siteConfig?.id) loadCancellations();
   }, [activeView, siteConfig?.id]);
 
   async function loadOrders() {
@@ -100,6 +117,41 @@ export default function OrdersSection() {
       console.error('Error loading returns:', err);
     } finally {
       setReturnsLoading(false);
+    }
+  }
+
+  async function loadCancellations() {
+    setCancellationsLoading(true);
+    try {
+      const res = await getCancellations(siteConfig.id);
+      setCancellations((res.data || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at)));
+    } catch (err) {
+      console.error('Error loading cancellations:', err);
+    } finally {
+      setCancellationsLoading(false);
+    }
+  }
+
+  async function handleCancellationAction() {
+    if (!cancellationModal || !cancellationAction) return;
+    setCancellationUpdating(true);
+    try {
+      await updateCancellation(cancellationModal.id, {
+        siteId: siteConfig.id,
+        status: cancellationAction,
+        adminNote: cancellationNote || undefined,
+      });
+      setCancellations(prev => prev.map(c => c.id === cancellationModal.id ? { ...c, status: cancellationAction, admin_note: cancellationNote } : c));
+      if (cancellationAction === 'approved') {
+        setOrders(prev => prev.map(o => o.id === cancellationModal.order_id ? { ...o, status: 'cancelled' } : o));
+      }
+      setCancellationModal(null);
+      setCancellationAction('');
+      setCancellationNote('');
+    } catch (err) {
+      alert('Failed to update cancellation: ' + err.message);
+    } finally {
+      setCancellationUpdating(false);
     }
   }
 
@@ -196,19 +248,38 @@ export default function OrdersSection() {
     return labels[s] || s || 'Unknown';
   };
 
+  const getCancelStatusColor = (s) => {
+    const colors = { requested: '#ff9800', approved: '#27ae60', rejected: '#e53935' };
+    return colors[s] || '#757575';
+  };
+  const getCancelStatusLabel = (s) => {
+    const labels = { requested: 'Requested', approved: 'Approved', rejected: 'Rejected' };
+    return labels[s] || s || 'Unknown';
+  };
+
   const returnStatuses = ['all', 'requested', 'approved', 'rejected', 'refunded'];
   const filteredReturns = returns.filter(r => returnStatusFilter === 'all' || r.status === returnStatusFilter);
 
+  const cancellationStatuses = ['all', 'requested', 'approved', 'rejected'];
+  const filteredCancellations = cancellations.filter(c => cancellationStatusFilter === 'all' || c.status === cancellationStatusFilter);
+
   return (
     <div>
-      {returnsEnabled && (
+      {(returnsEnabled || cancellationEnabled) && (
         <div style={{ display: 'flex', gap: 0, marginBottom: 16, borderRadius: 8, overflow: 'hidden', border: '1px solid #e2e8f0', width: 'fit-content' }}>
           <button onClick={() => setActiveView('orders')} style={{ padding: '10px 24px', fontSize: 14, fontWeight: 600, border: 'none', cursor: 'pointer', background: activeView === 'orders' ? '#0f172a' : '#f8fafc', color: activeView === 'orders' ? '#fff' : '#64748b', transition: '0.2s' }}>
             Orders
           </button>
-          <button onClick={() => setActiveView('returns')} style={{ padding: '10px 24px', fontSize: 14, fontWeight: 600, border: 'none', cursor: 'pointer', background: activeView === 'returns' ? '#0f172a' : '#f8fafc', color: activeView === 'returns' ? '#fff' : '#64748b', transition: '0.2s' }}>
-            Returns {returns.length > 0 ? `(${returns.length})` : ''}
-          </button>
+          {cancellationEnabled && (
+            <button onClick={() => setActiveView('cancellations')} style={{ padding: '10px 24px', fontSize: 14, fontWeight: 600, border: 'none', cursor: 'pointer', background: activeView === 'cancellations' ? '#0f172a' : '#f8fafc', color: activeView === 'cancellations' ? '#fff' : '#64748b', transition: '0.2s' }}>
+              Cancellations {cancellations.length > 0 ? `(${cancellations.length})` : ''}
+            </button>
+          )}
+          {returnsEnabled && (
+            <button onClick={() => setActiveView('returns')} style={{ padding: '10px 24px', fontSize: 14, fontWeight: 600, border: 'none', cursor: 'pointer', background: activeView === 'returns' ? '#0f172a' : '#f8fafc', color: activeView === 'returns' ? '#fff' : '#64748b', transition: '0.2s' }}>
+              Returns {returns.length > 0 ? `(${returns.length})` : ''}
+            </button>
+          )}
         </div>
       )}
 
@@ -336,6 +407,128 @@ export default function OrdersSection() {
                   <button onClick={() => { setReturnModal(null); setReturnAction(''); }} disabled={returnUpdating} style={{ padding: '9px 20px', borderRadius: 6, border: '1px solid #ddd', background: '#f5f5f5', cursor: 'pointer', fontSize: 14 }}>Cancel</button>
                   <button onClick={handleReturnAction} disabled={returnUpdating || (returnAction === 'refunded' && !returnRefundAmount)} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: returnAction === 'rejected' ? '#e53935' : returnAction === 'refunded' ? '#2563eb' : '#22c55e', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600, opacity: returnUpdating ? 0.7 : 1 }}>
                     {returnUpdating ? 'Processing...' : returnAction === 'approved' ? 'Approve Return' : returnAction === 'rejected' ? 'Reject Return' : 'Mark Refunded'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      ) : activeView === 'cancellations' ? (
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
+            <div className="tabs" style={{ flexWrap: 'wrap', margin: 0 }}>
+              {cancellationStatuses.map(s => {
+                const count = s === 'all' ? cancellations.length : cancellations.filter(c => c.status === s).length;
+                if (s !== 'all' && count === 0) return null;
+                return (
+                  <button key={s} className={`tab${cancellationStatusFilter === s ? ' active' : ''}`} onClick={() => setCancellationStatusFilter(s)}>
+                    {getCancelStatusLabel(s)} ({count})
+                  </button>
+                );
+              })}
+            </div>
+            <button className="btn btn-outline" onClick={loadCancellations} style={{ flexShrink: 0 }}>
+              <i className="fas fa-sync-alt" /> Refresh
+            </button>
+          </div>
+
+          {cancellationsLoading ? (
+            <div className="loading-spinner-admin"><div className="spinner" /></div>
+          ) : filteredCancellations.length === 0 ? (
+            <div className="empty-state">
+              <i className="fas fa-ban" />
+              <h3>No cancellation requests</h3>
+              <p>Cancellation requests from customers will appear here.</p>
+            </div>
+          ) : (
+            <div className="card">
+              <div className="card-content" style={{ padding: 0 }}>
+                <div className="table-container">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th style={{ minWidth: 110 }}>Order #</th>
+                        <th style={{ minWidth: 150 }}>Customer</th>
+                        <th style={{ minWidth: 150 }}>Reason</th>
+                        <th style={{ minWidth: 100 }}>Status</th>
+                        <th style={{ minWidth: 100 }}>Date</th>
+                        <th style={{ minWidth: 120 }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredCancellations.map(canc => (
+                        <tr key={canc.id}>
+                          <td style={{ fontWeight: 600 }}>#{canc.order_number || canc.order_id?.slice(-6)}</td>
+                          <td>
+                            <div style={{ fontWeight: 500 }}>{canc.customer_name || 'N/A'}</div>
+                            <div style={{ fontSize: 12, color: '#888' }}>{canc.customer_email || ''}</div>
+                          </td>
+                          <td>
+                            <div style={{ fontSize: 13 }}>{canc.reason}</div>
+                            {canc.reason_detail && <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>{canc.reason_detail}</div>}
+                          </td>
+                          <td>
+                            <span style={{ display: 'inline-block', background: getCancelStatusColor(canc.status), color: '#fff', borderRadius: 12, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>
+                              {getCancelStatusLabel(canc.status)}
+                            </span>
+                          </td>
+                          <td style={{ whiteSpace: 'nowrap' }}>{new Date(canc.created_at).toLocaleDateString()}</td>
+                          <td>
+                            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                              {canc.status === 'requested' && (
+                                <>
+                                  <button className="btn btn-sm btn-success" onClick={() => { setCancellationModal(canc); setCancellationAction('approved'); setCancellationNote(''); }} title="Approve">
+                                    <i className="fas fa-check" />
+                                  </button>
+                                  <button className="btn btn-sm btn-danger" onClick={() => { setCancellationModal(canc); setCancellationAction('rejected'); setCancellationNote(''); }} title="Reject">
+                                    <i className="fas fa-times" />
+                                  </button>
+                                </>
+                              )}
+                              {canc.admin_note && (
+                                <span title={canc.admin_note} style={{ cursor: 'help', fontSize: 14, color: '#94a3b8' }}>
+                                  <i className="fas fa-comment-alt" />
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {cancellationModal && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
+              <div style={{ background: '#fff', borderRadius: 10, padding: 28, width: '90%', maxWidth: 440, boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}>
+                <h3 style={{ margin: '0 0 6px', fontSize: 18, color: '#1a1a1a' }}>
+                  {cancellationAction === 'approved' ? 'Approve' : 'Reject'} Cancellation
+                </h3>
+                <p style={{ margin: '0 0 20px', fontSize: 14, color: '#666' }}>
+                  Order <strong>#{cancellationModal.order_number}</strong> - {cancellationModal.customer_name}
+                </p>
+                <div style={{ marginBottom: 16 }}>
+                  <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Reason from customer</label>
+                  <div style={{ padding: '10px 12px', background: '#f8fafc', borderRadius: 6, fontSize: 13, color: '#334155', border: '1px solid #e2e8f0' }}>
+                    {cancellationModal.reason}{cancellationModal.reason_detail ? ` - ${cancellationModal.reason_detail}` : ''}
+                  </div>
+                </div>
+                {cancellationAction === 'approved' && (
+                  <div style={{ padding: '10px 12px', background: '#fff7ed', borderRadius: 6, fontSize: 13, color: '#92400e', border: '1px solid #fed7aa', marginBottom: 16 }}>
+                    Approving will cancel the order and restore product stock.
+                  </div>
+                )}
+                <div style={{ marginBottom: 16 }}>
+                  <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Admin Note (sent to customer)</label>
+                  <textarea value={cancellationNote} onChange={e => setCancellationNote(e.target.value)} rows={3} placeholder="Optional note for the customer..." style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+                </div>
+                <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                  <button onClick={() => { setCancellationModal(null); setCancellationAction(''); }} disabled={cancellationUpdating} style={{ padding: '9px 20px', borderRadius: 6, border: '1px solid #ddd', background: '#f5f5f5', cursor: 'pointer', fontSize: 14 }}>Cancel</button>
+                  <button onClick={handleCancellationAction} disabled={cancellationUpdating} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: cancellationAction === 'rejected' ? '#e53935' : '#22c55e', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600, opacity: cancellationUpdating ? 0.7 : 1 }}>
+                    {cancellationUpdating ? 'Processing...' : cancellationAction === 'approved' ? 'Approve Cancellation' : 'Reject Cancellation'}
                   </button>
                 </div>
               </div>

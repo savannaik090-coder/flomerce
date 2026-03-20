@@ -42,6 +42,7 @@ const VerifyEmailPage = React.lazy(() => import('./pages/VerifyEmailPage.jsx'));
 const PrivacyPolicyPage = React.lazy(() => import('./pages/PrivacyPolicyPage.jsx'));
 const TermsPage = React.lazy(() => import('./pages/TermsPage.jsx'));
 const ReturnPage = React.lazy(() => import('./pages/ReturnPage.jsx'));
+const CancelPage = React.lazy(() => import('./pages/CancelPage.jsx'));
 
 function removePreloader() {
   const el = document.getElementById('fluxe-preloader');
@@ -139,6 +140,8 @@ export default function App() {
             <Route path="/terms" element={<TermsPage />} />
             <Route path="/return" element={<ReturnPage />} />
             <Route path="/return/:orderId" element={<ReturnPage />} />
+            <Route path="/cancel" element={<CancelPage />} />
+            <Route path="/cancel/:orderId" element={<CancelPage />} />
           </Routes>
         </React.Suspense>
       </main>

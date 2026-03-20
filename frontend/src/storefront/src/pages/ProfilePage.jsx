@@ -55,6 +55,29 @@ export default function ProfilePage() {
   const [returningOrder, setReturningOrder] = useState(false);
   const [returnStatuses, setReturnStatuses] = useState({});
 
+  const [cancelModal, setCancelModal] = useState(null);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelDetail, setCancelDetail] = useState('');
+  const [cancellingOrder, setCancellingOrder] = useState(false);
+  const [cancelStatuses, setCancelStatuses] = useState({});
+
+  const CANCEL_REASONS = [
+    'Changed my mind',
+    'Found a better price elsewhere',
+    'Ordered by mistake',
+    'Shipping is taking too long',
+    'Item no longer needed',
+    'Other',
+  ];
+
+  const cancellationEnabled = (() => {
+    try {
+      const s = siteConfig?.settings;
+      const parsed = typeof s === 'string' ? JSON.parse(s) : (s || {});
+      return parsed.cancellationEnabled === true;
+    } catch { return false; }
+  })();
+
   const returnsEnabled = (() => {
     try {
       const s = siteConfig?.settings;
@@ -91,6 +114,19 @@ export default function ProfilePage() {
     }
   }, [activeTab, orders, returnsEnabled, siteConfig?.id]);
 
+  useEffect(() => {
+    if (activeTab === 'orders' && orders.length > 0 && cancellationEnabled && siteConfig?.id) {
+      orders.filter(o => ['pending', 'confirmed'].includes((o.status || '').toLowerCase())).forEach(async (order) => {
+        try {
+          const res = await orderService.getCancelStatus(order.id || order.order_number, siteConfig.id);
+          if (res.data) {
+            setCancelStatuses(prev => ({ ...prev, [order.id]: res.data }));
+          }
+        } catch {}
+      });
+    }
+  }, [activeTab, orders, cancellationEnabled, siteConfig?.id]);
+
   const handleSubmitReturn = async () => {
     if (!returnModal || !returnReason) return;
     setReturningOrder(true);
@@ -109,6 +145,27 @@ export default function ProfilePage() {
       alert('Failed to submit return: ' + (err.message || 'Unknown error'));
     } finally {
       setReturningOrder(false);
+    }
+  };
+
+  const handleSubmitCancel = async () => {
+    if (!cancelModal || !cancelReason) return;
+    setCancellingOrder(true);
+    try {
+      await orderService.createCancelRequest(cancelModal.id || cancelModal.order_number, {
+        siteId: siteConfig.id,
+        reason: cancelReason,
+        reasonDetail: cancelReason === 'Other' ? cancelDetail : cancelDetail || undefined,
+      });
+      setCancelStatuses(prev => ({ ...prev, [cancelModal.id]: { status: 'requested', reason: cancelReason } }));
+      setCancelModal(null);
+      setCancelReason('');
+      setCancelDetail('');
+      alert('Cancellation request submitted successfully!');
+    } catch (err) {
+      alert('Failed to submit cancellation: ' + (err.message || 'Unknown error'));
+    } finally {
+      setCancellingOrder(false);
     }
   };
 
@@ -408,6 +465,29 @@ export default function ProfilePage() {
                       )}
                       <div style={{ fontWeight: 'bold' }}>Total: {formatAmount(orderTotal)}</div>
                     </div>
+                    {cancellationEnabled && ['pending', 'confirmed'].includes((order.status || '').toLowerCase()) && (
+                      <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #eee' }}>
+                        {cancelStatuses[order.id] ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ fontSize: 13, color: '#64748b' }}>Cancellation:</span>
+                            <span style={{
+                              display: 'inline-block',
+                              background: { requested: '#ff9800', approved: '#27ae60', rejected: '#e53935' }[cancelStatuses[order.id].status] || '#757575',
+                              color: '#fff', borderRadius: 12, padding: '3px 10px', fontSize: 12, fontWeight: 600
+                            }}>
+                              {{ requested: 'Pending Review', approved: 'Approved', rejected: 'Rejected' }[cancelStatuses[order.id].status] || cancelStatuses[order.id].status}
+                            </span>
+                            {cancelStatuses[order.id].admin_note && (
+                              <span style={{ fontSize: 12, color: '#64748b', fontStyle: 'italic' }}>"{cancelStatuses[order.id].admin_note}"</span>
+                            )}
+                          </div>
+                        ) : (
+                          <button onClick={() => { setCancelModal(order); setCancelReason(''); setCancelDetail(''); }} style={{ background: 'none', border: '1px solid #fecaca', color: '#e53935', padding: '6px 16px', borderRadius: 4, cursor: 'pointer', fontSize: 13, fontWeight: 500, transition: '0.2s' }}>
+                            Request Cancellation
+                          </button>
+                        )}
+                      </div>
+                    )}
                     {returnsEnabled && (order.status || '').toLowerCase() === 'delivered' && (
                       <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #eee' }}>
                         {returnStatuses[order.id] ? (
@@ -526,6 +606,43 @@ export default function ProfilePage() {
               <button onClick={() => setReturnModal(null)} style={{ padding: '10px 20px', background: '#f8f9fa', color: '#333', border: '1px solid #ddd', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
               <button onClick={handleSubmitReturn} disabled={returningOrder || !returnReason || (returnReason === 'Other' && !returnDetail.trim())} style={{ padding: '10px 20px', background: '#c8a97e', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600, opacity: (returningOrder || !returnReason) ? 0.7 : 1 }}>
                 {returningOrder ? 'Submitting...' : 'Submit Return Request'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {cancelModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999 }}>
+          <div style={{ background: '#fff', borderRadius: 10, padding: 30, width: '90%', maxWidth: 480, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 10px 30px rgba(0,0,0,0.3)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, paddingBottom: 15, borderBottom: '1px solid #eee' }}>
+              <h3 style={{ margin: 0, fontFamily: "'Playfair Display', serif", fontSize: 20 }}>Request Cancellation</h3>
+              <button onClick={() => setCancelModal(null)} style={{ background: 'none', border: 'none', fontSize: 24, cursor: 'pointer', color: '#999' }}>x</button>
+            </div>
+            <p style={{ color: '#64748b', fontSize: 14, marginBottom: 20 }}>
+              Order <strong>#{cancelModal.order_number || cancelModal.id}</strong>
+            </p>
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: 'block', fontWeight: 600, marginBottom: 10, color: '#333', fontSize: 14 }}>Reason for cancellation *</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {CANCEL_REASONS.map(reason => (
+                  <label key={reason} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', padding: '10px 14px', borderRadius: 6, border: `1.5px solid ${cancelReason === reason ? '#e53935' : '#e0e0e0'}`, background: cancelReason === reason ? '#fff5f5' : '#fafafa', transition: 'all 0.15s' }}>
+                    <input type="radio" name="cancelReason" value={reason} checked={cancelReason === reason} onChange={() => setCancelReason(reason)} style={{ accentColor: '#e53935' }} />
+                    <span style={{ fontSize: 14, color: '#333', fontWeight: cancelReason === reason ? 600 : 400 }}>{reason}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, color: '#333', fontSize: 14 }}>
+                {cancelReason === 'Other' ? 'Please describe *' : 'Additional details (optional)'}
+              </label>
+              <textarea value={cancelDetail} onChange={e => setCancelDetail(e.target.value)} rows={3} placeholder="Tell us more about why you want to cancel..." style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: 6, fontSize: 14, resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+            </div>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+              <button onClick={() => setCancelModal(null)} style={{ padding: '10px 20px', background: '#f8f9fa', color: '#333', border: '1px solid #ddd', borderRadius: 4, cursor: 'pointer' }}>Close</button>
+              <button onClick={handleSubmitCancel} disabled={cancellingOrder || !cancelReason || (cancelReason === 'Other' && !cancelDetail.trim())} style={{ padding: '10px 20px', background: '#e53935', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600, opacity: (cancellingOrder || !cancelReason) ? 0.7 : 1 }}>
+                {cancellingOrder ? 'Submitting...' : 'Submit Cancellation'}
               </button>
             </div>
           </div>

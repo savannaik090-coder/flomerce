@@ -61,3 +61,34 @@ export async function resendReturnLink(orderId, data) {
     body: JSON.stringify(data),
   });
 }
+
+export async function createCancelRequest(orderId, data) {
+  return apiRequest(`/api/orders/${orderId}/cancel`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getCancelStatus(orderId, siteId, token) {
+  const params = new URLSearchParams({ siteId });
+  if (token) params.set('token', token);
+  return apiRequest(`/api/orders/${orderId}/cancel?${params}`);
+}
+
+export async function getCancellations(siteId) {
+  return apiRequest(`/api/orders/cancellations?siteId=${siteId}`);
+}
+
+export async function updateCancellation(cancelId, data) {
+  return apiRequest(`/api/orders/cancellations/${cancelId}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function resendCancelLink(orderId, data) {
+  return apiRequest(`/api/orders/${orderId}/cancel-link`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}

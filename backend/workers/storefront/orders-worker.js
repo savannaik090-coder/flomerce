@@ -1,7 +1,7 @@
 import { generateId, generateOrderNumber, jsonResponse, errorResponse, successResponse, handleCORS } from '../../utils/helpers.js';
 import { validateAuth, validateAnyAuth } from '../../utils/auth.js';
 import { updateProductStock } from './products-worker.js';
-import { sendEmail, buildOrderConfirmationEmail, buildOwnerNotificationEmail, buildCancellationCustomerEmail, buildCancellationOwnerEmail, buildDeliveryCustomerEmail, buildDeliveryOwnerEmail, buildNewOrderReviewEmail, buildOrderPackedEmail, buildOrderShippedEmail } from '../../utils/email.js';
+import { sendEmail, buildOrderConfirmationEmail, buildOwnerNotificationEmail, buildCancellationCustomerEmail, buildCancellationOwnerEmail, buildDeliveryCustomerEmail, buildDeliveryOwnerEmail, buildNewOrderReviewEmail, buildOrderPackedEmail, buildOrderShippedEmail, buildCancellationRequestNotifyEmail, buildCancellationStatusEmail } from '../../utils/email.js';
 import { checkUsageLimit, estimateRowBytes, trackD1Write, trackD1Update } from '../../utils/usage-tracker.js';
 import { resolveSiteDBById, checkMigrationLock, getSiteConfig, ensureProductOptionsColumn } from '../../utils/site-db.js';
 
@@ -22,12 +22,32 @@ export async function handleOrders(request, env, path) {
     return handleReturnUpdate(request, env, action);
   }
 
+  if (orderId === 'cancellations' && !action) {
+    return handleCancellationsList(request, env);
+  }
+
+  if (orderId === 'cancellations' && action) {
+    return handleCancellationUpdate(request, env, action);
+  }
+
   if (action === 'guest') {
     return handleGuestOrder(request, env, method, orderId);
   }
 
   if (action === 'track') {
     return trackOrder(env, orderId, request);
+  }
+
+  if (action === 'cancel' && method === 'POST') {
+    return createCancellationRequest(request, env, orderId);
+  }
+
+  if (action === 'cancel' && method === 'GET') {
+    return getCancelStatus(request, env, orderId);
+  }
+
+  if (action === 'cancel-link' && method === 'POST') {
+    return resendCancelLink(request, env, orderId);
   }
 
   if (action === 'return' && method === 'POST') {
@@ -635,14 +655,14 @@ async function updateOrderStatus(request, env, user, orderId) {
           };
 
           let emailOptions = { trackingUrl };
-          if (status === 'confirmed' && statusSettings.returnsEnabled && fullOrder.customer_email) {
+          if (status === 'confirmed' && statusSettings.cancellationEnabled && fullOrder.customer_email) {
             try {
-              const returnToken = generateReturnToken();
-              try { await db.prepare(`ALTER TABLE orders ADD COLUMN return_token TEXT`).run(); } catch (e) {}
-              await db.prepare(`UPDATE orders SET return_token = ? WHERE id = ?`).bind(returnToken, orderId).run();
-              emailOptions.returnUrl = `https://${domain}/return/${fullOrder.order_number}?token=${returnToken}`;
+              const cancelToken = generateReturnToken();
+              try { await db.prepare(`ALTER TABLE orders ADD COLUMN cancel_token TEXT`).run(); } catch (e) {}
+              await db.prepare(`UPDATE orders SET cancel_token = ? WHERE id = ?`).bind(cancelToken, orderId).run();
+              emailOptions.cancelUrl = `https://${domain}/cancel/${fullOrder.order_number}?token=${cancelToken}`;
             } catch (e) {
-              console.error('Return token generation error:', e);
+              console.error('Cancel token generation error:', e);
             }
           }
 
@@ -684,10 +704,24 @@ async function updateOrderStatus(request, env, user, orderId) {
             items: fullOrder.items,
           };
 
+          let deliveryEmailOptions = {};
+          if (deliverySettings.returnsEnabled && fullOrder.customer_email) {
+            try {
+              const returnToken = generateReturnToken();
+              try { await db.prepare(`ALTER TABLE orders ADD COLUMN return_token TEXT`).run(); } catch (e) {}
+              await db.prepare(`UPDATE orders SET return_token = ? WHERE id = ?`).bind(returnToken, orderId).run();
+              const site = await env.DB.prepare('SELECT subdomain, custom_domain FROM sites WHERE id = ?').bind(fullOrder.site_id).first();
+              const delivDomain = site?.custom_domain || `${site?.subdomain || 'store'}.${env.DOMAIN || 'fluxe.in'}`;
+              deliveryEmailOptions.returnUrl = `https://${delivDomain}/return/${fullOrder.order_number}?token=${returnToken}`;
+            } catch (e) {
+              console.error('Return token generation error:', e);
+            }
+          }
+
           const emailJobs = [];
           if (fullOrder.customer_email) {
             try {
-              const { html, text } = buildDeliveryCustomerEmail(emailOrder, siteBrandName, ownerEmail, deliveryCurrency);
+              const { html, text } = buildDeliveryCustomerEmail(emailOrder, siteBrandName, ownerEmail, deliveryCurrency, deliveryEmailOptions);
               emailJobs.push(sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been delivered!`, html, text).catch(e => console.error('Delivery customer email send error:', e)));
             } catch (buildErr) {
               console.error('Delivery customer email build error:', buildErr);
@@ -1314,23 +1348,6 @@ export async function sendOrderEmails(env, siteId, orderData) {
 
     const emailJobs = [];
 
-    let emailOptions = {};
-    if (siteSettings.returnsEnabled && orderData.customerEmail && orderData.orderId) {
-      try {
-        const returnToken = generateReturnToken();
-        const db = await resolveSiteDBById(env, siteId);
-        const table = orderData.isGuest ? 'guest_orders' : 'orders';
-        try { await db.prepare(`ALTER TABLE ${table} ADD COLUMN return_token TEXT`).run(); } catch (e) {}
-        await db.prepare(`UPDATE ${table} SET return_token = ? WHERE id = ?`).bind(returnToken, orderData.orderId).run();
-
-        const site = await env.DB.prepare('SELECT subdomain, custom_domain FROM sites WHERE id = ?').bind(siteId).first();
-        const domain = site?.custom_domain || `${site?.subdomain || 'store'}.${env.DOMAIN || 'fluxe.in'}`;
-        emailOptions.returnUrl = `https://${domain}/return/${orderData.orderNumber}?token=${returnToken}`;
-      } catch (e) {
-        console.error('Return token generation error:', e);
-      }
-    }
-
     if (ownerEmail) {
       try {
         const { html, text } = buildNewOrderReviewEmail(emailOrder, siteBrandName, currency);
@@ -1346,5 +1363,352 @@ export async function sendOrderEmails(env, siteId, orderData) {
     await Promise.all(emailJobs);
   } catch (error) {
     console.error('Send order emails error:', error);
+  }
+}
+
+async function ensureCancellationRequestsTable(db) {
+  try {
+    await db.prepare(`CREATE TABLE IF NOT EXISTS cancellation_requests (
+      id TEXT PRIMARY KEY,
+      site_id TEXT NOT NULL,
+      order_id TEXT NOT NULL,
+      order_number TEXT,
+      order_type TEXT DEFAULT 'order',
+      reason TEXT NOT NULL,
+      reason_detail TEXT,
+      status TEXT DEFAULT 'requested',
+      admin_note TEXT,
+      customer_name TEXT,
+      customer_email TEXT,
+      customer_phone TEXT,
+      cancel_token TEXT,
+      row_size_bytes INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    )`).run();
+    await db.prepare('CREATE INDEX IF NOT EXISTS idx_cancel_requests_site ON cancellation_requests(site_id)').run();
+    await db.prepare('CREATE INDEX IF NOT EXISTS idx_cancel_requests_order ON cancellation_requests(order_id)').run();
+  } catch (e) {}
+}
+
+async function createCancellationRequest(request, env, orderId) {
+  try {
+    const data = await request.json();
+    const { siteId, reason, reasonDetail, cancelToken } = data;
+    if (!siteId || !orderId) return errorResponse('siteId and orderId are required');
+    if (!reason) return errorResponse('Reason is required');
+
+    const db = await resolveSiteDBById(env, siteId);
+    await ensureCancellationRequestsTable(db);
+
+    const config = await getSiteConfig(env, siteId);
+    let settings = {};
+    try { if (config.settings) settings = typeof config.settings === 'string' ? JSON.parse(config.settings) : config.settings; } catch (e) {}
+    if (!settings.cancellationEnabled) return errorResponse('Cancellation is not available for this store', 403);
+
+    let order = await db.prepare('SELECT * FROM orders WHERE (id = ? OR order_number = ?) AND site_id = ?').bind(orderId, orderId, siteId).first();
+    let orderType = 'order';
+    if (!order) {
+      order = await db.prepare('SELECT * FROM guest_orders WHERE (id = ? OR order_number = ?) AND site_id = ?').bind(orderId, orderId, siteId).first();
+      orderType = 'guest_order';
+    }
+    if (!order) return errorResponse('Order not found', 404);
+
+    const statusLower = (order.status || '').toLowerCase();
+    if (!['pending', 'confirmed'].includes(statusLower)) {
+      return errorResponse('Only pending or confirmed orders can be cancelled', 400);
+    }
+
+    const windowHours = settings.cancellationWindowHours || 24;
+    const orderCreated = new Date(order.created_at || order.createdAt);
+    const hoursSinceOrder = (Date.now() - orderCreated.getTime()) / (1000 * 60 * 60);
+    if (hoursSinceOrder > windowHours) {
+      return errorResponse(`Cancellation window has expired. Orders can only be cancelled within ${windowHours} hours of placing the order.`, 400);
+    }
+
+    if (orderType === 'guest_order') {
+      if (!cancelToken) return errorResponse('Cancel token is required for guest orders', 403);
+      let storedToken = null;
+      try { storedToken = order.cancel_token; } catch (e) {}
+      if (!storedToken || storedToken !== cancelToken) {
+        return errorResponse('Invalid cancel token', 403);
+      }
+    } else {
+      if (cancelToken) {
+        let storedToken = null;
+        try { storedToken = order.cancel_token; } catch (e) {}
+        if (!storedToken || storedToken !== cancelToken) {
+          return errorResponse('Invalid cancel token', 403);
+        }
+      } else {
+        const user = await validateAnyAuth(request, env, { siteId, db });
+        if (!user) return errorResponse('Authentication required', 401);
+        if (!order.user_id || order.user_id !== user.id) {
+          return errorResponse('You can only cancel your own orders', 403);
+        }
+      }
+    }
+
+    const existing = await db.prepare('SELECT id FROM cancellation_requests WHERE order_id = ? AND site_id = ?').bind(order.id, siteId).first();
+    if (existing) return errorResponse('A cancellation request already exists for this order', 409);
+
+    const cancelId = generateId();
+    await db.prepare(
+      `INSERT INTO cancellation_requests (id, site_id, order_id, order_number, order_type, reason, reason_detail, status, cancel_token, customer_name, customer_email, customer_phone, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'requested', ?, ?, ?, ?, datetime('now'), datetime('now'))`
+    ).bind(
+      cancelId, siteId, order.id, order.order_number, orderType,
+      reason, reasonDetail || null,
+      order.cancel_token || null,
+      order.customer_name, order.customer_email || null, order.customer_phone || null
+    ).run();
+
+    try {
+      const brandName = config.brand_name || 'Store';
+      const ownerEmail = settings.email || settings.ownerEmail || config.email;
+      if (ownerEmail) {
+        const { html, text } = buildCancellationRequestNotifyEmail(order, brandName, reason, reasonDetail);
+        await sendEmail(env, ownerEmail, `Cancellation Request #${order.order_number} - ${brandName}`, html, text).catch(() => {});
+      }
+    } catch (e) {}
+
+    return successResponse({ id: cancelId, status: 'requested' }, 'Cancellation request submitted successfully');
+  } catch (error) {
+    console.error('Create cancellation request error:', error);
+    return errorResponse('Failed to create cancellation request: ' + error.message, 500);
+  }
+}
+
+async function getCancelStatus(request, env, orderId) {
+  try {
+    const url = new URL(request.url);
+    const siteId = url.searchParams.get('siteId');
+    const cancelToken = url.searchParams.get('token');
+    if (!siteId) return errorResponse('siteId is required');
+
+    const db = await resolveSiteDBById(env, siteId);
+    await ensureCancellationRequestsTable(db);
+
+    const req = await db.prepare(
+      'SELECT * FROM cancellation_requests WHERE (order_id = ? OR order_number = ?) AND site_id = ?'
+    ).bind(orderId, orderId, siteId).first();
+
+    if (!req) return successResponse(null, 'No cancellation request found');
+
+    if (cancelToken) {
+      if (!req.cancel_token || req.cancel_token !== cancelToken) {
+        return errorResponse('Invalid token', 403);
+      }
+    } else {
+      const user = await validateAnyAuth(request, env, { siteId });
+      if (!user) return errorResponse('Authentication or token required', 401);
+
+      const db2 = await resolveSiteDBById(env, siteId);
+      let order = await db2.prepare('SELECT user_id FROM orders WHERE id = ? AND site_id = ?').bind(req.order_id, siteId).first();
+      if (!order) order = await db2.prepare('SELECT user_id FROM guest_orders WHERE id = ? AND site_id = ?').bind(req.order_id, siteId).first();
+      if (!order || !order.user_id || order.user_id !== user.id) {
+        const site = await env.DB.prepare('SELECT id FROM sites WHERE id = ? AND user_id = ?').bind(siteId, user.id).first();
+        if (!site) return errorResponse('Unauthorized', 403);
+      }
+    }
+
+    const safeReq = { id: req.id, order_id: req.order_id, order_number: req.order_number, status: req.status, admin_note: req.admin_note, reason: req.reason, created_at: req.created_at, updated_at: req.updated_at };
+    return successResponse(safeReq);
+  } catch (error) {
+    console.error('Get cancel status error:', error);
+    return errorResponse('Failed to get cancellation status', 500);
+  }
+}
+
+async function handleCancellationsList(request, env) {
+  if (request.method !== 'GET') return errorResponse('Method not allowed', 405);
+
+  try {
+    const url = new URL(request.url);
+    const siteId = url.searchParams.get('siteId');
+    if (!siteId) return errorResponse('siteId is required');
+
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('SiteAdmin ')) {
+      const user = await validateAnyAuth(request, env, { siteId });
+      if (!user) return errorResponse('Authentication required', 401);
+      const site = await env.DB.prepare('SELECT id FROM sites WHERE id = ? AND user_id = ?').bind(siteId, user.id).first();
+      if (!site) return errorResponse('Unauthorized', 403);
+    } else {
+      const { validateSiteAdmin, hasPermission } = await import('./site-admin-worker.js');
+      const admin = await validateSiteAdmin(request, env, siteId);
+      if (!admin || !hasPermission(admin, 'orders')) return errorResponse('Unauthorized', 403);
+    }
+
+    const db = await resolveSiteDBById(env, siteId);
+    await ensureCancellationRequestsTable(db);
+
+    const result = await db.prepare(
+      'SELECT * FROM cancellation_requests WHERE site_id = ? ORDER BY created_at DESC'
+    ).bind(siteId).all();
+
+    return successResponse(result.results || []);
+  } catch (error) {
+    console.error('List cancellations error:', error);
+    return errorResponse('Failed to list cancellations', 500);
+  }
+}
+
+async function handleCancellationUpdate(request, env, cancelId) {
+  if (request.method !== 'PUT') return errorResponse('Method not allowed', 405);
+
+  try {
+    const data = await request.json();
+    const { siteId, status, adminNote } = data;
+    if (!siteId || !cancelId) return errorResponse('siteId and cancelId are required');
+
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('SiteAdmin ')) {
+      const user = await validateAnyAuth(request, env, { siteId });
+      if (!user) return errorResponse('Authentication required', 401);
+      const site = await env.DB.prepare('SELECT id FROM sites WHERE id = ? AND user_id = ?').bind(siteId, user.id).first();
+      if (!site) return errorResponse('Unauthorized', 403);
+    } else {
+      const { validateSiteAdmin, hasPermission } = await import('./site-admin-worker.js');
+      const admin = await validateSiteAdmin(request, env, siteId);
+      if (!admin || !hasPermission(admin, 'orders')) return errorResponse('Unauthorized', 403);
+    }
+
+    const db = await resolveSiteDBById(env, siteId);
+    await ensureCancellationRequestsTable(db);
+
+    const req = await db.prepare('SELECT * FROM cancellation_requests WHERE id = ? AND site_id = ?').bind(cancelId, siteId).first();
+    if (!req) return errorResponse('Cancellation request not found', 404);
+
+    const allowedStatuses = ['requested', 'approved', 'rejected'];
+    if (status && !allowedStatuses.includes(status)) {
+      return errorResponse('Invalid status. Allowed: ' + allowedStatuses.join(', '), 400);
+    }
+
+    if (status && req.status !== 'requested') {
+      return errorResponse(`Cannot change status from '${req.status}'. Only 'requested' cancellations can be approved or rejected.`, 400);
+    }
+
+    const updates = ['updated_at = datetime("now")'];
+    const values = [];
+    if (status) { updates.push('status = ?'); values.push(status); }
+    if (adminNote !== undefined) { updates.push('admin_note = ?'); values.push(adminNote); }
+
+    values.push(cancelId);
+    await db.prepare(`UPDATE cancellation_requests SET ${updates.join(', ')} WHERE id = ?`).bind(...values).run();
+
+    if (status === 'approved') {
+      try {
+        const table = req.order_type === 'guest_order' ? 'guest_orders' : 'orders';
+        const order = await db.prepare(`SELECT * FROM ${table} WHERE id = ?`).bind(req.order_id).first();
+        if (order) {
+          const reason = adminNote || req.reason || 'Cancellation approved';
+          try { await db.prepare(`ALTER TABLE ${table} ADD COLUMN cancellation_reason TEXT`).run(); } catch (e) {}
+          await db.prepare(`UPDATE ${table} SET status = 'cancelled', cancellation_reason = ? WHERE id = ?`).bind(reason, req.order_id).run();
+
+          let items = [];
+          try { items = typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []); } catch (e) {}
+          for (const item of items) {
+            const pid = item.productId || item.product_id;
+            if (pid) {
+              try { await updateProductStock(db, pid, item.quantity, 'increment', siteId); } catch (e) {}
+            }
+          }
+
+          const config = await getSiteConfig(env, siteId);
+          const brandName = config.brand_name || 'Store';
+          let settings = {};
+          try { if (config.settings) settings = typeof config.settings === 'string' ? JSON.parse(config.settings) : config.settings; } catch (e) {}
+          const ownerEmail = settings.email || settings.ownerEmail || config.email;
+          const currency = settings.defaultCurrency || 'INR';
+
+          if (order.customer_email) {
+            const emailOrder = { order_number: order.order_number, customer_name: order.customer_name, customer_email: order.customer_email, total: order.total, payment_method: order.payment_method };
+            const { html, text } = buildCancellationCustomerEmail(emailOrder, brandName, reason, ownerEmail, currency);
+            await sendEmail(env, order.customer_email, `Your order #${order.order_number} has been cancelled`, html, text).catch(() => {});
+          }
+        }
+      } catch (e) {
+        console.error('Cancellation approval processing error:', e);
+      }
+    }
+
+    if (status === 'rejected' && req.customer_email) {
+      try {
+        const config = await getSiteConfig(env, siteId);
+        const brandName = config.brand_name || 'Store';
+        const updatedReq = { ...req, status, admin_note: adminNote !== undefined ? adminNote : req.admin_note };
+        const { html, text } = buildCancellationStatusEmail(updatedReq, brandName, status, adminNote);
+        await sendEmail(env, req.customer_email, `Cancellation Update #${req.order_number} - ${brandName}`, html, text).catch(() => {});
+      } catch (e) {}
+    }
+
+    return successResponse(null, 'Cancellation request updated');
+  } catch (error) {
+    console.error('Update cancellation error:', error);
+    return errorResponse('Failed to update cancellation request', 500);
+  }
+}
+
+async function resendCancelLink(request, env, orderId) {
+  try {
+    const data = await request.json();
+    const { siteId, email } = data;
+    if (!siteId || !orderId || !email) return errorResponse('siteId, orderId and email are required');
+
+    const db = await resolveSiteDBById(env, siteId);
+
+    let order = await db.prepare('SELECT * FROM orders WHERE (id = ? OR order_number = ?) AND site_id = ? AND customer_email = ?').bind(orderId, orderId, siteId, email).first();
+    let isGuest = false;
+    if (!order) {
+      order = await db.prepare('SELECT * FROM guest_orders WHERE (id = ? OR order_number = ?) AND site_id = ? AND customer_email = ?').bind(orderId, orderId, siteId, email).first();
+      isGuest = true;
+    }
+    if (!order) return errorResponse('Order not found or email does not match', 404);
+
+    const statusLower = (order.status || '').toLowerCase();
+    if (!['pending', 'confirmed'].includes(statusLower)) {
+      return errorResponse('This order can no longer be cancelled', 400);
+    }
+
+    let cancelToken = null;
+    try { cancelToken = order.cancel_token; } catch (e) {}
+    if (!cancelToken) {
+      cancelToken = generateReturnToken();
+      const table = isGuest ? 'guest_orders' : 'orders';
+      try { await db.prepare(`ALTER TABLE ${table} ADD COLUMN cancel_token TEXT`).run(); } catch (e) {}
+      await db.prepare(`UPDATE ${table} SET cancel_token = ? WHERE id = ?`).bind(cancelToken, order.id).run();
+    }
+
+    const site = await env.DB.prepare('SELECT subdomain, custom_domain FROM sites WHERE id = ?').bind(siteId).first();
+    const domain = site?.custom_domain || `${site?.subdomain || 'store'}.${env.DOMAIN || 'fluxe.in'}`;
+    const cancelUrl = `https://${domain}/cancel/${order.order_number || order.id}?token=${cancelToken}`;
+
+    const config = await getSiteConfig(env, siteId);
+    const brandName = config.brand_name || 'Store';
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="margin:0;padding:0;font-family:'Segoe UI',Arial,sans-serif;background:#f5f5f5;">
+      <div style="max-width:600px;margin:0 auto;background:#fff;">
+        <div style="background:#0f172a;color:#fff;padding:32px;text-align:center;">
+          <h1 style="margin:0;font-size:24px;font-weight:700;">${brandName}</h1>
+        </div>
+        <div style="padding:32px;">
+          <h2 style="margin:0 0 16px;font-size:20px;color:#0f172a;">Your Cancellation Link</h2>
+          <p style="color:#64748b;font-size:14px;line-height:1.6;">Use the link below to submit a cancellation request for order <strong>#${order.order_number}</strong>:</p>
+          <div style="margin:24px 0;text-align:center;">
+            <a href="${cancelUrl}" style="display:inline-block;background:#e53935;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">Cancel Order</a>
+          </div>
+          <p style="color:#94a3b8;font-size:12px;">If the button doesn't work, copy this link: ${cancelUrl}</p>
+        </div>
+      </div>
+    </body></html>`;
+    const text = `Your cancellation link for order #${order.order_number}: ${cancelUrl}`;
+
+    await sendEmail(env, email, `Cancellation Link for Order #${order.order_number} - ${brandName}`, html, text);
+
+    return successResponse(null, 'Cancellation link sent to your email');
+  } catch (error) {
+    console.error('Resend cancel link error:', error);
+    return errorResponse('Failed to send cancellation link', 500);
   }
 }

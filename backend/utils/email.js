@@ -196,10 +196,10 @@ export function buildOrderConfirmationEmail(order, brandName, ownerEmail, curren
           </div>
           ` : ''}
 
-          ${options.returnUrl ? `
+          ${options.cancelUrl ? `
           <div style="margin-top: 20px; padding: 16px; background: #fefce8; border: 1px solid #fef08a; border-radius: 8px;">
-            <p style="margin: 0 0 8px; font-size: 13px; color: #854d0e; font-weight: 600;">Need to return this order?</p>
-            <p style="margin: 0; font-size: 13px; color: #a16207; line-height: 1.5;">If you need to request a return after receiving your order, <a href="${options.returnUrl}" style="color:#854d0e;font-weight:600;">click here</a>.</p>
+            <p style="margin: 0 0 8px; font-size: 13px; color: #854d0e; font-weight: 600;">Need to cancel this order?</p>
+            <p style="margin: 0; font-size: 13px; color: #a16207; line-height: 1.5;">If you need to cancel your order, <a href="${options.cancelUrl}" style="color:#854d0e;font-weight:600;">click here</a> to submit a cancellation request.</p>
           </div>
           ` : ''}
 
@@ -262,7 +262,7 @@ export function buildCancellationCustomerEmail(order, brandName, reason, ownerEm
   return { html, text };
 }
 
-export function buildDeliveryCustomerEmail(order, brandName, ownerEmail, currency = 'INR') {
+export function buildDeliveryCustomerEmail(order, brandName, ownerEmail, currency = 'INR', options = {}) {
   let items = [];
   try {
     items = typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []);
@@ -312,6 +312,12 @@ export function buildDeliveryCustomerEmail(order, brandName, ownerEmail, currenc
             <p style="margin: 0 0 8px; font-size: 16px; font-weight: 600; color: #166534;">Enjoying your purchase?</p>
             <p style="margin: 0; font-size: 14px; color: #555; line-height: 1.6;">We'd love to hear from you! Share your experience and leave a review — your feedback helps us serve you better and helps other shoppers make great choices.</p>
           </div>
+          ${options.returnUrl ? `
+          <div style="margin-top: 20px; padding: 16px; background: #fefce8; border: 1px solid #fef08a; border-radius: 8px;">
+            <p style="margin: 0 0 8px; font-size: 13px; color: #854d0e; font-weight: 600;">Need to return this order?</p>
+            <p style="margin: 0; font-size: 13px; color: #a16207; line-height: 1.5;">If you need to request a return, <a href="${options.returnUrl}" style="color:#854d0e;font-weight:600;">click here</a> to submit a return request.</p>
+          </div>
+          ` : ''}
           <p style="margin-top: 20px; color: #64748b; font-size: 14px; line-height: 1.6;">${contactLine}</p>
         </div>
         <div style="background: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8;">
@@ -643,5 +649,57 @@ export function buildOrderShippedEmail(order, brandName, ownerEmail, currency = 
     </html>
   `;
   const text = `Your Order Is On The Way!\n\nOrder #${order.order_number}\nYour order has been shipped.${options.carrier ? '\nCarrier: ' + options.carrier : ''}${options.trackingNumber ? '\nTracking: ' + options.trackingNumber : ''}\nTotal: ${formatCurrency(order.total, currency)}\n\n${ownerEmail ? 'Contact: ' + ownerEmail : ''}`;
+  return { html, text };
+}
+
+export function buildCancellationRequestNotifyEmail(order, brandName, reason, reasonDetail) {
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="margin:0;padding:0;font-family:'Segoe UI',Arial,sans-serif;background:#f5f5f5;">
+    <div style="max-width:600px;margin:0 auto;background:#fff;">
+      <div style="background:#0f172a;color:#fff;padding:32px;text-align:center;">
+        <h1 style="margin:0;font-size:24px;font-weight:700;">${brandName}</h1>
+      </div>
+      <div style="padding:32px;">
+        <h2 style="margin:0 0 16px;font-size:20px;color:#ef4444;">New Cancellation Request</h2>
+        <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:16px;margin-bottom:20px;">
+          <p style="margin:0 0 8px;font-size:14px;"><strong>Order:</strong> #${order.order_number}</p>
+          <p style="margin:0 0 8px;font-size:14px;"><strong>Customer:</strong> ${order.customer_name || 'N/A'}</p>
+          <p style="margin:0 0 8px;font-size:14px;"><strong>Email:</strong> ${order.customer_email || 'N/A'}</p>
+          <p style="margin:0 0 8px;font-size:14px;"><strong>Reason:</strong> ${reason}</p>
+          ${reasonDetail ? `<p style="margin:0;font-size:14px;"><strong>Details:</strong> ${reasonDetail}</p>` : ''}
+        </div>
+        <p style="color:#64748b;font-size:14px;">Please review this cancellation request in your admin panel. You can approve or reject it from the Orders > Cancellations tab.</p>
+      </div>
+    </div>
+  </body></html>`;
+  const text = `New Cancellation Request\nOrder: #${order.order_number}\nCustomer: ${order.customer_name}\nReason: ${reason}${reasonDetail ? '\nDetails: ' + reasonDetail : ''}`;
+  return { html, text };
+}
+
+export function buildCancellationStatusEmail(request, brandName, status, adminNote) {
+  const statusLabels = { approved: 'Approved', rejected: 'Rejected' };
+  const statusColors = { approved: '#22c55e', rejected: '#ef4444' };
+  const label = statusLabels[status] || status;
+  const color = statusColors[status] || '#64748b';
+  const approvedMsg = status === 'approved'
+    ? '<p style="color:#333;font-size:14px;line-height:1.6;margin-top:16px;">Your order has been cancelled. If you paid online, your refund will be processed within 5-7 business days.</p>'
+    : '<p style="color:#333;font-size:14px;line-height:1.6;margin-top:16px;">Your cancellation request has been reviewed and was not approved. If you have questions, please contact us.</p>';
+
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="margin:0;padding:0;font-family:'Segoe UI',Arial,sans-serif;background:#f5f5f5;">
+    <div style="max-width:600px;margin:0 auto;background:#fff;">
+      <div style="background:#0f172a;color:#fff;padding:32px;text-align:center;">
+        <h1 style="margin:0;font-size:24px;font-weight:700;">${brandName}</h1>
+      </div>
+      <div style="padding:32px;">
+        <h2 style="margin:0 0 16px;font-size:20px;color:#0f172a;">Cancellation Request Update</h2>
+        <p style="color:#64748b;font-size:14px;margin-bottom:20px;">Your cancellation request for order <strong>#${request.order_number}</strong> has been updated.</p>
+        <div style="text-align:center;margin:24px 0;">
+          <span style="display:inline-block;background:${color};color:#fff;padding:8px 24px;border-radius:20px;font-weight:600;font-size:16px;">${label}</span>
+        </div>
+        ${approvedMsg}
+        ${adminNote ? `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin-top:16px;"><p style="margin:0 0 4px;font-size:12px;color:#64748b;font-weight:600;">Note from store:</p><p style="margin:0;font-size:14px;color:#334155;">${adminNote}</p></div>` : ''}
+      </div>
+    </div>
+  </body></html>`;
+  const text = `Cancellation Request Update\nOrder: #${request.order_number}\nStatus: ${label}${adminNote ? '\nNote: ' + adminNote : ''}`;
   return { html, text };
 }
