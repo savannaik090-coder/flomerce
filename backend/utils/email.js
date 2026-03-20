@@ -35,6 +35,20 @@ export async function sendEmail(env, to, subject, html, text) {
         ? to.map(e => typeof e === 'string' ? { email: e } : e)
         : [to];
 
+    const toPayload = recipients.map(r => {
+      const entry = { email: r.email };
+      if (r.name) entry.name = r.name;
+      return entry;
+    });
+
+    const payload = {
+      sender: { email: fromEmail, name: 'Fluxe' },
+      to: toPayload,
+      subject,
+      htmlContent: html,
+    };
+    if (text) payload.textContent = text;
+
     const response = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
       headers: {
@@ -42,13 +56,7 @@ export async function sendEmail(env, to, subject, html, text) {
         'api-key': apiKey,
         'content-type': 'application/json',
       },
-      body: JSON.stringify({
-        sender: { email: fromEmail, name: 'Fluxe' },
-        to: recipients.map(r => ({ email: r.email, name: r.name || '' })),
-        subject,
-        htmlContent: html,
-        textContent: text || undefined,
-      }),
+      body: JSON.stringify(payload),
     });
 
     const body = await response.json().catch(() => ({}));
