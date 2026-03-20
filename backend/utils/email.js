@@ -21,7 +21,7 @@ function formatCurrencyHtml(amount, currency = 'INR') {
 
 export async function sendEmail(env, to, subject, html, text) {
   try {
-    const apiKey = (env.BREVO_API_KEY || env.SENDER_API_KEY || '').trim();
+    const apiKey = (env.BREVO_API_KEY || '').trim();
     if (!apiKey) {
       console.warn('WARNING: No email provider configured (BREVO_API_KEY missing). Email NOT sent to:', to, 'Subject:', subject);
       return 'No email provider configured';
