@@ -21,19 +21,20 @@ function formatCurrencyHtml(amount, currency = 'INR') {
 
 export async function sendEmail(env, to, subject, html, text) {
   try {
-    if (env.RESEND_API_KEY) {
-      const apiKey = env.RESEND_API_KEY.trim();
+    if (env.SENDER_API_KEY) {
+      const apiKey = env.SENDER_API_KEY.trim();
       const fromEmail = env.FROM_EMAIL || 'noreply@fluxe.in';
-      const fromField = fromEmail.includes('<') ? fromEmail : `Fluxe <${fromEmail}>`;
-      const response = await fetch('https://api.resend.com/emails', {
+      const toList = typeof to === 'string' ? [{ email: to }] : to.map(e => typeof e === 'string' ? { email: e } : e);
+      const response = await fetch('https://api.sender.net/v2/emails', {
         method: 'POST',
         headers: {
-          'Authorization': apiKey.startsWith('Bearer ') ? apiKey : `Bearer ${apiKey}`,
+          'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
         },
         body: JSON.stringify({
-          from: fromField,
-          to: typeof to === 'string' ? [to] : to,
+          from: { email: fromEmail, name: 'Fluxe' },
+          to: toList,
           subject,
           html,
           text,
@@ -42,42 +43,14 @@ export async function sendEmail(env, to, subject, html, text) {
 
       const body = await response.json().catch(() => ({}));
       if (!response.ok) {
-        console.error('Resend error:', JSON.stringify(body), 'Status:', response.status);
-        return body.message || body.error || 'Resend API error';
+        console.error('Sender error:', JSON.stringify(body), 'Status:', response.status);
+        return body.message || body.error || 'Sender API error';
       }
-      console.log('Email sent via Resend to:', to, 'Subject:', subject);
+      console.log('Email sent via Sender to:', to, 'Subject:', subject);
       return true;
     }
 
-    if (env.SENDGRID_API_KEY) {
-      const toList = typeof to === 'string' ? [{ email: to }] : to.map(e => ({ email: e }));
-      const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${env.SENDGRID_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          personalizations: [{ to: toList }],
-          from: { email: env.FROM_EMAIL || 'noreply@fluxe.in' },
-          subject,
-          content: [
-            { type: 'text/plain', value: text },
-            { type: 'text/html', value: html },
-          ],
-        }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('SendGrid error:', errorText);
-        return errorText || 'SendGrid API error';
-      }
-      console.log('Email sent via SendGrid to:', to, 'Subject:', subject);
-      return true;
-    }
-
-    console.warn('WARNING: No email provider configured (RESEND_API_KEY or SENDGRID_API_KEY missing). Email NOT sent to:', to, 'Subject:', subject);
+    console.warn('WARNING: No email provider configured (SENDER_API_KEY missing). Email NOT sent to:', to, 'Subject:', subject);
     return 'No email provider configured';
   } catch (error) {
     console.error('Send email error:', error);
@@ -151,6 +124,19 @@ export function buildOrderConfirmationEmail(order, brandName, ownerEmail, curren
     </div>
   ` : '';
 
+  const trackingHtml = options.trackingUrl ? `
+    <div style="margin-top: 20px; text-align: center;">
+      <a href="${options.trackingUrl}" style="display: inline-block; background: #0f172a; color: #ffffff; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px;">Track Your Order</a>
+    </div>
+  ` : '';
+
+  const cancelHtml = options.cancelUrl ? `
+    <div style="margin-top: 20px; padding: 16px; background: #fefce8; border: 1px solid #fef08a; border-radius: 8px;">
+      <p style="margin: 0 0 8px; font-size: 13px; color: #854d0e; font-weight: 600;">Need to cancel your order?</p>
+      <p style="margin: 0; font-size: 13px; color: #a16207; line-height: 1.5;">If you need to cancel this order, <a href="${options.cancelUrl}" style="color:#854d0e;font-weight:600;">click here</a>.</p>
+    </div>
+  ` : '';
+
   const html = `
     <!DOCTYPE html>
     <html>
@@ -203,14 +189,11 @@ export function buildOrderConfirmationEmail(order, brandName, ownerEmail, curren
 
           ${addressHtml}
 
-          ${options.returnUrl ? `
-          <div style="margin-top: 20px; padding: 16px; background: #fefce8; border: 1px solid #fef08a; border-radius: 8px;">
-            <p style="margin: 0 0 8px; font-size: 13px; color: #854d0e; font-weight: 600;">Need to return this order?</p>
-            <p style="margin: 0; font-size: 13px; color: #a16207; line-height: 1.5;">If you need to request a return after receiving your order, <a href="${options.returnUrl}" style="color:#854d0e;font-weight:600;">click here</a>.</p>
-          </div>
-          ` : ''}
+          ${trackingHtml}
 
-          <p style="margin-top: 24px; color: #64748b; font-size: 14px; line-height: 1.6;">Your order is now being prepared. We'll update you once it's on its way. For any queries, reach out to us at ${ownerEmail ? `<a href="mailto:${ownerEmail}" style="color:#0f172a;">${ownerEmail}</a>` : brandName || 'the store'}.</p>
+          ${cancelHtml}
+
+          <p style="margin-top: 24px; color: #64748b; font-size: 14px; line-height: 1.6;">Your order has been confirmed and is now being prepared. We'll update you once it's packed and shipped. For any queries, reach out to us at ${ownerEmail ? `<a href="mailto:${ownerEmail}" style="color:#0f172a;">${ownerEmail}</a>` : brandName || 'the store'}.</p>
         </div>
         <div style="background: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8;">
           <p style="margin: 0;">Thank you for shopping with ${brandName || 'us'}!</p>
@@ -223,7 +206,7 @@ export function buildOrderConfirmationEmail(order, brandName, ownerEmail, curren
   const _disc = Number(order.discount || 0);
   const _coupon = order.coupon_code || '';
   const discountLine = _disc > 0 ? `\nSubtotal: ${fmt(Number(order.subtotal || order.total))}\nCoupon${_coupon ? ` (${_coupon})` : ''}: -${fmt(_disc)}` : '';
-  const text = `Order Confirmation\n\nThank you for your order!\nOrder Number: ${order.order_number || order.orderNumber}${discountLine}\nTotal: ${fmt(order.total)}\nPayment: ${order.payment_method === 'cod' || order.paymentMethod === 'cod' ? 'Cash on Delivery' : 'Online Payment'}\n\nYour order is now being prepared.`;
+  const text = `Order Confirmation\n\nThank you for your order!\nOrder Number: ${order.order_number || order.orderNumber}${discountLine}\nTotal: ${fmt(order.total)}\nPayment: ${order.payment_method === 'cod' || order.paymentMethod === 'cod' ? 'Cash on Delivery' : 'Online Payment'}\n\nYour order has been confirmed and is now being prepared.`;
 
   return { html, text };
 }
@@ -269,7 +252,7 @@ export function buildCancellationCustomerEmail(order, brandName, reason, ownerEm
   return { html, text };
 }
 
-export function buildDeliveryCustomerEmail(order, brandName, ownerEmail, currency = 'INR') {
+export function buildDeliveryCustomerEmail(order, brandName, ownerEmail, currency = 'INR', options = {}) {
   let items = [];
   try {
     items = typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []);
@@ -285,6 +268,14 @@ export function buildDeliveryCustomerEmail(order, brandName, ownerEmail, currenc
   const contactLine = ownerEmail
     ? `If you have any issues with your order, contact us at <a href="mailto:${ownerEmail}" style="color:#27ae60;">${ownerEmail}</a>.`
     : 'If you have any issues with your order, please reply to this email.';
+
+  const returnHtml = options.returnUrl ? `
+    <div style="margin-top: 20px; padding: 16px; background: #fefce8; border: 1px solid #fef08a; border-radius: 8px;">
+      <p style="margin: 0 0 8px; font-size: 13px; color: #854d0e; font-weight: 600;">Need to return this order?</p>
+      <p style="margin: 0; font-size: 13px; color: #a16207; line-height: 1.5;">If you need to request a return, <a href="${options.returnUrl}" style="color:#854d0e;font-weight:600;">click here</a>.</p>
+    </div>
+  ` : '';
+
   const html = `
     <!DOCTYPE html>
     <html>
@@ -300,7 +291,7 @@ export function buildDeliveryCustomerEmail(order, brandName, ownerEmail, currenc
             <h2 style="margin: 0 0 6px; font-size: 24px; color: #0f172a;">Your Order Has Been Delivered!</h2>
             <p style="margin: 0; color: #64748b; font-size: 14px;">Order #${order.order_number || ''}</p>
           </div>
-          <p style="color: #333; font-size: 15px; line-height: 1.6;">Hi ${order.customer_name || 'Customer'}, we hope you love your purchase! 🎉</p>
+          <p style="color: #333; font-size: 15px; line-height: 1.6;">Hi ${order.customer_name || 'Customer'}, we hope you love your purchase!</p>
           ${items.length > 0 ? `
           <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
             <thead>
@@ -319,6 +310,7 @@ export function buildDeliveryCustomerEmail(order, brandName, ownerEmail, currenc
             <p style="margin: 0 0 8px; font-size: 16px; font-weight: 600; color: #166534;">Enjoying your purchase?</p>
             <p style="margin: 0; font-size: 14px; color: #555; line-height: 1.6;">We'd love to hear from you! Share your experience and leave a review — your feedback helps us serve you better and helps other shoppers make great choices.</p>
           </div>
+          ${returnHtml}
           <p style="margin-top: 20px; color: #64748b; font-size: 14px; line-height: 1.6;">${contactLine}</p>
         </div>
         <div style="background: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8;">
@@ -422,11 +414,15 @@ export function buildOwnerNotificationEmail(order, brandName, currency = 'INR') 
     <head><meta charset="utf-8"></head>
     <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background: #f5f5f5;">
       <div style="max-width: 600px; margin: 0 auto; background: #ffffff;">
-        <div style="background: #059669; color: #ffffff; padding: 24px 32px;">
-          <h1 style="margin: 0; font-size: 20px; font-weight: 700;">New Order Received!</h1>
+        <div style="background: #f59e0b; color: #ffffff; padding: 24px 32px;">
+          <h1 style="margin: 0; font-size: 20px; font-weight: 700;">New Order Received — Pending Review</h1>
           <p style="margin: 4px 0 0; opacity: 0.9; font-size: 14px;">${brandName || 'Your Store'} - Order #${order.order_number || order.orderNumber || ''}</p>
         </div>
         <div style="padding: 24px 32px;">
+          <div style="margin-bottom: 20px; padding: 14px 16px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px;">
+            <p style="margin: 0; font-size: 14px; color: #92400e; font-weight: 600;">⏳ This order is pending. Please review and confirm it from your admin panel.</p>
+          </div>
+
           <div style="display: flex; gap: 16px; margin-bottom: 20px;">
             <div style="padding: 12px 16px; background: #f0fdf4; border-radius: 8px; flex: 1;">
               <div style="font-size: 12px; color: #059669; text-transform: uppercase; font-weight: 600;">Total Amount</div>
@@ -473,7 +469,93 @@ export function buildOwnerNotificationEmail(order, brandName, currency = 'INR') 
     </html>
   `;
 
-  const text = `New Order Received!\n\nOrder #${order.order_number || order.orderNumber}\nTotal: ${formatCurrency(order.total, currency)}\nCustomer: ${order.customer_name || ''}\nPhone: ${order.customer_phone || ''}\nPayment: ${order.payment_method === 'cod' ? 'Cash on Delivery' : 'Online Payment'}`;
+  const text = `New Order Received — Pending Review\n\nOrder #${order.order_number || order.orderNumber}\nStatus: Pending — Please review and confirm from your admin panel.\nTotal: ${formatCurrency(order.total, currency)}\nCustomer: ${order.customer_name || ''}\nPhone: ${order.customer_phone || ''}\nPayment: ${order.payment_method === 'cod' ? 'Cash on Delivery' : 'Online Payment'}`;
 
+  return { html, text };
+}
+
+export function buildOrderPackedEmail(order, brandName, ownerEmail, currency = 'INR') {
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="utf-8"></head>
+    <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background: #f5f5f5;">
+      <div style="max-width: 600px; margin: 0 auto; background: #ffffff;">
+        <div style="background: #7c3aed; color: #ffffff; padding: 32px; text-align: center;">
+          <h1 style="margin: 0; font-size: 24px; font-weight: 700;">${brandName || 'Your Store'}</h1>
+        </div>
+        <div style="padding: 32px;">
+          <div style="text-align: center; margin-bottom: 28px;">
+            <div style="font-size: 52px; margin-bottom: 12px;">📦</div>
+            <h2 style="margin: 0 0 6px; font-size: 24px; color: #0f172a;">Your Order Has Been Packed!</h2>
+            <p style="margin: 0; color: #64748b; font-size: 14px;">Order #${order.order_number || ''}</p>
+          </div>
+          <p style="color: #333; font-size: 15px; line-height: 1.6;">Hi ${order.customer_name || 'Customer'},</p>
+          <p style="color: #333; font-size: 15px; line-height: 1.6;">Great news! Your order has been packed and will be shipped soon. We'll notify you once it's on its way with tracking details.</p>
+          <div style="padding: 16px; background: #f5f3ff; border-radius: 8px; font-size: 14px; color: #5b21b6; margin: 24px 0;">
+            <strong>Order Total:</strong> ${formatCurrencyHtml(order.total, currency)}<br>
+            <strong>Payment Method:</strong> ${order.payment_method === 'cod' ? 'Cash on Delivery' : 'Online Payment'}
+          </div>
+          <p style="color: #64748b; font-size: 14px; line-height: 1.6;">For any queries, reach out to us at ${ownerEmail ? `<a href="mailto:${ownerEmail}" style="color:#7c3aed;">${ownerEmail}</a>` : brandName || 'the store'}.</p>
+        </div>
+        <div style="background: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8;">
+          <p style="margin: 0;">Thank you for shopping with ${brandName || 'us'}!</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+  const text = `Your Order Has Been Packed!\n\nHi ${order.customer_name || 'Customer'},\n\nYour order #${order.order_number} has been packed and will be shipped soon.\n\nOrder Total: ${formatCurrency(order.total, currency)}\n\n${ownerEmail ? 'Contact: ' + ownerEmail : ''}`;
+  return { html, text };
+}
+
+export function buildOrderShippedEmail(order, brandName, ownerEmail, currency = 'INR', options = {}) {
+  const trackingHtml = (options.trackingNumber || options.carrier) ? `
+    <div style="margin: 24px 0; padding: 16px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px;">
+      <p style="margin: 0 0 8px; font-size: 14px; font-weight: 600; color: #1e40af;">Shipment Details</p>
+      ${options.carrier ? `<p style="margin: 0 0 4px; font-size: 14px; color: #334155;"><strong>Carrier:</strong> ${options.carrier}</p>` : ''}
+      ${options.trackingNumber ? `<p style="margin: 0; font-size: 14px; color: #334155;"><strong>Tracking Number:</strong> ${options.trackingNumber}</p>` : ''}
+    </div>
+  ` : '';
+
+  const trackingBtnHtml = options.trackingUrl ? `
+    <div style="text-align: center; margin: 20px 0;">
+      <a href="${options.trackingUrl}" style="display: inline-block; background: #2563eb; color: #ffffff; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px;">Track Your Order</a>
+    </div>
+  ` : '';
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="utf-8"></head>
+    <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background: #f5f5f5;">
+      <div style="max-width: 600px; margin: 0 auto; background: #ffffff;">
+        <div style="background: #2563eb; color: #ffffff; padding: 32px; text-align: center;">
+          <h1 style="margin: 0; font-size: 24px; font-weight: 700;">${brandName || 'Your Store'}</h1>
+        </div>
+        <div style="padding: 32px;">
+          <div style="text-align: center; margin-bottom: 28px;">
+            <div style="font-size: 52px; margin-bottom: 12px;">🚚</div>
+            <h2 style="margin: 0 0 6px; font-size: 24px; color: #0f172a;">Your Order Has Been Shipped!</h2>
+            <p style="margin: 0; color: #64748b; font-size: 14px;">Order #${order.order_number || ''}</p>
+          </div>
+          <p style="color: #333; font-size: 15px; line-height: 1.6;">Hi ${order.customer_name || 'Customer'},</p>
+          <p style="color: #333; font-size: 15px; line-height: 1.6;">Your order is on its way! It has been picked up by the shipping carrier and is headed to your delivery address.</p>
+          ${trackingHtml}
+          ${trackingBtnHtml}
+          <div style="padding: 16px; background: #f8f9fa; border-radius: 8px; font-size: 14px; color: #555; margin-top: 16px;">
+            <strong>Order Total:</strong> ${formatCurrencyHtml(order.total, currency)}<br>
+            <strong>Payment Method:</strong> ${order.payment_method === 'cod' ? 'Cash on Delivery' : 'Online Payment'}
+          </div>
+          <p style="margin-top: 24px; color: #64748b; font-size: 14px; line-height: 1.6;">For any queries, reach out to us at ${ownerEmail ? `<a href="mailto:${ownerEmail}" style="color:#2563eb;">${ownerEmail}</a>` : brandName || 'the store'}.</p>
+        </div>
+        <div style="background: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8;">
+          <p style="margin: 0;">Thank you for shopping with ${brandName || 'us'}!</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+  const text = `Your Order Has Been Shipped!\n\nHi ${order.customer_name || 'Customer'},\n\nYour order #${order.order_number} is on its way!\n${options.carrier ? 'Carrier: ' + options.carrier + '\n' : ''}${options.trackingNumber ? 'Tracking: ' + options.trackingNumber + '\n' : ''}\nOrder Total: ${formatCurrency(order.total, currency)}\n\n${ownerEmail ? 'Contact: ' + ownerEmail : ''}`;
   return { html, text };
 }

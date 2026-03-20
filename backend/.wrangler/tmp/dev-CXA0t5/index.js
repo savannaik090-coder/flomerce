@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-FN4MiR/checked-fetch.js
+// .wrangler/tmp/bundle-WS0TRp/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-FN4MiR/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-WS0TRp/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-FN4MiR/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-WS0TRp/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-FN4MiR/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-WS0TRp/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -2116,12 +2116,12 @@ var init_site_admin_worker = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-FN4MiR/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-WS0TRp/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-FN4MiR/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-WS0TRp/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -2176,19 +2176,20 @@ function formatCurrencyHtml(amount, currency = "INR") {
 __name(formatCurrencyHtml, "formatCurrencyHtml");
 async function sendEmail(env, to, subject, html, text) {
   try {
-    if (env.RESEND_API_KEY) {
-      const apiKey = env.RESEND_API_KEY.trim();
+    if (env.SENDER_API_KEY) {
+      const apiKey = env.SENDER_API_KEY.trim();
       const fromEmail = env.FROM_EMAIL || "noreply@fluxe.in";
-      const fromField = fromEmail.includes("<") ? fromEmail : `Fluxe <${fromEmail}>`;
-      const response = await fetch("https://api.resend.com/emails", {
+      const toList = typeof to === "string" ? [{ email: to }] : to.map((e) => typeof e === "string" ? { email: e } : e);
+      const response = await fetch("https://api.sender.net/v2/emails", {
         method: "POST",
         headers: {
-          "Authorization": apiKey.startsWith("Bearer ") ? apiKey : `Bearer ${apiKey}`,
-          "Content-Type": "application/json"
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          "Accept": "application/json"
         },
         body: JSON.stringify({
-          from: fromField,
-          to: typeof to === "string" ? [to] : to,
+          from: { email: fromEmail, name: "Fluxe" },
+          to: toList,
           subject,
           html,
           text
@@ -2196,39 +2197,13 @@ async function sendEmail(env, to, subject, html, text) {
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) {
-        console.error("Resend error:", JSON.stringify(body), "Status:", response.status);
-        return body.message || body.error || "Resend API error";
+        console.error("Sender error:", JSON.stringify(body), "Status:", response.status);
+        return body.message || body.error || "Sender API error";
       }
-      console.log("Email sent via Resend to:", to, "Subject:", subject);
+      console.log("Email sent via Sender to:", to, "Subject:", subject);
       return true;
     }
-    if (env.SENDGRID_API_KEY) {
-      const toList = typeof to === "string" ? [{ email: to }] : to.map((e) => ({ email: e }));
-      const response = await fetch("https://api.sendgrid.com/v3/mail/send", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${env.SENDGRID_API_KEY}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          personalizations: [{ to: toList }],
-          from: { email: env.FROM_EMAIL || "noreply@fluxe.in" },
-          subject,
-          content: [
-            { type: "text/plain", value: text },
-            { type: "text/html", value: html }
-          ]
-        })
-      });
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("SendGrid error:", errorText);
-        return errorText || "SendGrid API error";
-      }
-      console.log("Email sent via SendGrid to:", to, "Subject:", subject);
-      return true;
-    }
-    console.warn("WARNING: No email provider configured (RESEND_API_KEY or SENDGRID_API_KEY missing). Email NOT sent to:", to, "Subject:", subject);
+    console.warn("WARNING: No email provider configured (SENDER_API_KEY missing). Email NOT sent to:", to, "Subject:", subject);
     return "No email provider configured";
   } catch (error) {
     console.error("Send email error:", error);
@@ -2278,6 +2253,17 @@ function buildOrderConfirmationEmail(order, brandName, ownerEmail, currency = "I
         ${shippingAddress.city || ""}, ${shippingAddress.state || ""} ${shippingAddress.pinCode || shippingAddress.pin_code || ""}<br>
         ${shippingAddress.phone || order.customer_phone || ""}
       </p>
+    </div>
+  ` : "";
+  const trackingHtml = options.trackingUrl ? `
+    <div style="margin-top: 20px; text-align: center;">
+      <a href="${options.trackingUrl}" style="display: inline-block; background: #0f172a; color: #ffffff; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px;">Track Your Order</a>
+    </div>
+  ` : "";
+  const cancelHtml = options.cancelUrl ? `
+    <div style="margin-top: 20px; padding: 16px; background: #fefce8; border: 1px solid #fef08a; border-radius: 8px;">
+      <p style="margin: 0 0 8px; font-size: 13px; color: #854d0e; font-weight: 600;">Need to cancel your order?</p>
+      <p style="margin: 0; font-size: 13px; color: #a16207; line-height: 1.5;">If you need to cancel this order, <a href="${options.cancelUrl}" style="color:#854d0e;font-weight:600;">click here</a>.</p>
     </div>
   ` : "";
   const html = `
@@ -2332,14 +2318,11 @@ function buildOrderConfirmationEmail(order, brandName, ownerEmail, currency = "I
 
           ${addressHtml}
 
-          ${options.returnUrl ? `
-          <div style="margin-top: 20px; padding: 16px; background: #fefce8; border: 1px solid #fef08a; border-radius: 8px;">
-            <p style="margin: 0 0 8px; font-size: 13px; color: #854d0e; font-weight: 600;">Need to return this order?</p>
-            <p style="margin: 0; font-size: 13px; color: #a16207; line-height: 1.5;">If you need to request a return after receiving your order, <a href="${options.returnUrl}" style="color:#854d0e;font-weight:600;">click here</a>.</p>
-          </div>
-          ` : ""}
+          ${trackingHtml}
 
-          <p style="margin-top: 24px; color: #64748b; font-size: 14px; line-height: 1.6;">Your order is now being prepared. We'll update you once it's on its way. For any queries, reach out to us at ${ownerEmail ? `<a href="mailto:${ownerEmail}" style="color:#0f172a;">${ownerEmail}</a>` : brandName || "the store"}.</p>
+          ${cancelHtml}
+
+          <p style="margin-top: 24px; color: #64748b; font-size: 14px; line-height: 1.6;">Your order has been confirmed and is now being prepared. We'll update you once it's packed and shipped. For any queries, reach out to us at ${ownerEmail ? `<a href="mailto:${ownerEmail}" style="color:#0f172a;">${ownerEmail}</a>` : brandName || "the store"}.</p>
         </div>
         <div style="background: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8;">
           <p style="margin: 0;">Thank you for shopping with ${brandName || "us"}!</p>
@@ -2360,7 +2343,7 @@ Order Number: ${order.order_number || order.orderNumber}${discountLine}
 Total: ${fmt(order.total)}
 Payment: ${order.payment_method === "cod" || order.paymentMethod === "cod" ? "Cash on Delivery" : "Online Payment"}
 
-Your order is now being prepared.`;
+Your order has been confirmed and is now being prepared.`;
   return { html, text };
 }
 __name(buildOrderConfirmationEmail, "buildOrderConfirmationEmail");
@@ -2409,7 +2392,7 @@ ${ownerEmail ? "Contact us at: " + ownerEmail : "Please reply to this email for 
   return { html, text };
 }
 __name(buildCancellationCustomerEmail, "buildCancellationCustomerEmail");
-function buildDeliveryCustomerEmail(order, brandName, ownerEmail, currency = "INR") {
+function buildDeliveryCustomerEmail(order, brandName, ownerEmail, currency = "INR", options = {}) {
   let items = [];
   try {
     items = typeof order.items === "string" ? JSON.parse(order.items) : order.items || [];
@@ -2426,6 +2409,12 @@ function buildDeliveryCustomerEmail(order, brandName, ownerEmail, currency = "IN
     </tr>
   `).join("");
   const contactLine = ownerEmail ? `If you have any issues with your order, contact us at <a href="mailto:${ownerEmail}" style="color:#27ae60;">${ownerEmail}</a>.` : "If you have any issues with your order, please reply to this email.";
+  const returnHtml = options.returnUrl ? `
+    <div style="margin-top: 20px; padding: 16px; background: #fefce8; border: 1px solid #fef08a; border-radius: 8px;">
+      <p style="margin: 0 0 8px; font-size: 13px; color: #854d0e; font-weight: 600;">Need to return this order?</p>
+      <p style="margin: 0; font-size: 13px; color: #a16207; line-height: 1.5;">If you need to request a return, <a href="${options.returnUrl}" style="color:#854d0e;font-weight:600;">click here</a>.</p>
+    </div>
+  ` : "";
   const html = `
     <!DOCTYPE html>
     <html>
@@ -2441,7 +2430,7 @@ function buildDeliveryCustomerEmail(order, brandName, ownerEmail, currency = "IN
             <h2 style="margin: 0 0 6px; font-size: 24px; color: #0f172a;">Your Order Has Been Delivered!</h2>
             <p style="margin: 0; color: #64748b; font-size: 14px;">Order #${order.order_number || ""}</p>
           </div>
-          <p style="color: #333; font-size: 15px; line-height: 1.6;">Hi ${order.customer_name || "Customer"}, we hope you love your purchase! \u{1F389}</p>
+          <p style="color: #333; font-size: 15px; line-height: 1.6;">Hi ${order.customer_name || "Customer"}, we hope you love your purchase!</p>
           ${items.length > 0 ? `
           <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
             <thead>
@@ -2460,6 +2449,7 @@ function buildDeliveryCustomerEmail(order, brandName, ownerEmail, currency = "IN
             <p style="margin: 0 0 8px; font-size: 16px; font-weight: 600; color: #166534;">Enjoying your purchase?</p>
             <p style="margin: 0; font-size: 14px; color: #555; line-height: 1.6;">We'd love to hear from you! Share your experience and leave a review \u2014 your feedback helps us serve you better and helps other shoppers make great choices.</p>
           </div>
+          ${returnHtml}
           <p style="margin-top: 20px; color: #64748b; font-size: 14px; line-height: 1.6;">${contactLine}</p>
         </div>
         <div style="background: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8;">
@@ -2573,11 +2563,15 @@ function buildOwnerNotificationEmail(order, brandName, currency = "INR") {
     <head><meta charset="utf-8"></head>
     <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background: #f5f5f5;">
       <div style="max-width: 600px; margin: 0 auto; background: #ffffff;">
-        <div style="background: #059669; color: #ffffff; padding: 24px 32px;">
-          <h1 style="margin: 0; font-size: 20px; font-weight: 700;">New Order Received!</h1>
+        <div style="background: #f59e0b; color: #ffffff; padding: 24px 32px;">
+          <h1 style="margin: 0; font-size: 20px; font-weight: 700;">New Order Received \u2014 Pending Review</h1>
           <p style="margin: 4px 0 0; opacity: 0.9; font-size: 14px;">${brandName || "Your Store"} - Order #${order.order_number || order.orderNumber || ""}</p>
         </div>
         <div style="padding: 24px 32px;">
+          <div style="margin-bottom: 20px; padding: 14px 16px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px;">
+            <p style="margin: 0; font-size: 14px; color: #92400e; font-weight: 600;">\u23F3 This order is pending. Please review and confirm it from your admin panel.</p>
+          </div>
+
           <div style="display: flex; gap: 16px; margin-bottom: 20px;">
             <div style="padding: 12px 16px; background: #f0fdf4; border-radius: 8px; flex: 1;">
               <div style="font-size: 12px; color: #059669; text-transform: uppercase; font-weight: 600;">Total Amount</div>
@@ -2623,9 +2617,10 @@ function buildOwnerNotificationEmail(order, brandName, currency = "INR") {
     </body>
     </html>
   `;
-  const text = `New Order Received!
+  const text = `New Order Received \u2014 Pending Review
 
 Order #${order.order_number || order.orderNumber}
+Status: Pending \u2014 Please review and confirm from your admin panel.
 Total: ${formatCurrency(order.total, currency)}
 Customer: ${order.customer_name || ""}
 Phone: ${order.customer_phone || ""}
@@ -2633,6 +2628,106 @@ Payment: ${order.payment_method === "cod" ? "Cash on Delivery" : "Online Payment
   return { html, text };
 }
 __name(buildOwnerNotificationEmail, "buildOwnerNotificationEmail");
+function buildOrderPackedEmail(order, brandName, ownerEmail, currency = "INR") {
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="utf-8"></head>
+    <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background: #f5f5f5;">
+      <div style="max-width: 600px; margin: 0 auto; background: #ffffff;">
+        <div style="background: #7c3aed; color: #ffffff; padding: 32px; text-align: center;">
+          <h1 style="margin: 0; font-size: 24px; font-weight: 700;">${brandName || "Your Store"}</h1>
+        </div>
+        <div style="padding: 32px;">
+          <div style="text-align: center; margin-bottom: 28px;">
+            <div style="font-size: 52px; margin-bottom: 12px;">\u{1F4E6}</div>
+            <h2 style="margin: 0 0 6px; font-size: 24px; color: #0f172a;">Your Order Has Been Packed!</h2>
+            <p style="margin: 0; color: #64748b; font-size: 14px;">Order #${order.order_number || ""}</p>
+          </div>
+          <p style="color: #333; font-size: 15px; line-height: 1.6;">Hi ${order.customer_name || "Customer"},</p>
+          <p style="color: #333; font-size: 15px; line-height: 1.6;">Great news! Your order has been packed and will be shipped soon. We'll notify you once it's on its way with tracking details.</p>
+          <div style="padding: 16px; background: #f5f3ff; border-radius: 8px; font-size: 14px; color: #5b21b6; margin: 24px 0;">
+            <strong>Order Total:</strong> ${formatCurrencyHtml(order.total, currency)}<br>
+            <strong>Payment Method:</strong> ${order.payment_method === "cod" ? "Cash on Delivery" : "Online Payment"}
+          </div>
+          <p style="color: #64748b; font-size: 14px; line-height: 1.6;">For any queries, reach out to us at ${ownerEmail ? `<a href="mailto:${ownerEmail}" style="color:#7c3aed;">${ownerEmail}</a>` : brandName || "the store"}.</p>
+        </div>
+        <div style="background: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8;">
+          <p style="margin: 0;">Thank you for shopping with ${brandName || "us"}!</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+  const text = `Your Order Has Been Packed!
+
+Hi ${order.customer_name || "Customer"},
+
+Your order #${order.order_number} has been packed and will be shipped soon.
+
+Order Total: ${formatCurrency(order.total, currency)}
+
+${ownerEmail ? "Contact: " + ownerEmail : ""}`;
+  return { html, text };
+}
+__name(buildOrderPackedEmail, "buildOrderPackedEmail");
+function buildOrderShippedEmail(order, brandName, ownerEmail, currency = "INR", options = {}) {
+  const trackingHtml = options.trackingNumber || options.carrier ? `
+    <div style="margin: 24px 0; padding: 16px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px;">
+      <p style="margin: 0 0 8px; font-size: 14px; font-weight: 600; color: #1e40af;">Shipment Details</p>
+      ${options.carrier ? `<p style="margin: 0 0 4px; font-size: 14px; color: #334155;"><strong>Carrier:</strong> ${options.carrier}</p>` : ""}
+      ${options.trackingNumber ? `<p style="margin: 0; font-size: 14px; color: #334155;"><strong>Tracking Number:</strong> ${options.trackingNumber}</p>` : ""}
+    </div>
+  ` : "";
+  const trackingBtnHtml = options.trackingUrl ? `
+    <div style="text-align: center; margin: 20px 0;">
+      <a href="${options.trackingUrl}" style="display: inline-block; background: #2563eb; color: #ffffff; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px;">Track Your Order</a>
+    </div>
+  ` : "";
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="utf-8"></head>
+    <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background: #f5f5f5;">
+      <div style="max-width: 600px; margin: 0 auto; background: #ffffff;">
+        <div style="background: #2563eb; color: #ffffff; padding: 32px; text-align: center;">
+          <h1 style="margin: 0; font-size: 24px; font-weight: 700;">${brandName || "Your Store"}</h1>
+        </div>
+        <div style="padding: 32px;">
+          <div style="text-align: center; margin-bottom: 28px;">
+            <div style="font-size: 52px; margin-bottom: 12px;">\u{1F69A}</div>
+            <h2 style="margin: 0 0 6px; font-size: 24px; color: #0f172a;">Your Order Has Been Shipped!</h2>
+            <p style="margin: 0; color: #64748b; font-size: 14px;">Order #${order.order_number || ""}</p>
+          </div>
+          <p style="color: #333; font-size: 15px; line-height: 1.6;">Hi ${order.customer_name || "Customer"},</p>
+          <p style="color: #333; font-size: 15px; line-height: 1.6;">Your order is on its way! It has been picked up by the shipping carrier and is headed to your delivery address.</p>
+          ${trackingHtml}
+          ${trackingBtnHtml}
+          <div style="padding: 16px; background: #f8f9fa; border-radius: 8px; font-size: 14px; color: #555; margin-top: 16px;">
+            <strong>Order Total:</strong> ${formatCurrencyHtml(order.total, currency)}<br>
+            <strong>Payment Method:</strong> ${order.payment_method === "cod" ? "Cash on Delivery" : "Online Payment"}
+          </div>
+          <p style="margin-top: 24px; color: #64748b; font-size: 14px; line-height: 1.6;">For any queries, reach out to us at ${ownerEmail ? `<a href="mailto:${ownerEmail}" style="color:#2563eb;">${ownerEmail}</a>` : brandName || "the store"}.</p>
+        </div>
+        <div style="background: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8;">
+          <p style="margin: 0;">Thank you for shopping with ${brandName || "us"}!</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+  const text = `Your Order Has Been Shipped!
+
+Hi ${order.customer_name || "Customer"},
+
+Your order #${order.order_number} is on its way!
+${options.carrier ? "Carrier: " + options.carrier + "\n" : ""}${options.trackingNumber ? "Tracking: " + options.trackingNumber + "\n" : ""}
+Order Total: ${formatCurrency(order.total, currency)}
+
+${ownerEmail ? "Contact: " + ownerEmail : ""}`;
+  return { html, text };
+}
+__name(buildOrderShippedEmail, "buildOrderShippedEmail");
 
 // workers/platform/email-worker.js
 async function handleEmail(request, env, path) {
@@ -5931,12 +6026,47 @@ async function updateOrderStatus(request, env, user, orderId) {
     }
     const db = await resolveSiteDBById(env, resolvedSiteId);
     const { status, trackingNumber, carrier, cancellationReason } = await request.json();
+    const VALID_STATUSES = ["pending", "confirmed", "packed", "shipped", "delivered", "cancelled"];
+    const VALID_TRANSITIONS = {
+      pending: ["confirmed", "cancelled"],
+      pending_payment: ["pending", "confirmed", "cancelled"],
+      paid: ["confirmed", "cancelled"],
+      confirmed: ["packed", "shipped", "cancelled"],
+      packed: ["shipped", "cancelled"],
+      shipped: ["delivered", "cancelled"],
+      delivered: [],
+      cancelled: []
+    };
     const updates = [];
     const values = [];
     if (status) {
+      if (!VALID_STATUSES.includes(status)) {
+        return errorResponse(`Invalid status: ${status}. Allowed: ${VALID_STATUSES.join(", ")}`, 400);
+      }
+      const fullOrder = await db.prepare("SELECT status FROM orders WHERE id = ?").bind(orderId).first();
+      const currentStatus = (fullOrder?.status || "pending").toLowerCase();
+      const allowed = VALID_TRANSITIONS[currentStatus] || [];
+      if (allowed.length > 0 && !allowed.includes(status)) {
+        return errorResponse(`Cannot transition from '${currentStatus}' to '${status}'. Allowed: ${allowed.join(", ")}`, 400);
+      }
+      if (allowed.length === 0 && currentStatus !== status) {
+        return errorResponse(`Order is already '${currentStatus}' and cannot be updated`, 400);
+      }
       updates.push("status = ?");
       values.push(status);
-      if (status === "shipped") {
+      if (status === "confirmed") {
+        try {
+          await db.prepare("ALTER TABLE orders ADD COLUMN confirmed_at TEXT").run();
+        } catch (e) {
+        }
+        updates.push('confirmed_at = datetime("now")');
+      } else if (status === "packed") {
+        try {
+          await db.prepare("ALTER TABLE orders ADD COLUMN packed_at TEXT").run();
+        } catch (e) {
+        }
+        updates.push('packed_at = datetime("now")');
+      } else if (status === "shipped") {
         updates.push('shipped_at = datetime("now")');
       } else if (status === "delivered") {
         updates.push('delivered_at = datetime("now")');
@@ -5977,87 +6107,14 @@ async function updateOrderStatus(request, env, user, orderId) {
       await db.prepare("UPDATE orders SET row_size_bytes = ? WHERE id = ?").bind(newBytes, orderId).run();
     }
     await trackD1Update(env, resolvedSiteId, oldBytes, newBytes);
-    if (status === "cancelled" && cancellationReason) {
+    if (status) {
       try {
         const fullOrder = await db.prepare("SELECT * FROM orders WHERE id = ?").bind(orderId).first();
         if (fullOrder) {
-          const cancelConfig = await getSiteConfig(env, fullOrder.site_id);
-          const siteBrandName = cancelConfig.brand_name || "Store";
-          let cancelSettings = {};
-          try {
-            if (cancelConfig.settings)
-              cancelSettings = typeof cancelConfig.settings === "string" ? JSON.parse(cancelConfig.settings) : cancelConfig.settings;
-          } catch (e) {
-          }
-          const ownerEmail = cancelSettings.email || cancelSettings.ownerEmail || cancelConfig.email;
-          const cancelCurrency = cancelSettings.defaultCurrency || "INR";
-          const emailOrder = {
-            order_number: fullOrder.order_number,
-            customer_name: fullOrder.customer_name,
-            customer_email: fullOrder.customer_email,
-            customer_phone: fullOrder.customer_phone,
-            total: fullOrder.total,
-            payment_method: fullOrder.payment_method
-          };
-          const emailJobs = [];
-          if (fullOrder.customer_email) {
-            const { html, text } = buildCancellationCustomerEmail(emailOrder, siteBrandName, cancellationReason, ownerEmail, cancelCurrency);
-            emailJobs.push(sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been cancelled`, html, text).catch((e) => console.error("Cancellation customer email error:", e)));
-          }
-          if (ownerEmail) {
-            const { html, text } = buildCancellationOwnerEmail(emailOrder, siteBrandName, cancellationReason, cancelCurrency);
-            emailJobs.push(sendEmail(env, ownerEmail, `Order #${fullOrder.order_number} cancelled - ${siteBrandName}`, html, text).catch((e) => console.error("Cancellation owner email error:", e)));
-          }
-          await Promise.all(emailJobs);
+          await sendStatusUpdateEmails(env, fullOrder, status, cancellationReason, trackingNumber, carrier);
         }
       } catch (emailErr) {
-        console.error("Failed to send cancellation emails:", emailErr);
-      }
-    }
-    if (status === "delivered") {
-      try {
-        const fullOrder = await db.prepare("SELECT * FROM orders WHERE id = ?").bind(orderId).first();
-        if (fullOrder) {
-          const deliveryConfig = await getSiteConfig(env, fullOrder.site_id);
-          const siteBrandName = deliveryConfig.brand_name || "Store";
-          let deliverySettings = {};
-          try {
-            if (deliveryConfig.settings)
-              deliverySettings = typeof deliveryConfig.settings === "string" ? JSON.parse(deliveryConfig.settings) : deliveryConfig.settings;
-          } catch (e) {
-          }
-          const ownerEmail = deliverySettings.email || deliverySettings.ownerEmail || deliveryConfig.email;
-          const deliveryCurrency = deliverySettings.defaultCurrency || "INR";
-          const emailOrder = {
-            order_number: fullOrder.order_number,
-            customer_name: fullOrder.customer_name,
-            customer_email: fullOrder.customer_email,
-            customer_phone: fullOrder.customer_phone,
-            total: fullOrder.total,
-            payment_method: fullOrder.payment_method,
-            items: fullOrder.items
-          };
-          const emailJobs = [];
-          if (fullOrder.customer_email) {
-            try {
-              const { html, text } = buildDeliveryCustomerEmail(emailOrder, siteBrandName, ownerEmail, deliveryCurrency);
-              emailJobs.push(sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been delivered!`, html, text).catch((e) => console.error("Delivery customer email send error:", e)));
-            } catch (buildErr) {
-              console.error("Delivery customer email build error:", buildErr);
-            }
-          }
-          if (ownerEmail) {
-            try {
-              const { html, text } = buildDeliveryOwnerEmail(emailOrder, siteBrandName, deliveryCurrency);
-              emailJobs.push(sendEmail(env, ownerEmail, `Order #${fullOrder.order_number} delivered - ${siteBrandName}`, html, text).catch((e) => console.error("Delivery owner email send error:", e)));
-            } catch (buildErr) {
-              console.error("Delivery owner email build error:", buildErr);
-            }
-          }
-          await Promise.all(emailJobs);
-        }
-      } catch (emailErr) {
-        console.error("Failed to send delivery emails:", emailErr);
+        console.error("Failed to send status update emails:", emailErr);
       }
     }
     return successResponse(null, "Order updated successfully");
@@ -6067,6 +6124,101 @@ async function updateOrderStatus(request, env, user, orderId) {
   }
 }
 __name(updateOrderStatus, "updateOrderStatus");
+async function sendStatusUpdateEmails(env, fullOrder, status, cancellationReason, trackingNumber, carrier) {
+  const config = await getSiteConfig(env, fullOrder.site_id);
+  const siteBrandName = config.brand_name || "Store";
+  let siteSettings = {};
+  try {
+    if (config.settings)
+      siteSettings = typeof config.settings === "string" ? JSON.parse(config.settings) : config.settings;
+  } catch (e) {
+  }
+  const ownerEmail = siteSettings.email || siteSettings.ownerEmail || config.email;
+  const currency = siteSettings.defaultCurrency || "INR";
+  const emailOrder = {
+    order_number: fullOrder.order_number,
+    customer_name: fullOrder.customer_name,
+    customer_email: fullOrder.customer_email,
+    customer_phone: fullOrder.customer_phone,
+    total: fullOrder.total,
+    payment_method: fullOrder.payment_method,
+    items: fullOrder.items,
+    subtotal: fullOrder.subtotal,
+    discount: fullOrder.discount,
+    coupon_code: fullOrder.coupon_code,
+    shipping_address: fullOrder.shipping_address
+  };
+  const site = await env.DB.prepare("SELECT subdomain, custom_domain FROM sites WHERE id = ?").bind(fullOrder.site_id).first();
+  const domain = site?.custom_domain || `${site?.subdomain || "store"}.${env.DOMAIN || "fluxe.in"}`;
+  const emailJobs = [];
+  if (status === "confirmed" && fullOrder.customer_email) {
+    let emailOptions = {};
+    const orderTrackUrl = siteSettings.orderTrackUrl;
+    if (orderTrackUrl) {
+      emailOptions.trackingUrl = orderTrackUrl;
+    } else {
+      emailOptions.trackingUrl = `https://${domain}/order-track?order=${fullOrder.order_number}`;
+    }
+    const { html, text } = buildOrderConfirmationEmail(emailOrder, siteBrandName, ownerEmail, currency, emailOptions);
+    emailJobs.push(sendEmail(env, fullOrder.customer_email, `Order Confirmed #${fullOrder.order_number} - ${siteBrandName}`, html, text).catch((e) => console.error("Confirmation email error:", e)));
+  }
+  if (status === "packed" && fullOrder.customer_email) {
+    const { html, text } = buildOrderPackedEmail(emailOrder, siteBrandName, ownerEmail, currency);
+    emailJobs.push(sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been packed - ${siteBrandName}`, html, text).catch((e) => console.error("Packed email error:", e)));
+  }
+  if (status === "shipped" && fullOrder.customer_email) {
+    let shippedOptions = {};
+    if (trackingNumber || fullOrder.tracking_number)
+      shippedOptions.trackingNumber = trackingNumber || fullOrder.tracking_number;
+    if (carrier || fullOrder.carrier)
+      shippedOptions.carrier = carrier || fullOrder.carrier;
+    const orderTrackUrl = siteSettings.orderTrackUrl;
+    if (orderTrackUrl) {
+      shippedOptions.trackingUrl = orderTrackUrl;
+    } else {
+      shippedOptions.trackingUrl = `https://${domain}/order-track?order=${fullOrder.order_number}`;
+    }
+    const { html, text } = buildOrderShippedEmail(emailOrder, siteBrandName, ownerEmail, currency, shippedOptions);
+    emailJobs.push(sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been shipped - ${siteBrandName}`, html, text).catch((e) => console.error("Shipped email error:", e)));
+  }
+  if (status === "delivered") {
+    let deliveryOptions = {};
+    if (siteSettings.returnsEnabled && fullOrder.customer_email) {
+      try {
+        const returnToken = generateReturnToken();
+        const ddb = await resolveSiteDBById(env, fullOrder.site_id);
+        try {
+          await ddb.prepare("ALTER TABLE orders ADD COLUMN return_token TEXT").run();
+        } catch (e) {
+        }
+        await ddb.prepare("UPDATE orders SET return_token = ? WHERE id = ?").bind(returnToken, fullOrder.id).run();
+        deliveryOptions.returnUrl = `https://${domain}/return/${fullOrder.order_number}?token=${returnToken}`;
+      } catch (e) {
+        console.error("Return token generation error:", e);
+      }
+    }
+    if (fullOrder.customer_email) {
+      const { html, text } = buildDeliveryCustomerEmail(emailOrder, siteBrandName, ownerEmail, currency, deliveryOptions);
+      emailJobs.push(sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been delivered! - ${siteBrandName}`, html, text).catch((e) => console.error("Delivery customer email error:", e)));
+    }
+    if (ownerEmail) {
+      const { html, text } = buildDeliveryOwnerEmail(emailOrder, siteBrandName, currency);
+      emailJobs.push(sendEmail(env, ownerEmail, `Order #${fullOrder.order_number} delivered - ${siteBrandName}`, html, text).catch((e) => console.error("Delivery owner email error:", e)));
+    }
+  }
+  if (status === "cancelled") {
+    if (fullOrder.customer_email) {
+      const { html, text } = buildCancellationCustomerEmail(emailOrder, siteBrandName, cancellationReason, ownerEmail, currency);
+      emailJobs.push(sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been cancelled`, html, text).catch((e) => console.error("Cancellation customer email error:", e)));
+    }
+    if (ownerEmail) {
+      const { html, text } = buildCancellationOwnerEmail(emailOrder, siteBrandName, cancellationReason, currency);
+      emailJobs.push(sendEmail(env, ownerEmail, `Order #${fullOrder.order_number} cancelled - ${siteBrandName}`, html, text).catch((e) => console.error("Cancellation owner email error:", e)));
+    }
+  }
+  await Promise.all(emailJobs);
+}
+__name(sendStatusUpdateEmails, "sendStatusUpdateEmails");
 async function handleGuestOrder(request, env, method, orderId) {
   if (method === "POST") {
     return createGuestOrder(request, env);
@@ -6268,6 +6420,20 @@ async function trackOrder(env, orderId, request) {
     }
     if (!order) {
       return errorResponse("Order not found", 404, "NOT_FOUND");
+    }
+    try {
+      const extraCols = await db.prepare("SELECT * FROM orders WHERE id = ?").bind(order.id).first();
+      if (extraCols) {
+        if (extraCols.packed_at)
+          order.packed_at = extraCols.packed_at;
+        if (extraCols.confirmed_at)
+          order.confirmed_at = extraCols.confirmed_at;
+        if (extraCols.shipped_at)
+          order.shipped_at = extraCols.shipped_at;
+        if (extraCols.delivered_at)
+          order.delivered_at = extraCols.delivered_at;
+      }
+    } catch (e) {
     }
     return successResponse(order);
   } catch (error) {
@@ -6681,39 +6847,11 @@ async function sendOrderEmails(env, siteId, orderData) {
       shipping_address: orderData.shippingAddress
     };
     const emailJobs = [];
-    let emailOptions = {};
-    if (siteSettings.returnsEnabled && orderData.customerEmail && orderData.orderId) {
-      try {
-        const returnToken = generateReturnToken();
-        const db = await resolveSiteDBById(env, siteId);
-        const table = orderData.isGuest ? "guest_orders" : "orders";
-        try {
-          await db.prepare(`ALTER TABLE ${table} ADD COLUMN return_token TEXT`).run();
-        } catch (e) {
-        }
-        await db.prepare(`UPDATE ${table} SET return_token = ? WHERE id = ?`).bind(returnToken, orderData.orderId).run();
-        const site = await env.DB.prepare("SELECT subdomain, custom_domain FROM sites WHERE id = ?").bind(siteId).first();
-        const domain = site?.custom_domain || `${site?.subdomain || "store"}.${env.DOMAIN || "fluxe.in"}`;
-        emailOptions.returnUrl = `https://${domain}/return/${orderData.orderNumber}?token=${returnToken}`;
-      } catch (e) {
-        console.error("Return token generation error:", e);
-      }
-    }
-    if (orderData.customerEmail) {
-      try {
-        const { html, text } = buildOrderConfirmationEmail(emailOrder, siteBrandName, ownerEmail, currency, emailOptions);
-        emailJobs.push(
-          sendEmail(env, orderData.customerEmail, `Order Confirmed #${orderData.orderNumber} - ${siteBrandName}`, html, text).catch((e) => console.error("Customer email send error:", e))
-        );
-      } catch (buildErr) {
-        console.error("Customer email build error:", buildErr);
-      }
-    }
     if (ownerEmail) {
       try {
         const { html, text } = buildOwnerNotificationEmail(emailOrder, siteBrandName, currency);
         emailJobs.push(
-          sendEmail(env, ownerEmail, `New Order #${orderData.orderNumber} - ${siteBrandName}`, html, text).catch((e) => console.error("Owner email send error:", e))
+          sendEmail(env, ownerEmail, `New Order #${orderData.orderNumber} \u2014 Pending Review - ${siteBrandName}`, html, text).catch((e) => console.error("Owner email send error:", e))
         );
       } catch (buildErr) {
         console.error("Owner email build error:", buildErr);
@@ -9707,10 +9845,12 @@ function getSiteSchemaStatements() {
       notes TEXT,
       tracking_number TEXT,
       carrier TEXT,
+      packed_at TEXT,
       shipped_at TEXT,
       delivered_at TEXT,
       cancelled_at TEXT,
       cancellation_reason TEXT,
+      return_token TEXT,
       row_size_bytes INTEGER DEFAULT 0,
       created_at TEXT DEFAULT (datetime('now')),
       updated_at TEXT DEFAULT (datetime('now'))
@@ -13583,7 +13723,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-FN4MiR/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-WS0TRp/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -13618,7 +13758,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-FN4MiR/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-WS0TRp/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

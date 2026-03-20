@@ -96,10 +96,12 @@ export function getSiteSchemaStatements() {
       notes TEXT,
       tracking_number TEXT,
       carrier TEXT,
+      packed_at TEXT,
       shipped_at TEXT,
       delivered_at TEXT,
       cancelled_at TEXT,
       cancellation_reason TEXT,
+      return_token TEXT,
       row_size_bytes INTEGER DEFAULT 0,
       created_at TEXT DEFAULT (datetime('now')),
       updated_at TEXT DEFAULT (datetime('now'))

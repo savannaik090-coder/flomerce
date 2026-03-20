@@ -50,8 +50,9 @@ Fluxe employs a shared shard-based D1 database architecture where multiple sites
 - **Subscription Management:** Account-level trial, per-site paid plans, Razorpay integration, discount pricing, and a clear site creation flow with plan checks.
 - **Admin Panel:** Centralized site content, policy, and SEO management with iframe preview.
 - **Product Options:** Supports Color, Custom Selection, and Priced options, impacting cart and order processing.
-- **Order Flow:** COD and Razorpay integration, stock management, and email notifications.
-- **Return Orders:** Opt-in return system (off by default). Configurable via Settings (`returnsEnabled`, `returnWindowDays`). Admin manages returns via Orders section "Returns" sub-tab with approve/reject/refund workflow. Customers request returns from Profile page (logged-in) or via tokenized `/return/:orderId?token=xxx` links (guests). Return link included in order confirmation emails when enabled. Status update emails sent on approve/reject/refund. Backend: `return_requests` table auto-created in shard DBs, endpoints under `/api/orders/` namespace.
+- **Order Flow:** Full status pipeline: pending → confirmed → packed → shipped → delivered. COD and Razorpay integration, stock management. Email notifications at each stage via Sender.net. On order placed: owner gets "Pending Review" notification only. On confirmed: customer gets confirmation + tracking link + cancellation link. On packed: customer gets "packed" email. On shipped: customer gets "shipped" email with tracking number/carrier. On delivered: customer gets delivery email + return link (if enabled). Admin panel has Pack and Ship action buttons with tracking number/carrier input modal for shipping.
+- **Order Tracking:** Built-in order tracking page (`/order-track`) with visual timeline showing status progression. Settings (`showOrderTrack`, `orderTrackUrl`) are in the Settings section. If external URL is set, customers are redirected; otherwise the built-in timeline is shown. Supports order number search.
+- **Return Orders:** Opt-in return system (off by default). Configurable via Settings (`returnsEnabled`, `returnWindowDays`). Admin manages returns via Orders section "Returns" sub-tab with approve/reject/refund workflow. Customers request returns from Profile page (logged-in) or via tokenized `/return/:orderId?token=xxx` links (guests). Return link included in delivery emails (not confirmation emails) when enabled. Status update emails sent on approve/reject/refund. Backend: `return_requests` table auto-created in shard DBs, endpoints under `/api/orders/` namespace.
 - **Storage Usage Tracking:** Detailed D1 and R2 usage tracking, plan limits, and enterprise overage management.
 - **Admin Shard Management:** Comprehensive tools for shard lifecycle management.
 - **Built-in Analytics:** Lightweight page view tracking, providing aggregated stats on visitors, page views, traffic sources, and more, accessible via the admin panel.
@@ -63,4 +64,4 @@ Fluxe employs a shared shard-based D1 database architecture where multiple sites
 - **Cloudflare R2:** Object storage.
 - **Cloudflare REST API:** Used for D1 database management and worker binding configurations.
 - **Razorpay:** Payment gateway for subscriptions and storefront transactions.
-- **Resend/SendGrid:** Email sending services.
+- **Sender.net:** Email sending service (API: `https://api.sender.net/v2/emails`, Bearer token auth via `SENDER_API_KEY`).

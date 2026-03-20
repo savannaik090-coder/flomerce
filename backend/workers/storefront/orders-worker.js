@@ -1,7 +1,7 @@
 import { generateId, generateOrderNumber, jsonResponse, errorResponse, successResponse, handleCORS } from '../../utils/helpers.js';
 import { validateAuth, validateAnyAuth } from '../../utils/auth.js';
 import { updateProductStock } from './products-worker.js';
-import { sendEmail, buildOrderConfirmationEmail, buildOwnerNotificationEmail, buildCancellationCustomerEmail, buildCancellationOwnerEmail, buildDeliveryCustomerEmail, buildDeliveryOwnerEmail } from '../../utils/email.js';
+import { sendEmail, buildOrderConfirmationEmail, buildOwnerNotificationEmail, buildCancellationCustomerEmail, buildCancellationOwnerEmail, buildDeliveryCustomerEmail, buildDeliveryOwnerEmail, buildOrderPackedEmail, buildOrderShippedEmail } from '../../utils/email.js';
 import { checkUsageLimit, estimateRowBytes, trackD1Write, trackD1Update } from '../../utils/usage-tracker.js';
 import { resolveSiteDBById, checkMigrationLock, getSiteConfig, ensureProductOptionsColumn } from '../../utils/site-db.js';
 
@@ -507,14 +507,46 @@ async function updateOrderStatus(request, env, user, orderId) {
 
     const { status, trackingNumber, carrier, cancellationReason } = await request.json();
 
+    const VALID_STATUSES = ['pending', 'confirmed', 'packed', 'shipped', 'delivered', 'cancelled'];
+    const VALID_TRANSITIONS = {
+      pending: ['confirmed', 'cancelled'],
+      pending_payment: ['pending', 'confirmed', 'cancelled'],
+      paid: ['confirmed', 'cancelled'],
+      confirmed: ['packed', 'shipped', 'cancelled'],
+      packed: ['shipped', 'cancelled'],
+      shipped: ['delivered', 'cancelled'],
+      delivered: [],
+      cancelled: [],
+    };
+
     const updates = [];
     const values = [];
 
     if (status) {
+      if (!VALID_STATUSES.includes(status)) {
+        return errorResponse(`Invalid status: ${status}. Allowed: ${VALID_STATUSES.join(', ')}`, 400);
+      }
+
+      const fullOrder = await db.prepare('SELECT status FROM orders WHERE id = ?').bind(orderId).first();
+      const currentStatus = (fullOrder?.status || 'pending').toLowerCase();
+      const allowed = VALID_TRANSITIONS[currentStatus] || [];
+      if (allowed.length > 0 && !allowed.includes(status)) {
+        return errorResponse(`Cannot transition from '${currentStatus}' to '${status}'. Allowed: ${allowed.join(', ')}`, 400);
+      }
+      if (allowed.length === 0 && currentStatus !== status) {
+        return errorResponse(`Order is already '${currentStatus}' and cannot be updated`, 400);
+      }
+
       updates.push('status = ?');
       values.push(status);
 
-      if (status === 'shipped') {
+      if (status === 'confirmed') {
+        try { await db.prepare('ALTER TABLE orders ADD COLUMN confirmed_at TEXT').run(); } catch (e) {}
+        updates.push('confirmed_at = datetime("now")');
+      } else if (status === 'packed') {
+        try { await db.prepare('ALTER TABLE orders ADD COLUMN packed_at TEXT').run(); } catch (e) {}
+        updates.push('packed_at = datetime("now")');
+      } else if (status === 'shipped') {
         updates.push('shipped_at = datetime("now")');
       } else if (status === 'delivered') {
         updates.push('delivered_at = datetime("now")');
@@ -562,84 +594,14 @@ async function updateOrderStatus(request, env, user, orderId) {
     }
     await trackD1Update(env, resolvedSiteId, oldBytes, newBytes);
 
-    if (status === 'cancelled' && cancellationReason) {
+    if (status) {
       try {
         const fullOrder = await db.prepare('SELECT * FROM orders WHERE id = ?').bind(orderId).first();
         if (fullOrder) {
-          const cancelConfig = await getSiteConfig(env, fullOrder.site_id);
-          const siteBrandName = cancelConfig.brand_name || 'Store';
-          let cancelSettings = {};
-          try { if (cancelConfig.settings) cancelSettings = typeof cancelConfig.settings === 'string' ? JSON.parse(cancelConfig.settings) : cancelConfig.settings; } catch (e) {}
-          const ownerEmail = cancelSettings.email || cancelSettings.ownerEmail || cancelConfig.email;
-          const cancelCurrency = cancelSettings.defaultCurrency || 'INR';
-
-          const emailOrder = {
-            order_number: fullOrder.order_number,
-            customer_name: fullOrder.customer_name,
-            customer_email: fullOrder.customer_email,
-            customer_phone: fullOrder.customer_phone,
-            total: fullOrder.total,
-            payment_method: fullOrder.payment_method,
-          };
-
-          const emailJobs = [];
-          if (fullOrder.customer_email) {
-            const { html, text } = buildCancellationCustomerEmail(emailOrder, siteBrandName, cancellationReason, ownerEmail, cancelCurrency);
-            emailJobs.push(sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been cancelled`, html, text).catch(e => console.error('Cancellation customer email error:', e)));
-          }
-          if (ownerEmail) {
-            const { html, text } = buildCancellationOwnerEmail(emailOrder, siteBrandName, cancellationReason, cancelCurrency);
-            emailJobs.push(sendEmail(env, ownerEmail, `Order #${fullOrder.order_number} cancelled - ${siteBrandName}`, html, text).catch(e => console.error('Cancellation owner email error:', e)));
-          }
-          await Promise.all(emailJobs);
+          await sendStatusUpdateEmails(env, fullOrder, status, cancellationReason, trackingNumber, carrier);
         }
       } catch (emailErr) {
-        console.error('Failed to send cancellation emails:', emailErr);
-      }
-    }
-
-    if (status === 'delivered') {
-      try {
-        const fullOrder = await db.prepare('SELECT * FROM orders WHERE id = ?').bind(orderId).first();
-        if (fullOrder) {
-          const deliveryConfig = await getSiteConfig(env, fullOrder.site_id);
-          const siteBrandName = deliveryConfig.brand_name || 'Store';
-          let deliverySettings = {};
-          try { if (deliveryConfig.settings) deliverySettings = typeof deliveryConfig.settings === 'string' ? JSON.parse(deliveryConfig.settings) : deliveryConfig.settings; } catch (e) {}
-          const ownerEmail = deliverySettings.email || deliverySettings.ownerEmail || deliveryConfig.email;
-          const deliveryCurrency = deliverySettings.defaultCurrency || 'INR';
-
-          const emailOrder = {
-            order_number: fullOrder.order_number,
-            customer_name: fullOrder.customer_name,
-            customer_email: fullOrder.customer_email,
-            customer_phone: fullOrder.customer_phone,
-            total: fullOrder.total,
-            payment_method: fullOrder.payment_method,
-            items: fullOrder.items,
-          };
-
-          const emailJobs = [];
-          if (fullOrder.customer_email) {
-            try {
-              const { html, text } = buildDeliveryCustomerEmail(emailOrder, siteBrandName, ownerEmail, deliveryCurrency);
-              emailJobs.push(sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been delivered!`, html, text).catch(e => console.error('Delivery customer email send error:', e)));
-            } catch (buildErr) {
-              console.error('Delivery customer email build error:', buildErr);
-            }
-          }
-          if (ownerEmail) {
-            try {
-              const { html, text } = buildDeliveryOwnerEmail(emailOrder, siteBrandName, deliveryCurrency);
-              emailJobs.push(sendEmail(env, ownerEmail, `Order #${fullOrder.order_number} delivered - ${siteBrandName}`, html, text).catch(e => console.error('Delivery owner email send error:', e)));
-            } catch (buildErr) {
-              console.error('Delivery owner email build error:', buildErr);
-            }
-          }
-          await Promise.all(emailJobs);
-        }
-      } catch (emailErr) {
-        console.error('Failed to send delivery emails:', emailErr);
+        console.error('Failed to send status update emails:', emailErr);
       }
     }
 
@@ -648,6 +610,103 @@ async function updateOrderStatus(request, env, user, orderId) {
     console.error('Update order error:', error);
     return errorResponse('Failed to update order', 500);
   }
+}
+
+async function sendStatusUpdateEmails(env, fullOrder, status, cancellationReason, trackingNumber, carrier) {
+  const config = await getSiteConfig(env, fullOrder.site_id);
+  const siteBrandName = config.brand_name || 'Store';
+  let siteSettings = {};
+  try { if (config.settings) siteSettings = typeof config.settings === 'string' ? JSON.parse(config.settings) : config.settings; } catch (e) {}
+  const ownerEmail = siteSettings.email || siteSettings.ownerEmail || config.email;
+  const currency = siteSettings.defaultCurrency || 'INR';
+
+  const emailOrder = {
+    order_number: fullOrder.order_number,
+    customer_name: fullOrder.customer_name,
+    customer_email: fullOrder.customer_email,
+    customer_phone: fullOrder.customer_phone,
+    total: fullOrder.total,
+    payment_method: fullOrder.payment_method,
+    items: fullOrder.items,
+    subtotal: fullOrder.subtotal,
+    discount: fullOrder.discount,
+    coupon_code: fullOrder.coupon_code,
+    shipping_address: fullOrder.shipping_address,
+  };
+
+  const site = await env.DB.prepare('SELECT subdomain, custom_domain FROM sites WHERE id = ?').bind(fullOrder.site_id).first();
+  const domain = site?.custom_domain || `${site?.subdomain || 'store'}.${env.DOMAIN || 'fluxe.in'}`;
+
+  const emailJobs = [];
+
+  if (status === 'confirmed' && fullOrder.customer_email) {
+    let emailOptions = {};
+    const orderTrackUrl = siteSettings.orderTrackUrl;
+    if (orderTrackUrl) {
+      emailOptions.trackingUrl = orderTrackUrl;
+    } else {
+      emailOptions.trackingUrl = `https://${domain}/order-track?order=${fullOrder.order_number}`;
+    }
+
+    const { html, text } = buildOrderConfirmationEmail(emailOrder, siteBrandName, ownerEmail, currency, emailOptions);
+    emailJobs.push(sendEmail(env, fullOrder.customer_email, `Order Confirmed #${fullOrder.order_number} - ${siteBrandName}`, html, text).catch(e => console.error('Confirmation email error:', e)));
+  }
+
+  if (status === 'packed' && fullOrder.customer_email) {
+    const { html, text } = buildOrderPackedEmail(emailOrder, siteBrandName, ownerEmail, currency);
+    emailJobs.push(sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been packed - ${siteBrandName}`, html, text).catch(e => console.error('Packed email error:', e)));
+  }
+
+  if (status === 'shipped' && fullOrder.customer_email) {
+    let shippedOptions = {};
+    if (trackingNumber || fullOrder.tracking_number) shippedOptions.trackingNumber = trackingNumber || fullOrder.tracking_number;
+    if (carrier || fullOrder.carrier) shippedOptions.carrier = carrier || fullOrder.carrier;
+    const orderTrackUrl = siteSettings.orderTrackUrl;
+    if (orderTrackUrl) {
+      shippedOptions.trackingUrl = orderTrackUrl;
+    } else {
+      shippedOptions.trackingUrl = `https://${domain}/order-track?order=${fullOrder.order_number}`;
+    }
+    const { html, text } = buildOrderShippedEmail(emailOrder, siteBrandName, ownerEmail, currency, shippedOptions);
+    emailJobs.push(sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been shipped - ${siteBrandName}`, html, text).catch(e => console.error('Shipped email error:', e)));
+  }
+
+  if (status === 'delivered') {
+    let deliveryOptions = {};
+    if (siteSettings.returnsEnabled && fullOrder.customer_email) {
+      try {
+        const returnToken = generateReturnToken();
+        const ddb = await resolveSiteDBById(env, fullOrder.site_id);
+        try { await ddb.prepare('ALTER TABLE orders ADD COLUMN return_token TEXT').run(); } catch (e) {}
+        await ddb.prepare('UPDATE orders SET return_token = ? WHERE id = ?').bind(returnToken, fullOrder.id).run();
+        deliveryOptions.returnUrl = `https://${domain}/return/${fullOrder.order_number}?token=${returnToken}`;
+      } catch (e) {
+        console.error('Return token generation error:', e);
+      }
+    }
+
+    if (fullOrder.customer_email) {
+      const { html, text } = buildDeliveryCustomerEmail(emailOrder, siteBrandName, ownerEmail, currency, deliveryOptions);
+      emailJobs.push(sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been delivered! - ${siteBrandName}`, html, text).catch(e => console.error('Delivery customer email error:', e)));
+    }
+    if (ownerEmail) {
+      const { html, text } = buildDeliveryOwnerEmail(emailOrder, siteBrandName, currency);
+      emailJobs.push(sendEmail(env, ownerEmail, `Order #${fullOrder.order_number} delivered - ${siteBrandName}`, html, text).catch(e => console.error('Delivery owner email error:', e)));
+    }
+  }
+
+  if (status === 'cancelled') {
+    if (fullOrder.customer_email) {
+      const { html, text } = buildCancellationCustomerEmail(emailOrder, siteBrandName, cancellationReason, ownerEmail, currency);
+      emailJobs.push(sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been cancelled`, html, text).catch(e => console.error('Cancellation customer email error:', e)));
+    }
+    if (ownerEmail) {
+      const { html, text } = buildCancellationOwnerEmail(emailOrder, siteBrandName, cancellationReason, currency);
+      emailJobs.push(sendEmail(env, ownerEmail, `Order #${fullOrder.order_number} cancelled - ${siteBrandName}`, html, text).catch(e => console.error('Cancellation owner email error:', e)));
+    }
+  }
+
+  await Promise.all(emailJobs);
 }
 
 async function handleGuestOrder(request, env, method, orderId) {
@@ -855,6 +914,16 @@ async function trackOrder(env, orderId, request) {
     if (!order) {
       return errorResponse('Order not found', 404, 'NOT_FOUND');
     }
+
+    try {
+      const extraCols = await db.prepare('SELECT * FROM orders WHERE id = ?').bind(order.id).first();
+      if (extraCols) {
+        if (extraCols.packed_at) order.packed_at = extraCols.packed_at;
+        if (extraCols.confirmed_at) order.confirmed_at = extraCols.confirmed_at;
+        if (extraCols.shipped_at) order.shipped_at = extraCols.shipped_at;
+        if (extraCols.delivered_at) order.delivered_at = extraCols.delivered_at;
+      }
+    } catch (e) {}
 
     return successResponse(order);
   } catch (error) {
@@ -1251,40 +1320,11 @@ export async function sendOrderEmails(env, siteId, orderData) {
 
     const emailJobs = [];
 
-    let emailOptions = {};
-    if (siteSettings.returnsEnabled && orderData.customerEmail && orderData.orderId) {
-      try {
-        const returnToken = generateReturnToken();
-        const db = await resolveSiteDBById(env, siteId);
-        const table = orderData.isGuest ? 'guest_orders' : 'orders';
-        try { await db.prepare(`ALTER TABLE ${table} ADD COLUMN return_token TEXT`).run(); } catch (e) {}
-        await db.prepare(`UPDATE ${table} SET return_token = ? WHERE id = ?`).bind(returnToken, orderData.orderId).run();
-
-        const site = await env.DB.prepare('SELECT subdomain, custom_domain FROM sites WHERE id = ?').bind(siteId).first();
-        const domain = site?.custom_domain || `${site?.subdomain || 'store'}.${env.DOMAIN || 'fluxe.in'}`;
-        emailOptions.returnUrl = `https://${domain}/return/${orderData.orderNumber}?token=${returnToken}`;
-      } catch (e) {
-        console.error('Return token generation error:', e);
-      }
-    }
-
-    if (orderData.customerEmail) {
-      try {
-        const { html, text } = buildOrderConfirmationEmail(emailOrder, siteBrandName, ownerEmail, currency, emailOptions);
-        emailJobs.push(
-          sendEmail(env, orderData.customerEmail, `Order Confirmed #${orderData.orderNumber} - ${siteBrandName}`, html, text)
-            .catch(e => console.error('Customer email send error:', e))
-        );
-      } catch (buildErr) {
-        console.error('Customer email build error:', buildErr);
-      }
-    }
-
     if (ownerEmail) {
       try {
         const { html, text } = buildOwnerNotificationEmail(emailOrder, siteBrandName, currency);
         emailJobs.push(
-          sendEmail(env, ownerEmail, `New Order #${orderData.orderNumber} - ${siteBrandName}`, html, text)
+          sendEmail(env, ownerEmail, `New Order #${orderData.orderNumber} — Pending Review - ${siteBrandName}`, html, text)
             .catch(e => console.error('Owner email send error:', e))
         );
       } catch (buildErr) {
