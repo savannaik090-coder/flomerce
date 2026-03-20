@@ -34,11 +34,11 @@ VAPID_PRIVATE_KEY = '{"key_ops":["sign"],"ext":true,"kty":"EC","x":"EW2N-1Y6luCa
 # Token needs permission: Zone > Custom Hostnames > Edit
 CF_ZONE_ID = "b65a77c931d934fdf0a05d201eb225e8"
 
-# IMPORTANT: JWT_SECRET must be set as a secret, not a var!
-# Run this command in the backend folder to set it:
-# wrangler secret put JWT_SECRET
-# Then enter a strong random string (32+ characters)
-# Without JWT_SECRET, user authentication will fail!
+# IMPORTANT: These must be set as secrets (not vars):
+# cd backend && npx wrangler secret put JWT_SECRET
+# cd backend && npx wrangler secret put BREVO_API_KEY
+# JWT_SECRET: Strong random string (32+ chars) — required for auth
+# BREVO_API_KEY: Brevo transactional email API key — required for emails
 
 # D1 Database Configuration
 # Database: saas-platform-db

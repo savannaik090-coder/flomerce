@@ -21,66 +21,45 @@ function formatCurrencyHtml(amount, currency = 'INR') {
 
 export async function sendEmail(env, to, subject, html, text) {
   try {
-    if (env.RESEND_API_KEY) {
-      const apiKey = env.RESEND_API_KEY.trim();
-      const fromEmail = env.FROM_EMAIL || 'noreply@fluxe.in';
-      const fromField = fromEmail.includes('<') ? fromEmail : `Fluxe <${fromEmail}>`;
-      const response = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Authorization': apiKey.startsWith('Bearer ') ? apiKey : `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          from: fromField,
-          to: typeof to === 'string' ? [to] : to,
-          subject,
-          html,
-          text,
-        }),
-      });
-
-      const body = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        console.error('Resend error:', JSON.stringify(body), 'Status:', response.status);
-        return body.message || body.error || 'Resend API error';
-      }
-      console.log('Email sent via Resend to:', to, 'Subject:', subject);
-      return true;
+    const apiKey = (env.BREVO_API_KEY || '').trim();
+    if (!apiKey) {
+      console.error('EMAIL FAILED: BREVO_API_KEY is not set. Email NOT sent to:', to, 'Subject:', subject);
+      return 'No email provider configured';
     }
 
-    if (env.SENDGRID_API_KEY) {
-      const toList = typeof to === 'string' ? [{ email: to }] : to.map(e => ({ email: e }));
-      const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${env.SENDGRID_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          personalizations: [{ to: toList }],
-          from: { email: env.FROM_EMAIL || 'noreply@fluxe.in' },
-          subject,
-          content: [
-            { type: 'text/plain', value: text },
-            { type: 'text/html', value: html },
-          ],
-        }),
-      });
+    const fromEmail = env.FROM_EMAIL || 'noreply@fluxe.in';
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('SendGrid error:', errorText);
-        return errorText || 'SendGrid API error';
-      }
-      console.log('Email sent via SendGrid to:', to, 'Subject:', subject);
-      return true;
+    const recipients = typeof to === 'string'
+      ? [{ email: to }]
+      : Array.isArray(to)
+        ? to.map(e => typeof e === 'string' ? { email: e } : e)
+        : [to];
+
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'accept': 'application/json',
+        'api-key': apiKey,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        sender: { email: fromEmail, name: 'Fluxe' },
+        to: recipients.map(r => ({ email: r.email, name: r.name || '' })),
+        subject,
+        htmlContent: html,
+        textContent: text || undefined,
+      }),
+    });
+
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      console.error('Brevo API error:', JSON.stringify(body), 'Status:', response.status, 'To:', recipients.map(r => r.email).join(', '));
+      return body.message || 'Brevo API error';
     }
-
-    console.warn('WARNING: No email provider configured (RESEND_API_KEY or SENDGRID_API_KEY missing). Email NOT sent to:', to, 'Subject:', subject);
-    return 'No email provider configured';
+    console.log('Email sent via Brevo to:', recipients.map(r => r.email).join(', '), 'Subject:', subject, 'MessageId:', body.messageId || '');
+    return true;
   } catch (error) {
-    console.error('Send email error:', error);
+    console.error('Send email error:', error.message || error);
     return error.message || 'Unknown email sending error';
   }
 }

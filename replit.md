@@ -63,4 +63,4 @@ Fluxe employs a shared shard-based D1 database architecture where multiple sites
 - **Cloudflare R2:** Object storage.
 - **Cloudflare REST API:** Used for D1 database management and worker binding configurations.
 - **Razorpay:** Payment gateway for subscriptions and storefront transactions.
-- **Resend/SendGrid:** Email sending services.
+- **Brevo:** Transactional email service (API: `https://api.brevo.com/v3/smtp/email`, `api-key` header auth via `BREVO_API_KEY`). From address: `noreply@fluxe.in`.
