@@ -15,8 +15,6 @@ function getStatusColor(status) {
   const s = (status || '').toLowerCase();
   if (s === 'delivered') return '#27ae60';
   if (s === 'confirmed' || s === 'paid') return '#2196f3';
-  if (s === 'packed') return '#7c3aed';
-  if (s === 'shipped') return '#2563eb';
   if (s === 'cancelled') return '#e53935';
   if (s === 'pending_payment') return '#ff9800';
   return '#757575';
@@ -28,8 +26,6 @@ function getStatusLabel(status) {
   if (s === 'paid') return 'Paid';
   if (s === 'pending') return 'Pending';
   if (s === 'confirmed') return 'Confirmed';
-  if (s === 'packed') return 'Packed';
-  if (s === 'shipped') return 'Shipped';
   if (s === 'delivered') return 'Delivered';
   if (s === 'cancelled') return 'Cancelled';
   return status || 'Pending';
@@ -51,11 +47,6 @@ export default function OrdersSection() {
 
   const [confirmDialog, setConfirmDialog] = useState(null);
   const [confirming, setConfirming] = useState(false);
-
-  const [shipModal, setShipModal] = useState(null);
-  const [shipTrackingNumber, setShipTrackingNumber] = useState('');
-  const [shipCarrier, setShipCarrier] = useState('');
-  const [shipping, setShipping] = useState(false);
 
   const [activeView, setActiveView] = useState('orders');
   const [returns, setReturns] = useState([]);
@@ -130,10 +121,10 @@ export default function OrdersSection() {
     }
   }
 
-  async function handleStatusUpdate(orderId, newStatus, extraData = {}) {
+  async function handleStatusUpdate(orderId, newStatus) {
     try {
-      await updateOrderStatus(orderId, newStatus, siteConfig?.id, extraData);
-      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus, ...extraData } : o));
+      await updateOrderStatus(orderId, newStatus, siteConfig?.id);
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
     } catch (err) {
       alert('Failed to update status: ' + err.message);
     }
@@ -173,34 +164,11 @@ export default function OrdersSection() {
     }
   }
 
-  function openShipModal(order) {
-    setShipModal(order);
-    setShipTrackingNumber('');
-    setShipCarrier('');
-  }
-
-  async function confirmShipment() {
-    if (!shipModal) return;
-    setShipping(true);
-    try {
-      const extraData = {};
-      if (shipTrackingNumber.trim()) extraData.trackingNumber = shipTrackingNumber.trim();
-      if (shipCarrier.trim()) extraData.carrier = shipCarrier.trim();
-      await updateOrderStatus(shipModal.id, 'shipped', siteConfig?.id, extraData);
-      setOrders(prev => prev.map(o => o.id === shipModal.id ? { ...o, status: 'shipped', tracking_number: extraData.trackingNumber, carrier: extraData.carrier } : o));
-      setShipModal(null);
-    } catch (err) {
-      alert('Failed to mark as shipped: ' + err.message);
-    } finally {
-      setShipping(false);
-    }
-  }
-
   function toggleExpand(orderId) {
     setExpandedOrderId(prev => (prev === orderId ? null : orderId));
   }
 
-  const statuses = ['all', 'pending', 'pending_payment', 'paid', 'confirmed', 'packed', 'shipped', 'delivered', 'cancelled'];
+  const statuses = ['all', 'pending', 'pending_payment', 'paid', 'confirmed', 'delivered', 'cancelled'];
 
   const filtered = orders.filter(o => {
     const matchesStatus = statusFilter === 'all' || (o.status || '').toLowerCase() === statusFilter;
@@ -300,7 +268,7 @@ export default function OrdersSection() {
                               {getReturnStatusLabel(ret.status)}
                             </span>
                           </td>
-                          <td>{ret.refund_amount ? formatAmount(ret.refund_amount) : '\u2014'}</td>
+                          <td>{ret.refund_amount ? formatAmount(ret.refund_amount) : '—'}</td>
                           <td style={{ whiteSpace: 'nowrap' }}>{new Date(ret.created_at).toLocaleDateString()}</td>
                           <td>
                             <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
@@ -418,7 +386,7 @@ export default function OrdersSection() {
                     <th style={{ minWidth: 150 }}>Payment Method</th>
                     <th style={{ minWidth: 130 }}>Order Status</th>
                     <th style={{ minWidth: 100 }}>Date</th>
-                    <th style={{ minWidth: 180 }}>Actions</th>
+                    <th style={{ minWidth: 100 }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -430,9 +398,6 @@ export default function OrdersSection() {
                     const statusLower = (order.status || '').toLowerCase();
                     const isCancelled = statusLower === 'cancelled';
                     const isDelivered = statusLower === 'delivered';
-                    const isPacked = statusLower === 'packed';
-                    const isShipped = statusLower === 'shipped';
-                    const isConfirmed = statusLower === 'confirmed';
 
                     return (
                       <React.Fragment key={order.id}>
@@ -441,18 +406,18 @@ export default function OrdersSection() {
                           style={{ cursor: 'pointer', background: isExpanded ? '#fafafa' : undefined }}
                         >
                           <td style={{ textAlign: 'center', color: '#888', fontSize: 12 }}>
-                            {isExpanded ? '\u25B2' : '\u25BC'}
+                            {isExpanded ? '▲' : '▼'}
                           </td>
                           <td style={{ fontWeight: 600 }}>#{orderNum}</td>
                           <td>
                             <div style={{ fontWeight: 500 }}>{order.customer_name || order.name || 'Guest'}</div>
-                            <div style={{ fontSize: 12, color: '#888' }}>{order.customer_email || order.email || '\u2014'}</div>
+                            <div style={{ fontSize: 12, color: '#888' }}>{order.customer_email || order.email || '—'}</div>
                           </td>
-                          <td style={{ whiteSpace: 'nowrap' }}>{order.customer_phone || '\u2014'}</td>
-                          <td>{items.length > 0 ? `${items.length} item${items.length !== 1 ? 's' : ''}` : '\u2014'}</td>
+                          <td style={{ whiteSpace: 'nowrap' }}>{order.customer_phone || '—'}</td>
+                          <td>{items.length > 0 ? `${items.length} item${items.length !== 1 ? 's' : ''}` : '—'}</td>
                           <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{formatAmount(parseFloat(order.total || order.total_amount || 0))}</td>
                           <td style={{ textTransform: 'capitalize' }}>
-                            {order.payment_method === 'cod' ? 'Cash on Delivery' : (order.payment_method || '\u2014')}
+                            {order.payment_method === 'cod' ? 'Cash on Delivery' : (order.payment_method || '—')}
                           </td>
                           <td>
                             <span style={{
@@ -470,8 +435,8 @@ export default function OrdersSection() {
                           </td>
                           <td style={{ whiteSpace: 'nowrap' }}>{new Date(order.created_at || order.createdAt).toLocaleDateString()}</td>
                           <td onClick={e => e.stopPropagation()}>
-                            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                              {!isCancelled && !isDelivered && !isConfirmed && !isPacked && !isShipped && (
+                            <div style={{ display: 'flex', gap: 4 }}>
+                              {!isCancelled && !isDelivered && statusLower !== 'confirmed' && (
                                 <button
                                   className="btn btn-sm btn-success"
                                   onClick={() => setConfirmDialog({ orderId: order.id, orderNum, action: 'confirmed', label: 'Confirm this order?' })}
@@ -480,27 +445,7 @@ export default function OrdersSection() {
                                   <i className="fas fa-check" />
                                 </button>
                               )}
-                              {isConfirmed && (
-                                <button
-                                  className="btn btn-sm"
-                                  style={{ background: '#7c3aed', color: '#fff', border: 'none', borderRadius: 4, padding: '4px 8px', cursor: 'pointer', fontSize: 11, fontWeight: 600 }}
-                                  onClick={() => setConfirmDialog({ orderId: order.id, orderNum, action: 'packed', label: 'Mark this order as packed?' })}
-                                  title="Mark as Packed"
-                                >
-                                  Pack
-                                </button>
-                              )}
-                              {isPacked && (
-                                <button
-                                  className="btn btn-sm"
-                                  style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: 4, padding: '4px 8px', cursor: 'pointer', fontSize: 11, fontWeight: 600 }}
-                                  onClick={() => openShipModal(order)}
-                                  title="Mark as Shipped"
-                                >
-                                  Ship
-                                </button>
-                              )}
-                              {isShipped && (
+                              {statusLower === 'confirmed' && (
                                 <button
                                   className="btn btn-sm"
                                   style={{ background: '#27ae60', color: '#fff', border: 'none', borderRadius: 4, padding: '4px 8px', cursor: 'pointer', fontSize: 11, fontWeight: 600 }}
@@ -568,7 +513,7 @@ export default function OrdersSection() {
                                           Subtotal: {formatAmount(parseFloat(order.subtotal || order.total || 0))}
                                         </div>
                                         <div style={{ fontSize: 13, color: '#16a34a', marginBottom: 4 }}>
-                                          Coupon{order.coupon_code ? ` (${order.coupon_code})` : ''}: \u2212{formatAmount(parseFloat(order.discount || 0))}
+                                          Coupon{order.coupon_code ? ` (${order.coupon_code})` : ''}: −{formatAmount(parseFloat(order.discount || 0))}
                                         </div>
                                       </>
                                     )}
@@ -583,9 +528,9 @@ export default function OrdersSection() {
                                   {address && Object.keys(address).length > 0 ? (
                                     <div style={{ fontSize: 13, lineHeight: 1.8, color: '#444' }}>
                                       <div style={{ fontWeight: 600 }}>{address.name || order.customer_name}</div>
-                                      {address.phone && <div>{'\uD83D\uDCDE'} {address.phone}</div>}
+                                      {address.phone && <div>📞 {address.phone}</div>}
                                       {address.address && <div>{address.address}</div>}
-                                      {(address.city || address.state) && <div>{[address.city, address.state].filter(Boolean).join(', ')}{address.pinCode ? ' \u2013 ' + address.pinCode : ''}</div>}
+                                      {(address.city || address.state) && <div>{[address.city, address.state].filter(Boolean).join(', ')}{address.pinCode ? ' – ' + address.pinCode : ''}</div>}
                                     </div>
                                   ) : (
                                     <div style={{ color: '#999', fontSize: 13 }}>No address on file</div>
@@ -595,16 +540,10 @@ export default function OrdersSection() {
                                 <div style={{ minWidth: 180 }}>
                                   <div style={{ fontWeight: 700, marginBottom: 10, color: '#333', fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5 }}>Payment Info</div>
                                   <div style={{ fontSize: 13, lineHeight: 1.8, color: '#444' }}>
-                                    <div><span style={{ color: '#888' }}>Method:</span> {order.payment_method === 'cod' ? 'Cash on Delivery' : (order.payment_method || '\u2014')}</div>
+                                    <div><span style={{ color: '#888' }}>Method:</span> {order.payment_method === 'cod' ? 'Cash on Delivery' : (order.payment_method || '—')}</div>
                                     {order.razorpay_payment_id && <div style={{ wordBreak: 'break-all' }}><span style={{ color: '#888' }}>Payment ID:</span> {order.razorpay_payment_id}</div>}
                                     {order.razorpay_order_id && <div style={{ wordBreak: 'break-all' }}><span style={{ color: '#888' }}>Razorpay Order:</span> {order.razorpay_order_id}</div>}
                                     {order.notes && <div><span style={{ color: '#888' }}>Notes:</span> {order.notes}</div>}
-                                    {(order.tracking_number || order.carrier) && (
-                                      <div style={{ marginTop: 8, padding: '8px 10px', background: '#eff6ff', borderRadius: 6, border: '1px solid #bfdbfe' }}>
-                                        {order.carrier && <div><span style={{ color: '#1e40af', fontWeight: 600 }}>Carrier:</span> {order.carrier}</div>}
-                                        {order.tracking_number && <div><span style={{ color: '#1e40af', fontWeight: 600 }}>Tracking:</span> {order.tracking_number}</div>}
-                                      </div>
-                                    )}
                                   </div>
                                   {isCancelled && order.cancellation_reason && (
                                     <div style={{ marginTop: 12, padding: '10px 12px', background: '#fff5f5', borderLeft: '3px solid #e53935', borderRadius: 4 }}>
@@ -632,7 +571,7 @@ export default function OrdersSection() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
           <div style={{ background: '#fff', borderRadius: 10, padding: 28, width: '90%', maxWidth: 380, boxShadow: '0 10px 40px rgba(0,0,0,0.2)', textAlign: 'center' }}>
             <div style={{ fontSize: 36, marginBottom: 12 }}>
-              {confirmDialog.action === 'delivered' ? '\uD83D\uDCE6' : confirmDialog.action === 'packed' ? '\uD83D\uDCE6' : '\u2705'}
+              {confirmDialog.action === 'delivered' ? '📦' : '✅'}
             </div>
             <h3 style={{ margin: '0 0 8px', fontSize: 17, color: '#1a1a1a' }}>Are you sure?</h3>
             <p style={{ margin: '0 0 24px', fontSize: 14, color: '#666' }}>
@@ -654,7 +593,7 @@ export default function OrdersSection() {
                   setConfirmDialog(null);
                 }}
                 disabled={confirming}
-                style={{ padding: '9px 22px', borderRadius: 6, border: 'none', background: confirmDialog.action === 'delivered' ? '#27ae60' : confirmDialog.action === 'packed' ? '#7c3aed' : '#2196f3', color: '#fff', cursor: confirming ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 600, minWidth: 140, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                style={{ padding: '9px 22px', borderRadius: 6, border: 'none', background: confirmDialog.action === 'delivered' ? '#27ae60' : '#2196f3', color: '#fff', cursor: confirming ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 600, minWidth: 140, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
               >
                 {confirming ? (
                   <>
@@ -662,7 +601,7 @@ export default function OrdersSection() {
                     Processing...
                   </>
                 ) : (
-                  `Yes, ${confirmDialog.action === 'delivered' ? 'Mark Delivered' : confirmDialog.action === 'packed' ? 'Mark Packed' : 'Confirm Order'}`
+                  `Yes, ${confirmDialog.action === 'delivered' ? 'Mark Delivered' : 'Confirm Order'}`
                 )}
               </button>
             </div>
@@ -671,46 +610,6 @@ export default function OrdersSection() {
       )}
 
       </>
-      )}
-
-      {shipModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
-          <div style={{ background: '#fff', borderRadius: 10, padding: 28, width: '90%', maxWidth: 440, boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}>
-            <div style={{ textAlign: 'center', marginBottom: 16 }}>
-              <div style={{ fontSize: 36, marginBottom: 8 }}>{'\uD83D\uDE9A'}</div>
-              <h3 style={{ margin: '0 0 6px', fontSize: 18, color: '#1a1a1a' }}>Ship Order #{shipModal.order_number || shipModal.id?.slice(-6)}</h3>
-              <p style={{ margin: 0, fontSize: 14, color: '#666' }}>Add shipping details for the customer</p>
-            </div>
-            <div style={{ marginBottom: 16 }}>
-              <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Carrier / Courier (optional)</label>
-              <input
-                type="text"
-                value={shipCarrier}
-                onChange={e => setShipCarrier(e.target.value)}
-                placeholder="e.g., Delhivery, BlueDart, India Post"
-                style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }}
-              />
-            </div>
-            <div style={{ marginBottom: 20 }}>
-              <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Tracking Number (optional)</label>
-              <input
-                type="text"
-                value={shipTrackingNumber}
-                onChange={e => setShipTrackingNumber(e.target.value)}
-                placeholder="e.g., AWB123456789"
-                style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }}
-              />
-            </div>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <button onClick={() => setShipModal(null)} disabled={shipping} style={{ padding: '9px 20px', borderRadius: 6, border: '1px solid #ddd', background: '#f5f5f5', cursor: 'pointer', fontSize: 14 }}>
-                Cancel
-              </button>
-              <button onClick={confirmShipment} disabled={shipping} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', cursor: shipping ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 600, opacity: shipping ? 0.7 : 1 }}>
-                {shipping ? 'Shipping...' : 'Mark as Shipped'}
-              </button>
-            </div>
-          </div>
-        </div>
       )}
 
       {cancelModal && (

@@ -28,7 +28,7 @@ export async function updateOrderStatus(orderId, status, siteId, extraData = {})
 
 export async function trackOrder(orderId, siteId) {
   const params = siteId ? `?siteId=${siteId}` : '';
-  return apiRequest(`/api/orders/${orderId}/track${params}`);
+  return apiRequest(`/api/orders/track/${orderId}${params}`);
 }
 
 export async function createReturnRequest(orderId, data) {
