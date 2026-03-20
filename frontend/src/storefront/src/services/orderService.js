@@ -30,3 +30,34 @@ export async function trackOrder(orderId, siteId) {
   const params = siteId ? `?siteId=${siteId}` : '';
   return apiRequest(`/api/orders/track/${orderId}${params}`);
 }
+
+export async function createReturnRequest(orderId, data) {
+  return apiRequest(`/api/orders/${orderId}/return`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getReturnStatus(orderId, siteId, token) {
+  const params = new URLSearchParams({ siteId });
+  if (token) params.set('token', token);
+  return apiRequest(`/api/orders/${orderId}/return?${params}`);
+}
+
+export async function getReturns(siteId) {
+  return apiRequest(`/api/orders/returns?siteId=${siteId}`);
+}
+
+export async function updateReturn(returnId, data) {
+  return apiRequest(`/api/orders/returns/${returnId}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function resendReturnLink(orderId, data) {
+  return apiRequest(`/api/orders/${orderId}/return-link`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}

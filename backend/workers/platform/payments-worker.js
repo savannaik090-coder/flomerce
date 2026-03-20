@@ -397,6 +397,7 @@ async function processPostPaymentActions(env, order) {
     const orderItems = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
     const shippingAddress = typeof order.shipping_address === 'string' ? JSON.parse(order.shipping_address) : order.shipping_address;
     await sendOrderEmails(env, order.site_id, {
+      orderId: order.id,
       orderNumber: order.order_number,
       processedItems: orderItems,
       total: order.total,
@@ -405,6 +406,7 @@ async function processPostPaymentActions(env, order) {
       customerEmail: order.customer_email,
       customerPhone: order.customer_phone,
       shippingAddress,
+      isGuest: !!order.is_guest,
     });
   } catch (emailErr) {
     console.error('Failed to send order emails after payment:', emailErr);

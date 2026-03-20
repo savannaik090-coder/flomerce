@@ -2256,7 +2256,7 @@ function formatSelectedOptions(selectedOptions, currency = "INR") {
   return parts.length > 0 ? `<div style="font-size: 12px; color: #888; margin-top: 2px;">${parts.join(" &bull; ")}</div>` : "";
 }
 __name(formatSelectedOptions, "formatSelectedOptions");
-function buildOrderConfirmationEmail(order, brandName, ownerEmail, currency = "INR") {
+function buildOrderConfirmationEmail(order, brandName, ownerEmail, currency = "INR", options = {}) {
   const items = typeof order.items === "string" ? JSON.parse(order.items) : order.items;
   const fmtH = /* @__PURE__ */ __name((amt) => formatCurrencyHtml(amt, currency), "fmtH");
   const fmt = /* @__PURE__ */ __name((amt) => formatCurrency(amt, currency), "fmt");
@@ -2331,6 +2331,13 @@ function buildOrderConfirmationEmail(order, brandName, ownerEmail, currency = "I
           </div>
 
           ${addressHtml}
+
+          ${options.returnUrl ? `
+          <div style="margin-top: 20px; padding: 16px; background: #fefce8; border: 1px solid #fef08a; border-radius: 8px;">
+            <p style="margin: 0 0 8px; font-size: 13px; color: #854d0e; font-weight: 600;">Need to return this order?</p>
+            <p style="margin: 0; font-size: 13px; color: #a16207; line-height: 1.5;">If you need to request a return after receiving your order, <a href="${options.returnUrl}" style="color:#854d0e;font-weight:600;">click here</a>.</p>
+          </div>
+          ` : ""}
 
           <p style="margin-top: 24px; color: #64748b; font-size: 14px; line-height: 1.6;">Your order is now being prepared. We'll update you once it's on its way. For any queries, reach out to us at ${ownerEmail ? `<a href="mailto:${ownerEmail}" style="color:#0f172a;">${ownerEmail}</a>` : brandName || "the store"}.</p>
         </div>
@@ -5474,11 +5481,26 @@ async function handleOrders(request, env, path) {
   const pathParts = path.split("/").filter(Boolean);
   const orderId = pathParts[2];
   const action = pathParts[3];
+  if (orderId === "returns" && !action) {
+    return handleReturnsList(request, env);
+  }
+  if (orderId === "returns" && action) {
+    return handleReturnUpdate(request, env, action);
+  }
   if (action === "guest") {
     return handleGuestOrder(request, env, method, orderId);
   }
   if (action === "track") {
     return trackOrder(env, orderId, request);
+  }
+  if (action === "return" && method === "POST") {
+    return createReturnRequest(request, env, orderId);
+  }
+  if (action === "return" && method === "GET") {
+    return getReturnStatus(request, env, orderId);
+  }
+  if (action === "return-link" && method === "POST") {
+    return resendReturnLink(request, env, orderId);
   }
   const url = new URL(request.url);
   const siteId = url.searchParams.get("siteId");
@@ -5819,6 +5841,7 @@ async function createOrder(request, env, user) {
       }
       try {
         await sendOrderEmails(env, siteId, {
+          orderId,
           orderNumber,
           processedItems,
           subtotal,
@@ -5829,7 +5852,8 @@ async function createOrder(request, env, user) {
           customerName,
           customerEmail,
           customerPhone,
-          shippingAddress
+          shippingAddress,
+          isGuest: false
         });
       } catch (emailErr) {
         console.error("Order email notification error:", emailErr);
@@ -6164,6 +6188,7 @@ async function createGuestOrder(request, env) {
       }
       try {
         await sendOrderEmails(env, siteId, {
+          orderId,
           orderNumber,
           processedItems,
           subtotal,
@@ -6174,7 +6199,8 @@ async function createGuestOrder(request, env) {
           customerName,
           customerEmail,
           customerPhone,
-          shippingAddress
+          shippingAddress,
+          isGuest: true
         });
       } catch (emailErr) {
         console.error("Guest order email notification error:", emailErr);
@@ -6250,6 +6276,383 @@ async function trackOrder(env, orderId, request) {
   }
 }
 __name(trackOrder, "trackOrder");
+async function ensureReturnRequestsTable(db) {
+  try {
+    await db.prepare(`CREATE TABLE IF NOT EXISTS return_requests (
+      id TEXT PRIMARY KEY,
+      site_id TEXT NOT NULL,
+      order_id TEXT NOT NULL,
+      order_number TEXT,
+      items TEXT,
+      reason TEXT NOT NULL,
+      reason_detail TEXT,
+      photos TEXT,
+      status TEXT DEFAULT 'requested',
+      admin_note TEXT,
+      refund_amount REAL,
+      refund_id TEXT,
+      return_token TEXT,
+      customer_name TEXT,
+      customer_email TEXT,
+      customer_phone TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    )`).run();
+    await db.prepare("CREATE INDEX IF NOT EXISTS idx_return_requests_site ON return_requests(site_id)").run();
+    await db.prepare("CREATE INDEX IF NOT EXISTS idx_return_requests_order ON return_requests(order_id)").run();
+    await db.prepare("CREATE INDEX IF NOT EXISTS idx_return_requests_token ON return_requests(return_token)").run();
+  } catch (e) {
+  }
+}
+__name(ensureReturnRequestsTable, "ensureReturnRequestsTable");
+function generateReturnToken() {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  const bytes = new Uint8Array(48);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => chars[b % chars.length]).join("");
+}
+__name(generateReturnToken, "generateReturnToken");
+async function createReturnRequest(request, env, orderId) {
+  try {
+    const data = await request.json();
+    const { siteId, items, reason, reasonDetail, photos, returnToken } = data;
+    if (!siteId || !orderId)
+      return errorResponse("siteId and orderId are required");
+    if (!reason)
+      return errorResponse("Reason is required");
+    const db = await resolveSiteDBById(env, siteId);
+    await ensureReturnRequestsTable(db);
+    const config = await getSiteConfig(env, siteId);
+    let settings = {};
+    try {
+      if (config.settings)
+        settings = typeof config.settings === "string" ? JSON.parse(config.settings) : config.settings;
+    } catch (e) {
+    }
+    if (!settings.returnsEnabled)
+      return errorResponse("Returns are not enabled for this store", 403);
+    let order = await db.prepare("SELECT * FROM orders WHERE (id = ? OR order_number = ?) AND site_id = ?").bind(orderId, orderId, siteId).first();
+    let isGuest = false;
+    if (!order) {
+      order = await db.prepare("SELECT * FROM guest_orders WHERE (id = ? OR order_number = ?) AND site_id = ?").bind(orderId, orderId, siteId).first();
+      isGuest = true;
+    }
+    if (!order)
+      return errorResponse("Order not found", 404);
+    if ((order.status || "").toLowerCase() !== "delivered") {
+      return errorResponse("Only delivered orders can be returned", 400);
+    }
+    const returnWindowDays = settings.returnWindowDays || 7;
+    const deliveredAt = order.delivered_at || order.updated_at || order.created_at;
+    if (deliveredAt) {
+      const deliveryDate = new Date(deliveredAt);
+      const now = /* @__PURE__ */ new Date();
+      const daysSinceDelivery = (now - deliveryDate) / (1e3 * 60 * 60 * 24);
+      if (daysSinceDelivery > returnWindowDays) {
+        return errorResponse(`Return window of ${returnWindowDays} days has expired`, 400);
+      }
+    }
+    if (isGuest) {
+      if (!returnToken)
+        return errorResponse("Return token is required for guest orders", 403);
+      const storedToken = order.return_token;
+      if (!storedToken || storedToken !== returnToken) {
+        return errorResponse("Invalid return token", 403);
+      }
+    } else {
+      if (returnToken) {
+        const storedToken = order.return_token;
+        if (!storedToken || storedToken !== returnToken) {
+          return errorResponse("Invalid return token", 403);
+        }
+      } else {
+        const user = await validateAnyAuth(request, env, { siteId, db });
+        if (!user)
+          return errorResponse("Authentication required", 401);
+        if (order.user_id && order.user_id !== user.id) {
+          return errorResponse("You can only return your own orders", 403);
+        }
+      }
+    }
+    const existing = await db.prepare("SELECT id FROM return_requests WHERE order_id = ? AND site_id = ?").bind(order.id, siteId).first();
+    if (existing)
+      return errorResponse("A return request already exists for this order", 409);
+    const returnId = generateId();
+    await db.prepare(
+      `INSERT INTO return_requests (id, site_id, order_id, order_number, items, reason, reason_detail, photos, status, return_token, customer_name, customer_email, customer_phone, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'requested', ?, ?, ?, ?, datetime('now'), datetime('now'))`
+    ).bind(
+      returnId,
+      siteId,
+      order.id,
+      order.order_number,
+      items ? JSON.stringify(items) : order.items,
+      reason,
+      reasonDetail || null,
+      photos ? JSON.stringify(photos) : null,
+      order.return_token || null,
+      order.customer_name,
+      order.customer_email || null,
+      order.customer_phone || null
+    ).run();
+    try {
+      const brandName = config.brand_name || "Store";
+      const ownerEmail = settings.email || settings.ownerEmail || config.email;
+      if (ownerEmail) {
+        const { html, text } = buildReturnRequestEmail(order, brandName, reason, reasonDetail);
+        await sendEmail(env, ownerEmail, `Return Request #${order.order_number} - ${brandName}`, html, text).catch(() => {
+        });
+      }
+    } catch (e) {
+    }
+    return successResponse({ id: returnId, status: "requested" }, "Return request submitted successfully");
+  } catch (error) {
+    console.error("Create return request error:", error);
+    return errorResponse("Failed to create return request: " + error.message, 500);
+  }
+}
+__name(createReturnRequest, "createReturnRequest");
+async function getReturnStatus(request, env, orderId) {
+  try {
+    const url = new URL(request.url);
+    const siteId = url.searchParams.get("siteId");
+    const returnToken = url.searchParams.get("token");
+    if (!siteId)
+      return errorResponse("siteId is required");
+    const db = await resolveSiteDBById(env, siteId);
+    await ensureReturnRequestsTable(db);
+    const ret = await db.prepare(
+      "SELECT * FROM return_requests WHERE (order_id = ? OR order_number = ?) AND site_id = ?"
+    ).bind(orderId, orderId, siteId).first();
+    if (!ret)
+      return successResponse(null, "No return request found");
+    if (returnToken) {
+      if (!ret.return_token || ret.return_token !== returnToken) {
+        return errorResponse("Invalid token", 403);
+      }
+    } else {
+      const user = await validateAnyAuth(request, env, { siteId });
+      if (!user)
+        return errorResponse("Authentication or token required", 401);
+    }
+    const safeRet = { id: ret.id, order_id: ret.order_id, order_number: ret.order_number, status: ret.status, admin_note: ret.admin_note, refund_amount: ret.refund_amount, reason: ret.reason, created_at: ret.created_at, updated_at: ret.updated_at };
+    return successResponse(safeRet);
+  } catch (error) {
+    console.error("Get return status error:", error);
+    return errorResponse("Failed to get return status", 500);
+  }
+}
+__name(getReturnStatus, "getReturnStatus");
+async function handleReturnsList(request, env) {
+  if (request.method !== "GET")
+    return errorResponse("Method not allowed", 405);
+  try {
+    const url = new URL(request.url);
+    const siteId = url.searchParams.get("siteId");
+    if (!siteId)
+      return errorResponse("siteId is required");
+    const authHeader = request.headers.get("Authorization");
+    if (!authHeader || !authHeader.startsWith("SiteAdmin ")) {
+      const user = await validateAnyAuth(request, env, { siteId });
+      if (!user)
+        return errorResponse("Authentication required", 401);
+      const site = await env.DB.prepare("SELECT id FROM sites WHERE id = ? AND user_id = ?").bind(siteId, user.id).first();
+      if (!site)
+        return errorResponse("Unauthorized", 403);
+    } else {
+      const { validateSiteAdmin: validateSiteAdmin2, hasPermission: hasPermission2 } = await Promise.resolve().then(() => (init_site_admin_worker(), site_admin_worker_exports));
+      const admin = await validateSiteAdmin2(request, env, siteId);
+      if (!admin || !hasPermission2(admin, "orders"))
+        return errorResponse("Unauthorized", 403);
+    }
+    const db = await resolveSiteDBById(env, siteId);
+    await ensureReturnRequestsTable(db);
+    const result = await db.prepare(
+      "SELECT * FROM return_requests WHERE site_id = ? ORDER BY created_at DESC"
+    ).bind(siteId).all();
+    return successResponse(result.results || []);
+  } catch (error) {
+    console.error("List returns error:", error);
+    return errorResponse("Failed to list returns", 500);
+  }
+}
+__name(handleReturnsList, "handleReturnsList");
+async function handleReturnUpdate(request, env, returnId) {
+  if (request.method !== "PUT")
+    return errorResponse("Method not allowed", 405);
+  try {
+    const data = await request.json();
+    const { siteId, status, adminNote, refundAmount, refundId } = data;
+    if (!siteId || !returnId)
+      return errorResponse("siteId and returnId are required");
+    const authHeader = request.headers.get("Authorization");
+    if (!authHeader || !authHeader.startsWith("SiteAdmin ")) {
+      const user = await validateAnyAuth(request, env, { siteId });
+      if (!user)
+        return errorResponse("Authentication required", 401);
+      const site = await env.DB.prepare("SELECT id FROM sites WHERE id = ? AND user_id = ?").bind(siteId, user.id).first();
+      if (!site)
+        return errorResponse("Unauthorized", 403);
+    } else {
+      const { validateSiteAdmin: validateSiteAdmin2, hasPermission: hasPermission2 } = await Promise.resolve().then(() => (init_site_admin_worker(), site_admin_worker_exports));
+      const admin = await validateSiteAdmin2(request, env, siteId);
+      if (!admin || !hasPermission2(admin, "orders"))
+        return errorResponse("Unauthorized", 403);
+    }
+    const db = await resolveSiteDBById(env, siteId);
+    await ensureReturnRequestsTable(db);
+    const ret = await db.prepare("SELECT * FROM return_requests WHERE id = ? AND site_id = ?").bind(returnId, siteId).first();
+    if (!ret)
+      return errorResponse("Return request not found", 404);
+    const allowedStatuses = ["requested", "approved", "rejected", "refunded"];
+    if (status && !allowedStatuses.includes(status)) {
+      return errorResponse("Invalid status. Allowed: " + allowedStatuses.join(", "), 400);
+    }
+    const updates = ['updated_at = datetime("now")'];
+    const values = [];
+    if (status) {
+      updates.push("status = ?");
+      values.push(status);
+    }
+    if (adminNote !== void 0) {
+      updates.push("admin_note = ?");
+      values.push(adminNote);
+    }
+    if (refundAmount !== void 0) {
+      updates.push("refund_amount = ?");
+      values.push(refundAmount);
+    }
+    if (refundId) {
+      updates.push("refund_id = ?");
+      values.push(refundId);
+    }
+    values.push(returnId);
+    await db.prepare(`UPDATE return_requests SET ${updates.join(", ")} WHERE id = ?`).bind(...values).run();
+    if (status && ret.customer_email) {
+      try {
+        const config = await getSiteConfig(env, siteId);
+        const brandName = config.brand_name || "Store";
+        const updatedRet = { ...ret, status, admin_note: adminNote !== void 0 ? adminNote : ret.admin_note, refund_amount: refundAmount !== void 0 ? refundAmount : ret.refund_amount };
+        const { html, text } = buildReturnStatusEmail(updatedRet, brandName, status, adminNote);
+        await sendEmail(env, ret.customer_email, `Return Update #${ret.order_number} - ${brandName}`, html, text).catch(() => {
+        });
+      } catch (e) {
+      }
+    }
+    return successResponse(null, "Return request updated");
+  } catch (error) {
+    console.error("Update return error:", error);
+    return errorResponse("Failed to update return request", 500);
+  }
+}
+__name(handleReturnUpdate, "handleReturnUpdate");
+async function resendReturnLink(request, env, orderId) {
+  try {
+    const data = await request.json();
+    const { siteId, email } = data;
+    if (!siteId || !orderId || !email)
+      return errorResponse("siteId, orderId and email are required");
+    const db = await resolveSiteDBById(env, siteId);
+    let order = await db.prepare("SELECT * FROM orders WHERE (id = ? OR order_number = ?) AND site_id = ? AND customer_email = ?").bind(orderId, orderId, siteId, email).first();
+    let isGuest = false;
+    if (!order) {
+      order = await db.prepare("SELECT * FROM guest_orders WHERE (id = ? OR order_number = ?) AND site_id = ? AND customer_email = ?").bind(orderId, orderId, siteId, email).first();
+      isGuest = true;
+    }
+    if (!order)
+      return errorResponse("Order not found or email does not match", 404);
+    let returnToken = order.return_token;
+    if (!returnToken) {
+      returnToken = generateReturnToken();
+      const table = isGuest ? "guest_orders" : "orders";
+      try {
+        await db.prepare(`ALTER TABLE ${table} ADD COLUMN return_token TEXT`).run();
+      } catch (e) {
+      }
+      await db.prepare(`UPDATE ${table} SET return_token = ? WHERE id = ?`).bind(returnToken, order.id).run();
+    }
+    const site = await env.DB.prepare("SELECT subdomain, custom_domain FROM sites WHERE id = ?").bind(siteId).first();
+    const domain = site?.custom_domain || `${site?.subdomain || "store"}.${env.DOMAIN || "fluxe.in"}`;
+    const returnUrl = `https://${domain}/return/${order.order_number || order.id}?token=${returnToken}`;
+    const config = await getSiteConfig(env, siteId);
+    const brandName = config.brand_name || "Store";
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="margin:0;padding:0;font-family:'Segoe UI',Arial,sans-serif;background:#f5f5f5;">
+      <div style="max-width:600px;margin:0 auto;background:#fff;">
+        <div style="background:#0f172a;color:#fff;padding:32px;text-align:center;">
+          <h1 style="margin:0;font-size:24px;font-weight:700;">${brandName}</h1>
+        </div>
+        <div style="padding:32px;">
+          <h2 style="margin:0 0 16px;font-size:20px;color:#0f172a;">Your Return Link</h2>
+          <p style="color:#64748b;font-size:14px;line-height:1.6;">Use the link below to submit a return request for order <strong>#${order.order_number}</strong>:</p>
+          <div style="margin:24px 0;text-align:center;">
+            <a href="${returnUrl}" style="display:inline-block;background:#0f172a;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">Request Return</a>
+          </div>
+          <p style="color:#94a3b8;font-size:12px;">If the button doesn't work, copy this link: ${returnUrl}</p>
+        </div>
+      </div>
+    </body></html>`;
+    const text = `Your return link for order #${order.order_number}: ${returnUrl}`;
+    await sendEmail(env, email, `Return Link for Order #${order.order_number} - ${brandName}`, html, text);
+    return successResponse(null, "Return link sent to your email");
+  } catch (error) {
+    console.error("Resend return link error:", error);
+    return errorResponse("Failed to send return link", 500);
+  }
+}
+__name(resendReturnLink, "resendReturnLink");
+function buildReturnRequestEmail(order, brandName, reason, reasonDetail) {
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="margin:0;padding:0;font-family:'Segoe UI',Arial,sans-serif;background:#f5f5f5;">
+    <div style="max-width:600px;margin:0 auto;background:#fff;">
+      <div style="background:#0f172a;color:#fff;padding:32px;text-align:center;">
+        <h1 style="margin:0;font-size:24px;font-weight:700;">${brandName}</h1>
+      </div>
+      <div style="padding:32px;">
+        <h2 style="margin:0 0 16px;font-size:20px;color:#ef4444;">New Return Request</h2>
+        <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:16px;margin-bottom:20px;">
+          <p style="margin:0 0 8px;font-size:14px;"><strong>Order:</strong> #${order.order_number}</p>
+          <p style="margin:0 0 8px;font-size:14px;"><strong>Customer:</strong> ${order.customer_name || "N/A"}</p>
+          <p style="margin:0 0 8px;font-size:14px;"><strong>Email:</strong> ${order.customer_email || "N/A"}</p>
+          <p style="margin:0 0 8px;font-size:14px;"><strong>Reason:</strong> ${reason}</p>
+          ${reasonDetail ? `<p style="margin:0;font-size:14px;"><strong>Details:</strong> ${reasonDetail}</p>` : ""}
+        </div>
+        <p style="color:#64748b;font-size:14px;">Please review this return request in your admin panel.</p>
+      </div>
+    </div>
+  </body></html>`;
+  const text = `New Return Request
+Order: #${order.order_number}
+Customer: ${order.customer_name}
+Reason: ${reason}${reasonDetail ? "\nDetails: " + reasonDetail : ""}`;
+  return { html, text };
+}
+__name(buildReturnRequestEmail, "buildReturnRequestEmail");
+function buildReturnStatusEmail(ret, brandName, status, adminNote) {
+  const statusLabels = { approved: "Approved", rejected: "Rejected", refunded: "Refunded" };
+  const statusColors = { approved: "#22c55e", rejected: "#ef4444", refunded: "#2563eb" };
+  const label = statusLabels[status] || status;
+  const color = statusColors[status] || "#64748b";
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="margin:0;padding:0;font-family:'Segoe UI',Arial,sans-serif;background:#f5f5f5;">
+    <div style="max-width:600px;margin:0 auto;background:#fff;">
+      <div style="background:#0f172a;color:#fff;padding:32px;text-align:center;">
+        <h1 style="margin:0;font-size:24px;font-weight:700;">${brandName}</h1>
+      </div>
+      <div style="padding:32px;">
+        <h2 style="margin:0 0 16px;font-size:20px;color:#0f172a;">Return Request Update</h2>
+        <p style="color:#64748b;font-size:14px;margin-bottom:20px;">Your return request for order <strong>#${ret.order_number}</strong> has been updated.</p>
+        <div style="text-align:center;margin:24px 0;">
+          <span style="display:inline-block;background:${color};color:#fff;padding:8px 24px;border-radius:20px;font-weight:600;font-size:16px;">${label}</span>
+        </div>
+        ${adminNote ? `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin-top:16px;"><p style="margin:0 0 4px;font-size:12px;color:#64748b;font-weight:600;">Note from store:</p><p style="margin:0;font-size:14px;color:#334155;">${adminNote}</p></div>` : ""}
+        ${status === "refunded" && ret.refund_amount ? `<p style="margin-top:16px;font-size:14px;color:#334155;">Refund amount: <strong>${ret.refund_amount}</strong></p>` : ""}
+      </div>
+    </div>
+  </body></html>`;
+  const text = `Return Request Update
+Order: #${ret.order_number}
+Status: ${label}${adminNote ? "\nNote: " + adminNote : ""}`;
+  return { html, text };
+}
+__name(buildReturnStatusEmail, "buildReturnStatusEmail");
 async function sendOrderEmails(env, siteId, orderData) {
   try {
     const config = await getSiteConfig(env, siteId);
@@ -6278,9 +6681,27 @@ async function sendOrderEmails(env, siteId, orderData) {
       shipping_address: orderData.shippingAddress
     };
     const emailJobs = [];
+    let emailOptions = {};
+    if (siteSettings.returnsEnabled && orderData.customerEmail && orderData.orderId) {
+      try {
+        const returnToken = generateReturnToken();
+        const db = await resolveSiteDBById(env, siteId);
+        const table = orderData.isGuest ? "guest_orders" : "orders";
+        try {
+          await db.prepare(`ALTER TABLE ${table} ADD COLUMN return_token TEXT`).run();
+        } catch (e) {
+        }
+        await db.prepare(`UPDATE ${table} SET return_token = ? WHERE id = ?`).bind(returnToken, orderData.orderId).run();
+        const site = await env.DB.prepare("SELECT subdomain, custom_domain FROM sites WHERE id = ?").bind(siteId).first();
+        const domain = site?.custom_domain || `${site?.subdomain || "store"}.${env.DOMAIN || "fluxe.in"}`;
+        emailOptions.returnUrl = `https://${domain}/return/${orderData.orderNumber}?token=${returnToken}`;
+      } catch (e) {
+        console.error("Return token generation error:", e);
+      }
+    }
     if (orderData.customerEmail) {
       try {
-        const { html, text } = buildOrderConfirmationEmail(emailOrder, siteBrandName, ownerEmail, currency);
+        const { html, text } = buildOrderConfirmationEmail(emailOrder, siteBrandName, ownerEmail, currency, emailOptions);
         emailJobs.push(
           sendEmail(env, orderData.customerEmail, `Order Confirmed #${orderData.orderNumber} - ${siteBrandName}`, html, text).catch((e) => console.error("Customer email send error:", e))
         );
@@ -7212,6 +7633,7 @@ async function processPostPaymentActions(env, order) {
     const orderItems = typeof order.items === "string" ? JSON.parse(order.items) : order.items;
     const shippingAddress = typeof order.shipping_address === "string" ? JSON.parse(order.shipping_address) : order.shipping_address;
     await sendOrderEmails(env, order.site_id, {
+      orderId: order.id,
       orderNumber: order.order_number,
       processedItems: orderItems,
       total: order.total,
@@ -7219,7 +7641,8 @@ async function processPostPaymentActions(env, order) {
       customerName: order.customer_name,
       customerEmail: order.customer_email,
       customerPhone: order.customer_phone,
-      shippingAddress
+      shippingAddress,
+      isGuest: !!order.is_guest
     });
   } catch (emailErr) {
     console.error("Failed to send order emails after payment:", emailErr);

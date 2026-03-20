@@ -51,6 +51,7 @@ Fluxe employs a shared shard-based D1 database architecture where multiple sites
 - **Admin Panel:** Centralized site content, policy, and SEO management with iframe preview.
 - **Product Options:** Supports Color, Custom Selection, and Priced options, impacting cart and order processing.
 - **Order Flow:** COD and Razorpay integration, stock management, and email notifications.
+- **Return Orders:** Opt-in return system (off by default). Configurable via Settings (`returnsEnabled`, `returnWindowDays`). Admin manages returns via Orders section "Returns" sub-tab with approve/reject/refund workflow. Customers request returns from Profile page (logged-in) or via tokenized `/return/:orderId?token=xxx` links (guests). Return link included in order confirmation emails when enabled. Status update emails sent on approve/reject/refund. Backend: `return_requests` table auto-created in shard DBs, endpoints under `/api/orders/` namespace.
 - **Storage Usage Tracking:** Detailed D1 and R2 usage tracking, plan limits, and enterprise overage management.
 - **Admin Shard Management:** Comprehensive tools for shard lifecycle management.
 - **Built-in Analytics:** Lightweight page view tracking, providing aggregated stats on visitors, page views, traffic sources, and more, accessible via the admin panel.

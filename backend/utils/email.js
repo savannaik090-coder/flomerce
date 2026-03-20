@@ -121,7 +121,7 @@ function formatSelectedOptionsText(selectedOptions, currency = 'INR') {
   return parts.length > 0 ? ` [${parts.join(' | ')}]` : '';
 }
 
-export function buildOrderConfirmationEmail(order, brandName, ownerEmail, currency = 'INR') {
+export function buildOrderConfirmationEmail(order, brandName, ownerEmail, currency = 'INR', options = {}) {
   const items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
   const fmtH = (amt) => formatCurrencyHtml(amt, currency);
   const fmt = (amt) => formatCurrency(amt, currency);
@@ -202,6 +202,13 @@ export function buildOrderConfirmationEmail(order, brandName, ownerEmail, curren
           </div>
 
           ${addressHtml}
+
+          ${options.returnUrl ? `
+          <div style="margin-top: 20px; padding: 16px; background: #fefce8; border: 1px solid #fef08a; border-radius: 8px;">
+            <p style="margin: 0 0 8px; font-size: 13px; color: #854d0e; font-weight: 600;">Need to return this order?</p>
+            <p style="margin: 0; font-size: 13px; color: #a16207; line-height: 1.5;">If you need to request a return after receiving your order, <a href="${options.returnUrl}" style="color:#854d0e;font-weight:600;">click here</a>.</p>
+          </div>
+          ` : ''}
 
           <p style="margin-top: 24px; color: #64748b; font-size: 14px; line-height: 1.6;">Your order is now being prepared. We'll update you once it's on its way. For any queries, reach out to us at ${ownerEmail ? `<a href="mailto:${ownerEmail}" style="color:#0f172a;">${ownerEmail}</a>` : brandName || 'the store'}.</p>
         </div>

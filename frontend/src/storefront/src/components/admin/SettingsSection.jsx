@@ -18,6 +18,8 @@ export default function SettingsSection() {
   const [codEnabled, setCodEnabled] = useState(true);
   const [defaultCurrency, setDefaultCurrency] = useState('INR');
   const [showCurrencySelector, setShowCurrencySelector] = useState(true);
+  const [returnsEnabled, setReturnsEnabled] = useState(false);
+  const [returnWindowDays, setReturnWindowDays] = useState(7);
   const [loading, setLoading] = useState(true);
 
   const [currentSubdomain, setCurrentSubdomain] = useState('');
@@ -104,6 +106,8 @@ export default function SettingsSection() {
         setCodEnabled(settings.codEnabled !== false);
         setDefaultCurrency(settings.defaultCurrency || 'INR');
         setShowCurrencySelector(settings.showCurrencySelector !== false);
+        setReturnsEnabled(settings.returnsEnabled === true);
+        setReturnWindowDays(settings.returnWindowDays || 7);
         if (data.custom_domain) {
           setCustomDomain(data.custom_domain);
           setDomainInput(data.custom_domain);
@@ -132,6 +136,8 @@ export default function SettingsSection() {
         codEnabled,
         defaultCurrency,
         showCurrencySelector,
+        returnsEnabled,
+        returnWindowDays: Number(returnWindowDays) || 7,
       };
       if (razorpayKeyId) {
         settings.razorpayKeyId = razorpayKeyId;
@@ -619,6 +625,50 @@ export default function SettingsSection() {
                 </span>
               </label>
             </div>
+          </div>
+        </div>
+
+        <div className="card" style={{ marginBottom: 20 }}>
+          <div className="card-header">
+            <h3 className="card-title">Return Orders</h3>
+          </div>
+          <div className="card-content">
+            <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
+              Allow customers to request returns on delivered orders. When enabled, a return link will be included in order confirmation emails.
+            </p>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', border: '1px solid #e2e8f0', borderRadius: 8, marginBottom: 12, background: returnsEnabled ? '#f0fdf4' : '#f8fafc' }}>
+              <div>
+                <div style={{ fontWeight: 600, fontSize: 14, color: '#1e293b' }}>Enable Return Orders</div>
+                <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>Customers can request returns after delivery</div>
+              </div>
+              <label style={{ position: 'relative', display: 'inline-block', width: 44, height: 24, flexShrink: 0 }}>
+                <input type="checkbox" checked={returnsEnabled} onChange={e => setReturnsEnabled(e.target.checked)} style={{ opacity: 0, width: 0, height: 0 }} />
+                <span style={{
+                  position: 'absolute', cursor: 'pointer', inset: 0, borderRadius: 24, transition: '0.3s',
+                  background: returnsEnabled ? '#22c55e' : '#cbd5e1',
+                }}>
+                  <span style={{
+                    position: 'absolute', left: returnsEnabled ? 22 : 2, top: 2, width: 20, height: 20,
+                    background: '#fff', borderRadius: '50%', transition: '0.3s',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                  }} />
+                </span>
+              </label>
+            </div>
+            {returnsEnabled && (
+              <div style={{ marginTop: 4 }}>
+                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Return Window (days after delivery)</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="90"
+                  value={returnWindowDays}
+                  onChange={e => setReturnWindowDays(e.target.value)}
+                  style={{ width: 120, padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }}
+                />
+                <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>Customers can request a return within this many days after their order is delivered</p>
+              </div>
+            )}
           </div>
         </div>
 

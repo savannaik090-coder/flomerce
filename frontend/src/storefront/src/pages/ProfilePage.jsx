@@ -6,6 +6,15 @@ import { CurrencyContext } from '../context/CurrencyContext.jsx';
 import * as authService from '../services/authService.js';
 import * as orderService from '../services/orderService.js';
 
+const RETURN_REASONS = [
+  'Received wrong item',
+  'Item damaged or defective',
+  'Item does not match description',
+  'Size/fit issue',
+  'Changed my mind',
+  'Other',
+];
+
 const INDIAN_STATES = [
   'Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Goa',
   'Gujarat','Haryana','Himachal Pradesh','Jharkhand','Karnataka','Kerala',
@@ -39,6 +48,69 @@ export default function ProfilePage() {
   const [addressForm, setAddressForm] = useState({ label: 'Home', firstName: '', lastName: '', phone: '', houseNumber: '', roadName: '', city: '', state: '', pinCode: '', isDefault: false });
   const [addressFieldErrors, setAddressFieldErrors] = useState({});
   const [pinValidating, setPinValidating] = useState(false);
+
+  const [returnModal, setReturnModal] = useState(null);
+  const [returnReason, setReturnReason] = useState('');
+  const [returnDetail, setReturnDetail] = useState('');
+  const [returningOrder, setReturningOrder] = useState(false);
+  const [returnStatuses, setReturnStatuses] = useState({});
+
+  const returnsEnabled = (() => {
+    try {
+      const s = siteConfig?.settings;
+      const parsed = typeof s === 'string' ? JSON.parse(s) : (s || {});
+      return parsed.returnsEnabled === true;
+    } catch { return false; }
+  })();
+
+  const returnWindowDays = (() => {
+    try {
+      const s = siteConfig?.settings;
+      const parsed = typeof s === 'string' ? JSON.parse(s) : (s || {});
+      return parsed.returnWindowDays || 7;
+    } catch { return 7; }
+  })();
+
+  const isWithinReturnWindow = useCallback((order) => {
+    const deliveredAt = order.delivered_at || order.updated_at || order.created_at;
+    if (!deliveredAt) return false;
+    const days = (new Date() - new Date(deliveredAt)) / (1000 * 60 * 60 * 24);
+    return days <= returnWindowDays;
+  }, [returnWindowDays]);
+
+  useEffect(() => {
+    if (activeTab === 'orders' && orders.length > 0 && returnsEnabled && siteConfig?.id) {
+      orders.filter(o => (o.status || '').toLowerCase() === 'delivered').forEach(async (order) => {
+        try {
+          const res = await orderService.getReturnStatus(order.id || order.order_number, siteConfig.id);
+          if (res.data) {
+            setReturnStatuses(prev => ({ ...prev, [order.id]: res.data }));
+          }
+        } catch {}
+      });
+    }
+  }, [activeTab, orders, returnsEnabled, siteConfig?.id]);
+
+  const handleSubmitReturn = async () => {
+    if (!returnModal || !returnReason) return;
+    setReturningOrder(true);
+    try {
+      await orderService.createReturnRequest(returnModal.id || returnModal.order_number, {
+        siteId: siteConfig.id,
+        reason: returnReason,
+        reasonDetail: returnReason === 'Other' ? returnDetail : returnDetail || undefined,
+      });
+      setReturnStatuses(prev => ({ ...prev, [returnModal.id]: { status: 'requested', reason: returnReason } }));
+      setReturnModal(null);
+      setReturnReason('');
+      setReturnDetail('');
+      alert('Return request submitted successfully!');
+    } catch (err) {
+      alert('Failed to submit return: ' + (err.message || 'Unknown error'));
+    } finally {
+      setReturningOrder(false);
+    }
+  };
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -336,6 +408,31 @@ export default function ProfilePage() {
                       )}
                       <div style={{ fontWeight: 'bold' }}>Total: {formatAmount(orderTotal)}</div>
                     </div>
+                    {returnsEnabled && (order.status || '').toLowerCase() === 'delivered' && (
+                      <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #eee' }}>
+                        {returnStatuses[order.id] ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ fontSize: 13, color: '#64748b' }}>Return:</span>
+                            <span style={{
+                              display: 'inline-block',
+                              background: { requested: '#ff9800', approved: '#2196f3', rejected: '#e53935', refunded: '#27ae60' }[returnStatuses[order.id].status] || '#757575',
+                              color: '#fff', borderRadius: 12, padding: '3px 10px', fontSize: 12, fontWeight: 600
+                            }}>
+                              {{ requested: 'Requested', approved: 'Approved', rejected: 'Rejected', refunded: 'Refunded' }[returnStatuses[order.id].status] || returnStatuses[order.id].status}
+                            </span>
+                            {returnStatuses[order.id].admin_note && (
+                              <span style={{ fontSize: 12, color: '#64748b', fontStyle: 'italic' }}>"{returnStatuses[order.id].admin_note}"</span>
+                            )}
+                          </div>
+                        ) : isWithinReturnWindow(order) ? (
+                          <button onClick={() => { setReturnModal(order); setReturnReason(''); setReturnDetail(''); }} style={{ background: 'none', border: '1px solid #e2e8f0', color: '#64748b', padding: '6px 16px', borderRadius: 4, cursor: 'pointer', fontSize: 13, fontWeight: 500, transition: '0.2s' }}>
+                            Request Return
+                          </button>
+                        ) : (
+                          <span style={{ fontSize: 12, color: '#94a3b8' }}>Return window expired</span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               })
@@ -393,6 +490,43 @@ export default function ProfilePage() {
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
               <button onClick={handleLogout} style={{ background: '#c8a97e', color: '#fff', border: 'none', padding: '10px 24px', borderRadius: 4, cursor: 'pointer', fontWeight: 'bold' }}>Yes, Logout</button>
               <button onClick={() => setShowLogoutConfirm(false)} style={{ background: '#f8f9fa', color: '#333', border: '1px solid #ddd', padding: '10px 24px', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {returnModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999 }}>
+          <div style={{ background: '#fff', borderRadius: 10, padding: 30, width: '90%', maxWidth: 480, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 10px 30px rgba(0,0,0,0.3)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, paddingBottom: 15, borderBottom: '1px solid #eee' }}>
+              <h3 style={{ margin: 0, fontFamily: "'Playfair Display', serif", fontSize: 20 }}>Request Return</h3>
+              <button onClick={() => setReturnModal(null)} style={{ background: 'none', border: 'none', fontSize: 24, cursor: 'pointer', color: '#999' }}>x</button>
+            </div>
+            <p style={{ color: '#64748b', fontSize: 14, marginBottom: 20 }}>
+              Order <strong>#{returnModal.order_number || returnModal.id}</strong>
+            </p>
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: 'block', fontWeight: 600, marginBottom: 10, color: '#333', fontSize: 14 }}>Reason for return *</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {RETURN_REASONS.map(reason => (
+                  <label key={reason} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', padding: '10px 14px', borderRadius: 6, border: `1.5px solid ${returnReason === reason ? '#c8a97e' : '#e0e0e0'}`, background: returnReason === reason ? '#fefcf8' : '#fafafa', transition: 'all 0.15s' }}>
+                    <input type="radio" name="returnReason" value={reason} checked={returnReason === reason} onChange={() => setReturnReason(reason)} style={{ accentColor: '#c8a97e' }} />
+                    <span style={{ fontSize: 14, color: '#333', fontWeight: returnReason === reason ? 600 : 400 }}>{reason}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, color: '#333', fontSize: 14 }}>
+                {returnReason === 'Other' ? 'Please describe *' : 'Additional details (optional)'}
+              </label>
+              <textarea value={returnDetail} onChange={e => setReturnDetail(e.target.value)} rows={3} placeholder="Tell us more about why you want to return..." style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: 6, fontSize: 14, resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+            </div>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+              <button onClick={() => setReturnModal(null)} style={{ padding: '10px 20px', background: '#f8f9fa', color: '#333', border: '1px solid #ddd', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+              <button onClick={handleSubmitReturn} disabled={returningOrder || !returnReason || (returnReason === 'Other' && !returnDetail.trim())} style={{ padding: '10px 20px', background: '#c8a97e', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600, opacity: (returningOrder || !returnReason) ? 0.7 : 1 }}>
+                {returningOrder ? 'Submitting...' : 'Submit Return Request'}
+              </button>
             </div>
           </div>
         </div>

@@ -554,3 +554,32 @@ CREATE TABLE IF NOT EXISTS site_media (
 
 CREATE INDEX idx_site_media_site ON site_media(site_id);
 CREATE INDEX idx_site_media_key ON site_media(storage_key);
+
+-- =====================================================
+-- RETURN REQUESTS TABLE
+-- =====================================================
+CREATE TABLE IF NOT EXISTS return_requests (
+    id TEXT PRIMARY KEY,
+    site_id TEXT NOT NULL,
+    order_id TEXT NOT NULL,
+    order_number TEXT,
+    items TEXT,
+    reason TEXT NOT NULL,
+    reason_detail TEXT,
+    photos TEXT,
+    status TEXT DEFAULT 'requested',
+    admin_note TEXT,
+    refund_amount REAL,
+    refund_id TEXT,
+    return_token TEXT,
+    customer_name TEXT,
+    customer_email TEXT,
+    customer_phone TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX idx_return_requests_site ON return_requests(site_id);
+CREATE INDEX idx_return_requests_order ON return_requests(order_id);
+CREATE INDEX idx_return_requests_token ON return_requests(return_token);
+CREATE INDEX idx_return_requests_status ON return_requests(status);
