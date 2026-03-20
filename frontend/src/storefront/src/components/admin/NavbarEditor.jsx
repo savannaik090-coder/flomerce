@@ -34,6 +34,8 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
   const [logoUrl, setLogoUrl] = useState('');
   const [logoSize, setLogoSize] = useState(120);
   const [logoPosition, setLogoPosition] = useState('left');
+  const [showAccountIcon, setShowAccountIcon] = useState(true);
+  const [showCartIcon, setShowCartIcon] = useState(true);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const logoInputRef = useRef(null);
 
@@ -51,8 +53,8 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!hasLoadedRef.current || !onPreviewUpdate) return;
-    onPreviewUpdate({ logoSize, logoPosition });
-  }, [logoSize, logoPosition]);
+    onPreviewUpdate({ logoSize, logoPosition, showAccountIcon, showCartIcon });
+  }, [logoSize, logoPosition, showAccountIcon, showCartIcon]);
 
   async function loadCategories() {
     try {
@@ -77,6 +79,8 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
         setLogoUrl(result.data.logo_url || '');
         setLogoSize(settings.logoSize || 120);
         setLogoPosition(settings.logoPosition || 'left');
+        setShowAccountIcon(settings.showAccountIcon !== false);
+        setShowCartIcon(settings.showCartIcon !== false);
       }
     } catch (e) {
       console.error('Failed to load navbar config:', e);
@@ -166,7 +170,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
           'Content-Type': 'application/json',
           'Authorization': token ? `SiteAdmin ${token}` : '',
         },
-        body: JSON.stringify({ settings: { navbarMenus: cleanMenus, logoSize, logoPosition }, logoUrl: logoUrl || null }),
+        body: JSON.stringify({ settings: { navbarMenus: cleanMenus, logoSize, logoPosition, showAccountIcon, showCartIcon }, logoUrl: logoUrl || null }),
       });
       const result = await response.json();
       if (response.ok && result.success) {
@@ -500,6 +504,70 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
             </div>
           </div>
         )}
+
+        <div className="card" style={{ marginBottom: 20 }}>
+          <div className="card-header">
+            <h3 className="card-title">Navbar Icons</h3>
+          </div>
+          <div className="card-content">
+            <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
+              Choose which icons to show in the navbar. Search and Wishlist icons are always visible.
+            </p>
+            {[
+              { label: 'Account Icon', desc: 'User/profile icon for login and account access', value: showAccountIcon, setter: setShowAccountIcon, icon: 'fa-user' },
+              { label: 'Cart Icon', desc: 'Shopping bag icon with item count badge', value: showCartIcon, setter: setShowCartIcon, icon: 'fa-shopping-bag' },
+            ].map((item, i) => (
+              <div
+                key={i}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '12px 14px',
+                  background: '#f8fafc',
+                  borderRadius: 8,
+                  border: '1px solid #e2e8f0',
+                  marginBottom: i === 0 ? 10 : 0,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <i className={`fas ${item.icon}`} style={{ fontSize: 16, color: item.value ? '#2563eb' : '#cbd5e1', width: 20, textAlign: 'center' }} />
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>{item.label}</div>
+                    <div style={{ fontSize: 12, color: '#94a3b8' }}>{item.desc}</div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => item.setter(!item.value)}
+                  style={{
+                    width: 44,
+                    height: 24,
+                    borderRadius: 12,
+                    border: 'none',
+                    background: item.value ? '#2563eb' : '#cbd5e1',
+                    cursor: 'pointer',
+                    position: 'relative',
+                    transition: 'background 0.2s ease',
+                    flexShrink: 0,
+                  }}
+                >
+                  <div style={{
+                    width: 18,
+                    height: 18,
+                    borderRadius: '50%',
+                    background: '#fff',
+                    position: 'absolute',
+                    top: 3,
+                    left: item.value ? 23 : 3,
+                    transition: 'left 0.2s ease',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
+                  }} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
 
         <div className="card" style={{ marginBottom: 20 }}>
           <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

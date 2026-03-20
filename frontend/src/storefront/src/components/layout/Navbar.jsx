@@ -36,6 +36,8 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
   const logoSize = Math.min(250, Math.max(40, Number(settings.logoSize) || 120));
   const logoPosition = settings.logoPosition || 'left';
   const isCentered = logoPosition === 'center';
+  const showAccountIcon = settings.showAccountIcon !== false;
+  const showCartIcon = settings.showCartIcon !== false;
 
   const assignedCategorySlugs = new Set();
   if (hasCustomNavbar) {
@@ -177,15 +179,19 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
             </ul>
 
             <div className="mobile-account-links mobile-special">
-              <Link to={isAuthenticated ? '/profile' : '/login'} className="mobile-account-link" onClick={closeMobileMenu}>
-                <img src="/images/icons/user.png" alt="Account" style={{ width: 16, height: 16, marginRight: 8 }} /> Account
-              </Link>
+              {showAccountIcon && (
+                <Link to={isAuthenticated ? '/profile' : '/login'} className="mobile-account-link" onClick={closeMobileMenu}>
+                  <img src="/images/icons/user.png" alt="Account" style={{ width: 16, height: 16, marginRight: 8 }} /> Account
+                </Link>
+              )}
               <a href="#" className="mobile-account-link wishlist-toggle" onClick={(e) => { e.preventDefault(); closeMobileMenu(); onWishlistOpen?.(); }}>
                 <img src="/images/icons/heart.png" alt="Wishlist" style={{ width: 16, height: 16, marginRight: 8 }} /> Wishlist ({wishlistCount})
               </a>
-              <a href="#" className="mobile-account-link mobile-cart-toggle" onClick={(e) => { e.preventDefault(); closeMobileMenu(); onCartOpen?.(); }}>
-                <img src="/images/icons/cart-minus.png" alt="Cart" style={{ width: 16, height: 16, marginRight: 8 }} /> Shopping Bag ({cartCount})
-              </a>
+              {showCartIcon && (
+                <a href="#" className="mobile-account-link mobile-cart-toggle" onClick={(e) => { e.preventDefault(); closeMobileMenu(); onCartOpen?.(); }}>
+                  <img src="/images/icons/cart-minus.png" alt="Cart" style={{ width: 16, height: 16, marginRight: 8 }} /> Shopping Bag ({cartCount})
+                </a>
+              )}
             </div>
           </div>
 
@@ -193,17 +199,21 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
             <a href="#" className="icon-link search-icon" onClick={(e) => { e.preventDefault(); onSearchOpen?.(); }}>
               <img src="/images/icons/search.png" alt="Search" style={{ width: 20, height: 20 }} />
             </a>
-            <Link to={isAuthenticated ? '/profile' : '/login'} className="icon-link account-icon">
-              <img src="/images/icons/user.png" alt="Account" style={{ width: 25, height: 25 }} />
-            </Link>
+            {showAccountIcon && (
+              <Link to={isAuthenticated ? '/profile' : '/login'} className="icon-link account-icon">
+                <img src="/images/icons/user.png" alt="Account" style={{ width: 25, height: 25 }} />
+              </Link>
+            )}
             <a href="#" className="icon-link wishlist-icon-container wishlist-toggle" onClick={(e) => { e.preventDefault(); onWishlistOpen?.(); }}>
               <img src="/images/icons/heart.png" alt="Wishlist" style={{ width: 20, height: 20 }} />
               <div className="wishlist-count">{wishlistCount}</div>
             </a>
-            <a href="#" className="icon-link cart-icon-container cart-toggle" onClick={(e) => { e.preventDefault(); onCartOpen?.(); }}>
-              <img src="/images/icons/cart-minus.png" alt="Cart" style={{ width: 20, height: 20 }} />
-              <div className="cart-count">{cartCount}</div>
-            </a>
+            {showCartIcon && (
+              <a href="#" className="icon-link cart-icon-container cart-toggle" onClick={(e) => { e.preventDefault(); onCartOpen?.(); }}>
+                <img src="/images/icons/cart-minus.png" alt="Cart" style={{ width: 20, height: 20 }} />
+                <div className="cart-count">{cartCount}</div>
+              </a>
+            )}
           </div>
         </div>
       </nav>
