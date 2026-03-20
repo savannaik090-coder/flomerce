@@ -55,7 +55,7 @@ export default function OrdersSection() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [loading, setLoading] = useState(true);
-  const [expandedOrderId, setExpandedOrderId] = useState(null);
+  const [orderDetailModal, setOrderDetailModal] = useState(null);
 
   const [cancelModal, setCancelModal] = useState(null);
   const [cancelReason, setCancelReason] = useState('');
@@ -235,8 +235,8 @@ export default function OrdersSection() {
     }
   }
 
-  function toggleExpand(orderId) {
-    setExpandedOrderId(prev => (prev === orderId ? null : orderId));
+  function openOrderDetail(order) {
+    setOrderDetailModal(order);
   }
 
   const statuses = ['all', 'pending', 'pending_payment', 'paid', 'confirmed', 'packed', 'shipped', 'delivered', 'cancelled'];
@@ -947,7 +947,6 @@ export default function OrdersSection() {
               <table>
                 <thead>
                   <tr>
-                    <th style={{ width: 32, minWidth: 32 }}></th>
                     <th style={{ minWidth: 110 }}>Order #</th>
                     <th style={{ minWidth: 180 }}>Customer</th>
                     <th style={{ minWidth: 140 }}>Phone</th>
@@ -962,22 +961,13 @@ export default function OrdersSection() {
                 <tbody>
                   {filtered.map(order => {
                     const items = Array.isArray(order.items) ? order.items : [];
-                    const address = order.shipping_address || {};
-                    const isExpanded = expandedOrderId === order.id;
                     const orderNum = order.order_number || order.orderNumber || order.id?.slice(-6);
                     const statusLower = (order.status || '').toLowerCase();
                     const isCancelled = statusLower === 'cancelled';
                     const isDelivered = statusLower === 'delivered';
 
                     return (
-                      <React.Fragment key={order.id}>
-                        <tr
-                          onClick={() => toggleExpand(order.id)}
-                          style={{ cursor: 'pointer', background: isExpanded ? '#fafafa' : undefined }}
-                        >
-                          <td style={{ textAlign: 'center', color: '#888', fontSize: 12 }}>
-                            {isExpanded ? '▲' : '▼'}
-                          </td>
+                        <tr key={order.id} onClick={() => openOrderDetail(order)} style={{ cursor: 'pointer' }}>
                           <td style={{ fontWeight: 600 }}>#{orderNum}</td>
                           <td>
                             <div style={{ fontWeight: 500 }}>{order.customer_name || order.name || 'Guest'}</div>
@@ -1057,97 +1047,6 @@ export default function OrdersSection() {
                             </div>
                           </td>
                         </tr>
-
-                        {isExpanded && (
-                          <tr style={{ background: '#f9f9f9' }}>
-                            <td colSpan={10} style={{ padding: '16px 24px', borderTop: '1px solid #eee' }}>
-                              <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap' }}>
-
-                                <div style={{ flex: 1, minWidth: 220 }}>
-                                  <div style={{ fontWeight: 700, marginBottom: 10, color: '#333', fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5 }}>Order Items</div>
-                                  {items.length > 0 ? items.map((item, idx) => (
-                                    <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, paddingBottom: 10, borderBottom: '1px solid #eee' }}>
-                                      {(item.thumbnail || item.image) && (
-                                        <img src={item.thumbnail || item.image} alt={item.name} style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 4, border: '1px solid #eee' }} />
-                                      )}
-                                      <div style={{ flex: 1 }}>
-                                        <div style={{ fontWeight: 500, fontSize: 13 }}>{item.name}</div>
-                                        {item.variant && <div style={{ fontSize: 11, color: '#888' }}>{item.variant}</div>}
-                                        {item.selectedOptions && (() => {
-                                          const parts = [];
-                                          if (item.selectedOptions.color) parts.push(`Color: ${item.selectedOptions.color}`);
-                                          if (item.selectedOptions.customOptions) {
-                                            for (const [label, value] of Object.entries(item.selectedOptions.customOptions)) {
-                                              parts.push(`${label}: ${value}`);
-                                            }
-                                          }
-                                          if (item.selectedOptions.pricedOptions) {
-                                            for (const [label, val] of Object.entries(item.selectedOptions.pricedOptions)) {
-                                              const priceSuffix = Number(val.price || 0) > 0 ? ` (${formatAmount(Number(val.price))})` : '';
-                                              parts.push(`${label}: ${val.name}${priceSuffix}`);
-                                            }
-                                          }
-                                          return parts.length > 0 ? <div style={{ fontSize: 11, color: '#888', marginTop: 1 }}>{parts.join(' \u2022 ')}</div> : null;
-                                        })()}
-                                        <div style={{ fontSize: 12, color: '#555' }}>
-                                          {formatAmount(parseFloat(item.price || 0))} x {item.quantity}
-                                          <span style={{ fontWeight: 600, marginLeft: 6 }}>= {formatAmount(parseFloat((item.price || 0) * (item.quantity || 1)))}</span>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  )) : <div style={{ color: '#999', fontSize: 13 }}>No item details available</div>}
-                                  <div style={{ paddingTop: 8, borderTop: '2px solid #eee', textAlign: 'right' }}>
-                                    {parseFloat(order.discount || 0) > 0 && (
-                                      <>
-                                        <div style={{ fontSize: 13, color: '#555', marginBottom: 2 }}>
-                                          Subtotal: {formatAmount(parseFloat(order.subtotal || order.total || 0))}
-                                        </div>
-                                        <div style={{ fontSize: 13, color: '#16a34a', marginBottom: 4 }}>
-                                          Coupon{order.coupon_code ? ` (${order.coupon_code})` : ''}: −{formatAmount(parseFloat(order.discount || 0))}
-                                        </div>
-                                      </>
-                                    )}
-                                    <div style={{ fontWeight: 700, fontSize: 14 }}>
-                                      Total: {formatAmount(parseFloat(order.total || 0))}
-                                    </div>
-                                  </div>
-                                </div>
-
-                                <div style={{ minWidth: 200 }}>
-                                  <div style={{ fontWeight: 700, marginBottom: 10, color: '#333', fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5 }}>Shipping Address</div>
-                                  {address && Object.keys(address).length > 0 ? (
-                                    <div style={{ fontSize: 13, lineHeight: 1.8, color: '#444' }}>
-                                      <div style={{ fontWeight: 600 }}>{address.name || order.customer_name}</div>
-                                      {address.phone && <div>📞 {address.phone}</div>}
-                                      {address.address && <div>{address.address}</div>}
-                                      {(address.city || address.state) && <div>{[address.city, address.state].filter(Boolean).join(', ')}{address.pinCode ? ' – ' + address.pinCode : ''}</div>}
-                                    </div>
-                                  ) : (
-                                    <div style={{ color: '#999', fontSize: 13 }}>No address on file</div>
-                                  )}
-                                </div>
-
-                                <div style={{ minWidth: 180 }}>
-                                  <div style={{ fontWeight: 700, marginBottom: 10, color: '#333', fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5 }}>Payment Info</div>
-                                  <div style={{ fontSize: 13, lineHeight: 1.8, color: '#444' }}>
-                                    <div><span style={{ color: '#888' }}>Method:</span> {order.payment_method === 'cod' ? 'Cash on Delivery' : (order.payment_method || '—')}</div>
-                                    {order.razorpay_payment_id && <div style={{ wordBreak: 'break-all' }}><span style={{ color: '#888' }}>Payment ID:</span> {order.razorpay_payment_id}</div>}
-                                    {order.razorpay_order_id && <div style={{ wordBreak: 'break-all' }}><span style={{ color: '#888' }}>Razorpay Order:</span> {order.razorpay_order_id}</div>}
-                                    {order.notes && <div><span style={{ color: '#888' }}>Notes:</span> {order.notes}</div>}
-                                  </div>
-                                  {isCancelled && order.cancellation_reason && (
-                                    <div style={{ marginTop: 12, padding: '10px 12px', background: '#fff5f5', borderLeft: '3px solid #e53935', borderRadius: 4 }}>
-                                      <div style={{ fontSize: 11, color: '#e53935', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>Cancellation Reason</div>
-                                      <div style={{ fontSize: 13, color: '#333' }}>{order.cancellation_reason}</div>
-                                    </div>
-                                  )}
-                                </div>
-
-                              </div>
-                            </td>
-                          </tr>
-                        )}
-                      </React.Fragment>
                     );
                   })}
                 </tbody>
@@ -1156,6 +1055,148 @@ export default function OrdersSection() {
           </div>
         </div>
       )}
+
+      {orderDetailModal && (() => {
+        const order = orderDetailModal;
+        const items = Array.isArray(order.items) ? order.items : [];
+        const address = order.shipping_address || {};
+        const orderNum = order.order_number || order.orderNumber || order.id?.slice(-6);
+        const statusLower = (order.status || '').toLowerCase();
+        const isCancelled = statusLower === 'cancelled';
+        const isDelivered = statusLower === 'delivered';
+        return (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
+          <div style={{ background: '#fff', borderRadius: 10, padding: 28, width: '90%', maxWidth: 640, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, paddingBottom: 15, borderBottom: '1px solid #eee' }}>
+              <h3 style={{ margin: 0, fontSize: 18, color: '#1a1a1a' }}>Order Details</h3>
+              <button onClick={() => setOrderDetailModal(null)} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#999' }}>&times;</button>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+              <div>
+                <div style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>Order</div>
+                <div style={{ fontSize: 15, fontWeight: 700 }}>#{orderNum}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>Order Status</div>
+                <span style={{ display: 'inline-block', background: getStatusColor(order.status), color: '#fff', borderRadius: 12, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>
+                  {getStatusLabel(order.status)}
+                </span>
+              </div>
+              <div>
+                <div style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>Customer</div>
+                <div style={{ fontSize: 14, fontWeight: 500 }}>{order.customer_name || order.name || 'Guest'}</div>
+                {(order.customer_email || order.email) && <div style={{ fontSize: 12, color: '#64748b' }}>{order.customer_email || order.email}</div>}
+                {order.customer_phone && <div style={{ fontSize: 12, color: '#64748b' }}>{order.customer_phone}</div>}
+              </div>
+              <div>
+                <div style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>Date</div>
+                <div style={{ fontSize: 14 }}>{new Date(order.created_at || order.createdAt).toLocaleString()}</div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', marginBottom: 16 }}>
+              <div style={{ flex: 1, minWidth: 220 }}>
+                <div style={{ fontWeight: 700, marginBottom: 10, color: '#333', fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5 }}>Order Items</div>
+                {items.length > 0 ? items.map((item, idx) => (
+                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, paddingBottom: 10, borderBottom: '1px solid #eee' }}>
+                    {(item.thumbnail || item.image) && (
+                      <img src={item.thumbnail || item.image} alt={item.name} style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 4, border: '1px solid #eee' }} />
+                    )}
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 500, fontSize: 13 }}>{item.name}</div>
+                      {item.variant && <div style={{ fontSize: 11, color: '#888' }}>{item.variant}</div>}
+                      {item.selectedOptions && (() => {
+                        const parts = [];
+                        if (item.selectedOptions.color) parts.push(`Color: ${item.selectedOptions.color}`);
+                        if (item.selectedOptions.customOptions) {
+                          for (const [label, value] of Object.entries(item.selectedOptions.customOptions)) {
+                            parts.push(`${label}: ${value}`);
+                          }
+                        }
+                        if (item.selectedOptions.pricedOptions) {
+                          for (const [label, val] of Object.entries(item.selectedOptions.pricedOptions)) {
+                            const priceSuffix = Number(val.price || 0) > 0 ? ` (${formatAmount(Number(val.price))})` : '';
+                            parts.push(`${label}: ${val.name}${priceSuffix}`);
+                          }
+                        }
+                        return parts.length > 0 ? <div style={{ fontSize: 11, color: '#888', marginTop: 1 }}>{parts.join(' \u2022 ')}</div> : null;
+                      })()}
+                      <div style={{ fontSize: 12, color: '#555' }}>
+                        {formatAmount(parseFloat(item.price || 0))} x {item.quantity}
+                        <span style={{ fontWeight: 600, marginLeft: 6 }}>= {formatAmount(parseFloat((item.price || 0) * (item.quantity || 1)))}</span>
+                      </div>
+                    </div>
+                  </div>
+                )) : <div style={{ color: '#999', fontSize: 13 }}>No item details available</div>}
+                <div style={{ paddingTop: 8, borderTop: '2px solid #eee', textAlign: 'right' }}>
+                  {parseFloat(order.discount || 0) > 0 && (
+                    <>
+                      <div style={{ fontSize: 13, color: '#555', marginBottom: 2 }}>
+                        Subtotal: {formatAmount(parseFloat(order.subtotal || order.total || 0))}
+                      </div>
+                      <div style={{ fontSize: 13, color: '#16a34a', marginBottom: 4 }}>
+                        Coupon{order.coupon_code ? ` (${order.coupon_code})` : ''}: −{formatAmount(parseFloat(order.discount || 0))}
+                      </div>
+                    </>
+                  )}
+                  <div style={{ fontWeight: 700, fontSize: 14 }}>
+                    Total: {formatAmount(parseFloat(order.total || 0))}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ minWidth: 200 }}>
+                <div style={{ fontWeight: 700, marginBottom: 10, color: '#333', fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5 }}>Shipping Address</div>
+                {address && Object.keys(address).length > 0 ? (
+                  <div style={{ fontSize: 13, lineHeight: 1.8, color: '#444' }}>
+                    <div style={{ fontWeight: 600 }}>{address.name || order.customer_name}</div>
+                    {address.phone && <div>📞 {address.phone}</div>}
+                    {address.address && <div>{address.address}</div>}
+                    {(address.city || address.state) && <div>{[address.city, address.state].filter(Boolean).join(', ')}{address.pinCode ? ' – ' + address.pinCode : ''}</div>}
+                  </div>
+                ) : (
+                  <div style={{ color: '#999', fontSize: 13 }}>No address on file</div>
+                )}
+
+                <div style={{ fontWeight: 700, marginBottom: 10, marginTop: 16, color: '#333', fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5 }}>Payment Info</div>
+                <div style={{ fontSize: 13, lineHeight: 1.8, color: '#444' }}>
+                  <div><span style={{ color: '#888' }}>Method:</span> {order.payment_method === 'cod' ? 'Cash on Delivery' : (order.payment_method || '—')}</div>
+                  {order.razorpay_payment_id && <div style={{ wordBreak: 'break-all' }}><span style={{ color: '#888' }}>Payment ID:</span> {order.razorpay_payment_id}</div>}
+                  {order.razorpay_order_id && <div style={{ wordBreak: 'break-all' }}><span style={{ color: '#888' }}>Razorpay Order:</span> {order.razorpay_order_id}</div>}
+                  {order.notes && <div><span style={{ color: '#888' }}>Notes:</span> {order.notes}</div>}
+                </div>
+                {isCancelled && order.cancellation_reason && (
+                  <div style={{ marginTop: 12, padding: '10px 12px', background: '#fff5f5', borderLeft: '3px solid #e53935', borderRadius: 4 }}>
+                    <div style={{ fontSize: 11, color: '#e53935', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>Cancellation Reason</div>
+                    <div style={{ fontSize: 13, color: '#333' }}>{order.cancellation_reason}</div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+              <button onClick={() => setOrderDetailModal(null)} style={{ padding: '9px 20px', borderRadius: 6, border: '1px solid #ddd', background: '#f5f5f5', cursor: 'pointer', fontSize: 14 }}>Close</button>
+              {!isCancelled && !isDelivered && statusLower !== 'confirmed' && statusLower !== 'packed' && statusLower !== 'shipped' && (
+                <button onClick={() => { setOrderDetailModal(null); setConfirmDialog({ orderId: order.id, orderNum, action: 'confirmed', label: 'Confirm this order?' }); }} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#22c55e', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Confirm</button>
+              )}
+              {statusLower === 'confirmed' && (
+                <button onClick={() => { setOrderDetailModal(null); setConfirmDialog({ orderId: order.id, orderNum, action: 'packed', label: 'Mark this order as packed?' }); }} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#7c3aed', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Packed</button>
+              )}
+              {statusLower === 'packed' && (
+                <button onClick={() => { setOrderDetailModal(null); setConfirmDialog({ orderId: order.id, orderNum, action: 'shipped', label: 'Mark this order as shipped?' }); }} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#0284c7', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Shipped</button>
+              )}
+              {statusLower === 'shipped' && (
+                <button onClick={() => { setOrderDetailModal(null); setConfirmDialog({ orderId: order.id, orderNum, action: 'delivered', label: 'Mark this order as delivered?' }); }} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#27ae60', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Delivered</button>
+              )}
+              {!isCancelled && !isDelivered && (
+                <button onClick={() => { setOrderDetailModal(null); openCancelModal(order); }} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#e53935', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Cancel Order</button>
+              )}
+            </div>
+          </div>
+        </div>
+        );
+      })()}
 
       {confirmDialog && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
