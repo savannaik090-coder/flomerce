@@ -45,4 +45,3 @@ Thumbs.db
 # Security: Exclude sensitive guide and asset files
 guide/environment-variable.md
 attached_assets/
-backend/.dev.vars
