@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
+import { Link } from 'react-router-dom';
 import { SiteContext } from '../context/SiteContext.jsx';
 import { trackOrder } from '../services/orderService.js';
 
@@ -196,6 +197,16 @@ export default function OrderTrackPage() {
               {order.tracking_number && <div style={{ fontSize: 14, color: '#334155' }}><strong>Tracking Number:</strong> {order.tracking_number}</div>}
             </div>
           )}
+
+          <div style={{ padding: '16px 24px', borderTop: '1px solid #f1f5f9', textAlign: 'center' }}>
+            <Link
+              to={`/order-help/${order.order_number}`}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 20px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, textDecoration: 'none', color: '#334155', fontSize: 14, fontWeight: 500 }}
+            >
+              <i className="fas fa-headset" style={{ color: '#64748b' }} />
+              Need help with this order?
+            </Link>
+          </div>
         </div>
       )}
 

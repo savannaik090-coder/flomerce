@@ -20,6 +20,7 @@ export default function SettingsSection() {
   const [showCurrencySelector, setShowCurrencySelector] = useState(true);
   const [returnsEnabled, setReturnsEnabled] = useState(false);
   const [returnWindowDays, setReturnWindowDays] = useState(7);
+  const [replacementEnabled, setReplacementEnabled] = useState(false);
   const [cancellationEnabled, setCancellationEnabled] = useState(false);
   const [cancellationWindowHours, setCancellationWindowHours] = useState(24);
   const [showOrderTrack, setShowOrderTrack] = useState(true);
@@ -112,6 +113,7 @@ export default function SettingsSection() {
         setShowCurrencySelector(settings.showCurrencySelector !== false);
         setReturnsEnabled(settings.returnsEnabled === true);
         setReturnWindowDays(settings.returnWindowDays || 7);
+        setReplacementEnabled(settings.replacementEnabled === true);
         setCancellationEnabled(settings.cancellationEnabled === true);
         setCancellationWindowHours(settings.cancellationWindowHours || 24);
         setShowOrderTrack(settings.showOrderTrack !== false);
@@ -146,6 +148,7 @@ export default function SettingsSection() {
         showCurrencySelector,
         returnsEnabled,
         returnWindowDays: Number(returnWindowDays) || 7,
+        replacementEnabled,
         cancellationEnabled,
         cancellationWindowHours: Number(cancellationWindowHours) || 24,
         showOrderTrack,

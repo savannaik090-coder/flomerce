@@ -41,6 +41,7 @@ export default function Footer() {
             <ul>
               <li><Link to="/about">About Us</Link></li>
               <li><Link to="/contact">Contact Us</Link></li>
+              <li><Link to="/order-track">Track / Manage Order</Link></li>
               <li><Link to="/terms#section-4">Shipping Policy</Link></li>
               <li><Link to="/terms#section-5">Returns & Exchanges</Link></li>
               <li><Link to="/terms">Terms and Conditions</Link></li>

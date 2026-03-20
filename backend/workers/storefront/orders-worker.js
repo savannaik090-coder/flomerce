@@ -660,7 +660,7 @@ async function updateOrderStatus(request, env, user, orderId) {
               const cancelToken = generateReturnToken();
               try { await db.prepare(`ALTER TABLE orders ADD COLUMN cancel_token TEXT`).run(); } catch (e) {}
               await db.prepare(`UPDATE orders SET cancel_token = ? WHERE id = ?`).bind(cancelToken, orderId).run();
-              emailOptions.cancelUrl = `https://${domain}/cancel/${fullOrder.order_number}?token=${cancelToken}`;
+              emailOptions.helpUrl = `https://${domain}/order-help/${fullOrder.order_number}?cancelToken=${cancelToken}`;
             } catch (e) {
               console.error('Cancel token generation error:', e);
             }
@@ -712,7 +712,7 @@ async function updateOrderStatus(request, env, user, orderId) {
               await db.prepare(`UPDATE orders SET return_token = ? WHERE id = ?`).bind(returnToken, orderId).run();
               const site = await env.DB.prepare('SELECT subdomain, custom_domain FROM sites WHERE id = ?').bind(fullOrder.site_id).first();
               const delivDomain = site?.custom_domain || `${site?.subdomain || 'store'}.${env.DOMAIN || 'fluxe.in'}`;
-              deliveryEmailOptions.returnUrl = `https://${delivDomain}/return/${fullOrder.order_number}?token=${returnToken}`;
+              deliveryEmailOptions.helpUrl = `https://${delivDomain}/order-help/${fullOrder.order_number}?returnToken=${returnToken}`;
             } catch (e) {
               console.error('Return token generation error:', e);
             }
@@ -971,6 +971,7 @@ async function ensureReturnRequestsTable(db) {
       reason TEXT NOT NULL,
       reason_detail TEXT,
       photos TEXT,
+      resolution TEXT,
       status TEXT DEFAULT 'requested',
       admin_note TEXT,
       refund_amount REAL,
@@ -982,6 +983,7 @@ async function ensureReturnRequestsTable(db) {
       created_at TEXT DEFAULT (datetime('now')),
       updated_at TEXT DEFAULT (datetime('now'))
     )`).run();
+    try { await db.prepare(`ALTER TABLE return_requests ADD COLUMN resolution TEXT`).run(); } catch (e) {}
     await db.prepare('CREATE INDEX IF NOT EXISTS idx_return_requests_site ON return_requests(site_id)').run();
     await db.prepare('CREATE INDEX IF NOT EXISTS idx_return_requests_order ON return_requests(order_id)').run();
     await db.prepare('CREATE INDEX IF NOT EXISTS idx_return_requests_token ON return_requests(return_token)').run();
@@ -998,7 +1000,7 @@ function generateReturnToken() {
 async function createReturnRequest(request, env, orderId) {
   try {
     const data = await request.json();
-    const { siteId, items, reason, reasonDetail, photos, returnToken } = data;
+    const { siteId, items, reason, reasonDetail, photos, resolution, returnToken } = data;
     if (!siteId || !orderId) return errorResponse('siteId and orderId are required');
     if (!reason) return errorResponse('Reason is required');
 
@@ -1059,13 +1061,14 @@ async function createReturnRequest(request, env, orderId) {
 
     const returnId = generateId();
     await db.prepare(
-      `INSERT INTO return_requests (id, site_id, order_id, order_number, items, reason, reason_detail, photos, status, return_token, customer_name, customer_email, customer_phone, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'requested', ?, ?, ?, ?, datetime('now'), datetime('now'))`
+      `INSERT INTO return_requests (id, site_id, order_id, order_number, items, reason, reason_detail, photos, resolution, status, return_token, customer_name, customer_email, customer_phone, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'requested', ?, ?, ?, ?, datetime('now'), datetime('now'))`
     ).bind(
       returnId, siteId, order.id, order.order_number,
       items ? JSON.stringify(items) : order.items,
       reason, reasonDetail || null,
       photos ? JSON.stringify(photos) : null,
+      resolution || null,
       order.return_token || null,
       order.customer_name, order.customer_email || null, order.customer_phone || null
     ).run();

@@ -67,7 +67,7 @@ export default function CancelPage() {
 
   const handleSubmit = async () => {
     if (!cancelReason) return;
-    if (cancelReason === 'Other' && !cancelDetail.trim()) return;
+    if (!cancelDetail.trim()) return;
     setSubmitting(true);
     setError('');
     try {
@@ -170,11 +170,12 @@ export default function CancelPage() {
             </div>
             <div style={{ marginBottom: 20 }}>
               <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 14, color: '#334155' }}>
-                {cancelReason === 'Other' ? 'Please describe *' : 'Additional details (optional)'}
+                Additional notes *
               </label>
-              <textarea value={cancelDetail} onChange={e => setCancelDetail(e.target.value)} rows={3} placeholder="Tell us more..." style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14, resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+              <textarea value={cancelDetail} onChange={e => setCancelDetail(e.target.value)} rows={3} placeholder="Please provide more details about your cancellation..." style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14, resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+              {cancelReason && !cancelDetail.trim() && <p style={{ fontSize: 12, color: '#e53935', marginTop: 4 }}>Please provide additional details before submitting.</p>}
             </div>
-            <button onClick={handleSubmit} disabled={submitting || !cancelReason || (cancelReason === 'Other' && !cancelDetail.trim())} style={{ width: '100%', padding: '12px 24px', background: '#e53935', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.7 : 1 }}>
+            <button onClick={handleSubmit} disabled={submitting || !cancelReason || !cancelDetail.trim()} style={{ width: '100%', padding: '12px 24px', background: '#e53935', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.7 : 1 }}>
               {submitting ? 'Submitting...' : 'Submit Cancellation Request'}
             </button>
           </div>

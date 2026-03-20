@@ -1,10 +1,15 @@
-import React, { useState, useEffect, useContext, useCallback } from 'react';
+import React, { useState, useEffect, useContext, useCallback, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext.jsx';
 import { SiteContext } from '../context/SiteContext.jsx';
 import { CurrencyContext } from '../context/CurrencyContext.jsx';
 import * as authService from '../services/authService.js';
 import * as orderService from '../services/orderService.js';
+
+function getApiBase() {
+  if (typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in')) return '';
+  return 'https://fluxe.in';
+}
 
 const RETURN_REASONS = [
   'Received wrong item',
@@ -49,11 +54,17 @@ export default function ProfilePage() {
   const [addressFieldErrors, setAddressFieldErrors] = useState({});
   const [pinValidating, setPinValidating] = useState(false);
 
+  const [openHelpOrderId, setOpenHelpOrderId] = useState(null);
+
   const [returnModal, setReturnModal] = useState(null);
   const [returnReason, setReturnReason] = useState('');
   const [returnDetail, setReturnDetail] = useState('');
+  const [returnPhotos, setReturnPhotos] = useState([]);
+  const [uploadingReturnPhotos, setUploadingReturnPhotos] = useState(false);
+  const [returnResolution, setReturnResolution] = useState('refund');
   const [returningOrder, setReturningOrder] = useState(false);
   const [returnStatuses, setReturnStatuses] = useState({});
+  const returnFileRef = useRef(null);
 
   const [cancelModal, setCancelModal] = useState(null);
   const [cancelReason, setCancelReason] = useState('');
@@ -94,6 +105,16 @@ export default function ProfilePage() {
     } catch { return 7; }
   })();
 
+  const replacementEnabled = (() => {
+    try {
+      const s = siteConfig?.settings;
+      const parsed = typeof s === 'string' ? JSON.parse(s) : (s || {});
+      return parsed.replacementEnabled === true;
+    } catch { return false; }
+  })();
+
+  const imageRequiredReasons = ['Received wrong item', 'Item damaged or defective'];
+
   const isWithinReturnWindow = useCallback((order) => {
     const deliveredAt = order.delivered_at || order.updated_at || order.created_at;
     if (!deliveredAt) return false;
@@ -127,19 +148,52 @@ export default function ProfilePage() {
     }
   }, [activeTab, orders, cancellationEnabled, siteConfig?.id]);
 
+  const isReturnFormValid = () => {
+    if (!returnReason || !returnDetail.trim()) return false;
+    if (imageRequiredReasons.includes(returnReason) && returnPhotos.length === 0) return false;
+    return true;
+  };
+
+  const handleReturnPhotoChange = async (e) => {
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
+    if (returnPhotos.length + files.length > 5) { alert('You can upload a maximum of 5 photos.'); return; }
+    setUploadingReturnPhotos(true);
+    try {
+      const API_BASE = getApiBase();
+      const newPhotos = [];
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append('image', file);
+        const resp = await fetch(`${API_BASE}/api/upload/image?siteId=${siteConfig.id}`, { method: 'POST', body: formData });
+        const result = await resp.json();
+        if (result.success && result.data?.url) newPhotos.push(result.data.url);
+      }
+      setReturnPhotos(prev => [...prev, ...newPhotos]);
+    } catch { alert('Failed to upload one or more images.'); }
+    finally {
+      setUploadingReturnPhotos(false);
+      if (returnFileRef.current) returnFileRef.current.value = '';
+    }
+  };
+
   const handleSubmitReturn = async () => {
-    if (!returnModal || !returnReason) return;
+    if (!returnModal || !isReturnFormValid()) return;
     setReturningOrder(true);
     try {
       await orderService.createReturnRequest(returnModal.id || returnModal.order_number, {
         siteId: siteConfig.id,
         reason: returnReason,
-        reasonDetail: returnReason === 'Other' ? returnDetail : returnDetail || undefined,
+        reasonDetail: returnDetail,
+        photos: returnPhotos.length > 0 ? returnPhotos : undefined,
+        resolution: replacementEnabled ? returnResolution : 'refund',
       });
       setReturnStatuses(prev => ({ ...prev, [returnModal.id]: { status: 'requested', reason: returnReason } }));
       setReturnModal(null);
       setReturnReason('');
       setReturnDetail('');
+      setReturnPhotos([]);
+      setReturnResolution('refund');
       alert('Return request submitted successfully!');
     } catch (err) {
       alert('Failed to submit return: ' + (err.message || 'Unknown error'));
@@ -149,13 +203,13 @@ export default function ProfilePage() {
   };
 
   const handleSubmitCancel = async () => {
-    if (!cancelModal || !cancelReason) return;
+    if (!cancelModal || !cancelReason || !cancelDetail.trim()) return;
     setCancellingOrder(true);
     try {
       await orderService.createCancelRequest(cancelModal.id || cancelModal.order_number, {
         siteId: siteConfig.id,
         reason: cancelReason,
-        reasonDetail: cancelReason === 'Other' ? cancelDetail : cancelDetail || undefined,
+        reasonDetail: cancelDetail,
       });
       setCancelStatuses(prev => ({ ...prev, [cancelModal.id]: { status: 'requested', reason: cancelReason } }));
       setCancelModal(null);
@@ -465,54 +519,65 @@ export default function ProfilePage() {
                       )}
                       <div style={{ fontWeight: 'bold' }}>Total: {formatAmount(orderTotal)}</div>
                     </div>
-                    {cancellationEnabled && ['pending', 'confirmed'].includes((order.status || '').toLowerCase()) && (
-                      <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #eee' }}>
-                        {cancelStatuses[order.id] ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <span style={{ fontSize: 13, color: '#64748b' }}>Cancellation:</span>
-                            <span style={{
-                              display: 'inline-block',
-                              background: { requested: '#ff9800', approved: '#27ae60', rejected: '#e53935' }[cancelStatuses[order.id].status] || '#757575',
-                              color: '#fff', borderRadius: 12, padding: '3px 10px', fontSize: 12, fontWeight: 600
-                            }}>
-                              {{ requested: 'Pending Review', approved: 'Approved', rejected: 'Rejected' }[cancelStatuses[order.id].status] || cancelStatuses[order.id].status}
+                    {(cancelStatuses[order.id] || returnStatuses[order.id]) && (
+                      <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #eee', display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                        {cancelStatuses[order.id] && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ fontSize: 12, color: '#64748b' }}>Cancellation:</span>
+                            <span style={{ display: 'inline-block', background: { requested: '#ff9800', approved: '#27ae60', rejected: '#e53935' }[cancelStatuses[order.id].status] || '#757575', color: '#fff', borderRadius: 12, padding: '2px 8px', fontSize: 12, fontWeight: 600 }}>
+                              {{ requested: 'Pending', approved: 'Approved', rejected: 'Rejected' }[cancelStatuses[order.id].status] || cancelStatuses[order.id].status}
                             </span>
-                            {cancelStatuses[order.id].admin_note && (
-                              <span style={{ fontSize: 12, color: '#64748b', fontStyle: 'italic' }}>"{cancelStatuses[order.id].admin_note}"</span>
-                            )}
                           </div>
-                        ) : (
-                          <button onClick={() => { setCancelModal(order); setCancelReason(''); setCancelDetail(''); }} style={{ background: 'none', border: '1px solid #fecaca', color: '#e53935', padding: '6px 16px', borderRadius: 4, cursor: 'pointer', fontSize: 13, fontWeight: 500, transition: '0.2s' }}>
-                            Request Cancellation
-                          </button>
                         )}
-                      </div>
-                    )}
-                    {returnsEnabled && (order.status || '').toLowerCase() === 'delivered' && (
-                      <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #eee' }}>
-                        {returnStatuses[order.id] ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <span style={{ fontSize: 13, color: '#64748b' }}>Return:</span>
-                            <span style={{
-                              display: 'inline-block',
-                              background: { requested: '#ff9800', approved: '#2196f3', rejected: '#e53935', refunded: '#27ae60' }[returnStatuses[order.id].status] || '#757575',
-                              color: '#fff', borderRadius: 12, padding: '3px 10px', fontSize: 12, fontWeight: 600
-                            }}>
+                        {returnStatuses[order.id] && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ fontSize: 12, color: '#64748b' }}>Return:</span>
+                            <span style={{ display: 'inline-block', background: { requested: '#ff9800', approved: '#2196f3', rejected: '#e53935', refunded: '#27ae60' }[returnStatuses[order.id].status] || '#757575', color: '#fff', borderRadius: 12, padding: '2px 8px', fontSize: 12, fontWeight: 600 }}>
                               {{ requested: 'Requested', approved: 'Approved', rejected: 'Rejected', refunded: 'Refunded' }[returnStatuses[order.id].status] || returnStatuses[order.id].status}
                             </span>
-                            {returnStatuses[order.id].admin_note && (
-                              <span style={{ fontSize: 12, color: '#64748b', fontStyle: 'italic' }}>"{returnStatuses[order.id].admin_note}"</span>
-                            )}
                           </div>
-                        ) : isWithinReturnWindow(order) ? (
-                          <button onClick={() => { setReturnModal(order); setReturnReason(''); setReturnDetail(''); }} style={{ background: 'none', border: '1px solid #e2e8f0', color: '#64748b', padding: '6px 16px', borderRadius: 4, cursor: 'pointer', fontSize: 13, fontWeight: 500, transition: '0.2s' }}>
-                            Request Return
-                          </button>
-                        ) : (
-                          <span style={{ fontSize: 12, color: '#94a3b8' }}>Return window expired</span>
                         )}
                       </div>
                     )}
+                    <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #eee' }}>
+                      <button
+                        onClick={() => setOpenHelpOrderId(openHelpOrderId === order.id ? null : order.id)}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'none', border: '1px solid #e2e8f0', color: '#475569', padding: '6px 14px', borderRadius: 4, cursor: 'pointer', fontSize: 13, fontWeight: 500 }}
+                      >
+                        <i className="fas fa-headset" style={{ fontSize: 12 }} />
+                        Need Help?
+                        <i className={`fas fa-chevron-${openHelpOrderId === order.id ? 'up' : 'down'}`} style={{ fontSize: 10 }} />
+                      </button>
+                      {openHelpOrderId === order.id && (
+                        <div style={{ marginTop: 10, padding: '12px 14px', background: '#f8fafc', borderRadius: 6, border: '1px solid #e2e8f0', display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                          <Link
+                            to={`/order-track?orderId=${order.order_number}`}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 4, textDecoration: 'none', color: '#334155', fontSize: 13, fontWeight: 500 }}
+                          >
+                            <i className="fas fa-truck" style={{ fontSize: 11 }} /> Track Order
+                          </Link>
+                          {cancellationEnabled && ['pending', 'confirmed'].includes((order.status || '').toLowerCase()) && !cancelStatuses[order.id] && (
+                            <button
+                              onClick={() => { setCancelModal(order); setCancelReason(''); setCancelDetail(''); setOpenHelpOrderId(null); }}
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#fff', border: '1px solid #fecaca', borderRadius: 4, color: '#e53935', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}
+                            >
+                              <i className="fas fa-times-circle" style={{ fontSize: 11 }} /> Cancel Order
+                            </button>
+                          )}
+                          {returnsEnabled && (order.status || '').toLowerCase() === 'delivered' && !returnStatuses[order.id] && isWithinReturnWindow(order) && (
+                            <button
+                              onClick={() => { setReturnModal(order); setReturnReason(''); setReturnDetail(''); setReturnPhotos([]); setReturnResolution('refund'); setOpenHelpOrderId(null); }}
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 4, color: '#64748b', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}
+                            >
+                              <i className="fas fa-undo" style={{ fontSize: 11 }} /> Return / Refund
+                            </button>
+                          )}
+                          {returnsEnabled && (order.status || '').toLowerCase() === 'delivered' && !returnStatuses[order.id] && !isWithinReturnWindow(order) && (
+                            <span style={{ fontSize: 12, color: '#94a3b8', padding: '6px 0' }}>Return window expired</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 );
               })
@@ -597,14 +662,55 @@ export default function ProfilePage() {
               </div>
             </div>
             <div style={{ marginBottom: 20 }}>
-              <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, color: '#333', fontSize: 14 }}>
-                {returnReason === 'Other' ? 'Please describe *' : 'Additional details (optional)'}
-              </label>
-              <textarea value={returnDetail} onChange={e => setReturnDetail(e.target.value)} rows={3} placeholder="Tell us more about why you want to return..." style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: 6, fontSize: 14, resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+              <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, color: '#333', fontSize: 14 }}>Additional notes *</label>
+              <textarea value={returnDetail} onChange={e => setReturnDetail(e.target.value)} rows={3} placeholder="Describe the issue in detail..." style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: 6, fontSize: 14, resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+              {returnReason && !returnDetail.trim() && <p style={{ fontSize: 12, color: '#e53935', marginTop: 4 }}>Please provide additional details.</p>}
             </div>
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, color: '#333', fontSize: 14 }}>
+                Photos {imageRequiredReasons.includes(returnReason) ? '*' : '(optional)'} {returnPhotos.length > 0 ? `(${returnPhotos.length}/5)` : ''}
+              </label>
+              {imageRequiredReasons.includes(returnReason) && (
+                <p style={{ fontSize: 12, color: '#64748b', marginBottom: 8 }}>Upload photos showing the issue (required).</p>
+              )}
+              {returnPhotos.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                  {returnPhotos.map((url, idx) => (
+                    <div key={idx} style={{ position: 'relative' }}>
+                      <img src={url} alt="" style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 4, border: '1px solid #e2e8f0' }} />
+                      <button onClick={() => setReturnPhotos(p => p.filter((_, i) => i !== idx))} style={{ position: 'absolute', top: -4, right: -4, width: 16, height: 16, borderRadius: '50%', background: '#e53935', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {returnPhotos.length < 5 && (
+                <>
+                  <input ref={returnFileRef} type="file" accept="image/*" multiple onChange={handleReturnPhotoChange} style={{ display: 'none' }} />
+                  <button type="button" onClick={() => returnFileRef.current?.click()} disabled={uploadingReturnPhotos} style={{ padding: '8px 14px', border: '1.5px dashed #cbd5e1', borderRadius: 6, background: '#f8fafc', color: '#475569', cursor: uploadingReturnPhotos ? 'not-allowed' : 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <i className="fas fa-camera" /> {uploadingReturnPhotos ? 'Uploading...' : 'Upload Photos'}
+                  </button>
+                </>
+              )}
+              {imageRequiredReasons.includes(returnReason) && returnPhotos.length === 0 && returnReason && (
+                <p style={{ fontSize: 12, color: '#e53935', marginTop: 4 }}>At least 1 photo is required for this return reason.</p>
+              )}
+            </div>
+            {replacementEnabled && (
+              <div style={{ marginBottom: 20 }}>
+                <label style={{ display: 'block', fontWeight: 600, marginBottom: 8, color: '#333', fontSize: 14 }}>Preferred resolution *</label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {[{ value: 'refund', label: 'Refund' }, { value: 'replacement', label: 'Replacement' }].map(opt => (
+                    <label key={opt.value} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: 'pointer', padding: '10px 12px', borderRadius: 6, border: `1.5px solid ${returnResolution === opt.value ? '#c8a97e' : '#e0e0e0'}`, background: returnResolution === opt.value ? '#fefcf8' : '#fafafa', textAlign: 'center', transition: 'all 0.15s' }}>
+                      <input type="radio" name="returnResolution" value={opt.value} checked={returnResolution === opt.value} onChange={() => setReturnResolution(opt.value)} style={{ accentColor: '#c8a97e' }} />
+                      <span style={{ fontSize: 14, color: '#333', fontWeight: returnResolution === opt.value ? 600 : 400 }}>{opt.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
             <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
               <button onClick={() => setReturnModal(null)} style={{ padding: '10px 20px', background: '#f8f9fa', color: '#333', border: '1px solid #ddd', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-              <button onClick={handleSubmitReturn} disabled={returningOrder || !returnReason || (returnReason === 'Other' && !returnDetail.trim())} style={{ padding: '10px 20px', background: '#c8a97e', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600, opacity: (returningOrder || !returnReason) ? 0.7 : 1 }}>
+              <button onClick={handleSubmitReturn} disabled={returningOrder || !isReturnFormValid()} style={{ padding: '10px 20px', background: '#c8a97e', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600, opacity: (returningOrder || !isReturnFormValid()) ? 0.7 : 1 }}>
                 {returningOrder ? 'Submitting...' : 'Submit Return Request'}
               </button>
             </div>
@@ -634,14 +740,13 @@ export default function ProfilePage() {
               </div>
             </div>
             <div style={{ marginBottom: 20 }}>
-              <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, color: '#333', fontSize: 14 }}>
-                {cancelReason === 'Other' ? 'Please describe *' : 'Additional details (optional)'}
-              </label>
-              <textarea value={cancelDetail} onChange={e => setCancelDetail(e.target.value)} rows={3} placeholder="Tell us more about why you want to cancel..." style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: 6, fontSize: 14, resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+              <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, color: '#333', fontSize: 14 }}>Additional notes *</label>
+              <textarea value={cancelDetail} onChange={e => setCancelDetail(e.target.value)} rows={3} placeholder="Please provide more details about your cancellation..." style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: 6, fontSize: 14, resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+              {cancelReason && !cancelDetail.trim() && <p style={{ fontSize: 12, color: '#e53935', marginTop: 4 }}>Please provide additional details before submitting.</p>}
             </div>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
               <button onClick={() => setCancelModal(null)} style={{ padding: '10px 20px', background: '#f8f9fa', color: '#333', border: '1px solid #ddd', borderRadius: 4, cursor: 'pointer' }}>Close</button>
-              <button onClick={handleSubmitCancel} disabled={cancellingOrder || !cancelReason || (cancelReason === 'Other' && !cancelDetail.trim())} style={{ padding: '10px 20px', background: '#e53935', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600, opacity: (cancellingOrder || !cancelReason) ? 0.7 : 1 }}>
+              <button onClick={handleSubmitCancel} disabled={cancellingOrder || !cancelReason || !cancelDetail.trim()} style={{ padding: '10px 20px', background: '#e53935', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600, opacity: (cancellingOrder || !cancelReason || !cancelDetail.trim()) ? 0.7 : 1 }}>
                 {cancellingOrder ? 'Submitting...' : 'Submit Cancellation'}
               </button>
             </div>

@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-p9Tqdj/checked-fetch.js
+// .wrangler/tmp/bundle-rX5CzR/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-p9Tqdj/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-rX5CzR/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-p9Tqdj/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-rX5CzR/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-p9Tqdj/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-rX5CzR/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -2116,12 +2116,12 @@ var init_site_admin_worker = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-p9Tqdj/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-rX5CzR/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-p9Tqdj/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-rX5CzR/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -6548,6 +6548,7 @@ async function ensureReturnRequestsTable(db) {
       reason TEXT NOT NULL,
       reason_detail TEXT,
       photos TEXT,
+      resolution TEXT,
       status TEXT DEFAULT 'requested',
       admin_note TEXT,
       refund_amount REAL,
@@ -6559,6 +6560,10 @@ async function ensureReturnRequestsTable(db) {
       created_at TEXT DEFAULT (datetime('now')),
       updated_at TEXT DEFAULT (datetime('now'))
     )`).run();
+    try {
+      await db.prepare(`ALTER TABLE return_requests ADD COLUMN resolution TEXT`).run();
+    } catch (e) {
+    }
     await db.prepare("CREATE INDEX IF NOT EXISTS idx_return_requests_site ON return_requests(site_id)").run();
     await db.prepare("CREATE INDEX IF NOT EXISTS idx_return_requests_order ON return_requests(order_id)").run();
     await db.prepare("CREATE INDEX IF NOT EXISTS idx_return_requests_token ON return_requests(return_token)").run();
@@ -6576,7 +6581,7 @@ __name(generateReturnToken, "generateReturnToken");
 async function createReturnRequest(request, env, orderId) {
   try {
     const data = await request.json();
-    const { siteId, items, reason, reasonDetail, photos, returnToken } = data;
+    const { siteId, items, reason, reasonDetail, photos, resolution, returnToken } = data;
     if (!siteId || !orderId)
       return errorResponse("siteId and orderId are required");
     if (!reason)
@@ -6640,8 +6645,8 @@ async function createReturnRequest(request, env, orderId) {
       return errorResponse("A return request already exists for this order", 409);
     const returnId = generateId();
     await db.prepare(
-      `INSERT INTO return_requests (id, site_id, order_id, order_number, items, reason, reason_detail, photos, status, return_token, customer_name, customer_email, customer_phone, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'requested', ?, ?, ?, ?, datetime('now'), datetime('now'))`
+      `INSERT INTO return_requests (id, site_id, order_id, order_number, items, reason, reason_detail, photos, resolution, status, return_token, customer_name, customer_email, customer_phone, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'requested', ?, ?, ?, ?, datetime('now'), datetime('now'))`
     ).bind(
       returnId,
       siteId,
@@ -6651,6 +6656,7 @@ async function createReturnRequest(request, env, orderId) {
       reason,
       reasonDetail || null,
       photos ? JSON.stringify(photos) : null,
+      resolution || null,
       order.return_token || null,
       order.customer_name,
       order.customer_email || null,
@@ -14192,7 +14198,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-p9Tqdj/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-rX5CzR/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -14227,7 +14233,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-p9Tqdj/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-rX5CzR/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

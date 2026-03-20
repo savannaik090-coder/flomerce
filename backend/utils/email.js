@@ -196,10 +196,11 @@ export function buildOrderConfirmationEmail(order, brandName, ownerEmail, curren
           </div>
           ` : ''}
 
-          ${options.cancelUrl ? `
-          <div style="margin-top: 20px; padding: 16px; background: #fefce8; border: 1px solid #fef08a; border-radius: 8px;">
-            <p style="margin: 0 0 8px; font-size: 13px; color: #854d0e; font-weight: 600;">Need to cancel this order?</p>
-            <p style="margin: 0; font-size: 13px; color: #a16207; line-height: 1.5;">If you need to cancel your order, <a href="${options.cancelUrl}" style="color:#854d0e;font-weight:600;">click here</a> to submit a cancellation request.</p>
+          ${options.helpUrl ? `
+          <div style="margin-top: 20px; padding: 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; text-align: center;">
+            <p style="margin: 0 0 6px; font-size: 14px; font-weight: 600; color: #334155;">Need help with your order?</p>
+            <p style="margin: 0 0 12px; font-size: 13px; color: #64748b; line-height: 1.5;">For cancellations, changes, or any other queries about this order — we're here to help.</p>
+            <a href="${options.helpUrl}" style="display:inline-block;background:#0f172a;color:#fff;padding:10px 24px;border-radius:6px;text-decoration:none;font-weight:600;font-size:13px;">Get Help With This Order</a>
           </div>
           ` : ''}
 
@@ -312,10 +313,11 @@ export function buildDeliveryCustomerEmail(order, brandName, ownerEmail, currenc
             <p style="margin: 0 0 8px; font-size: 16px; font-weight: 600; color: #166534;">Enjoying your purchase?</p>
             <p style="margin: 0; font-size: 14px; color: #555; line-height: 1.6;">We'd love to hear from you! Share your experience and leave a review — your feedback helps us serve you better and helps other shoppers make great choices.</p>
           </div>
-          ${options.returnUrl ? `
-          <div style="margin-top: 20px; padding: 16px; background: #fefce8; border: 1px solid #fef08a; border-radius: 8px;">
-            <p style="margin: 0 0 8px; font-size: 13px; color: #854d0e; font-weight: 600;">Need to return this order?</p>
-            <p style="margin: 0; font-size: 13px; color: #a16207; line-height: 1.5;">If you need to request a return, <a href="${options.returnUrl}" style="color:#854d0e;font-weight:600;">click here</a> to submit a return request.</p>
+          ${options.helpUrl ? `
+          <div style="margin-top: 20px; padding: 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; text-align: center;">
+            <p style="margin: 0 0 6px; font-size: 14px; font-weight: 600; color: #334155;">Need help with your order?</p>
+            <p style="margin: 0 0 12px; font-size: 13px; color: #64748b; line-height: 1.5;">For returns, refunds, or any other queries about your order — we're here to help.</p>
+            <a href="${options.helpUrl}" style="display:inline-block;background:#0f172a;color:#fff;padding:10px 24px;border-radius:6px;text-decoration:none;font-weight:600;font-size:13px;">Get Help With This Order</a>
           </div>
           ` : ''}
           <p style="margin-top: 20px; color: #64748b; font-size: 14px; line-height: 1.6;">${contactLine}</p>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { SiteContext } from '../context/SiteContext.jsx';
 import * as orderService from '../services/orderService.js';
@@ -11,6 +11,13 @@ const RETURN_REASONS = [
   'Changed my mind',
   'Other',
 ];
+
+const IMAGE_REQUIRED_REASONS = ['Received wrong item', 'Item damaged or defective'];
+
+function getApiBase() {
+  if (typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in')) return '';
+  return 'https://fluxe.in';
+}
 
 export default function ReturnPage() {
   const { orderId } = useParams();
@@ -26,22 +33,31 @@ export default function ReturnPage() {
 
   const [returnReason, setReturnReason] = useState('');
   const [returnDetail, setReturnDetail] = useState('');
+  const [resolution, setResolution] = useState('refund');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
 
+  const [photos, setPhotos] = useState([]);
+  const [uploadingPhotos, setUploadingPhotos] = useState(false);
+  const fileInputRef = useRef(null);
+
   const [existingReturn, setExistingReturn] = useState(null);
   const [checkingStatus, setCheckingStatus] = useState(false);
+
+  let settings = {};
+  try {
+    const s = siteConfig?.settings;
+    settings = typeof s === 'string' ? JSON.parse(s) : (s || {});
+  } catch {}
+  const replacementEnabled = settings.replacementEnabled === true;
+  const imageRequired = IMAGE_REQUIRED_REASONS.includes(returnReason);
 
   useEffect(() => {
     if (orderId && siteConfig?.id) {
       setCheckingStatus(true);
       orderService.getReturnStatus(orderId, siteConfig.id, token)
-        .then(res => {
-          if (res.data) {
-            setExistingReturn(res.data);
-          }
-        })
+        .then(res => { if (res.data) setExistingReturn(res.data); })
         .catch(() => {})
         .finally(() => setCheckingStatus(false));
     }
@@ -53,10 +69,7 @@ export default function ReturnPage() {
     setLookupLoading(true);
     setLookupMessage('');
     try {
-      await orderService.resendReturnLink(lookupOrderId.trim(), {
-        siteId: siteConfig.id,
-        email: lookupEmail.trim(),
-      });
+      await orderService.resendReturnLink(lookupOrderId.trim(), { siteId: siteConfig.id, email: lookupEmail.trim() });
       setLookupMessage('A return link has been sent to your email. Please check your inbox.');
     } catch (err) {
       setLookupMessage(err.message || 'Could not find this order. Please check your order number and email.');
@@ -65,16 +78,60 @@ export default function ReturnPage() {
     }
   };
 
+  const handleFileChange = async (e) => {
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
+    if (photos.length + files.length > 5) {
+      alert('You can upload a maximum of 5 photos.');
+      return;
+    }
+    setUploadingPhotos(true);
+    try {
+      const API_BASE = getApiBase();
+      const newPhotos = [];
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append('image', file);
+        const resp = await fetch(`${API_BASE}/api/upload/image?siteId=${siteConfig.id}`, {
+          method: 'POST',
+          body: formData,
+        });
+        const result = await resp.json();
+        if (result.success && result.data?.url) {
+          newPhotos.push(result.data.url);
+        }
+      }
+      setPhotos(prev => [...prev, ...newPhotos]);
+    } catch {
+      alert('Failed to upload one or more images. Please try again.');
+    } finally {
+      setUploadingPhotos(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const removePhoto = (idx) => {
+    setPhotos(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const isFormValid = () => {
+    if (!returnReason) return false;
+    if (!returnDetail.trim()) return false;
+    if (imageRequired && photos.length === 0) return false;
+    return true;
+  };
+
   const handleSubmit = async () => {
-    if (!returnReason) return;
-    if (returnReason === 'Other' && !returnDetail.trim()) return;
+    if (!isFormValid()) return;
     setSubmitting(true);
     setError('');
     try {
       await orderService.createReturnRequest(orderId, {
         siteId: siteConfig.id,
         reason: returnReason,
-        reasonDetail: returnReason === 'Other' ? returnDetail : returnDetail || undefined,
+        reasonDetail: returnDetail,
+        photos: photos.length > 0 ? photos : undefined,
+        resolution: replacementEnabled ? resolution : 'refund',
         returnToken: token,
       });
       setSubmitted(true);
@@ -90,7 +147,7 @@ export default function ReturnPage() {
 
   return (
     <div style={{ minHeight: '80vh', display: 'flex', justifyContent: 'center', alignItems: 'flex-start', padding: '40px 16px' }}>
-      <div style={{ maxWidth: 520, width: '100%', background: '#fff', borderRadius: 12, boxShadow: '0 2px 20px rgba(0,0,0,0.08)', padding: 32 }}>
+      <div style={{ maxWidth: 560, width: '100%', background: '#fff', borderRadius: 12, boxShadow: '0 2px 20px rgba(0,0,0,0.08)', padding: 32 }}>
         <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 24, margin: '0 0 8px', color: '#1e293b' }}>Return Order</h1>
 
         {mode === 'lookup' && !orderId && (
@@ -137,6 +194,11 @@ export default function ReturnPage() {
               <span style={{ display: 'inline-block', background: statusColors[existingReturn.status] || '#757575', color: '#fff', borderRadius: 20, padding: '6px 20px', fontSize: 15, fontWeight: 600 }}>
                 {statusLabels[existingReturn.status] || existingReturn.status}
               </span>
+              {existingReturn.resolution && (
+                <div style={{ marginTop: 12, fontSize: 13, color: '#64748b' }}>
+                  Requested: <strong style={{ color: '#334155' }}>{existingReturn.resolution === 'replacement' ? 'Replacement' : 'Refund'}</strong>
+                </div>
+              )}
               {existingReturn.admin_note && (
                 <div style={{ marginTop: 16, padding: '12px 16px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, textAlign: 'left' }}>
                   <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600, marginBottom: 4 }}>Note from store</div>
@@ -160,6 +222,7 @@ export default function ReturnPage() {
                 {error}
               </div>
             )}
+
             <div style={{ marginBottom: 20 }}>
               <label style={{ display: 'block', fontWeight: 600, marginBottom: 10, fontSize: 14, color: '#334155' }}>Reason for return *</label>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -171,13 +234,100 @@ export default function ReturnPage() {
                 ))}
               </div>
             </div>
+
             <div style={{ marginBottom: 20 }}>
               <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 14, color: '#334155' }}>
-                {returnReason === 'Other' ? 'Please describe *' : 'Additional details (optional)'}
+                Additional notes *
               </label>
-              <textarea value={returnDetail} onChange={e => setReturnDetail(e.target.value)} rows={3} placeholder="Tell us more..." style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14, resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+              <textarea
+                value={returnDetail}
+                onChange={e => setReturnDetail(e.target.value)}
+                rows={3}
+                placeholder={imageRequired ? 'Please describe the issue in detail (e.g. what is wrong, when was it noticed)...' : 'Tell us more about your return request...'}
+                style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14, resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit' }}
+              />
+              {returnReason && !returnDetail.trim() && (
+                <p style={{ fontSize: 12, color: '#e53935', marginTop: 4 }}>Please provide details before submitting.</p>
+              )}
             </div>
-            <button onClick={handleSubmit} disabled={submitting || !returnReason || (returnReason === 'Other' && !returnDetail.trim())} style={{ width: '100%', padding: '12px 24px', background: '#0f172a', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.7 : 1 }}>
+
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 14, color: '#334155' }}>
+                Photos {imageRequired ? '*' : '(optional)'} {photos.length > 0 ? `(${photos.length}/5)` : ''}
+              </label>
+              {imageRequired && (
+                <p style={{ fontSize: 13, color: '#64748b', marginBottom: 10, lineHeight: 1.5 }}>
+                  Please upload clear photos showing the issue. This helps us process your request faster.
+                </p>
+              )}
+
+              {photos.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
+                  {photos.map((url, idx) => (
+                    <div key={idx} style={{ position: 'relative', width: 80, height: 80 }}>
+                      <img src={url} alt={`Return photo ${idx + 1}`} style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 6, border: '1px solid #e2e8f0' }} />
+                      <button
+                        onClick={() => removePhoto(idx)}
+                        style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%', background: '#e53935', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}
+                      >×</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {photos.length < 5 && (
+                <>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleFileChange}
+                    style={{ display: 'none' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadingPhotos}
+                    style={{ padding: '10px 16px', border: '1.5px dashed #cbd5e1', borderRadius: 8, background: '#f8fafc', color: '#475569', cursor: uploadingPhotos ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 8 }}
+                  >
+                    <i className="fas fa-camera" />
+                    {uploadingPhotos ? 'Uploading...' : 'Upload Photos'}
+                  </button>
+                </>
+              )}
+              {imageRequired && photos.length === 0 && returnReason && (
+                <p style={{ fontSize: 12, color: '#e53935', marginTop: 4 }}>At least 1 photo is required for this return reason.</p>
+              )}
+            </div>
+
+            {replacementEnabled && (
+              <div style={{ marginBottom: 20 }}>
+                <label style={{ display: 'block', fontWeight: 600, marginBottom: 10, fontSize: 14, color: '#334155' }}>Preferred resolution *</label>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  {[
+                    { value: 'refund', label: 'Refund', icon: 'fa-money-bill-wave', desc: 'Get your money back' },
+                    { value: 'replacement', label: 'Replacement', icon: 'fa-exchange-alt', desc: 'Send me a new item' },
+                  ].map(opt => (
+                    <label
+                      key={opt.value}
+                      style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, cursor: 'pointer', padding: '14px 12px', borderRadius: 8, border: `1.5px solid ${resolution === opt.value ? '#0f172a' : '#e2e8f0'}`, background: resolution === opt.value ? '#f8fafc' : '#fff', textAlign: 'center', transition: 'all 0.15s' }}
+                    >
+                      <input type="radio" name="resolution" value={opt.value} checked={resolution === opt.value} onChange={() => setResolution(opt.value)} style={{ display: 'none' }} />
+                      <i className={`fas ${opt.icon}`} style={{ fontSize: 20, color: resolution === opt.value ? '#0f172a' : '#94a3b8' }} />
+                      <span style={{ fontWeight: 600, fontSize: 14, color: '#334155' }}>{opt.label}</span>
+                      <span style={{ fontSize: 12, color: '#64748b' }}>{opt.desc}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <button
+              onClick={handleSubmit}
+              disabled={submitting || !isFormValid()}
+              style={{ width: '100%', padding: '12px 24px', background: '#0f172a', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: submitting ? 'not-allowed' : 'pointer', opacity: (submitting || !isFormValid()) ? 0.6 : 1 }}
+            >
               {submitting ? 'Submitting...' : 'Submit Return Request'}
             </button>
           </div>
