@@ -1,7 +1,7 @@
 import { generateId, generateOrderNumber, jsonResponse, errorResponse, successResponse, handleCORS } from '../../utils/helpers.js';
 import { validateAuth, validateAnyAuth } from '../../utils/auth.js';
 import { updateProductStock } from './products-worker.js';
-import { sendEmail, buildOrderConfirmationEmail, buildOwnerNotificationEmail, buildCancellationCustomerEmail, buildCancellationOwnerEmail, buildDeliveryCustomerEmail, buildDeliveryOwnerEmail } from '../../utils/email.js';
+import { sendEmail, buildOrderConfirmationEmail, buildOwnerNotificationEmail, buildCancellationCustomerEmail, buildCancellationOwnerEmail, buildDeliveryCustomerEmail, buildDeliveryOwnerEmail, buildNewOrderReviewEmail, buildOrderPackedEmail, buildOrderShippedEmail } from '../../utils/email.js';
 import { checkUsageLimit, estimateRowBytes, trackD1Write, trackD1Update } from '../../utils/usage-tracker.js';
 import { resolveSiteDBById, checkMigrationLock, getSiteConfig, ensureProductOptionsColumn } from '../../utils/site-db.js';
 
@@ -514,7 +514,13 @@ async function updateOrderStatus(request, env, user, orderId) {
       updates.push('status = ?');
       values.push(status);
 
-      if (status === 'shipped') {
+      if (status === 'confirmed') {
+        updates.push('confirmed_at = datetime("now")');
+        try { await db.prepare(`ALTER TABLE orders ADD COLUMN confirmed_at TEXT`).run(); } catch {}
+      } else if (status === 'packed') {
+        updates.push('packed_at = datetime("now")');
+        try { await db.prepare(`ALTER TABLE orders ADD COLUMN packed_at TEXT`).run(); } catch {}
+      } else if (status === 'shipped') {
         updates.push('shipped_at = datetime("now")');
       } else if (status === 'delivered') {
         updates.push('delivered_at = datetime("now")');
@@ -595,6 +601,65 @@ async function updateOrderStatus(request, env, user, orderId) {
         }
       } catch (emailErr) {
         console.error('Failed to send cancellation emails:', emailErr);
+      }
+    }
+
+    if (status === 'confirmed' || status === 'packed' || status === 'shipped') {
+      try {
+        const fullOrder = await db.prepare('SELECT * FROM orders WHERE id = ?').bind(orderId).first();
+        if (fullOrder && fullOrder.customer_email) {
+          const statusConfig = await getSiteConfig(env, fullOrder.site_id);
+          const siteBrandName = statusConfig.brand_name || 'Store';
+          let statusSettings = {};
+          try { if (statusConfig.settings) statusSettings = typeof statusConfig.settings === 'string' ? JSON.parse(statusConfig.settings) : statusConfig.settings; } catch (e) {}
+          const ownerEmail = statusSettings.email || statusSettings.ownerEmail || statusConfig.email;
+          const statusCurrency = statusSettings.defaultCurrency || 'INR';
+
+          const site = await env.DB.prepare('SELECT subdomain, custom_domain FROM sites WHERE id = ?').bind(fullOrder.site_id).first();
+          const domain = site?.custom_domain || `${site?.subdomain || 'store'}.${env.DOMAIN || 'fluxe.in'}`;
+
+          const trackingUrl = `https://${domain}/order-track?orderId=${fullOrder.order_number}`;
+
+          const emailOrder = {
+            order_number: fullOrder.order_number,
+            customer_name: fullOrder.customer_name,
+            customer_email: fullOrder.customer_email,
+            customer_phone: fullOrder.customer_phone,
+            total: fullOrder.total,
+            payment_method: fullOrder.payment_method,
+            items: fullOrder.items,
+            shipping_address: fullOrder.shipping_address,
+            subtotal: fullOrder.subtotal,
+            discount: fullOrder.discount,
+            coupon_code: fullOrder.coupon_code,
+          };
+
+          let emailOptions = { trackingUrl };
+          if (status === 'confirmed' && statusSettings.returnsEnabled && fullOrder.customer_email) {
+            try {
+              const returnToken = generateReturnToken();
+              try { await db.prepare(`ALTER TABLE orders ADD COLUMN return_token TEXT`).run(); } catch (e) {}
+              await db.prepare(`UPDATE orders SET return_token = ? WHERE id = ?`).bind(returnToken, orderId).run();
+              emailOptions.returnUrl = `https://${domain}/return/${fullOrder.order_number}?token=${returnToken}`;
+            } catch (e) {
+              console.error('Return token generation error:', e);
+            }
+          }
+
+          if (status === 'confirmed') {
+            const { html, text } = buildOrderConfirmationEmail(emailOrder, siteBrandName, ownerEmail, statusCurrency, emailOptions);
+            await sendEmail(env, fullOrder.customer_email, `Order Confirmed #${fullOrder.order_number} - ${siteBrandName}`, html, text).catch(e => console.error('Confirmation email error:', e));
+          } else if (status === 'packed') {
+            const { html, text } = buildOrderPackedEmail(emailOrder, siteBrandName, ownerEmail, statusCurrency, { trackingUrl });
+            await sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been packed! - ${siteBrandName}`, html, text).catch(e => console.error('Packed email error:', e));
+          } else if (status === 'shipped') {
+            const shipOptions = { trackingUrl, trackingNumber: fullOrder.tracking_number || trackingNumber, carrier: fullOrder.carrier || carrier };
+            const { html, text } = buildOrderShippedEmail(emailOrder, siteBrandName, ownerEmail, statusCurrency, shipOptions);
+            await sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been shipped! - ${siteBrandName}`, html, text).catch(e => console.error('Shipped email error:', e));
+          }
+        }
+      } catch (emailErr) {
+        console.error('Failed to send status update email:', emailErr);
       }
     }
 
@@ -834,22 +899,20 @@ async function trackOrder(env, orderId, request) {
 
     let order = null;
 
-    let query = 'SELECT id, order_number, status, tracking_number, carrier, shipped_at, delivered_at, created_at FROM orders WHERE (id = ? OR order_number = ?)';
-    const bindings = [orderId, orderId];
-    if (siteId) {
-      query += ' AND site_id = ?';
-      bindings.push(siteId);
-    }
-    order = await db.prepare(query).bind(...bindings).first();
+    const siteClause = siteId ? ' AND site_id = ?' : '';
 
-    if (!order) {
-      let guestQuery = 'SELECT id, order_number, status, tracking_number, carrier, created_at FROM guest_orders WHERE (id = ? OR order_number = ?)';
-      const guestBindings = [orderId, orderId];
-      if (siteId) {
-        guestQuery += ' AND site_id = ?';
-        guestBindings.push(siteId);
+    for (const table of ['orders', 'guest_orders']) {
+      if (order) break;
+      const binds = siteId ? [orderId, orderId, siteId] : [orderId, orderId];
+      try {
+        order = await db.prepare(
+          `SELECT id, order_number, status, tracking_number, carrier, confirmed_at, packed_at, shipped_at, delivered_at, created_at FROM ${table} WHERE (id = ? OR order_number = ?)${siteClause}`
+        ).bind(...binds).first();
+      } catch (colErr) {
+        order = await db.prepare(
+          `SELECT id, order_number, status, tracking_number, carrier, shipped_at, delivered_at, created_at FROM ${table} WHERE (id = ? OR order_number = ?)${siteClause}`
+        ).bind(...binds).first();
       }
-      order = await db.prepare(guestQuery).bind(...guestBindings).first();
     }
 
     if (!order) {
@@ -1268,23 +1331,11 @@ export async function sendOrderEmails(env, siteId, orderData) {
       }
     }
 
-    if (orderData.customerEmail) {
-      try {
-        const { html, text } = buildOrderConfirmationEmail(emailOrder, siteBrandName, ownerEmail, currency, emailOptions);
-        emailJobs.push(
-          sendEmail(env, orderData.customerEmail, `Order Confirmed #${orderData.orderNumber} - ${siteBrandName}`, html, text)
-            .catch(e => console.error('Customer email send error:', e))
-        );
-      } catch (buildErr) {
-        console.error('Customer email build error:', buildErr);
-      }
-    }
-
     if (ownerEmail) {
       try {
-        const { html, text } = buildOwnerNotificationEmail(emailOrder, siteBrandName, currency);
+        const { html, text } = buildNewOrderReviewEmail(emailOrder, siteBrandName, currency);
         emailJobs.push(
-          sendEmail(env, ownerEmail, `New Order #${orderData.orderNumber} - ${siteBrandName}`, html, text)
+          sendEmail(env, ownerEmail, `New Order #${orderData.orderNumber} - Review Required - ${siteBrandName}`, html, text)
             .catch(e => console.error('Owner email send error:', e))
         );
       } catch (buildErr) {

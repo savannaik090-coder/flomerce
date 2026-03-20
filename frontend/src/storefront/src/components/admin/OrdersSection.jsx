@@ -15,6 +15,8 @@ function getStatusColor(status) {
   const s = (status || '').toLowerCase();
   if (s === 'delivered') return '#27ae60';
   if (s === 'confirmed' || s === 'paid') return '#2196f3';
+  if (s === 'packed') return '#7c3aed';
+  if (s === 'shipped') return '#0284c7';
   if (s === 'cancelled') return '#e53935';
   if (s === 'pending_payment') return '#ff9800';
   return '#757575';
@@ -26,6 +28,8 @@ function getStatusLabel(status) {
   if (s === 'paid') return 'Paid';
   if (s === 'pending') return 'Pending';
   if (s === 'confirmed') return 'Confirmed';
+  if (s === 'packed') return 'Packed';
+  if (s === 'shipped') return 'Shipped';
   if (s === 'delivered') return 'Delivered';
   if (s === 'cancelled') return 'Cancelled';
   return status || 'Pending';
@@ -168,7 +172,7 @@ export default function OrdersSection() {
     setExpandedOrderId(prev => (prev === orderId ? null : orderId));
   }
 
-  const statuses = ['all', 'pending', 'pending_payment', 'paid', 'confirmed', 'delivered', 'cancelled'];
+  const statuses = ['all', 'pending', 'pending_payment', 'paid', 'confirmed', 'packed', 'shipped', 'delivered', 'cancelled'];
 
   const filtered = orders.filter(o => {
     const matchesStatus = statusFilter === 'all' || (o.status || '').toLowerCase() === statusFilter;
@@ -436,7 +440,7 @@ export default function OrdersSection() {
                           <td style={{ whiteSpace: 'nowrap' }}>{new Date(order.created_at || order.createdAt).toLocaleDateString()}</td>
                           <td onClick={e => e.stopPropagation()}>
                             <div style={{ display: 'flex', gap: 4 }}>
-                              {!isCancelled && !isDelivered && statusLower !== 'confirmed' && (
+                              {!isCancelled && !isDelivered && statusLower !== 'confirmed' && statusLower !== 'packed' && statusLower !== 'shipped' && (
                                 <button
                                   className="btn btn-sm btn-success"
                                   onClick={() => setConfirmDialog({ orderId: order.id, orderNum, action: 'confirmed', label: 'Confirm this order?' })}
@@ -446,6 +450,26 @@ export default function OrdersSection() {
                                 </button>
                               )}
                               {statusLower === 'confirmed' && (
+                                <button
+                                  className="btn btn-sm"
+                                  style={{ background: '#7c3aed', color: '#fff', border: 'none', borderRadius: 4, padding: '4px 8px', cursor: 'pointer', fontSize: 11, fontWeight: 600 }}
+                                  onClick={() => setConfirmDialog({ orderId: order.id, orderNum, action: 'packed', label: 'Mark this order as packed?' })}
+                                  title="Mark as Packed"
+                                >
+                                  Packed
+                                </button>
+                              )}
+                              {statusLower === 'packed' && (
+                                <button
+                                  className="btn btn-sm"
+                                  style={{ background: '#0284c7', color: '#fff', border: 'none', borderRadius: 4, padding: '4px 8px', cursor: 'pointer', fontSize: 11, fontWeight: 600 }}
+                                  onClick={() => setConfirmDialog({ orderId: order.id, orderNum, action: 'shipped', label: 'Mark this order as shipped?' })}
+                                  title="Mark as Shipped"
+                                >
+                                  Shipped
+                                </button>
+                              )}
+                              {statusLower === 'shipped' && (
                                 <button
                                   className="btn btn-sm"
                                   style={{ background: '#27ae60', color: '#fff', border: 'none', borderRadius: 4, padding: '4px 8px', cursor: 'pointer', fontSize: 11, fontWeight: 600 }}

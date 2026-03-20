@@ -190,6 +190,12 @@ export function buildOrderConfirmationEmail(order, brandName, ownerEmail, curren
 
           ${addressHtml}
 
+          ${options.trackingUrl ? `
+          <div style="margin: 24px 0; text-align: center;">
+            <a href="${options.trackingUrl}" style="display: inline-block; padding: 14px 32px; background: #0f172a; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 15px;">Track Your Order</a>
+          </div>
+          ` : ''}
+
           ${options.returnUrl ? `
           <div style="margin-top: 20px; padding: 16px; background: #fefce8; border: 1px solid #fef08a; border-radius: 8px;">
             <p style="margin: 0 0 8px; font-size: 13px; color: #854d0e; font-weight: 600;">Need to return this order?</p>
@@ -197,7 +203,7 @@ export function buildOrderConfirmationEmail(order, brandName, ownerEmail, curren
           </div>
           ` : ''}
 
-          <p style="margin-top: 24px; color: #64748b; font-size: 14px; line-height: 1.6;">Your order is now being prepared. We'll update you once it's on its way. For any queries, reach out to us at ${ownerEmail ? `<a href="mailto:${ownerEmail}" style="color:#0f172a;">${ownerEmail}</a>` : brandName || 'the store'}.</p>
+          <p style="margin-top: 24px; color: #64748b; font-size: 14px; line-height: 1.6;">Your order has been confirmed and is now being prepared. We'll update you once it's packed and on its way. For any queries, reach out to us at ${ownerEmail ? `<a href="mailto:${ownerEmail}" style="color:#0f172a;">${ownerEmail}</a>` : brandName || 'the store'}.</p>
         </div>
         <div style="background: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8;">
           <p style="margin: 0;">Thank you for shopping with ${brandName || 'us'}!</p>
@@ -462,5 +468,180 @@ export function buildOwnerNotificationEmail(order, brandName, currency = 'INR') 
 
   const text = `New Order Received!\n\nOrder #${order.order_number || order.orderNumber}\nTotal: ${formatCurrency(order.total, currency)}\nCustomer: ${order.customer_name || ''}\nPhone: ${order.customer_phone || ''}\nPayment: ${order.payment_method === 'cod' ? 'Cash on Delivery' : 'Online Payment'}`;
 
+  return { html, text };
+}
+
+export function buildNewOrderReviewEmail(order, brandName, currency = 'INR') {
+  const items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
+
+  const itemsHtml = items.map(item => `
+    <tr>
+      <td style="padding: 10px 16px; border-bottom: 1px solid #f0f0f0; font-size: 14px;">${item.name}${formatSelectedOptions(item.selectedOptions, currency)}</td>
+      <td style="padding: 10px 16px; border-bottom: 1px solid #f0f0f0; text-align: center; font-size: 14px;">${item.quantity}</td>
+      <td style="padding: 10px 16px; border-bottom: 1px solid #f0f0f0; text-align: right; font-size: 14px;">${formatCurrencyHtml(Number(item.price) * Number(item.quantity), currency)}</td>
+    </tr>
+  `).join('');
+
+  const shippingAddress = typeof order.shipping_address === 'string'
+    ? JSON.parse(order.shipping_address)
+    : order.shipping_address || order.shippingAddress;
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="utf-8"></head>
+    <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background: #f5f5f5;">
+      <div style="max-width: 600px; margin: 0 auto; background: #ffffff;">
+        <div style="background: #f59e0b; color: #ffffff; padding: 24px 32px;">
+          <h1 style="margin: 0; font-size: 20px; font-weight: 700;">New Order - Review Required</h1>
+          <p style="margin: 4px 0 0; opacity: 0.9; font-size: 14px;">${brandName || 'Your Store'} - Order #${order.order_number || order.orderNumber || ''}</p>
+        </div>
+        <div style="padding: 24px 32px;">
+          <div style="padding: 14px 16px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; margin-bottom: 20px;">
+            <p style="margin: 0; font-size: 14px; color: #92400e; font-weight: 600;">This order is pending your review. Please confirm or cancel it from your admin panel.</p>
+          </div>
+
+          <div style="padding: 12px 16px; background: #f0fdf4; border-radius: 8px; margin-bottom: 20px;">
+            <div style="font-size: 12px; color: #059669; text-transform: uppercase; font-weight: 600;">Total Amount</div>
+            <div style="font-size: 22px; font-weight: 700; color: #0f172a;">${formatCurrencyHtml(order.total, currency)}</div>
+            ${Number(order.discount || 0) > 0 ? `<div style="font-size: 12px; color: #16a34a; margin-top: 4px;">Coupon${order.coupon_code ? ` (${order.coupon_code})` : ''}: -${formatCurrencyHtml(order.discount, currency)} off</div>` : ''}
+          </div>
+
+          <h3 style="font-size: 14px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin: 20px 0 8px;">Customer Details</h3>
+          <div style="padding: 12px 16px; background: #f8f9fa; border-radius: 8px; font-size: 14px; line-height: 1.8;">
+            <strong>Name:</strong> ${order.customer_name || (shippingAddress && shippingAddress.name) || 'N/A'}<br>
+            <strong>Email:</strong> ${order.customer_email || 'N/A'}<br>
+            <strong>Phone:</strong> ${order.customer_phone || (shippingAddress && shippingAddress.phone) || 'N/A'}<br>
+            <strong>Payment:</strong> ${order.payment_method === 'cod' || order.paymentMethod === 'cod' ? 'Cash on Delivery' : 'Online Payment'}
+          </div>
+
+          ${shippingAddress ? `
+          <h3 style="font-size: 14px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin: 20px 0 8px;">Shipping Address</h3>
+          <div style="padding: 12px 16px; background: #f8f9fa; border-radius: 8px; font-size: 14px; line-height: 1.6;">
+            ${shippingAddress.address || ''}<br>
+            ${shippingAddress.city || ''}, ${shippingAddress.state || ''} ${shippingAddress.pinCode || shippingAddress.pin_code || ''}
+          </div>
+          ` : ''}
+
+          <h3 style="font-size: 14px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin: 20px 0 8px;">Order Items</h3>
+          <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+              <tr style="background: #f8f9fa;">
+                <th style="padding: 10px 16px; text-align: left; font-size: 12px; color: #64748b; text-transform: uppercase;">Product</th>
+                <th style="padding: 10px 16px; text-align: center; font-size: 12px; color: #64748b; text-transform: uppercase;">Qty</th>
+                <th style="padding: 10px 16px; text-align: right; font-size: 12px; color: #64748b; text-transform: uppercase;">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${itemsHtml}
+            </tbody>
+          </table>
+        </div>
+        <div style="background: #f8f9fa; padding: 16px 32px; text-align: center; font-size: 12px; color: #94a3b8;">
+          <p style="margin: 0;">This is an automated notification from ${brandName || 'Fluxe'}.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  const text = `New Order - Review Required\n\nOrder #${order.order_number || order.orderNumber}\nTotal: ${formatCurrency(order.total, currency)}\nCustomer: ${order.customer_name || ''}\nPhone: ${order.customer_phone || ''}\nPayment: ${order.payment_method === 'cod' ? 'Cash on Delivery' : 'Online Payment'}\n\nPlease review and confirm this order from your admin panel.`;
+
+  return { html, text };
+}
+
+export function buildOrderPackedEmail(order, brandName, ownerEmail, currency = 'INR', options = {}) {
+  const contactLine = ownerEmail
+    ? `For any queries, contact us at <a href="mailto:${ownerEmail}" style="color:#7c3aed;">${ownerEmail}</a>.`
+    : 'For any queries, please reply to this email.';
+  const trackingHtml = options.trackingUrl ? `
+    <div style="margin: 24px 0; text-align: center;">
+      <a href="${options.trackingUrl}" style="display: inline-block; padding: 14px 32px; background: #7c3aed; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 15px;">Track Your Order</a>
+    </div>
+  ` : '';
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="utf-8"></head>
+    <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background: #f5f5f5;">
+      <div style="max-width: 600px; margin: 0 auto; background: #ffffff;">
+        <div style="background: #7c3aed; color: #ffffff; padding: 32px; text-align: center;">
+          <h1 style="margin: 0; font-size: 24px; font-weight: 700;">${brandName || 'Your Store'}</h1>
+        </div>
+        <div style="padding: 32px;">
+          <div style="text-align: center; margin-bottom: 28px;">
+            <div style="font-size: 52px; margin-bottom: 12px;">📦</div>
+            <h2 style="margin: 0 0 6px; font-size: 24px; color: #0f172a;">Your Order Has Been Packed!</h2>
+            <p style="margin: 0; color: #64748b; font-size: 14px;">Order #${order.order_number || ''}</p>
+          </div>
+          <p style="color: #333; font-size: 15px; line-height: 1.6;">Hi ${order.customer_name || 'Customer'},</p>
+          <p style="color: #333; font-size: 15px; line-height: 1.6;">Great news! Your order has been packed and is getting ready to be shipped. We'll notify you once it's on the way.</p>
+          <div style="padding: 16px; background: #f8f9fa; border-radius: 8px; font-size: 14px; color: #555; margin: 20px 0;">
+            <strong>Order Total:</strong> ${formatCurrencyHtml(order.total, currency)}<br>
+            <strong>Payment Method:</strong> ${order.payment_method === 'cod' ? 'Cash on Delivery' : 'Online Payment'}
+          </div>
+          ${trackingHtml}
+          <p style="margin-top: 20px; color: #64748b; font-size: 14px; line-height: 1.6;">${contactLine}</p>
+        </div>
+        <div style="background: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8;">
+          <p style="margin: 0;">Thank you for shopping with ${brandName || 'us'}!</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+  const text = `Your Order Has Been Packed!\n\nOrder #${order.order_number}\nYour order has been packed and is getting ready to be shipped.\nTotal: ${formatCurrency(order.total, currency)}\n\n${ownerEmail ? 'Contact: ' + ownerEmail : ''}`;
+  return { html, text };
+}
+
+export function buildOrderShippedEmail(order, brandName, ownerEmail, currency = 'INR', options = {}) {
+  const contactLine = ownerEmail
+    ? `For any queries, contact us at <a href="mailto:${ownerEmail}" style="color:#0284c7;">${ownerEmail}</a>.`
+    : 'For any queries, please reply to this email.';
+  const trackingDetails = (options.trackingNumber || options.carrier) ? `
+    <div style="margin: 20px 0; padding: 16px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px;">
+      <h3 style="margin: 0 0 8px; font-size: 14px; color: #1e40af; text-transform: uppercase; letter-spacing: 0.5px;">Shipping Details</h3>
+      ${options.carrier ? `<p style="margin: 0 0 4px; font-size: 14px; color: #333;"><strong>Carrier:</strong> ${options.carrier}</p>` : ''}
+      ${options.trackingNumber ? `<p style="margin: 0; font-size: 14px; color: #333;"><strong>Tracking Number:</strong> ${options.trackingNumber}</p>` : ''}
+    </div>
+  ` : '';
+  const trackingHtml = options.trackingUrl ? `
+    <div style="margin: 24px 0; text-align: center;">
+      <a href="${options.trackingUrl}" style="display: inline-block; padding: 14px 32px; background: #0284c7; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 15px;">Track Your Order</a>
+    </div>
+  ` : '';
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="utf-8"></head>
+    <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background: #f5f5f5;">
+      <div style="max-width: 600px; margin: 0 auto; background: #ffffff;">
+        <div style="background: #0284c7; color: #ffffff; padding: 32px; text-align: center;">
+          <h1 style="margin: 0; font-size: 24px; font-weight: 700;">${brandName || 'Your Store'}</h1>
+        </div>
+        <div style="padding: 32px;">
+          <div style="text-align: center; margin-bottom: 28px;">
+            <div style="font-size: 52px; margin-bottom: 12px;">🚚</div>
+            <h2 style="margin: 0 0 6px; font-size: 24px; color: #0f172a;">Your Order Is On The Way!</h2>
+            <p style="margin: 0; color: #64748b; font-size: 14px;">Order #${order.order_number || ''}</p>
+          </div>
+          <p style="color: #333; font-size: 15px; line-height: 1.6;">Hi ${order.customer_name || 'Customer'},</p>
+          <p style="color: #333; font-size: 15px; line-height: 1.6;">Your order has been shipped and is on its way to you!</p>
+          ${trackingDetails}
+          <div style="padding: 16px; background: #f8f9fa; border-radius: 8px; font-size: 14px; color: #555; margin: 20px 0;">
+            <strong>Order Total:</strong> ${formatCurrencyHtml(order.total, currency)}<br>
+            <strong>Payment Method:</strong> ${order.payment_method === 'cod' ? 'Cash on Delivery' : 'Online Payment'}
+          </div>
+          ${trackingHtml}
+          <p style="margin-top: 20px; color: #64748b; font-size: 14px; line-height: 1.6;">${contactLine}</p>
+        </div>
+        <div style="background: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8;">
+          <p style="margin: 0;">Thank you for shopping with ${brandName || 'us'}!</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+  const text = `Your Order Is On The Way!\n\nOrder #${order.order_number}\nYour order has been shipped.${options.carrier ? '\nCarrier: ' + options.carrier : ''}${options.trackingNumber ? '\nTracking: ' + options.trackingNumber : ''}\nTotal: ${formatCurrency(order.total, currency)}\n\n${ownerEmail ? 'Contact: ' + ownerEmail : ''}`;
   return { html, text };
 }
