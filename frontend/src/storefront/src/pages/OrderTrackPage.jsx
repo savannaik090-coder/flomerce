@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { Link } from 'react-router-dom';
 import { SiteContext } from '../context/SiteContext.jsx';
-import { trackOrder } from '../services/orderService.js';
+import { trackOrder, getReturnStatus, getCancelStatus } from '../services/orderService.js';
 
 const STATUS_STEPS = [
   { key: 'pending', label: 'Order Placed', icon: 'fa-shopping-bag', color: '#64748b' },
@@ -31,6 +31,8 @@ export default function OrderTrackPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [searched, setSearched] = useState(false);
+  const [returnInfo, setReturnInfo] = useState(null);
+  const [cancelInfo, setCancelInfo] = useState(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -61,11 +63,22 @@ export default function OrderTrackPage() {
     setLoading(true);
     setError('');
     setOrder(null);
+    setReturnInfo(null);
+    setCancelInfo(null);
     setSearched(true);
     try {
       const res = await trackOrder(searchId, siteConfig?.id);
       if (res.success && res.data) {
         setOrder(res.data);
+        const orderId = res.data.id || res.data.order_id || searchId;
+        try {
+          const retRes = await getReturnStatus(orderId, siteConfig?.id);
+          if (retRes.success && retRes.data) setReturnInfo(retRes.data);
+        } catch {}
+        try {
+          const canRes = await getCancelStatus(orderId, siteConfig?.id);
+          if (canRes.success && canRes.data) setCancelInfo(canRes.data);
+        } catch {}
       } else {
         setError(res.error || 'Order not found. Please check your order number and try again.');
       }
@@ -195,6 +208,58 @@ export default function OrderTrackPage() {
               <div style={{ fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 8 }}>Shipping Details</div>
               {order.carrier && <div style={{ fontSize: 14, color: '#334155', marginBottom: 4 }}><strong>Carrier:</strong> {order.carrier}</div>}
               {order.tracking_number && <div style={{ fontSize: 14, color: '#334155' }}><strong>Tracking Number:</strong> {order.tracking_number}</div>}
+            </div>
+          )}
+
+          {returnInfo && (
+            <div style={{ padding: '20px 24px', borderTop: '1px solid #f1f5f9', background: '#fefce8' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                <i className="fas fa-undo-alt" style={{ color: '#d97706' }} />
+                <span style={{ fontSize: 15, fontWeight: 700, color: '#92400e' }}>Return Request</span>
+                <span style={{ marginLeft: 'auto', display: 'inline-block', background: returnInfo.status === 'requested' ? '#ff9800' : returnInfo.status === 'approved' ? '#2196f3' : returnInfo.status === 'rejected' ? '#e53935' : returnInfo.status === 'refunded' ? '#27ae60' : '#757575', color: '#fff', borderRadius: 12, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>
+                  {returnInfo.status === 'requested' ? 'Requested' : returnInfo.status === 'approved' ? 'Approved' : returnInfo.status === 'rejected' ? 'Rejected' : returnInfo.status === 'refunded' ? 'Refunded' : returnInfo.status}
+                </span>
+              </div>
+              <div style={{ fontSize: 13, color: '#78716c', marginBottom: 6 }}>
+                <strong>Reason:</strong> {returnInfo.reason}{returnInfo.reason_detail ? ` — ${returnInfo.reason_detail}` : ''}
+              </div>
+              {returnInfo.resolution && (
+                <div style={{ fontSize: 13, color: '#78716c', marginBottom: 6 }}>
+                  <strong>Resolution:</strong> {returnInfo.resolution === 'replacement' ? 'Replacement' : 'Refund'}
+                </div>
+              )}
+              {returnInfo.refund_amount && (
+                <div style={{ fontSize: 13, color: '#78716c', marginBottom: 6 }}>
+                  <strong>Refund Amount:</strong> {returnInfo.refund_amount}
+                </div>
+              )}
+              {returnInfo.admin_note && (
+                <div style={{ fontSize: 13, color: '#78716c', marginTop: 8, padding: '8px 10px', background: '#fff', borderRadius: 6, border: '1px solid #e5e7eb' }}>
+                  <strong>Admin Response:</strong> {returnInfo.admin_note}
+                </div>
+              )}
+              <div style={{ fontSize: 12, color: '#a8a29e', marginTop: 6 }}>Submitted on {formatDate(returnInfo.created_at)}</div>
+            </div>
+          )}
+
+          {cancelInfo && (
+            <div style={{ padding: '20px 24px', borderTop: '1px solid #f1f5f9', background: '#fef2f2' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                <i className="fas fa-ban" style={{ color: '#dc2626' }} />
+                <span style={{ fontSize: 15, fontWeight: 700, color: '#991b1b' }}>Cancellation Request</span>
+                <span style={{ marginLeft: 'auto', display: 'inline-block', background: cancelInfo.status === 'requested' ? '#ff9800' : cancelInfo.status === 'approved' ? '#27ae60' : cancelInfo.status === 'rejected' ? '#e53935' : '#757575', color: '#fff', borderRadius: 12, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>
+                  {cancelInfo.status === 'requested' ? 'Requested' : cancelInfo.status === 'approved' ? 'Approved' : cancelInfo.status === 'rejected' ? 'Rejected' : cancelInfo.status}
+                </span>
+              </div>
+              <div style={{ fontSize: 13, color: '#78716c', marginBottom: 6 }}>
+                <strong>Reason:</strong> {cancelInfo.reason}{cancelInfo.reason_detail ? ` — ${cancelInfo.reason_detail}` : ''}
+              </div>
+              {cancelInfo.admin_note && (
+                <div style={{ fontSize: 13, color: '#78716c', marginTop: 8, padding: '8px 10px', background: '#fff', borderRadius: 6, border: '1px solid #e5e7eb' }}>
+                  <strong>Admin Response:</strong> {cancelInfo.admin_note}
+                </div>
+              )}
+              <div style={{ fontSize: 12, color: '#a8a29e', marginTop: 6 }}>Submitted on {formatDate(cancelInfo.created_at)}</div>
             </div>
           )}
 

@@ -102,13 +102,12 @@ export default function OrdersSection() {
   })();
 
   useEffect(() => {
-    if (siteConfig?.id) loadOrders();
+    if (siteConfig?.id) {
+      loadOrders();
+      loadReturns();
+      loadCancellations();
+    }
   }, [siteConfig?.id]);
-
-  useEffect(() => {
-    if (activeView === 'returns' && siteConfig?.id) loadReturns();
-    if (activeView === 'cancellations' && siteConfig?.id) loadCancellations();
-  }, [activeView, siteConfig?.id]);
 
   async function loadOrders() {
     setLoading(true);
@@ -241,7 +240,15 @@ export default function OrdersSection() {
 
   const statuses = ['all', 'pending', 'pending_payment', 'paid', 'confirmed', 'packed', 'shipped', 'delivered', 'cancelled'];
 
+  const activeReturnOrderIds = new Set(
+    returns.filter(r => r.status === 'requested' || r.status === 'approved' || r.status === 'refunded').map(r => r.order_id)
+  );
+  const activeCancelOrderIds = new Set(
+    cancellations.filter(c => c.status === 'requested' || c.status === 'approved').map(c => c.order_id)
+  );
+
   const filtered = orders.filter(o => {
+    if (activeReturnOrderIds.has(o.id) || activeCancelOrderIds.has(o.id)) return false;
     const matchesStatus = statusFilter === 'all' || (o.status || '').toLowerCase() === statusFilter;
     const matchesSearch = !searchTerm ||
       (o.id || '').toString().toLowerCase().includes(searchTerm.toLowerCase()) ||

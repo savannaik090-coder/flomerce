@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-wtAnhs/checked-fetch.js
+// .wrangler/tmp/bundle-va8VlK/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-wtAnhs/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-va8VlK/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-wtAnhs/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-va8VlK/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-wtAnhs/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-va8VlK/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -2116,12 +2116,12 @@ var init_site_admin_worker = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-wtAnhs/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-va8VlK/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-wtAnhs/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-va8VlK/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -6697,12 +6697,8 @@ async function getReturnStatus(request, env, orderId) {
       if (!ret.return_token || ret.return_token !== returnToken) {
         return errorResponse("Invalid token", 403);
       }
-    } else {
-      const user = await validateAnyAuth(request, env, { siteId });
-      if (!user)
-        return errorResponse("Authentication or token required", 401);
     }
-    const safeRet = { id: ret.id, order_id: ret.order_id, order_number: ret.order_number, status: ret.status, admin_note: ret.admin_note, refund_amount: ret.refund_amount, reason: ret.reason, created_at: ret.created_at, updated_at: ret.updated_at };
+    const safeRet = { id: ret.id, order_id: ret.order_id, order_number: ret.order_number, status: ret.status, admin_note: ret.admin_note, refund_amount: ret.refund_amount, reason: ret.reason, reason_detail: ret.reason_detail, resolution: ret.resolution, created_at: ret.created_at, updated_at: ret.updated_at };
     return successResponse(safeRet);
   } catch (error) {
     console.error("Get return status error:", error);
@@ -7112,21 +7108,8 @@ async function getCancelStatus(request, env, orderId) {
       if (!req.cancel_token || req.cancel_token !== cancelToken) {
         return errorResponse("Invalid token", 403);
       }
-    } else {
-      const user = await validateAnyAuth(request, env, { siteId });
-      if (!user)
-        return errorResponse("Authentication or token required", 401);
-      const db2 = await resolveSiteDBById(env, siteId);
-      let order = await db2.prepare("SELECT user_id FROM orders WHERE id = ? AND site_id = ?").bind(req.order_id, siteId).first();
-      if (!order)
-        order = await db2.prepare("SELECT user_id FROM guest_orders WHERE id = ? AND site_id = ?").bind(req.order_id, siteId).first();
-      if (!order || !order.user_id || order.user_id !== user.id) {
-        const site = await env.DB.prepare("SELECT id FROM sites WHERE id = ? AND user_id = ?").bind(siteId, user.id).first();
-        if (!site)
-          return errorResponse("Unauthorized", 403);
-      }
     }
-    const safeReq = { id: req.id, order_id: req.order_id, order_number: req.order_number, status: req.status, admin_note: req.admin_note, reason: req.reason, created_at: req.created_at, updated_at: req.updated_at };
+    const safeReq = { id: req.id, order_id: req.order_id, order_number: req.order_number, status: req.status, admin_note: req.admin_note, reason: req.reason, reason_detail: req.reason_detail, created_at: req.created_at, updated_at: req.updated_at };
     return successResponse(safeReq);
   } catch (error) {
     console.error("Get cancel status error:", error);
@@ -14244,7 +14227,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-wtAnhs/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-va8VlK/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -14279,7 +14262,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-wtAnhs/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-va8VlK/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;
