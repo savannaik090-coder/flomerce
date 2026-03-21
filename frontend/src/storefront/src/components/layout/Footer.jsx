@@ -80,6 +80,20 @@ export default function Footer() {
           </div>
         </div>
 
+        <div className="footer-section">
+          <button className="footer-toggle" onClick={() => toggleSection('help')}>
+            <span className="footer-title">Need Help?</span>
+            <i className={`fas fa-chevron-down`} style={openSections.help ? { transform: 'rotate(180deg)' } : {}}></i>
+          </button>
+          <div className={`footer-content${openSections.help ? ' show' : ''}`}>
+            <ul>
+              <li><Link to="/order-track">Track / Manage Order</Link></li>
+              <li><Link to="/order-help">Cancellation</Link></li>
+              <li><Link to="/order-help">Return / Refund</Link></li>
+            </ul>
+          </div>
+        </div>
+
         {customLinks.length > 0 && (
           <div className="footer-section">
             <button className="footer-toggle" onClick={() => toggleSection('benefits')}>

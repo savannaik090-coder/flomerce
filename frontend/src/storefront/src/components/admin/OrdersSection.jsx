@@ -241,7 +241,7 @@ export default function OrdersSection() {
   const statuses = ['all', 'pending', 'pending_payment', 'paid', 'confirmed', 'packed', 'shipped', 'delivered', 'cancelled'];
 
   const activeReturnOrderIds = new Set(
-    returns.filter(r => r.status === 'requested' || r.status === 'approved' || r.status === 'refunded').map(r => r.order_id)
+    returns.filter(r => r.status === 'requested' || r.status === 'approved' || r.status === 'refunded' || r.status === 'replaced').map(r => r.order_id)
   );
   const activeCancelOrderIds = new Set(
     cancellations.filter(c => c.status === 'requested' || c.status === 'approved').map(c => c.order_id)
@@ -262,11 +262,11 @@ export default function OrdersSection() {
   if (loading && activeView === 'orders') return <div className="loading-spinner-admin"><div className="spinner" /></div>;
 
   const getReturnStatusColor = (s) => {
-    const colors = { requested: '#ff9800', approved: '#2196f3', rejected: '#e53935', refunded: '#27ae60' };
+    const colors = { requested: '#ff9800', approved: '#2196f3', rejected: '#e53935', refunded: '#27ae60', replaced: '#7c3aed' };
     return colors[s] || '#757575';
   };
   const getReturnStatusLabel = (s) => {
-    const labels = { requested: 'Requested', approved: 'Approved', rejected: 'Rejected', refunded: 'Refunded' };
+    const labels = { requested: 'Requested', approved: 'Approved', rejected: 'Rejected', refunded: 'Refunded', replaced: 'Replaced' };
     return labels[s] || s || 'Unknown';
   };
 
@@ -279,7 +279,7 @@ export default function OrdersSection() {
     return labels[s] || s || 'Unknown';
   };
 
-  const returnStatuses = ['all', 'requested', 'approved', 'rejected', 'refunded'];
+  const returnStatuses = ['all', 'requested', 'approved', 'rejected', 'refunded', 'replaced'];
   const filteredReturns = returns.filter(r => returnStatusFilter === 'all' || r.status === returnStatusFilter);
 
   const cancellationStatuses = ['all', 'requested', 'approved', 'rejected'];
@@ -387,7 +387,12 @@ export default function OrdersSection() {
                                   </button>
                                 </>
                               )}
-                              {ret.status === 'approved' && (
+                              {ret.status === 'approved' && ret.resolution === 'replacement' && (
+                                <button className="btn btn-sm" style={{ background: '#7c3aed', color: '#fff', border: 'none', borderRadius: 4, padding: '4px 8px', cursor: 'pointer', fontSize: 11, fontWeight: 600 }} onClick={() => { setReturnModal(ret); setReturnAction('replaced'); setReturnNote(''); setReturnRefundAmount(''); }} title="Mark Replaced">
+                                  Replace
+                                </button>
+                              )}
+                              {ret.status === 'approved' && ret.resolution !== 'replacement' && (
                                 <button className="btn btn-sm" style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: 4, padding: '4px 8px', cursor: 'pointer', fontSize: 11, fontWeight: 600 }} onClick={() => { setReturnModal(ret); setReturnAction('refunded'); setReturnNote(''); setReturnRefundAmount(ret.refund_amount || ''); }} title="Mark Refunded">
                                   Refund
                                 </button>
@@ -460,8 +465,8 @@ export default function OrdersSection() {
                 </div>
                 <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
                   <button onClick={() => { setReturnModal(null); setReturnAction(''); }} disabled={returnUpdating} style={{ padding: '9px 20px', borderRadius: 6, border: '1px solid #ddd', background: '#f5f5f5', cursor: 'pointer', fontSize: 14 }}>Cancel</button>
-                  <button onClick={handleReturnAction} disabled={returnUpdating || (returnAction === 'refunded' && !returnRefundAmount)} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: returnAction === 'rejected' ? '#e53935' : returnAction === 'refunded' ? '#2563eb' : '#22c55e', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600, opacity: returnUpdating ? 0.7 : 1 }}>
-                    {returnUpdating ? 'Processing...' : returnAction === 'approved' ? 'Approve Return' : returnAction === 'rejected' ? 'Reject Return' : 'Mark Refunded'}
+                  <button onClick={handleReturnAction} disabled={returnUpdating || (returnAction === 'refunded' && !returnRefundAmount)} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: returnAction === 'rejected' ? '#e53935' : returnAction === 'replaced' ? '#7c3aed' : returnAction === 'refunded' ? '#2563eb' : '#22c55e', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600, opacity: returnUpdating ? 0.7 : 1 }}>
+                    {returnUpdating ? 'Processing...' : returnAction === 'approved' ? 'Approve Return' : returnAction === 'rejected' ? 'Reject Return' : returnAction === 'replaced' ? 'Mark Replaced' : 'Mark Refunded'}
                   </button>
                 </div>
               </div>
@@ -639,7 +644,10 @@ export default function OrdersSection() {
                       <button onClick={() => { setReturnDetailModal(null); setReturnModal(returnDetailModal); setReturnAction('rejected'); setReturnNote(''); }} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#e53935', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Reject</button>
                     </>
                   )}
-                  {returnDetailModal.status === 'approved' && (
+                  {returnDetailModal.status === 'approved' && returnDetailModal.resolution === 'replacement' && (
+                    <button onClick={() => { setReturnDetailModal(null); setReturnModal(returnDetailModal); setReturnAction('replaced'); setReturnNote(''); setReturnRefundAmount(''); }} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#7c3aed', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Replace</button>
+                  )}
+                  {returnDetailModal.status === 'approved' && returnDetailModal.resolution !== 'replacement' && (
                     <button onClick={() => { setReturnDetailModal(null); setReturnModal(returnDetailModal); setReturnAction('refunded'); setReturnNote(''); setReturnRefundAmount(returnDetailModal.refund_amount || ''); }} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Refund</button>
                   )}
                 </div>

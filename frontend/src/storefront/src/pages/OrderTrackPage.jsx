@@ -216,8 +216,8 @@ export default function OrderTrackPage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                 <i className="fas fa-undo-alt" style={{ color: '#d97706' }} />
                 <span style={{ fontSize: 15, fontWeight: 700, color: '#92400e' }}>Return Request</span>
-                <span style={{ marginLeft: 'auto', display: 'inline-block', background: returnInfo.status === 'requested' ? '#ff9800' : returnInfo.status === 'approved' ? '#2196f3' : returnInfo.status === 'rejected' ? '#e53935' : returnInfo.status === 'refunded' ? '#27ae60' : '#757575', color: '#fff', borderRadius: 12, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>
-                  {returnInfo.status === 'requested' ? 'Requested' : returnInfo.status === 'approved' ? 'Approved' : returnInfo.status === 'rejected' ? 'Rejected' : returnInfo.status === 'refunded' ? 'Refunded' : returnInfo.status}
+                <span style={{ marginLeft: 'auto', display: 'inline-block', background: returnInfo.status === 'requested' ? '#ff9800' : returnInfo.status === 'approved' ? '#2196f3' : returnInfo.status === 'rejected' ? '#e53935' : returnInfo.status === 'refunded' ? '#27ae60' : returnInfo.status === 'replaced' ? '#7c3aed' : '#757575', color: '#fff', borderRadius: 12, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>
+                  {returnInfo.status === 'requested' ? 'Requested' : returnInfo.status === 'approved' ? 'Approved' : returnInfo.status === 'rejected' ? 'Rejected' : returnInfo.status === 'refunded' ? 'Refunded' : returnInfo.status === 'replaced' ? 'Replaced' : returnInfo.status}
                 </span>
               </div>
               <div style={{ fontSize: 13, color: '#78716c', marginBottom: 6 }}>
@@ -228,7 +228,7 @@ export default function OrderTrackPage() {
                   <strong>Resolution:</strong> {returnInfo.resolution === 'replacement' ? 'Replacement' : 'Refund'}
                 </div>
               )}
-              {returnInfo.refund_amount && (
+              {returnInfo.refund_amount && returnInfo.resolution !== 'replacement' && (
                 <div style={{ fontSize: 13, color: '#78716c', marginBottom: 6 }}>
                   <strong>Refund Amount:</strong> {returnInfo.refund_amount}
                 </div>

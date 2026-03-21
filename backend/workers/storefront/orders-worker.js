@@ -1179,7 +1179,7 @@ async function handleReturnUpdate(request, env, returnId) {
     const ret = await db.prepare('SELECT * FROM return_requests WHERE id = ? AND site_id = ?').bind(returnId, siteId).first();
     if (!ret) return errorResponse('Return request not found', 404);
 
-    const allowedStatuses = ['requested', 'approved', 'rejected', 'refunded'];
+    const allowedStatuses = ['requested', 'approved', 'rejected', 'refunded', 'replaced'];
     if (status && !allowedStatuses.includes(status)) {
       return errorResponse('Invalid status. Allowed: ' + allowedStatuses.join(', '), 400);
     }
