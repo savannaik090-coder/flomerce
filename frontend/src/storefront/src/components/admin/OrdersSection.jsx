@@ -85,6 +85,10 @@ export default function OrdersSection() {
   const [cancellationUpdating, setCancellationUpdating] = useState(false);
   const [cancDetailModal, setCancDetailModal] = useState(null);
 
+  const DEFAULT_RETURN_REFUND_NOTE = 'Your return request has been approved. If any payment was made, the refund will be processed within 5–7 business days. Please pack the product securely — our delivery partner will contact you for pickup within 8–12 days.';
+  const DEFAULT_RETURN_REPLACEMENT_NOTE = 'Your return request has been approved for a replacement. Please pack the product securely — our delivery partner will contact you for pickup within 8–12 days. Your replacement will be dispatched once we receive the returned item.';
+  const DEFAULT_CANCELLATION_NOTE = 'Your cancellation request has been approved. If any payment was made, the refund will be processed within 5–7 business days.';
+
   const returnsEnabled = (() => {
     try {
       const s = siteConfig?.settings;
@@ -379,7 +383,7 @@ export default function OrdersSection() {
                             <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }} onClick={e => e.stopPropagation()}>
                               {ret.status === 'requested' && (
                                 <>
-                                  <button className="btn btn-sm btn-success" onClick={() => { setReturnModal(ret); setReturnAction('approved'); setReturnNote(''); setReturnRefundAmount(''); }} title="Approve">
+                                  <button className="btn btn-sm btn-success" onClick={() => { setReturnModal(ret); setReturnAction('approved'); setReturnNote(ret.resolution === 'replacement' ? DEFAULT_RETURN_REPLACEMENT_NOTE : DEFAULT_RETURN_REFUND_NOTE); setReturnRefundAmount(''); }} title="Approve">
                                     <i className="fas fa-check" />
                                   </button>
                                   <button className="btn btn-sm btn-danger" onClick={() => { setReturnModal(ret); setReturnAction('rejected'); setReturnNote(''); }} title="Reject">
@@ -640,7 +644,7 @@ export default function OrdersSection() {
                   <button onClick={() => setReturnDetailModal(null)} style={{ padding: '9px 20px', borderRadius: 6, border: '1px solid #ddd', background: '#f5f5f5', cursor: 'pointer', fontSize: 14 }}>Close</button>
                   {returnDetailModal.status === 'requested' && (
                     <>
-                      <button onClick={() => { setReturnDetailModal(null); setReturnModal(returnDetailModal); setReturnAction('approved'); setReturnNote(''); setReturnRefundAmount(''); }} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#22c55e', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Approve</button>
+                      <button onClick={() => { setReturnDetailModal(null); setReturnModal(returnDetailModal); setReturnAction('approved'); setReturnNote(returnDetailModal.resolution === 'replacement' ? DEFAULT_RETURN_REPLACEMENT_NOTE : DEFAULT_RETURN_REFUND_NOTE); setReturnRefundAmount(''); }} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#22c55e', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Approve</button>
                       <button onClick={() => { setReturnDetailModal(null); setReturnModal(returnDetailModal); setReturnAction('rejected'); setReturnNote(''); }} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#e53935', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Reject</button>
                     </>
                   )}
@@ -720,7 +724,7 @@ export default function OrdersSection() {
                             <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }} onClick={e => e.stopPropagation()}>
                               {canc.status === 'requested' && (
                                 <>
-                                  <button className="btn btn-sm btn-success" onClick={() => { setCancellationModal(canc); setCancellationAction('approved'); setCancellationNote(''); }} title="Approve">
+                                  <button className="btn btn-sm btn-success" onClick={() => { setCancellationModal(canc); setCancellationAction('approved'); setCancellationNote(DEFAULT_CANCELLATION_NOTE); }} title="Approve">
                                     <i className="fas fa-check" />
                                   </button>
                                   <button className="btn btn-sm btn-danger" onClick={() => { setCancellationModal(canc); setCancellationAction('rejected'); setCancellationNote(''); }} title="Reject">
@@ -913,7 +917,7 @@ export default function OrdersSection() {
                   <button onClick={() => setCancDetailModal(null)} style={{ padding: '9px 20px', borderRadius: 6, border: '1px solid #ddd', background: '#f5f5f5', cursor: 'pointer', fontSize: 14 }}>Close</button>
                   {cancDetailModal.status === 'requested' && (
                     <>
-                      <button onClick={() => { setCancDetailModal(null); setCancellationModal(cancDetailModal); setCancellationAction('approved'); setCancellationNote(''); }} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#22c55e', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Approve</button>
+                      <button onClick={() => { setCancDetailModal(null); setCancellationModal(cancDetailModal); setCancellationAction('approved'); setCancellationNote(DEFAULT_CANCELLATION_NOTE); }} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#22c55e', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Approve</button>
                       <button onClick={() => { setCancDetailModal(null); setCancellationModal(cancDetailModal); setCancellationAction('rejected'); setCancellationNote(''); }} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#e53935', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Reject</button>
                     </>
                   )}

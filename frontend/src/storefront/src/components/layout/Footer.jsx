@@ -13,6 +13,8 @@ export default function Footer() {
   }
   const footerConfig = settings.footer || {};
   const customLinks = footerConfig.customLinks || [];
+  const cancellationEnabled = settings.cancellationEnabled === true;
+  const returnsEnabled = settings.returnsEnabled === true;
 
   const socialLinks = footerConfig.social
     ? footerConfig.social
@@ -41,7 +43,6 @@ export default function Footer() {
             <ul>
               <li><Link to="/about">About Us</Link></li>
               <li><Link to="/contact">Contact Us</Link></li>
-              <li><Link to="/order-track">Track / Manage Order</Link></li>
               <li><Link to="/terms#section-4">Shipping Policy</Link></li>
               <li><Link to="/terms#section-5">Returns & Exchanges</Link></li>
               <li><Link to="/terms">Terms and Conditions</Link></li>
@@ -88,8 +89,8 @@ export default function Footer() {
           <div className={`footer-content${openSections.help ? ' show' : ''}`}>
             <ul>
               <li><Link to="/order-track">Track / Manage Order</Link></li>
-              <li><Link to="/order-help">Cancellation</Link></li>
-              <li><Link to="/order-help">Return / Refund</Link></li>
+              {cancellationEnabled && <li><Link to="/order-help">Cancellation</Link></li>}
+              {returnsEnabled && <li><Link to="/order-help">Return / Refund</Link></li>}
             </ul>
           </div>
         </div>
