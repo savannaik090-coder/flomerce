@@ -2157,6 +2157,28 @@ var CURRENCY_SYMBOLS = {
   AUD: "A$",
   SAR: "\uFDFC"
 };
+function formatOrderDate(dateStr, timezone) {
+  if (!dateStr)
+    return "";
+  let s = String(dateStr).trim();
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(s)) {
+    s = s.replace(" ", "T") + "Z";
+  } else if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(s)) {
+    s = s + "Z";
+  }
+  const d = new Date(s);
+  if (isNaN(d.getTime()))
+    return "";
+  const opts = { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true };
+  if (timezone)
+    opts.timeZone = timezone;
+  try {
+    return d.toLocaleString("en-IN", opts);
+  } catch (e) {
+    return d.toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true });
+  }
+}
+__name(formatOrderDate, "formatOrderDate");
 function formatCurrency(amount, currency = "INR") {
   const sym = CURRENCY_SYMBOLS[currency] || currency + " ";
   const num = Number(amount || 0);
@@ -2239,7 +2261,7 @@ function formatSelectedOptions(selectedOptions, currency = "INR") {
   return parts.length > 0 ? `<div style="font-size: 12px; color: #888; margin-top: 2px;">${parts.join(" &bull; ")}</div>` : "";
 }
 __name(formatSelectedOptions, "formatSelectedOptions");
-function buildOrderConfirmationEmail(order, brandName, ownerEmail, currency = "INR", options = {}) {
+function buildOrderConfirmationEmail(order, brandName, ownerEmail, currency = "INR", options = {}, timezone = "") {
   const items = typeof order.items === "string" ? JSON.parse(order.items) : order.items;
   const fmtH = /* @__PURE__ */ __name((amt) => formatCurrencyHtml(amt, currency), "fmtH");
   const fmt = /* @__PURE__ */ __name((amt) => formatCurrency(amt, currency), "fmt");
@@ -2276,6 +2298,7 @@ function buildOrderConfirmationEmail(order, brandName, ownerEmail, currency = "I
           <div style="text-align: center; margin-bottom: 24px;">
             <h2 style="margin: 0 0 4px; font-size: 22px; color: #0f172a;">Order Confirmed!</h2>
             <p style="margin: 0; color: #64748b; font-size: 14px;">Order #${order.order_number || order.orderNumber || ""}</p>
+            ${order.created_at ? `<p style="margin: 4px 0 0; color: #94a3b8; font-size: 13px;">Placed on ${formatOrderDate(order.created_at, timezone)}</p>` : ""}
           </div>
 
           <table style="width: 100%; border-collapse: collapse; margin: 24px 0;">
@@ -2354,7 +2377,7 @@ Your order is now being prepared.`;
   return { html, text };
 }
 __name(buildOrderConfirmationEmail, "buildOrderConfirmationEmail");
-function buildCancellationCustomerEmail(order, brandName, reason, ownerEmail, currency = "INR") {
+function buildCancellationCustomerEmail(order, brandName, reason, ownerEmail, currency = "INR", timezone = "") {
   const contactLine = ownerEmail ? `For any questions or to request a refund, please contact us at <a href="mailto:${ownerEmail}" style="color:#c0392b;">${ownerEmail}</a>.` : "For any questions or to request a refund, please reply to this email.";
   const html = `
     <!DOCTYPE html>
@@ -2369,6 +2392,7 @@ function buildCancellationCustomerEmail(order, brandName, reason, ownerEmail, cu
           <div style="text-align: center; margin-bottom: 24px;">
             <h2 style="margin: 0 0 4px; font-size: 22px; color: #0f172a;">Order Cancelled</h2>
             <p style="margin: 0; color: #64748b; font-size: 14px;">Order #${order.order_number || order.orderNumber || ""}</p>
+            ${order.created_at ? `<p style="margin: 4px 0 0; color: #94a3b8; font-size: 13px;">Placed on ${formatOrderDate(order.created_at, timezone)}</p>` : ""}
           </div>
           <p style="color: #333; font-size: 15px; line-height: 1.6;">Hi ${order.customer_name || "Customer"},</p>
           <p style="color: #333; font-size: 15px; line-height: 1.6;">We're sorry to inform you that your order has been cancelled.</p>
@@ -2399,7 +2423,7 @@ ${ownerEmail ? "Contact us at: " + ownerEmail : "Please reply to this email for 
   return { html, text };
 }
 __name(buildCancellationCustomerEmail, "buildCancellationCustomerEmail");
-function buildDeliveryCustomerEmail(order, brandName, ownerEmail, currency = "INR", options = {}) {
+function buildDeliveryCustomerEmail(order, brandName, ownerEmail, currency = "INR", options = {}, timezone = "") {
   let items = [];
   try {
     items = typeof order.items === "string" ? JSON.parse(order.items) : order.items || [];
@@ -2430,6 +2454,7 @@ function buildDeliveryCustomerEmail(order, brandName, ownerEmail, currency = "IN
             <div style="font-size: 52px; margin-bottom: 12px;">\u{1F4E6}</div>
             <h2 style="margin: 0 0 6px; font-size: 24px; color: #0f172a;">Your Order Has Been Delivered!</h2>
             <p style="margin: 0; color: #64748b; font-size: 14px;">Order #${order.order_number || ""}</p>
+            ${order.created_at ? `<p style="margin: 4px 0 0; color: #94a3b8; font-size: 13px;">Placed on ${formatOrderDate(order.created_at, timezone)}</p>` : ""}
           </div>
           <p style="color: #333; font-size: 15px; line-height: 1.6;">Hi ${order.customer_name || "Customer"}, we hope you love your purchase! \u{1F389}</p>
           ${items.length > 0 ? `
@@ -2476,7 +2501,7 @@ ${ownerEmail ? "For any issues, contact: " + ownerEmail : ""}`;
   return { html, text };
 }
 __name(buildDeliveryCustomerEmail, "buildDeliveryCustomerEmail");
-function buildDeliveryOwnerEmail(order, brandName, currency = "INR") {
+function buildDeliveryOwnerEmail(order, brandName, currency = "INR", timezone = "") {
   const html = `
     <!DOCTYPE html>
     <html>
@@ -2495,6 +2520,7 @@ function buildDeliveryOwnerEmail(order, brandName, currency = "INR") {
             <strong>Phone:</strong> ${order.customer_phone || "N/A"}<br>
             <strong>Total:</strong> ${formatCurrencyHtml(order.total, currency)}<br>
             <strong>Payment:</strong> ${order.payment_method === "cod" ? "Cash on Delivery" : "Online Payment"}
+            ${order.created_at ? `<br><strong>Ordered on:</strong> ${formatOrderDate(order.created_at, timezone)}` : ""}
           </div>
           <p style="margin-top: 20px; color: #64748b; font-size: 14px;">The customer has been notified and prompted to leave a review. Keep up the great work!</p>
         </div>
@@ -2513,7 +2539,7 @@ Total: ${formatCurrency(order.total, currency)}`;
   return { html, text };
 }
 __name(buildDeliveryOwnerEmail, "buildDeliveryOwnerEmail");
-function buildCancellationOwnerEmail(order, brandName, reason, currency = "INR") {
+function buildCancellationOwnerEmail(order, brandName, reason, currency = "INR", timezone = "") {
   const html = `
     <!DOCTYPE html>
     <html>
@@ -2536,6 +2562,7 @@ function buildCancellationOwnerEmail(order, brandName, reason, currency = "INR")
             <strong>Email:</strong> ${order.customer_email || "N/A"}<br>
             <strong>Phone:</strong> ${order.customer_phone || "N/A"}<br>
             <strong>Total:</strong> ${formatCurrencyHtml(order.total, currency)}
+            ${order.created_at ? `<br><strong>Ordered on:</strong> ${formatOrderDate(order.created_at, timezone)}` : ""}
           </div>
         </div>
         <div style="background: #f8f9fa; padding: 16px 32px; text-align: center; font-size: 12px; color: #94a3b8;">
@@ -2554,7 +2581,7 @@ Total: ${formatCurrency(order.total, currency)}`;
   return { html, text };
 }
 __name(buildCancellationOwnerEmail, "buildCancellationOwnerEmail");
-function buildNewOrderReviewEmail(order, brandName, currency = "INR") {
+function buildNewOrderReviewEmail(order, brandName, currency = "INR", timezone = "") {
   const items = typeof order.items === "string" ? JSON.parse(order.items) : order.items;
   const itemsHtml = items.map((item) => `
     <tr>
@@ -2573,6 +2600,7 @@ function buildNewOrderReviewEmail(order, brandName, currency = "INR") {
         <div style="background: #f59e0b; color: #ffffff; padding: 24px 32px;">
           <h1 style="margin: 0; font-size: 20px; font-weight: 700;">New Order - Review Required</h1>
           <p style="margin: 4px 0 0; opacity: 0.9; font-size: 14px;">${brandName || "Your Store"} - Order #${order.order_number || order.orderNumber || ""}</p>
+          ${order.created_at ? `<p style="margin: 4px 0 0; opacity: 0.8; font-size: 13px;">${formatOrderDate(order.created_at, timezone)}</p>` : ""}
         </div>
         <div style="padding: 24px 32px;">
           <div style="padding: 14px 16px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; margin-bottom: 20px;">
@@ -2634,7 +2662,7 @@ Please review and confirm this order from your admin panel.`;
   return { html, text };
 }
 __name(buildNewOrderReviewEmail, "buildNewOrderReviewEmail");
-function buildOrderPackedEmail(order, brandName, ownerEmail, currency = "INR", options = {}) {
+function buildOrderPackedEmail(order, brandName, ownerEmail, currency = "INR", options = {}, timezone = "") {
   const contactLine = ownerEmail ? `For any queries, contact us at <a href="mailto:${ownerEmail}" style="color:#7c3aed;">${ownerEmail}</a>.` : "For any queries, please reply to this email.";
   const trackingHtml = options.trackingUrl ? `
     <div style="margin: 24px 0; text-align: center;">
@@ -2655,6 +2683,7 @@ function buildOrderPackedEmail(order, brandName, ownerEmail, currency = "INR", o
             <div style="font-size: 52px; margin-bottom: 12px;">\u{1F4E6}</div>
             <h2 style="margin: 0 0 6px; font-size: 24px; color: #0f172a;">Your Order Has Been Packed!</h2>
             <p style="margin: 0; color: #64748b; font-size: 14px;">Order #${order.order_number || ""}</p>
+            ${order.created_at ? `<p style="margin: 4px 0 0; color: #94a3b8; font-size: 13px;">Placed on ${formatOrderDate(order.created_at, timezone)}</p>` : ""}
           </div>
           <p style="color: #333; font-size: 15px; line-height: 1.6;">Hi ${order.customer_name || "Customer"},</p>
           <p style="color: #333; font-size: 15px; line-height: 1.6;">Great news! Your order has been packed and is getting ready to be shipped. We'll notify you once it's on the way.</p>
@@ -2682,7 +2711,7 @@ ${ownerEmail ? "Contact: " + ownerEmail : ""}`;
   return { html, text };
 }
 __name(buildOrderPackedEmail, "buildOrderPackedEmail");
-function buildOrderShippedEmail(order, brandName, ownerEmail, currency = "INR", options = {}) {
+function buildOrderShippedEmail(order, brandName, ownerEmail, currency = "INR", options = {}, timezone = "") {
   const contactLine = ownerEmail ? `For any queries, contact us at <a href="mailto:${ownerEmail}" style="color:#0284c7;">${ownerEmail}</a>.` : "For any queries, please reply to this email.";
   const trackingDetails = options.trackingNumber || options.carrier ? `
     <div style="margin: 20px 0; padding: 16px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px;">
@@ -2710,6 +2739,7 @@ function buildOrderShippedEmail(order, brandName, ownerEmail, currency = "INR", 
             <div style="font-size: 52px; margin-bottom: 12px;">\u{1F69A}</div>
             <h2 style="margin: 0 0 6px; font-size: 24px; color: #0f172a;">Your Order Is On The Way!</h2>
             <p style="margin: 0; color: #64748b; font-size: 14px;">Order #${order.order_number || ""}</p>
+            ${order.created_at ? `<p style="margin: 4px 0 0; color: #94a3b8; font-size: 13px;">Placed on ${formatOrderDate(order.created_at, timezone)}</p>` : ""}
           </div>
           <p style="color: #333; font-size: 15px; line-height: 1.6;">Hi ${order.customer_name || "Customer"},</p>
           <p style="color: #333; font-size: 15px; line-height: 1.6;">Your order has been shipped and is on its way to you!</p>
@@ -6040,7 +6070,8 @@ async function createOrder(request, env, user) {
           customerPhone,
           shippingAddress,
           isGuest: false,
-          currency: resolvedCurrency
+          currency: resolvedCurrency,
+          created_at: (/* @__PURE__ */ new Date()).toISOString()
         });
       } catch (emailErr) {
         console.error("Order email notification error:", emailErr);
@@ -6190,21 +6221,23 @@ async function updateOrderStatus(request, env, user, orderId) {
           }
           const ownerEmail = cancelSettings.email || cancelSettings.ownerEmail || cancelConfig.email;
           const cancelCurrency = fullOrder.currency || cancelSettings.defaultCurrency || "INR";
+          const storeTz = cancelSettings.timezone || "";
           const emailOrder = {
             order_number: fullOrder.order_number,
             customer_name: fullOrder.customer_name,
             customer_email: fullOrder.customer_email,
             customer_phone: fullOrder.customer_phone,
             total: fullOrder.total,
-            payment_method: fullOrder.payment_method
+            payment_method: fullOrder.payment_method,
+            created_at: fullOrder.created_at
           };
           const emailJobs = [];
           if (fullOrder.customer_email) {
-            const { html, text } = buildCancellationCustomerEmail(emailOrder, siteBrandName, cancellationReason, ownerEmail, cancelCurrency);
+            const { html, text } = buildCancellationCustomerEmail(emailOrder, siteBrandName, cancellationReason, ownerEmail, cancelCurrency, storeTz);
             emailJobs.push(sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been cancelled`, html, text).catch((e) => console.error("Cancellation customer email error:", e)));
           }
           if (ownerEmail) {
-            const { html, text } = buildCancellationOwnerEmail(emailOrder, siteBrandName, cancellationReason, cancelCurrency);
+            const { html, text } = buildCancellationOwnerEmail(emailOrder, siteBrandName, cancellationReason, cancelCurrency, storeTz);
             emailJobs.push(sendEmail(env, ownerEmail, `Order #${fullOrder.order_number} cancelled - ${siteBrandName}`, html, text).catch((e) => console.error("Cancellation owner email error:", e)));
           }
           await Promise.all(emailJobs);
@@ -6230,6 +6263,7 @@ async function updateOrderStatus(request, env, user, orderId) {
           const site = await env.DB.prepare("SELECT subdomain, custom_domain FROM sites WHERE id = ?").bind(fullOrder.site_id).first();
           const domain = site?.custom_domain || `${site?.subdomain || "store"}.${env.DOMAIN || "fluxe.in"}`;
           const trackingUrl = `https://${domain}/order-track?orderId=${fullOrder.order_number}`;
+          const storeTz = statusSettings.timezone || "";
           const emailOrder = {
             order_number: fullOrder.order_number,
             customer_name: fullOrder.customer_name,
@@ -6241,7 +6275,8 @@ async function updateOrderStatus(request, env, user, orderId) {
             shipping_address: fullOrder.shipping_address,
             subtotal: fullOrder.subtotal,
             discount: fullOrder.discount,
-            coupon_code: fullOrder.coupon_code
+            coupon_code: fullOrder.coupon_code,
+            created_at: fullOrder.created_at
           };
           let emailOptions = { trackingUrl };
           if (status === "confirmed" && statusSettings.cancellationEnabled && fullOrder.customer_email) {
@@ -6258,14 +6293,14 @@ async function updateOrderStatus(request, env, user, orderId) {
             }
           }
           if (status === "confirmed") {
-            const { html, text } = buildOrderConfirmationEmail(emailOrder, siteBrandName, ownerEmail, statusCurrency, emailOptions);
+            const { html, text } = buildOrderConfirmationEmail(emailOrder, siteBrandName, ownerEmail, statusCurrency, emailOptions, storeTz);
             await sendEmail(env, fullOrder.customer_email, `Order Confirmed #${fullOrder.order_number} - ${siteBrandName}`, html, text).catch((e) => console.error("Confirmation email error:", e));
           } else if (status === "packed") {
-            const { html, text } = buildOrderPackedEmail(emailOrder, siteBrandName, ownerEmail, statusCurrency, { trackingUrl });
+            const { html, text } = buildOrderPackedEmail(emailOrder, siteBrandName, ownerEmail, statusCurrency, { trackingUrl }, storeTz);
             await sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been packed! - ${siteBrandName}`, html, text).catch((e) => console.error("Packed email error:", e));
           } else if (status === "shipped") {
             const shipOptions = { trackingUrl, trackingNumber: fullOrder.tracking_number || trackingNumber, carrier: fullOrder.carrier || carrier };
-            const { html, text } = buildOrderShippedEmail(emailOrder, siteBrandName, ownerEmail, statusCurrency, shipOptions);
+            const { html, text } = buildOrderShippedEmail(emailOrder, siteBrandName, ownerEmail, statusCurrency, shipOptions, storeTz);
             await sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been shipped! - ${siteBrandName}`, html, text).catch((e) => console.error("Shipped email error:", e));
           }
         }
@@ -6287,6 +6322,7 @@ async function updateOrderStatus(request, env, user, orderId) {
           }
           const ownerEmail = deliverySettings.email || deliverySettings.ownerEmail || deliveryConfig.email;
           const deliveryCurrency = fullOrder.currency || deliverySettings.defaultCurrency || "INR";
+          const storeTz = deliverySettings.timezone || "";
           const emailOrder = {
             order_number: fullOrder.order_number,
             customer_name: fullOrder.customer_name,
@@ -6294,7 +6330,8 @@ async function updateOrderStatus(request, env, user, orderId) {
             customer_phone: fullOrder.customer_phone,
             total: fullOrder.total,
             payment_method: fullOrder.payment_method,
-            items: fullOrder.items
+            items: fullOrder.items,
+            created_at: fullOrder.created_at
           };
           let deliveryEmailOptions = {};
           if (deliverySettings.returnsEnabled && fullOrder.customer_email) {
@@ -6315,7 +6352,7 @@ async function updateOrderStatus(request, env, user, orderId) {
           const emailJobs = [];
           if (fullOrder.customer_email) {
             try {
-              const { html, text } = buildDeliveryCustomerEmail(emailOrder, siteBrandName, ownerEmail, deliveryCurrency, deliveryEmailOptions);
+              const { html, text } = buildDeliveryCustomerEmail(emailOrder, siteBrandName, ownerEmail, deliveryCurrency, deliveryEmailOptions, storeTz);
               emailJobs.push(sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been delivered!`, html, text).catch((e) => console.error("Delivery customer email send error:", e)));
             } catch (buildErr) {
               console.error("Delivery customer email build error:", buildErr);
@@ -6323,7 +6360,7 @@ async function updateOrderStatus(request, env, user, orderId) {
           }
           if (ownerEmail) {
             try {
-              const { html, text } = buildDeliveryOwnerEmail(emailOrder, siteBrandName, deliveryCurrency);
+              const { html, text } = buildDeliveryOwnerEmail(emailOrder, siteBrandName, deliveryCurrency, storeTz);
               emailJobs.push(sendEmail(env, ownerEmail, `Order #${fullOrder.order_number} delivered - ${siteBrandName}`, html, text).catch((e) => console.error("Delivery owner email send error:", e)));
             } catch (buildErr) {
               console.error("Delivery owner email build error:", buildErr);
@@ -6488,7 +6525,8 @@ async function createGuestOrder(request, env) {
           customerPhone,
           shippingAddress,
           isGuest: true,
-          currency: resolvedGuestCurrency
+          currency: resolvedGuestCurrency,
+          created_at: (/* @__PURE__ */ new Date()).toISOString()
         });
       } catch (emailErr) {
         console.error("Guest order email notification error:", emailErr);
@@ -6956,6 +6994,7 @@ async function sendOrderEmails(env, siteId, orderData) {
     }
     const ownerEmail = siteSettings.email || siteSettings.ownerEmail || config.email;
     const currency = orderData.currency || siteSettings.defaultCurrency || "INR";
+    const storeTz = siteSettings.timezone || "";
     const emailOrder = {
       order_number: orderData.orderNumber,
       items: orderData.processedItems,
@@ -6967,12 +7006,13 @@ async function sendOrderEmails(env, siteId, orderData) {
       customer_name: orderData.customerName,
       customer_email: orderData.customerEmail,
       customer_phone: orderData.customerPhone,
-      shipping_address: orderData.shippingAddress
+      shipping_address: orderData.shippingAddress,
+      created_at: orderData.created_at
     };
     const emailJobs = [];
     if (ownerEmail) {
       try {
-        const { html, text } = buildNewOrderReviewEmail(emailOrder, siteBrandName, currency);
+        const { html, text } = buildNewOrderReviewEmail(emailOrder, siteBrandName, currency, storeTz);
         emailJobs.push(
           sendEmail(env, ownerEmail, `New Order #${orderData.orderNumber} - Review Required - ${siteBrandName}`, html, text).catch((e) => console.error("Owner email send error:", e))
         );
@@ -7258,9 +7298,10 @@ async function handleCancellationUpdate(request, env, cancelId) {
           }
           const ownerEmail = settings.email || settings.ownerEmail || config.email;
           const currency = order.currency || settings.defaultCurrency || "INR";
+          const storeTz = settings.timezone || "";
           if (order.customer_email) {
-            const emailOrder = { order_number: order.order_number, customer_name: order.customer_name, customer_email: order.customer_email, total: order.total, payment_method: order.payment_method };
-            const { html, text } = buildCancellationCustomerEmail(emailOrder, brandName, reason, ownerEmail, currency);
+            const emailOrder = { order_number: order.order_number, customer_name: order.customer_name, customer_email: order.customer_email, total: order.total, payment_method: order.payment_method, created_at: order.created_at };
+            const { html, text } = buildCancellationCustomerEmail(emailOrder, brandName, reason, ownerEmail, currency, storeTz);
             await sendEmail(env, order.customer_email, `Your order #${order.order_number} has been cancelled`, html, text).catch(() => {
             });
           }

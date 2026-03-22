@@ -2,6 +2,25 @@ const CURRENCY_SYMBOLS = {
   INR: '₹', USD: '$', EUR: '€', GBP: '£', AED: 'د.إ', CAD: 'CA$', AUD: 'A$', SAR: '﷼',
 };
 
+function formatOrderDate(dateStr, timezone) {
+  if (!dateStr) return '';
+  let s = String(dateStr).trim();
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(s)) {
+    s = s.replace(' ', 'T') + 'Z';
+  } else if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(s)) {
+    s = s + 'Z';
+  }
+  const d = new Date(s);
+  if (isNaN(d.getTime())) return '';
+  const opts = { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true };
+  if (timezone) opts.timeZone = timezone;
+  try {
+    return d.toLocaleString('en-IN', opts);
+  } catch (e) {
+    return d.toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+  }
+}
+
 function formatCurrency(amount, currency = 'INR') {
   const sym = CURRENCY_SYMBOLS[currency] || currency + ' ';
   const num = Number(amount || 0);
@@ -108,7 +127,7 @@ function formatSelectedOptionsText(selectedOptions, currency = 'INR') {
   return parts.length > 0 ? ` [${parts.join(' | ')}]` : '';
 }
 
-export function buildOrderConfirmationEmail(order, brandName, ownerEmail, currency = 'INR', options = {}) {
+export function buildOrderConfirmationEmail(order, brandName, ownerEmail, currency = 'INR', options = {}, timezone = '') {
   const items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
   const fmtH = (amt) => formatCurrencyHtml(amt, currency);
   const fmt = (amt) => formatCurrency(amt, currency);
@@ -151,6 +170,7 @@ export function buildOrderConfirmationEmail(order, brandName, ownerEmail, curren
           <div style="text-align: center; margin-bottom: 24px;">
             <h2 style="margin: 0 0 4px; font-size: 22px; color: #0f172a;">Order Confirmed!</h2>
             <p style="margin: 0; color: #64748b; font-size: 14px;">Order #${order.order_number || order.orderNumber || ''}</p>
+            ${order.created_at ? `<p style="margin: 4px 0 0; color: #94a3b8; font-size: 13px;">Placed on ${formatOrderDate(order.created_at, timezone)}</p>` : ''}
           </div>
 
           <table style="width: 100%; border-collapse: collapse; margin: 24px 0;">
@@ -222,7 +242,7 @@ export function buildOrderConfirmationEmail(order, brandName, ownerEmail, curren
   return { html, text };
 }
 
-export function buildCancellationCustomerEmail(order, brandName, reason, ownerEmail, currency = 'INR') {
+export function buildCancellationCustomerEmail(order, brandName, reason, ownerEmail, currency = 'INR', timezone = '') {
   const contactLine = ownerEmail
     ? `For any questions or to request a refund, please contact us at <a href="mailto:${ownerEmail}" style="color:#c0392b;">${ownerEmail}</a>.`
     : 'For any questions or to request a refund, please reply to this email.';
@@ -239,6 +259,7 @@ export function buildCancellationCustomerEmail(order, brandName, reason, ownerEm
           <div style="text-align: center; margin-bottom: 24px;">
             <h2 style="margin: 0 0 4px; font-size: 22px; color: #0f172a;">Order Cancelled</h2>
             <p style="margin: 0; color: #64748b; font-size: 14px;">Order #${order.order_number || order.orderNumber || ''}</p>
+            ${order.created_at ? `<p style="margin: 4px 0 0; color: #94a3b8; font-size: 13px;">Placed on ${formatOrderDate(order.created_at, timezone)}</p>` : ''}
           </div>
           <p style="color: #333; font-size: 15px; line-height: 1.6;">Hi ${order.customer_name || 'Customer'},</p>
           <p style="color: #333; font-size: 15px; line-height: 1.6;">We're sorry to inform you that your order has been cancelled.</p>
@@ -263,7 +284,7 @@ export function buildCancellationCustomerEmail(order, brandName, reason, ownerEm
   return { html, text };
 }
 
-export function buildDeliveryCustomerEmail(order, brandName, ownerEmail, currency = 'INR', options = {}) {
+export function buildDeliveryCustomerEmail(order, brandName, ownerEmail, currency = 'INR', options = {}, timezone = '') {
   let items = [];
   try {
     items = typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []);
@@ -293,6 +314,7 @@ export function buildDeliveryCustomerEmail(order, brandName, ownerEmail, currenc
             <div style="font-size: 52px; margin-bottom: 12px;">📦</div>
             <h2 style="margin: 0 0 6px; font-size: 24px; color: #0f172a;">Your Order Has Been Delivered!</h2>
             <p style="margin: 0; color: #64748b; font-size: 14px;">Order #${order.order_number || ''}</p>
+            ${order.created_at ? `<p style="margin: 4px 0 0; color: #94a3b8; font-size: 13px;">Placed on ${formatOrderDate(order.created_at, timezone)}</p>` : ''}
           </div>
           <p style="color: #333; font-size: 15px; line-height: 1.6;">Hi ${order.customer_name || 'Customer'}, we hope you love your purchase! 🎉</p>
           ${items.length > 0 ? `
@@ -333,7 +355,7 @@ export function buildDeliveryCustomerEmail(order, brandName, ownerEmail, currenc
   return { html, text };
 }
 
-export function buildDeliveryOwnerEmail(order, brandName, currency = 'INR') {
+export function buildDeliveryOwnerEmail(order, brandName, currency = 'INR', timezone = '') {
   const html = `
     <!DOCTYPE html>
     <html>
@@ -352,6 +374,7 @@ export function buildDeliveryOwnerEmail(order, brandName, currency = 'INR') {
             <strong>Phone:</strong> ${order.customer_phone || 'N/A'}<br>
             <strong>Total:</strong> ${formatCurrencyHtml(order.total, currency)}<br>
             <strong>Payment:</strong> ${order.payment_method === 'cod' ? 'Cash on Delivery' : 'Online Payment'}
+            ${order.created_at ? `<br><strong>Ordered on:</strong> ${formatOrderDate(order.created_at, timezone)}` : ''}
           </div>
           <p style="margin-top: 20px; color: #64748b; font-size: 14px;">The customer has been notified and prompted to leave a review. Keep up the great work!</p>
         </div>
@@ -366,7 +389,7 @@ export function buildDeliveryOwnerEmail(order, brandName, currency = 'INR') {
   return { html, text };
 }
 
-export function buildCancellationOwnerEmail(order, brandName, reason, currency = 'INR') {
+export function buildCancellationOwnerEmail(order, brandName, reason, currency = 'INR', timezone = '') {
   const html = `
     <!DOCTYPE html>
     <html>
@@ -389,6 +412,7 @@ export function buildCancellationOwnerEmail(order, brandName, reason, currency =
             <strong>Email:</strong> ${order.customer_email || 'N/A'}<br>
             <strong>Phone:</strong> ${order.customer_phone || 'N/A'}<br>
             <strong>Total:</strong> ${formatCurrencyHtml(order.total, currency)}
+            ${order.created_at ? `<br><strong>Ordered on:</strong> ${formatOrderDate(order.created_at, timezone)}` : ''}
           </div>
         </div>
         <div style="background: #f8f9fa; padding: 16px 32px; text-align: center; font-size: 12px; color: #94a3b8;">
@@ -402,7 +426,7 @@ export function buildCancellationOwnerEmail(order, brandName, reason, currency =
   return { html, text };
 }
 
-export function buildOwnerNotificationEmail(order, brandName, currency = 'INR') {
+export function buildOwnerNotificationEmail(order, brandName, currency = 'INR', timezone = '') {
   const items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
 
   const itemsHtml = items.map(item => `
@@ -426,6 +450,7 @@ export function buildOwnerNotificationEmail(order, brandName, currency = 'INR') 
         <div style="background: #059669; color: #ffffff; padding: 24px 32px;">
           <h1 style="margin: 0; font-size: 20px; font-weight: 700;">New Order Received!</h1>
           <p style="margin: 4px 0 0; opacity: 0.9; font-size: 14px;">${brandName || 'Your Store'} - Order #${order.order_number || order.orderNumber || ''}</p>
+          ${order.created_at ? `<p style="margin: 4px 0 0; opacity: 0.8; font-size: 13px;">${formatOrderDate(order.created_at, timezone)}</p>` : ''}
         </div>
         <div style="padding: 24px 32px;">
           <div style="display: flex; gap: 16px; margin-bottom: 20px;">
@@ -479,7 +504,7 @@ export function buildOwnerNotificationEmail(order, brandName, currency = 'INR') 
   return { html, text };
 }
 
-export function buildNewOrderReviewEmail(order, brandName, currency = 'INR') {
+export function buildNewOrderReviewEmail(order, brandName, currency = 'INR', timezone = '') {
   const items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
 
   const itemsHtml = items.map(item => `
@@ -503,6 +528,7 @@ export function buildNewOrderReviewEmail(order, brandName, currency = 'INR') {
         <div style="background: #f59e0b; color: #ffffff; padding: 24px 32px;">
           <h1 style="margin: 0; font-size: 20px; font-weight: 700;">New Order - Review Required</h1>
           <p style="margin: 4px 0 0; opacity: 0.9; font-size: 14px;">${brandName || 'Your Store'} - Order #${order.order_number || order.orderNumber || ''}</p>
+          ${order.created_at ? `<p style="margin: 4px 0 0; opacity: 0.8; font-size: 13px;">${formatOrderDate(order.created_at, timezone)}</p>` : ''}
         </div>
         <div style="padding: 24px 32px;">
           <div style="padding: 14px 16px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; margin-bottom: 20px;">
@@ -558,7 +584,7 @@ export function buildNewOrderReviewEmail(order, brandName, currency = 'INR') {
   return { html, text };
 }
 
-export function buildOrderPackedEmail(order, brandName, ownerEmail, currency = 'INR', options = {}) {
+export function buildOrderPackedEmail(order, brandName, ownerEmail, currency = 'INR', options = {}, timezone = '') {
   const contactLine = ownerEmail
     ? `For any queries, contact us at <a href="mailto:${ownerEmail}" style="color:#7c3aed;">${ownerEmail}</a>.`
     : 'For any queries, please reply to this email.';
@@ -581,6 +607,7 @@ export function buildOrderPackedEmail(order, brandName, ownerEmail, currency = '
             <div style="font-size: 52px; margin-bottom: 12px;">📦</div>
             <h2 style="margin: 0 0 6px; font-size: 24px; color: #0f172a;">Your Order Has Been Packed!</h2>
             <p style="margin: 0; color: #64748b; font-size: 14px;">Order #${order.order_number || ''}</p>
+            ${order.created_at ? `<p style="margin: 4px 0 0; color: #94a3b8; font-size: 13px;">Placed on ${formatOrderDate(order.created_at, timezone)}</p>` : ''}
           </div>
           <p style="color: #333; font-size: 15px; line-height: 1.6;">Hi ${order.customer_name || 'Customer'},</p>
           <p style="color: #333; font-size: 15px; line-height: 1.6;">Great news! Your order has been packed and is getting ready to be shipped. We'll notify you once it's on the way.</p>
@@ -602,7 +629,7 @@ export function buildOrderPackedEmail(order, brandName, ownerEmail, currency = '
   return { html, text };
 }
 
-export function buildOrderShippedEmail(order, brandName, ownerEmail, currency = 'INR', options = {}) {
+export function buildOrderShippedEmail(order, brandName, ownerEmail, currency = 'INR', options = {}, timezone = '') {
   const contactLine = ownerEmail
     ? `For any queries, contact us at <a href="mailto:${ownerEmail}" style="color:#0284c7;">${ownerEmail}</a>.`
     : 'For any queries, please reply to this email.';
@@ -632,6 +659,7 @@ export function buildOrderShippedEmail(order, brandName, ownerEmail, currency = 
             <div style="font-size: 52px; margin-bottom: 12px;">🚚</div>
             <h2 style="margin: 0 0 6px; font-size: 24px; color: #0f172a;">Your Order Is On The Way!</h2>
             <p style="margin: 0; color: #64748b; font-size: 14px;">Order #${order.order_number || ''}</p>
+            ${order.created_at ? `<p style="margin: 4px 0 0; color: #94a3b8; font-size: 13px;">Placed on ${formatOrderDate(order.created_at, timezone)}</p>` : ''}
           </div>
           <p style="color: #333; font-size: 15px; line-height: 1.6;">Hi ${order.customer_name || 'Customer'},</p>
           <p style="color: #333; font-size: 15px; line-height: 1.6;">Your order has been shipped and is on its way to you!</p>

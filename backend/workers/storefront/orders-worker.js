@@ -450,7 +450,7 @@ async function createOrder(request, env, user) {
 
       try {
         await sendOrderEmails(env, siteId, {
-          orderId, orderNumber, processedItems, subtotal, discount, coupon_code: appliedCouponCode, total, paymentMethod, customerName, customerEmail, customerPhone, shippingAddress, isGuest: false, currency: resolvedCurrency
+          orderId, orderNumber, processedItems, subtotal, discount, coupon_code: appliedCouponCode, total, paymentMethod, customerName, customerEmail, customerPhone, shippingAddress, isGuest: false, currency: resolvedCurrency, created_at: new Date().toISOString()
         });
       } catch (emailErr) {
         console.error('Order email notification error:', emailErr);
@@ -610,6 +610,7 @@ async function updateOrderStatus(request, env, user, orderId) {
           const ownerEmail = cancelSettings.email || cancelSettings.ownerEmail || cancelConfig.email;
           const cancelCurrency = fullOrder.currency || cancelSettings.defaultCurrency || 'INR';
 
+          const storeTz = cancelSettings.timezone || '';
           const emailOrder = {
             order_number: fullOrder.order_number,
             customer_name: fullOrder.customer_name,
@@ -617,15 +618,16 @@ async function updateOrderStatus(request, env, user, orderId) {
             customer_phone: fullOrder.customer_phone,
             total: fullOrder.total,
             payment_method: fullOrder.payment_method,
+            created_at: fullOrder.created_at,
           };
 
           const emailJobs = [];
           if (fullOrder.customer_email) {
-            const { html, text } = buildCancellationCustomerEmail(emailOrder, siteBrandName, cancellationReason, ownerEmail, cancelCurrency);
+            const { html, text } = buildCancellationCustomerEmail(emailOrder, siteBrandName, cancellationReason, ownerEmail, cancelCurrency, storeTz);
             emailJobs.push(sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been cancelled`, html, text).catch(e => console.error('Cancellation customer email error:', e)));
           }
           if (ownerEmail) {
-            const { html, text } = buildCancellationOwnerEmail(emailOrder, siteBrandName, cancellationReason, cancelCurrency);
+            const { html, text } = buildCancellationOwnerEmail(emailOrder, siteBrandName, cancellationReason, cancelCurrency, storeTz);
             emailJobs.push(sendEmail(env, ownerEmail, `Order #${fullOrder.order_number} cancelled - ${siteBrandName}`, html, text).catch(e => console.error('Cancellation owner email error:', e)));
           }
           await Promise.all(emailJobs);
@@ -651,6 +653,7 @@ async function updateOrderStatus(request, env, user, orderId) {
 
           const trackingUrl = `https://${domain}/order-track?orderId=${fullOrder.order_number}`;
 
+          const storeTz = statusSettings.timezone || '';
           const emailOrder = {
             order_number: fullOrder.order_number,
             customer_name: fullOrder.customer_name,
@@ -663,6 +666,7 @@ async function updateOrderStatus(request, env, user, orderId) {
             subtotal: fullOrder.subtotal,
             discount: fullOrder.discount,
             coupon_code: fullOrder.coupon_code,
+            created_at: fullOrder.created_at,
           };
 
           let emailOptions = { trackingUrl };
@@ -678,14 +682,14 @@ async function updateOrderStatus(request, env, user, orderId) {
           }
 
           if (status === 'confirmed') {
-            const { html, text } = buildOrderConfirmationEmail(emailOrder, siteBrandName, ownerEmail, statusCurrency, emailOptions);
+            const { html, text } = buildOrderConfirmationEmail(emailOrder, siteBrandName, ownerEmail, statusCurrency, emailOptions, storeTz);
             await sendEmail(env, fullOrder.customer_email, `Order Confirmed #${fullOrder.order_number} - ${siteBrandName}`, html, text).catch(e => console.error('Confirmation email error:', e));
           } else if (status === 'packed') {
-            const { html, text } = buildOrderPackedEmail(emailOrder, siteBrandName, ownerEmail, statusCurrency, { trackingUrl });
+            const { html, text } = buildOrderPackedEmail(emailOrder, siteBrandName, ownerEmail, statusCurrency, { trackingUrl }, storeTz);
             await sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been packed! - ${siteBrandName}`, html, text).catch(e => console.error('Packed email error:', e));
           } else if (status === 'shipped') {
             const shipOptions = { trackingUrl, trackingNumber: fullOrder.tracking_number || trackingNumber, carrier: fullOrder.carrier || carrier };
-            const { html, text } = buildOrderShippedEmail(emailOrder, siteBrandName, ownerEmail, statusCurrency, shipOptions);
+            const { html, text } = buildOrderShippedEmail(emailOrder, siteBrandName, ownerEmail, statusCurrency, shipOptions, storeTz);
             await sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been shipped! - ${siteBrandName}`, html, text).catch(e => console.error('Shipped email error:', e));
           }
         }
@@ -704,6 +708,7 @@ async function updateOrderStatus(request, env, user, orderId) {
           try { if (deliveryConfig.settings) deliverySettings = typeof deliveryConfig.settings === 'string' ? JSON.parse(deliveryConfig.settings) : deliveryConfig.settings; } catch (e) {}
           const ownerEmail = deliverySettings.email || deliverySettings.ownerEmail || deliveryConfig.email;
           const deliveryCurrency = fullOrder.currency || deliverySettings.defaultCurrency || 'INR';
+          const storeTz = deliverySettings.timezone || '';
 
           const emailOrder = {
             order_number: fullOrder.order_number,
@@ -713,6 +718,7 @@ async function updateOrderStatus(request, env, user, orderId) {
             total: fullOrder.total,
             payment_method: fullOrder.payment_method,
             items: fullOrder.items,
+            created_at: fullOrder.created_at,
           };
 
           let deliveryEmailOptions = {};
@@ -732,7 +738,7 @@ async function updateOrderStatus(request, env, user, orderId) {
           const emailJobs = [];
           if (fullOrder.customer_email) {
             try {
-              const { html, text } = buildDeliveryCustomerEmail(emailOrder, siteBrandName, ownerEmail, deliveryCurrency, deliveryEmailOptions);
+              const { html, text } = buildDeliveryCustomerEmail(emailOrder, siteBrandName, ownerEmail, deliveryCurrency, deliveryEmailOptions, storeTz);
               emailJobs.push(sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been delivered!`, html, text).catch(e => console.error('Delivery customer email send error:', e)));
             } catch (buildErr) {
               console.error('Delivery customer email build error:', buildErr);
@@ -740,7 +746,7 @@ async function updateOrderStatus(request, env, user, orderId) {
           }
           if (ownerEmail) {
             try {
-              const { html, text } = buildDeliveryOwnerEmail(emailOrder, siteBrandName, deliveryCurrency);
+              const { html, text } = buildDeliveryOwnerEmail(emailOrder, siteBrandName, deliveryCurrency, storeTz);
               emailJobs.push(sendEmail(env, ownerEmail, `Order #${fullOrder.order_number} delivered - ${siteBrandName}`, html, text).catch(e => console.error('Delivery owner email send error:', e)));
             } catch (buildErr) {
               console.error('Delivery owner email build error:', buildErr);
@@ -897,7 +903,7 @@ async function createGuestOrder(request, env) {
 
       try {
         await sendOrderEmails(env, siteId, {
-          orderId, orderNumber, processedItems, subtotal, discount: 0, coupon_code: null, total, paymentMethod, customerName, customerEmail, customerPhone, shippingAddress, isGuest: true, currency: resolvedGuestCurrency
+          orderId, orderNumber, processedItems, subtotal, discount: 0, coupon_code: null, total, paymentMethod, customerName, customerEmail, customerPhone, shippingAddress, isGuest: true, currency: resolvedGuestCurrency, created_at: new Date().toISOString()
         });
       } catch (emailErr) {
         console.error('Guest order email notification error:', emailErr);
@@ -1353,6 +1359,7 @@ export async function sendOrderEmails(env, siteId, orderData) {
 
     const ownerEmail = siteSettings.email || siteSettings.ownerEmail || config.email;
     const currency = orderData.currency || siteSettings.defaultCurrency || 'INR';
+    const storeTz = siteSettings.timezone || '';
 
     const emailOrder = {
       order_number: orderData.orderNumber,
@@ -1366,13 +1373,14 @@ export async function sendOrderEmails(env, siteId, orderData) {
       customer_email: orderData.customerEmail,
       customer_phone: orderData.customerPhone,
       shipping_address: orderData.shippingAddress,
+      created_at: orderData.created_at,
     };
 
     const emailJobs = [];
 
     if (ownerEmail) {
       try {
-        const { html, text } = buildNewOrderReviewEmail(emailOrder, siteBrandName, currency);
+        const { html, text } = buildNewOrderReviewEmail(emailOrder, siteBrandName, currency, storeTz);
         emailJobs.push(
           sendEmail(env, ownerEmail, `New Order #${orderData.orderNumber} - Review Required - ${siteBrandName}`, html, text)
             .catch(e => console.error('Owner email send error:', e))
@@ -1632,10 +1640,11 @@ async function handleCancellationUpdate(request, env, cancelId) {
           try { if (config.settings) settings = typeof config.settings === 'string' ? JSON.parse(config.settings) : config.settings; } catch (e) {}
           const ownerEmail = settings.email || settings.ownerEmail || config.email;
           const currency = order.currency || settings.defaultCurrency || 'INR';
+          const storeTz = settings.timezone || '';
 
           if (order.customer_email) {
-            const emailOrder = { order_number: order.order_number, customer_name: order.customer_name, customer_email: order.customer_email, total: order.total, payment_method: order.payment_method };
-            const { html, text } = buildCancellationCustomerEmail(emailOrder, brandName, reason, ownerEmail, currency);
+            const emailOrder = { order_number: order.order_number, customer_name: order.customer_name, customer_email: order.customer_email, total: order.total, payment_method: order.payment_method, created_at: order.created_at };
+            const { html, text } = buildCancellationCustomerEmail(emailOrder, brandName, reason, ownerEmail, currency, storeTz);
             await sendEmail(env, order.customer_email, `Your order #${order.order_number} has been cancelled`, html, text).catch(() => {});
           }
         }
