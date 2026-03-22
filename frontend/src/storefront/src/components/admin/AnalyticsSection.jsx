@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
+import { formatDateShortForAdmin } from '../../utils/dateFormatter.js';
 
 const COUNTRY_NAMES = {
   IN: 'India', US: 'United States', GB: 'United Kingdom', AE: 'UAE',
@@ -18,7 +19,7 @@ const COUNTRY_NAMES = {
 const SOURCE_COLORS = ['#2563eb', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#ec4899', '#64748b'];
 const DEVICE_COLORS = { Mobile: '#2563eb', Desktop: '#10b981', Tablet: '#f59e0b', Unknown: '#64748b' };
 
-function formatDateLabel(dateStr, period) {
+function formatDateLabel(dateStr, period, timezone) {
   if (!dateStr) return '';
   if (period === '12months') {
     const [y, m] = dateStr.split('-');
@@ -27,8 +28,9 @@ function formatDateLabel(dateStr, period) {
   }
   try {
     const d = new Date(dateStr + 'T00:00:00');
-    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    return `${days[d.getDay()]} ${d.getDate()}`;
+    const opts = { weekday: 'short', day: 'numeric' };
+    if (timezone) opts.timeZone = timezone;
+    return d.toLocaleDateString('en-US', opts);
   } catch {
     return dateStr;
   }
@@ -176,10 +178,10 @@ export default function AnalyticsSection() {
                           minHeight: 4,
                           transition: 'height 0.3s',
                         }}
-                        title={`${formatDateLabel(d.date_label, period)}: ${d.visitors} visitors, ${d.views} views`}
+                        title={`${formatDateLabel(d.date_label, period, siteConfig?.settings?.timezone)}: ${d.visitors} visitors, ${d.views} views`}
                       />
                       <span style={{ fontSize: 10, color: '#94a3b8', whiteSpace: 'nowrap' }}>
-                        {formatDateLabel(d.date_label, period)}
+                        {formatDateLabel(d.date_label, period, siteConfig?.settings?.timezone)}
                       </span>
                     </div>
                   ))}

@@ -3,6 +3,7 @@ import { SiteContext } from '../../context/SiteContext.jsx';
 import { getOrders } from '../../services/orderService.js';
 import { getProducts } from '../../services/productService.js';
 import { formatPrice, getAdminCurrency } from '../../utils/priceFormatter.js';
+import { formatDateShortForAdmin, getStartOfDayInTimezone, getStartOfMonthInTimezone } from '../../utils/dateFormatter.js';
 
 export default function DashboardSection() {
   const { siteConfig } = useContext(SiteContext);
@@ -27,16 +28,16 @@ export default function DashboardSection() {
       const orders = ordersRes.data || ordersRes.orders || [];
       const products = productsRes.data || productsRes.products || [];
 
-      const now = new Date();
+      const tz = siteConfig?.settings?.timezone;
       let filtered = orders;
       if (period === 'today') {
-        const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const start = getStartOfDayInTimezone(tz);
         filtered = orders.filter(o => new Date(o.created_at || o.createdAt) >= start);
       } else if (period === 'week') {
-        const start = new Date(now.getTime() - 7 * 86400000);
+        const start = new Date(getStartOfDayInTimezone(tz).getTime() - 6 * 86400000);
         filtered = orders.filter(o => new Date(o.created_at || o.createdAt) >= start);
       } else if (period === 'month') {
-        const start = new Date(now.getFullYear(), now.getMonth(), 1);
+        const start = getStartOfMonthInTimezone(tz);
         filtered = orders.filter(o => new Date(o.created_at || o.createdAt) >= start);
       }
 
@@ -133,7 +134,7 @@ export default function DashboardSection() {
                       <td>#{(order.id || '').toString().slice(-6)}</td>
                       <td>{order.customer_name || order.name || order.email || 'Guest'}</td>
                       <td>{formatPrice(parseFloat(order.total || order.total_amount || 0), order.currency || getAdminCurrency(siteConfig))}</td>
-                      <td>{new Date(order.created_at || order.createdAt).toLocaleDateString()}</td>
+                      <td>{formatDateShortForAdmin(order.created_at || order.createdAt, siteConfig?.settings?.timezone)}</td>
                       <td><span className="status-badge status-pending">{order.status}</span></td>
                     </tr>
                   ))}
@@ -176,7 +177,7 @@ export default function DashboardSection() {
                       <td>{(order.items || []).length || '—'}</td>
                       <td>{formatPrice(parseFloat(order.total || order.total_amount || 0), order.currency || getAdminCurrency(siteConfig))}</td>
                       <td><span className={`status-badge status-${(order.status || 'new').toLowerCase()}`}>{order.status || 'New'}</span></td>
-                      <td>{new Date(order.created_at || order.createdAt).toLocaleDateString()}</td>
+                      <td>{formatDateShortForAdmin(order.created_at || order.createdAt, siteConfig?.settings?.timezone)}</td>
                     </tr>
                   ))}
                 </tbody>

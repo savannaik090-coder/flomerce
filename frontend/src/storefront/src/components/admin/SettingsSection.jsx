@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { apiRequest } from '../../services/api.js';
+import { TIMEZONE_OPTIONS, safeFormatInTimezone } from '../../utils/dateFormatter.js';
 
 export default function SettingsSection() {
   const { siteConfig, refetchSite } = useContext(SiteContext);
@@ -25,6 +26,7 @@ export default function SettingsSection() {
   const [cancellationWindowHours, setCancellationWindowHours] = useState(24);
   const [showOrderTrack, setShowOrderTrack] = useState(true);
   const [orderTrackUrl, setOrderTrackUrl] = useState('');
+  const [timezone, setTimezone] = useState('');
   const [loading, setLoading] = useState(true);
 
   const [currentSubdomain, setCurrentSubdomain] = useState('');
@@ -118,6 +120,7 @@ export default function SettingsSection() {
         setCancellationWindowHours(settings.cancellationWindowHours || 24);
         setShowOrderTrack(settings.showOrderTrack !== false);
         setOrderTrackUrl(settings.orderTrackUrl || '');
+        setTimezone(settings.timezone || '');
         if (data.custom_domain) {
           setCustomDomain(data.custom_domain);
           setDomainInput(data.custom_domain);
@@ -153,6 +156,7 @@ export default function SettingsSection() {
         cancellationWindowHours: Number(cancellationWindowHours) || 24,
         showOrderTrack,
         orderTrackUrl: orderTrackUrl.trim(),
+        timezone,
       };
       if (razorpayKeyId) {
         settings.razorpayKeyId = razorpayKeyId;
@@ -640,6 +644,31 @@ export default function SettingsSection() {
                 </span>
               </label>
             </div>
+          </div>
+        </div>
+
+        <div className="card" style={{ marginBottom: 20 }}>
+          <div className="card-header">
+            <h3 className="card-title">Store Timezone</h3>
+          </div>
+          <div className="card-content">
+            <p style={{ fontSize: 13, color: '#64748b', marginBottom: 12 }}>
+              Set your store's business timezone. All dates and times in the admin panel (orders, analytics, etc.) will be displayed in this timezone. Your customers will see times in their own local timezone.
+            </p>
+            <select
+              value={timezone}
+              onChange={e => setTimezone(e.target.value)}
+              style={{ width: '100%', maxWidth: 400, padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, fontFamily: 'inherit', background: '#fff' }}
+            >
+              {TIMEZONE_OPTIONS.map(tz => (
+                <option key={tz.value} value={tz.value}>{tz.label}</option>
+              ))}
+            </select>
+            {timezone && (
+              <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 8 }}>
+                Current time in selected timezone: {safeFormatInTimezone(new Date(), timezone, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+              </p>
+            )}
           </div>
         </div>
 

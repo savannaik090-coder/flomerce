@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { getOrders, updateOrderStatus, getReturns, updateReturn, getCancellations, updateCancellation } from '../../services/orderService.js';
 import { formatPrice, getAdminCurrency } from '../../utils/priceFormatter.js';
+import { formatDateForAdmin, formatDateShortForAdmin } from '../../utils/dateFormatter.js';
 
 const CANCEL_REASONS = [
   'Item out of stock',
@@ -380,7 +381,7 @@ export default function OrdersSection() {
                             </span>
                           </td>
                           <td>{ret.refund_amount ? fmtOrd(ret.refund_amount, ret) : '—'}</td>
-                          <td style={{ whiteSpace: 'nowrap' }}>{new Date(ret.created_at).toLocaleDateString()}</td>
+                          <td style={{ whiteSpace: 'nowrap' }}>{formatDateShortForAdmin(ret.created_at, siteConfig?.settings?.timezone)}</td>
                           <td>
                             <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }} onClick={e => e.stopPropagation()}>
                               {ret.status === 'requested' && (
@@ -510,7 +511,7 @@ export default function OrdersSection() {
                   </div>
                   <div>
                     <div style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>Requested</div>
-                    <div style={{ fontSize: 14 }}>{new Date(returnDetailModal.created_at).toLocaleString()}</div>
+                    <div style={{ fontSize: 14 }}>{formatDateForAdmin(returnDetailModal.created_at, siteConfig?.settings?.timezone)}</div>
                   </div>
                   {returnDetailModal.resolution && (
                     <div>
@@ -721,7 +722,7 @@ export default function OrdersSection() {
                               {getCancelStatusLabel(canc.status)}
                             </span>
                           </td>
-                          <td style={{ whiteSpace: 'nowrap' }}>{new Date(canc.created_at).toLocaleDateString()}</td>
+                          <td style={{ whiteSpace: 'nowrap' }}>{formatDateShortForAdmin(canc.created_at, siteConfig?.settings?.timezone)}</td>
                           <td>
                             <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }} onClick={e => e.stopPropagation()}>
                               {canc.status === 'requested' && (
@@ -815,7 +816,7 @@ export default function OrdersSection() {
                   </div>
                   <div>
                     <div style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>Requested</div>
-                    <div style={{ fontSize: 14 }}>{new Date(cancDetailModal.created_at).toLocaleString()}</div>
+                    <div style={{ fontSize: 14 }}>{formatDateForAdmin(cancDetailModal.created_at, siteConfig?.settings?.timezone)}</div>
                   </div>
                 </div>
 
@@ -1014,7 +1015,7 @@ export default function OrdersSection() {
                               {getStatusLabel(order.status)}
                             </span>
                           </td>
-                          <td style={{ whiteSpace: 'nowrap' }}>{new Date(order.created_at || order.createdAt).toLocaleDateString()}</td>
+                          <td style={{ whiteSpace: 'nowrap' }}>{formatDateShortForAdmin(order.created_at || order.createdAt, siteConfig?.settings?.timezone)}</td>
                           <td onClick={e => e.stopPropagation()}>
                             <div style={{ display: 'flex', gap: 4 }}>
                               {!isCancelled && !isDelivered && statusLower !== 'confirmed' && statusLower !== 'packed' && statusLower !== 'shipped' && (
@@ -1112,7 +1113,7 @@ export default function OrdersSection() {
               </div>
               <div>
                 <div style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>Date</div>
-                <div style={{ fontSize: 14 }}>{new Date(order.created_at || order.createdAt).toLocaleString()}</div>
+                <div style={{ fontSize: 14 }}>{formatDateForAdmin(order.created_at || order.createdAt, siteConfig?.settings?.timezone)}</div>
               </div>
             </div>
 

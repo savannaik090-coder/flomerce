@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { getOrders } from '../../services/orderService.js';
 import { formatPrice, getAdminCurrency } from '../../utils/priceFormatter.js';
+import { formatDateShortForAdmin } from '../../utils/dateFormatter.js';
 
 export default function CustomersSection() {
   const { siteConfig } = useContext(SiteContext);
@@ -100,7 +101,7 @@ export default function CustomersSection() {
                       <td style={{ whiteSpace: 'nowrap' }}>{customer.phone || '—'}</td>
                       <td>{customer.orderCount}</td>
                       <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{formatPrice(customer.totalSpent, getAdminCurrency(siteConfig))}</td>
-                      <td style={{ whiteSpace: 'nowrap' }}>{new Date(customer.lastOrder).toLocaleDateString()}</td>
+                      <td style={{ whiteSpace: 'nowrap' }}>{formatDateShortForAdmin(customer.lastOrder, siteConfig?.settings?.timezone)}</td>
                     </tr>
                   ))}
                 </tbody>
