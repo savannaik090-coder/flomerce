@@ -3,7 +3,7 @@ import { SiteContext } from '../../context/SiteContext.jsx';
 import { getOrders } from '../../services/orderService.js';
 import { getProducts } from '../../services/productService.js';
 import { formatPrice, getAdminCurrency } from '../../utils/priceFormatter.js';
-import { formatDateShortForAdmin, getStartOfDayInTimezone, getStartOfMonthInTimezone } from '../../utils/dateFormatter.js';
+import { parseAsUTC, formatDateShortForAdmin, getStartOfDayInTimezone, getStartOfMonthInTimezone } from '../../utils/dateFormatter.js';
 
 export default function DashboardSection() {
   const { siteConfig } = useContext(SiteContext);
@@ -32,13 +32,13 @@ export default function DashboardSection() {
       let filtered = orders;
       if (period === 'today') {
         const start = getStartOfDayInTimezone(tz);
-        filtered = orders.filter(o => new Date(o.created_at || o.createdAt) >= start);
+        filtered = orders.filter(o => (parseAsUTC(o.created_at || o.createdAt) || new Date(0)) >= start);
       } else if (period === 'week') {
         const start = new Date(getStartOfDayInTimezone(tz).getTime() - 6 * 86400000);
-        filtered = orders.filter(o => new Date(o.created_at || o.createdAt) >= start);
+        filtered = orders.filter(o => (parseAsUTC(o.created_at || o.createdAt) || new Date(0)) >= start);
       } else if (period === 'month') {
         const start = getStartOfMonthInTimezone(tz);
-        filtered = orders.filter(o => new Date(o.created_at || o.createdAt) >= start);
+        filtered = orders.filter(o => (parseAsUTC(o.created_at || o.createdAt) || new Date(0)) >= start);
       }
 
       const revenue = filtered.reduce((sum, o) => sum + (parseFloat(o.total || o.total_amount) || 0), 0);
@@ -53,7 +53,7 @@ export default function DashboardSection() {
       });
 
       setPendingOrders(orders.filter(o => (o.status || '').toLowerCase() === 'pending' || (o.status || '').toLowerCase() === 'new').slice(0, 5));
-      setRecentOrders(orders.sort((a, b) => new Date(b.created_at || b.createdAt) - new Date(a.created_at || a.createdAt)).slice(0, 10));
+      setRecentOrders(orders.sort((a, b) => (parseAsUTC(b.created_at || b.createdAt) || new Date(0)) - (parseAsUTC(a.created_at || a.createdAt) || new Date(0))).slice(0, 10));
     } catch (err) {
       console.error('Dashboard load error:', err);
     } finally {

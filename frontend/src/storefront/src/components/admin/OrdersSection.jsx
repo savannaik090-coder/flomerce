@@ -2,7 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { getOrders, updateOrderStatus, getReturns, updateReturn, getCancellations, updateCancellation } from '../../services/orderService.js';
 import { formatPrice, getAdminCurrency } from '../../utils/priceFormatter.js';
-import { formatDateForAdmin, formatDateShortForAdmin } from '../../utils/dateFormatter.js';
+import { parseAsUTC, formatDateForAdmin, formatDateShortForAdmin } from '../../utils/dateFormatter.js';
 
 const CANCEL_REASONS = [
   'Item out of stock',
@@ -121,7 +121,7 @@ export default function OrdersSection() {
     try {
       const res = await getOrders(siteConfig.id);
       const data = res.data || res.orders || [];
-      setOrders(data.sort((a, b) => new Date(b.created_at || b.createdAt) - new Date(a.created_at || a.createdAt)));
+      setOrders(data.sort((a, b) => (parseAsUTC(b.created_at || b.createdAt) || new Date(0)) - (parseAsUTC(a.created_at || a.createdAt) || new Date(0))));
     } catch (err) {
       console.error('Error loading orders:', err);
     } finally {
@@ -133,7 +133,7 @@ export default function OrdersSection() {
     setReturnsLoading(true);
     try {
       const res = await getReturns(siteConfig.id);
-      setReturns((res.data || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at)));
+      setReturns((res.data || []).sort((a, b) => (parseAsUTC(b.created_at) || new Date(0)) - (parseAsUTC(a.created_at) || new Date(0))));
     } catch (err) {
       console.error('Error loading returns:', err);
     } finally {
@@ -145,7 +145,7 @@ export default function OrdersSection() {
     setCancellationsLoading(true);
     try {
       const res = await getCancellations(siteConfig.id);
-      setCancellations((res.data || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at)));
+      setCancellations((res.data || []).sort((a, b) => (parseAsUTC(b.created_at) || new Date(0)) - (parseAsUTC(a.created_at) || new Date(0))));
     } catch (err) {
       console.error('Error loading cancellations:', err);
     } finally {

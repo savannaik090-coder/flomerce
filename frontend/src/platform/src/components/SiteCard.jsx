@@ -1,7 +1,9 @@
+function utcDate(s) { if (!s) return null; const v = String(s).trim(); const iso = v.includes('T') ? v : v.replace(' ', 'T'); return new Date(iso.endsWith('Z') || iso.includes('+') ? iso : iso + 'Z'); }
+
 export default function SiteCard({ site, onManage, subscriptionInfo }) {
   const siteName = site.brand_name || site.brandName || site.subdomain;
   const siteUrl = `https://${site.subdomain}.fluxe.in`;
-  const createdAt = site.created_at ? new Date(site.created_at).toLocaleDateString() : '';
+  const createdAt = site.created_at ? utcDate(site.created_at).toLocaleDateString() : '';
   const hasCustomDomain = site.custom_domain && site.domain_status === 'verified';
   const customDomainUrl = hasCustomDomain ? `https://${site.custom_domain}` : null;
 

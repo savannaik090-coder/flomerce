@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { apiRequest } from '../services/api.js';
 import '../styles/owner-admin.css';
 
+function utcDate(s) { if (!s) return null; const v = String(s).trim(); const iso = v.includes('T') ? v : v.replace(' ', 'T'); return new Date(iso.endsWith('Z') || iso.includes('+') ? iso : iso + 'Z'); }
+
 export default function OwnerAdminPage() {
   const { isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
@@ -587,7 +589,7 @@ export default function OwnerAdminPage() {
                       <td data-label="Name">{u.name}</td>
                       <td data-label="Email">{u.email}</td>
                       <td data-label="Plan"><span className="oa-badge">{u.plan || 'No Plan'}</span></td>
-                      <td data-label="Joined">{u.created_at ? new Date(u.created_at).toLocaleDateString() : '-'}</td>
+                      <td data-label="Joined">{u.created_at ? utcDate(u.created_at).toLocaleDateString() : '-'}</td>
                       <td data-label="Action">
                         {u.email !== currentOwner?.email && (
                           <button className="oa-btn-sm oa-btn-danger" onClick={() => handleBlockUser(u.id)}>Block</button>
@@ -613,7 +615,7 @@ export default function OwnerAdminPage() {
                     <span className="oa-badge">{u.plan || 'No Plan'}</span>
                   </div>
                   <div className="oa-user-card-footer">
-                    <span className="oa-user-card-date">Joined {u.created_at ? new Date(u.created_at).toLocaleDateString() : '-'}</span>
+                    <span className="oa-user-card-date">Joined {u.created_at ? utcDate(u.created_at).toLocaleDateString() : '-'}</span>
                     {u.email !== currentOwner?.email && (
                       <button className="oa-btn-sm oa-btn-danger" onClick={() => handleBlockUser(u.id)}>Block</button>
                     )}
@@ -757,7 +759,7 @@ export default function OwnerAdminPage() {
                               </td>
                               <td data-label="D1">{formatBytes(s.d1BytesDisplayed || 0)}</td>
                               <td data-label="R2">{formatBytes(s.r2BytesUsed || 0)}</td>
-                              <td data-label="Created">{s.createdAt ? new Date(s.createdAt).toLocaleDateString() : '-'}</td>
+                              <td data-label="Created">{s.createdAt ? utcDate(s.createdAt).toLocaleDateString() : '-'}</td>
                               <td data-label="Actions">
                                 <button
                                   className="oa-btn-sm oa-btn-edit"
@@ -785,7 +787,7 @@ export default function OwnerAdminPage() {
                             </div>
                           </div>
                           <div className="oa-user-card-footer">
-                            <span className="oa-user-card-date">{s.createdAt ? new Date(s.createdAt).toLocaleDateString() : '-'}</span>
+                            <span className="oa-user-card-date">{s.createdAt ? utcDate(s.createdAt).toLocaleDateString() : '-'}</span>
                             <button
                               className="oa-btn-sm oa-btn-edit"
                               onClick={() => { setShowMoveSite(s); setMoveSiteTarget(''); }}

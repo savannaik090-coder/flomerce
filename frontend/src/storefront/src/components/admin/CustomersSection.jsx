@@ -2,7 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { getOrders } from '../../services/orderService.js';
 import { formatPrice, getAdminCurrency } from '../../utils/priceFormatter.js';
-import { formatDateShortForAdmin } from '../../utils/dateFormatter.js';
+import { parseAsUTC, formatDateShortForAdmin } from '../../utils/dateFormatter.js';
 
 export default function CustomersSection() {
   const { siteConfig } = useContext(SiteContext);
@@ -36,8 +36,8 @@ export default function CustomersSection() {
         }
         customerMap[email].orderCount++;
         customerMap[email].totalSpent += parseFloat(order.total || order.total_amount) || 0;
-        const orderDate = new Date(order.created_at || order.createdAt);
-        if (orderDate > new Date(customerMap[email].lastOrder)) {
+        const orderDate = parseAsUTC(order.created_at || order.createdAt) || new Date(0);
+        if (orderDate > (parseAsUTC(customerMap[email].lastOrder) || new Date(0))) {
           customerMap[email].lastOrder = order.created_at || order.createdAt;
         }
       });

@@ -8,6 +8,7 @@ import * as categoryService from '../services/categoryService.js';
 import ProductGrid from '../components/product/ProductGrid.jsx';
 import FilterSortBar from '../components/product/FilterSortBar.jsx';
 import { resolveImageUrl } from '../utils/imageUrl.js';
+import { parseAsUTC } from '../utils/dateFormatter.js';
 import '../styles/category.css';
 
 function formatSlugToTitle(slug) {
@@ -97,7 +98,7 @@ export default function CategoryPage() {
     } else if (sort === 'price-high-low') {
       result.sort((a, b) => (b.price || 0) - (a.price || 0));
     } else if (sort === 'newest') {
-      result.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+      result.sort((a, b) => (parseAsUTC(b.created_at) || new Date(0)) - (parseAsUTC(a.created_at) || new Date(0)));
     }
 
     return result;

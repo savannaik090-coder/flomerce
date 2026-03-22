@@ -1,4 +1,4 @@
-function parseAsUTC(dateStr) {
+export function parseAsUTC(dateStr) {
   if (!dateStr) return null;
   let s = String(dateStr).trim();
   if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(s)) {

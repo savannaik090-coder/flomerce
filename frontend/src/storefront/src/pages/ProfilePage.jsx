@@ -5,7 +5,7 @@ import { SiteContext } from '../context/SiteContext.jsx';
 import { CurrencyContext } from '../context/CurrencyContext.jsx';
 import * as authService from '../services/authService.js';
 import * as orderService from '../services/orderService.js';
-import { formatDateShortForCustomer } from '../utils/dateFormatter.js';
+import { parseAsUTC, formatDateShortForCustomer } from '../utils/dateFormatter.js';
 
 function getApiBase() {
   if (typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in')) return '';
@@ -119,7 +119,7 @@ export default function ProfilePage() {
   const isWithinReturnWindow = useCallback((order) => {
     const deliveredAt = order.delivered_at || order.updated_at || order.created_at;
     if (!deliveredAt) return false;
-    const days = (new Date() - new Date(deliveredAt)) / (1000 * 60 * 60 * 24);
+    const days = (new Date() - (parseAsUTC(deliveredAt) || new Date())) / (1000 * 60 * 60 * 24);
     return days <= returnWindowDays;
   }, [returnWindowDays]);
 

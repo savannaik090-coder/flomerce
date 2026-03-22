@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { useParams, useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { SiteContext } from '../context/SiteContext.jsx';
 import { trackOrder } from '../services/orderService.js';
+import { parseAsUTC } from '../utils/dateFormatter.js';
 
 export default function OrderHelpPage() {
   const { orderId } = useParams();
@@ -65,7 +66,7 @@ export default function OrderHelpPage() {
   function isWithinReturnWindow(o) {
     const deliveredAt = o.delivered_at || o.updated_at || o.created_at;
     if (!deliveredAt) return false;
-    const days = (new Date() - new Date(deliveredAt)) / (1000 * 60 * 60 * 24);
+    const days = (new Date() - (parseAsUTC(deliveredAt) || new Date())) / (1000 * 60 * 60 * 24);
     return days <= returnWindowDays;
   }
 
