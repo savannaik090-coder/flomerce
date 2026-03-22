@@ -1,7 +1,18 @@
+function parseAsUTC(dateStr) {
+  if (!dateStr) return null;
+  let s = String(dateStr).trim();
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(s)) {
+    s = s.replace(' ', 'T') + 'Z';
+  } else if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(s)) {
+    s = s + 'Z';
+  }
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? null : d;
+}
+
 export function formatDateForAdmin(dateStr, timezone) {
-  if (!dateStr) return '';
-  const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return '';
+  const d = parseAsUTC(dateStr);
+  if (!d) return '';
   const opts = { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' };
   if (timezone) opts.timeZone = timezone;
   try {
@@ -12,9 +23,8 @@ export function formatDateForAdmin(dateStr, timezone) {
 }
 
 export function formatDateShortForAdmin(dateStr, timezone) {
-  if (!dateStr) return '';
-  const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return '';
+  const d = parseAsUTC(dateStr);
+  if (!d) return '';
   const opts = { day: 'numeric', month: 'short', year: 'numeric' };
   if (timezone) opts.timeZone = timezone;
   try {
@@ -25,23 +35,20 @@ export function formatDateShortForAdmin(dateStr, timezone) {
 }
 
 export function formatDateForCustomer(dateStr) {
-  if (!dateStr) return '';
-  const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return '';
+  const d = parseAsUTC(dateStr);
+  if (!d) return '';
   return d.toLocaleString(undefined, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
 export function formatDateShortForCustomer(dateStr) {
-  if (!dateStr) return '';
-  const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return '';
+  const d = parseAsUTC(dateStr);
+  if (!d) return '';
   return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 export function formatDateForEmail(dateStr, timezone) {
-  if (!dateStr) return '';
-  const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return '';
+  const d = parseAsUTC(dateStr);
+  if (!d) return '';
   const opts = { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' };
   if (timezone) opts.timeZone = timezone;
   try {

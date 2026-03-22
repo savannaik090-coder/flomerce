@@ -5,6 +5,7 @@ import { SiteContext } from '../context/SiteContext.jsx';
 import { CurrencyContext } from '../context/CurrencyContext.jsx';
 import * as authService from '../services/authService.js';
 import * as orderService from '../services/orderService.js';
+import { formatDateShortForCustomer } from '../utils/dateFormatter.js';
 
 function getApiBase() {
   if (typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in')) return '';
@@ -485,7 +486,7 @@ export default function ProfilePage() {
                         <span style={{ fontWeight: 'bold' }}>Order #{order.order_number || order.id || order.order_id}</span>
                       </div>
                       <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                        <span style={{ color: '#777', fontSize: 14 }}>{order.created_at ? new Date(order.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : ''}</span>
+                        <span style={{ color: '#777', fontSize: 14 }}>{formatDateShortForCustomer(order.created_at)}</span>
                         <span style={{ backgroundColor: getStatusColor(order.status), color: '#fff', padding: '3px 10px', borderRadius: 12, fontSize: 12, fontWeight: 600 }}>{getStatusLabel(order.status)}</span>
                       </div>
                     </div>

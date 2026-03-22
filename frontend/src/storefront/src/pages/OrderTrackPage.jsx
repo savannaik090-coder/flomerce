@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { Link } from 'react-router-dom';
 import { SiteContext } from '../context/SiteContext.jsx';
 import { trackOrder, getReturnStatus, getCancelStatus } from '../services/orderService.js';
+import { formatDateForCustomer } from '../utils/dateFormatter.js';
 
 const STATUS_STEPS = [
   { key: 'pending', label: 'Order Placed', icon: 'fa-shopping-bag', color: '#64748b' },
@@ -19,10 +20,7 @@ function getStepIndex(status) {
 }
 
 function formatDate(dateStr) {
-  if (!dateStr) return '';
-  const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return '';
-  return d.toLocaleString(undefined, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  return formatDateForCustomer(dateStr);
 }
 
 export default function OrderTrackPage() {
