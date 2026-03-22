@@ -86,7 +86,7 @@ export default function OrdersSection() {
   const [cancDetailModal, setCancDetailModal] = useState(null);
 
   const DEFAULT_RETURN_REFUND_NOTE = 'Your return request has been approved. If any payment was made, the refund will be processed within 5–7 business days. Please pack the product securely — our delivery partner will contact you for pickup within 8–12 days.';
-  const DEFAULT_RETURN_REPLACEMENT_NOTE = 'Your return request has been approved for a replacement. Please pack the product securely — our delivery partner will contact you for pickup within 8–12 days. Your replacement will be dispatched once we receive the returned item.';
+  const DEFAULT_RETURN_REPLACEMENT_NOTE = 'Your return request has been approved for a replacement. Please pack the product securely — our delivery partner will contact you within 8–12 days to pick up the old product and deliver the replacement at the same time.';
   const DEFAULT_CANCELLATION_NOTE = 'Your cancellation request has been approved. If any payment was made, the refund will be processed within 5–7 business days.';
 
   const returnsEnabled = (() => {
