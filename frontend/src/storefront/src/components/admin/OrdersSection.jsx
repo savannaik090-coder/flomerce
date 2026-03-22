@@ -301,12 +301,12 @@ export default function OrdersSection() {
           </button>
           {cancellationEnabled && (
             <button onClick={() => setActiveView('cancellations')} style={{ padding: '10px 24px', fontSize: 14, fontWeight: 600, border: 'none', cursor: 'pointer', background: activeView === 'cancellations' ? '#0f172a' : '#f8fafc', color: activeView === 'cancellations' ? '#fff' : '#64748b', transition: '0.2s' }}>
-              Cancellations {cancellations.length > 0 ? `(${cancellations.length})` : ''}
+              Cancellations {cancellations.filter(c => c.status === 'requested').length > 0 ? `(${cancellations.filter(c => c.status === 'requested').length})` : ''}
             </button>
           )}
           {returnsEnabled && (
             <button onClick={() => setActiveView('returns')} style={{ padding: '10px 24px', fontSize: 14, fontWeight: 600, border: 'none', cursor: 'pointer', background: activeView === 'returns' ? '#0f172a' : '#f8fafc', color: activeView === 'returns' ? '#fff' : '#64748b', transition: '0.2s' }}>
-              Returns {returns.length > 0 ? `(${returns.length})` : ''}
+              Returns {returns.filter(r => r.status === 'requested').length > 0 ? `(${returns.filter(r => r.status === 'requested').length})` : ''}
             </button>
           )}
         </div>
