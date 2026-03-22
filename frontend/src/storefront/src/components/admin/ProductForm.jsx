@@ -100,6 +100,10 @@ export default function ProductForm({ product, onSave, onCancel }) {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef(null);
 
+  const [showColors, setShowColors] = useState(false);
+  const [showCustomOptions, setShowCustomOptions] = useState(false);
+  const [showPricedOptions, setShowPricedOptions] = useState(false);
+
   const isEdit = !!product;
 
   useEffect(() => {
@@ -122,33 +126,47 @@ export default function ProductForm({ product, onSave, onCancel }) {
         mainImageIndex: product.main_image_index || 0,
       });
       if (product.options && typeof product.options === 'object') {
-        setOptions({
+        const opts = {
           colors: product.options.colors || [],
           imageColorMap: product.options.imageColorMap || {},
           customOptions: product.options.customOptions || [],
           pricedOptions: product.options.pricedOptions || [],
-        });
+        };
+        setOptions(opts);
+        setShowColors(opts.colors.length > 0);
+        setShowCustomOptions(opts.customOptions.length > 0);
+        setShowPricedOptions(opts.pricedOptions.length > 0);
       } else {
         setOptions(DEFAULT_OPTIONS);
+        setShowColors(false);
+        setShowCustomOptions(false);
+        setShowPricedOptions(false);
       }
     } else {
       setForm(DEFAULT_FORM);
       setOptions(DEFAULT_OPTIONS);
+      setShowColors(false);
+      setShowCustomOptions(false);
+      setShowPricedOptions(false);
       if (siteConfig?.id) {
         getOptionsTemplate(siteConfig.id).then(res => {
           const tmpl = res?.template;
           if (tmpl) {
-            setOptions({
+            const opts = {
               colors: tmpl.colors || [],
               imageColorMap: {},
               customOptions: tmpl.customOptions || [],
               pricedOptions: tmpl.pricedOptions || [],
-            });
+            };
+            setOptions(opts);
+            setShowColors(opts.colors.length > 0);
+            setShowCustomOptions(opts.customOptions.length > 0);
+            setShowPricedOptions(opts.pricedOptions.length > 0);
           }
         }).catch(() => {});
       }
     }
-  }, [product]);
+  }, [product, siteConfig?.id]);
 
   async function loadCategories() {
     try {
@@ -174,9 +192,15 @@ export default function ProductForm({ product, onSave, onCancel }) {
     setSaving(true);
     setErrors({});
     try {
-      const cleanedOptions = hasAnyOptions(options) ? {
-        ...options,
-        pricedOptions: options.pricedOptions.map(opt => ({
+      const effectiveOptions = {
+        colors: showColors ? options.colors : [],
+        imageColorMap: showColors ? options.imageColorMap : {},
+        customOptions: showCustomOptions ? options.customOptions : [],
+        pricedOptions: showPricedOptions ? options.pricedOptions : [],
+      };
+      const cleanedOptions = hasAnyOptions(effectiveOptions) ? {
+        ...effectiveOptions,
+        pricedOptions: effectiveOptions.pricedOptions.map(opt => ({
           ...opt,
           values: opt.values.map(v => ({ ...v, price: Number(v.price) || 0 })),
         })),
@@ -197,11 +221,11 @@ export default function ProductForm({ product, onSave, onCancel }) {
       } else {
         await createProduct(payload);
       }
-      if (hasAnyOptions(options) && siteConfig?.id) {
+      if (siteConfig?.id) {
         saveOptionsTemplate(siteConfig.id, {
-          colors: options.colors,
-          customOptions: options.customOptions,
-          pricedOptions: options.pricedOptions,
+          colors: showColors ? options.colors : [],
+          customOptions: showCustomOptions ? options.customOptions : [],
+          pricedOptions: showPricedOptions ? options.pricedOptions : [],
         }).catch(() => {});
       }
       onSave && onSave();
@@ -509,244 +533,307 @@ export default function ProductForm({ product, onSave, onCancel }) {
 
         <div className="card" style={sectionCardStyle}>
           <div className="card-header" style={sectionHeaderStyle}>
-            <h3 className="card-title">Color Options</h3>
-            <button
-              type="button"
-              style={addBtnStyle}
-              onClick={() => setOptions(prev => ({ ...prev, colors: [...prev.colors, { name: '', hex: '#000000' }] }))}
-            >
-              <i className="fas fa-plus" style={{ marginRight: 6 }} />Add Color
-            </button>
-          </div>
-          <div className="card-content">
-            {options.colors.length === 0 ? (
-              <p style={{ color: '#94a3b8', fontSize: 13, margin: 0 }}>No colors defined. Add colors to let customers filter images by color.</p>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {options.colors.map((color, idx) => (
-                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <input
-                      type="color"
-                      value={color.hex || '#000000'}
-                      onChange={e => {
-                        const newColors = [...options.colors];
-                        newColors[idx] = { ...newColors[idx], hex: e.target.value };
-                        setOptions(prev => ({ ...prev, colors: newColors }));
-                      }}
-                      style={{ width: 36, height: 36, border: '1px solid #e2e8f0', borderRadius: 6, cursor: 'pointer', padding: 2 }}
-                    />
-                    <input
-                      type="text"
-                      value={color.name}
-                      onChange={e => {
-                        const oldName = options.colors[idx].name;
-                        const newName = e.target.value;
-                        const newColors = [...options.colors];
-                        newColors[idx] = { ...newColors[idx], name: newName };
-                        const newMap = { ...options.imageColorMap };
-                        for (const [k, v] of Object.entries(newMap)) {
-                          newMap[k] = v.map(n => n === oldName ? newName : n);
-                        }
-                        setOptions(prev => ({ ...prev, colors: newColors, imageColorMap: newMap }));
-                      }}
-                      placeholder="Color name (e.g. Rose Gold)"
-                      style={{ flex: 1, padding: '8px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, boxSizing: 'border-box' }}
-                    />
-                    <button
-                      type="button"
-                      style={removeBtnStyle}
-                      onClick={() => {
-                        const removedName = options.colors[idx].name;
-                        const newColors = options.colors.filter((_, i) => i !== idx);
-                        const newMap = { ...options.imageColorMap };
-                        for (const [k, v] of Object.entries(newMap)) {
-                          newMap[k] = v.filter(n => n !== removedName);
-                        }
-                        setOptions(prev => ({ ...prev, colors: newColors, imageColorMap: newMap }));
-                      }}
-                    >
-                      <i className="fas fa-trash" />
-                    </button>
-                  </div>
-                ))}
-                {form.images.length > 0 && options.colors.some(c => c.name) && (
-                  <p style={{ fontSize: 12, color: '#64748b', margin: '4px 0 0' }}>
-                    <i className="fas fa-info-circle" style={{ marginRight: 4 }} />
-                    Use the "Assign Color" dropdown on each image above to tag it with a color.
-                  </p>
-                )}
-              </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <label style={{ position: 'relative', display: 'inline-block', width: 40, height: 22, flexShrink: 0 }}>
+                <input type="checkbox" checked={showColors} onChange={e => {
+                  const checked = e.target.checked;
+                  setShowColors(checked);
+                  if (!checked) setOptions(prev => ({ ...prev, colors: [], imageColorMap: {} }));
+                }} style={{ opacity: 0, width: 0, height: 0, position: 'absolute' }} />
+                <span style={{ position: 'absolute', cursor: 'pointer', top: 0, left: 0, right: 0, bottom: 0, background: showColors ? '#2563eb' : '#cbd5e1', borderRadius: 22, transition: 'background 0.2s' }}>
+                  <span style={{ position: 'absolute', height: 16, width: 16, left: showColors ? 20 : 3, bottom: 3, background: 'white', borderRadius: '50%', transition: 'left 0.2s' }} />
+                </span>
+              </label>
+              <h3 className="card-title" style={{ margin: 0 }}>Color Options</h3>
+            </div>
+            {showColors && (
+              <button
+                type="button"
+                style={addBtnStyle}
+                onClick={() => setOptions(prev => ({ ...prev, colors: [...prev.colors, { name: '', hex: '#000000' }] }))}
+              >
+                <i className="fas fa-plus" style={{ marginRight: 6 }} />Add Color
+              </button>
             )}
           </div>
+          {showColors && (
+            <div className="card-content">
+              {options.colors.length === 0 ? (
+                <p style={{ color: '#94a3b8', fontSize: 13, margin: 0 }}>No colors defined. Add colors to let customers filter images by color.</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {options.colors.map((color, idx) => (
+                    <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <input
+                        type="color"
+                        value={color.hex || '#000000'}
+                        onChange={e => {
+                          const newColors = [...options.colors];
+                          newColors[idx] = { ...newColors[idx], hex: e.target.value };
+                          setOptions(prev => ({ ...prev, colors: newColors }));
+                        }}
+                        style={{ width: 36, height: 36, border: '1px solid #e2e8f0', borderRadius: 6, cursor: 'pointer', padding: 2 }}
+                      />
+                      <input
+                        type="text"
+                        value={color.name}
+                        onChange={e => {
+                          const oldName = options.colors[idx].name;
+                          const newName = e.target.value;
+                          const newColors = [...options.colors];
+                          newColors[idx] = { ...newColors[idx], name: newName };
+                          const newMap = { ...options.imageColorMap };
+                          for (const [k, v] of Object.entries(newMap)) {
+                            newMap[k] = v.map(n => n === oldName ? newName : n);
+                          }
+                          setOptions(prev => ({ ...prev, colors: newColors, imageColorMap: newMap }));
+                        }}
+                        placeholder="Color name (e.g. Rose Gold)"
+                        style={{ flex: 1, padding: '8px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, boxSizing: 'border-box' }}
+                      />
+                      <button
+                        type="button"
+                        style={removeBtnStyle}
+                        onClick={() => {
+                          const removedName = options.colors[idx].name;
+                          const newColors = options.colors.filter((_, i) => i !== idx);
+                          const newMap = { ...options.imageColorMap };
+                          for (const [k, v] of Object.entries(newMap)) {
+                            newMap[k] = v.filter(n => n !== removedName);
+                          }
+                          setOptions(prev => ({ ...prev, colors: newColors, imageColorMap: newMap }));
+                        }}
+                      >
+                        <i className="fas fa-trash" />
+                      </button>
+                    </div>
+                  ))}
+                  {form.images.length > 0 && options.colors.some(c => c.name) && (
+                    <p style={{ fontSize: 12, color: '#64748b', margin: '4px 0 0' }}>
+                      <i className="fas fa-info-circle" style={{ marginRight: 4 }} />
+                      Use the "Assign Color" dropdown on each image above to tag it with a color.
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+          {!showColors && (
+            <div className="card-content">
+              <p style={{ color: '#94a3b8', fontSize: 13, margin: 0 }}>Enable to add color options for this product.</p>
+            </div>
+          )}
         </div>
 
         <div className="card" style={sectionCardStyle}>
           <div className="card-header" style={sectionHeaderStyle}>
-            <h3 className="card-title">Custom Options</h3>
-            <button
-              type="button"
-              style={addBtnStyle}
-              onClick={() => setOptions(prev => ({ ...prev, customOptions: [...prev.customOptions, { label: '', values: [''] }] }))}
-            >
-              <i className="fas fa-plus" style={{ marginRight: 6 }} />Add Option Group
-            </button>
-          </div>
-          <div className="card-content">
-            {options.customOptions.length === 0 ? (
-              <p style={{ color: '#94a3b8', fontSize: 13, margin: 0 }}>No custom options. Add options like Size, Weight, etc. that don't affect price.</p>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                {options.customOptions.map((opt, gIdx) => (
-                  <div key={gIdx} style={{ padding: 12, border: '1px solid #e2e8f0', borderRadius: 8, background: '#fafbfc' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                      <input
-                        type="text"
-                        value={opt.label}
-                        onChange={e => {
-                          const newOpts = [...options.customOptions];
-                          newOpts[gIdx] = { ...newOpts[gIdx], label: e.target.value };
-                          setOptions(prev => ({ ...prev, customOptions: newOpts }));
-                        }}
-                        placeholder="Option name (e.g. Size, Weight)"
-                        style={{ flex: 1, padding: '8px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, fontWeight: 600, boxSizing: 'border-box' }}
-                      />
-                      <button type="button" style={removeBtnStyle} onClick={() => {
-                        setOptions(prev => ({ ...prev, customOptions: prev.customOptions.filter((_, i) => i !== gIdx) }));
-                      }}>
-                        <i className="fas fa-trash" />
-                      </button>
-                    </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
-                      {opt.values.map((val, vIdx) => (
-                        <div key={vIdx} style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                          <input
-                            type="text"
-                            value={val}
-                            onChange={e => {
-                              const newOpts = [...options.customOptions];
-                              const newVals = [...newOpts[gIdx].values];
-                              newVals[vIdx] = e.target.value;
-                              newOpts[gIdx] = { ...newOpts[gIdx], values: newVals };
-                              setOptions(prev => ({ ...prev, customOptions: newOpts }));
-                            }}
-                            placeholder="Value"
-                            style={{ width: 80, padding: '6px 8px', border: '1px solid #e2e8f0', borderRadius: 4, fontSize: 12, boxSizing: 'border-box' }}
-                          />
-                          {opt.values.length > 1 && (
-                            <button type="button" onClick={() => {
-                              const newOpts = [...options.customOptions];
-                              newOpts[gIdx] = { ...newOpts[gIdx], values: newOpts[gIdx].values.filter((_, i) => i !== vIdx) };
-                              setOptions(prev => ({ ...prev, customOptions: newOpts }));
-                            }} style={{ ...removeBtnStyle, fontSize: 11, padding: '0 2px' }}>
-                              <i className="fas fa-times" />
-                            </button>
-                          )}
-                        </div>
-                      ))}
-                      <button type="button" onClick={() => {
-                        const newOpts = [...options.customOptions];
-                        newOpts[gIdx] = { ...newOpts[gIdx], values: [...newOpts[gIdx].values, ''] };
-                        setOptions(prev => ({ ...prev, customOptions: newOpts }));
-                      }} style={{ ...addBtnStyle, padding: '4px 10px', fontSize: 11 }}>+ Value</button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <label style={{ position: 'relative', display: 'inline-block', width: 40, height: 22, flexShrink: 0 }}>
+                <input type="checkbox" checked={showCustomOptions} onChange={e => {
+                  const checked = e.target.checked;
+                  setShowCustomOptions(checked);
+                  if (!checked) setOptions(prev => ({ ...prev, customOptions: [] }));
+                }} style={{ opacity: 0, width: 0, height: 0, position: 'absolute' }} />
+                <span style={{ position: 'absolute', cursor: 'pointer', top: 0, left: 0, right: 0, bottom: 0, background: showCustomOptions ? '#2563eb' : '#cbd5e1', borderRadius: 22, transition: 'background 0.2s' }}>
+                  <span style={{ position: 'absolute', height: 16, width: 16, left: showCustomOptions ? 20 : 3, bottom: 3, background: 'white', borderRadius: '50%', transition: 'left 0.2s' }} />
+                </span>
+              </label>
+              <h3 className="card-title" style={{ margin: 0 }}>Custom Options</h3>
+            </div>
+            {showCustomOptions && (
+              <button
+                type="button"
+                style={addBtnStyle}
+                onClick={() => setOptions(prev => ({ ...prev, customOptions: [...prev.customOptions, { label: '', values: [''] }] }))}
+              >
+                <i className="fas fa-plus" style={{ marginRight: 6 }} />Add Option Group
+              </button>
             )}
           </div>
-        </div>
-
-        <div className="card" style={sectionCardStyle}>
-          <div className="card-header" style={sectionHeaderStyle}>
-            <h3 className="card-title">Priced Options</h3>
-            <button
-              type="button"
-              style={addBtnStyle}
-              onClick={() => setOptions(prev => ({ ...prev, pricedOptions: [...prev.pricedOptions, { label: '', values: [{ name: '', price: '' }] }] }))}
-            >
-              <i className="fas fa-plus" style={{ marginRight: 6 }} />Add Priced Option Group
-            </button>
-          </div>
-          <div className="card-content">
-            {options.pricedOptions.length === 0 ? (
-              <p style={{ color: '#94a3b8', fontSize: 13, margin: 0 }}>No priced options. Add options like Dupatta, Chain Type, etc. that add to the base price.</p>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                {options.pricedOptions.map((opt, gIdx) => (
-                  <div key={gIdx} style={{ padding: 12, border: '1px solid #e2e8f0', borderRadius: 8, background: '#fafbfc' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                      <input
-                        type="text"
-                        value={opt.label}
-                        onChange={e => {
-                          const newOpts = [...options.pricedOptions];
-                          newOpts[gIdx] = { ...newOpts[gIdx], label: e.target.value };
-                          setOptions(prev => ({ ...prev, pricedOptions: newOpts }));
-                        }}
-                        placeholder="Option name (e.g. Dupatta, Chain Type)"
-                        style={{ flex: 1, padding: '8px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, fontWeight: 600, boxSizing: 'border-box' }}
-                      />
-                      <button type="button" style={removeBtnStyle} onClick={() => {
-                        setOptions(prev => ({ ...prev, pricedOptions: prev.pricedOptions.filter((_, i) => i !== gIdx) }));
-                      }}>
-                        <i className="fas fa-trash" />
-                      </button>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                      {opt.values.map((val, vIdx) => (
-                        <div key={vIdx} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <input
-                            type="text"
-                            value={val.name}
-                            onChange={e => {
-                              const newOpts = [...options.pricedOptions];
-                              const newVals = [...newOpts[gIdx].values];
-                              newVals[vIdx] = { ...newVals[vIdx], name: e.target.value };
-                              newOpts[gIdx] = { ...newOpts[gIdx], values: newVals };
-                              setOptions(prev => ({ ...prev, pricedOptions: newOpts }));
-                            }}
-                            placeholder="Name (e.g. Silk Dupatta)"
-                            style={{ flex: 1, padding: '6px 8px', border: '1px solid #e2e8f0', borderRadius: 4, fontSize: 12, boxSizing: 'border-box' }}
-                          />
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          {showCustomOptions && (
+            <div className="card-content">
+              {options.customOptions.length === 0 ? (
+                <p style={{ color: '#94a3b8', fontSize: 13, margin: 0 }}>No custom options. Add options like Size, Weight, etc. that don't affect price.</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  {options.customOptions.map((opt, gIdx) => (
+                    <div key={gIdx} style={{ padding: 12, border: '1px solid #e2e8f0', borderRadius: 8, background: '#fafbfc' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                        <input
+                          type="text"
+                          value={opt.label}
+                          onChange={e => {
+                            const newOpts = [...options.customOptions];
+                            newOpts[gIdx] = { ...newOpts[gIdx], label: e.target.value };
+                            setOptions(prev => ({ ...prev, customOptions: newOpts }));
+                          }}
+                          placeholder="Option name (e.g. Size, Weight)"
+                          style={{ flex: 1, padding: '8px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, fontWeight: 600, boxSizing: 'border-box' }}
+                        />
+                        <button type="button" style={removeBtnStyle} onClick={() => {
+                          setOptions(prev => ({ ...prev, customOptions: prev.customOptions.filter((_, i) => i !== gIdx) }));
+                        }}>
+                          <i className="fas fa-trash" />
+                        </button>
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+                        {opt.values.map((val, vIdx) => (
+                          <div key={vIdx} style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                             <input
-                              type="number"
-                              min="0"
-                              value={val.price === 0 || val.price === '' ? '' : val.price}
+                              type="text"
+                              value={val}
+                              onChange={e => {
+                                const newOpts = [...options.customOptions];
+                                const newVals = [...newOpts[gIdx].values];
+                                newVals[vIdx] = e.target.value;
+                                newOpts[gIdx] = { ...newOpts[gIdx], values: newVals };
+                                setOptions(prev => ({ ...prev, customOptions: newOpts }));
+                              }}
+                              placeholder="Value"
+                              style={{ width: 80, padding: '6px 8px', border: '1px solid #e2e8f0', borderRadius: 4, fontSize: 12, boxSizing: 'border-box' }}
+                            />
+                            {opt.values.length > 1 && (
+                              <button type="button" onClick={() => {
+                                const newOpts = [...options.customOptions];
+                                newOpts[gIdx] = { ...newOpts[gIdx], values: newOpts[gIdx].values.filter((_, i) => i !== vIdx) };
+                                setOptions(prev => ({ ...prev, customOptions: newOpts }));
+                              }} style={{ ...removeBtnStyle, fontSize: 11, padding: '0 2px' }}>
+                                <i className="fas fa-times" />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                        <button type="button" onClick={() => {
+                          const newOpts = [...options.customOptions];
+                          newOpts[gIdx] = { ...newOpts[gIdx], values: [...newOpts[gIdx].values, ''] };
+                          setOptions(prev => ({ ...prev, customOptions: newOpts }));
+                        }} style={{ ...addBtnStyle, padding: '4px 10px', fontSize: 11 }}>+ Value</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          {!showCustomOptions && (
+            <div className="card-content">
+              <p style={{ color: '#94a3b8', fontSize: 13, margin: 0 }}>Enable to add custom options like Size, Weight, etc.</p>
+            </div>
+          )}
+        </div>
+
+        <div className="card" style={sectionCardStyle}>
+          <div className="card-header" style={sectionHeaderStyle}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <label style={{ position: 'relative', display: 'inline-block', width: 40, height: 22, flexShrink: 0 }}>
+                <input type="checkbox" checked={showPricedOptions} onChange={e => {
+                  const checked = e.target.checked;
+                  setShowPricedOptions(checked);
+                  if (!checked) setOptions(prev => ({ ...prev, pricedOptions: [] }));
+                }} style={{ opacity: 0, width: 0, height: 0, position: 'absolute' }} />
+                <span style={{ position: 'absolute', cursor: 'pointer', top: 0, left: 0, right: 0, bottom: 0, background: showPricedOptions ? '#2563eb' : '#cbd5e1', borderRadius: 22, transition: 'background 0.2s' }}>
+                  <span style={{ position: 'absolute', height: 16, width: 16, left: showPricedOptions ? 20 : 3, bottom: 3, background: 'white', borderRadius: '50%', transition: 'left 0.2s' }} />
+                </span>
+              </label>
+              <h3 className="card-title" style={{ margin: 0 }}>Priced Options</h3>
+            </div>
+            {showPricedOptions && (
+              <button
+                type="button"
+                style={addBtnStyle}
+                onClick={() => setOptions(prev => ({ ...prev, pricedOptions: [...prev.pricedOptions, { label: '', values: [{ name: '', price: '' }] }] }))}
+              >
+                <i className="fas fa-plus" style={{ marginRight: 6 }} />Add Priced Option Group
+              </button>
+            )}
+          </div>
+          {showPricedOptions && (
+            <div className="card-content">
+              {options.pricedOptions.length === 0 ? (
+                <p style={{ color: '#94a3b8', fontSize: 13, margin: 0 }}>No priced options. Add options like Dupatta, Chain Type, etc. that add to the base price.</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  {options.pricedOptions.map((opt, gIdx) => (
+                    <div key={gIdx} style={{ padding: 12, border: '1px solid #e2e8f0', borderRadius: 8, background: '#fafbfc' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                        <input
+                          type="text"
+                          value={opt.label}
+                          onChange={e => {
+                            const newOpts = [...options.pricedOptions];
+                            newOpts[gIdx] = { ...newOpts[gIdx], label: e.target.value };
+                            setOptions(prev => ({ ...prev, pricedOptions: newOpts }));
+                          }}
+                          placeholder="Option name (e.g. Dupatta, Chain Type)"
+                          style={{ flex: 1, padding: '8px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, fontWeight: 600, boxSizing: 'border-box' }}
+                        />
+                        <button type="button" style={removeBtnStyle} onClick={() => {
+                          setOptions(prev => ({ ...prev, pricedOptions: prev.pricedOptions.filter((_, i) => i !== gIdx) }));
+                        }}>
+                          <i className="fas fa-trash" />
+                        </button>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {opt.values.map((val, vIdx) => (
+                          <div key={vIdx} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <input
+                              type="text"
+                              value={val.name}
                               onChange={e => {
                                 const newOpts = [...options.pricedOptions];
                                 const newVals = [...newOpts[gIdx].values];
-                                const raw = e.target.value;
-                                newVals[vIdx] = { ...newVals[vIdx], price: raw === '' ? '' : parseFloat(raw) || 0 };
+                                newVals[vIdx] = { ...newVals[vIdx], name: e.target.value };
                                 newOpts[gIdx] = { ...newOpts[gIdx], values: newVals };
                                 setOptions(prev => ({ ...prev, pricedOptions: newOpts }));
                               }}
-                              placeholder="Price"
-                              style={{ width: 80, padding: '6px 8px', border: '1px solid #e2e8f0', borderRadius: 4, fontSize: 12, boxSizing: 'border-box' }}
+                              placeholder="Name (e.g. Silk Dupatta)"
+                              style={{ flex: 1, padding: '6px 8px', border: '1px solid #e2e8f0', borderRadius: 4, fontSize: 12, boxSizing: 'border-box' }}
                             />
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                              <input
+                                type="number"
+                                min="0"
+                                value={val.price === 0 || val.price === '' ? '' : val.price}
+                                onChange={e => {
+                                  const newOpts = [...options.pricedOptions];
+                                  const newVals = [...newOpts[gIdx].values];
+                                  const raw = e.target.value;
+                                  newVals[vIdx] = { ...newVals[vIdx], price: raw === '' ? '' : parseFloat(raw) || 0 };
+                                  newOpts[gIdx] = { ...newOpts[gIdx], values: newVals };
+                                  setOptions(prev => ({ ...prev, pricedOptions: newOpts }));
+                                }}
+                                placeholder="Price"
+                                style={{ width: 80, padding: '6px 8px', border: '1px solid #e2e8f0', borderRadius: 4, fontSize: 12, boxSizing: 'border-box' }}
+                              />
+                            </div>
+                            {opt.values.length > 1 && (
+                              <button type="button" onClick={() => {
+                                const newOpts = [...options.pricedOptions];
+                                newOpts[gIdx] = { ...newOpts[gIdx], values: newOpts[gIdx].values.filter((_, i) => i !== vIdx) };
+                                setOptions(prev => ({ ...prev, pricedOptions: newOpts }));
+                              }} style={removeBtnStyle}>
+                                <i className="fas fa-times" />
+                              </button>
+                            )}
                           </div>
-                          {opt.values.length > 1 && (
-                            <button type="button" onClick={() => {
-                              const newOpts = [...options.pricedOptions];
-                              newOpts[gIdx] = { ...newOpts[gIdx], values: newOpts[gIdx].values.filter((_, i) => i !== vIdx) };
-                              setOptions(prev => ({ ...prev, pricedOptions: newOpts }));
-                            }} style={removeBtnStyle}>
-                              <i className="fas fa-times" />
-                            </button>
-                          )}
-                        </div>
-                      ))}
-                      <button type="button" onClick={() => {
-                        const newOpts = [...options.pricedOptions];
-                        newOpts[gIdx] = { ...newOpts[gIdx], values: [...newOpts[gIdx].values, { name: '', price: '' }] };
-                        setOptions(prev => ({ ...prev, pricedOptions: newOpts }));
-                      }} style={{ ...addBtnStyle, alignSelf: 'flex-start', padding: '4px 10px', fontSize: 11 }}>+ Value</button>
+                        ))}
+                        <button type="button" onClick={() => {
+                          const newOpts = [...options.pricedOptions];
+                          newOpts[gIdx] = { ...newOpts[gIdx], values: [...newOpts[gIdx].values, { name: '', price: '' }] };
+                          setOptions(prev => ({ ...prev, pricedOptions: newOpts }));
+                        }} style={{ ...addBtnStyle, alignSelf: 'flex-start', padding: '4px 10px', fontSize: 11 }}>+ Value</button>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          {!showPricedOptions && (
+            <div className="card-content">
+              <p style={{ color: '#94a3b8', fontSize: 13, margin: 0 }}>Enable to add priced options that affect the product price.</p>
+            </div>
+          )}
         </div>
 
         <div style={{ display: 'flex', gap: 12 }}>
