@@ -7202,7 +7202,7 @@ async function handleCancellationUpdate(request, env, cancelId) {
         const table = req.order_type === "guest_order" ? "guest_orders" : "orders";
         const order = await db.prepare(`SELECT * FROM ${table} WHERE id = ?`).bind(req.order_id).first();
         if (order) {
-          const reason = adminNote || req.reason || "Cancellation approved";
+          const reason = req.reason || adminNote || "Cancellation approved";
           try {
             await db.prepare(`ALTER TABLE ${table} ADD COLUMN cancellation_reason TEXT`).run();
           } catch (e) {
