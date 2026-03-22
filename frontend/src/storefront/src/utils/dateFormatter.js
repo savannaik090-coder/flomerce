@@ -13,12 +13,12 @@ function parseAsUTC(dateStr) {
 export function formatDateForAdmin(dateStr, timezone) {
   const d = parseAsUTC(dateStr);
   if (!d) return '';
-  const opts = { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' };
+  const opts = { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true };
   if (timezone) opts.timeZone = timezone;
   try {
     return d.toLocaleString('en-IN', opts);
   } catch (e) {
-    return d.toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    return d.toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
   }
 }
 
@@ -37,7 +37,7 @@ export function formatDateShortForAdmin(dateStr, timezone) {
 export function formatDateForCustomer(dateStr) {
   const d = parseAsUTC(dateStr);
   if (!d) return '';
-  return d.toLocaleString(undefined, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
 }
 
 export function formatDateShortForCustomer(dateStr) {
@@ -49,12 +49,12 @@ export function formatDateShortForCustomer(dateStr) {
 export function formatDateForEmail(dateStr, timezone) {
   const d = parseAsUTC(dateStr);
   if (!d) return '';
-  const opts = { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' };
+  const opts = { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true, timeZoneName: 'short' };
   if (timezone) opts.timeZone = timezone;
   try {
     return d.toLocaleString('en-IN', opts);
   } catch (e) {
-    return d.toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    return d.toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
   }
 }
 
