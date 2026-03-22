@@ -1644,8 +1644,8 @@ async function handleCancellationUpdate(request, env, cancelId) {
 
           if (order.customer_email) {
             const emailOrder = { order_number: order.order_number, customer_name: order.customer_name, customer_email: order.customer_email, total: order.total, payment_method: order.payment_method, created_at: order.created_at };
-            const { html, text } = buildCancellationCustomerEmail(emailOrder, brandName, reason, ownerEmail, currency, storeTz);
-            await sendEmail(env, order.customer_email, `Your order #${order.order_number} has been cancelled`, html, text).catch(() => {});
+            const { html, text } = buildCancellationCustomerEmail(emailOrder, brandName, reason, ownerEmail, currency, storeTz, true);
+            await sendEmail(env, order.customer_email, `Cancellation approved - Order #${order.order_number} - ${brandName}`, html, text).catch(() => {});
           }
         }
       } catch (e) {

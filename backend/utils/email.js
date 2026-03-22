@@ -242,10 +242,15 @@ export function buildOrderConfirmationEmail(order, brandName, ownerEmail, curren
   return { html, text };
 }
 
-export function buildCancellationCustomerEmail(order, brandName, reason, ownerEmail, currency = 'INR', timezone = '') {
+export function buildCancellationCustomerEmail(order, brandName, reason, ownerEmail, currency = 'INR', timezone = '', customerInitiated = false) {
   const contactLine = ownerEmail
     ? `For any questions or to request a refund, please contact us at <a href="mailto:${ownerEmail}" style="color:#c0392b;">${ownerEmail}</a>.`
     : 'For any questions or to request a refund, please reply to this email.';
+  const heading = customerInitiated ? 'Cancellation Request Approved' : 'Order Cancelled';
+  const message = customerInitiated
+    ? 'Your cancellation request has been approved and your order has been cancelled.'
+    : 'We\'re sorry to inform you that your order has been cancelled.';
+  const reasonLabel = customerInitiated ? 'Your Reason' : 'Cancellation Reason';
   const html = `
     <!DOCTYPE html>
     <html>
@@ -257,14 +262,14 @@ export function buildCancellationCustomerEmail(order, brandName, reason, ownerEm
         </div>
         <div style="padding: 32px;">
           <div style="text-align: center; margin-bottom: 24px;">
-            <h2 style="margin: 0 0 4px; font-size: 22px; color: #0f172a;">Order Cancelled</h2>
+            <h2 style="margin: 0 0 4px; font-size: 22px; color: #0f172a;">${heading}</h2>
             <p style="margin: 0; color: #64748b; font-size: 14px;">Order #${order.order_number || order.orderNumber || ''}</p>
             ${order.created_at ? `<p style="margin: 4px 0 0; color: #94a3b8; font-size: 13px;">Placed on ${formatOrderDate(order.created_at, timezone)}</p>` : ''}
           </div>
           <p style="color: #333; font-size: 15px; line-height: 1.6;">Hi ${order.customer_name || 'Customer'},</p>
-          <p style="color: #333; font-size: 15px; line-height: 1.6;">We're sorry to inform you that your order has been cancelled.</p>
+          <p style="color: #333; font-size: 15px; line-height: 1.6;">${message}</p>
           <div style="margin: 24px 0; padding: 16px; background: #fff5f5; border-left: 4px solid #c0392b; border-radius: 4px;">
-            <div style="font-size: 13px; color: #888; text-transform: uppercase; font-weight: 600; margin-bottom: 6px;">Cancellation Reason</div>
+            <div style="font-size: 13px; color: #888; text-transform: uppercase; font-weight: 600; margin-bottom: 6px;">${reasonLabel}</div>
             <div style="font-size: 15px; color: #333;">${reason || 'No reason provided'}</div>
           </div>
           <div style="padding: 16px; background: #f8f9fa; border-radius: 8px; font-size: 14px; color: #555;">
@@ -280,7 +285,8 @@ export function buildCancellationCustomerEmail(order, brandName, reason, ownerEm
     </body>
     </html>
   `;
-  const text = `Order Cancelled\n\nYour order #${order.order_number || order.orderNumber} has been cancelled.\nReason: ${reason || 'No reason provided'}\nTotal: ${formatCurrency(order.total, currency)}\n\n${ownerEmail ? 'Contact us at: ' + ownerEmail : 'Please reply to this email for any queries.'}`;
+  const textHeading = customerInitiated ? 'Cancellation Request Approved' : 'Order Cancelled';
+  const text = `${textHeading}\n\nYour order #${order.order_number || order.orderNumber} has been cancelled.\nReason: ${reason || 'No reason provided'}\nTotal: ${formatCurrency(order.total, currency)}\n\n${ownerEmail ? 'Contact us at: ' + ownerEmail : 'Please reply to this email for any queries.'}`;
   return { html, text };
 }
 

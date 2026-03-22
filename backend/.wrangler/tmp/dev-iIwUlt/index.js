@@ -2377,8 +2377,11 @@ Your order is now being prepared.`;
   return { html, text };
 }
 __name(buildOrderConfirmationEmail, "buildOrderConfirmationEmail");
-function buildCancellationCustomerEmail(order, brandName, reason, ownerEmail, currency = "INR", timezone = "") {
+function buildCancellationCustomerEmail(order, brandName, reason, ownerEmail, currency = "INR", timezone = "", customerInitiated = false) {
   const contactLine = ownerEmail ? `For any questions or to request a refund, please contact us at <a href="mailto:${ownerEmail}" style="color:#c0392b;">${ownerEmail}</a>.` : "For any questions or to request a refund, please reply to this email.";
+  const heading = customerInitiated ? "Cancellation Request Approved" : "Order Cancelled";
+  const message = customerInitiated ? "Your cancellation request has been approved and your order has been cancelled." : "We're sorry to inform you that your order has been cancelled.";
+  const reasonLabel = customerInitiated ? "Your Reason" : "Cancellation Reason";
   const html = `
     <!DOCTYPE html>
     <html>
@@ -2390,14 +2393,14 @@ function buildCancellationCustomerEmail(order, brandName, reason, ownerEmail, cu
         </div>
         <div style="padding: 32px;">
           <div style="text-align: center; margin-bottom: 24px;">
-            <h2 style="margin: 0 0 4px; font-size: 22px; color: #0f172a;">Order Cancelled</h2>
+            <h2 style="margin: 0 0 4px; font-size: 22px; color: #0f172a;">${heading}</h2>
             <p style="margin: 0; color: #64748b; font-size: 14px;">Order #${order.order_number || order.orderNumber || ""}</p>
             ${order.created_at ? `<p style="margin: 4px 0 0; color: #94a3b8; font-size: 13px;">Placed on ${formatOrderDate(order.created_at, timezone)}</p>` : ""}
           </div>
           <p style="color: #333; font-size: 15px; line-height: 1.6;">Hi ${order.customer_name || "Customer"},</p>
-          <p style="color: #333; font-size: 15px; line-height: 1.6;">We're sorry to inform you that your order has been cancelled.</p>
+          <p style="color: #333; font-size: 15px; line-height: 1.6;">${message}</p>
           <div style="margin: 24px 0; padding: 16px; background: #fff5f5; border-left: 4px solid #c0392b; border-radius: 4px;">
-            <div style="font-size: 13px; color: #888; text-transform: uppercase; font-weight: 600; margin-bottom: 6px;">Cancellation Reason</div>
+            <div style="font-size: 13px; color: #888; text-transform: uppercase; font-weight: 600; margin-bottom: 6px;">${reasonLabel}</div>
             <div style="font-size: 15px; color: #333;">${reason || "No reason provided"}</div>
           </div>
           <div style="padding: 16px; background: #f8f9fa; border-radius: 8px; font-size: 14px; color: #555;">
@@ -2413,7 +2416,8 @@ function buildCancellationCustomerEmail(order, brandName, reason, ownerEmail, cu
     </body>
     </html>
   `;
-  const text = `Order Cancelled
+  const textHeading = customerInitiated ? "Cancellation Request Approved" : "Order Cancelled";
+  const text = `${textHeading}
 
 Your order #${order.order_number || order.orderNumber} has been cancelled.
 Reason: ${reason || "No reason provided"}
@@ -7301,8 +7305,8 @@ async function handleCancellationUpdate(request, env, cancelId) {
           const storeTz = settings.timezone || "";
           if (order.customer_email) {
             const emailOrder = { order_number: order.order_number, customer_name: order.customer_name, customer_email: order.customer_email, total: order.total, payment_method: order.payment_method, created_at: order.created_at };
-            const { html, text } = buildCancellationCustomerEmail(emailOrder, brandName, reason, ownerEmail, currency, storeTz);
-            await sendEmail(env, order.customer_email, `Your order #${order.order_number} has been cancelled`, html, text).catch(() => {
+            const { html, text } = buildCancellationCustomerEmail(emailOrder, brandName, reason, ownerEmail, currency, storeTz, true);
+            await sendEmail(env, order.customer_email, `Cancellation approved - Order #${order.order_number} - ${brandName}`, html, text).catch(() => {
             });
           }
         }
