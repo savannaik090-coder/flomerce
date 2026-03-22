@@ -407,6 +407,7 @@ async function processPostPaymentActions(env, order) {
       customerPhone: order.customer_phone,
       shippingAddress,
       isGuest: !!order.is_guest,
+      currency: order.currency,
     });
   } catch (emailErr) {
     console.error('Failed to send order emails after payment:', emailErr);

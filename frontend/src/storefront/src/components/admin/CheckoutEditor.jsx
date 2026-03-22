@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
+import { formatPrice, getCurrencySymbol, getAdminCurrency } from '../../utils/priceFormatter.js';
 
 const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
 
@@ -141,8 +142,8 @@ export default function CheckoutEditor({ onSaved, onPreviewUpdate }) {
                       </span>
                       {coupon.value && (
                         <span style={{ marginLeft: 10, fontSize: 12, color: '#64748b' }}>
-                          {coupon.type === 'percent' ? `${coupon.value}% off` : `₹${coupon.value} off`}
-                          {coupon.minOrder ? ` (min ₹${coupon.minOrder})` : ''}
+                          {coupon.type === 'percent' ? `${coupon.value}% off` : `${getCurrencySymbol(getAdminCurrency(siteConfig))}${coupon.value} off`}
+                          {coupon.minOrder ? ` (min ${getCurrencySymbol(getAdminCurrency(siteConfig))}${coupon.minOrder})` : ''}
                         </span>
                       )}
                     </div>
@@ -177,7 +178,7 @@ export default function CheckoutEditor({ onSaved, onPreviewUpdate }) {
                         <label style={labelStyle}>Discount Type</label>
                         <select value={coupon.type} onChange={e => updateCoupon(coupon.id, 'type', e.target.value)} style={inputStyle}>
                           <option value="percent">Percentage (%)</option>
-                          <option value="flat">Flat Amount (₹)</option>
+                          <option value="flat">Flat Amount ({getCurrencySymbol(getAdminCurrency(siteConfig))})</option>
                         </select>
                       </div>
                       <div>
@@ -193,7 +194,7 @@ export default function CheckoutEditor({ onSaved, onPreviewUpdate }) {
                         />
                       </div>
                       <div>
-                        <label style={labelStyle}>Minimum Order Amount (₹)</label>
+                        <label style={labelStyle}>Minimum Order Amount ({getCurrencySymbol(getAdminCurrency(siteConfig))})</label>
                         <input
                           type="number"
                           min="0"

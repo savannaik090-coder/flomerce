@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { getOrders } from '../../services/orderService.js';
 import { getProducts } from '../../services/productService.js';
+import { formatPrice, getAdminCurrency } from '../../utils/priceFormatter.js';
 
 export default function DashboardSection() {
   const { siteConfig } = useContext(SiteContext);
@@ -87,7 +88,7 @@ export default function DashboardSection() {
             <span className="stat-title">Revenue</span>
             <div className="stat-icon"><i className="fas fa-rupee-sign" /></div>
           </div>
-          <div className="stat-value">₹{stats.revenue.toLocaleString('en-IN')}</div>
+          <div className="stat-value">{formatPrice(stats.revenue, getAdminCurrency(siteConfig))}</div>
           <div className="stat-change">{period === 'today' ? 'Today' : period === 'week' ? 'This week' : period === 'month' ? 'This month' : 'Total'}</div>
         </div>
         <div className="stat-card stat-customers">
@@ -131,7 +132,7 @@ export default function DashboardSection() {
                     <tr key={order.id}>
                       <td>#{(order.id || '').toString().slice(-6)}</td>
                       <td>{order.customer_name || order.name || order.email || 'Guest'}</td>
-                      <td>₹{parseFloat(order.total || order.total_amount || 0).toLocaleString('en-IN')}</td>
+                      <td>{formatPrice(parseFloat(order.total || order.total_amount || 0), order.currency || getAdminCurrency(siteConfig))}</td>
                       <td>{new Date(order.created_at || order.createdAt).toLocaleDateString()}</td>
                       <td><span className="status-badge status-pending">{order.status}</span></td>
                     </tr>
@@ -173,7 +174,7 @@ export default function DashboardSection() {
                       <td>#{(order.id || '').toString().slice(-6)}</td>
                       <td>{order.customer_name || order.name || order.email || 'Guest'}</td>
                       <td>{(order.items || []).length || '—'}</td>
-                      <td>₹{parseFloat(order.total || order.total_amount || 0).toLocaleString('en-IN')}</td>
+                      <td>{formatPrice(parseFloat(order.total || order.total_amount || 0), order.currency || getAdminCurrency(siteConfig))}</td>
                       <td><span className={`status-badge status-${(order.status || 'new').toLowerCase()}`}>{order.status || 'New'}</span></td>
                       <td>{new Date(order.created_at || order.createdAt).toLocaleDateString()}</td>
                     </tr>

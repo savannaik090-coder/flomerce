@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { getProducts, updateProduct } from '../../services/productService.js';
+import { formatPrice, getAdminCurrency } from '../../utils/priceFormatter.js';
 
 export default function InventorySection() {
   const { siteConfig } = useContext(SiteContext);
@@ -92,7 +93,7 @@ export default function InventorySection() {
                     return (
                       <tr key={product.id}>
                         <td style={{ fontWeight: 500 }}>{product.name}</td>
-                        <td>₹{parseFloat(product.price || 0).toLocaleString('en-IN')}</td>
+                        <td>{formatPrice(parseFloat(product.price || 0), getAdminCurrency(siteConfig))}</td>
                         <td>{stock}</td>
                         <td>
                           {stock === 0 && <span className="status-badge status-cancelled">Out of Stock</span>}

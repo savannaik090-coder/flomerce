@@ -1,4 +1,5 @@
 const CACHE_KEY = 'currency_rates';
+const CACHE_BASE_KEY = 'currency_rates_base';
 const CACHE_DURATION = 24 * 60 * 60 * 1000;
 
 const DEFAULT_RATES = {
@@ -7,24 +8,30 @@ const DEFAULT_RATES = {
   EUR: 0.011,
   GBP: 0.0095,
   AED: 0.044,
+  CAD: 0.016,
+  AUD: 0.018,
   SAR: 0.045,
 };
 
-export async function getExchangeRates() {
+export async function getExchangeRates(baseCurrency = 'INR') {
   const cached = localStorage.getItem(CACHE_KEY);
-  if (cached) {
-    const { rates, timestamp } = JSON.parse(cached);
-    if (Date.now() - timestamp < CACHE_DURATION) {
-      return rates;
-    }
+  const cachedBase = localStorage.getItem(CACHE_BASE_KEY);
+  if (cached && cachedBase === baseCurrency) {
+    try {
+      const { rates, timestamp } = JSON.parse(cached);
+      if (Date.now() - timestamp < CACHE_DURATION) {
+        return rates;
+      }
+    } catch (e) {}
   }
 
   try {
-    const response = await fetch('https://api.exchangerate-api.com/v4/latest/INR');
+    const response = await fetch(`https://api.exchangerate-api.com/v4/latest/${baseCurrency}`);
     if (response.ok) {
       const data = await response.json();
       const rates = data.rates || DEFAULT_RATES;
       localStorage.setItem(CACHE_KEY, JSON.stringify({ rates, timestamp: Date.now() }));
+      localStorage.setItem(CACHE_BASE_KEY, baseCurrency);
       return rates;
     }
   } catch (error) {

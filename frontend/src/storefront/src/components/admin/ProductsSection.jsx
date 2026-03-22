@@ -3,6 +3,7 @@ import { SiteContext } from '../../context/SiteContext.jsx';
 import { getProducts, deleteProduct } from '../../services/productService.js';
 import { getCategories } from '../../services/categoryService.js';
 import { resolveImageUrl } from '../../utils/imageUrl.js';
+import { formatPrice, getAdminCurrency } from '../../utils/priceFormatter.js';
 
 export default function ProductsSection({ onEditProduct, onAddProduct }) {
   const { siteConfig } = useContext(SiteContext);
@@ -108,7 +109,7 @@ export default function ProductsSection({ onEditProduct, onAddProduct }) {
                 )}
                 <div className="product-info">
                   <div className="product-name">{product.name}</div>
-                  <div className="product-price">₹{parseFloat(product.price || 0).toLocaleString('en-IN')}</div>
+                  <div className="product-price">{formatPrice(parseFloat(product.price || 0), getAdminCurrency(siteConfig))}</div>
                   <div className="product-stock">
                     Stock: {product.stock ?? 0}
                     {(product.stock ?? 0) === 0 && <span style={{ color: '#dc2626', marginLeft: 8 }}>Out of Stock</span>}

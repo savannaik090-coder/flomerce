@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
-import { useCurrency } from '../../hooks/useCurrency.js';
 import { getOrders, updateOrderStatus, getReturns, updateReturn, getCancellations, updateCancellation } from '../../services/orderService.js';
+import { formatPrice, getAdminCurrency } from '../../utils/priceFormatter.js';
 
 const CANCEL_REASONS = [
   'Item out of stock',
@@ -50,7 +50,9 @@ function safeImageUrl(url) {
 
 export default function OrdersSection() {
   const { siteConfig } = useContext(SiteContext);
-  const { formatAmount } = useCurrency();
+  const adminCur = getAdminCurrency(siteConfig);
+  const fmtOrd = (amount, order) => formatPrice(amount, order?.currency || adminCur);
+  const fmtOrdAmt = (amount) => formatPrice(amount, adminCur);
   const [orders, setOrders] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -377,7 +379,7 @@ export default function OrdersSection() {
                               {getReturnStatusLabel(ret.status)}
                             </span>
                           </td>
-                          <td>{ret.refund_amount ? formatAmount(ret.refund_amount) : '—'}</td>
+                          <td>{ret.refund_amount ? fmtOrd(ret.refund_amount, ret) : '—'}</td>
                           <td style={{ whiteSpace: 'nowrap' }}>{new Date(ret.created_at).toLocaleDateString()}</td>
                           <td>
                             <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }} onClick={e => e.stopPropagation()}>
@@ -521,7 +523,7 @@ export default function OrdersSection() {
                   {returnDetailModal.refund_amount && (
                     <div>
                       <div style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>Refund Amount</div>
-                      <div style={{ fontSize: 15, fontWeight: 700, color: '#2563eb' }}>{formatAmount(returnDetailModal.refund_amount)}</div>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: '#2563eb' }}>{fmtOrd(returnDetailModal.refund_amount, order)}</div>
                     </div>
                   )}
                 </div>
@@ -555,15 +557,15 @@ export default function OrdersSection() {
                             }
                             if (item.selectedOptions.pricedOptions) {
                               for (const [label, val] of Object.entries(item.selectedOptions.pricedOptions)) {
-                                const priceSuffix = Number(val.price || 0) > 0 ? ` (${formatAmount(Number(val.price))})` : '';
+                                const priceSuffix = Number(val.price || 0) > 0 ? ` (${fmtOrdAmt(Number(val.price))})` : '';
                                 parts.push(`${label}: ${val.name}${priceSuffix}`);
                               }
                             }
                             return parts.length > 0 ? <div style={{ fontSize: 11, color: '#888', marginTop: 1 }}>{parts.join(' \u2022 ')}</div> : null;
                           })()}
                           <div style={{ fontSize: 12, color: '#555' }}>
-                            {formatAmount(parseFloat(item.price || 0))} x {item.quantity}
-                            <span style={{ fontWeight: 600, marginLeft: 6 }}>= {formatAmount(parseFloat((item.price || 0) * (item.quantity || 1)))}</span>
+                            {fmtOrdAmt(parseFloat(item.price || 0))} x {item.quantity}
+                            <span style={{ fontWeight: 600, marginLeft: 6 }}>= {fmtOrdAmt(parseFloat((item.price || 0) * (item.quantity || 1)))}</span>
                           </div>
                         </div>
                       </div>
@@ -573,15 +575,15 @@ export default function OrdersSection() {
                         {parseFloat(order.discount || 0) > 0 && (
                           <>
                             <div style={{ fontSize: 13, color: '#555', marginBottom: 2 }}>
-                              Subtotal: {formatAmount(parseFloat(order.subtotal || order.total || 0))}
+                              Subtotal: {fmtOrdAmt(parseFloat(order.subtotal || order.total || 0))}
                             </div>
                             <div style={{ fontSize: 13, color: '#16a34a', marginBottom: 4 }}>
-                              Coupon{order.coupon_code ? ` (${order.coupon_code})` : ''}: −{formatAmount(parseFloat(order.discount || 0))}
+                              Coupon{order.coupon_code ? ` (${order.coupon_code})` : ''}: −{fmtOrdAmt(parseFloat(order.discount || 0))}
                             </div>
                           </>
                         )}
                         <div style={{ fontWeight: 700, fontSize: 14 }}>
-                          Total: {formatAmount(parseFloat(order.total || 0))}
+                          Total: {fmtOrdAmt(parseFloat(order.total || 0))}
                         </div>
                       </div>
                     )}
@@ -846,15 +848,15 @@ export default function OrdersSection() {
                             }
                             if (item.selectedOptions.pricedOptions) {
                               for (const [label, val] of Object.entries(item.selectedOptions.pricedOptions)) {
-                                const priceSuffix = Number(val.price || 0) > 0 ? ` (${formatAmount(Number(val.price))})` : '';
+                                const priceSuffix = Number(val.price || 0) > 0 ? ` (${fmtOrdAmt(Number(val.price))})` : '';
                                 parts.push(`${label}: ${val.name}${priceSuffix}`);
                               }
                             }
                             return parts.length > 0 ? <div style={{ fontSize: 11, color: '#888', marginTop: 1 }}>{parts.join(' \u2022 ')}</div> : null;
                           })()}
                           <div style={{ fontSize: 12, color: '#555' }}>
-                            {formatAmount(parseFloat(item.price || 0))} x {item.quantity}
-                            <span style={{ fontWeight: 600, marginLeft: 6 }}>= {formatAmount(parseFloat((item.price || 0) * (item.quantity || 1)))}</span>
+                            {fmtOrdAmt(parseFloat(item.price || 0))} x {item.quantity}
+                            <span style={{ fontWeight: 600, marginLeft: 6 }}>= {fmtOrdAmt(parseFloat((item.price || 0) * (item.quantity || 1)))}</span>
                           </div>
                         </div>
                       </div>
@@ -864,15 +866,15 @@ export default function OrdersSection() {
                         {parseFloat(order.discount || 0) > 0 && (
                           <>
                             <div style={{ fontSize: 13, color: '#555', marginBottom: 2 }}>
-                              Subtotal: {formatAmount(parseFloat(order.subtotal || order.total || 0))}
+                              Subtotal: {fmtOrdAmt(parseFloat(order.subtotal || order.total || 0))}
                             </div>
                             <div style={{ fontSize: 13, color: '#16a34a', marginBottom: 4 }}>
-                              Coupon{order.coupon_code ? ` (${order.coupon_code})` : ''}: −{formatAmount(parseFloat(order.discount || 0))}
+                              Coupon{order.coupon_code ? ` (${order.coupon_code})` : ''}: −{fmtOrdAmt(parseFloat(order.discount || 0))}
                             </div>
                           </>
                         )}
                         <div style={{ fontWeight: 700, fontSize: 14 }}>
-                          Total: {formatAmount(parseFloat(order.total || 0))}
+                          Total: {fmtOrdAmt(parseFloat(order.total || 0))}
                         </div>
                       </div>
                     )}
@@ -994,7 +996,7 @@ export default function OrdersSection() {
                           </td>
                           <td style={{ whiteSpace: 'nowrap' }}>{order.customer_phone || '—'}</td>
                           <td>{items.length > 0 ? `${items.length} item${items.length !== 1 ? 's' : ''}` : '—'}</td>
-                          <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{formatAmount(parseFloat(order.total || order.total_amount || 0))}</td>
+                          <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{fmtOrdAmt(parseFloat(order.total || order.total_amount || 0))}</td>
                           <td style={{ textTransform: 'capitalize' }}>
                             {order.payment_method === 'cod' ? 'Cash on Delivery' : (order.payment_method || '—')}
                           </td>
@@ -1135,15 +1137,15 @@ export default function OrdersSection() {
                         }
                         if (item.selectedOptions.pricedOptions) {
                           for (const [label, val] of Object.entries(item.selectedOptions.pricedOptions)) {
-                            const priceSuffix = Number(val.price || 0) > 0 ? ` (${formatAmount(Number(val.price))})` : '';
+                            const priceSuffix = Number(val.price || 0) > 0 ? ` (${fmtOrdAmt(Number(val.price))})` : '';
                             parts.push(`${label}: ${val.name}${priceSuffix}`);
                           }
                         }
                         return parts.length > 0 ? <div style={{ fontSize: 11, color: '#888', marginTop: 1 }}>{parts.join(' \u2022 ')}</div> : null;
                       })()}
                       <div style={{ fontSize: 12, color: '#555' }}>
-                        {formatAmount(parseFloat(item.price || 0))} x {item.quantity}
-                        <span style={{ fontWeight: 600, marginLeft: 6 }}>= {formatAmount(parseFloat((item.price || 0) * (item.quantity || 1)))}</span>
+                        {fmtOrdAmt(parseFloat(item.price || 0))} x {item.quantity}
+                        <span style={{ fontWeight: 600, marginLeft: 6 }}>= {fmtOrdAmt(parseFloat((item.price || 0) * (item.quantity || 1)))}</span>
                       </div>
                     </div>
                   </div>
@@ -1152,15 +1154,15 @@ export default function OrdersSection() {
                   {parseFloat(order.discount || 0) > 0 && (
                     <>
                       <div style={{ fontSize: 13, color: '#555', marginBottom: 2 }}>
-                        Subtotal: {formatAmount(parseFloat(order.subtotal || order.total || 0))}
+                        Subtotal: {fmtOrdAmt(parseFloat(order.subtotal || order.total || 0))}
                       </div>
                       <div style={{ fontSize: 13, color: '#16a34a', marginBottom: 4 }}>
-                        Coupon{order.coupon_code ? ` (${order.coupon_code})` : ''}: −{formatAmount(parseFloat(order.discount || 0))}
+                        Coupon{order.coupon_code ? ` (${order.coupon_code})` : ''}: −{fmtOrdAmt(parseFloat(order.discount || 0))}
                       </div>
                     </>
                   )}
                   <div style={{ fontWeight: 700, fontSize: 14 }}>
-                    Total: {formatAmount(parseFloat(order.total || 0))}
+                    Total: {fmtOrdAmt(parseFloat(order.total || 0))}
                   </div>
                 </div>
               </div>

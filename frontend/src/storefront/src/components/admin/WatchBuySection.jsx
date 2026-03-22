@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext, useRef } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { getProducts } from '../../services/productService.js';
 import SectionToggle from './SectionToggle.jsx';
+import { formatPrice, getAdminCurrency } from '../../utils/priceFormatter.js';
 
 const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
 
@@ -339,7 +340,7 @@ export default function WatchBuySection({ onSaved }) {
                         )}
                         <div>
                           <div style={{ fontWeight: 600, color: '#166534' }}>{skuLookup.name}</div>
-                          {skuLookup.price && <div style={{ fontSize: 12, color: '#166534' }}>₹{Number(skuLookup.price).toLocaleString()}</div>}
+                          {skuLookup.price && <div style={{ fontSize: 12, color: '#166534' }}>{formatPrice(Number(skuLookup.price), getAdminCurrency(siteConfig))}</div>}
                         </div>
                       </div>
                     ) : (

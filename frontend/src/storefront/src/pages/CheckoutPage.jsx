@@ -24,7 +24,7 @@ export default function CheckoutPage() {
   const { items, subtotal, updateQuantity, removeItem, clearAll, cartItemKey } = useContext(CartContext);
   const { user, isAuthenticated } = useContext(AuthContext);
   const { siteConfig } = useContext(SiteContext);
-  const { formatAmount } = useContext(CurrencyContext);
+  const { formatAmount, siteDefaultCurrency } = useContext(CurrencyContext);
 
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -180,7 +180,7 @@ export default function CheckoutPage() {
     const found = availableCoupons.find(c => c.active && c.code.toUpperCase() === code);
     if (!found) { setCouponError('Invalid coupon code'); setCouponApplying(false); return; }
     if (found.expiryDate && new Date(found.expiryDate) < new Date()) { setCouponError('This coupon has expired'); setCouponApplying(false); return; }
-    if (found.minOrder && subtotal < found.minOrder) { setCouponError(`Minimum order amount for this coupon is ₹${found.minOrder}`); setCouponApplying(false); return; }
+    if (found.minOrder && subtotal < found.minOrder) { setCouponError(`Minimum order amount for this coupon is ${formatAmount(found.minOrder)}`); setCouponApplying(false); return; }
     setAppliedCoupon(found);
     setCouponApplying(false);
   }, [couponCode, availableCoupons, subtotal]);
@@ -260,6 +260,7 @@ export default function CheckoutPage() {
       customerEmail: address.email,
       customerPhone: address.phone,
       paymentMethod,
+      currency: siteDefaultCurrency,
     };
 
     if (paymentMethod === 'razorpay') {
@@ -282,7 +283,7 @@ export default function CheckoutPage() {
           method: 'POST',
           body: JSON.stringify({
             amount: finalTotal,
-            currency: 'INR',
+            currency: siteDefaultCurrency,
             receipt: `order_${Date.now()}`,
             siteId: siteConfig?.id,
             notes: {},
@@ -641,7 +642,7 @@ export default function CheckoutPage() {
                   <div>
                     <span style={{ fontSize: 13, color: '#16a34a', fontWeight: 700 }}>✓ Coupon applied: {appliedCoupon.code}</span>
                     <span style={{ fontSize: 13, color: '#64748b', marginLeft: 8 }}>
-                      ({appliedCoupon.type === 'percent' ? `${appliedCoupon.value}% off` : `₹${appliedCoupon.value} off`})
+                      ({appliedCoupon.type === 'percent' ? `${appliedCoupon.value}% off` : `${formatAmount(appliedCoupon.value)} off`})
                     </span>
                   </div>
                   <button type="button" onClick={removeCoupon} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 13, textDecoration: 'underline' }}>Remove</button>

@@ -5831,7 +5831,7 @@ __name(getOrder, "getOrder");
 async function createOrder(request, env, user) {
   try {
     const data = await request.json();
-    const { siteId, items, shippingAddress, billingAddress, customerName, customerEmail, customerPhone, paymentMethod, notes, couponCode } = data;
+    const { siteId, items, shippingAddress, billingAddress, customerName, customerEmail, customerPhone, paymentMethod, notes, couponCode, currency: orderCurrency } = data;
     const missingFields = [];
     if (!siteId)
       missingFields.push("siteId");
@@ -5852,6 +5852,16 @@ async function createOrder(request, env, user) {
     }
     const db = await resolveSiteDBById(env, siteId);
     await ensureProductOptionsColumn(db, siteId);
+    let siteDefaultCurrency = "INR";
+    try {
+      const siteConf = await getSiteConfig(env, siteId);
+      if (siteConf?.settings) {
+        const s = typeof siteConf.settings === "string" ? JSON.parse(siteConf.settings) : siteConf.settings;
+        if (s.defaultCurrency)
+          siteDefaultCurrency = s.defaultCurrency;
+      }
+    } catch (e) {
+    }
     let subtotal = 0;
     const processedItems = [];
     for (const item of items) {
@@ -5983,9 +5993,10 @@ async function createOrder(request, env, user) {
     if (!usageCheck.allowed) {
       return errorResponse(usageCheck.reason, 403, "STORAGE_LIMIT");
     }
+    const resolvedCurrency = orderCurrency || siteDefaultCurrency;
     await db.prepare(
-      `INSERT INTO orders (id, site_id, user_id, order_number, items, subtotal, discount, shipping_cost, tax, total, payment_method, status, shipping_address, billing_address, customer_name, customer_email, customer_phone, coupon_code, notes, row_size_bytes, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+      `INSERT INTO orders (id, site_id, user_id, order_number, items, subtotal, discount, shipping_cost, tax, total, currency, payment_method, status, shipping_address, billing_address, customer_name, customer_email, customer_phone, coupon_code, notes, row_size_bytes, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(
       orderId,
       siteId,
@@ -5997,6 +6008,7 @@ async function createOrder(request, env, user) {
       shippingCost,
       tax,
       total,
+      resolvedCurrency,
       paymentMethod || "pending",
       orderStatus,
       JSON.stringify(shippingAddress),
@@ -6027,7 +6039,8 @@ async function createOrder(request, env, user) {
           customerEmail,
           customerPhone,
           shippingAddress,
-          isGuest: false
+          isGuest: false,
+          currency: resolvedCurrency
         });
       } catch (emailErr) {
         console.error("Order email notification error:", emailErr);
@@ -6176,7 +6189,7 @@ async function updateOrderStatus(request, env, user, orderId) {
           } catch (e) {
           }
           const ownerEmail = cancelSettings.email || cancelSettings.ownerEmail || cancelConfig.email;
-          const cancelCurrency = cancelSettings.defaultCurrency || "INR";
+          const cancelCurrency = fullOrder.currency || cancelSettings.defaultCurrency || "INR";
           const emailOrder = {
             order_number: fullOrder.order_number,
             customer_name: fullOrder.customer_name,
@@ -6213,7 +6226,7 @@ async function updateOrderStatus(request, env, user, orderId) {
           } catch (e) {
           }
           const ownerEmail = statusSettings.email || statusSettings.ownerEmail || statusConfig.email;
-          const statusCurrency = statusSettings.defaultCurrency || "INR";
+          const statusCurrency = fullOrder.currency || statusSettings.defaultCurrency || "INR";
           const site = await env.DB.prepare("SELECT subdomain, custom_domain FROM sites WHERE id = ?").bind(fullOrder.site_id).first();
           const domain = site?.custom_domain || `${site?.subdomain || "store"}.${env.DOMAIN || "fluxe.in"}`;
           const trackingUrl = `https://${domain}/order-track?orderId=${fullOrder.order_number}`;
@@ -6273,7 +6286,7 @@ async function updateOrderStatus(request, env, user, orderId) {
           } catch (e) {
           }
           const ownerEmail = deliverySettings.email || deliverySettings.ownerEmail || deliveryConfig.email;
-          const deliveryCurrency = deliverySettings.defaultCurrency || "INR";
+          const deliveryCurrency = fullOrder.currency || deliverySettings.defaultCurrency || "INR";
           const emailOrder = {
             order_number: fullOrder.order_number,
             customer_name: fullOrder.customer_name,
@@ -6342,7 +6355,7 @@ __name(handleGuestOrder, "handleGuestOrder");
 async function createGuestOrder(request, env) {
   try {
     const data = await request.json();
-    const { siteId, items, shippingAddress, customerName, customerEmail, customerPhone, paymentMethod } = data;
+    const { siteId, items, shippingAddress, customerName, customerEmail, customerPhone, paymentMethod, currency: guestOrderCurrency } = data;
     const missingFields = [];
     if (!siteId)
       missingFields.push("siteId");
@@ -6363,6 +6376,16 @@ async function createGuestOrder(request, env) {
     }
     const db = await resolveSiteDBById(env, siteId);
     await ensureProductOptionsColumn(db, siteId);
+    let guestSiteDefaultCurrency = "INR";
+    try {
+      const siteConf = await getSiteConfig(env, siteId);
+      if (siteConf?.settings) {
+        const s = typeof siteConf.settings === "string" ? JSON.parse(siteConf.settings) : siteConf.settings;
+        if (s.defaultCurrency)
+          guestSiteDefaultCurrency = s.defaultCurrency;
+      }
+    } catch (e) {
+    }
     let subtotal = 0;
     const processedItems = [];
     for (const item of items) {
@@ -6425,9 +6448,10 @@ async function createGuestOrder(request, env) {
     }
     const isPendingPayment = paymentMethod === "razorpay";
     const orderStatus = isPendingPayment ? "pending_payment" : "pending";
+    const resolvedGuestCurrency = guestOrderCurrency || guestSiteDefaultCurrency;
     await db.prepare(
-      `INSERT INTO guest_orders (id, site_id, order_number, items, subtotal, total, payment_method, status, shipping_address, customer_name, customer_email, customer_phone, row_size_bytes, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+      `INSERT INTO guest_orders (id, site_id, order_number, items, subtotal, total, currency, payment_method, status, shipping_address, customer_name, customer_email, customer_phone, row_size_bytes, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(
       orderId,
       siteId,
@@ -6435,6 +6459,7 @@ async function createGuestOrder(request, env) {
       JSON.stringify(processedItems),
       subtotal,
       total,
+      resolvedGuestCurrency,
       paymentMethod || "cod",
       orderStatus,
       JSON.stringify(shippingAddress),
@@ -6462,7 +6487,8 @@ async function createGuestOrder(request, env) {
           customerEmail,
           customerPhone,
           shippingAddress,
-          isGuest: true
+          isGuest: true,
+          currency: resolvedGuestCurrency
         });
       } catch (emailErr) {
         console.error("Guest order email notification error:", emailErr);
@@ -6929,7 +6955,7 @@ async function sendOrderEmails(env, siteId, orderData) {
     } catch (e) {
     }
     const ownerEmail = siteSettings.email || siteSettings.ownerEmail || config.email;
-    const currency = siteSettings.defaultCurrency || "INR";
+    const currency = orderData.currency || siteSettings.defaultCurrency || "INR";
     const emailOrder = {
       order_number: orderData.orderNumber,
       items: orderData.processedItems,
@@ -7231,7 +7257,7 @@ async function handleCancellationUpdate(request, env, cancelId) {
           } catch (e) {
           }
           const ownerEmail = settings.email || settings.ownerEmail || config.email;
-          const currency = settings.defaultCurrency || "INR";
+          const currency = order.currency || settings.defaultCurrency || "INR";
           if (order.customer_email) {
             const emailOrder = { order_number: order.order_number, customer_name: order.customer_name, customer_email: order.customer_email, total: order.total, payment_method: order.payment_method };
             const { html, text } = buildCancellationCustomerEmail(emailOrder, brandName, reason, ownerEmail, currency);
@@ -8240,7 +8266,8 @@ async function processPostPaymentActions(env, order) {
       customerEmail: order.customer_email,
       customerPhone: order.customer_phone,
       shippingAddress,
-      isGuest: !!order.is_guest
+      isGuest: !!order.is_guest,
+      currency: order.currency
     });
   } catch (emailErr) {
     console.error("Failed to send order emails after payment:", emailErr);
