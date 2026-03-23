@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useContext } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { SiteContext } from '../context/SiteContext.jsx';
 import { useWishlist } from '../hooks/useWishlist.js';
 import { useSEO } from '../hooks/useSEO.js';
@@ -34,6 +34,7 @@ function LoadingSkeleton() {
 
 export default function CategoryPage() {
   const { slug } = useParams();
+  const [searchParams] = useSearchParams();
   const { siteConfig } = useContext(SiteContext);
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
 
@@ -47,6 +48,8 @@ export default function CategoryPage() {
 
   useEffect(() => {
     if (!siteConfig?.id || !slug) return;
+
+    const urlSubcategory = searchParams.get('subcategory') || '';
 
     async function loadCategory() {
       setLoading(true);
@@ -77,8 +80,8 @@ export default function CategoryPage() {
     }
 
     loadCategory();
-    setFilters({ sort: 'featured', inStockOnly: false, subcategoryId: '' });
-  }, [siteConfig?.id, slug]);
+    setFilters({ sort: 'featured', inStockOnly: false, subcategoryId: urlSubcategory });
+  }, [siteConfig?.id, slug, searchParams]);
 
   const applyFiltersAndSort = useCallback((prods, sort, filterOpts) => {
     let result = [...prods];

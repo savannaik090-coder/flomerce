@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import HeroSlider from '../components/home/HeroSlider.jsx';
 import CategorySection from '../components/home/CategorySection.jsx';
+import SubcategorySection from '../components/home/SubcategorySection.jsx';
 import ChooseByCategory from '../components/home/ChooseByCategory.jsx';
 import WatchAndBuy from '../components/home/WatchAndBuy.jsx';
 import FeaturedVideoSection from '../components/home/FeaturedVideoSection.jsx';
@@ -25,9 +26,22 @@ export default function HomePage() {
   const { siteConfig, loading: siteLoading } = useSiteConfig();
   const [homeCategories, setHomeCategories] = useState([]);
   const [allCategories, setAllCategories] = useState([]);
+  const [subcatSections, setSubcatSections] = useState([]);
   const [categoriesLoaded, setCategoriesLoaded] = useState(false);
 
   useSEO({ pageType: 'home' });
+
+  useEffect(() => {
+    if (siteConfig?.settings) {
+      let settings = {};
+      try {
+        settings = typeof siteConfig.settings === 'string' ? JSON.parse(siteConfig.settings) : (siteConfig.settings || {});
+      } catch (e) {
+        settings = {};
+      }
+      setSubcatSections(settings.subcategorySections || []);
+    }
+  }, [siteConfig?.settings]);
 
   useEffect(() => {
     if (!siteConfig?.id) {
@@ -77,6 +91,9 @@ export default function HomePage() {
       <FeaturedVideoSection />
       {remainingCategories.slice(1).map((cat) => (
         <CategorySection key={cat.id} category={cat} />
+      ))}
+      {subcatSections.map((section) => (
+        <SubcategorySection key={section.id} section={section} />
       ))}
       <ProductShowcase />
       <StoreLocations />

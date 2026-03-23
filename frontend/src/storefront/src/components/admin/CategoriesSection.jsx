@@ -37,6 +37,12 @@ export default function CategoriesSection({ onSaved }) {
   const [chooseSaving, setChooseSaving] = useState(false);
   const [chooseUploadingId, setChooseUploadingId] = useState(null);
 
+  const [subcatSections, setSubcatSections] = useState([]);
+  const [newSectionName, setNewSectionName] = useState('');
+  const [newSectionSubtitle, setNewSectionSubtitle] = useState('');
+  const [newSectionSubcatId, setNewSectionSubcatId] = useState('');
+  const [subcatSectionSaving, setSubcatSectionSaving] = useState(false);
+
   useEffect(() => {
     if (siteConfig?.id) loadCategories();
   }, [siteConfig?.id]);
@@ -52,6 +58,7 @@ export default function CategoriesSection({ onSaved }) {
       const conf = settings.chooseByCategory || {};
       setChooseEnabled(!!conf.enabled);
       setChooseCats(conf.categories || {});
+      setSubcatSections(settings.subcategorySections || []);
     }
   }, [siteConfig?.settings]);
 
@@ -291,6 +298,85 @@ export default function CategoriesSection({ onSaved }) {
     const updated = { ...chooseCats, [catId]: { ...current, browseImage: null } };
     setChooseCats(updated);
     await saveChooseConfig(chooseEnabled, updated);
+  }
+
+  async function saveSubcatSections(sections) {
+    setSubcatSectionSaving(true);
+    try {
+      const token = sessionStorage.getItem('site_admin_token');
+      const response = await fetch(`${API_BASE}/api/sites/${siteConfig.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `SiteAdmin ${token}` : '',
+        },
+        body: JSON.stringify({
+          settings: { subcategorySections: sections },
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        alert('Failed to save: ' + (result.error || 'Unknown error'));
+      } else {
+        if (onSaved) onSaved();
+      }
+    } catch (e) {
+      alert('Failed to save: ' + e.message);
+    } finally {
+      setSubcatSectionSaving(false);
+    }
+  }
+
+  function findSubcatInfo(subcatId) {
+    for (const cat of categories) {
+      for (const group of (cat.children || [])) {
+        for (const val of (group.children || [])) {
+          if (val.id === subcatId) {
+            return { valueName: val.name, groupName: group.name, categoryName: cat.name, categorySlug: cat.slug, categoryId: cat.id };
+          }
+        }
+        if (group.id === subcatId) {
+          return { valueName: group.name, groupName: null, categoryName: cat.name, categorySlug: cat.slug, categoryId: cat.id };
+        }
+      }
+    }
+    return null;
+  }
+
+  async function handleAddSubcatSection() {
+    if (!newSectionName.trim() || !newSectionSubcatId) return;
+    const info = findSubcatInfo(newSectionSubcatId);
+    const section = {
+      id: Date.now().toString(),
+      name: newSectionName.trim(),
+      subtitle: newSectionSubtitle.trim() || null,
+      subcategoryId: newSectionSubcatId,
+      categorySlug: info?.categorySlug || '',
+      categoryId: info?.categoryId || '',
+      subcategoryLabel: info ? `${info.categoryName} → ${info.groupName ? info.groupName + ' → ' : ''}${info.valueName}` : '',
+    };
+    const previous = [...subcatSections];
+    const updated = [...subcatSections, section];
+    setSubcatSections(updated);
+    setNewSectionName('');
+    setNewSectionSubtitle('');
+    setNewSectionSubcatId('');
+    try {
+      await saveSubcatSections(updated);
+    } catch {
+      setSubcatSections(previous);
+    }
+  }
+
+  async function handleRemoveSubcatSection(sectionId) {
+    const previous = [...subcatSections];
+    const updated = subcatSections.filter(s => s.id !== sectionId);
+    setSubcatSections(updated);
+    try {
+      await saveSubcatSections(updated);
+    } catch {
+      setSubcatSections(previous);
+    }
   }
 
   const filtered = categories.filter(c =>
@@ -717,6 +803,98 @@ export default function CategoriesSection({ onSaved }) {
                   </div>
                 );
               })}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ marginTop: 32 }}>
+        <div className="card">
+          <div className="card-header">
+            <h3 className="card-title" style={{ margin: 0 }}>Subcategory Homepage Sections</h3>
+          </div>
+          <div className="card-content" style={{ padding: 16 }}>
+            <p style={{ color: '#64748b', fontSize: 13, marginTop: 0, marginBottom: 16 }}>
+              Create homepage sections that show products filtered by a specific subcategory value. Each section appears as a product carousel on your homepage.
+            </p>
+            {subcatSectionSaving && (
+              <div style={{ color: '#3b82f6', fontSize: 13, marginBottom: 12 }}>Saving...</div>
+            )}
+
+            {subcatSections.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
+                {subcatSections.map(section => (
+                  <div key={section.id} style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '12px 16px', background: '#f8fafc', borderRadius: 8,
+                    border: '1px solid #e2e8f0',
+                  }}>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: 14 }}>{section.name}</div>
+                      {section.subtitle && <div style={{ color: '#64748b', fontSize: 12, marginTop: 2 }}>{section.subtitle}</div>}
+                      <div style={{ color: '#94a3b8', fontSize: 11, marginTop: 4 }}>
+                        Filtered by: {section.subcategoryLabel || section.subcategoryId}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleRemoveSubcatSection(section.id)}
+                      style={{ padding: '6px 10px', background: 'none', color: '#ef4444', border: '1px solid #fecaca', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}
+                    ><i className="fas fa-trash" style={{ fontSize: 11 }} /></button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, padding: 16 }}>
+              <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 12, color: '#475569' }}>Add New Section</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <input
+                  type="text"
+                  placeholder="Section title (e.g. Trending T-Shirts)"
+                  value={newSectionName}
+                  onChange={e => setNewSectionName(e.target.value)}
+                  style={{ padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box' }}
+                />
+                <input
+                  type="text"
+                  placeholder="Subtitle (optional)"
+                  value={newSectionSubtitle}
+                  onChange={e => setNewSectionSubtitle(e.target.value)}
+                  style={{ padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', color: '#64748b' }}
+                />
+                <select
+                  value={newSectionSubcatId}
+                  onChange={e => setNewSectionSubcatId(e.target.value)}
+                  style={{ padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, background: 'white', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                >
+                  <option value="">Select subcategory value...</option>
+                  {categories.map(cat => {
+                    const groups = cat.children || [];
+                    if (groups.length === 0) return null;
+                    return groups.map(group => {
+                      const values = group.children || [];
+                      if (values.length === 0) return (
+                        <option key={group.id} value={group.id}>{cat.name} → {group.name}</option>
+                      );
+                      return (
+                        <optgroup key={group.id} label={`${cat.name} → ${group.name}`}>
+                          {values.map(val => (
+                            <option key={val.id} value={val.id}>{val.name}</option>
+                          ))}
+                        </optgroup>
+                      );
+                    });
+                  })}
+                </select>
+                <button
+                  className="btn btn-primary"
+                  onClick={handleAddSubcatSection}
+                  disabled={!newSectionName.trim() || !newSectionSubcatId || subcatSectionSaving}
+                  style={{ alignSelf: 'flex-start', opacity: (!newSectionName.trim() || !newSectionSubcatId || subcatSectionSaving) ? 0.5 : 1 }}
+                >
+                  <i className="fas fa-plus" style={{ marginRight: 6 }} />Add Section
+                </button>
+              </div>
             </div>
           </div>
         </div>
