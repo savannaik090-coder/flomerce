@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo } from 'react';
 import HeroSlider from '../components/home/HeroSlider.jsx';
 import CategorySection from '../components/home/CategorySection.jsx';
 import ChooseByCategory from '../components/home/ChooseByCategory.jsx';
@@ -9,7 +9,6 @@ import StoreLocations from '../components/home/StoreLocations.jsx';
 import CustomerReviews from '../components/home/CustomerReviews.jsx';
 import FirstVisitBanner from '../components/home/FirstVisitBanner.jsx';
 import { useSiteConfig } from '../hooks/useSiteConfig.js';
-import { getCategories } from '../services/categoryService.js';
 import { useSEO } from '../hooks/useSEO.js';
 import '../styles/hero.css';
 import '../styles/categories.css';
@@ -22,44 +21,15 @@ import '../styles/testimonials.css';
 import '../styles/home-responsive.css';
 
 export default function HomePage() {
-  const { siteConfig, loading: siteLoading } = useSiteConfig();
-  const [homeCategories, setHomeCategories] = useState([]);
-  const [allCategories, setAllCategories] = useState([]);
-  const [categoriesLoaded, setCategoriesLoaded] = useState(false);
+  const { fullCategories } = useSiteConfig();
 
   useSEO({ pageType: 'home' });
 
-  useEffect(() => {
-    if (!siteConfig?.id) {
-      if (!siteLoading) setCategoriesLoaded(true);
-      return;
-    }
-    setCategoriesLoaded(false);
-    getCategories(siteConfig.id)
-      .then((res) => {
-        const all = res.data || res.categories || [];
-        setAllCategories(all);
-        const visible = all.filter(c => c.show_on_home === 1 && !c.parent_id);
-        visible.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
-        setHomeCategories(visible);
-        setCategoriesLoaded(true);
-      })
-      .catch((err) => {
-        console.error(err);
-        setCategoriesLoaded(true);
-      });
-  }, [siteConfig?.id, siteLoading]);
-
-  if (!categoriesLoaded) {
-    return (
-      <div className="home-page">
-        <div className="home-page-loader">
-          <div className="product-loader-spinner"></div>
-          <p className="product-loader-text">Loading store...</p>
-        </div>
-      </div>
-    );
-  }
+  const homeCategories = useMemo(() => {
+    const visible = (fullCategories || []).filter(c => c.show_on_home === 1 && !c.parent_id);
+    visible.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+    return visible;
+  }, [fullCategories]);
 
   const remainingCategories = homeCategories.slice(1);
 
@@ -69,7 +39,7 @@ export default function HomePage() {
       {homeCategories.length > 0 && (
         <CategorySection key={homeCategories[0].id} category={homeCategories[0]} />
       )}
-      <ChooseByCategory categories={allCategories} />
+      <ChooseByCategory categories={fullCategories} />
       {remainingCategories.length > 0 && (
         <CategorySection key={remainingCategories[0].id} category={remainingCategories[0]} />
       )}

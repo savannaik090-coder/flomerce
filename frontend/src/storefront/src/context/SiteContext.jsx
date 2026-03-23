@@ -1,4 +1,5 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
+import { getCategories } from '../services/categoryService.js';
 
 export const SiteContext = createContext(null);
 
@@ -46,6 +47,7 @@ export function SiteProvider({ children }) {
   const [error, setError] = useState(null);
   const [subdomain, setSubdomain] = useState(null);
   const [previewSettings, setPreviewSettings] = useState(null);
+  const [fullCategories, setFullCategories] = useState([]);
 
   useEffect(() => {
     let isInIframe = false;
@@ -142,6 +144,15 @@ export function SiteProvider({ children }) {
         link.href = config.faviconUrl;
         document.head.appendChild(link);
       }
+
+      try {
+        const catRes = await getCategories(config.id);
+        const cats = catRes.data || catRes.categories || [];
+        setFullCategories(cats);
+      } catch (catErr) {
+        console.error('Failed to load categories:', catErr);
+        setFullCategories([]);
+      }
     } catch (err) {
       console.error('Failed to load site config:', err);
       setError(err.message || 'Failed to load store');
@@ -160,7 +171,7 @@ export function SiteProvider({ children }) {
     : siteConfig;
 
   return (
-    <SiteContext.Provider value={{ siteConfig: effectiveSiteConfig, loading, error, subdomain, refetchSite: () => subdomain && fetchSiteConfig(subdomain, true) }}>
+    <SiteContext.Provider value={{ siteConfig: effectiveSiteConfig, loading, error, subdomain, fullCategories, refetchSite: () => subdomain && fetchSiteConfig(subdomain, true) }}>
       {children}
     </SiteContext.Provider>
   );
