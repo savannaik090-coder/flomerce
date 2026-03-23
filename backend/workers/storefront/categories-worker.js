@@ -125,9 +125,20 @@ async function getCategories(env, { siteId, subdomain, slug }) {
       allChildren = childResult.results || [];
     }
 
+    let grandchildIds = allChildren.map(c => c.id);
+    let allGrandchildren = [];
+    if (grandchildIds.length > 0) {
+      const gcQuery = `SELECT * FROM categories WHERE parent_id IN (${grandchildIds.map(() => '?').join(',')}) ORDER BY display_order, name`;
+      const gcResult = await db.prepare(gcQuery).bind(...grandchildIds).all();
+      allGrandchildren = gcResult.results || [];
+    }
+
     const result = parentCategories.map(parent => ({
       ...parent,
-      children: allChildren.filter(c => c.parent_id === parent.id),
+      children: allChildren.filter(c => c.parent_id === parent.id).map(child => ({
+        ...child,
+        children: allGrandchildren.filter(gc => gc.parent_id === child.id),
+      })),
     }));
 
     return successResponse(result);

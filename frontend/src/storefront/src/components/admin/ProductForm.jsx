@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { createProduct, updateProduct, getOptionsTemplate, saveOptionsTemplate } from '../../services/productService.js';
-import { getCategories, createCategory } from '../../services/categoryService.js';
+import { getCategories } from '../../services/categoryService.js';
 import { getApiUrl } from '../../services/api.js';
 
 const DEFAULT_FORM = {
@@ -96,9 +96,6 @@ export default function ProductForm({ product, onSave, onCancel }) {
   const [options, setOptions] = useState(DEFAULT_OPTIONS);
   const [categories, setCategories] = useState([]);
   const [subcategories, setSubcategories] = useState([]);
-  const [newSubcatName, setNewSubcatName] = useState('');
-  const [showAddSubcat, setShowAddSubcat] = useState(false);
-  const [addingSubcat, setAddingSubcat] = useState(false);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
   const [imageQuality, setImageQuality] = useState(0.8);
@@ -189,29 +186,6 @@ export default function ProductForm({ product, onSave, onCancel }) {
       const res = await getCategories(siteConfig.id);
       setCategories(res.data || res.categories || []);
     } catch {}
-  }
-
-  async function handleAddSubcategory() {
-    if (!newSubcatName.trim() || !form.category_id) return;
-    setAddingSubcat(true);
-    try {
-      const res = await createCategory({
-        siteId: siteConfig.id,
-        name: newSubcatName.trim(),
-        parentId: form.category_id,
-      });
-      const newId = res?.data?.id || res?.id;
-      await loadCategories();
-      if (newId) {
-        setForm(p => ({ ...p, subcategory_id: newId }));
-      }
-      setNewSubcatName('');
-      setShowAddSubcat(false);
-    } catch (err) {
-      setErrors(prev => ({ ...prev, subcategory: err.message || 'Failed to create subcategory' }));
-    } finally {
-      setAddingSubcat(false);
-    }
   }
 
   function validate() {
@@ -438,45 +412,28 @@ export default function ProductForm({ product, onSave, onCancel }) {
               {errors.category_id && <p style={{ color: '#ef4444', fontSize: 12, marginTop: 4 }}>{errors.category_id}</p>}
             </div>
 
-            {form.category_id && (
+            {form.category_id && subcategories.length > 0 && (
               <div style={{ marginBottom: 16 }}>
                 <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Subcategory</label>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <select
-                    value={form.subcategory_id}
-                    onChange={e => setForm(p => ({ ...p, subcategory_id: e.target.value }))}
-                    style={{ flex: 1, padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, background: 'white', boxSizing: 'border-box' }}
-                  >
-                    <option value="">None</option>
-                    {subcategories.map(sc => (
-                      <option key={sc.id} value={sc.id}>{sc.name}</option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    onClick={() => setShowAddSubcat(!showAddSubcat)}
-                    style={{ padding: '10px 14px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 18, background: showAddSubcat ? '#f1f5f9' : 'white', cursor: 'pointer', lineHeight: 1, color: '#64748b' }}
-                    title="Add new subcategory"
-                  >+</button>
-                </div>
-                {showAddSubcat && (
-                  <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <input
-                      type="text"
-                      value={newSubcatName}
-                      onChange={e => setNewSubcatName(e.target.value)}
-                      placeholder="New subcategory name"
-                      style={{ flex: 1, padding: '8px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, boxSizing: 'border-box' }}
-                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddSubcategory(); } }}
-                    />
-                    <button
-                      type="button"
-                      onClick={handleAddSubcategory}
-                      disabled={addingSubcat || !newSubcatName.trim()}
-                      style={{ padding: '8px 16px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, fontSize: 13, cursor: 'pointer', opacity: addingSubcat || !newSubcatName.trim() ? 0.5 : 1 }}
-                    >{addingSubcat ? 'Adding...' : 'Add'}</button>
-                  </div>
-                )}
+                <select
+                  value={form.subcategory_id}
+                  onChange={e => setForm(p => ({ ...p, subcategory_id: e.target.value }))}
+                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, background: 'white', boxSizing: 'border-box' }}
+                >
+                  <option value="">None</option>
+                  {subcategories.map(group => (
+                    group.children && group.children.length > 0 ? (
+                      <optgroup key={group.id} label={group.name}>
+                        {group.children.map(val => (
+                          <option key={val.id} value={val.id}>{val.name}</option>
+                        ))}
+                      </optgroup>
+                    ) : (
+                      <option key={group.id} value={group.id}>{group.name}</option>
+                    )
+                  ))}
+                </select>
+                <p style={{ color: '#94a3b8', fontSize: 11, marginTop: 4 }}>Manage subcategory groups in the Categories section</p>
                 {errors.subcategory && <p style={{ color: '#ef4444', fontSize: 12, marginTop: 4 }}>{errors.subcategory}</p>}
               </div>
             )}

@@ -56,6 +56,9 @@ export default function FilterSortBar({ onSort, onFilter, currentSort, currentFi
     setFilterOpen(false);
   }
 
+  const allValues = subcategories.flatMap(g => (g.children && g.children.length > 0) ? g.children : [g]);
+  const hasFilterOptions = allValues.length > 0;
+
   const activeFilterCount = [
     tempInStock,
     tempSubcategory,
@@ -107,21 +110,37 @@ export default function FilterSortBar({ onSort, onFilter, currentSort, currentFi
                   </label>
                 </div>
               </div>
-              {subcategories.length > 0 && (
-                <div className="filter-section">
-                  <h3>Subcategory</h3>
-                  <div className="filter-options">
-                    <label className="filter-option-label">
-                      <input type="radio" name="subcategory" value="" checked={tempSubcategory === ''} onChange={() => setTempSubcategory('')} /> All
-                    </label>
-                    {subcategories.map(sc => (
-                      <label key={sc.id} className="filter-option-label">
-                        <input type="radio" name="subcategory" value={sc.id} checked={tempSubcategory === sc.id} onChange={() => setTempSubcategory(sc.id)} /> {sc.name}
+              {hasFilterOptions && subcategories.map(group => {
+                const values = (group.children && group.children.length > 0) ? group.children : [group];
+                const isGrouped = group.children && group.children.length > 0;
+                return (
+                  <div className="filter-section" key={group.id}>
+                    <h3>{isGrouped ? group.name : 'Subcategory'}</h3>
+                    <div className="filter-options">
+                      <label className="filter-option-label">
+                        <input
+                          type="radio"
+                          name="subcategory"
+                          value=""
+                          checked={tempSubcategory === '' || !values.some(v => v.id === tempSubcategory)}
+                          onChange={() => setTempSubcategory('')}
+                        /> All
                       </label>
-                    ))}
+                      {values.map(val => (
+                        <label key={val.id} className="filter-option-label">
+                          <input
+                            type="radio"
+                            name="subcategory"
+                            value={val.id}
+                            checked={tempSubcategory === val.id}
+                            onChange={() => setTempSubcategory(val.id)}
+                          /> {val.name}
+                        </label>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })}
               <div className="filter-section">
                 <h3>Availability</h3>
                 <div className="filter-options">
