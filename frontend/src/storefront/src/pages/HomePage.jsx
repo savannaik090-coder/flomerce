@@ -22,14 +22,19 @@ import '../styles/testimonials.css';
 import '../styles/home-responsive.css';
 
 export default function HomePage() {
-  const { siteConfig } = useSiteConfig();
+  const { siteConfig, loading: siteLoading } = useSiteConfig();
   const [homeCategories, setHomeCategories] = useState([]);
   const [allCategories, setAllCategories] = useState([]);
+  const [categoriesLoaded, setCategoriesLoaded] = useState(false);
 
   useSEO({ pageType: 'home' });
 
   useEffect(() => {
-    if (!siteConfig?.id) return;
+    if (!siteConfig?.id) {
+      if (!siteLoading) setCategoriesLoaded(true);
+      return;
+    }
+    setCategoriesLoaded(false);
     getCategories(siteConfig.id)
       .then((res) => {
         const all = res.data || res.categories || [];
@@ -37,9 +42,24 @@ export default function HomePage() {
         const visible = all.filter(c => c.show_on_home === 1 && !c.parent_id);
         visible.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
         setHomeCategories(visible);
+        setCategoriesLoaded(true);
       })
-      .catch(console.error);
-  }, [siteConfig?.id]);
+      .catch((err) => {
+        console.error(err);
+        setCategoriesLoaded(true);
+      });
+  }, [siteConfig?.id, siteLoading]);
+
+  if (!categoriesLoaded) {
+    return (
+      <div className="home-page">
+        <div className="home-page-loader">
+          <div className="product-loader-spinner"></div>
+          <p className="product-loader-text">Loading store...</p>
+        </div>
+      </div>
+    );
+  }
 
   const remainingCategories = homeCategories.slice(1);
 
