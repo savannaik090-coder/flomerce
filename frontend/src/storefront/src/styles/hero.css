@@ -170,3 +170,12 @@
     background: white;
     transform: scale(1.2);
 }
+
+.home-page-loader {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 80vh;
+    background-color: #f8f8f5;
+}
