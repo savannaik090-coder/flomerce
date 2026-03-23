@@ -38,11 +38,12 @@ export default function CategoryPage() {
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
 
   const [categoryData, setCategoryData] = useState(null);
+  const [subcategories, setSubcategories] = useState([]);
   const [products, setProducts] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState('price-low-high');
-  const [filters, setFilters] = useState({ sort: 'featured', priceRange: 'all', inStockOnly: false });
+  const [filters, setFilters] = useState({ sort: 'featured', inStockOnly: false, subcategoryId: '' });
 
   useEffect(() => {
     if (!siteConfig?.id || !slug) return;
@@ -53,6 +54,9 @@ export default function CategoryPage() {
         const catResult = await categoryService.getCategoryBySlug(siteConfig.id, slug);
         const cat = catResult.data?.[0] || catResult.data || catResult;
         setCategoryData(cat);
+
+        const children = cat?.children || [];
+        setSubcategories(children);
 
         let prodResult;
         if (cat?.id) {
@@ -73,20 +77,14 @@ export default function CategoryPage() {
     }
 
     loadCategory();
+    setFilters({ sort: 'featured', inStockOnly: false, subcategoryId: '' });
   }, [siteConfig?.id, slug]);
 
   const applyFiltersAndSort = useCallback((prods, sort, filterOpts) => {
     let result = [...prods];
 
-    if (filterOpts.priceRange && filterOpts.priceRange !== 'all') {
-      const range = filterOpts.priceRange;
-      if (range === '0-5000') {
-        result = result.filter(p => p.price < 5000);
-      } else if (range === '5000-15000') {
-        result = result.filter(p => p.price >= 5000 && p.price <= 15000);
-      } else if (range === '15000+') {
-        result = result.filter(p => p.price > 15000);
-      }
+    if (filterOpts.subcategoryId) {
+      result = result.filter(p => p.subcategory_id === filterOpts.subcategoryId);
     }
 
     if (filterOpts.inStockOnly) {
@@ -158,6 +156,7 @@ export default function CategoryPage() {
           onFilter={handleFilter}
           currentSort={sortBy}
           currentFilters={filters}
+          subcategories={subcategories}
         />
         <div className="shop-products">
           {loading ? (

@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-X2m7Ew/checked-fetch.js
+// .wrangler/tmp/bundle-j6LW2s/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-X2m7Ew/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-j6LW2s/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-X2m7Ew/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-j6LW2s/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-X2m7Ew/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-j6LW2s/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -207,6 +207,21 @@ async function ensureProductOptionsColumn(db, cacheKey) {
     console.error("ensureProductOptionsColumn error:", e.message || e);
   }
 }
+async function ensureProductSubcategoryColumn(db, cacheKey) {
+  const key = cacheKey || "default";
+  if (_subcatMigratedDBs.has(key))
+    return;
+  try {
+    const cols = await db.prepare("PRAGMA table_info(products)").all();
+    const hasSubcat = cols.results?.some((c) => c.name === "subcategory_id");
+    if (!hasSubcat) {
+      await db.prepare("ALTER TABLE products ADD COLUMN subcategory_id TEXT REFERENCES categories(id) ON DELETE SET NULL").run();
+    }
+    _subcatMigratedDBs.add(key);
+  } catch (e) {
+    console.error("ensureProductSubcategoryColumn error:", e.message || e);
+  }
+}
 async function resolveSiteDBById(env, siteId) {
   if (!siteId) {
     throw new Error("resolveSiteDBById: siteId is required");
@@ -288,14 +303,16 @@ async function resolveSiteDBBySubdomain(env, subdomain) {
   }
   throw new Error(`resolveSiteDBBySubdomain: No shard assigned for subdomain "${subdomain}". Every site must have a shard_id.`);
 }
-var _migratedDBs;
+var _migratedDBs, _subcatMigratedDBs;
 var init_site_db = __esm({
   "utils/site-db.js"() {
     init_checked_fetch();
     init_strip_cf_connecting_ip_header();
     init_modules_watch_stub();
     _migratedDBs = /* @__PURE__ */ new Set();
+    _subcatMigratedDBs = /* @__PURE__ */ new Set();
     __name(ensureProductOptionsColumn, "ensureProductOptionsColumn");
+    __name(ensureProductSubcategoryColumn, "ensureProductSubcategoryColumn");
     __name(resolveSiteDBById, "resolveSiteDBById");
     __name(checkMigrationLock, "checkMigrationLock");
     __name(getSiteConfig, "getSiteConfig");
@@ -2116,12 +2133,12 @@ var init_site_admin_worker = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-X2m7Ew/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-j6LW2s/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-X2m7Ew/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-j6LW2s/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -5219,10 +5236,11 @@ async function handleProducts(request, env, path) {
     const subdomain = url.searchParams.get("subdomain");
     const category = url.searchParams.get("category");
     const categoryId = url.searchParams.get("categoryId");
+    const subcategoryId = url.searchParams.get("subcategoryId");
     if (productId) {
       return getProduct(env, productId, siteId, subdomain);
     }
-    return getProducts(env, { siteId, subdomain, category, categoryId, url });
+    return getProducts(env, { siteId, subdomain, category, categoryId, subcategoryId, url });
   }
   let user = await validateAuth(request, env);
   let adminSiteId = null;
@@ -5277,7 +5295,7 @@ async function handleProducts(request, env, path) {
   }
 }
 __name(handleProducts, "handleProducts");
-async function getProducts(env, { siteId, subdomain, category, categoryId, url }) {
+async function getProducts(env, { siteId, subdomain, category, categoryId, subcategoryId, url }) {
   try {
     if (!siteId && !subdomain) {
       return errorResponse("siteId or subdomain is required to fetch products");
@@ -5294,7 +5312,8 @@ async function getProducts(env, { siteId, subdomain, category, categoryId, url }
       }
       db = await resolveSiteDBBySubdomain(env, subdomain);
     }
-    let query = "SELECT p.*, c.name as category_name, c.slug as category_slug FROM products p LEFT JOIN categories c ON p.category_id = c.id WHERE p.is_active = 1";
+    await ensureProductSubcategoryColumn(db, siteId);
+    let query = "SELECT p.*, c.name as category_name, c.slug as category_slug, sc.name as subcategory_name, sc.slug as subcategory_slug FROM products p LEFT JOIN categories c ON p.category_id = c.id LEFT JOIN categories sc ON p.subcategory_id = sc.id WHERE p.is_active = 1";
     const bindings = [];
     if (siteId) {
       query += " AND p.site_id = ?";
@@ -5306,6 +5325,10 @@ async function getProducts(env, { siteId, subdomain, category, categoryId, url }
     } else if (category) {
       query += " AND (c.slug = ? OR c.name = ?)";
       bindings.push(category, category);
+    }
+    if (subcategoryId) {
+      query += " AND p.subcategory_id = ?";
+      bindings.push(subcategoryId);
     }
     const featured = url.searchParams.get("featured");
     if (featured === "true") {
@@ -5339,10 +5362,12 @@ async function getProduct(env, productId, siteId, subdomain) {
         siteId = site.id;
     }
     const db = await resolveSiteDBById(env, siteId);
+    await ensureProductSubcategoryColumn(db, siteId);
     let product = null;
-    let productQuery = `SELECT p.*, c.name as category_name, c.slug as category_slug
+    let productQuery = `SELECT p.*, c.name as category_name, c.slug as category_slug, sc.name as subcategory_name, sc.slug as subcategory_slug
        FROM products p 
        LEFT JOIN categories c ON p.category_id = c.id
+       LEFT JOIN categories sc ON p.subcategory_id = sc.id
        WHERE p.id = ?`;
     const productBindings = [productId];
     if (siteId) {
@@ -5351,9 +5376,10 @@ async function getProduct(env, productId, siteId, subdomain) {
     }
     product = await db.prepare(productQuery).bind(...productBindings).first();
     if (!product) {
-      let slugQuery = `SELECT p.*, c.name as category_name, c.slug as category_slug
+      let slugQuery = `SELECT p.*, c.name as category_name, c.slug as category_slug, sc.name as subcategory_name, sc.slug as subcategory_slug
          FROM products p 
          LEFT JOIN categories c ON p.category_id = c.id
+         LEFT JOIN categories sc ON p.subcategory_id = sc.id
          WHERE p.slug = ?`;
       const slugBindings = [productId];
       if (siteId) {
@@ -5400,7 +5426,7 @@ __name(getProduct, "getProduct");
 async function createProduct(request, env, user) {
   try {
     const data = await request.json();
-    const { siteId, name, description, shortDescription, price, comparePrice, costPrice, sku, stock, categoryId, images, thumbnailUrl, mainImageIndex, tags, isFeatured, weight, dimensions, options } = data;
+    const { siteId, name, description, shortDescription, price, comparePrice, costPrice, sku, stock, categoryId, subcategoryId, images, thumbnailUrl, mainImageIndex, tags, isFeatured, weight, dimensions, options } = data;
     if (!siteId || !name || price === void 0) {
       return errorResponse("Site ID, name and price are required");
     }
@@ -5420,6 +5446,7 @@ async function createProduct(request, env, user) {
     }
     const db = await resolveSiteDBById(env, siteId);
     await ensureProductOptionsColumn(db, siteId);
+    await ensureProductSubcategoryColumn(db, siteId);
     let resolvedThumbnail = thumbnailUrl || null;
     if (!resolvedThumbnail && Array.isArray(images) && images.length > 0) {
       const idx = typeof mainImageIndex === "number" ? mainImageIndex : 0;
@@ -5434,19 +5461,20 @@ async function createProduct(request, env, user) {
     }
     const productId = generateId();
     const optionsStr = options ? JSON.stringify(options) : null;
-    const rowData = { id: productId, site_id: siteId, category_id: categoryId, name, slug, description, short_description: shortDescription, price, compare_price: comparePrice, cost_price: costPrice, sku, stock, images, thumbnail_url: resolvedThumbnail, tags, is_featured: isFeatured, weight, dimensions, options: optionsStr };
+    const rowData = { id: productId, site_id: siteId, category_id: categoryId, subcategory_id: subcategoryId, name, slug, description, short_description: shortDescription, price, compare_price: comparePrice, cost_price: costPrice, sku, stock, images, thumbnail_url: resolvedThumbnail, tags, is_featured: isFeatured, weight, dimensions, options: optionsStr };
     const rowBytes = estimateRowBytes(rowData);
     const usageCheck = await checkUsageLimit(env, siteId, "d1", rowBytes);
     if (!usageCheck.allowed) {
       return errorResponse(usageCheck.reason, 403, "STORAGE_LIMIT");
     }
     const runInsert = /* @__PURE__ */ __name(() => db.prepare(
-      `INSERT INTO products (id, site_id, category_id, name, slug, description, short_description, price, compare_price, cost_price, sku, stock, low_stock_threshold, weight, dimensions, images, thumbnail_url, tags, is_featured, options, row_size_bytes, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+      `INSERT INTO products (id, site_id, category_id, subcategory_id, name, slug, description, short_description, price, compare_price, cost_price, sku, stock, low_stock_threshold, weight, dimensions, images, thumbnail_url, tags, is_featured, options, row_size_bytes, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(
       productId,
       siteId,
       categoryId || null,
+      subcategoryId || null,
       sanitizeInput(name),
       slug,
       description || null,
@@ -5529,8 +5557,9 @@ async function updateProduct(request, env, user, productId) {
       return errorResponse("Site is currently being migrated. Please try again shortly.", 423);
     }
     const db = await resolveSiteDBById(env, resolvedSiteId);
+    await ensureProductSubcategoryColumn(db, resolvedSiteId);
     const updates = await request.json();
-    const allowedFields = ["name", "description", "short_description", "price", "compare_price", "cost_price", "sku", "stock", "low_stock_threshold", "category_id", "images", "thumbnail_url", "tags", "is_featured", "is_active", "weight", "dimensions", "options"];
+    const allowedFields = ["name", "description", "short_description", "price", "compare_price", "cost_price", "sku", "stock", "low_stock_threshold", "category_id", "subcategory_id", "images", "thumbnail_url", "tags", "is_featured", "is_active", "weight", "dimensions", "options"];
     let oldProductData = null;
     const needsOldData = updates.price !== void 0 || updates.stock !== void 0;
     if (needsOldData) {
@@ -9094,9 +9123,16 @@ async function getCategories(env, { siteId, subdomain, slug }) {
     query += " ORDER BY c.display_order, c.name";
     const categories = await db.prepare(query).bind(...bindings).all();
     const parentCategories = categories.results.filter((c) => !c.parent_id);
+    let childIds = parentCategories.map((p) => p.id);
+    let allChildren = [];
+    if (childIds.length > 0) {
+      const childQuery = `SELECT * FROM categories WHERE parent_id IN (${childIds.map(() => "?").join(",")}) ORDER BY display_order, name`;
+      const childResult = await db.prepare(childQuery).bind(...childIds).all();
+      allChildren = childResult.results || [];
+    }
     const result = parentCategories.map((parent) => ({
       ...parent,
-      children: categories.results.filter((c) => c.parent_id === parent.id)
+      children: allChildren.filter((c) => c.parent_id === parent.id)
     }));
     return successResponse(result);
   } catch (error) {
@@ -9322,6 +9358,9 @@ async function deleteCategory(env, user, categoryId) {
     ).bind(categoryId).run();
     await db.prepare(
       "UPDATE products SET category_id = NULL WHERE category_id = ?"
+    ).bind(categoryId).run();
+    await db.prepare(
+      "UPDATE products SET subcategory_id = NULL WHERE subcategory_id = ?"
     ).bind(categoryId).run();
     await db.prepare("DELETE FROM categories WHERE id = ?").bind(categoryId).run();
     if (bytesToRemove > 0) {
@@ -10411,6 +10450,7 @@ function getSiteSchemaStatements() {
       id TEXT PRIMARY KEY,
       site_id TEXT NOT NULL,
       category_id TEXT,
+      subcategory_id TEXT,
       name TEXT NOT NULL,
       slug TEXT NOT NULL,
       description TEXT,
@@ -14402,7 +14442,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-X2m7Ew/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-j6LW2s/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -14437,7 +14477,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-X2m7Ew/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-j6LW2s/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

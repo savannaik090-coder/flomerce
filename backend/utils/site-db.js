@@ -1,4 +1,5 @@
 const _migratedDBs = new Set();
+const _subcatMigratedDBs = new Set();
 
 export async function ensureProductOptionsColumn(db, cacheKey) {
   const key = cacheKey || 'default';
@@ -12,6 +13,21 @@ export async function ensureProductOptionsColumn(db, cacheKey) {
     _migratedDBs.add(key);
   } catch (e) {
     console.error('ensureProductOptionsColumn error:', e.message || e);
+  }
+}
+
+export async function ensureProductSubcategoryColumn(db, cacheKey) {
+  const key = cacheKey || 'default';
+  if (_subcatMigratedDBs.has(key)) return;
+  try {
+    const cols = await db.prepare("PRAGMA table_info(products)").all();
+    const hasSubcat = cols.results?.some(c => c.name === 'subcategory_id');
+    if (!hasSubcat) {
+      await db.prepare("ALTER TABLE products ADD COLUMN subcategory_id TEXT REFERENCES categories(id) ON DELETE SET NULL").run();
+    }
+    _subcatMigratedDBs.add(key);
+  } catch (e) {
+    console.error('ensureProductSubcategoryColumn error:', e.message || e);
   }
 }
 

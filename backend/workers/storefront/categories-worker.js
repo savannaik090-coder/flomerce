@@ -116,9 +116,18 @@ async function getCategories(env, { siteId, subdomain, slug }) {
     const categories = await db.prepare(query).bind(...bindings).all();
 
     const parentCategories = categories.results.filter(c => !c.parent_id);
+
+    let childIds = parentCategories.map(p => p.id);
+    let allChildren = [];
+    if (childIds.length > 0) {
+      const childQuery = `SELECT * FROM categories WHERE parent_id IN (${childIds.map(() => '?').join(',')}) ORDER BY display_order, name`;
+      const childResult = await db.prepare(childQuery).bind(...childIds).all();
+      allChildren = childResult.results || [];
+    }
+
     const result = parentCategories.map(parent => ({
       ...parent,
-      children: categories.results.filter(c => c.parent_id === parent.id),
+      children: allChildren.filter(c => c.parent_id === parent.id),
     }));
 
     return successResponse(result);
@@ -390,6 +399,10 @@ async function deleteCategory(env, user, categoryId) {
 
     await db.prepare(
       'UPDATE products SET category_id = NULL WHERE category_id = ?'
+    ).bind(categoryId).run();
+
+    await db.prepare(
+      'UPDATE products SET subcategory_id = NULL WHERE subcategory_id = ?'
     ).bind(categoryId).run();
 
     await db.prepare('DELETE FROM categories WHERE id = ?').bind(categoryId).run();

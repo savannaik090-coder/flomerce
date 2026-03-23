@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { createProduct, updateProduct, getOptionsTemplate, saveOptionsTemplate } from '../../services/productService.js';
-import { getCategories } from '../../services/categoryService.js';
+import { getCategories, createCategory } from '../../services/categoryService.js';
 import { getApiUrl } from '../../services/api.js';
 
 const DEFAULT_FORM = {
@@ -9,6 +9,7 @@ const DEFAULT_FORM = {
   price: '',
   stock: '',
   category_id: '',
+  subcategory_id: '',
   description: '',
   images: [],
   mainImageIndex: 0,
@@ -94,6 +95,10 @@ export default function ProductForm({ product, onSave, onCancel }) {
   const [form, setForm] = useState(DEFAULT_FORM);
   const [options, setOptions] = useState(DEFAULT_OPTIONS);
   const [categories, setCategories] = useState([]);
+  const [subcategories, setSubcategories] = useState([]);
+  const [newSubcatName, setNewSubcatName] = useState('');
+  const [showAddSubcat, setShowAddSubcat] = useState(false);
+  const [addingSubcat, setAddingSubcat] = useState(false);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
   const [imageQuality, setImageQuality] = useState(0.8);
@@ -111,6 +116,16 @@ export default function ProductForm({ product, onSave, onCancel }) {
   }, [siteConfig?.id]);
 
   useEffect(() => {
+    if (form.category_id && categories.length > 0) {
+      const selectedCat = categories.find(c => c.id === form.category_id);
+      setSubcategories(selectedCat?.children || []);
+    } else {
+      setSubcategories([]);
+      setForm(p => ({ ...p, subcategory_id: '' }));
+    }
+  }, [form.category_id, categories]);
+
+  useEffect(() => {
     if (product) {
       let imgs = [];
       if (product.images) {
@@ -121,6 +136,7 @@ export default function ProductForm({ product, onSave, onCancel }) {
         price: product.price || '',
         stock: product.stock ?? '',
         category_id: product.category_id || '',
+        subcategory_id: product.subcategory_id || '',
         description: product.description || '',
         images: imgs,
         mainImageIndex: product.main_image_index || 0,
@@ -175,6 +191,29 @@ export default function ProductForm({ product, onSave, onCancel }) {
     } catch {}
   }
 
+  async function handleAddSubcategory() {
+    if (!newSubcatName.trim() || !form.category_id) return;
+    setAddingSubcat(true);
+    try {
+      const res = await createCategory({
+        siteId: siteConfig.id,
+        name: newSubcatName.trim(),
+        parentId: form.category_id,
+      });
+      const newId = res?.data?.id || res?.id;
+      await loadCategories();
+      if (newId) {
+        setForm(p => ({ ...p, subcategory_id: newId }));
+      }
+      setNewSubcatName('');
+      setShowAddSubcat(false);
+    } catch (err) {
+      setErrors(prev => ({ ...prev, subcategory: err.message || 'Failed to create subcategory' }));
+    } finally {
+      setAddingSubcat(false);
+    }
+  }
+
   function validate() {
     const errs = {};
     if (!form.name.trim()) errs.name = 'Product name is required.';
@@ -211,6 +250,7 @@ export default function ProductForm({ product, onSave, onCancel }) {
         price: parseFloat(form.price),
         stock: parseInt(form.stock),
         categoryId: form.category_id,
+        subcategoryId: form.subcategory_id || null,
         description: form.description.trim(),
         images: form.images,
         mainImageIndex: form.mainImageIndex,
@@ -397,6 +437,49 @@ export default function ProductForm({ product, onSave, onCancel }) {
               </select>
               {errors.category_id && <p style={{ color: '#ef4444', fontSize: 12, marginTop: 4 }}>{errors.category_id}</p>}
             </div>
+
+            {form.category_id && (
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Subcategory</label>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <select
+                    value={form.subcategory_id}
+                    onChange={e => setForm(p => ({ ...p, subcategory_id: e.target.value }))}
+                    style={{ flex: 1, padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, background: 'white', boxSizing: 'border-box' }}
+                  >
+                    <option value="">None</option>
+                    {subcategories.map(sc => (
+                      <option key={sc.id} value={sc.id}>{sc.name}</option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddSubcat(!showAddSubcat)}
+                    style={{ padding: '10px 14px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 18, background: showAddSubcat ? '#f1f5f9' : 'white', cursor: 'pointer', lineHeight: 1, color: '#64748b' }}
+                    title="Add new subcategory"
+                  >+</button>
+                </div>
+                {showAddSubcat && (
+                  <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <input
+                      type="text"
+                      value={newSubcatName}
+                      onChange={e => setNewSubcatName(e.target.value)}
+                      placeholder="New subcategory name"
+                      style={{ flex: 1, padding: '8px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, boxSizing: 'border-box' }}
+                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddSubcategory(); } }}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddSubcategory}
+                      disabled={addingSubcat || !newSubcatName.trim()}
+                      style={{ padding: '8px 16px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, fontSize: 13, cursor: 'pointer', opacity: addingSubcat || !newSubcatName.trim() ? 0.5 : 1 }}
+                    >{addingSubcat ? 'Adding...' : 'Add'}</button>
+                  </div>
+                )}
+                {errors.subcategory && <p style={{ color: '#ef4444', fontSize: 12, marginTop: 4 }}>{errors.subcategory}</p>}
+              </div>
+            )}
 
             <div>
               <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Description *</label>

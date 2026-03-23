@@ -6,20 +6,19 @@ const SORT_OPTIONS = [
   { value: 'newest', label: 'Newest' },
 ];
 
-const PRICE_RANGES = [
-  { value: 'all', label: 'All Prices' },
-  { value: '0-5000', label: 'Under ₹5,000' },
-  { value: '5000-15000', label: '₹5,000 - ₹15,000' },
-  { value: '15000+', label: 'Above ₹15,000' },
-];
-
-export default function FilterSortBar({ onSort, onFilter, currentSort, currentFilters }) {
+export default function FilterSortBar({ onSort, onFilter, currentSort, currentFilters, subcategories = [] }) {
   const [sortOpen, setSortOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
   const [tempSort, setTempSort] = useState(currentFilters?.sort || 'featured');
-  const [tempPrice, setTempPrice] = useState(currentFilters?.priceRange || 'all');
   const [tempInStock, setTempInStock] = useState(currentFilters?.inStockOnly || false);
+  const [tempSubcategory, setTempSubcategory] = useState(currentFilters?.subcategoryId || '');
   const sortRef = useRef(null);
+
+  useEffect(() => {
+    setTempSort(currentFilters?.sort || 'featured');
+    setTempInStock(currentFilters?.inStockOnly || false);
+    setTempSubcategory(currentFilters?.subcategoryId || '');
+  }, [currentFilters]);
 
   useEffect(() => {
     function handleClickOutside(e) {
@@ -40,8 +39,8 @@ export default function FilterSortBar({ onSort, onFilter, currentSort, currentFi
     if (onFilter) {
       onFilter({
         sort: tempSort,
-        priceRange: tempPrice,
         inStockOnly: tempInStock,
+        subcategoryId: tempSubcategory,
       });
     }
     setFilterOpen(false);
@@ -49,18 +48,25 @@ export default function FilterSortBar({ onSort, onFilter, currentSort, currentFi
 
   function handleClearFilter() {
     setTempSort('featured');
-    setTempPrice('all');
     setTempInStock(false);
+    setTempSubcategory('');
     if (onFilter) {
-      onFilter({ sort: 'featured', priceRange: 'all', inStockOnly: false });
+      onFilter({ sort: 'featured', inStockOnly: false, subcategoryId: '' });
     }
     setFilterOpen(false);
   }
 
+  const activeFilterCount = [
+    tempInStock,
+    tempSubcategory,
+  ].filter(Boolean).length;
+
   return (
     <>
       <div className="shop-filter-header">
-        <div className="filter-option" onClick={() => setFilterOpen(true)}>FILTER</div>
+        <div className="filter-option" onClick={() => setFilterOpen(true)}>
+          FILTER{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
+        </div>
         <div
           className={`sort-option${sortOpen ? ' active' : ''}`}
           onClick={() => setSortOpen(!sortOpen)}
@@ -101,17 +107,21 @@ export default function FilterSortBar({ onSort, onFilter, currentSort, currentFi
                   </label>
                 </div>
               </div>
-              <div className="filter-section">
-                <h3>Price Range</h3>
-                <div className="filter-options">
-                  {PRICE_RANGES.map(range => (
-                    <label key={range.value} className="filter-option-label">
-                      <input type="radio" name="price-range" value={range.value} checked={tempPrice === range.value} onChange={() => setTempPrice(range.value)} />
-                      {range.label}
+              {subcategories.length > 0 && (
+                <div className="filter-section">
+                  <h3>Subcategory</h3>
+                  <div className="filter-options">
+                    <label className="filter-option-label">
+                      <input type="radio" name="subcategory" value="" checked={tempSubcategory === ''} onChange={() => setTempSubcategory('')} /> All
                     </label>
-                  ))}
+                    {subcategories.map(sc => (
+                      <label key={sc.id} className="filter-option-label">
+                        <input type="radio" name="subcategory" value={sc.id} checked={tempSubcategory === sc.id} onChange={() => setTempSubcategory(sc.id)} /> {sc.name}
+                      </label>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
               <div className="filter-section">
                 <h3>Availability</h3>
                 <div className="filter-options">

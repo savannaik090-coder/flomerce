@@ -25,6 +25,7 @@ export function getSiteSchemaStatements() {
       id TEXT PRIMARY KEY,
       site_id TEXT NOT NULL,
       category_id TEXT,
+      subcategory_id TEXT,
       name TEXT NOT NULL,
       slug TEXT NOT NULL,
       description TEXT,

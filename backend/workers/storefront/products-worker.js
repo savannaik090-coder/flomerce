@@ -2,7 +2,7 @@ import { generateId, sanitizeInput, jsonResponse, errorResponse, successResponse
 import { validateAuth } from '../../utils/auth.js';
 import { validateSiteAdmin, hasPermission } from './site-admin-worker.js';
 import { checkUsageLimit, estimateRowBytes, trackD1Write, trackD1Delete, trackD1Update } from '../../utils/usage-tracker.js';
-import { resolveSiteDBById, resolveSiteDBBySubdomain, checkMigrationLock, ensureProductOptionsColumn } from '../../utils/site-db.js';
+import { resolveSiteDBById, resolveSiteDBBySubdomain, checkMigrationLock, ensureProductOptionsColumn, ensureProductSubcategoryColumn } from '../../utils/site-db.js';
 import { triggerAutoNotification } from './notifications-worker.js';
 
 export async function handleProducts(request, env, path) {
@@ -28,11 +28,12 @@ export async function handleProducts(request, env, path) {
     const subdomain = url.searchParams.get('subdomain');
     const category = url.searchParams.get('category');
     const categoryId = url.searchParams.get('categoryId');
+    const subcategoryId = url.searchParams.get('subcategoryId');
     
     if (productId) {
       return getProduct(env, productId, siteId, subdomain);
     }
-    return getProducts(env, { siteId, subdomain, category, categoryId, url });
+    return getProducts(env, { siteId, subdomain, category, categoryId, subcategoryId, url });
   }
 
   let user = await validateAuth(request, env);
@@ -90,7 +91,7 @@ export async function handleProducts(request, env, path) {
   }
 }
 
-async function getProducts(env, { siteId, subdomain, category, categoryId, url }) {
+async function getProducts(env, { siteId, subdomain, category, categoryId, subcategoryId, url }) {
   try {
     if (!siteId && !subdomain) {
       return errorResponse('siteId or subdomain is required to fetch products');
@@ -109,7 +110,9 @@ async function getProducts(env, { siteId, subdomain, category, categoryId, url }
       db = await resolveSiteDBBySubdomain(env, subdomain);
     }
 
-    let query = 'SELECT p.*, c.name as category_name, c.slug as category_slug FROM products p LEFT JOIN categories c ON p.category_id = c.id WHERE p.is_active = 1';
+    await ensureProductSubcategoryColumn(db, siteId);
+
+    let query = 'SELECT p.*, c.name as category_name, c.slug as category_slug, sc.name as subcategory_name, sc.slug as subcategory_slug FROM products p LEFT JOIN categories c ON p.category_id = c.id LEFT JOIN categories sc ON p.subcategory_id = sc.id WHERE p.is_active = 1';
     const bindings = [];
 
     if (siteId) {
@@ -123,6 +126,11 @@ async function getProducts(env, { siteId, subdomain, category, categoryId, url }
     } else if (category) {
       query += ' AND (c.slug = ? OR c.name = ?)';
       bindings.push(category, category);
+    }
+
+    if (subcategoryId) {
+      query += ' AND p.subcategory_id = ?';
+      bindings.push(subcategoryId);
     }
 
     const featured = url.searchParams.get('featured');
@@ -162,12 +170,14 @@ async function getProduct(env, productId, siteId, subdomain) {
     }
 
     const db = await resolveSiteDBById(env, siteId);
+    await ensureProductSubcategoryColumn(db, siteId);
 
     let product = null;
 
-    let productQuery = `SELECT p.*, c.name as category_name, c.slug as category_slug
+    let productQuery = `SELECT p.*, c.name as category_name, c.slug as category_slug, sc.name as subcategory_name, sc.slug as subcategory_slug
        FROM products p 
        LEFT JOIN categories c ON p.category_id = c.id
+       LEFT JOIN categories sc ON p.subcategory_id = sc.id
        WHERE p.id = ?`;
     const productBindings = [productId];
     if (siteId) {
@@ -177,9 +187,10 @@ async function getProduct(env, productId, siteId, subdomain) {
     product = await db.prepare(productQuery).bind(...productBindings).first();
 
     if (!product) {
-      let slugQuery = `SELECT p.*, c.name as category_name, c.slug as category_slug
+      let slugQuery = `SELECT p.*, c.name as category_name, c.slug as category_slug, sc.name as subcategory_name, sc.slug as subcategory_slug
          FROM products p 
          LEFT JOIN categories c ON p.category_id = c.id
+         LEFT JOIN categories sc ON p.subcategory_id = sc.id
          WHERE p.slug = ?`;
       const slugBindings = [productId];
       if (siteId) {
@@ -230,7 +241,7 @@ async function getProduct(env, productId, siteId, subdomain) {
 async function createProduct(request, env, user) {
   try {
     const data = await request.json();
-    const { siteId, name, description, shortDescription, price, comparePrice, costPrice, sku, stock, categoryId, images, thumbnailUrl, mainImageIndex, tags, isFeatured, weight, dimensions, options } = data;
+    const { siteId, name, description, shortDescription, price, comparePrice, costPrice, sku, stock, categoryId, subcategoryId, images, thumbnailUrl, mainImageIndex, tags, isFeatured, weight, dimensions, options } = data;
 
     if (!siteId || !name || price === undefined) {
       return errorResponse('Site ID, name and price are required');
@@ -255,6 +266,7 @@ async function createProduct(request, env, user) {
 
     const db = await resolveSiteDBById(env, siteId);
     await ensureProductOptionsColumn(db, siteId);
+    await ensureProductSubcategoryColumn(db, siteId);
 
     let resolvedThumbnail = thumbnailUrl || null;
     if (!resolvedThumbnail && Array.isArray(images) && images.length > 0) {
@@ -272,7 +284,7 @@ async function createProduct(request, env, user) {
     const productId = generateId();
 
     const optionsStr = options ? JSON.stringify(options) : null;
-    const rowData = { id: productId, site_id: siteId, category_id: categoryId, name, slug, description, short_description: shortDescription, price, compare_price: comparePrice, cost_price: costPrice, sku, stock, images, thumbnail_url: resolvedThumbnail, tags, is_featured: isFeatured, weight, dimensions, options: optionsStr };
+    const rowData = { id: productId, site_id: siteId, category_id: categoryId, subcategory_id: subcategoryId, name, slug, description, short_description: shortDescription, price, compare_price: comparePrice, cost_price: costPrice, sku, stock, images, thumbnail_url: resolvedThumbnail, tags, is_featured: isFeatured, weight, dimensions, options: optionsStr };
     const rowBytes = estimateRowBytes(rowData);
 
     const usageCheck = await checkUsageLimit(env, siteId, 'd1', rowBytes);
@@ -281,12 +293,13 @@ async function createProduct(request, env, user) {
     }
 
     const runInsert = () => db.prepare(
-      `INSERT INTO products (id, site_id, category_id, name, slug, description, short_description, price, compare_price, cost_price, sku, stock, low_stock_threshold, weight, dimensions, images, thumbnail_url, tags, is_featured, options, row_size_bytes, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+      `INSERT INTO products (id, site_id, category_id, subcategory_id, name, slug, description, short_description, price, compare_price, cost_price, sku, stock, low_stock_threshold, weight, dimensions, images, thumbnail_url, tags, is_featured, options, row_size_bytes, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(
       productId,
       siteId,
       categoryId || null,
+      subcategoryId || null,
       sanitizeInput(name),
       slug,
       description || null,
@@ -379,9 +392,10 @@ async function updateProduct(request, env, user, productId) {
     }
 
     const db = await resolveSiteDBById(env, resolvedSiteId);
+    await ensureProductSubcategoryColumn(db, resolvedSiteId);
 
     const updates = await request.json();
-    const allowedFields = ['name', 'description', 'short_description', 'price', 'compare_price', 'cost_price', 'sku', 'stock', 'low_stock_threshold', 'category_id', 'images', 'thumbnail_url', 'tags', 'is_featured', 'is_active', 'weight', 'dimensions', 'options'];
+    const allowedFields = ['name', 'description', 'short_description', 'price', 'compare_price', 'cost_price', 'sku', 'stock', 'low_stock_threshold', 'category_id', 'subcategory_id', 'images', 'thumbnail_url', 'tags', 'is_featured', 'is_active', 'weight', 'dimensions', 'options'];
 
     let oldProductData = null;
     const needsOldData = updates.price !== undefined || updates.stock !== undefined;
