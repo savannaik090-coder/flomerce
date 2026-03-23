@@ -112,14 +112,19 @@ export default function ProductForm({ product, onSave, onCancel }) {
     if (siteConfig?.id) loadCategories();
   }, [siteConfig?.id]);
 
+  const prevCategoryRef = useRef(form.category_id);
   useEffect(() => {
     if (form.category_id && categories.length > 0) {
       const selectedCat = categories.find(c => c.id === form.category_id);
       setSubcategories(selectedCat?.children || []);
-    } else {
+      if (prevCategoryRef.current && prevCategoryRef.current !== form.category_id) {
+        setForm(p => ({ ...p, subcategory_id: '' }));
+      }
+    } else if (categories.length > 0) {
       setSubcategories([]);
       setForm(p => ({ ...p, subcategory_id: '' }));
     }
+    prevCategoryRef.current = form.category_id;
   }, [form.category_id, categories]);
 
   useEffect(() => {
