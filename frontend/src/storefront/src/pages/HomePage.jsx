@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import HeroSlider from '../components/home/HeroSlider.jsx';
 import CategorySection from '../components/home/CategorySection.jsx';
 import SubcategorySection from '../components/home/SubcategorySection.jsx';
@@ -27,6 +27,7 @@ export default function HomePage() {
   const [homeCategories, setHomeCategories] = useState([]);
   const [allCategories, setAllCategories] = useState([]);
   const [subcatSections, setSubcatSections] = useState([]);
+  const [sectionOrder, setSectionOrder] = useState([]);
   const [categoriesLoaded, setCategoriesLoaded] = useState(false);
 
   useSEO({ pageType: 'home' });
@@ -40,6 +41,7 @@ export default function HomePage() {
         settings = {};
       }
       setSubcatSections(settings.subcategorySections || []);
+      setSectionOrder(settings.homepageSectionOrder || []);
     }
   }, [siteConfig?.settings]);
 
@@ -64,6 +66,24 @@ export default function HomePage() {
       });
   }, [siteConfig?.id, siteLoading]);
 
+  const orderedSections = useMemo(() => {
+    const allItems = [];
+    homeCategories.forEach(cat => allItems.push({ type: 'category', id: cat.id, data: cat }));
+    subcatSections.forEach(sec => allItems.push({ type: 'subcategory', id: sec.id, data: sec }));
+
+    if (sectionOrder.length === 0) return allItems;
+
+    const ordered = [];
+    const remaining = [...allItems];
+    for (const entry of sectionOrder) {
+      const idx = remaining.findIndex(item => item.type === entry.type && item.id === entry.id);
+      if (idx !== -1) {
+        ordered.push(remaining.splice(idx, 1)[0]);
+      }
+    }
+    return [...ordered, ...remaining];
+  }, [homeCategories, subcatSections, sectionOrder]);
+
   if (!categoriesLoaded) {
     return (
       <div className="home-page">
@@ -75,25 +95,28 @@ export default function HomePage() {
     );
   }
 
-  const remainingCategories = homeCategories.slice(1);
-
   return (
     <div className="home-page">
       <HeroSlider />
-      {homeCategories.length > 0 && (
-        <CategorySection key={homeCategories[0].id} category={homeCategories[0]} />
-      )}
+      {orderedSections.length > 0 && orderedSections[0].type === 'category' ? (
+        <CategorySection key={orderedSections[0].id} category={orderedSections[0].data} />
+      ) : orderedSections.length > 0 && orderedSections[0].type === 'subcategory' ? (
+        <SubcategorySection key={orderedSections[0].id} section={orderedSections[0].data} />
+      ) : null}
       <ChooseByCategory categories={allCategories} />
-      {remainingCategories.length > 0 && (
-        <CategorySection key={remainingCategories[0].id} category={remainingCategories[0]} />
-      )}
+      {orderedSections.length > 1 && orderedSections[1].type === 'category' ? (
+        <CategorySection key={orderedSections[1].id} category={orderedSections[1].data} />
+      ) : orderedSections.length > 1 && orderedSections[1].type === 'subcategory' ? (
+        <SubcategorySection key={orderedSections[1].id} section={orderedSections[1].data} />
+      ) : null}
       <WatchAndBuy />
       <FeaturedVideoSection />
-      {remainingCategories.slice(1).map((cat) => (
-        <CategorySection key={cat.id} category={cat} />
-      ))}
-      {subcatSections.map((section) => (
-        <SubcategorySection key={section.id} section={section} />
+      {orderedSections.slice(2).map((item) => (
+        item.type === 'category' ? (
+          <CategorySection key={item.id} category={item.data} />
+        ) : (
+          <SubcategorySection key={item.id} section={item.data} />
+        )
       ))}
       <ProductShowcase />
       <StoreLocations />

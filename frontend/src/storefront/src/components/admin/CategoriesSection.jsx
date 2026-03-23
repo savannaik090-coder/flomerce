@@ -43,6 +43,9 @@ export default function CategoriesSection({ onSaved }) {
   const [newSectionSubcatId, setNewSectionSubcatId] = useState('');
   const [subcatSectionSaving, setSubcatSectionSaving] = useState(false);
 
+  const [sectionOrder, setSectionOrder] = useState([]);
+  const [orderSaving, setOrderSaving] = useState(false);
+
   useEffect(() => {
     if (siteConfig?.id) loadCategories();
   }, [siteConfig?.id]);
@@ -59,6 +62,7 @@ export default function CategoriesSection({ onSaved }) {
       setChooseEnabled(!!conf.enabled);
       setChooseCats(conf.categories || {});
       setSubcatSections(settings.subcategorySections || []);
+      setSectionOrder(settings.homepageSectionOrder || []);
     }
   }, [siteConfig?.settings]);
 
@@ -377,6 +381,66 @@ export default function CategoriesSection({ onSaved }) {
     } catch {
       setSubcatSections(previous);
     }
+    const newOrder = sectionOrder.filter(s => !(s.type === 'subcategory' && s.id === sectionId));
+    setSectionOrder(newOrder);
+    saveSectionOrder(newOrder);
+  }
+
+  function buildUnifiedSections() {
+    const homeCats = categories.filter(c => c.show_on_home === 1 && !c.parent_id);
+    const allItems = [];
+    homeCats.forEach(cat => allItems.push({ type: 'category', id: cat.id, name: cat.name }));
+    subcatSections.forEach(sec => allItems.push({ type: 'subcategory', id: sec.id, name: sec.name, subtitle: sec.subtitle, label: sec.subcategoryLabel }));
+
+    if (sectionOrder.length === 0) return allItems;
+
+    const ordered = [];
+    const remaining = [...allItems];
+    for (const entry of sectionOrder) {
+      const idx = remaining.findIndex(item => item.type === entry.type && item.id === entry.id);
+      if (idx !== -1) {
+        ordered.push(remaining.splice(idx, 1)[0]);
+      }
+    }
+    return [...ordered, ...remaining];
+  }
+
+  async function saveSectionOrder(order) {
+    setOrderSaving(true);
+    try {
+      const token = sessionStorage.getItem('site_admin_token');
+      const response = await fetch(`${API_BASE}/api/sites/${siteConfig.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `SiteAdmin ${token}` : '',
+        },
+        body: JSON.stringify({
+          settings: { homepageSectionOrder: order },
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        alert('Failed to save order: ' + (result.error || 'Unknown error'));
+      } else {
+        if (onSaved) onSaved();
+      }
+    } catch (e) {
+      alert('Failed to save order: ' + e.message);
+    } finally {
+      setOrderSaving(false);
+    }
+  }
+
+  async function handleMoveSection(index, direction) {
+    const unified = buildUnifiedSections();
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= unified.length) return;
+    const newArr = [...unified];
+    [newArr[index], newArr[newIndex]] = [newArr[newIndex], newArr[index]];
+    const newOrder = newArr.map(item => ({ type: item.type, id: item.id }));
+    setSectionOrder(newOrder);
+    await saveSectionOrder(newOrder);
   }
 
   const filtered = categories.filter(c =>
@@ -670,6 +734,167 @@ export default function CategoriesSection({ onSaved }) {
 
       <div style={{ marginTop: 32 }}>
         <div className="card">
+          <div className="card-header">
+            <h3 className="card-title" style={{ margin: 0 }}>Subcategory Homepage Sections</h3>
+          </div>
+          <div className="card-content" style={{ padding: 16 }}>
+            <p style={{ color: '#64748b', fontSize: 13, marginTop: 0, marginBottom: 16 }}>
+              Create homepage sections that show products filtered by a specific subcategory value. Each section appears as a product carousel on your homepage.
+            </p>
+            {subcatSectionSaving && (
+              <div style={{ color: '#3b82f6', fontSize: 13, marginBottom: 12 }}>Saving...</div>
+            )}
+
+            {subcatSections.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
+                {subcatSections.map(section => (
+                  <div key={section.id} style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '12px 16px', background: '#f8fafc', borderRadius: 8,
+                    border: '1px solid #e2e8f0',
+                  }}>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: 14 }}>{section.name}</div>
+                      {section.subtitle && <div style={{ color: '#64748b', fontSize: 12, marginTop: 2 }}>{section.subtitle}</div>}
+                      <div style={{ color: '#94a3b8', fontSize: 11, marginTop: 4 }}>
+                        Filtered by: {section.subcategoryLabel || section.subcategoryId}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleRemoveSubcatSection(section.id)}
+                      style={{ padding: '6px 10px', background: 'none', color: '#ef4444', border: '1px solid #fecaca', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}
+                    ><i className="fas fa-trash" style={{ fontSize: 11 }} /></button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, padding: 16 }}>
+              <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 12, color: '#475569' }}>Add New Section</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <input
+                  type="text"
+                  placeholder="Section title (e.g. Trending T-Shirts)"
+                  value={newSectionName}
+                  onChange={e => setNewSectionName(e.target.value)}
+                  style={{ padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box' }}
+                />
+                <input
+                  type="text"
+                  placeholder="Subtitle (optional)"
+                  value={newSectionSubtitle}
+                  onChange={e => setNewSectionSubtitle(e.target.value)}
+                  style={{ padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', color: '#64748b' }}
+                />
+                <select
+                  value={newSectionSubcatId}
+                  onChange={e => setNewSectionSubcatId(e.target.value)}
+                  style={{ padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, background: 'white', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                >
+                  <option value="">Select subcategory value...</option>
+                  {categories.map(cat => {
+                    const groups = cat.children || [];
+                    if (groups.length === 0) return null;
+                    return groups.map(group => {
+                      const values = group.children || [];
+                      if (values.length === 0) return (
+                        <option key={group.id} value={group.id}>{cat.name} → {group.name}</option>
+                      );
+                      return (
+                        <optgroup key={group.id} label={`${cat.name} → ${group.name}`}>
+                          {values.map(val => (
+                            <option key={val.id} value={val.id}>{val.name}</option>
+                          ))}
+                        </optgroup>
+                      );
+                    });
+                  })}
+                </select>
+                <button
+                  className="btn btn-primary"
+                  onClick={handleAddSubcatSection}
+                  disabled={!newSectionName.trim() || !newSectionSubcatId || subcatSectionSaving}
+                  style={{ alignSelf: 'flex-start', opacity: (!newSectionName.trim() || !newSectionSubcatId || subcatSectionSaving) ? 0.5 : 1 }}
+                >
+                  <i className="fas fa-plus" style={{ marginRight: 6 }} />Add Section
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {(() => {
+        const unifiedSections = buildUnifiedSections();
+        if (unifiedSections.length === 0) return null;
+        return (
+          <div style={{ marginTop: 32 }}>
+            <div className="card">
+              <div className="card-header">
+                <h3 className="card-title" style={{ margin: 0 }}>Homepage Section Order</h3>
+              </div>
+              <div className="card-content" style={{ padding: 16 }}>
+                <p style={{ color: '#64748b', fontSize: 13, marginTop: 0, marginBottom: 16 }}>
+                  Arrange the display order of category and subcategory sections on your homepage. Use the arrows to move sections up or down.
+                </p>
+                {orderSaving && (
+                  <div style={{ color: '#3b82f6', fontSize: 13, marginBottom: 12 }}>Saving order...</div>
+                )}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {unifiedSections.map((item, idx) => (
+                    <div key={`${item.type}-${item.id}`} style={{
+                      display: 'flex', alignItems: 'center', gap: 12,
+                      padding: '10px 16px', background: '#f8fafc', borderRadius: 8,
+                      border: '1px solid #e2e8f0',
+                    }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flexShrink: 0 }}>
+                        <button
+                          onClick={() => handleMoveSection(idx, 'up')}
+                          disabled={idx === 0 || orderSaving}
+                          style={{
+                            padding: '2px 6px', background: 'none', border: '1px solid #e2e8f0',
+                            borderRadius: 4, cursor: idx === 0 ? 'default' : 'pointer', fontSize: 11,
+                            color: idx === 0 ? '#cbd5e1' : '#64748b', lineHeight: 1,
+                          }}
+                        ><i className="fas fa-chevron-up" /></button>
+                        <button
+                          onClick={() => handleMoveSection(idx, 'down')}
+                          disabled={idx === unifiedSections.length - 1 || orderSaving}
+                          style={{
+                            padding: '2px 6px', background: 'none', border: '1px solid #e2e8f0',
+                            borderRadius: 4, cursor: idx === unifiedSections.length - 1 ? 'default' : 'pointer', fontSize: 11,
+                            color: idx === unifiedSections.length - 1 ? '#cbd5e1' : '#64748b', lineHeight: 1,
+                          }}
+                        ><i className="fas fa-chevron-down" /></button>
+                      </div>
+                      <div style={{
+                        width: 24, height: 24, borderRadius: '50%', display: 'flex',
+                        alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700,
+                        background: '#e2e8f0', color: '#475569', flexShrink: 0,
+                      }}>{idx + 1}</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, fontSize: 14 }}>{item.name}</div>
+                        {item.subtitle && <div style={{ color: '#64748b', fontSize: 12 }}>{item.subtitle}</div>}
+                        {item.label && <div style={{ color: '#94a3b8', fontSize: 11 }}>{item.label}</div>}
+                      </div>
+                      <span style={{
+                        padding: '3px 10px', borderRadius: 12, fontSize: 11, fontWeight: 600,
+                        background: item.type === 'category' ? '#dbeafe' : '#fae8ff',
+                        color: item.type === 'category' ? '#2563eb' : '#a21caf',
+                      }}>
+                        {item.type === 'category' ? 'Category' : 'Subcategory'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      <div style={{ marginTop: 32 }}>
+        <div className="card">
           <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h3 className="card-title" style={{ margin: 0 }}>Choose by Category Section</h3>
             <label style={{ position: 'relative', display: 'inline-block', width: 44, height: 24, cursor: 'pointer' }}>
@@ -803,98 +1028,6 @@ export default function CategoriesSection({ onSaved }) {
                   </div>
                 );
               })}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div style={{ marginTop: 32 }}>
-        <div className="card">
-          <div className="card-header">
-            <h3 className="card-title" style={{ margin: 0 }}>Subcategory Homepage Sections</h3>
-          </div>
-          <div className="card-content" style={{ padding: 16 }}>
-            <p style={{ color: '#64748b', fontSize: 13, marginTop: 0, marginBottom: 16 }}>
-              Create homepage sections that show products filtered by a specific subcategory value. Each section appears as a product carousel on your homepage.
-            </p>
-            {subcatSectionSaving && (
-              <div style={{ color: '#3b82f6', fontSize: 13, marginBottom: 12 }}>Saving...</div>
-            )}
-
-            {subcatSections.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
-                {subcatSections.map(section => (
-                  <div key={section.id} style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '12px 16px', background: '#f8fafc', borderRadius: 8,
-                    border: '1px solid #e2e8f0',
-                  }}>
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: 14 }}>{section.name}</div>
-                      {section.subtitle && <div style={{ color: '#64748b', fontSize: 12, marginTop: 2 }}>{section.subtitle}</div>}
-                      <div style={{ color: '#94a3b8', fontSize: 11, marginTop: 4 }}>
-                        Filtered by: {section.subcategoryLabel || section.subcategoryId}
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => handleRemoveSubcatSection(section.id)}
-                      style={{ padding: '6px 10px', background: 'none', color: '#ef4444', border: '1px solid #fecaca', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}
-                    ><i className="fas fa-trash" style={{ fontSize: 11 }} /></button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, padding: 16 }}>
-              <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 12, color: '#475569' }}>Add New Section</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <input
-                  type="text"
-                  placeholder="Section title (e.g. Trending T-Shirts)"
-                  value={newSectionName}
-                  onChange={e => setNewSectionName(e.target.value)}
-                  style={{ padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box' }}
-                />
-                <input
-                  type="text"
-                  placeholder="Subtitle (optional)"
-                  value={newSectionSubtitle}
-                  onChange={e => setNewSectionSubtitle(e.target.value)}
-                  style={{ padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', color: '#64748b' }}
-                />
-                <select
-                  value={newSectionSubcatId}
-                  onChange={e => setNewSectionSubcatId(e.target.value)}
-                  style={{ padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, background: 'white', fontFamily: 'inherit', boxSizing: 'border-box' }}
-                >
-                  <option value="">Select subcategory value...</option>
-                  {categories.map(cat => {
-                    const groups = cat.children || [];
-                    if (groups.length === 0) return null;
-                    return groups.map(group => {
-                      const values = group.children || [];
-                      if (values.length === 0) return (
-                        <option key={group.id} value={group.id}>{cat.name} → {group.name}</option>
-                      );
-                      return (
-                        <optgroup key={group.id} label={`${cat.name} → ${group.name}`}>
-                          {values.map(val => (
-                            <option key={val.id} value={val.id}>{val.name}</option>
-                          ))}
-                        </optgroup>
-                      );
-                    });
-                  })}
-                </select>
-                <button
-                  className="btn btn-primary"
-                  onClick={handleAddSubcatSection}
-                  disabled={!newSectionName.trim() || !newSectionSubcatId || subcatSectionSaving}
-                  style={{ alignSelf: 'flex-start', opacity: (!newSectionName.trim() || !newSectionSubcatId || subcatSectionSaving) ? 0.5 : 1 }}
-                >
-                  <i className="fas fa-plus" style={{ marginRight: 6 }} />Add Section
-                </button>
-              </div>
             </div>
           </div>
         </div>
