@@ -19,6 +19,20 @@ export async function handleSites(request, env, path) {
     return handleStaffCRUD(request, env, siteId, subResource, staffId);
   }
 
+  if (siteId && subResource === 'convert-currency' && method === 'POST') {
+    let authorized = false;
+    const user = await validateAuth(request, env);
+    if (user) {
+      const ownedSite = await env.DB.prepare('SELECT id FROM sites WHERE id = ? AND user_id = ?').bind(siteId, user.id).first();
+      if (ownedSite) authorized = true;
+    }
+    if (!authorized) {
+      const siteAdmin = await validateSiteAdmin(request, env, siteId);
+      if (!siteAdmin) return errorResponse('Unauthorized', 401, 'UNAUTHORIZED');
+    }
+    return handleConvertCurrency(request, env, siteId);
+  }
+
   if (siteId && (subResource === 'custom-domain' || subResource === 'verify-domain' || subResource === 'rename-subdomain')) {
     let authorized = false;
     const user = await validateAuth(request, env);
@@ -922,5 +936,106 @@ async function handleRenameSubdomain(request, env, siteId) {
   } catch (error) {
     console.error('Rename subdomain error:', error);
     return errorResponse('Failed to rename subdomain', 500);
+  }
+}
+
+async function handleConvertCurrency(request, env, siteId) {
+  try {
+    const { fromCurrency, toCurrency, exchangeRate } = await request.json();
+
+    if (!fromCurrency || !toCurrency || !exchangeRate) {
+      return errorResponse('fromCurrency, toCurrency, and exchangeRate are required');
+    }
+    if (fromCurrency === toCurrency) {
+      return errorResponse('Source and target currencies are the same');
+    }
+    if (typeof exchangeRate !== 'number' || exchangeRate <= 0) {
+      return errorResponse('exchangeRate must be a positive number');
+    }
+
+    const siteDB = await resolveSiteDBById(env, siteId);
+
+    const existingConfig = await siteDB.prepare(
+      'SELECT settings FROM site_config WHERE site_id = ?'
+    ).bind(siteId).first();
+    let currentSettings = {};
+    try {
+      if (existingConfig && existingConfig.settings) {
+        currentSettings = JSON.parse(existingConfig.settings);
+      }
+    } catch (e) {}
+    const currentCurrency = currentSettings.defaultCurrency || 'INR';
+    if (currentCurrency !== fromCurrency) {
+      return errorResponse(`Currency mismatch: store is currently set to ${currentCurrency}, but conversion requested from ${fromCurrency}. Please refresh and try again.`);
+    }
+
+    const converted = { products: 0, coupons: 0 };
+
+    const products = await siteDB.prepare(
+      'SELECT id, price, compare_price, cost_price, row_size_bytes FROM products WHERE site_id = ?'
+    ).bind(siteId).all();
+
+    if (products.results && products.results.length > 0) {
+      for (const product of products.results) {
+        const newPrice = product.price != null ? Math.round(product.price * exchangeRate * 100) / 100 : null;
+        const newComparePrice = product.compare_price != null ? Math.round(product.compare_price * exchangeRate * 100) / 100 : null;
+        const newCostPrice = product.cost_price != null ? Math.round(product.cost_price * exchangeRate * 100) / 100 : null;
+
+        const oldBytes = product.row_size_bytes || 0;
+        await siteDB.prepare(
+          `UPDATE products SET price = ?, compare_price = ?, cost_price = ?, updated_at = datetime('now') WHERE id = ? AND site_id = ?`
+        ).bind(newPrice, newComparePrice, newCostPrice, product.id, siteId).run();
+
+        const updatedRow = await siteDB.prepare('SELECT * FROM products WHERE id = ? AND site_id = ?').bind(product.id, siteId).first();
+        if (updatedRow) {
+          const newBytes = estimateRowBytes(updatedRow);
+          await siteDB.prepare('UPDATE products SET row_size_bytes = ? WHERE id = ? AND site_id = ?').bind(newBytes, product.id, siteId).run();
+          await trackD1Update(env, siteId, oldBytes, newBytes);
+        }
+        converted.products++;
+      }
+    }
+
+    const coupons = await siteDB.prepare(
+      'SELECT id, type, value, min_order_value, max_discount, row_size_bytes FROM coupons WHERE site_id = ?'
+    ).bind(siteId).all();
+
+    if (coupons.results && coupons.results.length > 0) {
+      for (const coupon of coupons.results) {
+        const newValue = (coupon.type === 'fixed' && coupon.value != null) ? Math.round(coupon.value * exchangeRate * 100) / 100 : coupon.value;
+        const newMinOrder = coupon.min_order_value != null ? Math.round(coupon.min_order_value * exchangeRate * 100) / 100 : null;
+        const newMaxDiscount = coupon.max_discount != null ? Math.round(coupon.max_discount * exchangeRate * 100) / 100 : null;
+
+        const oldBytes = coupon.row_size_bytes || 0;
+        await siteDB.prepare(
+          `UPDATE coupons SET value = ?, min_order_value = ?, max_discount = ? WHERE id = ? AND site_id = ?`
+        ).bind(newValue, newMinOrder, newMaxDiscount, coupon.id, siteId).run();
+
+        const updatedRow = await siteDB.prepare('SELECT * FROM coupons WHERE id = ? AND site_id = ?').bind(coupon.id, siteId).first();
+        if (updatedRow) {
+          const newBytes = estimateRowBytes(updatedRow);
+          await siteDB.prepare('UPDATE coupons SET row_size_bytes = ? WHERE id = ? AND site_id = ?').bind(newBytes, coupon.id, siteId).run();
+          await trackD1Update(env, siteId, oldBytes, newBytes);
+        }
+        converted.coupons++;
+      }
+    }
+
+    currentSettings.defaultCurrency = toCurrency;
+    const oldConfigBytes = existingConfig?.row_size_bytes || 0;
+    await siteDB.prepare(
+      `UPDATE site_config SET settings = ?, updated_at = datetime('now') WHERE site_id = ?`
+    ).bind(JSON.stringify(currentSettings), siteId).run();
+    const updatedConfig = await siteDB.prepare('SELECT * FROM site_config WHERE site_id = ?').bind(siteId).first();
+    if (updatedConfig) {
+      const newConfigBytes = estimateRowBytes(updatedConfig);
+      await siteDB.prepare('UPDATE site_config SET row_size_bytes = ? WHERE site_id = ?').bind(newConfigBytes, siteId).run();
+      await trackD1Update(env, siteId, oldConfigBytes, newConfigBytes);
+    }
+
+    return successResponse({ converted, exchangeRate, fromCurrency, toCurrency }, 'Currency conversion completed successfully');
+  } catch (error) {
+    console.error('Currency conversion error:', error);
+    return errorResponse('Failed to convert currency: ' + error.message, 500);
   }
 }

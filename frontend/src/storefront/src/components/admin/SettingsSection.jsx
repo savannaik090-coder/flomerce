@@ -1,7 +1,9 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { apiRequest } from '../../services/api.js';
 import { TIMEZONE_OPTIONS, safeFormatInTimezone } from '../../utils/dateFormatter.js';
+import { getExchangeRates } from '../../services/currencyService.js';
+import { formatPrice } from '../../utils/priceFormatter.js';
 
 export default function SettingsSection() {
   const { siteConfig, refetchSite } = useContext(SiteContext);
@@ -18,6 +20,11 @@ export default function SettingsSection() {
   const [razorpayKeySecret, setRazorpayKeySecret] = useState('');
   const [codEnabled, setCodEnabled] = useState(true);
   const [defaultCurrency, setDefaultCurrency] = useState('INR');
+  const savedCurrencyRef = useRef('INR');
+  const [showCurrencyConfirm, setShowCurrencyConfirm] = useState(false);
+  const [pendingCurrency, setPendingCurrency] = useState(null);
+  const [currencyExchangeRate, setCurrencyExchangeRate] = useState(null);
+  const [currencyConverting, setCurrencyConverting] = useState(false);
   const [showCurrencySelector, setShowCurrencySelector] = useState(true);
   const [returnsEnabled, setReturnsEnabled] = useState(false);
   const [returnWindowDays, setReturnWindowDays] = useState(7);
@@ -111,7 +118,9 @@ export default function SettingsSection() {
         setRazorpayKeyId(settings.razorpayKeyId || '');
         setRazorpayKeySecret(settings.razorpayKeySecret || '');
         setCodEnabled(settings.codEnabled !== false);
-        setDefaultCurrency(settings.defaultCurrency || 'INR');
+        const loadedCurrency = settings.defaultCurrency || 'INR';
+        setDefaultCurrency(loadedCurrency);
+        savedCurrencyRef.current = loadedCurrency;
         setShowCurrencySelector(settings.showCurrencySelector !== false);
         setReturnsEnabled(settings.returnsEnabled === true);
         setReturnWindowDays(settings.returnWindowDays || 7);
@@ -186,6 +195,72 @@ export default function SettingsSection() {
     } finally {
       setSaving(false);
     }
+  }
+
+  async function handleCurrencyChange(newCurrency) {
+    if (newCurrency === savedCurrencyRef.current) {
+      setDefaultCurrency(newCurrency);
+      return;
+    }
+    setPendingCurrency(newCurrency);
+    setCurrencyExchangeRate(null);
+    setShowCurrencyConfirm(true);
+    try {
+      const rates = await getExchangeRates(savedCurrencyRef.current);
+      setCurrencyExchangeRate(rates[newCurrency] || null);
+    } catch (e) {
+      console.error('Failed to fetch exchange rate:', e);
+    }
+  }
+
+  async function handleCurrencyConfirm() {
+    if (!pendingCurrency || !currencyExchangeRate) return;
+    setCurrencyConverting(true);
+    try {
+      const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
+      const token = sessionStorage.getItem('site_admin_token');
+      const authToken = localStorage.getItem('auth_token');
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `SiteAdmin ${token}`;
+      else if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+
+      const convResponse = await fetch(`${API_BASE}/api/sites/${siteConfig.id}/convert-currency`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          fromCurrency: savedCurrencyRef.current,
+          toCurrency: pendingCurrency,
+          exchangeRate: currencyExchangeRate,
+        }),
+      });
+      const convResult = await convResponse.json();
+      if (!convResponse.ok || !convResult.success) {
+        setMessage('Currency conversion failed: ' + (convResult.error || 'Unknown error'));
+        setShowCurrencyConfirm(false);
+        setCurrencyConverting(false);
+        return;
+      }
+
+      setDefaultCurrency(pendingCurrency);
+      savedCurrencyRef.current = pendingCurrency;
+      setShowCurrencyConfirm(false);
+      setCurrencyConverting(false);
+
+      if (refetchSite) refetchSite();
+
+      const convData = convResult.data || convResult;
+      setMessage(`Currency changed to ${pendingCurrency} successfully! Converted ${convData.converted?.products || 0} product(s) and ${convData.converted?.coupons || 0} coupon(s).`);
+    } catch (e) {
+      setMessage('Currency conversion failed: ' + e.message);
+      setCurrencyConverting(false);
+      setShowCurrencyConfirm(false);
+    }
+  }
+
+  function handleCurrencyCancel() {
+    setShowCurrencyConfirm(false);
+    setPendingCurrency(null);
+    setCurrencyExchangeRate(null);
   }
 
   async function handleSaveDomain() {
@@ -619,7 +694,7 @@ export default function SettingsSection() {
             </p>
             <select
               value={defaultCurrency}
-              onChange={e => setDefaultCurrency(e.target.value)}
+              onChange={e => handleCurrencyChange(e.target.value)}
               style={{ width: '100%', maxWidth: 300, padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, fontFamily: 'inherit', background: '#fff' }}
             >
               <option value="INR">🇮🇳 INR — Indian Rupee (₹)</option>
@@ -888,6 +963,80 @@ export default function SettingsSection() {
           {saving ? 'Saving...' : 'Save Settings'}
         </button>
       </form>
+
+      {showCurrencyConfirm && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div style={{ background: '#fff', borderRadius: 12, maxWidth: 520, width: '100%', maxHeight: '90vh', overflow: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid #e2e8f0' }}>
+              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#1e293b' }}>Change Store Currency</h3>
+              <p style={{ margin: '6px 0 0', fontSize: 13, color: '#64748b' }}>
+                {savedCurrencyRef.current} → {pendingCurrency}
+              </p>
+            </div>
+
+            <div style={{ padding: '20px 24px' }}>
+              <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '14px 16px', marginBottom: 16 }}>
+                <p style={{ margin: 0, fontWeight: 600, fontSize: 14, color: '#92400e', marginBottom: 8 }}>Important Warning</p>
+                <ul style={{ margin: 0, padding: '0 0 0 18px', fontSize: 13, color: '#78350f', lineHeight: 1.7 }}>
+                  <li>Exchange rates fluctuate constantly. The rate used is a snapshot at this moment and may differ from the actual rate later.</li>
+                  <li>Minor rounding differences may occur during conversion (e.g., $9.99 may become a slightly different value if converted back).</li>
+                  <li>This action cannot be perfectly reversed — converting back will use the then-current exchange rate, which may differ.</li>
+                </ul>
+              </div>
+
+              {currencyExchangeRate ? (
+                <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 8, padding: '14px 16px', marginBottom: 16 }}>
+                  <p style={{ margin: 0, fontWeight: 600, fontSize: 14, color: '#0c4a6e', marginBottom: 4 }}>Exchange Rate</p>
+                  <p style={{ margin: 0, fontSize: 15, color: '#0369a1' }}>
+                    1 {savedCurrencyRef.current} = {currencyExchangeRate} {pendingCurrency}
+                  </p>
+                  <p style={{ margin: '8px 0 0', fontSize: 13, color: '#64748b' }}>
+                    Example: {formatPrice(100, savedCurrencyRef.current)} → {formatPrice(Math.round(100 * currencyExchangeRate * 100) / 100, pendingCurrency)}
+                  </p>
+                </div>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '16px 0', color: '#64748b', fontSize: 14 }}>
+                  Fetching exchange rate...
+                </div>
+              )}
+
+              <div style={{ marginBottom: 16 }}>
+                <p style={{ fontWeight: 600, fontSize: 14, color: '#16a34a', marginBottom: 6 }}>Will be converted:</p>
+                <ul style={{ margin: 0, padding: '0 0 0 18px', fontSize: 13, color: '#334155', lineHeight: 1.7 }}>
+                  <li>Product prices (price, compare price, cost price)</li>
+                  <li>Coupon values (fixed discount amounts, minimum order values, max discount caps)</li>
+                </ul>
+              </div>
+
+              <div style={{ marginBottom: 16 }}>
+                <p style={{ fontWeight: 600, fontSize: 14, color: '#dc2626', marginBottom: 6 }}>Will NOT be converted:</p>
+                <ul style={{ margin: 0, padding: '0 0 0 18px', fontSize: 13, color: '#334155', lineHeight: 1.7 }}>
+                  <li>Existing orders — they are historical records and will retain their original currency</li>
+                  <li>Shipping charges in settings — you will need to update these manually</li>
+                  <li>Percentage-based coupon values — only the fixed amounts and thresholds are converted</li>
+                </ul>
+              </div>
+            </div>
+
+            <div style={{ padding: '16px 24px', borderTop: '1px solid #e2e8f0', display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+              <button
+                onClick={handleCurrencyCancel}
+                disabled={currencyConverting}
+                style={{ padding: '10px 20px', borderRadius: 6, border: '1px solid #e2e8f0', background: '#fff', cursor: 'pointer', fontSize: 14, fontFamily: 'inherit', color: '#334155' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCurrencyConfirm}
+                disabled={!currencyExchangeRate || currencyConverting}
+                style={{ padding: '10px 20px', borderRadius: 6, border: 'none', background: (!currencyExchangeRate || currencyConverting) ? '#94a3b8' : '#dc2626', color: '#fff', cursor: (!currencyExchangeRate || currencyConverting) ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 600, fontFamily: 'inherit' }}
+              >
+                {currencyConverting ? 'Converting...' : 'Convert & Change Currency'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

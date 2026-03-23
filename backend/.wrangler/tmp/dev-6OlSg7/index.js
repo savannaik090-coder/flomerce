@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-OUuKel/checked-fetch.js
+// .wrangler/tmp/bundle-84oh1l/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-OUuKel/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-84oh1l/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-OUuKel/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-84oh1l/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-OUuKel/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-84oh1l/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -2116,12 +2116,12 @@ var init_site_admin_worker = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-OUuKel/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-84oh1l/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-OUuKel/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-84oh1l/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -3722,6 +3722,21 @@ async function handleSites(request, env, path) {
     const staffId = pathParts[4] || null;
     return handleStaffCRUD(request, env, siteId, subResource, staffId);
   }
+  if (siteId && subResource === "convert-currency" && method === "POST") {
+    let authorized = false;
+    const user2 = await validateAuth(request, env);
+    if (user2) {
+      const ownedSite = await env.DB.prepare("SELECT id FROM sites WHERE id = ? AND user_id = ?").bind(siteId, user2.id).first();
+      if (ownedSite)
+        authorized = true;
+    }
+    if (!authorized) {
+      const siteAdmin = await validateSiteAdmin(request, env, siteId);
+      if (!siteAdmin)
+        return errorResponse("Unauthorized", 401, "UNAUTHORIZED");
+    }
+    return handleConvertCurrency(request, env, siteId);
+  }
   if (siteId && (subResource === "custom-domain" || subResource === "verify-domain" || subResource === "rename-subdomain")) {
     let authorized = false;
     const user2 = await validateAuth(request, env);
@@ -4535,6 +4550,94 @@ async function handleRenameSubdomain(request, env, siteId) {
   }
 }
 __name(handleRenameSubdomain, "handleRenameSubdomain");
+async function handleConvertCurrency(request, env, siteId) {
+  try {
+    const { fromCurrency, toCurrency, exchangeRate } = await request.json();
+    if (!fromCurrency || !toCurrency || !exchangeRate) {
+      return errorResponse("fromCurrency, toCurrency, and exchangeRate are required");
+    }
+    if (fromCurrency === toCurrency) {
+      return errorResponse("Source and target currencies are the same");
+    }
+    if (typeof exchangeRate !== "number" || exchangeRate <= 0) {
+      return errorResponse("exchangeRate must be a positive number");
+    }
+    const siteDB = await resolveSiteDBById(env, siteId);
+    const existingConfig = await siteDB.prepare(
+      "SELECT settings FROM site_config WHERE site_id = ?"
+    ).bind(siteId).first();
+    let currentSettings = {};
+    try {
+      if (existingConfig && existingConfig.settings) {
+        currentSettings = JSON.parse(existingConfig.settings);
+      }
+    } catch (e) {
+    }
+    const currentCurrency = currentSettings.defaultCurrency || "INR";
+    if (currentCurrency !== fromCurrency) {
+      return errorResponse(`Currency mismatch: store is currently set to ${currentCurrency}, but conversion requested from ${fromCurrency}. Please refresh and try again.`);
+    }
+    const converted = { products: 0, coupons: 0 };
+    const products = await siteDB.prepare(
+      "SELECT id, price, compare_price, cost_price, row_size_bytes FROM products WHERE site_id = ?"
+    ).bind(siteId).all();
+    if (products.results && products.results.length > 0) {
+      for (const product of products.results) {
+        const newPrice = product.price != null ? Math.round(product.price * exchangeRate * 100) / 100 : null;
+        const newComparePrice = product.compare_price != null ? Math.round(product.compare_price * exchangeRate * 100) / 100 : null;
+        const newCostPrice = product.cost_price != null ? Math.round(product.cost_price * exchangeRate * 100) / 100 : null;
+        const oldBytes = product.row_size_bytes || 0;
+        await siteDB.prepare(
+          `UPDATE products SET price = ?, compare_price = ?, cost_price = ?, updated_at = datetime('now') WHERE id = ? AND site_id = ?`
+        ).bind(newPrice, newComparePrice, newCostPrice, product.id, siteId).run();
+        const updatedRow = await siteDB.prepare("SELECT * FROM products WHERE id = ? AND site_id = ?").bind(product.id, siteId).first();
+        if (updatedRow) {
+          const newBytes = estimateRowBytes(updatedRow);
+          await siteDB.prepare("UPDATE products SET row_size_bytes = ? WHERE id = ? AND site_id = ?").bind(newBytes, product.id, siteId).run();
+          await trackD1Update(env, siteId, oldBytes, newBytes);
+        }
+        converted.products++;
+      }
+    }
+    const coupons = await siteDB.prepare(
+      "SELECT id, type, value, min_order_value, max_discount, row_size_bytes FROM coupons WHERE site_id = ?"
+    ).bind(siteId).all();
+    if (coupons.results && coupons.results.length > 0) {
+      for (const coupon of coupons.results) {
+        const newValue = coupon.type === "fixed" && coupon.value != null ? Math.round(coupon.value * exchangeRate * 100) / 100 : coupon.value;
+        const newMinOrder = coupon.min_order_value != null ? Math.round(coupon.min_order_value * exchangeRate * 100) / 100 : null;
+        const newMaxDiscount = coupon.max_discount != null ? Math.round(coupon.max_discount * exchangeRate * 100) / 100 : null;
+        const oldBytes = coupon.row_size_bytes || 0;
+        await siteDB.prepare(
+          `UPDATE coupons SET value = ?, min_order_value = ?, max_discount = ? WHERE id = ? AND site_id = ?`
+        ).bind(newValue, newMinOrder, newMaxDiscount, coupon.id, siteId).run();
+        const updatedRow = await siteDB.prepare("SELECT * FROM coupons WHERE id = ? AND site_id = ?").bind(coupon.id, siteId).first();
+        if (updatedRow) {
+          const newBytes = estimateRowBytes(updatedRow);
+          await siteDB.prepare("UPDATE coupons SET row_size_bytes = ? WHERE id = ? AND site_id = ?").bind(newBytes, coupon.id, siteId).run();
+          await trackD1Update(env, siteId, oldBytes, newBytes);
+        }
+        converted.coupons++;
+      }
+    }
+    currentSettings.defaultCurrency = toCurrency;
+    const oldConfigBytes = existingConfig?.row_size_bytes || 0;
+    await siteDB.prepare(
+      `UPDATE site_config SET settings = ?, updated_at = datetime('now') WHERE site_id = ?`
+    ).bind(JSON.stringify(currentSettings), siteId).run();
+    const updatedConfig = await siteDB.prepare("SELECT * FROM site_config WHERE site_id = ?").bind(siteId).first();
+    if (updatedConfig) {
+      const newConfigBytes = estimateRowBytes(updatedConfig);
+      await siteDB.prepare("UPDATE site_config SET row_size_bytes = ? WHERE site_id = ?").bind(newConfigBytes, siteId).run();
+      await trackD1Update(env, siteId, oldConfigBytes, newConfigBytes);
+    }
+    return successResponse({ converted, exchangeRate, fromCurrency, toCurrency }, "Currency conversion completed successfully");
+  } catch (error) {
+    console.error("Currency conversion error:", error);
+    return errorResponse("Failed to convert currency: " + error.message, 500);
+  }
+}
+__name(handleConvertCurrency, "handleConvertCurrency");
 
 // workers/storefront/products-worker.js
 init_checked_fetch();
@@ -14299,7 +14402,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-OUuKel/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-84oh1l/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -14334,7 +14437,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-OUuKel/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-84oh1l/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;
