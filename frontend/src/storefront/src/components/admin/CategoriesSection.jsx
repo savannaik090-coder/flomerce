@@ -94,8 +94,12 @@ export default function CategoriesSection({ onSaved }) {
     finally { setLoading(false); }
   }
 
+  const [addingCategory, setAddingCategory] = useState(false);
+
   async function handleAddCategory() {
     if (!newCategoryName.trim()) return;
+    if (!window.confirm(`Create category "${newCategoryName.trim()}"?`)) return;
+    setAddingCategory(true);
     try {
       const slug = newCategoryName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
       await createCategory({ siteId: siteConfig.id, name: newCategoryName.trim(), slug, subtitle: newCategorySubtitle.trim() || null, showOnHome: true, displayOrder: categories.length });
@@ -104,6 +108,7 @@ export default function CategoriesSection({ onSaved }) {
       await loadCategories();
       if (onSaved) onSaved();
     } catch (e) { alert('Failed to add category: ' + e.message); }
+    finally { setAddingCategory(false); }
   }
 
   async function handleDeleteCategory(categoryId) {
@@ -407,8 +412,8 @@ export default function CategoriesSection({ onSaved }) {
             onKeyDown={(e) => e.key === 'Enter' && handleAddCategory()}
             style={{ padding: '12px 14px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', color: '#64748b' }}
           />
-          <button className="btn btn-primary" onClick={handleAddCategory} style={{ alignSelf: 'flex-start' }}>
-            <i className="fas fa-plus" style={{ marginRight: 6 }} />Add Category
+          <button className="btn btn-primary" onClick={handleAddCategory} disabled={addingCategory || !newCategoryName.trim()} style={{ alignSelf: 'flex-start', opacity: (addingCategory || !newCategoryName.trim()) ? 0.6 : 1 }}>
+            {addingCategory ? <><i className="fas fa-spinner fa-spin" style={{ marginRight: 6 }} />Creating...</> : <><i className="fas fa-plus" style={{ marginRight: 6 }} />Add Category</>}
           </button>
         </div>
       </div>
@@ -430,8 +435,8 @@ export default function CategoriesSection({ onSaved }) {
                     <div style={{ position: 'relative' }}>
                       <img src={resolveImageUrl(cat.image_url)} alt={cat.name} style={{ width: '100%', height: 70, objectFit: 'cover', borderRadius: 8, border: '1px solid #e2e8f0' }} />
                       <button onClick={() => handleRemoveImage(cat.id)} style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%', background: '#ef4444', color: '#fff', border: 'none', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>x</button>
-                      <label style={{ display: 'block', textAlign: 'center', marginTop: 4, fontSize: 11, color: '#3b82f6', cursor: 'pointer' }}>
-                        Change
+                      <label style={{ display: 'block', textAlign: 'center', marginTop: 4, fontSize: 11, color: uploadingImage === cat.id ? '#94a3b8' : '#3b82f6', cursor: uploadingImage === cat.id ? 'default' : 'pointer' }}>
+                        {uploadingImage === cat.id ? 'Uploading...' : 'Change'}
                         <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => { if (e.target.files[0]) handleImageUpload(cat.id, e.target.files[0]); }} disabled={uploadingImage === cat.id} />
                       </label>
                     </div>
@@ -624,8 +629,8 @@ export default function CategoriesSection({ onSaved }) {
                       <>
                         <img src={resolveImageUrl(browseImg)} alt={cat.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                         <button onClick={() => handleChooseImageRemove(cat.id)} style={{ position: 'absolute', top: 6, right: 6, width: 20, height: 20, borderRadius: '50%', background: '#ef4444', color: '#fff', border: 'none', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>x</button>
-                        <label style={{ position: 'absolute', bottom: 6, right: 6, background: 'rgba(255,255,255,0.9)', borderRadius: 4, padding: '2px 8px', fontSize: 11, color: '#3b82f6', cursor: 'pointer' }}>
-                          Change
+                        <label style={{ position: 'absolute', bottom: 6, right: 6, background: 'rgba(255,255,255,0.9)', borderRadius: 4, padding: '2px 8px', fontSize: 11, color: chooseUploadingId === cat.id ? '#94a3b8' : '#3b82f6', cursor: chooseUploadingId === cat.id ? 'default' : 'pointer' }}>
+                          {chooseUploadingId === cat.id ? 'Uploading...' : 'Change'}
                           <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => { if (e.target.files[0]) handleChooseImageUpload(cat.id, e.target.files[0]); }} disabled={chooseUploadingId === cat.id} />
                         </label>
                       </>
