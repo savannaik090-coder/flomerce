@@ -89,8 +89,8 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
     } catch (e) {
       console.error('Failed to load navbar config:', e);
     } finally {
-      hasLoadedRef.current = true;
       setLoading(false);
+      setTimeout(() => { hasLoadedRef.current = true; }, 0);
     }
   }
 

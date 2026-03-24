@@ -20,7 +20,7 @@ export default function ContactEditor({ onSaved, onPreviewUpdate }) {
       const val = siteConfig.settings.showContact !== false;
       setShowContact(val);
       serverValueRef.current = val;
-      hasLoadedRef.current = true;
+      setTimeout(() => { hasLoadedRef.current = true; }, 0);
     }
   }, [siteConfig?.settings]);
 

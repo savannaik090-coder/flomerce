@@ -97,8 +97,8 @@ export default function TermsEditor({ onSaved, onPreviewUpdate }) {
       setIntro(`Please read these Terms and Conditions carefully before using ${brand}'s website and services. By accessing or using our service, you agree to be bound by these terms.`);
       setSections(getDefaultSections(brand, email, phone));
     } finally {
-      hasLoadedRef.current = true;
       setLoading(false);
+      setTimeout(() => { hasLoadedRef.current = true; }, 0);
     }
   }
 

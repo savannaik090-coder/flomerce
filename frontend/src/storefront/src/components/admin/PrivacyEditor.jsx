@@ -109,8 +109,8 @@ export default function PrivacyEditor({ onSaved, onPreviewUpdate }) {
       setIntro(DEFAULT_INTRO);
       setSections(DEFAULT_SECTIONS.map(s => ({ ...s })));
     } finally {
-      hasLoadedRef.current = true;
       setLoading(false);
+      setTimeout(() => { hasLoadedRef.current = true; }, 0);
     }
   }
 

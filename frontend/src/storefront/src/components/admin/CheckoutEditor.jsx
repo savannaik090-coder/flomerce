@@ -47,8 +47,8 @@ export default function CheckoutEditor({ onSaved, onPreviewUpdate }) {
     } catch (e) {
       console.error('Failed to load checkout settings:', e);
     } finally {
-      hasLoadedRef.current = true;
       setLoading(false);
+      setTimeout(() => { hasLoadedRef.current = true; }, 0);
     }
   }
 

@@ -71,8 +71,8 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate }) {
     } catch (e) {
       console.error('Failed to load welcome banner settings:', e);
     } finally {
-      hasLoadedRef.current = true;
       setLoading(false);
+      setTimeout(() => { hasLoadedRef.current = true; }, 0);
     }
   }
 

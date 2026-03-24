@@ -92,8 +92,8 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
     } catch (e) {
       console.error('Failed to load footer config:', e);
     } finally {
-      hasLoadedRef.current = true;
       setLoading(false);
+      setTimeout(() => { hasLoadedRef.current = true; }, 0);
     }
   }
 

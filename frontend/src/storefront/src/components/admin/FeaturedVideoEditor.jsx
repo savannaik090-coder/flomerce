@@ -76,8 +76,8 @@ export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate }) {
     } catch (e) {
       console.error('Failed to load featured video settings:', e);
     } finally {
-      hasLoadedRef.current = true;
       setLoading(false);
+      setTimeout(() => { hasLoadedRef.current = true; }, 0);
     }
   }
 

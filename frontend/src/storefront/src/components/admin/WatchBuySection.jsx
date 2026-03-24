@@ -63,7 +63,7 @@ export default function WatchBuySection({ onSaved }) {
       console.error('Failed to load videos:', e);
     } finally {
       setLoading(false);
-      hasLoadedRef.current = true;
+      setTimeout(() => { hasLoadedRef.current = true; }, 0);
     }
   }
 

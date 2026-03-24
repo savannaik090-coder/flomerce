@@ -76,8 +76,8 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate }) {
     } catch (e) {
       console.error('Failed to load store locations:', e);
     } finally {
-      hasLoadedRef.current = true;
       setLoading(false);
+      setTimeout(() => { hasLoadedRef.current = true; }, 0);
     }
   }
 

@@ -20,7 +20,7 @@ export default function BookAppointmentEditor({ onSaved, onPreviewUpdate }) {
       const val = siteConfig.settings.showBookAppointment !== false;
       setShowBookAppointment(val);
       serverValueRef.current = val;
-      hasLoadedRef.current = true;
+      setTimeout(() => { hasLoadedRef.current = true; }, 0);
     }
   }, [siteConfig?.settings]);
 

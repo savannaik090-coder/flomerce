@@ -120,8 +120,8 @@ export default function AboutUsEditor({ onSaved, onPreviewUpdate }) {
     } catch (e) {
       console.error('Failed to load about page settings:', e);
     } finally {
-      hasLoadedRef.current = true;
       setLoading(false);
+      setTimeout(() => { hasLoadedRef.current = true; }, 0);
     }
   }
 
