@@ -206,7 +206,12 @@ async function handleSiteInfo(request, env) {
       const categories = await siteDB.prepare(
         'SELECT * FROM categories WHERE site_id = ? ORDER BY display_order'
       ).bind(site.id).all();
-      categoriesResult = categories.results || [];
+      const allCats = categories.results || [];
+      const parents = allCats.filter(c => !c.parent_id);
+      categoriesResult = parents.map(parent => ({
+        ...parent,
+        children: allCats.filter(c => c.parent_id === parent.id),
+      }));
     } catch (catError) {
       console.error('Categories query failed:', catError);
     }
