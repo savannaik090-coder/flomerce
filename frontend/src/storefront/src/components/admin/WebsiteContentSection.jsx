@@ -81,6 +81,7 @@ export default function WebsiteContentSection() {
   const [previewKey, setPreviewKey] = useState(0);
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 900);
   const [showMobilePreview, setShowMobilePreview] = useState(false);
+  const [showMobileNav, setShowMobileNav] = useState(false);
   const iframeRef = useRef(null);
   const mobileIframeRef = useRef(null);
 
@@ -131,14 +132,17 @@ export default function WebsiteContentSection() {
   return (
     <div>
       {isMobile && (
-        <div style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center' }}>
-          <div style={{ flex: 1, position: 'relative' }}>
-            <select
-              value={activeTab}
-              onChange={e => setActiveTab(e.target.value)}
+        <>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center' }}>
+            <button
+              type="button"
+              onClick={() => setShowMobileNav(true)}
               style={{
-                width: '100%',
-                padding: '10px 36px 10px 12px',
+                flex: 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '10px 14px',
                 borderRadius: 8,
                 border: '1px solid #e2e8f0',
                 background: '#fff',
@@ -146,45 +150,156 @@ export default function WebsiteContentSection() {
                 fontWeight: 500,
                 color: '#1e293b',
                 fontFamily: 'inherit',
-                appearance: 'none',
                 cursor: 'pointer',
               }}
             >
-              {TAB_GROUPS.map(group => (
-                <optgroup key={group.group} label={group.group}>
-                  {group.tabs.map(tab => (
-                    <option key={tab.id} value={tab.id}>{tab.label}</option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
-            <i className="fas fa-chevron-down" style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 11, color: '#94a3b8', pointerEvents: 'none' }} />
-          </div>
-          {previewUrl && (
-            <button
-              type="button"
-              onClick={() => { setShowMobilePreview(true); setPreviewKey(k => k + 1); }}
-              style={{
-                flexShrink: 0,
-                padding: '10px 14px',
-                borderRadius: 8,
-                border: 'none',
-                background: '#2563eb',
-                color: '#fff',
-                fontWeight: 600,
-                fontSize: 13,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                fontFamily: 'inherit',
-              }}
-            >
-              <i className="fas fa-eye" style={{ fontSize: 12 }} />
-              Preview
+              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <i className={`fas ${currentTab?.icon || 'fa-bars'}`} style={{ fontSize: 13, color: '#2563eb' }} />
+                {currentTab?.label || 'Select Section'}
+              </span>
+              <i className="fas fa-chevron-down" style={{ fontSize: 11, color: '#94a3b8' }} />
             </button>
+            {previewUrl && (
+              <button
+                type="button"
+                onClick={() => { setShowMobilePreview(true); setPreviewKey(k => k + 1); }}
+                style={{
+                  flexShrink: 0,
+                  padding: '10px 14px',
+                  borderRadius: 8,
+                  border: 'none',
+                  background: '#2563eb',
+                  color: '#fff',
+                  fontWeight: 600,
+                  fontSize: 13,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  fontFamily: 'inherit',
+                }}
+              >
+                <i className="fas fa-eye" style={{ fontSize: 12 }} />
+                Preview
+              </button>
+            )}
+          </div>
+
+          {showMobileNav && (
+            <div
+              style={{
+                position: 'fixed',
+                inset: 0,
+                zIndex: 9999,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'flex-end',
+              }}
+            >
+              <div
+                onClick={() => setShowMobileNav(false)}
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  background: 'rgba(0,0,0,0.4)',
+                }}
+              />
+              <div style={{
+                position: 'relative',
+                background: '#fff',
+                borderRadius: '16px 16px 0 0',
+                maxHeight: '75vh',
+                display: 'flex',
+                flexDirection: 'column',
+                boxShadow: '0 -4px 24px rgba(0,0,0,0.12)',
+              }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '16px 18px 12px',
+                  borderBottom: '1px solid #f1f5f9',
+                  flexShrink: 0,
+                }}>
+                  <span style={{ fontSize: 16, fontWeight: 700, color: '#0f172a' }}>Edit Section</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowMobileNav(false)}
+                    style={{
+                      background: '#f1f5f9',
+                      border: 'none',
+                      borderRadius: '50%',
+                      width: 32,
+                      height: 32,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      color: '#64748b',
+                      fontSize: 14,
+                    }}
+                  >
+                    <i className="fas fa-times" />
+                  </button>
+                </div>
+
+                <div style={{ overflowY: 'auto', padding: '8px 0 16px' }}>
+                  {TAB_GROUPS.map((group, gi) => (
+                    <div key={group.group}>
+                      {gi > 0 && <div style={{ height: 1, background: '#f1f5f9', margin: '6px 18px' }} />}
+                      <div style={{
+                        padding: '10px 18px 4px',
+                        fontSize: 11,
+                        fontWeight: 700,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em',
+                        color: '#94a3b8',
+                      }}>
+                        <i className={`fas ${group.icon}`} style={{ marginRight: 6, fontSize: 10 }} />
+                        {group.group}
+                      </div>
+                      {group.tabs.map(tab => {
+                        const isActive = activeTab === tab.id;
+                        return (
+                          <button
+                            key={tab.id}
+                            onClick={() => { setActiveTab(tab.id); setShowMobileNav(false); }}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 10,
+                              width: '100%',
+                              padding: '12px 18px',
+                              border: 'none',
+                              background: isActive ? '#eff6ff' : 'transparent',
+                              color: isActive ? '#2563eb' : '#334155',
+                              fontWeight: isActive ? 600 : 400,
+                              fontSize: 14,
+                              cursor: 'pointer',
+                              fontFamily: 'inherit',
+                              textAlign: 'left',
+                            }}
+                          >
+                            <i className={`fas ${tab.icon}`} style={{
+                              fontSize: 13,
+                              width: 18,
+                              textAlign: 'center',
+                              color: isActive ? '#2563eb' : '#94a3b8',
+                            }} />
+                            {tab.label}
+                            {isActive && (
+                              <i className="fas fa-check" style={{ marginLeft: 'auto', fontSize: 12, color: '#2563eb' }} />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           )}
-        </div>
+        </>
       )}
 
       <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
