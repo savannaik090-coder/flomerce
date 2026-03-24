@@ -74,7 +74,7 @@ export default function PrivacyEditor({ onSaved, onPreviewUpdate }) {
   const [status, setStatus] = useState('');
   const [hasChanges, setHasChanges] = useState(false);
   const hasLoadedRef = useRef(false);
-  const skipNextChangeRef = useRef(false);
+  const serverValuesRef = useRef(null);
 
   useEffect(() => {
     if (siteConfig?.id) loadSettings();
@@ -82,8 +82,8 @@ export default function PrivacyEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
-    if (skipNextChangeRef.current) { skipNextChangeRef.current = false; return; }
-    setHasChanges(true);
+    const current = JSON.stringify({ intro, sections });
+    setHasChanges(current !== serverValuesRef.current);
     if (onPreviewUpdate) onPreviewUpdate({ privacyContent: { intro, sections: sections.map(s => ({ title: s.title, content: s.content })) } });
   }, [intro, sections]);
 
@@ -98,22 +98,28 @@ export default function PrivacyEditor({ onSaved, onPreviewUpdate }) {
           try { settings = JSON.parse(settings); } catch (e) { settings = {}; }
         }
         const pc = settings.privacyContent;
+        let iVal, sVal;
         if (pc && pc.sections && pc.sections.length > 0) {
-          setIntro(pc.intro || '');
-          setSections(pc.sections);
+          iVal = pc.intro || '';
+          sVal = pc.sections;
         } else {
-          setIntro(DEFAULT_INTRO);
-          setSections(DEFAULT_SECTIONS.map(s => ({ ...s })));
+          iVal = DEFAULT_INTRO;
+          sVal = DEFAULT_SECTIONS.map(s => ({ ...s }));
         }
+        setIntro(iVal);
+        setSections(sVal);
+        serverValuesRef.current = JSON.stringify({ intro: iVal, sections: sVal });
       }
     } catch (e) {
       console.error('Failed to load privacy settings:', e);
-      setIntro(DEFAULT_INTRO);
-      setSections(DEFAULT_SECTIONS.map(s => ({ ...s })));
+      const iVal = DEFAULT_INTRO;
+      const sVal = DEFAULT_SECTIONS.map(s => ({ ...s }));
+      setIntro(iVal);
+      setSections(sVal);
+      serverValuesRef.current = JSON.stringify({ intro: iVal, sections: sVal });
     } finally {
       setLoading(false);
-      skipNextChangeRef.current = true;
-      hasLoadedRef.current = true;
+      setTimeout(() => { hasLoadedRef.current = true; }, 0);
     }
   }
 
@@ -143,6 +149,7 @@ export default function PrivacyEditor({ onSaved, onPreviewUpdate }) {
         throw new Error(result.error || 'Failed to save');
       }
       setStatus('success');
+      serverValuesRef.current = JSON.stringify({ intro, sections: sections.map(s => ({ title: s.title, content: s.content })) });
       setHasChanges(false);
       if (onSaved) onSaved();
     } catch (e) {

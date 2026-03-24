@@ -71,7 +71,7 @@ export default function AboutUsEditor({ onSaved, onPreviewUpdate }) {
   const [hasChanges, setHasChanges] = useState(false);
   const fileInputRef = useRef(null);
   const hasLoadedRef = useRef(false);
-  const skipNextChangeRef = useRef(false);
+  const serverValuesRef = useRef(null);
 
   useEffect(() => {
     if (siteConfig?.id) loadSettings();
@@ -79,8 +79,8 @@ export default function AboutUsEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
-    if (skipNextChangeRef.current) { skipNextChangeRef.current = false; return; }
-    setHasChanges(true);
+    const current = JSON.stringify({ heroSubtitle, storyText, storyImage, sections, showSection });
+    setHasChanges(current !== serverValuesRef.current);
     if (onPreviewUpdate) onPreviewUpdate({ aboutPage: { heroSubtitle, storyText, storyImage, sections }, showAboutUs: showSection });
   }, [heroSubtitle, storyText, storyImage, sections, showSection]);
 
@@ -97,34 +97,40 @@ export default function AboutUsEditor({ onSaved, onPreviewUpdate }) {
         const aboutPage = settings.aboutPage || {};
         const defaults = getDefaults(siteConfig.category, siteConfig.brandName || siteConfig.brand_name);
 
-        setHeroSubtitle(aboutPage.heroSubtitle || defaults.heroSubtitle);
-        setStoryText(aboutPage.storyText || defaults.storyText);
-        setStoryImage(aboutPage.storyImage || '');
+        const hsVal = aboutPage.heroSubtitle || defaults.heroSubtitle;
+        const stVal = aboutPage.storyText || defaults.storyText;
+        const siVal = aboutPage.storyImage || '';
+        setHeroSubtitle(hsVal);
+        setStoryText(stVal);
+        setStoryImage(siVal);
 
-        setShowSection(settings.showAboutUs !== false);
+        const ssVal = settings.showAboutUs !== false;
+        setShowSection(ssVal);
 
+        let sectionsVal;
         if (aboutPage.sections && aboutPage.sections.length > 0) {
-          setSections(aboutPage.sections.map(s => ({
+          sectionsVal = aboutPage.sections.map(s => ({
             heading: s.heading || '',
             text: s.text || '',
             visible: s.visible !== false,
-          })));
+          }));
         } else if (aboutPage.missionHeading || aboutPage.missionText) {
-          setSections([{
+          sectionsVal = [{
             heading: aboutPage.missionHeading || defaults.sections[0].heading,
             text: aboutPage.missionText || defaults.sections[0].text,
             visible: true,
-          }]);
+          }];
         } else {
-          setSections(defaults.sections);
+          sectionsVal = defaults.sections;
         }
+        setSections(sectionsVal);
+        serverValuesRef.current = JSON.stringify({ heroSubtitle: hsVal, storyText: stVal, storyImage: siVal, sections: sectionsVal, showSection: ssVal });
       }
     } catch (e) {
       console.error('Failed to load about page settings:', e);
     } finally {
       setLoading(false);
-      skipNextChangeRef.current = true;
-      hasLoadedRef.current = true;
+      setTimeout(() => { hasLoadedRef.current = true; }, 0);
     }
   }
 
@@ -214,6 +220,7 @@ export default function AboutUsEditor({ onSaved, onPreviewUpdate }) {
       const result = await response.json();
       if (response.ok && result.success) {
         setStatus('success');
+        serverValuesRef.current = JSON.stringify({ heroSubtitle, storyText, storyImage, sections, showSection });
         setHasChanges(false);
         if (onSaved) onSaved();
       } else {

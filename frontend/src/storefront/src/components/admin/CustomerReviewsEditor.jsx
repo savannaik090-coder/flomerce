@@ -23,7 +23,7 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate }) {
   const [hasChanges, setHasChanges] = useState(false);
   const fileInputRef = useRef(null);
   const hasLoadedRef = useRef(false);
-  const skipNextChangeRef = useRef(false);
+  const serverValuesRef = useRef(null);
 
   useEffect(() => {
     if (siteConfig?.id) loadSettings();
@@ -31,8 +31,8 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
-    if (skipNextChangeRef.current) { skipNextChangeRef.current = false; return; }
-    setHasChanges(true);
+    const current = JSON.stringify({ sectionTitle, sectionSubtitle, reviews, showSection });
+    setHasChanges(current !== serverValuesRef.current);
     if (onPreviewUpdate) onPreviewUpdate({ reviewsSectionTitle: sectionTitle, reviewsSectionSubtitle: sectionSubtitle, reviews, showCustomerReviews: showSection });
   }, [sectionTitle, sectionSubtitle, reviews, showSection]);
 
@@ -46,17 +46,21 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate }) {
         if (typeof settings === 'string') {
           try { settings = JSON.parse(settings); } catch (e) { settings = {}; }
         }
-        setSectionTitle(settings.reviewsSectionTitle || 'What Our Customers Say');
-        setSectionSubtitle(settings.reviewsSectionSubtitle || 'Real reviews from our happy customers');
-        setReviews(settings.reviews || []);
-        setShowSection(settings.showCustomerReviews !== false);
+        const stVal = settings.reviewsSectionTitle || 'What Our Customers Say';
+        const ssVal = settings.reviewsSectionSubtitle || 'Real reviews from our happy customers';
+        const rvVal = settings.reviews || [];
+        const shVal = settings.showCustomerReviews !== false;
+        setSectionTitle(stVal);
+        setSectionSubtitle(ssVal);
+        setReviews(rvVal);
+        setShowSection(shVal);
+        serverValuesRef.current = JSON.stringify({ sectionTitle: stVal, sectionSubtitle: ssVal, reviews: rvVal, showSection: shVal });
       }
     } catch (e) {
       console.error('Failed to load reviews settings:', e);
     } finally {
       setLoading(false);
-      skipNextChangeRef.current = true;
-      hasLoadedRef.current = true;
+      setTimeout(() => { hasLoadedRef.current = true; }, 0);
     }
   }
 
@@ -88,6 +92,7 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate }) {
         showCustomerReviews: showSection,
       });
       setStatus('success');
+      serverValuesRef.current = JSON.stringify({ sectionTitle, sectionSubtitle, reviews, showSection });
       setHasChanges(false);
       if (onSaved) onSaved();
     } catch (e) {
@@ -182,6 +187,8 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate }) {
 
       await saveToSettings({ reviews: updatedReviews });
       setReviews(updatedReviews);
+      serverValuesRef.current = JSON.stringify({ sectionTitle, sectionSubtitle, reviews: updatedReviews, showSection });
+      setHasChanges(false);
       setShowModal(false);
       if (onSaved) onSaved();
     } catch (err) {
@@ -197,6 +204,8 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate }) {
       const updatedReviews = reviews.filter((_, i) => i !== index);
       await saveToSettings({ reviews: updatedReviews });
       setReviews(updatedReviews);
+      serverValuesRef.current = JSON.stringify({ sectionTitle, sectionSubtitle, reviews: updatedReviews, showSection });
+      setHasChanges(false);
       if (onSaved) onSaved();
     } catch (err) {
       alert('Failed to delete: ' + err.message);

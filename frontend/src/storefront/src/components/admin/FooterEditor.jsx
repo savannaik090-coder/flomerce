@@ -12,7 +12,7 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
   const [status, setStatus] = useState('');
   const [hasChanges, setHasChanges] = useState(false);
   const hasLoadedRef = useRef(false);
-  const skipNextChangeRef = useRef(false);
+  const serverValuesRef = useRef(null);
 
   const [instagram, setInstagram] = useState('');
   const [facebook, setFacebook] = useState('');
@@ -38,8 +38,8 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
-    if (skipNextChangeRef.current) { skipNextChangeRef.current = false; return; }
-    setHasChanges(true);
+    const current = JSON.stringify({ instagram, facebook, twitter, youtube, shopRedirect, showAppBanner, showAppStore, showPlayStore, appStoreUrl, playStoreUrl });
+    setHasChanges(current !== serverValuesRef.current);
     const social = { instagram, facebook, twitter, youtube };
     if (onPreviewUpdate) onPreviewUpdate({
       social,
@@ -76,27 +76,37 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
           try { socialLinks = JSON.parse(socialLinks); } catch (e) { socialLinks = {}; }
         }
         const social = footer.social || {};
-        setInstagram(social.instagram || settings.social?.instagram || socialLinks.instagram || '');
-        setFacebook(social.facebook || settings.social?.facebook || socialLinks.facebook || '');
-        setTwitter(social.twitter || settings.social?.twitter || socialLinks.twitter || '');
-        setYoutube(social.youtube || settings.social?.youtube || socialLinks.youtube || '');
+        const igVal = social.instagram || settings.social?.instagram || socialLinks.instagram || '';
+        const fbVal = social.facebook || settings.social?.facebook || socialLinks.facebook || '';
+        const twVal = social.twitter || settings.social?.twitter || socialLinks.twitter || '';
+        const ytVal = social.youtube || settings.social?.youtube || socialLinks.youtube || '';
+        setInstagram(igVal);
+        setFacebook(fbVal);
+        setTwitter(twVal);
+        setYoutube(ytVal);
 
         const bottomNav = footer.bottomNav || {};
-        setShopRedirect(bottomNav.shopRedirect || '');
+        const shopVal = bottomNav.shopRedirect || '';
+        setShopRedirect(shopVal);
 
         const appBanner = footer.appBanner || {};
-        setShowAppBanner(appBanner.show === true);
-        setShowAppStore(appBanner.showAppStore !== false);
-        setShowPlayStore(appBanner.showPlayStore !== false);
-        setAppStoreUrl(appBanner.appStoreUrl || '');
-        setPlayStoreUrl(appBanner.playStoreUrl || '');
+        const showBannerVal = appBanner.show === true;
+        const showAppVal = appBanner.showAppStore !== false;
+        const showPlayVal = appBanner.showPlayStore !== false;
+        const appUrlVal = appBanner.appStoreUrl || '';
+        const playUrlVal = appBanner.playStoreUrl || '';
+        setShowAppBanner(showBannerVal);
+        setShowAppStore(showAppVal);
+        setShowPlayStore(showPlayVal);
+        setAppStoreUrl(appUrlVal);
+        setPlayStoreUrl(playUrlVal);
+        serverValuesRef.current = JSON.stringify({ instagram: igVal, facebook: fbVal, twitter: twVal, youtube: ytVal, shopRedirect: shopVal, showAppBanner: showBannerVal, showAppStore: showAppVal, showPlayStore: showPlayVal, appStoreUrl: appUrlVal, playStoreUrl: playUrlVal });
       }
     } catch (e) {
       console.error('Failed to load footer config:', e);
     } finally {
       setLoading(false);
-      skipNextChangeRef.current = true;
-      hasLoadedRef.current = true;
+      setTimeout(() => { hasLoadedRef.current = true; }, 0);
     }
   }
 
@@ -127,6 +137,7 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
       var result = await response.json();
       if (response.ok && result.success) {
         setStatus('success');
+        serverValuesRef.current = JSON.stringify({ instagram, facebook, twitter, youtube, shopRedirect, showAppBanner, showAppStore, showPlayStore, appStoreUrl, playStoreUrl });
         setHasChanges(false);
         if (onSaved) onSaved();
         if (refetchSite) refetchSite();

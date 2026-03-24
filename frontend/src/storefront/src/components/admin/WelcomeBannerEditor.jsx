@@ -38,7 +38,7 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate }) {
   const [hasChanges, setHasChanges] = useState(false);
   const fileRef = useRef(null);
   const hasLoadedRef = useRef(false);
-  const skipNextChangeRef = useRef(false);
+  const serverValuesRef = useRef(null);
 
   const brandName = siteConfig?.brand_name || siteConfig?.brandName || 'Our Store';
 
@@ -48,8 +48,8 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
-    if (skipNextChangeRef.current) { skipNextChangeRef.current = false; return; }
-    setHasChanges(true);
+    const current = JSON.stringify({ heading, message, buttonText, buttonLink, bannerImage, showSection });
+    setHasChanges(current !== serverValuesRef.current);
     if (onPreviewUpdate) onPreviewUpdate({ welcomeBannerImage: bannerImage, welcomeBannerHeading: heading, welcomeBannerMessage: message, welcomeBannerButtonText: buttonText, welcomeBannerButtonLink: buttonLink, showWelcomeBanner: showSection });
   }, [heading, message, buttonText, buttonLink, bannerImage, showSection]);
 
@@ -63,19 +63,25 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate }) {
         if (typeof settings === 'string') {
           try { settings = JSON.parse(settings); } catch (e) { settings = {}; }
         }
-        setHeading(settings.welcomeBannerHeading || '');
-        setMessage(settings.welcomeBannerMessage || '');
-        setButtonText(settings.welcomeBannerButtonText || '');
-        setButtonLink(settings.welcomeBannerButtonLink || '');
-        setBannerImage(settings.welcomeBannerImage || '');
-        setShowSection(settings.showWelcomeBanner !== false);
+        const hVal = settings.welcomeBannerHeading || '';
+        const mVal = settings.welcomeBannerMessage || '';
+        const btVal = settings.welcomeBannerButtonText || '';
+        const blVal = settings.welcomeBannerButtonLink || '';
+        const biVal = settings.welcomeBannerImage || '';
+        const ssVal = settings.showWelcomeBanner !== false;
+        setHeading(hVal);
+        setMessage(mVal);
+        setButtonText(btVal);
+        setButtonLink(blVal);
+        setBannerImage(biVal);
+        setShowSection(ssVal);
+        serverValuesRef.current = JSON.stringify({ heading: hVal, message: mVal, buttonText: btVal, buttonLink: blVal, bannerImage: biVal, showSection: ssVal });
       }
     } catch (e) {
       console.error('Failed to load welcome banner settings:', e);
     } finally {
       setLoading(false);
-      skipNextChangeRef.current = true;
-      hasLoadedRef.current = true;
+      setTimeout(() => { hasLoadedRef.current = true; }, 0);
     }
   }
 
@@ -129,6 +135,7 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate }) {
       const result = await response.json();
       if (response.ok && result.success) {
         setStatus('success');
+        serverValuesRef.current = JSON.stringify({ heading, message, buttonText, buttonLink, bannerImage, showSection });
         setHasChanges(false);
         if (onSaved) onSaved();
       } else {

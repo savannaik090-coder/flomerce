@@ -62,7 +62,7 @@ export default function TermsEditor({ onSaved, onPreviewUpdate }) {
   const [status, setStatus] = useState('');
   const [hasChanges, setHasChanges] = useState(false);
   const hasLoadedRef = useRef(false);
-  const skipNextChangeRef = useRef(false);
+  const serverValuesRef = useRef(null);
 
   useEffect(() => {
     if (siteConfig?.id) loadSettings();
@@ -70,8 +70,8 @@ export default function TermsEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
-    if (skipNextChangeRef.current) { skipNextChangeRef.current = false; return; }
-    setHasChanges(true);
+    const current = JSON.stringify({ intro, sections });
+    setHasChanges(current !== serverValuesRef.current);
     if (onPreviewUpdate) onPreviewUpdate({ termsContent: { intro, sections } });
   }, [intro, sections]);
 
@@ -86,22 +86,28 @@ export default function TermsEditor({ onSaved, onPreviewUpdate }) {
           try { settings = JSON.parse(settings); } catch (e) { settings = {}; }
         }
         const termsContent = settings.termsContent;
+        let iVal, sVal;
         if (termsContent && termsContent.sections && termsContent.sections.length > 0) {
-          setIntro(termsContent.intro || '');
-          setSections(termsContent.sections);
+          iVal = termsContent.intro || '';
+          sVal = termsContent.sections;
         } else {
-          setIntro(`Please read these Terms and Conditions carefully before using ${brand}'s website and services. By accessing or using our service, you agree to be bound by these terms.`);
-          setSections(getDefaultSections(brand, email, phone));
+          iVal = `Please read these Terms and Conditions carefully before using ${brand}'s website and services. By accessing or using our service, you agree to be bound by these terms.`;
+          sVal = getDefaultSections(brand, email, phone);
         }
+        setIntro(iVal);
+        setSections(sVal);
+        serverValuesRef.current = JSON.stringify({ intro: iVal, sections: sVal });
       }
     } catch (e) {
       console.error('Failed to load terms settings:', e);
-      setIntro(`Please read these Terms and Conditions carefully before using ${brand}'s website and services. By accessing or using our service, you agree to be bound by these terms.`);
-      setSections(getDefaultSections(brand, email, phone));
+      const iVal = `Please read these Terms and Conditions carefully before using ${brand}'s website and services. By accessing or using our service, you agree to be bound by these terms.`;
+      const sVal = getDefaultSections(brand, email, phone);
+      setIntro(iVal);
+      setSections(sVal);
+      serverValuesRef.current = JSON.stringify({ intro: iVal, sections: sVal });
     } finally {
       setLoading(false);
-      skipNextChangeRef.current = true;
-      hasLoadedRef.current = true;
+      setTimeout(() => { hasLoadedRef.current = true; }, 0);
     }
   }
 
@@ -131,6 +137,7 @@ export default function TermsEditor({ onSaved, onPreviewUpdate }) {
         throw new Error(result.error || 'Failed to save');
       }
       setStatus('success');
+      serverValuesRef.current = JSON.stringify({ intro, sections });
       setHasChanges(false);
       if (onSaved) onSaved();
     } catch (e) {

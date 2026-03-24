@@ -129,7 +129,7 @@ export default function ProductPoliciesEditor({ onSaved, onPreviewUpdate }) {
   const [loading, setLoading] = useState(true);
   const [hasChanges, setHasChanges] = useState(false);
   const hasLoadedRef = useRef(false);
-  const skipNextChangeRef = useRef(false);
+  const serverValuesRef = useRef(null);
 
   const placeholders = CATEGORY_PLACEHOLDERS[siteConfig?.category] || DEFAULT_PLACEHOLDERS;
 
@@ -139,8 +139,8 @@ export default function ProductPoliciesEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
-    if (skipNextChangeRef.current) { skipNextChangeRef.current = false; return; }
-    setHasChanges(true);
+    const current = JSON.stringify({ fields, showSection });
+    setHasChanges(current !== serverValuesRef.current);
     if (onPreviewUpdate) onPreviewUpdate({ ...fields, showProductPolicies: showSection });
   }, [fields, showSection]);
 
@@ -154,7 +154,7 @@ export default function ProductPoliciesEditor({ onSaved, onPreviewUpdate }) {
         if (typeof settings === 'string') {
           try { settings = JSON.parse(settings); } catch (e) { settings = {}; }
         }
-        setFields({
+        const fVal = {
           shippingRegions: settings.shippingRegions || '',
           shippingCharges: settings.shippingCharges || '',
           shippingDeliveryTime: settings.shippingDeliveryTime || '',
@@ -165,15 +165,17 @@ export default function ProductPoliciesEditor({ onSaved, onPreviewUpdate }) {
           careGuideCleaning: settings.careGuideCleaning || '',
           careGuideWashing: settings.careGuideWashing || '',
           careGuideMaintenance: settings.careGuideMaintenance || '',
-        });
-        setShowSection(settings.showProductPolicies !== false);
+        };
+        const ssVal = settings.showProductPolicies !== false;
+        setFields(fVal);
+        setShowSection(ssVal);
+        serverValuesRef.current = JSON.stringify({ fields: fVal, showSection: ssVal });
       }
     } catch (e) {
       console.error('Failed to load product policies settings:', e);
     } finally {
       setLoading(false);
-      skipNextChangeRef.current = true;
-      hasLoadedRef.current = true;
+      setTimeout(() => { hasLoadedRef.current = true; }, 0);
     }
   }
 
@@ -203,6 +205,7 @@ export default function ProductPoliciesEditor({ onSaved, onPreviewUpdate }) {
       const result = await response.json();
       if (response.ok && result.success) {
         setStatus('success');
+        serverValuesRef.current = JSON.stringify({ fields, showSection });
         setHasChanges(false);
         if (onSaved) onSaved();
       } else {

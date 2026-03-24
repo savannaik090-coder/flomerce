@@ -21,7 +21,7 @@ export default function CheckoutEditor({ onSaved, onPreviewUpdate }) {
   const [expandedCoupon, setExpandedCoupon] = useState(null);
   const [hasChanges, setHasChanges] = useState(false);
   const hasLoadedRef = useRef(false);
-  const skipNextChangeRef = useRef(false);
+  const serverValuesRef = useRef(null);
 
   useEffect(() => {
     if (siteConfig?.id) loadSettings();
@@ -29,8 +29,8 @@ export default function CheckoutEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
-    if (skipNextChangeRef.current) { skipNextChangeRef.current = false; return; }
-    setHasChanges(true);
+    const current = JSON.stringify({ coupons });
+    setHasChanges(current !== serverValuesRef.current);
     if (onPreviewUpdate) onPreviewUpdate({ coupons });
   }, [coupons]);
 
@@ -44,14 +44,15 @@ export default function CheckoutEditor({ onSaved, onPreviewUpdate }) {
         if (typeof settings === 'string') {
           try { settings = JSON.parse(settings); } catch (e) { settings = {}; }
         }
-        setCoupons(Array.isArray(settings.coupons) ? settings.coupons : []);
+        const cVal = Array.isArray(settings.coupons) ? settings.coupons : [];
+        setCoupons(cVal);
+        serverValuesRef.current = JSON.stringify({ coupons: cVal });
       }
     } catch (e) {
       console.error('Failed to load checkout settings:', e);
     } finally {
       setLoading(false);
-      skipNextChangeRef.current = true;
-      hasLoadedRef.current = true;
+      setTimeout(() => { hasLoadedRef.current = true; }, 0);
     }
   }
 
@@ -72,6 +73,7 @@ export default function CheckoutEditor({ onSaved, onPreviewUpdate }) {
       const result = await response.json();
       if (response.ok && result.success) {
         setStatus('success');
+        serverValuesRef.current = JSON.stringify({ coupons: cleaned });
         setHasChanges(false);
         setCoupons(cleaned);
         if (onSaved) onSaved();

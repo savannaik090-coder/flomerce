@@ -32,7 +32,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
   const [editingMenuId, setEditingMenuId] = useState(null);
   const [editingName, setEditingName] = useState('');
   const hasLoadedRef = useRef(false);
-  const skipNextChangeRef = useRef(false);
+  const serverValuesRef = useRef(null);
   const [logoUrl, setLogoUrl] = useState('');
   const [logoSize, setLogoSize] = useState(120);
   const [logoPosition, setLogoPosition] = useState('left');
@@ -51,13 +51,10 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
-    if (skipNextChangeRef.current) {
-      skipNextChangeRef.current = false;
-      return;
-    }
-    setHasChanges(true);
+    const current = JSON.stringify({ navbarMenus, logoUrl, logoSize, logoPosition, showAccountIcon, showCartIcon });
+    setHasChanges(current !== serverValuesRef.current);
     if (onPreviewUpdate) onPreviewUpdate({ navbarMenus, logoSize, logoPosition, showAccountIcon, showCartIcon });
-  }, [navbarMenus, logoSize, logoPosition, showAccountIcon, showCartIcon]);
+  }, [navbarMenus, logoUrl, logoSize, logoPosition, showAccountIcon, showCartIcon]);
 
   async function loadCategories() {
     try {
@@ -78,19 +75,25 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
         if (typeof settings === 'string') {
           try { settings = JSON.parse(settings); } catch (e) { settings = {}; }
         }
-        setNavbarMenus(settings.navbarMenus || []);
-        setLogoUrl(result.data.logo_url || '');
-        setLogoSize(settings.logoSize || 120);
-        setLogoPosition(settings.logoPosition || 'left');
-        setShowAccountIcon(settings.showAccountIcon !== false);
-        setShowCartIcon(settings.showCartIcon !== false);
+        const menusVal = settings.navbarMenus || [];
+        const logoVal = result.data.logo_url || '';
+        const sizeVal = settings.logoSize || 120;
+        const posVal = settings.logoPosition || 'left';
+        const accVal = settings.showAccountIcon !== false;
+        const cartVal = settings.showCartIcon !== false;
+        setNavbarMenus(menusVal);
+        setLogoUrl(logoVal);
+        setLogoSize(sizeVal);
+        setLogoPosition(posVal);
+        setShowAccountIcon(accVal);
+        setShowCartIcon(cartVal);
+        serverValuesRef.current = JSON.stringify({ navbarMenus: menusVal, logoUrl: logoVal, logoSize: sizeVal, logoPosition: posVal, showAccountIcon: accVal, showCartIcon: cartVal });
       }
     } catch (e) {
       console.error('Failed to load navbar config:', e);
     } finally {
       setLoading(false);
-      skipNextChangeRef.current = true;
-      hasLoadedRef.current = true;
+      setTimeout(() => { hasLoadedRef.current = true; }, 0);
     }
   }
 
@@ -135,7 +138,6 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
       const result = await res.json();
       if (result.success && result.data?.images?.[0]?.url) {
         setLogoUrl(result.data.images[0].url);
-        setHasChanges(true);
         if (onPreviewUpdate) onPreviewUpdate({ logoUrl: result.data.images[0].url });
       } else {
         setStatus('error:' + (result.error || 'Failed to upload logo'));
@@ -150,7 +152,6 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
 
   function handleRemoveLogo() {
     setLogoUrl('');
-    setHasChanges(true);
     if (onPreviewUpdate) onPreviewUpdate({ logoUrl: '' });
   }
 
@@ -181,6 +182,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
       const result = await response.json();
       if (response.ok && result.success) {
         setStatus('success');
+        serverValuesRef.current = JSON.stringify({ navbarMenus, logoUrl, logoSize, logoPosition, showAccountIcon, showCartIcon });
         setHasChanges(false);
         if (refetchSite) refetchSite();
         if (onSaved) onSaved();

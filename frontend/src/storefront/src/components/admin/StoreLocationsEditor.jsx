@@ -37,7 +37,7 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate }) {
   const [hasChanges, setHasChanges] = useState(false);
   const fileInputRefs = useRef({});
   const hasLoadedRef = useRef(false);
-  const skipNextChangeRef = useRef(false);
+  const serverValuesRef = useRef(null);
 
   useEffect(() => {
     if (siteConfig?.id) loadSettings();
@@ -45,8 +45,8 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
-    if (skipNextChangeRef.current) { skipNextChangeRef.current = false; return; }
-    setHasChanges(true);
+    const current = JSON.stringify({ showSection, stores });
+    setHasChanges(current !== serverValuesRef.current);
     if (onPreviewUpdate) onPreviewUpdate({ showStoreLocations: showSection, storeLocations: stores.filter(s => s.name || s.address) });
   }, [showSection, stores]);
 
@@ -60,27 +60,30 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate }) {
         if (typeof settings === 'string') {
           try { settings = JSON.parse(settings); } catch (e) { settings = {}; }
         }
-        setShowSection(settings.showStoreLocations !== false);
+        const ssVal = settings.showStoreLocations !== false;
+        setShowSection(ssVal);
         const saved = settings.storeLocations || [];
+        let storesVal;
         if (saved.length > 0) {
-          setStores(saved);
+          storesVal = saved;
         } else {
-          setStores([{
+          storesVal = [{
             name: result.data.brand_name ? `${result.data.brand_name} Store` : '',
             address: settings.address || result.data.address || '',
             hours: 'Monday to Saturday 11:00 am - 08:00 pm',
             phone: settings.phone || result.data.phone || '',
             mapLink: '',
             image: '',
-          }]);
+          }];
         }
+        setStores(storesVal);
+        serverValuesRef.current = JSON.stringify({ showSection: ssVal, stores: storesVal });
       }
     } catch (e) {
       console.error('Failed to load store locations:', e);
     } finally {
       setLoading(false);
-      skipNextChangeRef.current = true;
-      hasLoadedRef.current = true;
+      setTimeout(() => { hasLoadedRef.current = true; }, 0);
     }
   }
 
@@ -156,6 +159,7 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate }) {
       const result = await response.json();
       if (response.ok && result.success) {
         setStatus('success');
+        serverValuesRef.current = JSON.stringify({ showSection, stores });
         setHasChanges(false);
         if (onSaved) onSaved();
       } else {

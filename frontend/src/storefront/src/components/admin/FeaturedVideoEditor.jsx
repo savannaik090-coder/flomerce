@@ -42,7 +42,7 @@ export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate }) {
   const [hasChanges, setHasChanges] = useState(false);
   const fileInputRef = useRef(null);
   const hasLoadedRef = useRef(false);
-  const skipNextChangeRef = useRef(false);
+  const serverValuesRef = useRef(null);
 
   const placeholders = CATEGORY_PLACEHOLDERS[siteConfig?.category] || DEFAULT_PLACEHOLDERS;
 
@@ -52,8 +52,8 @@ export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
-    if (skipNextChangeRef.current) { skipNextChangeRef.current = false; return; }
-    setHasChanges(true);
+    const current = JSON.stringify({ title, description, videoUrl, chatLink, chatButtonText, showSection });
+    setHasChanges(current !== serverValuesRef.current);
     if (onPreviewUpdate) onPreviewUpdate({ featuredVideoTitle: title, featuredVideoDescription: description, featuredVideoUrl: videoUrl, featuredVideoChatLink: chatLink, featuredVideoChatButtonText: chatButtonText || 'CHAT NOW', showFeaturedVideo: showSection });
   }, [title, description, videoUrl, chatLink, chatButtonText, showSection]);
 
@@ -67,20 +67,26 @@ export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate }) {
         if (typeof settings === 'string') {
           try { settings = JSON.parse(settings); } catch (e) { settings = {}; }
         }
-        setTitle(settings.featuredVideoTitle || '');
-        setDescription(settings.featuredVideoDescription || '');
-        setVideoUrl(settings.featuredVideoUrl || '');
+        const tVal = settings.featuredVideoTitle || '';
+        const dVal = settings.featuredVideoDescription || '';
+        const vVal = settings.featuredVideoUrl || '';
+        const clVal = settings.featuredVideoChatLink || '';
+        const cbVal = settings.featuredVideoChatButtonText || 'CHAT NOW';
+        const ssVal = settings.showFeaturedVideo !== false;
+        setTitle(tVal);
+        setDescription(dVal);
+        setVideoUrl(vVal);
         setVideoKey(settings.featuredVideoKey || '');
-        setChatLink(settings.featuredVideoChatLink || '');
-        setChatButtonText(settings.featuredVideoChatButtonText || 'CHAT NOW');
-        setShowSection(settings.showFeaturedVideo !== false);
+        setChatLink(clVal);
+        setChatButtonText(cbVal);
+        setShowSection(ssVal);
+        serverValuesRef.current = JSON.stringify({ title: tVal, description: dVal, videoUrl: vVal, chatLink: clVal, chatButtonText: cbVal, showSection: ssVal });
       }
     } catch (e) {
       console.error('Failed to load featured video settings:', e);
     } finally {
       setLoading(false);
-      skipNextChangeRef.current = true;
-      hasLoadedRef.current = true;
+      setTimeout(() => { hasLoadedRef.current = true; }, 0);
     }
   }
 
@@ -167,6 +173,7 @@ export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate }) {
       const result = await response.json();
       if (response.ok && result.success) {
         setStatus('success');
+        serverValuesRef.current = JSON.stringify({ title, description, videoUrl, chatLink, chatButtonText, showSection });
         setHasChanges(false);
         if (onSaved) onSaved();
       } else {

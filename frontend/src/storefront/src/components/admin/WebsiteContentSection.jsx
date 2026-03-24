@@ -299,7 +299,7 @@ function PromoBannerEditor({ onSaved, onPreviewUpdate }) {
   const [loading, setLoading] = useState(true);
   const [hasChanges, setHasChanges] = useState(false);
   const hasLoadedRef = useRef(false);
-  const skipNextChangeRef = useRef(false);
+  const serverValuesRef = useRef(null);
 
   useEffect(() => {
     if (siteConfig?.id) loadPromoBanner();
@@ -307,8 +307,8 @@ function PromoBannerEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
-    if (skipNextChangeRef.current) { skipNextChangeRef.current = false; return; }
-    setHasChanges(true);
+    const current = JSON.stringify({ messages, showSection });
+    setHasChanges(current !== serverValuesRef.current);
     if (onPreviewUpdate) onPreviewUpdate({ promoBanner: messages.filter(m => m.trim() !== ''), showPromoBanner: showSection });
   }, [messages, showSection]);
 
@@ -324,19 +324,21 @@ function PromoBannerEditor({ onSaved, onPreviewUpdate }) {
           try { settings = JSON.parse(settings); } catch (e) { settings = {}; }
         }
         const existing = settings.promoBanner || [];
-        setMessages([
+        const mVal = [
           existing[0] || '',
           existing[1] || '',
           existing[2] || '',
-        ]);
-        setShowSection(settings.showPromoBanner !== false);
+        ];
+        const ssVal = settings.showPromoBanner !== false;
+        setMessages(mVal);
+        setShowSection(ssVal);
+        serverValuesRef.current = JSON.stringify({ messages: mVal, showSection: ssVal });
       }
     } catch (e) {
       console.error('Failed to load promo banner:', e);
     } finally {
       setLoading(false);
-      skipNextChangeRef.current = true;
-      hasLoadedRef.current = true;
+      setTimeout(() => { hasLoadedRef.current = true; }, 0);
     }
   }
 
@@ -361,6 +363,7 @@ function PromoBannerEditor({ onSaved, onPreviewUpdate }) {
       const result = await response.json();
       if (response.ok && result.success) {
         setStatus('success');
+        serverValuesRef.current = JSON.stringify({ messages, showSection });
         setHasChanges(false);
         if (onSaved) onSaved();
       } else {
