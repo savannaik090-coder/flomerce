@@ -309,10 +309,11 @@ export default function WebsiteContentSection() {
             flexShrink: 0,
             position: 'sticky',
             top: 20,
+            maxHeight: 'calc(100vh - 40px)',
+            overflowY: 'auto',
             background: '#fff',
             border: '1px solid #e2e8f0',
             borderRadius: 10,
-            overflow: 'hidden',
           }}>
             {TAB_GROUPS.map((group, gi) => (
               <div key={group.group}>
