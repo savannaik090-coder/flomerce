@@ -618,19 +618,22 @@ export default function CategoriesSection({ onSaved }) {
         </div>
       </div>
 
-      {hasUnsavedChanges && (
-        <div style={{ marginTop: 24, textAlign: 'center' }}>
-          <button
-            onClick={handleSaveAllSettings}
-            disabled={saving}
-            style={{
-              padding: '12px 40px', background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
-              color: '#fff', border: 'none', borderRadius: 10, fontSize: 15, fontWeight: 600,
-              cursor: 'pointer', opacity: saving ? 0.7 : 1, boxShadow: '0 4px 12px rgba(59,130,246,0.3)',
-            }}
-          >{saving ? 'Saving...' : 'Save All Changes'}</button>
-        </div>
-      )}
+      <div style={{ marginTop: 24, textAlign: 'center' }}>
+        <button
+          onClick={handleSaveAllSettings}
+          disabled={saving || !hasUnsavedChanges}
+          style={{
+            padding: '12px 40px',
+            background: hasUnsavedChanges ? 'linear-gradient(135deg, #3b82f6, #2563eb)' : '#e2e8f0',
+            color: hasUnsavedChanges ? '#fff' : '#94a3b8',
+            border: 'none', borderRadius: 10, fontSize: 15, fontWeight: 600,
+            cursor: hasUnsavedChanges ? 'pointer' : 'default',
+            opacity: saving ? 0.7 : 1,
+            boxShadow: hasUnsavedChanges ? '0 4px 12px rgba(59,130,246,0.3)' : 'none',
+            transition: 'all 0.3s ease',
+          }}
+        >{saving ? 'Saving...' : hasUnsavedChanges ? 'Save All Changes' : 'All Changes Saved'}</button>
+      </div>
     </div>
   );
 }
