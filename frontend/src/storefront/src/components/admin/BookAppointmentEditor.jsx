@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import SectionToggle from './SectionToggle.jsx';
+import SaveBar from './SaveBar.jsx';
 
 const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
 
@@ -9,21 +10,28 @@ export default function BookAppointmentEditor({ onSaved, onPreviewUpdate }) {
   const [showBookAppointment, setShowBookAppointment] = useState(true);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState('');
+  const [hasChanges, setHasChanges] = useState(false);
+  const hasLoadedRef = useRef(false);
+
+  const serverValueRef = useRef(null);
 
   useEffect(() => {
     if (siteConfig?.settings) {
-      setShowBookAppointment(siteConfig.settings.showBookAppointment !== false);
+      const val = siteConfig.settings.showBookAppointment !== false;
+      setShowBookAppointment(val);
+      serverValueRef.current = val;
+      hasLoadedRef.current = true;
     }
   }, [siteConfig?.settings]);
 
   useEffect(() => {
-    if (onPreviewUpdate) {
-      onPreviewUpdate({ showBookAppointment });
-    }
+    if (!hasLoadedRef.current) return;
+    setHasChanges(showBookAppointment !== serverValueRef.current);
+    if (onPreviewUpdate) onPreviewUpdate({ showBookAppointment });
   }, [showBookAppointment]);
 
   async function handleSave(e) {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     setSaving(true);
     setStatus('');
     try {
@@ -39,6 +47,8 @@ export default function BookAppointmentEditor({ onSaved, onPreviewUpdate }) {
       const result = await response.json();
       if (response.ok && result.success) {
         setStatus('success');
+        setHasChanges(false);
+        serverValueRef.current = showBookAppointment;
         if (refetchSite) refetchSite();
         if (onSaved) onSaved();
       } else {
@@ -52,42 +62,29 @@ export default function BookAppointmentEditor({ onSaved, onPreviewUpdate }) {
   }
 
   return (
-    <form onSubmit={handleSave}>
-      <SectionToggle
-        enabled={showBookAppointment}
-        onChange={setShowBookAppointment}
-        label="Show Book Appointment Page"
-        description="Show or hide the Book Appointment link in the navigation bar"
-      />
+    <div>
+      <SaveBar topBar saving={saving} hasChanges={hasChanges} onSave={handleSave} />
+      <form onSubmit={handleSave}>
+        <SectionToggle
+          enabled={showBookAppointment}
+          onChange={setShowBookAppointment}
+          label="Show Book Appointment Page"
+          description="Show or hide the Book Appointment link in the navigation bar"
+        />
 
-      {status.startsWith('error:') && (
-        <div style={{ padding: '10px 14px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, color: '#dc2626', fontSize: 13, marginBottom: 16 }}>
-          {status.replace('error:', '')}
-        </div>
-      )}
-      {status === 'success' && (
-        <div style={{ padding: '10px 14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, color: '#16a34a', fontSize: 13, marginBottom: 16 }}>
-          Settings saved successfully!
-        </div>
-      )}
+        {status.startsWith('error:') && (
+          <div style={{ padding: '10px 14px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, color: '#dc2626', fontSize: 13, marginBottom: 16 }}>
+            {status.replace('error:', '')}
+          </div>
+        )}
+        {status === 'success' && (
+          <div style={{ padding: '10px 14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, color: '#16a34a', fontSize: 13, marginBottom: 16 }}>
+            Settings saved successfully!
+          </div>
+        )}
 
-      <button
-        type="submit"
-        disabled={saving}
-        style={{
-          background: '#2563eb',
-          color: '#fff',
-          border: 'none',
-          borderRadius: 8,
-          padding: '10px 24px',
-          fontSize: 14,
-          fontWeight: 600,
-          cursor: saving ? 'not-allowed' : 'pointer',
-          opacity: saving ? 0.7 : 1,
-        }}
-      >
-        {saving ? 'Saving...' : 'Save Changes'}
-      </button>
-    </form>
+        <SaveBar saving={saving} hasChanges={hasChanges} onSave={handleSave} />
+      </form>
+    </div>
   );
 }

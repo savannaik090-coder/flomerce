@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { getCategories } from '../../services/categoryService.js';
+import SaveBar from './SaveBar.jsx';
 
 const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
 
@@ -37,6 +38,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
   const [showAccountIcon, setShowAccountIcon] = useState(true);
   const [showCartIcon, setShowCartIcon] = useState(true);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
   const logoInputRef = useRef(null);
 
   useEffect(() => {
@@ -47,13 +49,15 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
   }, [siteConfig?.id]);
 
   useEffect(() => {
-    if (!hasLoadedRef.current || !onPreviewUpdate) return;
-    onPreviewUpdate({ navbarMenus });
+    if (!hasLoadedRef.current) return;
+    setHasChanges(true);
+    if (onPreviewUpdate) onPreviewUpdate({ navbarMenus });
   }, [navbarMenus]);
 
   useEffect(() => {
-    if (!hasLoadedRef.current || !onPreviewUpdate) return;
-    onPreviewUpdate({ logoSize, logoPosition, showAccountIcon, showCartIcon });
+    if (!hasLoadedRef.current) return;
+    setHasChanges(true);
+    if (onPreviewUpdate) onPreviewUpdate({ logoSize, logoPosition, showAccountIcon, showCartIcon });
   }, [logoSize, logoPosition, showAccountIcon, showCartIcon]);
 
   async function loadCategories() {
@@ -131,6 +135,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
       const result = await res.json();
       if (result.success && result.data?.images?.[0]?.url) {
         setLogoUrl(result.data.images[0].url);
+        setHasChanges(true);
         if (onPreviewUpdate) onPreviewUpdate({ logoUrl: result.data.images[0].url });
       } else {
         setStatus('error:' + (result.error || 'Failed to upload logo'));
@@ -145,6 +150,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
 
   function handleRemoveLogo() {
     setLogoUrl('');
+    setHasChanges(true);
     if (onPreviewUpdate) onPreviewUpdate({ logoUrl: '' });
   }
 
@@ -175,6 +181,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
       const result = await response.json();
       if (response.ok && result.success) {
         setStatus('success');
+        setHasChanges(false);
         if (refetchSite) refetchSite();
         if (onSaved) onSaved();
       } else {
@@ -316,6 +323,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
 
   return (
     <div style={{ maxWidth: 750 }}>
+      <SaveBar topBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       <form onSubmit={handleSave}>
         <div className="card" style={{ marginBottom: 20 }}>
           <div className="card-header">
@@ -927,9 +935,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
           </div>
         )}
 
-        <button type="submit" className="btn btn-primary" disabled={saving} style={{ width: '100%' }}>
-          {saving ? 'Saving...' : 'Save Navbar Configuration'}
-        </button>
+        <SaveBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       </form>
     </div>
   );

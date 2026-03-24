@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import SectionToggle from './SectionToggle.jsx';
+import SaveBar from './SaveBar.jsx';
 
 const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
 
@@ -38,6 +39,7 @@ export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate }) {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(true);
+  const [hasChanges, setHasChanges] = useState(false);
   const fileInputRef = useRef(null);
   const hasLoadedRef = useRef(false);
 
@@ -48,8 +50,9 @@ export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate }) {
   }, [siteConfig?.id]);
 
   useEffect(() => {
-    if (!hasLoadedRef.current || !onPreviewUpdate) return;
-    onPreviewUpdate({ featuredVideoTitle: title, featuredVideoDescription: description, featuredVideoUrl: videoUrl, featuredVideoChatLink: chatLink, featuredVideoChatButtonText: chatButtonText || 'CHAT NOW', showFeaturedVideo: showSection });
+    if (!hasLoadedRef.current) return;
+    setHasChanges(true);
+    if (onPreviewUpdate) onPreviewUpdate({ featuredVideoTitle: title, featuredVideoDescription: description, featuredVideoUrl: videoUrl, featuredVideoChatLink: chatLink, featuredVideoChatButtonText: chatButtonText || 'CHAT NOW', showFeaturedVideo: showSection });
   }, [title, description, videoUrl, chatLink, chatButtonText, showSection]);
 
   async function loadSettings() {
@@ -161,6 +164,7 @@ export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate }) {
       const result = await response.json();
       if (response.ok && result.success) {
         setStatus('success');
+        setHasChanges(false);
         if (onSaved) onSaved();
       } else {
         setStatus('error:' + (result.error || 'Unknown error'));
@@ -176,6 +180,7 @@ export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate }) {
 
   return (
     <div style={{ maxWidth: 700 }}>
+      <SaveBar topBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       <form onSubmit={handleSave}>
         <SectionToggle
           enabled={showSection}
@@ -321,9 +326,7 @@ export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate }) {
           </div>
         )}
 
-        <button type="submit" className="btn btn-primary" disabled={saving || uploading} style={{ width: '100%' }}>
-          {saving ? 'Saving...' : 'Save Featured Video'}
-        </button>
+        <SaveBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       </form>
     </div>
   );

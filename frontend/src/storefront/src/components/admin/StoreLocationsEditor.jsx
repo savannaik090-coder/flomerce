@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
+import SaveBar from './SaveBar.jsx';
 
 const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
 
@@ -33,6 +34,7 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate }) {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState({});
   const [status, setStatus] = useState('');
+  const [hasChanges, setHasChanges] = useState(false);
   const fileInputRefs = useRef({});
   const hasLoadedRef = useRef(false);
 
@@ -41,8 +43,9 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate }) {
   }, [siteConfig?.id]);
 
   useEffect(() => {
-    if (!hasLoadedRef.current || !onPreviewUpdate) return;
-    onPreviewUpdate({ showStoreLocations: showSection, storeLocations: stores.filter(s => s.name || s.address) });
+    if (!hasLoadedRef.current) return;
+    setHasChanges(true);
+    if (onPreviewUpdate) onPreviewUpdate({ showStoreLocations: showSection, storeLocations: stores.filter(s => s.name || s.address) });
   }, [showSection, stores]);
 
   async function loadSettings() {
@@ -150,6 +153,7 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate }) {
       const result = await response.json();
       if (response.ok && result.success) {
         setStatus('success');
+        setHasChanges(false);
         if (onSaved) onSaved();
       } else {
         setStatus('error:' + (result.error || 'Unknown error'));
@@ -168,6 +172,7 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate }) {
 
   return (
     <div style={{ maxWidth: 700 }}>
+      <SaveBar topBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       <form onSubmit={handleSave}>
         <div className="card" style={{ marginBottom: 20 }}>
           <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -289,9 +294,7 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate }) {
           </div>
         )}
 
-        <button type="submit" disabled={saving} style={{ padding: '12px 28px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 600, fontSize: 14, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1, fontFamily: 'inherit' }}>
-          {saving ? 'Saving...' : 'Save Changes'}
-        </button>
+        <SaveBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       </form>
     </div>
   );

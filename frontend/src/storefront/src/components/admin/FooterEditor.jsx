@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { getCategories } from '../../services/categoryService.js';
+import SaveBar from './SaveBar.jsx';
 
 const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
 
@@ -9,6 +10,7 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState('');
+  const [hasChanges, setHasChanges] = useState(false);
   const hasLoadedRef = useRef(false);
 
   const [instagram, setInstagram] = useState('');
@@ -34,9 +36,10 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
   }, [siteConfig?.id]);
 
   useEffect(() => {
-    if (!hasLoadedRef.current || !onPreviewUpdate) return;
+    if (!hasLoadedRef.current) return;
+    setHasChanges(true);
     const social = { instagram, facebook, twitter, youtube };
-    onPreviewUpdate({
+    if (onPreviewUpdate) onPreviewUpdate({
       social,
       footer: {
         social,
@@ -121,6 +124,7 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
       var result = await response.json();
       if (response.ok && result.success) {
         setStatus('success');
+        setHasChanges(false);
         if (onSaved) onSaved();
         if (refetchSite) refetchSite();
       } else {
@@ -141,6 +145,7 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
 
   return (
     <div style={{ maxWidth: 700 }}>
+      <SaveBar topBar saving={saving} hasChanges={hasChanges} onSave={function () { handleSave(); }} />
       <div className="card" style={{ marginBottom: 20 }}>
         <div className="card-header"><h3 className="card-title">Social Media Links</h3></div>
         <div className="card-content">
@@ -278,14 +283,7 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
         </div>
       )}
 
-      <button type="button" onClick={function () { handleSave(); }} disabled={saving} style={{
-        width: '100%', padding: '12px', background: '#2563eb', color: '#fff',
-        border: 'none', borderRadius: 8, fontSize: 15, fontWeight: 600,
-        cursor: saving ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
-        opacity: saving ? 0.7 : 1,
-      }}>
-        {saving ? 'Saving...' : 'Save Footer Settings'}
-      </button>
+      <SaveBar saving={saving} hasChanges={hasChanges} onSave={function () { handleSave(); }} />
     </div>
   );
 }

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext, useRef } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { resolveImageUrl } from '../../utils/imageUrl.js';
 import SectionToggle from './SectionToggle.jsx';
+import SaveBar from './SaveBar.jsx';
 
 const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
 
@@ -34,6 +35,7 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate }) {
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
   const fileRef = useRef(null);
   const hasLoadedRef = useRef(false);
 
@@ -44,8 +46,9 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate }) {
   }, [siteConfig?.id]);
 
   useEffect(() => {
-    if (!hasLoadedRef.current || !onPreviewUpdate) return;
-    onPreviewUpdate({ welcomeBannerImage: bannerImage, welcomeBannerHeading: heading, welcomeBannerMessage: message, welcomeBannerButtonText: buttonText, welcomeBannerButtonLink: buttonLink, showWelcomeBanner: showSection });
+    if (!hasLoadedRef.current) return;
+    setHasChanges(true);
+    if (onPreviewUpdate) onPreviewUpdate({ welcomeBannerImage: bannerImage, welcomeBannerHeading: heading, welcomeBannerMessage: message, welcomeBannerButtonText: buttonText, welcomeBannerButtonLink: buttonLink, showWelcomeBanner: showSection });
   }, [heading, message, buttonText, buttonLink, bannerImage, showSection]);
 
   async function loadSettings() {
@@ -123,6 +126,7 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate }) {
       const result = await response.json();
       if (response.ok && result.success) {
         setStatus('success');
+        setHasChanges(false);
         if (onSaved) onSaved();
       } else {
         setStatus('error:' + (result.error || 'Unknown error'));
@@ -138,6 +142,7 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate }) {
 
   return (
     <div style={{ maxWidth: 700 }}>
+      <SaveBar topBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       <form onSubmit={handleSave}>
         <SectionToggle
           enabled={showSection}
@@ -296,9 +301,7 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate }) {
           </div>
         )}
 
-        <button type="submit" className="btn btn-primary" disabled={saving} style={{ width: '100%' }}>
-          {saving ? 'Saving...' : 'Save Welcome Banner'}
-        </button>
+        <SaveBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       </form>
     </div>
   );

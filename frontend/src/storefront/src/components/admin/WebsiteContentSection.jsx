@@ -17,6 +17,7 @@ import NavbarEditor from './NavbarEditor.jsx';
 import BookAppointmentEditor from './BookAppointmentEditor.jsx';
 import ContactEditor from './ContactEditor.jsx';
 import SectionToggle from './SectionToggle.jsx';
+import SaveBar from './SaveBar.jsx';
 
 const SUB_TABS = [
   { id: 'navbar',             icon: 'fa-bars',           label: 'Navbar',             page: '/' },
@@ -296,6 +297,7 @@ function PromoBannerEditor({ onSaved, onPreviewUpdate }) {
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(true);
+  const [hasChanges, setHasChanges] = useState(false);
   const hasLoadedRef = useRef(false);
 
   useEffect(() => {
@@ -303,8 +305,9 @@ function PromoBannerEditor({ onSaved, onPreviewUpdate }) {
   }, [siteConfig?.id]);
 
   useEffect(() => {
-    if (!hasLoadedRef.current || !onPreviewUpdate) return;
-    onPreviewUpdate({ promoBanner: messages.filter(m => m.trim() !== ''), showPromoBanner: showSection });
+    if (!hasLoadedRef.current) return;
+    setHasChanges(true);
+    if (onPreviewUpdate) onPreviewUpdate({ promoBanner: messages.filter(m => m.trim() !== ''), showPromoBanner: showSection });
   }, [messages, showSection]);
 
   async function loadPromoBanner() {
@@ -355,6 +358,7 @@ function PromoBannerEditor({ onSaved, onPreviewUpdate }) {
       const result = await response.json();
       if (response.ok && result.success) {
         setStatus('success');
+        setHasChanges(false);
         if (onSaved) onSaved();
       } else {
         setStatus('error:' + (result.error || 'Unknown error'));
@@ -378,6 +382,7 @@ function PromoBannerEditor({ onSaved, onPreviewUpdate }) {
 
   return (
     <div style={{ maxWidth: 700 }}>
+      <SaveBar topBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       <form onSubmit={handleSave}>
         <SectionToggle
           enabled={showSection}
@@ -437,9 +442,7 @@ function PromoBannerEditor({ onSaved, onPreviewUpdate }) {
           </div>
         )}
 
-        <button type="submit" className="btn btn-primary" disabled={saving} style={{ width: '100%' }}>
-          {saving ? 'Saving...' : 'Save Promo Banner'}
-        </button>
+        <SaveBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       </form>
     </div>
   );

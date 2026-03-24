@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import SectionToggle from './SectionToggle.jsx';
+import SaveBar from './SaveBar.jsx';
 
 const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
 
@@ -126,6 +127,7 @@ export default function ProductPoliciesEditor({ onSaved, onPreviewUpdate }) {
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(true);
+  const [hasChanges, setHasChanges] = useState(false);
   const hasLoadedRef = useRef(false);
 
   const placeholders = CATEGORY_PLACEHOLDERS[siteConfig?.category] || DEFAULT_PLACEHOLDERS;
@@ -135,8 +137,9 @@ export default function ProductPoliciesEditor({ onSaved, onPreviewUpdate }) {
   }, [siteConfig?.id]);
 
   useEffect(() => {
-    if (!hasLoadedRef.current || !onPreviewUpdate) return;
-    onPreviewUpdate({ ...fields, showProductPolicies: showSection });
+    if (!hasLoadedRef.current) return;
+    setHasChanges(true);
+    if (onPreviewUpdate) onPreviewUpdate({ ...fields, showProductPolicies: showSection });
   }, [fields, showSection]);
 
   async function loadSettings() {
@@ -197,6 +200,7 @@ export default function ProductPoliciesEditor({ onSaved, onPreviewUpdate }) {
       const result = await response.json();
       if (response.ok && result.success) {
         setStatus('success');
+        setHasChanges(false);
         if (onSaved) onSaved();
       } else {
         setStatus('error:' + (result.error || 'Unknown error'));
@@ -238,6 +242,7 @@ export default function ProductPoliciesEditor({ onSaved, onPreviewUpdate }) {
 
   return (
     <div style={{ maxWidth: 700 }}>
+      <SaveBar topBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       <form onSubmit={handleSave}>
         <SectionToggle
           enabled={showSection}
@@ -406,36 +411,7 @@ export default function ProductPoliciesEditor({ onSaved, onPreviewUpdate }) {
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <button
-            type="submit"
-            disabled={saving}
-            style={{
-              padding: '10px 28px',
-              borderRadius: 6,
-              border: 'none',
-              background: '#2563eb',
-              color: '#fff',
-              fontSize: 14,
-              fontWeight: 600,
-              cursor: saving ? 'not-allowed' : 'pointer',
-              fontFamily: 'inherit',
-              opacity: saving ? 0.7 : 1,
-            }}
-          >
-            {saving ? 'Saving...' : 'Save Changes'}
-          </button>
-          {status === 'success' && (
-            <span style={{ color: '#16a34a', fontSize: 13, fontWeight: 500 }}>
-              <i className="fas fa-check-circle" style={{ marginRight: 4 }} /> Saved successfully
-            </span>
-          )}
-          {status.startsWith('error:') && (
-            <span style={{ color: '#dc2626', fontSize: 13 }}>
-              <i className="fas fa-exclamation-circle" style={{ marginRight: 4 }} /> {status.replace('error:', '')}
-            </span>
-          )}
-        </div>
+        <SaveBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       </form>
     </div>
   );

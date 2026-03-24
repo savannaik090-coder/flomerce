@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { resolveImageUrl } from '../../utils/imageUrl.js';
+import SaveBar from './SaveBar.jsx';
 
 const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
 
@@ -33,6 +34,7 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState([false, false, false]);
+  const [hasChanges, setHasChanges] = useState(false);
   const fileRefs = [useRef(null), useRef(null), useRef(null)];
   const hasLoadedRef = useRef(false);
 
@@ -41,9 +43,10 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
   }, [siteConfig?.id]);
 
   useEffect(() => {
-    if (!hasLoadedRef.current || !onPreviewUpdate) return;
+    if (!hasLoadedRef.current) return;
+    setHasChanges(true);
     const filtered = slides.filter(s => s.title.trim() || s.subtitle.trim() || s.description.trim() || s.image);
-    onPreviewUpdate({ heroSlides: filtered.length > 0 ? filtered : [], heroShowScrollButtons: showScrollButtons });
+    if (onPreviewUpdate) onPreviewUpdate({ heroSlides: filtered.length > 0 ? filtered : [], heroShowScrollButtons: showScrollButtons });
   }, [slides, showScrollButtons]);
 
   async function loadHeroSettings() {
@@ -135,6 +138,7 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
       const result = await response.json();
       if (response.ok && result.success) {
         setStatus('success');
+        setHasChanges(false);
         if (onSaved) onSaved();
       } else {
         setStatus('error:' + (result.error || 'Unknown error'));
@@ -150,6 +154,7 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
 
   return (
     <div style={{ maxWidth: 700 }}>
+      <SaveBar topBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       <form onSubmit={handleSave}>
         <div className="card" style={{ marginBottom: 20 }}>
           <div className="card-header">
@@ -330,9 +335,7 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
           </div>
         )}
 
-        <button type="submit" className="btn btn-primary" disabled={saving} style={{ width: '100%' }}>
-          {saving ? 'Saving...' : 'Save Hero Slider'}
-        </button>
+        <SaveBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       </form>
     </div>
   );

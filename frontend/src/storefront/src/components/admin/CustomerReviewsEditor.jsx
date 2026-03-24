@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext, useRef } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { resolveImageUrl } from '../../utils/imageUrl.js';
 import SectionToggle from './SectionToggle.jsx';
+import SaveBar from './SaveBar.jsx';
 
 const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
 
@@ -19,6 +20,7 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate }) {
   const [uploading, setUploading] = useState(false);
   const [showSection, setShowSection] = useState(true);
   const [error, setError] = useState('');
+  const [hasChanges, setHasChanges] = useState(false);
   const fileInputRef = useRef(null);
   const hasLoadedRef = useRef(false);
 
@@ -27,8 +29,9 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate }) {
   }, [siteConfig?.id]);
 
   useEffect(() => {
-    if (!hasLoadedRef.current || !onPreviewUpdate) return;
-    onPreviewUpdate({ reviewsSectionTitle: sectionTitle, reviewsSectionSubtitle: sectionSubtitle, reviews, showCustomerReviews: showSection });
+    if (!hasLoadedRef.current) return;
+    setHasChanges(true);
+    if (onPreviewUpdate) onPreviewUpdate({ reviewsSectionTitle: sectionTitle, reviewsSectionSubtitle: sectionSubtitle, reviews, showCustomerReviews: showSection });
   }, [sectionTitle, sectionSubtitle, reviews, showSection]);
 
   async function loadSettings() {
@@ -82,6 +85,7 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate }) {
         showCustomerReviews: showSection,
       });
       setStatus('success');
+      setHasChanges(false);
       if (onSaved) onSaved();
     } catch (e) {
       setStatus('error:' + e.message);
@@ -200,6 +204,7 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate }) {
 
   return (
     <div>
+      <SaveBar topBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSaveSection(e || { preventDefault: () => {} })} />
       <SectionToggle
         enabled={showSection}
         onChange={setShowSection}
@@ -254,9 +259,7 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate }) {
           </div>
         )}
 
-        <button type="submit" className="btn btn-primary" disabled={saving} style={{ width: '100%' }}>
-          {saving ? 'Saving...' : 'Save Section Settings'}
-        </button>
+        <SaveBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSaveSection(e || { preventDefault: () => {} })} />
       </form>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>

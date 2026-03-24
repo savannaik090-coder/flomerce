@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { formatPrice, getCurrencySymbol, getAdminCurrency } from '../../utils/priceFormatter.js';
+import SaveBar from './SaveBar.jsx';
 
 const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
 
@@ -18,6 +19,7 @@ export default function CheckoutEditor({ onSaved, onPreviewUpdate }) {
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(true);
   const [expandedCoupon, setExpandedCoupon] = useState(null);
+  const [hasChanges, setHasChanges] = useState(false);
   const hasLoadedRef = useRef(false);
 
   useEffect(() => {
@@ -25,8 +27,9 @@ export default function CheckoutEditor({ onSaved, onPreviewUpdate }) {
   }, [siteConfig?.id]);
 
   useEffect(() => {
-    if (!hasLoadedRef.current || !onPreviewUpdate) return;
-    onPreviewUpdate({ coupons });
+    if (!hasLoadedRef.current) return;
+    setHasChanges(true);
+    if (onPreviewUpdate) onPreviewUpdate({ coupons });
   }, [coupons]);
 
   async function loadSettings() {
@@ -66,6 +69,7 @@ export default function CheckoutEditor({ onSaved, onPreviewUpdate }) {
       const result = await response.json();
       if (response.ok && result.success) {
         setStatus('success');
+        setHasChanges(false);
         setCoupons(cleaned);
         if (onSaved) onSaved();
       } else {
@@ -97,6 +101,7 @@ export default function CheckoutEditor({ onSaved, onPreviewUpdate }) {
 
   return (
     <div style={{ maxWidth: 700 }}>
+      <SaveBar topBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       <form onSubmit={handleSave}>
 
         <div className="card" style={{ marginBottom: 20 }}>
@@ -226,13 +231,7 @@ export default function CheckoutEditor({ onSaved, onPreviewUpdate }) {
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <button type="submit" disabled={saving} className="btn-save" style={{ opacity: saving ? 0.7 : 1 }}>
-            {saving ? 'Saving...' : 'Save Changes'}
-          </button>
-          {status === 'success' && <span style={{ color: '#22c55e', fontSize: 14, fontWeight: 600 }}>✓ Saved successfully</span>}
-          {status.startsWith('error:') && <span style={{ color: '#ef4444', fontSize: 14 }}>Error: {status.slice(6)}</span>}
-        </div>
+        <SaveBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       </form>
     </div>
   );

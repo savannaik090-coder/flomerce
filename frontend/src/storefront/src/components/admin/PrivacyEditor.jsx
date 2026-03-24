@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
+import SaveBar from './SaveBar.jsx';
 
 const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
 
@@ -71,6 +72,7 @@ export default function PrivacyEditor({ onSaved, onPreviewUpdate }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState('');
+  const [hasChanges, setHasChanges] = useState(false);
   const hasLoadedRef = useRef(false);
 
   useEffect(() => {
@@ -78,8 +80,9 @@ export default function PrivacyEditor({ onSaved, onPreviewUpdate }) {
   }, [siteConfig?.id]);
 
   useEffect(() => {
-    if (!hasLoadedRef.current || !onPreviewUpdate) return;
-    onPreviewUpdate({ privacyContent: { intro, sections: sections.map(s => ({ title: s.title, content: s.content })) } });
+    if (!hasLoadedRef.current) return;
+    setHasChanges(true);
+    if (onPreviewUpdate) onPreviewUpdate({ privacyContent: { intro, sections: sections.map(s => ({ title: s.title, content: s.content })) } });
   }, [intro, sections]);
 
   async function loadSettings() {
@@ -137,6 +140,7 @@ export default function PrivacyEditor({ onSaved, onPreviewUpdate }) {
         throw new Error(result.error || 'Failed to save');
       }
       setStatus('success');
+      setHasChanges(false);
       if (onSaved) onSaved();
     } catch (e) {
       setStatus('error:' + e.message);
@@ -162,6 +166,7 @@ export default function PrivacyEditor({ onSaved, onPreviewUpdate }) {
 
   return (
     <div>
+      <SaveBar topBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       <form onSubmit={handleSave} style={{ maxWidth: 700 }}>
         <div className="card" style={{ marginBottom: 20 }}>
           <div className="card-header">
@@ -234,9 +239,7 @@ export default function PrivacyEditor({ onSaved, onPreviewUpdate }) {
           </div>
         )}
 
-        <button type="submit" className="btn btn-primary" disabled={saving} style={{ width: '100%' }}>
-          {saving ? 'Saving...' : 'Save Privacy Policy'}
-        </button>
+        <SaveBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       </form>
     </div>
   );

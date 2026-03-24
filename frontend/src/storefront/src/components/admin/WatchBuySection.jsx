@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext, useRef } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { getProducts } from '../../services/productService.js';
 import SectionToggle from './SectionToggle.jsx';
+import SaveBar from './SaveBar.jsx';
 import { formatPrice, getAdminCurrency } from '../../utils/priceFormatter.js';
 
 const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
@@ -21,7 +22,10 @@ export default function WatchBuySection({ onSaved }) {
   const [showSection, setShowSection] = useState(true);
   const [skuLookup, setSkuLookup] = useState(null);
   const [skuSearching, setSkuSearching] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
   const fileInputRef = useRef(null);
+  const hasLoadedRef = useRef(false);
+  const serverShowRef = useRef(true);
 
   useEffect(() => {
     if (siteConfig?.id) {
@@ -51,7 +55,9 @@ export default function WatchBuySection({ onSaved }) {
           try { settings = JSON.parse(settings); } catch (e) { settings = {}; }
         }
         setVideos(settings.watchAndBuyVideos || []);
-        setShowSection(settings.showWatchAndBuy !== false);
+        const val = settings.showWatchAndBuy !== false;
+        setShowSection(val);
+        serverShowRef.current = val;
       }
     } catch (e) {
       console.error('Failed to load videos:', e);
@@ -59,6 +65,11 @@ export default function WatchBuySection({ onSaved }) {
       setLoading(false);
       hasLoadedRef.current = true;
     }
+  }
+
+  function handleToggleChange(val) {
+    setShowSection(val);
+    setHasChanges(val !== serverShowRef.current);
   }
 
   function findProductBySku(sku) {
@@ -155,21 +166,6 @@ export default function WatchBuySection({ onSaved }) {
     xhr.send(formData);
   }
 
-  const hasLoadedRef = useRef(false);
-
-  useEffect(() => {
-    if (!hasLoadedRef.current) return;
-    const token = sessionStorage.getItem('site_admin_token');
-    fetch(`${API_BASE}/api/sites/${siteConfig.id}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': token ? `SiteAdmin ${token}` : '',
-      },
-      body: JSON.stringify({ settings: { showWatchAndBuy: showSection } }),
-    }).catch(e => console.error('Failed to save visibility toggle:', e));
-  }, [showSection]);
-
   async function saveVideosToSettings(updatedVideos) {
     const token = sessionStorage.getItem('site_admin_token');
     const response = await fetch(`${API_BASE}/api/sites/${siteConfig.id}`, {
@@ -185,6 +181,31 @@ export default function WatchBuySection({ onSaved }) {
       throw new Error(result.error || 'Failed to save');
     }
     return result;
+  }
+
+  async function handleSaveAll() {
+    setSaving(true);
+    try {
+      const token = sessionStorage.getItem('site_admin_token');
+      const response = await fetch(`${API_BASE}/api/sites/${siteConfig.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `SiteAdmin ${token}` : '',
+        },
+        body: JSON.stringify({ settings: { watchAndBuyVideos: videos, showWatchAndBuy: showSection } }),
+      });
+      const result = await response.json();
+      if (response.ok && result.success) {
+        serverShowRef.current = showSection;
+        setHasChanges(false);
+        if (onSaved) onSaved();
+      }
+    } catch (e) {
+      console.error('Failed to save:', e);
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function handleSave(e) {
@@ -215,6 +236,8 @@ export default function WatchBuySection({ onSaved }) {
 
       await saveVideosToSettings(updatedVideos);
       setVideos(updatedVideos);
+      serverShowRef.current = showSection;
+      setHasChanges(false);
       setShowModal(false);
       if (onSaved) onSaved();
     } catch (err) {
@@ -230,6 +253,8 @@ export default function WatchBuySection({ onSaved }) {
       const updatedVideos = videos.filter(v => v.id !== videoId);
       await saveVideosToSettings(updatedVideos);
       setVideos(updatedVideos);
+      serverShowRef.current = showSection;
+      setHasChanges(false);
       if (onSaved) onSaved();
     } catch (err) {
       alert('Failed to delete: ' + err.message);
@@ -247,9 +272,10 @@ export default function WatchBuySection({ onSaved }) {
 
   return (
     <div>
+      <SaveBar topBar saving={saving} hasChanges={hasChanges} onSave={handleSaveAll} />
       <SectionToggle
         enabled={showSection}
-        onChange={setShowSection}
+        onChange={handleToggleChange}
         label="Show Watch & Buy"
         description="Toggle the shoppable video section on your homepage"
       />
@@ -303,6 +329,8 @@ export default function WatchBuySection({ onSaved }) {
           ))}
         </div>
       )}
+
+      <SaveBar saving={saving} hasChanges={hasChanges} onSave={handleSaveAll} />
 
       {showModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
