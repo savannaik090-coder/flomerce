@@ -57,11 +57,14 @@ export default function CategoriesSection({ onSaved }) {
 
   const [sectionOrder, setSectionOrder] = useState([]);
 
+  const [pendingHomeToggles, setPendingHomeToggles] = useState({});
+
   const [chooseChanged, setChooseChanged] = useState(false);
   const [subcatChanged, setSubcatChanged] = useState(false);
   const [orderChanged, setOrderChanged] = useState(false);
+  const homeTogglesChanged = Object.keys(pendingHomeToggles).length > 0;
   const dirtyRef = useRef(false);
-  dirtyRef.current = chooseChanged || subcatChanged || orderChanged;
+  dirtyRef.current = chooseChanged || subcatChanged || orderChanged || homeTogglesChanged;
 
   useEffect(() => {
     if (siteConfig?.id) loadCategories();
@@ -125,12 +128,24 @@ export default function CategoriesSection({ onSaved }) {
     } catch (e) { alert('Failed to update category: ' + e.message); }
   }
 
-  async function handleToggleHomepage(categoryId, currentValue) {
-    try {
-      await updateCategory(categoryId, { showOnHome: !currentValue }, siteConfig?.id);
-      await loadCategories();
-      if (onSaved) onSaved();
-    } catch (e) { alert('Failed to update: ' + e.message); }
+  function handleToggleHomepage(categoryId, currentValue) {
+    setPendingHomeToggles(prev => {
+      const updated = { ...prev };
+      const newVal = !currentValue;
+      const original = categories.find(c => c.id === categoryId);
+      const originalVal = !!(original?.show_on_home);
+      if (newVal === originalVal) {
+        delete updated[categoryId];
+      } else {
+        updated[categoryId] = newVal;
+      }
+      return updated;
+    });
+  }
+
+  function getShowOnHome(cat) {
+    if (cat.id in pendingHomeToggles) return pendingHomeToggles[cat.id];
+    return !!cat.show_on_home;
   }
 
   async function handleImageUpload(categoryId, file) {
@@ -270,7 +285,7 @@ export default function CategoriesSection({ onSaved }) {
   }
 
   function buildUnifiedSections() {
-    const homeCats = categories.filter(c => c.show_on_home === 1 && !c.parent_id);
+    const homeCats = categories.filter(c => getShowOnHome(c) && !c.parent_id);
     const allItems = [];
     homeCats.forEach(cat => allItems.push({ type: 'category', id: cat.id, name: cat.name }));
     subcatSections.forEach(sec => allItems.push({ type: 'subcategory', id: sec.id, name: sec.name, subtitle: sec.subtitle, label: sec.subcategoryLabel }));
@@ -294,30 +309,44 @@ export default function CategoriesSection({ onSaved }) {
     setOrderChanged(true);
   }
 
-  const hasUnsavedChanges = chooseChanged || subcatChanged || orderChanged;
+  const hasUnsavedChanges = chooseChanged || subcatChanged || orderChanged || homeTogglesChanged;
 
   async function handleSaveAllSettings() {
     setSaving(true);
     try {
       const token = sessionStorage.getItem('site_admin_token');
-      const settingsPayload = {};
-      if (chooseChanged) settingsPayload.chooseByCategory = { enabled: chooseEnabled, categories: chooseCats };
-      if (subcatChanged) settingsPayload.subcategorySections = subcatSections;
-      if (orderChanged) settingsPayload.homepageSectionOrder = sectionOrder;
-      const response = await fetch(`${API_BASE}/api/sites/${siteConfig.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'Authorization': token ? `SiteAdmin ${token}` : '' },
-        body: JSON.stringify({ settings: settingsPayload }),
-      });
-      const result = await response.json();
-      if (!response.ok || !result.success) {
-        alert('Failed to save: ' + (result.error || 'Unknown error'));
-      } else {
-        setChooseChanged(false);
-        setSubcatChanged(false);
-        setOrderChanged(false);
-        if (onSaved) onSaved();
+
+      if (homeTogglesChanged) {
+        const togglePromises = Object.entries(pendingHomeToggles).map(([catId, showOnHome]) =>
+          updateCategory(catId, { showOnHome }, siteConfig?.id)
+        );
+        await Promise.all(togglePromises);
+        setPendingHomeToggles({});
       }
+
+      if (chooseChanged || subcatChanged || orderChanged) {
+        const settingsPayload = {};
+        if (chooseChanged) settingsPayload.chooseByCategory = { enabled: chooseEnabled, categories: chooseCats };
+        if (subcatChanged) settingsPayload.subcategorySections = subcatSections;
+        if (orderChanged) settingsPayload.homepageSectionOrder = sectionOrder;
+        const response = await fetch(`${API_BASE}/api/sites/${siteConfig.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'Authorization': token ? `SiteAdmin ${token}` : '' },
+          body: JSON.stringify({ settings: settingsPayload }),
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+          alert('Failed to save: ' + (result.error || 'Unknown error'));
+          setSaving(false);
+          return;
+        }
+      }
+
+      setChooseChanged(false);
+      setSubcatChanged(false);
+      setOrderChanged(false);
+      await loadCategories();
+      if (onSaved) onSaved();
     } catch (e) { alert('Failed to save: ' + e.message); }
     finally { setSaving(false); }
   }
@@ -435,7 +464,7 @@ export default function CategoriesSection({ onSaved }) {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
                   <div style={{ textAlign: 'center' }}>
                     <div style={{ fontSize: 10, color: '#94a3b8', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Show on Home</div>
-                    <Toggle checked={!!cat.show_on_home} onChange={() => handleToggleHomepage(cat.id, !!cat.show_on_home)} size="small" />
+                    <Toggle checked={getShowOnHome(cat)} onChange={() => handleToggleHomepage(cat.id, getShowOnHome(cat))} size="small" />
                   </div>
                   {editingCategory !== cat.id && (
                     <div style={{ display: 'flex', gap: 4 }}>
