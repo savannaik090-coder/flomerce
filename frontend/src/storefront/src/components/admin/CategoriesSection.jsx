@@ -58,13 +58,17 @@ export default function CategoriesSection({ onSaved }) {
   const [sectionOrder, setSectionOrder] = useState([]);
 
   const [pendingHomeToggles, setPendingHomeToggles] = useState({});
+  const [pendingNewCats, setPendingNewCats] = useState([]);
+  const [pendingDeleteCats, setPendingDeleteCats] = useState([]);
+  const [pendingEditCats, setPendingEditCats] = useState({});
 
   const [chooseChanged, setChooseChanged] = useState(false);
   const [subcatChanged, setSubcatChanged] = useState(false);
   const [orderChanged, setOrderChanged] = useState(false);
   const homeTogglesChanged = Object.keys(pendingHomeToggles).length > 0;
+  const catsChanged = pendingNewCats.length > 0 || pendingDeleteCats.length > 0 || Object.keys(pendingEditCats).length > 0;
   const dirtyRef = useRef(false);
-  dirtyRef.current = chooseChanged || subcatChanged || orderChanged || homeTogglesChanged;
+  dirtyRef.current = chooseChanged || subcatChanged || orderChanged || homeTogglesChanged || catsChanged;
 
   useEffect(() => {
     if (siteConfig?.id) loadCategories();
@@ -94,43 +98,55 @@ export default function CategoriesSection({ onSaved }) {
     finally { setLoading(false); }
   }
 
-  const [addingCategory, setAddingCategory] = useState(false);
-
-  async function handleAddCategory() {
+  function handleAddCategory() {
     if (!newCategoryName.trim()) return;
-    if (!window.confirm(`Create category "${newCategoryName.trim()}"?`)) return;
-    setAddingCategory(true);
-    try {
-      const slug = newCategoryName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-      await createCategory({ siteId: siteConfig.id, name: newCategoryName.trim(), slug, subtitle: newCategorySubtitle.trim() || null, showOnHome: true, displayOrder: categories.length });
-      setNewCategoryName('');
-      setNewCategorySubtitle('');
-      await loadCategories();
-      if (onSaved) onSaved();
-    } catch (e) { alert('Failed to add category: ' + e.message); }
-    finally { setAddingCategory(false); }
+    const tempId = 'new_' + Date.now();
+    const slug = newCategoryName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    setPendingNewCats(prev => [...prev, {
+      tempId,
+      name: newCategoryName.trim(),
+      slug,
+      subtitle: newCategorySubtitle.trim() || null,
+      showOnHome: true,
+      displayOrder: categories.length + pendingNewCats.length,
+    }]);
+    setNewCategoryName('');
+    setNewCategorySubtitle('');
   }
 
-  async function handleDeleteCategory(categoryId) {
+  function handleDeleteCategory(categoryId) {
     if (!window.confirm('Delete this category? Products in this category will not be deleted.')) return;
-    try {
-      await deleteCategory(categoryId, siteConfig?.id);
-      await loadCategories();
-      if (onSaved) onSaved();
-    } catch (e) { alert('Failed to delete category: ' + e.message); }
+    const isPending = pendingNewCats.find(c => c.tempId === categoryId);
+    if (isPending) {
+      setPendingNewCats(prev => prev.filter(c => c.tempId !== categoryId));
+    } else {
+      setPendingDeleteCats(prev => [...prev, categoryId]);
+    }
   }
 
-  async function handleUpdateCategory(categoryId) {
+  function handleUpdateCategory(categoryId) {
     if (!editCategoryName.trim()) return;
-    try {
-      const slug = editCategoryName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-      await updateCategory(categoryId, { name: editCategoryName.trim(), slug, subtitle: editCategorySubtitle.trim() || null }, siteConfig?.id);
-      setEditingCategory(null);
-      setEditCategoryName('');
-      setEditCategorySubtitle('');
-      await loadCategories();
-      if (onSaved) onSaved();
-    } catch (e) { alert('Failed to update category: ' + e.message); }
+    const isPending = pendingNewCats.find(c => c.tempId === categoryId);
+    if (isPending) {
+      setPendingNewCats(prev => prev.map(c => c.tempId === categoryId ? {
+        ...c,
+        name: editCategoryName.trim(),
+        slug: editCategoryName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
+        subtitle: editCategorySubtitle.trim() || null,
+      } : c));
+    } else {
+      setPendingEditCats(prev => ({
+        ...prev,
+        [categoryId]: {
+          name: editCategoryName.trim(),
+          slug: editCategoryName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
+          subtitle: editCategorySubtitle.trim() || null,
+        }
+      }));
+    }
+    setEditingCategory(null);
+    setEditCategoryName('');
+    setEditCategorySubtitle('');
   }
 
   function handleToggleHomepage(categoryId, currentValue) {
@@ -314,12 +330,36 @@ export default function CategoriesSection({ onSaved }) {
     setOrderChanged(true);
   }
 
-  const hasUnsavedChanges = chooseChanged || subcatChanged || orderChanged || homeTogglesChanged;
+  const hasUnsavedChanges = chooseChanged || subcatChanged || orderChanged || homeTogglesChanged || catsChanged;
 
   async function handleSaveAllSettings() {
     setSaving(true);
     try {
       const token = sessionStorage.getItem('site_admin_token');
+
+      if (pendingNewCats.length > 0) {
+        for (const cat of pendingNewCats) {
+          await createCategory({
+            siteId: siteConfig.id, name: cat.name, slug: cat.slug,
+            subtitle: cat.subtitle, showOnHome: cat.showOnHome, displayOrder: cat.displayOrder,
+          });
+        }
+        setPendingNewCats([]);
+      }
+
+      if (pendingDeleteCats.length > 0) {
+        for (const catId of pendingDeleteCats) {
+          await deleteCategory(catId, siteConfig?.id);
+        }
+        setPendingDeleteCats([]);
+      }
+
+      if (Object.keys(pendingEditCats).length > 0) {
+        for (const [catId, edits] of Object.entries(pendingEditCats)) {
+          await updateCategory(catId, edits, siteConfig?.id);
+        }
+        setPendingEditCats({});
+      }
 
       if (homeTogglesChanged) {
         const togglePromises = Object.entries(pendingHomeToggles).map(([catId, showOnHome]) =>
@@ -356,7 +396,18 @@ export default function CategoriesSection({ onSaved }) {
     finally { setSaving(false); }
   }
 
-  const filtered = categories.filter(c => !searchTerm || c.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  function getDisplayCat(cat) {
+    if (pendingEditCats[cat.id]) {
+      return { ...cat, name: pendingEditCats[cat.id].name, subtitle: pendingEditCats[cat.id].subtitle, slug: pendingEditCats[cat.id].slug };
+    }
+    return cat;
+  }
+
+  const allDisplayCats = [
+    ...categories.filter(c => !pendingDeleteCats.includes(c.id)).map(getDisplayCat),
+    ...pendingNewCats.map(c => ({ id: c.tempId, name: c.name, subtitle: c.subtitle, slug: c.slug, show_on_home: c.showOnHome ? 1 : 0, image_url: null, children: [], _isPending: true })),
+  ];
+  const filtered = allDisplayCats.filter(c => !searchTerm || c.name.toLowerCase().includes(searchTerm.toLowerCase()));
   const unifiedSections = buildUnifiedSections();
 
   if (loading) return <div className="loading-spinner-admin"><div className="spinner" /></div>;
@@ -412,8 +463,8 @@ export default function CategoriesSection({ onSaved }) {
             onKeyDown={(e) => e.key === 'Enter' && handleAddCategory()}
             style={{ padding: '12px 14px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', color: '#64748b' }}
           />
-          <button className="btn btn-primary" onClick={handleAddCategory} disabled={addingCategory || !newCategoryName.trim()} style={{ alignSelf: 'flex-start', opacity: (addingCategory || !newCategoryName.trim()) ? 0.6 : 1 }}>
-            {addingCategory ? <><i className="fas fa-spinner fa-spin" style={{ marginRight: 6 }} />Creating...</> : <><i className="fas fa-plus" style={{ marginRight: 6 }} />Add Category</>}
+          <button className="btn btn-primary" onClick={handleAddCategory} disabled={!newCategoryName.trim()} style={{ alignSelf: 'flex-start', opacity: !newCategoryName.trim() ? 0.6 : 1 }}>
+            <i className="fas fa-plus" style={{ marginRight: 6 }} />Add Category
           </button>
         </div>
       </div>
@@ -427,11 +478,23 @@ export default function CategoriesSection({ onSaved }) {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 32 }}>
           <h3 style={{ margin: '0 0 4px', fontSize: 16, fontWeight: 600, color: '#1e293b' }}>Your Categories ({filtered.length})</h3>
-          {filtered.map(cat => (
-            <div key={cat.id} style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, overflow: 'hidden' }}>
+          {filtered.map(cat => {
+            const isPending = !!cat._isPending;
+            return (
+            <div key={cat.id} style={{ background: '#fff', border: isPending ? '2px dashed #3b82f6' : '1px solid #e2e8f0', borderRadius: 12, overflow: 'hidden' }}>
+              {isPending && (
+                <div style={{ background: '#eff6ff', padding: '6px 16px', fontSize: 12, color: '#2563eb', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <i className="fas fa-clock" /> Not saved yet — click "Save All Changes" to create
+                </div>
+              )}
               <div style={{ padding: 16, display: 'flex', gap: 16, alignItems: 'flex-start' }}>
                 <div style={{ width: 100, flexShrink: 0 }}>
-                  {cat.image_url ? (
+                  {isPending ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: 70, border: '2px dashed #e2e8f0', borderRadius: 8, color: '#cbd5e1', fontSize: 11 }}>
+                      <i className="fas fa-image" style={{ fontSize: 16, marginBottom: 2 }} />
+                      <span>Save first</span>
+                    </div>
+                  ) : cat.image_url ? (
                     <div style={{ position: 'relative' }}>
                       <img src={resolveImageUrl(cat.image_url)} alt={cat.name} style={{ width: '100%', height: 70, objectFit: 'cover', borderRadius: 8, border: '1px solid #e2e8f0' }} />
                       <button onClick={() => handleRemoveImage(cat.id)} style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%', background: '#ef4444', color: '#fff', border: 'none', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>x</button>
@@ -473,9 +536,11 @@ export default function CategoriesSection({ onSaved }) {
                   </div>
                   {editingCategory !== cat.id && (
                     <div style={{ display: 'flex', gap: 4 }}>
-                      <button onClick={() => setExpandedCat(expandedCat === cat.id ? null : cat.id)} title="Subcategories" style={{ padding: '6px 8px', background: expandedCat === cat.id ? '#eff6ff' : 'none', border: '1px solid #e2e8f0', borderRadius: 6, cursor: 'pointer', color: expandedCat === cat.id ? '#3b82f6' : '#64748b', fontSize: 13 }}>
-                        <i className="fas fa-layer-group" />
-                      </button>
+                      {!isPending && (
+                        <button onClick={() => setExpandedCat(expandedCat === cat.id ? null : cat.id)} title="Subcategories" style={{ padding: '6px 8px', background: expandedCat === cat.id ? '#eff6ff' : 'none', border: '1px solid #e2e8f0', borderRadius: 6, cursor: 'pointer', color: expandedCat === cat.id ? '#3b82f6' : '#64748b', fontSize: 13 }}>
+                          <i className="fas fa-layer-group" />
+                        </button>
+                      )}
                       <button onClick={() => { setEditingCategory(cat.id); setEditCategoryName(cat.name); setEditCategorySubtitle(cat.subtitle || ''); }} style={{ padding: '6px 8px', background: 'none', border: '1px solid #e2e8f0', borderRadius: 6, cursor: 'pointer', color: '#64748b', fontSize: 13 }}>
                         <i className="fas fa-edit" />
                       </button>
@@ -526,7 +591,8 @@ export default function CategoriesSection({ onSaved }) {
                 </div>
               )}
             </div>
-          ))}
+          );
+          })}
         </div>
       )}
 
