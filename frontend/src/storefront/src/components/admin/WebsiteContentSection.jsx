@@ -19,25 +19,51 @@ import ContactEditor from './ContactEditor.jsx';
 import SectionToggle from './SectionToggle.jsx';
 import SaveBar from './SaveBar.jsx';
 
-const SUB_TABS = [
-  { id: 'navbar',             icon: 'fa-bars',           label: 'Navbar',             page: '/' },
-  { id: 'promo-banner',      icon: 'fa-bullhorn',       label: 'Promo Banner',      page: '/' },
-  { id: 'hero-slider',       icon: 'fa-images',         label: 'Hero Slider',        page: '/' },
-  { id: 'welcome-banner',    icon: 'fa-hand-sparkles',  label: 'Welcome Banner',     page: '/' },
-  { id: 'categories',        icon: 'fa-folder',         label: 'Categories',         page: '/' },
-  { id: 'watchbuy',          icon: 'fa-video',          label: 'Watch & Buy',        page: '/' },
-  { id: 'featured-video',    icon: 'fa-film',           label: 'Featured Video',     page: '/' },
-  { id: 'customer-reviews',  icon: 'fa-star',           label: 'Customer Reviews',   page: '/' },
-  { id: 'store-locations',   icon: 'fa-store',          label: 'Store Locations',    page: '/' },
-  { id: 'book-appointment', icon: 'fa-calendar-check', label: 'Book Appointment',   page: '/book-appointment' },
-  { id: 'contact-us',       icon: 'fa-envelope',       label: 'Contact Us',         page: '/contact' },
-  { id: 'checkout',          icon: 'fa-shopping-bag',   label: 'Checkout',           page: '/' },
-  { id: 'product-policies',  icon: 'fa-shield-alt',     label: 'Product Policies',   page: '/' },
-  { id: 'footer',            icon: 'fa-shoe-prints',    label: 'Footer',             page: '/' },
-  { id: 'about-us',          icon: 'fa-info-circle',    label: 'About Us',           page: '/about' },
-  { id: 'terms',             icon: 'fa-file-contract',  label: 'Terms & Conditions', page: '/terms' },
-  { id: 'privacy',           icon: 'fa-user-shield',    label: 'Privacy Policy',     page: '/privacy-policy' },
+const TAB_GROUPS = [
+  {
+    group: 'Homepage',
+    icon: 'fa-home',
+    tabs: [
+      { id: 'navbar',            icon: 'fa-bars',          label: 'Navbar',           page: '/' },
+      { id: 'promo-banner',      icon: 'fa-bullhorn',      label: 'Promo Banner',     page: '/' },
+      { id: 'hero-slider',       icon: 'fa-images',        label: 'Hero Slider',      page: '/' },
+      { id: 'welcome-banner',    icon: 'fa-hand-sparkles', label: 'Welcome Banner',   page: '/' },
+      { id: 'categories',        icon: 'fa-folder',        label: 'Categories',       page: '/' },
+      { id: 'watchbuy',          icon: 'fa-video',         label: 'Watch & Buy',      page: '/' },
+      { id: 'featured-video',    icon: 'fa-film',          label: 'Featured Video',   page: '/' },
+      { id: 'customer-reviews',  icon: 'fa-star',          label: 'Customer Reviews', page: '/' },
+      { id: 'store-locations',   icon: 'fa-store',         label: 'Store Locations',  page: '/' },
+      { id: 'footer',            icon: 'fa-shoe-prints',   label: 'Footer',           page: '/' },
+    ],
+  },
+  {
+    group: 'Pages',
+    icon: 'fa-file-alt',
+    tabs: [
+      { id: 'about-us',          icon: 'fa-info-circle',    label: 'About Us',         page: '/about' },
+      { id: 'contact-us',        icon: 'fa-envelope',       label: 'Contact Us',       page: '/contact' },
+      { id: 'book-appointment',  icon: 'fa-calendar-check', label: 'Book Appointment', page: '/book-appointment' },
+    ],
+  },
+  {
+    group: 'Checkout & Policies',
+    icon: 'fa-shopping-bag',
+    tabs: [
+      { id: 'checkout',          icon: 'fa-shopping-bag',   label: 'Checkout',         page: '/' },
+      { id: 'product-policies',  icon: 'fa-shield-alt',     label: 'Product Policies', page: '/' },
+    ],
+  },
+  {
+    group: 'Legal',
+    icon: 'fa-gavel',
+    tabs: [
+      { id: 'terms',             icon: 'fa-file-contract',  label: 'Terms & Conditions', page: '/terms' },
+      { id: 'privacy',           icon: 'fa-user-shield',    label: 'Privacy Policy',     page: '/privacy-policy' },
+    ],
+  },
 ];
+
+const ALL_TABS = TAB_GROUPS.flatMap(g => g.tabs);
 
 function getStoreUrl(siteConfig) {
   if (!siteConfig?.subdomain) return '';
@@ -59,7 +85,7 @@ export default function WebsiteContentSection() {
   const mobileIframeRef = useRef(null);
 
   const storeBaseUrl = getStoreUrl(siteConfig);
-  const currentTab = SUB_TABS.find(t => t.id === activeTab);
+  const currentTab = ALL_TABS.find(t => t.id === activeTab);
   const previewUrl = storeBaseUrl ? `${storeBaseUrl}${currentTab?.page || '/'}` : '';
 
   const refreshPreview = useCallback(() => {
@@ -104,19 +130,48 @@ export default function WebsiteContentSection() {
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          {SUB_TABS.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+      {isMobile && (
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center' }}>
+          <div style={{ flex: 1, position: 'relative' }}>
+            <select
+              value={activeTab}
+              onChange={e => setActiveTab(e.target.value)}
               style={{
-                padding: '8px 16px',
-                borderRadius: 6,
-                border: activeTab === tab.id ? '2px solid #2563eb' : '1px solid #e2e8f0',
-                background: activeTab === tab.id ? '#eff6ff' : '#fff',
-                color: activeTab === tab.id ? '#2563eb' : '#64748b',
-                fontWeight: activeTab === tab.id ? 600 : 400,
+                width: '100%',
+                padding: '10px 36px 10px 12px',
+                borderRadius: 8,
+                border: '1px solid #e2e8f0',
+                background: '#fff',
+                fontSize: 14,
+                fontWeight: 500,
+                color: '#1e293b',
+                fontFamily: 'inherit',
+                appearance: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              {TAB_GROUPS.map(group => (
+                <optgroup key={group.group} label={group.group}>
+                  {group.tabs.map(tab => (
+                    <option key={tab.id} value={tab.id}>{tab.label}</option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+            <i className="fas fa-chevron-down" style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 11, color: '#94a3b8', pointerEvents: 'none' }} />
+          </div>
+          {previewUrl && (
+            <button
+              type="button"
+              onClick={() => { setShowMobilePreview(true); setPreviewKey(k => k + 1); }}
+              style={{
+                flexShrink: 0,
+                padding: '10px 14px',
+                borderRadius: 8,
+                border: 'none',
+                background: '#2563eb',
+                color: '#fff',
+                fontWeight: 600,
                 fontSize: 13,
                 cursor: 'pointer',
                 display: 'flex',
@@ -125,39 +180,75 @@ export default function WebsiteContentSection() {
                 fontFamily: 'inherit',
               }}
             >
-              <i className={`fas ${tab.icon}`} style={{ fontSize: 12 }} />
-              {tab.label}
+              <i className="fas fa-eye" style={{ fontSize: 12 }} />
+              Preview
             </button>
-          ))}
+          )}
         </div>
-
-        {isMobile && previewUrl && (
-          <button
-            type="button"
-            onClick={() => { setShowMobilePreview(true); setPreviewKey(k => k + 1); }}
-            style={{
-              flexShrink: 0,
-              padding: '8px 14px',
-              borderRadius: 6,
-              border: '2px solid #2563eb',
-              background: '#2563eb',
-              color: '#fff',
-              fontWeight: 600,
-              fontSize: 13,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              fontFamily: 'inherit',
-            }}
-          >
-            <i className="fas fa-eye" style={{ fontSize: 12 }} />
-            Preview
-          </button>
-        )}
-      </div>
+      )}
 
       <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
+        {!isMobile && (
+          <nav style={{
+            width: 200,
+            flexShrink: 0,
+            position: 'sticky',
+            top: 20,
+            background: '#fff',
+            border: '1px solid #e2e8f0',
+            borderRadius: 10,
+            overflow: 'hidden',
+          }}>
+            {TAB_GROUPS.map((group, gi) => (
+              <div key={group.group}>
+                {gi > 0 && <div style={{ height: 1, background: '#e2e8f0' }} />}
+                <div style={{
+                  padding: '10px 14px 4px',
+                  fontSize: 10,
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.06em',
+                  color: '#94a3b8',
+                }}>
+                  <i className={`fas ${group.icon}`} style={{ marginRight: 6, fontSize: 9 }} />
+                  {group.group}
+                </div>
+                {group.tabs.map(tab => {
+                  const isActive = activeTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        width: '100%',
+                        padding: '8px 14px',
+                        border: 'none',
+                        background: isActive ? '#eff6ff' : 'transparent',
+                        color: isActive ? '#2563eb' : '#475569',
+                        fontWeight: isActive ? 600 : 400,
+                        fontSize: 13,
+                        cursor: 'pointer',
+                        fontFamily: 'inherit',
+                        textAlign: 'left',
+                        borderLeft: isActive ? '3px solid #2563eb' : '3px solid transparent',
+                        transition: 'all 0.15s ease',
+                      }}
+                      onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background = '#f8fafc'; } }}
+                      onMouseLeave={e => { if (!isActive) { e.currentTarget.style.background = 'transparent'; } }}
+                    >
+                      <i className={`fas ${tab.icon}`} style={{ fontSize: 11, width: 14, textAlign: 'center', opacity: isActive ? 1 : 0.6 }} />
+                      {tab.label}
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
+          </nav>
+        )}
+
         <div style={{ flex: '1 1 0', minWidth: 0 }}>
           {activeTab === 'navbar' && <NavbarEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
           {activeTab === 'promo-banner' && <PromoBannerEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
