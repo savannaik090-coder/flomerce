@@ -12,7 +12,7 @@ export default function ContactEditor({ onSaved, onPreviewUpdate }) {
   const [status, setStatus] = useState('');
   const [hasChanges, setHasChanges] = useState(false);
   const hasLoadedRef = useRef(false);
-
+  const skipNextChangeRef = useRef(false);
   const serverValueRef = useRef(null);
 
   useEffect(() => {
@@ -20,12 +20,14 @@ export default function ContactEditor({ onSaved, onPreviewUpdate }) {
       const val = siteConfig.settings.showContact !== false;
       setShowContact(val);
       serverValueRef.current = val;
-      setTimeout(() => { hasLoadedRef.current = true; }, 0);
+      skipNextChangeRef.current = true;
+      hasLoadedRef.current = true;
     }
   }, [siteConfig?.settings]);
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
+    if (skipNextChangeRef.current) { skipNextChangeRef.current = false; return; }
     setHasChanges(showContact !== serverValueRef.current);
     if (onPreviewUpdate) onPreviewUpdate({ showContact });
   }, [showContact]);

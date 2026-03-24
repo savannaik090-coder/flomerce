@@ -38,6 +38,7 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate }) {
   const [hasChanges, setHasChanges] = useState(false);
   const fileRef = useRef(null);
   const hasLoadedRef = useRef(false);
+  const skipNextChangeRef = useRef(false);
 
   const brandName = siteConfig?.brand_name || siteConfig?.brandName || 'Our Store';
 
@@ -47,6 +48,7 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
+    if (skipNextChangeRef.current) { skipNextChangeRef.current = false; return; }
     setHasChanges(true);
     if (onPreviewUpdate) onPreviewUpdate({ welcomeBannerImage: bannerImage, welcomeBannerHeading: heading, welcomeBannerMessage: message, welcomeBannerButtonText: buttonText, welcomeBannerButtonLink: buttonLink, showWelcomeBanner: showSection });
   }, [heading, message, buttonText, buttonLink, bannerImage, showSection]);
@@ -72,7 +74,8 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate }) {
       console.error('Failed to load welcome banner settings:', e);
     } finally {
       setLoading(false);
-      setTimeout(() => { hasLoadedRef.current = true; }, 0);
+      skipNextChangeRef.current = true;
+      hasLoadedRef.current = true;
     }
   }
 

@@ -21,6 +21,7 @@ export default function CheckoutEditor({ onSaved, onPreviewUpdate }) {
   const [expandedCoupon, setExpandedCoupon] = useState(null);
   const [hasChanges, setHasChanges] = useState(false);
   const hasLoadedRef = useRef(false);
+  const skipNextChangeRef = useRef(false);
 
   useEffect(() => {
     if (siteConfig?.id) loadSettings();
@@ -28,6 +29,7 @@ export default function CheckoutEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
+    if (skipNextChangeRef.current) { skipNextChangeRef.current = false; return; }
     setHasChanges(true);
     if (onPreviewUpdate) onPreviewUpdate({ coupons });
   }, [coupons]);
@@ -48,7 +50,8 @@ export default function CheckoutEditor({ onSaved, onPreviewUpdate }) {
       console.error('Failed to load checkout settings:', e);
     } finally {
       setLoading(false);
-      setTimeout(() => { hasLoadedRef.current = true; }, 0);
+      skipNextChangeRef.current = true;
+      hasLoadedRef.current = true;
     }
   }
 

@@ -25,6 +25,7 @@ export default function WatchBuySection({ onSaved }) {
   const [hasChanges, setHasChanges] = useState(false);
   const fileInputRef = useRef(null);
   const hasLoadedRef = useRef(false);
+  const skipNextChangeRef = useRef(false);
   const serverShowRef = useRef(true);
 
   useEffect(() => {
@@ -63,7 +64,8 @@ export default function WatchBuySection({ onSaved }) {
       console.error('Failed to load videos:', e);
     } finally {
       setLoading(false);
-      setTimeout(() => { hasLoadedRef.current = true; }, 0);
+      skipNextChangeRef.current = true;
+      hasLoadedRef.current = true;
     }
   }
 

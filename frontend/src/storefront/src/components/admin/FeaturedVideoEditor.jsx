@@ -42,6 +42,7 @@ export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate }) {
   const [hasChanges, setHasChanges] = useState(false);
   const fileInputRef = useRef(null);
   const hasLoadedRef = useRef(false);
+  const skipNextChangeRef = useRef(false);
 
   const placeholders = CATEGORY_PLACEHOLDERS[siteConfig?.category] || DEFAULT_PLACEHOLDERS;
 
@@ -51,6 +52,7 @@ export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
+    if (skipNextChangeRef.current) { skipNextChangeRef.current = false; return; }
     setHasChanges(true);
     if (onPreviewUpdate) onPreviewUpdate({ featuredVideoTitle: title, featuredVideoDescription: description, featuredVideoUrl: videoUrl, featuredVideoChatLink: chatLink, featuredVideoChatButtonText: chatButtonText || 'CHAT NOW', showFeaturedVideo: showSection });
   }, [title, description, videoUrl, chatLink, chatButtonText, showSection]);
@@ -77,7 +79,8 @@ export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate }) {
       console.error('Failed to load featured video settings:', e);
     } finally {
       setLoading(false);
-      setTimeout(() => { hasLoadedRef.current = true; }, 0);
+      skipNextChangeRef.current = true;
+      hasLoadedRef.current = true;
     }
   }
 

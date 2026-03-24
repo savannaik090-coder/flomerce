@@ -299,6 +299,7 @@ function PromoBannerEditor({ onSaved, onPreviewUpdate }) {
   const [loading, setLoading] = useState(true);
   const [hasChanges, setHasChanges] = useState(false);
   const hasLoadedRef = useRef(false);
+  const skipNextChangeRef = useRef(false);
 
   useEffect(() => {
     if (siteConfig?.id) loadPromoBanner();
@@ -306,6 +307,7 @@ function PromoBannerEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
+    if (skipNextChangeRef.current) { skipNextChangeRef.current = false; return; }
     setHasChanges(true);
     if (onPreviewUpdate) onPreviewUpdate({ promoBanner: messages.filter(m => m.trim() !== ''), showPromoBanner: showSection });
   }, [messages, showSection]);
@@ -333,7 +335,8 @@ function PromoBannerEditor({ onSaved, onPreviewUpdate }) {
       console.error('Failed to load promo banner:', e);
     } finally {
       setLoading(false);
-      setTimeout(() => { hasLoadedRef.current = true; }, 0);
+      skipNextChangeRef.current = true;
+      hasLoadedRef.current = true;
     }
   }
 

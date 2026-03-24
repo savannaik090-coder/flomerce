@@ -62,6 +62,7 @@ export default function TermsEditor({ onSaved, onPreviewUpdate }) {
   const [status, setStatus] = useState('');
   const [hasChanges, setHasChanges] = useState(false);
   const hasLoadedRef = useRef(false);
+  const skipNextChangeRef = useRef(false);
 
   useEffect(() => {
     if (siteConfig?.id) loadSettings();
@@ -69,6 +70,7 @@ export default function TermsEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
+    if (skipNextChangeRef.current) { skipNextChangeRef.current = false; return; }
     setHasChanges(true);
     if (onPreviewUpdate) onPreviewUpdate({ termsContent: { intro, sections } });
   }, [intro, sections]);
@@ -98,7 +100,8 @@ export default function TermsEditor({ onSaved, onPreviewUpdate }) {
       setSections(getDefaultSections(brand, email, phone));
     } finally {
       setLoading(false);
-      setTimeout(() => { hasLoadedRef.current = true; }, 0);
+      skipNextChangeRef.current = true;
+      hasLoadedRef.current = true;
     }
   }
 

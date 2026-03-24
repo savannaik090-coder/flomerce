@@ -129,6 +129,7 @@ export default function ProductPoliciesEditor({ onSaved, onPreviewUpdate }) {
   const [loading, setLoading] = useState(true);
   const [hasChanges, setHasChanges] = useState(false);
   const hasLoadedRef = useRef(false);
+  const skipNextChangeRef = useRef(false);
 
   const placeholders = CATEGORY_PLACEHOLDERS[siteConfig?.category] || DEFAULT_PLACEHOLDERS;
 
@@ -138,6 +139,7 @@ export default function ProductPoliciesEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
+    if (skipNextChangeRef.current) { skipNextChangeRef.current = false; return; }
     setHasChanges(true);
     if (onPreviewUpdate) onPreviewUpdate({ ...fields, showProductPolicies: showSection });
   }, [fields, showSection]);
@@ -170,7 +172,8 @@ export default function ProductPoliciesEditor({ onSaved, onPreviewUpdate }) {
       console.error('Failed to load product policies settings:', e);
     } finally {
       setLoading(false);
-      setTimeout(() => { hasLoadedRef.current = true; }, 0);
+      skipNextChangeRef.current = true;
+      hasLoadedRef.current = true;
     }
   }
 

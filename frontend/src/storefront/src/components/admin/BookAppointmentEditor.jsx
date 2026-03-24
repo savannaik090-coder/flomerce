@@ -12,7 +12,7 @@ export default function BookAppointmentEditor({ onSaved, onPreviewUpdate }) {
   const [status, setStatus] = useState('');
   const [hasChanges, setHasChanges] = useState(false);
   const hasLoadedRef = useRef(false);
-
+  const skipNextChangeRef = useRef(false);
   const serverValueRef = useRef(null);
 
   useEffect(() => {
@@ -20,12 +20,14 @@ export default function BookAppointmentEditor({ onSaved, onPreviewUpdate }) {
       const val = siteConfig.settings.showBookAppointment !== false;
       setShowBookAppointment(val);
       serverValueRef.current = val;
-      setTimeout(() => { hasLoadedRef.current = true; }, 0);
+      skipNextChangeRef.current = true;
+      hasLoadedRef.current = true;
     }
   }, [siteConfig?.settings]);
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
+    if (skipNextChangeRef.current) { skipNextChangeRef.current = false; return; }
     setHasChanges(showBookAppointment !== serverValueRef.current);
     if (onPreviewUpdate) onPreviewUpdate({ showBookAppointment });
   }, [showBookAppointment]);

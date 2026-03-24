@@ -74,6 +74,7 @@ export default function PrivacyEditor({ onSaved, onPreviewUpdate }) {
   const [status, setStatus] = useState('');
   const [hasChanges, setHasChanges] = useState(false);
   const hasLoadedRef = useRef(false);
+  const skipNextChangeRef = useRef(false);
 
   useEffect(() => {
     if (siteConfig?.id) loadSettings();
@@ -81,6 +82,7 @@ export default function PrivacyEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
+    if (skipNextChangeRef.current) { skipNextChangeRef.current = false; return; }
     setHasChanges(true);
     if (onPreviewUpdate) onPreviewUpdate({ privacyContent: { intro, sections: sections.map(s => ({ title: s.title, content: s.content })) } });
   }, [intro, sections]);
@@ -110,7 +112,8 @@ export default function PrivacyEditor({ onSaved, onPreviewUpdate }) {
       setSections(DEFAULT_SECTIONS.map(s => ({ ...s })));
     } finally {
       setLoading(false);
-      setTimeout(() => { hasLoadedRef.current = true; }, 0);
+      skipNextChangeRef.current = true;
+      hasLoadedRef.current = true;
     }
   }
 

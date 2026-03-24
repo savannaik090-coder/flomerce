@@ -32,6 +32,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
   const [editingMenuId, setEditingMenuId] = useState(null);
   const [editingName, setEditingName] = useState('');
   const hasLoadedRef = useRef(false);
+  const skipNextChangeRef = useRef(false);
   const [logoUrl, setLogoUrl] = useState('');
   const [logoSize, setLogoSize] = useState(120);
   const [logoPosition, setLogoPosition] = useState('left');
@@ -50,15 +51,13 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
+    if (skipNextChangeRef.current) {
+      skipNextChangeRef.current = false;
+      return;
+    }
     setHasChanges(true);
-    if (onPreviewUpdate) onPreviewUpdate({ navbarMenus });
-  }, [navbarMenus]);
-
-  useEffect(() => {
-    if (!hasLoadedRef.current) return;
-    setHasChanges(true);
-    if (onPreviewUpdate) onPreviewUpdate({ logoSize, logoPosition, showAccountIcon, showCartIcon });
-  }, [logoSize, logoPosition, showAccountIcon, showCartIcon]);
+    if (onPreviewUpdate) onPreviewUpdate({ navbarMenus, logoSize, logoPosition, showAccountIcon, showCartIcon });
+  }, [navbarMenus, logoSize, logoPosition, showAccountIcon, showCartIcon]);
 
   async function loadCategories() {
     try {
@@ -90,7 +89,8 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
       console.error('Failed to load navbar config:', e);
     } finally {
       setLoading(false);
-      setTimeout(() => { hasLoadedRef.current = true; }, 0);
+      skipNextChangeRef.current = true;
+      hasLoadedRef.current = true;
     }
   }
 

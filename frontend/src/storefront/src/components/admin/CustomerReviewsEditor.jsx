@@ -23,6 +23,7 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate }) {
   const [hasChanges, setHasChanges] = useState(false);
   const fileInputRef = useRef(null);
   const hasLoadedRef = useRef(false);
+  const skipNextChangeRef = useRef(false);
 
   useEffect(() => {
     if (siteConfig?.id) loadSettings();
@@ -30,6 +31,7 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
+    if (skipNextChangeRef.current) { skipNextChangeRef.current = false; return; }
     setHasChanges(true);
     if (onPreviewUpdate) onPreviewUpdate({ reviewsSectionTitle: sectionTitle, reviewsSectionSubtitle: sectionSubtitle, reviews, showCustomerReviews: showSection });
   }, [sectionTitle, sectionSubtitle, reviews, showSection]);
@@ -53,7 +55,8 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate }) {
       console.error('Failed to load reviews settings:', e);
     } finally {
       setLoading(false);
-      setTimeout(() => { hasLoadedRef.current = true; }, 0);
+      skipNextChangeRef.current = true;
+      hasLoadedRef.current = true;
     }
   }
 

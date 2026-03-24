@@ -71,6 +71,7 @@ export default function AboutUsEditor({ onSaved, onPreviewUpdate }) {
   const [hasChanges, setHasChanges] = useState(false);
   const fileInputRef = useRef(null);
   const hasLoadedRef = useRef(false);
+  const skipNextChangeRef = useRef(false);
 
   useEffect(() => {
     if (siteConfig?.id) loadSettings();
@@ -78,6 +79,7 @@ export default function AboutUsEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
+    if (skipNextChangeRef.current) { skipNextChangeRef.current = false; return; }
     setHasChanges(true);
     if (onPreviewUpdate) onPreviewUpdate({ aboutPage: { heroSubtitle, storyText, storyImage, sections }, showAboutUs: showSection });
   }, [heroSubtitle, storyText, storyImage, sections, showSection]);
@@ -121,7 +123,8 @@ export default function AboutUsEditor({ onSaved, onPreviewUpdate }) {
       console.error('Failed to load about page settings:', e);
     } finally {
       setLoading(false);
-      setTimeout(() => { hasLoadedRef.current = true; }, 0);
+      skipNextChangeRef.current = true;
+      hasLoadedRef.current = true;
     }
   }
 

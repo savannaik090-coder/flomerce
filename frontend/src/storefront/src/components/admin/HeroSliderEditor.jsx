@@ -37,6 +37,7 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
   const [hasChanges, setHasChanges] = useState(false);
   const fileRefs = [useRef(null), useRef(null), useRef(null)];
   const hasLoadedRef = useRef(false);
+  const skipNextChangeRef = useRef(false);
 
   useEffect(() => {
     if (siteConfig?.id) loadHeroSettings();
@@ -44,6 +45,7 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
+    if (skipNextChangeRef.current) { skipNextChangeRef.current = false; return; }
     setHasChanges(true);
     const filtered = slides.filter(s => s.title.trim() || s.subtitle.trim() || s.description.trim() || s.image);
     if (onPreviewUpdate) onPreviewUpdate({ heroSlides: filtered.length > 0 ? filtered : [], heroShowScrollButtons: showScrollButtons });
@@ -75,7 +77,8 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
       console.error('Failed to load hero settings:', e);
     } finally {
       setLoading(false);
-      setTimeout(() => { hasLoadedRef.current = true; }, 0);
+      skipNextChangeRef.current = true;
+      hasLoadedRef.current = true;
     }
   }
 

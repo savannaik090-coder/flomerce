@@ -37,6 +37,7 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate }) {
   const [hasChanges, setHasChanges] = useState(false);
   const fileInputRefs = useRef({});
   const hasLoadedRef = useRef(false);
+  const skipNextChangeRef = useRef(false);
 
   useEffect(() => {
     if (siteConfig?.id) loadSettings();
@@ -44,6 +45,7 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
+    if (skipNextChangeRef.current) { skipNextChangeRef.current = false; return; }
     setHasChanges(true);
     if (onPreviewUpdate) onPreviewUpdate({ showStoreLocations: showSection, storeLocations: stores.filter(s => s.name || s.address) });
   }, [showSection, stores]);
@@ -77,7 +79,8 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate }) {
       console.error('Failed to load store locations:', e);
     } finally {
       setLoading(false);
-      setTimeout(() => { hasLoadedRef.current = true; }, 0);
+      skipNextChangeRef.current = true;
+      hasLoadedRef.current = true;
     }
   }
 

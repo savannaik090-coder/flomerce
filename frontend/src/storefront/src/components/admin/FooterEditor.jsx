@@ -12,6 +12,7 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
   const [status, setStatus] = useState('');
   const [hasChanges, setHasChanges] = useState(false);
   const hasLoadedRef = useRef(false);
+  const skipNextChangeRef = useRef(false);
 
   const [instagram, setInstagram] = useState('');
   const [facebook, setFacebook] = useState('');
@@ -37,6 +38,7 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
+    if (skipNextChangeRef.current) { skipNextChangeRef.current = false; return; }
     setHasChanges(true);
     const social = { instagram, facebook, twitter, youtube };
     if (onPreviewUpdate) onPreviewUpdate({
@@ -93,7 +95,8 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
       console.error('Failed to load footer config:', e);
     } finally {
       setLoading(false);
-      setTimeout(() => { hasLoadedRef.current = true; }, 0);
+      skipNextChangeRef.current = true;
+      hasLoadedRef.current = true;
     }
   }
 
