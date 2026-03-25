@@ -208,10 +208,16 @@ async function handleSiteInfo(request, env) {
       ).bind(site.id).all();
       const allCats = categories.results || [];
       const parents = allCats.filter(c => !c.parent_id);
-      categoriesResult = parents.map(parent => ({
-        ...parent,
-        children: allCats.filter(c => c.parent_id === parent.id),
-      }));
+      categoriesResult = parents.map(parent => {
+        const directChildren = allCats.filter(c => c.parent_id === parent.id);
+        return {
+          ...parent,
+          children: directChildren.map(child => ({
+            ...child,
+            children: allCats.filter(gc => gc.parent_id === child.id),
+          })),
+        };
+      });
     } catch (catError) {
       console.error('Categories query failed:', catError);
     }
