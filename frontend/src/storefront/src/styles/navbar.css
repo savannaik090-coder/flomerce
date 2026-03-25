@@ -242,6 +242,139 @@
 
 .dropdown:hover .dropdown-toggle i { transform: rotate(180deg); }
 
+.cat-with-subs {
+    position: relative;
+}
+
+.nav-link-row {
+    display: flex;
+    align-items: center;
+    gap: 0;
+}
+
+.nav-link-row .nav-link {
+    padding-right: 2px;
+}
+
+.subcategory-toggle {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 20px 5px;
+    color: #999;
+    font-size: 9px;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    line-height: 1;
+}
+
+.subcategory-toggle:hover {
+    color: #c59d5f;
+}
+
+.cat-with-subs .dropdown-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    min-width: 220px;
+    background: linear-gradient(145deg, #ffffff 0%, #fafafa 100%);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(15px) scale(0.95);
+    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    z-index: 100;
+    list-style-type: none;
+    margin: 0;
+    padding: 15px 0;
+    border-radius: 12px;
+    border: 1px solid rgba(196, 157, 95, 0.15);
+    backdrop-filter: blur(10px);
+}
+
+.cat-with-subs.dropdown-open .dropdown-menu {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0) scale(1);
+}
+
+.cat-with-subs.dropdown-open .subcategory-toggle i {
+    transform: rotate(45deg);
+}
+
+.sub-group {
+    position: relative;
+}
+
+.sub-group-toggle {
+    width: 100%;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 14px 25px;
+    color: #333;
+    font-size: 14px;
+    font-weight: 600;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    text-transform: capitalize;
+    transition: all 0.3s ease;
+    border-radius: 8px;
+    margin: 2px 8px;
+    box-sizing: border-box;
+    width: calc(100% - 16px);
+}
+
+.sub-group-toggle:hover {
+    background: linear-gradient(90deg, rgba(196, 157, 95, 0.08) 0%, rgba(196, 157, 95, 0.03) 100%);
+    color: #c59d5f;
+}
+
+.sub-group-toggle i {
+    font-size: 10px;
+    transition: transform 0.3s ease;
+}
+
+.sub-group-open .sub-group-toggle i {
+    transform: rotate(90deg);
+}
+
+.sub-group-menu {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+}
+
+.sub-group-open .sub-group-menu {
+    max-height: 500px;
+}
+
+.sub-group-menu li { margin: 0; }
+
+.sub-group-menu a {
+    padding: 10px 25px 10px 40px;
+    color: #555;
+    font-size: 13px;
+    font-weight: 400;
+    display: block;
+    text-decoration: none;
+    text-transform: capitalize;
+    transition: all 0.3s ease;
+    border-radius: 6px;
+    margin: 1px 8px;
+}
+
+.sub-group-menu a:hover {
+    background: rgba(196, 157, 95, 0.06);
+    color: #c59d5f;
+    transform: translateX(4px);
+}
+
 .nav-icons {
     display: flex;
     align-items: center;
@@ -519,6 +652,57 @@
         padding-left: 8px;
         transform: none;
         box-shadow: none;
+    }
+    .nav-link-row {
+        display: flex;
+        align-items: center;
+        width: 100%;
+    }
+    .nav-link-row .nav-link {
+        flex: 1;
+        padding-right: 0;
+    }
+    .subcategory-toggle {
+        padding: 15px 20px;
+        font-size: 12px;
+        color: #999;
+    }
+    .cat-with-subs .dropdown-menu {
+        position: static;
+        box-shadow: none;
+        opacity: 0;
+        visibility: hidden;
+        transform: none;
+        display: block;
+        max-height: 0;
+        overflow: hidden;
+        padding: 0 0 0 20px;
+        width: 100%;
+        background: linear-gradient(145deg, #f9f9f9 0%, #f5f5f5 100%);
+        border: none;
+        border-radius: 0 0 8px 8px;
+        margin-top: 0;
+        transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
+    .cat-with-subs.dropdown-open .dropdown-menu {
+        opacity: 1;
+        visibility: visible;
+        max-height: 1200px;
+        padding-top: 5px;
+        padding-bottom: 10px;
+    }
+    .sub-group-toggle {
+        font-size: 13px;
+        padding: 11px 10px;
+        margin: 0;
+        width: 100%;
+        font-weight: 600;
+        color: #444;
+    }
+    .sub-group-menu a {
+        padding: 9px 0 9px 20px;
+        font-size: 13px;
+        margin: 0;
     }
     .mobile-account-links { display: block; }
     .mobile-account-link {

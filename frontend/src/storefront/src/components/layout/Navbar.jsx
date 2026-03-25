@@ -12,6 +12,7 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
   const { wishlistCount } = useWishlist();
   const [menuOpen, setMenuOpen] = useState(false);
   const [openDropdown, setOpenDropdown] = useState(null);
+  const [openSubGroup, setOpenSubGroup] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -54,12 +55,23 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
   function closeMobileMenu() {
     setMenuOpen(false);
     setOpenDropdown(null);
+    setOpenSubGroup(null);
   }
 
   function toggleDropdown(id, e) {
     e.preventDefault();
     e.stopPropagation();
-    setOpenDropdown(prev => prev === id ? null : id);
+    setOpenDropdown(prev => {
+      if (prev === id) return null;
+      setOpenSubGroup(null);
+      return id;
+    });
+  }
+
+  function toggleSubGroup(id, e) {
+    e.preventDefault();
+    e.stopPropagation();
+    setOpenSubGroup(prev => prev === id ? null : id);
   }
 
   return (
@@ -143,20 +155,38 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
                 );
               })}
               {(hasCustomNavbar ? unassignedCategories : categories).map((cat) => {
-                const subCategories = cat.children || cat.subcategories || cat.sub_categories || [];
-                if (subCategories.length > 0) {
+                const allChildren = cat.children || [];
+                const directSubs = allChildren.filter(c => !(c.children && c.children.length > 0));
+                const groups = allChildren.filter(c => c.children && c.children.length > 0);
+                const hasSubs = allChildren.length > 0;
+                if (hasSubs) {
                   return (
-                    <li className={`nav-item dropdown${openDropdown === (cat.id || cat.slug) ? ' active' : ''}`} key={cat.id || cat.slug}>
-                      <span className="nav-link dropdown-toggle" style={{ cursor: 'pointer' }} onClick={(e) => toggleDropdown(cat.id || cat.slug, e)}>
-                        {cat.name} <i className="fas fa-chevron-down"></i>
-                      </span>
+                    <li className={`nav-item cat-with-subs${openDropdown === (cat.id || cat.slug) ? ' dropdown-open' : ''}`} key={cat.id || cat.slug}>
+                      <div className="nav-link-row">
+                        <Link to={`/category/${cat.slug}`} className="nav-link" onClick={closeMobileMenu}>{cat.name}</Link>
+                        <button className="subcategory-toggle" onClick={(e) => toggleDropdown(cat.id || cat.slug, e)} aria-label="Show subcategories">
+                          <i className={`fas fa-plus`}></i>
+                        </button>
+                      </div>
                       <ul className="dropdown-menu">
-                        <li>
-                          <Link to={`/category/${cat.slug}`} onClick={closeMobileMenu}>All {cat.name}</Link>
-                        </li>
-                        {subCategories.map((sub) => (
+                        {directSubs.map((sub) => (
                           <li key={sub.id || sub.slug}>
                             <Link to={`/category/${cat.slug}?subcategory=${sub.id}`} onClick={closeMobileMenu}>{sub.name}</Link>
+                          </li>
+                        ))}
+                        {groups.map((group) => (
+                          <li key={group.id || group.slug} className={`sub-group${openSubGroup === group.id ? ' sub-group-open' : ''}`}>
+                            <button className="sub-group-toggle" onClick={(e) => toggleSubGroup(group.id, e)}>
+                              <span>{group.name}</span>
+                              <i className="fas fa-chevron-right"></i>
+                            </button>
+                            <ul className="sub-group-menu">
+                              {(group.children || []).map(val => (
+                                <li key={val.id || val.slug}>
+                                  <Link to={`/category/${cat.slug}?subcategory=${val.id}`} onClick={closeMobileMenu}>{val.name}</Link>
+                                </li>
+                              ))}
+                            </ul>
                           </li>
                         ))}
                       </ul>

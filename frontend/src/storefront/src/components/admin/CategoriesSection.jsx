@@ -45,6 +45,8 @@ export default function CategoriesSection({ onSaved }) {
   const [newValueName, setNewValueName] = useState('');
   const [addingValueTo, setAddingValueTo] = useState(null);
   const [addingValue, setAddingValue] = useState(false);
+  const [newDirectSubName, setNewDirectSubName] = useState('');
+  const [addingDirectSub, setAddingDirectSub] = useState(false);
 
   const [chooseEnabled, setChooseEnabled] = useState(false);
   const [chooseCats, setChooseCats] = useState({});
@@ -204,6 +206,17 @@ export default function CategoriesSection({ onSaved }) {
       await loadCategories();
     } catch (e) { alert('Failed to add group: ' + e.message); }
     finally { setAddingGroup(false); }
+  }
+
+  async function handleAddDirectSub(categoryId) {
+    if (!newDirectSubName.trim()) return;
+    setAddingDirectSub(true);
+    try {
+      await createCategory({ siteId: siteConfig.id, name: newDirectSubName.trim(), parentId: categoryId, showOnHome: false });
+      setNewDirectSubName('');
+      await loadCategories();
+    } catch (e) { alert('Failed to add subcategory: ' + e.message); }
+    finally { setAddingDirectSub(false); }
   }
 
   async function handleAddValue(groupId) {
@@ -554,36 +567,52 @@ export default function CategoriesSection({ onSaved }) {
 
               {expandedCat === cat.id && (
                 <div style={{ borderTop: '1px solid #f1f5f9', padding: 16, background: '#fafbfc' }}>
-                  <div style={{ fontWeight: 600, fontSize: 13, color: '#475569', marginBottom: 12 }}>Subcategory Groups</div>
+                  <div style={{ fontWeight: 600, fontSize: 13, color: '#475569', marginBottom: 12 }}>Subcategories</div>
                   {(cat.children || []).length === 0 && (
-                    <p style={{ color: '#94a3b8', fontSize: 13, margin: '0 0 12px' }}>No subcategory groups yet. Create one below to organize product variants like Color, Size, etc.</p>
+                    <p style={{ color: '#94a3b8', fontSize: 13, margin: '0 0 12px' }}>No subcategories yet. Add items directly or create a group to organize them.</p>
                   )}
-                  {(cat.children || []).map(group => (
-                    <div key={group.id} style={{ marginBottom: 12, background: '#fff', borderRadius: 8, border: '1px solid #e2e8f0', padding: 12 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                        <div style={{ fontWeight: 600, fontSize: 14, color: '#334155' }}>{group.name}</div>
-                        <div style={{ display: 'flex', gap: 4 }}>
-                          <button onClick={() => { setAddingValueTo(addingValueTo === group.id ? null : group.id); setNewValueName(''); }} style={{ padding: '4px 10px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}>+ Add Value</button>
-                          <button onClick={() => handleDeleteSubItem(group.id)} style={{ padding: '4px 8px', background: 'none', color: '#ef4444', border: '1px solid #fecaca', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}><i className="fas fa-trash" style={{ fontSize: 11 }} /></button>
+
+                  {(cat.children || []).map(child => {
+                    const hasValues = (child.children || []).length > 0;
+                    if (!hasValues) {
+                      return (
+                        <div key={child.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#e0f2fe', border: '1px solid #bae6fd', borderRadius: 20, padding: '4px 10px', fontSize: 13, marginRight: 6, marginBottom: 6 }}>
+                          <span>{child.name}</span>
+                          <button onClick={() => handleDeleteSubItem(child.id)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 14, padding: 0, lineHeight: 1 }} title="Remove">x</button>
                         </div>
-                      </div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                        {(group.children || []).length === 0 && <span style={{ color: '#94a3b8', fontSize: 12 }}>No values yet</span>}
-                        {(group.children || []).map(val => (
-                          <div key={val.id} style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: 20, padding: '4px 10px', fontSize: 13 }}>
-                            <span>{val.name}</span>
-                            <button onClick={() => handleDeleteSubItem(val.id)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 14, padding: 0, lineHeight: 1 }} title="Remove">x</button>
+                      );
+                    }
+                    return (
+                      <div key={child.id} style={{ marginBottom: 12, background: '#fff', borderRadius: 8, border: '1px solid #e2e8f0', padding: 12 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                          <div style={{ fontWeight: 600, fontSize: 14, color: '#334155' }}>{child.name} <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 400 }}>(group)</span></div>
+                          <div style={{ display: 'flex', gap: 4 }}>
+                            <button onClick={() => { setAddingValueTo(addingValueTo === child.id ? null : child.id); setNewValueName(''); }} style={{ padding: '4px 10px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}>+ Add Value</button>
+                            <button onClick={() => handleDeleteSubItem(child.id)} style={{ padding: '4px 8px', background: 'none', color: '#ef4444', border: '1px solid #fecaca', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}><i className="fas fa-trash" style={{ fontSize: 11 }} /></button>
                           </div>
-                        ))}
-                      </div>
-                      {addingValueTo === group.id && (
-                        <div style={{ marginTop: 8, display: 'flex', gap: 6 }}>
-                          <input type="text" value={newValueName} onChange={e => setNewValueName(e.target.value)} placeholder={`Add value to ${group.name}`} onKeyDown={e => { if (e.key === 'Enter') handleAddValue(group.id); }} style={{ flex: 1, padding: '6px 10px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} autoFocus />
-                          <button onClick={() => handleAddValue(group.id)} disabled={addingValue || !newValueName.trim()} style={{ padding: '6px 14px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, cursor: 'pointer', opacity: addingValue || !newValueName.trim() ? 0.5 : 1 }}>{addingValue ? '...' : 'Add'}</button>
                         </div>
-                      )}
-                    </div>
-                  ))}
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                          {(child.children || []).map(val => (
+                            <div key={val.id} style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: 20, padding: '4px 10px', fontSize: 13 }}>
+                              <span>{val.name}</span>
+                              <button onClick={() => handleDeleteSubItem(val.id)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 14, padding: 0, lineHeight: 1 }} title="Remove">x</button>
+                            </div>
+                          ))}
+                        </div>
+                        {addingValueTo === child.id && (
+                          <div style={{ marginTop: 8, display: 'flex', gap: 6 }}>
+                            <input type="text" value={newValueName} onChange={e => setNewValueName(e.target.value)} placeholder={`Add value to ${child.name}`} onKeyDown={e => { if (e.key === 'Enter') handleAddValue(child.id); }} style={{ flex: 1, padding: '6px 10px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} autoFocus />
+                            <button onClick={() => handleAddValue(child.id)} disabled={addingValue || !newValueName.trim()} style={{ padding: '6px 14px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, cursor: 'pointer', opacity: addingValue || !newValueName.trim() ? 0.5 : 1 }}>{addingValue ? '...' : 'Add'}</button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                    <input type="text" value={newDirectSubName} onChange={e => setNewDirectSubName(e.target.value)} placeholder="Add subcategory (e.g. Gold Necklace, Silver Rings)" onKeyDown={e => { if (e.key === 'Enter') handleAddDirectSub(cat.id); }} style={{ flex: 1, padding: '8px 10px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                    <button onClick={() => handleAddDirectSub(cat.id)} disabled={addingDirectSub || !newDirectSubName.trim()} style={{ padding: '6px 14px', background: '#0ea5e9', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, cursor: 'pointer', fontWeight: 600, opacity: addingDirectSub || !newDirectSubName.trim() ? 0.5 : 1 }}>{addingDirectSub ? '...' : 'Add'}</button>
+                  </div>
                   <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
                     <input type="text" value={newGroupName} onChange={e => setNewGroupName(e.target.value)} placeholder="New group name (e.g. Color, Size, Material)" onKeyDown={e => { if (e.key === 'Enter') handleAddGroup(cat.id); }} style={{ flex: 1, padding: '8px 10px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
                     <button onClick={() => handleAddGroup(cat.id)} disabled={addingGroup || !newGroupName.trim()} className="btn btn-primary btn-sm" style={{ opacity: addingGroup || !newGroupName.trim() ? 0.5 : 1 }}>{addingGroup ? '...' : 'Add Group'}</button>
