@@ -79,11 +79,38 @@ export default function Footer() {
                   </button>
                   <div className={`footer-content${openSections[catKey] ? ' show' : ''}`}>
                     <ul style={{ paddingLeft: 8 }}>
-                      {subs.map(sub => (
-                        <li key={sub.id || sub.slug}>
-                          <Link to={`/category/${cat.slug}?subcategory=${sub.id}`}>{sub.name}</Link>
-                        </li>
-                      ))}
+                      {subs.map(sub => {
+                        const values = sub.children || [];
+                        if (values.length === 0) {
+                          return (
+                            <li key={sub.id || sub.slug}>
+                              <Link to={`/category/${cat.slug}?subcategory=${sub.id}`}>{sub.name}</Link>
+                            </li>
+                          );
+                        }
+                        const subKey = `sub-${cat.id || cat.slug}-${sub.id || sub.slug}`;
+                        return (
+                          <li key={sub.id || sub.slug} style={{ listStyle: 'none' }}>
+                            <button
+                              className="footer-toggle"
+                              onClick={() => toggleSection(subKey)}
+                              style={{ padding: '3px 0', fontSize: 12 }}
+                            >
+                              <span style={{ fontWeight: 400, color: '#c0c0c0' }}>{sub.name}</span>
+                              <i className={`fas fa-chevron-down`} style={{ fontSize: 9, ...(openSections[subKey] ? { transform: 'rotate(180deg)' } : {}) }}></i>
+                            </button>
+                            <div className={`footer-content${openSections[subKey] ? ' show' : ''}`}>
+                              <ul style={{ paddingLeft: 8 }}>
+                                {values.map(val => (
+                                  <li key={val.id || val.slug}>
+                                    <Link to={`/category/${cat.slug}?subcategory=${val.id}`}>{val.name}</Link>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          </li>
+                        );
+                      })}
                     </ul>
                   </div>
                 </div>
