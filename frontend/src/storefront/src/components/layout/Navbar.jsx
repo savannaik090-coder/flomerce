@@ -143,7 +143,7 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
                 );
               })}
               {(hasCustomNavbar ? unassignedCategories : categories).map((cat) => {
-                const subCategories = cat.subcategories || cat.sub_categories || [];
+                const subCategories = cat.children || cat.subcategories || cat.sub_categories || [];
                 if (subCategories.length > 0) {
                   return (
                     <li className={`nav-item dropdown${openDropdown === (cat.id || cat.slug) ? ' active' : ''}`} key={cat.id || cat.slug}>
@@ -151,9 +151,12 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
                         {cat.name} <i className="fas fa-chevron-down"></i>
                       </span>
                       <ul className="dropdown-menu">
+                        <li>
+                          <Link to={`/category/${cat.slug}`} onClick={closeMobileMenu}>All {cat.name}</Link>
+                        </li>
                         {subCategories.map((sub) => (
                           <li key={sub.id || sub.slug}>
-                            <Link to={`/category/${sub.slug}`} onClick={closeMobileMenu}>{sub.name}</Link>
+                            <Link to={`/category/${cat.slug}?subcategory=${sub.id}`} onClick={closeMobileMenu}>{sub.name}</Link>
                           </li>
                         ))}
                       </ul>

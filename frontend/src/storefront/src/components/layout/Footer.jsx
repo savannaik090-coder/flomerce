@@ -51,41 +51,46 @@ export default function Footer() {
           </div>
         </div>
 
-        {categories.some(cat => (cat.children || []).length > 0) ? (
-          <div className="footer-section">
-            <button className="footer-toggle" onClick={() => toggleSection('categories')}>
-              <span className="footer-title">Categories</span>
-              <i className={`fas fa-chevron-down`} style={openSections.categories ? { transform: 'rotate(180deg)' } : {}}></i>
-            </button>
-            <div className={`footer-content${openSections.categories ? ' show' : ''}`}>
-              <ul>
-                {categories.flatMap(cat =>
-                  (cat.children || []).map(sub => (
-                    <li key={sub.id || sub.slug}>
-                      <Link to={`/category/${cat.slug}?subcategory=${sub.id}`}>{sub.name}</Link>
-                    </li>
-                  ))
-                )}
-              </ul>
-            </div>
+        <div className="footer-section">
+          <button className="footer-toggle" onClick={() => toggleSection('categories')}>
+            <span className="footer-title">Categories</span>
+            <i className={`fas fa-chevron-down`} style={openSections.categories ? { transform: 'rotate(180deg)' } : {}}></i>
+          </button>
+          <div className={`footer-content${openSections.categories ? ' show' : ''}`}>
+            {categories.map((cat) => {
+              const subs = cat.children || [];
+              if (subs.length === 0) {
+                return (
+                  <ul key={cat.id || cat.slug}>
+                    <li><Link to={`/category/${cat.slug}`}>{cat.name}</Link></li>
+                  </ul>
+                );
+              }
+              const catKey = `cat-${cat.id || cat.slug}`;
+              return (
+                <div key={cat.id || cat.slug} style={{ marginBottom: 8 }}>
+                  <button
+                    className="footer-toggle"
+                    onClick={() => toggleSection(catKey)}
+                    style={{ padding: '4px 0', fontSize: 13 }}
+                  >
+                    <span style={{ fontWeight: 500, color: '#e0e0e0' }}>{cat.name}</span>
+                    <i className={`fas fa-chevron-down`} style={{ fontSize: 10, ...(openSections[catKey] ? { transform: 'rotate(180deg)' } : {}) }}></i>
+                  </button>
+                  <div className={`footer-content${openSections[catKey] ? ' show' : ''}`}>
+                    <ul style={{ paddingLeft: 8 }}>
+                      {subs.map(sub => (
+                        <li key={sub.id || sub.slug}>
+                          <Link to={`/category/${cat.slug}?subcategory=${sub.id}`}>{sub.name}</Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        ) : (
-          <div className="footer-section">
-            <button className="footer-toggle" onClick={() => toggleSection('categories')}>
-              <span className="footer-title">Categories</span>
-              <i className={`fas fa-chevron-down`} style={openSections.categories ? { transform: 'rotate(180deg)' } : {}}></i>
-            </button>
-            <div className={`footer-content${openSections.categories ? ' show' : ''}`}>
-              <ul>
-                {categories.map((cat) => (
-                  <li key={cat.id || cat.slug}>
-                    <Link to={`/category/${cat.slug}`}>{cat.name}</Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        )}
+        </div>
 
         <div className="footer-section">
           <button className="footer-toggle" onClick={() => toggleSection('collection')}>
