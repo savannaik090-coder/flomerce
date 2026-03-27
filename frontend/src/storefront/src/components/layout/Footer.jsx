@@ -77,7 +77,7 @@ export default function Footer() {
                     onClick={() => toggleSection(catKey)}
                     style={{ padding: '4px 0', fontSize: 13 }}
                   >
-                    <span style={{ fontWeight: 500, color: '#e0e0e0' }}>{cat.name}</span>
+                    <span>{cat.name}</span>
                     <i className={`fas fa-chevron-down`} style={{ fontSize: 10, ...(openSections[catKey] ? { transform: 'rotate(180deg)' } : {}) }}></i>
                   </button>
                   <div className={`footer-content${openSections[catKey] ? ' show' : ''}`}>
@@ -96,7 +96,7 @@ export default function Footer() {
                               onClick={() => toggleSection(groupKey)}
                               style={{ padding: '3px 0', fontSize: 12 }}
                             >
-                              <span style={{ fontWeight: 400, color: '#c0c0c0' }}>{group.name}</span>
+                              <span>{group.name}</span>
                               <i className={`fas fa-chevron-down`} style={{ fontSize: 9, ...(openSections[groupKey] ? { transform: 'rotate(180deg)' } : {}) }}></i>
                             </button>
                             <div className={`footer-content${openSections[groupKey] ? ' show' : ''}`}>
