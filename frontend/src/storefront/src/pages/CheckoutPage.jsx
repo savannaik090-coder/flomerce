@@ -191,10 +191,38 @@ export default function CheckoutPage() {
     setCouponError('');
   }, []);
 
+  const validateCartStock = useCallback(async () => {
+    if (!siteConfig?.id || items.length === 0) return true;
+    try {
+      const { apiRequest } = await import('../services/api.js');
+      await apiRequest(`/api/orders/validate-stock`, {
+        method: 'POST',
+        body: JSON.stringify({
+          siteId: siteConfig.id,
+          items: items.map(item => ({
+            productId: item.productId || item.product_id || item.id,
+            name: item.name || item.product_name,
+            quantity: item.quantity || 1,
+          })),
+        }),
+      });
+      return true;
+    } catch (err) {
+      setError(err.message || 'Some items in your cart are no longer available. Please update your cart and try again.');
+      return false;
+    }
+  }, [siteConfig, items]);
+
   const goToStep = useCallback(async (s) => {
     if (s === 2 && items.length === 0) {
       setError('Your cart is empty');
       return;
+    }
+    if (s === 2) {
+      setLoading(true);
+      const stockValid = await validateCartStock();
+      setLoading(false);
+      if (!stockValid) return;
     }
     if (s === 3) {
       if (!validateAddress()) return;
@@ -220,7 +248,7 @@ export default function CheckoutPage() {
     setError('');
     setStep(s);
     window.scrollTo(0, 0);
-  }, [items, validateAddress, isAuthenticated, saveAddress, selectedAddressId, savedAddresses, address]);
+  }, [items, validateAddress, validateCartStock, isAuthenticated, saveAddress, selectedAddressId, savedAddresses, address]);
 
   const placeOrder = useCallback(async () => {
     setLoading(true);
@@ -228,6 +256,12 @@ export default function CheckoutPage() {
 
     if (!siteConfig?.id) {
       setError('Store configuration not loaded. Please refresh the page and try again.');
+      setLoading(false);
+      return;
+    }
+
+    const stockValid = await validateCartStock();
+    if (!stockValid) {
       setLoading(false);
       return;
     }
@@ -378,7 +412,7 @@ export default function CheckoutPage() {
       setError(err.message || 'Failed to place order. Please try again.');
     }
     setLoading(false);
-  }, [siteConfig, items, subtotal, address, paymentMethod, clearAll]);
+  }, [siteConfig, items, subtotal, address, paymentMethod, clearAll, validateCartStock]);
 
   if (orderPlaced) {
     const od = placedOrderDetails;

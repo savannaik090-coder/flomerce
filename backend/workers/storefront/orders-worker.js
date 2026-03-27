@@ -30,6 +30,10 @@ export async function handleOrders(request, env, path, ctx) {
     return handleCancellationUpdate(request, env, action);
   }
 
+  if (orderId === 'validate-stock' && method === 'POST') {
+    return validateStock(request, env);
+  }
+
   if (action === 'guest') {
     return handleGuestOrder(request, env, method, orderId, ctx);
   }
@@ -83,6 +87,51 @@ export async function handleOrders(request, env, path, ctx) {
       return updateOrderStatus(request, env, user, orderId);
     default:
       return errorResponse('Method not allowed', 405);
+  }
+}
+
+async function validateStock(request, env) {
+  try {
+    const { siteId, items } = await request.json();
+    if (!siteId || !items || !items.length) {
+      return errorResponse('siteId and items are required', 400);
+    }
+
+    const db = await resolveSiteDBById(env, siteId);
+    const outOfStockItems = [];
+
+    for (const item of items) {
+      const productId = item.productId || item.product_id || item.id;
+      if (!productId) continue;
+
+      const product = await db.prepare(
+        'SELECT id, name, stock FROM products WHERE id = ? AND site_id = ?'
+      ).bind(productId, siteId).first();
+
+      if (!product) {
+        outOfStockItems.push({ productId, name: item.name || 'Unknown product', reason: 'not_found' });
+        continue;
+      }
+
+      if (product.stock !== null && product.stock <= 0) {
+        outOfStockItems.push({ productId, name: product.name, reason: 'out_of_stock', available: 0 });
+      } else if (product.stock !== null && product.stock < (item.quantity || 1)) {
+        outOfStockItems.push({ productId, name: product.name, reason: 'insufficient_stock', available: product.stock, requested: item.quantity || 1 });
+      }
+    }
+
+    if (outOfStockItems.length > 0) {
+      const names = outOfStockItems.map(i => {
+        if (i.reason === 'out_of_stock' || i.reason === 'not_found') return `${i.name} is out of stock`;
+        return `${i.name} — only ${i.available} left (you requested ${i.requested})`;
+      });
+      return jsonResponse({ success: false, error: names.join('; '), code: 'STOCK_VALIDATION_FAILED', outOfStockItems }, 400);
+    }
+
+    return successResponse({ valid: true }, 'All items are in stock');
+  } catch (error) {
+    console.error('Validate stock error:', error);
+    return errorResponse('Failed to validate stock', 500);
   }
 }
 
