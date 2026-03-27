@@ -477,7 +477,7 @@ async function updateProduct(request, env, user, productId, ctx) {
           ctx.waitUntil(
             triggerAutoNotification(env, resolvedSiteId, 'priceDrop', {
               title: 'Price Drop!',
-              body: `Great news! ${prodName} just got a price drop. Grab it before the offer ends!`,
+              body: `Great news! ${prodName} just got a price drop. Don't miss out!`,
               icon: prodThumb,
               data: { url: prodLink },
             }).catch(err => console.error('[Notifications] priceDrop auto-trigger failed:', err))
