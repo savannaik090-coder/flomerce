@@ -35,8 +35,8 @@ export default function InventorySection() {
   }
 
   const outOfStock = products.filter(p => (parseInt(p.stock) || 0) === 0);
-  const lowStock = products.filter(p => { const s = parseInt(p.stock) || 0; return s > 0 && s <= 5; });
-  const inStock = products.filter(p => (parseInt(p.stock) || 0) > 5);
+  const lowStock = products.filter(p => { const s = parseInt(p.stock) || 0; return s > 0 && s <= 3; });
+  const inStock = products.filter(p => (parseInt(p.stock) || 0) > 3);
 
   const displayed = activeTab === 'out' ? outOfStock : activeTab === 'low' ? lowStock : activeTab === 'in' ? inStock : products;
 
@@ -97,8 +97,8 @@ export default function InventorySection() {
                         <td>{stock}</td>
                         <td>
                           {stock === 0 && <span className="status-badge status-cancelled">Out of Stock</span>}
-                          {stock > 0 && stock <= 5 && <span className="status-badge status-new">Low Stock</span>}
-                          {stock > 5 && <span className="status-badge status-confirmed">In Stock</span>}
+                          {stock > 0 && stock <= 3 && <span className="status-badge status-new">Low Stock</span>}
+                          {stock > 3 && <span className="status-badge status-confirmed">In Stock</span>}
                         </td>
                         <td>
                           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>

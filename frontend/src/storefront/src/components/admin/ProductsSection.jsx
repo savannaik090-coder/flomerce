@@ -113,7 +113,7 @@ export default function ProductsSection({ onEditProduct, onAddProduct }) {
                   <div className="product-stock">
                     Stock: {product.stock ?? 0}
                     {(product.stock ?? 0) === 0 && <span style={{ color: '#dc2626', marginLeft: 8 }}>Out of Stock</span>}
-                    {(product.stock ?? 0) > 0 && (product.stock ?? 0) <= 5 && <span style={{ color: '#f59e0b', marginLeft: 8 }}>Low Stock</span>}
+                    {(product.stock ?? 0) > 0 && (product.stock ?? 0) <= 3 && <span style={{ color: '#f59e0b', marginLeft: 8 }}>Low Stock</span>}
                   </div>
                 </div>
                 <div className="product-actions">
