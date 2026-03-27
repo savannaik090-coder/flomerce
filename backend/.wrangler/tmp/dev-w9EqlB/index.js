@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-LkBmni/checked-fetch.js
+// .wrangler/tmp/bundle-dtaags/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-LkBmni/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-dtaags/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-LkBmni/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-dtaags/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-LkBmni/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-dtaags/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -2133,12 +2133,12 @@ var init_site_admin_worker = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-LkBmni/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-dtaags/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-LkBmni/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-dtaags/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -5586,7 +5586,7 @@ async function updateProduct(request, env, user, productId, ctx2) {
     const needsOldData = updates.price !== void 0 || updates.stock !== void 0;
     if (needsOldData) {
       try {
-        oldProductData = await db.prepare("SELECT name, price, stock, thumbnail_url FROM products WHERE id = ?").bind(productId).first();
+        oldProductData = await db.prepare("SELECT name, price, stock, thumbnail_url, low_stock_threshold FROM products WHERE id = ?").bind(productId).first();
       } catch (e) {
       }
     }
@@ -5671,6 +5671,23 @@ async function updateProduct(request, env, user, productId, ctx2) {
           );
         }
       }
+      if (updates.stock !== void 0) {
+        const oldStk = oldProductData.stock;
+        const newStk = updatedProdRow.stock;
+        if (newStk > 0 && newStk <= 3 && (oldStk === null || oldStk > 3)) {
+          if (ctx2) {
+            ctx2.waitUntil(
+              triggerAutoNotification(env, resolvedSiteId, "lowStock", {
+                title: "Selling Out Fast!",
+                body: `Only ${newStk} left in stock for ${prodName}. Hurry up!`,
+                icon: "/icon-192.png",
+                image: prodThumb !== "/icon-192.png" ? prodThumb : null,
+                data: { url: prodLink }
+              }).catch((err) => console.error("[Notifications] lowStock auto-trigger failed:", err))
+            );
+          }
+        }
+      }
     }
     return successResponse(null, "Product updated successfully");
   } catch (error) {
@@ -5750,8 +5767,7 @@ async function updateProductStock(env, productId, quantity, operation = "decreme
       const newBytes = estimateRowBytes(updatedRow);
       await db.prepare("UPDATE products SET row_size_bytes = ? WHERE id = ?").bind(newBytes, productId).run();
       await trackD1Update(env, siteId, oldBytes, newBytes);
-      const threshold = updatedRow.low_stock_threshold || 3;
-      if (operation === "decrement" && updatedRow.stock > 0 && updatedRow.stock <= threshold && (oldStock === null || oldStock > threshold)) {
+      if (operation === "decrement" && updatedRow.stock > 0 && updatedRow.stock <= 3 && (oldStock === null || oldStock > 3)) {
         const prodThumb = updatedRow.thumbnail_url || null;
         const notifPromise = triggerAutoNotification(env, siteId, "lowStock", {
           title: "Selling Out Fast!",
@@ -14508,7 +14524,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-LkBmni/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-dtaags/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -14543,7 +14559,7 @@ function __facade_invoke__(request, env, ctx2, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-LkBmni/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-dtaags/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

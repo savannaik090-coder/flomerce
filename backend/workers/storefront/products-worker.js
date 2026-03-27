@@ -406,7 +406,7 @@ async function updateProduct(request, env, user, productId, ctx) {
     const needsOldData = updates.price !== undefined || updates.stock !== undefined;
     if (needsOldData) {
       try {
-        oldProductData = await db.prepare('SELECT name, price, stock, thumbnail_url FROM products WHERE id = ?').bind(productId).first();
+        oldProductData = await db.prepare('SELECT name, price, stock, thumbnail_url, low_stock_threshold FROM products WHERE id = ?').bind(productId).first();
       } catch (e) {}
     }
     
@@ -498,6 +498,24 @@ async function updateProduct(request, env, user, productId, ctx) {
               data: { url: prodLink },
             }).catch(err => console.error('[Notifications] backInStock auto-trigger failed:', err))
           );
+        }
+      }
+
+      if (updates.stock !== undefined) {
+        const oldStk = oldProductData.stock;
+        const newStk = updatedProdRow.stock;
+        if (newStk > 0 && newStk <= 3 && (oldStk === null || oldStk > 3)) {
+          if (ctx) {
+            ctx.waitUntil(
+              triggerAutoNotification(env, resolvedSiteId, 'lowStock', {
+                title: 'Selling Out Fast!',
+                body: `Only ${newStk} left in stock for ${prodName}. Hurry up!`,
+                icon: '/icon-192.png',
+                image: prodThumb !== '/icon-192.png' ? prodThumb : null,
+                data: { url: prodLink },
+              }).catch(err => console.error('[Notifications] lowStock auto-trigger failed:', err))
+            );
+          }
         }
       }
     }
@@ -594,8 +612,7 @@ export async function updateProductStock(env, productId, quantity, operation = '
       await db.prepare('UPDATE products SET row_size_bytes = ? WHERE id = ?').bind(newBytes, productId).run();
       await trackD1Update(env, siteId, oldBytes, newBytes);
 
-      const threshold = updatedRow.low_stock_threshold || 3;
-      if (operation === 'decrement' && updatedRow.stock > 0 && updatedRow.stock <= threshold && (oldStock === null || oldStock > threshold)) {
+      if (operation === 'decrement' && updatedRow.stock > 0 && updatedRow.stock <= 3 && (oldStock === null || oldStock > 3)) {
         const prodThumb = updatedRow.thumbnail_url || null;
         const notifPromise = triggerAutoNotification(env, siteId, 'lowStock', {
           title: 'Selling Out Fast!',
