@@ -566,7 +566,7 @@ async function deleteProduct(env, user, productId) {
   }
 }
 
-export async function updateProductStock(env, productId, quantity, operation = 'decrement', siteId = null) {
+export async function updateProductStock(env, productId, quantity, operation = 'decrement', siteId = null, ctx = null) {
   try {
     if (siteId && await checkMigrationLock(env, siteId)) {
       console.error('Stock update blocked: site migration in progress');
@@ -574,8 +574,9 @@ export async function updateProductStock(env, productId, quantity, operation = '
     }
 
     const db = await resolveSiteDBById(env, siteId);
-    const oldRow = await db.prepare('SELECT row_size_bytes FROM products WHERE id = ?').bind(productId).first();
+    const oldRow = await db.prepare('SELECT row_size_bytes, stock FROM products WHERE id = ?').bind(productId).first();
     const oldBytes = oldRow?.row_size_bytes || 0;
+    const oldStock = oldRow?.stock ?? null;
 
     if (operation === 'decrement') {
       await db.prepare(
@@ -592,6 +593,21 @@ export async function updateProductStock(env, productId, quantity, operation = '
       const newBytes = estimateRowBytes(updatedRow);
       await db.prepare('UPDATE products SET row_size_bytes = ? WHERE id = ?').bind(newBytes, productId).run();
       await trackD1Update(env, siteId, oldBytes, newBytes);
+
+      if (operation === 'decrement' && updatedRow.stock > 0 && updatedRow.stock <= 3 && (oldStock === null || oldStock > 3)) {
+        const prodThumb = updatedRow.thumbnail_url || null;
+        const notifPromise = triggerAutoNotification(env, siteId, 'lowStock', {
+          title: 'Selling Out Fast!',
+          body: `Only ${updatedRow.stock} left in stock for ${updatedRow.name}. Hurry up!`,
+          icon: '/icon-192.png',
+          image: prodThumb,
+          data: { url: `/product/${productId}` },
+        }).catch(err => console.error('[Notifications] lowStock auto-trigger failed:', err));
+
+        if (ctx) {
+          ctx.waitUntil(notifPromise);
+        }
+      }
     }
 
     return true;

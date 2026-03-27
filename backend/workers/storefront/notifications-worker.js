@@ -294,7 +294,7 @@ async function handleGetSettings(request, env) {
 async function handleSaveSettings(request, env) {
   try {
     const body = await request.json();
-    const { siteId, newProducts, priceDrops, backInStock } = body;
+    const { siteId, newProducts, priceDrops, backInStock, lowStock } = body;
     if (!siteId) return errorResponse('siteId is required', 400);
 
     const admin = await validateSiteAdmin(request, env, siteId);
@@ -312,7 +312,7 @@ async function handleSaveSettings(request, env) {
       if (config?.settings) settings = JSON.parse(config.settings);
     } catch (e) {}
 
-    settings.pushNotifications = { newProducts: !!newProducts, priceDrops: !!priceDrops, backInStock: !!backInStock };
+    settings.pushNotifications = { newProducts: !!newProducts, priceDrops: !!priceDrops, backInStock: !!backInStock, lowStock: lowStock !== undefined ? !!lowStock : true };
 
     await db.prepare(
       `INSERT INTO site_config (site_id, settings) VALUES (?, ?)
@@ -340,9 +340,9 @@ export async function triggerAutoNotification(env, siteId, type, payload) {
       if (config?.settings) settings = JSON.parse(config.settings);
     } catch (e) {}
 
-    const notifSettings = settings.pushNotifications || { newProducts: true, priceDrops: true, backInStock: true };
+    const notifSettings = settings.pushNotifications || { newProducts: true, priceDrops: true, backInStock: true, lowStock: true };
 
-    const enabledMap = { newProduct: notifSettings.newProducts, priceDrop: notifSettings.priceDrops, backInStock: notifSettings.backInStock };
+    const enabledMap = { newProduct: notifSettings.newProducts, priceDrop: notifSettings.priceDrops, backInStock: notifSettings.backInStock, lowStock: notifSettings.lowStock !== false };
     if (!enabledMap[type]) return;
 
     const site = await env.DB.prepare('SELECT subdomain, custom_domain FROM sites WHERE id = ?').bind(siteId).first();

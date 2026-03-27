@@ -387,7 +387,7 @@ async function processPostPaymentActions(env, order, ctx) {
   try {
     const orderItems = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
     for (const item of orderItems) {
-      await updateProductStock(env, item.productId, item.quantity, 'decrement', order.site_id);
+      await updateProductStock(env, item.productId, item.quantity, 'decrement', order.site_id, ctx);
     }
   } catch (stockErr) {
     console.error('Failed to decrement stock after payment:', stockErr);

@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-c5SvjG/checked-fetch.js
+// .wrangler/tmp/bundle-2VoOje/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-c5SvjG/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-2VoOje/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-c5SvjG/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-2VoOje/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-c5SvjG/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-2VoOje/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -2133,12 +2133,12 @@ var init_site_admin_worker = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-c5SvjG/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-2VoOje/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-c5SvjG/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-2VoOje/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -5127,7 +5127,7 @@ __name(handleGetSettings, "handleGetSettings");
 async function handleSaveSettings(request, env) {
   try {
     const body = await request.json();
-    const { siteId, newProducts, priceDrops, backInStock } = body;
+    const { siteId, newProducts, priceDrops, backInStock, lowStock } = body;
     if (!siteId)
       return errorResponse("siteId is required", 400);
     const admin = await validateSiteAdmin(request, env, siteId);
@@ -5145,7 +5145,7 @@ async function handleSaveSettings(request, env) {
         settings = JSON.parse(config.settings);
     } catch (e) {
     }
-    settings.pushNotifications = { newProducts: !!newProducts, priceDrops: !!priceDrops, backInStock: !!backInStock };
+    settings.pushNotifications = { newProducts: !!newProducts, priceDrops: !!priceDrops, backInStock: !!backInStock, lowStock: lowStock !== void 0 ? !!lowStock : true };
     await db.prepare(
       `INSERT INTO site_config (site_id, settings) VALUES (?, ?)
        ON CONFLICT(site_id) DO UPDATE SET settings = excluded.settings`
@@ -5182,8 +5182,8 @@ async function triggerAutoNotification(env, siteId, type, payload) {
         settings = JSON.parse(config.settings);
     } catch (e) {
     }
-    const notifSettings = settings.pushNotifications || { newProducts: true, priceDrops: true, backInStock: true };
-    const enabledMap = { newProduct: notifSettings.newProducts, priceDrop: notifSettings.priceDrops, backInStock: notifSettings.backInStock };
+    const notifSettings = settings.pushNotifications || { newProducts: true, priceDrops: true, backInStock: true, lowStock: true };
+    const enabledMap = { newProduct: notifSettings.newProducts, priceDrop: notifSettings.priceDrops, backInStock: notifSettings.backInStock, lowStock: notifSettings.lowStock !== false };
     if (!enabledMap[type])
       return;
     const site = await env.DB.prepare("SELECT subdomain, custom_domain FROM sites WHERE id = ?").bind(siteId).first();
@@ -5726,15 +5726,16 @@ async function deleteProduct(env, user, productId) {
   }
 }
 __name(deleteProduct, "deleteProduct");
-async function updateProductStock(env, productId, quantity, operation = "decrement", siteId = null) {
+async function updateProductStock(env, productId, quantity, operation = "decrement", siteId = null, ctx2 = null) {
   try {
     if (siteId && await checkMigrationLock(env, siteId)) {
       console.error("Stock update blocked: site migration in progress");
       return false;
     }
     const db = await resolveSiteDBById(env, siteId);
-    const oldRow = await db.prepare("SELECT row_size_bytes FROM products WHERE id = ?").bind(productId).first();
+    const oldRow = await db.prepare("SELECT row_size_bytes, stock FROM products WHERE id = ?").bind(productId).first();
     const oldBytes = oldRow?.row_size_bytes || 0;
+    const oldStock = oldRow?.stock ?? null;
     if (operation === "decrement") {
       await db.prepare(
         'UPDATE products SET stock = stock - ?, updated_at = datetime("now") WHERE id = ? AND stock >= ?'
@@ -5749,6 +5750,19 @@ async function updateProductStock(env, productId, quantity, operation = "decreme
       const newBytes = estimateRowBytes(updatedRow);
       await db.prepare("UPDATE products SET row_size_bytes = ? WHERE id = ?").bind(newBytes, productId).run();
       await trackD1Update(env, siteId, oldBytes, newBytes);
+      if (operation === "decrement" && updatedRow.stock > 0 && updatedRow.stock <= 3 && (oldStock === null || oldStock > 3)) {
+        const prodThumb = updatedRow.thumbnail_url || null;
+        const notifPromise = triggerAutoNotification(env, siteId, "lowStock", {
+          title: "Selling Out Fast!",
+          body: `Only ${updatedRow.stock} left in stock for ${updatedRow.name}. Hurry up!`,
+          icon: "/icon-192.png",
+          image: prodThumb,
+          data: { url: `/product/${productId}` }
+        }).catch((err) => console.error("[Notifications] lowStock auto-trigger failed:", err));
+        if (ctx2) {
+          ctx2.waitUntil(notifPromise);
+        }
+      }
     }
     return true;
   } catch (error) {
@@ -8455,7 +8469,7 @@ async function processPostPaymentActions(env, order, ctx2) {
   try {
     const orderItems = typeof order.items === "string" ? JSON.parse(order.items) : order.items;
     for (const item of orderItems) {
-      await updateProductStock(env, item.productId, item.quantity, "decrement", order.site_id);
+      await updateProductStock(env, item.productId, item.quantity, "decrement", order.site_id, ctx2);
     }
   } catch (stockErr) {
     console.error("Failed to decrement stock after payment:", stockErr);
@@ -14493,7 +14507,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-c5SvjG/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-2VoOje/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -14528,7 +14542,7 @@ function __facade_invoke__(request, env, ctx2, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-c5SvjG/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-2VoOje/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

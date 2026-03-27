@@ -29,6 +29,7 @@ export default function PushNotificationsSection() {
     newProducts: true,
     priceDrops: true,
     backInStock: true,
+    lowStock: true,
   });
 
   useEffect(() => {
@@ -427,6 +428,7 @@ export default function PushNotificationsSection() {
               { key: 'newProducts', icon: 'fa-box', label: 'New Products', desc: 'Notify subscribers when you add new products' },
               { key: 'priceDrops', icon: 'fa-tag', label: 'Price Drops', desc: 'Alert customers when prices are reduced' },
               { key: 'backInStock', icon: 'fa-redo', label: 'Back in Stock', desc: 'Notify when out-of-stock items return' },
+              { key: 'lowStock', icon: 'fa-exclamation-triangle', label: 'Low Stock Alert', desc: 'Alert customers when only 3 or fewer items remain' },
             ].map(item => (
               <div key={item.key} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '16px 0', borderBottom: '1px solid #f1f5f9' }}>
                 <div style={{ display: 'flex', gap: 12 }}>
