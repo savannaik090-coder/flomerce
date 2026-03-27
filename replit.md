@@ -42,7 +42,7 @@ Fluxe employs a shared shard-based D1 database architecture where multiple sites
 - **Authentication:** Custom JWT for platform users, verification-code for site admins, and custom customer auth for storefronts, supporting Google Sign-In. All customer-related data is stored in shard DBs.
 - **UI/UX:** Templates with extensive admin customization.
 - **SEO:** Dual-layer architecture with server-side rendering and client-side management. SEO data is primarily sourced from shard DBs.
-- **Push Notifications:** Full Web Push Protocol (VAPID) implementation using Cloudflare Workers' Web Crypto API, with service worker for client-side handling and admin panel for management and auto-triggers (new product, price drop).
+- **Push Notifications:** Full Web Push Protocol (VAPID) implementation using Cloudflare Workers' Web Crypto API, with service worker for client-side handling and admin panel for management and auto-triggers (new product, price drop, back in stock). Auto notifications use `ctx.waitUntil()` in Cloudflare Workers to ensure delivery completes after the API response is returned.
 - **Store Logo:** Uploaded during site creation (base64 → R2) or via Admin Panel > Edit Website > Navbar tab. Stored as `logo_url` in `site_config`. Navbar renders the logo image when available, falling back to brand name text. Logo size is configurable via a slider (20–80px, default 44px) and position can be set to left or center, both controlled from the Navbar tab in the admin panel. Settings stored as `logoSize` and `logoPosition` in the `settings` JSON column. On mobile (≤991px), centered logos revert to default left-aligned position. Live preview updates are supported via the postMessage system.
 
 ### Key Features

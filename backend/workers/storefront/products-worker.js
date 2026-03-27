@@ -5,7 +5,7 @@ import { checkUsageLimit, estimateRowBytes, trackD1Write, trackD1Delete, trackD1
 import { resolveSiteDBById, resolveSiteDBBySubdomain, checkMigrationLock, ensureProductOptionsColumn, ensureProductSubcategoryColumn } from '../../utils/site-db.js';
 import { triggerAutoNotification } from './notifications-worker.js';
 
-export async function handleProducts(request, env, path) {
+export async function handleProducts(request, env, path, ctx) {
   const corsResponse = handleCORS(request);
   if (corsResponse) return corsResponse;
 
@@ -79,10 +79,10 @@ export async function handleProducts(request, env, path) {
   switch (method) {
     case 'POST':
       if (adminPerms && !hasPermission(adminPerms, 'products')) return errorResponse('You do not have permission to manage products', 403);
-      return createProduct(request, env, user);
+      return createProduct(request, env, user, ctx);
     case 'PUT':
       if (adminPerms && !hasPermission(adminPerms, 'products')) return errorResponse('You do not have permission to manage products', 403);
-      return updateProduct(request, env, user, productId);
+      return updateProduct(request, env, user, productId, ctx);
     case 'DELETE':
       if (adminPerms && !hasPermission(adminPerms, 'products')) return errorResponse('You do not have permission to manage products', 403);
       return deleteProduct(env, user, productId);
@@ -238,7 +238,7 @@ async function getProduct(env, productId, siteId, subdomain) {
   }
 }
 
-async function createProduct(request, env, user) {
+async function createProduct(request, env, user, ctx) {
   try {
     const data = await request.json();
     const { siteId, name, description, shortDescription, price, comparePrice, costPrice, sku, stock, categoryId, subcategoryId, images, thumbnailUrl, mainImageIndex, tags, isFeatured, weight, dimensions, options } = data;
@@ -333,12 +333,16 @@ async function createProduct(request, env, user) {
 
     await trackD1Write(env, siteId, rowBytes);
 
-    triggerAutoNotification(env, siteId, 'newProduct', {
-      title: 'New Arrival!',
-      body: `Check out our new product: ${sanitizeInput(name)}`,
-      icon: resolvedThumbnail || '/icon-192.png',
-      data: { url: `/product/${productId}` },
-    }).catch(() => {});
+    if (ctx) {
+      ctx.waitUntil(
+        triggerAutoNotification(env, siteId, 'newProduct', {
+          title: 'New Arrival!',
+          body: `Check out our new product: ${sanitizeInput(name)}`,
+          icon: resolvedThumbnail || '/icon-192.png',
+          data: { url: `/product/${productId}` },
+        }).catch(err => console.error('[Notifications] newProduct auto-trigger failed:', err))
+      );
+    }
 
     return successResponse({ id: productId, slug }, 'Product created successfully');
   } catch (error) {
@@ -350,7 +354,7 @@ async function createProduct(request, env, user) {
   }
 }
 
-async function updateProduct(request, env, user, productId) {
+async function updateProduct(request, env, user, productId, ctx) {
   if (!productId) {
     return errorResponse('Product ID is required');
   }
@@ -469,21 +473,29 @@ async function updateProduct(request, env, user, productId) {
       const prodLink = `/product/${productId}`;
 
       if (updates.price !== undefined && typeof oldProductData.price === 'number' && typeof updatedProdRow.price === 'number' && updatedProdRow.price < oldProductData.price) {
-        triggerAutoNotification(env, resolvedSiteId, 'priceDrop', {
-          title: 'Price Drop!',
-          body: `${prodName} is now cheaper. Don't miss out!`,
-          icon: prodThumb,
-          data: { url: prodLink },
-        }).catch(() => {});
+        if (ctx) {
+          ctx.waitUntil(
+            triggerAutoNotification(env, resolvedSiteId, 'priceDrop', {
+              title: 'Price Drop!',
+              body: `${prodName} is now cheaper. Don't miss out!`,
+              icon: prodThumb,
+              data: { url: prodLink },
+            }).catch(err => console.error('[Notifications] priceDrop auto-trigger failed:', err))
+          );
+        }
       }
 
       if (updates.stock !== undefined && (oldProductData.stock === 0 || oldProductData.stock === null) && updatedProdRow.stock > 0) {
-        triggerAutoNotification(env, resolvedSiteId, 'backInStock', {
-          title: 'Back in Stock!',
-          body: `${prodName} is available again. Grab it before it sells out!`,
-          icon: prodThumb,
-          data: { url: prodLink },
-        }).catch(() => {});
+        if (ctx) {
+          ctx.waitUntil(
+            triggerAutoNotification(env, resolvedSiteId, 'backInStock', {
+              title: 'Back in Stock!',
+              body: `${prodName} is available again. Grab it before it sells out!`,
+              icon: prodThumb,
+              data: { url: prodLink },
+            }).catch(err => console.error('[Notifications] backInStock auto-trigger failed:', err))
+          );
+        }
       }
     }
 

@@ -32,7 +32,7 @@ export default {
       await ensureTablesExist(env);
 
       if (path.startsWith('/api/')) {
-        return handleAPI(request, env, path);
+        return handleAPI(request, env, path, ctx);
       }
 
       if (path.startsWith('/auth/google/')) {
@@ -74,7 +74,7 @@ export default {
   },
 };
 
-async function handleAPI(request, env, path) {
+async function handleAPI(request, env, path, ctx) {
   const pathParts = path.split('/').filter(Boolean);
   const apiVersion = pathParts[0];
   const resource = pathParts[1];
@@ -91,7 +91,7 @@ async function handleAPI(request, env, path) {
       return handleSites(request, env, path);
 
     case 'products':
-      return handleProducts(request, env, path);
+      return handleProducts(request, env, path, ctx);
 
     case 'orders':
       return handleOrders(request, env, path);
