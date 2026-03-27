@@ -57,65 +57,59 @@ export default function Footer() {
             <i className={`fas fa-chevron-down`} style={openSections.categories ? { transform: 'rotate(180deg)' } : {}}></i>
           </button>
           <div className={`footer-content${openSections.categories ? ' show' : ''}`}>
-            {categories.map((cat) => {
-              const subs = cat.children || [];
-              if (subs.length === 0) {
+            <ul>
+              {categories.map((cat) => {
+                const allChildren = cat.children || [];
+                const directSubs = allChildren.filter(c => !(c.children && c.children.length > 0));
+                const groups = allChildren.filter(c => c.children && c.children.length > 0);
+                const hasSubs = allChildren.length > 0;
+                if (!hasSubs) {
+                  return (
+                    <li key={cat.id || cat.slug}>
+                      <Link to={`/category/${cat.slug}`}>{cat.name}</Link>
+                    </li>
+                  );
+                }
+                const catKey = `cat-${cat.id || cat.slug}`;
                 return (
-                  <ul key={cat.id || cat.slug}>
-                    <li><Link to={`/category/${cat.slug}`}>{cat.name}</Link></li>
-                  </ul>
-                );
-              }
-              const catKey = `cat-${cat.id || cat.slug}`;
-              return (
-                <div key={cat.id || cat.slug} style={{ marginBottom: 8 }}>
-                  <button
-                    className="footer-toggle"
-                    onClick={() => toggleSection(catKey)}
-                    style={{ padding: '4px 0', fontSize: 13 }}
-                  >
-                    <span style={{ fontWeight: 500, color: '#e0e0e0' }}>{cat.name}</span>
-                    <i className={`fas fa-chevron-down`} style={{ fontSize: 10, ...(openSections[catKey] ? { transform: 'rotate(180deg)' } : {}) }}></i>
-                  </button>
-                  <div className={`footer-content${openSections[catKey] ? ' show' : ''}`}>
-                    <ul style={{ paddingLeft: 8 }}>
-                      {subs.map(sub => {
-                        const values = sub.children || [];
-                        if (values.length === 0) {
-                          return (
-                            <li key={sub.id || sub.slug}>
-                              <Link to={`/category/${cat.slug}?subcategory=${sub.id}`}>{sub.name}</Link>
-                            </li>
-                          );
-                        }
-                        const subKey = `sub-${cat.id || cat.slug}-${sub.id || sub.slug}`;
+                  <li key={cat.id || cat.slug} className="footer-cat-item">
+                    <div className="footer-cat-row">
+                      <Link to={`/category/${cat.slug}`}>{cat.name}</Link>
+                      <button className="footer-sub-toggle" onClick={() => toggleSection(catKey)} aria-label="Show subcategories">
+                        <i className={`fas fa-plus`} style={openSections[catKey] ? { transform: 'rotate(45deg)' } : {}}></i>
+                      </button>
+                    </div>
+                    <ul className={`footer-sub-list${openSections[catKey] ? ' show' : ''}`}>
+                      {directSubs.map((sub) => (
+                        <li key={sub.id || sub.slug}>
+                          <Link to={`/category/${cat.slug}?subcategory=${sub.id}`}>{sub.name}</Link>
+                        </li>
+                      ))}
+                      {groups.map((group) => {
+                        const groupKey = `grp-${cat.id || cat.slug}-${group.id || group.slug}`;
                         return (
-                          <li key={sub.id || sub.slug} style={{ listStyle: 'none' }}>
-                            <button
-                              className="footer-toggle"
-                              onClick={() => toggleSection(subKey)}
-                              style={{ padding: '3px 0', fontSize: 12 }}
-                            >
-                              <span style={{ fontWeight: 400, color: '#c0c0c0' }}>{sub.name}</span>
-                              <i className={`fas fa-chevron-down`} style={{ fontSize: 9, ...(openSections[subKey] ? { transform: 'rotate(180deg)' } : {}) }}></i>
-                            </button>
-                            <div className={`footer-content${openSections[subKey] ? ' show' : ''}`}>
-                              <ul style={{ paddingLeft: 8 }}>
-                                {values.map(val => (
-                                  <li key={val.id || val.slug}>
-                                    <Link to={`/category/${cat.slug}?subcategory=${val.id}`}>{val.name}</Link>
-                                  </li>
-                                ))}
-                              </ul>
+                          <li key={group.id || group.slug} className="footer-group-item">
+                            <div className="footer-cat-row">
+                              <span className="footer-group-name">{group.name}</span>
+                              <button className="footer-sub-toggle" onClick={() => toggleSection(groupKey)} aria-label="Show values">
+                                <i className={`fas fa-plus`} style={openSections[groupKey] ? { transform: 'rotate(45deg)' } : {}}></i>
+                              </button>
                             </div>
+                            <ul className={`footer-sub-list${openSections[groupKey] ? ' show' : ''}`}>
+                              {(group.children || []).map(val => (
+                                <li key={val.id || val.slug}>
+                                  <Link to={`/category/${cat.slug}?subcategory=${val.id}`}>{val.name}</Link>
+                                </li>
+                              ))}
+                            </ul>
                           </li>
                         );
                       })}
                     </ul>
-                  </div>
-                </div>
-              );
-            })}
+                  </li>
+                );
+              })}
+            </ul>
           </div>
         </div>
 
