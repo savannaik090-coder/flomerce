@@ -687,7 +687,7 @@ export default function CheckoutPage() {
 
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 20, gap: 12 }}>
             <Link to="/" style={{ padding: '10px 20px', border: '1px solid #9c7c38', color: '#9c7c38', borderRadius: 0, textDecoration: 'none', fontWeight: 500 }}>Continue Shopping</Link>
-            <button onClick={() => goToStep(2)} style={{ padding: '10px 24px', background: '#7a4012', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600 }}>Continue to Address</button>
+            <button onClick={() => goToStep(2)} disabled={loading} style={{ padding: '10px 24px', background: '#7a4012', color: '#fff', border: 'none', cursor: loading ? 'not-allowed' : 'pointer', fontWeight: 600, opacity: loading ? 0.7 : 1, display: 'inline-flex', alignItems: 'center', gap: 8 }}>{loading ? (<><span style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', display: 'inline-block', animation: 'spin 0.8s linear infinite' }} />Checking Availability...</>) : 'Continue to Address'}</button>
           </div>
         </div>
       )}
