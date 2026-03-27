@@ -491,6 +491,7 @@ export default function ProductDetailPage() {
             removeFromWishlist(p.id);
           } else {
             addToWishlist(p);
+            openWishlist();
           }
         }}
         isInWishlist={isInWishlist}
