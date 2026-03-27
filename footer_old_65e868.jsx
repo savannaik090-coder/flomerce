@@ -58,11 +58,8 @@ export default function Footer() {
           </button>
           <div className={`footer-content${openSections.categories ? ' show' : ''}`}>
             {categories.map((cat) => {
-              const allChildren = cat.children || [];
-              const directSubs = allChildren.filter(c => !(c.children && c.children.length > 0));
-              const groups = allChildren.filter(c => c.children && c.children.length > 0);
-              const hasSubs = allChildren.length > 0;
-              if (!hasSubs) {
+              const subs = cat.children || [];
+              if (subs.length === 0) {
                 return (
                   <ul key={cat.id || cat.slug}>
                     <li><Link to={`/category/${cat.slug}`}>{cat.name}</Link></li>
@@ -82,35 +79,11 @@ export default function Footer() {
                   </button>
                   <div className={`footer-content${openSections[catKey] ? ' show' : ''}`}>
                     <ul style={{ paddingLeft: 8 }}>
-                      {directSubs.map(sub => (
+                      {subs.map(sub => (
                         <li key={sub.id || sub.slug}>
                           <Link to={`/category/${cat.slug}?subcategory=${sub.id}`}>{sub.name}</Link>
                         </li>
                       ))}
-                      {groups.map(group => {
-                        const groupKey = `grp-${cat.id || cat.slug}-${group.id || group.slug}`;
-                        return (
-                          <li key={group.id || group.slug} style={{ marginBottom: 6, listStyle: 'none' }}>
-                            <button
-                              className="footer-toggle"
-                              onClick={() => toggleSection(groupKey)}
-                              style={{ padding: '3px 0', fontSize: 12 }}
-                            >
-                              <span style={{ fontWeight: 400, color: '#c0c0c0' }}>{group.name}</span>
-                              <i className={`fas fa-chevron-down`} style={{ fontSize: 9, ...(openSections[groupKey] ? { transform: 'rotate(180deg)' } : {}) }}></i>
-                            </button>
-                            <div className={`footer-content${openSections[groupKey] ? ' show' : ''}`}>
-                              <ul style={{ paddingLeft: 8 }}>
-                                {(group.children || []).map(val => (
-                                  <li key={val.id || val.slug}>
-                                    <Link to={`/category/${cat.slug}?subcategory=${val.id}`}>{val.name}</Link>
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          </li>
-                        );
-                      })}
                     </ul>
                   </div>
                 </div>
