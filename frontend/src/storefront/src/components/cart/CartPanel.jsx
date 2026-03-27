@@ -61,7 +61,7 @@ export default function CartPanel({ isOpen, onClose }) {
               const itemKey = cartItemKey ? cartItemKey(item) : itemId;
               return (
               <div className="cart-item" key={itemKey || idx}>
-                <div className="cart-item-image">
+                <div className="cart-item-image" style={{ cursor: item.slug ? 'pointer' : 'default' }} onClick={() => { if (item.slug) { onClose(); navigate(`/product/${item.slug}`); } }}>
                   <img
                     src={resolveImageUrl(getItemImage(item))}
                     alt={getItemName(item)}
@@ -69,7 +69,7 @@ export default function CartPanel({ isOpen, onClose }) {
                   />
                 </div>
                 <div className="cart-item-details">
-                  <div className="cart-item-name">{getItemName(item)}</div>
+                  <div className="cart-item-name" style={{ cursor: item.slug ? 'pointer' : 'default' }} onClick={() => { if (item.slug) { onClose(); navigate(`/product/${item.slug}`); } }}>{getItemName(item)}</div>
                   <SelectedOptionsDisplay selectedOptions={item.selectedOptions} />
                   <div className="cart-item-price">{formatAmount(getItemPrice(item))}</div>
                   <div className="cart-item-quantity">

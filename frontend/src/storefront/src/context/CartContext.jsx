@@ -93,6 +93,7 @@ export function CartProvider({ children }) {
       product_id: product.id,
       name: product.name,
       product_name: product.name,
+      slug: product.slug || null,
       price: effectivePrice,
       product_price: effectivePrice,
       basePrice: product.price,

@@ -7772,7 +7772,7 @@ async function getCart(env, siteId, user, sessionId) {
     const enrichedItems = [];
     for (const item of items) {
       const product = await db.prepare(
-        "SELECT id, name, price, stock, thumbnail_url, images, is_active, options FROM products WHERE id = ? AND site_id = ?"
+        "SELECT id, name, slug, price, stock, thumbnail_url, images, is_active, options FROM products WHERE id = ? AND site_id = ?"
       ).bind(item.productId, siteId).first();
       if (product && product.is_active) {
         let imageUrl = product.thumbnail_url;
@@ -7802,6 +7802,7 @@ async function getCart(env, siteId, user, sessionId) {
         enrichedItems.push({
           ...item,
           name: product.name,
+          slug: product.slug || null,
           price: effectivePrice,
           basePrice: product.price,
           thumbnail: imageUrl,
