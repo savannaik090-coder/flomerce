@@ -345,9 +345,30 @@ export async function triggerAutoNotification(env, siteId, type, payload) {
     const enabledMap = { newProduct: notifSettings.newProducts, priceDrop: notifSettings.priceDrops, backInStock: notifSettings.backInStock };
     if (!enabledMap[type]) return;
 
-    if (payload.icon === '/icon-192.png' || !payload.icon) {
-      const siteIcon = await getSiteIcon(env, siteId);
-      if (siteIcon) payload.icon = siteIcon;
+    const site = await env.DB.prepare('SELECT subdomain, custom_domain FROM sites WHERE id = ?').bind(siteId).first();
+    const domain = env.DOMAIN || 'fluxe.in';
+    const siteOrigin = site?.custom_domain
+      ? `https://${site.custom_domain}`
+      : `https://${site?.subdomain || 'store'}.${domain}`;
+
+    function toAbsoluteUrl(url) {
+      if (!url) return null;
+      url = url.trim();
+      if (/^https?:\/\//i.test(url)) return url;
+      if (url.startsWith('//')) return 'https:' + url;
+      return siteOrigin + (url.startsWith('/') ? url : '/' + url);
+    }
+
+    const siteIcon = await getSiteIcon(env, siteId);
+    const iconUrl = toAbsoluteUrl(siteIcon) || toAbsoluteUrl('/icon-192.png');
+
+    if (payload.image) {
+      payload.image = toAbsoluteUrl(payload.image);
+    }
+    payload.icon = iconUrl;
+
+    if (payload.data?.url) {
+      payload.data.url = toAbsoluteUrl(payload.data.url);
     }
 
     const vapidPublicKey = env.VAPID_PUBLIC_KEY;

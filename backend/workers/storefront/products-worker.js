@@ -338,7 +338,8 @@ async function createProduct(request, env, user, ctx) {
         triggerAutoNotification(env, siteId, 'newProduct', {
           title: 'New Arrival!',
           body: `Check out our new product: ${sanitizeInput(name)}`,
-          icon: resolvedThumbnail || '/icon-192.png',
+          icon: '/icon-192.png',
+          image: resolvedThumbnail || null,
           data: { url: `/product/${productId}` },
         }).catch(err => console.error('[Notifications] newProduct auto-trigger failed:', err))
       );
@@ -478,7 +479,8 @@ async function updateProduct(request, env, user, productId, ctx) {
             triggerAutoNotification(env, resolvedSiteId, 'priceDrop', {
               title: 'Price Drop!',
               body: `Great news! ${prodName} just got a price drop. Don't miss out!`,
-              icon: prodThumb,
+              icon: '/icon-192.png',
+              image: prodThumb !== '/icon-192.png' ? prodThumb : null,
               data: { url: prodLink },
             }).catch(err => console.error('[Notifications] priceDrop auto-trigger failed:', err))
           );
@@ -491,7 +493,8 @@ async function updateProduct(request, env, user, productId, ctx) {
             triggerAutoNotification(env, resolvedSiteId, 'backInStock', {
               title: 'Back in Stock!',
               body: `${prodName} is available again. Grab it before it sells out!`,
-              icon: prodThumb,
+              icon: '/icon-192.png',
+              image: prodThumb !== '/icon-192.png' ? prodThumb : null,
               data: { url: prodLink },
             }).catch(err => console.error('[Notifications] backInStock auto-trigger failed:', err))
           );
