@@ -5,7 +5,7 @@ import { sendEmail, buildOrderConfirmationEmail, buildOwnerNotificationEmail, bu
 import { checkUsageLimit, estimateRowBytes, trackD1Write, trackD1Update } from '../../utils/usage-tracker.js';
 import { resolveSiteDBById, checkMigrationLock, getSiteConfig, ensureProductOptionsColumn } from '../../utils/site-db.js';
 
-export async function handleOrders(request, env, path) {
+export async function handleOrders(request, env, path, ctx) {
   const corsResponse = handleCORS(request);
   if (corsResponse) return corsResponse;
 
@@ -31,7 +31,7 @@ export async function handleOrders(request, env, path) {
   }
 
   if (action === 'guest') {
-    return handleGuestOrder(request, env, method, orderId);
+    return handleGuestOrder(request, env, method, orderId, ctx);
   }
 
   if (action === 'track') {
@@ -78,7 +78,7 @@ export async function handleOrders(request, env, path) {
       }
       return getOrders(request, env, user, db);
     case 'POST':
-      return createOrder(request, env, user);
+      return createOrder(request, env, user, ctx);
     case 'PUT':
       return updateOrderStatus(request, env, user, orderId);
     default:
@@ -235,7 +235,7 @@ async function getOrder(env, user, orderId, request, preResolvedDb) {
   }
 }
 
-async function createOrder(request, env, user) {
+async function createOrder(request, env, user, ctx) {
   try {
     const data = await request.json();
     const { siteId, items, shippingAddress, billingAddress, customerName, customerEmail, customerPhone, paymentMethod, notes, couponCode, currency: orderCurrency } = data;
@@ -445,7 +445,7 @@ async function createOrder(request, env, user) {
 
     if (!isPendingPayment) {
       for (const item of processedItems) {
-        await updateProductStock(env, item.productId, item.quantity, 'decrement', siteId);
+        await updateProductStock(env, item.productId, item.quantity, 'decrement', siteId, ctx);
       }
 
       try {
@@ -766,9 +766,9 @@ async function updateOrderStatus(request, env, user, orderId) {
   }
 }
 
-async function handleGuestOrder(request, env, method, orderId) {
+async function handleGuestOrder(request, env, method, orderId, ctx) {
   if (method === 'POST') {
-    return createGuestOrder(request, env);
+    return createGuestOrder(request, env, ctx);
   }
   if (method === 'GET' && orderId) {
     return getGuestOrder(env, orderId, request);
@@ -776,7 +776,7 @@ async function handleGuestOrder(request, env, method, orderId) {
   return errorResponse('Method not allowed', 405);
 }
 
-async function createGuestOrder(request, env) {
+async function createGuestOrder(request, env, ctx) {
   try {
     const data = await request.json();
     const { siteId, items, shippingAddress, customerName, customerEmail, customerPhone, paymentMethod, currency: guestOrderCurrency } = data;
@@ -898,7 +898,7 @@ async function createGuestOrder(request, env) {
 
     if (!isPendingPayment) {
       for (const item of processedItems) {
-        await updateProductStock(env, item.productId, item.quantity, 'decrement', siteId);
+        await updateProductStock(env, item.productId, item.quantity, 'decrement', siteId, ctx);
       }
 
       try {

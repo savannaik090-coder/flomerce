@@ -6,7 +6,7 @@ import { resolveSiteDBById, getSiteConfig } from '../../utils/site-db.js';
 import { estimateRowBytes, trackD1Update } from '../../utils/usage-tracker.js';
 import crypto from 'node:crypto';
 
-export async function handlePayments(request, env, path) {
+export async function handlePayments(request, env, path, ctx) {
   const corsResponse = handleCORS(request);
   if (corsResponse) return corsResponse;
 
@@ -269,7 +269,7 @@ async function verifyPayment(request, env) {
           await orderDb.prepare('UPDATE orders SET row_size_bytes = ? WHERE id = ?').bind(newOrderBytes, dbOrderId).run();
           await trackD1Update(env, orderSiteId, oldOrderBytes, newOrderBytes);
         }
-        await processPostPaymentActions(env, order);
+        await processPostPaymentActions(env, order, ctx);
       } else {
         if (orderSiteId) {
           orderDb = orderDb || await resolveSiteDBById(env, orderSiteId);
@@ -310,7 +310,7 @@ async function verifyPayment(request, env) {
                 await trackD1Update(env, guestSiteId, oldGuestBytes, newGuestBytes);
               }
             }
-            await processPostPaymentActions(env, guestOrder);
+            await processPostPaymentActions(env, guestOrder, ctx);
           }
         } catch (guestUpdateErr) {
           console.error('Failed to update guest order status:', guestUpdateErr);
@@ -383,7 +383,7 @@ async function verifySubscriptionPayment(request, env, { razorpay_subscription_i
   }
 }
 
-async function processPostPaymentActions(env, order) {
+async function processPostPaymentActions(env, order, ctx) {
   try {
     const orderItems = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
     for (const item of orderItems) {

@@ -94,7 +94,7 @@ async function handleAPI(request, env, path, ctx) {
       return handleProducts(request, env, path, ctx);
 
     case 'orders':
-      return handleOrders(request, env, path);
+      return handleOrders(request, env, path, ctx);
 
     case 'cart':
       return handleCart(request, env, path);
@@ -103,7 +103,7 @@ async function handleAPI(request, env, path, ctx) {
       return handleWishlist(request, env, path);
 
     case 'payments':
-      return handlePayments(request, env, path);
+      return handlePayments(request, env, path, ctx);
 
     case 'email':
       return handleEmail(request, env, path);

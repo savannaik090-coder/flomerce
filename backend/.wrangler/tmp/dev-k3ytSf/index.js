@@ -5233,7 +5233,7 @@ async function triggerAutoNotification(env, siteId, type, payload) {
 __name(triggerAutoNotification, "triggerAutoNotification");
 
 // workers/storefront/products-worker.js
-async function handleProducts(request, env, path, ctx) {
+async function handleProducts(request, env, path, ctx2) {
   const corsResponse = handleCORS(request);
   if (corsResponse)
     return corsResponse;
@@ -5299,11 +5299,11 @@ async function handleProducts(request, env, path, ctx) {
     case "POST":
       if (adminPerms && !hasPermission(adminPerms, "products"))
         return errorResponse("You do not have permission to manage products", 403);
-      return createProduct(request, env, user, ctx);
+      return createProduct(request, env, user, ctx2);
     case "PUT":
       if (adminPerms && !hasPermission(adminPerms, "products"))
         return errorResponse("You do not have permission to manage products", 403);
-      return updateProduct(request, env, user, productId, ctx);
+      return updateProduct(request, env, user, productId, ctx2);
     case "DELETE":
       if (adminPerms && !hasPermission(adminPerms, "products"))
         return errorResponse("You do not have permission to manage products", 403);
@@ -5441,7 +5441,7 @@ async function getProduct(env, productId, siteId, subdomain) {
   }
 }
 __name(getProduct, "getProduct");
-async function createProduct(request, env, user, ctx) {
+async function createProduct(request, env, user, ctx2) {
   try {
     const data = await request.json();
     const { siteId, name, description, shortDescription, price, comparePrice, costPrice, sku, stock, categoryId, subcategoryId, images, thumbnailUrl, mainImageIndex, tags, isFeatured, weight, dimensions, options } = data;
@@ -5523,8 +5523,8 @@ async function createProduct(request, env, user, ctx) {
       }
     }
     await trackD1Write(env, siteId, rowBytes);
-    if (ctx) {
-      ctx.waitUntil(
+    if (ctx2) {
+      ctx2.waitUntil(
         triggerAutoNotification(env, siteId, "newProduct", {
           title: "New Arrival!",
           body: `Check out our new product: ${sanitizeInput(name)}`,
@@ -5544,7 +5544,7 @@ async function createProduct(request, env, user, ctx) {
   }
 }
 __name(createProduct, "createProduct");
-async function updateProduct(request, env, user, productId, ctx) {
+async function updateProduct(request, env, user, productId, ctx2) {
   if (!productId) {
     return errorResponse("Product ID is required");
   }
@@ -5646,8 +5646,8 @@ async function updateProduct(request, env, user, productId, ctx) {
       const prodThumb = updatedProdRow.thumbnail_url || oldProductData.thumbnail_url || "/icon-192.png";
       const prodLink = `/product/${productId}`;
       if (updates.price !== void 0 && typeof oldProductData.price === "number" && typeof updatedProdRow.price === "number" && updatedProdRow.price < oldProductData.price) {
-        if (ctx) {
-          ctx.waitUntil(
+        if (ctx2) {
+          ctx2.waitUntil(
             triggerAutoNotification(env, resolvedSiteId, "priceDrop", {
               title: "Price Drop!",
               body: `Great news! ${prodName} just got a price drop. Don't miss out!`,
@@ -5659,8 +5659,8 @@ async function updateProduct(request, env, user, productId, ctx) {
         }
       }
       if (updates.stock !== void 0 && (oldProductData.stock === 0 || oldProductData.stock === null) && updatedProdRow.stock > 0) {
-        if (ctx) {
-          ctx.waitUntil(
+        if (ctx2) {
+          ctx2.waitUntil(
             triggerAutoNotification(env, resolvedSiteId, "backInStock", {
               title: "Back in Stock!",
               body: `${prodName} is available again. Grab it before it sells out!`,
@@ -5828,7 +5828,7 @@ init_helpers();
 init_auth();
 init_usage_tracker();
 init_site_db();
-async function handleOrders(request, env, path) {
+async function handleOrders(request, env, path, ctx2) {
   const corsResponse = handleCORS(request);
   if (corsResponse)
     return corsResponse;
@@ -5849,7 +5849,7 @@ async function handleOrders(request, env, path) {
     return handleCancellationUpdate(request, env, action);
   }
   if (action === "guest") {
-    return handleGuestOrder(request, env, method, orderId);
+    return handleGuestOrder(request, env, method, orderId, ctx2);
   }
   if (action === "track") {
     return trackOrder(env, orderId, request);
@@ -5886,7 +5886,7 @@ async function handleOrders(request, env, path) {
       }
       return getOrders(request, env, user, db);
     case "POST":
-      return createOrder(request, env, user);
+      return createOrder(request, env, user, ctx2);
     case "PUT":
       return updateOrderStatus(request, env, user, orderId);
     default:
@@ -6024,7 +6024,7 @@ async function getOrder(env, user, orderId, request, preResolvedDb) {
   }
 }
 __name(getOrder, "getOrder");
-async function createOrder(request, env, user) {
+async function createOrder(request, env, user, ctx2) {
   try {
     const data = await request.json();
     const { siteId, items, shippingAddress, billingAddress, customerName, customerEmail, customerPhone, paymentMethod, notes, couponCode, currency: orderCurrency } = data;
@@ -6219,7 +6219,7 @@ async function createOrder(request, env, user) {
     await trackD1Write(env, siteId, rowBytes);
     if (!isPendingPayment) {
       for (const item of processedItems) {
-        await updateProductStock(env, item.productId, item.quantity, "decrement", siteId);
+        await updateProductStock(env, item.productId, item.quantity, "decrement", siteId, ctx2);
       }
       try {
         await sendOrderEmails(env, siteId, {
@@ -6545,9 +6545,9 @@ async function updateOrderStatus(request, env, user, orderId) {
   }
 }
 __name(updateOrderStatus, "updateOrderStatus");
-async function handleGuestOrder(request, env, method, orderId) {
+async function handleGuestOrder(request, env, method, orderId, ctx2) {
   if (method === "POST") {
-    return createGuestOrder(request, env);
+    return createGuestOrder(request, env, ctx2);
   }
   if (method === "GET" && orderId) {
     return getGuestOrder(env, orderId, request);
@@ -6555,7 +6555,7 @@ async function handleGuestOrder(request, env, method, orderId) {
   return errorResponse("Method not allowed", 405);
 }
 __name(handleGuestOrder, "handleGuestOrder");
-async function createGuestOrder(request, env) {
+async function createGuestOrder(request, env, ctx2) {
   try {
     const data = await request.json();
     const { siteId, items, shippingAddress, customerName, customerEmail, customerPhone, paymentMethod, currency: guestOrderCurrency } = data;
@@ -6674,7 +6674,7 @@ async function createGuestOrder(request, env) {
     await trackD1Write(env, siteId, rowBytes);
     if (!isPendingPayment) {
       for (const item of processedItems) {
-        await updateProductStock(env, item.productId, item.quantity, "decrement", siteId);
+        await updateProductStock(env, item.productId, item.quantity, "decrement", siteId, ctx2);
       }
       try {
         await sendOrderEmails(env, siteId, {
@@ -8120,7 +8120,7 @@ init_auth();
 init_site_db();
 init_usage_tracker();
 import crypto2 from "node:crypto";
-async function handlePayments(request, env, path) {
+async function handlePayments(request, env, path, ctx2) {
   const corsResponse = handleCORS(request);
   if (corsResponse)
     return corsResponse;
@@ -8353,7 +8353,7 @@ async function verifyPayment(request, env) {
           await orderDb.prepare("UPDATE orders SET row_size_bytes = ? WHERE id = ?").bind(newOrderBytes, dbOrderId).run();
           await trackD1Update(env, orderSiteId, oldOrderBytes, newOrderBytes);
         }
-        await processPostPaymentActions(env, order);
+        await processPostPaymentActions(env, order, ctx);
       } else {
         if (orderSiteId) {
           orderDb = orderDb || await resolveSiteDBById(env, orderSiteId);
@@ -8392,7 +8392,7 @@ async function verifyPayment(request, env) {
                 await trackD1Update(env, guestSiteId, oldGuestBytes, newGuestBytes);
               }
             }
-            await processPostPaymentActions(env, guestOrder);
+            await processPostPaymentActions(env, guestOrder, ctx);
           }
         } catch (guestUpdateErr) {
           console.error("Failed to update guest order status:", guestUpdateErr);
@@ -8451,7 +8451,7 @@ async function verifySubscriptionPayment(request, env, { razorpay_subscription_i
   }
 }
 __name(verifySubscriptionPayment, "verifySubscriptionPayment");
-async function processPostPaymentActions(env, order) {
+async function processPostPaymentActions(env, order, ctx2) {
   try {
     const orderItems = typeof order.items === "string" ? JSON.parse(order.items) : order.items;
     for (const item of orderItems) {
@@ -14096,7 +14096,7 @@ __name(ensureTablesExist, "ensureTablesExist");
 // workers/index.js
 init_site_db();
 var workers_default = {
-  async fetch(request, env, ctx) {
+  async fetch(request, env, ctx2) {
     const corsResponse = handleCORS(request);
     if (corsResponse)
       return corsResponse;
@@ -14105,7 +14105,7 @@ var workers_default = {
     try {
       await ensureTablesExist(env);
       if (path.startsWith("/api/")) {
-        return handleAPI(request, env, path, ctx);
+        return handleAPI(request, env, path, ctx2);
       }
       if (path.startsWith("/auth/google/")) {
         return handleGoogleAuthFlow(request, env, path);
@@ -14136,11 +14136,11 @@ var workers_default = {
       return errorResponse("Internal server error", 500);
     }
   },
-  async scheduled(event, env, ctx) {
-    ctx.waitUntil(cleanupExpiredData(env));
+  async scheduled(event, env, ctx2) {
+    ctx2.waitUntil(cleanupExpiredData(env));
   }
 };
-async function handleAPI(request, env, path, ctx) {
+async function handleAPI(request, env, path, ctx2) {
   const pathParts = path.split("/").filter(Boolean);
   const apiVersion = pathParts[0];
   const resource = pathParts[1];
@@ -14153,15 +14153,15 @@ async function handleAPI(request, env, path, ctx) {
     case "sites":
       return handleSites(request, env, path);
     case "products":
-      return handleProducts(request, env, path, ctx);
+      return handleProducts(request, env, path, ctx2);
     case "orders":
-      return handleOrders(request, env, path);
+      return handleOrders(request, env, path, ctx2);
     case "cart":
       return handleCart(request, env, path);
     case "wishlist":
       return handleWishlist(request, env, path);
     case "payments":
-      return handlePayments(request, env, path);
+      return handlePayments(request, env, path, ctx2);
     case "email":
       return handleEmail(request, env, path);
     case "categories":
@@ -14509,19 +14509,19 @@ function __facade_register__(...args) {
   __facade_middleware__.push(...args.flat());
 }
 __name(__facade_register__, "__facade_register__");
-function __facade_invokeChain__(request, env, ctx, dispatch, middlewareChain) {
+function __facade_invokeChain__(request, env, ctx2, dispatch, middlewareChain) {
   const [head, ...tail] = middlewareChain;
   const middlewareCtx = {
     dispatch,
     next(newRequest, newEnv) {
-      return __facade_invokeChain__(newRequest, newEnv, ctx, dispatch, tail);
+      return __facade_invokeChain__(newRequest, newEnv, ctx2, dispatch, tail);
     }
   };
-  return head(request, env, ctx, middlewareCtx);
+  return head(request, env, ctx2, middlewareCtx);
 }
 __name(__facade_invokeChain__, "__facade_invokeChain__");
-function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
-  return __facade_invokeChain__(request, env, ctx, dispatch, [
+function __facade_invoke__(request, env, ctx2, dispatch, finalMiddleware) {
+  return __facade_invokeChain__(request, env, ctx2, dispatch, [
     ...__facade_middleware__,
     finalMiddleware
   ]);
@@ -14551,15 +14551,15 @@ function wrapExportedHandler(worker) {
   for (const middleware of __INTERNAL_WRANGLER_MIDDLEWARE__) {
     __facade_register__(middleware);
   }
-  const fetchDispatcher = /* @__PURE__ */ __name(function(request, env, ctx) {
+  const fetchDispatcher = /* @__PURE__ */ __name(function(request, env, ctx2) {
     if (worker.fetch === void 0) {
       throw new Error("Handler does not export a fetch() function.");
     }
-    return worker.fetch(request, env, ctx);
+    return worker.fetch(request, env, ctx2);
   }, "fetchDispatcher");
   return {
     ...worker,
-    fetch(request, env, ctx) {
+    fetch(request, env, ctx2) {
       const dispatcher = /* @__PURE__ */ __name(function(type, init) {
         if (type === "scheduled" && worker.scheduled !== void 0) {
           const controller = new __Facade_ScheduledController__(
@@ -14568,10 +14568,10 @@ function wrapExportedHandler(worker) {
             () => {
             }
           );
-          return worker.scheduled(controller, env, ctx);
+          return worker.scheduled(controller, env, ctx2);
         }
       }, "dispatcher");
-      return __facade_invoke__(request, env, ctx, dispatcher, fetchDispatcher);
+      return __facade_invoke__(request, env, ctx2, dispatcher, fetchDispatcher);
     }
   };
 }
@@ -14584,9 +14584,9 @@ function wrapWorkerEntrypoint(klass) {
     __facade_register__(middleware);
   }
   return class extends klass {
-    #fetchDispatcher = (request, env, ctx) => {
+    #fetchDispatcher = (request, env, ctx2) => {
       this.env = env;
-      this.ctx = ctx;
+      this.ctx = ctx2;
       if (super.fetch === void 0) {
         throw new Error("Entrypoint class does not define a fetch() function.");
       }
