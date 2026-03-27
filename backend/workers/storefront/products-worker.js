@@ -309,7 +309,7 @@ async function createProduct(request, env, user, ctx) {
       costPrice || null,
       sku || null,
       stock || 0,
-      5,
+      3,
       weight || null,
       dimensions ? JSON.stringify(dimensions) : null,
       images ? JSON.stringify(images) : '[]',
@@ -594,7 +594,8 @@ export async function updateProductStock(env, productId, quantity, operation = '
       await db.prepare('UPDATE products SET row_size_bytes = ? WHERE id = ?').bind(newBytes, productId).run();
       await trackD1Update(env, siteId, oldBytes, newBytes);
 
-      if (operation === 'decrement' && updatedRow.stock > 0 && updatedRow.stock <= 3 && (oldStock === null || oldStock > 3)) {
+      const threshold = updatedRow.low_stock_threshold || 3;
+      if (operation === 'decrement' && updatedRow.stock > 0 && updatedRow.stock <= threshold && (oldStock === null || oldStock > threshold)) {
         const prodThumb = updatedRow.thumbnail_url || null;
         const notifPromise = triggerAutoNotification(env, siteId, 'lowStock', {
           title: 'Selling Out Fast!',

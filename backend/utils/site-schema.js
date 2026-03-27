@@ -36,7 +36,7 @@ export function getSiteSchemaStatements() {
       sku TEXT,
       barcode TEXT,
       stock INTEGER DEFAULT 0,
-      low_stock_threshold INTEGER DEFAULT 5,
+      low_stock_threshold INTEGER DEFAULT 3,
       weight REAL,
       dimensions TEXT,
       images TEXT,
