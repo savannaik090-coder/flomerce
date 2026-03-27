@@ -62,6 +62,15 @@ Fluxe employs a shared shard-based D1 database architecture where multiple sites
 - **Admin Shard Management:** Comprehensive tools for shard lifecycle management.
 - **Built-in Analytics:** Lightweight page view tracking, providing aggregated stats on visitors, page views, traffic sources, and more, accessible via the admin panel.
 
+## Build Scripts
+After making changes to frontend source files, you **must** run the build scripts for the changes to take effect. The server serves pre-built files, not the source directly.
+
+- **Build Storefront:** `cd frontend/src/storefront && npm run build`
+- **Build Platform:** `cd frontend/src/platform && npm run build`
+- **Build Both:** `npm run build` (runs `node build.js`)
+
+The storefront Vite build outputs to `frontend/storefront/` and the platform build outputs to `frontend/platform/`. After building, restart the `Start Website` workflow to serve the updated files.
+
 ## External Dependencies
 - **Cloudflare Pages:** Frontend deployment.
 - **Cloudflare Workers:** Backend serverless functions.
