@@ -386,9 +386,14 @@ async function createDefaultCategories(env, db, siteId, businessCategory) {
       { name: 'Skincare', slug: 'skincare', subtitle: 'Nourish and glow with our skincare range', showOnHome: 1, children: [] },
       { name: 'Makeup', slug: 'makeup', subtitle: 'Premium makeup for every look', showOnHome: 1, children: [] },
     ],
+    general: [
+      { name: 'New Arrivals', slug: 'new-arrivals', subtitle: 'Check out what just landed', showOnHome: 1, children: [] },
+      { name: 'Our Collection', slug: 'our-collection', subtitle: 'Browse our complete product range', showOnHome: 1, children: [] },
+      { name: 'Featured Products', slug: 'featured-products', subtitle: 'Handpicked favourites just for you', showOnHome: 1, children: [] },
+    ],
   };
 
-  const categories = categoryTemplates[businessCategory] || categoryTemplates.jewellery;
+  const categories = categoryTemplates[businessCategory] || categoryTemplates.general;
   let order = 0;
 
   for (const cat of categories) {
