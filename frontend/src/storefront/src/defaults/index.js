@@ -86,3 +86,7 @@ export function getPrivacyDefaults(brand, email, phone) {
 export function getOrderActionNotes() {
   return generic.orderActionNotes;
 }
+
+export function getDefaultReviews(category) {
+  return getCategory(category).defaultReviews || generic.defaultReviews;
+}

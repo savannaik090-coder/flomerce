@@ -41,3 +41,11 @@ export const featuredVideoPlaceholders = {
   title: "e.g., Discover Your Beauty Essentials",
   description: "e.g., Explore our curated collection of skincare and makeup products. Connect with our beauty experts and find the perfect routine for you",
 };
+
+export const defaultReviews = [
+  { text: '"My skin feels so much better after using these products. Absolutely love them!"', rating: 5, image: '' },
+  { text: '"Amazing quality skincare! The results are visible within a week. Highly recommend"', rating: 5, image: '' },
+  { text: '"The products are gentle on my skin and smell wonderful. Will buy again for sure!"', rating: 5, image: '' },
+  { text: '"Best beauty products I have tried. Packaging is beautiful and delivery was quick"', rating: 5, image: '' },
+  { text: '"Natural ingredients and great results. My go-to store for all beauty essentials now"', rating: 5, image: '' },
+];

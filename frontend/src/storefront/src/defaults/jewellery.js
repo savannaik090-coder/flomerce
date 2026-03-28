@@ -41,3 +41,11 @@ export const featuredVideoPlaceholders = {
   title: "e.g., Let's Create Your Perfect Bridal Jewelry",
   description: "e.g., Dreaming of something truly elegant? Discover our exquisite jewelry collection. Connect with our designers and create your perfect bridal ensemble",
 };
+
+export const defaultReviews = [
+  { text: '"Received parcel. Jewelry quality is excellent. Thank you so much!"', rating: 5, image: '' },
+  { text: '"Loved my purchase. You have a great collection... will definitely add more!"', rating: 5, image: '' },
+  { text: '"Thanks dear I received my parcel. It\'s amazing, very beautiful set"', rating: 5, image: '' },
+  { text: '"The craftsmanship is amazing. Jewelry is exactly same as shown in image"', rating: 5, image: '' },
+  { text: '"Got this. Good quality and good response fast delivery"', rating: 5, image: '' },
+];

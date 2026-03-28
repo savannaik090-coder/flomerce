@@ -128,6 +128,14 @@ export const privacySections = [
   },
 ];
 
+export const defaultReviews = [
+  { text: '"Excellent product quality and exactly as described. Very happy with my purchase!"', rating: 5, image: '' },
+  { text: '"Fast delivery and great packaging. The product exceeded my expectations"', rating: 5, image: '' },
+  { text: '"Amazing customer service and wonderful products. Will definitely order again!"', rating: 5, image: '' },
+  { text: '"Great value for money. The quality is outstanding and delivery was on time"', rating: 5, image: '' },
+  { text: '"Loved everything about this order. From ordering to delivery, experience was smooth"', rating: 5, image: '' },
+];
+
 export const orderActionNotes = {
   returnRefund: 'Your return request has been approved. If any payment was made, the refund will be processed within 5\u20137 business days. Please pack the product securely \u2014 our delivery partner will contact you for pickup within 8\u201312 days.',
   returnReplacement: 'Your return request has been approved for a replacement. Please pack the product securely \u2014 our delivery partner will contact you within 8\u201312 days to pick up the old product and deliver the replacement at the same time.',

@@ -41,3 +41,11 @@ export const featuredVideoPlaceholders = {
   title: "e.g., Discover Your Perfect Style",
   description: "e.g., Explore our latest fashion collection crafted for every occasion. Connect with our stylists and find the perfect outfit that defines you",
 };
+
+export const defaultReviews = [
+  { text: '"The fabric quality is amazing and the fit is perfect. Exactly as shown in the pictures!"', rating: 5, image: '' },
+  { text: '"Loved the outfit! Great stitching, comfortable material, and fast delivery"', rating: 5, image: '' },
+  { text: '"Beautiful collection and excellent quality. Will definitely order again!"', rating: 5, image: '' },
+  { text: '"The dress fits perfectly and the color is exactly as shown. Very happy with my purchase"', rating: 5, image: '' },
+  { text: '"Super soft fabric and trendy designs. Got so many compliments wearing this!"', rating: 5, image: '' },
+];
