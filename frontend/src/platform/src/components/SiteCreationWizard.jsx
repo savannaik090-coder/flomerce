@@ -5,6 +5,7 @@ const BUSINESS_CATEGORIES = [
   { id: 'jewellery', name: 'Jewellery', icon: '💎' },
   { id: 'clothing', name: 'Clothing / Fashion', icon: '👗' },
   { id: 'beauty', name: 'Beauty / Cosmetics', icon: '💄' },
+  { id: 'general', name: 'General / Other', icon: '🛍️' },
 ];
 
 const DEFAULT_CATEGORIES = {
@@ -22,6 +23,11 @@ const DEFAULT_CATEGORIES = {
     { name: 'New Arrivals', subtitle: 'Discover our latest beauty essentials' },
     { name: 'Skincare', subtitle: 'Nourish and glow with our skincare range' },
     { name: 'Makeup', subtitle: 'Premium makeup for every look' },
+  ],
+  general: [
+    { name: 'New Arrivals', subtitle: 'Check out what just landed' },
+    { name: 'Our Collection', subtitle: 'Browse our complete product range' },
+    { name: 'Featured Products', subtitle: 'Handpicked favourites just for you' },
   ],
 };
 
