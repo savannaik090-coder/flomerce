@@ -1,72 +1,15 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import SaveBar from './SaveBar.jsx';
+import { getPrivacyDefaults } from '../../defaults/index.js';
 
 const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
 
-const DEFAULT_SECTIONS = [
-  {
-    title: '1. Information We Collect',
-    content: `We collect information you provide directly to us, such as when you create an account, make a purchase, or contact us for support. This includes:
-• Name, email address, and phone number
-• Billing and shipping address
-• Payment information (processed securely — we do not store card details)
-• Order history and preferences
-• Device and usage information when you visit our website`,
-  },
-  {
-    title: '2. How We Use Your Information',
-    content: `We use the information we collect to:
-• Process and fulfill your orders
-• Send order confirmations and updates
-• Respond to your comments, questions, and requests
-• Send promotional communications (you can opt out at any time)
-• Improve our products and services
-• Comply with legal obligations`,
-  },
-  {
-    title: '3. Sharing of Information',
-    content: `We do not sell, trade, or rent your personal information to third parties. We may share your information with:
-• Payment processors to complete transactions
-• Shipping partners to deliver your orders
-• Service providers who assist in our operations
-• Law enforcement when required by law`,
-  },
-  {
-    title: '4. Data Security',
-    content: `We implement appropriate technical and organizational measures to protect your personal information against unauthorized access, alteration, disclosure, or destruction. All payment transactions are encrypted using SSL technology.`,
-  },
-  {
-    title: '5. Cookies',
-    content: `We use cookies and similar tracking technologies to enhance your experience on our website. You can control cookies through your browser settings. Disabling cookies may affect some features of our website.`,
-  },
-  {
-    title: '6. Your Rights',
-    content: `You have the right to:
-• Access the personal information we hold about you
-• Correct inaccurate or incomplete information
-• Request deletion of your personal information
-• Opt out of marketing communications
-• Lodge a complaint with a supervisory authority`,
-  },
-  {
-    title: "7. Children's Privacy",
-    content: `Our services are not directed to children under 13 years of age. We do not knowingly collect personal information from children under 13.`,
-  },
-  {
-    title: '8. Changes to This Policy',
-    content: `We may update this Privacy Policy from time to time. We will notify you of any changes by posting the new policy on this page and updating the "Last updated" date.`,
-  },
-  {
-    title: '9. Contact Us',
-    content: `If you have any questions about this Privacy Policy, please contact us using the contact information provided on our website.`,
-  },
-];
-
-const DEFAULT_INTRO = 'We are committed to protecting your personal information and your right to privacy. This Privacy Policy explains how we collect, use, and share information about you when you use our services.';
-
 export default function PrivacyEditor({ onSaved, onPreviewUpdate }) {
   const { siteConfig } = useContext(SiteContext);
+  const brand = siteConfig?.brand_name || 'Our Store';
+  const email = siteConfig?.email || 'support@example.com';
+  const phone = siteConfig?.phone || '';
   const [intro, setIntro] = useState('');
   const [sections, setSections] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -103,8 +46,9 @@ export default function PrivacyEditor({ onSaved, onPreviewUpdate }) {
           iVal = pc.intro || '';
           sVal = pc.sections;
         } else {
-          iVal = DEFAULT_INTRO;
-          sVal = DEFAULT_SECTIONS.map(s => ({ ...s }));
+          const d = getPrivacyDefaults(brand, email, phone);
+          iVal = d.intro;
+          sVal = d.sections;
         }
         setIntro(iVal);
         setSections(sVal);
@@ -112,8 +56,9 @@ export default function PrivacyEditor({ onSaved, onPreviewUpdate }) {
       }
     } catch (e) {
       console.error('Failed to load privacy settings:', e);
-      const iVal = DEFAULT_INTRO;
-      const sVal = DEFAULT_SECTIONS.map(s => ({ ...s }));
+      const d = getPrivacyDefaults(brand, email, phone);
+      const iVal = d.intro;
+      const sVal = d.sections;
       setIntro(iVal);
       setSections(sVal);
       serverValuesRef.current = JSON.stringify({ intro: iVal, sections: sVal });

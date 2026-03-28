@@ -3,6 +3,7 @@ import { SiteContext } from '../../context/SiteContext.jsx';
 import { getOrders, updateOrderStatus, getReturns, updateReturn, getCancellations, updateCancellation } from '../../services/orderService.js';
 import { formatPrice, getAdminCurrency } from '../../utils/priceFormatter.js';
 import { parseAsUTC, formatDateForAdmin, formatDateShortForAdmin } from '../../utils/dateFormatter.js';
+import { getOrderActionNotes } from '../../defaults/index.js';
 
 const CANCEL_REASONS = [
   'Item out of stock',
@@ -88,9 +89,10 @@ export default function OrdersSection() {
   const [cancellationUpdating, setCancellationUpdating] = useState(false);
   const [cancDetailModal, setCancDetailModal] = useState(null);
 
-  const DEFAULT_RETURN_REFUND_NOTE = 'Your return request has been approved. If any payment was made, the refund will be processed within 5–7 business days. Please pack the product securely — our delivery partner will contact you for pickup within 8–12 days.';
-  const DEFAULT_RETURN_REPLACEMENT_NOTE = 'Your return request has been approved for a replacement. Please pack the product securely — our delivery partner will contact you within 8–12 days to pick up the old product and deliver the replacement at the same time.';
-  const DEFAULT_CANCELLATION_NOTE = 'Your cancellation request has been approved. If any payment was made, the refund will be processed within 5–7 business days.';
+  const orderNotes = getOrderActionNotes();
+  const DEFAULT_RETURN_REFUND_NOTE = orderNotes.returnRefund;
+  const DEFAULT_RETURN_REPLACEMENT_NOTE = orderNotes.returnReplacement;
+  const DEFAULT_CANCELLATION_NOTE = orderNotes.cancellationApproval;
 
   const returnsEnabled = (() => {
     try {

@@ -47,3 +47,42 @@ export function getAboutPageWithBrand(category, brandName) {
     })),
   };
 }
+
+function replacePlaceholders(text, brand, email, phone) {
+  const phoneClause = phone ? ` or ${phone}` : '';
+  return text
+    .replace(/\{brand\}/g, brand)
+    .replace(/\{email\}/g, email)
+    .replace(/\{phoneClause\}/g, phoneClause)
+    .replace(/\{phone\}/g, phone);
+}
+
+export function getTermsDefaults(brand, email, phone) {
+  const b = brand || 'Our Store';
+  const e = email || 'support@example.com';
+  const p = phone || '';
+  return {
+    intro: replacePlaceholders(generic.termsIntro, b, e, p),
+    sections: generic.termsSections.map(s => ({
+      title: replacePlaceholders(s.title, b, e, p),
+      content: replacePlaceholders(s.content, b, e, p),
+    })),
+  };
+}
+
+export function getPrivacyDefaults(brand, email, phone) {
+  const b = brand || 'Our Store';
+  const e = email || 'support@example.com';
+  const p = phone || '';
+  return {
+    intro: replacePlaceholders(generic.privacyIntro, b, e, p),
+    sections: generic.privacySections.map(s => ({
+      title: replacePlaceholders(s.title, b, e, p),
+      content: replacePlaceholders(s.content, b, e, p),
+    })),
+  };
+}
+
+export function getOrderActionNotes() {
+  return generic.orderActionNotes;
+}
