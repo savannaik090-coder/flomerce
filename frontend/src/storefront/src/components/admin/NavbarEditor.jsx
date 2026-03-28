@@ -360,10 +360,13 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
                     type="button"
                     onClick={() => logoInputRef.current?.click()}
                     disabled={uploadingLogo}
-                    style={{ padding: '7px 14px', borderRadius: 6, border: '1px solid #e2e8f0', background: '#fff', color: '#334155', fontWeight: 500, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}
+                    style={{ padding: '7px 14px', borderRadius: 6, border: '1px solid #e2e8f0', background: '#fff', color: '#334155', fontWeight: 500, fontSize: 12, cursor: uploadingLogo ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: uploadingLogo ? 0.7 : 1 }}
                   >
-                    <i className="fas fa-sync-alt" style={{ marginRight: 5, fontSize: 10 }} />
-                    Replace
+                    {uploadingLogo ? (
+                      <><i className="fas fa-spinner fa-spin" style={{ marginRight: 5, fontSize: 10 }} />Replacing...</>
+                    ) : (
+                      <><i className="fas fa-sync-alt" style={{ marginRight: 5, fontSize: 10 }} />Replace</>
+                    )}
                   </button>
                   <button
                     type="button"
