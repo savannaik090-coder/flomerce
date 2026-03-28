@@ -43,9 +43,9 @@ export const featuredVideoPlaceholders = {
 };
 
 export const defaultReviews = [
-  { text: '"Received parcel. Jewelry quality is excellent. Thank you so much!"', rating: 5, image: '' },
-  { text: '"Loved my purchase. You have a great collection... will definitely add more!"', rating: 5, image: '' },
-  { text: '"Thanks dear I received my parcel. It\'s amazing, very beautiful set"', rating: 5, image: '' },
-  { text: '"The craftsmanship is amazing. Jewelry is exactly same as shown in image"', rating: 5, image: '' },
-  { text: '"Got this. Good quality and good response fast delivery"', rating: 5, image: '' },
+  { text: '"Received parcel. Jewelry quality is excellent. Thank you so much!"', rating: 5, image: 'https://placehold.co/400x400/fff5f5/d4a574?text=Customer+Review' },
+  { text: '"Loved my purchase. You have a great collection... will definitely add more!"', rating: 5, image: 'https://placehold.co/400x400/fdf2f8/c084a0?text=Happy+Customer' },
+  { text: '"Thanks dear I received my parcel. It\'s amazing, very beautiful set"', rating: 5, image: 'https://placehold.co/400x400/fef3c7/b8860b?text=Beautiful+Set' },
+  { text: '"The craftsmanship is amazing. Jewelry is exactly same as shown in image"', rating: 5, image: 'https://placehold.co/400x400/f0fdf4/6b8e5a?text=Great+Quality' },
+  { text: '"Got this. Good quality and good response fast delivery"', rating: 5, image: 'https://placehold.co/400x400/eff6ff/6b8fb5?text=Fast+Delivery' },
 ];

@@ -129,11 +129,11 @@ export const privacySections = [
 ];
 
 export const defaultReviews = [
-  { text: '"Excellent product quality and exactly as described. Very happy with my purchase!"', rating: 5, image: '' },
-  { text: '"Fast delivery and great packaging. The product exceeded my expectations"', rating: 5, image: '' },
-  { text: '"Amazing customer service and wonderful products. Will definitely order again!"', rating: 5, image: '' },
-  { text: '"Great value for money. The quality is outstanding and delivery was on time"', rating: 5, image: '' },
-  { text: '"Loved everything about this order. From ordering to delivery, experience was smooth"', rating: 5, image: '' },
+  { text: '"Excellent product quality and exactly as described. Very happy with my purchase!"', rating: 5, image: 'https://placehold.co/400x400/f0f4ff/5b6abf?text=Happy+Customer' },
+  { text: '"Fast delivery and great packaging. The product exceeded my expectations"', rating: 5, image: 'https://placehold.co/400x400/f0fdf4/6b8e5a?text=Fast+Delivery' },
+  { text: '"Amazing customer service and wonderful products. Will definitely order again!"', rating: 5, image: 'https://placehold.co/400x400/fef3c7/b8860b?text=Great+Service' },
+  { text: '"Great value for money. The quality is outstanding and delivery was on time"', rating: 5, image: 'https://placehold.co/400x400/fdf2f8/c084a0?text=Great+Value' },
+  { text: '"Loved everything about this order. From ordering to delivery, experience was smooth"', rating: 5, image: 'https://placehold.co/400x400/fff5f5/d4746a?text=Loved+It' },
 ];
 
 export const orderActionNotes = {

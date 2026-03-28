@@ -43,9 +43,9 @@ export const featuredVideoPlaceholders = {
 };
 
 export const defaultReviews = [
-  { text: '"The fabric quality is amazing and the fit is perfect. Exactly as shown in the pictures!"', rating: 5, image: '' },
-  { text: '"Loved the outfit! Great stitching, comfortable material, and fast delivery"', rating: 5, image: '' },
-  { text: '"Beautiful collection and excellent quality. Will definitely order again!"', rating: 5, image: '' },
-  { text: '"The dress fits perfectly and the color is exactly as shown. Very happy with my purchase"', rating: 5, image: '' },
-  { text: '"Super soft fabric and trendy designs. Got so many compliments wearing this!"', rating: 5, image: '' },
+  { text: '"The fabric quality is amazing and the fit is perfect. Exactly as shown in the pictures!"', rating: 5, image: 'https://placehold.co/400x400/f0f4ff/5b6abf?text=Perfect+Fit' },
+  { text: '"Loved the outfit! Great stitching, comfortable material, and fast delivery"', rating: 5, image: 'https://placehold.co/400x400/fdf2f8/a855a0?text=Loved+It' },
+  { text: '"Beautiful collection and excellent quality. Will definitely order again!"', rating: 5, image: 'https://placehold.co/400x400/fef3c7/b8860b?text=Great+Quality' },
+  { text: '"The dress fits perfectly and the color is exactly as shown. Very happy with my purchase"', rating: 5, image: 'https://placehold.co/400x400/f0fdf4/6b8e5a?text=Happy+Customer' },
+  { text: '"Super soft fabric and trendy designs. Got so many compliments wearing this!"', rating: 5, image: 'https://placehold.co/400x400/fff5f5/d4746a?text=Trendy+Style' },
 ];

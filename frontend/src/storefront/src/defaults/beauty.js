@@ -43,9 +43,9 @@ export const featuredVideoPlaceholders = {
 };
 
 export const defaultReviews = [
-  { text: '"My skin feels so much better after using these products. Absolutely love them!"', rating: 5, image: '' },
-  { text: '"Amazing quality skincare! The results are visible within a week. Highly recommend"', rating: 5, image: '' },
-  { text: '"The products are gentle on my skin and smell wonderful. Will buy again for sure!"', rating: 5, image: '' },
-  { text: '"Best beauty products I have tried. Packaging is beautiful and delivery was quick"', rating: 5, image: '' },
-  { text: '"Natural ingredients and great results. My go-to store for all beauty essentials now"', rating: 5, image: '' },
+  { text: '"My skin feels so much better after using these products. Absolutely love them!"', rating: 5, image: 'https://placehold.co/400x400/fdf2f8/c084a0?text=Glowing+Skin' },
+  { text: '"Amazing quality skincare! The results are visible within a week. Highly recommend"', rating: 5, image: 'https://placehold.co/400x400/f0fdf4/6b8e5a?text=Great+Results' },
+  { text: '"The products are gentle on my skin and smell wonderful. Will buy again for sure!"', rating: 5, image: 'https://placehold.co/400x400/fef3c7/b8860b?text=Loved+It' },
+  { text: '"Best beauty products I have tried. Packaging is beautiful and delivery was quick"', rating: 5, image: 'https://placehold.co/400x400/eff6ff/6b8fb5?text=Best+Products' },
+  { text: '"Natural ingredients and great results. My go-to store for all beauty essentials now"', rating: 5, image: 'https://placehold.co/400x400/f0f4ff/5b6abf?text=Natural+Beauty' },
 ];
