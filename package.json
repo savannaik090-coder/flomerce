@@ -6,10 +6,7 @@
   "main": "run-server.js",
   "scripts": {
     "start": "node run-server.js",
-    "dev": "node run-server.js",
-    "build": "node build.js",
-    "build:platform": "cd frontend/src/platform && npm run build",
-    "build:storefront": "cd frontend/src/storefront && npm run build"
+    "dev": "node run-server.js"
   },
   "dependencies": {
     "express": "^4.22.1",
