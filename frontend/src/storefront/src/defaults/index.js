@@ -1,12 +1,12 @@
 import * as jewellery from './jewellery.js';
 import * as clothing from './clothing.js';
-import * as electronics from './electronics.js';
+import * as beauty from './beauty.js';
 import * as generic from './generic.js';
 
 const categoryMap = {
   jewellery,
   clothing,
-  electronics,
+  beauty,
 };
 
 function getCategory(category) {

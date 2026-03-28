@@ -4,6 +4,7 @@ import { createSite, checkSubdomain } from '../services/siteService.js';
 const BUSINESS_CATEGORIES = [
   { id: 'jewellery', name: 'Jewellery', icon: '💎' },
   { id: 'clothing', name: 'Clothing / Fashion', icon: '👗' },
+  { id: 'beauty', name: 'Beauty / Cosmetics', icon: '💄' },
 ];
 
 const DEFAULT_CATEGORIES = {
@@ -16,6 +17,11 @@ const DEFAULT_CATEGORIES = {
     { name: 'New Arrivals', subtitle: 'Discover our latest fashion trends' },
     { name: 'Clothing Collection', subtitle: 'Stylish wear for every occasion' },
     { name: 'Featured Collection', subtitle: 'Handpicked favourites just for you' },
+  ],
+  beauty: [
+    { name: 'New Arrivals', subtitle: 'Discover our latest beauty essentials' },
+    { name: 'Skincare', subtitle: 'Nourish and glow with our skincare range' },
+    { name: 'Makeup', subtitle: 'Premium makeup for every look' },
   ],
 };
 

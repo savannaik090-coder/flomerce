@@ -4079,10 +4079,10 @@ async function createDefaultCategories(env, db, siteId, businessCategory) {
       { name: "Clothing Collection", slug: "clothing-collection", subtitle: "Stylish wear for every occasion", showOnHome: 1, children: [] },
       { name: "Featured Collection", slug: "featured-collection", subtitle: "Handpicked favourites just for you", showOnHome: 1, children: [] }
     ],
-    electronics: [
-      { name: "New Arrivals", slug: "new-arrivals", subtitle: "Latest gadgets and tech", showOnHome: 1, children: [] },
-      { name: "Electronics Collection", slug: "electronics-collection", subtitle: "Top picks in electronics", showOnHome: 1, children: [] },
-      { name: "Featured Collection", slug: "featured-collection", subtitle: "Our best selling products", showOnHome: 1, children: [] }
+    beauty: [
+      { name: "New Arrivals", slug: "new-arrivals", subtitle: "Discover our latest beauty essentials", showOnHome: 1, children: [] },
+      { name: "Skincare", slug: "skincare", subtitle: "Nourish and glow with our skincare range", showOnHome: 1, children: [] },
+      { name: "Makeup", slug: "makeup", subtitle: "Premium makeup for every look", showOnHome: 1, children: [] }
     ]
   };
   const categories = categoryTemplates[businessCategory] || categoryTemplates.jewellery;
