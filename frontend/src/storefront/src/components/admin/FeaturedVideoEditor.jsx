@@ -5,25 +5,7 @@ import SaveBar from './SaveBar.jsx';
 
 const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
 
-const CATEGORY_PLACEHOLDERS = {
-  jewellery: {
-    title: "e.g., Let's Create Your Perfect Bridal Jewelry",
-    description: "e.g., Dreaming of something truly elegant? Discover our exquisite jewelry collection. Connect with our designers and create your perfect bridal ensemble",
-  },
-  clothing: {
-    title: "e.g., Discover Your Perfect Style",
-    description: "e.g., Explore our latest fashion collection crafted for every occasion. Connect with our stylists and find the perfect outfit that defines you",
-  },
-  electronics: {
-    title: "e.g., Experience Next-Gen Technology",
-    description: "e.g., Discover cutting-edge gadgets and smart devices. Connect with our tech experts and find the perfect product for your needs",
-  },
-};
-
-const DEFAULT_PLACEHOLDERS = {
-  title: "e.g., Discover Our Collection",
-  description: "e.g., Explore our curated selection of premium products. Connect with us and find exactly what you're looking for",
-};
+import { getFeaturedVideoPlaceholders } from '../../defaults/index.js';
 
 export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate }) {
   const { siteConfig } = useContext(SiteContext);
@@ -44,7 +26,7 @@ export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate }) {
   const hasLoadedRef = useRef(false);
   const serverValuesRef = useRef(null);
 
-  const placeholders = CATEGORY_PLACEHOLDERS[siteConfig?.category] || DEFAULT_PLACEHOLDERS;
+  const placeholders = getFeaturedVideoPlaceholders(siteConfig?.category);
 
   useEffect(() => {
     if (siteConfig?.id) loadSettings();

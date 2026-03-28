@@ -5,109 +5,7 @@ import SaveBar from './SaveBar.jsx';
 
 const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
 
-const CATEGORY_DEFAULTS = {
-  jewellery: {
-    shippingRegions: 'We ship across India and select international destinations',
-    shippingCharges: 'Free shipping on orders above ₹2,000. Standard shipping ₹99 for orders below ₹2,000',
-    shippingDeliveryTime: '5-7 business days for domestic orders. 10-15 business days for international orders',
-    shippingTracking: 'Real-time tracking via SMS and email once your order is dispatched',
-    returnPolicy: '7-day return policy for unused and undamaged items in original packaging. Custom or personalized jewellery is non-returnable',
-    returnReplacements: 'Replacements available for damaged or defective items within 48 hours of delivery',
-    returnMandatory: 'Original invoice, undamaged packaging, and all product tags must be intact for returns',
-    careGuideWashing: 'Avoid contact with water, perfumes, and chemicals. Remove jewellery before bathing or swimming',
-    careGuideCleaning: 'Gently wipe with a soft dry cloth after each use. Use a jewellery polishing cloth for shine',
-    careGuideMaintenance: 'Store in the provided jewellery box or a soft pouch. Keep pieces separated to avoid scratches',
-  },
-  clothing: {
-    shippingRegions: 'We deliver across India with express and standard shipping options',
-    shippingCharges: 'Free shipping on orders above ₹999. Standard shipping ₹79 for orders below ₹999',
-    shippingDeliveryTime: '3-5 business days for metro cities. 5-7 business days for other locations',
-    shippingTracking: 'Track your order in real-time via SMS, email, and WhatsApp updates',
-    returnPolicy: '15-day easy return and exchange policy for unused items with original tags attached',
-    returnReplacements: 'Size exchanges available subject to stock. Replacements for manufacturing defects',
-    returnMandatory: 'Items must be unworn, unwashed, with all original tags and packaging intact',
-    careGuideWashing: 'Follow the care label instructions on each garment. Use mild detergent and cold water for delicate fabrics',
-    careGuideCleaning: 'Dry clean recommended for embroidered and embellished pieces. Spot clean minor stains gently',
-    careGuideMaintenance: 'Store in a cool, dry place away from direct sunlight. Use padded hangers for structured garments',
-  },
-  electronics: {
-    shippingRegions: 'Pan-India delivery available. Select products eligible for international shipping',
-    shippingCharges: 'Free shipping on all orders above ₹1,500. Flat ₹149 for smaller orders',
-    shippingDeliveryTime: '2-4 business days for metros. 5-7 business days for other pin codes',
-    shippingTracking: 'Real-time order tracking via our website, SMS, and email notifications',
-    returnPolicy: '7-day replacement policy for manufacturing defects. No return on opened software or accessories',
-    returnReplacements: 'Direct replacement for defective units. Manufacturer warranty applies for extended coverage',
-    returnMandatory: 'Original packaging, accessories, invoice, and warranty card must be included with returns',
-    careGuideWashing: 'Do not expose to water or moisture. Use only manufacturer-approved cleaning solutions',
-    careGuideCleaning: 'Wipe surfaces with a soft microfiber cloth. Use compressed air for ports and vents',
-    careGuideMaintenance: 'Store in a cool, dry environment. Use surge protectors and avoid overcharging batteries',
-  },
-};
-
-const DEFAULT_VALUES = {
-  shippingRegions: 'We ship across India and select international destinations',
-  shippingCharges: 'Free shipping on orders above ₹1,500. Standard shipping charges apply for smaller orders',
-  shippingDeliveryTime: '5-7 business days for standard delivery. Express delivery available in select cities',
-  shippingTracking: 'Real-time tracking updates via SMS and email after dispatch',
-  returnPolicy: '7-day return policy for unused items in original packaging with tags intact',
-  returnReplacements: 'Replacements available for damaged or defective products within 48 hours of delivery',
-  returnMandatory: 'Original packaging, invoice, and product tags must be intact for all returns',
-  careGuideWashing: 'Follow the specific care instructions provided with your product',
-  careGuideCleaning: 'Clean gently with appropriate materials as recommended for the product type',
-  careGuideMaintenance: 'Store in a cool, dry place away from direct sunlight and moisture',
-};
-
-const CATEGORY_PLACEHOLDERS = {
-  jewellery: {
-    shippingRegions: 'e.g., Pan-India and select international destinations',
-    shippingCharges: 'e.g., Free above ₹2,000, ₹99 for smaller orders',
-    shippingDeliveryTime: 'e.g., 5-7 business days domestic, 10-15 international',
-    shippingTracking: 'e.g., Real-time SMS and email tracking',
-    returnPolicy: 'e.g., 7-day return for unused items. Custom pieces non-returnable',
-    returnReplacements: 'e.g., Replacements for damaged items within 48 hours',
-    returnMandatory: 'e.g., Original invoice and undamaged packaging required',
-    careGuideCleaning: 'e.g., Wipe with soft dry cloth after each use',
-    careGuideWashing: 'e.g., Avoid water, perfumes, and chemicals',
-    careGuideMaintenance: 'e.g., Store in jewellery box, keep pieces separated',
-  },
-  clothing: {
-    shippingRegions: 'e.g., All India delivery with express options',
-    shippingCharges: 'e.g., Free above ₹999, ₹79 for smaller orders',
-    shippingDeliveryTime: 'e.g., 3-5 days metro, 5-7 days other areas',
-    shippingTracking: 'e.g., SMS, email, and WhatsApp tracking',
-    returnPolicy: 'e.g., 15-day easy return with original tags',
-    returnReplacements: 'e.g., Size exchanges subject to stock',
-    returnMandatory: 'e.g., Unworn, unwashed, with original tags',
-    careGuideCleaning: 'e.g., Dry clean for embroidered pieces',
-    careGuideWashing: 'e.g., Follow care label, mild detergent, cold water',
-    careGuideMaintenance: 'e.g., Store away from sunlight, use padded hangers',
-  },
-  electronics: {
-    shippingRegions: 'e.g., Pan-India, select international shipping',
-    shippingCharges: 'e.g., Free above ₹1,500, ₹149 for others',
-    shippingDeliveryTime: 'e.g., 2-4 days metro, 5-7 days other areas',
-    shippingTracking: 'e.g., Website, SMS, and email tracking',
-    returnPolicy: 'e.g., 7-day replacement for defects',
-    returnReplacements: 'e.g., Direct replacement, manufacturer warranty',
-    returnMandatory: 'e.g., Original packaging, accessories, warranty card',
-    careGuideCleaning: 'e.g., Microfiber cloth, compressed air for ports',
-    careGuideWashing: 'e.g., No water exposure, approved cleaners only',
-    careGuideMaintenance: 'e.g., Cool dry storage, use surge protectors',
-  },
-};
-
-const DEFAULT_PLACEHOLDERS = {
-  shippingRegions: 'e.g., Pan-India and international delivery',
-  shippingCharges: 'e.g., Free above ₹1,500, standard charges below',
-  shippingDeliveryTime: 'e.g., 5-7 business days standard delivery',
-  shippingTracking: 'e.g., SMS and email tracking after dispatch',
-  returnPolicy: 'e.g., 7-day return for unused items',
-  returnReplacements: 'e.g., Replacements for defective items',
-  returnMandatory: 'e.g., Original packaging and invoice required',
-  careGuideCleaning: 'e.g., Clean gently with soft cloth',
-  careGuideWashing: 'e.g., Follow product care instructions',
-  careGuideMaintenance: 'e.g., Store in cool, dry place',
-};
+import { getPolicies, getPolicyPlaceholders } from '../../defaults/index.js';
 
 export default function ProductPoliciesEditor({ onSaved, onPreviewUpdate }) {
   const { siteConfig } = useContext(SiteContext);
@@ -131,7 +29,7 @@ export default function ProductPoliciesEditor({ onSaved, onPreviewUpdate }) {
   const hasLoadedRef = useRef(false);
   const serverValuesRef = useRef(null);
 
-  const placeholders = CATEGORY_PLACEHOLDERS[siteConfig?.category] || DEFAULT_PLACEHOLDERS;
+  const placeholders = getPolicyPlaceholders(siteConfig?.category);
 
   useEffect(() => {
     if (siteConfig?.id) loadSettings();
@@ -184,7 +82,7 @@ export default function ProductPoliciesEditor({ onSaved, onPreviewUpdate }) {
   }
 
   function handleLoadDefaults() {
-    const defaults = CATEGORY_DEFAULTS[siteConfig?.category] || DEFAULT_VALUES;
+    const defaults = getPolicies(siteConfig?.category);
     setFields(defaults);
   }
 

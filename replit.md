@@ -46,7 +46,7 @@ Fluxe employs a shared shard-based D1 database architecture where multiple sites
 - **Store Logo:** Uploaded during site creation (base64 → R2) or via Admin Panel > Edit Website > Navbar tab. Stored as `logo_url` in `site_config`. Navbar renders the logo image when available, falling back to brand name text. Logo size is configurable via a slider (20–80px, default 44px) and position can be set to left or center, both controlled from the Navbar tab in the admin panel. Settings stored as `logoSize` and `logoPosition` in the `settings` JSON column. On mobile (≤991px), centered logos revert to default left-aligned position. Live preview updates are supported via the postMessage system.
 
 ### Key Features
-- **Dynamic Content:** Configurable homepage elements (sliders, banners, videos), product policies, navigation, and footer customization.
+- **Dynamic Content:** Configurable homepage elements (sliders, banners, videos), product policies, navigation, and footer customization. Default content (policies, about page, featured video) is centralized in `frontend/src/storefront/src/defaults/` with per-category files (jewellery, clothing, electronics, generic) and a single `index.js` entry point.
 - **Subscription Management:** Account-level trial, per-site paid plans, Razorpay integration, discount pricing, and a clear site creation flow with plan checks.
 - **Admin Panel:** Centralized site content, policy, and SEO management with iframe preview.
 - **Product Options:** Supports Color, Custom Selection, and Priced options, impacting cart and order processing.

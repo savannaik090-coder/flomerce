@@ -11,57 +11,7 @@ import ProductGallery from '../components/product/ProductGallery.jsx';
 import RelatedProducts from '../components/product/RelatedProducts.jsx';
 import '../styles/product-detail.css';
 
-const POLICY_DEFAULTS = {
-  jewellery: {
-    shippingRegions: 'We ship across India and select international destinations',
-    shippingCharges: 'Free shipping on orders above Rs.2,000. Standard shipping Rs.99 for orders below Rs.2,000',
-    shippingDeliveryTime: '5-7 business days for domestic orders. 10-15 business days for international orders',
-    shippingTracking: 'Real-time tracking via SMS and email once your order is dispatched',
-    returnPolicy: '7-day return policy for unused and undamaged items in original packaging. Custom or personalized jewellery is non-returnable',
-    returnReplacements: 'Replacements available for damaged or defective items within 48 hours of delivery',
-    returnMandatory: 'Original invoice, undamaged packaging, and all product tags must be intact for returns',
-    careGuideWashing: 'Avoid contact with water, perfumes, and chemicals. Remove jewellery before bathing or swimming',
-    careGuideCleaning: 'Gently wipe with a soft dry cloth after each use. Use a jewellery polishing cloth for shine',
-    careGuideMaintenance: 'Store in the provided jewellery box or a soft pouch. Keep pieces separated to avoid scratches',
-  },
-  clothing: {
-    shippingRegions: 'We deliver across India with express and standard shipping options',
-    shippingCharges: 'Free shipping on orders above Rs.999. Standard shipping Rs.79 for orders below Rs.999',
-    shippingDeliveryTime: '3-5 business days for metro cities. 5-7 business days for other locations',
-    shippingTracking: 'Track your order in real-time via SMS, email, and WhatsApp updates',
-    returnPolicy: '15-day easy return and exchange policy for unused items with original tags attached',
-    returnReplacements: 'Size exchanges available subject to stock. Replacements for manufacturing defects',
-    returnMandatory: 'Items must be unworn, unwashed, with all original tags and packaging intact',
-    careGuideWashing: 'Follow the care label instructions on each garment. Use mild detergent and cold water for delicate fabrics',
-    careGuideCleaning: 'Dry clean recommended for embroidered and embellished pieces. Spot clean minor stains gently',
-    careGuideMaintenance: 'Store in a cool, dry place away from direct sunlight. Use padded hangers for structured garments',
-  },
-  electronics: {
-    shippingRegions: 'Pan-India delivery available. Select products eligible for international shipping',
-    shippingCharges: 'Free shipping on all orders above Rs.1,500. Flat Rs.149 for smaller orders',
-    shippingDeliveryTime: '2-4 business days for metros. 5-7 business days for other pin codes',
-    shippingTracking: 'Real-time order tracking via our website, SMS, and email notifications',
-    returnPolicy: '7-day replacement policy for manufacturing defects. No return on opened software or accessories',
-    returnReplacements: 'Direct replacement for defective units. Manufacturer warranty applies for extended coverage',
-    returnMandatory: 'Original packaging, accessories, invoice, and warranty card must be included with returns',
-    careGuideWashing: 'Do not expose to water or moisture. Use only manufacturer-approved cleaning solutions',
-    careGuideCleaning: 'Wipe surfaces with a soft microfiber cloth. Use compressed air for ports and vents',
-    careGuideMaintenance: 'Store in a cool, dry environment. Use surge protectors and avoid overcharging batteries',
-  },
-};
-
-const POLICY_FALLBACK = {
-  shippingRegions: 'We ship across India and select international destinations',
-  shippingCharges: 'Free shipping on orders above Rs.1,500. Standard shipping charges apply for smaller orders',
-  shippingDeliveryTime: '5-7 business days for standard delivery. Express delivery available in select cities',
-  shippingTracking: 'Real-time tracking updates via SMS and email after dispatch',
-  returnPolicy: '7-day return policy for unused items in original packaging with tags intact',
-  returnReplacements: 'Replacements available for damaged or defective products within 48 hours of delivery',
-  returnMandatory: 'Original packaging, invoice, and product tags must be intact for all returns',
-  careGuideWashing: 'Follow the specific care instructions provided with your product',
-  careGuideCleaning: 'Clean gently with appropriate materials as recommended for the product type',
-  careGuideMaintenance: 'Store in a cool, dry place away from direct sunlight and moisture',
-};
+import { getPolicies } from '../defaults/index.js';
 
 function PolicyAccordion({ title, icon, children }) {
   const [open, setOpen] = useState(false);
@@ -283,8 +233,8 @@ export default function ProductDetailPage() {
   const reviews = product.reviews || [];
 
   const settings = siteConfig?.settings || {};
-  const categoryDefaults = POLICY_DEFAULTS[siteConfig?.category] || POLICY_FALLBACK;
-  const pol = (key) => settings[key] || categoryDefaults[key] || POLICY_FALLBACK[key] || '';
+  const categoryDefaults = getPolicies(siteConfig?.category);
+  const pol = (key) => settings[key] || categoryDefaults[key] || '';
 
   return (
     <div>
