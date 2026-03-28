@@ -218,10 +218,15 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate }) {
                       <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 6 }}>
                         <button
                           type="button"
-                          onClick={() => { if (fileInputRefs.current[index]) fileInputRefs.current[index].click(); }}
-                          style={{ background: 'rgba(0,0,0,0.6)', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 10px', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}
+                          onClick={() => { if (!uploading[index] && fileInputRefs.current[index]) fileInputRefs.current[index].click(); }}
+                          disabled={uploading[index]}
+                          style={{ background: 'rgba(0,0,0,0.6)', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 10px', cursor: uploading[index] ? 'not-allowed' : 'pointer', fontSize: 12, fontFamily: 'inherit', opacity: uploading[index] ? 0.7 : 1 }}
                         >
-                          <i className="fas fa-camera" style={{ marginRight: 4 }} />Change
+                          {uploading[index] ? (
+                            <><i className="fas fa-spinner fa-spin" style={{ marginRight: 4 }} />Changing...</>
+                          ) : (
+                            <><i className="fas fa-camera" style={{ marginRight: 4 }} />Change</>
+                          )}
                         </button>
                         <button
                           type="button"

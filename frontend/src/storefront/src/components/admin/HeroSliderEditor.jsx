@@ -209,15 +209,15 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
                     </div>
                   ) : (
                     <div
-                      onClick={() => fileRefs[index].current?.click()}
+                      onClick={() => !uploading[index] && fileRefs[index].current?.click()}
                       style={{
                         border: '2px dashed #cbd5e1', borderRadius: 6, padding: '20px 0',
-                        textAlign: 'center', cursor: 'pointer', color: '#94a3b8', marginBottom: 8,
+                        textAlign: 'center', cursor: uploading[index] ? 'not-allowed' : 'pointer', color: '#94a3b8', marginBottom: 8,
                         background: '#fff',
                       }}
                     >
                       {uploading[index] ? (
-                        <span style={{ fontSize: 13 }}>Uploading...</span>
+                        <><i className="fas fa-spinner fa-spin" style={{ fontSize: 24, color: '#2563eb', marginBottom: 4, display: 'block' }} /><span style={{ fontSize: 13, color: '#2563eb' }}>Uploading...</span></>
                       ) : (
                         <>
                           <i className="fas fa-cloud-upload-alt" style={{ fontSize: 24, marginBottom: 4, display: 'block' }} />

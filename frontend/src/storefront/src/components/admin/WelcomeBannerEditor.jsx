@@ -194,15 +194,15 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate }) {
                 </div>
               ) : (
                 <div
-                  onClick={() => fileRef.current?.click()}
+                  onClick={() => !uploading && fileRef.current?.click()}
                   style={{
                     border: '2px dashed #cbd5e1', borderRadius: 6, padding: '24px 0',
-                    textAlign: 'center', cursor: 'pointer', color: '#94a3b8', marginBottom: 8,
+                    textAlign: 'center', cursor: uploading ? 'not-allowed' : 'pointer', color: '#94a3b8', marginBottom: 8,
                     background: '#fff',
                   }}
                 >
                   {uploading ? (
-                    <span style={{ fontSize: 13 }}>Uploading...</span>
+                    <><i className="fas fa-spinner fa-spin" style={{ fontSize: 24, color: '#2563eb', marginBottom: 4, display: 'block' }} /><span style={{ fontSize: 13, color: '#2563eb' }}>Uploading...</span></>
                   ) : (
                     <>
                       <i className="fas fa-cloud-upload-alt" style={{ fontSize: 24, marginBottom: 4, display: 'block' }} />
