@@ -90,6 +90,7 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate }) {
         reviewsSectionTitle: sectionTitle,
         reviewsSectionSubtitle: sectionSubtitle,
         showCustomerReviews: showSection,
+        reviews,
       });
       setStatus('success');
       serverValuesRef.current = JSON.stringify({ sectionTitle, sectionSubtitle, reviews, showSection });
@@ -160,56 +161,36 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate }) {
     setShowModal(true);
   }
 
-  async function handleSaveReview(e) {
+  function handleSaveReview(e) {
     e.preventDefault();
     if (!form.text.trim()) {
       setError('Review text is required.');
       return;
     }
 
-    setSaving(true);
-    setError('');
-    try {
-      const reviewData = {
-        text: form.text.trim(),
-        name: form.name.trim(),
-        rating: form.rating,
-        image: form.image,
-        imageKey: form.imageKey,
-      };
+    const reviewData = {
+      text: form.text.trim(),
+      name: form.name.trim(),
+      rating: form.rating,
+      image: form.image,
+      imageKey: form.imageKey,
+    };
 
-      let updatedReviews;
-      if (editingIndex !== null) {
-        updatedReviews = reviews.map((r, i) => i === editingIndex ? reviewData : r);
-      } else {
-        updatedReviews = [...reviews, reviewData];
-      }
-
-      await saveToSettings({ reviews: updatedReviews });
-      setReviews(updatedReviews);
-      serverValuesRef.current = JSON.stringify({ sectionTitle, sectionSubtitle, reviews: updatedReviews, showSection });
-      setHasChanges(false);
-      setShowModal(false);
-      if (onSaved) onSaved();
-    } catch (err) {
-      setError('Failed to save: ' + err.message);
-    } finally {
-      setSaving(false);
+    let updatedReviews;
+    if (editingIndex !== null) {
+      updatedReviews = reviews.map((r, i) => i === editingIndex ? reviewData : r);
+    } else {
+      updatedReviews = [...reviews, reviewData];
     }
+
+    setReviews(updatedReviews);
+    setShowModal(false);
   }
 
-  async function handleDeleteReview(index) {
+  function handleDeleteReview(index) {
     if (!window.confirm('Delete this review?')) return;
-    try {
-      const updatedReviews = reviews.filter((_, i) => i !== index);
-      await saveToSettings({ reviews: updatedReviews });
-      setReviews(updatedReviews);
-      serverValuesRef.current = JSON.stringify({ sectionTitle, sectionSubtitle, reviews: updatedReviews, showSection });
-      setHasChanges(false);
-      if (onSaved) onSaved();
-    } catch (err) {
-      alert('Failed to delete: ' + err.message);
-    }
+    const updatedReviews = reviews.filter((_, i) => i !== index);
+    setReviews(updatedReviews);
   }
 
   if (loading) return <div className="loading-spinner-admin"><div className="spinner" /></div>;
