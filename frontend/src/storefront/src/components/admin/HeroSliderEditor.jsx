@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext, useRef } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { resolveImageUrl } from '../../utils/imageUrl.js';
 import SaveBar from './SaveBar.jsx';
+import LinkSelector from './LinkSelector.jsx';
 
 const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
 
@@ -284,14 +285,10 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontWeight: 600, marginBottom: 4, fontSize: 12, color: '#64748b' }}>Button Link</label>
-                    <input
-                      type="text"
+                    <LinkSelector
+                      label="Button Link"
                       value={slides[index].buttonLink}
-                      onChange={e => updateSlide(index, 'buttonLink', e.target.value)}
-                      placeholder="/category/new-arrivals"
-                      maxLength={100}
-                      style={{ width: '100%', padding: '8px 10px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, boxSizing: 'border-box', fontFamily: 'inherit' }}
+                      onChange={val => updateSlide(index, 'buttonLink', val)}
                     />
                   </div>
                 </div>

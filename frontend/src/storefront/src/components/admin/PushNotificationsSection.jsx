@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { apiRequest, getApiUrl } from '../../services/api.js';
+import LinkSelector from './LinkSelector.jsx';
 
 export default function PushNotificationsSection() {
   const { siteConfig } = useContext(SiteContext);
@@ -173,61 +174,6 @@ export default function PushNotificationsSection() {
 
   const categories = siteConfig?.categories || [];
 
-  function renderRedirectSelect(label, value, isCustom, valueKey, customKey) {
-    return (
-      <div style={{ marginBottom: 16 }}>
-        <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>{label}</label>
-        <select
-          value={isCustom ? '__custom__' : value}
-          onChange={e => {
-            const val = e.target.value;
-            if (val === '__custom__') {
-              setForm(p => ({ ...p, [valueKey]: '', [customKey]: true }));
-            } else {
-              setForm(p => ({ ...p, [valueKey]: val, [customKey]: false }));
-            }
-          }}
-          style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, background: 'white', boxSizing: 'border-box' }}
-        >
-          <option value="">None (no redirect)</option>
-          <optgroup label="Pages">
-            <option value="/">Home</option>
-            <option value="/about">About Us</option>
-            <option value="/contact">Contact</option>
-            <option value="/cart">Cart</option>
-            <option value="/wishlist">Wishlist</option>
-            <option value="/book-appointment">Book Appointment</option>
-            <option value="/order-track">Track Order</option>
-            <option value="/profile">My Profile</option>
-          </optgroup>
-          {categories.length > 0 && (
-            <optgroup label="Categories">
-              {categories.map(cat => {
-                const name = typeof cat === 'string' ? cat : cat.name || '';
-                const slug = typeof cat === 'string'
-                  ? cat.toLowerCase().trim().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-')
-                  : cat.slug || name.toLowerCase().trim().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-');
-                return <option key={slug} value={`/category/${slug}`}>{name}</option>;
-              })}
-            </optgroup>
-          )}
-          <optgroup label="Other">
-            <option value="__custom__">Custom URL...</option>
-          </optgroup>
-        </select>
-        {isCustom && (
-          <input
-            type="text"
-            placeholder="https://... or /page-path"
-            value={value}
-            onChange={e => setForm(p => ({ ...p, [valueKey]: e.target.value }))}
-            style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', marginTop: 8 }}
-          />
-        )}
-      </div>
-    );
-  }
-
   return (
     <div>
       <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 24 }}>Push Notifications</h2>
@@ -369,7 +315,12 @@ export default function PushNotificationsSection() {
                   </button>
                 )}
               </div>
-              {renderRedirectSelect('Redirect To (optional)', form.link, form.customLink, 'link', 'customLink')}
+              <LinkSelector
+                label="Redirect To (optional)"
+                value={form.link}
+                onChange={val => setForm(p => ({ ...p, link: val, customLink: false }))}
+                style={{ marginBottom: 16 }}
+              />
               <div style={{ marginBottom: 16, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: 16 }}>
                 <label style={{ display: 'block', fontWeight: 600, marginBottom: 10, fontSize: 13 }}>
                   <i className="fas fa-mouse-pointer" style={{ marginRight: 6, color: '#64748b' }} />
@@ -387,7 +338,14 @@ export default function PushNotificationsSection() {
                     Shows a clickable button on the notification
                   </div>
                 </div>
-                {form.buttonLabel && renderRedirectSelect('Button redirects to', form.buttonLink, form.buttonCustomLink, 'buttonLink', 'buttonCustomLink')}
+                {form.buttonLabel && (
+                  <LinkSelector
+                    label="Button redirects to"
+                    value={form.buttonLink}
+                    onChange={val => setForm(p => ({ ...p, buttonLink: val, buttonCustomLink: false }))}
+                    style={{ marginBottom: 0 }}
+                  />
+                )}
               </div>
               <div style={{ marginBottom: 20 }}>
                 <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Target Audience</label>
