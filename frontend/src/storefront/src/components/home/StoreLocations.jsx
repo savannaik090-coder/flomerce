@@ -10,7 +10,7 @@ export default function StoreLocations() {
   const address = siteConfig?.address;
   const phone = siteConfig?.phone;
 
-  if (settings.showStoreLocations === false) return null;
+  if (settings.showStoreLocations !== true) return null;
   if (!stores.length && !address) return null;
 
   const defaultStore = stores.length

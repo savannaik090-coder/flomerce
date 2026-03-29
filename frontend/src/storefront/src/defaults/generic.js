@@ -42,6 +42,15 @@ export const featuredVideoPlaceholders = {
   description: "e.g., Explore our curated selection of premium products. Connect with us and find exactly what you're looking for",
 };
 
+export const watchAndBuyDefaults = [
+  { id: 'default-1', title: 'Best Seller', productSku: '', videoUrl: '' },
+  { id: 'default-2', title: 'New Arrival', productSku: '', videoUrl: '' },
+  { id: 'default-3', title: 'Trending Now', productSku: '', videoUrl: '' },
+  { id: 'default-4', title: 'Customer Favourite', productSku: '', videoUrl: '' },
+  { id: 'default-5', title: 'Limited Edition', productSku: '', videoUrl: '' },
+  { id: 'default-6', title: 'Staff Pick', productSku: '', videoUrl: '' },
+];
+
 export const termsIntro = "Please read these Terms and Conditions carefully before using {brand}'s website and services. By accessing or using our service, you agree to be bound by these terms.";
 
 export const termsSections = [

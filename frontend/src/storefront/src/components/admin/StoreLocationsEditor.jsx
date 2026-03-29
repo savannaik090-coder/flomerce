@@ -60,7 +60,7 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate }) {
         if (typeof settings === 'string') {
           try { settings = JSON.parse(settings); } catch (e) { settings = {}; }
         }
-        const ssVal = settings.showStoreLocations !== false;
+        const ssVal = settings.showStoreLocations === true;
         setShowSection(ssVal);
         const saved = settings.storeLocations || [];
         let storesVal;

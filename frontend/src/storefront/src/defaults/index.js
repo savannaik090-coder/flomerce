@@ -33,6 +33,10 @@ export function getFeaturedVideoPlaceholders(category) {
   return getCategory(category).featuredVideoPlaceholders;
 }
 
+export function getWatchAndBuyDefaults(category) {
+  return getCategory(category).watchAndBuyDefaults;
+}
+
 export function getAboutPageWithBrand(category, brandName) {
   const base = getAboutPageDefaults(category);
   const name = brandName || 'Our Store';

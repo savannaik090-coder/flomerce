@@ -42,6 +42,15 @@ export const featuredVideoPlaceholders = {
   description: "e.g., Explore our latest fashion collection crafted for every occasion. Connect with our stylists and find the perfect outfit that defines you",
 };
 
+export const watchAndBuyDefaults = [
+  { id: 'default-1', title: 'Summer Collection', productSku: '', videoUrl: '' },
+  { id: 'default-2', title: 'Ethnic Wear', productSku: '', videoUrl: '' },
+  { id: 'default-3', title: 'Party Outfits', productSku: '', videoUrl: '' },
+  { id: 'default-4', title: 'Casual Essentials', productSku: '', videoUrl: '' },
+  { id: 'default-5', title: 'New Arrivals', productSku: '', videoUrl: '' },
+  { id: 'default-6', title: 'Trending Styles', productSku: '', videoUrl: '' },
+];
+
 export const defaultReviews = [
   { text: '"The fabric quality is amazing and the fit is perfect. Exactly as shown in the pictures!"', rating: 5, image: 'https://placehold.co/400x400/f0f4ff/5b6abf?text=Perfect+Fit' },
   { text: '"Loved the outfit! Great stitching, comfortable material, and fast delivery"', rating: 5, image: 'https://placehold.co/400x400/fdf2f8/a855a0?text=Loved+It' },

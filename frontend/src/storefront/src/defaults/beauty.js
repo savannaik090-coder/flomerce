@@ -42,6 +42,15 @@ export const featuredVideoPlaceholders = {
   description: "e.g., Explore our curated collection of skincare and makeup products. Connect with our beauty experts and find the perfect routine for you",
 };
 
+export const watchAndBuyDefaults = [
+  { id: 'default-1', title: 'Skincare Routine', productSku: '', videoUrl: '' },
+  { id: 'default-2', title: 'Makeup Tutorial', productSku: '', videoUrl: '' },
+  { id: 'default-3', title: 'Hair Care Tips', productSku: '', videoUrl: '' },
+  { id: 'default-4', title: 'Best Sellers', productSku: '', videoUrl: '' },
+  { id: 'default-5', title: 'New Launches', productSku: '', videoUrl: '' },
+  { id: 'default-6', title: 'Self Care Essentials', productSku: '', videoUrl: '' },
+];
+
 export const defaultReviews = [
   { text: '"My skin feels so much better after using these products. Absolutely love them!"', rating: 5, image: 'https://placehold.co/400x400/fdf2f8/c084a0?text=Glowing+Skin' },
   { text: '"Amazing quality skincare! The results are visible within a week. Highly recommend"', rating: 5, image: 'https://placehold.co/400x400/f0fdf4/6b8e5a?text=Great+Results' },

@@ -4,6 +4,7 @@ import { getProducts } from '../../services/productService.js';
 import SectionToggle from './SectionToggle.jsx';
 import SaveBar from './SaveBar.jsx';
 import { formatPrice, getAdminCurrency } from '../../utils/priceFormatter.js';
+import { getWatchAndBuyDefaults } from '../../defaults/index.js';
 
 const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
 
@@ -23,6 +24,7 @@ export default function WatchBuySection({ onSaved }) {
   const [skuLookup, setSkuLookup] = useState(null);
   const [skuSearching, setSkuSearching] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  const [usingDefaults, setUsingDefaults] = useState(false);
   const fileInputRef = useRef(null);
   const hasLoadedRef = useRef(false);
   const skipNextChangeRef = useRef(false);
@@ -55,7 +57,15 @@ export default function WatchBuySection({ onSaved }) {
         if (typeof settings === 'string') {
           try { settings = JSON.parse(settings); } catch (e) { settings = {}; }
         }
-        setVideos(settings.watchAndBuyVideos || []);
+        const savedVideos = settings.watchAndBuyVideos || [];
+        if (savedVideos.length > 0) {
+          setVideos(savedVideos);
+          setUsingDefaults(false);
+        } else {
+          const category = siteConfig?.category || 'generic';
+          setVideos(getWatchAndBuyDefaults(category));
+          setUsingDefaults(true);
+        }
         const val = settings.showWatchAndBuy !== false;
         setShowSection(val);
         serverShowRef.current = val;
@@ -231,13 +241,22 @@ export default function WatchBuySection({ onSaved }) {
 
       let updatedVideos;
       if (editingVideo) {
-        updatedVideos = videos.map(v => v.id === editingVideo.id ? videoData : v);
+        if (usingDefaults) {
+          updatedVideos = [videoData];
+        } else {
+          updatedVideos = videos.map(v => v.id === editingVideo.id ? videoData : v);
+        }
       } else {
-        updatedVideos = [...videos, videoData];
+        if (usingDefaults) {
+          updatedVideos = [videoData];
+        } else {
+          updatedVideos = [...videos, videoData];
+        }
       }
 
       await saveVideosToSettings(updatedVideos);
       setVideos(updatedVideos);
+      setUsingDefaults(false);
       serverShowRef.current = showSection;
       setHasChanges(false);
       setShowModal(false);
@@ -288,49 +307,54 @@ export default function WatchBuySection({ onSaved }) {
         </button>
       </div>
 
-      {videos.length === 0 ? (
-        <div className="empty-state">
-          <i className="fas fa-video" />
-          <h3>No Videos Yet</h3>
-          <p>Upload shoppable videos that link to your products. These appear in the Watch & Buy section on your homepage.</p>
-          <button className="btn btn-primary" onClick={openAdd} style={{ marginTop: 16 }}>
-            <i className="fas fa-plus" style={{ marginRight: 8 }} />Add First Video
-          </button>
+      {usingDefaults && (
+        <div style={{ background: '#fffbeb', border: '1px solid #fed7aa', borderRadius: 8, padding: '12px 16px', marginBottom: 20, fontSize: 13, color: '#92400e', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <i className="fas fa-info-circle" />
+          <span>Showing default placeholder content. Upload videos and link products to customize this section.</span>
         </div>
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 20 }}>
-          {videos.map(video => (
-            <div key={video.id} className="card" style={{ padding: 0, overflow: 'hidden' }}>
-              <div style={{ width: '100%', background: '#1e293b', position: 'relative' }}>
-                {video.videoUrl ? (
-                  <video src={video.videoUrl} style={{ width: '100%', height: 'auto', maxHeight: 400, objectFit: 'contain', display: 'block' }} playsInline loop controls />
-                ) : (
-                  <div style={{ width: '100%', height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <i className="fas fa-video" style={{ color: '#64748b', fontSize: 36 }} />
-                  </div>
-                )}
-              </div>
-              <div style={{ padding: 16 }}>
-                <h4 style={{ fontWeight: 600, fontSize: 15, marginBottom: 4 }}>{getProductNameForVideo(video)}</h4>
+      )}
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 20 }}>
+        {videos.map(video => (
+          <div key={video.id} className="card" style={{ padding: 0, overflow: 'hidden' }}>
+            <div style={{ width: '100%', background: video.videoUrl ? '#1e293b' : '#ffffff', position: 'relative', border: video.videoUrl ? 'none' : '1px solid #e2e8f0' }}>
+              {video.videoUrl ? (
+                <video src={video.videoUrl} style={{ width: '100%', height: 'auto', maxHeight: 400, objectFit: 'contain', display: 'block' }} playsInline loop controls />
+              ) : (
+                <div style={{ width: '100%', height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 8 }}>
+                  <i className="fas fa-video" style={{ color: '#cbd5e1', fontSize: 32 }} />
+                  <span style={{ fontSize: 12, color: '#94a3b8' }}>No video uploaded</span>
+                </div>
+              )}
+            </div>
+            <div style={{ padding: 16 }}>
+              <h4 style={{ fontWeight: 600, fontSize: 15, marginBottom: 4 }}>{video.title || getProductNameForVideo(video)}</h4>
+              {video.productSku ? (
                 <div style={{ fontSize: 12, color: '#2563eb', marginBottom: 12 }}>
                   <i className="fas fa-link" style={{ marginRight: 4 }} />SKU: {video.productSku}
                 </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button className="btn btn-secondary" style={{ flex: 1, fontSize: 13 }} onClick={() => openEdit(video)}>
-                    <i className="fas fa-edit" style={{ marginRight: 4 }} />Edit
-                  </button>
+              ) : (
+                <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 12 }}>
+                  <i className="fas fa-link" style={{ marginRight: 4 }} />No product linked
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className="btn btn-secondary" style={{ flex: 1, fontSize: 13 }} onClick={() => openEdit(video)}>
+                  <i className="fas fa-edit" style={{ marginRight: 4 }} />Edit
+                </button>
+                {!usingDefaults && (
                   <button
                     style={{ padding: '8px 12px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 6, color: '#dc2626', cursor: 'pointer', fontSize: 13 }}
                     onClick={() => handleDelete(video.id)}
                   >
                     <i className="fas fa-trash" />
                   </button>
-                </div>
+                )}
               </div>
             </div>
-          ))}
-        </div>
-      )}
+          </div>
+        ))}
+      </div>
 
       <SaveBar saving={saving} hasChanges={hasChanges} onSave={handleSaveAll} />
 

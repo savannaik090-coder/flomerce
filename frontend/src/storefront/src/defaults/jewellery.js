@@ -42,6 +42,15 @@ export const featuredVideoPlaceholders = {
   description: "e.g., Dreaming of something truly elegant? Discover our exquisite jewelry collection. Connect with our designers and create your perfect bridal ensemble",
 };
 
+export const watchAndBuyDefaults = [
+  { id: 'default-1', title: 'Bridal Collection', productSku: '', videoUrl: '' },
+  { id: 'default-2', title: 'Gold Necklace Set', productSku: '', videoUrl: '' },
+  { id: 'default-3', title: 'Diamond Earrings', productSku: '', videoUrl: '' },
+  { id: 'default-4', title: 'Temple Jewellery', productSku: '', videoUrl: '' },
+  { id: 'default-5', title: 'Kundan Collection', productSku: '', videoUrl: '' },
+  { id: 'default-6', title: 'Bangles & Kadas', productSku: '', videoUrl: '' },
+];
+
 export const defaultReviews = [
   { text: '"Received parcel. Jewelry quality is excellent. Thank you so much!"', rating: 5, image: 'https://placehold.co/400x400/fff5f5/d4a574?text=Customer+Review' },
   { text: '"Loved my purchase. You have a great collection... will definitely add more!"', rating: 5, image: 'https://placehold.co/400x400/fdf2f8/c084a0?text=Happy+Customer' },

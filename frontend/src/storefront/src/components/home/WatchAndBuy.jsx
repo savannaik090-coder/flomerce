@@ -4,6 +4,7 @@ import { useSiteConfig } from '../../hooks/useSiteConfig.js';
 import { getProducts } from '../../services/productService.js';
 import { useCurrency } from '../../hooks/useCurrency.js';
 import { resolveImageUrl } from '../../utils/imageUrl.js';
+import { getWatchAndBuyDefaults } from '../../defaults/index.js';
 
 export default function WatchAndBuy() {
   const { siteConfig } = useSiteConfig();
@@ -13,13 +14,21 @@ export default function WatchAndBuy() {
   const [playingIdx, setPlayingIdx] = useState(null);
   const videoRefs = useRef([]);
   const containerRef = useRef(null);
+  const [isDefaults, setIsDefaults] = useState(false);
 
   const isSectionHidden = siteConfig?.settings?.showWatchAndBuy === false;
 
   useEffect(() => {
     if (isSectionHidden) return;
     const configVideos = siteConfig?.settings?.watchAndBuyVideos || [];
-    setVideos(configVideos);
+    if (configVideos.length > 0) {
+      setVideos(configVideos);
+      setIsDefaults(false);
+    } else {
+      const category = siteConfig?.category || 'generic';
+      setVideos(getWatchAndBuyDefaults(category));
+      setIsDefaults(true);
+    }
 
     if (configVideos.length > 0 && siteConfig?.id) {
       getProducts(siteConfig.id, { limit: 500 })
@@ -126,17 +135,24 @@ export default function WatchAndBuy() {
             const product = productMap[item.productSku];
             return (
               <div key={item.id || idx} className="wb-video-item">
-                <div className="wb-video-wrapper" onClick={() => handleVideoClick(idx)}>
-                  <video
-                    ref={(el) => (videoRefs.current[idx] = el)}
-                    className="wb-video"
-                    playsInline
-                    loop
-                  >
-                    <source src={item.videoUrl} type="video/mp4" />
-                  </video>
+                <div className="wb-video-wrapper" onClick={() => item.videoUrl ? handleVideoClick(idx) : null}>
+                  {item.videoUrl ? (
+                    <video
+                      ref={(el) => (videoRefs.current[idx] = el)}
+                      className="wb-video"
+                      playsInline
+                      loop
+                    >
+                      <source src={item.videoUrl} type="video/mp4" />
+                    </video>
+                  ) : (
+                    <div className="wb-video wb-video-placeholder" style={{ background: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 8 }}>
+                      <i className="fas fa-video" style={{ fontSize: 28, color: '#cbd5e1' }}></i>
+                      <span style={{ fontSize: 13, color: '#94a3b8', fontWeight: 500 }}>{item.title || 'Video'}</span>
+                    </div>
+                  )}
 
-                  {playingIdx !== idx && (
+                  {item.videoUrl && playingIdx !== idx && (
                     <div className="wb-play-overlay">
                       <div className="wb-play-button">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
