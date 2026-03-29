@@ -724,7 +724,7 @@ async function reconcileShardEndpoint(env, shardId) {
 
 const MIGRATION_TABLES_SITE_ID = [
   'site_config',
-  'categories', 'products', 'product_variants', 'orders', 'guest_orders',
+  'categories', 'products', 'orders', 'guest_orders',
   'carts', 'wishlists', 'site_customers', 'site_customer_sessions',
   'customer_addresses', 'customer_password_resets', 'customer_email_verifications',
   'coupons', 'notifications', 'reviews', 'page_seo', 'site_media', 'site_staff',
@@ -732,8 +732,9 @@ const MIGRATION_TABLES_SITE_ID = [
   'site_usage', 'activity_log', 'page_views',
 ];
 
-const MIGRATION_TABLES_USER_ID = [
-  { table: 'addresses', fk: 'user_id', resolveIds: 'site_customers' },
+const MIGRATION_TABLES_FK = [
+  { table: 'product_variants', fk: 'product_id', resolveFrom: 'products', resolveKey: 'site_id' },
+  { table: 'addresses', fk: 'user_id', resolveFrom: 'site_customers', resolveKey: 'site_id' },
 ];
 
 async function batchInsertRows(targetDB, table, rows) {
@@ -872,11 +873,9 @@ async function moveSiteBetweenShards(request, env) {
         allMigratedTables.push({ table, keyCol: 'site_id' });
       }
 
-      for (const { table, fk, resolveIds } of MIGRATION_TABLES_USER_ID) {
-        let tableExists = false;
+      for (const { table, fk, resolveFrom, resolveKey } of MIGRATION_TABLES_FK) {
         try {
           await sourceDB.prepare(`SELECT COUNT(*) as c FROM ${table} LIMIT 1`).first();
-          tableExists = true;
         } catch (e) {
           const msg = (e.message || '').toLowerCase();
           if (msg.includes('no such table') || msg.includes('does not exist')) {
@@ -886,21 +885,21 @@ async function moveSiteBetweenShards(request, env) {
           throw new Error(`Failed to read table ${table} on source shard: ${e.message}`);
         }
 
-        const userIdsResult = await sourceDB.prepare(
-          `SELECT id FROM ${resolveIds} WHERE site_id = ?`
+        const parentIdsResult = await sourceDB.prepare(
+          `SELECT id FROM ${resolveFrom} WHERE ${resolveKey} = ?`
         ).bind(siteId).all();
-        const userIds = (userIdsResult.results || []).map(r => r.id);
+        const parentIds = (parentIdsResult.results || []).map(r => r.id);
 
-        if (userIds.length === 0) {
+        if (parentIds.length === 0) {
           migrationStats[table] = 0;
-          allMigratedTables.push({ table, keyCol: fk, userIds: [] });
+          allMigratedTables.push({ table, keyCol: fk, parentIds: [] });
           continue;
         }
 
         let copied = 0;
         const ID_BATCH = 50;
-        for (let i = 0; i < userIds.length; i += ID_BATCH) {
-          const idBatch = userIds.slice(i, i + ID_BATCH);
+        for (let i = 0; i < parentIds.length; i += ID_BATCH) {
+          const idBatch = parentIds.slice(i, i + ID_BATCH);
           const placeholders = idBatch.map(() => '?').join(', ');
           const result = await sourceDB.prepare(
             `SELECT * FROM ${table} WHERE ${fk} IN (${placeholders})`
@@ -912,11 +911,11 @@ async function moveSiteBetweenShards(request, env) {
         }
 
         migrationStats[table] = copied;
-        allMigratedTables.push({ table, keyCol: fk, userIds });
+        allMigratedTables.push({ table, keyCol: fk, parentIds });
       }
 
       const verificationErrors = [];
-      for (const { table, keyCol, userIds } of allMigratedTables) {
+      for (const { table, keyCol, parentIds } of allMigratedTables) {
         let sourceCount = 0;
         let targetCount = 0;
 
@@ -925,10 +924,10 @@ async function moveSiteBetweenShards(request, env) {
           sourceCount = sc?.c || 0;
           const tc = await targetDB.prepare(`SELECT COUNT(*) as c FROM ${table} WHERE site_id = ?`).bind(siteId).first();
           targetCount = tc?.c || 0;
-        } else if (userIds && userIds.length > 0) {
+        } else if (parentIds && parentIds.length > 0) {
           const ID_BATCH = 50;
-          for (let i = 0; i < userIds.length; i += ID_BATCH) {
-            const idBatch = userIds.slice(i, i + ID_BATCH);
+          for (let i = 0; i < parentIds.length; i += ID_BATCH) {
+            const idBatch = parentIds.slice(i, i + ID_BATCH);
             const placeholders = idBatch.map(() => '?').join(', ');
             const sc = await sourceDB.prepare(`SELECT COUNT(*) as c FROM ${table} WHERE ${keyCol} IN (${placeholders})`).bind(...idBatch).first();
             sourceCount += sc?.c || 0;
@@ -962,14 +961,14 @@ async function moveSiteBetweenShards(request, env) {
         'UPDATE sites SET shard_id = ?, updated_at = datetime(\'now\') WHERE id = ?'
       ).bind(targetShardId, siteId).run();
 
-      for (const { table, keyCol, userIds } of allMigratedTables) {
+      for (const { table, keyCol, parentIds } of allMigratedTables) {
         try {
           if (keyCol === 'site_id') {
             await sourceDB.prepare(`DELETE FROM ${table} WHERE site_id = ?`).bind(siteId).run();
-          } else if (userIds && userIds.length > 0) {
+          } else if (parentIds && parentIds.length > 0) {
             const ID_BATCH = 50;
-            for (let i = 0; i < userIds.length; i += ID_BATCH) {
-              const idBatch = userIds.slice(i, i + ID_BATCH);
+            for (let i = 0; i < parentIds.length; i += ID_BATCH) {
+              const idBatch = parentIds.slice(i, i + ID_BATCH);
               const placeholders = idBatch.map(() => '?').join(', ');
               await sourceDB.prepare(`DELETE FROM ${table} WHERE ${keyCol} IN (${placeholders})`).bind(...idBatch).run();
             }
@@ -983,14 +982,14 @@ async function moveSiteBetweenShards(request, env) {
       migrationError = err.message || 'Unknown migration error';
       console.error('Migration failed, rolling back:', migrationError);
 
-      for (const { table, keyCol, userIds } of allMigratedTables) {
+      for (const { table, keyCol, parentIds } of allMigratedTables) {
         try {
           if (keyCol === 'site_id') {
             await targetDB.prepare(`DELETE FROM ${table} WHERE site_id = ?`).bind(siteId).run();
-          } else if (userIds && userIds.length > 0) {
+          } else if (parentIds && parentIds.length > 0) {
             const ID_BATCH = 50;
-            for (let i = 0; i < userIds.length; i += ID_BATCH) {
-              const idBatch = userIds.slice(i, i + ID_BATCH);
+            for (let i = 0; i < parentIds.length; i += ID_BATCH) {
+              const idBatch = parentIds.slice(i, i + ID_BATCH);
               const placeholders = idBatch.map(() => '?').join(', ');
               await targetDB.prepare(`DELETE FROM ${table} WHERE ${keyCol} IN (${placeholders})`).bind(...idBatch).run();
             }

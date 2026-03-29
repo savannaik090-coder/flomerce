@@ -618,25 +618,31 @@ async function deleteSite(env, user, siteId) {
     if (site.shard_id) {
       try {
         const shardDB = await resolveSiteDBById(env, siteId);
-        try {
-          const custResult = await shardDB.prepare('SELECT id FROM site_customers WHERE site_id = ?').bind(siteId).all();
-          const custIds = (custResult.results || []).map(r => r.id);
-          if (custIds.length > 0) {
-            const ID_BATCH = 50;
-            for (let i = 0; i < custIds.length; i += ID_BATCH) {
-              const batch = custIds.slice(i, i + ID_BATCH);
-              const ph = batch.map(() => '?').join(', ');
-              try { await shardDB.prepare(`DELETE FROM addresses WHERE user_id IN (${ph})`).bind(...batch).run(); } catch (e) {}
+        const fkCleanups = [
+          { table: 'product_variants', fk: 'product_id', resolveFrom: 'products' },
+          { table: 'addresses', fk: 'user_id', resolveFrom: 'site_customers' },
+        ];
+        for (const { table, fk, resolveFrom } of fkCleanups) {
+          try {
+            const parentResult = await shardDB.prepare(`SELECT id FROM ${resolveFrom} WHERE site_id = ?`).bind(siteId).all();
+            const parentIds = (parentResult.results || []).map(r => r.id);
+            if (parentIds.length > 0) {
+              const ID_BATCH = 50;
+              for (let i = 0; i < parentIds.length; i += ID_BATCH) {
+                const batch = parentIds.slice(i, i + ID_BATCH);
+                const ph = batch.map(() => '?').join(', ');
+                try { await shardDB.prepare(`DELETE FROM ${table} WHERE ${fk} IN (${ph})`).bind(...batch).run(); } catch (e) {}
+              }
             }
-          }
-        } catch (e) {}
+          } catch (e) {}
+        }
         const siteTables = [
           'site_config',
           'activity_log', 'page_views', 'page_seo', 'reviews', 'notifications', 'coupons',
           'customer_email_verifications', 'customer_password_resets',
           'customer_addresses', 'site_customer_sessions', 'site_customers',
           'wishlists', 'carts', 'guest_orders', 'orders',
-          'product_variants', 'products', 'categories', 'site_media', 'site_usage', 'site_staff',
+          'products', 'categories', 'site_media', 'site_usage', 'site_staff',
           'cancellation_requests', 'return_requests'
         ];
         for (const table of siteTables) {
