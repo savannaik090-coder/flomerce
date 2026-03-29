@@ -61,6 +61,12 @@ binding = "SHARD_2"
 database_name = "saas-sites-db-2"
 database_id = "f2a10129-b13a-4df5-bff0-ecc61a687491"
 
+# Shard D3 Databases
+[[d1_databases]]
+binding = "SHARD_3"
+database_name = "saas-sites-db-3"
+database_id = "7cd02690-e40c-40b3-822a-683da3d93ed2"
+
 # Scheduled Cleanup (runs daily at 3:00 AM UTC)
 [triggers]
 crons = ["0 3 * * *"]

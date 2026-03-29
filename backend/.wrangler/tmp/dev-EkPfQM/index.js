@@ -4324,9 +4324,26 @@ async function deleteSite(env, user, siteId) {
     if (site.shard_id) {
       try {
         const shardDB = await resolveSiteDBById(env, siteId);
+        try {
+          const custResult = await shardDB.prepare("SELECT id FROM site_customers WHERE site_id = ?").bind(siteId).all();
+          const custIds = (custResult.results || []).map((r) => r.id);
+          if (custIds.length > 0) {
+            const ID_BATCH = 50;
+            for (let i = 0; i < custIds.length; i += ID_BATCH) {
+              const batch = custIds.slice(i, i + ID_BATCH);
+              const ph = batch.map(() => "?").join(", ");
+              try {
+                await shardDB.prepare(`DELETE FROM addresses WHERE user_id IN (${ph})`).bind(...batch).run();
+              } catch (e) {
+              }
+            }
+          }
+        } catch (e) {
+        }
         const siteTables = [
           "site_config",
           "activity_log",
+          "page_views",
           "page_seo",
           "reviews",
           "notifications",
@@ -4345,7 +4362,6 @@ async function deleteSite(env, user, siteId) {
           "categories",
           "site_media",
           "site_usage",
-          "addresses",
           "site_staff",
           "cancellation_requests",
           "return_requests"
@@ -11738,7 +11754,7 @@ async function reconcileShardEndpoint(env, shardId) {
   }
 }
 __name(reconcileShardEndpoint, "reconcileShardEndpoint");
-var MIGRATION_TABLES = [
+var MIGRATION_TABLES_SITE_ID = [
   "site_config",
   "categories",
   "products",
@@ -11762,8 +11778,71 @@ var MIGRATION_TABLES = [
   "return_requests",
   "site_usage",
   "activity_log",
-  "addresses"
+  "page_views"
 ];
+var MIGRATION_TABLES_USER_ID = [
+  { table: "addresses", fk: "user_id", resolveIds: "site_customers" }
+];
+async function batchInsertRows(targetDB, table, rows) {
+  const BATCH_SIZE = 25;
+  let inserted = 0;
+  for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+    const batch = rows.slice(i, i + BATCH_SIZE);
+    const stmts = batch.map((row) => {
+      const columns = Object.keys(row);
+      const placeholders = columns.map(() => "?").join(", ");
+      const values = columns.map((c) => row[c]);
+      return targetDB.prepare(
+        `INSERT OR REPLACE INTO ${table} (${columns.join(", ")}) VALUES (${placeholders})`
+      ).bind(...values);
+    });
+    try {
+      await targetDB.batch(stmts);
+      inserted += batch.length;
+    } catch (batchErr) {
+      for (const row of batch) {
+        const columns = Object.keys(row);
+        const placeholders = columns.map(() => "?").join(", ");
+        const values = columns.map((c) => row[c]);
+        try {
+          await targetDB.prepare(
+            `INSERT OR REPLACE INTO ${table} (${columns.join(", ")}) VALUES (${placeholders})`
+          ).bind(...values).run();
+          inserted++;
+        } catch (insertErr) {
+          console.error(`Migration insert error for ${table}:`, insertErr.message);
+        }
+      }
+    }
+  }
+  return inserted;
+}
+__name(batchInsertRows, "batchInsertRows");
+var AUTOINCREMENT_TABLES = /* @__PURE__ */ new Set(["page_views", "site_media"]);
+async function migrateTableBySiteId(sourceDB, targetDB, table, siteId) {
+  let copied = 0;
+  let offset = 0;
+  const batchSize = 1e3;
+  const stripId = AUTOINCREMENT_TABLES.has(table);
+  while (true) {
+    const result = await sourceDB.prepare(
+      `SELECT * FROM ${table} WHERE site_id = ? LIMIT ? OFFSET ?`
+    ).bind(siteId, batchSize, offset).all();
+    const rows = result.results || [];
+    if (rows.length === 0)
+      break;
+    const processedRows = stripId ? rows.map((row) => {
+      const { id, ...rest } = row;
+      return rest;
+    }) : rows;
+    copied += await batchInsertRows(targetDB, table, processedRows);
+    offset += batchSize;
+    if (rows.length < batchSize)
+      break;
+  }
+  return copied;
+}
+__name(migrateTableBySiteId, "migrateTableBySiteId");
 async function moveSiteBetweenShards(request, env) {
   try {
     const { siteId, targetShardId } = await request.json();
@@ -11809,59 +11888,91 @@ async function moveSiteBetweenShards(request, env) {
       }
     }
     const migrationStats = {};
+    const skippedTables = [];
     let migrationError = null;
+    const allMigratedTables = [];
     try {
-      for (const table of MIGRATION_TABLES) {
+      for (const table of MIGRATION_TABLES_SITE_ID) {
+        let tableExists = false;
+        try {
+          await sourceDB.prepare(`SELECT COUNT(*) as c FROM ${table} WHERE site_id = ?`).bind(siteId).first();
+          tableExists = true;
+        } catch (e) {
+          const msg = (e.message || "").toLowerCase();
+          if (msg.includes("no such table") || msg.includes("does not exist")) {
+            skippedTables.push(table);
+            continue;
+          }
+          throw new Error(`Failed to read table ${table} on source shard: ${e.message}`);
+        }
+        const copied = await migrateTableBySiteId(sourceDB, targetDB, table, siteId);
+        migrationStats[table] = copied;
+        allMigratedTables.push({ table, keyCol: "site_id" });
+      }
+      for (const { table, fk, resolveIds } of MIGRATION_TABLES_USER_ID) {
+        let tableExists = false;
+        try {
+          await sourceDB.prepare(`SELECT COUNT(*) as c FROM ${table} LIMIT 1`).first();
+          tableExists = true;
+        } catch (e) {
+          const msg = (e.message || "").toLowerCase();
+          if (msg.includes("no such table") || msg.includes("does not exist")) {
+            skippedTables.push(table);
+            continue;
+          }
+          throw new Error(`Failed to read table ${table} on source shard: ${e.message}`);
+        }
+        const userIdsResult = await sourceDB.prepare(
+          `SELECT id FROM ${resolveIds} WHERE site_id = ?`
+        ).bind(siteId).all();
+        const userIds = (userIdsResult.results || []).map((r) => r.id);
+        if (userIds.length === 0) {
+          migrationStats[table] = 0;
+          allMigratedTables.push({ table, keyCol: fk, userIds: [] });
+          continue;
+        }
         let copied = 0;
-        let offset = 0;
-        const batchSize = 1e3;
-        while (true) {
-          let rows;
-          try {
-            const result = await sourceDB.prepare(
-              `SELECT * FROM ${table} WHERE site_id = ? LIMIT ? OFFSET ?`
-            ).bind(siteId, batchSize, offset).all();
-            rows = result.results || [];
-          } catch (e) {
-            break;
+        const ID_BATCH = 50;
+        for (let i = 0; i < userIds.length; i += ID_BATCH) {
+          const idBatch = userIds.slice(i, i + ID_BATCH);
+          const placeholders = idBatch.map(() => "?").join(", ");
+          const result = await sourceDB.prepare(
+            `SELECT * FROM ${table} WHERE ${fk} IN (${placeholders})`
+          ).bind(...idBatch).all();
+          const rows = result.results || [];
+          if (rows.length > 0) {
+            copied += await batchInsertRows(targetDB, table, rows);
           }
-          if (rows.length === 0)
-            break;
-          for (const row of rows) {
-            const columns = Object.keys(row);
-            const placeholders = columns.map(() => "?").join(", ");
-            const values = columns.map((c) => row[c]);
-            try {
-              await targetDB.prepare(
-                `INSERT OR REPLACE INTO ${table} (${columns.join(", ")}) VALUES (${placeholders})`
-              ).bind(...values).run();
-              copied++;
-            } catch (insertErr) {
-              console.error(`Migration insert error for ${table}:`, insertErr.message);
-            }
-          }
-          offset += batchSize;
-          if (rows.length < batchSize)
-            break;
         }
         migrationStats[table] = copied;
+        allMigratedTables.push({ table, keyCol: fk, userIds });
       }
-      for (const table of MIGRATION_TABLES) {
+      const verificationErrors = [];
+      for (const { table, keyCol, userIds } of allMigratedTables) {
         let sourceCount = 0;
         let targetCount = 0;
-        try {
+        if (keyCol === "site_id") {
           const sc = await sourceDB.prepare(`SELECT COUNT(*) as c FROM ${table} WHERE site_id = ?`).bind(siteId).first();
           sourceCount = sc?.c || 0;
-        } catch (e) {
-        }
-        try {
           const tc = await targetDB.prepare(`SELECT COUNT(*) as c FROM ${table} WHERE site_id = ?`).bind(siteId).first();
           targetCount = tc?.c || 0;
-        } catch (e) {
+        } else if (userIds && userIds.length > 0) {
+          const ID_BATCH = 50;
+          for (let i = 0; i < userIds.length; i += ID_BATCH) {
+            const idBatch = userIds.slice(i, i + ID_BATCH);
+            const placeholders = idBatch.map(() => "?").join(", ");
+            const sc = await sourceDB.prepare(`SELECT COUNT(*) as c FROM ${table} WHERE ${keyCol} IN (${placeholders})`).bind(...idBatch).first();
+            sourceCount += sc?.c || 0;
+            const tc = await targetDB.prepare(`SELECT COUNT(*) as c FROM ${table} WHERE ${keyCol} IN (${placeholders})`).bind(...idBatch).first();
+            targetCount += tc?.c || 0;
+          }
         }
         if (sourceCount > 0 && targetCount < sourceCount) {
-          throw new Error(`Verification failed for ${table}: source=${sourceCount}, target=${targetCount}`);
+          verificationErrors.push(`${table}: source=${sourceCount}, target=${targetCount}`);
         }
+      }
+      if (verificationErrors.length > 0) {
+        throw new Error(`Verification failed: ${verificationErrors.join("; ")}`);
       }
       const usage = await env.DB.prepare(
         "SELECT d1_bytes_used, baseline_bytes FROM site_usage WHERE site_id = ?"
@@ -11875,18 +11986,37 @@ async function moveSiteBetweenShards(request, env) {
       await env.DB.prepare(
         "UPDATE sites SET shard_id = ?, updated_at = datetime('now') WHERE id = ?"
       ).bind(targetShardId, siteId).run();
-      for (const table of MIGRATION_TABLES) {
+      for (const { table, keyCol, userIds } of allMigratedTables) {
         try {
-          await sourceDB.prepare(`DELETE FROM ${table} WHERE site_id = ?`).bind(siteId).run();
+          if (keyCol === "site_id") {
+            await sourceDB.prepare(`DELETE FROM ${table} WHERE site_id = ?`).bind(siteId).run();
+          } else if (userIds && userIds.length > 0) {
+            const ID_BATCH = 50;
+            for (let i = 0; i < userIds.length; i += ID_BATCH) {
+              const idBatch = userIds.slice(i, i + ID_BATCH);
+              const placeholders = idBatch.map(() => "?").join(", ");
+              await sourceDB.prepare(`DELETE FROM ${table} WHERE ${keyCol} IN (${placeholders})`).bind(...idBatch).run();
+            }
+          }
         } catch (e) {
+          console.error(`Source cleanup error for ${table}:`, e.message);
         }
       }
     } catch (err) {
       migrationError = err.message || "Unknown migration error";
       console.error("Migration failed, rolling back:", migrationError);
-      for (const table of MIGRATION_TABLES) {
+      for (const { table, keyCol, userIds } of allMigratedTables) {
         try {
-          await targetDB.prepare(`DELETE FROM ${table} WHERE site_id = ?`).bind(siteId).run();
+          if (keyCol === "site_id") {
+            await targetDB.prepare(`DELETE FROM ${table} WHERE site_id = ?`).bind(siteId).run();
+          } else if (userIds && userIds.length > 0) {
+            const ID_BATCH = 50;
+            for (let i = 0; i < userIds.length; i += ID_BATCH) {
+              const idBatch = userIds.slice(i, i + ID_BATCH);
+              const placeholders = idBatch.map(() => "?").join(", ");
+              await targetDB.prepare(`DELETE FROM ${table} WHERE ${keyCol} IN (${placeholders})`).bind(...idBatch).run();
+            }
+          }
         } catch (e) {
         }
       }
@@ -11901,7 +12031,8 @@ async function moveSiteBetweenShards(request, env) {
       siteId,
       fromShard: sourceShardId,
       toShard: targetShardId,
-      tables: migrationStats
+      tables: migrationStats,
+      skippedTables: skippedTables.length > 0 ? skippedTables : void 0
     }, `Site ${site.subdomain} migrated successfully`);
   } catch (error) {
     console.error("Move site error:", error);
