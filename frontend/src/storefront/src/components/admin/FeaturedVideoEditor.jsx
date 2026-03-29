@@ -5,7 +5,7 @@ import SaveBar from './SaveBar.jsx';
 
 const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
 
-import { getFeaturedVideoPlaceholders } from '../../defaults/index.js';
+import { getFeaturedVideoPlaceholders, getFeaturedVideoDefaults } from '../../defaults/index.js';
 
 export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate }) {
   const { siteConfig } = useContext(SiteContext);
@@ -49,8 +49,9 @@ export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate }) {
         if (typeof settings === 'string') {
           try { settings = JSON.parse(settings); } catch (e) { settings = {}; }
         }
-        const tVal = settings.featuredVideoTitle || '';
-        const dVal = settings.featuredVideoDescription || '';
+        const catDefaults = getFeaturedVideoDefaults(siteConfig?.category);
+        const tVal = settings.featuredVideoTitle || catDefaults.title || '';
+        const dVal = settings.featuredVideoDescription || catDefaults.description || '';
         const vVal = settings.featuredVideoUrl || '';
         const clVal = settings.featuredVideoChatLink || '';
         const cbVal = settings.featuredVideoChatButtonText || 'CHAT NOW';

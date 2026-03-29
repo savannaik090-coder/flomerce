@@ -26,6 +26,20 @@
     object-position: center;
 }
 
+.fv-placeholder-bg {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 25%, #0f3460 50%, #1a1a2e 75%, #16213e 100%);
+    background-size: 400% 400%;
+    animation: fvGradientShift 12s ease infinite;
+}
+
+@keyframes fvGradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
 .fv-overlay {
     position: absolute;
     top: 0;
