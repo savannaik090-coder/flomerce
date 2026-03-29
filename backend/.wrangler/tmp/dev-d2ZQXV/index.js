@@ -11681,13 +11681,13 @@ async function createShard(request, env) {
     await runSchemaOnDB(env, databaseId, schemaStatements);
     console.log(`Schema applied to shard DB: ${name}`);
     const shardId = generateId();
-    if (setActive !== false) {
+    if (setActive === true) {
       await env.DB.prepare("UPDATE shards SET is_active = 0").run();
     }
     await env.DB.prepare(
       `INSERT INTO shards (id, binding_name, database_id, database_name, is_active, correction_factor, created_at)
        VALUES (?, ?, ?, ?, ?, 1.0, datetime('now'))`
-    ).bind(shardId, bindingName, databaseId, name, setActive !== false ? 1 : 0).run();
+    ).bind(shardId, bindingName, databaseId, name, setActive === true ? 1 : 0).run();
     let bindingAdded = false;
     try {
       await addBindingAndRedeploy(env, shardId, databaseId, bindingName);
@@ -11701,7 +11701,7 @@ async function createShard(request, env) {
       bindingName,
       databaseId,
       databaseName: name,
-      isActive: setActive !== false,
+      isActive: setActive === true,
       bindingAdded,
       note: bindingAdded ? void 0 : `Shard created but binding not auto-added. Add to wrangler.toml: [[d1_databases]] binding="${bindingName}" database_name="${name}" database_id="${databaseId}"`
     }, `Shard "${name}" created successfully with binding ${bindingName}`);
