@@ -717,7 +717,7 @@ const MIGRATION_TABLES = [
   'categories', 'products', 'product_variants', 'orders', 'guest_orders',
   'carts', 'wishlists', 'site_customers', 'site_customer_sessions',
   'customer_addresses', 'customer_password_resets', 'customer_email_verifications',
-  'coupons', 'notifications', 'reviews', 'page_seo', 'site_media',
+  'coupons', 'notifications', 'reviews', 'page_seo', 'site_media', 'site_staff',
   'site_usage', 'activity_log', 'addresses',
 ];
 

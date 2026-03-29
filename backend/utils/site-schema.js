@@ -342,6 +342,22 @@ export function getSiteSchemaStatements() {
       created_at TEXT DEFAULT (datetime('now'))
     )`,
 
+    `CREATE TABLE IF NOT EXISTS site_staff (
+      id TEXT PRIMARY KEY,
+      site_id TEXT NOT NULL,
+      email TEXT NOT NULL,
+      password_hash TEXT NOT NULL,
+      name TEXT NOT NULL,
+      permissions TEXT DEFAULT '[]',
+      is_active INTEGER DEFAULT 1,
+      failed_login_attempts INTEGER DEFAULT 0,
+      locked_until TEXT,
+      row_size_bytes INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(site_id, email)
+    )`,
+
     `CREATE TABLE IF NOT EXISTS site_config (
       site_id TEXT PRIMARY KEY,
       brand_name TEXT,
@@ -417,6 +433,8 @@ export function getSiteSchemaStatements() {
     'CREATE INDEX IF NOT EXISTS idx_site_media_site ON site_media(site_id)',
     'CREATE INDEX IF NOT EXISTS idx_site_media_key ON site_media(storage_key)',
     'CREATE INDEX IF NOT EXISTS idx_addresses_user ON addresses(user_id)',
+    'CREATE INDEX IF NOT EXISTS idx_site_staff_site ON site_staff(site_id)',
+    'CREATE INDEX IF NOT EXISTS idx_site_staff_email ON site_staff(site_id, email)',
     'CREATE INDEX IF NOT EXISTS idx_page_views_site ON page_views(site_id)',
     'CREATE INDEX IF NOT EXISTS idx_page_views_created ON page_views(site_id, created_at)',
     'CREATE INDEX IF NOT EXISTS idx_page_views_visitor ON page_views(site_id, visitor_id)',

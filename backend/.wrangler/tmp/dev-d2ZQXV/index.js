@@ -1254,7 +1254,8 @@ async function staffLogin(request, env) {
     if (!site) {
       return errorResponse("Site not found", 404);
     }
-    const staff = await env.DB.prepare(
+    const siteDB = await resolveSiteDBById(env, site.id);
+    const staff = await siteDB.prepare(
       "SELECT id, site_id, email, password_hash, name, permissions, is_active, failed_login_attempts, locked_until FROM site_staff WHERE site_id = ? AND LOWER(email) = LOWER(?)"
     ).bind(site.id, email.trim()).first();
     if (!staff) {
@@ -1272,7 +1273,7 @@ async function staffLogin(request, env) {
     if (!passwordValid) {
       const attempts = (staff.failed_login_attempts || 0) + 1;
       const lockedUntil = attempts >= 5 ? new Date(Date.now() + 15 * 60 * 1e3).toISOString() : null;
-      await env.DB.prepare(
+      await siteDB.prepare(
         "UPDATE site_staff SET failed_login_attempts = ?, locked_until = ? WHERE id = ?"
       ).bind(attempts, lockedUntil, staff.id).run();
       if (attempts >= 5) {
@@ -1280,7 +1281,7 @@ async function staffLogin(request, env) {
       }
       return errorResponse("Invalid email or password", 401);
     }
-    await env.DB.prepare(
+    await siteDB.prepare(
       "UPDATE site_staff SET failed_login_attempts = 0, locked_until = NULL WHERE id = ?"
     ).bind(staff.id).run();
     let permissions = [];
@@ -1330,7 +1331,8 @@ async function validateSiteAdminToken(request, env) {
     const isOwner2 = !session.staff_id;
     let permissions = null;
     if (!isOwner2) {
-      const staff = await env.DB.prepare(
+      const siteDB = await resolveSiteDBById(env, siteId);
+      const staff = await siteDB.prepare(
         "SELECT is_active, permissions FROM site_staff WHERE id = ? AND site_id = ?"
       ).bind(session.staff_id, siteId).first();
       if (!staff || !staff.is_active) {
@@ -1865,7 +1867,8 @@ async function validateSiteAdmin(request, env, siteId) {
     const isOwner2 = !session.staff_id;
     let permissions = null;
     if (!isOwner2) {
-      const staff = await env.DB.prepare(
+      const siteDB = await resolveSiteDBById(env, siteId);
+      const staff = await siteDB.prepare(
         "SELECT is_active, permissions FROM site_staff WHERE id = ? AND site_id = ?"
       ).bind(session.staff_id, siteId).first();
       if (!staff || !staff.is_active) {
@@ -1916,7 +1919,8 @@ async function handleStaffCRUD(request, env, siteId, staffAction, staffId) {
 }
 async function listStaff(env, siteId) {
   try {
-    const result = await env.DB.prepare(
+    const siteDB = await resolveSiteDBById(env, siteId);
+    const result = await siteDB.prepare(
       "SELECT id, site_id, email, name, permissions, is_active, created_at, updated_at FROM site_staff WHERE site_id = ? ORDER BY created_at DESC"
     ).bind(siteId).all();
     const staff = (result.results || []).map((s) => ({
@@ -1938,7 +1942,8 @@ async function listStaff(env, siteId) {
 }
 async function getStaffMember(env, siteId, staffId) {
   try {
-    const staff = await env.DB.prepare(
+    const siteDB = await resolveSiteDBById(env, siteId);
+    const staff = await siteDB.prepare(
       "SELECT id, site_id, email, name, permissions, is_active, created_at, updated_at FROM site_staff WHERE id = ? AND site_id = ?"
     ).bind(staffId, siteId).first();
     if (!staff)
@@ -1971,7 +1976,8 @@ async function addStaff(request, env, siteId) {
     if (validPerms.length === 0) {
       return errorResponse("At least one permission must be selected");
     }
-    const existing = await env.DB.prepare(
+    const siteDB = await resolveSiteDBById(env, siteId);
+    const existing = await siteDB.prepare(
       "SELECT id FROM site_staff WHERE site_id = ? AND LOWER(email) = LOWER(?)"
     ).bind(siteId, email.trim()).first();
     if (existing) {
@@ -1979,7 +1985,7 @@ async function addStaff(request, env, siteId) {
     }
     const passwordHash = await hashPassword(password);
     const id = generateId();
-    await env.DB.prepare(
+    await siteDB.prepare(
       `INSERT INTO site_staff (id, site_id, email, password_hash, name, permissions, is_active, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, 1, datetime('now'), datetime('now'))`
     ).bind(id, siteId, email.trim().toLowerCase(), passwordHash, name.trim(), JSON.stringify(validPerms)).run();
@@ -2001,7 +2007,8 @@ async function addStaff(request, env, siteId) {
 }
 async function updateStaff(request, env, siteId, staffId) {
   try {
-    const existing = await env.DB.prepare(
+    const siteDB = await resolveSiteDBById(env, siteId);
+    const existing = await siteDB.prepare(
       "SELECT id FROM site_staff WHERE id = ? AND site_id = ?"
     ).bind(staffId, siteId).first();
     if (!existing)
@@ -2018,7 +2025,7 @@ async function updateStaff(request, env, siteId, staffId) {
       if (!emailRegex.test(updates.email)) {
         return errorResponse("Invalid email address");
       }
-      const emailConflict = await env.DB.prepare(
+      const emailConflict = await siteDB.prepare(
         "SELECT id FROM site_staff WHERE site_id = ? AND LOWER(email) = LOWER(?) AND id != ?"
       ).bind(siteId, updates.email.trim(), staffId).first();
       if (emailConflict) {
@@ -2052,7 +2059,7 @@ async function updateStaff(request, env, siteId, staffId) {
     }
     setClauses.push('updated_at = datetime("now")');
     values.push(staffId, siteId);
-    await env.DB.prepare(
+    await siteDB.prepare(
       `UPDATE site_staff SET ${setClauses.join(", ")} WHERE id = ? AND site_id = ?`
     ).bind(...values).run();
     if (updates.permissions !== void 0 || updates.is_active === false || updates.password) {
@@ -2060,7 +2067,7 @@ async function updateStaff(request, env, siteId, staffId) {
         "DELETE FROM site_admin_sessions WHERE staff_id = ? AND site_id = ?"
       ).bind(staffId, siteId).run();
     }
-    const updated = await env.DB.prepare(
+    const updated = await siteDB.prepare(
       "SELECT id, site_id, email, name, permissions, is_active, created_at, updated_at FROM site_staff WHERE id = ? AND site_id = ?"
     ).bind(staffId, siteId).first();
     let permissions = [];
@@ -2076,7 +2083,8 @@ async function updateStaff(request, env, siteId, staffId) {
 }
 async function deleteStaff(env, siteId, staffId) {
   try {
-    const existing = await env.DB.prepare(
+    const siteDB = await resolveSiteDBById(env, siteId);
+    const existing = await siteDB.prepare(
       "SELECT id FROM site_staff WHERE id = ? AND site_id = ?"
     ).bind(staffId, siteId).first();
     if (!existing)
@@ -2084,7 +2092,7 @@ async function deleteStaff(env, siteId, staffId) {
     await env.DB.prepare(
       "DELETE FROM site_admin_sessions WHERE staff_id = ? AND site_id = ?"
     ).bind(staffId, siteId).run();
-    await env.DB.prepare(
+    await siteDB.prepare(
       "DELETE FROM site_staff WHERE id = ? AND site_id = ?"
     ).bind(staffId, siteId).run();
     return successResponse(null, "Staff member removed successfully");
@@ -4304,7 +4312,8 @@ async function deleteSite(env, user, siteId) {
           "categories",
           "site_media",
           "site_usage",
-          "addresses"
+          "addresses",
+          "site_staff"
         ];
         for (const table of siteTables) {
           try {
@@ -10867,6 +10876,21 @@ function getSiteSchemaStatements() {
       visitor_id TEXT,
       created_at TEXT DEFAULT (datetime('now'))
     )`,
+    `CREATE TABLE IF NOT EXISTS site_staff (
+      id TEXT PRIMARY KEY,
+      site_id TEXT NOT NULL,
+      email TEXT NOT NULL,
+      password_hash TEXT NOT NULL,
+      name TEXT NOT NULL,
+      permissions TEXT DEFAULT '[]',
+      is_active INTEGER DEFAULT 1,
+      failed_login_attempts INTEGER DEFAULT 0,
+      locked_until TEXT,
+      row_size_bytes INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(site_id, email)
+    )`,
     `CREATE TABLE IF NOT EXISTS site_config (
       site_id TEXT PRIMARY KEY,
       brand_name TEXT,
@@ -10941,6 +10965,8 @@ function getSiteSchemaStatements() {
     "CREATE INDEX IF NOT EXISTS idx_site_media_site ON site_media(site_id)",
     "CREATE INDEX IF NOT EXISTS idx_site_media_key ON site_media(storage_key)",
     "CREATE INDEX IF NOT EXISTS idx_addresses_user ON addresses(user_id)",
+    "CREATE INDEX IF NOT EXISTS idx_site_staff_site ON site_staff(site_id)",
+    "CREATE INDEX IF NOT EXISTS idx_site_staff_email ON site_staff(site_id, email)",
     "CREATE INDEX IF NOT EXISTS idx_page_views_site ON page_views(site_id)",
     "CREATE INDEX IF NOT EXISTS idx_page_views_created ON page_views(site_id, created_at)",
     "CREATE INDEX IF NOT EXISTS idx_page_views_visitor ON page_views(site_id, visitor_id)",
@@ -11635,6 +11661,7 @@ var MIGRATION_TABLES = [
   "reviews",
   "page_seo",
   "site_media",
+  "site_staff",
   "site_usage",
   "activity_log",
   "addresses"
@@ -14012,19 +14039,6 @@ async function ensureTablesExist(env) {
         media_type TEXT DEFAULT 'image',
         created_at TEXT DEFAULT (datetime('now')),
         FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
-      )`,
-      `CREATE TABLE IF NOT EXISTS site_staff (
-        id TEXT PRIMARY KEY,
-        site_id TEXT NOT NULL,
-        email TEXT NOT NULL,
-        password_hash TEXT NOT NULL,
-        name TEXT NOT NULL,
-        permissions TEXT DEFAULT '[]',
-        is_active INTEGER DEFAULT 1,
-        created_at TEXT DEFAULT (datetime('now')),
-        updated_at TEXT DEFAULT (datetime('now')),
-        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
-        UNIQUE(site_id, email)
       )`
     ];
     const indexes = [
@@ -14042,9 +14056,7 @@ async function ensureTablesExist(env) {
       "CREATE INDEX IF NOT EXISTS idx_transactions_user ON payment_transactions(user_id)",
       "CREATE UNIQUE INDEX IF NOT EXISTS idx_sites_custom_domain ON sites(custom_domain) WHERE custom_domain IS NOT NULL",
       "CREATE INDEX IF NOT EXISTS idx_site_media_site ON site_media(site_id)",
-      "CREATE INDEX IF NOT EXISTS idx_site_media_key ON site_media(storage_key)",
-      "CREATE INDEX IF NOT EXISTS idx_site_staff_site ON site_staff(site_id)",
-      "CREATE INDEX IF NOT EXISTS idx_site_staff_email ON site_staff(site_id, email)"
+      "CREATE INDEX IF NOT EXISTS idx_site_media_key ON site_media(storage_key)"
     ];
     for (const sql of tables) {
       await env.DB.prepare(sql).run();
@@ -14103,9 +14115,7 @@ async function ensureTablesExist(env) {
       { col: "plan_tier", table: "subscription_plans", sql: "ALTER TABLE subscription_plans ADD COLUMN plan_tier INTEGER DEFAULT 0" },
       { col: "original_price", table: "subscription_plans", sql: "ALTER TABLE subscription_plans ADD COLUMN original_price REAL DEFAULT NULL" },
       { col: "staff_id", table: "site_admin_sessions", sql: "ALTER TABLE site_admin_sessions ADD COLUMN staff_id TEXT" },
-      { col: "permissions", table: "site_admin_sessions", sql: "ALTER TABLE site_admin_sessions ADD COLUMN permissions TEXT" },
-      { col: "failed_login_attempts", table: "site_staff", sql: "ALTER TABLE site_staff ADD COLUMN failed_login_attempts INTEGER DEFAULT 0" },
-      { col: "locked_until", table: "site_staff", sql: "ALTER TABLE site_staff ADD COLUMN locked_until TEXT" }
+      { col: "permissions", table: "site_admin_sessions", sql: "ALTER TABLE site_admin_sessions ADD COLUMN permissions TEXT" }
     ];
     for (const m of migrations) {
       try {

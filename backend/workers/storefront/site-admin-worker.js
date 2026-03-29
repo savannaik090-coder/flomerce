@@ -59,7 +59,9 @@ async function staffLogin(request, env) {
       return errorResponse('Site not found', 404);
     }
 
-    const staff = await env.DB.prepare(
+    const siteDB = await resolveSiteDBById(env, site.id);
+
+    const staff = await siteDB.prepare(
       'SELECT id, site_id, email, password_hash, name, permissions, is_active, failed_login_attempts, locked_until FROM site_staff WHERE site_id = ? AND LOWER(email) = LOWER(?)'
     ).bind(site.id, email.trim()).first();
 
@@ -81,7 +83,7 @@ async function staffLogin(request, env) {
     if (!passwordValid) {
       const attempts = (staff.failed_login_attempts || 0) + 1;
       const lockedUntil = attempts >= 5 ? new Date(Date.now() + 15 * 60 * 1000).toISOString() : null;
-      await env.DB.prepare(
+      await siteDB.prepare(
         'UPDATE site_staff SET failed_login_attempts = ?, locked_until = ? WHERE id = ?'
       ).bind(attempts, lockedUntil, staff.id).run();
       if (attempts >= 5) {
@@ -90,7 +92,7 @@ async function staffLogin(request, env) {
       return errorResponse('Invalid email or password', 401);
     }
 
-    await env.DB.prepare(
+    await siteDB.prepare(
       'UPDATE site_staff SET failed_login_attempts = 0, locked_until = NULL WHERE id = ?'
     ).bind(staff.id).run();
 
@@ -152,7 +154,8 @@ async function validateSiteAdminToken(request, env) {
     let permissions = null;
 
     if (!isOwner) {
-      const staff = await env.DB.prepare(
+      const siteDB = await resolveSiteDBById(env, siteId);
+      const staff = await siteDB.prepare(
         'SELECT is_active, permissions FROM site_staff WHERE id = ? AND site_id = ?'
       ).bind(session.staff_id, siteId).first();
 
@@ -716,7 +719,8 @@ export async function validateSiteAdmin(request, env, siteId) {
     let permissions = null;
 
     if (!isOwner) {
-      const staff = await env.DB.prepare(
+      const siteDB = await resolveSiteDBById(env, siteId);
+      const staff = await siteDB.prepare(
         'SELECT is_active, permissions FROM site_staff WHERE id = ? AND site_id = ?'
       ).bind(session.staff_id, siteId).first();
 
@@ -778,7 +782,8 @@ export async function handleStaffCRUD(request, env, siteId, staffAction, staffId
 
 async function listStaff(env, siteId) {
   try {
-    const result = await env.DB.prepare(
+    const siteDB = await resolveSiteDBById(env, siteId);
+    const result = await siteDB.prepare(
       'SELECT id, site_id, email, name, permissions, is_active, created_at, updated_at FROM site_staff WHERE site_id = ? ORDER BY created_at DESC'
     ).bind(siteId).all();
 
@@ -799,7 +804,8 @@ async function listStaff(env, siteId) {
 
 async function getStaffMember(env, siteId, staffId) {
   try {
-    const staff = await env.DB.prepare(
+    const siteDB = await resolveSiteDBById(env, siteId);
+    const staff = await siteDB.prepare(
       'SELECT id, site_id, email, name, permissions, is_active, created_at, updated_at FROM site_staff WHERE id = ? AND site_id = ?'
     ).bind(staffId, siteId).first();
 
@@ -837,7 +843,9 @@ async function addStaff(request, env, siteId) {
       return errorResponse('At least one permission must be selected');
     }
 
-    const existing = await env.DB.prepare(
+    const siteDB = await resolveSiteDBById(env, siteId);
+
+    const existing = await siteDB.prepare(
       'SELECT id FROM site_staff WHERE site_id = ? AND LOWER(email) = LOWER(?)'
     ).bind(siteId, email.trim()).first();
 
@@ -848,7 +856,7 @@ async function addStaff(request, env, siteId) {
     const passwordHash = await hashPassword(password);
     const id = generateId();
 
-    await env.DB.prepare(
+    await siteDB.prepare(
       `INSERT INTO site_staff (id, site_id, email, password_hash, name, permissions, is_active, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, 1, datetime('now'), datetime('now'))`
     ).bind(id, siteId, email.trim().toLowerCase(), passwordHash, name.trim(), JSON.stringify(validPerms)).run();
@@ -872,7 +880,9 @@ async function addStaff(request, env, siteId) {
 
 async function updateStaff(request, env, siteId, staffId) {
   try {
-    const existing = await env.DB.prepare(
+    const siteDB = await resolveSiteDBById(env, siteId);
+
+    const existing = await siteDB.prepare(
       'SELECT id FROM site_staff WHERE id = ? AND site_id = ?'
     ).bind(staffId, siteId).first();
 
@@ -892,7 +902,7 @@ async function updateStaff(request, env, siteId, staffId) {
       if (!emailRegex.test(updates.email)) {
         return errorResponse('Invalid email address');
       }
-      const emailConflict = await env.DB.prepare(
+      const emailConflict = await siteDB.prepare(
         'SELECT id FROM site_staff WHERE site_id = ? AND LOWER(email) = LOWER(?) AND id != ?'
       ).bind(siteId, updates.email.trim(), staffId).first();
       if (emailConflict) {
@@ -932,7 +942,7 @@ async function updateStaff(request, env, siteId, staffId) {
     setClauses.push('updated_at = datetime("now")');
     values.push(staffId, siteId);
 
-    await env.DB.prepare(
+    await siteDB.prepare(
       `UPDATE site_staff SET ${setClauses.join(', ')} WHERE id = ? AND site_id = ?`
     ).bind(...values).run();
 
@@ -942,7 +952,7 @@ async function updateStaff(request, env, siteId, staffId) {
       ).bind(staffId, siteId).run();
     }
 
-    const updated = await env.DB.prepare(
+    const updated = await siteDB.prepare(
       'SELECT id, site_id, email, name, permissions, is_active, created_at, updated_at FROM site_staff WHERE id = ? AND site_id = ?'
     ).bind(staffId, siteId).first();
 
@@ -958,7 +968,9 @@ async function updateStaff(request, env, siteId, staffId) {
 
 async function deleteStaff(env, siteId, staffId) {
   try {
-    const existing = await env.DB.prepare(
+    const siteDB = await resolveSiteDBById(env, siteId);
+
+    const existing = await siteDB.prepare(
       'SELECT id FROM site_staff WHERE id = ? AND site_id = ?'
     ).bind(staffId, siteId).first();
 
@@ -968,7 +980,7 @@ async function deleteStaff(env, siteId, staffId) {
       'DELETE FROM site_admin_sessions WHERE staff_id = ? AND site_id = ?'
     ).bind(staffId, siteId).run();
 
-    await env.DB.prepare(
+    await siteDB.prepare(
       'DELETE FROM site_staff WHERE id = ? AND site_id = ?'
     ).bind(staffId, siteId).run();
 
