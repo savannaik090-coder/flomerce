@@ -42,11 +42,9 @@ export default function FeaturedVideoSection() {
       <div className="fv-content">
         {title && <h1 className="fv-title">{title}</h1>}
         {description && <p className="fv-description">{description}</p>}
-        {(chatLink || phone) && (
-          <button className="fv-chat-btn" onClick={handleChatClick}>
-            {chatButtonText}
-          </button>
-        )}
+        <button className="fv-chat-btn" onClick={handleChatClick}>
+          {chatButtonText}
+        </button>
       </div>
     </section>
   );
