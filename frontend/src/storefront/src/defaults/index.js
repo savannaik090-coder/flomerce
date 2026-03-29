@@ -37,6 +37,10 @@ export function getWatchAndBuyDefaults(category) {
   return getCategory(category).watchAndBuyDefaults;
 }
 
+export function getHeroSliderDefaults(category) {
+  return getCategory(category).heroSliderDefaults;
+}
+
 export function getAboutPageWithBrand(category, brandName) {
   const base = getAboutPageDefaults(category);
   const name = brandName || 'Our Store';

@@ -32,6 +32,12 @@ export const aboutPage = {
   ],
 };
 
+export const heroSliderDefaults = [
+  { title: 'NEW', subtitle: 'Season', description: 'SUMMER COLLECTION', buttonText: 'SHOP NOW', buttonLink: '/category/new-arrivals', visible: true },
+  { title: 'ETHNIC', subtitle: 'Elegance', description: 'FESTIVE WEAR', buttonText: 'EXPLORE', buttonLink: '/category/featured', visible: true },
+  { title: 'TRENDING', subtitle: 'Styles', description: 'LATEST FASHION', buttonText: 'SHOP NOW', buttonLink: '/category/all', visible: true },
+];
+
 export const featuredVideo = {
   title: "Discover Your Perfect Style",
   description: "Explore our latest fashion collection crafted for every occasion. Connect with our stylists and find the perfect outfit that defines you",

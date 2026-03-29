@@ -32,6 +32,12 @@ export const aboutPage = {
   ],
 };
 
+export const heroSliderDefaults = [
+  { title: 'BRIDAL', subtitle: 'Jewellery', description: 'WEDDING COLLECTION', buttonText: 'SHOP NOW', buttonLink: '/category/new-arrivals', visible: true },
+  { title: 'TIMELESS', subtitle: 'Elegance', description: 'GOLD & DIAMOND', buttonText: 'EXPLORE', buttonLink: '/category/featured', visible: true },
+  { title: 'HERITAGE', subtitle: 'Collection', description: 'TEMPLE JEWELLERY', buttonText: 'SHOP NOW', buttonLink: '/category/all', visible: true },
+];
+
 export const featuredVideo = {
   title: "Let's Create Your Perfect Bridal Jewelry",
   description: "Dreaming of something truly elegant? Discover our exquisite jewelry collection. Connect with our designers and create your perfect bridal ensemble",

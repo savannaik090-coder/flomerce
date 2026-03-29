@@ -32,6 +32,12 @@ export const aboutPage = {
   ],
 };
 
+export const heroSliderDefaults = [
+  { title: 'IN THE', subtitle: 'folds', description: 'SUMMER CELEBRATIONS', buttonText: 'SHOP NOW', buttonLink: '/category/new-arrivals', visible: true },
+  { title: 'ELEGANT', subtitle: 'Collection', description: 'TIMELESS BEAUTY', buttonText: 'SHOP NOW', buttonLink: '/category/featured', visible: true },
+  { title: 'LUXURY', subtitle: 'Series', description: 'PREMIUM COLLECTION', buttonText: 'SHOP NOW', buttonLink: '/category/all', visible: true },
+];
+
 export const featuredVideo = {
   title: "Discover Our Collection",
   description: "Explore our curated selection of premium products. Connect with us and find exactly what you're looking for",

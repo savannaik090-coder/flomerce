@@ -1,30 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useSiteConfig } from '../../hooks/useSiteConfig.js';
 import { resolveImageUrl } from '../../utils/imageUrl.js';
+import { getHeroSliderDefaults } from '../../defaults/index.js';
 
-const defaultSlides = [
-  {
-    title: 'IN THE',
-    subtitle: 'folds',
-    description: 'SUMMER CELEBRATIONS 2025',
-    buttonText: 'SHOP NOW',
-    buttonLink: '/category/new-arrivals',
-  },
-  {
-    title: 'ELEGANT',
-    subtitle: 'Collection',
-    description: 'TIMELESS BEAUTY 2025',
-    buttonText: 'SHOP NOW',
-    buttonLink: '/category/featured',
-  },
-  {
-    title: 'LUXURY',
-    subtitle: 'Series',
-    description: 'PREMIUM COLLECTION 2025',
-    buttonText: 'SHOP NOW',
-    buttonLink: '/category/all',
-  },
-];
+const currentYear = new Date().getFullYear();
 
 export default function HeroSlider() {
   const { siteConfig } = useSiteConfig();
@@ -32,9 +11,10 @@ export default function HeroSlider() {
   const [isPaused, setIsPaused] = useState(false);
   const timerRef = useRef(null);
 
-  const slides = siteConfig?.settings?.heroSlides?.length
-    ? siteConfig.settings.heroSlides
-    : defaultSlides;
+  const category = siteConfig?.category || 'generic';
+  const savedSlides = siteConfig?.settings?.heroSlides;
+  const rawSlides = savedSlides?.length ? savedSlides : getHeroSliderDefaults(category);
+  const slides = rawSlides.filter(s => s.visible !== false);
 
   const showScrollButtons = siteConfig?.settings?.heroShowScrollButtons !== false;
 
@@ -47,10 +27,16 @@ export default function HeroSlider() {
   }, [slides.length]);
 
   useEffect(() => {
-    if (isPaused) return;
+    if (isPaused || slides.length <= 1) return;
     timerRef.current = setInterval(nextSlide, 4000);
     return () => clearInterval(timerRef.current);
-  }, [isPaused, nextSlide]);
+  }, [isPaused, nextSlide, slides.length]);
+
+  useEffect(() => {
+    if (currentIndex >= slides.length) setCurrentIndex(0);
+  }, [slides.length, currentIndex]);
+
+  if (!slides.length) return null;
 
   return (
     <section
@@ -59,39 +45,44 @@ export default function HeroSlider() {
       onMouseLeave={() => setIsPaused(false)}
     >
       <div className="slider-container">
-        {slides.map((slide, i) => (
-          <div key={i} className={`slide ${i === currentIndex ? 'active' : ''}`}>
-            {slide.image && (
-              <img src={resolveImageUrl(slide.image)} alt={slide.title || ''} className="slide-image" />
-            )}
-            {!slide.image && (
-              <div
-                className="slide-image"
-                style={{
-                  background: 'linear-gradient(135deg, #2c2c2c 0%, #1a1a2e 100%)',
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  height: '100%',
-                }}
-              />
-            )}
-            <div className="slide-content">
-              <h1 className="slide-title">{slide.title}</h1>
-              <h2 className="slide-subtitle">{slide.subtitle}</h2>
-              <p className="slide-description">{slide.description}</p>
-              <button
-                className="shop-now-btn"
-                onClick={() => {
-                  if (slide.buttonLink) window.location.href = slide.buttonLink;
-                }}
-              >
-                {slide.buttonText || 'SHOP NOW'}
-              </button>
+        {slides.map((slide, i) => {
+          const rawDesc = slide.description || '';
+          const strippedDesc = rawDesc.replace(/\s*\d{4}\s*$/, '');
+          const desc = strippedDesc ? `${strippedDesc} ${currentYear}` : '';
+          return (
+            <div key={i} className={`slide ${i === currentIndex ? 'active' : ''}`}>
+              {slide.image && (
+                <img src={resolveImageUrl(slide.image)} alt={slide.title || ''} className="slide-image" />
+              )}
+              {!slide.image && (
+                <div
+                  className="slide-image"
+                  style={{
+                    background: 'linear-gradient(135deg, #2c2c2c 0%, #1a1a2e 100%)',
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                  }}
+                />
+              )}
+              <div className="slide-content">
+                <h1 className="slide-title">{slide.title}</h1>
+                <h2 className="slide-subtitle">{slide.subtitle}</h2>
+                <p className="slide-description">{desc}</p>
+                <button
+                  className="shop-now-btn"
+                  onClick={() => {
+                    if (slide.buttonLink) window.location.href = slide.buttonLink;
+                  }}
+                >
+                  {slide.buttonText || 'SHOP NOW'}
+                </button>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {showScrollButtons && slides.length > 1 && (

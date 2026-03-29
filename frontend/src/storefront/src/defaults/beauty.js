@@ -32,6 +32,12 @@ export const aboutPage = {
   ],
 };
 
+export const heroSliderDefaults = [
+  { title: 'GLOW', subtitle: 'Naturally', description: 'SKINCARE ESSENTIALS', buttonText: 'SHOP NOW', buttonLink: '/category/new-arrivals', visible: true },
+  { title: 'BEAUTY', subtitle: 'Redefined', description: 'MAKEUP COLLECTION', buttonText: 'EXPLORE', buttonLink: '/category/featured', visible: true },
+  { title: 'SELF', subtitle: 'Care', description: 'WELLNESS RANGE', buttonText: 'SHOP NOW', buttonLink: '/category/all', visible: true },
+];
+
 export const featuredVideo = {
   title: "Discover Your Beauty Essentials",
   description: "Explore our curated collection of skincare, makeup, and wellness products. Connect with our beauty experts and find the perfect routine for you",
