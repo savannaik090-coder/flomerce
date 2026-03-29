@@ -60,6 +60,7 @@ async function staffLogin(request, env) {
     }
 
     const siteDB = await resolveSiteDBById(env, site.id);
+    await ensureSiteStaffTable(siteDB);
 
     const staff = await siteDB.prepare(
       'SELECT id, site_id, email, password_hash, name, permissions, is_active, failed_login_attempts, locked_until FROM site_staff WHERE site_id = ? AND LOWER(email) = LOWER(?)'
@@ -155,6 +156,7 @@ async function validateSiteAdminToken(request, env) {
 
     if (!isOwner) {
       const siteDB = await resolveSiteDBById(env, siteId);
+      await ensureSiteStaffTable(siteDB);
       const staff = await siteDB.prepare(
         'SELECT is_active, permissions FROM site_staff WHERE id = ? AND site_id = ?'
       ).bind(session.staff_id, siteId).first();
@@ -254,6 +256,30 @@ async function staffLogout(request, env) {
     console.error('Staff logout error:', error);
     return successResponse(null, 'Logged out');
   }
+}
+
+async function ensureSiteStaffTable(siteDB) {
+  try {
+    await siteDB.prepare(`
+      CREATE TABLE IF NOT EXISTS site_staff (
+        id TEXT PRIMARY KEY,
+        site_id TEXT NOT NULL,
+        email TEXT NOT NULL,
+        password_hash TEXT NOT NULL,
+        name TEXT NOT NULL,
+        permissions TEXT DEFAULT '[]',
+        is_active INTEGER DEFAULT 1,
+        failed_login_attempts INTEGER DEFAULT 0,
+        locked_until TEXT,
+        row_size_bytes INTEGER DEFAULT 0,
+        created_at TEXT DEFAULT (datetime('now')),
+        updated_at TEXT DEFAULT (datetime('now')),
+        UNIQUE(site_id, email)
+      )
+    `).run();
+    await siteDB.prepare('CREATE INDEX IF NOT EXISTS idx_site_staff_site ON site_staff(site_id)').run();
+    await siteDB.prepare('CREATE INDEX IF NOT EXISTS idx_site_staff_email ON site_staff(site_id, email)').run();
+  } catch (e) {}
 }
 
 async function ensureSiteAdminSessionsTable(env) {
@@ -720,6 +746,7 @@ export async function validateSiteAdmin(request, env, siteId) {
 
     if (!isOwner) {
       const siteDB = await resolveSiteDBById(env, siteId);
+      await ensureSiteStaffTable(siteDB);
       const staff = await siteDB.prepare(
         'SELECT is_active, permissions FROM site_staff WHERE id = ? AND site_id = ?'
       ).bind(session.staff_id, siteId).first();
@@ -783,6 +810,7 @@ export async function handleStaffCRUD(request, env, siteId, staffAction, staffId
 async function listStaff(env, siteId) {
   try {
     const siteDB = await resolveSiteDBById(env, siteId);
+    await ensureSiteStaffTable(siteDB);
     const result = await siteDB.prepare(
       'SELECT id, site_id, email, name, permissions, is_active, created_at, updated_at FROM site_staff WHERE site_id = ? ORDER BY created_at DESC'
     ).bind(siteId).all();
@@ -805,6 +833,7 @@ async function listStaff(env, siteId) {
 async function getStaffMember(env, siteId, staffId) {
   try {
     const siteDB = await resolveSiteDBById(env, siteId);
+    await ensureSiteStaffTable(siteDB);
     const staff = await siteDB.prepare(
       'SELECT id, site_id, email, name, permissions, is_active, created_at, updated_at FROM site_staff WHERE id = ? AND site_id = ?'
     ).bind(staffId, siteId).first();
@@ -844,6 +873,7 @@ async function addStaff(request, env, siteId) {
     }
 
     const siteDB = await resolveSiteDBById(env, siteId);
+    await ensureSiteStaffTable(siteDB);
 
     const existing = await siteDB.prepare(
       'SELECT id FROM site_staff WHERE site_id = ? AND LOWER(email) = LOWER(?)'
@@ -881,6 +911,7 @@ async function addStaff(request, env, siteId) {
 async function updateStaff(request, env, siteId, staffId) {
   try {
     const siteDB = await resolveSiteDBById(env, siteId);
+    await ensureSiteStaffTable(siteDB);
 
     const existing = await siteDB.prepare(
       'SELECT id FROM site_staff WHERE id = ? AND site_id = ?'
@@ -969,6 +1000,7 @@ async function updateStaff(request, env, siteId, staffId) {
 async function deleteStaff(env, siteId, staffId) {
   try {
     const siteDB = await resolveSiteDBById(env, siteId);
+    await ensureSiteStaffTable(siteDB);
 
     const existing = await siteDB.prepare(
       'SELECT id FROM site_staff WHERE id = ? AND site_id = ?'
