@@ -571,6 +571,15 @@ async function listShards(env) {
         'SELECT COUNT(*) as count FROM sites WHERE shard_id = ?'
       ).bind(shard.id).first();
 
+      let bindingAvailable = false;
+      try {
+        const db = env[shard.binding_name];
+        if (db) {
+          await db.prepare('SELECT 1').first();
+          bindingAvailable = true;
+        }
+      } catch (e) {}
+
       shards.push({
         ...shard,
         sizeBytes,
@@ -578,6 +587,7 @@ async function listShards(env) {
         siteCount: siteCount?.count || 0,
         sizeAlertGB: (sizeBytes / (1024 * 1024 * 1024)).toFixed(3),
         isNearLimit: sizeBytes > 8 * 1024 * 1024 * 1024,
+        bindingAvailable,
       });
     }
 

@@ -705,6 +705,15 @@ export default function OwnerAdminPage() {
                   </div>
                 </div>
 
+                {selectedShard.bindingAvailable === false && (
+                  <div style={{ marginBottom: '1rem', padding: '0.6rem 0.75rem', background: '#fef3c7', border: '1px solid #f59e0b', borderRadius: '6px', fontSize: '0.78rem', color: '#92400e' }}>
+                    <div style={{ fontWeight: 600, marginBottom: '0.3rem' }}>Binding not found in worker environment</div>
+                    <div style={{ marginBottom: '0.4rem' }}>This shard's D1 database exists but the worker binding <code>{selectedShard.binding_name}</code> is not available. Sites on this shard will not work until the binding is added.</div>
+                    <div style={{ marginBottom: '0.3rem' }}>Add this to your <code>wrangler.toml</code> and redeploy the worker:</div>
+                    <pre style={{ background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: '4px', padding: '0.5rem 0.6rem', margin: 0, fontSize: '0.72rem', color: '#78350f', whiteSpace: 'pre-wrap', wordBreak: 'break-all', cursor: 'text', userSelect: 'text' }}>{`[[d1_databases]]\nbinding = "${selectedShard.binding_name}"\ndatabase_name = "${selectedShard.database_name}"\ndatabase_id = "${selectedShard.database_id}"`}</pre>
+                  </div>
+                )}
+
                 <div className="oa-db-stats-row">
                   <div className="oa-db-stat">
                     <span className="oa-db-stat-label">Size</span>
@@ -713,6 +722,10 @@ export default function OwnerAdminPage() {
                   <div className="oa-db-stat">
                     <span className="oa-db-stat-label">Sites</span>
                     <span className="oa-db-stat-value">{selectedShard.siteCount}</span>
+                  </div>
+                  <div className="oa-db-stat">
+                    <span className="oa-db-stat-label">Binding</span>
+                    <span className={`oa-badge ${selectedShard.bindingAvailable ? 'oa-badge-green' : 'oa-badge-red'}`}>{selectedShard.bindingAvailable ? 'Connected' : 'Missing'}</span>
                   </div>
                   <div className="oa-db-stat">
                     <span className="oa-db-stat-label">Status</span>
@@ -879,6 +892,13 @@ export default function OwnerAdminPage() {
                         </div>
                         {shard.isNearLimit && (
                           <div className="oa-db-alert">Near 10GB limit!</div>
+                        )}
+                        {shard.bindingAvailable === false && (
+                          <div style={{ marginTop: '0.5rem', padding: '0.5rem 0.6rem', background: '#fef3c7', border: '1px solid #f59e0b', borderRadius: '6px', fontSize: '0.72rem', color: '#92400e' }}>
+                            <div style={{ fontWeight: 600, marginBottom: '0.3rem' }}>Binding not found in worker</div>
+                            <div style={{ marginBottom: '0.3rem' }}>Add this to your <code>wrangler.toml</code> and redeploy:</div>
+                            <pre onClick={(e) => e.stopPropagation()} style={{ background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: '4px', padding: '0.4rem 0.5rem', margin: 0, fontSize: '0.68rem', color: '#78350f', whiteSpace: 'pre-wrap', wordBreak: 'break-all', cursor: 'text', userSelect: 'text' }}>{`[[d1_databases]]\nbinding = "${shard.binding_name}"\ndatabase_name = "${shard.database_name}"\ndatabase_id = "${shard.database_id}"`}</pre>
+                          </div>
                         )}
                         <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
                           {!shard.is_active && (
