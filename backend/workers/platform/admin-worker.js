@@ -718,6 +718,7 @@ const MIGRATION_TABLES = [
   'carts', 'wishlists', 'site_customers', 'site_customer_sessions',
   'customer_addresses', 'customer_password_resets', 'customer_email_verifications',
   'coupons', 'notifications', 'reviews', 'page_seo', 'site_media', 'site_staff',
+  'cancellation_requests', 'return_requests',
   'site_usage', 'activity_log', 'addresses',
 ];
 
@@ -761,6 +762,13 @@ async function moveSiteBetweenShards(request, env) {
     await env.DB.prepare(
       'UPDATE sites SET migration_locked = 1, updated_at = datetime(\'now\') WHERE id = ?'
     ).bind(siteId).run();
+
+    const schemaStatements = getSiteSchemaStatements();
+    for (const sql of schemaStatements) {
+      try {
+        await targetDB.prepare(sql).run();
+      } catch (e) {}
+    }
 
     const migrationStats = {};
     let migrationError = null;

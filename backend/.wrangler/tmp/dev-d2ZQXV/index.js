@@ -4346,7 +4346,9 @@ async function deleteSite(env, user, siteId) {
           "site_media",
           "site_usage",
           "addresses",
-          "site_staff"
+          "site_staff",
+          "cancellation_requests",
+          "return_requests"
         ];
         for (const table of siteTables) {
           try {
@@ -10909,6 +10911,45 @@ function getSiteSchemaStatements() {
       visitor_id TEXT,
       created_at TEXT DEFAULT (datetime('now'))
     )`,
+    `CREATE TABLE IF NOT EXISTS cancellation_requests (
+      id TEXT PRIMARY KEY,
+      site_id TEXT NOT NULL,
+      order_id TEXT NOT NULL,
+      order_number TEXT,
+      order_type TEXT DEFAULT 'order',
+      reason TEXT NOT NULL,
+      reason_detail TEXT,
+      status TEXT DEFAULT 'requested',
+      admin_note TEXT,
+      customer_name TEXT,
+      customer_email TEXT,
+      customer_phone TEXT,
+      cancel_token TEXT,
+      row_size_bytes INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    )`,
+    `CREATE TABLE IF NOT EXISTS return_requests (
+      id TEXT PRIMARY KEY,
+      site_id TEXT NOT NULL,
+      order_id TEXT NOT NULL,
+      order_number TEXT,
+      items TEXT,
+      reason TEXT NOT NULL,
+      reason_detail TEXT,
+      photos TEXT,
+      resolution TEXT,
+      status TEXT DEFAULT 'requested',
+      admin_note TEXT,
+      refund_amount REAL,
+      refund_id TEXT,
+      return_token TEXT,
+      customer_name TEXT,
+      customer_email TEXT,
+      customer_phone TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    )`,
     `CREATE TABLE IF NOT EXISTS site_staff (
       id TEXT PRIMARY KEY,
       site_id TEXT NOT NULL,
@@ -11000,6 +11041,11 @@ function getSiteSchemaStatements() {
     "CREATE INDEX IF NOT EXISTS idx_addresses_user ON addresses(user_id)",
     "CREATE INDEX IF NOT EXISTS idx_site_staff_site ON site_staff(site_id)",
     "CREATE INDEX IF NOT EXISTS idx_site_staff_email ON site_staff(site_id, email)",
+    "CREATE INDEX IF NOT EXISTS idx_cancel_requests_site ON cancellation_requests(site_id)",
+    "CREATE INDEX IF NOT EXISTS idx_cancel_requests_order ON cancellation_requests(order_id)",
+    "CREATE INDEX IF NOT EXISTS idx_return_requests_site ON return_requests(site_id)",
+    "CREATE INDEX IF NOT EXISTS idx_return_requests_order ON return_requests(order_id)",
+    "CREATE INDEX IF NOT EXISTS idx_return_requests_token ON return_requests(return_token)",
     "CREATE INDEX IF NOT EXISTS idx_page_views_site ON page_views(site_id)",
     "CREATE INDEX IF NOT EXISTS idx_page_views_created ON page_views(site_id, created_at)",
     "CREATE INDEX IF NOT EXISTS idx_page_views_visitor ON page_views(site_id, visitor_id)",
@@ -11027,7 +11073,14 @@ function getSiteSchemaStatements() {
     "ALTER TABLE addresses ADD COLUMN row_size_bytes INTEGER DEFAULT 0",
     "ALTER TABLE site_usage ADD COLUMN baseline_bytes INTEGER DEFAULT 0",
     "ALTER TABLE site_usage ADD COLUMN baseline_updated_at TEXT",
-    "ALTER TABLE products ADD COLUMN options TEXT"
+    "ALTER TABLE products ADD COLUMN options TEXT",
+    "ALTER TABLE orders ADD COLUMN confirmed_at TEXT",
+    "ALTER TABLE orders ADD COLUMN packed_at TEXT",
+    "ALTER TABLE orders ADD COLUMN cancel_token TEXT",
+    "ALTER TABLE orders ADD COLUMN return_token TEXT",
+    "ALTER TABLE guest_orders ADD COLUMN cancel_token TEXT",
+    "ALTER TABLE guest_orders ADD COLUMN return_token TEXT",
+    "ALTER TABLE guest_orders ADD COLUMN cancellation_reason TEXT"
   ];
   return [...tables, ...indexes, ...addColumnMigrations];
 }
@@ -11695,6 +11748,8 @@ var MIGRATION_TABLES = [
   "page_seo",
   "site_media",
   "site_staff",
+  "cancellation_requests",
+  "return_requests",
   "site_usage",
   "activity_log",
   "addresses"
@@ -11736,6 +11791,13 @@ async function moveSiteBetweenShards(request, env) {
     await env.DB.prepare(
       "UPDATE sites SET migration_locked = 1, updated_at = datetime('now') WHERE id = ?"
     ).bind(siteId).run();
+    const schemaStatements = getSiteSchemaStatements();
+    for (const sql of schemaStatements) {
+      try {
+        await targetDB.prepare(sql).run();
+      } catch (e) {
+      }
+    }
     const migrationStats = {};
     let migrationError = null;
     try {

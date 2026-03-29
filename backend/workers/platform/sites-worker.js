@@ -624,7 +624,8 @@ async function deleteSite(env, user, siteId) {
           'customer_email_verifications', 'customer_password_resets',
           'customer_addresses', 'site_customer_sessions', 'site_customers',
           'wishlists', 'carts', 'guest_orders', 'orders',
-          'product_variants', 'products', 'categories', 'site_media', 'site_usage', 'addresses', 'site_staff'
+          'product_variants', 'products', 'categories', 'site_media', 'site_usage', 'addresses', 'site_staff',
+          'cancellation_requests', 'return_requests'
         ];
         for (const table of siteTables) {
           try {
