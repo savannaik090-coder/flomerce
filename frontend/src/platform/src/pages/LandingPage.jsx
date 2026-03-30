@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar.jsx';
 import LandingPricing from '../components/LandingPricing.jsx';
+import ContactForm from '../components/ContactForm.jsx';
 import '../styles/landing.css';
 import '../styles/legal.css';
 
