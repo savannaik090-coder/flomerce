@@ -575,16 +575,17 @@ export default function OrdersSection() {
                     )) : <div style={{ color: '#999', fontSize: 13 }}>No item details available</div>}
                     {order.total && (
                       <div style={{ paddingTop: 8, borderTop: '2px solid #eee', textAlign: 'right' }}>
+                        <div style={{ fontSize: 13, color: '#555', marginBottom: 2 }}>
+                          Subtotal: {fmtOrdAmt(parseFloat(order.subtotal || order.total || 0))}
+                        </div>
                         {parseFloat(order.discount || 0) > 0 && (
-                          <>
-                            <div style={{ fontSize: 13, color: '#555', marginBottom: 2 }}>
-                              Subtotal: {fmtOrdAmt(parseFloat(order.subtotal || order.total || 0))}
-                            </div>
-                            <div style={{ fontSize: 13, color: '#16a34a', marginBottom: 4 }}>
-                              Coupon{order.coupon_code ? ` (${order.coupon_code})` : ''}: −{fmtOrdAmt(parseFloat(order.discount || 0))}
-                            </div>
-                          </>
+                          <div style={{ fontSize: 13, color: '#16a34a', marginBottom: 2 }}>
+                            Coupon{order.coupon_code ? ` (${order.coupon_code})` : ''}: −{fmtOrdAmt(parseFloat(order.discount || 0))}
+                          </div>
                         )}
+                        <div style={{ fontSize: 13, color: '#555', marginBottom: 4 }}>
+                          Shipping: {parseFloat(order.shipping_cost || 0) > 0 ? fmtOrdAmt(parseFloat(order.shipping_cost)) : <span style={{ color: '#25ab00' }}>Free</span>}
+                        </div>
                         <div style={{ fontWeight: 700, fontSize: 14 }}>
                           Total: {fmtOrdAmt(parseFloat(order.total || 0))}
                         </div>
@@ -599,7 +600,8 @@ export default function OrdersSection() {
                         <div style={{ fontWeight: 600 }}>{address.name || returnDetailModal.customer_name}</div>
                         {address.phone && <div>📞 {address.phone}</div>}
                         {address.address && <div>{address.address}</div>}
-                        {(address.city || address.state) && <div>{[address.city, address.state].filter(Boolean).join(', ')}{address.pinCode ? ' – ' + address.pinCode : ''}</div>}
+                        {(address.city || address.state) && <div>{[address.city, address.state].filter(Boolean).join(', ')}{address.pinCode || address.pin_code ? ' – ' + (address.pinCode || address.pin_code) : ''}</div>}
+                        {address.country && <div>{address.country}</div>}
                       </div>
                     ) : (
                       <div style={{ color: '#999', fontSize: 13 }}>No address on file</div>
@@ -866,16 +868,17 @@ export default function OrdersSection() {
                     )) : <div style={{ color: '#999', fontSize: 13 }}>No item details available</div>}
                     {order.total && (
                       <div style={{ paddingTop: 8, borderTop: '2px solid #eee', textAlign: 'right' }}>
+                        <div style={{ fontSize: 13, color: '#555', marginBottom: 2 }}>
+                          Subtotal: {fmtOrdAmt(parseFloat(order.subtotal || order.total || 0))}
+                        </div>
                         {parseFloat(order.discount || 0) > 0 && (
-                          <>
-                            <div style={{ fontSize: 13, color: '#555', marginBottom: 2 }}>
-                              Subtotal: {fmtOrdAmt(parseFloat(order.subtotal || order.total || 0))}
-                            </div>
-                            <div style={{ fontSize: 13, color: '#16a34a', marginBottom: 4 }}>
-                              Coupon{order.coupon_code ? ` (${order.coupon_code})` : ''}: −{fmtOrdAmt(parseFloat(order.discount || 0))}
-                            </div>
-                          </>
+                          <div style={{ fontSize: 13, color: '#16a34a', marginBottom: 2 }}>
+                            Coupon{order.coupon_code ? ` (${order.coupon_code})` : ''}: −{fmtOrdAmt(parseFloat(order.discount || 0))}
+                          </div>
                         )}
+                        <div style={{ fontSize: 13, color: '#555', marginBottom: 4 }}>
+                          Shipping: {parseFloat(order.shipping_cost || 0) > 0 ? fmtOrdAmt(parseFloat(order.shipping_cost)) : <span style={{ color: '#25ab00' }}>Free</span>}
+                        </div>
                         <div style={{ fontWeight: 700, fontSize: 14 }}>
                           Total: {fmtOrdAmt(parseFloat(order.total || 0))}
                         </div>
@@ -890,7 +893,8 @@ export default function OrdersSection() {
                         <div style={{ fontWeight: 600 }}>{address.name || cancDetailModal.customer_name}</div>
                         {address.phone && <div>📞 {address.phone}</div>}
                         {address.address && <div>{address.address}</div>}
-                        {(address.city || address.state) && <div>{[address.city, address.state].filter(Boolean).join(', ')}{address.pinCode ? ' – ' + address.pinCode : ''}</div>}
+                        {(address.city || address.state) && <div>{[address.city, address.state].filter(Boolean).join(', ')}{address.pinCode || address.pin_code ? ' – ' + (address.pinCode || address.pin_code) : ''}</div>}
+                        {address.country && <div>{address.country}</div>}
                       </div>
                     ) : (
                       <div style={{ color: '#999', fontSize: 13 }}>No address on file</div>
@@ -1154,16 +1158,17 @@ export default function OrdersSection() {
                   </div>
                 )) : <div style={{ color: '#999', fontSize: 13 }}>No item details available</div>}
                 <div style={{ paddingTop: 8, borderTop: '2px solid #eee', textAlign: 'right' }}>
+                  <div style={{ fontSize: 13, color: '#555', marginBottom: 2 }}>
+                    Subtotal: {fmtOrdAmt(parseFloat(order.subtotal || order.total || 0))}
+                  </div>
                   {parseFloat(order.discount || 0) > 0 && (
-                    <>
-                      <div style={{ fontSize: 13, color: '#555', marginBottom: 2 }}>
-                        Subtotal: {fmtOrdAmt(parseFloat(order.subtotal || order.total || 0))}
-                      </div>
-                      <div style={{ fontSize: 13, color: '#16a34a', marginBottom: 4 }}>
-                        Coupon{order.coupon_code ? ` (${order.coupon_code})` : ''}: −{fmtOrdAmt(parseFloat(order.discount || 0))}
-                      </div>
-                    </>
+                    <div style={{ fontSize: 13, color: '#16a34a', marginBottom: 2 }}>
+                      Coupon{order.coupon_code ? ` (${order.coupon_code})` : ''}: −{fmtOrdAmt(parseFloat(order.discount || 0))}
+                    </div>
                   )}
+                  <div style={{ fontSize: 13, color: '#555', marginBottom: 4 }}>
+                    Shipping: {parseFloat(order.shipping_cost || 0) > 0 ? fmtOrdAmt(parseFloat(order.shipping_cost)) : <span style={{ color: '#25ab00' }}>Free</span>}
+                  </div>
                   <div style={{ fontWeight: 700, fontSize: 14 }}>
                     Total: {fmtOrdAmt(parseFloat(order.total || 0))}
                   </div>
@@ -1177,7 +1182,8 @@ export default function OrdersSection() {
                     <div style={{ fontWeight: 600 }}>{address.name || order.customer_name}</div>
                     {address.phone && <div>📞 {address.phone}</div>}
                     {address.address && <div>{address.address}</div>}
-                    {(address.city || address.state) && <div>{[address.city, address.state].filter(Boolean).join(', ')}{address.pinCode ? ' – ' + address.pinCode : ''}</div>}
+                    {(address.city || address.state) && <div>{[address.city, address.state].filter(Boolean).join(', ')}{address.pinCode || address.pin_code ? ' – ' + (address.pinCode || address.pin_code) : ''}</div>}
+                    {address.country && <div>{address.country}</div>}
                   </div>
                 ) : (
                   <div style={{ color: '#999', fontSize: 13 }}>No address on file</div>
