@@ -170,7 +170,21 @@ export default function CheckoutPage() {
       ? Math.round((subtotal * appliedCoupon.value) / 100 * 100) / 100
       : Math.min(appliedCoupon.value, subtotal)
     : 0;
-  const finalTotal = Math.max(0, subtotal - couponDiscount);
+
+  const deliveryConfig = settings.deliveryConfig || {};
+  const computeShippingCost = useCallback((orderSubtotal, customerState) => {
+    if (!deliveryConfig.enabled) return 0;
+    if (deliveryConfig.freeAboveEnabled && deliveryConfig.freeAbove > 0 && orderSubtotal >= deliveryConfig.freeAbove) return 0;
+    if (customerState && Array.isArray(deliveryConfig.regionRates)) {
+      const regionMatch = deliveryConfig.regionRates.find(r => r.state === customerState);
+      if (regionMatch && regionMatch.rate !== '' && regionMatch.rate != null) return Number(regionMatch.rate) || 0;
+    }
+    return Number(deliveryConfig.flatRate) || 0;
+  }, [deliveryConfig]);
+
+  const subtotalAfterCoupon = Math.max(0, subtotal - couponDiscount);
+  const shippingCost = computeShippingCost(subtotalAfterCoupon, address.state);
+  const finalTotal = subtotalAfterCoupon + shippingCost;
 
   const applyCoupon = useCallback(() => {
     setCouponError('');
@@ -279,6 +293,7 @@ export default function CheckoutPage() {
       })),
       total: finalTotal,
       subtotal,
+      shippingCost,
       couponCode: appliedCoupon?.code || null,
       couponDiscount: couponDiscount || 0,
       shippingAddress: {
@@ -365,7 +380,7 @@ export default function CheckoutPage() {
               });
               const ref = orderNumber || orderId || 'ORD-' + Date.now();
               setOrderRef(ref);
-              setPlacedOrderDetails({ items: snapshotItems, address: snapshotAddress, paymentMethod: 'razorpay', total: snapshotTotal, discount: snapshotDiscount, couponCode: snapshotCoupon, originalTotal: subtotal });
+              setPlacedOrderDetails({ items: snapshotItems, address: snapshotAddress, paymentMethod: 'razorpay', total: snapshotTotal, discount: snapshotDiscount, couponCode: snapshotCoupon, originalTotal: subtotal, shippingCost });
               setOrderPlaced(true);
               clearAll();
             } catch (verifyErr) {
@@ -405,7 +420,7 @@ export default function CheckoutPage() {
       const order = result.data || result.order || result;
       const ref = order.orderNumber || order.order_number || order.id || order.order_id || 'ORD-' + Date.now();
       setOrderRef(ref);
-      setPlacedOrderDetails({ items: [...items], address: { ...address }, paymentMethod, total: finalTotal, discount: couponDiscount, couponCode: appliedCoupon?.code || null, originalTotal: subtotal });
+      setPlacedOrderDetails({ items: [...items], address: { ...address }, paymentMethod, total: finalTotal, discount: couponDiscount, couponCode: appliedCoupon?.code || null, originalTotal: subtotal, shippingCost });
       setOrderPlaced(true);
       clearAll();
     } catch (err) {
@@ -475,6 +490,12 @@ export default function CheckoutPage() {
                     <span style={{ color: '#16a34a', fontWeight: 600, fontSize: 14 }}>- {formatAmount(od.discount)}</span>
                   </div>
                 )}
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderTop: '1px solid #f0f0f0' }}>
+                  <span style={{ fontSize: 14 }}>Shipping</span>
+                  <span style={{ fontWeight: 500, fontSize: 14, color: od.shippingCost > 0 ? '#1a1a1a' : '#25ab00' }}>
+                    {od.shippingCost > 0 ? formatAmount(od.shippingCost) : 'Free'}
+                  </span>
+                </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderTop: '2px solid #f0f0f0', marginBottom: 24 }}>
                   <span style={{ fontWeight: 700, fontSize: 16 }}>Total Paid</span>
                   <span style={{ fontWeight: 700, fontSize: 18, color: '#7a4012' }}>{formatAmount(od.total)}</span>
@@ -620,7 +641,7 @@ export default function CheckoutPage() {
             })}
           </div>
           <div style={{ borderTop: '2px solid #f0f0f0', paddingTop: 16, marginTop: 16 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: couponDiscount > 0 ? 8 : 0 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
               <span style={{ fontSize: 15, fontWeight: 600 }}>Subtotal</span>
               <span style={{ fontSize: 16, fontWeight: 700 }}>{formatAmount(subtotal)}</span>
             </div>
@@ -632,18 +653,16 @@ export default function CheckoutPage() {
                 <span style={{ fontSize: 14, color: '#16a34a', fontWeight: 700 }}>- {formatAmount(couponDiscount)}</span>
               </div>
             )}
-            {couponDiscount > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 8, borderTop: '1px solid #f0f0f0' }}>
-                <span style={{ fontSize: 16, fontWeight: 700 }}>Total</span>
-                <span style={{ fontSize: 18, fontWeight: 700, color: '#7a4012' }}>{formatAmount(finalTotal)}</span>
-              </div>
-            )}
-            {couponDiscount === 0 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 16, fontWeight: 700 }}>Total</span>
-                <span style={{ fontSize: 18, fontWeight: 700, color: '#7a4012' }}>{formatAmount(subtotal)}</span>
-              </div>
-            )}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <span style={{ fontSize: 14, fontWeight: 500 }}>Shipping</span>
+              <span style={{ fontSize: 14, fontWeight: 600, color: shippingCost > 0 ? '#1a1a1a' : '#25ab00' }}>
+                {shippingCost > 0 ? formatAmount(shippingCost) : 'Free'}
+              </span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 8, borderTop: '1px solid #f0f0f0' }}>
+              <span style={{ fontSize: 16, fontWeight: 700 }}>Total</span>
+              <span style={{ fontSize: 18, fontWeight: 700, color: '#7a4012' }}>{formatAmount(finalTotal)}</span>
+            </div>
           </div>
 
           {availableCoupons.some(c => c.active) && (
@@ -818,7 +837,9 @@ export default function CheckoutPage() {
             )}
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #f0f0f0' }}>
               <span>Shipping</span>
-              <span style={{ color: '#25ab00', fontWeight: 500 }}>Free</span>
+              <span style={{ color: shippingCost > 0 ? '#1a1a1a' : '#25ab00', fontWeight: 500 }}>
+                {shippingCost > 0 ? formatAmount(shippingCost) : 'Free'}
+              </span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', fontSize: 18, fontWeight: 700 }}>
               <span>Total</span>

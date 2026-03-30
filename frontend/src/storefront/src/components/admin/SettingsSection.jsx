@@ -5,6 +5,16 @@ import { TIMEZONE_OPTIONS, safeFormatInTimezone } from '../../utils/dateFormatte
 import { getExchangeRates } from '../../services/currencyService.js';
 import { formatPrice } from '../../utils/priceFormatter.js';
 
+const INDIAN_STATES = [
+  'Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Goa',
+  'Gujarat','Haryana','Himachal Pradesh','Jharkhand','Karnataka','Kerala',
+  'Madhya Pradesh','Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland',
+  'Odisha','Punjab','Rajasthan','Sikkim','Tamil Nadu','Telangana','Tripura',
+  'Uttar Pradesh','Uttarakhand','West Bengal','Delhi','Jammu and Kashmir',
+  'Ladakh','Chandigarh','Puducherry','Andaman and Nicobar Islands',
+  'Dadra and Nagar Haveli and Daman and Diu','Lakshadweep'
+];
+
 export default function SettingsSection() {
   const { siteConfig, refetchSite } = useContext(SiteContext);
   const [saving, setSaving] = useState(false);
@@ -34,6 +44,11 @@ export default function SettingsSection() {
   const [showOrderTrack, setShowOrderTrack] = useState(true);
   const [orderTrackUrl, setOrderTrackUrl] = useState('');
   const [timezone, setTimezone] = useState('');
+  const [deliveryEnabled, setDeliveryEnabled] = useState(false);
+  const [deliveryFlatRate, setDeliveryFlatRate] = useState('');
+  const [deliveryFreeAboveEnabled, setDeliveryFreeAboveEnabled] = useState(false);
+  const [deliveryFreeAbove, setDeliveryFreeAbove] = useState('');
+  const [deliveryRegionRates, setDeliveryRegionRates] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const [currentSubdomain, setCurrentSubdomain] = useState('');
@@ -130,6 +145,12 @@ export default function SettingsSection() {
         setShowOrderTrack(settings.showOrderTrack !== false);
         setOrderTrackUrl(settings.orderTrackUrl || '');
         setTimezone(settings.timezone || '');
+        const dc = settings.deliveryConfig || {};
+        setDeliveryEnabled(dc.enabled === true);
+        setDeliveryFlatRate(dc.flatRate != null ? String(dc.flatRate) : '');
+        setDeliveryFreeAboveEnabled(dc.freeAboveEnabled === true);
+        setDeliveryFreeAbove(dc.freeAbove != null ? String(dc.freeAbove) : '');
+        setDeliveryRegionRates(Array.isArray(dc.regionRates) ? dc.regionRates : []);
         if (data.custom_domain) {
           setCustomDomain(data.custom_domain);
           setDomainInput(data.custom_domain);
@@ -166,6 +187,13 @@ export default function SettingsSection() {
         showOrderTrack,
         orderTrackUrl: orderTrackUrl.trim(),
         timezone,
+        deliveryConfig: {
+          enabled: deliveryEnabled,
+          flatRate: deliveryEnabled ? (Number(deliveryFlatRate) || 0) : 0,
+          freeAboveEnabled: deliveryEnabled ? deliveryFreeAboveEnabled : false,
+          freeAbove: deliveryEnabled && deliveryFreeAboveEnabled ? (Number(deliveryFreeAbove) || 0) : 0,
+          regionRates: deliveryEnabled ? deliveryRegionRates.filter(r => r.state && r.rate !== '') : [],
+        },
       };
       if (razorpayKeyId) {
         settings.razorpayKeyId = razorpayKeyId;
@@ -743,6 +771,132 @@ export default function SettingsSection() {
               <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 8 }}>
                 Current time in selected timezone: {safeFormatInTimezone(new Date(), timezone, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
               </p>
+            )}
+          </div>
+        </div>
+
+        <div className="card" style={{ marginBottom: 20 }}>
+          <div className="card-header">
+            <h3 className="card-title">Shipping & Delivery Charges</h3>
+          </div>
+          <div className="card-content">
+            <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
+              Configure delivery charges for your store. When disabled, all orders ship free.
+            </p>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', border: '1px solid #e2e8f0', borderRadius: 8, marginBottom: 12, background: deliveryEnabled ? '#f0fdf4' : '#f8fafc' }}>
+              <div>
+                <div style={{ fontWeight: 600, fontSize: 14, color: '#1e293b' }}>Charge Delivery Fee</div>
+                <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>{deliveryEnabled ? 'Delivery charges are active' : 'All orders ship free'}</div>
+              </div>
+              <label style={{ position: 'relative', display: 'inline-block', width: 44, height: 24, flexShrink: 0 }}>
+                <input type="checkbox" checked={deliveryEnabled} onChange={e => setDeliveryEnabled(e.target.checked)} style={{ opacity: 0, width: 0, height: 0 }} />
+                <span style={{ position: 'absolute', cursor: 'pointer', inset: 0, borderRadius: 24, transition: '0.3s', background: deliveryEnabled ? '#22c55e' : '#cbd5e1' }}>
+                  <span style={{ position: 'absolute', left: deliveryEnabled ? 22 : 2, top: 2, width: 20, height: 20, background: '#fff', borderRadius: '50%', transition: '0.3s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+                </span>
+              </label>
+            </div>
+            {deliveryEnabled && (
+              <div style={{ marginTop: 4 }}>
+                <div style={{ marginBottom: 16 }}>
+                  <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Base Delivery Charge</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={deliveryFlatRate}
+                    onChange={e => setDeliveryFlatRate(e.target.value)}
+                    placeholder="e.g. 50"
+                    style={{ width: 180, padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }}
+                  />
+                  <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>This flat rate applies to every order by default</p>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', border: '1px solid #e2e8f0', borderRadius: 8, marginBottom: 12, background: deliveryFreeAboveEnabled ? '#f0fdf4' : '#f8fafc' }}>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 14, color: '#1e293b' }}>Free Shipping Above Threshold</div>
+                    <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>Waive delivery fee for orders above a minimum value</div>
+                  </div>
+                  <label style={{ position: 'relative', display: 'inline-block', width: 44, height: 24, flexShrink: 0 }}>
+                    <input type="checkbox" checked={deliveryFreeAboveEnabled} onChange={e => setDeliveryFreeAboveEnabled(e.target.checked)} style={{ opacity: 0, width: 0, height: 0 }} />
+                    <span style={{ position: 'absolute', cursor: 'pointer', inset: 0, borderRadius: 24, transition: '0.3s', background: deliveryFreeAboveEnabled ? '#22c55e' : '#cbd5e1' }}>
+                      <span style={{ position: 'absolute', left: deliveryFreeAboveEnabled ? 22 : 2, top: 2, width: 20, height: 20, background: '#fff', borderRadius: '50%', transition: '0.3s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+                    </span>
+                  </label>
+                </div>
+                {deliveryFreeAboveEnabled && (
+                  <div style={{ marginBottom: 16 }}>
+                    <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Free Shipping Minimum Order Value</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={deliveryFreeAbove}
+                      onChange={e => setDeliveryFreeAbove(e.target.value)}
+                      placeholder="e.g. 499"
+                      style={{ width: 180, padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }}
+                    />
+                    <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>Orders at or above this amount get free delivery</p>
+                  </div>
+                )}
+
+                <div style={{ marginTop: 8, padding: '14px 16px', border: '1px solid #e2e8f0', borderRadius: 8, background: '#f8fafc' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: deliveryRegionRates.length > 0 ? 12 : 0 }}>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: 14, color: '#1e293b' }}>State/Region Overrides</div>
+                      <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>Set different rates for specific states (optional)</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setDeliveryRegionRates(prev => [...prev, { state: '', rate: '' }])}
+                      style={{ padding: '6px 14px', background: '#1e293b', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}
+                    >
+                      + Add State
+                    </button>
+                  </div>
+                  {deliveryRegionRates.map((rr, idx) => (
+                    <div key={idx} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+                      <select
+                        value={rr.state}
+                        onChange={e => {
+                          const updated = [...deliveryRegionRates];
+                          updated[idx] = { ...updated[idx], state: e.target.value };
+                          setDeliveryRegionRates(updated);
+                        }}
+                        style={{ flex: 2, padding: '9px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', background: '#fff' }}
+                      >
+                        <option value="">Select State</option>
+                        {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={rr.rate}
+                        onChange={e => {
+                          const updated = [...deliveryRegionRates];
+                          updated[idx] = { ...updated[idx], rate: e.target.value };
+                          setDeliveryRegionRates(updated);
+                        }}
+                        placeholder="Rate"
+                        style={{ flex: 1, padding: '9px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, fontFamily: 'inherit' }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setDeliveryRegionRates(prev => prev.filter((_, i) => i !== idx))}
+                        style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 18, padding: '0 4px', flexShrink: 0 }}
+                        title="Remove"
+                      >
+                        &times;
+                      </button>
+                    </div>
+                  ))}
+                  {deliveryRegionRates.length > 0 && (
+                    <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 4, marginBottom: 0 }}>
+                      If a customer's state matches one of these, that rate is used instead of the base rate. Unmatched states use the base rate.
+                    </p>
+                  )}
+                </div>
+              </div>
             )}
           </div>
         </div>

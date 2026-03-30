@@ -2376,17 +2376,14 @@ function buildOrderConfirmationEmail(order, brandName, ownerEmail, currency = "I
           ${(() => {
     const sub = Number(order.subtotal || order.total || 0);
     const disc = Number(order.discount || 0);
+    const ship = Number(order.shipping_cost || 0);
     const tot = Number(order.total || 0);
     const coupon = order.coupon_code || "";
-    if (disc > 0) {
-      return `<div style="padding: 16px; background: #f8f9fa; border-radius: 8px; margin-top: 16px; text-align: right;">
-                <div style="font-size: 14px; color: #555; margin-bottom: 4px;">Subtotal: <strong>${fmtH(sub)}</strong></div>
-                <div style="font-size: 14px; color: #16a34a; margin-bottom: 8px;">Coupon${coupon ? ` (${coupon})` : ""}: <strong>-${fmtH(disc)}</strong></div>
-                <div style="font-size: 18px; font-weight: 700; color: #0f172a; border-top: 1px solid #e2e8f0; padding-top: 8px;">Total: ${fmtH(tot)}</div>
-              </div>`;
-    }
-    return `<div style="text-align: right; padding: 16px; background: #f8f9fa; border-radius: 8px; margin-top: 16px;">
-              <span style="font-size: 18px; font-weight: 700; color: #0f172a;">Total: ${fmtH(tot)}</span>
+    return `<div style="padding: 16px; background: #f8f9fa; border-radius: 8px; margin-top: 16px; text-align: right;">
+              <div style="font-size: 14px; color: #555; margin-bottom: 4px;">Subtotal: <strong>${fmtH(sub)}</strong></div>
+              ${disc > 0 ? `<div style="font-size: 14px; color: #16a34a; margin-bottom: 4px;">Coupon${coupon ? ` (${coupon})` : ""}: <strong>-${fmtH(disc)}</strong></div>` : ""}
+              <div style="font-size: 14px; color: #555; margin-bottom: 8px;">Shipping: <strong>${ship > 0 ? fmtH(ship) : "Free"}</strong></div>
+              <div style="font-size: 18px; font-weight: 700; color: #0f172a; border-top: 1px solid #e2e8f0; padding-top: 8px;">Total: ${fmtH(tot)}</div>
             </div>`;
   })()}
 
@@ -2673,6 +2670,7 @@ function buildNewOrderReviewEmail(order, brandName, currency = "INR", timezone =
             <div style="font-size: 12px; color: #059669; text-transform: uppercase; font-weight: 600;">Total Amount</div>
             <div style="font-size: 22px; font-weight: 700; color: #0f172a;">${formatCurrencyHtml(order.total, currency)}</div>
             ${Number(order.discount || 0) > 0 ? `<div style="font-size: 12px; color: #16a34a; margin-top: 4px;">Coupon${order.coupon_code ? ` (${order.coupon_code})` : ""}: -${formatCurrencyHtml(order.discount, currency)} off</div>` : ""}
+            <div style="font-size: 12px; color: #555; margin-top: 4px;">Shipping: ${Number(order.shipping_cost || 0) > 0 ? formatCurrencyHtml(order.shipping_cost, currency) : "Free"}</div>
           </div>
 
           <h3 style="font-size: 14px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin: 20px 0 8px;">Customer Details</h3>
@@ -6320,7 +6318,38 @@ async function createOrder(request, env, user, ctx2) {
         }
       }
     }
-    const shippingCost = 0;
+    let shippingCost = 0;
+    try {
+      const siteConf = await getSiteConfig(env, siteId);
+      let s = {};
+      if (siteConf?.settings) {
+        s = typeof siteConf.settings === "string" ? JSON.parse(siteConf.settings) : siteConf.settings;
+      }
+      const dc = s.deliveryConfig || {};
+      if (dc.enabled) {
+        const orderSubtotalAfterDiscount = Math.max(0, subtotal - discount);
+        if (dc.freeAboveEnabled && dc.freeAbove > 0 && orderSubtotalAfterDiscount >= dc.freeAbove) {
+          shippingCost = 0;
+        } else {
+          let matched = false;
+          if (shippingAddress && Array.isArray(dc.regionRates)) {
+            const customerState = shippingAddress.state || "";
+            if (customerState) {
+              const regionMatch = dc.regionRates.find((r) => r.state === customerState);
+              if (regionMatch && regionMatch.rate !== "" && regionMatch.rate != null) {
+                shippingCost = Number(regionMatch.rate) || 0;
+                matched = true;
+              }
+            }
+          }
+          if (!matched) {
+            shippingCost = Number(dc.flatRate) || 0;
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Shipping config error:", e);
+    }
     const tax = 0;
     const total = subtotal - discount + shippingCost + tax;
     const orderId = generateId();
@@ -6373,6 +6402,7 @@ async function createOrder(request, env, user, ctx2) {
           subtotal,
           discount,
           coupon_code: appliedCouponCode,
+          shippingCost,
           total,
           paymentMethod,
           customerName,
@@ -6784,7 +6814,38 @@ async function createGuestOrder(request, env, ctx2) {
         selectedOptions: validatedSelectedOptions
       });
     }
-    const total = subtotal;
+    let guestShippingCost = 0;
+    try {
+      const siteConf2 = await getSiteConfig(env, siteId);
+      let s2 = {};
+      if (siteConf2?.settings) {
+        s2 = typeof siteConf2.settings === "string" ? JSON.parse(siteConf2.settings) : siteConf2.settings;
+      }
+      const dc2 = s2.deliveryConfig || {};
+      if (dc2.enabled) {
+        if (dc2.freeAboveEnabled && dc2.freeAbove > 0 && subtotal >= dc2.freeAbove) {
+          guestShippingCost = 0;
+        } else {
+          let matched2 = false;
+          if (shippingAddress && Array.isArray(dc2.regionRates)) {
+            const customerState2 = shippingAddress.state || "";
+            if (customerState2) {
+              const regionMatch2 = dc2.regionRates.find((r) => r.state === customerState2);
+              if (regionMatch2 && regionMatch2.rate !== "" && regionMatch2.rate != null) {
+                guestShippingCost = Number(regionMatch2.rate) || 0;
+                matched2 = true;
+              }
+            }
+          }
+          if (!matched2) {
+            guestShippingCost = Number(dc2.flatRate) || 0;
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Guest shipping config error:", e);
+    }
+    const total = subtotal + guestShippingCost;
     const orderId = generateId();
     const orderNumber = generateOrderNumber();
     const rowData = { id: orderId, site_id: siteId, order_number: orderNumber, items: processedItems, subtotal, total, shipping_address: shippingAddress, customer_name: customerName, customer_email: customerEmail, customer_phone: customerPhone };
@@ -6797,14 +6858,15 @@ async function createGuestOrder(request, env, ctx2) {
     const orderStatus = isPendingPayment ? "pending_payment" : "pending";
     const resolvedGuestCurrency = guestOrderCurrency || guestSiteDefaultCurrency;
     await db.prepare(
-      `INSERT INTO guest_orders (id, site_id, order_number, items, subtotal, total, currency, payment_method, status, shipping_address, customer_name, customer_email, customer_phone, row_size_bytes, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+      `INSERT INTO guest_orders (id, site_id, order_number, items, subtotal, shipping_cost, total, currency, payment_method, status, shipping_address, customer_name, customer_email, customer_phone, row_size_bytes, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(
       orderId,
       siteId,
       orderNumber,
       JSON.stringify(processedItems),
       subtotal,
+      guestShippingCost,
       total,
       resolvedGuestCurrency,
       paymentMethod || "cod",
@@ -6828,6 +6890,7 @@ async function createGuestOrder(request, env, ctx2) {
           subtotal,
           discount: 0,
           coupon_code: null,
+          shippingCost: guestShippingCost,
           total,
           paymentMethod,
           customerName,
@@ -7311,6 +7374,7 @@ async function sendOrderEmails(env, siteId, orderData) {
       subtotal: orderData.subtotal,
       discount: orderData.discount || 0,
       coupon_code: orderData.coupon_code || null,
+      shipping_cost: orderData.shippingCost || 0,
       total: orderData.total,
       payment_method: orderData.paymentMethod,
       customer_name: orderData.customerName,

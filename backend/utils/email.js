@@ -190,17 +190,14 @@ export function buildOrderConfirmationEmail(order, brandName, ownerEmail, curren
           ${(() => {
             const sub = Number(order.subtotal || order.total || 0);
             const disc = Number(order.discount || 0);
+            const ship = Number(order.shipping_cost || 0);
             const tot = Number(order.total || 0);
             const coupon = order.coupon_code || '';
-            if (disc > 0) {
-              return `<div style="padding: 16px; background: #f8f9fa; border-radius: 8px; margin-top: 16px; text-align: right;">
-                <div style="font-size: 14px; color: #555; margin-bottom: 4px;">Subtotal: <strong>${fmtH(sub)}</strong></div>
-                <div style="font-size: 14px; color: #16a34a; margin-bottom: 8px;">Coupon${coupon ? ` (${coupon})` : ''}: <strong>-${fmtH(disc)}</strong></div>
-                <div style="font-size: 18px; font-weight: 700; color: #0f172a; border-top: 1px solid #e2e8f0; padding-top: 8px;">Total: ${fmtH(tot)}</div>
-              </div>`;
-            }
-            return `<div style="text-align: right; padding: 16px; background: #f8f9fa; border-radius: 8px; margin-top: 16px;">
-              <span style="font-size: 18px; font-weight: 700; color: #0f172a;">Total: ${fmtH(tot)}</span>
+            return `<div style="padding: 16px; background: #f8f9fa; border-radius: 8px; margin-top: 16px; text-align: right;">
+              <div style="font-size: 14px; color: #555; margin-bottom: 4px;">Subtotal: <strong>${fmtH(sub)}</strong></div>
+              ${disc > 0 ? `<div style="font-size: 14px; color: #16a34a; margin-bottom: 4px;">Coupon${coupon ? ` (${coupon})` : ''}: <strong>-${fmtH(disc)}</strong></div>` : ''}
+              <div style="font-size: 14px; color: #555; margin-bottom: 8px;">Shipping: <strong>${ship > 0 ? fmtH(ship) : 'Free'}</strong></div>
+              <div style="font-size: 18px; font-weight: 700; color: #0f172a; border-top: 1px solid #e2e8f0; padding-top: 8px;">Total: ${fmtH(tot)}</div>
             </div>`;
           })()}
 
@@ -545,6 +542,7 @@ export function buildNewOrderReviewEmail(order, brandName, currency = 'INR', tim
             <div style="font-size: 12px; color: #059669; text-transform: uppercase; font-weight: 600;">Total Amount</div>
             <div style="font-size: 22px; font-weight: 700; color: #0f172a;">${formatCurrencyHtml(order.total, currency)}</div>
             ${Number(order.discount || 0) > 0 ? `<div style="font-size: 12px; color: #16a34a; margin-top: 4px;">Coupon${order.coupon_code ? ` (${order.coupon_code})` : ''}: -${formatCurrencyHtml(order.discount, currency)} off</div>` : ''}
+            <div style="font-size: 12px; color: #555; margin-top: 4px;">Shipping: ${Number(order.shipping_cost || 0) > 0 ? formatCurrencyHtml(order.shipping_cost, currency) : 'Free'}</div>
           </div>
 
           <h3 style="font-size: 14px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin: 20px 0 8px;">Customer Details</h3>

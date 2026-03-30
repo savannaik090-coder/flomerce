@@ -444,7 +444,38 @@ async function createOrder(request, env, user, ctx) {
       }
     }
 
-    const shippingCost = 0;
+    let shippingCost = 0;
+    try {
+      const siteConf = await getSiteConfig(env, siteId);
+      let s = {};
+      if (siteConf?.settings) {
+        s = typeof siteConf.settings === 'string' ? JSON.parse(siteConf.settings) : siteConf.settings;
+      }
+      const dc = s.deliveryConfig || {};
+      if (dc.enabled) {
+        const orderSubtotalAfterDiscount = Math.max(0, subtotal - discount);
+        if (dc.freeAboveEnabled && dc.freeAbove > 0 && orderSubtotalAfterDiscount >= dc.freeAbove) {
+          shippingCost = 0;
+        } else {
+          let matched = false;
+          if (shippingAddress && Array.isArray(dc.regionRates)) {
+            const customerState = shippingAddress.state || '';
+            if (customerState) {
+              const regionMatch = dc.regionRates.find(r => r.state === customerState);
+              if (regionMatch && regionMatch.rate !== '' && regionMatch.rate != null) {
+                shippingCost = Number(regionMatch.rate) || 0;
+                matched = true;
+              }
+            }
+          }
+          if (!matched) {
+            shippingCost = Number(dc.flatRate) || 0;
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Shipping config error:', e);
+    }
     const tax = 0;
     const total = subtotal - discount + shippingCost + tax;
 
@@ -499,7 +530,7 @@ async function createOrder(request, env, user, ctx) {
 
       try {
         await sendOrderEmails(env, siteId, {
-          orderId, orderNumber, processedItems, subtotal, discount, coupon_code: appliedCouponCode, total, paymentMethod, customerName, customerEmail, customerPhone, shippingAddress, isGuest: false, currency: resolvedCurrency, created_at: new Date().toISOString()
+          orderId, orderNumber, processedItems, subtotal, discount, coupon_code: appliedCouponCode, shippingCost, total, paymentMethod, customerName, customerEmail, customerPhone, shippingAddress, isGuest: false, currency: resolvedCurrency, created_at: new Date().toISOString()
         });
       } catch (emailErr) {
         console.error('Order email notification error:', emailErr);
@@ -916,7 +947,38 @@ async function createGuestOrder(request, env, ctx) {
       });
     }
 
-    const total = subtotal;
+    let guestShippingCost = 0;
+    try {
+      const siteConf2 = await getSiteConfig(env, siteId);
+      let s2 = {};
+      if (siteConf2?.settings) {
+        s2 = typeof siteConf2.settings === 'string' ? JSON.parse(siteConf2.settings) : siteConf2.settings;
+      }
+      const dc2 = s2.deliveryConfig || {};
+      if (dc2.enabled) {
+        if (dc2.freeAboveEnabled && dc2.freeAbove > 0 && subtotal >= dc2.freeAbove) {
+          guestShippingCost = 0;
+        } else {
+          let matched2 = false;
+          if (shippingAddress && Array.isArray(dc2.regionRates)) {
+            const customerState2 = shippingAddress.state || '';
+            if (customerState2) {
+              const regionMatch2 = dc2.regionRates.find(r => r.state === customerState2);
+              if (regionMatch2 && regionMatch2.rate !== '' && regionMatch2.rate != null) {
+                guestShippingCost = Number(regionMatch2.rate) || 0;
+                matched2 = true;
+              }
+            }
+          }
+          if (!matched2) {
+            guestShippingCost = Number(dc2.flatRate) || 0;
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Guest shipping config error:', e);
+    }
+    const total = subtotal + guestShippingCost;
     const orderId = generateId();
     const orderNumber = generateOrderNumber();
 
@@ -933,10 +995,10 @@ async function createGuestOrder(request, env, ctx) {
 
     const resolvedGuestCurrency = guestOrderCurrency || guestSiteDefaultCurrency;
     await db.prepare(
-      `INSERT INTO guest_orders (id, site_id, order_number, items, subtotal, total, currency, payment_method, status, shipping_address, customer_name, customer_email, customer_phone, row_size_bytes, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+      `INSERT INTO guest_orders (id, site_id, order_number, items, subtotal, shipping_cost, total, currency, payment_method, status, shipping_address, customer_name, customer_email, customer_phone, row_size_bytes, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(
-      orderId, siteId, orderNumber, JSON.stringify(processedItems), subtotal, total,
+      orderId, siteId, orderNumber, JSON.stringify(processedItems), subtotal, guestShippingCost, total,
       resolvedGuestCurrency,
       paymentMethod || 'cod', orderStatus,
       JSON.stringify(shippingAddress), customerName, customerEmail || null, customerPhone,
@@ -952,7 +1014,7 @@ async function createGuestOrder(request, env, ctx) {
 
       try {
         await sendOrderEmails(env, siteId, {
-          orderId, orderNumber, processedItems, subtotal, discount: 0, coupon_code: null, total, paymentMethod, customerName, customerEmail, customerPhone, shippingAddress, isGuest: true, currency: resolvedGuestCurrency, created_at: new Date().toISOString()
+          orderId, orderNumber, processedItems, subtotal, discount: 0, coupon_code: null, shippingCost: guestShippingCost, total, paymentMethod, customerName, customerEmail, customerPhone, shippingAddress, isGuest: true, currency: resolvedGuestCurrency, created_at: new Date().toISOString()
         });
       } catch (emailErr) {
         console.error('Guest order email notification error:', emailErr);
@@ -1416,6 +1478,7 @@ export async function sendOrderEmails(env, siteId, orderData) {
       subtotal: orderData.subtotal,
       discount: orderData.discount || 0,
       coupon_code: orderData.coupon_code || null,
+      shipping_cost: orderData.shippingCost || 0,
       total: orderData.total,
       payment_method: orderData.paymentMethod,
       customer_name: orderData.customerName,

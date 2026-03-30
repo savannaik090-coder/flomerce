@@ -62,6 +62,7 @@ Fluxe employs a shared shard-based D1 database architecture where multiple sites
 - **Storage Usage Tracking:** Detailed D1 and R2 usage tracking, plan limits, and enterprise overage management.
 - **Admin Shard Management:** Comprehensive tools for shard lifecycle management.
 - **Built-in Analytics:** Lightweight page view tracking, providing aggregated stats on visitors, page views, traffic sources, and more, accessible via the admin panel.
+- **Delivery Charges:** Configurable shipping fee system managed via Admin Panel > Settings > "Shipping & Delivery Charges". Features: master toggle (off = free shipping for all), base flat rate, free-above-threshold toggle with minimum order value, and state/region-based rate overrides. Config stored in `site_config.settings.deliveryConfig` as `{ enabled, flatRate, freeAboveEnabled, freeAbove, regionRates: [{state, rate}] }`. Shipping cost calculated on both frontend (CheckoutPage) and backend (orders-worker.js) using identical logic: check enabled → free-above threshold → state match → flat rate fallback. Applied to both authenticated and guest orders. Shipping line shown in checkout summaries, order confirmation display, and all email templates (confirmation, owner review).
 
 ## Build Scripts
 After making changes to frontend source files, you **must** run the build scripts for the changes to take effect. The server serves pre-built files, not the source directly.
