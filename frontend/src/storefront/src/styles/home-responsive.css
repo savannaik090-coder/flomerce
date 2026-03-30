@@ -81,8 +81,22 @@
 
     .store-locations-section { padding: 40px 0; }
     .store-locations-header h2 { font-size: 1.8rem; }
-    .stores-grid { overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; padding-bottom: 8px; scroll-snap-type: x mandatory; gap: 16px; }
-    .store-card { min-width: calc(100vw - 56px); max-width: calc(100vw - 56px); flex: 0 0 auto; scroll-snap-align: center; }
+    .stores-grid {
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 8px;
+        scroll-snap-type: x mandatory;
+        gap: 16px;
+        justify-content: flex-start;
+    }
+    .store-card {
+        min-width: calc(100vw - 56px) !important;
+        max-width: calc(100vw - 56px) !important;
+        width: calc(100vw - 56px) !important;
+        flex: 0 0 calc(100vw - 56px) !important;
+        scroll-snap-align: center;
+    }
     .store-actions { flex-direction: column; }
     .call-btn { width: 100%; }
 
