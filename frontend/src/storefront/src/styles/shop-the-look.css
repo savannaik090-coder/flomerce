@@ -11,15 +11,15 @@
 
 .stl-header {
     text-align: center;
-    margin-bottom: 40px;
+    margin: 40px 0 20px 0;
 }
 
-.stl-title {
+.stl-header .section-title {
     font-family: 'Playfair Display', serif;
-    font-size: 2.2rem;
-    color: #5a3f2a;
+    font-size: 2.5rem;
+    color: #333;
     font-weight: 500;
-    margin: 0;
+    margin-bottom: 30px;
 }
 
 .stl-content {
@@ -279,8 +279,8 @@
         padding: 40px 0;
     }
 
-    .stl-title {
-        font-size: 1.6rem;
+    .stl-header .section-title {
+        font-size: 2rem;
     }
 
     .stl-dot {

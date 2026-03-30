@@ -4,6 +4,7 @@ import { useSiteConfig } from '../../hooks/useSiteConfig.js';
 import { getProducts } from '../../services/productService.js';
 import { useCurrency } from '../../hooks/useCurrency.js';
 import { resolveImageUrl } from '../../utils/imageUrl.js';
+import { getShopTheLookDefaults } from '../../defaults/index.js';
 
 export default function ShopTheLook() {
   const { siteConfig } = useSiteConfig();
@@ -13,8 +14,13 @@ export default function ShopTheLook() {
   const imgRef = useRef(null);
 
   const settings = siteConfig?.settings || {};
-  const config = settings.shopTheLook || {};
+  const savedConfig = settings.shopTheLook || {};
   const isHidden = settings.showShopTheLook === false;
+
+  const hasSavedData = savedConfig.title || savedConfig.image || (savedConfig.dots && savedConfig.dots.length > 0);
+  const defaults = !hasSavedData ? getShopTheLookDefaults(siteConfig?.category || 'generic') : null;
+  const config = hasSavedData ? savedConfig : (defaults || {});
+
   const dots = config.dots || [];
   const title = config.title || '';
   const mainImage = config.image || '';
@@ -70,7 +76,7 @@ export default function ShopTheLook() {
       <div className="stl-container">
         {title && (
           <div className="stl-header">
-            <h2 className="stl-title">{title}</h2>
+            <h2 className="section-title">{title}</h2>
           </div>
         )}
         <div className="stl-content">

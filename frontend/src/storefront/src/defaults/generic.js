@@ -143,6 +143,16 @@ export const privacySections = [
   },
 ];
 
+export const shopTheLookDefaults = {
+  title: 'Shop the Look',
+  image: 'https://placehold.co/600x800/f0f4ff/5b6abf?text=Upload+Your+Look+Image',
+  dots: [
+    { x: 50, y: 25, sku: '' },
+    { x: 40, y: 50, sku: '' },
+    { x: 60, y: 72, sku: '' },
+  ],
+};
+
 export const defaultReviews = [
   { text: '"Excellent product quality and exactly as described. Very happy with my purchase!"', rating: 5, image: 'https://placehold.co/400x400/f0f4ff/5b6abf?text=Happy+Customer' },
   { text: '"Fast delivery and great packaging. The product exceeded my expectations"', rating: 5, image: 'https://placehold.co/400x400/f0fdf4/6b8e5a?text=Fast+Delivery' },

@@ -57,6 +57,16 @@ export const watchAndBuyDefaults = [
   { id: 'default-6', title: 'Trending Styles', productSku: '', videoUrl: '' },
 ];
 
+export const shopTheLookDefaults = {
+  title: 'Shop the Look',
+  image: 'https://placehold.co/600x800/f5f0fa/5b4a8a?text=Upload+Your+Look+Image',
+  dots: [
+    { x: 50, y: 20, sku: '' },
+    { x: 40, y: 50, sku: '' },
+    { x: 55, y: 75, sku: '' },
+  ],
+};
+
 export const defaultReviews = [
   { text: '"The fabric quality is amazing and the fit is perfect. Exactly as shown in the pictures!"', rating: 5, image: 'https://placehold.co/400x400/f0f4ff/5b6abf?text=Perfect+Fit' },
   { text: '"Loved the outfit! Great stitching, comfortable material, and fast delivery"', rating: 5, image: 'https://placehold.co/400x400/fdf2f8/a855a0?text=Loved+It' },

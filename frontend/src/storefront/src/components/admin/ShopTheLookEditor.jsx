@@ -5,6 +5,7 @@ import { resolveImageUrl } from '../../utils/imageUrl.js';
 import { formatPrice, getAdminCurrency } from '../../utils/priceFormatter.js';
 import SectionToggle from './SectionToggle.jsx';
 import SaveBar from './SaveBar.jsx';
+import { getShopTheLookDefaults } from '../../defaults/index.js';
 
 const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
 
@@ -41,6 +42,7 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate }) {
   const [editDotIndex, setEditDotIndex] = useState(null);
   const [placingDot, setPlacingDot] = useState(false);
   const [error, setError] = useState('');
+  const [usingDefaults, setUsingDefaults] = useState(false);
 
   const hasLoadedRef = useRef(false);
   const serverValuesRef = useRef(null);
@@ -86,10 +88,22 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate }) {
           try { settings = JSON.parse(settings); } catch (e) { settings = {}; }
         }
         const config = settings.shopTheLook || {};
-        setTitle(config.title || '');
-        setMainImage(config.image || '');
-        setMainImageKey(config.imageKey || '');
-        setDots(config.dots || []);
+        const hasSavedData = config.title || config.image || (config.dots && config.dots.length > 0);
+        if (hasSavedData) {
+          setTitle(config.title || '');
+          setMainImage(config.image || '');
+          setMainImageKey(config.imageKey || '');
+          setDots(config.dots || []);
+          setUsingDefaults(false);
+        } else {
+          const category = siteConfig?.category || 'generic';
+          const defaults = getShopTheLookDefaults(category);
+          setTitle(defaults.title || 'Shop the Look');
+          setMainImage(defaults.image || '');
+          setMainImageKey('');
+          setDots(defaults.dots || []);
+          setUsingDefaults(true);
+        }
         const sv = settings.showShopTheLook !== false;
         setShowSection(sv);
         serverValuesRef.current = JSON.stringify({
@@ -196,6 +210,7 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate }) {
       if (response.ok && result.success) {
         serverValuesRef.current = JSON.stringify({ title, mainImage, mainImageKey, dots, showSection });
         setHasChanges(false);
+        setUsingDefaults(false);
         if (onSaved) onSaved();
       } else {
         setError(result.error || 'Failed to save');
@@ -228,6 +243,17 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate }) {
         label="Show Shop the Look"
         description="Display interactive product showcase on homepage"
       />
+
+      {usingDefaults && (
+        <div style={{
+          background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8,
+          padding: '10px 14px', marginBottom: 16, fontSize: 13, color: '#92400e',
+          display: 'flex', alignItems: 'center', gap: 8,
+        }}>
+          <i className="fas fa-info-circle" />
+          Showing default placeholder content. Upload your own image and assign products, then save to make it live.
+        </div>
+      )}
 
       {error && (
         <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '10px 14px', marginBottom: 16, color: '#dc2626', fontSize: 13 }}>

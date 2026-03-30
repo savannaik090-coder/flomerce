@@ -57,6 +57,16 @@ export const watchAndBuyDefaults = [
   { id: 'default-6', title: 'Self Care Essentials', productSku: '', videoUrl: '' },
 ];
 
+export const shopTheLookDefaults = {
+  title: 'Shop the Look',
+  image: 'https://placehold.co/600x800/fdf2f8/c084a0?text=Upload+Your+Look+Image',
+  dots: [
+    { x: 45, y: 25, sku: '' },
+    { x: 55, y: 50, sku: '' },
+    { x: 50, y: 72, sku: '' },
+  ],
+};
+
 export const defaultReviews = [
   { text: '"My skin feels so much better after using these products. Absolutely love them!"', rating: 5, image: 'https://placehold.co/400x400/fdf2f8/c084a0?text=Glowing+Skin' },
   { text: '"Amazing quality skincare! The results are visible within a week. Highly recommend"', rating: 5, image: 'https://placehold.co/400x400/f0fdf4/6b8e5a?text=Great+Results' },

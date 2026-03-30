@@ -95,6 +95,10 @@ export function getOrderActionNotes() {
   return generic.orderActionNotes;
 }
 
+export function getShopTheLookDefaults(category) {
+  return getCategory(category).shopTheLookDefaults || generic.shopTheLookDefaults;
+}
+
 export function getDefaultReviews(category) {
   return getCategory(category).defaultReviews || generic.defaultReviews;
 }

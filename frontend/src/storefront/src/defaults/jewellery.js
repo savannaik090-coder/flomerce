@@ -57,6 +57,16 @@ export const watchAndBuyDefaults = [
   { id: 'default-6', title: 'Bangles & Kadas', productSku: '', videoUrl: '' },
 ];
 
+export const shopTheLookDefaults = {
+  title: 'Shop the Look',
+  image: 'https://placehold.co/600x800/faf5ef/5a3f2a?text=Upload+Your+Look+Image',
+  dots: [
+    { x: 50, y: 25, sku: '' },
+    { x: 35, y: 45, sku: '' },
+    { x: 65, y: 70, sku: '' },
+  ],
+};
+
 export const defaultReviews = [
   { text: '"Received parcel. Jewelry quality is excellent. Thank you so much!"', rating: 5, image: 'https://placehold.co/400x400/fff5f5/d4a574?text=Customer+Review' },
   { text: '"Loved my purchase. You have a great collection... will definitely add more!"', rating: 5, image: 'https://placehold.co/400x400/fdf2f8/c084a0?text=Happy+Customer' },
