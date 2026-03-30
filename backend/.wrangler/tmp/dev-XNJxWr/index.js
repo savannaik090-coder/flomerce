@@ -222,6 +222,21 @@ async function ensureProductSubcategoryColumn(db, cacheKey) {
     console.error("ensureProductSubcategoryColumn error:", e.message || e);
   }
 }
+async function ensureAddressCountryColumn(db, cacheKey) {
+  const key = cacheKey || "default";
+  if (_addrCountryMigratedDBs.has(key))
+    return;
+  try {
+    const cols = await db.prepare("PRAGMA table_info(customer_addresses)").all();
+    const hasCountry = cols.results?.some((c) => c.name === "country");
+    if (!hasCountry) {
+      await db.prepare("ALTER TABLE customer_addresses ADD COLUMN country TEXT DEFAULT 'IN'").run();
+    }
+    _addrCountryMigratedDBs.add(key);
+  } catch (e) {
+    console.error("ensureAddressCountryColumn error:", e.message || e);
+  }
+}
 async function resolveSiteDBById(env, siteId) {
   if (!siteId) {
     throw new Error("resolveSiteDBById: siteId is required");
@@ -303,7 +318,7 @@ async function resolveSiteDBBySubdomain(env, subdomain) {
   }
   throw new Error(`resolveSiteDBBySubdomain: No shard assigned for subdomain "${subdomain}". Every site must have a shard_id.`);
 }
-var _migratedDBs, _subcatMigratedDBs;
+var _migratedDBs, _subcatMigratedDBs, _addrCountryMigratedDBs;
 var init_site_db = __esm({
   "utils/site-db.js"() {
     init_checked_fetch();
@@ -311,8 +326,10 @@ var init_site_db = __esm({
     init_modules_watch_stub();
     _migratedDBs = /* @__PURE__ */ new Set();
     _subcatMigratedDBs = /* @__PURE__ */ new Set();
+    _addrCountryMigratedDBs = /* @__PURE__ */ new Set();
     __name(ensureProductOptionsColumn, "ensureProductOptionsColumn");
     __name(ensureProductSubcategoryColumn, "ensureProductSubcategoryColumn");
+    __name(ensureAddressCountryColumn, "ensureAddressCountryColumn");
     __name(resolveSiteDBById, "resolveSiteDBById");
     __name(checkMigrationLock, "checkMigrationLock");
     __name(getSiteConfig, "getSiteConfig");
@@ -6333,11 +6350,26 @@ async function createOrder(request, env, user, ctx2) {
         } else {
           let matched = false;
           if (shippingAddress && Array.isArray(dc.regionRates)) {
+            const customerCountry = shippingAddress.country || "";
             const customerState = shippingAddress.state || "";
-            if (customerState) {
-              const regionMatch = dc.regionRates.find((r) => r.state === customerState);
-              if (regionMatch && regionMatch.rate !== "" && regionMatch.rate != null) {
-                shippingCost = Number(regionMatch.rate) || 0;
+            if (customerCountry && customerState) {
+              const csMatch = dc.regionRates.find((r) => r.country === customerCountry && r.state === customerState);
+              if (csMatch && csMatch.rate !== "" && csMatch.rate != null) {
+                shippingCost = Number(csMatch.rate) || 0;
+                matched = true;
+              }
+            }
+            if (!matched && customerCountry) {
+              const cMatch = dc.regionRates.find((r) => r.country === customerCountry && (!r.state || r.state === ""));
+              if (cMatch && cMatch.rate !== "" && cMatch.rate != null) {
+                shippingCost = Number(cMatch.rate) || 0;
+                matched = true;
+              }
+            }
+            if (!matched && customerState) {
+              const legacyMatch = dc.regionRates.find((r) => !r.country && r.state === customerState);
+              if (legacyMatch && legacyMatch.rate !== "" && legacyMatch.rate != null) {
+                shippingCost = Number(legacyMatch.rate) || 0;
                 matched = true;
               }
             }
@@ -6828,11 +6860,26 @@ async function createGuestOrder(request, env, ctx2) {
         } else {
           let matched2 = false;
           if (shippingAddress && Array.isArray(dc2.regionRates)) {
+            const customerCountry2 = shippingAddress.country || "";
             const customerState2 = shippingAddress.state || "";
-            if (customerState2) {
-              const regionMatch2 = dc2.regionRates.find((r) => r.state === customerState2);
-              if (regionMatch2 && regionMatch2.rate !== "" && regionMatch2.rate != null) {
-                guestShippingCost = Number(regionMatch2.rate) || 0;
+            if (customerCountry2 && customerState2) {
+              const csMatch2 = dc2.regionRates.find((r) => r.country === customerCountry2 && r.state === customerState2);
+              if (csMatch2 && csMatch2.rate !== "" && csMatch2.rate != null) {
+                guestShippingCost = Number(csMatch2.rate) || 0;
+                matched2 = true;
+              }
+            }
+            if (!matched2 && customerCountry2) {
+              const cMatch2 = dc2.regionRates.find((r) => r.country === customerCountry2 && (!r.state || r.state === ""));
+              if (cMatch2 && cMatch2.rate !== "" && cMatch2.rate != null) {
+                guestShippingCost = Number(cMatch2.rate) || 0;
+                matched2 = true;
+              }
+            }
+            if (!matched2 && customerState2) {
+              const legacyMatch2 = dc2.regionRates.find((r) => !r.country && r.state === customerState2);
+              if (legacyMatch2 && legacyMatch2.rate !== "" && legacyMatch2.rate != null) {
+                guestShippingCost = Number(legacyMatch2.rate) || 0;
                 matched2 = true;
               }
             }
@@ -12639,6 +12686,7 @@ __name(handleAddresses, "handleAddresses");
 async function getAddresses(env, customer) {
   try {
     const db = await resolveSiteDBById(env, customer.site_id);
+    await ensureAddressCountryColumn(db, customer.site_id);
     const { results } = await db.prepare(
       "SELECT * FROM customer_addresses WHERE customer_id = ? AND site_id = ? ORDER BY is_default DESC, created_at DESC"
     ).bind(customer.id, customer.site_id).all();
@@ -12655,22 +12703,23 @@ async function createAddress(request, env, customer) {
       return errorResponse("Site is currently being migrated. Please try again shortly.", 423);
     }
     const body = await request.json();
-    const { label, firstName, lastName, phone, houseNumber, roadName, city, state, pinCode, isDefault } = body;
-    if (!firstName || !houseNumber || !city || !state || !pinCode) {
-      return errorResponse("First name, house number, city, state, and PIN code are required");
+    const { label, firstName, lastName, phone, houseNumber, roadName, city, country, state, pinCode, isDefault } = body;
+    if (!firstName || !houseNumber || !city || !pinCode) {
+      return errorResponse("First name, house number, city, and postal code are required");
     }
     const id = generateId();
     const db = await resolveSiteDBById(env, customer.site_id);
+    await ensureAddressCountryColumn(db, customer.site_id);
     if (isDefault) {
       await db.prepare(
         "UPDATE customer_addresses SET is_default = 0 WHERE customer_id = ? AND site_id = ?"
       ).bind(customer.id, customer.site_id).run();
     }
-    const rowData = { id, site_id: customer.site_id, customer_id: customer.id, label, firstName, lastName, phone, houseNumber, roadName, city, state, pinCode };
+    const rowData = { id, site_id: customer.site_id, customer_id: customer.id, label, firstName, lastName, phone, houseNumber, roadName, city, country, state, pinCode };
     const rowBytes = estimateRowBytes(rowData);
     await db.prepare(
-      `INSERT INTO customer_addresses (id, site_id, customer_id, label, first_name, last_name, phone, house_number, road_name, city, state, pin_code, is_default, row_size_bytes, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
+      `INSERT INTO customer_addresses (id, site_id, customer_id, label, first_name, last_name, phone, house_number, road_name, city, country, state, pin_code, is_default, row_size_bytes, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
     ).bind(
       id,
       customer.site_id,
@@ -12682,7 +12731,8 @@ async function createAddress(request, env, customer) {
       sanitizeInput(houseNumber),
       roadName ? sanitizeInput(roadName) : null,
       sanitizeInput(city),
-      sanitizeInput(state),
+      sanitizeInput(country || "IN"),
+      state ? sanitizeInput(state) : null,
       sanitizeInput(pinCode),
       isDefault ? 1 : 0,
       rowBytes
@@ -12711,7 +12761,8 @@ async function updateAddress(request, env, customer, addressId) {
       return errorResponse("Address not found", 404);
     }
     const body = await request.json();
-    const { label, firstName, lastName, phone, houseNumber, roadName, city, state, pinCode, isDefault } = body;
+    const { label, firstName, lastName, phone, houseNumber, roadName, city, country, state, pinCode, isDefault } = body;
+    await ensureAddressCountryColumn(db, customer.site_id);
     if (isDefault) {
       await db.prepare(
         "UPDATE customer_addresses SET is_default = 0 WHERE customer_id = ? AND site_id = ?"
@@ -12728,7 +12779,8 @@ async function updateAddress(request, env, customer, addressId) {
         house_number = COALESCE(?, house_number),
         road_name = COALESCE(?, road_name),
         city = COALESCE(?, city),
-        state = COALESCE(?, state),
+        country = COALESCE(?, country),
+        state = ?,
         pin_code = COALESCE(?, pin_code),
         is_default = ?,
         row_size_bytes = ?,
@@ -12742,6 +12794,7 @@ async function updateAddress(request, env, customer, addressId) {
       houseNumber ? sanitizeInput(houseNumber) : null,
       roadName !== void 0 ? roadName ? sanitizeInput(roadName) : null : null,
       city ? sanitizeInput(city) : null,
+      country ? sanitizeInput(country) : null,
       state ? sanitizeInput(state) : null,
       pinCode ? sanitizeInput(pinCode) : null,
       isDefault ? 1 : 0,

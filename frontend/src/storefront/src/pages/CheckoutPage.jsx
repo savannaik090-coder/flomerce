@@ -1,23 +1,14 @@
-import React, { useState, useEffect, useContext, useCallback } from 'react';
+import React, { useState, useEffect, useContext, useCallback, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { CartContext } from '../context/CartContext.jsx';
 import { AuthContext } from '../context/AuthContext.jsx';
 import { SiteContext } from '../context/SiteContext.jsx';
 import { resolveImageUrl } from '../utils/imageUrl.js';
 import { CurrencyContext } from '../context/CurrencyContext.jsx';
+import { COUNTRIES, COUNTRY_STATES, getStatesForCountry, getCountryName } from '../utils/countryStates.js';
 import * as orderService from '../services/orderService.js';
 import * as authService from '../services/authService.js';
 import '../styles/checkout.css';
-
-const INDIAN_STATES = [
-  'Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Goa',
-  'Gujarat','Haryana','Himachal Pradesh','Jharkhand','Karnataka','Kerala',
-  'Madhya Pradesh','Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland',
-  'Odisha','Punjab','Rajasthan','Sikkim','Tamil Nadu','Telangana','Tripura',
-  'Uttar Pradesh','Uttarakhand','West Bengal','Delhi','Jammu and Kashmir',
-  'Ladakh','Chandigarh','Puducherry','Andaman and Nicobar Islands',
-  'Dadra and Nagar Haveli and Daman and Diu','Lakshadweep'
-];
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
@@ -38,6 +29,7 @@ export default function CheckoutPage() {
     houseNumber: '',
     roadName: '',
     city: '',
+    country: 'IN',
     state: '',
     pinCode: '',
   });
@@ -94,6 +86,8 @@ export default function CheckoutPage() {
     }
   }, [isAuthenticated, addressesLoaded]);
 
+  const statesForCountry = useMemo(() => getStatesForCountry(address.country), [address.country]);
+
   const validateAddress = useCallback(() => {
     const errs = {};
     if (address.firstName.trim().length < 2) errs.firstName = 'First name must be at least 2 characters';
@@ -101,17 +95,24 @@ export default function CheckoutPage() {
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     if (!emailRegex.test(address.email.trim())) errs.email = 'Please enter a valid email';
     const phoneDigits = address.phone.replace(/\D/g, '');
-    if (phoneDigits.length !== 10) errs.phone = 'Please enter a valid 10-digit phone number';
+    if (phoneDigits.length < 7 || phoneDigits.length > 15) errs.phone = 'Please enter a valid phone number';
     if (address.houseNumber.trim().length < 1) errs.houseNumber = 'House/Building number is required';
     if (address.roadName.trim().length < 5) errs.roadName = 'Road/Area must be at least 5 characters';
     if (address.city.trim().length < 2) errs.city = 'City name must be at least 2 characters';
-    if (address.state.trim().length < 2) errs.state = 'Please select a state';
-    if (!/^\d{6}$/.test(address.pinCode.trim())) errs.pinCode = 'Please enter a valid 6-digit PIN code';
+    if (!address.country) errs.country = 'Please select a country';
+    const countryStates = getStatesForCountry(address.country);
+    if (countryStates.length > 0 && !address.state) errs.state = 'Please select a state/region';
+    if (address.country === 'IN') {
+      if (!/^\d{6}$/.test(address.pinCode.trim())) errs.pinCode = 'Please enter a valid 6-digit PIN code';
+    } else {
+      if (address.pinCode.trim().length < 3) errs.pinCode = 'Please enter a valid postal/ZIP code';
+    }
     setAddressErrors(errs);
     return Object.keys(errs).length === 0;
   }, [address]);
 
   const validatePinCode = useCallback(async (pin) => {
+    if (address.country !== 'IN') return;
     if (!/^\d{6}$/.test(pin)) return;
     setPinValidating(true);
     try {
@@ -133,16 +134,22 @@ export default function CheckoutPage() {
     } finally {
       setPinValidating(false);
     }
-  }, []);
+  }, [address.country]);
 
   const handleAddressChange = useCallback((field, value) => {
+    if (field === 'country') {
+      setAddress(prev => ({ ...prev, country: value, state: '' }));
+      setAddressErrors(prev => ({ ...prev, country: undefined, state: undefined }));
+      setSelectedAddressId(null);
+      return;
+    }
     setAddress(prev => ({ ...prev, [field]: value }));
     setAddressErrors(prev => ({ ...prev, [field]: undefined }));
     setSelectedAddressId(null);
-    if (field === 'pinCode' && value.length === 6) {
+    if (field === 'pinCode' && address.country === 'IN' && value.length === 6) {
       validatePinCode(value);
     }
-  }, [validatePinCode]);
+  }, [validatePinCode, address.country]);
 
   const selectSavedAddress = useCallback((addr) => {
     setSelectedAddressId(addr.id);
@@ -154,6 +161,7 @@ export default function CheckoutPage() {
       houseNumber: addr.house_number || '',
       roadName: addr.road_name || '',
       city: addr.city || '',
+      country: addr.country || 'IN',
       state: addr.state || '',
       pinCode: addr.pin_code || '',
     }));
@@ -172,22 +180,29 @@ export default function CheckoutPage() {
     : 0;
 
   const deliveryConfig = settings.deliveryConfig || {};
-  const computeShippingCost = useCallback((orderSubtotal, customerState) => {
+  const computeShippingCost = useCallback((orderSubtotal, customerCountry, customerState) => {
     if (!deliveryConfig.enabled) return 0;
     if (deliveryConfig.freeAboveEnabled && deliveryConfig.freeAbove > 0 && orderSubtotal >= deliveryConfig.freeAbove) return 0;
-    if (customerState && Array.isArray(deliveryConfig.regionRates)) {
-      const regionMatch = deliveryConfig.regionRates.find(r => r.state === customerState);
-      if (regionMatch && regionMatch.rate !== '' && regionMatch.rate != null) return Number(regionMatch.rate) || 0;
+    if (Array.isArray(deliveryConfig.regionRates) && customerCountry) {
+      const countryName = getCountryName(customerCountry);
+      if (customerState) {
+        const csMatch = deliveryConfig.regionRates.find(r => r.country === countryName && r.state === customerState);
+        if (csMatch && csMatch.rate !== '' && csMatch.rate != null) return Number(csMatch.rate) || 0;
+      }
+      const cMatch = deliveryConfig.regionRates.find(r => r.country === countryName && (!r.state || r.state === ''));
+      if (cMatch && cMatch.rate !== '' && cMatch.rate != null) return Number(cMatch.rate) || 0;
+      const legacyMatch = customerState ? deliveryConfig.regionRates.find(r => !r.country && r.state === customerState) : null;
+      if (legacyMatch && legacyMatch.rate !== '' && legacyMatch.rate != null) return Number(legacyMatch.rate) || 0;
     }
     return Number(deliveryConfig.flatRate) || 0;
   }, [deliveryConfig]);
 
   const subtotalAfterCoupon = Math.max(0, subtotal - couponDiscount);
-  const hasStateSelected = !!address.state;
-  const shippingCost = computeShippingCost(subtotalAfterCoupon, address.state);
+  const hasLocationSelected = !!address.country;
+  const shippingCost = computeShippingCost(subtotalAfterCoupon, address.country, address.state);
   const finalTotal = subtotalAfterCoupon + shippingCost;
   const hasRegionOverrides = deliveryConfig.enabled && Array.isArray(deliveryConfig.regionRates) && deliveryConfig.regionRates.length > 0;
-  const showShippingNote = deliveryConfig.enabled && !hasStateSelected && (hasRegionOverrides || (deliveryConfig.freeAboveEnabled && deliveryConfig.freeAbove > 0));
+  const showShippingNote = deliveryConfig.enabled && !hasLocationSelected && (hasRegionOverrides || (deliveryConfig.freeAboveEnabled && deliveryConfig.freeAbove > 0));
 
   const applyCoupon = useCallback(() => {
     setCouponError('');
@@ -253,6 +268,7 @@ export default function CheckoutPage() {
             houseNumber: address.houseNumber,
             roadName: address.roadName,
             city: address.city,
+            country: address.country,
             state: address.state,
             pinCode: address.pinCode,
             isDefault: savedAddresses.length === 0,
@@ -305,6 +321,8 @@ export default function CheckoutPage() {
         phone: address.phone,
         address: `${address.houseNumber}, ${address.roadName}`,
         city: address.city,
+        country: getCountryName(address.country),
+        countryCode: address.country,
         state: address.state,
         pinCode: address.pinCode,
       },
@@ -511,7 +529,8 @@ export default function CheckoutPage() {
                       <div style={{ fontWeight: 600 }}>{od.address.firstName} {od.address.lastName}</div>
                       <div>{od.address.houseNumber}, {od.address.roadName}</div>
                       <div>{od.address.city}, {od.address.state}</div>
-                      <div>PIN: {od.address.pinCode}</div>
+                      <div>{od.address.country ? getCountryName(od.address.country) : ''}</div>
+                      <div>{od.address.country === 'IN' ? 'PIN' : 'Postal Code'}: {od.address.pinCode}</div>
                       <div style={{ marginTop: 4, color: '#666' }}>{od.address.phone}</div>
                     </div>
                   </div>
@@ -742,12 +761,12 @@ export default function CheckoutPage() {
                     {sa.is_default === 1 && <span style={{ fontSize: 11, color: '#fff', background: '#7a4012', padding: '1px 8px', borderRadius: 10 }}>Default</span>}
                   </div>
                   <div style={{ color: '#555', fontSize: 14, lineHeight: 1.4 }}>
-                    {sa.house_number}{sa.road_name ? `, ${sa.road_name}` : ''}, {sa.city}, {sa.state} - {sa.pin_code}
+                    {sa.house_number}{sa.road_name ? `, ${sa.road_name}` : ''}, {sa.city}{sa.state ? `, ${sa.state}` : ''} - {sa.pin_code}{sa.country && sa.country !== 'IN' ? `, ${getCountryName(sa.country)}` : ''}
                   </div>
                 </div>
               ))}
               <div style={{ borderTop: '1px solid #e0e0e0', paddingTop: 16, marginTop: 8 }}>
-                <button type="button" onClick={() => { setSelectedAddressId(null); setAddress(prev => ({ ...prev, houseNumber: '', roadName: '', city: '', state: '', pinCode: '', phone: '' })); }} style={{ background: 'none', border: 'none', color: '#7a4012', cursor: 'pointer', fontWeight: 500, fontSize: 14 }}>+ Use a New Address</button>
+                <button type="button" onClick={() => { setSelectedAddressId(null); setAddress(prev => ({ ...prev, houseNumber: '', roadName: '', city: '', country: 'IN', state: '', pinCode: '', phone: '' })); }} style={{ background: 'none', border: 'none', color: '#7a4012', cursor: 'pointer', fontWeight: 500, fontSize: 14 }}>+ Use a New Address</button>
               </div>
             </div>
           )}
@@ -785,10 +804,18 @@ export default function CheckoutPage() {
               <input type="text" value={address.roadName} onChange={e => handleAddressChange('roadName', e.target.value)} style={{ width: '100%', padding: 12, border: `1px solid ${addressErrors.roadName ? '#e74c3c' : '#ddd'}`, borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }} />
               {addressErrors.roadName && <div style={{ color: '#e74c3c', fontSize: 12, marginTop: 4 }}>{addressErrors.roadName}</div>}
             </div>
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333', fontSize: 14 }}>Country *</label>
+              <select value={address.country} onChange={e => handleAddressChange('country', e.target.value)} style={{ width: '100%', padding: 12, border: `1px solid ${addressErrors.country ? '#e74c3c' : '#ddd'}`, borderRadius: 4, fontSize: 14, boxSizing: 'border-box', background: '#fff' }}>
+                <option value="">Select Country</option>
+                {COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
+              </select>
+              {addressErrors.country && <div style={{ color: '#e74c3c', fontSize: 12, marginTop: 4 }}>{addressErrors.country}</div>}
+            </div>
             <div style={{ display: 'flex', gap: 15, marginBottom: 0 }}>
               <div style={{ flex: 1, marginBottom: 20 }}>
-                <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333', fontSize: 14 }}>PIN Code *</label>
-                <input type="text" maxLength={6} value={address.pinCode} onChange={e => handleAddressChange('pinCode', e.target.value.replace(/\D/g, ''))} style={{ width: '100%', padding: 12, border: `1px solid ${addressErrors.pinCode ? '#e74c3c' : '#ddd'}`, borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }} />
+                <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333', fontSize: 14 }}>{address.country === 'IN' ? 'PIN Code' : 'Postal / ZIP Code'} *</label>
+                <input type="text" maxLength={address.country === 'IN' ? 6 : 15} value={address.pinCode} onChange={e => handleAddressChange('pinCode', address.country === 'IN' ? e.target.value.replace(/\D/g, '') : e.target.value)} style={{ width: '100%', padding: 12, border: `1px solid ${addressErrors.pinCode ? '#e74c3c' : '#ddd'}`, borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }} />
                 {pinValidating && <div style={{ color: '#7a4012', fontSize: 12, marginTop: 4 }}>Validating PIN code...</div>}
                 {addressErrors.pinCode && <div style={{ color: '#e74c3c', fontSize: 12, marginTop: 4 }}>{addressErrors.pinCode}</div>}
               </div>
@@ -798,14 +825,16 @@ export default function CheckoutPage() {
                 {addressErrors.city && <div style={{ color: '#e74c3c', fontSize: 12, marginTop: 4 }}>{addressErrors.city}</div>}
               </div>
             </div>
-            <div style={{ marginBottom: 20 }}>
-              <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333', fontSize: 14 }}>State *</label>
-              <select value={address.state} onChange={e => handleAddressChange('state', e.target.value)} style={{ width: '100%', padding: 12, border: `1px solid ${addressErrors.state ? '#e74c3c' : '#ddd'}`, borderRadius: 4, fontSize: 14, boxSizing: 'border-box', background: '#fff' }}>
-                <option value="">Select State</option>
-                {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-              {addressErrors.state && <div style={{ color: '#e74c3c', fontSize: 12, marginTop: 4 }}>{addressErrors.state}</div>}
-            </div>
+            {statesForCountry.length > 0 && (
+              <div style={{ marginBottom: 20 }}>
+                <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333', fontSize: 14 }}>State / Region *</label>
+                <select value={address.state} onChange={e => handleAddressChange('state', e.target.value)} style={{ width: '100%', padding: 12, border: `1px solid ${addressErrors.state ? '#e74c3c' : '#ddd'}`, borderRadius: 4, fontSize: 14, boxSizing: 'border-box', background: '#fff' }}>
+                  <option value="">Select State / Region</option>
+                  {statesForCountry.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+                {addressErrors.state && <div style={{ color: '#e74c3c', fontSize: 12, marginTop: 4 }}>{addressErrors.state}</div>}
+              </div>
+            )}
           </div>
 
           {isAuthenticated && !selectedAddressId && (
@@ -830,7 +859,8 @@ export default function CheckoutPage() {
             <strong>Shipping To:</strong><br />
             {address.firstName} {address.lastName}<br />
             {address.houseNumber}, {address.roadName}<br />
-            {address.city}, {address.state} - {address.pinCode}<br />
+            {address.city}{address.state ? `, ${address.state}` : ''} - {address.pinCode}<br />
+            {getCountryName(address.country)}<br />
             Phone: {address.phone} | Email: {address.email}
           </div>
 

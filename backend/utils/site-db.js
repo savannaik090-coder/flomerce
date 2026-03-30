@@ -1,5 +1,6 @@
 const _migratedDBs = new Set();
 const _subcatMigratedDBs = new Set();
+const _addrCountryMigratedDBs = new Set();
 
 export async function ensureProductOptionsColumn(db, cacheKey) {
   const key = cacheKey || 'default';
@@ -28,6 +29,21 @@ export async function ensureProductSubcategoryColumn(db, cacheKey) {
     _subcatMigratedDBs.add(key);
   } catch (e) {
     console.error('ensureProductSubcategoryColumn error:', e.message || e);
+  }
+}
+
+export async function ensureAddressCountryColumn(db, cacheKey) {
+  const key = cacheKey || 'default';
+  if (_addrCountryMigratedDBs.has(key)) return;
+  try {
+    const cols = await db.prepare("PRAGMA table_info(customer_addresses)").all();
+    const hasCountry = cols.results?.some(c => c.name === 'country');
+    if (!hasCountry) {
+      await db.prepare("ALTER TABLE customer_addresses ADD COLUMN country TEXT DEFAULT 'IN'").run();
+    }
+    _addrCountryMigratedDBs.add(key);
+  } catch (e) {
+    console.error('ensureAddressCountryColumn error:', e.message || e);
   }
 }
 

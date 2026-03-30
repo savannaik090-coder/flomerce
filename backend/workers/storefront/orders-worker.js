@@ -459,11 +459,26 @@ async function createOrder(request, env, user, ctx) {
         } else {
           let matched = false;
           if (shippingAddress && Array.isArray(dc.regionRates)) {
+            const customerCountry = shippingAddress.country || '';
             const customerState = shippingAddress.state || '';
-            if (customerState) {
-              const regionMatch = dc.regionRates.find(r => r.state === customerState);
-              if (regionMatch && regionMatch.rate !== '' && regionMatch.rate != null) {
-                shippingCost = Number(regionMatch.rate) || 0;
+            if (customerCountry && customerState) {
+              const csMatch = dc.regionRates.find(r => r.country === customerCountry && r.state === customerState);
+              if (csMatch && csMatch.rate !== '' && csMatch.rate != null) {
+                shippingCost = Number(csMatch.rate) || 0;
+                matched = true;
+              }
+            }
+            if (!matched && customerCountry) {
+              const cMatch = dc.regionRates.find(r => r.country === customerCountry && (!r.state || r.state === ''));
+              if (cMatch && cMatch.rate !== '' && cMatch.rate != null) {
+                shippingCost = Number(cMatch.rate) || 0;
+                matched = true;
+              }
+            }
+            if (!matched && customerState) {
+              const legacyMatch = dc.regionRates.find(r => !r.country && r.state === customerState);
+              if (legacyMatch && legacyMatch.rate !== '' && legacyMatch.rate != null) {
+                shippingCost = Number(legacyMatch.rate) || 0;
                 matched = true;
               }
             }
@@ -961,11 +976,26 @@ async function createGuestOrder(request, env, ctx) {
         } else {
           let matched2 = false;
           if (shippingAddress && Array.isArray(dc2.regionRates)) {
+            const customerCountry2 = shippingAddress.country || '';
             const customerState2 = shippingAddress.state || '';
-            if (customerState2) {
-              const regionMatch2 = dc2.regionRates.find(r => r.state === customerState2);
-              if (regionMatch2 && regionMatch2.rate !== '' && regionMatch2.rate != null) {
-                guestShippingCost = Number(regionMatch2.rate) || 0;
+            if (customerCountry2 && customerState2) {
+              const csMatch2 = dc2.regionRates.find(r => r.country === customerCountry2 && r.state === customerState2);
+              if (csMatch2 && csMatch2.rate !== '' && csMatch2.rate != null) {
+                guestShippingCost = Number(csMatch2.rate) || 0;
+                matched2 = true;
+              }
+            }
+            if (!matched2 && customerCountry2) {
+              const cMatch2 = dc2.regionRates.find(r => r.country === customerCountry2 && (!r.state || r.state === ''));
+              if (cMatch2 && cMatch2.rate !== '' && cMatch2.rate != null) {
+                guestShippingCost = Number(cMatch2.rate) || 0;
+                matched2 = true;
+              }
+            }
+            if (!matched2 && customerState2) {
+              const legacyMatch2 = dc2.regionRates.find(r => !r.country && r.state === customerState2);
+              if (legacyMatch2 && legacyMatch2.rate !== '' && legacyMatch2.rate != null) {
+                guestShippingCost = Number(legacyMatch2.rate) || 0;
                 matched2 = true;
               }
             }

@@ -1,19 +1,10 @@
-import React, { useState, useEffect, useContext, useRef } from 'react';
+import React, { useState, useEffect, useContext, useRef, useMemo } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { apiRequest } from '../../services/api.js';
 import { TIMEZONE_OPTIONS, safeFormatInTimezone } from '../../utils/dateFormatter.js';
 import { getExchangeRates } from '../../services/currencyService.js';
 import { formatPrice } from '../../utils/priceFormatter.js';
-
-const INDIAN_STATES = [
-  'Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Goa',
-  'Gujarat','Haryana','Himachal Pradesh','Jharkhand','Karnataka','Kerala',
-  'Madhya Pradesh','Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland',
-  'Odisha','Punjab','Rajasthan','Sikkim','Tamil Nadu','Telangana','Tripura',
-  'Uttar Pradesh','Uttarakhand','West Bengal','Delhi','Jammu and Kashmir',
-  'Ladakh','Chandigarh','Puducherry','Andaman and Nicobar Islands',
-  'Dadra and Nagar Haveli and Daman and Diu','Lakshadweep'
-];
+import { COUNTRIES, getStatesForCountry } from '../../utils/countryStates.js';
 
 export default function SettingsSection() {
   const { siteConfig, refetchSite } = useContext(SiteContext);
@@ -192,7 +183,7 @@ export default function SettingsSection() {
           flatRate: deliveryEnabled ? (Number(deliveryFlatRate) || 0) : 0,
           freeAboveEnabled: deliveryEnabled ? deliveryFreeAboveEnabled : false,
           freeAbove: deliveryEnabled && deliveryFreeAboveEnabled ? (Number(deliveryFreeAbove) || 0) : 0,
-          regionRates: deliveryEnabled ? deliveryRegionRates.filter(r => r.state && r.rate !== '') : [],
+          regionRates: deliveryEnabled ? deliveryRegionRates.filter(r => r.country && r.rate !== '') : [],
         },
       };
       if (razorpayKeyId) {
@@ -842,59 +833,77 @@ export default function SettingsSection() {
                 <div style={{ marginTop: 8, padding: '14px 16px', border: '1px solid #e2e8f0', borderRadius: 8, background: '#f8fafc' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: deliveryRegionRates.length > 0 ? 12 : 0 }}>
                     <div>
-                      <div style={{ fontWeight: 600, fontSize: 14, color: '#1e293b' }}>State/Region Overrides</div>
-                      <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>Set different rates for specific states (optional)</div>
+                      <div style={{ fontWeight: 600, fontSize: 14, color: '#1e293b' }}>Country / Region Overrides</div>
+                      <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>Set different rates per country or country + state (optional)</div>
                     </div>
                     <button
                       type="button"
-                      onClick={() => setDeliveryRegionRates(prev => [...prev, { state: '', rate: '' }])}
+                      onClick={() => setDeliveryRegionRates(prev => [...prev, { country: '', state: '', rate: '' }])}
                       style={{ padding: '6px 14px', background: '#1e293b', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}
                     >
-                      + Add State
+                      + Add Override
                     </button>
                   </div>
-                  {deliveryRegionRates.map((rr, idx) => (
-                    <div key={idx} style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginBottom: 8 }}>
-                      <select
-                        value={rr.state}
-                        onChange={e => {
-                          const updated = [...deliveryRegionRates];
-                          updated[idx] = { ...updated[idx], state: e.target.value };
-                          setDeliveryRegionRates(updated);
-                        }}
-                        style={{ flex: '1 1 140px', minWidth: 0, padding: '9px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', background: '#fff' }}
-                      >
-                        <option value="">Select State</option>
-                        {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
-                      </select>
-                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flex: '0 0 auto' }}>
-                        <input
-                          type="number"
-                          min="0"
-                          step="1"
-                          value={rr.rate}
+                  {deliveryRegionRates.map((rr, idx) => {
+                    const countryCode = COUNTRIES.find(c => c.name === rr.country)?.code || '';
+                    const statesForOverride = countryCode ? getStatesForCountry(countryCode) : [];
+                    return (
+                      <div key={idx} style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+                        <select
+                          value={rr.country || ''}
                           onChange={e => {
                             const updated = [...deliveryRegionRates];
-                            updated[idx] = { ...updated[idx], rate: e.target.value };
+                            updated[idx] = { ...updated[idx], country: e.target.value, state: '' };
                             setDeliveryRegionRates(updated);
                           }}
-                          placeholder="Rate"
-                          style={{ width: 80, padding: '9px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, fontFamily: 'inherit' }}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setDeliveryRegionRates(prev => prev.filter((_, i) => i !== idx))}
-                          style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 18, padding: '0 4px', flexShrink: 0 }}
-                          title="Remove"
+                          style={{ flex: '1 1 140px', minWidth: 0, padding: '9px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', background: '#fff' }}
                         >
-                          &times;
-                        </button>
+                          <option value="">Select Country</option>
+                          {COUNTRIES.map(c => <option key={c.code} value={c.name}>{c.name}</option>)}
+                        </select>
+                        {statesForOverride.length > 0 && (
+                          <select
+                            value={rr.state || ''}
+                            onChange={e => {
+                              const updated = [...deliveryRegionRates];
+                              updated[idx] = { ...updated[idx], state: e.target.value };
+                              setDeliveryRegionRates(updated);
+                            }}
+                            style={{ flex: '1 1 140px', minWidth: 0, padding: '9px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', background: '#fff' }}
+                          >
+                            <option value="">All States (country-wide)</option>
+                            {statesForOverride.map(s => <option key={s} value={s}>{s}</option>)}
+                          </select>
+                        )}
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flex: '0 0 auto' }}>
+                          <input
+                            type="number"
+                            min="0"
+                            step="1"
+                            value={rr.rate}
+                            onChange={e => {
+                              const updated = [...deliveryRegionRates];
+                              updated[idx] = { ...updated[idx], rate: e.target.value };
+                              setDeliveryRegionRates(updated);
+                            }}
+                            placeholder="Rate"
+                            style={{ width: 80, padding: '9px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, fontFamily: 'inherit' }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setDeliveryRegionRates(prev => prev.filter((_, i) => i !== idx))}
+                            style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 18, padding: '0 4px', flexShrink: 0 }}
+                            title="Remove"
+                          >
+                            &times;
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                   {deliveryRegionRates.length > 0 && (
                     <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 4, marginBottom: 0 }}>
-                      If a customer's state matches one of these, that rate is used instead of the base rate. Unmatched states use the base rate.
+                      Priority: country + state match first, then country-only match, then flat rate fallback. Leave state empty for a country-wide rate.
                     </p>
                   )}
                 </div>

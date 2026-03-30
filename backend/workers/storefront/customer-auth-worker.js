@@ -2,7 +2,7 @@ import { generateId, generateToken, getExpiryDate, validateEmail, sanitizeInput,
 import { hashPassword, verifyPassword } from '../../utils/auth.js';
 import { sendEmail } from '../../utils/email.js';
 import { estimateRowBytes, trackD1Write, trackD1Update, trackD1Delete } from '../../utils/usage-tracker.js';
-import { resolveSiteDBById, checkMigrationLock } from '../../utils/site-db.js';
+import { resolveSiteDBById, checkMigrationLock, ensureAddressCountryColumn } from '../../utils/site-db.js';
 
 export async function handleCustomerAuth(request, env, path) {
   const corsResponse = handleCORS(request);
@@ -66,6 +66,7 @@ async function handleAddresses(request, env, addressId) {
 async function getAddresses(env, customer) {
   try {
     const db = await resolveSiteDBById(env, customer.site_id);
+    await ensureAddressCountryColumn(db, customer.site_id);
     const { results } = await db.prepare(
       'SELECT * FROM customer_addresses WHERE customer_id = ? AND site_id = ? ORDER BY is_default DESC, created_at DESC'
     ).bind(customer.id, customer.site_id).all();
@@ -84,14 +85,15 @@ async function createAddress(request, env, customer) {
     }
 
     const body = await request.json();
-    const { label, firstName, lastName, phone, houseNumber, roadName, city, state, pinCode, isDefault } = body;
+    const { label, firstName, lastName, phone, houseNumber, roadName, city, country, state, pinCode, isDefault } = body;
 
-    if (!firstName || !houseNumber || !city || !state || !pinCode) {
-      return errorResponse('First name, house number, city, state, and PIN code are required');
+    if (!firstName || !houseNumber || !city || !pinCode) {
+      return errorResponse('First name, house number, city, and postal code are required');
     }
 
     const id = generateId();
     const db = await resolveSiteDBById(env, customer.site_id);
+    await ensureAddressCountryColumn(db, customer.site_id);
 
     if (isDefault) {
       await db.prepare(
@@ -99,12 +101,12 @@ async function createAddress(request, env, customer) {
       ).bind(customer.id, customer.site_id).run();
     }
 
-    const rowData = { id, site_id: customer.site_id, customer_id: customer.id, label, firstName, lastName, phone, houseNumber, roadName, city, state, pinCode };
+    const rowData = { id, site_id: customer.site_id, customer_id: customer.id, label, firstName, lastName, phone, houseNumber, roadName, city, country, state, pinCode };
     const rowBytes = estimateRowBytes(rowData);
 
     await db.prepare(
-      `INSERT INTO customer_addresses (id, site_id, customer_id, label, first_name, last_name, phone, house_number, road_name, city, state, pin_code, is_default, row_size_bytes, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
+      `INSERT INTO customer_addresses (id, site_id, customer_id, label, first_name, last_name, phone, house_number, road_name, city, country, state, pin_code, is_default, row_size_bytes, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
     ).bind(
       id, customer.site_id, customer.id,
       sanitizeInput(label || 'Home'),
@@ -114,7 +116,8 @@ async function createAddress(request, env, customer) {
       sanitizeInput(houseNumber),
       roadName ? sanitizeInput(roadName) : null,
       sanitizeInput(city),
-      sanitizeInput(state),
+      sanitizeInput(country || 'IN'),
+      state ? sanitizeInput(state) : null,
       sanitizeInput(pinCode),
       isDefault ? 1 : 0,
       rowBytes
@@ -150,7 +153,9 @@ async function updateAddress(request, env, customer, addressId) {
     }
 
     const body = await request.json();
-    const { label, firstName, lastName, phone, houseNumber, roadName, city, state, pinCode, isDefault } = body;
+    const { label, firstName, lastName, phone, houseNumber, roadName, city, country, state, pinCode, isDefault } = body;
+
+    await ensureAddressCountryColumn(db, customer.site_id);
 
     if (isDefault) {
       await db.prepare(
@@ -170,7 +175,8 @@ async function updateAddress(request, env, customer, addressId) {
         house_number = COALESCE(?, house_number),
         road_name = COALESCE(?, road_name),
         city = COALESCE(?, city),
-        state = COALESCE(?, state),
+        country = COALESCE(?, country),
+        state = ?,
         pin_code = COALESCE(?, pin_code),
         is_default = ?,
         row_size_bytes = ?,
@@ -184,6 +190,7 @@ async function updateAddress(request, env, customer, addressId) {
       houseNumber ? sanitizeInput(houseNumber) : null,
       roadName !== undefined ? (roadName ? sanitizeInput(roadName) : null) : null,
       city ? sanitizeInput(city) : null,
+      country ? sanitizeInput(country) : null,
       state ? sanitizeInput(state) : null,
       pinCode ? sanitizeInput(pinCode) : null,
       isDefault ? 1 : 0,
