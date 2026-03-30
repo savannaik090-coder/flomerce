@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { createSite, checkSubdomain } from '../services/siteService.js';
 
 const BUSINESS_CATEGORIES = [
@@ -43,6 +44,7 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
   const [error, setError] = useState('');
   const [subdomainStatus, setSubdomainStatus] = useState(null);
   const [checkingSubdomain, setCheckingSubdomain] = useState(false);
+  const [agreedTerms, setAgreedTerms] = useState(false);
   const debounceRef = useRef(null);
   const latestCheckRef = useRef('');
 
@@ -309,10 +311,16 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
             <button className="btn btn-outline" onClick={addCategory} style={{ width: '100%', marginBottom: '1.5rem', borderStyle: 'dashed' }}>
               + Add Another Category
             </button>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', margin: '1rem 0' }}>
+              <input type="checkbox" id="wizard-agree-terms" checked={agreedTerms} onChange={(e) => setAgreedTerms(e.target.checked)} style={{ marginTop: '0.2rem', width: '16px', height: '16px', cursor: 'pointer', flexShrink: 0 }} />
+              <label htmlFor="wizard-agree-terms" style={{ fontSize: '0.8125rem', color: '#64748b', lineHeight: 1.5, cursor: 'pointer' }}>
+                I agree to the <Link to="/terms" target="_blank" style={{ color: '#2563eb', textDecoration: 'none', fontWeight: 500 }}>Terms & Conditions</Link>, <Link to="/privacy-policy" target="_blank" style={{ color: '#2563eb', textDecoration: 'none', fontWeight: 500 }}>Privacy Policy</Link>, and <Link to="/refund-policy" target="_blank" style={{ color: '#2563eb', textDecoration: 'none', fontWeight: 500 }}>Refund & Cancellation Policy</Link>.
+              </label>
+            </div>
             {error && <p style={{ color: '#ef4444', fontSize: '0.875rem', marginBottom: '1rem' }}>{error}</p>}
             <div style={{ display: 'flex', gap: '1rem' }}>
               <button className="btn btn-outline" onClick={() => setStep(2)} style={{ flex: 1 }}>Back</button>
-              <button className="btn btn-primary" onClick={handleCreate} disabled={creating} style={{ flex: 1 }}>
+              <button className="btn btn-primary" onClick={handleCreate} disabled={creating || !agreedTerms} style={{ flex: 1 }}>
                 {creating ? 'Creating...' : 'Create Website'}
               </button>
             </div>

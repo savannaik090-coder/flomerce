@@ -106,38 +106,6 @@
   font-size: 0.8125rem;
 }
 
-.landing-footer {
-  border-top: 1px solid #e5e5e5;
-  padding: 2rem 0;
-  margin-top: 2rem;
-  text-align: center;
-}
-
-.landing-footer-links {
-  display: flex;
-  justify-content: center;
-  gap: 2rem;
-  margin-bottom: 0.75rem;
-  flex-wrap: wrap;
-}
-
-.landing-footer-links a {
-  color: #64748b;
-  text-decoration: none;
-  font-size: 0.875rem;
-  font-weight: 500;
-  transition: color 0.2s;
-}
-
-.landing-footer-links a:hover {
-  color: #0f172a;
-}
-
-.landing-footer p {
-  color: #94a3b8;
-  font-size: 0.8125rem;
-  margin: 0;
-}
 
 @media (max-width: 768px) {
   .legal-content {

@@ -9,40 +9,45 @@ export default function TermsPage() {
         <Navbar />
         <div className="legal-content">
           <h1>Terms & Conditions</h1>
-          <p className="legal-updated">Last updated: March 16, 2026</p>
+          <p className="legal-updated">Last updated: March 30, 2026</p>
 
           <section>
             <h2>1. Acceptance of Terms</h2>
-            <p>By accessing or using the Fluxe platform ("Service"), available at fluxe.in, you agree to be bound by these Terms & Conditions. If you do not agree with any part of these terms, you may not use our Service.</p>
+            <p>By accessing or using the Fluxe platform ("Service"), available at fluxe.in, you agree to be bound by these Terms & Conditions ("Terms"). If you do not agree with any part of these Terms, you may not use our Service. These Terms constitute a legally binding agreement between you and Fluxe.</p>
           </section>
 
           <section>
             <h2>2. Description of Service</h2>
-            <p>Fluxe is a software-as-a-service (SaaS) platform that enables users to create, manage, and host e-commerce websites on subdomains of fluxe.in. The platform provides website building tools, product management, order processing, and payment integration capabilities.</p>
+            <p>Fluxe is a software-as-a-service (SaaS) platform that enables users to create, manage, and host e-commerce websites on subdomains of fluxe.in (e.g., your-store.fluxe.in). The platform provides website building tools, product management, order processing, customer management, analytics, and payment integration capabilities. Fluxe is a digital product — no physical goods are shipped by Fluxe. Access to all platform features is granted immediately upon successful payment or trial activation.</p>
           </section>
 
           <section>
             <h2>3. Account Registration</h2>
-            <p>To use the Service, you must create an account by providing accurate and complete information. You are responsible for maintaining the confidentiality of your account credentials and for all activities that occur under your account. You must notify us immediately of any unauthorized use of your account.</p>
+            <p>To use the Service, you must create an account by providing accurate and complete information including your full name, email address, and a secure password. You are responsible for maintaining the confidentiality of your account credentials and for all activities that occur under your account. You must notify us immediately at support@fluxe.in of any unauthorized use of your account. You must be at least 18 years of age to create an account.</p>
           </section>
 
           <section>
             <h2>4. Subscription Plans & Payments</h2>
-            <p>Fluxe offers various subscription plans with different features and pricing. By subscribing to a paid plan, you agree to pay the applicable fees as described at the time of purchase. All payments are processed securely through Razorpay. Subscription fees are billed in advance on a recurring basis depending on your chosen billing cycle (monthly, semi-annually, or annually).</p>
+            <p>Fluxe offers various subscription plans with different features and pricing, viewable on our website. By subscribing to a paid plan, you agree to pay the applicable fees as described at the time of purchase. All payments are processed securely through Razorpay, a PCI DSS-compliant payment gateway. Subscription fees are billed in advance on a recurring basis depending on your chosen billing cycle. All prices are displayed in Indian Rupees (INR). Razorpay supports payments via credit cards, debit cards, UPI, net banking, and digital wallets.</p>
           </section>
 
           <section>
             <h2>5. Free Trial</h2>
-            <p>We may offer a 7-day free trial period for new users. At the end of the trial period, your account will be suspended and your website will be disabled unless you subscribe to a paid plan. We reserve the right to modify or discontinue the free trial at any time.</p>
+            <p>We offer a 7-day free trial period for new users. During the trial period, you have full access to the platform features at no cost. No payment information is required to start a free trial. At the end of the trial, your account will be suspended and your website will be disabled unless you subscribe to a paid plan. We reserve the right to modify or discontinue the free trial at any time.</p>
           </section>
 
           <section>
-            <h2>6. User Content</h2>
-            <p>You retain ownership of all content you upload to your websites created through Fluxe, including but not limited to product images, descriptions, logos, and text. You are solely responsible for ensuring that your content does not violate any applicable laws, infringe upon intellectual property rights, or contain prohibited material.</p>
+            <h2>6. Digital Delivery</h2>
+            <p>Fluxe is a digital SaaS product. No physical goods are shipped by Fluxe. Upon successful payment or trial activation, access to the platform and all included features is granted immediately. Your e-commerce website will be live and accessible at your chosen subdomain (your-store.fluxe.in) within seconds of creation.</p>
           </section>
 
           <section>
-            <h2>7. Prohibited Uses</h2>
+            <h2>7. User Content</h2>
+            <p>You retain ownership of all content you upload to your websites created through Fluxe, including but not limited to product images, descriptions, logos, and text. You are solely responsible for ensuring that your content does not violate any applicable laws, infringe upon intellectual property rights, or contain prohibited material. You grant Fluxe a limited, non-exclusive license to host and display your content as necessary to provide the Service.</p>
+          </section>
+
+          <section>
+            <h2>8. Prohibited Uses</h2>
             <p>You agree not to use the Service to:</p>
             <ul>
               <li>Sell illegal, counterfeit, or prohibited goods</li>
@@ -52,43 +57,47 @@ export default function TermsPage() {
               <li>Infringe upon the intellectual property rights of others</li>
               <li>Send unsolicited communications or spam</li>
               <li>Attempt to gain unauthorized access to the Service or its systems</li>
+              <li>Sell products related to gambling, adult content, cryptocurrency, or any other restricted category</li>
             </ul>
           </section>
 
           <section>
-            <h2>8. Intellectual Property</h2>
+            <h2>9. Intellectual Property</h2>
             <p>The Fluxe platform, including its design, code, features, and branding, is the intellectual property of Fluxe and is protected by applicable copyright and trademark laws. You may not copy, modify, distribute, or reverse-engineer any part of the Service without prior written consent.</p>
           </section>
 
           <section>
-            <h2>9. Termination</h2>
-            <p>We reserve the right to suspend or terminate your account at any time if you violate these Terms & Conditions or engage in activities that are harmful to the Service or other users. Upon termination, your access to the Service will be revoked and your website data may be deleted after a reasonable retention period.</p>
+            <h2>10. Termination</h2>
+            <p>We reserve the right to suspend or terminate your account at any time if you violate these Terms or engage in activities that are harmful to the Service or other users. Upon termination, your access to the Service will be revoked. Your website data will be retained for 30 days after termination, during which you may request data export. After this period, data may be permanently deleted.</p>
           </section>
 
           <section>
-            <h2>10. Limitation of Liability</h2>
-            <p>To the maximum extent permitted by law, Fluxe shall not be liable for any indirect, incidental, special, consequential, or punitive damages, including but not limited to loss of profits, data, or business opportunities, arising out of or in connection with the use of the Service.</p>
+            <h2>11. Limitation of Liability</h2>
+            <p>To the maximum extent permitted by law, Fluxe shall not be liable for any indirect, incidental, special, consequential, or punitive damages, including but not limited to loss of profits, data, or business opportunities, arising out of or in connection with the use of the Service. Our total liability shall not exceed the amount paid by you in the preceding 12 months.</p>
           </section>
 
           <section>
-            <h2>11. Disclaimer of Warranties</h2>
-            <p>The Service is provided "as is" and "as available" without warranties of any kind, either express or implied. We do not guarantee that the Service will be uninterrupted, error-free, or secure at all times.</p>
+            <h2>12. Disclaimer of Warranties</h2>
+            <p>The Service is provided "as is" and "as available" without warranties of any kind, either express or implied. We do not guarantee that the Service will be uninterrupted, error-free, or secure at all times. We strive for 99.9% uptime but do not guarantee it.</p>
           </section>
 
           <section>
-            <h2>12. Governing Law</h2>
-            <p>These Terms & Conditions shall be governed by and construed in accordance with the laws of India. Any disputes arising out of these terms shall be subject to the exclusive jurisdiction of the courts in India.</p>
+            <h2>13. Governing Law & Dispute Resolution</h2>
+            <p>These Terms shall be governed by and construed in accordance with the laws of India. Any disputes arising out of these Terms shall be subject to the exclusive jurisdiction of the courts in Karnataka, India. Before initiating legal proceedings, both parties agree to attempt resolution through good-faith negotiation.</p>
           </section>
 
           <section>
-            <h2>13. Changes to Terms</h2>
-            <p>We reserve the right to update these Terms & Conditions at any time. Changes will be posted on this page with an updated "Last updated" date. Continued use of the Service after changes constitutes acceptance of the revised terms.</p>
+            <h2>14. Changes to Terms</h2>
+            <p>We reserve the right to update these Terms at any time. Changes will be posted on this page with an updated "Last updated" date. We will notify registered users of significant changes via email. Continued use of the Service after changes constitutes acceptance of the revised Terms.</p>
           </section>
 
           <section>
-            <h2>14. Contact Us</h2>
+            <h2>15. Contact Us</h2>
             <p>If you have any questions about these Terms & Conditions, please contact us at:</p>
-            <p><strong>Email:</strong> support@fluxe.in</p>
+            <p><strong>Fluxe</strong></p>
+            <p><strong>Email:</strong> <a href="mailto:support@fluxe.in">support@fluxe.in</a></p>
+            <p><strong>Phone:</strong> <a href="tel:+919901954610">+91 9901954610</a></p>
+            <p><strong>Address:</strong> Karwar, Karnataka, India — 581400</p>
             <p><strong>Website:</strong> <a href="https://fluxe.in">https://fluxe.in</a></p>
           </section>
         </div>
@@ -97,9 +106,10 @@ export default function TermsPage() {
           <div className="legal-footer-links">
             <Link to="/terms">Terms & Conditions</Link>
             <Link to="/privacy-policy">Privacy Policy</Link>
-            <Link to="/refund-policy">Refund Policy</Link>
+            <Link to="/refund-policy">Refund & Cancellation Policy</Link>
           </div>
           <p>&copy; {new Date().getFullYear()} Fluxe. All rights reserved.</p>
+          <p style={{ color: '#94a3b8', fontSize: '0.75rem', marginTop: '0.5rem' }}>Karwar, Karnataka, India — 581400 | +91 9901954610 | support@fluxe.in</p>
         </footer>
       </div>
     </div>

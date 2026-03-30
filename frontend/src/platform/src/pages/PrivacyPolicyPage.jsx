@@ -9,11 +9,11 @@ export default function PrivacyPolicyPage() {
         <Navbar />
         <div className="legal-content">
           <h1>Privacy Policy</h1>
-          <p className="legal-updated">Last updated: March 16, 2026</p>
+          <p className="legal-updated">Last updated: March 30, 2026</p>
 
           <section>
             <h2>1. Introduction</h2>
-            <p>Fluxe ("we", "our", "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our platform at fluxe.in and any websites created through our Service.</p>
+            <p>Fluxe ("we", "our", "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our platform at fluxe.in and any websites created through our Service. This policy applies to all users of the Fluxe platform, including store owners and their customers.</p>
           </section>
 
           <section>
@@ -23,15 +23,16 @@ export default function PrivacyPolicyPage() {
             <ul>
               <li>Full name</li>
               <li>Email address</li>
-              <li>Password (stored in encrypted form)</li>
+              <li>Phone number (optional)</li>
+              <li>Password (stored in encrypted/hashed form)</li>
               <li>Business/brand name</li>
             </ul>
 
             <h3>2.2 Payment Information</h3>
-            <p>When you subscribe to a paid plan, payment processing is handled by Razorpay. We do not store your credit card numbers or bank account details on our servers. Razorpay processes and stores this information in accordance with their own privacy policy and PCI DSS compliance standards.</p>
+            <p>When you subscribe to a paid plan, payment processing is handled securely by Razorpay, which is PCI DSS Level 1 compliant. We do not store your credit card numbers, debit card details, UPI IDs, or bank account information on our servers. Razorpay processes and stores payment information in accordance with their own privacy policy and security standards. We only store transaction reference IDs for record-keeping.</p>
 
             <h3>2.3 Website Content</h3>
-            <p>We store the content you create on your websites, including product listings, images, category information, and site configuration data.</p>
+            <p>We store the content you create on your websites, including product listings, images, category information, site configuration data, and customer order information.</p>
 
             <h3>2.4 Automatically Collected Information</h3>
             <p>We may automatically collect certain information when you access the Service, including:</p>
@@ -49,12 +50,12 @@ export default function PrivacyPolicyPage() {
             <p>We use the information we collect to:</p>
             <ul>
               <li>Provide, maintain, and improve the Service</li>
-              <li>Process your subscription payments</li>
+              <li>Process your subscription payments via Razorpay</li>
               <li>Send you account-related communications (verification emails, password resets, subscription updates)</li>
               <li>Respond to your inquiries and provide customer support</li>
               <li>Monitor and analyze usage patterns to improve user experience</li>
               <li>Protect against fraudulent or unauthorized activity</li>
-              <li>Comply with legal obligations</li>
+              <li>Comply with legal obligations including the Information Technology Act, 2000 and applicable data protection regulations</li>
             </ul>
           </section>
 
@@ -62,9 +63,10 @@ export default function PrivacyPolicyPage() {
             <h2>4. Data Sharing & Disclosure</h2>
             <p>We do not sell your personal information to third parties. We may share your information only in the following circumstances:</p>
             <ul>
-              <li><strong>Payment Processing:</strong> With Razorpay to process subscription payments</li>
-              <li><strong>Cloud Infrastructure:</strong> With Cloudflare for hosting and content delivery</li>
-              <li><strong>Legal Requirements:</strong> When required by law, regulation, or legal process</li>
+              <li><strong>Payment Processing:</strong> With Razorpay to process subscription and transaction payments securely</li>
+              <li><strong>Cloud Infrastructure:</strong> With Cloudflare for hosting, content delivery, and database services</li>
+              <li><strong>Email Service:</strong> With Brevo (formerly Sendinblue) for transactional email delivery</li>
+              <li><strong>Legal Requirements:</strong> When required by law, regulation, court order, or legal process</li>
               <li><strong>Protection of Rights:</strong> To protect the rights, property, or safety of Fluxe, our users, or others</li>
             </ul>
           </section>
@@ -73,17 +75,18 @@ export default function PrivacyPolicyPage() {
             <h2>5. Data Security</h2>
             <p>We implement industry-standard security measures to protect your information, including:</p>
             <ul>
-              <li>Encryption of data in transit using SSL/TLS</li>
-              <li>Secure password hashing</li>
-              <li>JWT-based authentication tokens</li>
-              <li>Regular security audits and updates</li>
+              <li>Encryption of data in transit using SSL/TLS (HTTPS)</li>
+              <li>Secure password hashing using bcrypt</li>
+              <li>Token-based authentication with session expiry</li>
+              <li>Regular security reviews and updates</li>
+              <li>Cloudflare's enterprise-grade security infrastructure</li>
             </ul>
             <p>However, no method of transmission over the Internet is 100% secure, and we cannot guarantee absolute security.</p>
           </section>
 
           <section>
             <h2>6. Data Retention</h2>
-            <p>We retain your personal information for as long as your account is active or as needed to provide you the Service. If you delete your account, we will delete your personal data within 30 days, except where retention is required by law or for legitimate business purposes.</p>
+            <p>We retain your personal information for as long as your account is active or as needed to provide you the Service. If you delete your account, we will delete your personal data within 30 days, except where retention is required by law or for legitimate business purposes such as fraud prevention. Transaction records may be retained for up to 7 years as required by Indian tax and accounting regulations.</p>
           </section>
 
           <section>
@@ -95,13 +98,14 @@ export default function PrivacyPolicyPage() {
               <li>Request deletion of your account and associated data</li>
               <li>Withdraw consent for data processing where applicable</li>
               <li>Export your data in a portable format</li>
+              <li>Lodge a complaint with a data protection authority</li>
             </ul>
-            <p>To exercise any of these rights, please contact us at support@fluxe.in.</p>
+            <p>To exercise any of these rights, please contact us at <a href="mailto:support@fluxe.in">support@fluxe.in</a> or call <a href="tel:+919901954610">+91 9901954610</a>.</p>
           </section>
 
           <section>
             <h2>8. Cookies</h2>
-            <p>We use essential cookies and local storage to maintain your login session and store user preferences. We do not use third-party tracking cookies for advertising purposes.</p>
+            <p>We use essential cookies and local storage to maintain your login session and store user preferences. We do not use third-party tracking cookies for advertising purposes. Essential cookies are necessary for the functioning of the Service and cannot be disabled.</p>
           </section>
 
           <section>
@@ -116,13 +120,16 @@ export default function PrivacyPolicyPage() {
 
           <section>
             <h2>11. Changes to This Policy</h2>
-            <p>We may update this Privacy Policy from time to time. Changes will be posted on this page with an updated "Last updated" date. Your continued use of the Service after any changes constitutes acceptance of the revised policy.</p>
+            <p>We may update this Privacy Policy from time to time. Changes will be posted on this page with an updated "Last updated" date. We will notify registered users of significant changes via email. Your continued use of the Service after any changes constitutes acceptance of the revised policy.</p>
           </section>
 
           <section>
             <h2>12. Contact Us</h2>
             <p>If you have any questions or concerns about this Privacy Policy, please contact us at:</p>
-            <p><strong>Email:</strong> support@fluxe.in</p>
+            <p><strong>Fluxe</strong></p>
+            <p><strong>Email:</strong> <a href="mailto:support@fluxe.in">support@fluxe.in</a></p>
+            <p><strong>Phone:</strong> <a href="tel:+919901954610">+91 9901954610</a></p>
+            <p><strong>Address:</strong> Karwar, Karnataka, India — 581400</p>
             <p><strong>Website:</strong> <a href="https://fluxe.in">https://fluxe.in</a></p>
           </section>
         </div>
@@ -131,9 +138,10 @@ export default function PrivacyPolicyPage() {
           <div className="legal-footer-links">
             <Link to="/terms">Terms & Conditions</Link>
             <Link to="/privacy-policy">Privacy Policy</Link>
-            <Link to="/refund-policy">Refund Policy</Link>
+            <Link to="/refund-policy">Refund & Cancellation Policy</Link>
           </div>
           <p>&copy; {new Date().getFullYear()} Fluxe. All rights reserved.</p>
+          <p style={{ color: '#94a3b8', fontSize: '0.75rem', marginTop: '0.5rem' }}>Karwar, Karnataka, India — 581400 | +91 9901954610 | support@fluxe.in</p>
         </footer>
       </div>
     </div>

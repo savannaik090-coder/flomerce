@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar.jsx';
+import LandingPricing from '../components/LandingPricing.jsx';
+import '../styles/landing.css';
 import '../styles/legal.css';
 
 export default function LandingPage() {
@@ -25,33 +27,129 @@ export default function LandingPage() {
     deferredPromptRef.current = null;
   };
 
+  const features = [
+    {
+      icon: '🛍️',
+      title: 'Complete Online Store',
+      desc: 'Launch a fully functional e-commerce store with product listings, categories, and a beautiful storefront — ready to sell in minutes.'
+    },
+    {
+      icon: '📦',
+      title: 'Order Management',
+      desc: 'Track orders from placement to delivery with status updates, customer notifications, and shipping management built in.'
+    },
+    {
+      icon: '💳',
+      title: 'Secure Payments',
+      desc: 'Accept payments via Razorpay with support for UPI, cards, net banking, and wallets. Cash on delivery also supported.'
+    },
+    {
+      icon: '📊',
+      title: 'Built-in Analytics',
+      desc: 'Monitor your store performance with visitor tracking, page views, traffic sources, and sales insights from your admin panel.'
+    },
+    {
+      icon: '🔔',
+      title: 'Push Notifications',
+      desc: 'Engage customers with web push notifications for new products, price drops, and back-in-stock alerts — all automated.'
+    },
+    {
+      icon: '🌐',
+      title: 'Custom Domain & SEO',
+      desc: 'Connect your own domain, optimize for search engines with built-in SEO tools, sitemaps, and structured data for Google rich results.'
+    },
+  ];
+
   return (
     <>
       <div className="container">
-        <Navbar />
+        <Navbar showMenu={true} />
+
         <section className="hero">
-          <span className="hero-tag">Coming Soon</span>
-          <h1>Launch Your Website<br />in minutes.</h1>
-          <p>A fully automated website platform that builds, manages, and scales websites without manual work.</p>
+          <h1>Build Your Online Store<br />No Code Needed</h1>
+          <p className="hero-desc">Fluxe is a SaaS platform that helps small businesses and entrepreneurs create professional e-commerce websites with product management, order processing, and secure payments — all from one dashboard.</p>
           <div className="hero-buttons">
-            <Link to="/signup" className="btn btn-primary">Start Building</Link>
-            <a href="#learn-more" className="btn btn-outline">View Demo</a>
+            <Link to="/signup" className="btn btn-primary">Get Started Free</Link>
+            <a href="#features" className="btn btn-outline" onClick={(e) => { e.preventDefault(); document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' }); }}>Learn More</a>
+          </div>
+        </section>
+
+        <section id="features" className="landing-section">
+          <div className="section-header">
+            <h2>Everything You Need to Sell Online</h2>
+            <p>From store setup to order delivery, Fluxe gives you all the tools to run your online business.</p>
+          </div>
+          <div className="features-grid">
+            {features.map((f, i) => (
+              <div key={i} className="feature-card">
+                <div className="feature-icon">{f.icon}</div>
+                <h3>{f.title}</h3>
+                <p>{f.desc}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section id="pricing" className="landing-section">
+          <div className="section-header">
+            <h2>Simple, Transparent Pricing</h2>
+            <p>Choose a plan that fits your business. Start with a free trial, upgrade anytime.</p>
+          </div>
+          <LandingPricing />
+        </section>
+
+        <section id="contact" className="landing-section">
+          <div className="section-header">
+            <h2>Contact Us</h2>
+            <p>Have questions? We're here to help.</p>
+          </div>
+          <div className="contact-grid">
+            <div className="contact-card">
+              <div className="contact-icon">📧</div>
+              <h3>Email</h3>
+              <p><a href="mailto:support@fluxe.in">support@fluxe.in</a></p>
+            </div>
+            <div className="contact-card">
+              <div className="contact-icon">📞</div>
+              <h3>Phone</h3>
+              <p><a href="tel:+919901954610">+91 9901954610</a></p>
+            </div>
+            <div className="contact-card">
+              <div className="contact-icon">📍</div>
+              <h3>Address</h3>
+              <p>Karwar, Karnataka<br />India — 581400</p>
+            </div>
           </div>
         </section>
 
         <footer className="landing-footer">
-          <div className="landing-footer-links">
-            <Link to="/terms">Terms & Conditions</Link>
-            <Link to="/privacy-policy">Privacy Policy</Link>
-            <Link to="/refund-policy">Refund & Cancellation Policy</Link>
+          <div className="footer-top">
+            <div className="footer-brand">
+              <img src="/assets/images/fluxe-logo.png" alt="Fluxe" className="footer-logo" />
+              <p>Empowering small businesses to sell online with ease.</p>
+            </div>
+            <div className="footer-links-group">
+              <h4>Legal</h4>
+              <Link to="/terms">Terms & Conditions</Link>
+              <Link to="/privacy-policy">Privacy Policy</Link>
+              <Link to="/refund-policy">Refund & Cancellation Policy</Link>
+            </div>
+            <div className="footer-links-group">
+              <h4>Contact</h4>
+              <a href="mailto:support@fluxe.in">support@fluxe.in</a>
+              <a href="tel:+919901954610">+91 9901954610</a>
+              <span>Karwar, Karnataka, India — 581400</span>
+            </div>
           </div>
-          <p>&copy; {new Date().getFullYear()} Fluxe. All rights reserved.</p>
+          <div className="footer-bottom">
+            <p>&copy; {new Date().getFullYear()} Fluxe. All rights reserved.</p>
+          </div>
         </footer>
       </div>
 
       <div className={`pwa-install-bar${showPwa ? ' show' : ''}`}>
         <div className="pwa-info">
-          <img src="/assets/images/logo.webp" alt="Logo" className="pwa-logo" />
+          <img src="/assets/images/fluxe-logo.png" alt="Logo" className="pwa-logo" />
           <div className="pwa-text">
             <h4>Install Fluxe</h4>
             <p>Add to home screen for better experience</p>

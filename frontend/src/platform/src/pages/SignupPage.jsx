@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { signup as signupService, resendVerification, googleAuth } from '../services/authService.js';
+import '../styles/landing.css';
 
 export default function SignupPage() {
   const [name, setName] = useState('');
@@ -12,6 +13,7 @@ export default function SignupPage() {
   const [submitting, setSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [registeredEmail, setRegisteredEmail] = useState('');
+  const [agreedTerms, setAgreedTerms] = useState(false);
   const { isAuthenticated, login, loading } = useAuth();
   const navigate = useNavigate();
 
@@ -52,6 +54,10 @@ export default function SignupPage() {
   }
 
   async function handleGoogleResponse(response) {
+    if (!agreedTerms) {
+      setError('Please agree to the Terms & Conditions, Privacy Policy, and Refund Policy before signing up.');
+      return;
+    }
     try {
       const res = await googleAuth(response.credential);
       if (res.token) {
@@ -153,6 +159,12 @@ export default function SignupPage() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                 />
+              </div>
+              <div className="terms-agree-group">
+                <input type="checkbox" id="agree-terms" required checked={agreedTerms} onChange={(e) => setAgreedTerms(e.target.checked)} />
+                <label htmlFor="agree-terms">
+                  I agree to the <Link to="/terms" target="_blank">Terms & Conditions</Link>, <Link to="/privacy-policy" target="_blank">Privacy Policy</Link>, and <Link to="/refund-policy" target="_blank">Refund & Cancellation Policy</Link>.
+                </label>
               </div>
               <button type="submit" className="btn btn-primary" style={{ width: '100%' }} disabled={submitting}>
                 {submitting ? 'Creating Account...' : 'Create account'}
