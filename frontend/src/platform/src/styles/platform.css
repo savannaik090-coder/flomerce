@@ -47,6 +47,8 @@ body {
   align-items: center;
   padding: 1.5rem 0;
   border-bottom: 1px solid var(--border);
+  position: relative;
+  z-index: 1;
 }
 
 .logo {

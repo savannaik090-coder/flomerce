@@ -4,6 +4,19 @@
   object-fit: contain;
 }
 
+.landing-page {
+  position: relative;
+  overflow: hidden;
+}
+
+.landing-gradient-bg {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  z-index: 0;
+  pointer-events: none;
+}
+
 .hero {
   padding: 140px 0 120px;
   text-align: center;
@@ -13,14 +26,6 @@
   align-items: center;
   justify-content: center;
   position: relative;
-  overflow: hidden;
-}
-
-.hero-gradient-bg {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  z-index: 0;
 }
 
 .hero-gradient-orb {
@@ -121,6 +126,8 @@
 
 .landing-section {
   padding: 80px 0;
+  position: relative;
+  z-index: 1;
 }
 
 .section-header {
@@ -330,6 +337,8 @@
 }
 
 .landing-footer {
+  position: relative;
+  z-index: 1;
   border-top: 1px solid #e5e7eb;
   padding: 3rem 0 2rem;
   margin-top: 0;
