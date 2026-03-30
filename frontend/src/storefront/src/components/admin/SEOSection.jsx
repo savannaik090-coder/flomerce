@@ -104,6 +104,22 @@ function SearchPreview({ title, description, url }) {
 
 // ─── Site SEO Tab ─────────────────────────────────────────────────────────────
 
+const SEO_CATEGORY_DESCRIPTIONS = {
+  jewellery: (name) => `Shop exquisite jewellery at ${name}. Explore rings, necklaces, earrings, bracelets & more. Secure payments & nationwide delivery.`,
+  clothing: (name) => `Discover the latest fashion at ${name}. Shop clothing, accessories & more with easy returns & fast shipping.`,
+  beauty: (name) => `Shop premium beauty & cosmetics at ${name}. Skincare, makeup & more with secure checkout & fast delivery.`,
+  general: (name) => `Shop online at ${name}. Explore our curated collection with secure checkout, easy returns & fast delivery.`,
+};
+
+function getDefaultSEOTitle(brandName) {
+  return `${brandName || 'Your Store'} - Online Store`;
+}
+
+function getDefaultSEODescription(brandName, category) {
+  const gen = SEO_CATEGORY_DESCRIPTIONS[category] || SEO_CATEGORY_DESCRIPTIONS.general;
+  return gen(brandName || 'Your Store');
+}
+
 function SiteSEOTab({ siteConfig }) {
   const siteId = siteConfig?.id;
   const subdomain = siteConfig?.subdomain;
@@ -117,10 +133,16 @@ function SiteSEOTab({ siteConfig }) {
     google_verification: '',
     favicon_url: '',
   });
+  const [siteCategory, setSiteCategory] = useState(siteConfig?.category || 'general');
+  const [apiBrandName, setApiBrandName] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState(null);
   const [faviconUploading, setFaviconUploading] = useState(false);
+
+  const brandName = apiBrandName || siteConfig?.brandName || siteConfig?.brand_name || 'Your Store';
+  const defaultTitle = getDefaultSEOTitle(brandName);
+  const defaultDescription = getDefaultSEODescription(brandName, siteCategory);
 
   useEffect(() => {
     if (!siteId) return;
@@ -132,7 +154,10 @@ function SiteSEOTab({ siteConfig }) {
         });
         const result = await res.json();
         if (result.success && result.data) {
-          setForm(prev => ({ ...prev, ...result.data }));
+          const { brand_name, category, ...seoFields } = result.data;
+          setForm(prev => ({ ...prev, ...seoFields }));
+          if (brand_name) setApiBrandName(brand_name);
+          if (category) setSiteCategory(category);
         }
       } catch {}
       setLoading(false);
@@ -214,8 +239,8 @@ function SiteSEOTab({ siteConfig }) {
   return (
     <form onSubmit={handleSave}>
       <SearchPreview
-        title={form.seo_title}
-        description={form.seo_description}
+        title={form.seo_title || defaultTitle}
+        description={form.seo_description || defaultDescription}
         url={storeUrl}
       />
 
@@ -277,11 +302,11 @@ function SiteSEOTab({ siteConfig }) {
               type="text"
               value={form.seo_title}
               onChange={set('seo_title')}
-              placeholder={`${siteConfig?.brand_name || 'Your Store'} | Fluxe Store`}
+              placeholder={defaultTitle}
               maxLength={70}
             />
             <CharCounter value={form.seo_title} max={60} />
-            <div className="seo-hint">Recommended: 50–60 characters. Shown in Google results and browser tab.</div>
+            <div className="seo-hint">Recommended: 50–60 characters. Shown in Google results and browser tab. Leave empty to use the default shown above.</div>
           </div>
 
           <div className="seo-field">
@@ -289,12 +314,12 @@ function SiteSEOTab({ siteConfig }) {
             <textarea
               value={form.seo_description}
               onChange={set('seo_description')}
-              placeholder="Describe your store in 1–2 sentences. This appears under your title in Google."
+              placeholder={defaultDescription}
               maxLength={200}
               rows={3}
             />
             <CharCounter value={form.seo_description} max={160} />
-            <div className="seo-hint">Recommended: 120–160 characters. Affects click-through rate from Google.</div>
+            <div className="seo-hint">Recommended: 120–160 characters. Affects click-through rate from Google. Leave empty to use the default shown above.</div>
           </div>
 
 

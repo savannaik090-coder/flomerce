@@ -1535,7 +1535,9 @@ async function getSiteSEO(request, env) {
       seo_og_image: config.seo_og_image || null,
       seo_robots: config.seo_robots || "index, follow",
       google_verification: config.google_verification || null,
-      favicon_url: config.favicon_url || null
+      favicon_url: config.favicon_url || null,
+      brand_name: config.brand_name || null,
+      category: config.category || "general"
     } });
   } catch (err) {
     console.error("getSiteSEO error:", err);
@@ -10401,13 +10403,29 @@ __name(buildWebsiteSchema, "buildWebsiteSchema");
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
+var categoryDescriptions = {
+  jewellery: (name) => `Shop exquisite jewellery at ${name}. Explore rings, necklaces, earrings, bracelets & more. Secure payments & nationwide delivery.`,
+  clothing: (name) => `Discover the latest fashion at ${name}. Shop clothing, accessories & more with easy returns & fast shipping.`,
+  beauty: (name) => `Shop premium beauty & cosmetics at ${name}. Skincare, makeup & more with secure checkout & fast delivery.`,
+  general: (name) => `Shop online at ${name}. Explore our curated collection with secure checkout, easy returns & fast delivery.`
+};
+function getDefaultTitle(brandName) {
+  return `${brandName} - Online Store`;
+}
+__name(getDefaultTitle, "getDefaultTitle");
+function getDefaultDescription(brandName, category) {
+  const gen = categoryDescriptions[category] || categoryDescriptions.general;
+  return gen(brandName);
+}
+__name(getDefaultDescription, "getDefaultDescription");
 var seo_config_default = {
   titleFormat: "{pageTitle} | {brandName}",
   fallbackTitle(site) {
-    return `${site.brand_name} | Fluxe Store`;
+    return getDefaultTitle(site.brand_name);
   },
   fallbackDescription(site) {
-    return `Shop at ${site.brand_name}. Browse our collection of products with fast delivery.`;
+    const category = site.category || "general";
+    return getDefaultDescription(site.brand_name, category);
   },
   includeOrganizationSchema: true,
   includeProductSchema: true,

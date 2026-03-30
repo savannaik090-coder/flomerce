@@ -360,6 +360,8 @@ async function getSiteSEO(request, env) {
       seo_robots: config.seo_robots || 'index, follow',
       google_verification: config.google_verification || null,
       favicon_url: config.favicon_url || null,
+      brand_name: config.brand_name || null,
+      category: config.category || 'general',
     }});
   } catch (err) {
     console.error('getSiteSEO error:', err);
