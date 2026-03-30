@@ -81,8 +81,8 @@
 
     .store-locations-section { padding: 40px 0; }
     .store-locations-header h2 { font-size: 1.8rem; }
-    .stores-grid { overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; padding-bottom: 8px; }
-    .store-card { min-width: 280px; max-width: 300px; flex: 0 0 auto; }
+    .stores-grid { overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; padding-bottom: 8px; scroll-snap-type: x mandatory; gap: 16px; }
+    .store-card { min-width: calc(100vw - 56px); max-width: calc(100vw - 56px); flex: 0 0 auto; scroll-snap-align: center; }
     .store-actions { flex-direction: column; }
     .call-btn { width: 100%; }
 
