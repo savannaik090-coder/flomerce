@@ -183,8 +183,11 @@ export default function CheckoutPage() {
   }, [deliveryConfig]);
 
   const subtotalAfterCoupon = Math.max(0, subtotal - couponDiscount);
+  const hasStateSelected = !!address.state;
   const shippingCost = computeShippingCost(subtotalAfterCoupon, address.state);
   const finalTotal = subtotalAfterCoupon + shippingCost;
+  const hasRegionOverrides = deliveryConfig.enabled && Array.isArray(deliveryConfig.regionRates) && deliveryConfig.regionRates.length > 0;
+  const showShippingNote = deliveryConfig.enabled && !hasStateSelected && (hasRegionOverrides || (deliveryConfig.freeAboveEnabled && deliveryConfig.freeAbove > 0));
 
   const applyCoupon = useCallback(() => {
     setCouponError('');
@@ -653,11 +656,19 @@ export default function CheckoutPage() {
                 <span style={{ fontSize: 14, color: '#16a34a', fontWeight: 700 }}>- {formatAmount(couponDiscount)}</span>
               </div>
             )}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <span style={{ fontSize: 14, fontWeight: 500 }}>Shipping</span>
-              <span style={{ fontSize: 14, fontWeight: 600, color: shippingCost > 0 ? '#1a1a1a' : '#25ab00' }}>
-                {shippingCost > 0 ? formatAmount(shippingCost) : 'Free'}
-              </span>
+            <div style={{ marginBottom: 8 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: 14, fontWeight: 500 }}>Shipping</span>
+                <span style={{ fontSize: 14, fontWeight: 600, color: shippingCost > 0 ? '#1a1a1a' : '#25ab00' }}>
+                  {shippingCost > 0 ? formatAmount(shippingCost) : 'Free'}
+                </span>
+              </div>
+              {showShippingNote && (
+                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 3, textAlign: 'right' }}>May vary based on your location</div>
+              )}
+              {deliveryConfig.enabled && deliveryConfig.freeAboveEnabled && deliveryConfig.freeAbove > 0 && shippingCost > 0 && (
+                <div style={{ fontSize: 11, color: '#16a34a', marginTop: 3, textAlign: 'right' }}>Free shipping on orders above {formatAmount(deliveryConfig.freeAbove)}</div>
+              )}
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 8, borderTop: '1px solid #f0f0f0' }}>
               <span style={{ fontSize: 16, fontWeight: 700 }}>Total</span>
@@ -835,11 +846,16 @@ export default function CheckoutPage() {
                 <span style={{ color: '#16a34a', fontWeight: 600 }}>- {formatAmount(couponDiscount)}</span>
               </div>
             )}
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #f0f0f0' }}>
-              <span>Shipping</span>
-              <span style={{ color: shippingCost > 0 ? '#1a1a1a' : '#25ab00', fontWeight: 500 }}>
-                {shippingCost > 0 ? formatAmount(shippingCost) : 'Free'}
-              </span>
+            <div style={{ padding: '8px 0', borderBottom: '1px solid #f0f0f0' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Shipping</span>
+                <span style={{ color: shippingCost > 0 ? '#1a1a1a' : '#25ab00', fontWeight: 500 }}>
+                  {shippingCost > 0 ? formatAmount(shippingCost) : 'Free'}
+                </span>
+              </div>
+              {deliveryConfig.enabled && deliveryConfig.freeAboveEnabled && deliveryConfig.freeAbove > 0 && shippingCost > 0 && (
+                <div style={{ fontSize: 11, color: '#16a34a', marginTop: 2, textAlign: 'right' }}>Free shipping on orders above {formatAmount(deliveryConfig.freeAbove)}</div>
+              )}
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', fontSize: 18, fontWeight: 700 }}>
               <span>Total</span>
