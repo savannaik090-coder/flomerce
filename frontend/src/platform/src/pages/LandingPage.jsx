@@ -67,11 +67,19 @@ export default function LandingPage() {
         <Navbar showMenu={true} />
 
         <section className="hero">
-          <h1>Build Your Online Store<br />No Code Needed</h1>
-          <p className="hero-desc">Fluxe is a SaaS platform that helps small businesses and entrepreneurs create professional e-commerce websites with product management, order processing, and secure payments — all from one dashboard.</p>
-          <div className="hero-buttons">
-            <Link to="/signup" className="btn btn-primary">Get Started Free</Link>
-            <a href="#features" className="btn btn-outline" onClick={(e) => { e.preventDefault(); document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' }); }}>Learn More</a>
+          <div className="hero-gradient-bg">
+            <div className="hero-gradient-orb hero-orb-1"></div>
+            <div className="hero-gradient-orb hero-orb-2"></div>
+            <div className="hero-gradient-orb hero-orb-3"></div>
+            <div className="hero-gradient-orb hero-orb-4"></div>
+          </div>
+          <div className="hero-content">
+            <h1>Build Your Online Store<br />No Code Needed</h1>
+            <p className="hero-desc">Fluxe is a SaaS platform that helps small businesses and entrepreneurs create professional e-commerce websites with product management, order processing, and secure payments — all from one dashboard.</p>
+            <div className="hero-buttons">
+              <Link to="/signup" className="btn btn-primary">Get Started Free</Link>
+              <a href="#features" className="btn btn-outline" onClick={(e) => { e.preventDefault(); document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' }); }}>Learn More</a>
+            </div>
           </div>
         </section>
 
