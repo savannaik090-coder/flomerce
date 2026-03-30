@@ -265,7 +265,7 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
                 ? 'Start with a free trial or subscribe to a plan to create and manage your websites.'
                 : isExpired
                   ? 'Your subscription has expired and all your websites are disabled. Subscribe to a plan for each site to restore access.'
-                  : 'Start a 7-day free trial to create unlimited websites. No credit card required.'}
+                  : 'Start a 7-day free trial to create up to 5 websites. No credit card required.'}
           </p>
         </div>
       )}
@@ -298,7 +298,7 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
               <span style={{ fontSize: '0.875rem', color: '#64748b', fontWeight: 500 }}> for 7 days</span>
             </p>
             <ul style={{ listStyle: 'none', padding: 0, marginBottom: '2rem', textAlign: 'left', fontSize: '0.875rem', color: '#64748b' }}>
-              <li style={{ marginBottom: '0.5rem' }}>✓ Create unlimited websites</li>
+              <li style={{ marginBottom: '0.5rem' }}>✓ Create up to 5 websites</li>
               <li style={{ marginBottom: '0.5rem' }}>✓ Full access for 7 days</li>
               <li style={{ marginBottom: '0.5rem' }}>✓ No credit card required</li>
               <li style={{ marginBottom: '0.5rem' }}>✓ Upgrade anytime during trial</li>

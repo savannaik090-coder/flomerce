@@ -115,7 +115,7 @@ export default function LandingPricing() {
             <span className="lp-price-period">for 7 days</span>
           </div>
           <ul className="lp-plan-features">
-            <li>Create unlimited websites</li>
+            <li>Create up to 5 websites</li>
             <li>Full access for 7 days</li>
             <li>No credit card required</li>
             <li>Upgrade anytime</li>

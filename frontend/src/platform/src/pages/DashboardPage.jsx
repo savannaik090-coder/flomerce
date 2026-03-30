@@ -533,7 +533,7 @@ export default function DashboardPage() {
                 Free Trial — {daysLeft} day{daysLeft !== 1 ? 's' : ''} remaining
               </p>
               <p style={{ fontSize: '0.875rem', color: '#15803d', margin: '0.25rem 0 0 0' }}>
-                Create unlimited websites during your trial. Ends {new Date(accountStatus.trialEndDate).toLocaleDateString()}.
+                Create up to 5 websites during your trial. Ends {new Date(accountStatus.trialEndDate).toLocaleDateString()}.
               </p>
             </div>
             <button className="btn btn-primary" onClick={() => setActivePage('billing')} style={{ whiteSpace: 'nowrap', background: '#10b981', borderColor: '#10b981' }}>
