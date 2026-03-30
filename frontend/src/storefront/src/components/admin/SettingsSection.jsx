@@ -854,7 +854,7 @@ export default function SettingsSection() {
                     </button>
                   </div>
                   {deliveryRegionRates.map((rr, idx) => (
-                    <div key={idx} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+                    <div key={idx} style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginBottom: 8 }}>
                       <select
                         value={rr.state}
                         onChange={e => {
@@ -862,32 +862,34 @@ export default function SettingsSection() {
                           updated[idx] = { ...updated[idx], state: e.target.value };
                           setDeliveryRegionRates(updated);
                         }}
-                        style={{ flex: 2, padding: '9px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', background: '#fff' }}
+                        style={{ flex: '1 1 140px', minWidth: 0, padding: '9px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', background: '#fff' }}
                       >
                         <option value="">Select State</option>
                         {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
                       </select>
-                      <input
-                        type="number"
-                        min="0"
-                        step="1"
-                        value={rr.rate}
-                        onChange={e => {
-                          const updated = [...deliveryRegionRates];
-                          updated[idx] = { ...updated[idx], rate: e.target.value };
-                          setDeliveryRegionRates(updated);
-                        }}
-                        placeholder="Rate"
-                        style={{ flex: 1, padding: '9px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, fontFamily: 'inherit' }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setDeliveryRegionRates(prev => prev.filter((_, i) => i !== idx))}
-                        style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 18, padding: '0 4px', flexShrink: 0 }}
-                        title="Remove"
-                      >
-                        &times;
-                      </button>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flex: '0 0 auto' }}>
+                        <input
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={rr.rate}
+                          onChange={e => {
+                            const updated = [...deliveryRegionRates];
+                            updated[idx] = { ...updated[idx], rate: e.target.value };
+                            setDeliveryRegionRates(updated);
+                          }}
+                          placeholder="Rate"
+                          style={{ width: 80, padding: '9px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, fontFamily: 'inherit' }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setDeliveryRegionRates(prev => prev.filter((_, i) => i !== idx))}
+                          style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 18, padding: '0 4px', flexShrink: 0 }}
+                          title="Remove"
+                        >
+                          &times;
+                        </button>
+                      </div>
                     </div>
                   ))}
                   {deliveryRegionRates.length > 0 && (
