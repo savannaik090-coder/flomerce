@@ -100,27 +100,7 @@ export default function LandingPage() {
         </section>
 
         <section id="contact" className="landing-section">
-          <div className="section-header">
-            <h2>Contact Us</h2>
-            <p>Have questions? We're here to help.</p>
-          </div>
-          <div className="contact-grid">
-            <div className="contact-card">
-              <div className="contact-icon">📧</div>
-              <h3>Email</h3>
-              <p><a href="mailto:support@fluxe.in">support@fluxe.in</a></p>
-            </div>
-            <div className="contact-card">
-              <div className="contact-icon">📞</div>
-              <h3>Phone</h3>
-              <p><a href="tel:+919901954610">+91 9901954610</a></p>
-            </div>
-            <div className="contact-card">
-              <div className="contact-icon">📍</div>
-              <h3>Address</h3>
-              <p>Karwar, Karnataka<br />India — 581400</p>
-            </div>
-          </div>
+          <ContactForm />
         </section>
 
         <footer className="landing-footer">
