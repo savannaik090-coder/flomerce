@@ -83,6 +83,26 @@ export default function LandingPage() {
           </div>
         </section>
 
+        <section className="landing-section teaser-section">
+          <div className="section-header">
+            <h2>See Fluxe in Action</h2>
+            <p>Watch how easy it is to build and manage your online store.</p>
+          </div>
+          <div className="teaser-wrapper">
+            <div className="teaser-browser-frame">
+              <div className="teaser-browser-bar">
+                <span className="teaser-dot red"></span>
+                <span className="teaser-dot yellow"></span>
+                <span className="teaser-dot green"></span>
+                <span className="teaser-url-bar">fluxe.in</span>
+              </div>
+              <video className="teaser-video" autoPlay muted loop playsInline>
+                <source src="/assets/fluxe-teaser.mp4" type="video/mp4" />
+              </video>
+            </div>
+          </div>
+        </section>
+
         <section id="features" className="landing-section">
           <div className="section-header">
             <h2>Everything You Need to Sell Online</h2>
