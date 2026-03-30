@@ -50,7 +50,7 @@ export default function LandingPage() {
       desc: 'Monitor your store performance with visitor tracking, page views, traffic sources, and sales insights from your admin panel.'
     },
     {
-      icon: '🔔',
+      icon: '📲',
       title: 'Push Notifications',
       desc: 'Engage customers with web push notifications for new products, price drops, and back-in-stock alerts — all automated.'
     },
