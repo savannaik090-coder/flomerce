@@ -2355,7 +2355,8 @@ function buildOrderConfirmationEmail(order, brandName, ownerEmail, currency = "I
       <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #333;">
         ${shippingAddress.name || order.customer_name || ""}<br>
         ${shippingAddress.address || ""}<br>
-        ${shippingAddress.city || ""}, ${shippingAddress.state || ""} ${shippingAddress.pinCode || shippingAddress.pin_code || ""}<br>
+        ${shippingAddress.city || ""}${shippingAddress.state ? `, ${shippingAddress.state}` : ""} ${shippingAddress.pinCode || shippingAddress.pin_code || ""}<br>
+        ${shippingAddress.country ? `${shippingAddress.country}<br>` : ""}
         ${shippingAddress.phone || order.customer_phone || ""}
       </p>
     </div>
@@ -2702,7 +2703,8 @@ function buildNewOrderReviewEmail(order, brandName, currency = "INR", timezone =
           <h3 style="font-size: 14px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin: 20px 0 8px;">Shipping Address</h3>
           <div style="padding: 12px 16px; background: #f8f9fa; border-radius: 8px; font-size: 14px; line-height: 1.6;">
             ${shippingAddress.address || ""}<br>
-            ${shippingAddress.city || ""}, ${shippingAddress.state || ""} ${shippingAddress.pinCode || shippingAddress.pin_code || ""}
+            ${shippingAddress.city || ""}${shippingAddress.state ? `, ${shippingAddress.state}` : ""} ${shippingAddress.pinCode || shippingAddress.pin_code || ""}
+            ${shippingAddress.country ? `<br>${shippingAddress.country}` : ""}
           </div>
           ` : ""}
 
