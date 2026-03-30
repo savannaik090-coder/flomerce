@@ -46,7 +46,9 @@
     justify-content: center;
     gap: 30px;
     margin-bottom: 30px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .store-card {

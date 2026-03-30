@@ -81,8 +81,8 @@
 
     .store-locations-section { padding: 40px 0; }
     .store-locations-header h2 { font-size: 1.8rem; }
-    .stores-grid { flex-direction: column; align-items: center; }
-    .store-card { max-width: 100%; flex: 1 1 auto; }
+    .stores-grid { overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; padding-bottom: 8px; }
+    .store-card { min-width: 280px; max-width: 300px; flex: 0 0 auto; }
     .store-actions { flex-direction: column; }
     .call-btn { width: 100%; }
 
