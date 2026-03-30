@@ -6,6 +6,7 @@ import ChooseByCategory from '../components/home/ChooseByCategory.jsx';
 import WatchAndBuy from '../components/home/WatchAndBuy.jsx';
 import FeaturedVideoSection from '../components/home/FeaturedVideoSection.jsx';
 import ProductShowcase from '../components/home/ProductShowcase.jsx';
+import ShopTheLook from '../components/home/ShopTheLook.jsx';
 import StoreLocations from '../components/home/StoreLocations.jsx';
 import CustomerReviews from '../components/home/CustomerReviews.jsx';
 import FirstVisitBanner from '../components/home/FirstVisitBanner.jsx';
@@ -20,6 +21,7 @@ import '../styles/locations.css';
 import '../styles/reviews.css';
 import '../styles/modals.css';
 import '../styles/testimonials.css';
+import '../styles/shop-the-look.css';
 import '../styles/home-responsive.css';
 
 export default function HomePage() {
@@ -111,7 +113,13 @@ export default function HomePage() {
       ) : null}
       <WatchAndBuy />
       <FeaturedVideoSection />
-      {orderedSections.slice(2).map((item) => (
+      {orderedSections.length > 2 && orderedSections[2].type === 'category' ? (
+        <CategorySection key={orderedSections[2].id} category={orderedSections[2].data} />
+      ) : orderedSections.length > 2 && orderedSections[2].type === 'subcategory' ? (
+        <SubcategorySection key={orderedSections[2].id} section={orderedSections[2].data} />
+      ) : null}
+      <ShopTheLook />
+      {orderedSections.slice(3).map((item) => (
         item.type === 'category' ? (
           <CategorySection key={item.id} category={item.data} />
         ) : (

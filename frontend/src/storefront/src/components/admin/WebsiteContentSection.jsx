@@ -11,6 +11,7 @@ import TermsEditor from './TermsEditor.jsx';
 import PrivacyEditor from './PrivacyEditor.jsx';
 import FooterEditor from './FooterEditor.jsx';
 import StoreLocationsEditor from './StoreLocationsEditor.jsx';
+import ShopTheLookEditor from './ShopTheLookEditor.jsx';
 import CheckoutEditor from './CheckoutEditor.jsx';
 import ProductPoliciesEditor from './ProductPoliciesEditor.jsx';
 import NavbarEditor from './NavbarEditor.jsx';
@@ -32,6 +33,7 @@ const TAB_GROUPS = [
       { id: 'watchbuy',          icon: 'fa-video',         label: 'Watch & Buy',      page: '/' },
       { id: 'featured-video',    icon: 'fa-film',          label: 'Featured Video',   page: '/' },
       { id: 'customer-reviews',  icon: 'fa-star',          label: 'Customer Reviews', page: '/' },
+      { id: 'shop-the-look',     icon: 'fa-crosshairs',    label: 'Shop the Look',    page: '/' },
       { id: 'store-locations',   icon: 'fa-store',         label: 'Store Locations',  page: '/' },
       { id: 'footer',            icon: 'fa-shoe-prints',   label: 'Footer',           page: '/' },
     ],
@@ -374,6 +376,7 @@ export default function WebsiteContentSection() {
           {activeTab === 'watchbuy' && <WatchBuySection onSaved={refreshPreview} />}
           {activeTab === 'featured-video' && <FeaturedVideoEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
           {activeTab === 'customer-reviews' && <CustomerReviewsEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
+          {activeTab === 'shop-the-look' && <ShopTheLookEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
           {activeTab === 'store-locations' && <StoreLocationsEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
           {activeTab === 'book-appointment' && <BookAppointmentEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
           {activeTab === 'contact-us' && <ContactEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
