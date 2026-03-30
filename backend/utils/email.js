@@ -457,12 +457,12 @@ export function buildOwnerNotificationEmail(order, brandName, currency = 'INR', 
           ${order.created_at ? `<p style="margin: 4px 0 0; opacity: 0.8; font-size: 13px;">${formatOrderDate(order.created_at, timezone)}</p>` : ''}
         </div>
         <div style="padding: 24px 32px;">
-          <div style="display: flex; gap: 16px; margin-bottom: 20px;">
-            <div style="padding: 12px 16px; background: #f0fdf4; border-radius: 8px; flex: 1;">
-              <div style="font-size: 12px; color: #059669; text-transform: uppercase; font-weight: 600;">Total Amount</div>
-              <div style="font-size: 22px; font-weight: 700; color: #0f172a;">${formatCurrencyHtml(order.total, currency)}</div>
-              ${Number(order.discount || 0) > 0 ? `<div style="font-size: 12px; color: #16a34a; margin-top: 4px;">Coupon${order.coupon_code ? ` (${order.coupon_code})` : ''}: -${formatCurrencyHtml(order.discount, currency)} off</div>` : ''}
-            </div>
+          <div style="padding: 12px 16px; background: #f0fdf4; border-radius: 8px; margin-bottom: 20px;">
+            <div style="font-size: 12px; color: #059669; text-transform: uppercase; font-weight: 600;">Order Summary</div>
+            <div style="font-size: 13px; color: #555; margin-top: 6px;">Subtotal: ${formatCurrencyHtml(order.subtotal || order.total, currency)}</div>
+            ${Number(order.discount || 0) > 0 ? `<div style="font-size: 13px; color: #16a34a; margin-top: 2px;">Coupon${order.coupon_code ? ` (${order.coupon_code})` : ''}: -${formatCurrencyHtml(order.discount, currency)}</div>` : ''}
+            <div style="font-size: 13px; color: #555; margin-top: 2px;">Shipping: ${Number(order.shipping_cost || 0) > 0 ? formatCurrencyHtml(order.shipping_cost, currency) : 'Free'}</div>
+            <div style="font-size: 22px; font-weight: 700; color: #0f172a; margin-top: 6px; border-top: 1px solid #d1fae5; padding-top: 6px;">Total: ${formatCurrencyHtml(order.total, currency)}</div>
           </div>
 
           <h3 style="font-size: 14px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin: 20px 0 8px;">Customer Details</h3>

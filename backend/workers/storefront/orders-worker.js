@@ -760,6 +760,7 @@ async function updateOrderStatus(request, env, user, orderId) {
             shipping_address: fullOrder.shipping_address,
             subtotal: fullOrder.subtotal,
             discount: fullOrder.discount,
+            shipping_cost: fullOrder.shipping_cost || 0,
             coupon_code: fullOrder.coupon_code,
             created_at: fullOrder.created_at,
           };
