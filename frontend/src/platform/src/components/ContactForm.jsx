@@ -41,15 +41,6 @@ export default function ContactForm() {
                 <a href="tel:+919901954610">+91 9901954610</a>
               </div>
             </div>
-            <div className="contact-detail-item">
-              <div className="contact-detail-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
-              </div>
-              <div>
-                <span className="contact-detail-label">Address</span>
-                <span>Karwar, Karnataka, India — 581400</span>
-              </div>
-            </div>
           </div>
         </div>
 
