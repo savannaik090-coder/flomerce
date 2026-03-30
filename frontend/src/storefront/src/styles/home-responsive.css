@@ -97,6 +97,13 @@
         flex: 0 0 calc(100vw - 56px) !important;
         scroll-snap-align: center;
     }
+    .stores-scroll-arrow {
+        width: 36px;
+        height: 36px;
+        font-size: 14px;
+    }
+    .stores-scroll-left { left: 8px; }
+    .stores-scroll-right { right: 8px; }
     .store-actions { flex-direction: column; }
     .call-btn { width: 100%; }
 

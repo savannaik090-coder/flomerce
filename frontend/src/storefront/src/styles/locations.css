@@ -41,6 +41,10 @@
     font-weight: 300;
 }
 
+.stores-grid-wrapper {
+    position: relative;
+}
+
 .stores-grid {
     display: flex;
     justify-content: center;
@@ -49,6 +53,45 @@
     flex-wrap: nowrap;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+}
+
+.stores-grid::-webkit-scrollbar {
+    display: none;
+}
+
+.stores-scroll-arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 10;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #333;
+    font-size: 16px;
+    transition: all 0.2s ease;
+}
+
+.stores-scroll-arrow:hover {
+    background: #333;
+    color: #fff;
+    border-color: #333;
+}
+
+.stores-scroll-left {
+    left: -22px;
+}
+
+.stores-scroll-right {
+    right: -22px;
 }
 
 .store-card {

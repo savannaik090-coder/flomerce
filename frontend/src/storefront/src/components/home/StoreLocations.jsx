@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useSiteConfig } from '../../hooks/useSiteConfig.js';
 
 export default function StoreLocations() {
   const { siteConfig } = useSiteConfig();
+  const scrollRef = useRef(null);
 
   const settings = siteConfig?.settings || {};
   const stores = settings.storeLocations || [];
@@ -26,6 +27,18 @@ export default function StoreLocations() {
         },
       ];
 
+  function scrollPrev() {
+    if (!scrollRef.current) return;
+    const card = scrollRef.current.querySelector('.store-card');
+    if (card) scrollRef.current.scrollBy({ left: -(card.offsetWidth + 16), behavior: 'smooth' });
+  }
+
+  function scrollNext() {
+    if (!scrollRef.current) return;
+    const card = scrollRef.current.querySelector('.store-card');
+    if (card) scrollRef.current.scrollBy({ left: card.offsetWidth + 16, behavior: 'smooth' });
+  }
+
   return (
     <section className="store-locations-section">
       <div className="store-locations-container">
@@ -34,8 +47,14 @@ export default function StoreLocations() {
           <p>Experience our exquisite collection in person</p>
         </div>
 
-        <div className="stores-grid">
-          {defaultStore.map((store, i) => (
+        <div className="stores-grid-wrapper">
+          {defaultStore.length > 1 && (
+            <button className="stores-scroll-arrow stores-scroll-left" onClick={scrollPrev}>
+              <i className="fas fa-chevron-left"></i>
+            </button>
+          )}
+          <div className="stores-grid" ref={scrollRef}>
+            {defaultStore.map((store, i) => (
             <div key={i} className="store-card">
               {store.image && (
                 <div className="store-image">
@@ -76,6 +95,12 @@ export default function StoreLocations() {
               </div>
             </div>
           ))}
+          </div>
+          {defaultStore.length > 1 && (
+            <button className="stores-scroll-arrow stores-scroll-right" onClick={scrollNext}>
+              <i className="fas fa-chevron-right"></i>
+            </button>
+          )}
         </div>
       </div>
     </section>
