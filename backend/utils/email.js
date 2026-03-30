@@ -335,10 +335,31 @@ export function buildDeliveryCustomerEmail(order, brandName, ownerEmail, currenc
           <div style="text-align: right; padding: 12px 16px; background: #f0fdf4; border-radius: 8px; font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 24px;">
             Total Paid: ${formatCurrencyHtml(order.total, currency)}
           </div>` : ''}
+          ${options.reviewUrl ? `
+          <div style="margin: 24px 0; padding: 24px; background: #f0fdf4; border-radius: 10px; text-align: center;">
+            <p style="margin: 0 0 4px; font-size: 20px;">⭐</p>
+            <p style="margin: 0 0 8px; font-size: 16px; font-weight: 600; color: #166534;">How was your experience?</p>
+            <p style="margin: 0 0 16px; font-size: 14px; color: #555; line-height: 1.6;">Your feedback helps other shoppers and helps us improve.</p>
+            ${(options.reviewItems && options.reviewItems.length > 0) ? `
+            <div style="margin: 0 0 16px; display: inline-block;">
+              ${options.reviewItems.map(item => `
+              <div style="display: inline-block; margin: 0 8px 8px; text-align: center; vertical-align: top; max-width: 120px;">
+                ${item.image ? `<img src="${item.image}" alt="${item.name}" style="width: 64px; height: 64px; object-fit: cover; border-radius: 8px; border: 1px solid #e2e8f0;" />` : `<div style="width: 64px; height: 64px; background: #e2e8f0; border-radius: 8px; display: inline-block;"></div>`}
+                <p style="margin: 6px 0 0; font-size: 12px; color: #475569; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${item.name}</p>
+              </div>
+              `).join('')}
+            </div>
+            ` : ''}
+            <div>
+              <a href="${options.reviewUrl}" style="display:inline-block;background:#166534;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">Write a Review</a>
+            </div>
+          </div>
+          ` : `
           <div style="margin: 24px 0; padding: 20px; background: #f0fdf4; border-radius: 10px; text-align: center;">
             <p style="margin: 0 0 8px; font-size: 16px; font-weight: 600; color: #166534;">Enjoying your purchase?</p>
             <p style="margin: 0; font-size: 14px; color: #555; line-height: 1.6;">We'd love to hear from you! Share your experience and leave a review — your feedback helps us serve you better and helps other shoppers make great choices.</p>
           </div>
+          `}
           ${options.helpUrl ? `
           <div style="margin-top: 20px; padding: 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; text-align: center;">
             <p style="margin: 0 0 6px; font-size: 14px; font-weight: 600; color: #334155;">Need help with your order?</p>
@@ -355,7 +376,7 @@ export function buildDeliveryCustomerEmail(order, brandName, ownerEmail, currenc
     </body>
     </html>
   `;
-  const text = `Your order #${order.order_number} has been delivered!\n\nWe hope you love your purchase. We'd love to hear your feedback — please leave a review!\n\nTotal Paid: ${formatCurrency(order.total, currency)}\n\n${ownerEmail ? 'For any issues, contact: ' + ownerEmail : ''}`;
+  const text = `Your order #${order.order_number} has been delivered!\n\nWe hope you love your purchase.${options.reviewUrl ? '\n\nLeave a review: ' + options.reviewUrl : ' We\'d love to hear your feedback — please leave a review!'}\n\nTotal Paid: ${formatCurrency(order.total, currency)}\n\n${ownerEmail ? 'For any issues, contact: ' + ownerEmail : ''}`;
   return { html, text };
 }
 

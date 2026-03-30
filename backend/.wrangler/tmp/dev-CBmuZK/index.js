@@ -2548,10 +2548,31 @@ function buildDeliveryCustomerEmail(order, brandName, ownerEmail, currency = "IN
           <div style="text-align: right; padding: 12px 16px; background: #f0fdf4; border-radius: 8px; font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 24px;">
             Total Paid: ${formatCurrencyHtml(order.total, currency)}
           </div>` : ""}
+          ${options.reviewUrl ? `
+          <div style="margin: 24px 0; padding: 24px; background: #f0fdf4; border-radius: 10px; text-align: center;">
+            <p style="margin: 0 0 4px; font-size: 20px;">\u2B50</p>
+            <p style="margin: 0 0 8px; font-size: 16px; font-weight: 600; color: #166534;">How was your experience?</p>
+            <p style="margin: 0 0 16px; font-size: 14px; color: #555; line-height: 1.6;">Your feedback helps other shoppers and helps us improve.</p>
+            ${options.reviewItems && options.reviewItems.length > 0 ? `
+            <div style="margin: 0 0 16px; display: inline-block;">
+              ${options.reviewItems.map((item) => `
+              <div style="display: inline-block; margin: 0 8px 8px; text-align: center; vertical-align: top; max-width: 120px;">
+                ${item.image ? `<img src="${item.image}" alt="${item.name}" style="width: 64px; height: 64px; object-fit: cover; border-radius: 8px; border: 1px solid #e2e8f0;" />` : `<div style="width: 64px; height: 64px; background: #e2e8f0; border-radius: 8px; display: inline-block;"></div>`}
+                <p style="margin: 6px 0 0; font-size: 12px; color: #475569; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${item.name}</p>
+              </div>
+              `).join("")}
+            </div>
+            ` : ""}
+            <div>
+              <a href="${options.reviewUrl}" style="display:inline-block;background:#166534;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">Write a Review</a>
+            </div>
+          </div>
+          ` : `
           <div style="margin: 24px 0; padding: 20px; background: #f0fdf4; border-radius: 10px; text-align: center;">
             <p style="margin: 0 0 8px; font-size: 16px; font-weight: 600; color: #166534;">Enjoying your purchase?</p>
             <p style="margin: 0; font-size: 14px; color: #555; line-height: 1.6;">We'd love to hear from you! Share your experience and leave a review \u2014 your feedback helps us serve you better and helps other shoppers make great choices.</p>
           </div>
+          `}
           ${options.helpUrl ? `
           <div style="margin-top: 20px; padding: 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; text-align: center;">
             <p style="margin: 0 0 6px; font-size: 14px; font-weight: 600; color: #334155;">Need help with your order?</p>
@@ -2570,7 +2591,7 @@ function buildDeliveryCustomerEmail(order, brandName, ownerEmail, currency = "IN
   `;
   const text = `Your order #${order.order_number} has been delivered!
 
-We hope you love your purchase. We'd love to hear your feedback \u2014 please leave a review!
+We hope you love your purchase.${options.reviewUrl ? "\n\nLeave a review: " + options.reviewUrl : " We'd love to hear your feedback \u2014 please leave a review!"}
 
 Total Paid: ${formatCurrency(order.total, currency)}
 
@@ -6490,7 +6511,10 @@ async function updateOrderStatus(request, env, user, orderId) {
         const admin = await validateSiteAdmin2(request, env, adminSiteId);
         if (admin && hasPermission2(admin, "orders")) {
           const sdb = await resolveSiteDBById(env, adminSiteId);
-          const found = await sdb.prepare("SELECT id, site_id, row_size_bytes FROM orders WHERE id = ? AND site_id = ?").bind(orderId, adminSiteId).first();
+          let found = await sdb.prepare("SELECT id, site_id, row_size_bytes FROM orders WHERE id = ? AND site_id = ?").bind(orderId, adminSiteId).first();
+          if (!found) {
+            found = await sdb.prepare("SELECT id, site_id, row_size_bytes FROM guest_orders WHERE id = ? AND site_id = ?").bind(orderId, adminSiteId).first();
+          }
           if (found) {
             order = found;
             siteId = adminSiteId;
@@ -6504,9 +6528,14 @@ async function updateOrderStatus(request, env, user, orderId) {
       ).bind(user.id).all();
       for (const s of userSites.results || []) {
         const sdb = await resolveSiteDBById(env, s.id);
-        const found = await sdb.prepare(
+        let found = await sdb.prepare(
           "SELECT id, site_id, row_size_bytes FROM orders WHERE id = ? AND site_id = ?"
         ).bind(orderId, s.id).first();
+        if (!found) {
+          found = await sdb.prepare(
+            "SELECT id, site_id, row_size_bytes FROM guest_orders WHERE id = ? AND site_id = ?"
+          ).bind(orderId, s.id).first();
+        }
         if (found) {
           order = found;
           siteId = s.id;
@@ -6685,8 +6714,14 @@ async function updateOrderStatus(request, env, user, orderId) {
     }
     if (status === "delivered") {
       try {
-        const fullOrder = await db.prepare("SELECT * FROM orders WHERE id = ?").bind(orderId).first();
+        let fullOrder = await db.prepare("SELECT * FROM orders WHERE id = ?").bind(orderId).first();
+        let isGuestOrder = false;
+        if (!fullOrder) {
+          fullOrder = await db.prepare("SELECT * FROM guest_orders WHERE id = ?").bind(orderId).first();
+          isGuestOrder = true;
+        }
         if (fullOrder) {
+          const orderTable = isGuestOrder ? "guest_orders" : "orders";
           const deliveryConfig = await getSiteConfig(env, fullOrder.site_id);
           const siteBrandName = deliveryConfig.brand_name || "Store";
           let deliverySettings = {};
@@ -6709,19 +6744,43 @@ async function updateOrderStatus(request, env, user, orderId) {
             created_at: fullOrder.created_at
           };
           let deliveryEmailOptions = {};
+          const site = await env.DB.prepare("SELECT subdomain, custom_domain FROM sites WHERE id = ?").bind(fullOrder.site_id).first();
+          const delivDomain = site?.custom_domain || `${site?.subdomain || "store"}.${env.DOMAIN || "fluxe.in"}`;
           if (deliverySettings.returnsEnabled && fullOrder.customer_email) {
             try {
               const returnToken = generateReturnToken();
               try {
-                await db.prepare(`ALTER TABLE orders ADD COLUMN return_token TEXT`).run();
+                await db.prepare(`ALTER TABLE ${orderTable} ADD COLUMN return_token TEXT`).run();
               } catch (e) {
               }
-              await db.prepare(`UPDATE orders SET return_token = ? WHERE id = ?`).bind(returnToken, orderId).run();
-              const site = await env.DB.prepare("SELECT subdomain, custom_domain FROM sites WHERE id = ?").bind(fullOrder.site_id).first();
-              const delivDomain = site?.custom_domain || `${site?.subdomain || "store"}.${env.DOMAIN || "fluxe.in"}`;
+              await db.prepare(`UPDATE ${orderTable} SET return_token = ? WHERE id = ?`).bind(returnToken, orderId).run();
               deliveryEmailOptions.helpUrl = `https://${delivDomain}/order-help/${fullOrder.order_number}?returnToken=${returnToken}`;
             } catch (e) {
               console.error("Return token generation error:", e);
+            }
+          }
+          if (deliverySettings.reviewsEnabled !== false && fullOrder.customer_email) {
+            try {
+              const reviewToken = generateReturnToken();
+              try {
+                await db.prepare(`ALTER TABLE ${orderTable} ADD COLUMN review_token TEXT`).run();
+              } catch (e) {
+              }
+              await db.prepare(`UPDATE ${orderTable} SET review_token = ? WHERE id = ?`).bind(reviewToken, orderId).run();
+              let orderItems = [];
+              try {
+                orderItems = typeof fullOrder.items === "string" ? JSON.parse(fullOrder.items) : fullOrder.items || [];
+              } catch (e) {
+              }
+              deliveryEmailOptions.reviewUrl = `https://${delivDomain}/review/${fullOrder.id}?token=${reviewToken}`;
+              deliveryEmailOptions.reviewItems = orderItems.slice(0, 3).map((item) => ({
+                name: item.name,
+                image: item.image || item.thumbnail_url || "",
+                slug: item.slug || ""
+              }));
+              deliveryEmailOptions.storeDomain = `https://${delivDomain}`;
+            } catch (e) {
+              console.error("Review token generation error:", e);
             }
           }
           const emailJobs = [];
@@ -10192,7 +10251,7 @@ function buildOrganizationSchema(site, baseUrl) {
   return JSON.stringify(schema);
 }
 __name(buildOrganizationSchema, "buildOrganizationSchema");
-function buildProductSchema(product, site, baseUrl) {
+function buildProductSchema(product, site, baseUrl, reviewData) {
   let images = [];
   try {
     if (product.images) {
@@ -10227,6 +10286,30 @@ function buildProductSchema(product, site, baseUrl) {
     schema.gtin = product.barcode;
   if (product.compare_price && product.compare_price > product.price) {
     schema.offers.priceValidUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1e3).toISOString().split("T")[0];
+  }
+  if (reviewData && reviewData.total > 0) {
+    schema.aggregateRating = {
+      "@type": "AggregateRating",
+      ratingValue: reviewData.avgRating,
+      reviewCount: reviewData.total,
+      bestRating: 5,
+      worstRating: 1
+    };
+    if (reviewData.reviews && reviewData.reviews.length > 0) {
+      schema.review = reviewData.reviews.slice(0, 5).map((r) => ({
+        "@type": "Review",
+        author: { "@type": "Person", name: r.customer_name || "Customer" },
+        reviewRating: {
+          "@type": "Rating",
+          ratingValue: r.rating,
+          bestRating: 5,
+          worstRating: 1
+        },
+        datePublished: r.created_at ? r.created_at.split("T")[0] || r.created_at.split(" ")[0] : void 0,
+        reviewBody: r.content || r.title || void 0,
+        name: r.title || void 0
+      }));
+    }
   }
   return JSON.stringify(schema);
 }
@@ -10356,6 +10439,29 @@ async function fetchProductSEO(db, site, slug) {
   }
 }
 __name(fetchProductSEO, "fetchProductSEO");
+async function fetchProductReviewData(db, site, productId) {
+  try {
+    const stats = await db.prepare(
+      `SELECT COUNT(*) as total, AVG(rating) as avg_rating
+       FROM reviews WHERE site_id = ? AND product_id = ? AND status = 'approved' AND is_approved = 1`
+    ).bind(site.id, productId).first();
+    if (!stats || !stats.total || stats.total === 0)
+      return null;
+    const recentReviews = await db.prepare(
+      `SELECT customer_name, rating, title, content, created_at
+       FROM reviews WHERE site_id = ? AND product_id = ? AND status = 'approved' AND is_approved = 1
+       ORDER BY created_at DESC LIMIT 5`
+    ).bind(site.id, productId).all();
+    return {
+      total: stats.total,
+      avgRating: stats.avg_rating ? Math.round(stats.avg_rating * 10) / 10 : 0,
+      reviews: recentReviews.results || []
+    };
+  } catch {
+    return null;
+  }
+}
+__name(fetchProductReviewData, "fetchProductReviewData");
 async function fetchCategorySEO(db, site, slug) {
   try {
     const category = await db.prepare(
@@ -10386,7 +10492,7 @@ async function fetchPageSEO(db, site, pageType) {
   }
 }
 __name(fetchPageSEO, "fetchPageSEO");
-function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl, canonicalUrl }) {
+function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl, canonicalUrl, reviewData }) {
   const { type } = pageInfo;
   const structuredData = [];
   let title, description, ogImage, ogType, breadcrumbs;
@@ -10400,7 +10506,7 @@ function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl,
     ogImage = pageData.seo_og_image || pageData.thumbnail_url || siteSEO.seo_og_image;
     ogType = "product";
     if (templateConfig.includeProductSchema) {
-      structuredData.push(buildProductSchema(pageData, site, baseUrl));
+      structuredData.push(buildProductSchema(pageData, site, baseUrl, reviewData));
     }
     if (templateConfig.includeBreadcrumbs) {
       structuredData.push(buildBreadcrumbSchema([
@@ -10493,15 +10599,19 @@ async function applySEO(request, env, site, rawHTML) {
     const siteSEO = await fetchSiteSEO(env, site);
     const db = await resolveSiteDBById(env, site.id);
     let pageData = null;
+    let reviewData = null;
     if (pageInfo.type === "product") {
       pageData = await fetchProductSEO(db, site, pageInfo.slug);
+      if (pageData?.id) {
+        reviewData = await fetchProductReviewData(db, site, pageData.id);
+      }
     } else if (pageInfo.type === "category") {
       pageData = await fetchCategorySEO(db, site, pageInfo.slug);
     } else {
       pageData = await fetchPageSEO(db, site, pageInfo.type);
     }
     const siteWithCurrency = { ...site, currency: siteSEO.currency || site.currency || "INR" };
-    const tags = buildTags({ pageInfo, site: siteWithCurrency, siteSEO, pageData, templateConfig, baseUrl, canonicalUrl });
+    const tags = buildTags({ pageInfo, site: siteWithCurrency, siteSEO, pageData, templateConfig, baseUrl, canonicalUrl, reviewData });
     return injectSEOTags(rawHTML, tags);
   } catch (err) {
     console.error("[SEO] applySEO error:", err);
@@ -10966,12 +11076,14 @@ function getSiteSchemaStatements() {
       id TEXT PRIMARY KEY,
       site_id TEXT NOT NULL,
       product_id TEXT NOT NULL,
+      order_id TEXT,
       user_id TEXT,
       customer_name TEXT NOT NULL,
       rating INTEGER NOT NULL CHECK(rating >= 1 AND rating <= 5),
       title TEXT,
       content TEXT,
       images TEXT,
+      status TEXT DEFAULT 'pending',
       is_verified INTEGER DEFAULT 0,
       is_approved INTEGER DEFAULT 0,
       row_size_bytes INTEGER DEFAULT 0,
@@ -14171,6 +14283,489 @@ async function handleStats2(request, env, url) {
 }
 __name(handleStats2, "handleStats");
 
+// workers/storefront/reviews-worker.js
+init_checked_fetch();
+init_strip_cf_connecting_ip_header();
+init_modules_watch_stub();
+init_helpers();
+init_auth();
+init_site_db();
+init_usage_tracker();
+async function ensureReviewColumns(db) {
+  try {
+    await db.prepare(`ALTER TABLE reviews ADD COLUMN order_id TEXT`).run();
+  } catch (e) {
+  }
+  try {
+    await db.prepare(`ALTER TABLE reviews ADD COLUMN status TEXT DEFAULT 'pending'`).run();
+  } catch (e) {
+  }
+  try {
+    await db.prepare("CREATE INDEX IF NOT EXISTS idx_reviews_order ON reviews(order_id)").run();
+  } catch (e) {
+  }
+  try {
+    await db.prepare("CREATE INDEX IF NOT EXISTS idx_reviews_status ON reviews(status)").run();
+  } catch (e) {
+  }
+}
+__name(ensureReviewColumns, "ensureReviewColumns");
+async function ensureReviewTokenColumn(db, table) {
+  try {
+    await db.prepare(`ALTER TABLE ${table} ADD COLUMN review_token TEXT`).run();
+  } catch (e) {
+  }
+}
+__name(ensureReviewTokenColumn, "ensureReviewTokenColumn");
+async function handleReviews(request, env, path) {
+  const corsResponse = handleCORS(request);
+  if (corsResponse)
+    return corsResponse;
+  const method = request.method;
+  const pathParts = path.split("/").filter(Boolean);
+  const action = pathParts[2];
+  const subAction = pathParts[3];
+  if (action === "product" && subAction && method === "GET") {
+    return getProductReviews(request, env, subAction);
+  }
+  if (action === "eligibility" && method === "GET") {
+    return checkReviewEligibility(request, env);
+  }
+  if (action === "submit" && method === "POST") {
+    return submitReview(request, env);
+  }
+  if (action === "guest-submit" && method === "POST") {
+    return submitGuestReview(request, env);
+  }
+  if (action === "admin" && method === "GET") {
+    return getAdminReviews(request, env);
+  }
+  if (action === "admin" && subAction && method === "PUT") {
+    return updateReviewStatus(request, env, subAction);
+  }
+  if (action === "summary" && method === "GET") {
+    return getReviewSummary(request, env);
+  }
+  return errorResponse("Not found", 404);
+}
+__name(handleReviews, "handleReviews");
+async function getProductReviews(request, env, productId) {
+  try {
+    const url = new URL(request.url);
+    const siteId = url.searchParams.get("siteId");
+    if (!siteId)
+      return errorResponse("siteId is required", 400);
+    const db = await resolveSiteDBById(env, siteId);
+    await ensureReviewColumns(db);
+    const sort = url.searchParams.get("sort") || "recent";
+    let orderClause = "ORDER BY created_at DESC";
+    if (sort === "highest")
+      orderClause = "ORDER BY rating DESC, created_at DESC";
+    if (sort === "lowest")
+      orderClause = "ORDER BY rating ASC, created_at DESC";
+    const reviews = await db.prepare(
+      `SELECT id, product_id, customer_name, rating, title, content, images, is_verified, created_at
+       FROM reviews WHERE site_id = ? AND product_id = ? AND status = 'approved' AND is_approved = 1
+       ${orderClause} LIMIT 50`
+    ).bind(siteId, productId).all();
+    const stats = await db.prepare(
+      `SELECT COUNT(*) as total, AVG(rating) as avg_rating,
+              SUM(CASE WHEN rating = 5 THEN 1 ELSE 0 END) as five,
+              SUM(CASE WHEN rating = 4 THEN 1 ELSE 0 END) as four,
+              SUM(CASE WHEN rating = 3 THEN 1 ELSE 0 END) as three,
+              SUM(CASE WHEN rating = 2 THEN 1 ELSE 0 END) as two,
+              SUM(CASE WHEN rating = 1 THEN 1 ELSE 0 END) as one
+       FROM reviews WHERE site_id = ? AND product_id = ? AND status = 'approved' AND is_approved = 1`
+    ).bind(siteId, productId).first();
+    const reviewsData = (reviews.results || []).map((r) => ({
+      ...r,
+      images: parseJsonSafe(r.images)
+    }));
+    return jsonResponse({
+      success: true,
+      data: {
+        reviews: reviewsData,
+        stats: {
+          total: stats?.total || 0,
+          avgRating: stats?.avg_rating ? Math.round(stats.avg_rating * 10) / 10 : 0,
+          breakdown: {
+            5: stats?.five || 0,
+            4: stats?.four || 0,
+            3: stats?.three || 0,
+            2: stats?.two || 0,
+            1: stats?.one || 0
+          }
+        }
+      }
+    });
+  } catch (error) {
+    console.error("Get product reviews error:", error);
+    return errorResponse("Failed to fetch reviews", 500);
+  }
+}
+__name(getProductReviews, "getProductReviews");
+async function checkReviewEligibility(request, env) {
+  try {
+    const url = new URL(request.url);
+    const siteId = url.searchParams.get("siteId");
+    const mode = url.searchParams.get("mode");
+    if (!siteId)
+      return errorResponse("siteId is required", 400);
+    const db = await resolveSiteDBById(env, siteId);
+    await ensureReviewColumns(db);
+    if (mode === "guest") {
+      const orderId = url.searchParams.get("orderId");
+      const token = url.searchParams.get("token");
+      if (!orderId || !token)
+        return errorResponse("orderId and token are required for guest mode", 400);
+      await ensureReviewTokenColumn(db, "guest_orders");
+      await ensureReviewTokenColumn(db, "orders");
+      let order = null;
+      try {
+        order = await db.prepare(
+          `SELECT id, order_number, customer_name, items FROM guest_orders WHERE id = ? AND site_id = ? AND review_token = ? AND status = 'delivered'`
+        ).bind(orderId, siteId, token).first();
+      } catch (e) {
+      }
+      if (!order) {
+        try {
+          order = await db.prepare(
+            `SELECT id, order_number, customer_name, items FROM orders WHERE id = ? AND site_id = ? AND review_token = ? AND status = 'delivered'`
+          ).bind(orderId, siteId, token).first();
+        } catch (e) {
+        }
+      }
+      if (!order)
+        return errorResponse("Invalid or expired review link", 403);
+      const items = parseJsonSafe(order.items);
+      const reviewedItems = {};
+      for (const item of items) {
+        const pid = item.productId || item.product_id || item.id;
+        const existing = await db.prepare(
+          `SELECT id FROM reviews WHERE site_id = ? AND product_id = ? AND order_id = ? LIMIT 1`
+        ).bind(siteId, pid, orderId).first();
+        if (existing)
+          reviewedItems[pid] = true;
+      }
+      return jsonResponse({
+        success: true,
+        data: {
+          order: { id: order.id, order_number: order.order_number, customer_name: order.customer_name },
+          items: items.map((item) => ({
+            productId: item.productId || item.product_id || item.id,
+            name: item.name,
+            image: item.image || item.thumbnail_url || "",
+            slug: item.slug || ""
+          })),
+          reviewedItems
+        }
+      });
+    }
+    const productId = url.searchParams.get("productId");
+    if (!productId)
+      return errorResponse("productId is required", 400);
+    const user = await validateAnyAuth(request, env, { siteId, db });
+    if (!user)
+      return jsonResponse({ success: true, data: { eligible: false, reason: "not_logged_in" } });
+    const userId = user.id;
+    const existingReview = await db.prepare(
+      `SELECT id FROM reviews WHERE site_id = ? AND product_id = ? AND user_id = ? LIMIT 1`
+    ).bind(siteId, productId, userId).first();
+    if (existingReview) {
+      return jsonResponse({ success: true, data: { eligible: false, reason: "already_reviewed" } });
+    }
+    const deliveredOrder = await db.prepare(
+      `SELECT id, items FROM orders WHERE site_id = ? AND user_id = ? AND status = 'delivered' ORDER BY created_at DESC`
+    ).bind(siteId, userId).all();
+    const eligibleOrders = [];
+    for (const order of deliveredOrder.results || []) {
+      let items = parseJsonSafe(order.items);
+      const hasProduct = items.some((item) => {
+        const itemProductId = item.productId || item.product_id || item.id;
+        return itemProductId === productId;
+      });
+      if (hasProduct) {
+        eligibleOrders.push(order.id);
+      }
+    }
+    if (eligibleOrders.length === 0) {
+      return jsonResponse({ success: true, data: { eligible: false, reason: "no_purchase" } });
+    }
+    return jsonResponse({ success: true, data: { eligible: true, orderId: eligibleOrders[0] } });
+  } catch (error) {
+    console.error("Check review eligibility error:", error);
+    return errorResponse("Failed to check eligibility", 500);
+  }
+}
+__name(checkReviewEligibility, "checkReviewEligibility");
+async function submitReview(request, env) {
+  try {
+    const data = await request.json();
+    const { siteId, productId, orderId, rating, title, content, images } = data;
+    if (!siteId || !productId || !rating)
+      return errorResponse("siteId, productId and rating are required", 400);
+    if (rating < 1 || rating > 5)
+      return errorResponse("Rating must be between 1 and 5", 400);
+    const locked = await checkMigrationLock(env, siteId);
+    if (locked)
+      return errorResponse("Site is under maintenance", 503);
+    const db = await resolveSiteDBById(env, siteId);
+    await ensureReviewColumns(db);
+    const user = await validateAnyAuth(request, env, { siteId, db });
+    if (!user)
+      return errorResponse("Authentication required", 401);
+    const existingReview = await db.prepare(
+      `SELECT id FROM reviews WHERE site_id = ? AND product_id = ? AND user_id = ? LIMIT 1`
+    ).bind(siteId, productId, user.id).first();
+    if (existingReview)
+      return errorResponse("You have already reviewed this product", 400);
+    let isVerified = 0;
+    if (orderId) {
+      const order = await db.prepare(
+        `SELECT id, items FROM orders WHERE id = ? AND site_id = ? AND user_id = ? AND status = 'delivered'`
+      ).bind(orderId, siteId, user.id).first();
+      if (order) {
+        const orderItems = parseJsonSafe(order.items);
+        if (orderItems.some((item) => (item.productId || item.product_id || item.id) === productId)) {
+          isVerified = 1;
+        }
+      }
+    } else {
+      const deliveredOrder = await db.prepare(
+        `SELECT id, items FROM orders WHERE site_id = ? AND user_id = ? AND status = 'delivered'`
+      ).bind(siteId, user.id).all();
+      for (const order of deliveredOrder.results || []) {
+        const items = parseJsonSafe(order.items);
+        if (items.some((item) => (item.productId || item.product_id || item.id) === productId)) {
+          isVerified = 1;
+          break;
+        }
+      }
+    }
+    const siteConfig = await getSiteConfig(env, siteId);
+    let settings = {};
+    try {
+      settings = typeof siteConfig.settings === "string" ? JSON.parse(siteConfig.settings) : siteConfig.settings || {};
+    } catch (e) {
+    }
+    const autoApprove = settings.reviewsAutoApprove === true;
+    const reviewId = generateId();
+    const customerName = user.name || user.email?.split("@")[0] || "Customer";
+    const imagesJson = images && images.length > 0 ? JSON.stringify(images) : null;
+    const status = autoApprove ? "approved" : "pending";
+    const isApproved = autoApprove ? 1 : 0;
+    const rowBytes = estimateRowBytes({ id: reviewId, site_id: siteId, product_id: productId, order_id: orderId, user_id: user.id, customer_name: customerName, rating, title, content, images: imagesJson, status, is_verified: isVerified, is_approved: isApproved });
+    await db.prepare(
+      `INSERT INTO reviews (id, site_id, product_id, order_id, user_id, customer_name, rating, title, content, images, status, is_verified, is_approved, row_size_bytes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).bind(reviewId, siteId, productId, orderId || null, user.id, customerName, rating, title || null, content || null, imagesJson, status, isVerified, isApproved, rowBytes).run();
+    await trackD1Write(env, siteId, rowBytes);
+    return successResponse({ id: reviewId, status }, autoApprove ? "Review published successfully!" : "Review submitted and pending approval.");
+  } catch (error) {
+    console.error("Submit review error:", error);
+    return errorResponse("Failed to submit review", 500);
+  }
+}
+__name(submitReview, "submitReview");
+async function submitGuestReview(request, env) {
+  try {
+    const data = await request.json();
+    const { siteId, orderId, reviewToken, productId, rating, title, content, images, customerName } = data;
+    if (!siteId || !orderId || !reviewToken || !productId || !rating) {
+      return errorResponse("siteId, orderId, reviewToken, productId, and rating are required", 400);
+    }
+    if (rating < 1 || rating > 5)
+      return errorResponse("Rating must be between 1 and 5", 400);
+    const locked = await checkMigrationLock(env, siteId);
+    if (locked)
+      return errorResponse("Site is under maintenance", 503);
+    const db = await resolveSiteDBById(env, siteId);
+    await ensureReviewColumns(db);
+    await ensureReviewTokenColumn(db, "guest_orders");
+    let order = await db.prepare(
+      `SELECT id, order_number, customer_name, items FROM guest_orders WHERE id = ? AND site_id = ? AND review_token = ? AND status = 'delivered'`
+    ).bind(orderId, siteId, reviewToken).first();
+    if (!order) {
+      await ensureReviewTokenColumn(db, "orders");
+      order = await db.prepare(
+        `SELECT id, order_number, customer_name, items FROM orders WHERE id = ? AND site_id = ? AND review_token = ? AND status = 'delivered'`
+      ).bind(orderId, siteId, reviewToken).first();
+      if (!order)
+        return errorResponse("Invalid or expired review link", 403);
+    }
+    const items = parseJsonSafe(order.items);
+    const hasProduct = items.some((item) => (item.productId || item.product_id || item.id) === productId);
+    if (!hasProduct)
+      return errorResponse("This product was not part of the order", 400);
+    const existingReview = await db.prepare(
+      `SELECT id FROM reviews WHERE site_id = ? AND product_id = ? AND order_id = ? LIMIT 1`
+    ).bind(siteId, productId, orderId).first();
+    if (existingReview)
+      return errorResponse("This product has already been reviewed for this order", 400);
+    const siteConfig = await getSiteConfig(env, siteId);
+    let settings = {};
+    try {
+      settings = typeof siteConfig.settings === "string" ? JSON.parse(siteConfig.settings) : siteConfig.settings || {};
+    } catch (e) {
+    }
+    const autoApprove = settings.reviewsAutoApprove === true;
+    const reviewId = generateId();
+    const name = customerName || order.customer_name || "Customer";
+    const imagesJson = images && images.length > 0 ? JSON.stringify(images) : null;
+    const status = autoApprove ? "approved" : "pending";
+    const isApproved = autoApprove ? 1 : 0;
+    const rowBytes = estimateRowBytes({ id: reviewId, site_id: siteId, product_id: productId, order_id: orderId, customer_name: name, rating, title, content, images: imagesJson, status, is_verified: 1, is_approved: isApproved });
+    await db.prepare(
+      `INSERT INTO reviews (id, site_id, product_id, order_id, user_id, customer_name, rating, title, content, images, status, is_verified, is_approved, row_size_bytes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).bind(reviewId, siteId, productId, orderId, null, name, rating, title || null, content || null, imagesJson, status, 1, isApproved, rowBytes).run();
+    await trackD1Write(env, siteId, rowBytes);
+    return successResponse({ id: reviewId, status }, autoApprove ? "Review published successfully!" : "Review submitted and pending approval.");
+  } catch (error) {
+    console.error("Submit guest review error:", error);
+    return errorResponse("Failed to submit review", 500);
+  }
+}
+__name(submitGuestReview, "submitGuestReview");
+async function getAdminReviews(request, env) {
+  try {
+    const url = new URL(request.url);
+    const siteId = url.searchParams.get("siteId");
+    if (!siteId)
+      return errorResponse("siteId is required", 400);
+    const authHeader = request.headers.get("Authorization");
+    let isAdmin = false;
+    if (authHeader && authHeader.startsWith("SiteAdmin ")) {
+      const { validateSiteAdmin: validateSiteAdmin2 } = await Promise.resolve().then(() => (init_site_admin_worker(), site_admin_worker_exports));
+      const admin = await validateSiteAdmin2(request, env, siteId);
+      if (admin)
+        isAdmin = true;
+    }
+    if (!isAdmin) {
+      const user = await validateAnyAuth(request, env, { siteId });
+      if (!user)
+        return errorResponse("Authentication required", 401);
+      const site = await env.DB.prepare("SELECT id FROM sites WHERE id = ? AND user_id = ?").bind(siteId, user.id).first();
+      if (!site)
+        return errorResponse("Unauthorized", 403);
+    }
+    const db = await resolveSiteDBById(env, siteId);
+    await ensureReviewColumns(db);
+    const statusFilter = url.searchParams.get("status") || "all";
+    let query = `SELECT r.*, p.name as product_name, p.thumbnail_url as product_image, p.slug as product_slug
+                 FROM reviews r LEFT JOIN products p ON r.product_id = p.id AND p.site_id = r.site_id
+                 WHERE r.site_id = ?`;
+    const bindings = [siteId];
+    if (statusFilter !== "all") {
+      query += ` AND r.status = ?`;
+      bindings.push(statusFilter);
+    }
+    query += ` ORDER BY r.created_at DESC LIMIT 200`;
+    const reviews = await db.prepare(query).bind(...bindings).all();
+    const stats = await db.prepare(
+      `SELECT COUNT(*) as total,
+              SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
+              SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) as approved,
+              SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as rejected,
+              AVG(CASE WHEN status = 'approved' THEN rating ELSE NULL END) as avg_rating
+       FROM reviews WHERE site_id = ?`
+    ).bind(siteId).first();
+    return jsonResponse({
+      success: true,
+      data: {
+        reviews: (reviews.results || []).map((r) => ({ ...r, images: parseJsonSafe(r.images) })),
+        stats: {
+          total: stats?.total || 0,
+          pending: stats?.pending || 0,
+          approved: stats?.approved || 0,
+          rejected: stats?.rejected || 0,
+          avgRating: stats?.avg_rating ? Math.round(stats.avg_rating * 10) / 10 : 0
+        }
+      }
+    });
+  } catch (error) {
+    console.error("Get admin reviews error:", error);
+    return errorResponse("Failed to fetch reviews", 500);
+  }
+}
+__name(getAdminReviews, "getAdminReviews");
+async function updateReviewStatus(request, env, reviewId) {
+  try {
+    const data = await request.json();
+    const { siteId, status } = data;
+    if (!siteId || !status)
+      return errorResponse("siteId and status are required", 400);
+    if (!["approved", "rejected"].includes(status))
+      return errorResponse("Status must be approved or rejected", 400);
+    const authHeader = request.headers.get("Authorization");
+    let isAdmin = false;
+    if (authHeader && authHeader.startsWith("SiteAdmin ")) {
+      const { validateSiteAdmin: validateSiteAdmin2 } = await Promise.resolve().then(() => (init_site_admin_worker(), site_admin_worker_exports));
+      const admin = await validateSiteAdmin2(request, env, siteId);
+      if (admin)
+        isAdmin = true;
+    }
+    if (!isAdmin) {
+      const user = await validateAnyAuth(request, env, { siteId });
+      if (!user)
+        return errorResponse("Authentication required", 401);
+      const site = await env.DB.prepare("SELECT id FROM sites WHERE id = ? AND user_id = ?").bind(siteId, user.id).first();
+      if (!site)
+        return errorResponse("Unauthorized", 403);
+    }
+    const db = await resolveSiteDBById(env, siteId);
+    await ensureReviewColumns(db);
+    const isApproved = status === "approved" ? 1 : 0;
+    await db.prepare(
+      `UPDATE reviews SET status = ?, is_approved = ? WHERE id = ? AND site_id = ?`
+    ).bind(status, isApproved, reviewId, siteId).run();
+    return successResponse(null, `Review ${status} successfully`);
+  } catch (error) {
+    console.error("Update review status error:", error);
+    return errorResponse("Failed to update review", 500);
+  }
+}
+__name(updateReviewStatus, "updateReviewStatus");
+async function getReviewSummary(request, env) {
+  try {
+    const url = new URL(request.url);
+    const siteId = url.searchParams.get("siteId");
+    const productId = url.searchParams.get("productId");
+    if (!siteId || !productId)
+      return errorResponse("siteId and productId are required", 400);
+    const db = await resolveSiteDBById(env, siteId);
+    await ensureReviewColumns(db);
+    const stats = await db.prepare(
+      `SELECT COUNT(*) as total, AVG(rating) as avg_rating
+       FROM reviews WHERE site_id = ? AND product_id = ? AND status = 'approved' AND is_approved = 1`
+    ).bind(siteId, productId).first();
+    return jsonResponse({
+      success: true,
+      data: {
+        total: stats?.total || 0,
+        avgRating: stats?.avg_rating ? Math.round(stats.avg_rating * 10) / 10 : 0
+      }
+    });
+  } catch (error) {
+    console.error("Get review summary error:", error);
+    return errorResponse("Failed to fetch review summary", 500);
+  }
+}
+__name(getReviewSummary, "getReviewSummary");
+function parseJsonSafe(val) {
+  if (!val)
+    return [];
+  if (Array.isArray(val))
+    return val;
+  try {
+    const parsed = JSON.parse(val);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+__name(parseJsonSafe, "parseJsonSafe");
+
 // workers/index.js
 init_usage_tracker();
 init_helpers();
@@ -14632,6 +15227,8 @@ async function handleAPI(request, env, path, ctx2) {
       return handleAnalytics(request, env, path);
     case "notifications":
       return handleNotifications(request, env, path);
+    case "reviews":
+      return handleReviews(request, env, path);
     case "usage":
       return handleUsageAPI(request, env, path);
     case "health":

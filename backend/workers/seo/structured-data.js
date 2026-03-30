@@ -30,7 +30,7 @@ export function buildOrganizationSchema(site, baseUrl) {
   return JSON.stringify(schema);
 }
 
-export function buildProductSchema(product, site, baseUrl) {
+export function buildProductSchema(product, site, baseUrl, reviewData) {
   let images = [];
   try {
     if (product.images) {
@@ -68,6 +68,32 @@ export function buildProductSchema(product, site, baseUrl) {
   if (product.barcode) schema.gtin = product.barcode;
   if (product.compare_price && product.compare_price > product.price) {
     schema.offers.priceValidUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  }
+
+  if (reviewData && reviewData.total > 0) {
+    schema.aggregateRating = {
+      '@type': 'AggregateRating',
+      ratingValue: reviewData.avgRating,
+      reviewCount: reviewData.total,
+      bestRating: 5,
+      worstRating: 1,
+    };
+
+    if (reviewData.reviews && reviewData.reviews.length > 0) {
+      schema.review = reviewData.reviews.slice(0, 5).map(r => ({
+        '@type': 'Review',
+        author: { '@type': 'Person', name: r.customer_name || 'Customer' },
+        reviewRating: {
+          '@type': 'Rating',
+          ratingValue: r.rating,
+          bestRating: 5,
+          worstRating: 1,
+        },
+        datePublished: r.created_at ? r.created_at.split('T')[0] || r.created_at.split(' ')[0] : undefined,
+        reviewBody: r.content || r.title || undefined,
+        name: r.title || undefined,
+      }));
+    }
   }
 
   return JSON.stringify(schema);

@@ -5,6 +5,7 @@ import { SiteContext } from '../context/SiteContext.jsx';
 import { CurrencyContext } from '../context/CurrencyContext.jsx';
 import * as authService from '../services/authService.js';
 import * as orderService from '../services/orderService.js';
+import { apiRequest } from '../services/api.js';
 import { parseAsUTC, formatDateShortForCustomer } from '../utils/dateFormatter.js';
 
 function getApiBase() {
@@ -72,6 +73,7 @@ export default function ProfilePage() {
   const [cancelDetail, setCancelDetail] = useState('');
   const [cancellingOrder, setCancellingOrder] = useState(false);
   const [cancelStatuses, setCancelStatuses] = useState({});
+  const [reviewedProducts, setReviewedProducts] = useState({});
 
   const CANCEL_REASONS = [
     'Changed my mind',
@@ -148,6 +150,26 @@ export default function ProfilePage() {
       });
     }
   }, [activeTab, orders, cancellationEnabled, siteConfig?.id]);
+
+  useEffect(() => {
+    if (activeTab === 'orders' && orders.length > 0 && siteConfig?.id) {
+      const deliveredOrders = orders.filter(o => (o.status || '').toLowerCase() === 'delivered');
+      deliveredOrders.forEach(async (order) => {
+        const items = order.items || [];
+        for (const item of items) {
+          const pid = item.productId || item.product_id || item.id;
+          if (!pid) continue;
+          try {
+            const res = await apiRequest(`/api/reviews/eligibility?siteId=${siteConfig.id}&productId=${pid}`);
+            const data = res.data || res;
+            if (data.reason === 'already_reviewed') {
+              setReviewedProducts(prev => ({ ...prev, [`${order.id}_${pid}`]: true }));
+            }
+          } catch {}
+        }
+      });
+    }
+  }, [activeTab, orders, siteConfig?.id]);
 
   const isReturnFormValid = () => {
     if (!returnReason || !returnDetail.trim()) return false;
@@ -495,18 +517,37 @@ export default function ProfilePage() {
                         <strong style={{ color: '#e74c3c' }}>Cancellation Reason:</strong> {order.cancellation_reason}
                       </div>
                     )}
-                    {orderItems.map((item, idx) => (
-                      <div key={idx} style={{ display: 'flex', padding: '10px 0', gap: 15 }}>
-                        {item.image && <img src={item.image} alt={item.name} style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 4 }} />}
-                        <div style={{ flex: 1 }}>
-                          <h4 style={{ margin: '0 0 5px', fontSize: 14 }}>{item.name}</h4>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ color: '#c8a97e', fontWeight: 'bold' }}>{formatAmount(item.price)}</span>
-                            <span style={{ color: '#777', fontSize: 13, background: '#f5f5f5', padding: '2px 8px', borderRadius: 12 }}>Qty: {item.quantity}</span>
+                    {orderItems.map((item, idx) => {
+                      const itemProductId = item.productId || item.product_id || item.id;
+                      const isDelivered = (order.status || '').toLowerCase() === 'delivered';
+                      const alreadyReviewed = reviewedProducts[`${order.id}_${itemProductId}`];
+                      return (
+                        <div key={idx} style={{ display: 'flex', padding: '10px 0', gap: 15 }}>
+                          {item.image && <img src={item.image} alt={item.name} style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 4 }} />}
+                          <div style={{ flex: 1 }}>
+                            <h4 style={{ margin: '0 0 5px', fontSize: 14 }}>{item.name}</h4>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ color: '#c8a97e', fontWeight: 'bold' }}>{formatAmount(item.price)}</span>
+                              <span style={{ color: '#777', fontSize: 13, background: '#f5f5f5', padding: '2px 8px', borderRadius: 12 }}>Qty: {item.quantity}</span>
+                            </div>
+                            {isDelivered && (
+                              <div style={{ marginTop: 6 }}>
+                                {alreadyReviewed ? (
+                                  <span style={{ fontSize: 12, color: '#27ae60' }}>{'\u2605'} Reviewed</span>
+                                ) : (
+                                  <Link
+                                    to={`/product/${item.slug || itemProductId}`}
+                                    style={{ fontSize: 12, color: 'var(--color-primary, #0f172a)', textDecoration: 'none', fontWeight: 500 }}
+                                  >
+                                    {'\u270E'} Write a Review
+                                  </Link>
+                                )}
+                              </div>
+                            )}
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                     <div style={{ textAlign: 'right', paddingTop: 10, borderTop: '1px solid #eee', marginTop: 10 }}>
                       {parseFloat(order.discount || 0) > 0 && (
                         <>

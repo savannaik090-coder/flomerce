@@ -9,6 +9,7 @@ import { useCurrency } from '../hooks/useCurrency.js';
 import * as productService from '../services/productService.js';
 import ProductGallery from '../components/product/ProductGallery.jsx';
 import RelatedProducts from '../components/product/RelatedProducts.jsx';
+import ProductReviews from '../components/product/ProductReviews.jsx';
 import '../styles/product-detail.css';
 
 import { getPolicies } from '../defaults/index.js';
@@ -61,7 +62,6 @@ export default function ProductDetailPage() {
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [reviewImageModal, setReviewImageModal] = useState(null);
   const [selectedColor, setSelectedColor] = useState(null);
   const [selectedCustomOptions, setSelectedCustomOptions] = useState({});
   const [selectedPricedOptions, setSelectedPricedOptions] = useState({});
@@ -230,8 +230,6 @@ export default function ProductDetailPage() {
     ? (product.category_name || product.category).replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
     : null;
 
-  const reviews = product.reviews || [];
-
   const settings = siteConfig?.settings || {};
   const categoryDefaults = getPolicies(siteConfig?.category);
   const pol = (key) => settings[key] || categoryDefaults[key] || '';
@@ -393,45 +391,7 @@ export default function ProductDetailPage() {
         </div>
       </div>
 
-      {reviews.length > 0 && (
-        <div className="product-reviews-section">
-          <h2 className="section-title">Customer Reviews</h2>
-          {reviews.map((review, idx) => (
-            <div key={idx} className="review-card">
-              <div className="review-header">
-                <div className="review-stars">
-                  {[...Array(5)].map((_, i) => (
-                    <span key={i}>{i < (review.rating || 5) ? '\u2605' : '\u2606'}</span>
-                  ))}
-                </div>
-                <span className="review-author">{review.author || 'Customer'}</span>
-                {review.verified && <span className="verified-badge">Verified Purchase</span>}
-              </div>
-              <p className="review-text">{review.text}</p>
-              {review.images && review.images.length > 0 && (
-                <div className="review-images">
-                  {review.images.map((img, i) => (
-                    <img
-                      key={i}
-                      className="review-image"
-                      src={img}
-                      alt={`Review ${i + 1}`}
-                      onClick={() => setReviewImageModal(img)}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {reviewImageModal && (
-        <div className="review-image-modal" onClick={() => setReviewImageModal(null)}>
-          <button className="close-modal" onClick={() => setReviewImageModal(null)}>&times;</button>
-          <img src={reviewImageModal} alt="Review" />
-        </div>
-      )}
+      <ProductReviews productId={product.id} />
 
       <RelatedProducts
         currentProductId={product.id}

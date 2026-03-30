@@ -592,7 +592,10 @@ async function updateOrderStatus(request, env, user, orderId) {
         const admin = await validateSiteAdmin(request, env, adminSiteId);
         if (admin && hasPermission(admin, 'orders')) {
           const sdb = await resolveSiteDBById(env, adminSiteId);
-          const found = await sdb.prepare('SELECT id, site_id, row_size_bytes FROM orders WHERE id = ? AND site_id = ?').bind(orderId, adminSiteId).first();
+          let found = await sdb.prepare('SELECT id, site_id, row_size_bytes FROM orders WHERE id = ? AND site_id = ?').bind(orderId, adminSiteId).first();
+          if (!found) {
+            found = await sdb.prepare('SELECT id, site_id, row_size_bytes FROM guest_orders WHERE id = ? AND site_id = ?').bind(orderId, adminSiteId).first();
+          }
           if (found) {
             order = found;
             siteId = adminSiteId;
@@ -608,9 +611,14 @@ async function updateOrderStatus(request, env, user, orderId) {
       
       for (const s of (userSites.results || [])) {
         const sdb = await resolveSiteDBById(env, s.id);
-        const found = await sdb.prepare(
+        let found = await sdb.prepare(
           'SELECT id, site_id, row_size_bytes FROM orders WHERE id = ? AND site_id = ?'
         ).bind(orderId, s.id).first();
+        if (!found) {
+          found = await sdb.prepare(
+            'SELECT id, site_id, row_size_bytes FROM guest_orders WHERE id = ? AND site_id = ?'
+          ).bind(orderId, s.id).first();
+        }
         if (found) {
           order = found;
           siteId = s.id;
@@ -796,8 +804,14 @@ async function updateOrderStatus(request, env, user, orderId) {
 
     if (status === 'delivered') {
       try {
-        const fullOrder = await db.prepare('SELECT * FROM orders WHERE id = ?').bind(orderId).first();
+        let fullOrder = await db.prepare('SELECT * FROM orders WHERE id = ?').bind(orderId).first();
+        let isGuestOrder = false;
+        if (!fullOrder) {
+          fullOrder = await db.prepare('SELECT * FROM guest_orders WHERE id = ?').bind(orderId).first();
+          isGuestOrder = true;
+        }
         if (fullOrder) {
+          const orderTable = isGuestOrder ? 'guest_orders' : 'orders';
           const deliveryConfig = await getSiteConfig(env, fullOrder.site_id);
           const siteBrandName = deliveryConfig.brand_name || 'Store';
           let deliverySettings = {};
@@ -818,16 +832,36 @@ async function updateOrderStatus(request, env, user, orderId) {
           };
 
           let deliveryEmailOptions = {};
+          const site = await env.DB.prepare('SELECT subdomain, custom_domain FROM sites WHERE id = ?').bind(fullOrder.site_id).first();
+          const delivDomain = site?.custom_domain || `${site?.subdomain || 'store'}.${env.DOMAIN || 'fluxe.in'}`;
+
           if (deliverySettings.returnsEnabled && fullOrder.customer_email) {
             try {
               const returnToken = generateReturnToken();
-              try { await db.prepare(`ALTER TABLE orders ADD COLUMN return_token TEXT`).run(); } catch (e) {}
-              await db.prepare(`UPDATE orders SET return_token = ? WHERE id = ?`).bind(returnToken, orderId).run();
-              const site = await env.DB.prepare('SELECT subdomain, custom_domain FROM sites WHERE id = ?').bind(fullOrder.site_id).first();
-              const delivDomain = site?.custom_domain || `${site?.subdomain || 'store'}.${env.DOMAIN || 'fluxe.in'}`;
+              try { await db.prepare(`ALTER TABLE ${orderTable} ADD COLUMN return_token TEXT`).run(); } catch (e) {}
+              await db.prepare(`UPDATE ${orderTable} SET return_token = ? WHERE id = ?`).bind(returnToken, orderId).run();
               deliveryEmailOptions.helpUrl = `https://${delivDomain}/order-help/${fullOrder.order_number}?returnToken=${returnToken}`;
             } catch (e) {
               console.error('Return token generation error:', e);
+            }
+          }
+
+          if (deliverySettings.reviewsEnabled !== false && fullOrder.customer_email) {
+            try {
+              const reviewToken = generateReturnToken();
+              try { await db.prepare(`ALTER TABLE ${orderTable} ADD COLUMN review_token TEXT`).run(); } catch (e) {}
+              await db.prepare(`UPDATE ${orderTable} SET review_token = ? WHERE id = ?`).bind(reviewToken, orderId).run();
+              let orderItems = [];
+              try { orderItems = typeof fullOrder.items === 'string' ? JSON.parse(fullOrder.items) : (fullOrder.items || []); } catch (e) {}
+              deliveryEmailOptions.reviewUrl = `https://${delivDomain}/review/${fullOrder.id}?token=${reviewToken}`;
+              deliveryEmailOptions.reviewItems = orderItems.slice(0, 3).map(item => ({
+                name: item.name,
+                image: item.image || item.thumbnail_url || '',
+                slug: item.slug || '',
+              }));
+              deliveryEmailOptions.storeDomain = `https://${delivDomain}`;
+            } catch (e) {
+              console.error('Review token generation error:', e);
             }
           }
 

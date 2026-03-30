@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { getOrders, updateOrderStatus, getReturns, updateReturn, getCancellations, updateCancellation } from '../../services/orderService.js';
+import { apiRequest } from '../../services/api.js';
 import { formatPrice, getAdminCurrency } from '../../utils/priceFormatter.js';
 import { parseAsUTC, formatDateForAdmin, formatDateShortForAdmin } from '../../utils/dateFormatter.js';
 import { getOrderActionNotes } from '../../defaults/index.js';
@@ -89,6 +90,13 @@ export default function OrdersSection() {
   const [cancellationUpdating, setCancellationUpdating] = useState(false);
   const [cancDetailModal, setCancDetailModal] = useState(null);
 
+  const [reviews, setReviews] = useState([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [reviewStats, setReviewStats] = useState(null);
+  const [reviewStatusFilter, setReviewStatusFilter] = useState('all');
+  const [reviewDetailModal, setReviewDetailModal] = useState(null);
+  const [reviewUpdating, setReviewUpdating] = useState(false);
+
   const orderNotes = getOrderActionNotes();
   const DEFAULT_RETURN_REFUND_NOTE = orderNotes.returnRefund;
   const DEFAULT_RETURN_REPLACEMENT_NOTE = orderNotes.returnReplacement;
@@ -110,11 +118,20 @@ export default function OrdersSection() {
     } catch { return false; }
   })();
 
+  const reviewsEnabled = (() => {
+    try {
+      const s = siteConfig?.settings;
+      const parsed = typeof s === 'string' ? JSON.parse(s) : (s || {});
+      return parsed.reviewsEnabled !== false;
+    } catch { return true; }
+  })();
+
   useEffect(() => {
     if (siteConfig?.id) {
       loadOrders();
       loadReturns();
       loadCancellations();
+      if (reviewsEnabled) loadReviews();
     }
   }, [siteConfig?.id]);
 
@@ -154,6 +171,47 @@ export default function OrdersSection() {
       setCancellationsLoading(false);
     }
   }
+
+  async function loadReviews() {
+    setReviewsLoading(true);
+    try {
+      const res = await apiRequest(`/api/reviews/admin?siteId=${siteConfig.id}&status=${reviewStatusFilter}`);
+      const data = res.data || res;
+      setReviews((data.reviews || []).sort((a, b) => (parseAsUTC(b.created_at) || new Date(0)) - (parseAsUTC(a.created_at) || new Date(0))));
+      setReviewStats(data.stats || null);
+    } catch (err) {
+      console.error('Error loading reviews:', err);
+    } finally {
+      setReviewsLoading(false);
+    }
+  }
+
+  async function handleReviewAction(reviewId, action) {
+    setReviewUpdating(true);
+    try {
+      await apiRequest(`/api/reviews/admin/${reviewId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ siteId: siteConfig.id, status: action }),
+      });
+      setReviews(prev => prev.map(r => r.id === reviewId ? { ...r, status: action, is_approved: action === 'approved' ? 1 : 0 } : r));
+      if (reviewStats) {
+        setReviewStats(prev => ({
+          ...prev,
+          pending: Math.max(0, (prev.pending || 0) - 1),
+          [action]: (prev[action] || 0) + 1,
+        }));
+      }
+      setReviewDetailModal(null);
+    } catch (err) {
+      alert('Failed to update review: ' + err.message);
+    } finally {
+      setReviewUpdating(false);
+    }
+  }
+
+  useEffect(() => {
+    if (activeView === 'reviews' && siteConfig?.id) loadReviews();
+  }, [reviewStatusFilter]);
 
   async function handleCancellationAction() {
     if (!cancellationModal || !cancellationAction) return;
@@ -294,10 +352,22 @@ export default function OrdersSection() {
   const cancellationStatuses = ['all', 'requested', 'approved', 'rejected'];
   const filteredCancellations = cancellations.filter(c => cancellationStatusFilter === 'all' || c.status === cancellationStatusFilter);
 
+  const reviewFilterStatuses = ['all', 'pending', 'approved', 'rejected'];
+  const filteredReviews = reviews.filter(r => reviewStatusFilter === 'all' || r.status === reviewStatusFilter);
+
+  const getReviewStatusColor = (s) => {
+    const colors = { pending: '#ff9800', approved: '#27ae60', rejected: '#e53935' };
+    return colors[s] || '#757575';
+  };
+  const getReviewStatusLabel = (s) => {
+    const labels = { pending: 'Pending', approved: 'Approved', rejected: 'Rejected' };
+    return labels[s] || s || 'Unknown';
+  };
+
   return (
     <div>
-      {(returnsEnabled || cancellationEnabled) && (
-        <div style={{ display: 'flex', gap: 0, marginBottom: 16, borderRadius: 8, overflow: 'hidden', border: '1px solid #e2e8f0', width: 'fit-content' }}>
+      {(returnsEnabled || cancellationEnabled || reviewsEnabled) && (
+        <div style={{ display: 'flex', gap: 0, marginBottom: 16, borderRadius: 8, overflow: 'hidden', border: '1px solid #e2e8f0', width: 'fit-content', flexWrap: 'wrap' }}>
           <button onClick={() => setActiveView('orders')} style={{ padding: '10px 24px', fontSize: 14, fontWeight: 600, border: 'none', cursor: 'pointer', background: activeView === 'orders' ? '#0f172a' : '#f8fafc', color: activeView === 'orders' ? '#fff' : '#64748b', transition: '0.2s' }}>
             Orders
           </button>
@@ -309,6 +379,11 @@ export default function OrdersSection() {
           {returnsEnabled && (
             <button onClick={() => setActiveView('returns')} style={{ padding: '10px 24px', fontSize: 14, fontWeight: 600, border: 'none', cursor: 'pointer', background: activeView === 'returns' ? '#0f172a' : '#f8fafc', color: activeView === 'returns' ? '#fff' : '#64748b', transition: '0.2s' }}>
               Returns {returns.filter(r => r.status === 'requested').length > 0 ? `(${returns.filter(r => r.status === 'requested').length})` : ''}
+            </button>
+          )}
+          {reviewsEnabled && (
+            <button onClick={() => { setActiveView('reviews'); if (reviews.length === 0) loadReviews(); }} style={{ padding: '10px 24px', fontSize: 14, fontWeight: 600, border: 'none', cursor: 'pointer', background: activeView === 'reviews' ? '#0f172a' : '#f8fafc', color: activeView === 'reviews' ? '#fff' : '#64748b', transition: '0.2s' }}>
+              Reviews {reviewStats?.pending > 0 ? `(${reviewStats.pending})` : ''}
             </button>
           )}
         </div>
@@ -929,6 +1004,154 @@ export default function OrdersSection() {
                       <button onClick={() => { setCancDetailModal(null); setCancellationModal(cancDetailModal); setCancellationAction('approved'); setCancellationNote(DEFAULT_CANCELLATION_NOTE); }} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#22c55e', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Approve</button>
                       <button onClick={() => { setCancDetailModal(null); setCancellationModal(cancDetailModal); setCancellationAction('rejected'); setCancellationNote(''); }} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#e53935', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Reject</button>
                     </>
+                  )}
+                </div>
+              </div>
+            </div>
+            );
+          })()}
+        </div>
+      ) : activeView === 'reviews' ? (
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
+            <div className="tabs" style={{ flexWrap: 'wrap', margin: 0 }}>
+              {reviewFilterStatuses.map(s => {
+                const count = s === 'all' ? reviews.length : reviews.filter(r => r.status === s).length;
+                if (s !== 'all' && count === 0) return null;
+                return (
+                  <button key={s} className={`tab${reviewStatusFilter === s ? ' active' : ''}`} onClick={() => setReviewStatusFilter(s)}>
+                    {getReviewStatusLabel(s)} ({count})
+                  </button>
+                );
+              })}
+            </div>
+            <button className="btn btn-outline" onClick={loadReviews} style={{ flexShrink: 0 }}>
+              <i className="fas fa-sync-alt" /> Refresh
+            </button>
+          </div>
+
+          {reviewStats && (
+            <div style={{ display: 'flex', gap: 16, marginBottom: 16, flexWrap: 'wrap' }}>
+              <div style={{ background: '#f0fdf4', borderRadius: 8, padding: '12px 20px', textAlign: 'center', minWidth: 80 }}>
+                <div style={{ fontSize: 22, fontWeight: 700, color: '#166534' }}>{reviewStats.avgRating || '—'}</div>
+                <div style={{ fontSize: 12, color: '#64748b' }}>Avg Rating</div>
+              </div>
+              <div style={{ background: '#f8fafc', borderRadius: 8, padding: '12px 20px', textAlign: 'center', minWidth: 80 }}>
+                <div style={{ fontSize: 22, fontWeight: 700, color: '#0f172a' }}>{reviewStats.total || 0}</div>
+                <div style={{ fontSize: 12, color: '#64748b' }}>Total</div>
+              </div>
+              <div style={{ background: '#fffbeb', borderRadius: 8, padding: '12px 20px', textAlign: 'center', minWidth: 80 }}>
+                <div style={{ fontSize: 22, fontWeight: 700, color: '#92400e' }}>{reviewStats.pending || 0}</div>
+                <div style={{ fontSize: 12, color: '#64748b' }}>Pending</div>
+              </div>
+            </div>
+          )}
+
+          {reviewsLoading ? (
+            <div className="loading-spinner-admin"><div className="spinner" /></div>
+          ) : filteredReviews.length === 0 ? (
+            <div className="empty-state">
+              <i className="fas fa-star" />
+              <h3>No reviews</h3>
+              <p>Customer reviews will appear here.</p>
+            </div>
+          ) : (
+            <div className="card">
+              <div className="card-content" style={{ padding: 0 }}>
+                <div className="table-container">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Product</th>
+                        <th>Customer</th>
+                        <th style={{ textAlign: 'center' }}>Rating</th>
+                        <th>Review</th>
+                        <th style={{ textAlign: 'center' }}>Status</th>
+                        <th>Date</th>
+                        <th style={{ textAlign: 'center' }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredReviews.map(review => (
+                        <tr key={review.id} onClick={() => setReviewDetailModal(review)} style={{ cursor: 'pointer' }}>
+                          <td>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              {review.product_image && <img src={review.product_image} alt="" style={{ width: 32, height: 32, borderRadius: 4, objectFit: 'cover' }} />}
+                              <span style={{ fontSize: 13, maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>{review.product_name || '—'}</span>
+                            </div>
+                          </td>
+                          <td style={{ fontSize: 13 }}>{review.customer_name || '—'}</td>
+                          <td style={{ textAlign: 'center', color: '#f5a623', fontSize: 14 }}>
+                            {'\u2605'.repeat(review.rating)}{'\u2606'.repeat(5 - review.rating)}
+                          </td>
+                          <td style={{ fontSize: 13, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {review.title || review.content || '—'}
+                          </td>
+                          <td style={{ textAlign: 'center' }}>
+                            <span style={{ display: 'inline-block', background: getReviewStatusColor(review.status), color: '#fff', borderRadius: 12, padding: '2px 10px', fontSize: 12, fontWeight: 600 }}>
+                              {getReviewStatusLabel(review.status)}
+                            </span>
+                          </td>
+                          <td style={{ fontSize: 12, color: '#64748b', whiteSpace: 'nowrap' }}>{formatDateShortForAdmin(review.created_at)}</td>
+                          <td style={{ textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+                            {review.status === 'pending' && (
+                              <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
+                                <button className="btn btn-sm btn-success" onClick={() => handleReviewAction(review.id, 'approved')} title="Approve" disabled={reviewUpdating}>
+                                  <i className="fas fa-check" />
+                                </button>
+                                <button className="btn btn-sm btn-danger" onClick={() => handleReviewAction(review.id, 'rejected')} title="Reject" disabled={reviewUpdating}>
+                                  <i className="fas fa-times" />
+                                </button>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {reviewDetailModal && (() => {
+            const r = reviewDetailModal;
+            return (
+            <div className="modal-overlay" onClick={() => setReviewDetailModal(null)}>
+              <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 500 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                  <h3 style={{ margin: 0, fontSize: 18, color: '#1a1a1a' }}>Review Details</h3>
+                  <button onClick={() => setReviewDetailModal(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#999' }}>&times;</button>
+                </div>
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 16 }}>
+                  {r.product_image && <img src={r.product_image} alt="" style={{ width: 48, height: 48, borderRadius: 6, objectFit: 'cover' }} />}
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 14 }}>{r.product_name || 'Unknown Product'}</div>
+                    <div style={{ fontSize: 12, color: '#64748b' }}>by {r.customer_name || 'Customer'}</div>
+                  </div>
+                </div>
+                <div style={{ color: '#f5a623', fontSize: 18, marginBottom: 8 }}>
+                  {'\u2605'.repeat(r.rating)}{'\u2606'.repeat(5 - r.rating)}
+                  {r.is_verified === 1 && <span style={{ marginLeft: 8, fontSize: 11, background: '#dcfce7', color: '#166534', padding: '2px 8px', borderRadius: 10 }}>Verified Purchase</span>}
+                </div>
+                {r.title && <p style={{ fontWeight: 600, margin: '0 0 4px', fontSize: 15 }}>{r.title}</p>}
+                {r.content && <p style={{ margin: '0 0 12px', fontSize: 14, color: '#555', lineHeight: 1.6 }}>{r.content}</p>}
+                {r.images && r.images.length > 0 && (
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                    {r.images.map((img, i) => <img key={i} src={img} alt="" style={{ width: 60, height: 60, borderRadius: 6, objectFit: 'cover' }} />)}
+                  </div>
+                )}
+                <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 16 }}>{formatDateForAdmin(r.created_at)}</div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                  {r.status === 'pending' ? (
+                    <>
+                      <button onClick={() => handleReviewAction(r.id, 'approved')} disabled={reviewUpdating} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#22c55e', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600, opacity: reviewUpdating ? 0.7 : 1 }}>Approve</button>
+                      <button onClick={() => handleReviewAction(r.id, 'rejected')} disabled={reviewUpdating} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#e53935', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600, opacity: reviewUpdating ? 0.7 : 1 }}>Reject</button>
+                    </>
+                  ) : (
+                    <span style={{ display: 'inline-block', background: getReviewStatusColor(r.status), color: '#fff', borderRadius: 12, padding: '4px 14px', fontSize: 13, fontWeight: 600 }}>
+                      {getReviewStatusLabel(r.status)}
+                    </span>
                   )}
                 </div>
               </div>

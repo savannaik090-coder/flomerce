@@ -442,6 +442,352 @@
     cursor: pointer;
 }
 
+.rating-breakdown {
+    display: flex;
+    gap: 32px;
+    align-items: flex-start;
+    padding: 24px;
+    background: #f9fafb;
+    border-radius: 12px;
+    margin-bottom: 24px;
+}
+
+.rating-summary {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 100px;
+}
+
+.rating-big {
+    font-size: 48px;
+    font-weight: 700;
+    color: #0f172a;
+    line-height: 1;
+}
+
+.rating-summary-detail {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    margin-top: 8px;
+}
+
+.rating-count {
+    font-size: 13px;
+    color: #64748b;
+}
+
+.rating-bars {
+    flex: 1;
+}
+
+.rating-bar-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.rating-bar-label {
+    font-size: 13px;
+    color: #64748b;
+    min-width: 36px;
+    text-align: right;
+}
+
+.rating-bar-track {
+    flex: 1;
+    height: 8px;
+    background: #e2e8f0;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.rating-bar-fill {
+    height: 100%;
+    background: #f5a623;
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+.rating-bar-count {
+    font-size: 13px;
+    color: #64748b;
+    min-width: 24px;
+}
+
+.review-cta {
+    text-align: center;
+    margin-bottom: 24px;
+}
+
+.write-review-btn {
+    background: var(--color-primary, #0f172a);
+    color: #fff;
+    border: none;
+    padding: 12px 28px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.write-review-btn:hover {
+    opacity: 0.9;
+}
+
+.review-notice {
+    text-align: center;
+    padding: 12px;
+    color: #64748b;
+    font-size: 14px;
+    margin-bottom: 16px;
+}
+
+.review-form {
+    background: #f9fafb;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+}
+
+.review-form-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0 0 16px;
+    color: #0f172a;
+}
+
+.review-form-field {
+    margin-bottom: 16px;
+}
+
+.review-form-field label {
+    display: block;
+    font-size: 14px;
+    font-weight: 500;
+    color: #334155;
+    margin-bottom: 6px;
+}
+
+.review-form-field input,
+.review-form-field textarea {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    transition: border-color 0.2s;
+    box-sizing: border-box;
+}
+
+.review-form-field input:focus,
+.review-form-field textarea:focus {
+    outline: none;
+    border-color: var(--color-primary, #0f172a);
+}
+
+.review-form-hint {
+    font-size: 12px;
+    color: #94a3b8;
+    margin-top: 4px;
+    display: block;
+}
+
+.star-input {
+    display: flex;
+    gap: 4px;
+}
+
+.star-input-star {
+    font-size: 28px;
+    color: #d1d5db;
+    cursor: pointer;
+    transition: color 0.15s;
+    user-select: none;
+}
+
+.star-input-star.active {
+    color: #f5a623;
+}
+
+.review-form-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.review-submit-btn {
+    background: var(--color-primary, #0f172a);
+    color: #fff;
+    border: none;
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.review-submit-btn:hover { opacity: 0.9; }
+.review-submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.review-cancel-btn {
+    background: #fff;
+    color: #64748b;
+    border: 1px solid #d1d5db;
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.review-cancel-btn:hover {
+    background: #f1f5f9;
+}
+
+.review-message {
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-size: 14px;
+}
+
+.review-message-success {
+    background: #f0fdf4;
+    color: #166534;
+    border: 1px solid #bbf7d0;
+}
+
+.review-message-error {
+    background: #fef2f2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+}
+
+.review-sort {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+    font-size: 14px;
+    color: #64748b;
+}
+
+.review-sort select {
+    padding: 6px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 13px;
+    background: #fff;
+}
+
+.review-empty {
+    text-align: center;
+    padding: 32px 16px;
+    color: #94a3b8;
+    font-size: 14px;
+}
+
+.review-date {
+    font-size: 12px;
+    color: #94a3b8;
+    margin-left: auto;
+}
+
+.review-title-text {
+    font-weight: 600;
+    font-size: 15px;
+    color: #0f172a;
+    margin: 0 0 6px;
+}
+
+@media (max-width: 600px) {
+    .rating-breakdown {
+        flex-direction: column;
+        gap: 16px;
+    }
+    .rating-summary {
+        flex-direction: row;
+        gap: 16px;
+    }
+    .review-form-actions {
+        flex-direction: column;
+    }
+}
+
+.review-page {
+    min-height: 60vh;
+    background: #f9fafb;
+    padding: 40px 16px;
+}
+
+.review-page-inner {
+    max-width: 640px;
+    margin: 0 auto;
+}
+
+.review-page-items {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.review-page-item {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 16px;
+    transition: border-color 0.2s;
+}
+
+.review-page-item.active {
+    border-color: var(--color-primary, #0f172a);
+}
+
+.review-page-item.reviewed {
+    opacity: 0.7;
+}
+
+.review-page-item-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+}
+
+.review-page-item-img {
+    width: 56px;
+    height: 56px;
+    border-radius: 8px;
+    object-fit: cover;
+    border: 1px solid #f0f0f0;
+}
+
+.review-page-item-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.review-page-item-name {
+    font-weight: 500;
+    font-size: 14px;
+    color: #0f172a;
+}
+
+.review-page-item-badge {
+    font-size: 12px;
+    color: #166534;
+    font-weight: 500;
+}
+
 .related-products-section {
     padding: 40px 0 60px;
     background: #fff;

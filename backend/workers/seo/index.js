@@ -66,6 +66,31 @@ async function fetchProductSEO(db, site, slug) {
   }
 }
 
+async function fetchProductReviewData(db, site, productId) {
+  try {
+    const stats = await db.prepare(
+      `SELECT COUNT(*) as total, AVG(rating) as avg_rating
+       FROM reviews WHERE site_id = ? AND product_id = ? AND status = 'approved' AND is_approved = 1`
+    ).bind(site.id, productId).first();
+
+    if (!stats || !stats.total || stats.total === 0) return null;
+
+    const recentReviews = await db.prepare(
+      `SELECT customer_name, rating, title, content, created_at
+       FROM reviews WHERE site_id = ? AND product_id = ? AND status = 'approved' AND is_approved = 1
+       ORDER BY created_at DESC LIMIT 5`
+    ).bind(site.id, productId).all();
+
+    return {
+      total: stats.total,
+      avgRating: stats.avg_rating ? Math.round(stats.avg_rating * 10) / 10 : 0,
+      reviews: recentReviews.results || [],
+    };
+  } catch {
+    return null;
+  }
+}
+
 async function fetchCategorySEO(db, site, slug) {
   try {
     const category = await db.prepare(
@@ -100,7 +125,7 @@ async function fetchPageSEO(db, site, pageType) {
 
 // ─── Tag builder ─────────────────────────────────────────────────────────────
 
-function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl, canonicalUrl }) {
+function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl, canonicalUrl, reviewData }) {
   const { type } = pageInfo;
   const structuredData = [];
   let title, description, ogImage, ogType, breadcrumbs;
@@ -119,7 +144,7 @@ function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl,
     ogType = 'product';
 
     if (templateConfig.includeProductSchema) {
-      structuredData.push(buildProductSchema(pageData, site, baseUrl));
+      structuredData.push(buildProductSchema(pageData, site, baseUrl, reviewData));
     }
     if (templateConfig.includeBreadcrumbs) {
       structuredData.push(buildBreadcrumbSchema([
@@ -233,8 +258,12 @@ export async function applySEO(request, env, site, rawHTML) {
     const db = await resolveSiteDBById(env, site.id);
 
     let pageData = null;
+    let reviewData = null;
     if (pageInfo.type === 'product') {
       pageData = await fetchProductSEO(db, site, pageInfo.slug);
+      if (pageData?.id) {
+        reviewData = await fetchProductReviewData(db, site, pageData.id);
+      }
     } else if (pageInfo.type === 'category') {
       pageData = await fetchCategorySEO(db, site, pageInfo.slug);
     } else {
@@ -242,7 +271,7 @@ export async function applySEO(request, env, site, rawHTML) {
     }
 
     const siteWithCurrency = { ...site, currency: siteSEO.currency || site.currency || 'INR' };
-    const tags = buildTags({ pageInfo, site: siteWithCurrency, siteSEO, pageData, templateConfig, baseUrl, canonicalUrl });
+    const tags = buildTags({ pageInfo, site: siteWithCurrency, siteSEO, pageData, templateConfig, baseUrl, canonicalUrl, reviewData });
 
     return injectSEOTags(rawHTML, tags);
   } catch (err) {
