@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar.jsx';
 import LandingPricing from '../components/LandingPricing.jsx';
@@ -8,6 +8,8 @@ import '../styles/legal.css';
 
 export default function LandingPage() {
   const [showPwa, setShowPwa] = useState(false);
+  const [videoPlaying, setVideoPlaying] = useState(false);
+  const videoRef = useRef(null);
   const deferredPromptRef = useRef(null);
 
   useEffect(() => {
@@ -18,6 +20,22 @@ export default function LandingPage() {
     };
     window.addEventListener('beforeinstallprompt', handler);
     return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  useEffect(() => {
+    const vid = videoRef.current;
+    if (!vid) return;
+    const tryPlay = () => {
+      vid.play().then(() => setVideoPlaying(true)).catch(() => {});
+    };
+    if (vid.readyState >= 2) tryPlay();
+    else vid.addEventListener('canplay', tryPlay, { once: true });
+  }, []);
+
+  const handlePlayVideo = useCallback(() => {
+    const vid = videoRef.current;
+    if (!vid) return;
+    vid.play().then(() => setVideoPlaying(true)).catch(() => {});
   }, []);
 
   const handleInstall = async () => {
@@ -96,9 +114,16 @@ export default function LandingPage() {
                 <span className="teaser-dot green"></span>
                 <span className="teaser-url-bar">fluxe.in</span>
               </div>
-              <video className="teaser-video" autoPlay muted loop playsInline>
-                <source src="/assets/fluxe-teaser.mp4" type="video/mp4" />
-              </video>
+              <div className="teaser-video-container">
+                <video ref={videoRef} className="teaser-video" muted loop playsInline preload="auto">
+                  <source src="/assets/fluxe-teaser.mp4" type="video/mp4" />
+                </video>
+                {!videoPlaying && (
+                  <button className="teaser-play-btn" onClick={handlePlayVideo} aria-label="Play video">
+                    <svg width="48" height="48" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="24" fill="rgba(0,0,0,0.55)"/><path d="M19 15l14 9-14 9V15z" fill="#fff"/></svg>
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </section>
