@@ -3,6 +3,18 @@ export function injectSEOTags(html, tags) {
 
   result = result.replace(/<title>[^<]*<\/title>/i, `<title>${escapeHtml(tags.title)}</title>`);
 
+  result = result.replace(/<link\s+rel=["']icon["'][^>]*>/gi, '');
+  result = result.replace(/<link\s+rel=["']canonical["'][^>]*>/gi, '');
+
+  result = result.replace(/<meta\s+name=["']description["'][^>]*>/gi, '');
+  result = result.replace(/<meta\s+name=["']viewport["'][^>]*>/gi, '');
+  result = result.replace(/<meta\s+name=["']robots["'][^>]*>/gi, '');
+  result = result.replace(/<meta\s+name=["']author["'][^>]*>/gi, '');
+  result = result.replace(/<meta\s+name=["']keywords["'][^>]*>/gi, '');
+  result = result.replace(/<meta\s+property=["']og:[^"']*["'][^>]*>/gi, '');
+  result = result.replace(/<meta\s+name=["']twitter:[^"']*["'][^>]*>/gi, '');
+  result = result.replace(/<script\s+type=["']application\/ld\+json["'][^>]*>[^<]*<\/script>/gi, '');
+
   const metaTags = buildMetaTagsString(tags);
 
   result = result.replace('</head>', `${metaTags}\n</head>`);
@@ -54,8 +66,20 @@ function buildMetaTagsString(tags) {
 
   if (tags.ogImage) {
     lines.push(`  <meta property="og:image" content="${escapeAttr(tags.ogImage)}">`);
+    if (tags.ogImage.startsWith('https://')) {
+      lines.push(`  <meta property="og:image:secure_url" content="${escapeAttr(tags.ogImage)}">`);
+    }
+    lines.push(`  <meta property="og:image:alt" content="${escapeAttr(tags.ogTitle || tags.title || '')}">`);
     lines.push(`  <meta property="og:image:width" content="1200">`);
     lines.push(`  <meta property="og:image:height" content="630">`);
+    const imgLower = (tags.ogImage || '').toLowerCase();
+    if (imgLower.endsWith('.png')) {
+      lines.push(`  <meta property="og:image:type" content="image/png">`);
+    } else if (imgLower.endsWith('.webp')) {
+      lines.push(`  <meta property="og:image:type" content="image/webp">`);
+    } else {
+      lines.push(`  <meta property="og:image:type" content="image/jpeg">`);
+    }
   }
 
   if (tags.canonicalUrl) {

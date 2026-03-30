@@ -217,8 +217,9 @@ function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl,
     return baseUrl + (url.startsWith('/') ? url : '/' + url);
   }
 
-  const finalOgImage = absUrl(ogImage || site.og_image);
-  const finalTwImage = absUrl(ogImage || site.twitter_image || site.og_image);
+  const resolvedOgImage = ogImage || site.og_image || site.logo_url || null;
+  const finalOgImage = absUrl(resolvedOgImage);
+  const finalTwImage = absUrl(ogImage || site.twitter_image || site.og_image || site.logo_url || null);
 
   return {
     title,

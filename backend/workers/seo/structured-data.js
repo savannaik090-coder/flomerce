@@ -44,7 +44,13 @@ export function buildProductSchema(product, site, baseUrl, reviewData) {
 
   images = images.map(img => absUrl(img, baseUrl)).filter(Boolean);
 
+  if (images.length === 0) {
+    const fallbackImg = absUrl(site.og_image || site.logo_url, baseUrl);
+    if (fallbackImg) images.push(fallbackImg);
+  }
+
   const currency = site.currency || 'INR';
+  const brandName = site.brand_name || site.name || '';
 
   const schema = {
     '@context': 'https://schema.org',
@@ -62,6 +68,11 @@ export function buildProductSchema(product, site, baseUrl, reviewData) {
       url: `${baseUrl}/product/${product.slug}`,
     },
   };
+
+  if (brandName) {
+    schema.brand = { '@type': 'Brand', name: brandName };
+    schema.offers.seller = { '@type': 'Organization', name: brandName };
+  }
 
   if (images.length > 0) schema.image = images;
   if (product.sku) schema.sku = product.sku;

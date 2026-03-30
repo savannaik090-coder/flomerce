@@ -10020,6 +10020,16 @@ init_modules_watch_stub();
 function injectSEOTags(html, tags) {
   let result = html;
   result = result.replace(/<title>[^<]*<\/title>/i, `<title>${escapeHtml(tags.title)}</title>`);
+  result = result.replace(/<link\s+rel=["']icon["'][^>]*>/gi, "");
+  result = result.replace(/<link\s+rel=["']canonical["'][^>]*>/gi, "");
+  result = result.replace(/<meta\s+name=["']description["'][^>]*>/gi, "");
+  result = result.replace(/<meta\s+name=["']viewport["'][^>]*>/gi, "");
+  result = result.replace(/<meta\s+name=["']robots["'][^>]*>/gi, "");
+  result = result.replace(/<meta\s+name=["']author["'][^>]*>/gi, "");
+  result = result.replace(/<meta\s+name=["']keywords["'][^>]*>/gi, "");
+  result = result.replace(/<meta\s+property=["']og:[^"']*["'][^>]*>/gi, "");
+  result = result.replace(/<meta\s+name=["']twitter:[^"']*["'][^>]*>/gi, "");
+  result = result.replace(/<script\s+type=["']application\/ld\+json["'][^>]*>[^<]*<\/script>/gi, "");
   const metaTags = buildMetaTagsString(tags);
   result = result.replace("</head>", `${metaTags}
 </head>`);
@@ -10058,8 +10068,20 @@ function buildMetaTagsString(tags) {
   }
   if (tags.ogImage) {
     lines.push(`  <meta property="og:image" content="${escapeAttr(tags.ogImage)}">`);
+    if (tags.ogImage.startsWith("https://")) {
+      lines.push(`  <meta property="og:image:secure_url" content="${escapeAttr(tags.ogImage)}">`);
+    }
+    lines.push(`  <meta property="og:image:alt" content="${escapeAttr(tags.ogTitle || tags.title || "")}">`);
     lines.push(`  <meta property="og:image:width" content="1200">`);
     lines.push(`  <meta property="og:image:height" content="630">`);
+    const imgLower = (tags.ogImage || "").toLowerCase();
+    if (imgLower.endsWith(".png")) {
+      lines.push(`  <meta property="og:image:type" content="image/png">`);
+    } else if (imgLower.endsWith(".webp")) {
+      lines.push(`  <meta property="og:image:type" content="image/webp">`);
+    } else {
+      lines.push(`  <meta property="og:image:type" content="image/jpeg">`);
+    }
   }
   if (tags.canonicalUrl) {
     lines.push(`  <meta property="og:url" content="${escapeAttr(tags.canonicalUrl)}">`);
@@ -10263,7 +10285,13 @@ function buildProductSchema(product, site, baseUrl, reviewData) {
     images.unshift(product.thumbnail_url);
   }
   images = images.map((img) => absUrl(img, baseUrl)).filter(Boolean);
+  if (images.length === 0) {
+    const fallbackImg = absUrl(site.og_image || site.logo_url, baseUrl);
+    if (fallbackImg)
+      images.push(fallbackImg);
+  }
   const currency = site.currency || "INR";
+  const brandName = site.brand_name || site.name || "";
   const schema = {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -10278,6 +10306,10 @@ function buildProductSchema(product, site, baseUrl, reviewData) {
       url: `${baseUrl}/product/${product.slug}`
     }
   };
+  if (brandName) {
+    schema.brand = { "@type": "Brand", name: brandName };
+    schema.offers.seller = { "@type": "Organization", name: brandName };
+  }
   if (images.length > 0)
     schema.image = images;
   if (product.sku)
@@ -10563,8 +10595,9 @@ function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl,
     return baseUrl + (url.startsWith("/") ? url : "/" + url);
   }
   __name(absUrl2, "absUrl");
-  const finalOgImage = absUrl2(ogImage || site.og_image);
-  const finalTwImage = absUrl2(ogImage || site.twitter_image || site.og_image);
+  const resolvedOgImage = ogImage || site.og_image || site.logo_url || null;
+  const finalOgImage = absUrl2(resolvedOgImage);
+  const finalTwImage = absUrl2(ogImage || site.twitter_image || site.og_image || site.logo_url || null);
   return {
     title,
     description,
