@@ -198,11 +198,11 @@ export default function CheckoutPage() {
   }, [deliveryConfig]);
 
   const subtotalAfterCoupon = Math.max(0, subtotal - couponDiscount);
-  const hasLocationSelected = !!address.country;
   const shippingCost = computeShippingCost(subtotalAfterCoupon, address.country, address.state);
   const finalTotal = subtotalAfterCoupon + shippingCost;
   const hasRegionOverrides = deliveryConfig.enabled && Array.isArray(deliveryConfig.regionRates) && deliveryConfig.regionRates.length > 0;
-  const showShippingNote = deliveryConfig.enabled && !hasLocationSelected && (hasRegionOverrides || (deliveryConfig.freeAboveEnabled && deliveryConfig.freeAbove > 0));
+  const hasFullLocation = !!address.country && (statesForCountry.length === 0 || !!address.state);
+  const showShippingNote = deliveryConfig.enabled && !hasFullLocation && (hasRegionOverrides || (deliveryConfig.freeAboveEnabled && deliveryConfig.freeAbove > 0));
 
   const applyCoupon = useCallback(() => {
     setCouponError('');
