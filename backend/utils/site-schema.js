@@ -517,6 +517,9 @@ export function getSiteSchemaStatements() {
     'ALTER TABLE guest_orders ADD COLUMN cancel_token TEXT',
     'ALTER TABLE guest_orders ADD COLUMN return_token TEXT',
     'ALTER TABLE guest_orders ADD COLUMN cancellation_reason TEXT',
+    'ALTER TABLE orders ADD COLUMN shipping_cost REAL DEFAULT 0',
+    'ALTER TABLE orders ADD COLUMN tax REAL DEFAULT 0',
+    'ALTER TABLE guest_orders ADD COLUMN shipping_cost REAL DEFAULT 0',
   ];
 
   return [...tables, ...indexes, ...addColumnMigrations];
