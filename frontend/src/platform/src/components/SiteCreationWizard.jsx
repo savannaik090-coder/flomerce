@@ -34,7 +34,7 @@ const DEFAULT_CATEGORIES = {
 export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, isTrialActive }) {
   const [step, setStep] = useState(1);
   const [businessCategory, setBusinessCategory] = useState(null);
-  const [selectedTemplate, setSelectedTemplate] = useState(null);
+  const [selectedTemplate, setSelectedTemplate] = useState('storefront');
   const [subdomain, setSubdomain] = useState('');
   const [brandName, setBrandName] = useState('');
   const [logoFile, setLogoFile] = useState(null);
@@ -205,22 +205,10 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
             <h2 style={{ marginBottom: '1.5rem', fontWeight: 800 }}>Website Details</h2>
 
             <div style={{ marginBottom: '1.5rem' }}>
-              <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.5rem' }}>Choose Template</label>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                {[
-                  { id: 'storefront', name: 'Storefront', img: '/assets/images/storefront-preview.jpg' },
-                  { id: 'clothing', name: 'Clothing', img: '/assets/images/clothing-preview.jpg' },
-                ].map(tmpl => (
-                  <div
-                    key={tmpl.id}
-                    className={`template-option site-card${selectedTemplate === tmpl.id ? ' selected' : ''}`}
-                    onClick={() => setSelectedTemplate(tmpl.id)}
-                    style={{ cursor: 'pointer', padding: '0.5rem' }}
-                  >
-                    <img src={tmpl.img} alt={tmpl.name} style={{ width: '100%', borderRadius: '4px' }} />
-                    <p style={{ fontWeight: 600, fontSize: '0.8rem', textAlign: 'center', margin: '0.5rem 0 0' }}>{tmpl.name}</p>
-                  </div>
-                ))}
+              <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.5rem' }}>Template</label>
+              <div className="template-option site-card selected" style={{ padding: '0.5rem', maxWidth: '320px' }}>
+                <img src="/assets/images/storefront-preview.jpg" alt="Storefront" style={{ width: '100%', borderRadius: '4px' }} />
+                <p style={{ fontWeight: 600, fontSize: '0.8rem', textAlign: 'center', margin: '0.5rem 0 0' }}>Storefront</p>
               </div>
             </div>
 
