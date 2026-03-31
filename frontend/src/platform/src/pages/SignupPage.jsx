@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { signup as signupService, resendVerification, googleAuth } from '../services/authService.js';
@@ -14,6 +14,7 @@ export default function SignupPage() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [registeredEmail, setRegisteredEmail] = useState('');
   const [agreedTerms, setAgreedTerms] = useState(false);
+  const agreedTermsRef = useRef(false);
   const { isAuthenticated, login, loading } = useAuth();
   const navigate = useNavigate();
 
@@ -22,6 +23,10 @@ export default function SignupPage() {
       navigate('/dashboard', { replace: true });
     }
   }, [isAuthenticated, loading, navigate]);
+
+  useEffect(() => {
+    agreedTermsRef.current = agreedTerms;
+  }, [agreedTerms]);
 
   useEffect(() => {
     if (typeof window.google !== 'undefined' && window.google.accounts) {
@@ -54,7 +59,7 @@ export default function SignupPage() {
   }
 
   async function handleGoogleResponse(response) {
-    if (!agreedTerms) {
+    if (!agreedTermsRef.current) {
       setError('Please agree to the Terms & Conditions, Privacy Policy, and Refund Policy before signing up.');
       return;
     }
