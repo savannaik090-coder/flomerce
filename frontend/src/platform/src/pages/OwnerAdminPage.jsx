@@ -17,9 +17,15 @@ export default function OwnerAdminPage() {
   const [plans, setPlans] = useState([]);
   const [plansLoading, setPlansLoading] = useState(false);
   const [showPlanForm, setShowPlanForm] = useState(false);
-  const [editingPlan, setEditingPlan] = useState(null);
+  const [editingPlanName, setEditingPlanName] = useState(null);
   const [planForm, setPlanForm] = useState({
-    plan_name: '', billing_cycle: '3months', display_price: '', original_price: '', razorpay_plan_id: '', features: '', is_popular: false, display_order: 0, plan_tier: 1
+    plan_name: '', plan_tier: 1, features: '', is_popular: false, display_order: 0,
+    cycles: {
+      '3months': { enabled: false, display_price: '', original_price: '', razorpay_plan_id: '' },
+      '6months': { enabled: false, display_price: '', original_price: '', razorpay_plan_id: '' },
+      'yearly': { enabled: false, display_price: '', original_price: '', razorpay_plan_id: '' },
+      '3years': { enabled: false, display_price: '', original_price: '', razorpay_plan_id: '' },
+    }
   });
 
   const [settings, setSettings] = useState({});
@@ -104,31 +110,60 @@ export default function OwnerAdminPage() {
     }
   };
 
+  const CYCLE_LABELS = { '3months': '3 Months', '6months': '6 Months', 'yearly': 'Yearly', '3years': '3 Years' };
+  const TIER_LABELS = { 1: 'Tier 1 (Basic)', 2: 'Tier 2 (Standard)', 3: 'Tier 3 (Pro)', 4: 'Tier 4 (Enterprise)' };
+
+  const emptyCycles = () => ({
+    '3months': { enabled: false, display_price: '', original_price: '', razorpay_plan_id: '' },
+    '6months': { enabled: false, display_price: '', original_price: '', razorpay_plan_id: '' },
+    'yearly': { enabled: false, display_price: '', original_price: '', razorpay_plan_id: '' },
+    '3years': { enabled: false, display_price: '', original_price: '', razorpay_plan_id: '' },
+  });
+
   const resetPlanForm = () => {
-    setPlanForm({ plan_name: '', billing_cycle: '3months', display_price: '', original_price: '', razorpay_plan_id: '', features: '', is_popular: false, display_order: 0, plan_tier: 1 });
-    setEditingPlan(null);
+    setPlanForm({ plan_name: '', plan_tier: 1, features: '', is_popular: false, display_order: 0, cycles: emptyCycles() });
+    setEditingPlanName(null);
     setShowPlanForm(false);
   };
 
-  const TIER_LABELS = { 1: 'Tier 1 (Basic)', 2: 'Tier 2 (Standard)', 3: 'Tier 3 (Pro)', 4: 'Tier 4 (Enterprise)' };
+  const groupedPlans = () => {
+    const groups = {};
+    for (const p of plans) {
+      if (!groups[p.plan_name]) {
+        groups[p.plan_name] = { plan_name: p.plan_name, plan_tier: p.plan_tier, is_popular: !!p.is_popular, display_order: p.display_order || 0, features: p.features, cycles: [] };
+      }
+      groups[p.plan_name].cycles.push(p);
+    }
+    return Object.values(groups).sort((a, b) => a.display_order - b.display_order);
+  };
 
   const handlePlanSubmit = async (e) => {
     e.preventDefault();
     try {
+      const enabledCycles = Object.entries(planForm.cycles)
+        .filter(([, c]) => c.enabled && c.display_price && c.razorpay_plan_id)
+        .map(([key, c]) => ({
+          billing_cycle: key,
+          display_price: parseFloat(c.display_price),
+          original_price: c.original_price ? parseFloat(c.original_price) : null,
+          razorpay_plan_id: c.razorpay_plan_id,
+        }));
+
+      if (enabledCycles.length === 0) {
+        alert('Please enable at least one billing cycle with price and Razorpay Plan ID.');
+        return;
+      }
+
       const body = {
-        ...planForm,
-        display_price: parseFloat(planForm.display_price),
-        original_price: planForm.original_price ? parseFloat(planForm.original_price) : null,
-        display_order: parseInt(planForm.display_order) || 0,
+        plan_name: planForm.plan_name,
         plan_tier: parseInt(planForm.plan_tier) || 1,
         features: planForm.features ? planForm.features.split('\n').filter(f => f.trim()) : [],
+        is_popular: planForm.is_popular,
+        display_order: parseInt(planForm.display_order) || 0,
+        cycles: enabledCycles,
       };
 
-      if (editingPlan) {
-        await apiRequest(`/api/admin/plans/${editingPlan.id}`, { method: 'PUT', body: JSON.stringify(body) });
-      } else {
-        await apiRequest('/api/admin/plans', { method: 'POST', body: JSON.stringify(body) });
-      }
+      await apiRequest('/api/admin/plans/bulk', { method: 'POST', body: JSON.stringify(body) });
       resetPlanForm();
       await loadPlans();
     } catch (e) {
@@ -136,42 +171,45 @@ export default function OwnerAdminPage() {
     }
   };
 
-  const handleEditPlan = (plan) => {
+  const handleEditGroupedPlan = (group) => {
+    const cyc = emptyCycles();
+    for (const p of group.cycles) {
+      if (cyc[p.billing_cycle]) {
+        cyc[p.billing_cycle] = {
+          enabled: !!p.is_active,
+          display_price: p.display_price || '',
+          original_price: p.original_price || '',
+          razorpay_plan_id: p.razorpay_plan_id || '',
+        };
+      }
+    }
     setPlanForm({
-      plan_name: plan.plan_name,
-      billing_cycle: plan.billing_cycle,
-      display_price: plan.display_price,
-      original_price: plan.original_price || '',
-      razorpay_plan_id: plan.razorpay_plan_id,
-      features: Array.isArray(plan.features) ? plan.features.join('\n') : '',
-      is_popular: !!plan.is_popular,
-      display_order: plan.display_order || 0,
-      plan_tier: plan.plan_tier || 1,
+      plan_name: group.plan_name,
+      plan_tier: group.plan_tier || 1,
+      features: Array.isArray(group.features) ? group.features.join('\n') : '',
+      is_popular: !!group.is_popular,
+      display_order: group.display_order || 0,
+      cycles: cyc,
     });
-    setEditingPlan(plan);
+    setEditingPlanName(group.plan_name);
     setShowPlanForm(true);
   };
 
-  const handleTogglePlan = async (plan) => {
+  const handleDeleteGroupedPlan = async (group) => {
+    if (!window.confirm(`Are you sure you want to delete "${group.plan_name}" and all its billing cycles?`)) return;
     try {
-      await apiRequest(`/api/admin/plans/${plan.id}`, {
-        method: 'PUT',
-        body: JSON.stringify({ is_active: !plan.is_active }),
-      });
-      await loadPlans();
-    } catch (e) {
-      alert('Failed to toggle plan: ' + e.message);
-    }
-  };
-
-  const handleDeletePlan = async (plan) => {
-    if (!window.confirm(`Are you sure you want to delete "${plan.plan_name} (${plan.billing_cycle})"?`)) return;
-    try {
-      await apiRequest(`/api/admin/plans/${plan.id}`, { method: 'DELETE' });
+      await apiRequest('/api/admin/plans/bulk', { method: 'DELETE', body: JSON.stringify({ plan_name: group.plan_name }) });
       await loadPlans();
     } catch (e) {
       alert('Failed to delete plan: ' + e.message);
     }
+  };
+
+  const updateCycle = (cycleKey, field, value) => {
+    setPlanForm(prev => ({
+      ...prev,
+      cycles: { ...prev.cycles, [cycleKey]: { ...prev.cycles[cycleKey], [field]: value } }
+    }));
   };
 
   const loadSettings = async () => {
@@ -964,7 +1002,7 @@ export default function OwnerAdminPage() {
         <div className="oa-section">
           <div className="oa-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h3 style={{ margin: 0 }}>Subscription Plans ({plans.length})</h3>
+              <h3 style={{ margin: 0 }}>Subscription Plans ({groupedPlans().length})</h3>
               <button className="oa-btn oa-btn-primary" onClick={() => { resetPlanForm(); setShowPlanForm(true); }}>
                 + Add Plan
               </button>
@@ -973,11 +1011,11 @@ export default function OwnerAdminPage() {
             {showPlanForm && (
               <div className="oa-plan-form-wrap">
                 <form onSubmit={handlePlanSubmit} className="oa-plan-form">
-                  <h4 style={{ margin: '0 0 1rem' }}>{editingPlan ? 'Edit Plan' : 'Add New Plan'}</h4>
+                  <h4 style={{ margin: '0 0 1rem' }}>{editingPlanName ? `Edit Plan: ${editingPlanName}` : 'Add New Plan'}</h4>
                   <div className="oa-form-grid">
                     <div className="oa-form-group">
                       <label>Plan Name</label>
-                      <input type="text" value={planForm.plan_name} onChange={e => setPlanForm({ ...planForm, plan_name: e.target.value })} placeholder="e.g. Starter, Growth, Enterprise" required />
+                      <input type="text" value={planForm.plan_name} onChange={e => setPlanForm({ ...planForm, plan_name: e.target.value })} placeholder="e.g. Basic, Standard, Pro" required disabled={!!editingPlanName} />
                     </div>
                     <div className="oa-form-group">
                       <label>Plan Tier</label>
@@ -986,29 +1024,6 @@ export default function OwnerAdminPage() {
                           <option key={val} value={val}>{label}</option>
                         ))}
                       </select>
-                      <p style={{ fontSize: '0.7rem', color: '#94a3b8', margin: '0.25rem 0 0' }}>Defines the hierarchy level. Higher tier = more features.</p>
-                    </div>
-                    <div className="oa-form-group">
-                      <label>Billing Cycle</label>
-                      <select value={planForm.billing_cycle} onChange={e => setPlanForm({ ...planForm, billing_cycle: e.target.value })}>
-                        <option value="3months">3 Months</option>
-                        <option value="6months">6 Months</option>
-                        <option value="yearly">Yearly</option>
-                        <option value="3years">3 Years</option>
-                      </select>
-                    </div>
-                    <div className="oa-form-group">
-                      <label>Display Price (₹)</label>
-                      <input type="number" step="0.01" value={planForm.display_price} onChange={e => setPlanForm({ ...planForm, display_price: e.target.value })} placeholder="e.g. 2100" required />
-                    </div>
-                    <div className="oa-form-group">
-                      <label>Original Price (₹) — optional</label>
-                      <input type="number" step="0.01" value={planForm.original_price} onChange={e => setPlanForm({ ...planForm, original_price: e.target.value })} placeholder="e.g. 2800 (shown as strikethrough)" />
-                      <p style={{ fontSize: '0.7rem', color: '#94a3b8', margin: '0.25rem 0 0' }}>If set, this price is shown crossed out next to the discounted price.</p>
-                    </div>
-                    <div className="oa-form-group">
-                      <label>Razorpay Plan ID</label>
-                      <input type="text" value={planForm.razorpay_plan_id} onChange={e => setPlanForm({ ...planForm, razorpay_plan_id: e.target.value })} placeholder="e.g. plan_XXXXXX" required />
                     </div>
                     <div className="oa-form-group">
                       <label>Display Order</label>
@@ -1023,10 +1038,43 @@ export default function OwnerAdminPage() {
                   </div>
                   <div className="oa-form-group" style={{ marginTop: '0.5rem' }}>
                     <label>Features (one per line)</label>
-                    <textarea rows="4" value={planForm.features} onChange={e => setPlanForm({ ...planForm, features: e.target.value })} placeholder={"1 Website\nStandard Templates\n24/7 Support"} />
+                    <textarea rows="5" value={planForm.features} onChange={e => setPlanForm({ ...planForm, features: e.target.value })} placeholder={"1 Website\nUnlimited Products\nCustom Domain\n500 MB Database / 5 GB Storage"} />
+                    <p style={{ fontSize: '0.7rem', color: '#94a3b8', margin: '0.25rem 0 0' }}>These features are shared across all billing cycles of this plan.</p>
                   </div>
-                  <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
-                    <button type="submit" className="oa-btn oa-btn-primary">{editingPlan ? 'Update Plan' : 'Create Plan'}</button>
+
+                  <div style={{ marginTop: '1rem' }}>
+                    <label style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: '0.5rem', display: 'block' }}>Billing Cycles & Pricing</label>
+                    <p style={{ fontSize: '0.75rem', color: '#64748b', margin: '0 0 0.75rem' }}>Enable the cycles you want to offer. Each cycle needs its own price and Razorpay Plan ID.</p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      {Object.entries(CYCLE_LABELS).map(([key, label]) => (
+                        <div key={key} style={{ border: '1px solid ' + (planForm.cycles[key].enabled ? '#6366f1' : '#e2e8f0'), borderRadius: '8px', padding: '0.75rem', background: planForm.cycles[key].enabled ? '#f8f7ff' : '#fafafa', transition: 'all 0.2s' }}>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 500, cursor: 'pointer', marginBottom: planForm.cycles[key].enabled ? '0.75rem' : 0 }}>
+                            <input type="checkbox" checked={planForm.cycles[key].enabled} onChange={e => updateCycle(key, 'enabled', e.target.checked)} />
+                            {label}
+                          </label>
+                          {planForm.cycles[key].enabled && (
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.5rem' }}>
+                              <div className="oa-form-group" style={{ margin: 0 }}>
+                                <label style={{ fontSize: '0.75rem' }}>Display Price (₹)</label>
+                                <input type="number" step="0.01" value={planForm.cycles[key].display_price} onChange={e => updateCycle(key, 'display_price', e.target.value)} placeholder="e.g. 999" required />
+                              </div>
+                              <div className="oa-form-group" style={{ margin: 0 }}>
+                                <label style={{ fontSize: '0.75rem' }}>Original Price (₹)</label>
+                                <input type="number" step="0.01" value={planForm.cycles[key].original_price} onChange={e => updateCycle(key, 'original_price', e.target.value)} placeholder="Optional strikethrough" />
+                              </div>
+                              <div className="oa-form-group" style={{ margin: 0 }}>
+                                <label style={{ fontSize: '0.75rem' }}>Razorpay Plan ID</label>
+                                <input type="text" value={planForm.cycles[key].razorpay_plan_id} onChange={e => updateCycle(key, 'razorpay_plan_id', e.target.value)} placeholder="plan_XXXXXX" required />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.25rem' }}>
+                    <button type="submit" className="oa-btn oa-btn-primary">{editingPlanName ? 'Update Plan' : 'Create Plan'}</button>
                     <button type="button" className="oa-btn oa-btn-outline" onClick={resetPlanForm}>Cancel</button>
                   </div>
                 </form>
@@ -1035,93 +1083,50 @@ export default function OwnerAdminPage() {
 
             {plansLoading ? (
               <p className="oa-empty">Loading plans...</p>
-            ) : plans.length === 0 ? (
+            ) : groupedPlans().length === 0 ? (
               <p className="oa-empty">No plans created yet. Add your first plan above.</p>
             ) : (
-              <>
-                <div className="oa-table-wrap">
-                  <table className="oa-table">
-                    <thead>
-                      <tr>
-                        <th>Plan Name</th>
-                        <th>Tier</th>
-                        <th>Cycle</th>
-                        <th>Price</th>
-                        <th>Razorpay Plan ID</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {plans.map(p => (
-                        <tr key={p.id}>
-                          <td data-label="Name">
-                            {p.plan_name}
-                            {p.is_popular ? <span className="oa-badge oa-badge-popular" style={{ marginLeft: '0.5rem' }}>Popular</span> : ''}
-                          </td>
-                          <td data-label="Tier">
-                            <span className="oa-badge" style={{ background: '#e0e7ff', color: '#3730a3' }}>
-                              {TIER_LABELS[p.plan_tier] || `Tier ${p.plan_tier || 1}`}
-                            </span>
-                          </td>
-                          <td data-label="Cycle">{p.billing_cycle}</td>
-                          <td data-label="Price">
-                            {p.original_price ? <><span style={{ textDecoration: 'line-through', color: '#94a3b8', marginRight: '0.4rem' }}>₹{p.original_price}</span></> : null}
-                            ₹{p.display_price}
-                          </td>
-                          <td data-label="Plan ID" style={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>{p.razorpay_plan_id}</td>
-                          <td data-label="Status">
-                            <span className={`oa-badge ${p.is_active ? 'oa-badge-green' : 'oa-badge-red'}`}>
-                              {p.is_active ? 'Active' : 'Inactive'}
-                            </span>
-                          </td>
-                          <td data-label="Actions">
-                            <div style={{ display: 'flex', gap: '0.4rem' }}>
-                              <button className="oa-btn-sm oa-btn-edit" onClick={() => handleEditPlan(p)}>Edit</button>
-                              <button className="oa-btn-sm oa-btn-toggle" onClick={() => handleTogglePlan(p)}>
-                                {p.is_active ? 'Disable' : 'Enable'}
-                              </button>
-                              <button className="oa-btn-sm oa-btn-danger" onClick={() => handleDeletePlan(p)}>Delete</button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                <div className="oa-card-list-mobile">
-                  {plans.map(p => (
-                    <div className="oa-user-card" key={p.id}>
-                      <div className="oa-user-card-header">
-                        <div>
-                          <div className="oa-user-card-name">
-                            {p.plan_name}
-                            {p.is_popular ? <span className="oa-badge oa-badge-popular" style={{ marginLeft: '0.5rem' }}>Popular</span> : ''}
-                          </div>
-                          <div className="oa-user-card-email">
-                            <span className="oa-badge" style={{ background: '#e0e7ff', color: '#3730a3', marginRight: '0.5rem' }}>{TIER_LABELS[p.plan_tier] || `Tier ${p.plan_tier || 1}`}</span>
-                            {p.billing_cycle} - {p.original_price ? <><span style={{ textDecoration: 'line-through', color: '#94a3b8', marginRight: '0.3rem' }}>₹{p.original_price}</span></> : null}₹{p.display_price}
-                          </div>
-                          <div className="oa-user-card-email" style={{ fontFamily: 'monospace' }}>{p.razorpay_plan_id}</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '1rem' }}>
+                {groupedPlans().map(group => (
+                  <div key={group.plan_name} style={{ border: '1px solid #e2e8f0', borderRadius: '10px', padding: '1rem', background: '#fff' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                          <span style={{ fontWeight: 600, fontSize: '1.05rem' }}>{group.plan_name}</span>
+                          <span className="oa-badge" style={{ background: '#e0e7ff', color: '#3730a3' }}>
+                            {TIER_LABELS[group.plan_tier] || `Tier ${group.plan_tier}`}
+                          </span>
+                          {group.is_popular ? <span className="oa-badge oa-badge-popular">Popular</span> : null}
                         </div>
-                        <span className={`oa-badge ${p.is_active ? 'oa-badge-green' : 'oa-badge-red'}`}>
-                          {p.is_active ? 'Active' : 'Inactive'}
-                        </span>
+                        {Array.isArray(group.features) && group.features.length > 0 && (
+                          <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.35rem' }}>
+                            {group.features.slice(0, 3).join(' · ')}{group.features.length > 3 ? ` · +${group.features.length - 3} more` : ''}
+                          </div>
+                        )}
                       </div>
-                      <div className="oa-user-card-footer">
-                        <div style={{ display: 'flex', gap: '0.4rem' }}>
-                          <button className="oa-btn-sm oa-btn-edit" onClick={() => handleEditPlan(p)}>Edit</button>
-                          <button className="oa-btn-sm oa-btn-toggle" onClick={() => handleTogglePlan(p)}>
-                            {p.is_active ? 'Disable' : 'Enable'}
-                          </button>
-                          <button className="oa-btn-sm oa-btn-danger" onClick={() => handleDeletePlan(p)}>Delete</button>
-                        </div>
+                      <div style={{ display: 'flex', gap: '0.4rem' }}>
+                        <button className="oa-btn-sm oa-btn-edit" onClick={() => handleEditGroupedPlan(group)}>Edit</button>
+                        <button className="oa-btn-sm oa-btn-danger" onClick={() => handleDeleteGroupedPlan(group)}>Delete</button>
                       </div>
                     </div>
-                  ))}
-                </div>
-              </>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.5rem' }}>
+                      {group.cycles.map(c => (
+                        <div key={c.id} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '0.6rem 0.75rem' }}>
+                          <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 500, marginBottom: '0.25rem' }}>{CYCLE_LABELS[c.billing_cycle] || c.billing_cycle}</div>
+                          <div style={{ fontWeight: 600, fontSize: '1rem' }}>
+                            {c.original_price ? <span style={{ textDecoration: 'line-through', color: '#94a3b8', marginRight: '0.4rem', fontWeight: 400, fontSize: '0.85rem' }}>₹{c.original_price}</span> : null}
+                            ₹{c.display_price}
+                          </div>
+                          <div style={{ fontSize: '0.65rem', color: '#94a3b8', fontFamily: 'monospace', marginTop: '0.2rem' }}>{c.razorpay_plan_id}</div>
+                          <span className={`oa-badge ${c.is_active ? 'oa-badge-green' : 'oa-badge-red'}`} style={{ marginTop: '0.3rem', display: 'inline-block' }}>
+                            {c.is_active ? 'Active' : 'Inactive'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         </div>

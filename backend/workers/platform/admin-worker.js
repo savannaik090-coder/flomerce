@@ -229,6 +229,14 @@ async function handlePlansManagement(request, env, pathParts) {
     return getPlans(env);
   }
 
+  if (request.method === 'POST' && planId === 'bulk') {
+    return bulkSavePlan(request, env);
+  }
+
+  if (request.method === 'DELETE' && planId === 'bulk') {
+    return bulkDeletePlan(request, env);
+  }
+
   if (request.method === 'POST') {
     return createPlan(request, env);
   }
@@ -357,6 +365,121 @@ async function updatePlan(request, env, planId) {
   } catch (error) {
     console.error('Update plan error:', error);
     return errorResponse('Failed to update plan', 500);
+  }
+}
+
+async function bulkSavePlan(request, env) {
+  try {
+    const { plan_name, plan_tier, features, is_popular, display_order, cycles } = await request.json();
+
+    if (!plan_name || !plan_tier || !cycles || !Array.isArray(cycles) || cycles.length === 0) {
+      return errorResponse('Plan name, tier, and at least one billing cycle are required');
+    }
+
+    if (plan_tier < 1 || plan_tier > 10) {
+      return errorResponse('Plan tier must be between 1 and 10');
+    }
+
+    const validCycles = ['3months', '6months', 'yearly', '3years'];
+    const featuresJson = JSON.stringify(features || []);
+
+    const existingResult = await env.DB.prepare(
+      `SELECT * FROM subscription_plans WHERE plan_name = ?`
+    ).bind(plan_name).all();
+    const existingByName = existingResult.results || [];
+    const existingMap = {};
+    for (const row of existingByName) {
+      existingMap[row.billing_cycle] = row;
+    }
+
+    const activeCycleKeys = [];
+    const errors = [];
+
+    for (const cycle of cycles) {
+      if (!cycle.billing_cycle || !validCycles.includes(cycle.billing_cycle)) {
+        errors.push(`Invalid billing cycle: ${cycle.billing_cycle}`);
+        continue;
+      }
+      if (!cycle.display_price || !cycle.razorpay_plan_id) {
+        errors.push(`${cycle.billing_cycle}: price and Razorpay Plan ID are required`);
+        continue;
+      }
+      const dp = parseFloat(cycle.display_price);
+      if (!isFinite(dp) || dp <= 0) {
+        errors.push(`${cycle.billing_cycle}: display price must be a positive number`);
+        continue;
+      }
+      const op = cycle.original_price ? parseFloat(cycle.original_price) : null;
+      if (op != null && (!isFinite(op) || op <= 0 || op <= dp)) {
+        errors.push(`${cycle.billing_cycle}: original price must be greater than display price`);
+        continue;
+      }
+      activeCycleKeys.push({ key: cycle.billing_cycle, dp, op, razorpay_plan_id: cycle.razorpay_plan_id });
+    }
+
+    if (errors.length > 0) {
+      return errorResponse('Validation failed: ' + errors.join('; '), 400);
+    }
+
+    if (activeCycleKeys.length === 0) {
+      return errorResponse('At least one valid billing cycle is required', 400);
+    }
+
+    const statements = [];
+    const activeCycleNames = activeCycleKeys.map(c => c.key);
+
+    for (const cycle of activeCycleKeys) {
+      const existing = existingMap[cycle.key];
+      if (existing) {
+        statements.push(env.DB.prepare(
+          `UPDATE subscription_plans SET
+            plan_name = ?, plan_tier = ?, display_price = ?, original_price = ?,
+            razorpay_plan_id = ?, features = ?, is_popular = ?, display_order = ?,
+            is_active = 1, updated_at = datetime('now')
+          WHERE id = ?`
+        ).bind(
+          plan_name, plan_tier, cycle.dp, cycle.op, cycle.razorpay_plan_id,
+          featuresJson, is_popular ? 1 : 0, display_order || 0, existing.id
+        ));
+      } else {
+        const id = generateId();
+        statements.push(env.DB.prepare(
+          `INSERT INTO subscription_plans (id, plan_name, billing_cycle, display_price, original_price, razorpay_plan_id, features, is_popular, display_order, plan_tier, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
+        ).bind(
+          id, plan_name, cycle.key, cycle.dp, cycle.op, cycle.razorpay_plan_id,
+          featuresJson, is_popular ? 1 : 0, display_order || 0, plan_tier
+        ));
+      }
+    }
+
+    for (const [cycleKey, row] of Object.entries(existingMap)) {
+      if (!activeCycleNames.includes(cycleKey)) {
+        statements.push(env.DB.prepare(
+          `UPDATE subscription_plans SET is_active = 0, updated_at = datetime('now') WHERE id = ?`
+        ).bind(row.id));
+      }
+    }
+
+    await env.DB.batch(statements);
+
+    return successResponse(null, 'Plan saved successfully across all billing cycles');
+  } catch (error) {
+    console.error('Bulk save plan error:', error);
+    return errorResponse('Failed to save plan', 500);
+  }
+}
+
+async function bulkDeletePlan(request, env) {
+  try {
+    const { plan_name } = await request.json();
+    if (!plan_name) return errorResponse('Plan name is required');
+
+    await env.DB.prepare('DELETE FROM subscription_plans WHERE plan_name = ?').bind(plan_name).run();
+    return successResponse(null, `All cycles of "${plan_name}" deleted successfully`);
+  } catch (error) {
+    console.error('Bulk delete plan error:', error);
+    return errorResponse('Failed to delete plan', 500);
   }
 }
 
