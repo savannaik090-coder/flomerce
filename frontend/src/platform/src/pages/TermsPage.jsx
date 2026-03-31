@@ -28,7 +28,7 @@ export default function TermsPage() {
 
           <section>
             <h2>4. Subscription Plans & Payments</h2>
-            <p>Fluxe offers various subscription plans with different features and pricing, viewable on our website. By subscribing to a paid plan, you agree to pay the applicable fees as described at the time of purchase. All payments are processed securely through Razorpay, a PCI DSS-compliant payment gateway. Subscription fees are billed in advance on a recurring basis depending on your chosen billing cycle. All prices are displayed in Indian Rupees (INR). Razorpay supports payments via credit cards, debit cards, UPI, net banking, and digital wallets.</p>
+            <p>Fluxe offers various subscription plans with different features and pricing, viewable on our website. By subscribing to a paid plan, you agree to pay the applicable fees as described at the time of purchase. All payments are processed securely through Razorpay, a PCI DSS-compliant payment gateway. Subscription fees are billed in advance on a recurring basis depending on your chosen billing cycle. All prices are displayed in Indian Rupees (INR). Razorpay supports payments via credit cards, debit cards, UPI, net banking, and digital wallets. Standard payment gateway transaction fees as charged by Razorpay (currently 2% per transaction for most payment methods) may apply and are borne by Fluxe for platform subscription payments. These rates are determined by Razorpay and may change; refer to <a href="https://razorpay.com/pricing" target="_blank" rel="noopener noreferrer">Razorpay's pricing page</a> for current rates.</p>
           </section>
 
           <section>
@@ -46,6 +46,7 @@ export default function TermsPage() {
               <li>Handling refunds, disputes, and chargebacks for their own website transactions</li>
               <li>Complying with all applicable payment regulations, including RBI guidelines on digital payments</li>
             </ul>
+            <p>Payment gateway transaction fees charged by Razorpay on website customer payments (e.g., 2% per transaction) are applied to the website owner's Razorpay account as per their own agreement with Razorpay. Fluxe does not charge any additional commission or processing fee on these transactions.</p>
             <p>Razorpay API keys entered by website owners are stored securely in encrypted form and are used solely for processing transactions on their respective websites. Fluxe does not share, transfer, or use one merchant's credentials for any other purpose.</p>
           </section>
 
