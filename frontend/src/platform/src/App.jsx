@@ -9,6 +9,8 @@ import OwnerAdminPage from './pages/OwnerAdminPage.jsx';
 import TermsPage from './pages/TermsPage.jsx';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage.jsx';
 import RefundPolicyPage from './pages/RefundPolicyPage.jsx';
+import AboutPage from './pages/AboutPage.jsx';
+import ShippingPolicyPage from './pages/ShippingPolicyPage.jsx';
 
 export default function App() {
   return (
@@ -23,6 +25,8 @@ export default function App() {
       <Route path="/terms" element={<TermsPage />} />
       <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
       <Route path="/refund-policy" element={<RefundPolicyPage />} />
+      <Route path="/about" element={<AboutPage />} />
+      <Route path="/shipping-policy" element={<ShippingPolicyPage />} />
     </Routes>
   );
 }

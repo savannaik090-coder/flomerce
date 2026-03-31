@@ -163,10 +163,12 @@ export default function LandingPage() {
               <p>Empowering small businesses to sell online with ease.</p>
             </div>
             <div className="footer-links-group">
-              <h4>Legal</h4>
+              <h4>Company</h4>
+              <Link to="/about">About Us</Link>
               <Link to="/terms">Terms & Conditions</Link>
               <Link to="/privacy-policy">Privacy Policy</Link>
               <Link to="/refund-policy">Refund & Cancellation Policy</Link>
+              <Link to="/shipping-policy">Shipping & Delivery Policy</Link>
             </div>
             <div className="footer-links-group">
               <h4>Contact</h4>
