@@ -116,7 +116,7 @@ export default function LandingPage() {
               </div>
               <div className="teaser-video-container">
                 <video ref={videoRef} className="teaser-video" muted loop playsInline preload="auto">
-                  <source src="/api/upload/video?key=platform/VID_20260331_002038.mp4" type="video/mp4" />
+                  <source src="/api/upload/video?key=VID_20260331_002038.mp4" type="video/mp4" />
                 </video>
                 {!videoPlaying && (
                   <button className="teaser-play-btn" onClick={handlePlayVideo} aria-label="Play video">
