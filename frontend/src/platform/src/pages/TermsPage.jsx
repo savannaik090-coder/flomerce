@@ -32,22 +32,40 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2>5. Free Trial</h2>
+            <h2>5. Payment Processing & Gateway Integration</h2>
+            <p>Fluxe operates as a <strong>standard merchant</strong> and is <strong>not a payment aggregator, facilitator, or intermediary</strong>. The platform handles two distinct types of payments:</p>
+            <ul>
+              <li><strong>Platform Subscription Payments:</strong> Fees paid by store owners for Fluxe subscription plans (Basic, Standard, Pro, etc.) are collected directly by Fluxe through its own Razorpay merchant account. These are payments for Fluxe's SaaS services only.</li>
+              <li><strong>Storefront Customer Payments:</strong> Payments made by end customers on stores created through Fluxe are processed entirely through the <strong>store owner's own, independently registered Razorpay merchant account</strong>. Store owners are required to obtain their own Razorpay account, complete their own KYC verification, and enter their own API credentials in their store dashboard settings.</li>
+            </ul>
+            <p>Fluxe does <strong>not collect, hold, pool, settle, or route</strong> any payments on behalf of store owners or their customers. All storefront transaction funds flow directly from the customer to the store owner's Razorpay account. Fluxe has no access to or control over these funds at any point.</p>
+            <p>Each store owner is solely responsible for:</p>
+            <ul>
+              <li>Maintaining their own valid Razorpay merchant account and KYC compliance</li>
+              <li>Securing their own API keys and credentials</li>
+              <li>Handling refunds, disputes, and chargebacks for their own storefront transactions</li>
+              <li>Complying with all applicable payment regulations, including RBI guidelines on digital payments</li>
+            </ul>
+            <p>Razorpay API keys entered by store owners are stored securely in encrypted form and are used solely for processing transactions on their respective storefronts. Fluxe does not share, transfer, or use one merchant's credentials for any other purpose.</p>
+          </section>
+
+          <section>
+            <h2>6. Free Trial</h2>
             <p>We offer a 7-day free trial period for new users. During the trial period, you have full access to the platform features at no cost. No payment information is required to start a free trial. At the end of the trial, your account will be suspended and your website will be disabled unless you subscribe to a paid plan. We reserve the right to modify or discontinue the free trial at any time.</p>
           </section>
 
           <section>
-            <h2>6. Digital Delivery</h2>
+            <h2>7. Digital Delivery</h2>
             <p>Fluxe is a digital SaaS product. No physical goods are shipped by Fluxe. Upon successful payment or trial activation, access to the platform and all included features is granted immediately. Your e-commerce website will be live and accessible at your chosen subdomain (your-store.fluxe.in) within seconds of creation.</p>
           </section>
 
           <section>
-            <h2>7. User Content</h2>
+            <h2>8. User Content</h2>
             <p>You retain ownership of all content you upload to your websites created through Fluxe, including but not limited to product images, descriptions, logos, and text. You are solely responsible for ensuring that your content does not violate any applicable laws, infringe upon intellectual property rights, or contain prohibited material. You grant Fluxe a limited, non-exclusive license to host and display your content as necessary to provide the Service.</p>
           </section>
 
           <section>
-            <h2>8. Prohibited Uses</h2>
+            <h2>9. Prohibited Uses</h2>
             <p>You agree not to use the Service to:</p>
             <ul>
               <li>Sell illegal, counterfeit, or prohibited goods</li>
@@ -62,37 +80,37 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2>9. Intellectual Property</h2>
+            <h2>10. Intellectual Property</h2>
             <p>The Fluxe platform, including its design, code, features, and branding, is the intellectual property of Fluxe and is protected by applicable copyright and trademark laws. You may not copy, modify, distribute, or reverse-engineer any part of the Service without prior written consent.</p>
           </section>
 
           <section>
-            <h2>10. Termination</h2>
+            <h2>11. Termination</h2>
             <p>We reserve the right to suspend or terminate your account at any time if you violate these Terms or engage in activities that are harmful to the Service or other users. Upon termination, your access to the Service will be revoked. Your website data will be retained for 30 days after termination, during which you may request data export. After this period, data may be permanently deleted.</p>
           </section>
 
           <section>
-            <h2>11. Limitation of Liability</h2>
+            <h2>12. Limitation of Liability</h2>
             <p>To the maximum extent permitted by law, Fluxe shall not be liable for any indirect, incidental, special, consequential, or punitive damages, including but not limited to loss of profits, data, or business opportunities, arising out of or in connection with the use of the Service. Our total liability shall not exceed the amount paid by you in the preceding 12 months.</p>
           </section>
 
           <section>
-            <h2>12. Disclaimer of Warranties</h2>
+            <h2>13. Disclaimer of Warranties</h2>
             <p>The Service is provided "as is" and "as available" without warranties of any kind, either express or implied. We do not guarantee that the Service will be uninterrupted, error-free, or secure at all times. We strive for 99.9% uptime but do not guarantee it.</p>
           </section>
 
           <section>
-            <h2>13. Governing Law & Dispute Resolution</h2>
+            <h2>14. Governing Law & Dispute Resolution</h2>
             <p>These Terms shall be governed by and construed in accordance with the laws of India. Any disputes arising out of these Terms shall be subject to the exclusive jurisdiction of the courts in Karnataka, India. Before initiating legal proceedings, both parties agree to attempt resolution through good-faith negotiation.</p>
           </section>
 
           <section>
-            <h2>14. Changes to Terms</h2>
+            <h2>15. Changes to Terms</h2>
             <p>We reserve the right to update these Terms at any time. Changes will be posted on this page with an updated "Last updated" date. We will notify registered users of significant changes via email. Continued use of the Service after changes constitutes acceptance of the revised Terms.</p>
           </section>
 
           <section>
-            <h2>15. Contact Us</h2>
+            <h2>16. Contact Us</h2>
             <p>If you have any questions about these Terms & Conditions, please contact us at:</p>
             <p><strong>Fluxe</strong></p>
             <p><strong>Email:</strong> <a href="mailto:support@fluxe.in">support@fluxe.in</a></p>
