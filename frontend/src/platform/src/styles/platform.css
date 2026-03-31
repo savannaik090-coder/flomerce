@@ -390,13 +390,17 @@ body {
   }
 
   .nav-links {
-    position: fixed;
+    position: fixed !important;
     top: 0;
     right: 0;
+    bottom: 0;
     width: 75vw;
     max-width: 300px;
-    height: 100dvh;
-    background: var(--bg-main, #ffffff);
+    height: 100%;
+    min-height: 100vh;
+    min-height: 100dvh;
+    background-color: #ffffff !important;
+    background: #ffffff !important;
     flex-direction: column;
     align-items: stretch;
     padding: 4.5rem 1.5rem 2rem;
@@ -405,8 +409,9 @@ body {
     box-shadow: -8px 0 30px rgba(0, 0, 0, 0.15);
     border-left: 1px solid var(--border);
     transform: translateX(100%);
-    transition: transform 0.3s ease;
+    transition: transform 0.3s ease !important;
     overflow-y: auto;
+    isolation: isolate;
   }
 
   .nav-links.nav-open {
