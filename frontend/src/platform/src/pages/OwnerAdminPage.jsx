@@ -20,11 +20,12 @@ export default function OwnerAdminPage() {
   const [editingPlanName, setEditingPlanName] = useState(null);
   const [planForm, setPlanForm] = useState({
     plan_name: '', plan_tier: 1, features: '', is_popular: false, display_order: 0,
+    monthly_price: '',
     cycles: {
-      '3months': { enabled: false, display_price: '', original_price: '', razorpay_plan_id: '' },
-      '6months': { enabled: false, display_price: '', original_price: '', razorpay_plan_id: '' },
-      'yearly': { enabled: false, display_price: '', original_price: '', razorpay_plan_id: '' },
-      '3years': { enabled: false, display_price: '', original_price: '', razorpay_plan_id: '' },
+      '3months': { enabled: false, razorpay_plan_id: '', discount: 0 },
+      '6months': { enabled: false, razorpay_plan_id: '', discount: 0 },
+      'yearly': { enabled: false, razorpay_plan_id: '', discount: 10 },
+      '3years': { enabled: false, razorpay_plan_id: '', discount: 20 },
     }
   });
 
@@ -111,17 +112,27 @@ export default function OwnerAdminPage() {
   };
 
   const CYCLE_LABELS = { '3months': '3 Months', '6months': '6 Months', 'yearly': 'Yearly', '3years': '3 Years' };
+  const CYCLE_MONTHS = { '3months': 3, '6months': 6, 'yearly': 12, '3years': 36 };
   const TIER_LABELS = { 1: 'Tier 1 (Basic)', 2: 'Tier 2 (Standard)', 3: 'Tier 3 (Pro)', 4: 'Tier 4 (Enterprise)' };
 
   const emptyCycles = () => ({
-    '3months': { enabled: false, display_price: '', original_price: '', razorpay_plan_id: '' },
-    '6months': { enabled: false, display_price: '', original_price: '', razorpay_plan_id: '' },
-    'yearly': { enabled: false, display_price: '', original_price: '', razorpay_plan_id: '' },
-    '3years': { enabled: false, display_price: '', original_price: '', razorpay_plan_id: '' },
+    '3months': { enabled: false, razorpay_plan_id: '', discount: 0 },
+    '6months': { enabled: false, razorpay_plan_id: '', discount: 0 },
+    'yearly': { enabled: false, razorpay_plan_id: '', discount: 10 },
+    '3years': { enabled: false, razorpay_plan_id: '', discount: 20 },
   });
 
+  const calcCyclePrice = (monthlyPrice, cycleKey, discount) => {
+    const mp = parseFloat(monthlyPrice);
+    if (!isFinite(mp) || mp <= 0) return { display: 0, original: 0 };
+    const months = CYCLE_MONTHS[cycleKey];
+    const original = Math.round(mp * months);
+    const discounted = discount > 0 ? Math.round(original * (1 - discount / 100)) : original;
+    return { display: discounted, original: discount > 0 ? original : null };
+  };
+
   const resetPlanForm = () => {
-    setPlanForm({ plan_name: '', plan_tier: 1, features: '', is_popular: false, display_order: 0, cycles: emptyCycles() });
+    setPlanForm({ plan_name: '', plan_tier: 1, features: '', is_popular: false, display_order: 0, monthly_price: '', cycles: emptyCycles() });
     setEditingPlanName(null);
     setShowPlanForm(false);
   };
@@ -139,18 +150,26 @@ export default function OwnerAdminPage() {
 
   const handlePlanSubmit = async (e) => {
     e.preventDefault();
+    const mp = parseFloat(planForm.monthly_price);
+    if (!isFinite(mp) || mp <= 0) {
+      alert('Please enter a valid monthly price.');
+      return;
+    }
     try {
       const enabledCycles = Object.entries(planForm.cycles)
-        .filter(([, c]) => c.enabled && c.display_price && c.razorpay_plan_id)
-        .map(([key, c]) => ({
-          billing_cycle: key,
-          display_price: parseFloat(c.display_price),
-          original_price: c.original_price ? parseFloat(c.original_price) : null,
-          razorpay_plan_id: c.razorpay_plan_id,
-        }));
+        .filter(([, c]) => c.enabled && c.razorpay_plan_id)
+        .map(([key, c]) => {
+          const prices = calcCyclePrice(planForm.monthly_price, key, c.discount || 0);
+          return {
+            billing_cycle: key,
+            display_price: prices.display,
+            original_price: prices.original,
+            razorpay_plan_id: c.razorpay_plan_id,
+          };
+        });
 
       if (enabledCycles.length === 0) {
-        alert('Please enable at least one billing cycle with price and Razorpay Plan ID.');
+        alert('Please enable at least one billing cycle with a Razorpay Plan ID.');
         return;
       }
 
@@ -173,13 +192,22 @@ export default function OwnerAdminPage() {
 
   const handleEditGroupedPlan = (group) => {
     const cyc = emptyCycles();
+    let derivedMonthly = '';
     for (const p of group.cycles) {
       if (cyc[p.billing_cycle]) {
+        const months = CYCLE_MONTHS[p.billing_cycle];
+        const fullPrice = p.original_price || p.display_price;
+        const monthlyFromThis = Math.round(fullPrice / months);
+        if (!derivedMonthly && p.is_active) derivedMonthly = monthlyFromThis;
+
+        let disc = 0;
+        if (p.original_price && p.original_price > p.display_price) {
+          disc = Math.round((1 - p.display_price / p.original_price) * 100);
+        }
         cyc[p.billing_cycle] = {
           enabled: !!p.is_active,
-          display_price: p.display_price || '',
-          original_price: p.original_price || '',
           razorpay_plan_id: p.razorpay_plan_id || '',
+          discount: disc,
         };
       }
     }
@@ -189,6 +217,7 @@ export default function OwnerAdminPage() {
       features: Array.isArray(group.features) ? group.features.join('\n') : '',
       is_popular: !!group.is_popular,
       display_order: group.display_order || 0,
+      monthly_price: derivedMonthly || '',
       cycles: cyc,
     });
     setEditingPlanName(group.plan_name);
@@ -1043,33 +1072,51 @@ export default function OwnerAdminPage() {
                   </div>
 
                   <div style={{ marginTop: '1rem' }}>
-                    <label style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: '0.5rem', display: 'block' }}>Billing Cycles & Pricing</label>
-                    <p style={{ fontSize: '0.75rem', color: '#64748b', margin: '0 0 0.75rem' }}>Enable the cycles you want to offer. Each cycle needs its own price and Razorpay Plan ID.</p>
+                    <div className="oa-form-group">
+                      <label style={{ fontWeight: 600 }}>Monthly Price (₹)</label>
+                      <input type="number" step="1" value={planForm.monthly_price} onChange={e => setPlanForm({ ...planForm, monthly_price: e.target.value })} placeholder="e.g. 399" required style={{ maxWidth: '200px' }} />
+                      <p style={{ fontSize: '0.7rem', color: '#94a3b8', margin: '0.25rem 0 0' }}>This base price is used to auto-calculate all billing cycle totals below.</p>
+                    </div>
+
+                    <label style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: '0.5rem', display: 'block' }}>Billing Cycles</label>
+                    <p style={{ fontSize: '0.75rem', color: '#64748b', margin: '0 0 0.75rem' }}>Enable the cycles you want. Prices are calculated from the monthly price. Add an optional discount for longer durations.</p>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                      {Object.entries(CYCLE_LABELS).map(([key, label]) => (
+                      {Object.entries(CYCLE_LABELS).map(([key, label]) => {
+                        const prices = calcCyclePrice(planForm.monthly_price, key, planForm.cycles[key].discount || 0);
+                        return (
                         <div key={key} style={{ border: '1px solid ' + (planForm.cycles[key].enabled ? '#6366f1' : '#e2e8f0'), borderRadius: '8px', padding: '0.75rem', background: planForm.cycles[key].enabled ? '#f8f7ff' : '#fafafa', transition: 'all 0.2s' }}>
                           <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 500, cursor: 'pointer', marginBottom: planForm.cycles[key].enabled ? '0.75rem' : 0 }}>
                             <input type="checkbox" checked={planForm.cycles[key].enabled} onChange={e => updateCycle(key, 'enabled', e.target.checked)} />
                             {label}
+                            {planForm.cycles[key].enabled && planForm.monthly_price && (
+                              <span style={{ marginLeft: 'auto', fontSize: '0.85rem', fontWeight: 600, color: '#6366f1' }}>
+                                ₹{prices.display}
+                                {prices.original ? <span style={{ textDecoration: 'line-through', color: '#94a3b8', marginLeft: '0.4rem', fontWeight: 400, fontSize: '0.75rem' }}>₹{prices.original}</span> : null}
+                              </span>
+                            )}
                           </label>
                           {planForm.cycles[key].enabled && (
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.5rem' }}>
                               <div className="oa-form-group" style={{ margin: 0 }}>
-                                <label style={{ fontSize: '0.75rem' }}>Display Price (₹)</label>
-                                <input type="number" step="0.01" value={planForm.cycles[key].display_price} onChange={e => updateCycle(key, 'display_price', e.target.value)} placeholder="e.g. 999" required />
-                              </div>
-                              <div className="oa-form-group" style={{ margin: 0 }}>
-                                <label style={{ fontSize: '0.75rem' }}>Original Price (₹)</label>
-                                <input type="number" step="0.01" value={planForm.cycles[key].original_price} onChange={e => updateCycle(key, 'original_price', e.target.value)} placeholder="Optional strikethrough" />
+                                <label style={{ fontSize: '0.75rem' }}>Discount (%)</label>
+                                <input type="number" min="0" max="99" value={planForm.cycles[key].discount} onChange={e => updateCycle(key, 'discount', parseInt(e.target.value) || 0)} placeholder="0" />
                               </div>
                               <div className="oa-form-group" style={{ margin: 0 }}>
                                 <label style={{ fontSize: '0.75rem' }}>Razorpay Plan ID</label>
                                 <input type="text" value={planForm.cycles[key].razorpay_plan_id} onChange={e => updateCycle(key, 'razorpay_plan_id', e.target.value)} placeholder="plan_XXXXXX" required />
                               </div>
+                              {planForm.monthly_price && (
+                                <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: '0.35rem' }}>
+                                  <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                                    ₹{Math.round(prices.display / CYCLE_MONTHS[key])}/mo effective
+                                  </span>
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
 
