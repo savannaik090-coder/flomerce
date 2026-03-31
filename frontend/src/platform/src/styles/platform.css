@@ -383,7 +383,6 @@ body {
 @media (max-width: 768px) {
   .nav {
     padding: 1rem 0;
-    z-index: 9999;
   }
 
   .nav-hamburger {
