@@ -523,7 +523,11 @@ export default function DashboardPage() {
   const renderTrialBanner = () => {
     if (!dataLoaded) return null;
     if (accountStatus.isTrialActive && accountStatus.trialEndDate) {
-      const daysLeft = Math.max(0, Math.ceil((new Date(accountStatus.trialEndDate) - new Date()) / (1000 * 60 * 60 * 24)));
+      const endDate = new Date(accountStatus.trialEndDate);
+      const today = new Date();
+      endDate.setHours(0, 0, 0, 0);
+      today.setHours(0, 0, 0, 0);
+      const daysLeft = Math.max(0, Math.round((endDate - today) / (1000 * 60 * 60 * 24)));
       return (
         <div className="site-card" style={{ display: 'block', marginBottom: '1.5rem', borderColor: '#10b981', borderWidth: '2px', background: '#f0fdf4' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
