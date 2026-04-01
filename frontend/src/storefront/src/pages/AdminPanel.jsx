@@ -11,7 +11,6 @@ import PushNotificationsSection from '../components/admin/PushNotificationsSecti
 import WebsiteContentSection from '../components/admin/WebsiteContentSection.jsx';
 import SettingsSection from '../components/admin/SettingsSection.jsx';
 import SEOSection from '../components/admin/SEOSection.jsx';
-import FAQSection from '../components/admin/FAQSection.jsx';
 import ProductForm from '../components/admin/ProductForm.jsx';
 import { apiRequest } from '../services/api.js';
 import '../styles/admin.css';
@@ -293,7 +292,6 @@ export default function AdminPanel() {
     website: 'Edit Website',
     seo: 'SEO',
     notifications: 'Push Notifications',
-    faq: 'FAQ',
     settings: 'Settings',
   };
 
@@ -343,7 +341,6 @@ export default function AdminPanel() {
           {activeSection === 'website' && hasPermission('website') && <WebsiteContentSection />}
           {activeSection === 'seo' && hasPermission('seo') && <SEOSection />}
           {activeSection === 'notifications' && hasPermission('notifications') && <PushNotificationsSection />}
-          {activeSection === 'faq' && hasPermission('faq') && <FAQSection />}
           {activeSection === 'settings' && hasPermission('settings') && <SettingsSection />}
         </div>
       </div>
