@@ -45,6 +45,7 @@ export default function Footer() {
               <li><Link to="/contact">Contact Us</Link></li>
               <li><Link to="/terms#section-4">Shipping Policy</Link></li>
               <li><Link to="/terms#section-5">Returns & Exchanges</Link></li>
+              {settings.showFaq !== false && <li><Link to="/faq">FAQ</Link></li>}
               <li><Link to="/terms">Terms and Conditions</Link></li>
               <li><Link to="/privacy-policy">Privacy Policy</Link></li>
             </ul>

@@ -3,7 +3,7 @@ import { validateAuth, hashPassword, verifyPassword } from '../../utils/auth.js'
 import { resolveSiteDBById, checkMigrationLock, getSiteConfig } from '../../utils/site-db.js';
 import { estimateRowBytes, trackD1Write, trackD1Update } from '../../utils/usage-tracker.js';
 
-const ALL_PERMISSIONS = ['dashboard', 'products', 'inventory', 'orders', 'customers', 'analytics', 'website', 'seo', 'notifications', 'settings'];
+const ALL_PERMISSIONS = ['dashboard', 'products', 'inventory', 'orders', 'customers', 'analytics', 'website', 'seo', 'notifications', 'faq', 'settings'];
 
 export async function handleSiteAdmin(request, env, path) {
   const corsResponse = handleCORS(request);

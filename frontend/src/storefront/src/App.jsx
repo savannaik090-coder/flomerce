@@ -45,6 +45,7 @@ const ReturnPage = React.lazy(() => import('./pages/ReturnPage.jsx'));
 const CancelPage = React.lazy(() => import('./pages/CancelPage.jsx'));
 const OrderHelpPage = React.lazy(() => import('./pages/OrderHelpPage.jsx'));
 const ReviewPage = React.lazy(() => import('./pages/ReviewPage.jsx'));
+const FaqPage = React.lazy(() => import('./pages/FaqPage.jsx'));
 
 function removePreloader() {
   const el = document.getElementById('fluxe-preloader');
@@ -147,6 +148,7 @@ export default function App() {
             <Route path="/order-help" element={<OrderHelpPage />} />
             <Route path="/order-help/:orderId" element={<OrderHelpPage />} />
             <Route path="/review/:orderId" element={<ReviewPage />} />
+            <Route path="/faq" element={<FaqPage />} />
           </Routes>
         </React.Suspense>
       </main>

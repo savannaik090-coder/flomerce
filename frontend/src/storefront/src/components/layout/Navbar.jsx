@@ -208,6 +208,7 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
                   <li className="nav-item"><Link to="/order-track" className="nav-link" onClick={closeMobileMenu}>Order Track</Link></li>
                 )
               )}
+              {settings.faqInNavbar && settings.showFaq !== false && <li className="nav-item"><Link to="/faq" className="nav-link" onClick={closeMobileMenu}>FAQ</Link></li>}
               {showContact && <li className="nav-item"><Link to="/contact" className="nav-link" onClick={closeMobileMenu}>Contact</Link></li>}
             </ul>
 

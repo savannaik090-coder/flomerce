@@ -2162,7 +2162,7 @@ var init_site_admin_worker = __esm({
     init_auth();
     init_site_db();
     init_usage_tracker();
-    ALL_PERMISSIONS = ["dashboard", "products", "inventory", "orders", "customers", "analytics", "website", "seo", "notifications", "settings"];
+    ALL_PERMISSIONS = ["dashboard", "products", "inventory", "orders", "customers", "analytics", "website", "seo", "notifications", "faq", "settings"];
     __name(handleSiteAdmin, "handleSiteAdmin");
     __name(staffLogin, "staffLogin");
     __name(validateSiteAdminToken, "validateSiteAdminToken");

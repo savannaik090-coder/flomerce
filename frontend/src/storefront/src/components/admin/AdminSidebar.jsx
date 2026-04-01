@@ -10,6 +10,7 @@ const navItems = [
   { id: 'website', icon: 'fa-globe', label: 'Edit Website' },
   { id: 'seo', icon: 'fa-search', label: 'SEO' },
   { id: 'notifications', icon: 'fa-bell', label: 'Push Notifications' },
+  { id: 'faq', icon: 'fa-question-circle', label: 'FAQ' },
   { id: 'settings', icon: 'fa-cog', label: 'Settings' },
 ];
 
