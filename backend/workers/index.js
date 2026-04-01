@@ -16,6 +16,7 @@ import { handleUpload } from './storefront/upload-worker.js';
 import { handleAnalytics } from './storefront/analytics-worker.js';
 import { handleNotifications } from './storefront/notifications-worker.js';
 import { handleReviews } from './storefront/reviews-worker.js';
+import { handleBlog } from './storefront/blog-worker.js';
 import { handleUsageAPI } from '../utils/usage-tracker.js';
 import { jsonResponse, errorResponse, corsHeaders, handleCORS } from '../utils/helpers.js';
 import { ensureTablesExist } from '../utils/db-init.js';
@@ -135,6 +136,9 @@ async function handleAPI(request, env, path, ctx) {
 
     case 'reviews':
       return handleReviews(request, env, path);
+
+    case 'blog':
+      return handleBlog(request, env, path);
 
     case 'usage':
       return handleUsageAPI(request, env, path);

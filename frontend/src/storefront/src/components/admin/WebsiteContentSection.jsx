@@ -18,6 +18,7 @@ import NavbarEditor from './NavbarEditor.jsx';
 import BookAppointmentEditor from './BookAppointmentEditor.jsx';
 import ContactEditor from './ContactEditor.jsx';
 import FAQSection from './FAQSection.jsx';
+import BlogSection from './BlogSection.jsx';
 import SectionToggle from './SectionToggle.jsx';
 import SaveBar from './SaveBar.jsx';
 
@@ -47,6 +48,7 @@ const TAB_GROUPS = [
       { id: 'contact-us',        icon: 'fa-envelope',       label: 'Contact Us',       page: '/contact' },
       { id: 'book-appointment',  icon: 'fa-calendar-check', label: 'Book Appointment', page: '/book-appointment' },
       { id: 'faq',               icon: 'fa-question-circle', label: 'FAQ',             page: '/faq' },
+      { id: 'blog',              icon: 'fa-pen-fancy',      label: 'Blog',            page: '/blog' },
     ],
   },
   {
@@ -386,6 +388,7 @@ export default function WebsiteContentSection() {
           {activeTab === 'product-policies' && <ProductPoliciesEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
           {activeTab === 'about-us' && <AboutUsEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
           {activeTab === 'faq' && <FAQSection />}
+          {activeTab === 'blog' && <BlogSection />}
           {activeTab === 'terms' && <TermsEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
           {activeTab === 'privacy' && <PrivacyEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
           {activeTab === 'footer' && <FooterEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}

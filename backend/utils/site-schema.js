@@ -433,6 +433,26 @@ export function getSiteSchemaStatements() {
       created_at TEXT DEFAULT (datetime('now')),
       updated_at TEXT DEFAULT (datetime('now'))
     )`,
+
+    `CREATE TABLE IF NOT EXISTS blog_posts (
+      id TEXT PRIMARY KEY,
+      site_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      slug TEXT NOT NULL,
+      content TEXT NOT NULL DEFAULT '',
+      excerpt TEXT DEFAULT '',
+      cover_image TEXT DEFAULT '',
+      status TEXT DEFAULT 'draft',
+      author TEXT DEFAULT '',
+      tags TEXT DEFAULT '[]',
+      meta_title TEXT DEFAULT '',
+      meta_description TEXT DEFAULT '',
+      published_at TEXT,
+      row_size_bytes INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(site_id, slug)
+    )`,
   ];
 
   const indexes = [
@@ -487,6 +507,10 @@ export function getSiteSchemaStatements() {
     'CREATE INDEX IF NOT EXISTS idx_page_views_created ON page_views(site_id, created_at)',
     'CREATE INDEX IF NOT EXISTS idx_page_views_visitor ON page_views(site_id, visitor_id)',
     'CREATE INDEX IF NOT EXISTS idx_page_views_path ON page_views(site_id, page_path)',
+    'CREATE INDEX IF NOT EXISTS idx_blog_posts_site ON blog_posts(site_id)',
+    'CREATE INDEX IF NOT EXISTS idx_blog_posts_slug ON blog_posts(site_id, slug)',
+    'CREATE INDEX IF NOT EXISTS idx_blog_posts_status ON blog_posts(site_id, status)',
+    'CREATE INDEX IF NOT EXISTS idx_blog_posts_published ON blog_posts(site_id, published_at)',
   ];
 
   const addColumnMigrations = [
