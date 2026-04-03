@@ -3,6 +3,7 @@ import { SiteContext } from '../../context/SiteContext.jsx';
 import { apiRequest } from '../../services/api.js';
 
 let ReactQuill = null;
+let quillCssLoaded = false;
 
 export default function BlogSection() {
   const { siteConfig, refetchSite } = useContext(SiteContext);
@@ -32,8 +33,19 @@ export default function BlogSection() {
 
   useEffect(() => {
     if ((creating || editing) && !quillLoaded) {
-      import('react-quill-new').then(mod => {
+      Promise.all([
+        import('react-quill-new'),
+        quillCssLoaded ? Promise.resolve() : import('react-quill-new/dist/quill.snow.css').catch(() => {
+          if (!document.querySelector('link[href*="quill.snow"]')) {
+            const link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = 'https://cdn.jsdelivr.net/npm/react-quill-new@3/dist/quill.snow.css';
+            document.head.appendChild(link);
+          }
+        }),
+      ]).then(([mod]) => {
         ReactQuill = mod.default;
+        quillCssLoaded = true;
         setQuillLoaded(true);
       });
     }
@@ -134,7 +146,14 @@ export default function BlogSection() {
           <PostCard
             key={post.id}
             post={post}
-            onEdit={() => setEditing(post)}
+            onEdit={async () => {
+              try {
+                const fullPost = await apiRequest(`/api/blog/admin/${post.id}?siteId=${siteConfig.id}`);
+                setEditing(fullPost.data || fullPost);
+              } catch (e) {
+                showMsg('Failed to load post. Please try again.');
+              }
+            }}
             onDelete={async () => {
               if (!confirm('Delete this blog post?')) return;
               try {

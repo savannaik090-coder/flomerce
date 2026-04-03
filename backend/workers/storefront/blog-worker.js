@@ -36,6 +36,10 @@ export async function handleBlog(request, env, path) {
     return adminListPosts(request, env);
   }
 
+  if (action === 'admin' && subAction && method === 'GET') {
+    return adminGetPost(request, env, subAction);
+  }
+
   if (action === 'admin' && method === 'POST' && !subAction) {
     return createPost(request, env);
   }
@@ -51,6 +55,20 @@ export async function handleBlog(request, env, path) {
   return errorResponse('Not found', 404);
 }
 
+async function isBlogEnabled(db, siteId) {
+  try {
+    const site = await db.prepare('SELECT settings FROM site_config WHERE id = ?').bind(siteId).first();
+    if (!site) return true;
+    let settings = site.settings || '{}';
+    if (typeof settings === 'string') {
+      try { settings = JSON.parse(settings); } catch (e) { return true; }
+    }
+    return settings.showBlog !== false;
+  } catch (e) {
+    return true;
+  }
+}
+
 async function listPosts(request, env) {
   try {
     const url = new URL(request.url);
@@ -58,6 +76,11 @@ async function listPosts(request, env) {
     if (!siteId) return errorResponse('siteId is required', 400);
 
     const db = await resolveSiteDBById(env, siteId);
+
+    if (!(await isBlogEnabled(db, siteId))) {
+      return successResponse({ posts: [], total: 0, page: 1, totalPages: 0 });
+    }
+
     const page = Math.max(1, parseInt(url.searchParams.get('page') || '1') || 1);
     const limit = Math.min(50, Math.max(1, parseInt(url.searchParams.get('limit') || '12') || 12));
     const offset = (page - 1) * limit;
@@ -94,6 +117,11 @@ async function getPost(request, env, slug) {
     if (!siteId) return errorResponse('siteId is required', 400);
 
     const db = await resolveSiteDBById(env, siteId);
+
+    if (!(await isBlogEnabled(db, siteId))) {
+      return errorResponse('Blog post not found', 404);
+    }
+
     const post = await db.prepare(
       `SELECT id, title, slug, content, excerpt, cover_image, author, tags,
               meta_title, meta_description, published_at, created_at, updated_at
@@ -138,6 +166,38 @@ async function adminListPosts(request, env) {
     }
     console.error('Admin list blog posts error:', error);
     return errorResponse('Failed to fetch blog posts', 500);
+  }
+}
+
+async function adminGetPost(request, env, postId) {
+  try {
+    const url = new URL(request.url);
+    const siteId = url.searchParams.get('siteId');
+    if (!siteId) return errorResponse('siteId is required', 400);
+
+    const admin = await validateSiteAdmin(request, env, siteId);
+    if (!admin) return errorResponse('Unauthorized', 401);
+
+    if (!admin.isOwner && admin.permissions && !admin.permissions.includes('website')) {
+      return errorResponse('Permission denied', 403);
+    }
+
+    const db = await resolveSiteDBById(env, siteId);
+    const post = await db.prepare(
+      `SELECT id, title, slug, content, excerpt, cover_image, status, author, tags,
+              meta_title, meta_description, published_at, created_at, updated_at
+       FROM blog_posts WHERE id = ? AND site_id = ?`
+    ).bind(postId, siteId).first();
+
+    if (!post) return errorResponse('Blog post not found', 404);
+
+    return successResponse(post);
+  } catch (error) {
+    if (error.message?.includes('no such table')) {
+      return errorResponse('Blog post not found', 404);
+    }
+    console.error('Admin get blog post error:', error);
+    return errorResponse('Failed to fetch blog post', 500);
   }
 }
 
