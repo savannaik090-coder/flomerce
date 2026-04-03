@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-O8SzkH/checked-fetch.js
+// .wrangler/tmp/bundle-F4cUHj/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-O8SzkH/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-F4cUHj/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-O8SzkH/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-F4cUHj/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-O8SzkH/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-F4cUHj/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -2193,12 +2193,12 @@ var init_site_admin_worker = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-O8SzkH/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-F4cUHj/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-O8SzkH/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-F4cUHj/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -14971,6 +14971,44 @@ init_helpers();
 init_site_db();
 init_site_admin_worker();
 init_usage_tracker();
+var _tableReady = /* @__PURE__ */ new Set();
+async function ensureBlogTable(db, siteId) {
+  const cacheKey = siteId;
+  if (_tableReady.has(cacheKey))
+    return;
+  try {
+    await db.prepare(`CREATE TABLE IF NOT EXISTS blog_posts (
+      id TEXT PRIMARY KEY,
+      site_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      slug TEXT NOT NULL,
+      content TEXT NOT NULL DEFAULT '',
+      excerpt TEXT DEFAULT '',
+      cover_image TEXT DEFAULT '',
+      status TEXT DEFAULT 'draft',
+      author TEXT DEFAULT '',
+      tags TEXT DEFAULT '[]',
+      meta_title TEXT DEFAULT '',
+      meta_description TEXT DEFAULT '',
+      published_at TEXT,
+      row_size_bytes INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(site_id, slug)
+    )`).run();
+    await db.prepare("CREATE INDEX IF NOT EXISTS idx_blog_posts_site ON blog_posts(site_id)").run();
+    await db.prepare("CREATE INDEX IF NOT EXISTS idx_blog_posts_slug ON blog_posts(site_id, slug)").run();
+    await db.prepare("CREATE INDEX IF NOT EXISTS idx_blog_posts_status ON blog_posts(site_id, status)").run();
+    await db.prepare("CREATE INDEX IF NOT EXISTS idx_blog_posts_published ON blog_posts(site_id, published_at)").run();
+    _tableReady.add(cacheKey);
+  } catch (e) {
+    if (!e.message?.includes("already exists")) {
+      console.error("Failed to create blog_posts table:", e);
+    }
+    _tableReady.add(cacheKey);
+  }
+}
+__name(ensureBlogTable, "ensureBlogTable");
 function slugify(text) {
   return text.toString().toLowerCase().trim().replace(/\s+/g, "-").replace(/[^\w\-]+/g, "").replace(/\-\-+/g, "-").replace(/^-+/, "").replace(/-+$/, "");
 }
@@ -15033,6 +15071,7 @@ async function listPosts(request, env) {
     if (!siteId)
       return errorResponse("siteId is required", 400);
     const db = await resolveSiteDBById(env, siteId);
+    await ensureBlogTable(db, siteId);
     if (!await isBlogEnabled(db, siteId)) {
       return successResponse({ posts: [], total: 0, page: 1, totalPages: 0 });
     }
@@ -15054,9 +15093,6 @@ async function listPosts(request, env) {
       totalPages: Math.ceil((countResult?.total || 0) / limit)
     });
   } catch (error) {
-    if (error.message?.includes("no such table")) {
-      return successResponse({ posts: [], total: 0, page: 1, totalPages: 0 });
-    }
     console.error("List blog posts error:", error);
     return errorResponse("Failed to fetch blog posts", 500);
   }
@@ -15069,6 +15105,7 @@ async function getPost(request, env, slug) {
     if (!siteId)
       return errorResponse("siteId is required", 400);
     const db = await resolveSiteDBById(env, siteId);
+    await ensureBlogTable(db, siteId);
     if (!await isBlogEnabled(db, siteId)) {
       return errorResponse("Blog post not found", 404);
     }
@@ -15081,9 +15118,6 @@ async function getPost(request, env, slug) {
       return errorResponse("Blog post not found", 404);
     return successResponse(post);
   } catch (error) {
-    if (error.message?.includes("no such table")) {
-      return errorResponse("Blog post not found", 404);
-    }
     console.error("Get blog post error:", error);
     return errorResponse("Failed to fetch blog post", 500);
   }
@@ -15102,15 +15136,13 @@ async function adminListPosts(request, env) {
       return errorResponse("Permission denied", 403);
     }
     const db = await resolveSiteDBById(env, siteId);
+    await ensureBlogTable(db, siteId);
     const posts = await db.prepare(
       `SELECT id, title, slug, excerpt, cover_image, status, author, tags, published_at, created_at, updated_at
        FROM blog_posts WHERE site_id = ? ORDER BY created_at DESC`
     ).bind(siteId).all();
     return successResponse(posts.results || []);
   } catch (error) {
-    if (error.message?.includes("no such table")) {
-      return successResponse([]);
-    }
     console.error("Admin list blog posts error:", error);
     return errorResponse("Failed to fetch blog posts", 500);
   }
@@ -15129,6 +15161,7 @@ async function adminGetPost(request, env, postId) {
       return errorResponse("Permission denied", 403);
     }
     const db = await resolveSiteDBById(env, siteId);
+    await ensureBlogTable(db, siteId);
     const post = await db.prepare(
       `SELECT id, title, slug, content, excerpt, cover_image, status, author, tags,
               meta_title, meta_description, published_at, created_at, updated_at
@@ -15138,9 +15171,6 @@ async function adminGetPost(request, env, postId) {
       return errorResponse("Blog post not found", 404);
     return successResponse(post);
   } catch (error) {
-    if (error.message?.includes("no such table")) {
-      return errorResponse("Blog post not found", 404);
-    }
     console.error("Admin get blog post error:", error);
     return errorResponse("Failed to fetch blog post", 500);
   }
@@ -15163,6 +15193,7 @@ async function createPost(request, env) {
       return errorResponse("Permission denied", 403);
     }
     const db = await resolveSiteDBById(env, siteId);
+    await ensureBlogTable(db, siteId);
     const id = generateId();
     let slug = slugify(title);
     const existing = await db.prepare(
@@ -15218,6 +15249,7 @@ async function updatePost(request, env, postId) {
       return errorResponse("Permission denied", 403);
     }
     const db = await resolveSiteDBById(env, siteId);
+    await ensureBlogTable(db, siteId);
     const existing = await db.prepare(
       "SELECT id, status, published_at, row_size_bytes FROM blog_posts WHERE id = ? AND site_id = ?"
     ).bind(postId, siteId).first();
@@ -15313,6 +15345,7 @@ async function deletePost(request, env, postId) {
       return errorResponse("Permission denied", 403);
     }
     const db = await resolveSiteDBById(env, siteId);
+    await ensureBlogTable(db, siteId);
     await db.prepare(
       "DELETE FROM blog_posts WHERE id = ? AND site_id = ?"
     ).bind(postId, siteId).run();
@@ -16102,7 +16135,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-O8SzkH/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-F4cUHj/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -16137,7 +16170,7 @@ function __facade_invoke__(request, env, ctx2, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-O8SzkH/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-F4cUHj/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

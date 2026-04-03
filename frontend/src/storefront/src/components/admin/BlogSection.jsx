@@ -259,20 +259,24 @@ function BlogPostEditor({ post, siteConfig, quillLoaded, onSave, onCancel, showM
     setUploading(true);
     try {
       const formData = new FormData();
-      formData.append('image', file);
-      formData.append('siteId', siteConfig.id);
+      formData.append('images', file);
       const adminToken = sessionStorage.getItem('site_admin_token');
       const API_BASE = window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
-      const res = await fetch(`${API_BASE}/api/upload/image`, {
+      const res = await fetch(`${API_BASE}/api/upload/image?siteId=${siteConfig.id}`, {
         method: 'POST',
         headers: { 'Authorization': `SiteAdmin ${adminToken}` },
         body: formData,
       });
       const data = await res.json();
-      if (data.success && data.url) {
-        setCoverImage(data.url);
+      if (data.success) {
+        const url = data.data?.urls?.[0] || data.data?.images?.[0]?.url || data.url;
+        if (url) {
+          setCoverImage(url);
+        } else {
+          showMsg('Failed to upload image');
+        }
       } else {
-        showMsg('Failed to upload image');
+        showMsg(data.message || 'Failed to upload image');
       }
     } catch (err) {
       showMsg('Failed to upload image');
