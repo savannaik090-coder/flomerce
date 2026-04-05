@@ -68,15 +68,25 @@ export default function GSTInvoice({ orderId, siteId, onClose }) {
   function handlePrint() {
     const content = document.getElementById('gst-invoice-print-area');
     if (!content) return;
-    const win = window.open('', '_blank', 'width=900,height=700');
-    if (!win) return;
-    win.document.write(`<!DOCTYPE html><html><head><title>Invoice INV-${order.order_number}</title><style>
+    const html = `<!DOCTYPE html><html><head><title>Invoice INV-${order.order_number}</title><style>
       body { margin: 0; padding: 20px; font-family: Arial, sans-serif; font-size: 13px; color: #333; }
       table { border-collapse: collapse; width: 100%; }
       @media print { body { padding: 10px; } }
-    </style></head><body>${content.innerHTML}</body></html>`);
-    win.document.close();
-    setTimeout(() => { win.print(); win.close(); }, 400);
+    </style></head><body>${content.innerHTML}</body></html>`;
+    let iframe = document.getElementById('gst-print-frame');
+    if (iframe) iframe.remove();
+    iframe = document.createElement('iframe');
+    iframe.id = 'gst-print-frame';
+    iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:none;';
+    document.body.appendChild(iframe);
+    const doc = iframe.contentDocument || iframe.contentWindow.document;
+    doc.open();
+    doc.write(html);
+    doc.close();
+    setTimeout(() => {
+      iframe.contentWindow.focus();
+      iframe.contentWindow.print();
+    }, 300);
   }
 
   if (loading) {
