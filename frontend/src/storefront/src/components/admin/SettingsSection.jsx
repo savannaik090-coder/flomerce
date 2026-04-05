@@ -45,6 +45,7 @@ export default function SettingsSection() {
   const [gstState, setGstState] = useState('');
   const [gstAddress, setGstAddress] = useState('');
   const [gstInvoiceEmailEnabled, setGstInvoiceEmailEnabled] = useState(false);
+  const [gstinError, setGstinError] = useState('');
 
   const [loading, setLoading] = useState(true);
 
@@ -167,8 +168,34 @@ export default function SettingsSection() {
     }
   }
 
+  function validateGSTIN(value) {
+    if (!value) return '';
+    const gstinRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+    if (value.length !== 15) return 'GSTIN must be exactly 15 characters';
+    if (!gstinRegex.test(value)) return 'Invalid GSTIN format. Expected: 22AAAAA0000A1Z5';
+    return '';
+  }
+
+  function handleGstinChange(value) {
+    const upper = value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    setGstin(upper);
+    if (upper) {
+      setGstinError(validateGSTIN(upper));
+    } else {
+      setGstinError('');
+    }
+  }
+
   async function handleSaveSettings(e) {
     e.preventDefault();
+    if (gstin.trim()) {
+      const err = validateGSTIN(gstin.trim());
+      if (err) {
+        setGstinError(err);
+        setMessage('Please fix the invalid GSTIN before saving.');
+        return;
+      }
+    }
     setSaving(true);
     setMessage('');
     try {
@@ -1094,12 +1121,18 @@ export default function SettingsSection() {
                 <input
                   type="text"
                   value={gstin}
-                  onChange={e => setGstin(e.target.value.toUpperCase())}
+                  onChange={e => handleGstinChange(e.target.value)}
                   placeholder="e.g., 27AABCU9603R1ZX"
                   maxLength={15}
-                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit', letterSpacing: 1 }}
+                  style={{ width: '100%', padding: '10px 12px', border: `1px solid ${gstinError ? '#ef4444' : '#e2e8f0'}`, borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit', letterSpacing: 1 }}
                 />
-                <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>Your 15-digit GST Identification Number</p>
+                {gstinError ? (
+                  <p style={{ fontSize: 11, color: '#ef4444', marginTop: 4 }}>{gstinError}</p>
+                ) : gstin && !gstinError ? (
+                  <p style={{ fontSize: 11, color: '#16a34a', marginTop: 4 }}>Valid GSTIN format</p>
+                ) : (
+                  <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>Your 15-digit GST Identification Number</p>
+                )}
               </div>
               <div>
                 <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Legal Business Name</label>
