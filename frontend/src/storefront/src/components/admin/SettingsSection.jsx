@@ -230,7 +230,7 @@ export default function SettingsSection() {
         gstLegalName: gstEnabled ? (gstLegalName.trim() || null) : null,
         gstState: gstEnabled ? (gstState.trim() || null) : null,
         gstAddress: gstEnabled ? (gstAddress.trim() || null) : null,
-        gstInvoiceEmailEnabled: gstEnabled ? gstInvoiceEmailEnabled : false,
+        gstInvoiceEmailEnabled,
       };
       if (razorpayKeyId) {
         settings.razorpayKeyId = razorpayKeyId;
@@ -1191,7 +1191,8 @@ export default function SettingsSection() {
                 <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>Printed on every GST invoice</p>
               </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', border: '1px solid #e2e8f0', borderRadius: 8, background: gstInvoiceEmailEnabled ? '#f0fdf4' : '#f8fafc' }}>
+            </>)}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', border: '1px solid #e2e8f0', borderRadius: 8, background: gstInvoiceEmailEnabled ? '#f0fdf4' : '#f8fafc', marginTop: 16 }}>
               <div>
                 <div style={{ fontWeight: 600, fontSize: 14, color: '#1e293b' }}>Include Invoice Link in Order Emails</div>
                 <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>Customers will get a "Download Invoice" link in their order confirmation email</div>
@@ -1203,7 +1204,6 @@ export default function SettingsSection() {
                 </span>
               </label>
             </div>
-            </>)}
           </div>
         </div>
 
