@@ -48,14 +48,15 @@ export default function SettingsSection() {
   const [gstInvoiceEmailEnabled, setGstInvoiceEmailEnabled] = useState(false);
   const [gstinError, setGstinError] = useState('');
 
-  const [openSections, setOpenSections] = useState({});
+  const defaultOpenSections = { storeUrl: true, customDomain: true, brand: true, contact: true };
+  const [openSections, setOpenSections] = useState(defaultOpenSections);
 
   function toggleSection(key) {
     setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
   }
 
   function isSectionOpen(key) {
-    return openSections[key] !== false;
+    return openSections[key] === true;
   }
 
   const [loading, setLoading] = useState(true);
@@ -500,7 +501,7 @@ export default function SettingsSection() {
     return (
       <div className="card-header" onClick={() => toggleSection(sectionKey)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', userSelect: 'none' }}>
         <h3 className="card-title" style={{ margin: 0 }}>{title}</h3>
-        <span style={{ fontSize: 18, color: '#94a3b8', transition: 'transform 0.25s', transform: open ? 'rotate(180deg)' : 'rotate(0deg)', lineHeight: 1 }}>&#9662;</span>
+        <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: '50%', background: '#f1f5f9', fontSize: 14, color: '#64748b', transition: 'transform 0.25s', transform: open ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink: 0 }}>&#9662;</span>
       </div>
     );
   }
