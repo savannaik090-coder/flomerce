@@ -59,7 +59,7 @@ export default function InvoicePage() {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch(getApiUrl(`/api/invoice/public?order=${encodeURIComponent(orderNumber)}&t=${encodeURIComponent(token)}&subdomain=${encodeURIComponent(subdomain)}`));
+      const res = await fetch(getApiUrl(`/api/orders/public-invoice?orderNumber=${encodeURIComponent(orderNumber)}&t=${encodeURIComponent(token)}&subdomain=${encodeURIComponent(subdomain)}`));
       const result = await res.json();
       if (result.success) {
         setData(result.data);

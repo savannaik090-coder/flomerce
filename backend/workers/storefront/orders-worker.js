@@ -1937,10 +1937,14 @@ async function getInvoiceData(request, env, orderId) {
     const siteId = url.searchParams.get('siteId');
     if (!siteId || !orderId) return errorResponse('siteId and orderId are required', 400);
 
-    const adminToken = request.headers.get('Authorization');
-    if (!adminToken || (!adminToken.startsWith('SiteAdmin ') && !adminToken.startsWith('Bearer '))) {
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('SiteAdmin ')) {
       return errorResponse('Unauthorized', 401);
     }
+
+    const { validateSiteAdmin } = await import('./site-admin-worker.js');
+    const admin = await validateSiteAdmin(request, env, siteId);
+    if (!admin) return errorResponse('Unauthorized', 401);
 
     const db = await resolveSiteDBById(env, siteId);
     let order = await db.prepare('SELECT * FROM orders WHERE id = ? AND site_id = ?').bind(orderId, siteId).first();
