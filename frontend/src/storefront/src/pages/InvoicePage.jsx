@@ -122,11 +122,13 @@ export default function InvoicePage() {
     <>
       <style>{`
         @media print {
-          body * { visibility: hidden !important; }
-          .inv-card, .inv-card * { visibility: visible !important; }
-          .inv-card { position: fixed; left: 0; top: 0; width: 100%; background: white; z-index: 99999; padding: 20px; box-sizing: border-box; box-shadow: none !important; border-radius: 0 !important; }
+          html, body { height: auto !important; overflow: visible !important; margin: 0 !important; padding: 0 !important; background: white !important; }
+          body * { visibility: hidden !important; height: 0 !important; overflow: hidden !important; margin: 0 !important; padding: 0 !important; position: static !important; }
+          .inv-card, .inv-card * { visibility: visible !important; height: auto !important; overflow: visible !important; position: static !important; }
+          .inv-card { display: block !important; width: 100% !important; padding: 10px !important; box-sizing: border-box !important; box-shadow: none !important; border-radius: 0 !important; }
           .invoice-no-print, .inv-top-bar { display: none !important; }
-          body { margin: 0; background: white; }
+          .inv-table-wrap { overflow: visible !important; }
+          .inv-table-wrap table { min-width: unset !important; width: 100% !important; }
         }
         body { margin: 0; padding: 0; background: #f0f4f8; font-family: Arial, sans-serif; }
         @media (max-width: 640px) {

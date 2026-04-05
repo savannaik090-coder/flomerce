@@ -114,12 +114,15 @@ export default function GSTInvoice({ orderId, siteId, onClose }) {
     <>
       <style>{`
         @media print {
-          body * { visibility: hidden !important; }
+          html, body { height: auto !important; overflow: visible !important; margin: 0 !important; padding: 0 !important; }
+          body * { visibility: hidden !important; height: 0 !important; overflow: hidden !important; margin: 0 !important; padding: 0 !important; position: static !important; }
           #gst-invoice-root,
-          #gst-invoice-root * { visibility: visible !important; }
-          #gst-invoice-root { position: fixed; left: 0; top: 0; width: 100%; background: white; z-index: 99999; padding: 20px; box-sizing: border-box; overflow: visible; }
+          #gst-invoice-root * { visibility: visible !important; height: auto !important; overflow: visible !important; position: static !important; }
+          #gst-invoice-root { display: block !important; width: 100% !important; padding: 10px !important; box-sizing: border-box !important; }
           .invoice-no-print, .inv-actions { display: none !important; }
-          .invoice-print-wrapper { border: none !important; box-shadow: none !important; padding: 0 !important; }
+          .invoice-print-wrapper { border: none !important; box-shadow: none !important; padding: 10px !important; margin: 0 !important; }
+          .inv-table-wrap { overflow: visible !important; }
+          .inv-table-wrap table { min-width: unset !important; width: 100% !important; }
         }
         @media (max-width: 640px) {
           .inv-details-grid { grid-template-columns: 1fr !important; }
