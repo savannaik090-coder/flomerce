@@ -2183,7 +2183,9 @@ async function getAnalytics(request, env) {
     const paymentQuery = `
       SELECT payment_method,
         COUNT(*) as order_count,
-        COALESCE(SUM(CASE WHEN status IN ${revenueStatuses} THEN total ELSE 0 END), 0) as revenue
+        COALESCE(SUM(total), 0) as total_amount,
+        COALESCE(SUM(CASE WHEN status IN ${revenueStatuses} THEN total ELSE 0 END), 0) as revenue,
+        SUM(CASE WHEN status NOT IN ('cancelled','returned') THEN 1 ELSE 0 END) as active_orders
       FROM (
         SELECT payment_method, total, status, created_at FROM orders WHERE site_id = ?${dateWhere}
         UNION ALL

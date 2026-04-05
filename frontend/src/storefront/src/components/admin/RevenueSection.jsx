@@ -189,14 +189,15 @@ export default function RevenueSection() {
               ) : (
                 <div>
                   {data.paymentMethodSplit.map((pm, i) => {
-                    const totalPmRevenue = data.paymentMethodSplit.reduce((s, p) => s + p.revenue, 0);
-                    const pct = totalPmRevenue > 0 ? Math.round((pm.revenue / totalPmRevenue) * 100) : 0;
+                    const amount = pm.total_amount || pm.revenue || 0;
+                    const totalPmAmount = data.paymentMethodSplit.reduce((s, p) => s + (p.total_amount || p.revenue || 0), 0);
+                    const pct = totalPmAmount > 0 ? Math.round((amount / totalPmAmount) * 100) : 0;
                     const label = (pm.payment_method || 'Unknown').replace('razorpay', 'Razorpay').replace('cod', 'COD').replace('COD', 'Cash on Delivery');
                     return (
                       <div key={i} style={{ marginBottom: 12 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 13 }}>
                           <span style={{ fontWeight: 600, color: '#334155' }}>{label}</span>
-                          <span style={{ color: '#64748b' }}>{formatPrice(pm.revenue, currency)} ({pm.order_count})</span>
+                          <span style={{ color: '#64748b' }}>{formatPrice(amount, currency)} ({pm.order_count} orders)</span>
                         </div>
                         <div style={{ height: 8, background: '#f1f5f9', borderRadius: 4, overflow: 'hidden' }}>
                           <div style={{ height: '100%', width: `${pct}%`, background: i === 0 ? '#3b82f6' : '#22c55e', borderRadius: 4, transition: 'width 0.3s' }} />
