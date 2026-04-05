@@ -7,6 +7,7 @@ import InventorySection from '../components/admin/InventorySection.jsx';
 import OrdersSection from '../components/admin/OrdersSection.jsx';
 import CustomersSection from '../components/admin/CustomersSection.jsx';
 import AnalyticsSection from '../components/admin/AnalyticsSection.jsx';
+import RevenueSection from '../components/admin/RevenueSection.jsx';
 import PushNotificationsSection from '../components/admin/PushNotificationsSection.jsx';
 import WebsiteContentSection from '../components/admin/WebsiteContentSection.jsx';
 import SettingsSection from '../components/admin/SettingsSection.jsx';
@@ -288,6 +289,7 @@ export default function AdminPanel() {
     inventory: 'Inventory',
     orders: 'Orders',
     customers: 'Customers',
+    revenue: 'Revenue',
     analytics: 'Analytics',
     website: 'Edit Website',
     seo: 'SEO',
@@ -337,6 +339,7 @@ export default function AdminPanel() {
           {activeSection === 'inventory' && hasPermission('inventory') && <InventorySection />}
           {activeSection === 'orders' && hasPermission('orders') && <OrdersSection />}
           {activeSection === 'customers' && hasPermission('customers') && <CustomersSection />}
+          {activeSection === 'revenue' && (hasPermission('analytics') || hasPermission('orders')) && <RevenueSection />}
           {activeSection === 'analytics' && hasPermission('analytics') && <AnalyticsSection />}
           {activeSection === 'website' && hasPermission('website') && <WebsiteContentSection />}
           {activeSection === 'seo' && hasPermission('seo') && <SEOSection />}

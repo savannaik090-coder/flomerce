@@ -6,6 +6,7 @@ const navItems = [
   { id: 'inventory', icon: 'fa-warehouse', label: 'Inventory' },
   { id: 'orders', icon: 'fa-shopping-bag', label: 'Orders', badgeKey: 'pendingOrders' },
   { id: 'customers', icon: 'fa-users', label: 'Customers' },
+  { id: 'revenue', icon: 'fa-money-bill-wave', label: 'Revenue' },
   { id: 'analytics', icon: 'fa-chart-bar', label: 'Analytics' },
   { id: 'website', icon: 'fa-globe', label: 'Edit Website' },
   { id: 'seo', icon: 'fa-search', label: 'SEO' },

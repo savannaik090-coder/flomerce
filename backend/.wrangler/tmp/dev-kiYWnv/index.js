@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-uqUfk9/checked-fetch.js
+// .wrangler/tmp/bundle-Z9GKMQ/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-uqUfk9/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-Z9GKMQ/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-uqUfk9/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-Z9GKMQ/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-uqUfk9/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-Z9GKMQ/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -2193,12 +2193,12 @@ var init_site_admin_worker = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-uqUfk9/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-Z9GKMQ/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-uqUfk9/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-Z9GKMQ/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -6055,6 +6055,9 @@ async function handleOrders(request, env, path, ctx2) {
   if (orderId === "public-invoice" && method === "GET") {
     return getPublicInvoice(request, env);
   }
+  if (orderId === "analytics" && method === "GET") {
+    return getAnalytics(request, env);
+  }
   const url = new URL(request.url);
   const siteId = url.searchParams.get("siteId");
   let db = null;
@@ -8122,6 +8125,159 @@ async function getPublicInvoice(request, env) {
   }
 }
 __name(getPublicInvoice, "getPublicInvoice");
+async function getAnalytics(request, env) {
+  try {
+    const url = new URL(request.url);
+    const siteId = url.searchParams.get("siteId");
+    const from = url.searchParams.get("from");
+    const to = url.searchParams.get("to");
+    if (!siteId)
+      return errorResponse("siteId is required", 400);
+    const authHeader = request.headers.get("Authorization");
+    if (!authHeader || !authHeader.startsWith("SiteAdmin ")) {
+      return errorResponse("Unauthorized", 401);
+    }
+    const { validateSiteAdmin: validateSiteAdmin2, hasPermission: hasPermission2 } = await Promise.resolve().then(() => (init_site_admin_worker(), site_admin_worker_exports));
+    const admin = await validateSiteAdmin2(request, env, siteId);
+    if (!admin)
+      return errorResponse("Unauthorized", 401);
+    if (!hasPermission2(admin, "analytics") && !hasPermission2(admin, "orders")) {
+      return errorResponse("No permission", 403);
+    }
+    const db = await resolveSiteDBById(env, siteId);
+    if (!db)
+      return errorResponse("Site database not found", 404);
+    const dateFilter = [];
+    const dateBindings = [];
+    if (from) {
+      dateFilter.push("created_at >= ?");
+      dateBindings.push(from);
+    }
+    if (to) {
+      dateFilter.push("created_at <= ?");
+      dateBindings.push(to + " 23:59:59");
+    }
+    const dateWhere = dateFilter.length ? " AND " + dateFilter.join(" AND ") : "";
+    const revenueStatuses = "('confirmed','packed','shipped','delivered')";
+    const summaryQuery = `
+      SELECT
+        COUNT(*) as total_orders,
+        COALESCE(SUM(CASE WHEN status IN ${revenueStatuses} THEN total ELSE 0 END), 0) as total_revenue,
+        COALESCE(SUM(CASE WHEN status IN ${revenueStatuses} THEN tax ELSE 0 END), 0) as total_tax,
+        COALESCE(SUM(CASE WHEN status IN ${revenueStatuses} THEN shipping_cost ELSE 0 END), 0) as total_shipping,
+        COALESCE(SUM(CASE WHEN status IN ${revenueStatuses} THEN discount ELSE 0 END), 0) as total_discount
+      FROM (
+        SELECT total, tax, shipping_cost, discount, status, created_at FROM orders WHERE site_id = ?${dateWhere}
+        UNION ALL
+        SELECT total, tax, shipping_cost, discount, status, created_at FROM guest_orders WHERE site_id = ?${dateWhere}
+      )
+    `;
+    const summaryBindings = [siteId, ...dateBindings, siteId, ...dateBindings];
+    const summary = await db.prepare(summaryQuery).bind(...summaryBindings).first();
+    const revenueCount = summary.total_orders > 0 ? (await db.prepare(`
+        SELECT COUNT(*) as c FROM (
+          SELECT id FROM orders WHERE site_id = ? AND status IN ${revenueStatuses}${dateWhere}
+          UNION ALL
+          SELECT id FROM guest_orders WHERE site_id = ? AND status IN ${revenueStatuses}${dateWhere}
+        )
+      `).bind(siteId, ...dateBindings, siteId, ...dateBindings).first()).c : 0;
+    const avgOrderValue = revenueCount > 0 ? Math.round(summary.total_revenue / revenueCount * 100) / 100 : 0;
+    const dailyQuery = `
+      SELECT date(created_at) as day,
+        SUM(CASE WHEN status IN ${revenueStatuses} THEN total ELSE 0 END) as revenue,
+        COUNT(*) as orders
+      FROM (
+        SELECT total, status, created_at FROM orders WHERE site_id = ?${dateWhere}
+        UNION ALL
+        SELECT total, status, created_at FROM guest_orders WHERE site_id = ?${dateWhere}
+      )
+      GROUP BY date(created_at)
+      ORDER BY day ASC
+    `;
+    const dailyResult = await db.prepare(dailyQuery).bind(siteId, ...dateBindings, siteId, ...dateBindings).all();
+    const paymentQuery = `
+      SELECT payment_method,
+        COUNT(*) as order_count,
+        COALESCE(SUM(CASE WHEN status IN ${revenueStatuses} THEN total ELSE 0 END), 0) as revenue
+      FROM (
+        SELECT payment_method, total, status, created_at FROM orders WHERE site_id = ?${dateWhere}
+        UNION ALL
+        SELECT payment_method, total, status, created_at FROM guest_orders WHERE site_id = ?${dateWhere}
+      )
+      GROUP BY payment_method
+    `;
+    const paymentResult = await db.prepare(paymentQuery).bind(siteId, ...dateBindings, siteId, ...dateBindings).all();
+    const statusQuery = `
+      SELECT status, COUNT(*) as count FROM (
+        SELECT status, created_at FROM orders WHERE site_id = ?${dateWhere}
+        UNION ALL
+        SELECT status, created_at FROM guest_orders WHERE site_id = ?${dateWhere}
+      )
+      GROUP BY status
+    `;
+    const statusResult = await db.prepare(statusQuery).bind(siteId, ...dateBindings, siteId, ...dateBindings).all();
+    const topProductsQuery = `
+      SELECT items, status, created_at FROM orders WHERE site_id = ? AND status IN ${revenueStatuses}${dateWhere}
+      UNION ALL
+      SELECT items, status, created_at FROM guest_orders WHERE site_id = ? AND status IN ${revenueStatuses}${dateWhere}
+    `;
+    const itemsResult = await db.prepare(topProductsQuery).bind(siteId, ...dateBindings, siteId, ...dateBindings).all();
+    const productMap = {};
+    let totalCGST = 0, totalSGST = 0, totalIGST = 0;
+    for (const row of itemsResult.results) {
+      let items = [];
+      try {
+        items = JSON.parse(row.items);
+      } catch {
+      }
+      for (const item of items) {
+        const key = item.product_id || item.name || item.title;
+        if (!productMap[key]) {
+          productMap[key] = { name: item.name || item.title || "Unknown", quantity: 0, revenue: 0, image: item.image || item.images?.[0] || null };
+        }
+        const qty = item.quantity || 1;
+        const price = (item.price || 0) * qty;
+        productMap[key].quantity += qty;
+        productMap[key].revenue += price;
+        if (item.gst_rate && item.gst_rate > 0) {
+          const gstAmount = price * item.gst_rate / (100 + item.gst_rate);
+          if (item._gstType === "intra") {
+            totalCGST += gstAmount / 2;
+            totalSGST += gstAmount / 2;
+          } else {
+            totalIGST += gstAmount;
+          }
+        }
+      }
+    }
+    const topProducts = Object.values(productMap).sort((a, b) => b.revenue - a.revenue).slice(0, 10);
+    return successResponse({
+      summary: {
+        totalRevenue: summary.total_revenue,
+        totalOrders: summary.total_orders,
+        revenueOrders: revenueCount,
+        avgOrderValue,
+        totalTax: summary.total_tax,
+        totalShipping: summary.total_shipping,
+        totalDiscount: summary.total_discount
+      },
+      dailyRevenue: dailyResult.results,
+      paymentMethodSplit: paymentResult.results,
+      statusBreakdown: statusResult.results,
+      topProducts,
+      gstBreakdown: {
+        cgst: Math.round(totalCGST * 100) / 100,
+        sgst: Math.round(totalSGST * 100) / 100,
+        igst: Math.round(totalIGST * 100) / 100,
+        total: Math.round((totalCGST + totalSGST + totalIGST) * 100) / 100
+      }
+    });
+  } catch (error) {
+    console.error("Analytics error:", error);
+    return errorResponse("Failed to fetch analytics", 500);
+  }
+}
+__name(getAnalytics, "getAnalytics");
 
 // workers/storefront/cart-worker.js
 init_checked_fetch();
@@ -16388,7 +16544,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-uqUfk9/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-Z9GKMQ/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -16423,7 +16579,7 @@ function __facade_invoke__(request, env, ctx2, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-uqUfk9/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-Z9GKMQ/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;
