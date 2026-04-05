@@ -44,6 +44,7 @@ export default function SettingsSection() {
   const [gstLegalName, setGstLegalName] = useState('');
   const [gstState, setGstState] = useState('');
   const [gstAddress, setGstAddress] = useState('');
+  const [gstEnabled, setGstEnabled] = useState(false);
   const [gstInvoiceEmailEnabled, setGstInvoiceEmailEnabled] = useState(false);
   const [gstinError, setGstinError] = useState('');
 
@@ -149,6 +150,7 @@ export default function SettingsSection() {
         setDeliveryFreeAboveEnabled(dc.freeAboveEnabled === true);
         setDeliveryFreeAbove(dc.freeAbove != null ? String(dc.freeAbove) : '');
         setDeliveryRegionRates(Array.isArray(dc.regionRates) ? dc.regionRates : []);
+        setGstEnabled(settings.gstEnabled === true);
         setGstin(settings.gstin || '');
         setGstLegalName(settings.gstLegalName || '');
         setGstState(settings.gstState || '');
@@ -188,7 +190,7 @@ export default function SettingsSection() {
 
   async function handleSaveSettings(e) {
     e.preventDefault();
-    if (gstin.trim()) {
+    if (gstEnabled && gstin.trim()) {
       const err = validateGSTIN(gstin.trim());
       if (err) {
         setGstinError(err);
@@ -223,11 +225,12 @@ export default function SettingsSection() {
           freeAbove: deliveryEnabled && deliveryFreeAboveEnabled ? (Number(deliveryFreeAbove) || 0) : 0,
           regionRates: deliveryEnabled ? deliveryRegionRates.filter(r => r.country && r.rate !== '') : [],
         },
-        gstin: gstin.trim() || null,
-        gstLegalName: gstLegalName.trim() || null,
-        gstState: gstState.trim() || null,
-        gstAddress: gstAddress.trim() || null,
-        gstInvoiceEmailEnabled,
+        gstEnabled,
+        gstin: gstEnabled ? (gstin.trim() || null) : null,
+        gstLegalName: gstEnabled ? (gstLegalName.trim() || null) : null,
+        gstState: gstEnabled ? (gstState.trim() || null) : null,
+        gstAddress: gstEnabled ? (gstAddress.trim() || null) : null,
+        gstInvoiceEmailEnabled: gstEnabled ? gstInvoiceEmailEnabled : false,
       };
       if (razorpayKeyId) {
         settings.razorpayKeyId = razorpayKeyId;
@@ -1112,6 +1115,24 @@ export default function SettingsSection() {
             <h3 className="card-title">GST & Invoicing</h3>
           </div>
           <div className="card-content">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', border: '1px solid #e2e8f0', borderRadius: 8, background: gstEnabled ? '#f0fdf4' : '#f8fafc', marginBottom: 16 }}>
+              <div>
+                <div style={{ fontWeight: 600, fontSize: 14, color: '#1e293b' }}>Enable GST</div>
+                <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>Turn on to add GST fields to products and generate tax invoices</div>
+              </div>
+              <label style={{ position: 'relative', display: 'inline-block', width: 44, height: 24, flexShrink: 0 }}>
+                <input type="checkbox" checked={gstEnabled} onChange={e => setGstEnabled(e.target.checked)} style={{ opacity: 0, width: 0, height: 0 }} />
+                <span style={{ position: 'absolute', cursor: 'pointer', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: gstEnabled ? '#22c55e' : '#cbd5e1', borderRadius: 24, transition: '0.3s' }}>
+                  <span style={{ position: 'absolute', content: '""', height: 18, width: 18, left: gstEnabled ? 22 : 3, bottom: 3, backgroundColor: 'white', borderRadius: '50%', transition: '0.3s' }}></span>
+                </span>
+              </label>
+            </div>
+            {!gstEnabled && (
+              <p style={{ fontSize: 13, color: '#94a3b8', marginBottom: 0 }}>
+                GST is disabled. Enable it to configure GSTIN, HSN codes, GST rates, and tax invoicing.
+              </p>
+            )}
+            {gstEnabled && (<>
             <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
               Set up your GST details to generate proper tax invoices for orders. If you are not GST registered, leave these empty — a simple bill will still be available.
             </p>
@@ -1182,6 +1203,7 @@ export default function SettingsSection() {
                 </span>
               </label>
             </div>
+            </>)}
           </div>
         </div>
 

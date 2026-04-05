@@ -464,6 +464,7 @@ export default function ProductForm({ product, onSave, onCancel }) {
               {errors.description && <p style={{ color: '#ef4444', fontSize: 12, marginTop: 4 }}>{errors.description}</p>}
             </div>
 
+            {siteConfig?.settings?.gstEnabled && (
             <div style={{ marginTop: 16, padding: '14px 16px', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 8 }}>
               <div style={{ fontWeight: 600, fontSize: 13, color: '#0369a1', marginBottom: 10 }}>GST Information (for Tax Invoicing)</div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
@@ -494,6 +495,7 @@ export default function ProductForm({ product, onSave, onCancel }) {
                 </div>
               </div>
             </div>
+            )}
           </div>
         </div>
 
