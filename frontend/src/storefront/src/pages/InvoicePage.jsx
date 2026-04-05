@@ -126,10 +126,20 @@ export default function InvoicePage() {
           body { margin: 0; }
         }
         body { margin: 0; padding: 0; background: #f0f4f8; font-family: Arial, sans-serif; }
+        @media (max-width: 640px) {
+          .inv-details-grid { grid-template-columns: 1fr !important; }
+          .inv-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+          .inv-table-wrap table { min-width: 520px; }
+          .inv-summary { min-width: unset !important; width: 100% !important; }
+          .inv-header-title { font-size: 18px !important; }
+          .inv-top-bar { flex-direction: column; gap: 10px !important; align-items: flex-start !important; }
+          .inv-top-bar button { width: 100%; }
+          .inv-card { padding: 16px !important; }
+        }
       `}</style>
 
       <div style={{ maxWidth: 860, margin: '0 auto', padding: '20px 16px' }}>
-        <div className="invoice-no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <div className="invoice-no-print inv-top-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <div style={{ fontSize: 13, color: '#64748b' }}>Order #{order.order_number} — {gstConfig.brandName}</div>
           <button
             onClick={() => window.print()}
@@ -139,10 +149,10 @@ export default function InvoicePage() {
           </button>
         </div>
 
-        <div style={{ background: '#fff', borderRadius: 10, padding: 32, boxShadow: '0 2px 12px rgba(0,0,0,0.08)', color: '#333', fontSize: 13 }}>
+        <div className="inv-card" style={{ background: '#fff', borderRadius: 10, padding: 32, boxShadow: '0 2px 12px rgba(0,0,0,0.08)', color: '#333', fontSize: 13 }}>
           <div style={{ textAlign: 'center', borderBottom: '2px solid #0f172a', paddingBottom: 16, marginBottom: 24 }}>
             <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: '#64748b', marginBottom: 4 }}>{invoiceType}</div>
-            <div style={{ fontSize: 24, fontWeight: 700, color: '#0f172a' }}>{gstConfig.brandName}</div>
+            <div className="inv-header-title" style={{ fontSize: 24, fontWeight: 700, color: '#0f172a' }}>{gstConfig.brandName}</div>
             {gstConfig.legalName && gstConfig.legalName !== gstConfig.brandName && (
               <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>{gstConfig.legalName}</div>
             )}
@@ -150,7 +160,7 @@ export default function InvoicePage() {
             {isGSTRegistered && <div style={{ fontSize: 12, fontWeight: 700, color: '#0f172a', marginTop: 6 }}>GSTIN: {gstConfig.gstin}</div>}
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>
+          <div className="inv-details-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>
             <div style={{ padding: '12px 14px', background: '#f8fafc', borderRadius: 6 }}>
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1, color: '#64748b', marginBottom: 8, textTransform: 'uppercase' }}>Invoice Details</div>
               <div><span style={{ color: '#64748b' }}>Invoice No:</span> <strong>INV-{order.order_number}</strong></div>
@@ -170,6 +180,7 @@ export default function InvoicePage() {
             </div>
           </div>
 
+          <div className="inv-table-wrap">
           <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 20 }}>
             <thead>
               <tr style={{ background: '#0f172a', color: '#fff' }}>
@@ -226,9 +237,10 @@ export default function InvoicePage() {
               ))}
             </tbody>
           </table>
+          </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 20 }}>
-            <div style={{ minWidth: 280, background: '#f8fafc', borderRadius: 6, padding: '14px 16px' }}>
+            <div className="inv-summary" style={{ minWidth: 280, background: '#f8fafc', borderRadius: 6, padding: '14px 16px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                 <span style={{ color: '#64748b' }}>Subtotal (before tax)</span>
                 <span>{formatCurrency(order.subtotal, currency)}</span>

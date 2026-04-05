@@ -206,6 +206,7 @@ export default function ProductForm({ product, onSave, onCancel }) {
     if (form.stock === '' || parseInt(form.stock) < 0) errs.stock = 'Stock quantity is required.';
     if (!form.category_id) errs.category_id = 'Please select a category.';
     if (!form.description.trim()) errs.description = 'Description is required.';
+    if (!form.images || form.images.length === 0) errs.images = 'At least one product image is required.';
     return errs;
   }
 
@@ -498,7 +499,7 @@ export default function ProductForm({ product, onSave, onCancel }) {
 
         <div className="card" style={{ marginBottom: 20 }}>
           <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3 className="card-title">Product Images</h3>
+            <h3 className="card-title">Product Images *</h3>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
               <label style={{ color: '#64748b' }}>Quality:</label>
               <input
@@ -549,9 +550,9 @@ export default function ProductForm({ product, onSave, onCancel }) {
               style={{ display: 'none' }}
             />
 
-            {errors.upload && (
+            {(errors.upload || errors.images) && (
               <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '10px 14px', color: '#dc2626', marginBottom: 12, fontSize: 13 }}>
-                {errors.upload}
+                {errors.upload || errors.images}
               </div>
             )}
 
