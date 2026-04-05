@@ -121,15 +121,6 @@ export default function InvoicePage() {
   return (
     <>
       <style>{`
-        @media print {
-          html, body { height: auto !important; overflow: visible !important; margin: 0 !important; padding: 0 !important; background: white !important; }
-          body * { visibility: hidden !important; height: 0 !important; overflow: hidden !important; margin: 0 !important; padding: 0 !important; position: static !important; }
-          .inv-card, .inv-card * { visibility: visible !important; height: auto !important; overflow: visible !important; position: static !important; }
-          .inv-card { display: block !important; width: 100% !important; padding: 10px !important; box-sizing: border-box !important; box-shadow: none !important; border-radius: 0 !important; }
-          .invoice-no-print, .inv-top-bar { display: none !important; }
-          .inv-table-wrap { overflow: visible !important; }
-          .inv-table-wrap table { min-width: unset !important; width: 100% !important; }
-        }
         body { margin: 0; padding: 0; background: #f0f4f8; font-family: Arial, sans-serif; }
         @media (max-width: 640px) {
           .inv-details-grid { grid-template-columns: 1fr !important; }
@@ -147,14 +138,26 @@ export default function InvoicePage() {
         <div className="invoice-no-print inv-top-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <div style={{ fontSize: 13, color: '#64748b' }}>Order #{order.order_number} — {gstConfig.brandName}</div>
           <button
-            onClick={() => window.print()}
+            onClick={() => {
+              const content = document.getElementById('public-invoice-print-area');
+              if (!content) return;
+              const win = window.open('', '_blank', 'width=900,height=700');
+              if (!win) return;
+              win.document.write(`<!DOCTYPE html><html><head><title>Invoice INV-${order.order_number}</title><style>
+                body { margin: 0; padding: 20px; font-family: Arial, sans-serif; font-size: 13px; color: #333; }
+                table { border-collapse: collapse; width: 100%; }
+                @media print { body { padding: 10px; } }
+              </style></head><body>${content.innerHTML}</body></html>`);
+              win.document.close();
+              setTimeout(() => { win.print(); win.close(); }, 400);
+            }}
             style={{ padding: '8px 20px', borderRadius: 6, border: 'none', background: '#0f172a', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}
           >
             🖨️ Print / Save PDF
           </button>
         </div>
 
-        <div className="inv-card" style={{ background: '#fff', borderRadius: 10, padding: 32, boxShadow: '0 2px 12px rgba(0,0,0,0.08)', color: '#333', fontSize: 13 }}>
+        <div id="public-invoice-print-area" className="inv-card" style={{ background: '#fff', borderRadius: 10, padding: 32, boxShadow: '0 2px 12px rgba(0,0,0,0.08)', color: '#333', fontSize: 13 }}>
           <div style={{ textAlign: 'center', borderBottom: '2px solid #0f172a', paddingBottom: 16, marginBottom: 24 }}>
             <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: '#64748b', marginBottom: 4 }}>{invoiceType}</div>
             <div className="inv-header-title" style={{ fontSize: 24, fontWeight: 700, color: '#0f172a' }}>{gstConfig.brandName}</div>

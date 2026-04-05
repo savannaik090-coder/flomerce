@@ -66,7 +66,17 @@ export default function GSTInvoice({ orderId, siteId, onClose }) {
   }
 
   function handlePrint() {
-    window.print();
+    const content = document.getElementById('gst-invoice-print-area');
+    if (!content) return;
+    const win = window.open('', '_blank', 'width=900,height=700');
+    if (!win) return;
+    win.document.write(`<!DOCTYPE html><html><head><title>Invoice INV-${order.order_number}</title><style>
+      body { margin: 0; padding: 20px; font-family: Arial, sans-serif; font-size: 13px; color: #333; }
+      table { border-collapse: collapse; width: 100%; }
+      @media print { body { padding: 10px; } }
+    </style></head><body>${content.innerHTML}</body></html>`);
+    win.document.close();
+    setTimeout(() => { win.print(); win.close(); }, 400);
   }
 
   if (loading) {
@@ -113,17 +123,6 @@ export default function GSTInvoice({ orderId, siteId, onClose }) {
   return (
     <>
       <style>{`
-        @media print {
-          html, body { height: auto !important; overflow: visible !important; margin: 0 !important; padding: 0 !important; }
-          body * { visibility: hidden !important; height: 0 !important; overflow: hidden !important; margin: 0 !important; padding: 0 !important; position: static !important; }
-          #gst-invoice-root,
-          #gst-invoice-root * { visibility: visible !important; height: auto !important; overflow: visible !important; position: static !important; }
-          #gst-invoice-root { display: block !important; width: 100% !important; padding: 10px !important; box-sizing: border-box !important; }
-          .invoice-no-print, .inv-actions { display: none !important; }
-          .invoice-print-wrapper { border: none !important; box-shadow: none !important; padding: 10px !important; margin: 0 !important; }
-          .inv-table-wrap { overflow: visible !important; }
-          .inv-table-wrap table { min-width: unset !important; width: 100% !important; }
-        }
         @media (max-width: 640px) {
           .inv-details-grid { grid-template-columns: 1fr !important; }
           .inv-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
@@ -146,7 +145,7 @@ export default function GSTInvoice({ orderId, siteId, onClose }) {
           </div>
         </div>
 
-        <div className="invoice-print-wrapper" style={{ fontFamily: 'Arial, sans-serif', fontSize: 13, color: '#333', border: '1px solid #e2e8f0', borderRadius: 8, padding: 24, background: '#fff' }}>
+        <div id="gst-invoice-print-area" className="invoice-print-wrapper" style={{ fontFamily: 'Arial, sans-serif', fontSize: 13, color: '#333', border: '1px solid #e2e8f0', borderRadius: 8, padding: 24, background: '#fff' }}>
           <div style={{ textAlign: 'center', borderBottom: '2px solid #0f172a', paddingBottom: 16, marginBottom: 20 }}>
             <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: '#64748b', marginBottom: 4 }}>{invoiceType}</div>
             <div className="inv-header-title" style={{ fontSize: 22, fontWeight: 700, color: '#0f172a' }}>{gstConfig.brandName}</div>
