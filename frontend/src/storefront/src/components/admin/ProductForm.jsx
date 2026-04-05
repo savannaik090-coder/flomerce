@@ -167,7 +167,9 @@ export default function ProductForm({ product, onSave, onCancel }) {
         setShowPricedOptions(false);
       }
     } else {
-      setForm(DEFAULT_FORM);
+      const savedHsn = localStorage.getItem('last_hsn_code') || '';
+      const savedGstRate = localStorage.getItem('last_gst_rate') || '';
+      setForm({ ...DEFAULT_FORM, hsn_code: savedHsn, gst_rate: savedGstRate });
       setOptions(DEFAULT_OPTIONS);
       setShowColors(false);
       setShowCustomOptions(false);
@@ -248,6 +250,8 @@ export default function ProductForm({ product, onSave, onCancel }) {
         await updateProduct(product.id, payload, siteConfig?.id);
       } else {
         await createProduct(payload);
+        if (form.hsn_code.trim()) localStorage.setItem('last_hsn_code', form.hsn_code.trim());
+        if (form.gst_rate !== '') localStorage.setItem('last_gst_rate', form.gst_rate);
       }
       if (siteConfig?.id) {
         saveOptionsTemplate(siteConfig.id, {
