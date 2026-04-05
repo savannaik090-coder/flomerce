@@ -114,10 +114,12 @@ export default function GSTInvoice({ orderId, siteId, onClose }) {
     <>
       <style>{`
         @media print {
-          body > *:not(#gst-invoice-root) { display: none !important; }
-          #gst-invoice-root { display: block !important; }
-          .invoice-no-print { display: none !important; }
-          .invoice-print-wrapper { position: fixed; inset: 0; overflow: auto; background: white; z-index: 99999; padding: 20px; }
+          body * { visibility: hidden !important; }
+          #gst-invoice-root,
+          #gst-invoice-root * { visibility: visible !important; }
+          #gst-invoice-root { position: fixed; left: 0; top: 0; width: 100%; background: white; z-index: 99999; padding: 20px; box-sizing: border-box; overflow: visible; }
+          .invoice-no-print, .inv-actions { display: none !important; }
+          .invoice-print-wrapper { border: none !important; box-shadow: none !important; padding: 0 !important; }
         }
         @media (max-width: 640px) {
           .inv-details-grid { grid-template-columns: 1fr !important; }

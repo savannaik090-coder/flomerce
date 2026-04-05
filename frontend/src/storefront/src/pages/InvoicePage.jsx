@@ -122,8 +122,11 @@ export default function InvoicePage() {
     <>
       <style>{`
         @media print {
-          .invoice-no-print { display: none !important; }
-          body { margin: 0; }
+          body * { visibility: hidden !important; }
+          .inv-card, .inv-card * { visibility: visible !important; }
+          .inv-card { position: fixed; left: 0; top: 0; width: 100%; background: white; z-index: 99999; padding: 20px; box-sizing: border-box; box-shadow: none !important; border-radius: 0 !important; }
+          .invoice-no-print, .inv-top-bar { display: none !important; }
+          body { margin: 0; background: white; }
         }
         body { margin: 0; padding: 0; background: #f0f4f8; font-family: Arial, sans-serif; }
         @media (max-width: 640px) {
