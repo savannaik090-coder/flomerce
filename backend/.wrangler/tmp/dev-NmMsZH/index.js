@@ -2427,6 +2427,13 @@ function buildOrderConfirmationEmail(order, brandName, ownerEmail, currency = "I
           </div>
           ` : ""}
 
+          ${options.invoiceUrl ? `
+          <div style="margin-top: 16px; padding: 14px 16px; background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; text-align: center;">
+            <p style="margin: 0 0 10px; font-size: 13px; color: #0369a1;">Need a GST invoice for this order?</p>
+            <a href="${options.invoiceUrl}" style="display:inline-block;background:#0369a1;color:#fff;padding:9px 22px;border-radius:6px;text-decoration:none;font-weight:600;font-size:13px;">Download Invoice</a>
+          </div>
+          ` : ""}
+
           <p style="margin-top: 24px; color: #64748b; font-size: 14px; line-height: 1.6;">Your order has been confirmed and is now being prepared. We'll update you once it's packed and on its way. For any queries, reach out to us at ${ownerEmail ? `<a href="mailto:${ownerEmail}" style="color:#0f172a;">${ownerEmail}</a>` : brandName || "the store"}.</p>
         </div>
         <div style="background: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8;">
@@ -5554,7 +5561,7 @@ __name(getProduct, "getProduct");
 async function createProduct(request, env, user, ctx2) {
   try {
     const data = await request.json();
-    const { siteId, name, description, shortDescription, price, comparePrice, costPrice, sku, stock, categoryId, subcategoryId, images, thumbnailUrl, mainImageIndex, tags, isFeatured, weight, dimensions, options } = data;
+    const { siteId, name, description, shortDescription, price, comparePrice, costPrice, sku, stock, categoryId, subcategoryId, images, thumbnailUrl, mainImageIndex, tags, isFeatured, weight, dimensions, options, hsnCode, gstRate } = data;
     if (!siteId || !name || price === void 0) {
       return errorResponse("Site ID, name and price are required");
     }
@@ -5589,15 +5596,15 @@ async function createProduct(request, env, user, ctx2) {
     }
     const productId = generateId();
     const optionsStr = options ? JSON.stringify(options) : null;
-    const rowData = { id: productId, site_id: siteId, category_id: categoryId, subcategory_id: subcategoryId, name, slug, description, short_description: shortDescription, price, compare_price: comparePrice, cost_price: costPrice, sku, stock, images, thumbnail_url: resolvedThumbnail, tags, is_featured: isFeatured, weight, dimensions, options: optionsStr };
+    const rowData = { id: productId, site_id: siteId, category_id: categoryId, subcategory_id: subcategoryId, name, slug, description, short_description: shortDescription, price, compare_price: comparePrice, cost_price: costPrice, sku, stock, images, thumbnail_url: resolvedThumbnail, tags, is_featured: isFeatured, weight, dimensions, options: optionsStr, hsn_code: hsnCode, gst_rate: gstRate };
     const rowBytes = estimateRowBytes(rowData);
     const usageCheck = await checkUsageLimit(env, siteId, "d1", rowBytes);
     if (!usageCheck.allowed) {
       return errorResponse(usageCheck.reason, 403, "STORAGE_LIMIT");
     }
     const runInsert = /* @__PURE__ */ __name(() => db.prepare(
-      `INSERT INTO products (id, site_id, category_id, subcategory_id, name, slug, description, short_description, price, compare_price, cost_price, sku, stock, low_stock_threshold, weight, dimensions, images, thumbnail_url, tags, is_featured, options, row_size_bytes, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+      `INSERT INTO products (id, site_id, category_id, subcategory_id, name, slug, description, short_description, price, compare_price, cost_price, sku, stock, low_stock_threshold, weight, dimensions, images, thumbnail_url, tags, is_featured, options, hsn_code, gst_rate, row_size_bytes, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(
       productId,
       siteId,
@@ -5620,6 +5627,8 @@ async function createProduct(request, env, user, ctx2) {
       tags ? JSON.stringify(tags) : "[]",
       isFeatured ? 1 : 0,
       optionsStr,
+      hsnCode || null,
+      gstRate != null ? gstRate : 0,
       rowBytes
     ).run(), "runInsert");
     try {
@@ -5691,7 +5700,7 @@ async function updateProduct(request, env, user, productId, ctx2) {
     const db = await resolveSiteDBById(env, resolvedSiteId);
     await ensureProductSubcategoryColumn(db, resolvedSiteId);
     const updates = await request.json();
-    const allowedFields = ["name", "description", "short_description", "price", "compare_price", "cost_price", "sku", "stock", "low_stock_threshold", "category_id", "subcategory_id", "images", "thumbnail_url", "tags", "is_featured", "is_active", "weight", "dimensions", "options"];
+    const allowedFields = ["name", "description", "short_description", "price", "compare_price", "cost_price", "sku", "stock", "low_stock_threshold", "category_id", "subcategory_id", "images", "thumbnail_url", "tags", "is_featured", "is_active", "weight", "dimensions", "options", "hsn_code", "gst_rate"];
     let oldProductData = null;
     const needsOldData = updates.price !== void 0 || updates.stock !== void 0;
     if (needsOldData) {
@@ -6015,6 +6024,12 @@ async function handleOrders(request, env, path, ctx2) {
   }
   if (action === "return-link" && method === "POST") {
     return resendReturnLink(request, env, orderId);
+  }
+  if (action === "invoice" && method === "GET") {
+    return getInvoiceData(request, env, orderId);
+  }
+  if (orderId === "public-invoice" && method === "GET") {
+    return getPublicInvoice(request, env);
   }
   const url = new URL(request.url);
   const siteId = url.searchParams.get("siteId");
@@ -6696,6 +6711,24 @@ async function updateOrderStatus(request, env, user, orderId) {
               emailOptions.helpUrl = `https://${domain}/order-help/${fullOrder.order_number}?cancelToken=${cancelToken}`;
             } catch (e) {
               console.error("Cancel token generation error:", e);
+            }
+          }
+          if (status === "confirmed" && statusSettings.gstInvoiceEmailEnabled && fullOrder.customer_email) {
+            try {
+              const invoiceToken = generateReturnToken();
+              try {
+                await db.prepare(`ALTER TABLE orders ADD COLUMN invoice_token TEXT`).run();
+              } catch (e) {
+              }
+              try {
+                await db.prepare(`ALTER TABLE guest_orders ADD COLUMN invoice_token TEXT`).run();
+              } catch (e) {
+              }
+              const orderTable = await db.prepare("SELECT id FROM orders WHERE id = ?").bind(orderId).first() ? "orders" : "guest_orders";
+              await db.prepare(`UPDATE ${orderTable} SET invoice_token = ? WHERE id = ?`).bind(invoiceToken, orderId).run();
+              emailOptions.invoiceUrl = `https://${domain}/invoice?order=${fullOrder.order_number}&t=${invoiceToken}&subdomain=${encodeURIComponent(site?.subdomain || "")}`;
+            } catch (e) {
+              console.error("Invoice token generation error:", e);
             }
           }
           if (status === "confirmed") {
@@ -7875,6 +7908,192 @@ async function resendCancelLink(request, env, orderId) {
   }
 }
 __name(resendCancelLink, "resendCancelLink");
+async function getInvoiceData(request, env, orderId) {
+  try {
+    const url = new URL(request.url);
+    const siteId = url.searchParams.get("siteId");
+    if (!siteId || !orderId)
+      return errorResponse("siteId and orderId are required", 400);
+    const adminToken = request.headers.get("Authorization");
+    if (!adminToken || !adminToken.startsWith("SiteAdmin ") && !adminToken.startsWith("Bearer ")) {
+      return errorResponse("Unauthorized", 401);
+    }
+    const db = await resolveSiteDBById(env, siteId);
+    let order = await db.prepare("SELECT * FROM orders WHERE id = ? AND site_id = ?").bind(orderId, siteId).first();
+    let isGuest = false;
+    if (!order) {
+      order = await db.prepare("SELECT * FROM guest_orders WHERE id = ? AND site_id = ?").bind(orderId, siteId).first();
+      isGuest = true;
+    }
+    if (!order)
+      return errorResponse("Order not found", 404);
+    let items = [];
+    try {
+      items = typeof order.items === "string" ? JSON.parse(order.items) : order.items || [];
+    } catch (e) {
+    }
+    const enrichedItems = await Promise.all(items.map(async (item) => {
+      let hsnCode = null;
+      let gstRate = 0;
+      try {
+        if (item.productId || item.product_id || item.id) {
+          const pid = item.productId || item.product_id || item.id;
+          const prod = await db.prepare("SELECT hsn_code, gst_rate FROM products WHERE id = ? AND site_id = ?").bind(pid, siteId).first();
+          if (prod) {
+            hsnCode = prod.hsn_code;
+            gstRate = prod.gst_rate || 0;
+          }
+        }
+      } catch (e) {
+      }
+      return { ...item, hsnCode, gstRate };
+    }));
+    const config = await getSiteConfig(env, siteId);
+    let settings = {};
+    try {
+      settings = typeof config.settings === "string" ? JSON.parse(config.settings) : config.settings || {};
+    } catch (e) {
+    }
+    const gstConfig = {
+      gstin: settings.gstin || null,
+      legalName: settings.gstLegalName || config.brand_name || "",
+      state: settings.gstState || null,
+      address: settings.gstAddress || config.address || "",
+      brandName: config.brand_name || "Store"
+    };
+    let shippingAddress = order.shipping_address;
+    try {
+      if (typeof shippingAddress === "string")
+        shippingAddress = JSON.parse(shippingAddress);
+    } catch (e) {
+    }
+    return successResponse({
+      order: {
+        id: order.id,
+        order_number: order.order_number,
+        created_at: order.created_at,
+        status: order.status,
+        customer_name: order.customer_name,
+        customer_email: order.customer_email,
+        customer_phone: order.customer_phone,
+        customer_gstin: order.customer_gstin || null,
+        shipping_address: shippingAddress,
+        subtotal: order.subtotal,
+        discount: order.discount || 0,
+        shipping_cost: order.shipping_cost || 0,
+        tax: order.tax || 0,
+        total: order.total,
+        currency: order.currency || "INR",
+        payment_method: order.payment_method,
+        coupon_code: order.coupon_code || null,
+        items: enrichedItems,
+        isGuest
+      },
+      gstConfig
+    });
+  } catch (error) {
+    console.error("Get invoice data error:", error);
+    return errorResponse("Failed to fetch invoice data", 500);
+  }
+}
+__name(getInvoiceData, "getInvoiceData");
+async function getPublicInvoice(request, env) {
+  try {
+    const url = new URL(request.url);
+    const orderNumber = url.searchParams.get("orderNumber");
+    const token = url.searchParams.get("t");
+    const subdomain = url.searchParams.get("subdomain");
+    if (!orderNumber || !token)
+      return errorResponse("orderNumber and token are required", 400);
+    let db = null;
+    let siteId = null;
+    if (subdomain) {
+      const site = await env.DB.prepare("SELECT id FROM sites WHERE subdomain = ?").bind(subdomain).first();
+      if (site) {
+        siteId = site.id;
+        db = await resolveSiteDBById(env, siteId);
+      }
+    }
+    if (!db)
+      return errorResponse("Store not found", 404);
+    let order = await db.prepare("SELECT * FROM orders WHERE order_number = ? AND site_id = ? AND invoice_token = ?").bind(orderNumber, siteId, token).first();
+    let isGuest = false;
+    if (!order) {
+      order = await db.prepare("SELECT * FROM guest_orders WHERE order_number = ? AND site_id = ? AND invoice_token = ?").bind(orderNumber, siteId, token).first();
+      isGuest = true;
+    }
+    if (!order)
+      return errorResponse("Invoice not found or invalid token", 404);
+    let items = [];
+    try {
+      items = typeof order.items === "string" ? JSON.parse(order.items) : order.items || [];
+    } catch (e) {
+    }
+    const enrichedItems = await Promise.all(items.map(async (item) => {
+      let hsnCode = null;
+      let gstRate = 0;
+      try {
+        const pid = item.productId || item.product_id || item.id;
+        if (pid) {
+          const prod = await db.prepare("SELECT hsn_code, gst_rate FROM products WHERE id = ? AND site_id = ?").bind(pid, siteId).first();
+          if (prod) {
+            hsnCode = prod.hsn_code;
+            gstRate = prod.gst_rate || 0;
+          }
+        }
+      } catch (e) {
+      }
+      return { ...item, hsnCode, gstRate };
+    }));
+    const config = await getSiteConfig(env, siteId);
+    let settings = {};
+    try {
+      settings = typeof config.settings === "string" ? JSON.parse(config.settings) : config.settings || {};
+    } catch (e) {
+    }
+    const gstConfig = {
+      gstin: settings.gstin || null,
+      legalName: settings.gstLegalName || config.brand_name || "",
+      state: settings.gstState || null,
+      address: settings.gstAddress || config.address || "",
+      brandName: config.brand_name || "Store"
+    };
+    let shippingAddress = order.shipping_address;
+    try {
+      if (typeof shippingAddress === "string")
+        shippingAddress = JSON.parse(shippingAddress);
+    } catch (e) {
+    }
+    return successResponse({
+      order: {
+        id: order.id,
+        order_number: order.order_number,
+        created_at: order.created_at,
+        status: order.status,
+        customer_name: order.customer_name,
+        customer_email: order.customer_email,
+        customer_phone: order.customer_phone,
+        customer_gstin: order.customer_gstin || null,
+        shipping_address: shippingAddress,
+        subtotal: order.subtotal,
+        discount: order.discount || 0,
+        shipping_cost: order.shipping_cost || 0,
+        tax: order.tax || 0,
+        total: order.total,
+        currency: order.currency || "INR",
+        payment_method: order.payment_method,
+        coupon_code: order.coupon_code || null,
+        items: enrichedItems,
+        isGuest
+      },
+      gstConfig
+    });
+  } catch (error) {
+    console.error("Get public invoice error:", error);
+    return errorResponse("Failed to fetch invoice", 500);
+  }
+}
+__name(getPublicInvoice, "getPublicInvoice");
 
 // workers/storefront/cart-worker.js
 init_checked_fetch();
@@ -11404,7 +11623,13 @@ function getSiteSchemaStatements() {
     "ALTER TABLE guest_orders ADD COLUMN cancellation_reason TEXT",
     "ALTER TABLE orders ADD COLUMN shipping_cost REAL DEFAULT 0",
     "ALTER TABLE orders ADD COLUMN tax REAL DEFAULT 0",
-    "ALTER TABLE guest_orders ADD COLUMN shipping_cost REAL DEFAULT 0"
+    "ALTER TABLE guest_orders ADD COLUMN shipping_cost REAL DEFAULT 0",
+    "ALTER TABLE products ADD COLUMN hsn_code TEXT",
+    "ALTER TABLE products ADD COLUMN gst_rate REAL DEFAULT 0",
+    "ALTER TABLE orders ADD COLUMN invoice_token TEXT",
+    "ALTER TABLE orders ADD COLUMN customer_gstin TEXT",
+    "ALTER TABLE guest_orders ADD COLUMN invoice_token TEXT",
+    "ALTER TABLE guest_orders ADD COLUMN customer_gstin TEXT"
   ];
   return [...tables, ...indexes, ...addColumnMigrations];
 }

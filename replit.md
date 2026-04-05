@@ -6,6 +6,23 @@ Fluxe is a multi-tenant SaaS platform designed to empower small businesses and e
 ## User Preferences
 I prefer iterative development with clear communication on significant changes. Please ask before making major architectural decisions or large-scale code overhauls. Provide concise explanations and focus on effective solutions. Do not make changes to files in the `frontend/templates/` folder.
 
+## Recent Major Features
+
+### GST Invoicing System (Apr 2026)
+- **DB Schema:** Added `hsn_code TEXT`, `gst_rate REAL` to `products`; `invoice_token TEXT`, `customer_gstin TEXT` to `orders` and `guest_orders` (migrations in `site-schema.js`).
+- **Products:** `products-worker.js` saves `hsnCode`/`gstRate` fields on create/update.
+- **Orders:** `orders-worker.js` has two new endpoints:
+  - `GET /api/orders/:id/invoice` — admin-authenticated invoice data with product GST enrichment and site GST config.
+  - `GET /api/invoice/public` — token-authenticated public invoice view (uses `invoice_token` + `order_number` + `subdomain` query params).
+- **Invoice token:** Generated when order status → `confirmed` if `gstInvoiceEmailEnabled` is true in settings; stored in `orders.invoice_token`; invoice URL appended to confirmation email.
+- **Tax logic:** Intra-state (store state == customer state) → CGST + SGST (half each); Inter-state → IGST.
+- **Frontend (admin):**
+  - `SettingsSection.jsx` — GST & Invoicing card: GSTIN, legal name, registered state, business address, and email invoice toggle.
+  - `ProductForm.jsx` — HSN/SAC code + GST rate (0/3/5/12/18/28%) per product.
+  - `OrdersSection.jsx` — "Download Invoice" button in order detail modal, opens `GSTInvoice.jsx` modal.
+  - `GSTInvoice.jsx` — printable invoice component (Tax Invoice or Bill of Supply depending on GSTIN presence), fetches from admin endpoint, browser print/PDF.
+- **Frontend (storefront):** `InvoicePage.jsx` at `/invoice` route (standalone, no header/footer) — public invoice via token link from email.
+
 ## System Architecture
 
 ### Core Design

@@ -241,7 +241,7 @@ async function getProduct(env, productId, siteId, subdomain) {
 async function createProduct(request, env, user, ctx) {
   try {
     const data = await request.json();
-    const { siteId, name, description, shortDescription, price, comparePrice, costPrice, sku, stock, categoryId, subcategoryId, images, thumbnailUrl, mainImageIndex, tags, isFeatured, weight, dimensions, options } = data;
+    const { siteId, name, description, shortDescription, price, comparePrice, costPrice, sku, stock, categoryId, subcategoryId, images, thumbnailUrl, mainImageIndex, tags, isFeatured, weight, dimensions, options, hsnCode, gstRate } = data;
 
     if (!siteId || !name || price === undefined) {
       return errorResponse('Site ID, name and price are required');
@@ -284,7 +284,7 @@ async function createProduct(request, env, user, ctx) {
     const productId = generateId();
 
     const optionsStr = options ? JSON.stringify(options) : null;
-    const rowData = { id: productId, site_id: siteId, category_id: categoryId, subcategory_id: subcategoryId, name, slug, description, short_description: shortDescription, price, compare_price: comparePrice, cost_price: costPrice, sku, stock, images, thumbnail_url: resolvedThumbnail, tags, is_featured: isFeatured, weight, dimensions, options: optionsStr };
+    const rowData = { id: productId, site_id: siteId, category_id: categoryId, subcategory_id: subcategoryId, name, slug, description, short_description: shortDescription, price, compare_price: comparePrice, cost_price: costPrice, sku, stock, images, thumbnail_url: resolvedThumbnail, tags, is_featured: isFeatured, weight, dimensions, options: optionsStr, hsn_code: hsnCode, gst_rate: gstRate };
     const rowBytes = estimateRowBytes(rowData);
 
     const usageCheck = await checkUsageLimit(env, siteId, 'd1', rowBytes);
@@ -293,8 +293,8 @@ async function createProduct(request, env, user, ctx) {
     }
 
     const runInsert = () => db.prepare(
-      `INSERT INTO products (id, site_id, category_id, subcategory_id, name, slug, description, short_description, price, compare_price, cost_price, sku, stock, low_stock_threshold, weight, dimensions, images, thumbnail_url, tags, is_featured, options, row_size_bytes, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+      `INSERT INTO products (id, site_id, category_id, subcategory_id, name, slug, description, short_description, price, compare_price, cost_price, sku, stock, low_stock_threshold, weight, dimensions, images, thumbnail_url, tags, is_featured, options, hsn_code, gst_rate, row_size_bytes, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(
       productId,
       siteId,
@@ -317,6 +317,8 @@ async function createProduct(request, env, user, ctx) {
       tags ? JSON.stringify(tags) : '[]',
       isFeatured ? 1 : 0,
       optionsStr,
+      hsnCode || null,
+      gstRate != null ? gstRate : 0,
       rowBytes
     ).run();
 
@@ -400,7 +402,7 @@ async function updateProduct(request, env, user, productId, ctx) {
     await ensureProductSubcategoryColumn(db, resolvedSiteId);
 
     const updates = await request.json();
-    const allowedFields = ['name', 'description', 'short_description', 'price', 'compare_price', 'cost_price', 'sku', 'stock', 'low_stock_threshold', 'category_id', 'subcategory_id', 'images', 'thumbnail_url', 'tags', 'is_featured', 'is_active', 'weight', 'dimensions', 'options'];
+    const allowedFields = ['name', 'description', 'short_description', 'price', 'compare_price', 'cost_price', 'sku', 'stock', 'low_stock_threshold', 'category_id', 'subcategory_id', 'images', 'thumbnail_url', 'tags', 'is_featured', 'is_active', 'weight', 'dimensions', 'options', 'hsn_code', 'gst_rate'];
 
     let oldProductData = null;
     const needsOldData = updates.price !== undefined || updates.stock !== undefined;

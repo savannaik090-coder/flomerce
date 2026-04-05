@@ -40,6 +40,12 @@ export default function SettingsSection() {
   const [deliveryFreeAboveEnabled, setDeliveryFreeAboveEnabled] = useState(false);
   const [deliveryFreeAbove, setDeliveryFreeAbove] = useState('');
   const [deliveryRegionRates, setDeliveryRegionRates] = useState([]);
+  const [gstin, setGstin] = useState('');
+  const [gstLegalName, setGstLegalName] = useState('');
+  const [gstState, setGstState] = useState('');
+  const [gstAddress, setGstAddress] = useState('');
+  const [gstInvoiceEmailEnabled, setGstInvoiceEmailEnabled] = useState(false);
+
   const [loading, setLoading] = useState(true);
 
   const [currentSubdomain, setCurrentSubdomain] = useState('');
@@ -142,6 +148,11 @@ export default function SettingsSection() {
         setDeliveryFreeAboveEnabled(dc.freeAboveEnabled === true);
         setDeliveryFreeAbove(dc.freeAbove != null ? String(dc.freeAbove) : '');
         setDeliveryRegionRates(Array.isArray(dc.regionRates) ? dc.regionRates : []);
+        setGstin(settings.gstin || '');
+        setGstLegalName(settings.gstLegalName || '');
+        setGstState(settings.gstState || '');
+        setGstAddress(settings.gstAddress || '');
+        setGstInvoiceEmailEnabled(settings.gstInvoiceEmailEnabled === true);
         if (data.custom_domain) {
           setCustomDomain(data.custom_domain);
           setDomainInput(data.custom_domain);
@@ -185,6 +196,11 @@ export default function SettingsSection() {
           freeAbove: deliveryEnabled && deliveryFreeAboveEnabled ? (Number(deliveryFreeAbove) || 0) : 0,
           regionRates: deliveryEnabled ? deliveryRegionRates.filter(r => r.country && r.rate !== '') : [],
         },
+        gstin: gstin.trim() || null,
+        gstLegalName: gstLegalName.trim() || null,
+        gstState: gstState.trim() || null,
+        gstAddress: gstAddress.trim() || null,
+        gstInvoiceEmailEnabled,
       };
       if (razorpayKeyId) {
         settings.razorpayKeyId = razorpayKeyId;
@@ -1060,6 +1076,78 @@ export default function SettingsSection() {
               <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>
                 If provided, customers without a specific order number will be redirected to this URL. Leave empty to use the built-in order tracking page where customers can search by order number.
               </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="card" style={{ marginBottom: 20 }}>
+          <div className="card-header">
+            <h3 className="card-title">GST & Invoicing</h3>
+          </div>
+          <div className="card-content">
+            <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
+              Set up your GST details to generate proper tax invoices for orders. If you are not GST registered, leave these empty — a simple bill will still be available.
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+              <div>
+                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>GSTIN</label>
+                <input
+                  type="text"
+                  value={gstin}
+                  onChange={e => setGstin(e.target.value.toUpperCase())}
+                  placeholder="e.g., 27AABCU9603R1ZX"
+                  maxLength={15}
+                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit', letterSpacing: 1 }}
+                />
+                <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>Your 15-digit GST Identification Number</p>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Legal Business Name</label>
+                <input
+                  type="text"
+                  value={gstLegalName}
+                  onChange={e => setGstLegalName(e.target.value)}
+                  placeholder="As registered with GST"
+                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }}
+                />
+                <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>May differ from your store display name</p>
+              </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+              <div>
+                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Registered State</label>
+                <input
+                  type="text"
+                  value={gstState}
+                  onChange={e => setGstState(e.target.value)}
+                  placeholder="e.g., Maharashtra"
+                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }}
+                />
+                <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>Used to determine CGST/SGST vs IGST</p>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Business Address</label>
+                <input
+                  type="text"
+                  value={gstAddress}
+                  onChange={e => setGstAddress(e.target.value)}
+                  placeholder="Full registered address"
+                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }}
+                />
+                <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>Printed on every GST invoice</p>
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', border: '1px solid #e2e8f0', borderRadius: 8, background: gstInvoiceEmailEnabled ? '#f0fdf4' : '#f8fafc' }}>
+              <div>
+                <div style={{ fontWeight: 600, fontSize: 14, color: '#1e293b' }}>Include Invoice Link in Order Emails</div>
+                <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>Customers will get a "Download Invoice" link in their order confirmation email</div>
+              </div>
+              <label style={{ position: 'relative', display: 'inline-block', width: 44, height: 24, flexShrink: 0 }}>
+                <input type="checkbox" checked={gstInvoiceEmailEnabled} onChange={e => setGstInvoiceEmailEnabled(e.target.checked)} style={{ opacity: 0, width: 0, height: 0 }} />
+                <span style={{ position: 'absolute', cursor: 'pointer', inset: 0, borderRadius: 24, transition: '0.3s', background: gstInvoiceEmailEnabled ? '#22c55e' : '#cbd5e1' }}>
+                  <span style={{ position: 'absolute', left: gstInvoiceEmailEnabled ? 22 : 2, top: 2, width: 20, height: 20, background: '#fff', borderRadius: '50%', transition: '0.3s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+                </span>
+              </label>
             </div>
           </div>
         </div>

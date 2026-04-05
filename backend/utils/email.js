@@ -222,6 +222,13 @@ export function buildOrderConfirmationEmail(order, brandName, ownerEmail, curren
           </div>
           ` : ''}
 
+          ${options.invoiceUrl ? `
+          <div style="margin-top: 16px; padding: 14px 16px; background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; text-align: center;">
+            <p style="margin: 0 0 10px; font-size: 13px; color: #0369a1;">Need a GST invoice for this order?</p>
+            <a href="${options.invoiceUrl}" style="display:inline-block;background:#0369a1;color:#fff;padding:9px 22px;border-radius:6px;text-decoration:none;font-weight:600;font-size:13px;">Download Invoice</a>
+          </div>
+          ` : ''}
+
           <p style="margin-top: 24px; color: #64748b; font-size: 14px; line-height: 1.6;">Your order has been confirmed and is now being prepared. We'll update you once it's packed and on its way. For any queries, reach out to us at ${ownerEmail ? `<a href="mailto:${ownerEmail}" style="color:#0f172a;">${ownerEmail}</a>` : brandName || 'the store'}.</p>
         </div>
         <div style="background: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8;">

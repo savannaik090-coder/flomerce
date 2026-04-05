@@ -66,6 +66,14 @@ export async function handleOrders(request, env, path, ctx) {
     return resendReturnLink(request, env, orderId);
   }
 
+  if (action === 'invoice' && method === 'GET') {
+    return getInvoiceData(request, env, orderId);
+  }
+
+  if (orderId === 'public-invoice' && method === 'GET') {
+    return getPublicInvoice(request, env);
+  }
+
   const url = new URL(request.url);
   const siteId = url.searchParams.get('siteId');
 
@@ -782,6 +790,19 @@ async function updateOrderStatus(request, env, user, orderId) {
               emailOptions.helpUrl = `https://${domain}/order-help/${fullOrder.order_number}?cancelToken=${cancelToken}`;
             } catch (e) {
               console.error('Cancel token generation error:', e);
+            }
+          }
+
+          if (status === 'confirmed' && statusSettings.gstInvoiceEmailEnabled && fullOrder.customer_email) {
+            try {
+              const invoiceToken = generateReturnToken();
+              try { await db.prepare(`ALTER TABLE orders ADD COLUMN invoice_token TEXT`).run(); } catch (e) {}
+              try { await db.prepare(`ALTER TABLE guest_orders ADD COLUMN invoice_token TEXT`).run(); } catch (e) {}
+              const orderTable = (await db.prepare('SELECT id FROM orders WHERE id = ?').bind(orderId).first()) ? 'orders' : 'guest_orders';
+              await db.prepare(`UPDATE ${orderTable} SET invoice_token = ? WHERE id = ?`).bind(invoiceToken, orderId).run();
+              emailOptions.invoiceUrl = `https://${domain}/invoice?order=${fullOrder.order_number}&t=${invoiceToken}&subdomain=${encodeURIComponent(site?.subdomain || '')}`;
+            } catch (e) {
+              console.error('Invoice token generation error:', e);
             }
           }
 
@@ -1907,5 +1928,174 @@ async function resendCancelLink(request, env, orderId) {
   } catch (error) {
     console.error('Resend cancel link error:', error);
     return errorResponse('Failed to send cancellation link', 500);
+  }
+}
+
+async function getInvoiceData(request, env, orderId) {
+  try {
+    const url = new URL(request.url);
+    const siteId = url.searchParams.get('siteId');
+    if (!siteId || !orderId) return errorResponse('siteId and orderId are required', 400);
+
+    const adminToken = request.headers.get('Authorization');
+    if (!adminToken || (!adminToken.startsWith('SiteAdmin ') && !adminToken.startsWith('Bearer '))) {
+      return errorResponse('Unauthorized', 401);
+    }
+
+    const db = await resolveSiteDBById(env, siteId);
+    let order = await db.prepare('SELECT * FROM orders WHERE id = ? AND site_id = ?').bind(orderId, siteId).first();
+    let isGuest = false;
+    if (!order) {
+      order = await db.prepare('SELECT * FROM guest_orders WHERE id = ? AND site_id = ?').bind(orderId, siteId).first();
+      isGuest = true;
+    }
+    if (!order) return errorResponse('Order not found', 404);
+
+    let items = [];
+    try { items = typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []); } catch (e) {}
+
+    const enrichedItems = await Promise.all(items.map(async (item) => {
+      let hsnCode = null;
+      let gstRate = 0;
+      try {
+        if (item.productId || item.product_id || item.id) {
+          const pid = item.productId || item.product_id || item.id;
+          const prod = await db.prepare('SELECT hsn_code, gst_rate FROM products WHERE id = ? AND site_id = ?').bind(pid, siteId).first();
+          if (prod) { hsnCode = prod.hsn_code; gstRate = prod.gst_rate || 0; }
+        }
+      } catch (e) {}
+      return { ...item, hsnCode, gstRate };
+    }));
+
+    const config = await getSiteConfig(env, siteId);
+    let settings = {};
+    try { settings = typeof config.settings === 'string' ? JSON.parse(config.settings) : (config.settings || {}); } catch (e) {}
+
+    const gstConfig = {
+      gstin: settings.gstin || null,
+      legalName: settings.gstLegalName || config.brand_name || '',
+      state: settings.gstState || null,
+      address: settings.gstAddress || config.address || '',
+      brandName: config.brand_name || 'Store',
+    };
+
+    let shippingAddress = order.shipping_address;
+    try { if (typeof shippingAddress === 'string') shippingAddress = JSON.parse(shippingAddress); } catch (e) {}
+
+    return successResponse({
+      order: {
+        id: order.id,
+        order_number: order.order_number,
+        created_at: order.created_at,
+        status: order.status,
+        customer_name: order.customer_name,
+        customer_email: order.customer_email,
+        customer_phone: order.customer_phone,
+        customer_gstin: order.customer_gstin || null,
+        shipping_address: shippingAddress,
+        subtotal: order.subtotal,
+        discount: order.discount || 0,
+        shipping_cost: order.shipping_cost || 0,
+        tax: order.tax || 0,
+        total: order.total,
+        currency: order.currency || 'INR',
+        payment_method: order.payment_method,
+        coupon_code: order.coupon_code || null,
+        items: enrichedItems,
+        isGuest,
+      },
+      gstConfig,
+    });
+  } catch (error) {
+    console.error('Get invoice data error:', error);
+    return errorResponse('Failed to fetch invoice data', 500);
+  }
+}
+
+async function getPublicInvoice(request, env) {
+  try {
+    const url = new URL(request.url);
+    const orderNumber = url.searchParams.get('orderNumber');
+    const token = url.searchParams.get('t');
+    const subdomain = url.searchParams.get('subdomain');
+
+    if (!orderNumber || !token) return errorResponse('orderNumber and token are required', 400);
+
+    let db = null;
+    let siteId = null;
+
+    if (subdomain) {
+      const site = await env.DB.prepare('SELECT id FROM sites WHERE subdomain = ?').bind(subdomain).first();
+      if (site) { siteId = site.id; db = await resolveSiteDBById(env, siteId); }
+    }
+
+    if (!db) return errorResponse('Store not found', 404);
+
+    let order = await db.prepare('SELECT * FROM orders WHERE order_number = ? AND site_id = ? AND invoice_token = ?').bind(orderNumber, siteId, token).first();
+    let isGuest = false;
+    if (!order) {
+      order = await db.prepare('SELECT * FROM guest_orders WHERE order_number = ? AND site_id = ? AND invoice_token = ?').bind(orderNumber, siteId, token).first();
+      isGuest = true;
+    }
+    if (!order) return errorResponse('Invoice not found or invalid token', 404);
+
+    let items = [];
+    try { items = typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []); } catch (e) {}
+
+    const enrichedItems = await Promise.all(items.map(async (item) => {
+      let hsnCode = null;
+      let gstRate = 0;
+      try {
+        const pid = item.productId || item.product_id || item.id;
+        if (pid) {
+          const prod = await db.prepare('SELECT hsn_code, gst_rate FROM products WHERE id = ? AND site_id = ?').bind(pid, siteId).first();
+          if (prod) { hsnCode = prod.hsn_code; gstRate = prod.gst_rate || 0; }
+        }
+      } catch (e) {}
+      return { ...item, hsnCode, gstRate };
+    }));
+
+    const config = await getSiteConfig(env, siteId);
+    let settings = {};
+    try { settings = typeof config.settings === 'string' ? JSON.parse(config.settings) : (config.settings || {}); } catch (e) {}
+
+    const gstConfig = {
+      gstin: settings.gstin || null,
+      legalName: settings.gstLegalName || config.brand_name || '',
+      state: settings.gstState || null,
+      address: settings.gstAddress || config.address || '',
+      brandName: config.brand_name || 'Store',
+    };
+
+    let shippingAddress = order.shipping_address;
+    try { if (typeof shippingAddress === 'string') shippingAddress = JSON.parse(shippingAddress); } catch (e) {}
+
+    return successResponse({
+      order: {
+        id: order.id,
+        order_number: order.order_number,
+        created_at: order.created_at,
+        status: order.status,
+        customer_name: order.customer_name,
+        customer_email: order.customer_email,
+        customer_phone: order.customer_phone,
+        customer_gstin: order.customer_gstin || null,
+        shipping_address: shippingAddress,
+        subtotal: order.subtotal,
+        discount: order.discount || 0,
+        shipping_cost: order.shipping_cost || 0,
+        tax: order.tax || 0,
+        total: order.total,
+        currency: order.currency || 'INR',
+        payment_method: order.payment_method,
+        coupon_code: order.coupon_code || null,
+        items: enrichedItems,
+        isGuest,
+      },
+      gstConfig,
+    });
+  } catch (error) {
+    console.error('Get public invoice error:', error);
+    return errorResponse('Failed to fetch invoice', 500);
   }
 }

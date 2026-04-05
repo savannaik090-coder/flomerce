@@ -546,6 +546,12 @@ export function getSiteSchemaStatements() {
     'ALTER TABLE orders ADD COLUMN shipping_cost REAL DEFAULT 0',
     'ALTER TABLE orders ADD COLUMN tax REAL DEFAULT 0',
     'ALTER TABLE guest_orders ADD COLUMN shipping_cost REAL DEFAULT 0',
+    'ALTER TABLE products ADD COLUMN hsn_code TEXT',
+    'ALTER TABLE products ADD COLUMN gst_rate REAL DEFAULT 0',
+    'ALTER TABLE orders ADD COLUMN invoice_token TEXT',
+    'ALTER TABLE orders ADD COLUMN customer_gstin TEXT',
+    'ALTER TABLE guest_orders ADD COLUMN invoice_token TEXT',
+    'ALTER TABLE guest_orders ADD COLUMN customer_gstin TEXT',
   ];
 
   return [...tables, ...indexes, ...addColumnMigrations];

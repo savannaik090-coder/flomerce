@@ -48,6 +48,7 @@ const ReviewPage = React.lazy(() => import('./pages/ReviewPage.jsx'));
 const FaqPage = React.lazy(() => import('./pages/FaqPage.jsx'));
 const BlogListPage = React.lazy(() => import('./pages/BlogListPage.jsx'));
 const BlogPostPage = React.lazy(() => import('./pages/BlogPostPage.jsx'));
+const InvoicePage = React.lazy(() => import('./pages/InvoicePage.jsx'));
 
 function removePreloader() {
   const el = document.getElementById('fluxe-preloader');
@@ -102,6 +103,7 @@ export default function App() {
   if (error) return <SiteErrorScreen error={error} />;
 
   const isAdminRoute = location.pathname.startsWith('/admin');
+  const isInvoiceRoute = location.pathname === '/invoice';
 
   if (isAdminRoute) {
     return (
@@ -109,6 +111,16 @@ export default function App() {
         <Routes>
           <Route path="/admin" element={<AdminPanel />} />
           <Route path="/admin/products" element={<ProductsAdminPage />} />
+        </Routes>
+      </React.Suspense>
+    );
+  }
+
+  if (isInvoiceRoute) {
+    return (
+      <React.Suspense fallback={<PageLoading />}>
+        <Routes>
+          <Route path="/invoice" element={<InvoicePage />} />
         </Routes>
       </React.Suspense>
     );

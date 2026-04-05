@@ -5,6 +5,7 @@ import { apiRequest } from '../../services/api.js';
 import { formatPrice, getAdminCurrency } from '../../utils/priceFormatter.js';
 import { parseAsUTC, formatDateForAdmin, formatDateShortForAdmin } from '../../utils/dateFormatter.js';
 import { getOrderActionNotes } from '../../defaults/index.js';
+import GSTInvoice from './GSTInvoice.jsx';
 
 const CANCEL_REASONS = [
   'Item out of stock',
@@ -95,6 +96,7 @@ export default function OrdersSection() {
   const [reviewStats, setReviewStats] = useState(null);
   const [reviewStatusFilter, setReviewStatusFilter] = useState('all');
   const [reviewDetailModal, setReviewDetailModal] = useState(null);
+  const [invoiceOrderId, setInvoiceOrderId] = useState(null);
   const [reviewUpdating, setReviewUpdating] = useState(false);
 
   const orderNotes = getOrderActionNotes();
@@ -1445,6 +1447,12 @@ export default function OrdersSection() {
               {!isCancelled && !isDelivered && (
                 <button onClick={() => { setOrderDetailModal(null); openCancelModal(order); }} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#e53935', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Cancel Order</button>
               )}
+              <button
+                onClick={() => { setOrderDetailModal(null); setInvoiceOrderId(order.id); }}
+                style={{ padding: '9px 20px', borderRadius: 6, border: '1px solid #0f172a', background: '#fff', color: '#0f172a', cursor: 'pointer', fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}
+              >
+                🧾 Download Invoice
+              </button>
             </div>
           </div>
         </div>
@@ -1536,6 +1544,18 @@ export default function OrdersSection() {
                 {cancelling ? 'Cancelling...' : 'Confirm Cancellation'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {invoiceOrderId && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 9999, overflowY: 'auto', padding: '20px 16px' }}>
+          <div style={{ background: '#fff', borderRadius: 10, padding: 24, width: '100%', maxWidth: 800, boxShadow: '0 10px 40px rgba(0,0,0,0.2)', marginTop: 20 }}>
+            <GSTInvoice
+              orderId={invoiceOrderId}
+              siteId={siteConfig?.id}
+              onClose={() => setInvoiceOrderId(null)}
+            />
           </div>
         </div>
       )}

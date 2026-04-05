@@ -4,6 +4,8 @@ import { createProduct, updateProduct, getOptionsTemplate, saveOptionsTemplate }
 import { getCategories } from '../../services/categoryService.js';
 import { getApiUrl } from '../../services/api.js';
 
+const GST_RATES = [0, 3, 5, 12, 18, 28];
+
 const DEFAULT_FORM = {
   name: '',
   price: '',
@@ -13,6 +15,8 @@ const DEFAULT_FORM = {
   description: '',
   images: [],
   mainImageIndex: 0,
+  hsn_code: '',
+  gst_rate: '',
 };
 
 const DEFAULT_OPTIONS = {
@@ -142,6 +146,8 @@ export default function ProductForm({ product, onSave, onCancel }) {
         description: product.description || '',
         images: imgs,
         mainImageIndex: product.main_image_index || 0,
+        hsn_code: product.hsn_code || '',
+        gst_rate: product.gst_rate != null ? String(product.gst_rate) : '',
       });
       if (product.options && typeof product.options === 'object') {
         const opts = {
@@ -234,6 +240,8 @@ export default function ProductForm({ product, onSave, onCancel }) {
         images: form.images,
         mainImageIndex: form.mainImageIndex,
         options: cleanedOptions,
+        hsnCode: form.hsn_code.trim() || null,
+        gstRate: form.gst_rate !== '' ? parseFloat(form.gst_rate) : 0,
       };
       if (isEdit) {
         await updateProduct(product.id, payload, siteConfig?.id);
@@ -453,6 +461,37 @@ export default function ProductForm({ product, onSave, onCancel }) {
                 style={{ width: '100%', padding: '10px 12px', border: `1px solid ${errors.description ? '#ef4444' : '#e2e8f0'}`, borderRadius: 6, fontSize: 14, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }}
               />
               {errors.description && <p style={{ color: '#ef4444', fontSize: 12, marginTop: 4 }}>{errors.description}</p>}
+            </div>
+
+            <div style={{ marginTop: 16, padding: '14px 16px', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 8 }}>
+              <div style={{ fontWeight: 600, fontSize: 13, color: '#0369a1', marginBottom: 10 }}>GST Information (for Tax Invoicing)</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div>
+                  <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>HSN / SAC Code</label>
+                  <input
+                    type="text"
+                    value={form.hsn_code}
+                    onChange={e => setForm(p => ({ ...p, hsn_code: e.target.value }))}
+                    placeholder="e.g., 7113 for jewellery"
+                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box' }}
+                  />
+                  <p style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>Government product classification code</p>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>GST Rate (%)</label>
+                  <select
+                    value={form.gst_rate}
+                    onChange={e => setForm(p => ({ ...p, gst_rate: e.target.value }))}
+                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, background: 'white', boxSizing: 'border-box' }}
+                  >
+                    <option value="">Select GST rate</option>
+                    {GST_RATES.map(rate => (
+                      <option key={rate} value={rate}>{rate}%</option>
+                    ))}
+                  </select>
+                  <p style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>Tax rate applied on this product</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
