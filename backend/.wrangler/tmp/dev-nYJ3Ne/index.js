@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-HnfMid/checked-fetch.js
+// .wrangler/tmp/bundle-qEF0q2/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-HnfMid/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-qEF0q2/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-HnfMid/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-qEF0q2/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-HnfMid/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-qEF0q2/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -2193,12 +2193,12 @@ var init_site_admin_worker = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-HnfMid/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-qEF0q2/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-HnfMid/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-qEF0q2/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -6292,7 +6292,7 @@ async function createOrder(request, env, user, ctx2) {
         return errorResponse("Invalid item: missing product ID", 400);
       }
       const product = await db.prepare(
-        "SELECT id, name, price, stock, thumbnail_url, options FROM products WHERE id = ? AND site_id = ?"
+        "SELECT id, name, price, stock, thumbnail_url, options, gst_rate, hsn_code FROM products WHERE id = ? AND site_id = ?"
       ).bind(itemProductId, siteId).first();
       if (!product) {
         return errorResponse(`Product not found: ${itemProductId}`, 400);
@@ -6336,7 +6336,9 @@ async function createOrder(request, env, user, ctx2) {
         total: itemTotal,
         thumbnail: product.thumbnail_url,
         variant: item.variant || null,
-        selectedOptions: validatedSelectedOptions
+        selectedOptions: validatedSelectedOptions,
+        gst_rate: product.gst_rate || 0,
+        hsn_code: product.hsn_code || ""
       });
     }
     let discount = 0;
@@ -6449,7 +6451,14 @@ async function createOrder(request, env, user, ctx2) {
     } catch (e) {
       console.error("Shipping config error:", e);
     }
-    const tax = 0;
+    let tax = 0;
+    for (const pi of processedItems) {
+      const rate = Number(pi.gst_rate) || 0;
+      if (rate > 0) {
+        tax += pi.total * rate / 100;
+      }
+    }
+    tax = Math.round(tax * 100) / 100;
     const total = subtotal - discount + shippingCost + tax;
     const orderId = generateId();
     const orderNumber = generateOrderNumber();
@@ -6927,7 +6936,7 @@ async function createGuestOrder(request, env, ctx2) {
         return errorResponse("Invalid item: missing product ID", 400);
       }
       const product = await db.prepare(
-        "SELECT id, name, price, stock, thumbnail_url, options FROM products WHERE id = ? AND site_id = ?"
+        "SELECT id, name, price, stock, thumbnail_url, options, gst_rate, hsn_code FROM products WHERE id = ? AND site_id = ?"
       ).bind(itemProductId, siteId).first();
       if (!product) {
         return errorResponse(`Product not found: ${itemProductId}`, 400);
@@ -6967,7 +6976,9 @@ async function createGuestOrder(request, env, ctx2) {
         quantity: item.quantity,
         total: itemTotal,
         thumbnail: product.thumbnail_url,
-        selectedOptions: validatedSelectedOptions
+        selectedOptions: validatedSelectedOptions,
+        gst_rate: product.gst_rate || 0,
+        hsn_code: product.hsn_code || ""
       });
     }
     let guestShippingCost = 0;
@@ -7016,7 +7027,15 @@ async function createGuestOrder(request, env, ctx2) {
     } catch (e) {
       console.error("Guest shipping config error:", e);
     }
-    const total = subtotal + guestShippingCost;
+    let guestTax = 0;
+    for (const pi of processedItems) {
+      const rate = Number(pi.gst_rate) || 0;
+      if (rate > 0) {
+        guestTax += pi.total * rate / 100;
+      }
+    }
+    guestTax = Math.round(guestTax * 100) / 100;
+    const total = subtotal + guestShippingCost + guestTax;
     const orderId = generateId();
     const orderNumber = generateOrderNumber();
     const rowData = { id: orderId, site_id: siteId, order_number: orderNumber, items: processedItems, subtotal, total, shipping_address: shippingAddress, customer_name: customerName, customer_email: customerEmail, customer_phone: customerPhone };
@@ -7029,8 +7048,8 @@ async function createGuestOrder(request, env, ctx2) {
     const orderStatus = isPendingPayment ? "pending_payment" : "pending";
     const resolvedGuestCurrency = guestOrderCurrency || guestSiteDefaultCurrency;
     await db.prepare(
-      `INSERT INTO guest_orders (id, site_id, order_number, items, subtotal, shipping_cost, total, currency, payment_method, status, shipping_address, customer_name, customer_email, customer_phone, row_size_bytes, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+      `INSERT INTO guest_orders (id, site_id, order_number, items, subtotal, shipping_cost, tax, total, currency, payment_method, status, shipping_address, customer_name, customer_email, customer_phone, row_size_bytes, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(
       orderId,
       siteId,
@@ -7038,6 +7057,7 @@ async function createGuestOrder(request, env, ctx2) {
       JSON.stringify(processedItems),
       subtotal,
       guestShippingCost,
+      guestTax,
       total,
       resolvedGuestCurrency,
       paymentMethod || "cod",
@@ -8217,11 +8237,20 @@ async function getAnalytics(request, env) {
     `;
     const statusResult = await db.prepare(statusQuery).bind(siteId, ...dateBindings, siteId, ...dateBindings).all();
     const topProductsQuery = `
-      SELECT items, status, created_at FROM orders WHERE site_id = ? AND status IN ${revenueStatuses}${dateWhere}
+      SELECT items, status, created_at, shipping_address FROM orders WHERE site_id = ? AND status IN ${revenueStatuses}${dateWhere}
       UNION ALL
-      SELECT items, status, created_at FROM guest_orders WHERE site_id = ? AND status IN ${revenueStatuses}${dateWhere}
+      SELECT items, status, created_at, shipping_address FROM guest_orders WHERE site_id = ? AND status IN ${revenueStatuses}${dateWhere}
     `;
     const itemsResult = await db.prepare(topProductsQuery).bind(siteId, ...dateBindings, siteId, ...dateBindings).all();
+    let gstState = "";
+    try {
+      const siteConfGst = await getSiteConfig(env, siteId);
+      if (siteConfGst?.settings) {
+        const sg = typeof siteConfGst.settings === "string" ? JSON.parse(siteConfGst.settings) : siteConfGst.settings;
+        gstState = (sg.gstState || "").toLowerCase().trim();
+      }
+    } catch (e) {
+    }
     const productMap = {};
     let totalCGST = 0, totalSGST = 0, totalIGST = 0;
     for (const row of itemsResult.results) {
@@ -8230,18 +8259,26 @@ async function getAnalytics(request, env) {
         items = JSON.parse(row.items);
       } catch {
       }
+      let customerState = "";
+      try {
+        const addr = typeof row.shipping_address === "string" ? JSON.parse(row.shipping_address) : row.shipping_address;
+        customerState = (addr?.state || "").toLowerCase().trim();
+      } catch {
+      }
+      const isIntraState = gstState && customerState && gstState === customerState;
       for (const item of items) {
-        const key = item.product_id || item.name || item.title;
+        const key = item.productId || item.product_id || item.name || item.title;
         if (!productMap[key]) {
-          productMap[key] = { name: item.name || item.title || "Unknown", quantity: 0, revenue: 0, image: item.image || item.images?.[0] || null };
+          productMap[key] = { name: item.name || item.title || "Unknown", quantity: 0, revenue: 0, image: item.thumbnail || item.image || item.images?.[0] || null };
         }
         const qty = item.quantity || 1;
         const price = (item.price || 0) * qty;
         productMap[key].quantity += qty;
         productMap[key].revenue += price;
-        if (item.gst_rate && item.gst_rate > 0) {
-          const gstAmount = price * item.gst_rate / (100 + item.gst_rate);
-          if (item._gstType === "intra") {
+        const gstRate = Number(item.gst_rate) || 0;
+        if (gstRate > 0) {
+          const gstAmount = price * gstRate / 100;
+          if (isIntraState) {
             totalCGST += gstAmount / 2;
             totalSGST += gstAmount / 2;
           } else {
@@ -8257,7 +8294,7 @@ async function getAnalytics(request, env) {
         totalOrders: summary.total_orders,
         revenueOrders: revenueCount,
         avgOrderValue,
-        totalTax: summary.total_tax,
+        totalTax: Math.round((totalCGST + totalSGST + totalIGST) * 100) / 100 || summary.total_tax,
         totalShipping: summary.total_shipping,
         totalDiscount: summary.total_discount
       },
@@ -16544,7 +16581,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-HnfMid/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-qEF0q2/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -16579,7 +16616,7 @@ function __facade_invoke__(request, env, ctx2, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-HnfMid/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-qEF0q2/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;
