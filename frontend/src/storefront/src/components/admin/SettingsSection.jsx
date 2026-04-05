@@ -48,6 +48,16 @@ export default function SettingsSection() {
   const [gstInvoiceEmailEnabled, setGstInvoiceEmailEnabled] = useState(false);
   const [gstinError, setGstinError] = useState('');
 
+  const [openSections, setOpenSections] = useState({});
+
+  function toggleSection(key) {
+    setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
+  }
+
+  function isSectionOpen(key) {
+    return openSections[key] !== false;
+  }
+
   const [loading, setLoading] = useState(true);
 
   const [currentSubdomain, setCurrentSubdomain] = useState('');
@@ -485,13 +495,23 @@ export default function SettingsSection() {
     navigator.clipboard.writeText(text).catch(() => {});
   }
 
+  function CollapsibleHeader({ sectionKey, title }) {
+    const open = isSectionOpen(sectionKey);
+    return (
+      <div className="card-header" onClick={() => toggleSection(sectionKey)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', userSelect: 'none' }}>
+        <h3 className="card-title" style={{ margin: 0 }}>{title}</h3>
+        <span style={{ fontSize: 18, color: '#94a3b8', transition: 'transform 0.25s', transform: open ? 'rotate(180deg)' : 'rotate(0deg)', lineHeight: 1 }}>&#9662;</span>
+      </div>
+    );
+  }
+
   if (loading) return <div className="loading-spinner-admin"><div className="spinner" /></div>;
 
   return (
     <div style={{ maxWidth: 700 }}>
       <div className="card" style={{ marginBottom: 20 }}>
-        <div className="card-header"><h3 className="card-title">Store URL</h3></div>
-        <div className="card-content">
+        <CollapsibleHeader sectionKey="storeUrl" title="Store URL" />
+        {isSectionOpen('storeUrl') && <div className="card-content">
           <p style={{ fontSize: 13, color: '#64748b', marginBottom: 12 }}>
             Your store is currently accessible at <a href={`https://${currentSubdomain}.fluxe.in`} target="_blank" rel="noopener noreferrer" style={{ fontWeight: 600, color: '#2563eb' }}>{currentSubdomain}.fluxe.in</a>
           </p>
@@ -532,12 +552,12 @@ export default function SettingsSection() {
           )}
           {subdomainMsg && <p style={{ color: '#16a34a', fontSize: 13, marginTop: 8 }}>{subdomainMsg}</p>}
           {subdomainError && <p style={{ color: '#ef4444', fontSize: 13, marginTop: 8 }}>{subdomainError}</p>}
-        </div>
+        </div>}
       </div>
 
       <div className="card" style={{ marginBottom: 20 }}>
-        <div className="card-header"><h3 className="card-title">Custom Domain</h3></div>
-        <div className="card-content">
+        <CollapsibleHeader sectionKey="customDomain" title="Custom Domain" />
+        {isSectionOpen('customDomain') && <div className="card-content">
           <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
             Connect your own domain (e.g. <strong>www.mystore.com</strong>) to your store. Only <code>www.</code> subdomains are supported — root domains like <code>mystore.com</code> are not supported.
           </p>
@@ -693,23 +713,23 @@ export default function SettingsSection() {
               )}
             </>
           )}
-        </div>
+        </div>}
       </div>
 
       <form onSubmit={handleSaveSettings}>
         <div className="card" style={{ marginBottom: 20 }}>
-          <div className="card-header"><h3 className="card-title">Brand Information</h3></div>
-          <div className="card-content">
+          <CollapsibleHeader sectionKey="brand" title="Brand Information" />
+          {isSectionOpen('brand') && <div className="card-content">
             <div style={{ marginBottom: 16 }}>
               <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Brand Name</label>
               <input type="text" value={brandName} onChange={(e) => setBrandName(e.target.value)} style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
             </div>
-          </div>
+          </div>}
         </div>
 
         <div className="card" style={{ marginBottom: 20 }}>
-          <div className="card-header"><h3 className="card-title">Contact Information</h3></div>
-          <div className="card-content">
+          <CollapsibleHeader sectionKey="contact" title="Contact Information" />
+          {isSectionOpen('contact') && <div className="card-content">
             <div style={{ marginBottom: 16 }}>
               <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>
                 <i className="fas fa-phone" style={{ marginRight: 6, color: '#2563eb' }} />Phone Number
@@ -746,14 +766,12 @@ export default function SettingsSection() {
               <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Address</label>
               <textarea value={address} onChange={(e) => setAddress(e.target.value)} rows={2} placeholder="Store address" style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }} />
             </div>
-          </div>
+          </div>}
         </div>
 
         <div className="card" style={{ marginBottom: 20 }}>
-          <div className="card-header">
-            <h3 className="card-title">Default Currency</h3>
-          </div>
-          <div className="card-content">
+          <CollapsibleHeader sectionKey="currency" title="Default Currency" />
+          {isSectionOpen("currency") && <div className="card-content">
             <p style={{ fontSize: 13, color: '#64748b', marginBottom: 12 }}>
               Set the default currency for your store. All prices on your website, admin panel, and email notifications will be shown in this currency.
             </p>
@@ -784,14 +802,12 @@ export default function SettingsSection() {
                 </span>
               </label>
             </div>
-          </div>
+          </div>}
         </div>
 
         <div className="card" style={{ marginBottom: 20 }}>
-          <div className="card-header">
-            <h3 className="card-title">Store Timezone</h3>
-          </div>
-          <div className="card-content">
+          <CollapsibleHeader sectionKey="timezone" title="Store Timezone" />
+          {isSectionOpen("timezone") && <div className="card-content">
             <p style={{ fontSize: 13, color: '#64748b', marginBottom: 12 }}>
               Set your store's business timezone. All dates and times in the admin panel (orders, analytics, etc.) will be displayed in this timezone. Your customers will see times in their own local timezone.
             </p>
@@ -809,14 +825,12 @@ export default function SettingsSection() {
                 Current time in selected timezone: {safeFormatInTimezone(new Date(), timezone, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
               </p>
             )}
-          </div>
+          </div>}
         </div>
 
         <div className="card" style={{ marginBottom: 20 }}>
-          <div className="card-header">
-            <h3 className="card-title">Shipping & Delivery Charges</h3>
-          </div>
-          <div className="card-content">
+          <CollapsibleHeader sectionKey="shipping" title="Shipping & Delivery Charges" />
+          {isSectionOpen("shipping") && <div className="card-content">
             <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
               Configure delivery charges for your store. When disabled, all orders ship free.
             </p>
@@ -955,14 +969,12 @@ export default function SettingsSection() {
                 </div>
               </div>
             )}
-          </div>
+          </div>}
         </div>
 
         <div className="card" style={{ marginBottom: 20 }}>
-          <div className="card-header">
-            <h3 className="card-title">Order Cancellation</h3>
-          </div>
-          <div className="card-content">
+          <CollapsibleHeader sectionKey="cancellation" title="Order Cancellation" />
+          {isSectionOpen("cancellation") && <div className="card-content">
             <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
               Allow customers to request cancellation of pending or confirmed orders. When enabled, a cancel link will be included in order confirmation emails.
             </p>
@@ -999,14 +1011,12 @@ export default function SettingsSection() {
                 <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>Customers can request cancellation within this many hours after placing their order</p>
               </div>
             )}
-          </div>
+          </div>}
         </div>
 
         <div className="card" style={{ marginBottom: 20 }}>
-          <div className="card-header">
-            <h3 className="card-title">Return Orders</h3>
-          </div>
-          <div className="card-content">
+          <CollapsibleHeader sectionKey="returns" title="Return Orders" />
+          {isSectionOpen("returns") && <div className="card-content">
             <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
               Allow customers to request returns on delivered orders. When enabled, a return link will be included in delivery emails.
             </p>
@@ -1064,14 +1074,12 @@ export default function SettingsSection() {
                 </div>
               </>
             )}
-          </div>
+          </div>}
         </div>
 
         <div className="card" style={{ marginBottom: 20 }}>
-          <div className="card-header">
-            <h3 className="card-title">Order Tracking</h3>
-          </div>
-          <div className="card-content">
+          <CollapsibleHeader sectionKey="tracking" title="Order Tracking" />
+          {isSectionOpen("tracking") && <div className="card-content">
             <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
               Configure how customers can track their orders. You can use the built-in tracking page or redirect to an external tracking service.
             </p>
@@ -1107,14 +1115,12 @@ export default function SettingsSection() {
                 If provided, customers without a specific order number will be redirected to this URL. Leave empty to use the built-in order tracking page where customers can search by order number.
               </p>
             </div>
-          </div>
+          </div>}
         </div>
 
         <div className="card" style={{ marginBottom: 20 }}>
-          <div className="card-header">
-            <h3 className="card-title">GST & Invoicing</h3>
-          </div>
-          <div className="card-content">
+          <CollapsibleHeader sectionKey="gst" title="GST & Invoicing" />
+          {isSectionOpen("gst") && <div className="card-content">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', border: '1px solid #e2e8f0', borderRadius: 8, background: gstEnabled ? '#f0fdf4' : '#f8fafc', marginBottom: 16 }}>
               <div>
                 <div style={{ fontWeight: 600, fontSize: 14, color: '#1e293b' }}>Enable GST</div>
@@ -1204,14 +1210,12 @@ export default function SettingsSection() {
                 </span>
               </label>
             </div>
-          </div>
+          </div>}
         </div>
 
         <div className="card" style={{ marginBottom: 20 }}>
-          <div className="card-header">
-            <h3 className="card-title">Payment Methods</h3>
-          </div>
-          <div className="card-content">
+          <CollapsibleHeader sectionKey="payment" title="Payment Methods" />
+          {isSectionOpen("payment") && <div className="card-content">
             <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
               Control which payment options are available to customers at checkout.
             </p>
@@ -1243,12 +1247,12 @@ export default function SettingsSection() {
               </div>
               <span style={{ fontSize: 12, background: '#e0f2fe', color: '#0369a1', padding: '3px 10px', borderRadius: 20, fontWeight: 600, flexShrink: 0 }}>Always On</span>
             </div>
-          </div>
+          </div>}
         </div>
 
         <div className="card" style={{ marginBottom: 20 }}>
-          <div className="card-header"><h3 className="card-title">Payment Credentials</h3></div>
-          <div className="card-content">
+          <CollapsibleHeader sectionKey="credentials" title="Payment Credentials" />
+          {isSectionOpen("credentials") && <div className="card-content">
             <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>Enter your Razorpay credentials to enable online payments on your store.</p>
             <div style={{ marginBottom: 16 }}>
               <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Razorpay Key ID</label>
@@ -1258,7 +1262,7 @@ export default function SettingsSection() {
               <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Razorpay Key Secret</label>
               <input type="password" value={razorpayKeySecret} onChange={(e) => setRazorpayKeySecret(e.target.value)} placeholder="Leave empty to keep current secret" style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
             </div>
-          </div>
+          </div>}
         </div>
 
         {message && (
