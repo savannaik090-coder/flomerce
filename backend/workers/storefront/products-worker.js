@@ -325,8 +325,14 @@ async function createProduct(request, env, user, ctx) {
     try {
       await runInsert();
     } catch (insertErr) {
-      if (insertErr.message && insertErr.message.includes('options')) {
-        await ensureProductOptionsColumn(db, siteId);
+      if (insertErr.message && (insertErr.message.includes('options') || insertErr.message.includes('hsn_code') || insertErr.message.includes('gst_rate'))) {
+        if (insertErr.message.includes('options')) {
+          await ensureProductOptionsColumn(db, siteId);
+        }
+        if (insertErr.message.includes('hsn_code') || insertErr.message.includes('gst_rate')) {
+          try { await db.prepare('ALTER TABLE products ADD COLUMN hsn_code TEXT').run(); } catch (e) {}
+          try { await db.prepare('ALTER TABLE products ADD COLUMN gst_rate REAL DEFAULT 0').run(); } catch (e) {}
+        }
         await runInsert();
       } else {
         throw insertErr;
@@ -455,8 +461,14 @@ async function updateProduct(request, env, user, productId, ctx) {
     try {
       await runUpdate();
     } catch (updateErr) {
-      if (updateErr.message && updateErr.message.includes('options')) {
-        await ensureProductOptionsColumn(db, resolvedSiteId);
+      if (updateErr.message && (updateErr.message.includes('options') || updateErr.message.includes('hsn_code') || updateErr.message.includes('gst_rate'))) {
+        if (updateErr.message.includes('options')) {
+          await ensureProductOptionsColumn(db, resolvedSiteId);
+        }
+        if (updateErr.message.includes('hsn_code') || updateErr.message.includes('gst_rate')) {
+          try { await db.prepare('ALTER TABLE products ADD COLUMN hsn_code TEXT').run(); } catch (e) {}
+          try { await db.prepare('ALTER TABLE products ADD COLUMN gst_rate REAL DEFAULT 0').run(); } catch (e) {}
+        }
         await runUpdate();
       } else {
         throw updateErr;
