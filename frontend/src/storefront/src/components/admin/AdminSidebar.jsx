@@ -18,6 +18,7 @@ export default function AdminSidebar({ activeSection, onSectionChange, isOpen, o
   const visibleItems = navItems.filter(item => {
     if (isOwner) return true;
     if (!permissions) return false;
+    if (item.id === 'revenue') return permissions.includes('analytics') || permissions.includes('orders');
     return permissions.includes(item.id);
   });
 
