@@ -107,11 +107,58 @@ The storefront Vite build outputs to `frontend/storefront/` and the platform bui
 
 ## Domain Configuration
 
-All domain references are centralized into config files. To change the platform domain, update these files:
+All domain references are centralized. No application source file contains a hardcoded domain — only config files do.
 
-1. **`backend/config.js`** — `PLATFORM_DOMAIN` (derives `PLATFORM_URL`, `SUPPORT_EMAIL`, `FROM_EMAIL`, `VAPID_SUBJECT`)
-2. **`frontend/src/storefront/src/config.js`** — `PLATFORM_DOMAIN` (derives `PLATFORM_URL`, `SUPPORT_EMAIL`, `API_BASE`)
-3. **`frontend/src/platform/src/config.js`** — `PLATFORM_DOMAIN` (derives `PLATFORM_URL`, `SUPPORT_EMAIL`, `ENTERPRISE_EMAIL`, `API_BASE_URL`)
-4. **`backend/wrangler.toml`** — Cloudflare deployment routes and env vars (infrastructure config, must match actual Cloudflare zone)
+### How to change the domain (e.g. from `fluxe.in` to `newdomain.com`)
 
-No other source files contain hardcoded domain references. Backend workers use `env.DOMAIN || PLATFORM_DOMAIN` fallback pattern (env var from wrangler.toml overrides the config default). The `frontend/templates/` folder was intentionally left untouched.
+**Step 1 — Update the 3 config files** (change `PLATFORM_DOMAIN` value in each):
+
+| File | What to change |
+|------|---------------|
+| `backend/config.js` | `export const PLATFORM_DOMAIN = 'newdomain.com';` |
+| `frontend/src/storefront/src/config.js` | `export const PLATFORM_DOMAIN = 'newdomain.com';` |
+| `frontend/src/platform/src/config.js` | `export const PLATFORM_DOMAIN = 'newdomain.com';` |
+
+All derived values (`PLATFORM_URL`, `SUPPORT_EMAIL`, `ENTERPRISE_EMAIL`, `FROM_EMAIL`, `VAPID_SUBJECT`, `API_BASE_URL`, `API_BASE`) are computed automatically from `PLATFORM_DOMAIN` — no extra edits needed.
+
+**Step 2 — Update `backend/wrangler.toml`** (Cloudflare deployment config):
+
+- Update `routes` to use the new domain and zone:
+  ```
+  routes = [
+    { pattern = "newdomain.com/api/*", zone_name = "newdomain.com" },
+    { pattern = "*.newdomain.com/*", zone_name = "newdomain.com" }
+  ]
+  ```
+- Update `[vars]` section:
+  ```
+  DOMAIN = "newdomain.com"
+  APP_URL = "https://newdomain.com"
+  FROM_EMAIL = "noreply@newdomain.com"
+  VAPID_SUBJECT = "mailto:noreply@newdomain.com"
+  ```
+- Update the `CF_ZONE_ID` secret to the new Cloudflare zone ID.
+
+**Step 3 — Rebuild the frontend apps:**
+
+```bash
+cd frontend/src/platform && npm run build
+cd frontend/src/storefront && npm run build
+```
+
+**Step 4 — Deploy the backend:**
+
+```bash
+cd backend && npx wrangler deploy
+```
+
+**Step 5 — Cloudflare DNS setup:**
+
+- Add A/CNAME records for the new domain and `*.newdomain.com` wildcard in Cloudflare DNS.
+- Update any custom domain settings for existing stores if needed.
+
+### Architecture notes
+
+- Backend workers use `env.DOMAIN || PLATFORM_DOMAIN` fallback pattern — the wrangler.toml env var takes priority, and the config.js value is the fallback default.
+- The `frontend/templates/` folder contains no domain references and was intentionally left untouched.
+- The file `footer_old_65e868.jsx` in the project root is a dead backup file (not imported anywhere) and can be safely ignored or deleted.
