@@ -1,7 +1,7 @@
 import { generateId, sanitizeInput, jsonResponse, errorResponse, successResponse, handleCORS } from '../../utils/helpers.js';
 import { validateAuth } from '../../utils/auth.js';
 import { validateSiteAdmin, hasPermission } from './site-admin-worker.js';
-import { checkUsageLimit, estimateRowBytes, trackD1Write, trackD1Delete, trackD1Update } from '../../utils/usage-tracker.js';
+import { checkUsageLimit, estimateRowBytes, trackD1Write, trackD1Delete, trackD1Update, removeMediaFile } from '../../utils/usage-tracker.js';
 import { resolveSiteDBById, resolveSiteDBBySubdomain, checkMigrationLock, ensureProductOptionsColumn, ensureProductSubcategoryColumn } from '../../utils/site-db.js';
 import { triggerAutoNotification } from './notifications-worker.js';
 
@@ -553,7 +553,7 @@ async function deleteProduct(env, user, productId) {
     if (user._adminSiteId) {
       const db = await resolveSiteDBById(env, user._adminSiteId);
       product = await db.prepare(
-        'SELECT id, site_id, row_size_bytes FROM products WHERE id = ? AND site_id = ?'
+        'SELECT id, site_id, images, thumbnail_url, row_size_bytes FROM products WHERE id = ? AND site_id = ?'
       ).bind(productId, user._adminSiteId).first();
     } else {
       const userSites = await env.DB.prepare(
@@ -563,7 +563,7 @@ async function deleteProduct(env, user, productId) {
       for (const s of (userSites.results || [])) {
         const db = await resolveSiteDBById(env, s.id);
         product = await db.prepare(
-          'SELECT id, site_id, row_size_bytes FROM products WHERE id = ? AND site_id = ?'
+          'SELECT id, site_id, images, thumbnail_url, row_size_bytes FROM products WHERE id = ? AND site_id = ?'
         ).bind(productId, s.id).first();
         if (product) {
           siteId = s.id;
@@ -589,6 +589,30 @@ async function deleteProduct(env, user, productId) {
 
     if (bytesToRemove > 0) {
       await trackD1Delete(env, resolvedSiteId, bytesToRemove);
+    }
+
+    const imageUrls = [];
+    if (product.images) {
+      try {
+        const parsed = JSON.parse(product.images);
+        if (Array.isArray(parsed)) imageUrls.push(...parsed);
+      } catch {}
+    }
+    if (product.thumbnail_url) imageUrls.push(product.thumbnail_url);
+
+    for (const imgUrl of imageUrls) {
+      try {
+        const keyMatch = imgUrl.match(/[?&]key=([^&]+)/);
+        if (keyMatch) {
+          const key = decodeURIComponent(keyMatch[1]);
+          if (key.startsWith(`sites/${resolvedSiteId}/`)) {
+            await env.STORAGE.delete(key);
+            await removeMediaFile(env, resolvedSiteId, key);
+          }
+        }
+      } catch (e) {
+        console.error('Failed to delete product image from R2:', e);
+      }
     }
 
     return successResponse(null, 'Product deleted successfully');

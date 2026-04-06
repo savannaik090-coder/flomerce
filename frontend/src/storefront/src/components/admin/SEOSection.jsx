@@ -36,6 +36,7 @@ function ImageUploadField({ label, hint, value, onChange, siteId }) {
       return;
     }
 
+    const oldValue = value;
     setUploading(true);
     setError(null);
     try {
@@ -51,6 +52,11 @@ function ImageUploadField({ label, hint, value, onChange, siteId }) {
       const urls = data.urls || (data.images || []).filter(r => r.url).map(r => r.url);
       if (result.success && urls.length > 0) {
         onChange(urls[0]);
+        if (oldValue && siteId) {
+          import('../../services/api.js').then(({ deleteMediaFromR2 }) => {
+            deleteMediaFromR2(siteId, oldValue);
+          });
+        }
       } else {
         setError(result.error || 'Upload failed');
       }
@@ -68,7 +74,7 @@ function ImageUploadField({ label, hint, value, onChange, siteId }) {
         {imgSrc ? (
           <div style={{ position: 'relative', flexShrink: 0 }}>
             <img src={imgSrc} alt="" style={{ width: 120, height: 63, objectFit: 'cover', borderRadius: 6, border: '1px solid #e2e8f0' }} onError={e => e.target.style.display = 'none'} />
-            <button type="button" onClick={() => onChange('')} style={{ position: 'absolute', top: -6, right: -6, background: '#ef4444', color: '#fff', border: 'none', borderRadius: '50%', width: 20, height: 20, fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>&times;</button>
+            <button type="button" onClick={() => { if (value && siteId) { import('../../services/api.js').then(({ deleteMediaFromR2 }) => { deleteMediaFromR2(siteId, value); }); } onChange(''); }} style={{ position: 'absolute', top: -6, right: -6, background: '#ef4444', color: '#fff', border: 'none', borderRadius: '50%', width: 20, height: 20, fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>&times;</button>
           </div>
         ) : null}
         <div style={{ flex: 1 }}>

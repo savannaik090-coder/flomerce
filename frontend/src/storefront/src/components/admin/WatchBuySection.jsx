@@ -134,6 +134,7 @@ export default function WatchBuySection({ onSaved }) {
       return;
     }
 
+    const oldVideo = form.videoUrl;
     setUploading(true);
     setUploadProgress(0);
     setError('');
@@ -159,6 +160,11 @@ export default function WatchBuySection({ onSaved }) {
         if (xhr.status >= 200 && xhr.status < 300 && result.success && result.data?.url) {
           setForm(p => ({ ...p, videoUrl: result.data.url, videoKey: result.data.key || '' }));
           setUploadProgress(100);
+          if (oldVideo) {
+            import('../../services/api.js').then(({ deleteMediaFromR2 }) => {
+              deleteMediaFromR2(siteConfig.id, oldVideo);
+            });
+          }
         } else {
           setError('Upload failed: ' + (result.error || result.message || 'Unknown error'));
         }
@@ -270,6 +276,7 @@ export default function WatchBuySection({ onSaved }) {
 
   async function handleDelete(videoId) {
     if (!window.confirm('Delete this video?')) return;
+    const deletedVideo = videos.find(v => v.id === videoId);
     try {
       const updatedVideos = videos.filter(v => v.id !== videoId);
       await saveVideosToSettings(updatedVideos);
@@ -277,6 +284,11 @@ export default function WatchBuySection({ onSaved }) {
       serverShowRef.current = showSection;
       setHasChanges(false);
       if (onSaved) onSaved();
+      if (deletedVideo?.videoUrl && siteConfig?.id) {
+        import('../../services/api.js').then(({ deleteMediaFromR2 }) => {
+          deleteMediaFromR2(siteConfig.id, deletedVideo.videoUrl);
+        });
+      }
     } catch (err) {
       alert('Failed to delete: ' + err.message);
     }

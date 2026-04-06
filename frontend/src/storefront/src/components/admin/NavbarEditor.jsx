@@ -124,6 +124,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
       setStatus('error:Image must be less than 10MB');
       return;
     }
+    const oldLogo = logoUrl;
     setUploadingLogo(true);
     setStatus('');
     try {
@@ -139,6 +140,11 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
       if (result.success && result.data?.images?.[0]?.url) {
         setLogoUrl(result.data.images[0].url);
         if (onPreviewUpdate) onPreviewUpdate({ logoUrl: result.data.images[0].url });
+        if (oldLogo) {
+          import('../../services/api.js').then(({ deleteMediaFromR2 }) => {
+            deleteMediaFromR2(siteConfig.id, oldLogo);
+          });
+        }
       } else {
         setStatus('error:' + (result.error || 'Failed to upload logo'));
       }
@@ -151,6 +157,11 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
   }
 
   function handleRemoveLogo() {
+    if (logoUrl && siteConfig?.id) {
+      import('../../services/api.js').then(({ deleteMediaFromR2 }) => {
+        deleteMediaFromR2(siteConfig.id, logoUrl);
+      });
+    }
     setLogoUrl('');
     if (onPreviewUpdate) onPreviewUpdate({ logoUrl: '' });
   }

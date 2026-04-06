@@ -111,6 +111,7 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate }) {
       setStatus('error:Image is too large. Maximum size is 10MB.');
       return;
     }
+    const oldImage = stores[index]?.image;
     setUploading(prev => ({ ...prev, [index]: true }));
     setStatus('');
     try {
@@ -126,6 +127,11 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate }) {
       const result = await response.json();
       if (result.success && result.data?.images?.length > 0 && result.data.images[0].url) {
         updateStore(index, 'image', result.data.images[0].url);
+        if (oldImage) {
+          import('../../services/api.js').then(({ deleteMediaFromR2 }) => {
+            deleteMediaFromR2(siteConfig.id, oldImage);
+          });
+        }
       } else {
         setStatus('error:Image upload failed. Please try again.');
       }
@@ -230,7 +236,7 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate }) {
                         </button>
                         <button
                           type="button"
-                          onClick={() => updateStore(index, 'image', '')}
+                          onClick={() => { const oldImg = stores[index]?.image; if (oldImg && siteConfig?.id) { import('../../services/api.js').then(({ deleteMediaFromR2 }) => { deleteMediaFromR2(siteConfig.id, oldImg); }); } updateStore(index, 'image', ''); }}
                           style={{ background: 'rgba(220,38,38,0.8)', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 10px', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}
                         >
                           <i className="fas fa-trash" />

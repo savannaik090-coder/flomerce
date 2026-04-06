@@ -123,6 +123,7 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
 
   async function handleImageUpload(index, file) {
     if (!file) return;
+    const oldImage = slides[index]?.image;
     setUploading(prev => { const u = [...prev]; u[index] = true; return u; });
     try {
       const blob = await compressImage(file);
@@ -137,6 +138,11 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
       const result = await response.json();
       if (result.success && result.data?.images?.length > 0 && result.data.images[0].url) {
         updateSlide(index, 'image', result.data.images[0].url);
+        if (oldImage) {
+          import('../../services/api.js').then(({ deleteMediaFromR2 }) => {
+            deleteMediaFromR2(siteConfig.id, oldImage);
+          });
+        }
       }
     } catch (e) {
       console.error('Failed to upload image:', e);
@@ -146,6 +152,12 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
   }
 
   function removeImage(index) {
+    const oldImage = slides[index]?.image;
+    if (oldImage && siteConfig?.id) {
+      import('../../services/api.js').then(({ deleteMediaFromR2 }) => {
+        deleteMediaFromR2(siteConfig.id, oldImage);
+      });
+    }
     updateSlide(index, 'image', '');
   }
 

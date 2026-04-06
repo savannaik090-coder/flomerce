@@ -101,6 +101,7 @@ export default function AboutUsEditor({ onSaved, onPreviewUpdate }) {
       return;
     }
 
+    const oldImage = storyImage;
     setUploading(true);
     setStatus('');
     try {
@@ -115,6 +116,11 @@ export default function AboutUsEditor({ onSaved, onPreviewUpdate }) {
       const result = await response.json();
       if (response.ok && result.success && result.data?.images?.[0]?.url) {
         setStoryImage(result.data.images[0].url);
+        if (oldImage) {
+          import('../../services/api.js').then(({ deleteMediaFromR2 }) => {
+            deleteMediaFromR2(siteConfig.id, oldImage);
+          });
+        }
       } else {
         setStatus('error:Upload failed: ' + (result.error || result.message || 'Unknown error'));
       }
@@ -246,7 +252,7 @@ export default function AboutUsEditor({ onSaved, onPreviewUpdate }) {
                   <img src={resolveImageUrl(storyImage)} alt="Story" style={{ width: '100%', maxHeight: 220, objectFit: 'cover', display: 'block' }} />
                   <button
                     type="button"
-                    onClick={() => { setStoryImage(''); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+                    onClick={() => { if (storyImage && siteConfig?.id) { import('../../services/api.js').then(({ deleteMediaFromR2 }) => { deleteMediaFromR2(siteConfig.id, storyImage); }); } setStoryImage(''); if (fileInputRef.current) fileInputRef.current.value = ''; }}
                     style={{
                       position: 'absolute', top: 8, right: 8,
                       background: 'rgba(0,0,0,0.7)', color: '#fff', border: 'none',

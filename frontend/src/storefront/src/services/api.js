@@ -27,6 +27,37 @@ export function getSessionId() {
   return sessionId;
 }
 
+export function extractR2Key(url) {
+  if (!url || typeof url !== 'string') return null;
+  if (url.startsWith('data:') || url.startsWith('blob:')) return null;
+  try {
+    const fullUrl = url.startsWith('http') ? url : `https://placeholder.com${url}`;
+    const parsed = new URL(fullUrl);
+    const key = parsed.searchParams.get('key');
+    if (key && key.startsWith('sites/')) return key;
+  } catch {}
+  return null;
+}
+
+export async function deleteMediaFromR2(siteId, url) {
+  if (!siteId || !url) return;
+  const key = extractR2Key(url);
+  if (!key) return;
+  const isVideo = url.includes('/upload/video');
+  const type = isVideo ? 'video' : 'image';
+  const adminToken = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('site_admin_token') : null;
+  try {
+    await fetch(getApiUrl(`/api/upload/${type}?siteId=${siteId}&key=${encodeURIComponent(key)}`), {
+      method: 'DELETE',
+      headers: adminToken ? { 'Authorization': `SiteAdmin ${adminToken}` } : {},
+      mode: 'cors',
+      credentials: 'omit',
+    });
+  } catch (err) {
+    console.error('Failed to delete media from R2:', err);
+  }
+}
+
 export class APIError extends Error {
   constructor(message, status, code) {
     super(message);

@@ -174,6 +174,8 @@ export default function CategoriesSection({ onSaved }) {
 
   async function handleImageUpload(categoryId, file) {
     if (!file) return;
+    const cat = categories.find(c => c.id === categoryId);
+    const oldImage = cat?.image_url;
     setUploadingImage(categoryId);
     try {
       const formData = new FormData();
@@ -183,6 +185,11 @@ export default function CategoriesSection({ onSaved }) {
       const result = await response.json();
       if (result.success && result.data?.images?.length > 0 && result.data.images[0].url) {
         await updateCategory(categoryId, { imageUrl: result.data.images[0].url }, siteConfig?.id);
+        if (oldImage) {
+          import('../../services/api.js').then(({ deleteMediaFromR2 }) => {
+            deleteMediaFromR2(siteConfig.id, oldImage);
+          });
+        }
         await loadCategories();
         if (onSaved) onSaved();
       } else { alert('Image upload failed'); }
@@ -191,8 +198,15 @@ export default function CategoriesSection({ onSaved }) {
   }
 
   async function handleRemoveImage(categoryId) {
+    const cat = categories.find(c => c.id === categoryId);
+    const oldImage = cat?.image_url;
     try {
       await updateCategory(categoryId, { imageUrl: null }, siteConfig?.id);
+      if (oldImage && siteConfig?.id) {
+        import('../../services/api.js').then(({ deleteMediaFromR2 }) => {
+          deleteMediaFromR2(siteConfig.id, oldImage);
+        });
+      }
       await loadCategories();
       if (onSaved) onSaved();
     } catch (e) { alert('Failed to remove image: ' + e.message); }
@@ -246,6 +260,7 @@ export default function CategoriesSection({ onSaved }) {
 
   async function handleChooseImageUpload(catId, file) {
     if (!file) return;
+    const oldImage = chooseCats[catId]?.browseImage;
     setChooseUploadingId(catId);
     try {
       const formData = new FormData();
@@ -259,12 +274,23 @@ export default function CategoriesSection({ onSaved }) {
           return { ...prev, [catId]: { ...current, browseImage: result.data.images[0].url } };
         });
         setChooseChanged(true);
+        if (oldImage) {
+          import('../../services/api.js').then(({ deleteMediaFromR2 }) => {
+            deleteMediaFromR2(siteConfig.id, oldImage);
+          });
+        }
       } else { alert('Image upload failed'); }
     } catch (e) { alert('Failed to upload: ' + e.message); }
     finally { setChooseUploadingId(null); }
   }
 
   function handleChooseImageRemove(catId) {
+    const oldImage = chooseCats[catId]?.browseImage;
+    if (oldImage && siteConfig?.id) {
+      import('../../services/api.js').then(({ deleteMediaFromR2 }) => {
+        deleteMediaFromR2(siteConfig.id, oldImage);
+      });
+    }
     setChooseCats(prev => {
       const current = prev[catId] || {};
       return { ...prev, [catId]: { ...current, browseImage: null } };

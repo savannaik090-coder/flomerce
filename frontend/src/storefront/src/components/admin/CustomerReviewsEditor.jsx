@@ -115,6 +115,7 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate }) {
       return;
     }
 
+    const oldImage = form.image;
     setUploading(true);
     setError('');
     try {
@@ -130,6 +131,11 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate }) {
       if (response.ok && result.success && result.data?.images?.[0]?.url) {
         const uploaded = result.data.images[0];
         setForm(p => ({ ...p, image: uploaded.url, imageKey: uploaded.key || '' }));
+        if (oldImage) {
+          import('../../services/api.js').then(({ deleteMediaFromR2 }) => {
+            deleteMediaFromR2(siteConfig.id, oldImage);
+          });
+        }
       } else {
         setError('Upload failed: ' + (result.error || result.message || 'Unknown error'));
       }

@@ -80,6 +80,7 @@ export default function PushNotificationsSection() {
       return;
     }
 
+    const oldImage = form.imageUrl;
     setUploading(true);
     setError('');
     try {
@@ -96,6 +97,11 @@ export default function PushNotificationsSection() {
       if (result.success && result.data?.images?.length > 0 && result.data.images[0].url) {
         const imgUrl = result.data.images[0].url;
         setForm(p => ({ ...p, imageUrl: imgUrl.startsWith('http') ? imgUrl : getApiUrl(imgUrl) }));
+        if (oldImage) {
+          import('../../services/api.js').then(({ deleteMediaFromR2 }) => {
+            deleteMediaFromR2(siteConfig.id, oldImage);
+          });
+        }
       } else {
         setError(result.error || result.message || 'Failed to upload image.');
       }
@@ -280,7 +286,7 @@ export default function PushNotificationsSection() {
                     />
                     <button
                       type="button"
-                      onClick={() => setForm(p => ({ ...p, imageUrl: '' }))}
+                      onClick={() => { if (form.imageUrl && siteConfig?.id) { import('../../services/api.js').then(({ deleteMediaFromR2 }) => { deleteMediaFromR2(siteConfig.id, form.imageUrl); }); } setForm(p => ({ ...p, imageUrl: '' })); }}
                       style={{
                         position: 'absolute', top: 6, right: 6,
                         width: 28, height: 28, borderRadius: '50%',

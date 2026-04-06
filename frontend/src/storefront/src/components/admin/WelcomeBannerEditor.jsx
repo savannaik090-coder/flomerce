@@ -88,6 +88,7 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate }) {
 
   async function handleImageUpload(file) {
     if (!file) return;
+    const oldImage = bannerImage;
     setUploading(true);
     try {
       const blob = await compressImage(file);
@@ -102,6 +103,11 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate }) {
       const result = await response.json();
       if (result.success && result.data?.images?.length > 0 && result.data.images[0].url) {
         setBannerImage(result.data.images[0].url);
+        if (oldImage) {
+          import('../../services/api.js').then(({ deleteMediaFromR2 }) => {
+            deleteMediaFromR2(siteConfig.id, oldImage);
+          });
+        }
       }
     } catch (e) {
       console.error('Failed to upload image:', e);
@@ -181,7 +187,7 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate }) {
                   />
                   <button
                     type="button"
-                    onClick={() => setBannerImage('')}
+                    onClick={() => { if (bannerImage && siteConfig?.id) { import('../../services/api.js').then(({ deleteMediaFromR2 }) => { deleteMediaFromR2(siteConfig.id, bannerImage); }); } setBannerImage(''); }}
                     style={{
                       position: 'absolute', top: 6, right: 6,
                       background: 'rgba(0,0,0,0.6)', color: '#fff', border: 'none',

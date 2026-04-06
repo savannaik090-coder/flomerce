@@ -301,6 +301,12 @@ export default function ProductForm({ product, onSave, onCancel }) {
   }
 
   function removeImage(idx) {
+    const removedUrl = form.images[idx];
+    if (removedUrl && siteConfig?.id) {
+      import('../../services/api.js').then(({ deleteMediaFromR2 }) => {
+        deleteMediaFromR2(siteConfig.id, removedUrl);
+      });
+    }
     setForm(prev => {
       const imgs = prev.images.filter((_, i) => i !== idx);
       return { ...prev, images: imgs, mainImageIndex: Math.min(prev.mainImageIndex, imgs.length - 1) };

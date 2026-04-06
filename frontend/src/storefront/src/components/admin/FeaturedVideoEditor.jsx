@@ -85,6 +85,7 @@ export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate }) {
       return;
     }
 
+    const oldVideo = videoUrl;
     setUploading(true);
     setUploadProgress(0);
     setStatus('');
@@ -110,6 +111,11 @@ export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate }) {
           setVideoUrl(result.data.url);
           setVideoKey(result.data.key || '');
           setUploadProgress(100);
+          if (oldVideo) {
+            import('../../services/api.js').then(({ deleteMediaFromR2 }) => {
+              deleteMediaFromR2(siteConfig.id, oldVideo);
+            });
+          }
         } else {
           setStatus('error:Upload failed: ' + (result.error || result.message || 'Unknown error'));
         }
@@ -202,7 +208,7 @@ export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate }) {
                   />
                   <button
                     type="button"
-                    onClick={() => { setVideoUrl(''); setVideoKey(''); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+                    onClick={() => { if (videoUrl && siteConfig?.id) { import('../../services/api.js').then(({ deleteMediaFromR2 }) => { deleteMediaFromR2(siteConfig.id, videoUrl); }); } setVideoUrl(''); setVideoKey(''); if (fileInputRef.current) fileInputRef.current.value = ''; }}
                     style={{
                       position: 'absolute', top: 8, right: 8,
                       background: 'rgba(0,0,0,0.7)', color: '#fff', border: 'none',

@@ -129,6 +129,7 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate }) {
       setError('Please upload a JPG, PNG, WebP, or GIF image.');
       return;
     }
+    const oldImage = mainImage;
     setUploading(true);
     setError('');
     try {
@@ -145,6 +146,11 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate }) {
       if (result.success && result.data?.images?.[0]) {
         setMainImage(result.data.images[0].url);
         setMainImageKey(result.data.images[0].key || '');
+        if (oldImage) {
+          import('../../services/api.js').then(({ deleteMediaFromR2 }) => {
+            deleteMediaFromR2(siteConfig.id, oldImage);
+          });
+        }
       } else {
         setError(result.error || 'Failed to upload image');
       }
