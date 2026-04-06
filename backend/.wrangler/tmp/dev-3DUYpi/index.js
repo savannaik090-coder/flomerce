@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-upTaAz/checked-fetch.js
+// .wrangler/tmp/bundle-idBw7u/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-upTaAz/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-idBw7u/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-upTaAz/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-idBw7u/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-upTaAz/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-idBw7u/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -2321,12 +2321,12 @@ var init_site_admin_worker = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-upTaAz/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-idBw7u/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-upTaAz/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-idBw7u/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -11384,8 +11384,8 @@ async function handleSiteRouting(request, env) {
   const hostname = url.hostname;
   const hostParts = hostname.split(".");
   let subdomain = null;
-  const platformDomain2 = env.DOMAIN || PLATFORM_DOMAIN;
-  if (hostname.endsWith(platformDomain2)) {
+  const platformDomain = env.DOMAIN || PLATFORM_DOMAIN;
+  if (hostname.endsWith(platformDomain)) {
     if (hostParts.length >= 3 && hostParts[0] !== "www") {
       subdomain = hostParts[0];
     }
@@ -11412,7 +11412,7 @@ async function handleSiteRouting(request, env) {
       console.error("Site routing subdomain lookup error:", error);
     }
   }
-  if (!siteRow && !hostname.endsWith(platformDomain2) && !hostname.endsWith("pages.dev") && !hostname.includes("localhost") && !hostname.includes("workers.dev")) {
+  if (!siteRow && !hostname.endsWith(platformDomain) && !hostname.endsWith("pages.dev") && !hostname.includes("localhost") && !hostname.includes("workers.dev")) {
     try {
       siteRow = await env.DB.prepare(
         `SELECT * FROM sites WHERE custom_domain = ? AND domain_status = 'verified' AND is_active = 1`
@@ -11458,7 +11458,7 @@ async function handleSiteRouting(request, env) {
             <div class="container">
               <h1>Site Unavailable</h1>
               <p>${isPlanExpired ? `The subscription for <strong>${site.brand_name || subdomain}</strong> has expired. Please contact the site owner to renew the plan and restore access.` : `<strong>${site.brand_name || subdomain}</strong> is not currently available. Please contact the site owner for more information.`}</p>
-              <a href="https://${platformDomain2}" class="btn">Go to Fluxe</a>
+              <a href="https://${platformDomain}" class="btn">Go to Fluxe</a>
             </div>
           </body>
         </html>`,
@@ -11518,6 +11518,7 @@ async function handleRobots(request, env, site) {
 }
 __name(handleRobots, "handleRobots");
 async function serveStorefrontApp(request, env, path, site) {
+  const platformDomain = env.DOMAIN || PLATFORM_DOMAIN;
   const isAsset = path.startsWith("/assets/") || path.match(/\.(js|css|png|jpg|jpeg|gif|svg|webp|ico|woff|woff2|ttf|eot|otf|map|json)$/i);
   if (isAsset) {
     const storefrontAssetPath = `/storefront${path}`;
@@ -16485,8 +16486,8 @@ var workers_default = {
         return siteResponse;
       }
       const hostname = url.hostname;
-      const platformDomain2 = env.DOMAIN || PLATFORM_DOMAIN;
-      if (hostname === `www.${platformDomain2}` || hostname === platformDomain2) {
+      const platformDomain = env.DOMAIN || PLATFORM_DOMAIN;
+      if (hostname === `www.${platformDomain}` || hostname === platformDomain) {
         const pagesHostname = env.PAGES_HOSTNAME || "fluxe-8x1.pages.dev";
         const pagesUrl = new URL(request.url);
         pagesUrl.hostname = pagesHostname;
@@ -16868,7 +16869,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-upTaAz/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-idBw7u/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -16903,7 +16904,7 @@ function __facade_invoke__(request, env, ctx2, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-upTaAz/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-idBw7u/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

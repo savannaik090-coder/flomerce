@@ -169,6 +169,7 @@ async function handleRobots(request, env, site) {
 // ─── Storefront HTML (with SEO injection) ────────────────────────────────────
 
 async function serveStorefrontApp(request, env, path, site) {
+  const platformDomain = env.DOMAIN || PLATFORM_DOMAIN;
   const isAsset = path.startsWith('/assets/') || path.match(/\.(js|css|png|jpg|jpeg|gif|svg|webp|ico|woff|woff2|ttf|eot|otf|map|json)$/i);
 
   if (isAsset) {
