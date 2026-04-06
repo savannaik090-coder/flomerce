@@ -77,9 +77,39 @@ export function buildProductSchema(product, site, baseUrl, reviewData) {
   if (images.length > 0) schema.image = images;
   if (product.sku) schema.sku = product.sku;
   if (product.barcode) schema.gtin = product.barcode;
-  if (product.compare_price && product.compare_price > product.price) {
-    schema.offers.priceValidUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-  }
+  schema.offers.priceValidUntil = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+  schema.offers.hasMerchantReturnPolicy = {
+    '@type': 'MerchantReturnPolicy',
+    applicableCountry: site.country_code || 'IN',
+    returnPolicyCategory: 'https://schema.org/MerchantReturnFiniteReturnWindow',
+    merchantReturnDays: 7,
+    returnMethod: 'https://schema.org/ReturnByMail',
+    returnFees: 'https://schema.org/FreeReturn',
+  };
+
+  schema.offers.shippingDetails = {
+    '@type': 'OfferShippingDetails',
+    shippingDestination: {
+      '@type': 'DefinedRegion',
+      addressCountry: site.country_code || 'IN',
+    },
+    deliveryTime: {
+      '@type': 'ShippingDeliveryTime',
+      handlingTime: {
+        '@type': 'QuantitativeValue',
+        minValue: 1,
+        maxValue: 3,
+        unitCode: 'DAY',
+      },
+      transitTime: {
+        '@type': 'QuantitativeValue',
+        minValue: 3,
+        maxValue: 7,
+        unitCode: 'DAY',
+      },
+    },
+  };
 
   if (reviewData && reviewData.total > 0) {
     schema.aggregateRating = {

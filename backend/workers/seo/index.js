@@ -25,6 +25,8 @@ function loadTemplateConfig(templateId) {
 function detectPageType(pathname) {
   if (pathname.startsWith('/product/')) return { type: 'product', slug: pathname.split('/product/')[1]?.split('?')[0] };
   if (pathname.startsWith('/category/')) return { type: 'category', slug: pathname.split('/category/')[1]?.split('?')[0] };
+  if (pathname.startsWith('/blog/')) return { type: 'blog', slug: pathname.split('/blog/')[1]?.split('?')[0] };
+  if (pathname === '/blog') return { type: 'blogList' };
   if (pathname === '/about' || pathname === '/about-us') return { type: 'about' };
   if (pathname === '/contact' || pathname === '/contact-us') return { type: 'contact' };
   if (pathname === '/privacy-policy' || pathname === '/privacy') return { type: 'privacy' };
@@ -57,8 +59,8 @@ async function fetchSiteSEO(env, site) {
 async function fetchProductSEO(db, site, slug) {
   try {
     return await db.prepare(
-      `SELECT id, name, slug, description, short_description, price, stock,
-              images, thumbnail_url, seo_title, seo_description, seo_og_image
+      `SELECT id, name, slug, description, short_description, price, compare_price, stock,
+              images, thumbnail_url, sku, barcode, seo_title, seo_description, seo_og_image
        FROM products WHERE site_id = ? AND slug = ? AND is_active = 1`
     ).bind(site.id, slug).first();
   } catch {
@@ -112,6 +114,17 @@ async function fetchCategorySEO(db, site, slug) {
   }
 }
 
+async function fetchBlogPostSEO(db, site, slug) {
+  try {
+    return await db.prepare(
+      `SELECT id, title, slug, excerpt, content, featured_image, seo_title, seo_description, published_at, author_name
+       FROM blog_posts WHERE site_id = ? AND slug = ? AND status = 'published'`
+    ).bind(site.id, slug).first();
+  } catch {
+    return null;
+  }
+}
+
 async function fetchPageSEO(db, site, pageType) {
   try {
     return await db.prepare(
@@ -129,6 +142,12 @@ function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl,
   const { type } = pageInfo;
   const structuredData = [];
   let title, description, ogImage, ogType, breadcrumbs;
+
+  function absUrl(url) {
+    if (!url) return url;
+    if (url.startsWith('http')) return url;
+    return baseUrl + (url.startsWith('/') ? url : '/' + url);
+  }
 
   if (templateConfig.includeOrganizationSchema) {
     structuredData.push(buildOrganizationSchema(site, baseUrl));
@@ -172,6 +191,44 @@ function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl,
       ], baseUrl));
     }
 
+  } else if (type === 'blog' && pageData) {
+    title = pageData.seo_title || templateConfig.titleFormat
+      .replace('{pageTitle}', pageData.title)
+      .replace('{brandName}', site.brand_name);
+    description = pageData.seo_description || pageData.excerpt || (pageData.content ? pageData.content.replace(/<[^>]*>/g, '').substring(0, 160).trim() : '') || templateConfig.fallbackDescription(site);
+    ogImage = pageData.featured_image || siteSEO.seo_og_image;
+    ogType = 'article';
+
+    const articleSchema = {
+      '@context': 'https://schema.org',
+      '@type': 'Article',
+      headline: pageData.title,
+      description: pageData.excerpt || '',
+      url: `${baseUrl}/blog/${pageData.slug}`,
+      datePublished: pageData.published_at || undefined,
+      author: { '@type': 'Person', name: pageData.author_name || site.brand_name },
+      publisher: { '@type': 'Organization', name: site.brand_name },
+    };
+    if (pageData.featured_image) {
+      articleSchema.image = absUrl(pageData.featured_image);
+    }
+    structuredData.push(JSON.stringify(articleSchema));
+
+    if (templateConfig.includeBreadcrumbs) {
+      structuredData.push(buildBreadcrumbSchema([
+        { name: 'Home', url: '/' },
+        { name: 'Blog', url: '/blog' },
+        { name: pageData.title, url: `/blog/${pageData.slug}` },
+      ], baseUrl));
+    }
+
+  } else if (type === 'blogList') {
+    title = templateConfig.titleFormat
+      .replace('{pageTitle}', 'Blog')
+      .replace('{brandName}', site.brand_name);
+    description = siteSEO.seo_description || templateConfig.fallbackDescription(site);
+    ogImage = siteSEO.seo_og_image;
+
   } else if (type === 'about') {
     const pageSEO = pageData;
     title = pageSEO?.seo_title || templateConfig.titleFormat
@@ -211,12 +268,6 @@ function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl,
     ogImage = pageSEO?.seo_og_image || siteSEO.seo_og_image;
   }
 
-  function absUrl(url) {
-    if (!url) return url;
-    if (url.startsWith('http')) return url;
-    return baseUrl + (url.startsWith('/') ? url : '/' + url);
-  }
-
   const resolvedOgImage = ogImage || site.og_image || site.logo_url || null;
   const finalOgImage = absUrl(resolvedOgImage);
   const finalTwImage = absUrl(ogImage || site.twitter_image || site.og_image || site.logo_url || null);
@@ -227,7 +278,7 @@ function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl,
     ogTitle: site.og_title || title,
     ogDescription: site.og_description || description,
     ogImage: finalOgImage,
-    ogType: site.og_type || ogType || 'website',
+    ogType: ogType || site.og_type || 'website',
     ogLocale: 'en_US',
     siteName: site.brand_name,
     canonicalUrl,
@@ -267,6 +318,8 @@ export async function applySEO(request, env, site, rawHTML) {
       }
     } else if (pageInfo.type === 'category') {
       pageData = await fetchCategorySEO(db, site, pageInfo.slug);
+    } else if (pageInfo.type === 'blog') {
+      pageData = await fetchBlogPostSEO(db, site, pageInfo.slug);
     } else {
       pageData = await fetchPageSEO(db, site, pageInfo.type);
     }

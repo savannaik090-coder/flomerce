@@ -53,6 +53,21 @@ export async function generateSitemap(env, site, baseUrl) {
     }
   } catch {}
 
+  try {
+    const blogPosts = await db.prepare(
+      `SELECT slug, updated_at FROM blog_posts WHERE site_id = ? AND status = 'published' ORDER BY published_at DESC`
+    ).bind(site.id).all();
+
+    for (const post of blogPosts.results || []) {
+      urls.push({
+        loc: `${baseUrl}/blog/${post.slug}`,
+        lastmod: formatDate(post.updated_at),
+        changefreq: 'monthly',
+        priority: '0.6',
+      });
+    }
+  } catch {}
+
   const urlEntries = urls.map(u => {
     let entry = `  <url>\n    <loc>${u.loc}</loc>`;
     if (u.lastmod) entry += `\n    <lastmod>${u.lastmod}</lastmod>`;

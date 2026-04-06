@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-J3IxPn/checked-fetch.js
+// .wrangler/tmp/bundle-XHo2RI/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-J3IxPn/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-XHo2RI/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-J3IxPn/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-XHo2RI/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-J3IxPn/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-XHo2RI/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -2303,12 +2303,12 @@ var init_site_admin_worker = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-J3IxPn/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-XHo2RI/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-J3IxPn/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-XHo2RI/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -10770,6 +10770,20 @@ async function generateSitemap(env, site, baseUrl) {
     }
   } catch {
   }
+  try {
+    const blogPosts = await db.prepare(
+      `SELECT slug, updated_at FROM blog_posts WHERE site_id = ? AND status = 'published' ORDER BY published_at DESC`
+    ).bind(site.id).all();
+    for (const post of blogPosts.results || []) {
+      urls2.push({
+        loc: `${baseUrl}/blog/${post.slug}`,
+        lastmod: formatDate(post.updated_at),
+        changefreq: "monthly",
+        priority: "0.6"
+      });
+    }
+  } catch {
+  }
   const urlEntries = urls2.map((u) => {
     let entry = `  <url>
     <loc>${u.loc}</loc>`;
@@ -10912,9 +10926,37 @@ function buildProductSchema(product, site, baseUrl, reviewData) {
     schema.sku = product.sku;
   if (product.barcode)
     schema.gtin = product.barcode;
-  if (product.compare_price && product.compare_price > product.price) {
-    schema.offers.priceValidUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1e3).toISOString().split("T")[0];
-  }
+  schema.offers.priceValidUntil = new Date(Date.now() + 365 * 24 * 60 * 60 * 1e3).toISOString().split("T")[0];
+  schema.offers.hasMerchantReturnPolicy = {
+    "@type": "MerchantReturnPolicy",
+    applicableCountry: site.country_code || "IN",
+    returnPolicyCategory: "https://schema.org/MerchantReturnFiniteReturnWindow",
+    merchantReturnDays: 7,
+    returnMethod: "https://schema.org/ReturnByMail",
+    returnFees: "https://schema.org/FreeReturn"
+  };
+  schema.offers.shippingDetails = {
+    "@type": "OfferShippingDetails",
+    shippingDestination: {
+      "@type": "DefinedRegion",
+      addressCountry: site.country_code || "IN"
+    },
+    deliveryTime: {
+      "@type": "ShippingDeliveryTime",
+      handlingTime: {
+        "@type": "QuantitativeValue",
+        minValue: 1,
+        maxValue: 3,
+        unitCode: "DAY"
+      },
+      transitTime: {
+        "@type": "QuantitativeValue",
+        minValue: 3,
+        maxValue: 7,
+        unitCode: "DAY"
+      }
+    }
+  };
   if (reviewData && reviewData.total > 0) {
     schema.aggregateRating = {
       "@type": "AggregateRating",
@@ -11042,6 +11084,10 @@ function detectPageType(pathname) {
     return { type: "product", slug: pathname.split("/product/")[1]?.split("?")[0] };
   if (pathname.startsWith("/category/"))
     return { type: "category", slug: pathname.split("/category/")[1]?.split("?")[0] };
+  if (pathname.startsWith("/blog/"))
+    return { type: "blog", slug: pathname.split("/blog/")[1]?.split("?")[0] };
+  if (pathname === "/blog")
+    return { type: "blogList" };
   if (pathname === "/about" || pathname === "/about-us")
     return { type: "about" };
   if (pathname === "/contact" || pathname === "/contact-us")
@@ -11074,8 +11120,8 @@ __name(fetchSiteSEO, "fetchSiteSEO");
 async function fetchProductSEO(db, site, slug) {
   try {
     return await db.prepare(
-      `SELECT id, name, slug, description, short_description, price, stock,
-              images, thumbnail_url, seo_title, seo_description, seo_og_image
+      `SELECT id, name, slug, description, short_description, price, compare_price, stock,
+              images, thumbnail_url, sku, barcode, seo_title, seo_description, seo_og_image
        FROM products WHERE site_id = ? AND slug = ? AND is_active = 1`
     ).bind(site.id, slug).first();
   } catch {
@@ -11125,6 +11171,17 @@ async function fetchCategorySEO(db, site, slug) {
   }
 }
 __name(fetchCategorySEO, "fetchCategorySEO");
+async function fetchBlogPostSEO(db, site, slug) {
+  try {
+    return await db.prepare(
+      `SELECT id, title, slug, excerpt, content, featured_image, seo_title, seo_description, published_at, author_name
+       FROM blog_posts WHERE site_id = ? AND slug = ? AND status = 'published'`
+    ).bind(site.id, slug).first();
+  } catch {
+    return null;
+  }
+}
+__name(fetchBlogPostSEO, "fetchBlogPostSEO");
 async function fetchPageSEO(db, site, pageType) {
   try {
     return await db.prepare(
@@ -11140,6 +11197,14 @@ function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl,
   const { type } = pageInfo;
   const structuredData = [];
   let title, description, ogImage, ogType, breadcrumbs;
+  function absUrl2(url) {
+    if (!url)
+      return url;
+    if (url.startsWith("http"))
+      return url;
+    return baseUrl + (url.startsWith("/") ? url : "/" + url);
+  }
+  __name(absUrl2, "absUrl");
   if (templateConfig.includeOrganizationSchema) {
     structuredData.push(buildOrganizationSchema(site, baseUrl));
   }
@@ -11173,6 +11238,36 @@ function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl,
         { name: cat.name, url: `/category/${cat.slug}` }
       ], baseUrl));
     }
+  } else if (type === "blog" && pageData) {
+    title = pageData.seo_title || templateConfig.titleFormat.replace("{pageTitle}", pageData.title).replace("{brandName}", site.brand_name);
+    description = pageData.seo_description || pageData.excerpt || (pageData.content ? pageData.content.replace(/<[^>]*>/g, "").substring(0, 160).trim() : "") || templateConfig.fallbackDescription(site);
+    ogImage = pageData.featured_image || siteSEO.seo_og_image;
+    ogType = "article";
+    const articleSchema = {
+      "@context": "https://schema.org",
+      "@type": "Article",
+      headline: pageData.title,
+      description: pageData.excerpt || "",
+      url: `${baseUrl}/blog/${pageData.slug}`,
+      datePublished: pageData.published_at || void 0,
+      author: { "@type": "Person", name: pageData.author_name || site.brand_name },
+      publisher: { "@type": "Organization", name: site.brand_name }
+    };
+    if (pageData.featured_image) {
+      articleSchema.image = absUrl2(pageData.featured_image);
+    }
+    structuredData.push(JSON.stringify(articleSchema));
+    if (templateConfig.includeBreadcrumbs) {
+      structuredData.push(buildBreadcrumbSchema([
+        { name: "Home", url: "/" },
+        { name: "Blog", url: "/blog" },
+        { name: pageData.title, url: `/blog/${pageData.slug}` }
+      ], baseUrl));
+    }
+  } else if (type === "blogList") {
+    title = templateConfig.titleFormat.replace("{pageTitle}", "Blog").replace("{brandName}", site.brand_name);
+    description = siteSEO.seo_description || templateConfig.fallbackDescription(site);
+    ogImage = siteSEO.seo_og_image;
   } else if (type === "about") {
     const pageSEO = pageData;
     title = pageSEO?.seo_title || templateConfig.titleFormat.replace("{pageTitle}", "About Us").replace("{brandName}", site.brand_name);
@@ -11199,14 +11294,6 @@ function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl,
     description = pageSEO?.seo_description || siteSEO.seo_description || templateConfig.fallbackDescription(site);
     ogImage = pageSEO?.seo_og_image || siteSEO.seo_og_image;
   }
-  function absUrl2(url) {
-    if (!url)
-      return url;
-    if (url.startsWith("http"))
-      return url;
-    return baseUrl + (url.startsWith("/") ? url : "/" + url);
-  }
-  __name(absUrl2, "absUrl");
   const resolvedOgImage = ogImage || site.og_image || site.logo_url || null;
   const finalOgImage = absUrl2(resolvedOgImage);
   const finalTwImage = absUrl2(ogImage || site.twitter_image || site.og_image || site.logo_url || null);
@@ -11216,7 +11303,7 @@ function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl,
     ogTitle: site.og_title || title,
     ogDescription: site.og_description || description,
     ogImage: finalOgImage,
-    ogType: site.og_type || ogType || "website",
+    ogType: ogType || site.og_type || "website",
     ogLocale: "en_US",
     siteName: site.brand_name,
     canonicalUrl,
@@ -11252,6 +11339,8 @@ async function applySEO(request, env, site, rawHTML) {
       }
     } else if (pageInfo.type === "category") {
       pageData = await fetchCategorySEO(db, site, pageInfo.slug);
+    } else if (pageInfo.type === "blog") {
+      pageData = await fetchBlogPostSEO(db, site, pageInfo.slug);
     } else {
       pageData = await fetchPageSEO(db, site, pageInfo.type);
     }
@@ -16752,7 +16841,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-J3IxPn/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-XHo2RI/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -16787,7 +16876,7 @@ function __facade_invoke__(request, env, ctx2, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-J3IxPn/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-XHo2RI/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;
