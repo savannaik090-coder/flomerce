@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-hD5tdp/checked-fetch.js
+// .wrangler/tmp/bundle-1kFK1t/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-hD5tdp/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-1kFK1t/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-hD5tdp/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-1kFK1t/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-hD5tdp/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-1kFK1t/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -599,70 +599,87 @@ async function purgeStorefrontCache(env, siteId, types = [], resourceIds = {}) {
     ).bind(siteId).first();
     if (!site)
       return;
-    const domains = [];
     const rootDomain = env.DOMAIN || PLATFORM_DOMAIN;
+    const storeDomains = [];
     if (site.subdomain)
-      domains.push(`${site.subdomain}.${rootDomain}`);
+      storeDomains.push(`${site.subdomain}.${rootDomain}`);
     if (site.custom_domain && site.domain_status === "verified")
-      domains.push(site.custom_domain);
-    domains.push(rootDomain);
+      storeDomains.push(site.custom_domain);
+    const allDomains = [...storeDomains, rootDomain];
     const urls2 = [];
     for (const type of types) {
       switch (type) {
         case "site":
-          for (const domain of domains) {
+          for (const domain of allDomains) {
             urls2.push(`https://${domain}/api/site`);
-            urls2.push(`https://${domain}/api/site?subdomain=${site.subdomain}`);
+            if (site.subdomain) {
+              urls2.push(`https://${domain}/api/site?subdomain=${site.subdomain}`);
+            }
           }
           break;
         case "products":
-          for (const domain of domains) {
+          for (const domain of allDomains) {
             urls2.push(`https://${domain}/api/products?siteId=${siteId}`);
-            urls2.push(`https://${domain}/api/products?subdomain=${site.subdomain}`);
+            if (site.subdomain) {
+              urls2.push(`https://${domain}/api/products?subdomain=${site.subdomain}`);
+            }
           }
           if (resourceIds.productId) {
-            for (const domain of domains) {
+            for (const domain of allDomains) {
               urls2.push(`https://${domain}/api/products/${resourceIds.productId}?siteId=${siteId}`);
-              urls2.push(`https://${domain}/api/products/${resourceIds.productId}?subdomain=${site.subdomain}`);
+              if (site.subdomain) {
+                urls2.push(`https://${domain}/api/products/${resourceIds.productId}?subdomain=${site.subdomain}`);
+              }
             }
           }
           break;
         case "categories":
-          for (const domain of domains) {
+          for (const domain of allDomains) {
             urls2.push(`https://${domain}/api/categories?siteId=${siteId}`);
-            urls2.push(`https://${domain}/api/categories?subdomain=${site.subdomain}`);
+            if (site.subdomain) {
+              urls2.push(`https://${domain}/api/categories?subdomain=${site.subdomain}`);
+            }
           }
           if (resourceIds.categoryId) {
-            for (const domain of domains) {
+            for (const domain of allDomains) {
               urls2.push(`https://${domain}/api/categories/${resourceIds.categoryId}?siteId=${siteId}`);
-              urls2.push(`https://${domain}/api/categories/${resourceIds.categoryId}?subdomain=${site.subdomain}`);
+              if (site.subdomain) {
+                urls2.push(`https://${domain}/api/categories/${resourceIds.categoryId}?subdomain=${site.subdomain}`);
+              }
             }
           }
           break;
         case "blog":
-          for (const domain of domains) {
+          for (const domain of allDomains) {
             urls2.push(`https://${domain}/api/blog/posts?siteId=${siteId}`);
-            urls2.push(`https://${domain}/api/blog/posts?subdomain=${site.subdomain}`);
+            if (site.subdomain) {
+              urls2.push(`https://${domain}/api/blog/posts?subdomain=${site.subdomain}`);
+            }
           }
           if (resourceIds.postSlug) {
-            for (const domain of domains) {
+            for (const domain of allDomains) {
               urls2.push(`https://${domain}/api/blog/post/${resourceIds.postSlug}?siteId=${siteId}`);
-              urls2.push(`https://${domain}/api/blog/post/${resourceIds.postSlug}?subdomain=${site.subdomain}`);
+              if (site.subdomain) {
+                urls2.push(`https://${domain}/api/blog/post/${resourceIds.postSlug}?subdomain=${site.subdomain}`);
+              }
             }
           }
           break;
         case "reviews":
           if (resourceIds.productId) {
-            for (const domain of domains) {
+            for (const domain of allDomains) {
               urls2.push(`https://${domain}/api/reviews/product/${resourceIds.productId}?siteId=${siteId}`);
-              urls2.push(`https://${domain}/api/reviews/product/${resourceIds.productId}?subdomain=${site.subdomain}`);
+              if (site.subdomain) {
+                urls2.push(`https://${domain}/api/reviews/product/${resourceIds.productId}?subdomain=${site.subdomain}`);
+              }
             }
           }
           break;
       }
     }
+    const uniqueUrls = [...new Set(urls2)];
     const cache = caches.default;
-    const cachePromises = urls2.map(
+    const cachePromises = uniqueUrls.map(
       (url) => cache.delete(new Request(url)).catch(
         (e) => console.error(`[Cache] Workers Cache API purge failed for ${url}:`, e.message)
       )
@@ -673,8 +690,8 @@ async function purgeStorefrontCache(env, siteId, types = [], resourceIds = {}) {
     if (token && zoneId) {
       try {
         const batchSize = 30;
-        for (let i = 0; i < urls2.length; i += batchSize) {
-          const batch = urls2.slice(i, i + batchSize);
+        for (let i = 0; i < uniqueUrls.length; i += batchSize) {
+          const batch = uniqueUrls.slice(i, i + batchSize);
           const resp = await fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}/purge_cache`, {
             method: "POST",
             headers: {
@@ -691,8 +708,10 @@ async function purgeStorefrontCache(env, siteId, types = [], resourceIds = {}) {
       } catch (apiErr) {
         console.error("[Cache] Cloudflare API purge error:", apiErr.message);
       }
+    } else {
+      console.warn(`[Cache] CF_API_TOKEN not configured \u2014 Cloudflare CDN purge skipped for site ${siteId}. Only Workers Cache API purge was performed.`);
     }
-    console.log(`[Cache] Purged ${urls2.length} URLs for site ${siteId} (types: ${types.join(", ")})`);
+    console.log(`[Cache] Purged ${uniqueUrls.length} URLs for site ${siteId} (types: ${types.join(", ")})`);
   } catch (e) {
     console.error("[Cache] Purge error:", e.message);
   }
@@ -705,8 +724,8 @@ var init_cache = __esm({
     init_modules_watch_stub();
     init_helpers();
     init_config();
-    CDN_CACHE_TTL = 604800;
-    CDN_STALE_WHILE_REVALIDATE = 1209600;
+    CDN_CACHE_TTL = 300;
+    CDN_STALE_WHILE_REVALIDATE = 600;
     BROWSER_CACHE_TTL = 60;
     __name(cachedJsonResponse, "cachedJsonResponse");
     __name(purgeStorefrontCache, "purgeStorefrontCache");
@@ -2350,12 +2369,12 @@ var init_site_admin_worker = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-hD5tdp/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-1kFK1t/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-hD5tdp/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-1kFK1t/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -17367,7 +17386,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-hD5tdp/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-1kFK1t/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -17402,7 +17421,7 @@ function __facade_invoke__(request, env, ctx2, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-hD5tdp/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-1kFK1t/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;
