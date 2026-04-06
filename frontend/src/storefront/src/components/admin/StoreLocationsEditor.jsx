@@ -97,6 +97,12 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate }) {
 
   function removeStore(index) {
     if (stores.length <= 1) return;
+    const removedStore = stores[index];
+    if (removedStore?.image && siteConfig?.id) {
+      import('../../services/api.js').then(({ deleteMediaFromR2 }) => {
+        deleteMediaFromR2(siteConfig.id, removedStore.image);
+      });
+    }
     setStores(prev => prev.filter((_, i) => i !== index));
   }
 

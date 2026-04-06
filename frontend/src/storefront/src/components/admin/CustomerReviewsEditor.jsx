@@ -195,6 +195,12 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate }) {
 
   function handleDeleteReview(index) {
     if (!window.confirm('Delete this review?')) return;
+    const deletedReview = reviews[index];
+    if (deletedReview?.image && siteConfig?.id) {
+      import('../../services/api.js').then(({ deleteMediaFromR2 }) => {
+        deleteMediaFromR2(siteConfig.id, deletedReview.image);
+      });
+    }
     const updatedReviews = reviews.filter((_, i) => i !== index);
     setReviews(updatedReviews);
   }
@@ -337,7 +343,7 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate }) {
                     <img src={resolveImageUrl(form.image)} alt="Review" style={{ width: '100%', maxHeight: 200, objectFit: 'cover', display: 'block' }} />
                     <button
                       type="button"
-                      onClick={() => { setForm(p => ({ ...p, image: '', imageKey: '' })); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+                      onClick={() => { if (form.image && siteConfig?.id) { import('../../services/api.js').then(({ deleteMediaFromR2 }) => { deleteMediaFromR2(siteConfig.id, form.image); }); } setForm(p => ({ ...p, image: '', imageKey: '' })); if (fileInputRef.current) fileInputRef.current.value = ''; }}
                       style={{
                         position: 'absolute', top: 8, right: 8,
                         background: 'rgba(0,0,0,0.7)', color: '#fff', border: 'none',

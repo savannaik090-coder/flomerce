@@ -158,6 +158,11 @@ export default function BlogSection() {
               if (!confirm('Delete this blog post?')) return;
               try {
                 await apiRequest(`/api/blog/admin/${post.id}?siteId=${siteConfig.id}`, { method: 'DELETE' });
+                if (post.cover_image && siteConfig?.id) {
+                  import('../../services/api.js').then(({ deleteMediaFromR2 }) => {
+                    deleteMediaFromR2(siteConfig.id, post.cover_image);
+                  });
+                }
                 showMsg('Post deleted');
                 fetchPosts();
               } catch (e) {
