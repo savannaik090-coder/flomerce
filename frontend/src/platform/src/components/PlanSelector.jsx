@@ -156,8 +156,14 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
               await cleanupOrphanSite();
             }
           } catch (verifyErr) {
-            alert('Payment verification failed. Please contact support.');
-            await cleanupOrphanSite();
+            if (verifyErr?.message?.includes('already activated') || verifyErr?.message?.includes('will activate shortly')) {
+              paymentSucceededRef.current = true;
+              alert('Payment successful! Your plan is being activated. Please refresh the page in a moment.');
+              onUpgraded?.();
+            } else {
+              alert('Payment verification failed. Please contact support.');
+              await cleanupOrphanSite();
+            }
           }
         },
         theme: { color: '#2563eb' },

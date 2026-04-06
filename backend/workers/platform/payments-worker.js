@@ -347,6 +347,14 @@ async function verifySubscriptionPayment(request, env, { razorpay_subscription_i
       return errorResponse('Unauthorized', 401);
     }
 
+    const existingActive = await env.DB.prepare(
+      `SELECT id FROM subscriptions WHERE razorpay_subscription_id = ? AND status = 'active'`
+    ).bind(razorpay_subscription_id).first();
+
+    if (existingActive) {
+      return successResponse({ verified: true, planActivated: true, duplicate: true }, 'Subscription already activated');
+    }
+
     const pending = await env.DB.prepare(
       `SELECT ps.*, sp.plan_name, sp.billing_cycle, sp.display_price
        FROM pending_subscriptions ps
@@ -355,15 +363,29 @@ async function verifySubscriptionPayment(request, env, { razorpay_subscription_i
     ).bind(razorpay_subscription_id, user.id).first();
 
     if (!pending) {
-      return errorResponse('No matching pending subscription found. Payment may have been tampered with.', 400);
-    }
-
-    const existingActive = await env.DB.prepare(
-      `SELECT id FROM subscriptions WHERE razorpay_subscription_id = ? AND status = 'active'`
-    ).bind(razorpay_subscription_id).first();
-
-    if (existingActive) {
-      return successResponse({ verified: true, planActivated: true, duplicate: true }, 'Subscription already activated');
+      for (let attempt = 0; attempt < 3; attempt++) {
+        await new Promise(r => setTimeout(r, 1500));
+        const retryActive = await env.DB.prepare(
+          `SELECT id FROM subscriptions WHERE razorpay_subscription_id = ? AND status = 'active'`
+        ).bind(razorpay_subscription_id).first();
+        if (retryActive) {
+          return successResponse({ verified: true, planActivated: true, duplicate: true }, 'Subscription already activated');
+        }
+        const retryPending = await env.DB.prepare(
+          `SELECT ps.*, sp.plan_name, sp.billing_cycle, sp.display_price
+           FROM pending_subscriptions ps
+           JOIN subscription_plans sp ON ps.plan_id = sp.id
+           WHERE ps.razorpay_subscription_id = ? AND ps.user_id = ?`
+        ).bind(razorpay_subscription_id, user.id).first();
+        if (retryPending) {
+          const retryActivated = await activateSubscription(env, user.id, retryPending.plan_name, retryPending.billing_cycle, razorpay_payment_id, razorpay_subscription_id, retryPending.display_price, retryPending.site_id || null);
+          if (retryActivated) {
+            try { await env.DB.prepare(`DELETE FROM pending_subscriptions WHERE razorpay_subscription_id = ?`).bind(razorpay_subscription_id).run(); } catch {}
+            return successResponse({ verified: true, planActivated: true }, 'Subscription payment verified and plan activated');
+          }
+        }
+      }
+      return errorResponse('No matching pending subscription found. If you were charged, your plan will activate shortly via webhook. Please refresh the page in a minute.', 400);
     }
 
     const activated = await activateSubscription(env, user.id, pending.plan_name, pending.billing_cycle, razorpay_payment_id, razorpay_subscription_id, pending.display_price, pending.site_id || null);
@@ -954,7 +976,7 @@ export async function activateSubscription(env, userId, planName, billingCycle, 
       periodStart = new Date(razorpayEntity.current_start * 1000);
       periodEnd = new Date(razorpayEntity.current_end * 1000);
     } else {
-      const periodMonths = billingCycle === '3months' ? 3 : billingCycle === '6months' ? 6 : billingCycle === 'yearly' ? 12 : 36;
+      const periodMonths = billingCycle === 'monthly' ? 1 : billingCycle === '3months' ? 3 : billingCycle === '6months' ? 6 : billingCycle === 'yearly' ? 12 : 1;
       periodStart = new Date();
       periodEnd = new Date(periodStart);
       periodEnd.setMonth(periodEnd.getMonth() + periodMonths);

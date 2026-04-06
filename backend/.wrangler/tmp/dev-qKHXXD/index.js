@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-cZNlQb/checked-fetch.js
+// .wrangler/tmp/bundle-c27fqs/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-cZNlQb/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-c27fqs/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-cZNlQb/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-c27fqs/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-cZNlQb/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-c27fqs/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -2350,12 +2350,12 @@ var init_site_admin_worker = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-cZNlQb/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-c27fqs/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-cZNlQb/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-c27fqs/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -9788,6 +9788,12 @@ async function verifySubscriptionPayment(request, env, { razorpay_subscription_i
     if (!user) {
       return errorResponse("Unauthorized", 401);
     }
+    const existingActive = await env.DB.prepare(
+      `SELECT id FROM subscriptions WHERE razorpay_subscription_id = ? AND status = 'active'`
+    ).bind(razorpay_subscription_id).first();
+    if (existingActive) {
+      return successResponse({ verified: true, planActivated: true, duplicate: true }, "Subscription already activated");
+    }
     const pending = await env.DB.prepare(
       `SELECT ps.*, sp.plan_name, sp.billing_cycle, sp.display_price
        FROM pending_subscriptions ps
@@ -9795,13 +9801,32 @@ async function verifySubscriptionPayment(request, env, { razorpay_subscription_i
        WHERE ps.razorpay_subscription_id = ? AND ps.user_id = ?`
     ).bind(razorpay_subscription_id, user.id).first();
     if (!pending) {
-      return errorResponse("No matching pending subscription found. Payment may have been tampered with.", 400);
-    }
-    const existingActive = await env.DB.prepare(
-      `SELECT id FROM subscriptions WHERE razorpay_subscription_id = ? AND status = 'active'`
-    ).bind(razorpay_subscription_id).first();
-    if (existingActive) {
-      return successResponse({ verified: true, planActivated: true, duplicate: true }, "Subscription already activated");
+      for (let attempt = 0; attempt < 3; attempt++) {
+        await new Promise((r) => setTimeout(r, 1500));
+        const retryActive = await env.DB.prepare(
+          `SELECT id FROM subscriptions WHERE razorpay_subscription_id = ? AND status = 'active'`
+        ).bind(razorpay_subscription_id).first();
+        if (retryActive) {
+          return successResponse({ verified: true, planActivated: true, duplicate: true }, "Subscription already activated");
+        }
+        const retryPending = await env.DB.prepare(
+          `SELECT ps.*, sp.plan_name, sp.billing_cycle, sp.display_price
+           FROM pending_subscriptions ps
+           JOIN subscription_plans sp ON ps.plan_id = sp.id
+           WHERE ps.razorpay_subscription_id = ? AND ps.user_id = ?`
+        ).bind(razorpay_subscription_id, user.id).first();
+        if (retryPending) {
+          const retryActivated = await activateSubscription(env, user.id, retryPending.plan_name, retryPending.billing_cycle, razorpay_payment_id, razorpay_subscription_id, retryPending.display_price, retryPending.site_id || null);
+          if (retryActivated) {
+            try {
+              await env.DB.prepare(`DELETE FROM pending_subscriptions WHERE razorpay_subscription_id = ?`).bind(razorpay_subscription_id).run();
+            } catch {
+            }
+            return successResponse({ verified: true, planActivated: true }, "Subscription payment verified and plan activated");
+          }
+        }
+      }
+      return errorResponse("No matching pending subscription found. If you were charged, your plan will activate shortly via webhook. Please refresh the page in a minute.", 400);
     }
     const activated = await activateSubscription(env, user.id, pending.plan_name, pending.billing_cycle, razorpay_payment_id, razorpay_subscription_id, pending.display_price, pending.site_id || null);
     if (!activated) {
@@ -10348,7 +10373,7 @@ async function activateSubscription(env, userId, planName, billingCycle, razorpa
       periodStart = new Date(razorpayEntity.current_start * 1e3);
       periodEnd = new Date(razorpayEntity.current_end * 1e3);
     } else {
-      const periodMonths = billingCycle === "3months" ? 3 : billingCycle === "6months" ? 6 : billingCycle === "yearly" ? 12 : 36;
+      const periodMonths = billingCycle === "monthly" ? 1 : billingCycle === "3months" ? 3 : billingCycle === "6months" ? 6 : billingCycle === "yearly" ? 12 : 1;
       periodStart = /* @__PURE__ */ new Date();
       periodEnd = new Date(periodStart);
       periodEnd.setMonth(periodEnd.getMonth() + periodMonths);
@@ -17342,7 +17367,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-cZNlQb/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-c27fqs/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -17377,7 +17402,7 @@ function __facade_invoke__(request, env, ctx2, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-cZNlQb/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-c27fqs/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;
