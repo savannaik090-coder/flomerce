@@ -587,8 +587,8 @@ var init_auth = __esm({
 function cachedJsonResponse(data, status = 200, request = null) {
   const response = jsonResponse(data, status, request);
   const headers = new Headers(response.headers);
-  headers.set("Cache-Control", `public, max-age=${CACHE_TTL}, stale-while-revalidate=${STALE_WHILE_REVALIDATE}`);
-  headers.set("CDN-Cache-Control", `public, max-age=${CACHE_TTL}, stale-while-revalidate=${STALE_WHILE_REVALIDATE}`);
+  headers.set("Cache-Control", `public, max-age=${BROWSER_CACHE_TTL}, stale-while-revalidate=${BROWSER_CACHE_TTL * 2}`);
+  headers.set("CDN-Cache-Control", `public, max-age=${CDN_CACHE_TTL}, stale-while-revalidate=${CDN_STALE_WHILE_REVALIDATE}`);
   headers.set("Vary", "Accept-Encoding");
   return new Response(response.body, { status: response.status, headers });
 }
@@ -606,12 +606,12 @@ async function purgeStorefrontCache(env, siteId, types = [], resourceIds = {}) {
     if (site.custom_domain && site.domain_status === "verified")
       domains.push(site.custom_domain);
     domains.push(rootDomain);
-    const cache = caches.default;
     const urls2 = [];
     for (const type of types) {
       switch (type) {
         case "site":
           for (const domain of domains) {
+            urls2.push(`https://${domain}/api/site`);
             urls2.push(`https://${domain}/api/site?subdomain=${site.subdomain}`);
           }
           break;
@@ -642,10 +642,12 @@ async function purgeStorefrontCache(env, siteId, types = [], resourceIds = {}) {
         case "blog":
           for (const domain of domains) {
             urls2.push(`https://${domain}/api/blog/posts?siteId=${siteId}`);
+            urls2.push(`https://${domain}/api/blog/posts?subdomain=${site.subdomain}`);
           }
           if (resourceIds.postSlug) {
             for (const domain of domains) {
               urls2.push(`https://${domain}/api/blog/post/${resourceIds.postSlug}?siteId=${siteId}`);
+              urls2.push(`https://${domain}/api/blog/post/${resourceIds.postSlug}?subdomain=${site.subdomain}`);
             }
           }
           break;
@@ -653,23 +655,49 @@ async function purgeStorefrontCache(env, siteId, types = [], resourceIds = {}) {
           if (resourceIds.productId) {
             for (const domain of domains) {
               urls2.push(`https://${domain}/api/reviews/product/${resourceIds.productId}?siteId=${siteId}`);
+              urls2.push(`https://${domain}/api/reviews/product/${resourceIds.productId}?subdomain=${site.subdomain}`);
             }
           }
           break;
       }
     }
-    const purgePromises = urls2.map(
+    const cache = caches.default;
+    const cachePromises = urls2.map(
       (url) => cache.delete(new Request(url)).catch(
-        (e) => console.error(`[Cache] Failed to purge ${url}:`, e.message)
+        (e) => console.error(`[Cache] Workers Cache API purge failed for ${url}:`, e.message)
       )
     );
-    await Promise.allSettled(purgePromises);
-    console.log(`[Cache] Purged ${purgePromises.length} URLs for site ${siteId} (types: ${types.join(", ")})`);
+    await Promise.allSettled(cachePromises);
+    const token = env.CF_API_TOKEN;
+    const zoneId = env.CF_ZONE_ID;
+    if (token && zoneId) {
+      try {
+        const batchSize = 30;
+        for (let i = 0; i < urls2.length; i += batchSize) {
+          const batch = urls2.slice(i, i + batchSize);
+          const resp = await fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}/purge_cache`, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${token}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ files: batch })
+          });
+          if (!resp.ok) {
+            const errText = await resp.text().catch(() => "");
+            console.error(`[Cache] Cloudflare API purge failed (batch ${i}):`, resp.status, errText);
+          }
+        }
+      } catch (apiErr) {
+        console.error("[Cache] Cloudflare API purge error:", apiErr.message);
+      }
+    }
+    console.log(`[Cache] Purged ${urls2.length} URLs for site ${siteId} (types: ${types.join(", ")})`);
   } catch (e) {
     console.error("[Cache] Purge error:", e.message);
   }
 }
-var CACHE_TTL, STALE_WHILE_REVALIDATE;
+var CDN_CACHE_TTL, CDN_STALE_WHILE_REVALIDATE, BROWSER_CACHE_TTL;
 var init_cache = __esm({
   "utils/cache.js"() {
     init_checked_fetch();
@@ -677,8 +705,9 @@ var init_cache = __esm({
     init_modules_watch_stub();
     init_helpers();
     init_config();
-    CACHE_TTL = 604800;
-    STALE_WHILE_REVALIDATE = 1209600;
+    CDN_CACHE_TTL = 604800;
+    CDN_STALE_WHILE_REVALIDATE = 1209600;
+    BROWSER_CACHE_TTL = 60;
     __name(cachedJsonResponse, "cachedJsonResponse");
     __name(purgeStorefrontCache, "purgeStorefrontCache");
   }

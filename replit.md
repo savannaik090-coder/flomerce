@@ -39,7 +39,7 @@ Fluxe utilizes a shared shard-based D1 database architecture where multiple site
 - **Authentication:** Custom JWT for platform users, verification-code for site admins, and custom customer auth for storefronts, including Google Sign-In.
 - **UI/UX:** Customizable templates with extensive admin controls.
 - **SEO:** Server-side meta tag injection, dynamic sitemap.xml, robots.txt per tenant, and structured data for products, articles, and reviews. Default SEO titles and meta descriptions are category-aware and generated.
-- **CDN Edge Caching:** Storefront GET endpoints are cached for 7 days with stale-while-revalidate. Admin write operations trigger cache invalidation.
+- **CDN Edge Caching:** Two-tier caching strategy. Browser: `max-age=60` (60s). CDN: `CDN-Cache-Control: max-age=604800` (7 days) with stale-while-revalidate. Admin requests bypass browser cache entirely (`cache: 'no-store'` in `api.js` and `SiteContext.jsx`). Write operations trigger `purgeStorefrontCache()` which purges both Workers Cache API and Cloudflare CDN edge globally (via Cloudflare API using `CF_API_TOKEN` + `CF_ZONE_ID`). Purge covers both `siteId` and `subdomain` URL variants. Cached endpoints: `/api/site`, `/api/products`, `/api/categories`, `/api/blog/posts`, `/api/blog/post/:slug`, `/api/reviews/product/:id`.
 - **Push Notifications:** Full Web Push Protocol (VAPID) implementation using Cloudflare Workers, with service worker for client-side handling and admin panel for management and auto-triggers.
 - **Store Logo:** Configurable logo upload, sizing, and positioning in the admin panel.
 - **Platform Landing Page:** Full landing page with hero, features, pricing, contact, and footer sections.

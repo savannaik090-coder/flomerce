@@ -85,7 +85,9 @@ export function SiteProvider({ children }) {
         const apiBase = API_BASE;
         apiUrl = `${apiBase}/api/site?subdomain=${encodeURIComponent(sub)}`;
       }
-      const response = await fetch(apiUrl);
+      const adminToken = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('site_admin_token') : null;
+      const fetchOpts = adminToken ? { cache: 'no-store' } : {};
+      const response = await fetch(apiUrl, fetchOpts);
       if (!response.ok) {
         throw new Error('Store not found');
       }
