@@ -1,11 +1,12 @@
 import { generateId, generateToken, jsonResponse, errorResponse, successResponse, handleCORS } from '../../utils/helpers.js';
+import { purgeStorefrontCache } from '../../utils/cache.js';
 import { validateAuth, hashPassword, verifyPassword } from '../../utils/auth.js';
 import { resolveSiteDBById, checkMigrationLock, getSiteConfig } from '../../utils/site-db.js';
 import { estimateRowBytes, trackD1Write, trackD1Update } from '../../utils/usage-tracker.js';
 
 const ALL_PERMISSIONS = ['dashboard', 'products', 'inventory', 'orders', 'customers', 'analytics', 'website', 'seo', 'notifications', 'faq', 'settings'];
 
-export async function handleSiteAdmin(request, env, path) {
+export async function handleSiteAdmin(request, env, path, ctx) {
   const corsResponse = handleCORS(request);
   if (corsResponse) return corsResponse;
 
@@ -22,7 +23,7 @@ export async function handleSiteAdmin(request, env, path) {
     case 'staff-logout':
       return staffLogout(request, env);
     case 'seo':
-      return handleSEO(request, env, pathParts);
+      return handleSEO(request, env, pathParts, ctx);
     default:
       return errorResponse('Site admin endpoint not found', 404);
   }
@@ -309,33 +310,33 @@ async function ensureSiteAdminSessionsTable(env) {
   }
 }
 
-async function handleSEO(request, env, pathParts) {
+async function handleSEO(request, env, pathParts, ctx) {
   const subResource = pathParts[3];
   const resourceId  = pathParts[4];
 
   if (!subResource) {
     if (request.method === 'GET') return getSiteSEO(request, env);
-    if (request.method === 'PUT') return saveSiteSEO(request, env);
+    if (request.method === 'PUT') return saveSiteSEO(request, env, ctx);
   }
 
   if (subResource === 'categories') {
     if (request.method === 'GET') return getCategoriesSEO(request, env);
-    if (request.method === 'PUT' && resourceId) return saveCategorySEO(request, env, resourceId);
+    if (request.method === 'PUT' && resourceId) return saveCategorySEO(request, env, resourceId, ctx);
   }
 
   if (subResource === 'products') {
     if (request.method === 'GET') return getProductsSEO(request, env);
-    if (request.method === 'PUT' && resourceId) return saveProductSEO(request, env, resourceId);
+    if (request.method === 'PUT' && resourceId) return saveProductSEO(request, env, resourceId, ctx);
   }
 
   if (subResource === 'pages') {
     if (request.method === 'GET') return getPagesSEO(request, env);
-    if (request.method === 'PUT' && resourceId) return savePageSEO(request, env, resourceId);
+    if (request.method === 'PUT' && resourceId) return savePageSEO(request, env, resourceId, ctx);
   }
 
   if (subResource === 'social') {
     if (request.method === 'GET') return getSocialTags(request, env);
-    if (request.method === 'PUT') return saveSocialTags(request, env);
+    if (request.method === 'PUT') return saveSocialTags(request, env, ctx);
   }
 
   return errorResponse('SEO endpoint not found', 404);
@@ -369,7 +370,7 @@ async function getSiteSEO(request, env) {
   }
 }
 
-async function saveSiteSEO(request, env) {
+async function saveSiteSEO(request, env, ctx) {
   try {
     const { siteId, seo_title, seo_description, seo_og_image, seo_robots, google_verification, favicon_url } = await request.json();
     if (!siteId) return errorResponse('siteId is required');
@@ -405,6 +406,8 @@ async function saveSiteSEO(request, env) {
       await trackD1Update(env, siteId, oldBytes, newBytes);
     }
 
+    if (ctx) ctx.waitUntil(purgeStorefrontCache(env, siteId, ['site']));
+
     return jsonResponse({ success: true, message: 'SEO settings saved' });
   } catch (err) {
     console.error('saveSiteSEO error:', err);
@@ -435,7 +438,7 @@ async function getCategoriesSEO(request, env) {
   }
 }
 
-async function saveCategorySEO(request, env, categoryId) {
+async function saveCategorySEO(request, env, categoryId, ctx) {
   try {
     const { siteId, seo_title, seo_description, seo_og_image } = await request.json();
     if (!siteId) return errorResponse('siteId is required');
@@ -470,6 +473,8 @@ async function saveCategorySEO(request, env, categoryId) {
       await db.prepare('UPDATE categories SET row_size_bytes = ? WHERE id = ?').bind(newBytes, categoryId).run();
       await trackD1Update(env, siteId, oldBytes, newBytes);
     }
+
+    if (ctx) ctx.waitUntil(purgeStorefrontCache(env, siteId, ['categories', 'site']));
 
     return jsonResponse({ success: true, message: 'Category SEO saved' });
   } catch (err) {
@@ -513,7 +518,7 @@ async function getProductsSEO(request, env) {
   }
 }
 
-async function saveProductSEO(request, env, productId) {
+async function saveProductSEO(request, env, productId, ctx) {
   try {
     const { siteId, seo_title, seo_description, seo_og_image } = await request.json();
     if (!siteId) return errorResponse('siteId is required');
@@ -548,6 +553,8 @@ async function saveProductSEO(request, env, productId) {
       await db.prepare('UPDATE products SET row_size_bytes = ? WHERE id = ?').bind(newBytes, productId).run();
       await trackD1Update(env, siteId, oldBytes, newBytes);
     }
+
+    if (ctx) ctx.waitUntil(purgeStorefrontCache(env, siteId, ['products']));
 
     return jsonResponse({ success: true, message: 'Product SEO saved' });
   } catch (err) {
@@ -587,7 +594,7 @@ async function getPagesSEO(request, env) {
   }
 }
 
-async function savePageSEO(request, env, pageType) {
+async function savePageSEO(request, env, pageType, ctx) {
   try {
     const { siteId, seo_title, seo_description, seo_og_image } = await request.json();
     if (!siteId) return errorResponse('siteId is required');
@@ -633,6 +640,8 @@ async function savePageSEO(request, env, pageType) {
       await trackD1Write(env, siteId, rowBytes);
     }
 
+    if (ctx) ctx.waitUntil(purgeStorefrontCache(env, siteId, ['site']));
+
     return jsonResponse({ success: true, message: 'Page SEO saved' });
   } catch (err) {
     console.error('savePageSEO error:', err);
@@ -676,7 +685,7 @@ async function getSocialTags(request, env) {
   }
 }
 
-async function saveSocialTags(request, env) {
+async function saveSocialTags(request, env, ctx) {
   try {
     const { siteId, og_title, og_description, og_image, og_type,
             twitter_card, twitter_title, twitter_description, twitter_image, twitter_site } = await request.json();
@@ -712,6 +721,8 @@ async function saveSocialTags(request, env) {
       await siteDB.prepare('UPDATE site_config SET row_size_bytes = ? WHERE site_id = ?').bind(newBytes, siteId).run();
       await trackD1Update(env, siteId, oldBytes, newBytes);
     }
+
+    if (ctx) ctx.waitUntil(purgeStorefrontCache(env, siteId, ['site']));
 
     return jsonResponse({ success: true, message: 'Social tags saved' });
   } catch (err) {

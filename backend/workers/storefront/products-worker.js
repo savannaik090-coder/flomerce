@@ -1,4 +1,5 @@
 import { generateId, sanitizeInput, jsonResponse, errorResponse, successResponse, handleCORS } from '../../utils/helpers.js';
+import { cachedJsonResponse, purgeStorefrontCache } from '../../utils/cache.js';
 import { validateAuth } from '../../utils/auth.js';
 import { validateSiteAdmin, hasPermission } from './site-admin-worker.js';
 import { checkUsageLimit, estimateRowBytes, trackD1Write, trackD1Delete, trackD1Update, removeMediaFile } from '../../utils/usage-tracker.js';
@@ -153,7 +154,7 @@ async function getProducts(env, { siteId, subdomain, category, categoryId, subca
       options: product.options ? JSON.parse(product.options) : null,
     }));
 
-    return successResponse(parsedProducts);
+    return cachedJsonResponse({ success: true, message: 'Success', data: parsedProducts });
   } catch (error) {
     console.error('Get products error:', error);
     return errorResponse('Failed to fetch products', 500);
@@ -231,7 +232,7 @@ async function getProduct(env, productId, siteId, subdomain) {
       })),
     };
 
-    return successResponse(parsedProduct);
+    return cachedJsonResponse({ success: true, message: 'Success', data: parsedProduct });
   } catch (error) {
     console.error('Get product error:', error);
     return errorResponse('Failed to fetch product', 500);
@@ -352,6 +353,8 @@ async function createProduct(request, env, user, ctx) {
         }).catch(err => console.error('[Notifications] newProduct auto-trigger failed:', err))
       );
     }
+
+    if (ctx) ctx.waitUntil(purgeStorefrontCache(env, siteId, ['products'], { productId }));
 
     return successResponse({ id: productId, slug }, 'Product created successfully');
   } catch (error) {
@@ -534,6 +537,8 @@ async function updateProduct(request, env, user, productId, ctx) {
       }
     }
 
+    if (ctx) ctx.waitUntil(purgeStorefrontCache(env, resolvedSiteId, ['products'], { productId }));
+
     return successResponse(null, 'Product updated successfully');
   } catch (error) {
     console.error('Update product error:', error);
@@ -614,6 +619,8 @@ async function deleteProduct(env, user, productId) {
         console.error('Failed to delete product image from R2:', e);
       }
     }
+
+    purgeStorefrontCache(env, resolvedSiteId, ['products'], { productId }).catch(() => {});
 
     return successResponse(null, 'Product deleted successfully');
   } catch (error) {

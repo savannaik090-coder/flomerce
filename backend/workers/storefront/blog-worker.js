@@ -1,4 +1,5 @@
 import { generateId, jsonResponse, errorResponse, successResponse, handleCORS } from '../../utils/helpers.js';
+import { cachedJsonResponse, purgeStorefrontCache } from '../../utils/cache.js';
 import { resolveSiteDBById } from '../../utils/site-db.js';
 import { validateSiteAdmin } from './site-admin-worker.js';
 import { estimateRowBytes, trackD1Write, trackD1Update } from '../../utils/usage-tracker.js';
@@ -53,7 +54,7 @@ function slugify(text) {
     .replace(/-+$/, '');
 }
 
-export async function handleBlog(request, env, path) {
+export async function handleBlog(request, env, path, ctx) {
   const corsResponse = handleCORS(request);
   if (corsResponse) return corsResponse;
 
@@ -79,15 +80,15 @@ export async function handleBlog(request, env, path) {
   }
 
   if (action === 'admin' && method === 'POST' && !subAction) {
-    return createPost(request, env);
+    return createPost(request, env, ctx);
   }
 
   if (action === 'admin' && subAction && method === 'PUT') {
-    return updatePost(request, env, subAction);
+    return updatePost(request, env, subAction, ctx);
   }
 
   if (action === 'admin' && subAction && method === 'DELETE') {
-    return deletePost(request, env, subAction);
+    return deletePost(request, env, subAction, ctx);
   }
 
   return errorResponse('Not found', 404);
@@ -134,12 +135,12 @@ async function listPosts(request, env) {
       `SELECT COUNT(*) as total FROM blog_posts WHERE site_id = ? AND status = 'published'`
     ).bind(siteId).first();
 
-    return successResponse({
+    return cachedJsonResponse({ success: true, message: 'Success', data: {
       posts: posts.results || [],
       total: countResult?.total || 0,
       page,
       totalPages: Math.ceil((countResult?.total || 0) / limit),
-    });
+    }});
   } catch (error) {
     console.error('List blog posts error:', error);
     return errorResponse('Failed to fetch blog posts', 500);
@@ -167,7 +168,7 @@ async function getPost(request, env, slug) {
 
     if (!post) return errorResponse('Blog post not found', 404);
 
-    return successResponse(post);
+    return cachedJsonResponse({ success: true, message: 'Success', data: post });
   } catch (error) {
     console.error('Get blog post error:', error);
     return errorResponse('Failed to fetch blog post', 500);
@@ -233,7 +234,7 @@ async function adminGetPost(request, env, postId) {
   }
 }
 
-async function createPost(request, env) {
+async function createPost(request, env, ctx) {
   try {
     const body = await request.json();
     const { siteId, title, content, excerpt, coverImage, status, author, tags, metaTitle, metaDescription } = body;
@@ -284,6 +285,8 @@ async function createPost(request, env) {
       await trackD1Write(env, siteId, rowBytes);
     } catch (e) {}
 
+    if (ctx) ctx.waitUntil(purgeStorefrontCache(env, siteId, ['blog'], { postSlug: slug }));
+
     return successResponse({ id, slug }, 'Blog post created');
   } catch (error) {
     console.error('Create blog post error:', error);
@@ -291,7 +294,7 @@ async function createPost(request, env) {
   }
 }
 
-async function updatePost(request, env, postId) {
+async function updatePost(request, env, postId, ctx) {
   try {
     const body = await request.json();
     const { siteId, title, content, excerpt, coverImage, status, author, tags, metaTitle, metaDescription, slug: newSlug } = body;
@@ -365,6 +368,9 @@ async function updatePost(request, env, postId) {
       await trackD1Update(env, siteId, oldBytes, newBytes);
     } catch (e) {}
 
+    const updatedPost = await db.prepare('SELECT slug FROM blog_posts WHERE id = ? AND site_id = ?').bind(postId, siteId).first();
+    if (ctx) ctx.waitUntil(purgeStorefrontCache(env, siteId, ['blog'], { postSlug: updatedPost?.slug }));
+
     return successResponse({ id: postId }, 'Blog post updated');
   } catch (error) {
     console.error('Update blog post error:', error);
@@ -372,7 +378,7 @@ async function updatePost(request, env, postId) {
   }
 }
 
-async function deletePost(request, env, postId) {
+async function deletePost(request, env, postId, ctx) {
   try {
     const url = new URL(request.url);
     const siteId = url.searchParams.get('siteId');
@@ -388,9 +394,13 @@ async function deletePost(request, env, postId) {
     const db = await resolveSiteDBById(env, siteId);
     await ensureBlogTable(db, siteId);
 
+    const postToDelete = await db.prepare('SELECT slug FROM blog_posts WHERE id = ? AND site_id = ?').bind(postId, siteId).first();
+
     await db.prepare(
       'DELETE FROM blog_posts WHERE id = ? AND site_id = ?'
     ).bind(postId, siteId).run();
+
+    if (ctx) ctx.waitUntil(purgeStorefrontCache(env, siteId, ['blog'], { postSlug: postToDelete?.slug }));
 
     return successResponse(null, 'Blog post deleted');
   } catch (error) {

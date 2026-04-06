@@ -1,4 +1,5 @@
 import { generateId, jsonResponse, errorResponse, successResponse, handleCORS } from '../../utils/helpers.js';
+import { cachedJsonResponse, purgeStorefrontCache } from '../../utils/cache.js';
 import { validateAnyAuth } from '../../utils/auth.js';
 import { resolveSiteDBById, checkMigrationLock, getSiteConfig } from '../../utils/site-db.js';
 import { estimateRowBytes, trackD1Write } from '../../utils/usage-tracker.js';
@@ -21,7 +22,7 @@ function generateToken() {
   return Array.from(bytes, b => chars[b % chars.length]).join('');
 }
 
-export async function handleReviews(request, env, path) {
+export async function handleReviews(request, env, path, ctx) {
   const corsResponse = handleCORS(request);
   if (corsResponse) return corsResponse;
 
@@ -51,7 +52,7 @@ export async function handleReviews(request, env, path) {
   }
 
   if (action === 'admin' && subAction && method === 'PUT') {
-    return updateReviewStatus(request, env, subAction);
+    return updateReviewStatus(request, env, subAction, ctx);
   }
 
   if (action === 'summary' && method === 'GET') {
@@ -96,7 +97,7 @@ async function getProductReviews(request, env, productId) {
       images: parseJsonSafe(r.images),
     }));
 
-    return jsonResponse({
+    return cachedJsonResponse({
       success: true,
       data: {
         reviews: reviewsData,
@@ -426,7 +427,7 @@ async function getAdminReviews(request, env) {
   }
 }
 
-async function updateReviewStatus(request, env, reviewId) {
+async function updateReviewStatus(request, env, reviewId, ctx) {
   try {
     const data = await request.json();
     const { siteId, status } = data;
@@ -452,10 +453,18 @@ async function updateReviewStatus(request, env, reviewId) {
     const db = await resolveSiteDBById(env, siteId);
     await ensureReviewColumns(db);
 
+    const review = await db.prepare(
+      'SELECT product_id FROM reviews WHERE id = ? AND site_id = ?'
+    ).bind(reviewId, siteId).first();
+
     const isApproved = status === 'approved' ? 1 : 0;
     await db.prepare(
       `UPDATE reviews SET status = ?, is_approved = ? WHERE id = ? AND site_id = ?`
     ).bind(status, isApproved, reviewId, siteId).run();
+
+    if (ctx && review) {
+      ctx.waitUntil(purgeStorefrontCache(env, siteId, ['reviews'], { productId: review.product_id }));
+    }
 
     return successResponse(null, `Review ${status} successfully`);
   } catch (error) {

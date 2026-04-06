@@ -1,10 +1,11 @@
 import { generateId, sanitizeInput, jsonResponse, errorResponse, successResponse, handleCORS } from '../../utils/helpers.js';
+import { cachedJsonResponse, purgeStorefrontCache } from '../../utils/cache.js';
 import { validateAuth } from '../../utils/auth.js';
 import { validateSiteAdmin, hasPermission } from './site-admin-worker.js';
 import { checkUsageLimit, estimateRowBytes, trackD1Write, trackD1Delete, trackD1Update } from '../../utils/usage-tracker.js';
 import { resolveSiteDBById, resolveSiteDBBySubdomain, checkMigrationLock } from '../../utils/site-db.js';
 
-export async function handleCategories(request, env, path) {
+export async function handleCategories(request, env, path, ctx) {
   const corsResponse = handleCORS(request);
   if (corsResponse) return corsResponse;
 
@@ -65,13 +66,13 @@ export async function handleCategories(request, env, path) {
   switch (method) {
     case 'POST':
       if (adminPerms && !hasPermission(adminPerms, 'website')) return errorResponse('You do not have permission to manage categories', 403);
-      return createCategory(request, env, user);
+      return createCategory(request, env, user, ctx);
     case 'PUT':
       if (adminPerms && !hasPermission(adminPerms, 'website')) return errorResponse('You do not have permission to manage categories', 403);
-      return updateCategory(request, env, user, categoryId);
+      return updateCategory(request, env, user, categoryId, ctx);
     case 'DELETE':
       if (adminPerms && !hasPermission(adminPerms, 'website')) return errorResponse('You do not have permission to manage categories', 403);
-      return deleteCategory(env, user, categoryId);
+      return deleteCategory(env, user, categoryId, ctx);
     default:
       return errorResponse('Method not allowed', 405);
   }
@@ -141,7 +142,7 @@ async function getCategories(env, { siteId, subdomain, slug }) {
       })),
     }));
 
-    return successResponse(result);
+    return cachedJsonResponse({ success: true, message: 'Success', data: result });
   } catch (error) {
     console.error('Get categories error:', error);
     return errorResponse('Failed to fetch categories', 500);
@@ -183,17 +184,17 @@ async function getCategory(env, categoryId, siteId, subdomain) {
       'SELECT * FROM categories WHERE parent_id = ? ORDER BY display_order'
     ).bind(categoryId).all();
 
-    return successResponse({
+    return cachedJsonResponse({ success: true, message: 'Success', data: {
       ...category,
       children: children.results,
-    });
+    }});
   } catch (error) {
     console.error('Get category error:', error);
     return errorResponse('Failed to fetch category', 500);
   }
 }
 
-async function createCategory(request, env, user) {
+async function createCategory(request, env, user, ctx) {
   try {
     const { siteId, name, description, parentId, imageUrl, displayOrder, subtitle, showOnHome } = await request.json();
 
@@ -259,6 +260,8 @@ async function createCategory(request, env, user) {
 
     await trackD1Write(env, siteId, rowBytes);
 
+    if (ctx) ctx.waitUntil(purgeStorefrontCache(env, siteId, ['categories', 'site'], { categoryId }));
+
     return successResponse({ id: categoryId, slug }, 'Category created successfully');
   } catch (error) {
     console.error('Create category error:', error);
@@ -266,7 +269,7 @@ async function createCategory(request, env, user) {
   }
 }
 
-async function updateCategory(request, env, user, categoryId) {
+async function updateCategory(request, env, user, categoryId, ctx) {
   if (!categoryId) {
     return errorResponse('Category ID is required');
   }
@@ -353,6 +356,8 @@ async function updateCategory(request, env, user, categoryId) {
     }
     await trackD1Update(env, resolvedSiteId, oldBytes, newBytes);
 
+    if (ctx) ctx.waitUntil(purgeStorefrontCache(env, resolvedSiteId, ['categories', 'site'], { categoryId }));
+
     return successResponse(null, 'Category updated successfully');
   } catch (error) {
     console.error('Update category error:', error);
@@ -360,7 +365,7 @@ async function updateCategory(request, env, user, categoryId) {
   }
 }
 
-async function deleteCategory(env, user, categoryId) {
+async function deleteCategory(env, user, categoryId, ctx) {
   if (!categoryId) {
     return errorResponse('Category ID is required');
   }
@@ -421,6 +426,8 @@ async function deleteCategory(env, user, categoryId) {
     if (bytesToRemove > 0) {
       await trackD1Delete(env, resolvedSiteId, bytesToRemove);
     }
+
+    if (ctx) ctx.waitUntil(purgeStorefrontCache(env, resolvedSiteId, ['categories', 'site'], { categoryId }));
 
     return successResponse(null, 'Category deleted successfully');
   } catch (error) {

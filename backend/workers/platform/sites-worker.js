@@ -1,11 +1,12 @@
 import { generateId, generateSubdomain, sanitizeInput, jsonResponse, errorResponse, successResponse, handleCORS } from '../../utils/helpers.js';
+import { purgeStorefrontCache } from '../../utils/cache.js';
 import { validateAuth } from '../../utils/auth.js';
 import { validateSiteAdmin, handleStaffCRUD } from '../storefront/site-admin-worker.js';
 import { registerCustomHostname, deleteCustomHostname, findCustomHostname } from '../../utils/cloudflare.js';
 import { resolveSiteDBById, getSiteConfig, getSiteWithConfig } from '../../utils/site-db.js';
 import { trackD1Write, trackD1Update, estimateRowBytes } from '../../utils/usage-tracker.js';
 
-export async function handleSites(request, env, path) {
+export async function handleSites(request, env, path, ctx) {
   const corsResponse = handleCORS(request);
   if (corsResponse) return corsResponse;
 
@@ -63,11 +64,11 @@ export async function handleSites(request, env, path) {
   if (method === 'PUT' && siteId) {
     const user = await validateAuth(request, env);
     if (user) {
-      return updateSite(request, env, user, siteId);
+      return updateSite(request, env, user, siteId, ctx);
     }
     const siteAdmin = await validateSiteAdmin(request, env, siteId);
     if (siteAdmin) {
-      return updateSiteAsAdmin(request, env, siteId);
+      return updateSiteAsAdmin(request, env, siteId, ctx);
     }
     return errorResponse('Unauthorized', 401, 'UNAUTHORIZED');
   }
@@ -449,7 +450,7 @@ async function createUserCategories(env, db, siteId, categories) {
 
 const CONFIG_FIELDS = ['brand_name', 'logo_url', 'favicon_url', 'primary_color', 'secondary_color', 'phone', 'email', 'address', 'social_links', 'settings', 'currency'];
 
-async function updateSite(request, env, user, siteId) {
+async function updateSite(request, env, user, siteId, ctx) {
   if (!siteId) {
     return errorResponse('Site ID is required');
   }
@@ -524,6 +525,8 @@ async function updateSite(request, env, user, siteId) {
       ).bind(brandNameUpdate[1], siteId).run();
     }
 
+    if (ctx) ctx.waitUntil(purgeStorefrontCache(env, siteId, ['site']));
+
     return successResponse(null, 'Site updated successfully');
   } catch (error) {
     console.error('Update site error:', error);
@@ -531,7 +534,7 @@ async function updateSite(request, env, user, siteId) {
   }
 }
 
-async function updateSiteAsAdmin(request, env, siteId) {
+async function updateSiteAsAdmin(request, env, siteId, ctx) {
   try {
     const updates = await request.json();
     const siteDB = await resolveSiteDBById(env, siteId);
@@ -593,6 +596,8 @@ async function updateSiteAsAdmin(request, env, siteId) {
         'UPDATE sites SET brand_name = ?, updated_at = datetime("now") WHERE id = ?'
       ).bind(brandNameUpdate[1], siteId).run();
     }
+
+    if (ctx) ctx.waitUntil(purgeStorefrontCache(env, siteId, ['site']));
 
     return successResponse(null, 'Site updated successfully');
   } catch (error) {

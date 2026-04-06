@@ -19,6 +19,7 @@ import { handleReviews } from './storefront/reviews-worker.js';
 import { handleBlog } from './storefront/blog-worker.js';
 import { handleUsageAPI } from '../utils/usage-tracker.js';
 import { jsonResponse, errorResponse, corsHeaders, handleCORS } from '../utils/helpers.js';
+import { cachedJsonResponse } from '../utils/cache.js';
 import { ensureTablesExist } from '../utils/db-init.js';
 import { resolveSiteDBById } from '../utils/site-db.js';
 
@@ -90,7 +91,7 @@ async function handleAPI(request, env, path, ctx) {
       return handleAuth(request, env, path);
 
     case 'sites':
-      return handleSites(request, env, path);
+      return handleSites(request, env, path, ctx);
 
     case 'products':
       return handleProducts(request, env, path, ctx);
@@ -111,7 +112,7 @@ async function handleAPI(request, env, path, ctx) {
       return handleEmail(request, env, path);
 
     case 'categories':
-      return handleCategories(request, env, path);
+      return handleCategories(request, env, path, ctx);
 
     case 'users':
       return handleUsers(request, env, path);
@@ -120,7 +121,7 @@ async function handleAPI(request, env, path, ctx) {
       return handleAdmin(request, env, path);
 
     case 'site-admin':
-      return handleSiteAdmin(request, env, path);
+      return handleSiteAdmin(request, env, path, ctx);
 
     case 'customer-auth':
       return handleCustomerAuth(request, env, path);
@@ -135,10 +136,10 @@ async function handleAPI(request, env, path, ctx) {
       return handleNotifications(request, env, path);
 
     case 'reviews':
-      return handleReviews(request, env, path);
+      return handleReviews(request, env, path, ctx);
 
     case 'blog':
-      return handleBlog(request, env, path);
+      return handleBlog(request, env, path, ctx);
 
     case 'usage':
       return handleUsageAPI(request, env, path);
@@ -275,7 +276,7 @@ async function handleSiteInfo(request, env) {
       };
     }
 
-    return jsonResponse({
+    return cachedJsonResponse({
       success: true,
       data: {
         ...site,

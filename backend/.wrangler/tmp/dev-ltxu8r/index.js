@@ -567,6 +567,105 @@ var init_auth = __esm({
   }
 });
 
+// utils/cache.js
+function cachedJsonResponse(data, status = 200, request = null) {
+  const response = jsonResponse(data, status, request);
+  const headers = new Headers(response.headers);
+  headers.set("Cache-Control", `public, max-age=${CACHE_TTL}, stale-while-revalidate=${STALE_WHILE_REVALIDATE}`);
+  headers.set("CDN-Cache-Control", `public, max-age=${CACHE_TTL}, stale-while-revalidate=${STALE_WHILE_REVALIDATE}`);
+  headers.set("Vary", "Accept-Encoding");
+  return new Response(response.body, { status: response.status, headers });
+}
+async function purgeStorefrontCache(env, siteId, types = [], resourceIds = {}) {
+  try {
+    const site = await env.DB.prepare(
+      "SELECT subdomain, custom_domain, domain_status FROM sites WHERE id = ?"
+    ).bind(siteId).first();
+    if (!site)
+      return;
+    const domains = [];
+    if (site.subdomain)
+      domains.push(`${site.subdomain}.fluxe.in`);
+    if (site.custom_domain && site.domain_status === "verified")
+      domains.push(site.custom_domain);
+    domains.push("fluxe.in");
+    const cache = caches.default;
+    const urls2 = [];
+    for (const type of types) {
+      switch (type) {
+        case "site":
+          for (const domain of domains) {
+            urls2.push(`https://${domain}/api/site?subdomain=${site.subdomain}`);
+          }
+          break;
+        case "products":
+          for (const domain of domains) {
+            urls2.push(`https://${domain}/api/products?siteId=${siteId}`);
+            urls2.push(`https://${domain}/api/products?subdomain=${site.subdomain}`);
+          }
+          if (resourceIds.productId) {
+            for (const domain of domains) {
+              urls2.push(`https://${domain}/api/products/${resourceIds.productId}?siteId=${siteId}`);
+              urls2.push(`https://${domain}/api/products/${resourceIds.productId}?subdomain=${site.subdomain}`);
+            }
+          }
+          break;
+        case "categories":
+          for (const domain of domains) {
+            urls2.push(`https://${domain}/api/categories?siteId=${siteId}`);
+            urls2.push(`https://${domain}/api/categories?subdomain=${site.subdomain}`);
+          }
+          if (resourceIds.categoryId) {
+            for (const domain of domains) {
+              urls2.push(`https://${domain}/api/categories/${resourceIds.categoryId}?siteId=${siteId}`);
+              urls2.push(`https://${domain}/api/categories/${resourceIds.categoryId}?subdomain=${site.subdomain}`);
+            }
+          }
+          break;
+        case "blog":
+          for (const domain of domains) {
+            urls2.push(`https://${domain}/api/blog/posts?siteId=${siteId}`);
+          }
+          if (resourceIds.postSlug) {
+            for (const domain of domains) {
+              urls2.push(`https://${domain}/api/blog/post/${resourceIds.postSlug}?siteId=${siteId}`);
+            }
+          }
+          break;
+        case "reviews":
+          if (resourceIds.productId) {
+            for (const domain of domains) {
+              urls2.push(`https://${domain}/api/reviews/product/${resourceIds.productId}?siteId=${siteId}`);
+            }
+          }
+          break;
+      }
+    }
+    const purgePromises = urls2.map(
+      (url) => cache.delete(new Request(url)).catch(
+        (e) => console.error(`[Cache] Failed to purge ${url}:`, e.message)
+      )
+    );
+    await Promise.allSettled(purgePromises);
+    console.log(`[Cache] Purged ${purgePromises.length} URLs for site ${siteId} (types: ${types.join(", ")})`);
+  } catch (e) {
+    console.error("[Cache] Purge error:", e.message);
+  }
+}
+var CACHE_TTL, STALE_WHILE_REVALIDATE;
+var init_cache = __esm({
+  "utils/cache.js"() {
+    init_checked_fetch();
+    init_strip_cf_connecting_ip_header();
+    init_modules_watch_stub();
+    init_helpers();
+    CACHE_TTL = 604800;
+    STALE_WHILE_REVALIDATE = 1209600;
+    __name(cachedJsonResponse, "cachedJsonResponse");
+    __name(purgeStorefrontCache, "purgeStorefrontCache");
+  }
+});
+
 // utils/d1-manager.js
 var d1_manager_exports = {};
 __export(d1_manager_exports, {
@@ -1225,7 +1324,7 @@ __export(site_admin_worker_exports, {
   hasPermission: () => hasPermission,
   validateSiteAdmin: () => validateSiteAdmin
 });
-async function handleSiteAdmin(request, env, path) {
+async function handleSiteAdmin(request, env, path, ctx2) {
   const corsResponse = handleCORS(request);
   if (corsResponse)
     return corsResponse;
@@ -1241,7 +1340,7 @@ async function handleSiteAdmin(request, env, path) {
     case "staff-logout":
       return staffLogout(request, env);
     case "seo":
-      return handleSEO(request, env, pathParts);
+      return handleSEO(request, env, pathParts, ctx2);
     default:
       return errorResponse("Site admin endpoint not found", 404);
   }
@@ -1482,38 +1581,38 @@ async function ensureSiteAdminSessionsTable(env) {
     console.error("Error ensuring site_admin_sessions table:", error);
   }
 }
-async function handleSEO(request, env, pathParts) {
+async function handleSEO(request, env, pathParts, ctx2) {
   const subResource = pathParts[3];
   const resourceId = pathParts[4];
   if (!subResource) {
     if (request.method === "GET")
       return getSiteSEO(request, env);
     if (request.method === "PUT")
-      return saveSiteSEO(request, env);
+      return saveSiteSEO(request, env, ctx2);
   }
   if (subResource === "categories") {
     if (request.method === "GET")
       return getCategoriesSEO(request, env);
     if (request.method === "PUT" && resourceId)
-      return saveCategorySEO(request, env, resourceId);
+      return saveCategorySEO(request, env, resourceId, ctx2);
   }
   if (subResource === "products") {
     if (request.method === "GET")
       return getProductsSEO(request, env);
     if (request.method === "PUT" && resourceId)
-      return saveProductSEO(request, env, resourceId);
+      return saveProductSEO(request, env, resourceId, ctx2);
   }
   if (subResource === "pages") {
     if (request.method === "GET")
       return getPagesSEO(request, env);
     if (request.method === "PUT" && resourceId)
-      return savePageSEO(request, env, resourceId);
+      return savePageSEO(request, env, resourceId, ctx2);
   }
   if (subResource === "social") {
     if (request.method === "GET")
       return getSocialTags(request, env);
     if (request.method === "PUT")
-      return saveSocialTags(request, env);
+      return saveSocialTags(request, env, ctx2);
   }
   return errorResponse("SEO endpoint not found", 404);
 }
@@ -1544,7 +1643,7 @@ async function getSiteSEO(request, env) {
     return errorResponse("Failed to fetch SEO settings", 500);
   }
 }
-async function saveSiteSEO(request, env) {
+async function saveSiteSEO(request, env, ctx2) {
   try {
     const { siteId, seo_title, seo_description, seo_og_image, seo_robots, google_verification, favicon_url } = await request.json();
     if (!siteId)
@@ -1582,6 +1681,8 @@ async function saveSiteSEO(request, env) {
       await siteDB.prepare("UPDATE site_config SET row_size_bytes = ? WHERE site_id = ?").bind(newBytes, siteId).run();
       await trackD1Update(env, siteId, oldBytes, newBytes);
     }
+    if (ctx2)
+      ctx2.waitUntil(purgeStorefrontCache(env, siteId, ["site"]));
     return jsonResponse({ success: true, message: "SEO settings saved" });
   } catch (err) {
     console.error("saveSiteSEO error:", err);
@@ -1610,7 +1711,7 @@ async function getCategoriesSEO(request, env) {
     return errorResponse("Failed to fetch categories", 500);
   }
 }
-async function saveCategorySEO(request, env, categoryId) {
+async function saveCategorySEO(request, env, categoryId, ctx2) {
   try {
     const { siteId, seo_title, seo_description, seo_og_image } = await request.json();
     if (!siteId)
@@ -1642,6 +1743,8 @@ async function saveCategorySEO(request, env, categoryId) {
       await db.prepare("UPDATE categories SET row_size_bytes = ? WHERE id = ?").bind(newBytes, categoryId).run();
       await trackD1Update(env, siteId, oldBytes, newBytes);
     }
+    if (ctx2)
+      ctx2.waitUntil(purgeStorefrontCache(env, siteId, ["categories", "site"]));
     return jsonResponse({ success: true, message: "Category SEO saved" });
   } catch (err) {
     console.error("saveCategorySEO error:", err);
@@ -1682,7 +1785,7 @@ async function getProductsSEO(request, env) {
     return errorResponse("Failed to fetch products", 500);
   }
 }
-async function saveProductSEO(request, env, productId) {
+async function saveProductSEO(request, env, productId, ctx2) {
   try {
     const { siteId, seo_title, seo_description, seo_og_image } = await request.json();
     if (!siteId)
@@ -1714,6 +1817,8 @@ async function saveProductSEO(request, env, productId) {
       await db.prepare("UPDATE products SET row_size_bytes = ? WHERE id = ?").bind(newBytes, productId).run();
       await trackD1Update(env, siteId, oldBytes, newBytes);
     }
+    if (ctx2)
+      ctx2.waitUntil(purgeStorefrontCache(env, siteId, ["products"]));
     return jsonResponse({ success: true, message: "Product SEO saved" });
   } catch (err) {
     console.error("saveProductSEO error:", err);
@@ -1747,7 +1852,7 @@ async function getPagesSEO(request, env) {
     return errorResponse("Failed to fetch page SEO", 500);
   }
 }
-async function savePageSEO(request, env, pageType) {
+async function savePageSEO(request, env, pageType, ctx2) {
   try {
     const { siteId, seo_title, seo_description, seo_og_image } = await request.json();
     if (!siteId)
@@ -1788,6 +1893,8 @@ async function savePageSEO(request, env, pageType) {
       ).bind(id, siteId, pageType, seo_title || null, seo_description || null, seo_og_image || null, rowBytes).run();
       await trackD1Write(env, siteId, rowBytes);
     }
+    if (ctx2)
+      ctx2.waitUntil(purgeStorefrontCache(env, siteId, ["site"]));
     return jsonResponse({ success: true, message: "Page SEO saved" });
   } catch (err) {
     console.error("savePageSEO error:", err);
@@ -1828,7 +1935,7 @@ async function getSocialTags(request, env) {
     return errorResponse("Failed to fetch social tags", 500);
   }
 }
-async function saveSocialTags(request, env) {
+async function saveSocialTags(request, env, ctx2) {
   try {
     const {
       siteId,
@@ -1880,6 +1987,8 @@ async function saveSocialTags(request, env) {
       await siteDB.prepare("UPDATE site_config SET row_size_bytes = ? WHERE site_id = ?").bind(newBytes, siteId).run();
       await trackD1Update(env, siteId, oldBytes, newBytes);
     }
+    if (ctx2)
+      ctx2.waitUntil(purgeStorefrontCache(env, siteId, ["site"]));
     return jsonResponse({ success: true, message: "Social tags saved" });
   } catch (err) {
     console.error("saveSocialTags error:", err);
@@ -2159,6 +2268,7 @@ var init_site_admin_worker = __esm({
     init_strip_cf_connecting_ip_header();
     init_modules_watch_stub();
     init_helpers();
+    init_cache();
     init_auth();
     init_site_db();
     init_usage_tracker();
@@ -3722,6 +3832,7 @@ init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 init_helpers();
+init_cache();
 init_auth();
 init_site_admin_worker();
 
@@ -3815,7 +3926,7 @@ __name(deleteCustomHostname, "deleteCustomHostname");
 // workers/platform/sites-worker.js
 init_site_db();
 init_usage_tracker();
-async function handleSites(request, env, path) {
+async function handleSites(request, env, path, ctx2) {
   const corsResponse = handleCORS(request);
   if (corsResponse)
     return corsResponse;
@@ -3876,11 +3987,11 @@ async function handleSites(request, env, path) {
   if (method === "PUT" && siteId) {
     const user2 = await validateAuth(request, env);
     if (user2) {
-      return updateSite(request, env, user2, siteId);
+      return updateSite(request, env, user2, siteId, ctx2);
     }
     const siteAdmin = await validateSiteAdmin(request, env, siteId);
     if (siteAdmin) {
-      return updateSiteAsAdmin(request, env, siteId);
+      return updateSiteAsAdmin(request, env, siteId, ctx2);
     }
     return errorResponse("Unauthorized", 401, "UNAUTHORIZED");
   }
@@ -4224,7 +4335,7 @@ async function createUserCategories(env, db, siteId, categories) {
 }
 __name(createUserCategories, "createUserCategories");
 var CONFIG_FIELDS = ["brand_name", "logo_url", "favicon_url", "primary_color", "secondary_color", "phone", "email", "address", "social_links", "settings", "currency"];
-async function updateSite(request, env, user, siteId) {
+async function updateSite(request, env, user, siteId, ctx2) {
   if (!siteId) {
     return errorResponse("Site ID is required");
   }
@@ -4288,6 +4399,8 @@ async function updateSite(request, env, user, siteId) {
         'UPDATE sites SET brand_name = ?, updated_at = datetime("now") WHERE id = ?'
       ).bind(brandNameUpdate[1], siteId).run();
     }
+    if (ctx2)
+      ctx2.waitUntil(purgeStorefrontCache(env, siteId, ["site"]));
     return successResponse(null, "Site updated successfully");
   } catch (error) {
     console.error("Update site error:", error);
@@ -4295,7 +4408,7 @@ async function updateSite(request, env, user, siteId) {
   }
 }
 __name(updateSite, "updateSite");
-async function updateSiteAsAdmin(request, env, siteId) {
+async function updateSiteAsAdmin(request, env, siteId, ctx2) {
   try {
     const updates = await request.json();
     const siteDB = await resolveSiteDBById(env, siteId);
@@ -4350,6 +4463,8 @@ async function updateSiteAsAdmin(request, env, siteId) {
         'UPDATE sites SET brand_name = ?, updated_at = datetime("now") WHERE id = ?'
       ).bind(brandNameUpdate[1], siteId).run();
     }
+    if (ctx2)
+      ctx2.waitUntil(purgeStorefrontCache(env, siteId, ["site"]));
     return successResponse(null, "Site updated successfully");
   } catch (error) {
     console.error("Update site as admin error:", error);
@@ -4778,6 +4893,7 @@ init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 init_helpers();
+init_cache();
 init_auth();
 init_site_admin_worker();
 init_usage_tracker();
@@ -5480,7 +5596,7 @@ async function getProducts(env, { siteId, subdomain, category, categoryId, subca
       tags: product.tags ? JSON.parse(product.tags) : [],
       options: product.options ? JSON.parse(product.options) : null
     }));
-    return successResponse(parsedProducts);
+    return cachedJsonResponse({ success: true, message: "Success", data: parsedProducts });
   } catch (error) {
     console.error("Get products error:", error);
     return errorResponse("Failed to fetch products", 500);
@@ -5551,7 +5667,7 @@ async function getProduct(env, productId, siteId, subdomain) {
         attributes: v.attributes ? JSON.parse(v.attributes) : {}
       }))
     };
-    return successResponse(parsedProduct);
+    return cachedJsonResponse({ success: true, message: "Success", data: parsedProduct });
   } catch (error) {
     console.error("Get product error:", error);
     return errorResponse("Failed to fetch product", 500);
@@ -5665,6 +5781,8 @@ async function createProduct(request, env, user, ctx2) {
         }).catch((err) => console.error("[Notifications] newProduct auto-trigger failed:", err))
       );
     }
+    if (ctx2)
+      ctx2.waitUntil(purgeStorefrontCache(env, siteId, ["products"], { productId }));
     return successResponse({ id: productId, slug }, "Product created successfully");
   } catch (error) {
     console.error("Create product error:", error);
@@ -5832,6 +5950,8 @@ async function updateProduct(request, env, user, productId, ctx2) {
         }
       }
     }
+    if (ctx2)
+      ctx2.waitUntil(purgeStorefrontCache(env, resolvedSiteId, ["products"], { productId }));
     return successResponse(null, "Product updated successfully");
   } catch (error) {
     console.error("Update product error:", error);
@@ -5904,6 +6024,8 @@ async function deleteProduct(env, user, productId) {
         console.error("Failed to delete product image from R2:", e);
       }
     }
+    purgeStorefrontCache(env, resolvedSiteId, ["products"], { productId }).catch(() => {
+    });
     return successResponse(null, "Product deleted successfully");
   } catch (error) {
     console.error("Delete product error:", error);
@@ -9833,11 +9955,12 @@ init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 init_helpers();
+init_cache();
 init_auth();
 init_site_admin_worker();
 init_usage_tracker();
 init_site_db();
-async function handleCategories(request, env, path) {
+async function handleCategories(request, env, path, ctx2) {
   const corsResponse = handleCORS(request);
   if (corsResponse)
     return corsResponse;
@@ -9891,15 +10014,15 @@ async function handleCategories(request, env, path) {
     case "POST":
       if (adminPerms && !hasPermission(adminPerms, "website"))
         return errorResponse("You do not have permission to manage categories", 403);
-      return createCategory(request, env, user);
+      return createCategory(request, env, user, ctx2);
     case "PUT":
       if (adminPerms && !hasPermission(adminPerms, "website"))
         return errorResponse("You do not have permission to manage categories", 403);
-      return updateCategory(request, env, user, categoryId);
+      return updateCategory(request, env, user, categoryId, ctx2);
     case "DELETE":
       if (adminPerms && !hasPermission(adminPerms, "website"))
         return errorResponse("You do not have permission to manage categories", 403);
-      return deleteCategory(env, user, categoryId);
+      return deleteCategory(env, user, categoryId, ctx2);
     default:
       return errorResponse("Method not allowed", 405);
   }
@@ -9959,7 +10082,7 @@ async function getCategories(env, { siteId, subdomain, slug }) {
         children: allGrandchildren.filter((gc) => gc.parent_id === child.id)
       }))
     }));
-    return successResponse(result);
+    return cachedJsonResponse({ success: true, message: "Success", data: result });
   } catch (error) {
     console.error("Get categories error:", error);
     return errorResponse("Failed to fetch categories", 500);
@@ -9996,17 +10119,17 @@ async function getCategory(env, categoryId, siteId, subdomain) {
     const children = await db.prepare(
       "SELECT * FROM categories WHERE parent_id = ? ORDER BY display_order"
     ).bind(categoryId).all();
-    return successResponse({
+    return cachedJsonResponse({ success: true, message: "Success", data: {
       ...category,
       children: children.results
-    });
+    } });
   } catch (error) {
     console.error("Get category error:", error);
     return errorResponse("Failed to fetch category", 500);
   }
 }
 __name(getCategory, "getCategory");
-async function createCategory(request, env, user) {
+async function createCategory(request, env, user, ctx2) {
   try {
     const { siteId, name, description, parentId, imageUrl, displayOrder, subtitle, showOnHome } = await request.json();
     if (!siteId || !name) {
@@ -10058,6 +10181,8 @@ async function createCategory(request, env, user) {
       rowBytes
     ).run();
     await trackD1Write(env, siteId, rowBytes);
+    if (ctx2)
+      ctx2.waitUntil(purgeStorefrontCache(env, siteId, ["categories", "site"], { categoryId }));
     return successResponse({ id: categoryId, slug }, "Category created successfully");
   } catch (error) {
     console.error("Create category error:", error);
@@ -10065,7 +10190,7 @@ async function createCategory(request, env, user) {
   }
 }
 __name(createCategory, "createCategory");
-async function updateCategory(request, env, user, categoryId) {
+async function updateCategory(request, env, user, categoryId, ctx2) {
   if (!categoryId) {
     return errorResponse("Category ID is required");
   }
@@ -10135,6 +10260,8 @@ async function updateCategory(request, env, user, categoryId) {
       await db.prepare("UPDATE categories SET row_size_bytes = ? WHERE id = ?").bind(newBytes, categoryId).run();
     }
     await trackD1Update(env, resolvedSiteId, oldBytes, newBytes);
+    if (ctx2)
+      ctx2.waitUntil(purgeStorefrontCache(env, resolvedSiteId, ["categories", "site"], { categoryId }));
     return successResponse(null, "Category updated successfully");
   } catch (error) {
     console.error("Update category error:", error);
@@ -10142,7 +10269,7 @@ async function updateCategory(request, env, user, categoryId) {
   }
 }
 __name(updateCategory, "updateCategory");
-async function deleteCategory(env, user, categoryId) {
+async function deleteCategory(env, user, categoryId, ctx2) {
   if (!categoryId) {
     return errorResponse("Category ID is required");
   }
@@ -10191,6 +10318,8 @@ async function deleteCategory(env, user, categoryId) {
     if (bytesToRemove > 0) {
       await trackD1Delete(env, resolvedSiteId, bytesToRemove);
     }
+    if (ctx2)
+      ctx2.waitUntil(purgeStorefrontCache(env, resolvedSiteId, ["categories", "site"], { categoryId }));
     return successResponse(null, "Category deleted successfully");
   } catch (error) {
     console.error("Delete category error:", error);
@@ -14956,6 +15085,7 @@ init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 init_helpers();
+init_cache();
 init_auth();
 init_site_db();
 init_usage_tracker();
@@ -14985,7 +15115,7 @@ async function ensureReviewTokenColumn(db, table) {
   }
 }
 __name(ensureReviewTokenColumn, "ensureReviewTokenColumn");
-async function handleReviews(request, env, path) {
+async function handleReviews(request, env, path, ctx2) {
   const corsResponse = handleCORS(request);
   if (corsResponse)
     return corsResponse;
@@ -15009,7 +15139,7 @@ async function handleReviews(request, env, path) {
     return getAdminReviews(request, env);
   }
   if (action === "admin" && subAction && method === "PUT") {
-    return updateReviewStatus(request, env, subAction);
+    return updateReviewStatus(request, env, subAction, ctx2);
   }
   if (action === "summary" && method === "GET") {
     return getReviewSummary(request, env);
@@ -15049,7 +15179,7 @@ async function getProductReviews(request, env, productId) {
       ...r,
       images: parseJsonSafe(r.images)
     }));
-    return jsonResponse({
+    return cachedJsonResponse({
       success: true,
       data: {
         reviews: reviewsData,
@@ -15357,7 +15487,7 @@ async function getAdminReviews(request, env) {
   }
 }
 __name(getAdminReviews, "getAdminReviews");
-async function updateReviewStatus(request, env, reviewId) {
+async function updateReviewStatus(request, env, reviewId, ctx2) {
   try {
     const data = await request.json();
     const { siteId, status } = data;
@@ -15383,10 +15513,16 @@ async function updateReviewStatus(request, env, reviewId) {
     }
     const db = await resolveSiteDBById(env, siteId);
     await ensureReviewColumns(db);
+    const review = await db.prepare(
+      "SELECT product_id FROM reviews WHERE id = ? AND site_id = ?"
+    ).bind(reviewId, siteId).first();
     const isApproved = status === "approved" ? 1 : 0;
     await db.prepare(
       `UPDATE reviews SET status = ?, is_approved = ? WHERE id = ? AND site_id = ?`
     ).bind(status, isApproved, reviewId, siteId).run();
+    if (ctx2 && review) {
+      ctx2.waitUntil(purgeStorefrontCache(env, siteId, ["reviews"], { productId: review.product_id }));
+    }
     return successResponse(null, `Review ${status} successfully`);
   } catch (error) {
     console.error("Update review status error:", error);
@@ -15439,6 +15575,7 @@ init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 init_helpers();
+init_cache();
 init_site_db();
 init_site_admin_worker();
 init_usage_tracker();
@@ -15484,7 +15621,7 @@ function slugify(text) {
   return text.toString().toLowerCase().trim().replace(/\s+/g, "-").replace(/[^\w\-]+/g, "").replace(/\-\-+/g, "-").replace(/^-+/, "").replace(/-+$/, "");
 }
 __name(slugify, "slugify");
-async function handleBlog(request, env, path) {
+async function handleBlog(request, env, path, ctx2) {
   const corsResponse = handleCORS(request);
   if (corsResponse)
     return corsResponse;
@@ -15505,13 +15642,13 @@ async function handleBlog(request, env, path) {
     return adminGetPost(request, env, subAction);
   }
   if (action === "admin" && method === "POST" && !subAction) {
-    return createPost(request, env);
+    return createPost(request, env, ctx2);
   }
   if (action === "admin" && subAction && method === "PUT") {
-    return updatePost(request, env, subAction);
+    return updatePost(request, env, subAction, ctx2);
   }
   if (action === "admin" && subAction && method === "DELETE") {
-    return deletePost(request, env, subAction);
+    return deletePost(request, env, subAction, ctx2);
   }
   return errorResponse("Not found", 404);
 }
@@ -15557,12 +15694,12 @@ async function listPosts(request, env) {
     const countResult = await db.prepare(
       `SELECT COUNT(*) as total FROM blog_posts WHERE site_id = ? AND status = 'published'`
     ).bind(siteId).first();
-    return successResponse({
+    return cachedJsonResponse({ success: true, message: "Success", data: {
       posts: posts.results || [],
       total: countResult?.total || 0,
       page,
       totalPages: Math.ceil((countResult?.total || 0) / limit)
-    });
+    } });
   } catch (error) {
     console.error("List blog posts error:", error);
     return errorResponse("Failed to fetch blog posts", 500);
@@ -15587,7 +15724,7 @@ async function getPost(request, env, slug) {
     ).bind(siteId, slug).first();
     if (!post)
       return errorResponse("Blog post not found", 404);
-    return successResponse(post);
+    return cachedJsonResponse({ success: true, message: "Success", data: post });
   } catch (error) {
     console.error("Get blog post error:", error);
     return errorResponse("Failed to fetch blog post", 500);
@@ -15647,7 +15784,7 @@ async function adminGetPost(request, env, postId) {
   }
 }
 __name(adminGetPost, "adminGetPost");
-async function createPost(request, env) {
+async function createPost(request, env, ctx2) {
   try {
     const body = await request.json();
     const { siteId, title, content, excerpt, coverImage, status, author, tags, metaTitle, metaDescription } = body;
@@ -15700,6 +15837,8 @@ async function createPost(request, env) {
       await trackD1Write(env, siteId, rowBytes);
     } catch (e) {
     }
+    if (ctx2)
+      ctx2.waitUntil(purgeStorefrontCache(env, siteId, ["blog"], { postSlug: slug }));
     return successResponse({ id, slug }, "Blog post created");
   } catch (error) {
     console.error("Create blog post error:", error);
@@ -15707,7 +15846,7 @@ async function createPost(request, env) {
   }
 }
 __name(createPost, "createPost");
-async function updatePost(request, env, postId) {
+async function updatePost(request, env, postId, ctx2) {
   try {
     const body = await request.json();
     const { siteId, title, content, excerpt, coverImage, status, author, tags, metaTitle, metaDescription, slug: newSlug } = body;
@@ -15796,6 +15935,9 @@ async function updatePost(request, env, postId) {
       await trackD1Update(env, siteId, oldBytes, newBytes);
     } catch (e) {
     }
+    const updatedPost = await db.prepare("SELECT slug FROM blog_posts WHERE id = ? AND site_id = ?").bind(postId, siteId).first();
+    if (ctx2)
+      ctx2.waitUntil(purgeStorefrontCache(env, siteId, ["blog"], { postSlug: updatedPost?.slug }));
     return successResponse({ id: postId }, "Blog post updated");
   } catch (error) {
     console.error("Update blog post error:", error);
@@ -15803,7 +15945,7 @@ async function updatePost(request, env, postId) {
   }
 }
 __name(updatePost, "updatePost");
-async function deletePost(request, env, postId) {
+async function deletePost(request, env, postId, ctx2) {
   try {
     const url = new URL(request.url);
     const siteId = url.searchParams.get("siteId");
@@ -15817,9 +15959,12 @@ async function deletePost(request, env, postId) {
     }
     const db = await resolveSiteDBById(env, siteId);
     await ensureBlogTable(db, siteId);
+    const postToDelete = await db.prepare("SELECT slug FROM blog_posts WHERE id = ? AND site_id = ?").bind(postId, siteId).first();
     await db.prepare(
       "DELETE FROM blog_posts WHERE id = ? AND site_id = ?"
     ).bind(postId, siteId).run();
+    if (ctx2)
+      ctx2.waitUntil(purgeStorefrontCache(env, siteId, ["blog"], { postSlug: postToDelete?.slug }));
     return successResponse(null, "Blog post deleted");
   } catch (error) {
     console.error("Delete blog post error:", error);
@@ -15831,6 +15976,7 @@ __name(deletePost, "deletePost");
 // workers/index.js
 init_usage_tracker();
 init_helpers();
+init_cache();
 
 // utils/db-init.js
 init_checked_fetch();
@@ -16260,7 +16406,7 @@ async function handleAPI(request, env, path, ctx2) {
     case "auth":
       return handleAuth(request, env, path);
     case "sites":
-      return handleSites(request, env, path);
+      return handleSites(request, env, path, ctx2);
     case "products":
       return handleProducts(request, env, path, ctx2);
     case "orders":
@@ -16274,13 +16420,13 @@ async function handleAPI(request, env, path, ctx2) {
     case "email":
       return handleEmail(request, env, path);
     case "categories":
-      return handleCategories(request, env, path);
+      return handleCategories(request, env, path, ctx2);
     case "users":
       return handleUsers(request, env, path);
     case "admin":
       return handleAdmin(request, env, path);
     case "site-admin":
-      return handleSiteAdmin(request, env, path);
+      return handleSiteAdmin(request, env, path, ctx2);
     case "customer-auth":
       return handleCustomerAuth(request, env, path);
     case "upload":
@@ -16290,9 +16436,9 @@ async function handleAPI(request, env, path, ctx2) {
     case "notifications":
       return handleNotifications(request, env, path);
     case "reviews":
-      return handleReviews(request, env, path);
+      return handleReviews(request, env, path, ctx2);
     case "blog":
-      return handleBlog(request, env, path);
+      return handleBlog(request, env, path, ctx2);
     case "usage":
       return handleUsageAPI(request, env, path);
     case "health":
@@ -16416,7 +16562,7 @@ async function handleSiteInfo(request, env) {
         seo_og_image: ps.seo_og_image
       };
     }
-    return jsonResponse({
+    return cachedJsonResponse({
       success: true,
       data: {
         ...site,
