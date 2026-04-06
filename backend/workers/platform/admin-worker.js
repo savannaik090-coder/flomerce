@@ -254,6 +254,21 @@ async function handlePlansManagement(request, env, pathParts) {
 
 async function getPlans(env) {
   try {
+    try {
+      const deprecated = await env.DB.prepare(
+        `SELECT id FROM subscription_plans WHERE billing_cycle NOT IN ('monthly', '3months', '6months', 'yearly')`
+      ).all();
+      const deprecatedIds = (deprecated.results || []).map(r => r.id);
+      if (deprecatedIds.length > 0) {
+        await env.DB.prepare(
+          `DELETE FROM subscription_plans WHERE billing_cycle NOT IN ('monthly', '3months', '6months', 'yearly')`
+        ).run();
+        console.log(`Cleaned up ${deprecatedIds.length} deprecated billing cycle plan(s)`);
+      }
+    } catch (cleanupErr) {
+      console.error('Plan cleanup error (non-fatal):', cleanupErr.message);
+    }
+
     const result = await env.DB.prepare(
       `SELECT * FROM subscription_plans ORDER BY display_order ASC, plan_name ASC`
     ).all();
