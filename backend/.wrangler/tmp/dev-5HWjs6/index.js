@@ -4180,7 +4180,7 @@ async function createSite(request, env, user) {
   let finalSubdomain = null;
   try {
     const body = await request.json();
-    const { brandName, categories, templateId, phone, email, address, primaryColor, secondaryColor } = body;
+    const { brandName, categories, templateId, phone, email, address, primaryColor, secondaryColor, theme } = body;
     let logoUrl = body.logoUrl || null;
     const logoBase64 = body.logo || null;
     const category = body.category || "general";
@@ -4259,9 +4259,15 @@ async function createSite(request, env, user) {
       secondary_color: secondaryColor || "#ffffff"
     };
     const configBytes = estimateRowBytes(configData);
+    const VALID_THEMES = ["classic", "modern"];
+    const initialSettings = {};
+    if (theme && VALID_THEMES.includes(theme) && theme !== "classic") {
+      initialSettings.theme = theme;
+    }
+    const settingsJson = JSON.stringify(initialSettings);
     await siteDB.prepare(
       `INSERT INTO site_config (site_id, brand_name, category, logo_url, phone, email, address, primary_color, secondary_color, settings, row_size_bytes, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, '{}', ?, datetime('now'), datetime('now'))`
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
     ).bind(
       siteId,
       sanitizeInput(brandName),
@@ -4272,6 +4278,7 @@ async function createSite(request, env, user) {
       address || null,
       primaryColor || "#000000",
       secondaryColor || "#ffffff",
+      settingsJson,
       configBytes
     ).run();
     await trackD1Write(env, siteId, configBytes);

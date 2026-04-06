@@ -1,7 +1,12 @@
 import React from 'react';
 import ProductCard from './ProductCard.jsx';
+import ProductCardModern from '../templates/modern/ProductCardModern.jsx';
+import { useTheme } from '../../context/ThemeContext.jsx';
 
 export default function ProductGrid({ products, onWishlistToggle, isInWishlist }) {
+  const theme = useTheme();
+  const Card = theme.id === 'modern' ? ProductCardModern : ProductCard;
+
   if (!products || products.length === 0) {
     return (
       <div className="empty-state">
@@ -13,9 +18,9 @@ export default function ProductGrid({ products, onWishlistToggle, isInWishlist }
   }
 
   return (
-    <div className="products-grid">
+    <div className={`products-grid${theme.id === 'modern' ? ' mn-product-grid' : ''}`}>
       {products.map(product => (
-        <ProductCard
+        <Card
           key={product.id}
           product={product}
           onWishlistToggle={onWishlistToggle}

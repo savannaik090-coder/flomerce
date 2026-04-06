@@ -37,6 +37,7 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
   const [step, setStep] = useState(1);
   const [businessCategory, setBusinessCategory] = useState(null);
   const [selectedTemplate, setSelectedTemplate] = useState('storefront');
+  const [selectedTheme, setSelectedTheme] = useState('classic');
   const [subdomain, setSubdomain] = useState('');
   const [brandName, setBrandName] = useState('');
   const [logoFile, setLogoFile] = useState(null);
@@ -129,6 +130,7 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
       subdomain: subdomain.toLowerCase().replace(/[^a-z0-9-]/g, ''),
       brandName,
       templateId: selectedTemplate,
+      theme: selectedTheme,
       category: businessCategory,
       logo: logoBase64,
       categories: validCategories.map(c => ({
@@ -208,10 +210,34 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
             <h2 style={{ marginBottom: '1.5rem', fontWeight: 800 }}>Website Details</h2>
 
             <div style={{ marginBottom: '1.5rem' }}>
-              <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.5rem' }}>Template</label>
-              <div className="template-option site-card selected" style={{ padding: '0.5rem', maxWidth: '320px' }}>
-                <img src="/assets/images/storefront-preview.jpg" alt="Storefront" style={{ width: '100%', borderRadius: '4px' }} />
-                <p style={{ fontWeight: 600, fontSize: '0.8rem', textAlign: 'center', margin: '0.5rem 0 0' }}>Storefront</p>
+              <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.5rem' }}>Choose a Design</label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div
+                  className={`template-option site-card${selectedTheme === 'classic' ? ' selected' : ''}`}
+                  onClick={() => setSelectedTheme('classic')}
+                  style={{ cursor: 'pointer', padding: '0.5rem' }}
+                >
+                  <div style={{ background: '#f8f5f0', borderRadius: '4px', padding: '24px 16px', textAlign: 'center', minHeight: '100px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '1.5rem', fontFamily: 'Georgia, serif', fontWeight: 400, color: '#5a3f2a' }}>Aa</span>
+                    <div style={{ width: '40px', height: '2px', background: '#d4af37' }}></div>
+                    <span style={{ fontSize: '0.65rem', color: '#888', letterSpacing: '1px', textTransform: 'uppercase' }}>Serif + Gold</span>
+                  </div>
+                  <p style={{ fontWeight: 600, fontSize: '0.8rem', textAlign: 'center', margin: '0.5rem 0 0' }}>Classic</p>
+                  <p style={{ fontSize: '0.7rem', color: '#888', textAlign: 'center', margin: '0.25rem 0 0' }}>Elegant, traditional look</p>
+                </div>
+                <div
+                  className={`template-option site-card${selectedTheme === 'modern' ? ' selected' : ''}`}
+                  onClick={() => setSelectedTheme('modern')}
+                  style={{ cursor: 'pointer', padding: '0.5rem' }}
+                >
+                  <div style={{ background: '#fff', borderRadius: '4px', padding: '24px 16px', textAlign: 'center', minHeight: '100px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px', border: '1px solid #eee' }}>
+                    <span style={{ fontSize: '1.5rem', fontFamily: 'Inter, Helvetica, sans-serif', fontWeight: 800, color: '#111' }}>Aa</span>
+                    <div style={{ width: '40px', height: '2px', background: '#111' }}></div>
+                    <span style={{ fontSize: '0.65rem', color: '#888', letterSpacing: '1px', textTransform: 'uppercase' }}>Sans-serif + Bold</span>
+                  </div>
+                  <p style={{ fontWeight: 600, fontSize: '0.8rem', textAlign: 'center', margin: '0.5rem 0 0' }}>Modern</p>
+                  <p style={{ fontSize: '0.7rem', color: '#888', textAlign: 'center', margin: '0.25rem 0 0' }}>Clean, minimal look</p>
+                </div>
               </div>
             </div>
 

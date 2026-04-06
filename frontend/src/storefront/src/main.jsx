@@ -8,6 +8,7 @@ import { CartProvider } from './context/CartContext.jsx';
 import { WishlistProvider } from './context/WishlistContext.jsx';
 import { CurrencyProvider } from './context/CurrencyContext.jsx';
 import { PanelProvider } from './context/PanelContext.jsx';
+import { ThemeProvider } from './context/ThemeContext.jsx';
 import './styles/global.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
@@ -19,7 +20,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             <WishlistProvider>
               <CurrencyProvider>
                 <PanelProvider>
-                  <App />
+                  <ThemeProvider>
+                    <App />
+                  </ThemeProvider>
                 </PanelProvider>
               </CurrencyProvider>
             </WishlistProvider>

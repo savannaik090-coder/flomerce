@@ -10,6 +10,9 @@ import ShopTheLook from '../components/home/ShopTheLook.jsx';
 import StoreLocations from '../components/home/StoreLocations.jsx';
 import CustomerReviews from '../components/home/CustomerReviews.jsx';
 import FirstVisitBanner from '../components/home/FirstVisitBanner.jsx';
+import HeroSplit from '../components/templates/modern/HeroSplit.jsx';
+import CategoryGrid from '../components/templates/modern/CategoryGrid.jsx';
+import { useTheme } from '../context/ThemeContext.jsx';
 import { useSiteConfig } from '../hooks/useSiteConfig.js';
 import { getCategories } from '../services/categoryService.js';
 import { useSEO } from '../hooks/useSEO.js';
@@ -26,6 +29,8 @@ import '../styles/home-responsive.css';
 
 export default function HomePage() {
   const { siteConfig, loading: siteLoading } = useSiteConfig();
+  const theme = useTheme();
+  const isModern = theme.id === 'modern';
   const [homeCategories, setHomeCategories] = useState([]);
   const [allCategories, setAllCategories] = useState([]);
   const [subcatSections, setSubcatSections] = useState([]);
@@ -93,6 +98,33 @@ export default function HomePage() {
           <div className="product-loader-spinner"></div>
           <p className="product-loader-text">Loading store...</p>
         </div>
+      </div>
+    );
+  }
+
+  const ActiveHero = isModern ? HeroSplit : HeroSlider;
+  const ActiveCategory = isModern ? CategoryGrid : CategorySection;
+
+  function renderSection(item) {
+    if (item.type === 'category') {
+      return <ActiveCategory key={item.id} category={item.data} />;
+    }
+    return <SubcategorySection key={item.id} section={item.data} />;
+  }
+
+  if (isModern) {
+    return (
+      <div className="home-page">
+        <ActiveHero />
+        {orderedSections.map((item) => renderSection(item))}
+        <ChooseByCategory categories={allCategories} />
+        <WatchAndBuy />
+        <FeaturedVideoSection />
+        <ShopTheLook />
+        <ProductShowcase />
+        <StoreLocations />
+        <CustomerReviews />
+        <FirstVisitBanner />
       </div>
     );
   }

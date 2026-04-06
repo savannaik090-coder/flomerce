@@ -2,6 +2,8 @@ import React, { useState, useEffect, useContext } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import * as productService from '../../services/productService.js';
 import ProductCard from './ProductCard.jsx';
+import ProductCardModern from '../templates/modern/ProductCardModern.jsx';
+import { useTheme } from '../../context/ThemeContext.jsx';
 
 function shuffleArray(arr) {
   const shuffled = [...arr];
@@ -14,6 +16,8 @@ function shuffleArray(arr) {
 
 export default function RelatedProducts({ currentProductId, categoryId, onWishlistToggle, isInWishlist }) {
   const { siteConfig } = useContext(SiteContext);
+  const theme = useTheme();
+  const Card = theme.id === 'modern' ? ProductCardModern : ProductCard;
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -50,7 +54,7 @@ export default function RelatedProducts({ currentProductId, categoryId, onWishli
       <h2 className="section-title">You May Also Like</h2>
       <div className="related-products-scroll">
         {products.map(product => (
-          <ProductCard
+          <Card
             key={product.id}
             product={product}
             onWishlistToggle={onWishlistToggle}

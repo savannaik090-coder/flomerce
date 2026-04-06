@@ -37,7 +37,7 @@ Fluxe utilizes a shared shard-based D1 database architecture where multiple site
 - **Database:** Cloudflare D1.
 - **File Storage:** Cloudflare R2.
 - **Authentication:** Custom JWT for platform users, verification-code for site admins, and custom customer auth for storefronts, including Google Sign-In.
-- **UI/UX:** Customizable templates with extensive admin controls.
+- **UI/UX:** Theme-based template system with extensive admin controls. Classic (default) and Modern themes share one React SPA; theme-specific component variants live in `frontend/src/storefront/src/components/templates/<theme>/`. ThemeContext reads `settings.theme` from site config to select variants (hero, navbar, footer, product card, category section). Shared sections (WatchAndBuy, FeaturedVideo, ShopTheLook, etc.) work across all themes unchanged.
 - **SEO:** Server-side meta tag injection, dynamic sitemap.xml, robots.txt per tenant, and structured data for products, articles, and reviews. Default SEO titles and meta descriptions are category-aware and generated.
 - **CDN Edge Caching:** Two-tier caching strategy. Browser: `max-age=60` (60s). CDN: `CDN-Cache-Control: max-age=604800` (7 days) with stale-while-revalidate. Admin requests bypass browser cache entirely (`cache: 'no-store'` in `api.js` and `SiteContext.jsx`). Write operations trigger `purgeStorefrontCache()` which purges both Workers Cache API and Cloudflare CDN edge globally (via Cloudflare API using `CF_API_TOKEN` + `CF_ZONE_ID`). Purge covers both `siteId` and `subdomain` URL variants. Cached endpoints: `/api/site`, `/api/products`, `/api/categories`, `/api/blog/posts`, `/api/blog/post/:slug`, `/api/reviews/product/:id`.
 - **Push Notifications:** Full Web Push Protocol (VAPID) implementation using Cloudflare Workers, with service worker for client-side handling and admin panel for management and auto-triggers.
@@ -48,6 +48,7 @@ Fluxe utilizes a shared shard-based D1 database architecture where multiple site
 
 ### Key Features
 - **Dynamic Content:** Configurable homepage elements and centralized default content per business category.
+- **Template/Theme System:** Theme infrastructure with Classic (serif/gold/slider) and Modern (sans-serif/minimal/grid) variants. Config: `frontend/src/storefront/src/config/themes.js`. Context: `frontend/src/storefront/src/context/ThemeContext.jsx`. Modern components: `frontend/src/storefront/src/components/templates/modern/`. Theme is stored in `site_config.settings.theme` and selected during site creation.
 - **Admin Panel:** Centralized site content, policy, and SEO management with iframe preview and "Shop the Look" tab.
 - **Shop the Look:** Interactive product showcase on the homepage with clickable dots linked to products.
 - **Product Options:** Supports Color, Custom Selection, and Priced options.

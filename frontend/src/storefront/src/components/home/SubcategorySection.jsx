@@ -1,11 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useSiteConfig } from '../../hooks/useSiteConfig.js';
+import { useTheme } from '../../context/ThemeContext.jsx';
 import * as productService from '../../services/productService.js';
 import ProductCard from '../product/ProductCard.jsx';
+import ProductCardModern from '../templates/modern/ProductCardModern.jsx';
 
 export default function SubcategorySection({ section }) {
   const { siteConfig } = useSiteConfig();
+  const theme = useTheme();
+  const Card = theme.id === 'modern' ? ProductCardModern : ProductCard;
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const scrollRef = useRef(null);
@@ -67,7 +71,7 @@ export default function SubcategorySection({ section }) {
             </div>
           ) : products.length > 0 ? (
             products.map((product) => (
-              <ProductCard key={product.id} product={product} variant="scroll" />
+              <Card key={product.id} product={product} variant="scroll" />
             ))
           ) : (
             <p style={{ padding: '40px', color: '#999', textAlign: 'center', width: '100%' }}>

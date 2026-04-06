@@ -3,9 +3,12 @@ import { PLATFORM_URL } from './config.js';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import { useSiteConfig } from './hooks/useSiteConfig.js';
 import { PanelContext } from './context/PanelContext.jsx';
+import { useTheme } from './context/ThemeContext.jsx';
 import usePageTracker from './hooks/usePageTracker.js';
 import Navbar from './components/layout/Navbar.jsx';
 import Footer from './components/layout/Footer.jsx';
+import NavbarModern from './components/templates/modern/NavbarModern.jsx';
+import FooterModern from './components/templates/modern/FooterModern.jsx';
 import MobileBottomNav from './components/layout/MobileBottomNav.jsx';
 import SearchOverlay from './components/layout/SearchOverlay.jsx';
 import CartPanel from './components/cart/CartPanel.jsx';
@@ -93,6 +96,7 @@ export default function App() {
   const { cartOpen, openCart, closeCart, wishlistOpen, openWishlist, closeWishlist, searchOpen, openSearch, closeSearch } = useContext(PanelContext);
   const location = useLocation();
   const { showPrompt, subscribe, dismissPrompt } = usePushNotifications();
+  const theme = useTheme();
 
   usePageTracker();
 
@@ -127,9 +131,13 @@ export default function App() {
     );
   }
 
+  const isModern = theme.id === 'modern';
+  const ActiveNavbar = isModern ? NavbarModern : Navbar;
+  const ActiveFooter = isModern ? FooterModern : Footer;
+
   return (
     <>
-      <Navbar
+      <ActiveNavbar
         onSearchOpen={openSearch}
         onCartOpen={openCart}
         onWishlistOpen={openWishlist}
@@ -170,7 +178,7 @@ export default function App() {
         </React.Suspense>
       </main>
 
-      <Footer />
+      <ActiveFooter />
       <MobileBottomNav onCartOpen={openCart} />
       <WhatsAppButton />
       <SearchOverlay isOpen={searchOpen} onClose={closeSearch} />
