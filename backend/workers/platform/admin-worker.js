@@ -280,9 +280,9 @@ async function createPlan(request, env) {
       return errorResponse('Plan tier is required (1-10)');
     }
 
-    const validCycles = ['3months', '6months', 'yearly', '3years'];
+    const validCycles = ['monthly', '3months', '6months', 'yearly'];
     if (!validCycles.includes(billing_cycle)) {
-      return errorResponse('Billing cycle must be 3months, 6months, yearly, or 3years');
+      return errorResponse('Billing cycle must be monthly, 3months, 6months, or yearly');
     }
 
     if (original_price != null && original_price !== '' && original_price !== 0) {
@@ -380,7 +380,7 @@ async function bulkSavePlan(request, env) {
       return errorResponse('Plan tier must be between 1 and 10');
     }
 
-    const validCycles = ['3months', '6months', 'yearly', '3years'];
+    const validCycles = ['monthly', '3months', '6months', 'yearly'];
     const featuresJson = JSON.stringify(features || []);
 
     const existingResult = await env.DB.prepare(

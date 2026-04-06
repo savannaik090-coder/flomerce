@@ -3,9 +3,9 @@ import { Link } from 'react-router-dom';
 import { getAvailablePlans } from '../services/paymentService.js';
 import { SUPPORT_EMAIL } from '../config.js';
 
-const DURATION_LABELS = { '3months': '3 Months', '6months': '6 Months', yearly: 'Yearly', '3years': '3 Years' };
-const DURATION_MONTHS = { '3months': 3, '6months': 6, yearly: 12, '3years': 36 };
-const DURATION_TEXT = { '3months': '3 months', '6months': '6 months', yearly: '1 year', '3years': '3 years' };
+const DURATION_LABELS = { monthly: 'Monthly', '3months': '3 Months', '6months': '6 Months', yearly: 'Yearly' };
+const DURATION_MONTHS = { monthly: 1, '3months': 3, '6months': 6, yearly: 12 };
+const DURATION_TEXT = { monthly: 'month', '3months': '3 months', '6months': '6 months', yearly: '1 year' };
 
 export default function LandingPricing() {
   const [duration, setDuration] = useState(null);
@@ -27,7 +27,7 @@ export default function LandingPricing() {
       if (data.enterpriseConfig) setEnterpriseConfig(data.enterpriseConfig);
       if (!duration && loadedPlans.length > 0) {
         const cycles = [...new Set(loadedPlans.map(p => p.billing_cycle))];
-        const cycleOrder = ['3months', '6months', 'yearly', '3years'];
+        const cycleOrder = ['monthly', '3months', '6months', 'yearly'];
         const sorted = cycles.sort((a, b) => cycleOrder.indexOf(a) - cycleOrder.indexOf(b));
         setDuration(sorted[0]);
       }
@@ -39,7 +39,7 @@ export default function LandingPricing() {
   };
 
   const availableDurations = [...new Set(plans.map(p => p.billing_cycle))].sort((a, b) => {
-    const order = ['3months', '6months', 'yearly', '3years'];
+    const order = ['monthly', '3months', '6months', 'yearly'];
     return order.indexOf(a) - order.indexOf(b);
   });
 

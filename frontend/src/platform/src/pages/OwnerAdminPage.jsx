@@ -23,10 +23,10 @@ export default function OwnerAdminPage() {
     plan_name: '', plan_tier: 1, features: '', is_popular: false, display_order: 0,
     monthly_price: '',
     cycles: {
+      'monthly': { enabled: false, razorpay_plan_id: '', discount: 0 },
       '3months': { enabled: false, razorpay_plan_id: '', discount: 0 },
       '6months': { enabled: false, razorpay_plan_id: '', discount: 0 },
       'yearly': { enabled: false, razorpay_plan_id: '', discount: 10 },
-      '3years': { enabled: false, razorpay_plan_id: '', discount: 20 },
     }
   });
 
@@ -112,15 +112,15 @@ export default function OwnerAdminPage() {
     }
   };
 
-  const CYCLE_LABELS = { '3months': '3 Months', '6months': '6 Months', 'yearly': 'Yearly', '3years': '3 Years' };
-  const CYCLE_MONTHS = { '3months': 3, '6months': 6, 'yearly': 12, '3years': 36 };
+  const CYCLE_LABELS = { 'monthly': 'Monthly', '3months': '3 Months', '6months': '6 Months', 'yearly': 'Yearly' };
+  const CYCLE_MONTHS = { 'monthly': 1, '3months': 3, '6months': 6, 'yearly': 12 };
   const TIER_LABELS = { 1: 'Tier 1 (Basic)', 2: 'Tier 2 (Standard)', 3: 'Tier 3 (Pro)', 4: 'Tier 4 (Enterprise)' };
 
   const emptyCycles = () => ({
+    'monthly': { enabled: false, razorpay_plan_id: '', discount: 0 },
     '3months': { enabled: false, razorpay_plan_id: '', discount: 0 },
     '6months': { enabled: false, razorpay_plan_id: '', discount: 0 },
     'yearly': { enabled: false, razorpay_plan_id: '', discount: 10 },
-    '3years': { enabled: false, razorpay_plan_id: '', discount: 20 },
   });
 
   const calcCyclePrice = (monthlyPrice, cycleKey, discount) => {

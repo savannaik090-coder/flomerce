@@ -613,7 +613,7 @@ async function createRazorpaySubscription(request, env, user) {
       },
       body: JSON.stringify({
         plan_id: plan.razorpay_plan_id,
-        total_count: plan.billing_cycle === '3months' ? 100 : plan.billing_cycle === '6months' ? 50 : plan.billing_cycle === 'yearly' ? 25 : 10,
+        total_count: plan.billing_cycle === 'monthly' ? 300 : plan.billing_cycle === '3months' ? 100 : plan.billing_cycle === '6months' ? 50 : 25,
         quantity: 1,
         notes: {
           userId: user.id,
@@ -829,7 +829,7 @@ async function handleSubscriptionCharged(env, subEntity, paymentEntity) {
       if (subEntity.current_end) {
         newEnd = new Date(subEntity.current_end * 1000);
       } else {
-        const periodMonths = existingSub.billing_cycle === '3months' ? 3 : existingSub.billing_cycle === '6months' ? 6 : existingSub.billing_cycle === 'yearly' ? 12 : 36;
+        const periodMonths = existingSub.billing_cycle === 'monthly' ? 1 : existingSub.billing_cycle === '3months' ? 3 : existingSub.billing_cycle === '6months' ? 6 : 12;
         newEnd = new Date();
         newEnd.setMonth(newEnd.getMonth() + periodMonths);
       }

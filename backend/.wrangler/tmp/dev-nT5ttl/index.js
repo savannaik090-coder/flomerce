@@ -9591,7 +9591,7 @@ async function createRazorpaySubscription(request, env, user) {
       },
       body: JSON.stringify({
         plan_id: plan.razorpay_plan_id,
-        total_count: plan.billing_cycle === "3months" ? 100 : plan.billing_cycle === "6months" ? 50 : plan.billing_cycle === "yearly" ? 25 : 10,
+        total_count: plan.billing_cycle === "monthly" ? 300 : plan.billing_cycle === "3months" ? 100 : plan.billing_cycle === "6months" ? 50 : 25,
         quantity: 1,
         notes: {
           userId: user.id,
@@ -9796,7 +9796,7 @@ async function handleSubscriptionCharged(env, subEntity, paymentEntity) {
       if (subEntity.current_end) {
         newEnd = new Date(subEntity.current_end * 1e3);
       } else {
-        const periodMonths = existingSub.billing_cycle === "3months" ? 3 : existingSub.billing_cycle === "6months" ? 6 : existingSub.billing_cycle === "yearly" ? 12 : 36;
+        const periodMonths = existingSub.billing_cycle === "monthly" ? 1 : existingSub.billing_cycle === "3months" ? 3 : existingSub.billing_cycle === "6months" ? 6 : 12;
         newEnd = /* @__PURE__ */ new Date();
         newEnd.setMonth(newEnd.getMonth() + periodMonths);
       }
@@ -12377,9 +12377,9 @@ async function createPlan(request, env) {
     if (!plan_tier || plan_tier < 1 || plan_tier > 10) {
       return errorResponse("Plan tier is required (1-10)");
     }
-    const validCycles = ["3months", "6months", "yearly", "3years"];
+    const validCycles = ["monthly", "3months", "6months", "yearly"];
     if (!validCycles.includes(billing_cycle)) {
-      return errorResponse("Billing cycle must be 3months, 6months, yearly, or 3years");
+      return errorResponse("Billing cycle must be monthly, 3months, 6months, or yearly");
     }
     if (original_price != null && original_price !== "" && original_price !== 0) {
       const op = parseFloat(original_price);
@@ -12471,7 +12471,7 @@ async function bulkSavePlan(request, env) {
     if (plan_tier < 1 || plan_tier > 10) {
       return errorResponse("Plan tier must be between 1 and 10");
     }
-    const validCycles = ["3months", "6months", "yearly", "3years"];
+    const validCycles = ["monthly", "3months", "6months", "yearly"];
     const featuresJson = JSON.stringify(features || []);
     const existingResult = await env.DB.prepare(
       `SELECT * FROM subscription_plans WHERE plan_name = ?`
