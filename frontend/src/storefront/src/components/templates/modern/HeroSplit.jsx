@@ -15,6 +15,7 @@ export default function HeroSplit() {
   const rawSlides = savedSlides?.length ? savedSlides : getHeroSliderDefaults(category);
   const slides = rawSlides.filter(s => s.visible !== false);
   const primaryColor = siteConfig?.primaryColor || '#000000';
+  const showScrollButtons = siteConfig?.settings?.heroShowScrollButtons !== false;
 
   const nextSlide = useCallback(() => {
     setCurrentIndex((prev) => (prev + 1) % slides.length);
@@ -84,19 +85,19 @@ export default function HeroSplit() {
               </svg>
             </div>
           )}
-          {slides.length > 1 && (
-            <div className="modern-hero-arrows">
-              <button className="modern-hero-arrow" onClick={prevSlide} aria-label="Previous slide">
+          {showScrollButtons && slides.length > 1 && (
+            <>
+              <button className="modern-hero-arrow modern-hero-arrow-left" onClick={prevSlide} aria-label="Previous slide">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M15 18l-6-6 6-6"/>
                 </svg>
               </button>
-              <button className="modern-hero-arrow" onClick={nextSlide} aria-label="Next slide">
+              <button className="modern-hero-arrow modern-hero-arrow-right" onClick={nextSlide} aria-label="Next slide">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M9 18l6-6-6-6"/>
                 </svg>
               </button>
-            </div>
+            </>
           )}
         </div>
       </div>
