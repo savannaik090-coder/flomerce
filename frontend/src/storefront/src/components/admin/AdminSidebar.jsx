@@ -4,6 +4,7 @@ const navItems = [
   { id: 'dashboard', icon: 'fa-chart-line', label: 'Dashboard' },
   { id: 'products', icon: 'fa-box', label: 'Products' },
   { id: 'inventory', icon: 'fa-warehouse', label: 'Inventory' },
+  { id: 'locations', icon: 'fa-map-marker-alt', label: 'Locations' },
   { id: 'orders', icon: 'fa-shopping-bag', label: 'Orders', badgeKey: 'pendingOrders' },
   { id: 'customers', icon: 'fa-users', label: 'Customers' },
   { id: 'revenue', icon: 'fa-money-bill-wave', label: 'Revenue' },
@@ -19,6 +20,7 @@ export default function AdminSidebar({ activeSection, onSectionChange, isOpen, o
     if (isOwner) return true;
     if (!permissions) return false;
     if (item.id === 'revenue') return permissions.includes('analytics') || permissions.includes('orders');
+    if (item.id === 'locations') return permissions.includes('inventory');
     return permissions.includes(item.id);
   });
 

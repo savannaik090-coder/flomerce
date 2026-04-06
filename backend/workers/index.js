@@ -16,6 +16,7 @@ import { handleUpload } from './storefront/upload-worker.js';
 import { handleAnalytics } from './storefront/analytics-worker.js';
 import { handleNotifications } from './storefront/notifications-worker.js';
 import { handleReviews } from './storefront/reviews-worker.js';
+import { handleInventoryLocations } from './storefront/inventory-locations-worker.js';
 import { handleBlog } from './storefront/blog-worker.js';
 import { handleUsageAPI } from '../utils/usage-tracker.js';
 import { jsonResponse, errorResponse, corsHeaders, handleCORS } from '../utils/helpers.js';
@@ -97,6 +98,9 @@ async function handleAPI(request, env, path, ctx) {
 
     case 'products':
       return handleProducts(request, env, path, ctx);
+
+    case 'inventory-locations':
+      return handleInventoryLocations(request, env, path, ctx);
 
     case 'orders':
       return handleOrders(request, env, path, ctx);

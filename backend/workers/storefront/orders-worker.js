@@ -1,6 +1,7 @@
 import { generateId, generateOrderNumber, jsonResponse, errorResponse, successResponse, handleCORS } from '../../utils/helpers.js';
 import { validateAuth, validateAnyAuth } from '../../utils/auth.js';
 import { updateProductStock } from './products-worker.js';
+import { deductStockByLocation } from './inventory-locations-worker.js';
 import { sendEmail, buildOrderConfirmationEmail, buildOwnerNotificationEmail, buildCancellationCustomerEmail, buildCancellationOwnerEmail, buildDeliveryCustomerEmail, buildDeliveryOwnerEmail, buildNewOrderReviewEmail, buildOrderPackedEmail, buildOrderShippedEmail, buildCancellationRequestNotifyEmail, buildCancellationStatusEmail } from '../../utils/email.js';
 import { checkUsageLimit, estimateRowBytes, trackD1Write, trackD1Update } from '../../utils/usage-tracker.js';
 import { resolveSiteDBById, checkMigrationLock, getSiteConfig, ensureProductOptionsColumn } from '../../utils/site-db.js';
@@ -561,8 +562,12 @@ async function createOrder(request, env, user, ctx) {
     await trackD1Write(env, siteId, rowBytes);
 
     if (!isPendingPayment) {
+      const orderDb = await resolveSiteDBById(env, siteId);
       for (const item of processedItems) {
-        await updateProductStock(env, item.productId, item.quantity, 'decrement', siteId, ctx);
+        const locationDeducted = await deductStockByLocation(orderDb, siteId, item.productId, item.quantity);
+        if (!locationDeducted) {
+          await updateProductStock(env, item.productId, item.quantity, 'decrement', siteId, ctx);
+        }
       }
 
       try {
@@ -1118,8 +1123,12 @@ async function createGuestOrder(request, env, ctx) {
     await trackD1Write(env, siteId, rowBytes);
 
     if (!isPendingPayment) {
+      const guestOrderDb = await resolveSiteDBById(env, siteId);
       for (const item of processedItems) {
-        await updateProductStock(env, item.productId, item.quantity, 'decrement', siteId, ctx);
+        const locationDeducted = await deductStockByLocation(guestOrderDb, siteId, item.productId, item.quantity);
+        if (!locationDeducted) {
+          await updateProductStock(env, item.productId, item.quantity, 'decrement', siteId, ctx);
+        }
       }
 
       try {
