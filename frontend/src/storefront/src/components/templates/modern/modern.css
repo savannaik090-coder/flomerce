@@ -2088,21 +2088,362 @@
   letter-spacing: 0.5px;
 }
 
-/* --- Modern Product Reviews --- */
-.modern-theme .product-reviews-section .section-title {
+/* --- Modern Product Reviews (product detail page) --- */
+.modern-theme.product-reviews-section {
+  font-family: 'Inter', 'Helvetica Neue', sans-serif;
+}
+.modern-theme.product-reviews-section .section-title {
   font-family: 'Inter', sans-serif;
   font-weight: 700;
+  letter-spacing: -0.01em;
+  font-size: 1.5rem;
 }
 .modern-theme .write-review-btn {
   background: #111;
-  border-radius: 2px;
+  border-radius: 0;
   font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  padding: 10px 24px;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.modern-theme .write-review-btn:hover {
+  opacity: 0.85;
 }
 .modern-theme .review-submit-btn {
   background: #111;
-  border-radius: 2px;
+  border-radius: 0;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  padding: 12px 28px;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.modern-theme .review-submit-btn:hover {
+  opacity: 0.85;
+}
+.modern-theme .review-cancel-btn {
+  border-radius: 0;
   font-family: 'Inter', sans-serif;
 }
+.modern-theme .review-form {
+  border: 1px solid #e5e5e5;
+  border-radius: 0;
+  padding: 24px;
+  background: #fafafa;
+}
+.modern-theme .review-form-title {
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.modern-theme .review-form label {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 13px;
+  color: #333;
+  letter-spacing: 0.3px;
+}
+.modern-theme .review-form input,
+.modern-theme .review-form textarea {
+  font-family: 'Inter', sans-serif;
+  border-radius: 0;
+  border: 1px solid #ddd;
+  padding: 10px 12px;
+  font-size: 14px;
+  transition: border-color 0.2s;
+}
+.modern-theme .review-form input:focus,
+.modern-theme .review-form textarea:focus {
+  border-color: #111;
+  outline: none;
+  box-shadow: none;
+}
+.modern-theme .review-card {
+  border: 1px solid #e5e5e5;
+  border-radius: 0;
+  padding: 20px;
+  margin-bottom: 12px;
+  background: #fff;
+  box-shadow: none;
+}
+.modern-theme .review-card:hover {
+  border-color: #ccc;
+}
+.modern-theme .review-stars {
+  color: #111;
+}
+.modern-theme .star-input-star.active {
+  color: #111;
+}
+.modern-theme .review-author {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+}
+.modern-theme .verified-badge {
+  background: #111;
+  color: #fff;
+  border-radius: 0;
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 2px 8px;
+}
+.modern-theme .review-title-text {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+}
+.modern-theme .review-text {
+  font-family: 'Inter', sans-serif;
+  font-style: normal;
+}
+.modern-theme .review-sort select {
+  font-family: 'Inter', sans-serif;
+  border-radius: 0;
+  border: 1px solid #ddd;
+}
+.modern-theme .rating-breakdown {
+  border: 1px solid #e5e5e5;
+  border-radius: 0;
+  padding: 20px;
+  background: #fafafa;
+}
+.modern-theme .rating-big {
+  font-family: 'Inter', sans-serif;
+  font-weight: 800;
+}
+.modern-theme .rating-bar-fill {
+  background: #111;
+  border-radius: 0;
+}
+.modern-theme .review-notice {
+  font-family: 'Inter', sans-serif;
+  border-radius: 0;
+}
+.modern-theme .review-message {
+  border-radius: 0;
+  font-family: 'Inter', sans-serif;
+}
+.modern-theme .review-image {
+  border-radius: 0;
+}
+
+/* --- Modern Customer Reviews (homepage section) --- */
+.modern-theme.customer-reviews-section {
+  background-color: #fff;
+  font-family: 'Inter', 'Helvetica Neue', sans-serif;
+  border-top: 1px solid #eee;
+  border-bottom: 1px solid #eee;
+  padding: 80px 0;
+}
+.modern-theme.customer-reviews-section .reviews-header .section-title {
+  font-family: 'Inter', sans-serif;
+  font-weight: 800;
+  font-size: 2rem;
+  letter-spacing: -0.02em;
+  color: #111;
+}
+.modern-theme.customer-reviews-section .reviews-header .section-subtitle {
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  color: #666;
+  font-size: 1rem;
+  letter-spacing: 0;
+}
+.modern-theme.customer-reviews-section .reviews-header {
+  margin-bottom: 48px;
+}
+.modern-theme.customer-reviews-section .reviews-scroll-arrow {
+  border: 1px solid #ddd;
+  border-radius: 0;
+  color: #111;
+  background: #fff;
+  box-shadow: none;
+  width: 48px;
+  height: 48px;
+}
+.modern-theme.customer-reviews-section .reviews-scroll-arrow:hover {
+  background: #111;
+  color: #fff;
+  transform: translateY(-50%);
+  box-shadow: none;
+  border-color: #111;
+}
+.modern-theme.customer-reviews-section .review-item {
+  border-radius: 0;
+  box-shadow: none;
+  border: 1px solid #e5e5e5;
+  transition: border-color 0.2s;
+}
+.modern-theme.customer-reviews-section .review-item:hover {
+  transform: none;
+  box-shadow: none;
+  border-color: #111;
+}
+.modern-theme.customer-reviews-section .review-item:hover .review-image img {
+  transform: none;
+}
+.modern-theme.customer-reviews-section .review-image {
+  height: 280px;
+}
+.modern-theme.customer-reviews-section .review-content {
+  padding: 20px;
+}
+.modern-theme.customer-reviews-section .review-text p {
+  font-family: 'Inter', sans-serif;
+  font-style: normal;
+  font-size: 0.9rem;
+  color: #444;
+  padding-left: 0;
+  line-height: 1.7;
+}
+.modern-theme.customer-reviews-section .review-text p::before {
+  display: none;
+}
+.modern-theme.customer-reviews-section .review-rating {
+  font-family: 'Inter', sans-serif;
+}
+.modern-theme.customer-reviews-section .review-rating span {
+  color: #666;
+  font-weight: 500;
+}
+.modern-theme.customer-reviews-section .reviews-cta .chat-now-btn {
+  background: #111;
+  border-radius: 0;
+  box-shadow: none;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  font-size: 0.85rem;
+  padding: 14px 36px;
+  transition: opacity 0.2s;
+}
+.modern-theme.customer-reviews-section .reviews-cta .chat-now-btn:hover {
+  background: #111;
+  opacity: 0.85;
+  transform: none;
+  box-shadow: none;
+}
+
+/* --- Modern Review Page (post-purchase review submission) --- */
+.modern-theme.review-page {
+  font-family: 'Inter', 'Helvetica Neue', sans-serif;
+}
+.modern-theme.review-page .review-page-inner {
+  font-family: 'Inter', sans-serif;
+}
+.modern-theme.review-page h1 {
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #111;
+}
+.modern-theme.review-page .review-page-item {
+  border-radius: 0;
+  border: 1px solid #e5e5e5;
+}
+.modern-theme.review-page .review-page-item.active {
+  border-color: #111;
+}
+.modern-theme.review-page .review-page-item.reviewed {
+  border-color: #e5e5e5;
+  background: #fafafa;
+}
+.modern-theme.review-page .review-page-item-img {
+  border-radius: 0;
+}
+.modern-theme.review-page .review-page-item-name {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+}
+.modern-theme.review-page .review-page-item-badge {
+  font-family: 'Inter', sans-serif;
+  border-radius: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+.modern-theme.review-page .write-review-btn {
+  background: #111;
+  border-radius: 0;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+}
+.modern-theme.review-page .review-form {
+  border: 1px solid #e5e5e5;
+  border-radius: 0;
+  padding: 20px;
+  background: #fafafa;
+}
+.modern-theme.review-page .review-form label {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.3px;
+}
+.modern-theme.review-page .review-form input,
+.modern-theme.review-page .review-form textarea {
+  font-family: 'Inter', sans-serif;
+  border-radius: 0;
+  border: 1px solid #ddd;
+}
+.modern-theme.review-page .review-form input:focus,
+.modern-theme.review-page .review-form textarea:focus {
+  border-color: #111;
+  outline: none;
+  box-shadow: none;
+}
+.modern-theme.review-page .review-submit-btn {
+  background: #111;
+  border-radius: 0;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+.modern-theme.review-page .star-input-star.active {
+  color: #111;
+}
+.modern-theme.review-page .review-message {
+  border-radius: 0;
+  font-family: 'Inter', sans-serif;
+}
+
+/* --- Modern Checkout Page --- */
+.modern-theme.checkout-page {
+  font-family: 'Inter', 'Helvetica Neue', sans-serif;
+}
+.modern-theme.checkout-page input,
+.modern-theme.checkout-page select,
+.modern-theme.checkout-page textarea {
+  font-family: 'Inter', sans-serif;
+  border-radius: 0;
+}
+.modern-theme.checkout-page input:focus,
+.modern-theme.checkout-page select:focus,
+.modern-theme.checkout-page textarea:focus {
+  border-color: #111;
+  outline: none;
+  box-shadow: none;
+}
+.modern-theme.checkout-page label {
+  font-family: 'Inter', sans-serif;
+}
+.modern-theme.checkout-page button {
+  font-family: 'Inter', sans-serif;
+}
+.modern-theme.checkout-page a {
+  font-family: 'Inter', sans-serif;
+}
+
+/* --- Modern Related Products --- */
 .modern-theme .related-products-section .section-title {
   font-family: 'Inter', sans-serif;
   font-weight: 700;
