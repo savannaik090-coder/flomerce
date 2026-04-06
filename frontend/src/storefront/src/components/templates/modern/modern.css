@@ -162,6 +162,28 @@
   height: auto;
   max-height: 50px;
   object-fit: contain;
+  max-width: 250px;
+}
+
+.mn-logo-left {
+  justify-content: flex-start;
+  gap: 24px;
+}
+.mn-logo-left .mn-brand {
+  padding: 0;
+  justify-content: flex-start;
+}
+.mn-nav-all {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+}
+.mn-logo-left .mn-nav-icons {
+  margin-left: auto;
 }
 
 .mn-brand-text {
@@ -468,10 +490,14 @@
   .mn-nav-container {
     justify-content: space-between;
   }
-  .mn-brand {
+  .mn-nav-container:not(.mn-logo-left) .mn-brand {
     position: absolute;
     left: 50%;
     transform: translateX(-50%);
+  }
+  .mn-logo-left .mn-brand {
+    position: static;
+    transform: none;
   }
 }
 

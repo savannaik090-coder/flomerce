@@ -36,6 +36,8 @@ export default function NavbarModern({ onSearchOpen, onCartOpen, onWishlistOpen 
   const showBookAppointment = settings.showBookAppointment !== false;
   const showContact = settings.showContact !== false;
   const logoSize = Math.min(250, Math.max(40, Number(settings.logoSize) || 120));
+  const logoPosition = settings.logoPosition || 'left';
+  const isCentered = logoPosition === 'center';
   const showAccountIcon = settings.showAccountIcon !== false;
   const showCartIcon = settings.showCartIcon !== false;
 
@@ -185,7 +187,7 @@ export default function NavbarModern({ onSearchOpen, onCartOpen, onWishlistOpen 
   return (
     <header className="mn-header">
       <nav className="mn-navbar">
-        <div className="mn-nav-container">
+        <div className={`mn-nav-container${!isCentered ? ' mn-logo-left' : ''}`}>
           <button className="mn-hamburger" onClick={() => setMenuOpen(true)} aria-label="Open menu">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <line x1="3" y1="6" x2="21" y2="6"/>
@@ -194,30 +196,61 @@ export default function NavbarModern({ onSearchOpen, onCartOpen, onWishlistOpen 
             </svg>
           </button>
 
-          <ul className="mn-nav-left mn-desktop-only">
-            <li className="mn-nav-item"><Link to="/" className="mn-nav-link" onClick={closeMobileMenu}>Home</Link></li>
-            {leftItems.map((item, i) => renderNavItem(item, i))}
+          {!isCentered && (
+            <Link to="/" className="mn-brand">
+              {siteConfig?.logoUrl ? (
+                <img
+                  src={siteConfig.logoUrl}
+                  alt={siteConfig?.brandName || 'Store'}
+                  className="mn-brand-logo"
+                  style={{ width: logoSize, height: 'auto' }}
+                  onError={(e) => { e.target.style.display = 'none'; const txt = e.target.nextElementSibling; if (txt) txt.style.display = 'block'; }}
+                />
+              ) : null}
+              <span className="mn-brand-text" style={{ display: siteConfig?.logoUrl ? 'none' : 'block' }}>
+                {siteConfig?.brandName || 'Store'}
+              </span>
+            </Link>
+          )}
+
+          <ul className={`${isCentered ? 'mn-nav-left' : 'mn-nav-all'} mn-desktop-only`}>
+            {isCentered ? (
+              <>
+                <li className="mn-nav-item"><Link to="/" className="mn-nav-link" onClick={closeMobileMenu}>Home</Link></li>
+                {leftItems.map((item, i) => renderNavItem(item, i))}
+              </>
+            ) : (
+              <>
+                <li className="mn-nav-item"><Link to="/" className="mn-nav-link" onClick={closeMobileMenu}>Home</Link></li>
+                {navItems.map((item, i) => renderNavItem(item, i))}
+                {renderExtraLinks()}
+              </>
+            )}
           </ul>
 
-          <Link to="/" className="mn-brand">
-            {siteConfig?.logoUrl ? (
-              <img
-                src={siteConfig.logoUrl}
-                alt={siteConfig?.brandName || 'Store'}
-                className="mn-brand-logo"
-                style={{ maxWidth: logoSize }}
-                onError={(e) => { e.target.style.display = 'none'; const txt = e.target.nextElementSibling; if (txt) txt.style.display = 'block'; }}
-              />
-            ) : null}
-            <span className="mn-brand-text" style={{ display: siteConfig?.logoUrl ? 'none' : 'block' }}>
-              {siteConfig?.brandName || 'Store'}
-            </span>
-          </Link>
+          {isCentered && (
+            <Link to="/" className="mn-brand">
+              {siteConfig?.logoUrl ? (
+                <img
+                  src={siteConfig.logoUrl}
+                  alt={siteConfig?.brandName || 'Store'}
+                  className="mn-brand-logo"
+                  style={{ width: logoSize, height: 'auto' }}
+                  onError={(e) => { e.target.style.display = 'none'; const txt = e.target.nextElementSibling; if (txt) txt.style.display = 'block'; }}
+                />
+              ) : null}
+              <span className="mn-brand-text" style={{ display: siteConfig?.logoUrl ? 'none' : 'block' }}>
+                {siteConfig?.brandName || 'Store'}
+              </span>
+            </Link>
+          )}
 
-          <ul className="mn-nav-right mn-desktop-only">
-            {rightItems.map((item, i) => renderNavItem(item, i))}
-            {renderExtraLinks()}
-          </ul>
+          {isCentered && (
+            <ul className="mn-nav-right mn-desktop-only">
+              {rightItems.map((item, i) => renderNavItem(item, i))}
+              {renderExtraLinks()}
+            </ul>
+          )}
 
           <div className="mn-nav-icons">
             <button className="mn-icon-btn" onClick={() => onSearchOpen?.()} aria-label="Search">
