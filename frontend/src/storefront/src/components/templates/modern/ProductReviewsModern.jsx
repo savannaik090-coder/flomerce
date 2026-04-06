@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { SiteContext } from '../../context/SiteContext.jsx';
-import { apiRequest, getAuthToken } from '../../services/api.js';
+import { SiteContext } from '../../../context/SiteContext.jsx';
+import { apiRequest, getAuthToken } from '../../../services/api.js';
 
 const STAR_FULL = '\u2605';
 const STAR_EMPTY = '\u2606';
 
 function StarRating({ rating, size = 16 }) {
   return (
-    <span className="review-stars" style={{ fontSize: size }}>
+    <span className="mn-review-stars" style={{ fontSize: size }}>
       {[1, 2, 3, 4, 5].map(i => (
         <span key={i}>{i <= rating ? STAR_FULL : STAR_EMPTY}</span>
       ))}
@@ -18,11 +18,11 @@ function StarRating({ rating, size = 16 }) {
 function StarInput({ value, onChange }) {
   const [hover, setHover] = useState(0);
   return (
-    <div className="star-input" onMouseLeave={() => setHover(0)}>
+    <div className="mn-star-input" onMouseLeave={() => setHover(0)}>
       {[1, 2, 3, 4, 5].map(i => (
         <span
           key={i}
-          className={`star-input-star${i <= (hover || value) ? ' active' : ''}`}
+          className={`mn-star-input-star${i <= (hover || value) ? ' active' : ''}`}
           onMouseEnter={() => setHover(i)}
           onClick={() => onChange(i)}
         >
@@ -37,25 +37,25 @@ function RatingBreakdown({ stats }) {
   if (!stats || stats.total === 0) return null;
   const { total, avgRating, breakdown } = stats;
   return (
-    <div className="rating-breakdown">
-      <div className="rating-summary">
-        <div className="rating-big">{avgRating}</div>
-        <div className="rating-summary-detail">
+    <div className="mn-rating-breakdown">
+      <div className="mn-rating-summary">
+        <div className="mn-rating-big">{avgRating}</div>
+        <div className="mn-rating-summary-detail">
           <StarRating rating={Math.round(avgRating)} size={20} />
-          <span className="rating-count">{total} {total === 1 ? 'review' : 'reviews'}</span>
+          <span className="mn-rating-count">{total} {total === 1 ? 'review' : 'reviews'}</span>
         </div>
       </div>
-      <div className="rating-bars">
+      <div className="mn-rating-bars">
         {[5, 4, 3, 2, 1].map(star => {
           const count = breakdown[star] || 0;
           const pct = total > 0 ? (count / total) * 100 : 0;
           return (
-            <div key={star} className="rating-bar-row">
-              <span className="rating-bar-label">{star} {STAR_FULL}</span>
-              <div className="rating-bar-track">
-                <div className="rating-bar-fill" style={{ width: `${pct}%` }} />
+            <div key={star} className="mn-rating-bar-row">
+              <span className="mn-rating-bar-label">{star} {STAR_FULL}</span>
+              <div className="mn-rating-bar-track">
+                <div className="mn-rating-bar-fill" style={{ width: `${pct}%` }} />
               </div>
-              <span className="rating-bar-count">{count}</span>
+              <span className="mn-rating-bar-count">{count}</span>
             </div>
           );
         })}
@@ -64,7 +64,7 @@ function RatingBreakdown({ stats }) {
   );
 }
 
-export default function ProductReviews({ productId }) {
+export default function ProductReviewsModern({ productId }) {
   const { siteConfig } = useContext(SiteContext);
   const siteId = siteConfig?.id;
 
@@ -152,12 +152,12 @@ export default function ProductReviews({ productId }) {
   if (!reviewsEnabled) return null;
 
   return (
-    <div className="product-reviews-section">
-      <h2 className="section-title">Customer Reviews</h2>
+    <div className="mn-product-reviews">
+      <h2 className="mn-product-reviews-title">Customer Reviews</h2>
 
       {loading && reviews.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '20px', color: '#999' }}>
-          <div className="spinner" style={{ margin: '0 auto 12px' }} />
+          <div className="spinner" style={{ margin: '0 auto 12px', borderTopColor: '#111' }} />
           Loading reviews...
         </div>
       ) : (
@@ -165,14 +165,14 @@ export default function ProductReviews({ productId }) {
           <RatingBreakdown stats={stats} />
 
           {submitMessage && (
-            <div className={`review-message review-message-${submitMessage.type}`}>
+            <div className={`mn-review-message mn-review-message-${submitMessage.type}`}>
               {submitMessage.text}
             </div>
           )}
 
           {eligibility?.eligible && !showForm && (
-            <div className="review-cta">
-              <button className="write-review-btn" onClick={() => setShowForm(true)}>
+            <div className="mn-review-cta">
+              <button className="mn-write-review-btn" onClick={() => setShowForm(true)}>
                 <i className="fas fa-pen" style={{ marginRight: 8 }} />
                 Write a Review
               </button>
@@ -180,18 +180,18 @@ export default function ProductReviews({ productId }) {
           )}
 
           {eligibility?.reason === 'already_reviewed' && (
-            <div className="review-notice">You have already reviewed this product.</div>
+            <div className="mn-review-notice">You have already reviewed this product.</div>
           )}
 
           {showForm && (
-            <form className="review-form" onSubmit={handleSubmit}>
-              <h3 className="review-form-title">Write Your Review</h3>
-              <div className="review-form-field">
+            <form className="mn-review-form" onSubmit={handleSubmit}>
+              <h3 className="mn-review-form-title">Write Your Review</h3>
+              <div className="mn-review-form-field">
                 <label>Your Rating *</label>
                 <StarInput value={formData.rating} onChange={r => setFormData(prev => ({ ...prev, rating: r }))} />
-                {formData.rating === 0 && <span className="review-form-hint">Select a rating</span>}
+                {formData.rating === 0 && <span className="mn-review-form-hint">Select a rating</span>}
               </div>
-              <div className="review-form-field">
+              <div className="mn-review-form-field">
                 <label>Review Title</label>
                 <input
                   type="text"
@@ -201,7 +201,7 @@ export default function ProductReviews({ productId }) {
                   maxLength={120}
                 />
               </div>
-              <div className="review-form-field">
+              <div className="mn-review-form-field">
                 <label>Your Review</label>
                 <textarea
                   value={formData.content}
@@ -211,11 +211,11 @@ export default function ProductReviews({ productId }) {
                   maxLength={2000}
                 />
               </div>
-              <div className="review-form-actions">
-                <button type="submit" className="review-submit-btn" disabled={submitting || formData.rating === 0}>
+              <div className="mn-review-form-actions">
+                <button type="submit" className="mn-review-submit-btn" disabled={submitting || formData.rating === 0}>
                   {submitting ? 'Submitting...' : 'Submit Review'}
                 </button>
-                <button type="button" className="review-cancel-btn" onClick={() => setShowForm(false)}>
+                <button type="button" className="mn-review-cancel-btn" onClick={() => setShowForm(false)}>
                   Cancel
                 </button>
               </div>
@@ -223,7 +223,7 @@ export default function ProductReviews({ productId }) {
           )}
 
           {sort && reviews.length > 1 && (
-            <div className="review-sort">
+            <div className="mn-review-sort">
               <label>Sort by:</label>
               <select value={sort} onChange={e => setSort(e.target.value)}>
                 <option value="recent">Most Recent</option>
@@ -234,29 +234,29 @@ export default function ProductReviews({ productId }) {
           )}
 
           {reviews.length === 0 && !loading && (
-            <div className="review-empty">
+            <div className="mn-review-empty">
               <p>No reviews yet. {eligibility?.eligible ? 'Be the first to review this product!' : ''}</p>
             </div>
           )}
 
           {reviews.map(review => (
-            <div key={review.id} className="review-card">
-              <div className="review-header">
+            <div key={review.id} className="mn-review-card">
+              <div className="mn-review-header">
                 <StarRating rating={review.rating} />
-                <span className="review-author">{review.customer_name || 'Customer'}</span>
-                {review.is_verified === 1 && <span className="verified-badge">Verified Purchase</span>}
-                <span className="review-date">
+                <span className="mn-review-author">{review.customer_name || 'Customer'}</span>
+                {review.is_verified === 1 && <span className="mn-verified-badge">Verified Purchase</span>}
+                <span className="mn-review-date">
                   {review.created_at ? new Date(review.created_at).toLocaleDateString() : ''}
                 </span>
               </div>
-              {review.title && <p className="review-title-text">{review.title}</p>}
-              {review.content && <p className="review-text">{review.content}</p>}
+              {review.title && <p className="mn-review-title-text">{review.title}</p>}
+              {review.content && <p className="mn-review-text">{review.content}</p>}
               {review.images && review.images.length > 0 && (
-                <div className="review-images">
+                <div className="mn-review-images">
                   {review.images.map((img, i) => (
                     <img
                       key={i}
-                      className="review-image"
+                      className="mn-review-image-thumb"
                       src={img}
                       alt={`Review ${i + 1}`}
                       onClick={() => setReviewImageModal(img)}

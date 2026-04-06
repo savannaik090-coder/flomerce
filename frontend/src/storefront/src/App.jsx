@@ -30,6 +30,7 @@ const CategoryPage = React.lazy(() => import('./pages/CategoryPage.jsx'));
 const ProductDetailPage = React.lazy(() => import('./pages/ProductDetailPage.jsx'));
 const CartPage = React.lazy(() => import('./pages/CartPage.jsx'));
 const CheckoutPage = React.lazy(() => import('./pages/CheckoutPage.jsx'));
+const CheckoutPageModern = React.lazy(() => import('./components/templates/modern/CheckoutPageModern.jsx'));
 const ProfilePage = React.lazy(() => import('./pages/ProfilePage.jsx'));
 const LoginPage = React.lazy(() => import('./pages/LoginPage.jsx'));
 const SignupPage = React.lazy(() => import('./pages/SignupPage.jsx'));
@@ -49,6 +50,7 @@ const ReturnPage = React.lazy(() => import('./pages/ReturnPage.jsx'));
 const CancelPage = React.lazy(() => import('./pages/CancelPage.jsx'));
 const OrderHelpPage = React.lazy(() => import('./pages/OrderHelpPage.jsx'));
 const ReviewPage = React.lazy(() => import('./pages/ReviewPage.jsx'));
+const ReviewPageModern = React.lazy(() => import('./components/templates/modern/ReviewPageModern.jsx'));
 const FaqPage = React.lazy(() => import('./pages/FaqPage.jsx'));
 const BlogListPage = React.lazy(() => import('./pages/BlogListPage.jsx'));
 const BlogPostPage = React.lazy(() => import('./pages/BlogPostPage.jsx'));
@@ -134,6 +136,8 @@ export default function App() {
   const isModern = theme.id === 'modern';
   const ActiveNavbar = isModern ? NavbarModern : Navbar;
   const ActiveFooter = isModern ? FooterModern : Footer;
+  const ActiveCheckout = isModern ? CheckoutPageModern : CheckoutPage;
+  const ActiveReview = isModern ? ReviewPageModern : ReviewPage;
 
   return (
     <>
@@ -150,7 +154,7 @@ export default function App() {
             <Route path="/category/:slug" element={<CategoryPage />} />
             <Route path="/product/:id" element={<ProductDetailPage />} />
             <Route path="/cart" element={<CartPage />} />
-            <Route path="/checkout" element={<CheckoutPage />} />
+            <Route path="/checkout" element={<ActiveCheckout />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
@@ -170,7 +174,7 @@ export default function App() {
             <Route path="/cancel/:orderId" element={<CancelPage />} />
             <Route path="/order-help" element={<OrderHelpPage />} />
             <Route path="/order-help/:orderId" element={<OrderHelpPage />} />
-            <Route path="/review/:orderId" element={<ReviewPage />} />
+            <Route path="/review/:orderId" element={<ActiveReview />} />
             <Route path="/faq" element={<FaqPage />} />
             <Route path="/blog" element={<BlogListPage />} />
             <Route path="/blog/:slug" element={<BlogPostPage />} />

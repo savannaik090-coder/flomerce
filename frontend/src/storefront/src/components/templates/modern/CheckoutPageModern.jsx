@@ -1,16 +1,16 @@
 import React, { useState, useEffect, useContext, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { CartContext } from '../context/CartContext.jsx';
-import { AuthContext } from '../context/AuthContext.jsx';
-import { SiteContext } from '../context/SiteContext.jsx';
-import { resolveImageUrl } from '../utils/imageUrl.js';
-import { CurrencyContext } from '../context/CurrencyContext.jsx';
-import { COUNTRIES, getStatesForCountry, getCountryName } from '../utils/countryStates.js';
-import * as orderService from '../services/orderService.js';
-import * as authService from '../services/authService.js';
-import '../styles/checkout.css';
+import { CartContext } from '../../../context/CartContext.jsx';
+import { AuthContext } from '../../../context/AuthContext.jsx';
+import { SiteContext } from '../../../context/SiteContext.jsx';
+import { resolveImageUrl } from '../../../utils/imageUrl.js';
+import { CurrencyContext } from '../../../context/CurrencyContext.jsx';
+import { COUNTRIES, getStatesForCountry, getCountryName } from '../../../utils/countryStates.js';
+import * as orderService from '../../../services/orderService.js';
+import * as authService from '../../../services/authService.js';
+import '../../../styles/checkout.css';
 
-export default function CheckoutPage() {
+export default function CheckoutPageModern() {
   const { items, subtotal, updateQuantity, removeItem, clearAll, cartItemKey } = useContext(CartContext);
   const { user, isAuthenticated } = useContext(AuthContext);
   const { siteConfig } = useContext(SiteContext);
@@ -21,16 +21,8 @@ export default function CheckoutPage() {
   const [error, setError] = useState('');
 
   const [address, setAddress] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    houseNumber: '',
-    roadName: '',
-    city: '',
-    country: 'IN',
-    state: '',
-    pinCode: '',
+    firstName: '', lastName: '', email: '', phone: '',
+    houseNumber: '', roadName: '', city: '', country: 'IN', state: '', pinCode: '',
   });
   const [addressErrors, setAddressErrors] = useState({});
   const [pinValidating, setPinValidating] = useState(false);
@@ -119,11 +111,7 @@ export default function CheckoutPage() {
       const data = await response.json();
       if (data?.[0]?.Status === 'Success') {
         const po = data[0].PostOffice[0];
-        setAddress(prev => ({
-          ...prev,
-          city: po.District || prev.city,
-          state: po.State || prev.state,
-        }));
+        setAddress(prev => ({ ...prev, city: po.District || prev.city, state: po.State || prev.state }));
         setAddressErrors(prev => ({ ...prev, pinCode: undefined }));
       } else {
         setAddressErrors(prev => ({ ...prev, pinCode: 'Invalid PIN code' }));
@@ -167,9 +155,7 @@ export default function CheckoutPage() {
   }, []);
 
   useEffect(() => {
-    if (!codEnabled && paymentMethod === 'cod') {
-      setPaymentMethod('razorpay');
-    }
+    if (!codEnabled && paymentMethod === 'cod') setPaymentMethod('razorpay');
   }, [codEnabled]);
 
   const couponDiscount = appliedCoupon
@@ -216,25 +202,17 @@ export default function CheckoutPage() {
     setCouponApplying(false);
   }, [couponCode, availableCoupons, subtotal]);
 
-  const removeCoupon = useCallback(() => {
-    setAppliedCoupon(null);
-    setCouponCode('');
-    setCouponError('');
-  }, []);
+  const removeCoupon = useCallback(() => { setAppliedCoupon(null); setCouponCode(''); setCouponError(''); }, []);
 
   const validateCartStock = useCallback(async () => {
     if (!siteConfig?.id || items.length === 0) return true;
     try {
-      const { apiRequest } = await import('../services/api.js');
+      const { apiRequest } = await import('../../../services/api.js');
       await apiRequest(`/api/orders/validate-stock`, {
         method: 'POST',
         body: JSON.stringify({
           siteId: siteConfig.id,
-          items: items.map(item => ({
-            productId: item.productId || item.product_id || item.id,
-            name: item.name || item.product_name,
-            quantity: item.quantity || 1,
-          })),
+          items: items.map(item => ({ productId: item.productId || item.product_id || item.id, name: item.name || item.product_name, quantity: item.quantity || 1 })),
         }),
       });
       return true;
@@ -245,10 +223,7 @@ export default function CheckoutPage() {
   }, [siteConfig, items]);
 
   const goToStep = useCallback(async (s) => {
-    if (s === 2 && items.length === 0) {
-      setError('Your cart is empty');
-      return;
-    }
+    if (s === 2 && items.length === 0) { setError('Your cart is empty'); return; }
     if (s === 2) {
       setLoading(true);
       const stockValid = await validateCartStock();
@@ -260,21 +235,12 @@ export default function CheckoutPage() {
       if (isAuthenticated && saveAddress && !selectedAddressId) {
         try {
           await authService.createAddress({
-            label: 'Home',
-            firstName: address.firstName,
-            lastName: address.lastName,
-            phone: address.phone,
-            houseNumber: address.houseNumber,
-            roadName: address.roadName,
-            city: address.city,
-            country: address.country,
-            state: address.state,
-            pinCode: address.pinCode,
+            label: 'Home', firstName: address.firstName, lastName: address.lastName,
+            phone: address.phone, houseNumber: address.houseNumber, roadName: address.roadName,
+            city: address.city, country: address.country, state: address.state, pinCode: address.pinCode,
             isDefault: savedAddresses.length === 0,
           });
-        } catch (err) {
-          console.error('Failed to save address:', err);
-        }
+        } catch (err) { console.error('Failed to save address:', err); }
       }
     }
     setError('');
@@ -285,18 +251,9 @@ export default function CheckoutPage() {
   const placeOrder = useCallback(async () => {
     setLoading(true);
     setError('');
-
-    if (!siteConfig?.id) {
-      setError('Store configuration not loaded. Please refresh the page and try again.');
-      setLoading(false);
-      return;
-    }
-
+    if (!siteConfig?.id) { setError('Store configuration not loaded. Please refresh the page and try again.'); setLoading(false); return; }
     const stockValid = await validateCartStock();
-    if (!stockValid) {
-      setLoading(false);
-      return;
-    }
+    if (!stockValid) { setLoading(false); return; }
 
     const customerName = `${address.firstName} ${address.lastName}`.trim();
     const orderData = {
@@ -309,70 +266,35 @@ export default function CheckoutPage() {
         image: resolveImageUrl(item.thumbnail || item.image_url || item.product_image || ''),
         selectedOptions: item.selectedOptions || null,
       })),
-      total: finalTotal,
-      subtotal,
-      shippingCost,
-      couponCode: appliedCoupon?.code || null,
-      couponDiscount: couponDiscount || 0,
+      total: finalTotal, subtotal, shippingCost,
+      couponCode: appliedCoupon?.code || null, couponDiscount: couponDiscount || 0,
       shippingAddress: {
-        name: customerName,
-        email: address.email,
-        phone: address.phone,
+        name: customerName, email: address.email, phone: address.phone,
         address: `${address.houseNumber}, ${address.roadName}`,
-        city: address.city,
-        country: getCountryName(address.country),
-        countryCode: address.country,
-        state: address.state,
-        pinCode: address.pinCode,
+        city: address.city, country: getCountryName(address.country), countryCode: address.country,
+        state: address.state, pinCode: address.pinCode,
       },
-      customerName,
-      customerEmail: address.email,
-      customerPhone: address.phone,
-      paymentMethod,
-      currency: siteDefaultCurrency,
+      customerName, customerEmail: address.email, customerPhone: address.phone,
+      paymentMethod, currency: siteDefaultCurrency,
     };
 
     if (paymentMethod === 'razorpay') {
       const razorpayKeyId = siteConfig?.settings?.razorpayKeyId || siteConfig?.settings?.razorpay_key_id;
-      if (!razorpayKeyId) {
-        setError('Online payment is not configured for this store. Please use Cash on Delivery.');
-        setLoading(false);
-        return;
-      }
-      if (!window.Razorpay) {
-        setError('Payment gateway not loaded. Please refresh and try again.');
-        setLoading(false);
-        return;
-      }
-
+      if (!razorpayKeyId) { setError('Online payment is not configured for this store. Please use Cash on Delivery.'); setLoading(false); return; }
+      if (!window.Razorpay) { setError('Payment gateway not loaded. Please refresh and try again.'); setLoading(false); return; }
       let apiRequest;
       try {
-        ({ apiRequest } = await import('../services/api.js'));
+        ({ apiRequest } = await import('../../../services/api.js'));
         const paymentResult = await apiRequest('/api/payments/create-order', {
           method: 'POST',
-          body: JSON.stringify({
-            amount: finalTotal,
-            currency: siteDefaultCurrency,
-            receipt: `order_${Date.now()}`,
-            siteId: siteConfig?.id,
-            notes: {},
-          }),
+          body: JSON.stringify({ amount: finalTotal, currency: siteDefaultCurrency, receipt: `order_${Date.now()}`, siteId: siteConfig?.id, notes: {} }),
         });
-
         const paymentData = paymentResult.data || paymentResult;
         const razorpayOrderId = paymentData.orderId || paymentData.razorpay_order_id;
+        if (!razorpayOrderId) { setError('Failed to initialize payment. Please try again.'); setLoading(false); return; }
 
-        if (!razorpayOrderId) {
-          setError('Failed to initialize payment. Please try again.');
-          setLoading(false);
-          return;
-        }
-
-        const snapshotItems = [...items];
-        const snapshotAddress = { ...address };
-        const snapshotTotal = finalTotal;
-        const snapshotDiscount = couponDiscount;
-        const snapshotCoupon = appliedCoupon?.code || null;
+        const snapshotItems = [...items]; const snapshotAddress = { ...address };
+        const snapshotTotal = finalTotal; const snapshotDiscount = couponDiscount; const snapshotCoupon = appliedCoupon?.code || null;
 
         const options = {
           key: paymentData.keyId || razorpayKeyId,
@@ -390,13 +312,7 @@ export default function CheckoutPage() {
               const orderNumber = order.orderNumber || order.order_number;
               await apiRequest('/api/payments/verify', {
                 method: 'POST',
-                body: JSON.stringify({
-                  razorpay_order_id: response.razorpay_order_id,
-                  razorpay_payment_id: response.razorpay_payment_id,
-                  razorpay_signature: response.razorpay_signature,
-                  siteId: siteConfig?.id,
-                  orderId: orderId,
-                }),
+                body: JSON.stringify({ razorpay_order_id: response.razorpay_order_id, razorpay_payment_id: response.razorpay_payment_id, razorpay_signature: response.razorpay_signature, siteId: siteConfig?.id, orderId }),
               });
               const ref = orderNumber || orderId || 'ORD-' + Date.now();
               setOrderRef(ref);
@@ -409,16 +325,8 @@ export default function CheckoutPage() {
               setLoading(false);
             }
           },
-          modal: {
-            ondismiss: function () {
-              setLoading(false);
-            },
-          },
-          prefill: {
-            name: `${address.firstName} ${address.lastName}`,
-            email: address.email,
-            contact: address.phone,
-          },
+          modal: { ondismiss: function () { setLoading(false); } },
+          prefill: { name: `${address.firstName} ${address.lastName}`, email: address.email, contact: address.phone },
           theme: { color: siteConfig?.primaryColor || '#000000' },
         };
 
@@ -428,10 +336,7 @@ export default function CheckoutPage() {
           setLoading(false);
         });
         rzp.open();
-      } catch (err) {
-        setError(err.message || 'Failed to initialize payment. Please try again.');
-        setLoading(false);
-      }
+      } catch (err) { setError(err.message || 'Failed to initialize payment. Please try again.'); setLoading(false); }
       return;
     }
 
@@ -443,29 +348,42 @@ export default function CheckoutPage() {
       setPlacedOrderDetails({ items: [...items], address: { ...address }, paymentMethod, total: finalTotal, discount: couponDiscount, couponCode: appliedCoupon?.code || null, originalTotal: subtotal, shippingCost });
       setOrderPlaced(true);
       clearAll();
-    } catch (err) {
-      setError(err.message || 'Failed to place order. Please try again.');
-    }
+    } catch (err) { setError(err.message || 'Failed to place order. Please try again.'); }
     setLoading(false);
   }, [siteConfig, items, subtotal, address, paymentMethod, clearAll, validateCartStock]);
+
+  const inputStyle = (hasError) => ({
+    width: '100%', padding: 12, border: `1px solid ${hasError ? '#e74c3c' : '#ddd'}`,
+    borderRadius: 0, fontSize: 14, boxSizing: 'border-box', fontFamily: "'Inter', sans-serif",
+  });
+
+  const renderSelectedOptions = (item) => {
+    const parts = [];
+    if (item.selectedOptions?.color) parts.push(`Color: ${item.selectedOptions.color}`);
+    if (item.selectedOptions?.customOptions) {
+      for (const [label, value] of Object.entries(item.selectedOptions.customOptions)) parts.push(`${label}: ${value}`);
+    }
+    if (item.selectedOptions?.pricedOptions) {
+      for (const [label, val] of Object.entries(item.selectedOptions.pricedOptions)) parts.push(`${label}: ${val.name}`);
+    }
+    return parts.length > 0 ? <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>{parts.join(' \u2022 ')}</div> : null;
+  };
 
   if (orderPlaced) {
     const od = placedOrderDetails;
     return (
-      <div className="checkout-page" style={{ maxWidth: 640, margin: '40px auto 60px', padding: '0 16px' }}>
-        <div style={{ background: '#fff', borderRadius: 10, boxShadow: '0 4px 20px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
-          <div style={{ background: '#25ab00', padding: '32px 24px', textAlign: 'center' }}>
-            <div style={{ width: 64, height: 64, background: 'rgba(255,255,255,0.2)', borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14, fontSize: 34 }}>✓</div>
-            <h2 style={{ color: '#fff', margin: '0 0 6px', fontFamily: "'Playfair Display', serif", fontSize: 24 }}>Order Placed Successfully!</h2>
+      <div className="mn-checkout" style={{ maxWidth: 640, margin: '40px auto 60px', padding: '0 16px' }}>
+        <div style={{ background: '#fff', borderRadius: 0, border: '1px solid #e5e5e5', overflow: 'hidden' }}>
+          <div style={{ background: '#111', padding: '32px 24px', textAlign: 'center' }}>
+            <div style={{ width: 64, height: 64, background: 'rgba(255,255,255,0.2)', borderRadius: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14, fontSize: 34, color: '#fff' }}>&#10003;</div>
+            <h2 style={{ color: '#fff', margin: '0 0 6px', fontFamily: "'Inter', sans-serif", fontSize: 24, fontWeight: 700 }}>Order Placed Successfully!</h2>
             <p style={{ color: 'rgba(255,255,255,0.85)', margin: 0, fontSize: 14 }}>Thank you for your purchase. We'll get it ready for you.</p>
           </div>
-
           <div style={{ padding: '24px 24px 0' }}>
-            <div style={{ background: '#f5f5f5', borderRadius: 6, padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+            <div style={{ background: '#f5f5f5', borderRadius: 0, padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
               <span style={{ color: '#555', fontSize: 14 }}>Order Reference</span>
               <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: 15, color: '#1a1a1a' }}>{orderRef}</span>
             </div>
-
             {od && (
               <>
                 <h4 style={{ margin: '0 0 12px', fontSize: 15, color: '#333', borderBottom: '1px solid #f0f0f0', paddingBottom: 8 }}>Items Ordered</h4>
@@ -476,34 +394,17 @@ export default function CheckoutPage() {
                     const imgUrl = resolveImageUrl(item.thumbnail || item.product_image || item.image_url || '');
                     return (
                       <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid #f7f7f7' }}>
-                        {imgUrl && (
-                          <img src={imgUrl} alt={item.product_name || item.name} style={{ width: 50, height: 50, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />
-                        )}
+                        {imgUrl && <img src={imgUrl} alt={item.product_name || item.name} style={{ width: 50, height: 50, objectFit: 'cover', borderRadius: 0, flexShrink: 0 }} />}
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontWeight: 600, fontSize: 14, color: '#1a1a1a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.product_name || item.name}</div>
-                          {item.selectedOptions && (() => {
-                            const parts = [];
-                            if (item.selectedOptions.color) parts.push(`Color: ${item.selectedOptions.color}`);
-                            if (item.selectedOptions.customOptions) {
-                              for (const [label, value] of Object.entries(item.selectedOptions.customOptions)) {
-                                parts.push(`${label}: ${value}`);
-                              }
-                            }
-                            if (item.selectedOptions.pricedOptions) {
-                              for (const [label, val] of Object.entries(item.selectedOptions.pricedOptions)) {
-                                parts.push(`${label}: ${val.name}`);
-                              }
-                            }
-                            return parts.length > 0 ? <div style={{ fontSize: 11, color: '#888', marginTop: 1 }}>{parts.join(' \u2022 ')}</div> : null;
-                          })()}
-                          <div style={{ fontSize: 13, color: '#888', marginTop: 2 }}>Qty: {qty} × {formatAmount(price)}</div>
+                          {renderSelectedOptions(item)}
+                          <div style={{ fontSize: 13, color: '#888', marginTop: 2 }}>Qty: {qty} &times; {formatAmount(price)}</div>
                         </div>
-                        <div style={{ fontWeight: 700, color: '#7a4012', fontSize: 14, flexShrink: 0 }}>{formatAmount(price * qty)}</div>
+                        <div style={{ fontWeight: 700, color: '#111', fontSize: 14, flexShrink: 0 }}>{formatAmount(price * qty)}</div>
                       </div>
                     );
                   })}
                 </div>
-
                 {od.discount > 0 && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderTop: '1px solid #f0f0f0' }}>
                     <span style={{ color: '#16a34a', fontSize: 14 }}>Coupon ({od.couponCode})</span>
@@ -512,17 +413,14 @@ export default function CheckoutPage() {
                 )}
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderTop: '1px solid #f0f0f0' }}>
                   <span style={{ fontSize: 14 }}>Shipping</span>
-                  <span style={{ fontWeight: 500, fontSize: 14, color: od.shippingCost > 0 ? '#1a1a1a' : '#25ab00' }}>
-                    {od.shippingCost > 0 ? formatAmount(od.shippingCost) : 'Free'}
-                  </span>
+                  <span style={{ fontWeight: 500, fontSize: 14, color: od.shippingCost > 0 ? '#1a1a1a' : '#25ab00' }}>{od.shippingCost > 0 ? formatAmount(od.shippingCost) : 'Free'}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderTop: '2px solid #f0f0f0', marginBottom: 24 }}>
                   <span style={{ fontWeight: 700, fontSize: 16 }}>Total Paid</span>
-                  <span style={{ fontWeight: 700, fontSize: 18, color: '#7a4012' }}>{formatAmount(od.total)}</span>
+                  <span style={{ fontWeight: 700, fontSize: 18, color: '#111' }}>{formatAmount(od.total)}</span>
                 </div>
-
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
-                  <div style={{ background: '#f9f9f9', borderRadius: 8, padding: 14 }}>
+                  <div style={{ background: '#fafafa', borderRadius: 0, padding: 14 }}>
                     <div style={{ fontSize: 12, color: '#888', textTransform: 'uppercase', fontWeight: 600, marginBottom: 8, letterSpacing: 0.5 }}>Shipping To</div>
                     <div style={{ fontSize: 13, color: '#333', lineHeight: 1.7 }}>
                       <div style={{ fontWeight: 600 }}>{od.address.firstName} {od.address.lastName}</div>
@@ -533,31 +431,20 @@ export default function CheckoutPage() {
                       <div style={{ marginTop: 4, color: '#666' }}>{od.address.phone}</div>
                     </div>
                   </div>
-                  <div style={{ background: '#f9f9f9', borderRadius: 8, padding: 14 }}>
+                  <div style={{ background: '#fafafa', borderRadius: 0, padding: 14 }}>
                     <div style={{ fontSize: 12, color: '#888', textTransform: 'uppercase', fontWeight: 600, marginBottom: 8, letterSpacing: 0.5 }}>Payment</div>
                     <div style={{ fontSize: 13, color: '#333' }}>
-                      <div style={{ fontWeight: 600, marginBottom: 4 }}>
-                        {od.paymentMethod === 'cod' ? 'Cash on Delivery' : 'Online Payment (Razorpay)'}
-                      </div>
-                      <div style={{ fontSize: 12, color: '#888' }}>
-                        {od.paymentMethod === 'cod'
-                          ? 'You will pay when the order is delivered to you.'
-                          : 'Payment completed successfully online.'}
-                      </div>
-                      <div style={{ marginTop: 10, display: 'inline-block', background: od.paymentMethod === 'cod' ? '#fff3e0' : '#e8f5e9', color: od.paymentMethod === 'cod' ? '#e65100' : '#2e7d32', fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 20 }}>
-                        {od.paymentMethod === 'cod' ? 'Pending' : 'Paid'}
-                      </div>
+                      <div style={{ fontWeight: 600, marginBottom: 4 }}>{od.paymentMethod === 'cod' ? 'Cash on Delivery' : 'Online Payment (Razorpay)'}</div>
+                      <div style={{ fontSize: 12, color: '#888' }}>{od.paymentMethod === 'cod' ? 'You will pay when the order is delivered to you.' : 'Payment completed successfully online.'}</div>
+                      <div style={{ marginTop: 10, display: 'inline-block', background: od.paymentMethod === 'cod' ? '#fff3e0' : '#e8f5e9', color: od.paymentMethod === 'cod' ? '#e65100' : '#2e7d32', fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 0 }}>{od.paymentMethod === 'cod' ? 'Pending' : 'Paid'}</div>
                     </div>
                   </div>
                 </div>
               </>
             )}
           </div>
-
           <div style={{ padding: '0 24px 24px' }}>
-            <Link to="/" style={{ display: 'block', textAlign: 'center', padding: '13px 20px', background: '#7a4012', color: '#fff', borderRadius: 6, textDecoration: 'none', fontWeight: 600, fontSize: 15,  }}>
-              Continue Shopping
-            </Link>
+            <Link to="/" style={{ display: 'block', textAlign: 'center', padding: '13px 20px', background: '#111', color: '#fff', borderRadius: 0, textDecoration: 'none', fontWeight: 600, fontSize: 15 }}>Continue Shopping</Link>
           </div>
         </div>
       </div>
@@ -566,21 +453,19 @@ export default function CheckoutPage() {
 
   if (items.length === 0 && step === 1) {
     return (
-      <div className="checkout-page" style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="mn-checkout" style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ textAlign: 'center' }}>
-          <h2 style={{ fontFamily: "'Playfair Display', serif", marginBottom: 15 }}>Your cart is empty</h2>
+          <h2 style={{ fontFamily: "'Inter', sans-serif", marginBottom: 15, fontWeight: 700 }}>Your cart is empty</h2>
           <p style={{ color: '#777', marginBottom: 20 }}>Add some items to your cart before checkout.</p>
-          <Link to="/" style={{ background: '#7a4012', color: '#fff', padding: '12px 24px', borderRadius: 4, textDecoration: 'none', fontWeight: 600 }}>
-            Browse Products
-          </Link>
+          <Link to="/" style={{ background: '#111', color: '#fff', padding: '12px 24px', borderRadius: 0, textDecoration: 'none', fontWeight: 600 }}>Browse Products</Link>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="checkout-page" style={{ maxWidth: 900, margin: '40px auto 60px', padding: '0 20px' }}>
-      <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 28, marginBottom: 30, textAlign: 'center',  }}>Checkout</h1>
+    <div className="mn-checkout" style={{ maxWidth: 900, margin: '40px auto 60px', padding: '0 20px' }}>
+      <h1 style={{ fontFamily: "'Inter', sans-serif", fontSize: 28, marginBottom: 30, textAlign: 'center', letterSpacing: '-0.01em', fontWeight: 700 }}>Checkout</h1>
 
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 40, gap: 0 }}>
         {[
@@ -590,10 +475,10 @@ export default function CheckoutPage() {
         ].map((s) => (
           <div key={s.num} style={{ textAlign: 'center', flex: 1 }}>
             <div style={{
-              width: 50, height: 50, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              width: 50, height: 50, borderRadius: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
               margin: '0 auto 8px', fontSize: 20, border: '2px solid',
-              backgroundColor: step >= s.num ? (step > s.num ? ('#25ab00') : '#7a4012') : '#f8f9fa',
-              borderColor: step >= s.num ? (step > s.num ? ('#25ab00') : '#7a4012') : '#eee',
+              backgroundColor: step >= s.num ? (step > s.num ? '#111' : '#111') : '#f8f9fa',
+              borderColor: step >= s.num ? '#111' : '#eee',
               color: step >= s.num ? '#fff' : '#999',
               transition: 'all 0.3s ease',
             }}>
@@ -604,15 +489,15 @@ export default function CheckoutPage() {
         ))}
       </div>
 
-      <div style={{ height: 6, background: '#eee', borderRadius: 3, marginBottom: 30 }}>
-        <div style={{ height: '100%', background: '#7a4012', borderRadius: 3, width: `${((step - 1) / 2) * 100}%`, transition: 'width 0.5s ease' }} />
+      <div style={{ height: 2, background: '#eee', borderRadius: 0, marginBottom: 30 }}>
+        <div style={{ height: '100%', background: '#111', borderRadius: 0, width: `${((step - 1) / 2) * 100}%`, transition: 'width 0.5s ease' }} />
       </div>
 
-      {error && <div style={{ background: '#ffebee', color: '#d32f2f', padding: 12, borderRadius: 6, marginBottom: 20, textAlign: 'center', border: '1px solid #f5c6cb' }}>{error}</div>}
+      {error && <div style={{ background: '#ffebee', color: '#d32f2f', padding: 12, borderRadius: 0, marginBottom: 20, textAlign: 'center', border: '1px solid #f5c6cb' }}>{error}</div>}
 
       {step === 1 && (
-        <div style={{ background: '#fff', padding: 24, boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
-          <h3 style={{ fontFamily: "'Playfair Display', serif", marginBottom: 20,  }}>Order Summary</h3>
+        <div style={{ background: '#fff', padding: 24, border: '1px solid #e5e5e5' }}>
+          <h3 style={{ fontFamily: "'Inter', sans-serif", marginBottom: 20, fontWeight: 700, letterSpacing: '-0.01em' }}>Order Summary</h3>
           <div style={{ maxHeight: 400, overflowY: 'auto' }}>
             {items.map((item, index) => {
               const price = item.product_price || item.price || 0;
@@ -621,38 +506,24 @@ export default function CheckoutPage() {
               return (
                 <div key={itemKey || index} style={{ display: 'flex', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #f0f0f0', gap: 12 }}>
                   {(item.thumbnail || item.product_image || item.image_url) && resolveImageUrl(item.thumbnail || item.product_image || item.image_url) && (
-                    <div style={{ width: 60, height: 60, borderRadius: 6, overflow: 'hidden', flexShrink: 0 }}>
+                    <div style={{ width: 60, height: 60, borderRadius: 0, overflow: 'hidden', flexShrink: 0 }}>
                       <img src={resolveImageUrl(item.thumbnail || item.product_image || item.image_url)} alt={item.product_name || item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     </div>
                   )}
                   <div style={{ flex: 1 }}>
                     <h6 style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>{item.product_name || item.name}</h6>
-                    {item.selectedOptions && (() => {
-                      const parts = [];
-                      if (item.selectedOptions.color) parts.push(`Color: ${item.selectedOptions.color}`);
-                      if (item.selectedOptions.customOptions) {
-                        for (const [label, value] of Object.entries(item.selectedOptions.customOptions)) {
-                          parts.push(`${label}: ${value}`);
-                        }
-                      }
-                      if (item.selectedOptions.pricedOptions) {
-                        for (const [label, val] of Object.entries(item.selectedOptions.pricedOptions)) {
-                          parts.push(`${label}: ${val.name}`);
-                        }
-                      }
-                      return parts.length > 0 ? <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>{parts.join(' \u2022 ')}</div> : null;
-                    })()}
+                    {renderSelectedOptions(item)}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <span style={{ fontSize: 14 }}>{formatAmount(price)}</span>
-                        <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #dee2e6', borderRadius: 4, overflow: 'hidden', height: 30 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #dee2e6', borderRadius: 0, overflow: 'hidden', height: 30 }}>
                           <button type="button" onClick={() => updateQuantity(itemKey, qty - 1, item.selectedOptions)} style={{ width: 28, height: 28, border: 'none', background: '#f8f9fa', cursor: 'pointer', fontWeight: 'bold' }}>-</button>
                           <span style={{ padding: '0 8px', fontSize: 14, fontWeight: 500 }}>{qty}</span>
                           <button type="button" onClick={() => updateQuantity(itemKey, qty + 1, item.selectedOptions)} style={{ width: 28, height: 28, border: 'none', background: '#f8f9fa', cursor: 'pointer', fontWeight: 'bold' }}>+</button>
                         </div>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <span style={{ fontWeight: 600, color: '#9c7c38' }}>{formatAmount(price * qty)}</span>
+                        <span style={{ fontWeight: 600, color: '#111' }}>{formatAmount(price * qty)}</span>
                         <button type="button" onClick={() => removeItem(itemKey, item.selectedOptions)} style={{ background: 'none', border: 'none', color: '#999', cursor: 'pointer', fontSize: 18 }}>x</button>
                       </div>
                     </div>
@@ -668,64 +539,42 @@ export default function CheckoutPage() {
             </div>
             {couponDiscount > 0 && (
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <span style={{ fontSize: 14, color: '#16a34a', fontWeight: 500 }}>
-                  Coupon ({appliedCoupon.code})
-                </span>
+                <span style={{ fontSize: 14, color: '#16a34a', fontWeight: 500 }}>Coupon ({appliedCoupon.code})</span>
                 <span style={{ fontSize: 14, color: '#16a34a', fontWeight: 700 }}>- {formatAmount(couponDiscount)}</span>
               </div>
             )}
             <div style={{ marginBottom: 8 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: 14, fontWeight: 500 }}>Shipping</span>
-                <span style={{ fontSize: 14, fontWeight: 600, color: shippingCost > 0 ? '#1a1a1a' : '#25ab00' }}>
-                  {shippingCost > 0 ? formatAmount(shippingCost) : 'Free'}
-                </span>
+                <span style={{ fontSize: 14, fontWeight: 600, color: shippingCost > 0 ? '#1a1a1a' : '#25ab00' }}>{shippingCost > 0 ? formatAmount(shippingCost) : 'Free'}</span>
               </div>
-              {showShippingNote && (
-                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 3, textAlign: 'right' }}>May vary based on your location</div>
-              )}
+              {showShippingNote && <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 3, textAlign: 'right' }}>May vary based on your location</div>}
               {deliveryConfig.enabled && deliveryConfig.freeAboveEnabled && deliveryConfig.freeAbove > 0 && shippingCost > 0 && (
                 <div style={{ fontSize: 11, color: '#16a34a', marginTop: 3, textAlign: 'right' }}>Free shipping on orders above {formatAmount(deliveryConfig.freeAbove)}</div>
               )}
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 8, borderTop: '1px solid #f0f0f0' }}>
               <span style={{ fontSize: 16, fontWeight: 700 }}>Total</span>
-              <span style={{ fontSize: 18, fontWeight: 700, color: '#7a4012' }}>{formatAmount(finalTotal)}</span>
+              <span style={{ fontSize: 18, fontWeight: 700, color: '#111' }}>{formatAmount(finalTotal)}</span>
             </div>
           </div>
 
           {availableCoupons.some(c => c.active) && (
-            <div style={{ marginTop: 16, padding: '14px 16px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+            <div style={{ marginTop: 16, padding: '14px 16px', background: '#f8fafc', borderRadius: 0, border: '1px solid #e2e8f0' }}>
               {!appliedCoupon ? (
                 <>
                   <div style={{ fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 8 }}>Have a coupon code?</div>
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <input
-                      type="text"
-                      value={couponCode}
-                      onChange={e => { setCouponCode(e.target.value.toUpperCase()); setCouponError(''); }}
-                      onKeyDown={e => e.key === 'Enter' && applyCoupon()}
-                      placeholder="Enter code"
-                      style={{ flex: 1, padding: '9px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, fontFamily: 'monospace', letterSpacing: 1, textTransform: 'uppercase' }}
-                    />
-                    <button
-                      type="button"
-                      onClick={applyCoupon}
-                      disabled={couponApplying}
-                      style={{ padding: '9px 16px', background: '#1e293b', color: '#fff', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}
-                    >
-                      Apply
-                    </button>
+                    <input type="text" value={couponCode} onChange={e => { setCouponCode(e.target.value.toUpperCase()); setCouponError(''); }} onKeyDown={e => e.key === 'Enter' && applyCoupon()} placeholder="Enter code" style={{ flex: 1, padding: '9px 12px', border: '1px solid #e2e8f0', borderRadius: 0, fontSize: 14, fontFamily: 'monospace', letterSpacing: 1, textTransform: 'uppercase' }} />
+                    <button type="button" onClick={applyCoupon} disabled={couponApplying} style={{ padding: '9px 16px', background: '#111', color: '#fff', border: 'none', borderRadius: 0, fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>Apply</button>
                   </div>
                   {couponError && <div style={{ color: '#ef4444', fontSize: 12, marginTop: 6 }}>{couponError}</div>}
                 </>
               ) : (
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div>
-                    <span style={{ fontSize: 13, color: '#16a34a', fontWeight: 700 }}>✓ Coupon applied: {appliedCoupon.code}</span>
-                    <span style={{ fontSize: 13, color: '#64748b', marginLeft: 8 }}>
-                      ({appliedCoupon.type === 'percent' ? `${appliedCoupon.value}% off` : `${formatAmount(appliedCoupon.value)} off`})
-                    </span>
+                    <span style={{ fontSize: 13, color: '#16a34a', fontWeight: 700 }}>&#10003; Coupon applied: {appliedCoupon.code}</span>
+                    <span style={{ fontSize: 13, color: '#64748b', marginLeft: 8 }}>({appliedCoupon.type === 'percent' ? `${appliedCoupon.value}% off` : `${formatAmount(appliedCoupon.value)} off`})</span>
                   </div>
                   <button type="button" onClick={removeCoupon} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 13, textDecoration: 'underline' }}>Remove</button>
                 </div>
@@ -734,30 +583,30 @@ export default function CheckoutPage() {
           )}
 
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 20, gap: 12 }}>
-            <Link to="/" style={{ padding: '10px 20px', border: `1px solid ${'#9c7c38'}`, color: '#9c7c38', borderRadius: 0, textDecoration: 'none', fontWeight: 500 }}>Continue Shopping</Link>
-            <button onClick={() => goToStep(2)} disabled={loading} style={{ padding: '10px 24px', background: '#7a4012', color: '#fff', border: 'none', cursor: loading ? 'not-allowed' : 'pointer', fontWeight: 600, opacity: loading ? 0.7 : 1, display: 'inline-flex', alignItems: 'center', gap: 8 }}>{loading ? (<><span style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', display: 'inline-block', animation: 'spin 0.8s linear infinite' }} />Checking Availability...</>) : 'Continue to Address'}</button>
+            <Link to="/" style={{ padding: '10px 20px', border: '1px solid #111', color: '#111', borderRadius: 0, textDecoration: 'none', fontWeight: 500 }}>Continue Shopping</Link>
+            <button onClick={() => goToStep(2)} disabled={loading} style={{ padding: '10px 24px', background: '#111', color: '#fff', border: 'none', cursor: loading ? 'not-allowed' : 'pointer', fontWeight: 600, opacity: loading ? 0.7 : 1, display: 'inline-flex', alignItems: 'center', gap: 8 }}>{loading ? (<><span style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', display: 'inline-block', animation: 'spin 0.8s linear infinite' }} />Checking Availability...</>) : 'Continue to Address'}</button>
           </div>
         </div>
       )}
 
       {step === 2 && (
-        <div style={{ background: '#fff', padding: 24, boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
-          <h3 style={{ fontFamily: "'Playfair Display', serif", marginBottom: 20,  }}>Shipping Address</h3>
+        <div style={{ background: '#fff', padding: 24, border: '1px solid #e5e5e5' }}>
+          <h3 style={{ fontFamily: "'Inter', sans-serif", marginBottom: 20, fontWeight: 700, letterSpacing: '-0.01em' }}>Shipping Address</h3>
 
           {isAuthenticated && savedAddresses.length > 0 && (
             <div style={{ marginBottom: 24 }}>
               <h5 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>Saved Addresses</h5>
               {savedAddresses.map((sa) => (
                 <div key={sa.id} onClick={() => selectSavedAddress(sa)} style={{
-                  border: `2px solid ${selectedAddressId === sa.id ? '#7a4012' : '#e0e0e0'}`,
-                  borderRadius: 8, padding: 15, marginBottom: 12, cursor: 'pointer',
-                  backgroundColor: selectedAddressId === sa.id ? '#f8f6f0' : '#fff',
+                  border: `2px solid ${selectedAddressId === sa.id ? '#111' : '#e0e0e0'}`,
+                  borderRadius: 0, padding: 15, marginBottom: 12, cursor: 'pointer',
+                  backgroundColor: selectedAddressId === sa.id ? '#f5f5f5' : '#fff',
                   transition: 'all 0.3s ease',
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                    <span style={{ fontWeight: 600, color: '#7a4012' }}>{sa.first_name} {sa.last_name}</span>
-                    {sa.label && <span style={{ fontSize: 12, color: '#888', background: '#f0f0f0', padding: '1px 8px', borderRadius: 10 }}>{sa.label}</span>}
-                    {sa.is_default === 1 && <span style={{ fontSize: 11, color: '#fff', background: '#7a4012', padding: '1px 8px', borderRadius: 10 }}>Default</span>}
+                    <span style={{ fontWeight: 600, color: '#111' }}>{sa.first_name} {sa.last_name}</span>
+                    {sa.label && <span style={{ fontSize: 12, color: '#888', background: '#f0f0f0', padding: '1px 8px', borderRadius: 0 }}>{sa.label}</span>}
+                    {sa.is_default === 1 && <span style={{ fontSize: 11, color: '#fff', background: '#111', padding: '1px 8px', borderRadius: 0 }}>Default</span>}
                   </div>
                   <div style={{ color: '#555', fontSize: 14, lineHeight: 1.4 }}>
                     {sa.house_number}{sa.road_name ? `, ${sa.road_name}` : ''}, {sa.city}{sa.state ? `, ${sa.state}` : ''} - {sa.pin_code}{sa.country && sa.country !== 'IN' ? `, ${getCountryName(sa.country)}` : ''}
@@ -765,7 +614,7 @@ export default function CheckoutPage() {
                 </div>
               ))}
               <div style={{ borderTop: '1px solid #e0e0e0', paddingTop: 16, marginTop: 8 }}>
-                <button type="button" onClick={() => { setSelectedAddressId(null); setAddress(prev => ({ ...prev, houseNumber: '', roadName: '', city: '', country: 'IN', state: '', pinCode: '', phone: '' })); }} style={{ background: 'none', border: 'none', color: '#7a4012', cursor: 'pointer', fontWeight: 500, fontSize: 14 }}>+ Use a New Address</button>
+                <button type="button" onClick={() => { setSelectedAddressId(null); setAddress(prev => ({ ...prev, houseNumber: '', roadName: '', city: '', country: 'IN', state: '', pinCode: '', phone: '' })); }} style={{ background: 'none', border: 'none', color: '#111', cursor: 'pointer', fontWeight: 500, fontSize: 14 }}>+ Use a New Address</button>
               </div>
             </div>
           )}
@@ -774,38 +623,38 @@ export default function CheckoutPage() {
             <div style={{ display: 'flex', gap: 15, marginBottom: 0 }}>
               <div style={{ flex: 1, marginBottom: 20 }}>
                 <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333', fontSize: 14 }}>First Name *</label>
-                <input type="text" value={address.firstName} onChange={e => handleAddressChange('firstName', e.target.value)} style={{ width: '100%', padding: 12, border: `1px solid ${addressErrors.firstName ? '#e74c3c' : '#ddd'}`, borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }} />
+                <input type="text" value={address.firstName} onChange={e => handleAddressChange('firstName', e.target.value)} style={inputStyle(addressErrors.firstName)} />
                 {addressErrors.firstName && <div style={{ color: '#e74c3c', fontSize: 12, marginTop: 4 }}>{addressErrors.firstName}</div>}
               </div>
               <div style={{ flex: 1, marginBottom: 20 }}>
                 <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333', fontSize: 14 }}>Last Name *</label>
-                <input type="text" value={address.lastName} onChange={e => handleAddressChange('lastName', e.target.value)} style={{ width: '100%', padding: 12, border: `1px solid ${addressErrors.lastName ? '#e74c3c' : '#ddd'}`, borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }} />
+                <input type="text" value={address.lastName} onChange={e => handleAddressChange('lastName', e.target.value)} style={inputStyle(addressErrors.lastName)} />
                 {addressErrors.lastName && <div style={{ color: '#e74c3c', fontSize: 12, marginTop: 4 }}>{addressErrors.lastName}</div>}
               </div>
             </div>
             <div style={{ marginBottom: 20 }}>
               <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333', fontSize: 14 }}>Email *</label>
-              <input type="email" value={address.email} onChange={e => handleAddressChange('email', e.target.value)} style={{ width: '100%', padding: 12, border: `1px solid ${addressErrors.email ? '#e74c3c' : '#ddd'}`, borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }} />
+              <input type="email" value={address.email} onChange={e => handleAddressChange('email', e.target.value)} style={inputStyle(addressErrors.email)} />
               {addressErrors.email && <div style={{ color: '#e74c3c', fontSize: 12, marginTop: 4 }}>{addressErrors.email}</div>}
             </div>
             <div style={{ marginBottom: 20 }}>
               <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333', fontSize: 14 }}>Phone *</label>
-              <input type="tel" value={address.phone} onChange={e => handleAddressChange('phone', e.target.value)} style={{ width: '100%', padding: 12, border: `1px solid ${addressErrors.phone ? '#e74c3c' : '#ddd'}`, borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }} />
+              <input type="tel" value={address.phone} onChange={e => handleAddressChange('phone', e.target.value)} style={inputStyle(addressErrors.phone)} />
               {addressErrors.phone && <div style={{ color: '#e74c3c', fontSize: 12, marginTop: 4 }}>{addressErrors.phone}</div>}
             </div>
             <div style={{ marginBottom: 20 }}>
               <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333', fontSize: 14 }}>House/Building Number *</label>
-              <input type="text" value={address.houseNumber} onChange={e => handleAddressChange('houseNumber', e.target.value)} style={{ width: '100%', padding: 12, border: `1px solid ${addressErrors.houseNumber ? '#e74c3c' : '#ddd'}`, borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }} />
+              <input type="text" value={address.houseNumber} onChange={e => handleAddressChange('houseNumber', e.target.value)} style={inputStyle(addressErrors.houseNumber)} />
               {addressErrors.houseNumber && <div style={{ color: '#e74c3c', fontSize: 12, marginTop: 4 }}>{addressErrors.houseNumber}</div>}
             </div>
             <div style={{ marginBottom: 20 }}>
               <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333', fontSize: 14 }}>Road Name / Area / Colony *</label>
-              <input type="text" value={address.roadName} onChange={e => handleAddressChange('roadName', e.target.value)} style={{ width: '100%', padding: 12, border: `1px solid ${addressErrors.roadName ? '#e74c3c' : '#ddd'}`, borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }} />
+              <input type="text" value={address.roadName} onChange={e => handleAddressChange('roadName', e.target.value)} style={inputStyle(addressErrors.roadName)} />
               {addressErrors.roadName && <div style={{ color: '#e74c3c', fontSize: 12, marginTop: 4 }}>{addressErrors.roadName}</div>}
             </div>
             <div style={{ marginBottom: 20 }}>
               <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333', fontSize: 14 }}>Country *</label>
-              <select value={address.country} onChange={e => handleAddressChange('country', e.target.value)} style={{ width: '100%', padding: 12, border: `1px solid ${addressErrors.country ? '#e74c3c' : '#ddd'}`, borderRadius: 4, fontSize: 14, boxSizing: 'border-box', background: '#fff' }}>
+              <select value={address.country} onChange={e => handleAddressChange('country', e.target.value)} style={{ ...inputStyle(addressErrors.country), background: '#fff' }}>
                 <option value="">Select Country</option>
                 {COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
               </select>
@@ -814,20 +663,20 @@ export default function CheckoutPage() {
             <div style={{ display: 'flex', gap: 15, marginBottom: 0 }}>
               <div style={{ flex: 1, marginBottom: 20 }}>
                 <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333', fontSize: 14 }}>{address.country === 'IN' ? 'PIN Code' : 'Postal / ZIP Code'} *</label>
-                <input type="text" maxLength={address.country === 'IN' ? 6 : 15} value={address.pinCode} onChange={e => handleAddressChange('pinCode', address.country === 'IN' ? e.target.value.replace(/\D/g, '') : e.target.value)} style={{ width: '100%', padding: 12, border: `1px solid ${addressErrors.pinCode ? '#e74c3c' : '#ddd'}`, borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }} />
-                {pinValidating && <div style={{ color: '#7a4012', fontSize: 12, marginTop: 4 }}>Validating PIN code...</div>}
+                <input type="text" maxLength={address.country === 'IN' ? 6 : 15} value={address.pinCode} onChange={e => handleAddressChange('pinCode', address.country === 'IN' ? e.target.value.replace(/\D/g, '') : e.target.value)} style={inputStyle(addressErrors.pinCode)} />
+                {pinValidating && <div style={{ color: '#111', fontSize: 12, marginTop: 4 }}>Validating PIN code...</div>}
                 {addressErrors.pinCode && <div style={{ color: '#e74c3c', fontSize: 12, marginTop: 4 }}>{addressErrors.pinCode}</div>}
               </div>
               <div style={{ flex: 1, marginBottom: 20 }}>
                 <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333', fontSize: 14 }}>City *</label>
-                <input type="text" value={address.city} onChange={e => handleAddressChange('city', e.target.value)} style={{ width: '100%', padding: 12, border: `1px solid ${addressErrors.city ? '#e74c3c' : '#ddd'}`, borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }} />
+                <input type="text" value={address.city} onChange={e => handleAddressChange('city', e.target.value)} style={inputStyle(addressErrors.city)} />
                 {addressErrors.city && <div style={{ color: '#e74c3c', fontSize: 12, marginTop: 4 }}>{addressErrors.city}</div>}
               </div>
             </div>
             {statesForCountry.length > 0 && (
               <div style={{ marginBottom: 20 }}>
                 <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333', fontSize: 14 }}>State / Region *</label>
-                <select value={address.state} onChange={e => handleAddressChange('state', e.target.value)} style={{ width: '100%', padding: 12, border: `1px solid ${addressErrors.state ? '#e74c3c' : '#ddd'}`, borderRadius: 4, fontSize: 14, boxSizing: 'border-box', background: '#fff' }}>
+                <select value={address.state} onChange={e => handleAddressChange('state', e.target.value)} style={{ ...inputStyle(addressErrors.state), background: '#fff' }}>
                   <option value="">Select State / Region</option>
                   {statesForCountry.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
@@ -837,24 +686,24 @@ export default function CheckoutPage() {
           </div>
 
           {isAuthenticated && !selectedAddressId && (
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 20, padding: '12px 16px', background: '#f8f6f0', borderRadius: 6, border: `1px solid ${'#e8e0d0'}` }}>
-              <input type="checkbox" id="saveAddr" checked={saveAddress} onChange={e => setSaveAddress(e.target.checked)} style={{ width: 'auto', marginRight: 10, accentColor: '#7a4012' }} />
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 20, padding: '12px 16px', background: '#f5f5f5', borderRadius: 0, border: '1px solid #e5e5e5' }}>
+              <input type="checkbox" id="saveAddr" checked={saveAddress} onChange={e => setSaveAddress(e.target.checked)} style={{ width: 'auto', marginRight: 10, accentColor: '#111' }} />
               <label htmlFor="saveAddr" style={{ color: '#333', fontSize: 14, cursor: 'pointer' }}>Save this address to my account for faster checkout</label>
             </div>
           )}
 
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 24, gap: 12 }}>
-            <button onClick={() => goToStep(1)} style={{ padding: '10px 20px', border: `1px solid #7a4012`, background: 'transparent', color: '#7a4012', cursor: 'pointer', fontWeight: 500 }}>Back to Summary</button>
-            <button onClick={() => goToStep(3)} style={{ padding: '10px 24px', background: '#7a4012', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600 }}>Continue to Payment</button>
+            <button onClick={() => goToStep(1)} style={{ padding: '10px 20px', border: '1px solid #111', background: 'transparent', color: '#111', cursor: 'pointer', fontWeight: 500 }}>Back to Summary</button>
+            <button onClick={() => goToStep(3)} style={{ padding: '10px 24px', background: '#111', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600 }}>Continue to Payment</button>
           </div>
         </div>
       )}
 
       {step === 3 && (
-        <div style={{ background: '#fff', padding: 24, boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
-          <h3 style={{ fontFamily: "'Playfair Display', serif", marginBottom: 20,  }}>Payment</h3>
+        <div style={{ background: '#fff', padding: 24, border: '1px solid #e5e5e5' }}>
+          <h3 style={{ fontFamily: "'Inter', sans-serif", marginBottom: 20, fontWeight: 700, letterSpacing: '-0.01em' }}>Payment</h3>
 
-          <div style={{ background: '#f8f6f0', padding: 16, borderLeft: `3px solid #7a4012`, marginBottom: 24, fontSize: 14, lineHeight: 1.6 }}>
+          <div style={{ background: '#f5f5f5', padding: 16, borderLeft: '3px solid #111', marginBottom: 24, fontSize: 14, lineHeight: 1.6 }}>
             <strong>Shipping To:</strong><br />
             {address.firstName} {address.lastName}<br />
             {address.houseNumber}, {address.roadName}<br />
@@ -878,9 +727,7 @@ export default function CheckoutPage() {
             <div style={{ padding: '8px 0', borderBottom: '1px solid #f0f0f0' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span>Shipping</span>
-                <span style={{ color: shippingCost > 0 ? '#1a1a1a' : '#25ab00', fontWeight: 500 }}>
-                  {shippingCost > 0 ? formatAmount(shippingCost) : 'Free'}
-                </span>
+                <span style={{ color: shippingCost > 0 ? '#1a1a1a' : '#25ab00', fontWeight: 500 }}>{shippingCost > 0 ? formatAmount(shippingCost) : 'Free'}</span>
               </div>
               {deliveryConfig.enabled && deliveryConfig.freeAboveEnabled && deliveryConfig.freeAbove > 0 && shippingCost > 0 && (
                 <div style={{ fontSize: 11, color: '#16a34a', marginTop: 2, textAlign: 'right' }}>Free shipping on orders above {formatAmount(deliveryConfig.freeAbove)}</div>
@@ -888,23 +735,23 @@ export default function CheckoutPage() {
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', fontSize: 18, fontWeight: 700 }}>
               <span>Total</span>
-              <span style={{ color: '#7a4012' }}>{formatAmount(finalTotal)}</span>
+              <span style={{ color: '#111' }}>{formatAmount(finalTotal)}</span>
             </div>
           </div>
 
           <div style={{ marginBottom: 24 }}>
             <h5 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>Payment Method</h5>
             {codEnabled && (
-              <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 16, border: `2px solid ${paymentMethod === 'cod' ? '#7a4012' : '#e0e0e0'}`, borderRadius: 8, marginBottom: 12, cursor: 'pointer', background: paymentMethod === 'cod' ? '#f8f6f0' : '#fff' }}>
-                <input type="radio" name="payment" value="cod" checked={paymentMethod === 'cod'} onChange={() => setPaymentMethod('cod')} style={{ accentColor: '#7a4012' }} />
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 16, border: `2px solid ${paymentMethod === 'cod' ? '#111' : '#e0e0e0'}`, borderRadius: 0, marginBottom: 12, cursor: 'pointer', background: paymentMethod === 'cod' ? '#f5f5f5' : '#fff' }}>
+                <input type="radio" name="payment" value="cod" checked={paymentMethod === 'cod'} onChange={() => setPaymentMethod('cod')} style={{ accentColor: '#111' }} />
                 <div>
                   <div style={{ fontWeight: 600 }}>Cash on Delivery (COD)</div>
                   <div style={{ fontSize: 13, color: '#666' }}>Pay when you receive your order</div>
                 </div>
               </label>
             )}
-            <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 16, border: `2px solid ${paymentMethod === 'razorpay' ? '#7a4012' : '#e0e0e0'}`, borderRadius: 8, cursor: 'pointer', background: paymentMethod === 'razorpay' ? '#f8f6f0' : '#fff' }}>
-              <input type="radio" name="payment" value="razorpay" checked={paymentMethod === 'razorpay'} onChange={() => setPaymentMethod('razorpay')} style={{ accentColor: '#7a4012' }} />
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 16, border: `2px solid ${paymentMethod === 'razorpay' ? '#111' : '#e0e0e0'}`, borderRadius: 0, cursor: 'pointer', background: paymentMethod === 'razorpay' ? '#f5f5f5' : '#fff' }}>
+              <input type="radio" name="payment" value="razorpay" checked={paymentMethod === 'razorpay'} onChange={() => setPaymentMethod('razorpay')} style={{ accentColor: '#111' }} />
               <div>
                 <div style={{ fontWeight: 600 }}>Pay Online (Razorpay)</div>
                 <div style={{ fontSize: 13, color: '#666' }}>Credit/Debit Card, UPI, Net Banking</div>
@@ -913,8 +760,8 @@ export default function CheckoutPage() {
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 24, gap: 12 }}>
-            <button onClick={() => goToStep(2)} style={{ padding: '10px 20px', border: `1px solid #7a4012`, background: 'transparent', color: '#7a4012', cursor: 'pointer', fontWeight: 500 }}>Back to Address</button>
-            <button onClick={placeOrder} disabled={loading} style={{ padding: '10px 24px', background: '#7a4012', color: '#fff', border: 'none', cursor: loading ? 'not-allowed' : 'pointer', fontWeight: 600, opacity: loading ? 0.7 : 1 }}>
+            <button onClick={() => goToStep(2)} style={{ padding: '10px 20px', border: '1px solid #111', background: 'transparent', color: '#111', cursor: 'pointer', fontWeight: 500 }}>Back to Address</button>
+            <button onClick={placeOrder} disabled={loading} style={{ padding: '10px 24px', background: '#111', color: '#fff', border: 'none', cursor: loading ? 'not-allowed' : 'pointer', fontWeight: 600, opacity: loading ? 0.7 : 1 }}>
               {loading ? 'Processing...' : 'Place Order'}
             </button>
           </div>

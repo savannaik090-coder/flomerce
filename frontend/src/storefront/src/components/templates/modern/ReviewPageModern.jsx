@@ -1,19 +1,18 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
-import { SiteContext } from '../context/SiteContext.jsx';
-import { apiRequest } from '../services/api.js';
+import { SiteContext } from '../../../context/SiteContext.jsx';
+import { apiRequest } from '../../../services/api.js';
 
 const STAR_FULL = '\u2605';
-const STAR_EMPTY = '\u2606';
 
 function StarInput({ value, onChange }) {
   const [hover, setHover] = useState(0);
   return (
-    <div className="star-input" onMouseLeave={() => setHover(0)}>
+    <div className="mn-star-input" onMouseLeave={() => setHover(0)}>
       {[1, 2, 3, 4, 5].map(i => (
         <span
           key={i}
-          className={`star-input-star${i <= (hover || value) ? ' active' : ''}`}
+          className={`mn-star-input-star${i <= (hover || value) ? ' active' : ''}`}
           onMouseEnter={() => setHover(i)}
           onClick={() => onChange(i)}
         >
@@ -24,7 +23,7 @@ function StarInput({ value, onChange }) {
   );
 }
 
-export default function ReviewPage() {
+export default function ReviewPageModern() {
   const { orderId } = useParams();
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
@@ -102,11 +101,11 @@ export default function ReviewPage() {
 
   if (loading) {
     return (
-      <div className="review-page">
-        <div className="review-page-inner">
+      <div className="mn-review-page">
+        <div className="mn-review-page-inner">
           <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-            <div className="spinner" />
-            <p style={{ marginTop: 15, color: '#666' }}>Loading...</p>
+            <div className="spinner" style={{ borderTopColor: '#111' }} />
+            <p style={{ marginTop: 15, color: '#666', fontFamily: "'Inter', sans-serif" }}>Loading...</p>
           </div>
         </div>
       </div>
@@ -115,15 +114,15 @@ export default function ReviewPage() {
 
   if (error) {
     return (
-      <div className="review-page">
-        <div className="review-page-inner">
+      <div className="mn-review-page">
+        <div className="mn-review-page-inner">
           <div style={{ textAlign: 'center', padding: '60px 20px' }}>
             <div style={{ fontSize: 48, marginBottom: 16 }}>&#128533;</div>
-            <h2 style={{ color: '#0f172a', marginBottom: 8 }}>Unable to Load Review</h2>
-            <p style={{ color: '#64748b' }}>{error}</p>
+            <h2 style={{ color: '#111', marginBottom: 8, fontFamily: "'Inter', sans-serif", fontWeight: 700 }}>Unable to Load Review</h2>
+            <p style={{ color: '#64748b', fontFamily: "'Inter', sans-serif" }}>{error}</p>
             <button
               onClick={() => navigate('/')}
-              style={{ marginTop: 20, padding: '10px 24px', background: '#0f172a', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}
+              style={{ marginTop: 20, padding: '10px 24px', background: '#111', color: '#fff', border: 'none', borderRadius: 0, cursor: 'pointer', fontWeight: 600, fontFamily: "'Inter', sans-serif" }}
             >
               Go to Store
             </button>
@@ -140,14 +139,14 @@ export default function ReviewPage() {
   const allReviewed = unreviewedItems.length === 0 && items.length > 0;
 
   return (
-    <div className="review-page">
-      <div className="review-page-inner">
+    <div className="mn-review-page">
+      <div className="mn-review-page-inner">
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <div style={{ fontSize: 40, marginBottom: 8 }}>&#11088;</div>
-          <h1 style={{ fontSize: 24, fontWeight: 700, color: '#0f172a', margin: '0 0 8px' }}>
+          <h1 style={{ fontSize: 24, fontWeight: 700, color: '#111', margin: '0 0 8px', fontFamily: "'Inter', sans-serif", letterSpacing: '-0.01em' }}>
             {allReviewed ? 'Thank You!' : 'How was your order?'}
           </h1>
-          <p style={{ color: '#64748b', fontSize: 14, margin: 0 }}>
+          <p style={{ color: '#64748b', fontSize: 14, margin: 0, fontFamily: "'Inter', sans-serif" }}>
             {allReviewed
               ? 'You have reviewed all items from this order.'
               : 'Select a product below to leave a review.'}
@@ -155,40 +154,40 @@ export default function ReviewPage() {
         </div>
 
         {submitMessage && (
-          <div className={`review-message review-message-${submitMessage.type}`}>
+          <div className={`mn-review-message mn-review-message-${submitMessage.type}`}>
             {submitMessage.text}
           </div>
         )}
 
-        <div className="review-page-items">
+        <div className="mn-review-page-items">
           {items.map((item, idx) => {
             const pid = item.productId || item.product_id || item.id;
             const reviewed = reviewedItems[pid];
             const isActive = activeItem && (activeItem.productId || activeItem.product_id || activeItem.id) === pid;
             return (
-              <div key={idx} className={`review-page-item${isActive ? ' active' : ''}${reviewed ? ' reviewed' : ''}`}>
-                <div className="review-page-item-row" onClick={() => !reviewed && setActiveItem(isActive ? null : item)}>
+              <div key={idx} className={`mn-review-page-item${isActive ? ' active' : ''}${reviewed ? ' reviewed' : ''}`}>
+                <div className="mn-review-page-item-row" onClick={() => !reviewed && setActiveItem(isActive ? null : item)}>
                   {(item.image || item.thumbnail_url) && (
-                    <img src={item.image || item.thumbnail_url} alt={item.name} className="review-page-item-img" />
+                    <img src={item.image || item.thumbnail_url} alt={item.name} className="mn-review-page-item-img" />
                   )}
-                  <div className="review-page-item-info">
-                    <span className="review-page-item-name">{item.name}</span>
-                    {reviewed && <span className="review-page-item-badge">&#10003; Reviewed</span>}
+                  <div className="mn-review-page-item-info">
+                    <span className="mn-review-page-item-name">{item.name}</span>
+                    {reviewed && <span className="mn-review-page-item-badge">&#10003; Reviewed</span>}
                   </div>
                   {!reviewed && (
-                    <button type="button" className="write-review-btn" style={{ padding: '8px 16px', fontSize: 13 }}>
+                    <button type="button" className="mn-write-review-btn" style={{ padding: '8px 16px', fontSize: 13 }}>
                       {isActive ? 'Close' : 'Review'}
                     </button>
                   )}
                 </div>
 
                 {isActive && (
-                  <form className="review-form" style={{ marginTop: 16 }} onSubmit={handleSubmit}>
-                    <div className="review-form-field">
+                  <form className="mn-review-form" style={{ marginTop: 16 }} onSubmit={handleSubmit}>
+                    <div className="mn-review-form-field">
                       <label>Your Rating *</label>
                       <StarInput value={formData.rating} onChange={r => setFormData(prev => ({ ...prev, rating: r }))} />
                     </div>
-                    <div className="review-form-field">
+                    <div className="mn-review-form-field">
                       <label>Your Name</label>
                       <input
                         type="text"
@@ -198,7 +197,7 @@ export default function ReviewPage() {
                         maxLength={80}
                       />
                     </div>
-                    <div className="review-form-field">
+                    <div className="mn-review-form-field">
                       <label>Review Title</label>
                       <input
                         type="text"
@@ -208,7 +207,7 @@ export default function ReviewPage() {
                         maxLength={120}
                       />
                     </div>
-                    <div className="review-form-field">
+                    <div className="mn-review-form-field">
                       <label>Your Review</label>
                       <textarea
                         value={formData.content}
@@ -218,8 +217,8 @@ export default function ReviewPage() {
                         maxLength={2000}
                       />
                     </div>
-                    <div className="review-form-actions">
-                      <button type="submit" className="review-submit-btn" disabled={submitting || formData.rating === 0}>
+                    <div className="mn-review-form-actions">
+                      <button type="submit" className="mn-review-submit-btn" disabled={submitting || formData.rating === 0}>
                         {submitting ? 'Submitting...' : 'Submit Review'}
                       </button>
                     </div>

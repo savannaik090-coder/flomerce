@@ -11,6 +11,7 @@ import * as productService from '../services/productService.js';
 import ProductGallery from '../components/product/ProductGallery.jsx';
 import RelatedProducts from '../components/product/RelatedProducts.jsx';
 import ProductReviews from '../components/product/ProductReviews.jsx';
+import ProductReviewsModern from '../components/templates/modern/ProductReviewsModern.jsx';
 import '../styles/product-detail.css';
 
 import { getPolicies } from '../defaults/index.js';
@@ -60,6 +61,7 @@ export default function ProductDetailPage() {
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
   const { formatAmount } = useCurrency();
   const { isModern } = useTheme();
+  const ActiveProductReviews = isModern ? ProductReviewsModern : ProductReviews;
 
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -393,7 +395,7 @@ export default function ProductDetailPage() {
         </div>
       </div>
 
-      <ProductReviews productId={product.id} />
+      <ActiveProductReviews productId={product.id} />
 
       <RelatedProducts
         currentProductId={product.id}

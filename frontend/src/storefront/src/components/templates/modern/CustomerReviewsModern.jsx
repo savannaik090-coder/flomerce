@@ -1,9 +1,9 @@
 import React, { useRef, useState } from 'react';
-import { useSiteConfig } from '../../hooks/useSiteConfig.js';
-import { resolveImageUrl } from '../../utils/imageUrl.js';
-import { getDefaultReviews } from '../../defaults/index.js';
+import { useSiteConfig } from '../../../hooks/useSiteConfig.js';
+import { resolveImageUrl } from '../../../utils/imageUrl.js';
+import { getDefaultReviews } from '../../../defaults/index.js';
 
-export default function CustomerReviews() {
+export default function CustomerReviewsModern() {
   const { siteConfig } = useSiteConfig();
   const scrollRef = useRef(null);
   const [modalImage, setModalImage] = useState(null);
@@ -33,43 +33,43 @@ export default function CustomerReviews() {
   };
 
   return (
-    <section className="customer-reviews-section" id="customer-reviews">
-      <div className="reviews-container">
-        <div className="reviews-header">
-          <h2 className="section-title">{sectionTitle}</h2>
-          <p className="section-subtitle">{sectionSubtitle}</p>
+    <section className="mn-customer-reviews" id="customer-reviews">
+      <div className="mn-customer-reviews-container">
+        <div className="mn-customer-reviews-header">
+          <h2 className="mn-customer-reviews-title">{sectionTitle}</h2>
+          <p className="mn-customer-reviews-subtitle">{sectionSubtitle}</p>
         </div>
 
-        <div className="reviews-wrapper">
+        <div className="mn-customer-reviews-wrapper">
           <button
-            className="reviews-scroll-arrow reviews-scroll-arrow-left"
+            className="mn-customer-reviews-arrow mn-customer-reviews-arrow-left"
             onClick={() => scroll('left')}
           >
             <i className="fas fa-chevron-left"></i>
           </button>
 
-          <div className="reviews-scroll-container" ref={scrollRef}>
+          <div className="mn-customer-reviews-scroll" ref={scrollRef}>
             {reviews.map((review, i) => (
-              <div key={i} className="review-item">
+              <div key={i} className="mn-customer-review-card">
                 {review.image && (
                   <div
-                    className="review-image"
+                    className="mn-customer-review-image"
                     onClick={() => setModalImage(resolveImageUrl(review.image))}
                   >
                     <img src={resolveImageUrl(review.image)} alt={`Customer Review ${i + 1}`} />
                   </div>
                 )}
-                <div className="review-content">
-                  <div className="review-text">
+                <div className="mn-customer-review-body">
+                  <div className="mn-customer-review-text">
                     <p>{review.text}</p>
                   </div>
-                  <div className="review-rating">
-                    <div className="stars">
-                      <span>{'⭐'.repeat(review.rating || 5)}</span>
+                  <div className="mn-customer-review-footer">
+                    <div className="mn-customer-review-stars">
+                      <span>{'★'.repeat(review.rating || 5)}</span>
                     </div>
                     {review.name && (
-                      <span style={{ fontSize: '0.85rem', color: '#888' }}>
-                        — {review.name}
+                      <span className="mn-customer-review-author">
+                        {review.name}
                       </span>
                     )}
                   </div>
@@ -79,7 +79,7 @@ export default function CustomerReviews() {
           </div>
 
           <button
-            className="reviews-scroll-arrow reviews-scroll-arrow-right"
+            className="mn-customer-reviews-arrow mn-customer-reviews-arrow-right"
             onClick={() => scroll('right')}
           >
             <i className="fas fa-chevron-right"></i>
@@ -87,8 +87,8 @@ export default function CustomerReviews() {
         </div>
 
         {phone && (
-          <div className="reviews-cta">
-            <button className="chat-now-btn" onClick={openWhatsApp}>
+          <div className="mn-customer-reviews-cta">
+            <button className="mn-customer-reviews-cta-btn" onClick={openWhatsApp}>
               SHARE YOUR REVIEW
             </button>
           </div>

@@ -9,6 +9,7 @@ import ProductShowcase from '../components/home/ProductShowcase.jsx';
 import ShopTheLook from '../components/home/ShopTheLook.jsx';
 import StoreLocations from '../components/home/StoreLocations.jsx';
 import CustomerReviews from '../components/home/CustomerReviews.jsx';
+import CustomerReviewsModern from '../components/templates/modern/CustomerReviewsModern.jsx';
 import FirstVisitBanner from '../components/home/FirstVisitBanner.jsx';
 import HeroSplit from '../components/templates/modern/HeroSplit.jsx';
 import CategoryGrid from '../components/templates/modern/CategoryGrid.jsx';
@@ -104,6 +105,7 @@ export default function HomePage() {
 
   const ActiveHero = isModern ? HeroSplit : HeroSlider;
   const ActiveCategory = isModern ? CategoryGrid : CategorySection;
+  const ActiveCustomerReviews = isModern ? CustomerReviewsModern : CustomerReviews;
 
   function renderSection(item) {
     if (item.type === 'category') {
@@ -123,7 +125,7 @@ export default function HomePage() {
         <ShopTheLook />
         <ProductShowcase />
         <StoreLocations />
-        <CustomerReviews />
+        <ActiveCustomerReviews />
         <FirstVisitBanner />
       </div>
     );
@@ -160,7 +162,7 @@ export default function HomePage() {
       ))}
       <ProductShowcase />
       <StoreLocations />
-      <CustomerReviews />
+      <ActiveCustomerReviews />
       <FirstVisitBanner />
     </div>
   );
