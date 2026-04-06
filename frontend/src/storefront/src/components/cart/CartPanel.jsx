@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { CartContext } from '../../context/CartContext.jsx';
 import { useCurrency } from '../../hooks/useCurrency.js';
 import { resolveImageUrl } from '../../utils/imageUrl.js';
+import { useTheme } from '../../context/ThemeContext.jsx';
 
 function getItemImage(item) {
   return item.product_image || item.image_url || item.thumbnail || (item.images && item.images[0]) || '';
@@ -42,9 +43,11 @@ export default function CartPanel({ isOpen, onClose }) {
   const { items, subtotal, updateQuantity, removeItem, cartItemKey } = useContext(CartContext);
   const { formatAmount } = useCurrency();
   const navigate = useNavigate();
+  const { isModern } = useTheme();
+  const themeClass = isModern ? 'modern-theme' : '';
 
   return (
-    <>
+    <div className={themeClass}>
       <div className={`cart-panel-overlay${isOpen ? ' active' : ''}`} onClick={onClose}></div>
       <div className={`cart-panel${isOpen ? ' active' : ''}`}>
         <div className="cart-panel-header">
@@ -108,6 +111,6 @@ export default function CartPanel({ isOpen, onClose }) {
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }

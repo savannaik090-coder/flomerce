@@ -3,6 +3,7 @@ import { useParams, useSearchParams } from 'react-router-dom';
 import { SiteContext } from '../context/SiteContext.jsx';
 import { useWishlist } from '../hooks/useWishlist.js';
 import { useSEO } from '../hooks/useSEO.js';
+import { useTheme } from '../context/ThemeContext.jsx';
 import * as productService from '../services/productService.js';
 import * as categoryService from '../services/categoryService.js';
 import ProductGrid from '../components/product/ProductGrid.jsx';
@@ -37,6 +38,7 @@ export default function CategoryPage() {
   const [searchParams] = useSearchParams();
   const { siteConfig } = useContext(SiteContext);
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
+  const { isModern } = useTheme();
 
   const [categoryData, setCategoryData] = useState(null);
   const [subcategories, setSubcategories] = useState([]);
@@ -141,7 +143,7 @@ export default function CategoryPage() {
   });
 
   return (
-    <div className="category-page">
+    <div className={`category-page${isModern ? ' modern-theme' : ''}`}>
       <section
         className="hero-section"
         style={categoryData?.image_url ? { backgroundImage: `url(${resolveImageUrl(categoryData.image_url)})` } : {}}

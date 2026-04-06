@@ -2,21 +2,11 @@ import React, { useContext } from 'react';
 import { Link } from 'react-router-dom';
 import { CurrencyContext } from '../context/CurrencyContext.jsx';
 import { useWishlist } from '../hooks/useWishlist.js';
+import { useTheme } from '../context/ThemeContext.jsx';
 import { resolveImageUrl } from '../utils/imageUrl.js';
+import '../components/templates/modern/modern.css';
 
-export default function WishlistPage() {
-  const { items, removeFromWishlist, loading } = useWishlist();
-  const { formatAmount } = useContext(CurrencyContext);
-
-  if (loading) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
-        <div style={{ width: 40, height: 40, border: '4px solid #f3f3f3', borderTop: '4px solid #c8a97e', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      </div>
-    );
-  }
-
+function ClassicWishlistPage({ items, removeFromWishlist, formatAmount }) {
   return (
     <div style={{ maxWidth: 1000, margin: '40px auto 60px', padding: '0 20px' }}>
       <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 28, marginBottom: 30, textAlign: 'center' }}>My Wishlist</h1>
@@ -58,4 +48,67 @@ export default function WishlistPage() {
       )}
     </div>
   );
+}
+
+function ModernWishlistPage({ items, removeFromWishlist, formatAmount }) {
+  return (
+    <div className="mn-wishlist-page">
+      <h1>My Wishlist</h1>
+      {items.length === 0 ? (
+        <div className="mn-wishlist-empty">
+          <h2>Your wishlist is empty</h2>
+          <p>Browse our products and add your favorites here.</p>
+          <Link to="/">Browse Products</Link>
+        </div>
+      ) : (
+        <div className="mn-wishlist-grid">
+          {items.map(item => {
+            const pid = item.productId || item.product_id;
+            const name = item.name || item.product_name;
+            const price = item.price || item.product_price || 0;
+            const image = resolveImageUrl(item.thumbnail || item.product_image || '');
+            return (
+              <div key={pid} className="mn-wishlist-card">
+                <Link to={`/product/${pid}`}>
+                  <div className="mn-wishlist-card-img">
+                    {image ? (
+                      <img src={image} alt={name} />
+                    ) : (
+                      <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999' }}>No Image</div>
+                    )}
+                  </div>
+                  <div className="mn-wishlist-card-info">
+                    <h3>{name}</h3>
+                    <p>{formatAmount(price)}</p>
+                  </div>
+                </Link>
+                <button className="mn-wishlist-remove" onClick={(e) => { e.preventDefault(); e.stopPropagation(); removeFromWishlist(pid); }}>×</button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function WishlistPage() {
+  const { items, removeFromWishlist, loading } = useWishlist();
+  const { formatAmount } = useContext(CurrencyContext);
+  const { isModern } = useTheme();
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+        <div style={{ width: 40, height: 40, border: '4px solid #f3f3f3', borderTop: `4px solid ${isModern ? '#111' : '#c8a97e'}`, borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
+  const pageProps = { items, removeFromWishlist, formatAmount };
+
+  return isModern
+    ? <ModernWishlistPage {...pageProps} />
+    : <ClassicWishlistPage {...pageProps} />;
 }

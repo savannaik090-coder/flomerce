@@ -1,6 +1,7 @@
 import React from 'react';
 import { useSiteConfig } from '../hooks/useSiteConfig.js';
 import { useSEO } from '../hooks/useSEO.js';
+import { useTheme } from '../context/ThemeContext.jsx';
 import { resolveImageUrl } from '../utils/imageUrl.js';
 import '../styles/about.css';
 
@@ -8,6 +9,7 @@ import { getAboutPageWithBrand } from '../defaults/index.js';
 
 export default function AboutPage() {
   const { siteConfig } = useSiteConfig();
+  const { isModern } = useTheme();
   useSEO({ title: 'About Us', pageType: 'about' });
   const brandName = siteConfig?.brandName || siteConfig?.name || 'Our Store';
   const category = siteConfig?.category || '';
@@ -52,7 +54,7 @@ export default function AboutPage() {
   const resolvedStoryImage = storyImage ? resolveImageUrl(storyImage) : '';
 
   return (
-    <div className="about-page">
+    <div className={`about-page${isModern ? ' modern-theme' : ''}`}>
       <section className="about-hero">
         <div className="about-hero-overlay" />
         <div className="about-hero-inner">

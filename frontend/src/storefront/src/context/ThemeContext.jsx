@@ -21,8 +21,6 @@ export function ThemeProvider({ children }) {
 
 export function useTheme() {
   const theme = useContext(ThemeContext);
-  if (!theme) {
-    return getTheme(THEME_CLASSIC);
-  }
-  return theme;
+  const resolved = theme || getTheme(THEME_CLASSIC);
+  return { ...resolved, isModern: resolved.id === 'modern' };
 }

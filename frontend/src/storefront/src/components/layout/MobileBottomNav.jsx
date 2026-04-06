@@ -4,6 +4,7 @@ import { CartContext } from '../../context/CartContext.jsx';
 import { AuthContext } from '../../context/AuthContext.jsx';
 import { CurrencyContext } from '../../context/CurrencyContext.jsx';
 import { SiteContext } from '../../context/SiteContext.jsx';
+import { useTheme } from '../../context/ThemeContext.jsx';
 
 const CURRENCY_FLAGS = {
   INR: '🇮🇳', USD: '🇺🇸', EUR: '🇪🇺', GBP: '🇬🇧', AED: '🇦🇪', CAD: '🇨🇦', AUD: '🇦🇺',
@@ -17,6 +18,7 @@ export default function MobileBottomNav({ onCartOpen }) {
   const { isAuthenticated } = useContext(AuthContext);
   const { currency, setCurrency } = useContext(CurrencyContext);
   const { siteConfig } = useContext(SiteContext);
+  const { isModern } = useTheme();
 
   const footerSettings = siteConfig?.settings?.footer || {};
   const bottomNav = footerSettings.bottomNav || {};
@@ -24,7 +26,7 @@ export default function MobileBottomNav({ onCartOpen }) {
   const showCurrency = siteConfig?.settings?.showCurrencySelector !== false;
 
   return (
-    <nav className="bottom-nav">
+    <nav className={`bottom-nav${isModern ? ' modern-theme' : ''}`}>
       <Link to="/" className={`bottom-nav-item${location.pathname === '/' ? ' active' : ''}`}>
         <i className="fi fi-rs-home"></i>
         <span>Home</span>
@@ -58,7 +60,7 @@ export default function MobileBottomNav({ onCartOpen }) {
         {cartCount > 0 && (
           <span style={{
             position: 'absolute', top: 2, right: '50%', transform: 'translateX(12px)',
-            background: '#c8a97e', color: '#fff', fontSize: 10, width: 16, height: 16,
+            background: isModern ? '#111' : '#c8a97e', color: '#fff', fontSize: 10, width: 16, height: 16,
             borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600,
           }}>{cartCount}</span>
         )}

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { WishlistContext } from '../../context/WishlistContext.jsx';
 import { useCurrency } from '../../hooks/useCurrency.js';
 import { resolveImageUrl } from '../../utils/imageUrl.js';
+import { useTheme } from '../../context/ThemeContext.jsx';
 
 function getItemImage(item) {
   return item.product_image || item.thumbnail || item.image_url || (item.images && item.images[0]) || '';
@@ -24,6 +25,8 @@ export default function WishlistPanel({ isOpen, onClose }) {
   const { items, removeFromWishlist } = useContext(WishlistContext);
   const { formatAmount } = useCurrency();
   const navigate = useNavigate();
+  const { isModern } = useTheme();
+  const themeClass = isModern ? 'modern-theme' : '';
 
   function handleItemClick(item) {
     onClose();
@@ -31,7 +34,7 @@ export default function WishlistPanel({ isOpen, onClose }) {
   }
 
   return (
-    <>
+    <div className={themeClass}>
       <div className={`wishlist-overlay${isOpen ? ' active' : ''}`} onClick={onClose}></div>
       <div className={`wishlist-panel${isOpen ? ' active' : ''}`}>
         <div className="wishlist-panel-header">
@@ -83,6 +86,6 @@ export default function WishlistPanel({ isOpen, onClose }) {
           </div>
         )}
       </div>
-    </>
+    </div>
   );
 }

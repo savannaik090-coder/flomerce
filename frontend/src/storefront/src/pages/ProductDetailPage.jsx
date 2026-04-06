@@ -6,6 +6,7 @@ import { useCart } from '../hooks/useCart.js';
 import { useWishlist } from '../hooks/useWishlist.js';
 import { useSEO } from '../hooks/useSEO.js';
 import { useCurrency } from '../hooks/useCurrency.js';
+import { useTheme } from '../context/ThemeContext.jsx';
 import * as productService from '../services/productService.js';
 import ProductGallery from '../components/product/ProductGallery.jsx';
 import RelatedProducts from '../components/product/RelatedProducts.jsx';
@@ -58,6 +59,7 @@ export default function ProductDetailPage() {
   const { addToCart } = useCart();
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
   const { formatAmount } = useCurrency();
+  const { isModern } = useTheme();
 
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -235,7 +237,7 @@ export default function ProductDetailPage() {
   const pol = (key) => settings[key] || categoryDefaults[key] || '';
 
   return (
-    <div>
+    <div className={isModern ? 'modern-theme' : ''}>
       <div className="product-detail-container">
         <ProductGallery
           images={product.images}

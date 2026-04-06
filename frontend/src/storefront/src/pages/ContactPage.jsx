@@ -1,17 +1,11 @@
 import React, { useState } from 'react';
 import { useSiteConfig } from '../hooks/useSiteConfig.js';
 import { useSEO } from '../hooks/useSEO.js';
+import { useTheme } from '../context/ThemeContext.jsx';
 import { API_BASE } from '../config.js';
+import '../components/templates/modern/modern.css';
 
-export default function ContactPage() {
-  const { siteConfig } = useSiteConfig();
-  useSEO({ title: 'Contact Us', pageType: 'contact' });
-  const brandName = siteConfig?.brandName || 'Our Store';
-  const phone = siteConfig?.phone || '';
-  const email = siteConfig?.email || '';
-  const address = siteConfig?.address || '';
-  const socialLinks = siteConfig?.socialLinks || {};
-
+function useContactForm(siteConfig) {
   const [form, setForm] = useState({ name: '', email: '', phone: '', subject: '', message: '' });
   const [status, setStatus] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -51,6 +45,10 @@ export default function ContactPage() {
     }
   }
 
+  return { form, status, submitting, handleChange, handleSubmit };
+}
+
+function ClassicContactPage({ siteConfig, brandName, phone, email, address, socialLinks, form, status, submitting, handleChange, handleSubmit }) {
   return (
     <div className="contact-page">
       <style>{`
@@ -220,30 +218,10 @@ export default function ContactPage() {
             <h2>Get in Touch</h2>
             <p>Have questions about our collections? We're here to help you discover what you're looking for.</p>
             <ul className="contact-details">
-              {address && (
-                <li>
-                  <i className="fas fa-map-marker-alt"></i>
-                  <span>{address}</span>
-                </li>
-              )}
-              {phone && (
-                <li>
-                  <i className="fas fa-phone"></i>
-                  <a href={`tel:${phone}`}>{phone}</a>
-                </li>
-              )}
-              {email && (
-                <li>
-                  <i className="fas fa-envelope"></i>
-                  <a href={`mailto:${email}`}>{email}</a>
-                </li>
-              )}
-              {phone && (
-                <li>
-                  <i className="fab fa-whatsapp"></i>
-                  <a href={`https://wa.me/${phone.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer">{phone}</a>
-                </li>
-              )}
+              {address && <li><i className="fas fa-map-marker-alt"></i><span>{address}</span></li>}
+              {phone && <li><i className="fas fa-phone"></i><a href={`tel:${phone}`}>{phone}</a></li>}
+              {email && <li><i className="fas fa-envelope"></i><a href={`mailto:${email}`}>{email}</a></li>}
+              {phone && <li><i className="fab fa-whatsapp"></i><a href={`https://wa.me/${phone.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer">{phone}</a></li>}
             </ul>
             {(socialLinks.instagram || socialLinks.facebook || socialLinks.twitter || socialLinks.youtube) && (
               <div className="social-links-section">
@@ -260,44 +238,19 @@ export default function ContactPage() {
 
           <div className="form-container">
             <h2>Send Us a Message</h2>
-            {status === 'success' && (
-              <div className="contact-status-msg success">
-                <i className="fas fa-check-circle"></i> Your message has been sent successfully!
-              </div>
-            )}
-            {status === 'error' && (
-              <div className="contact-status-msg error">
-                <i className="fas fa-exclamation-circle"></i> Something went wrong. Please try again.
-              </div>
-            )}
+            {status === 'success' && <div className="contact-status-msg success"><i className="fas fa-check-circle"></i> Your message has been sent successfully!</div>}
+            {status === 'error' && <div className="contact-status-msg error"><i className="fas fa-exclamation-circle"></i> Something went wrong. Please try again.</div>}
             <form onSubmit={handleSubmit}>
               <div className="form-row">
-                <div className="form-group">
-                  <label>Full Name *</label>
-                  <input type="text" name="name" value={form.name} onChange={handleChange} required />
-                </div>
-                <div className="form-group">
-                  <label>Email Address *</label>
-                  <input type="email" name="email" value={form.email} onChange={handleChange} required />
-                </div>
+                <div className="form-group"><label>Full Name *</label><input type="text" name="name" value={form.name} onChange={handleChange} required /></div>
+                <div className="form-group"><label>Email Address *</label><input type="email" name="email" value={form.email} onChange={handleChange} required /></div>
               </div>
               <div className="form-row">
-                <div className="form-group">
-                  <label>Phone Number</label>
-                  <input type="tel" name="phone" value={form.phone} onChange={handleChange} />
-                </div>
-                <div className="form-group">
-                  <label>Subject *</label>
-                  <input type="text" name="subject" value={form.subject} onChange={handleChange} required />
-                </div>
+                <div className="form-group"><label>Phone Number</label><input type="tel" name="phone" value={form.phone} onChange={handleChange} /></div>
+                <div className="form-group"><label>Subject *</label><input type="text" name="subject" value={form.subject} onChange={handleChange} required /></div>
               </div>
-              <div className="form-group">
-                <label>Message *</label>
-                <textarea name="message" value={form.message} onChange={handleChange} required placeholder="How can we help you?" />
-              </div>
-              <button type="submit" className="contact-submit-btn" disabled={submitting}>
-                {submitting ? 'Sending...' : 'Send Message'}
-              </button>
+              <div className="form-group"><label>Message *</label><textarea name="message" value={form.message} onChange={handleChange} required placeholder="How can we help you?" /></div>
+              <button type="submit" className="contact-submit-btn" disabled={submitting}>{submitting ? 'Sending...' : 'Send Message'}</button>
             </form>
           </div>
         </div>
@@ -306,16 +259,92 @@ export default function ContactPage() {
       <section className="working-hours">
         <h2>Working Hours</h2>
         <div className="hours-grid">
-          <div className="hours-item">
-            <h3>Monday - Saturday</h3>
-            <p>10:00 AM - 7:00 PM</p>
-          </div>
-          <div className="hours-item">
-            <h3>Sunday</h3>
-            <p>11:00 AM - 6:00 PM</p>
-          </div>
+          <div className="hours-item"><h3>Monday - Saturday</h3><p>10:00 AM - 7:00 PM</p></div>
+          <div className="hours-item"><h3>Sunday</h3><p>11:00 AM - 6:00 PM</p></div>
         </div>
       </section>
     </div>
   );
+}
+
+function ModernContactPage({ siteConfig, brandName, phone, email, address, socialLinks, form, status, submitting, handleChange, handleSubmit }) {
+  return (
+    <div>
+      <section className="mn-contact-hero">
+        <h1>Contact Us</h1>
+        <p>Reach out to us for any inquiries. We'd love to hear from you.</p>
+      </section>
+
+      <section className="mn-contact-section">
+        <div className="mn-contact-container">
+          <div className="mn-contact-info">
+            <h2>Get in Touch</h2>
+            <p>Have questions about our collections? We're here to help you discover what you're looking for.</p>
+            <ul className="mn-contact-details">
+              {address && <li><i className="fas fa-map-marker-alt"></i><span>{address}</span></li>}
+              {phone && <li><i className="fas fa-phone"></i><a href={`tel:${phone}`}>{phone}</a></li>}
+              {email && <li><i className="fas fa-envelope"></i><a href={`mailto:${email}`}>{email}</a></li>}
+              {phone && <li><i className="fab fa-whatsapp"></i><a href={`https://wa.me/${phone.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer">{phone}</a></li>}
+            </ul>
+            {(socialLinks.instagram || socialLinks.facebook || socialLinks.twitter || socialLinks.youtube) && (
+              <div className="mn-contact-social">
+                <h3>Follow Us</h3>
+                <div className="mn-contact-social-icons">
+                  {socialLinks.facebook && <a href={socialLinks.facebook} target="_blank" rel="noopener noreferrer"><i className="fab fa-facebook-f"></i></a>}
+                  {socialLinks.instagram && <a href={socialLinks.instagram} target="_blank" rel="noopener noreferrer"><i className="fab fa-instagram"></i></a>}
+                  {socialLinks.twitter && <a href={socialLinks.twitter} target="_blank" rel="noopener noreferrer"><i className="fab fa-twitter"></i></a>}
+                  {socialLinks.youtube && <a href={socialLinks.youtube} target="_blank" rel="noopener noreferrer"><i className="fab fa-youtube"></i></a>}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="mn-contact-form">
+            <h2>Send Us a Message</h2>
+            {status === 'success' && <div className="mn-contact-status success"><i className="fas fa-check-circle"></i> Your message has been sent successfully!</div>}
+            {status === 'error' && <div className="mn-contact-status error"><i className="fas fa-exclamation-circle"></i> Something went wrong. Please try again.</div>}
+            <form onSubmit={handleSubmit}>
+              <div className="mn-form-row">
+                <div className="mn-form-group"><label>Full Name *</label><input type="text" name="name" value={form.name} onChange={handleChange} required /></div>
+                <div className="mn-form-group"><label>Email Address *</label><input type="email" name="email" value={form.email} onChange={handleChange} required /></div>
+              </div>
+              <div className="mn-form-row">
+                <div className="mn-form-group"><label>Phone Number</label><input type="tel" name="phone" value={form.phone} onChange={handleChange} /></div>
+                <div className="mn-form-group"><label>Subject *</label><input type="text" name="subject" value={form.subject} onChange={handleChange} required /></div>
+              </div>
+              <div className="mn-form-group"><label>Message *</label><textarea name="message" value={form.message} onChange={handleChange} required placeholder="How can we help you?" /></div>
+              <button type="submit" className="mn-contact-submit" disabled={submitting}>{submitting ? 'Sending...' : 'Send Message'}</button>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <section className="mn-working-hours">
+        <h2>Working Hours</h2>
+        <div className="mn-hours-grid">
+          <div className="mn-hours-item"><h3>Monday - Saturday</h3><p>10:00 AM - 7:00 PM</p></div>
+          <div className="mn-hours-item"><h3>Sunday</h3><p>11:00 AM - 6:00 PM</p></div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+export default function ContactPage() {
+  const { siteConfig } = useSiteConfig();
+  const { isModern } = useTheme();
+  useSEO({ title: 'Contact Us', pageType: 'contact' });
+  const brandName = siteConfig?.brandName || 'Our Store';
+  const phone = siteConfig?.phone || '';
+  const email = siteConfig?.email || '';
+  const address = siteConfig?.address || '';
+  const socialLinks = siteConfig?.socialLinks || {};
+
+  const { form, status, submitting, handleChange, handleSubmit } = useContactForm(siteConfig);
+
+  const pageProps = { siteConfig, brandName, phone, email, address, socialLinks, form, status, submitting, handleChange, handleSubmit };
+
+  return isModern
+    ? <ModernContactPage {...pageProps} />
+    : <ClassicContactPage {...pageProps} />;
 }

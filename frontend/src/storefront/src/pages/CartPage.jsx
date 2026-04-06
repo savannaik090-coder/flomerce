@@ -2,21 +2,11 @@ import React, { useContext } from 'react';
 import { Link } from 'react-router-dom';
 import { CartContext } from '../context/CartContext.jsx';
 import { CurrencyContext } from '../context/CurrencyContext.jsx';
+import { useTheme } from '../context/ThemeContext.jsx';
 import { resolveImageUrl } from '../utils/imageUrl.js';
+import '../components/templates/modern/modern.css';
 
-export default function CartPage() {
-  const { items, subtotal, updateQuantity, removeItem, loading } = useContext(CartContext);
-  const { formatAmount } = useContext(CurrencyContext);
-
-  if (loading) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
-        <div style={{ width: 40, height: 40, border: '4px solid #f3f3f3', borderTop: '4px solid #c8a97e', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      </div>
-    );
-  }
-
+function ClassicCartPage({ items, subtotal, updateQuantity, removeItem, formatAmount }) {
   return (
     <div style={{ maxWidth: 900, margin: '40px auto 60px', padding: '0 20px' }}>
       <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 28, marginBottom: 30, textAlign: 'center' }}>Shopping Cart</h1>
@@ -75,4 +65,80 @@ export default function CartPage() {
       )}
     </div>
   );
+}
+
+function ModernCartPage({ items, subtotal, updateQuantity, removeItem, formatAmount }) {
+  return (
+    <div className="mn-cart-page">
+      <h1>Shopping Cart</h1>
+      {items.length === 0 ? (
+        <div className="mn-cart-empty">
+          <h2>Your cart is empty</h2>
+          <p>Looks like you haven't added anything to your cart yet.</p>
+          <Link to="/">Continue Shopping</Link>
+        </div>
+      ) : (
+        <>
+          <div className="mn-cart-items">
+            {items.map((item, idx) => {
+              const price = item.price || 0;
+              const qty = item.quantity || 1;
+              const name = item.name;
+              const image = resolveImageUrl(item.thumbnail || item.image_url || '');
+              const pid = item.productId;
+              return (
+                <div key={pid || idx} className="mn-cart-item">
+                  <Link to={`/product/${pid}`}>
+                    <div className="mn-cart-item-img">
+                      {image ? <img src={image} alt={name} /> : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ccc', fontSize: 12 }}>No img</div>}
+                    </div>
+                  </Link>
+                  <div className="mn-cart-item-info">
+                    <h3>{name}</h3>
+                    <span className="price">{formatAmount(price)}</span>
+                  </div>
+                  <div className="mn-cart-qty">
+                    <button onClick={() => updateQuantity(pid, qty - 1)}>−</button>
+                    <span>{qty}</span>
+                    <button onClick={() => updateQuantity(pid, qty + 1)}>+</button>
+                  </div>
+                  <div className="mn-cart-item-total">{formatAmount(price * qty)}</div>
+                  <button className="mn-cart-remove" onClick={() => removeItem(pid)}>×</button>
+                </div>
+              );
+            })}
+          </div>
+          <div className="mn-cart-footer">
+            <span className="label">Subtotal</span>
+            <span className="total">{formatAmount(subtotal)}</span>
+          </div>
+          <div className="mn-cart-actions">
+            <Link to="/" className="continue">Continue Shopping</Link>
+            <Link to="/checkout" className="checkout">Proceed to Checkout</Link>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+export default function CartPage() {
+  const { items, subtotal, updateQuantity, removeItem, loading } = useContext(CartContext);
+  const { formatAmount } = useContext(CurrencyContext);
+  const { isModern } = useTheme();
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+        <div style={{ width: 40, height: 40, border: '4px solid #f3f3f3', borderTop: `4px solid ${isModern ? '#111' : '#c8a97e'}`, borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
+  const pageProps = { items, subtotal, updateQuantity, removeItem, formatAmount };
+
+  return isModern
+    ? <ModernCartPage {...pageProps} />
+    : <ClassicCartPage {...pageProps} />;
 }

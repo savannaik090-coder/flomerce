@@ -1008,3 +1008,1017 @@
     align-items: flex-start;
   }
 }
+
+/* ===== MODERN THEME PAGE OVERRIDES ===== */
+
+/* --- Modern Cart Panel --- */
+.modern-theme .cart-panel {
+  font-family: 'Inter', 'Helvetica Neue', sans-serif;
+}
+.modern-theme .cart-panel-header h3 {
+  font-family: 'Inter', 'Helvetica Neue', sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.modern-theme .cart-item-price,
+.modern-theme .subtotal-amount {
+  color: #111;
+  font-weight: 700;
+}
+.modern-theme .checkout-btn {
+  background: #111 !important;
+  color: #fff !important;
+  border-radius: 2px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+.modern-theme .checkout-btn:hover {
+  background: #333 !important;
+}
+.modern-theme .view-cart-btn {
+  border-color: #111;
+  color: #111;
+  font-family: 'Inter', sans-serif;
+  border-radius: 2px;
+}
+.modern-theme .quantity-btn {
+  border-radius: 0;
+}
+
+/* --- Modern Wishlist Panel --- */
+.modern-theme .wishlist-panel {
+  font-family: 'Inter', 'Helvetica Neue', sans-serif;
+}
+.modern-theme .wishlist-panel-header h3 {
+  font-family: 'Inter', 'Helvetica Neue', sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.modern-theme .wishlist-item-price {
+  color: #111;
+  font-weight: 700;
+}
+.modern-theme .remove-from-wishlist {
+  font-family: 'Inter', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #999;
+  border: 1px solid #ddd;
+  padding: 4px 12px;
+  border-radius: 2px;
+  transition: all 0.2s;
+}
+.modern-theme .remove-from-wishlist:hover {
+  color: #111;
+  border-color: #111;
+}
+
+/* --- Modern Category Page --- */
+.modern-theme.category-page .hero-section {
+  height: 50vh;
+  min-height: 380px;
+  background-color: #f8f8f8;
+}
+.modern-theme.category-page .hero-section .hero-overlay {
+  background: rgba(0, 0, 0, 0.35);
+}
+.modern-theme.category-page .hero-title {
+  font-family: 'Inter', 'Helvetica Neue', sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  text-shadow: none;
+}
+.modern-theme.category-page .hero-subtitle {
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  font-size: 1.05rem;
+  letter-spacing: 0;
+  text-shadow: none;
+  opacity: 0.9;
+}
+.modern-theme .shop-filter-header {
+  background-color: #111;
+  font-family: 'Inter', sans-serif;
+  padding: 12px 24px;
+}
+.modern-theme .filter-option,
+.modern-theme .sort-option {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+}
+.modern-theme .sort-dropdown {
+  border-radius: 4px;
+  border: 1px solid #eee;
+  background: #fff;
+}
+.modern-theme .sort-dropdown-option {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+}
+.modern-theme .sort-dropdown-option:hover,
+.modern-theme .sort-dropdown-option.active {
+  background: #f5f5f5;
+  color: #111;
+  padding-left: 20px;
+}
+.modern-theme .filter-modal-content {
+  border-radius: 4px;
+  border: 1px solid #eee;
+  background: #fff;
+}
+.modern-theme .filter-modal-header {
+  border-bottom: 1px solid #eee;
+}
+.modern-theme .filter-modal-header h2 {
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+}
+.modern-theme .filter-section h3 {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #111;
+}
+.modern-theme .filter-option-label {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: #444;
+}
+.modern-theme .filter-option-label:hover {
+  color: #111;
+}
+.modern-theme .apply-filter-btn {
+  background: #111;
+  border-radius: 2px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+.modern-theme .apply-filter-btn:hover {
+  background: #333;
+}
+.modern-theme .clear-filter-btn {
+  border-radius: 2px;
+  font-family: 'Inter', sans-serif;
+}
+.modern-theme .filter-modal-footer {
+  border-top: 1px solid #eee;
+}
+
+/* Modern Category Page - product grid */
+.modern-theme.category-page .product-image {
+  height: auto;
+  aspect-ratio: 1;
+}
+.modern-theme.category-page .product-details {
+  text-align: left;
+  padding: 14px 4px 8px;
+}
+.modern-theme.category-page .product-name {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.88rem;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  color: #111;
+}
+.modern-theme.category-page .product-price-display {
+  font-family: 'Inter', sans-serif;
+  color: #111;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+/* --- Modern Product Detail Page --- */
+.modern-theme .product-detail-info .product-title {
+  font-family: 'Inter', 'Helvetica Neue', sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #111;
+}
+.modern-theme .product-detail-info .product-price {
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  color: #111;
+}
+.modern-theme .product-meta {
+  border-color: #eee;
+}
+.modern-theme .meta-item {
+  font-family: 'Inter', sans-serif;
+}
+.modern-theme .meta-label {
+  color: #888;
+  font-weight: 500;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+}
+.modern-theme .product-option-label {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #111;
+}
+.modern-theme .product-option-chip {
+  font-family: 'Inter', sans-serif;
+  border-radius: 2px;
+  font-weight: 500;
+}
+.modern-theme .product-option-chip.selected {
+  background: #111;
+  color: #fff;
+  border-color: #111;
+}
+.modern-theme .add-to-cart-btn {
+  background: #111;
+  border-color: #111;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  border-radius: 2px;
+}
+.modern-theme .add-to-cart-btn:hover {
+  background: #333;
+  border-color: #333;
+}
+.modern-theme .buy-now-btn {
+  background: #fff;
+  color: #111;
+  border: 2px solid #111;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  border-radius: 2px;
+}
+.modern-theme .buy-now-btn:hover {
+  background: #f5f5f5;
+}
+.modern-theme .add-to-wishlist-btn {
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  letter-spacing: 1px;
+  border-radius: 2px;
+  font-size: 13px;
+}
+.modern-theme .product-description-section h3 {
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #111;
+}
+.modern-theme .product-description-section p {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  line-height: 1.7;
+  color: #666;
+}
+.modern-theme .policy-accordion-header {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.modern-theme .policy-accordion.open .policy-accordion-title i {
+  color: #111;
+}
+.modern-theme .policy-item {
+  font-family: 'Inter', sans-serif;
+}
+.modern-theme .main-image-container {
+  border-radius: 0;
+}
+.modern-theme .product-thumbnail {
+  border-radius: 0;
+}
+.modern-theme .product-thumbnail.active {
+  border-color: #111;
+  box-shadow: none;
+}
+
+/* --- Modern About Page --- */
+.modern-theme .about-hero-label {
+  color: #888;
+  border-color: #ddd;
+  font-family: 'Inter', sans-serif;
+  border-radius: 2px;
+}
+.modern-theme .about-hero h1 {
+  font-family: 'Inter', 'Helvetica Neue', sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #111;
+}
+.modern-theme .about-hero p {
+  font-family: 'Inter', sans-serif;
+  color: #666;
+}
+.modern-theme .about-hero-divider {
+  background: #111;
+}
+.modern-theme .about-story-img {
+  border-radius: 0;
+  box-shadow: none;
+}
+.modern-theme .about-story-placeholder {
+  border-radius: 0;
+  background: #f5f5f5;
+  color: #ccc;
+}
+.modern-theme .about-story-image-accent {
+  display: none;
+}
+.modern-theme .about-story-text p {
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+  line-height: 1.8;
+  color: #555;
+}
+.modern-theme .about-content-section-eyebrow {
+  color: #888;
+  border-color: #ddd;
+  font-family: 'Inter', sans-serif;
+  border-radius: 2px;
+}
+.modern-theme .about-content-section h2 {
+  font-family: 'Inter', 'Helvetica Neue', sans-serif;
+  font-weight: 700;
+  color: #111;
+}
+.modern-theme .about-content-section-divider {
+  background: #111;
+}
+.modern-theme .about-content-section-text p {
+  font-family: 'Inter', sans-serif;
+  color: #555;
+}
+.modern-theme .about-content-section:nth-child(even) {
+  background: #fafafa;
+}
+
+/* --- Modern Contact Page --- */
+.mn-contact-hero {
+  background: #fafafa;
+  padding: 100px 0 60px;
+  text-align: center;
+}
+.mn-contact-hero h1 {
+  font-family: 'Inter', 'Helvetica Neue', sans-serif;
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 800;
+  color: #111;
+  letter-spacing: -0.02em;
+  margin-bottom: 16px;
+}
+.mn-contact-hero p {
+  font-family: 'Inter', sans-serif;
+  font-size: 1.05rem;
+  color: #666;
+  max-width: 500px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+.mn-contact-section {
+  padding: 80px 0;
+  background: #fff;
+}
+.mn-contact-container {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 60px;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+.mn-contact-info {
+  padding: 48px 36px;
+  background: #fafafa;
+  border: 1px solid #eee;
+}
+.mn-contact-info h2 {
+  font-family: 'Inter', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111;
+  margin-bottom: 16px;
+}
+.mn-contact-info > p {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.95rem;
+  color: #666;
+  line-height: 1.6;
+  margin-bottom: 32px;
+}
+.mn-contact-details {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.mn-contact-details li {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 0;
+  font-family: 'Inter', sans-serif;
+  border-bottom: 1px solid #eee;
+}
+.mn-contact-details li:last-child {
+  border-bottom: none;
+}
+.mn-contact-details i {
+  font-size: 16px;
+  color: #111;
+  width: 20px;
+  text-align: center;
+}
+.mn-contact-details span,
+.mn-contact-details a {
+  font-size: 0.9rem;
+  color: #444;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.mn-contact-details a:hover {
+  color: #111;
+}
+.mn-contact-social {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid #eee;
+}
+.mn-contact-social h3 {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #111;
+  margin-bottom: 16px;
+}
+.mn-contact-social-icons {
+  display: flex;
+  gap: 12px;
+}
+.mn-contact-social-icons a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid #ddd;
+  color: #444;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+.mn-contact-social-icons a:hover {
+  background: #111;
+  color: #fff;
+  border-color: #111;
+}
+.mn-contact-form {
+  padding: 48px 40px;
+  background: #fff;
+  border: 1px solid #eee;
+}
+.mn-contact-form h2 {
+  font-family: 'Inter', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111;
+  margin-bottom: 32px;
+}
+.mn-form-group {
+  margin-bottom: 20px;
+}
+.mn-form-group label {
+  display: block;
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #111;
+  margin-bottom: 8px;
+}
+.mn-form-group input,
+.mn-form-group textarea,
+.mn-form-group select {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid #ddd;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: #333;
+  background: #fff;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+.mn-form-group input:focus,
+.mn-form-group textarea:focus {
+  outline: none;
+  border-color: #111;
+}
+.mn-form-group textarea {
+  resize: vertical;
+  min-height: 120px;
+}
+.mn-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.mn-contact-submit {
+  width: 100%;
+  padding: 14px 28px;
+  background: #111;
+  color: #fff;
+  border: none;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  cursor: pointer;
+  transition: background 0.2s;
+  margin-top: 8px;
+}
+.mn-contact-submit:hover {
+  background: #333;
+}
+.mn-contact-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.mn-contact-status {
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+}
+.mn-contact-status.success {
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+.mn-contact-status.error {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+.mn-working-hours {
+  background: #111;
+  color: #fff;
+  padding: 60px 0;
+  text-align: center;
+}
+.mn-working-hours h2 {
+  font-family: 'Inter', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 32px;
+}
+.mn-hours-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 24px;
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+.mn-hours-item {
+  border: 1px solid #333;
+  padding: 24px;
+}
+.mn-hours-item h3 {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #fff;
+}
+.mn-hours-item p {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: #999;
+  margin: 0;
+}
+@media (max-width: 991px) {
+  .mn-contact-container {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+  .mn-form-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* --- Modern Search Overlay --- */
+.search-overlay.modern-theme {
+  font-family: 'Inter', 'Helvetica Neue', sans-serif;
+}
+.search-overlay.modern-theme .search-input {
+  font-family: 'Inter', sans-serif !important;
+  border-radius: 0 !important;
+  border: 1px solid #ddd !important;
+}
+.search-overlay.modern-theme .search-input:focus {
+  border-color: #111 !important;
+  box-shadow: none !important;
+}
+.search-overlay.modern-theme .search-product-name {
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+}
+.search-overlay.modern-theme .search-product-price {
+  color: #111;
+  font-weight: 700;
+}
+.search-overlay.modern-theme .search-product-category {
+  font-family: 'Inter', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 11px;
+}
+.search-overlay.modern-theme .search-recent-title {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: 11px;
+}
+
+/* --- Modern Mobile Bottom Nav --- */
+.bottom-nav.modern-theme {
+  font-family: 'Inter', 'Helvetica Neue', sans-serif;
+  border-top: 1px solid #eee;
+  box-shadow: none;
+}
+.bottom-nav.modern-theme .bottom-nav-item {
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+.bottom-nav.modern-theme .bottom-nav-item.active {
+  color: #111;
+}
+
+/* --- Modern Announcement Bar --- */
+.promo-banner.modern-theme {
+  background: #111 !important;
+  background-color: #111 !important;
+  font-family: 'Inter', 'Helvetica Neue', sans-serif;
+}
+.promo-banner.modern-theme .banner-text {
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  letter-spacing: 2px;
+  font-size: 11px;
+}
+
+/* --- Modern Cart Page --- */
+.mn-cart-page {
+  max-width: 900px;
+  margin: 40px auto 60px;
+  padding: 0 24px;
+  font-family: 'Inter', 'Helvetica Neue', sans-serif;
+}
+.mn-cart-page h1 {
+  font-family: 'Inter', sans-serif;
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin-bottom: 32px;
+  text-align: center;
+  letter-spacing: -0.01em;
+  color: #111;
+}
+.mn-cart-empty {
+  text-align: center;
+  padding: 60px 20px;
+}
+.mn-cart-empty h2 {
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  color: #111;
+  margin-bottom: 8px;
+}
+.mn-cart-empty p {
+  color: #888;
+  margin-bottom: 24px;
+  font-size: 0.95rem;
+}
+.mn-cart-empty a {
+  display: inline-block;
+  background: #111;
+  color: #fff;
+  padding: 12px 28px;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  transition: background 0.2s;
+}
+.mn-cart-empty a:hover {
+  background: #333;
+}
+.mn-cart-items {
+  border: 1px solid #eee;
+}
+.mn-cart-item {
+  display: flex;
+  align-items: center;
+  padding: 16px 20px;
+  gap: 16px;
+  border-bottom: 1px solid #f0f0f0;
+}
+.mn-cart-item:last-child {
+  border-bottom: none;
+}
+.mn-cart-item-img {
+  width: 80px;
+  height: 80px;
+  overflow: hidden;
+  background: #f5f5f5;
+  flex-shrink: 0;
+}
+.mn-cart-item-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.mn-cart-item-info {
+  flex: 1;
+}
+.mn-cart-item-info h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 4px;
+  color: #111;
+}
+.mn-cart-item-info .price {
+  font-size: 14px;
+  font-weight: 700;
+  color: #111;
+}
+.mn-cart-qty {
+  display: flex;
+  align-items: center;
+  border: 1px solid #ddd;
+  height: 34px;
+}
+.mn-cart-qty button {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: #f8f8f8;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 16px;
+  transition: background 0.15s;
+}
+.mn-cart-qty button:hover {
+  background: #eee;
+}
+.mn-cart-qty span {
+  padding: 0 12px;
+  font-size: 14px;
+  font-weight: 500;
+  min-width: 20px;
+  text-align: center;
+}
+.mn-cart-item-total {
+  text-align: right;
+  min-width: 80px;
+  font-weight: 700;
+  color: #111;
+}
+.mn-cart-remove {
+  background: none;
+  border: none;
+  color: #bbb;
+  cursor: pointer;
+  font-size: 20px;
+  padding: 4px 8px;
+  transition: color 0.15s;
+}
+.mn-cart-remove:hover {
+  color: #111;
+}
+.mn-cart-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 24px;
+  padding: 20px 0;
+  border-top: 2px solid #111;
+}
+.mn-cart-footer .label {
+  font-size: 16px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.mn-cart-footer .total {
+  font-size: 20px;
+  font-weight: 800;
+  color: #111;
+}
+.mn-cart-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 16px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.mn-cart-actions .continue {
+  padding: 12px 24px;
+  border: 1px solid #111;
+  color: #111;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 13px;
+  text-align: center;
+  letter-spacing: 0.5px;
+  transition: all 0.2s;
+}
+.mn-cart-actions .continue:hover {
+  background: #f5f5f5;
+}
+.mn-cart-actions .checkout {
+  padding: 12px 32px;
+  background: #111;
+  color: #fff;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 13px;
+  text-align: center;
+  letter-spacing: 0.5px;
+  transition: background 0.2s;
+}
+.mn-cart-actions .checkout:hover {
+  background: #333;
+}
+
+/* --- Modern Wishlist Page --- */
+.mn-wishlist-page {
+  max-width: 1100px;
+  margin: 40px auto 60px;
+  padding: 0 24px;
+  font-family: 'Inter', 'Helvetica Neue', sans-serif;
+}
+.mn-wishlist-page h1 {
+  font-family: 'Inter', sans-serif;
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin-bottom: 32px;
+  text-align: center;
+  letter-spacing: -0.01em;
+  color: #111;
+}
+.mn-wishlist-empty {
+  text-align: center;
+  padding: 60px 20px;
+}
+.mn-wishlist-empty h2 {
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  color: #111;
+  margin-bottom: 8px;
+}
+.mn-wishlist-empty p {
+  color: #888;
+  margin-bottom: 24px;
+}
+.mn-wishlist-empty a {
+  display: inline-block;
+  background: #111;
+  color: #fff;
+  padding: 12px 28px;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+}
+.mn-wishlist-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 20px;
+}
+.mn-wishlist-card {
+  position: relative;
+  border: 1px solid #eee;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+.mn-wishlist-card:hover {
+  border-color: #ddd;
+}
+.mn-wishlist-card a {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+.mn-wishlist-card-img {
+  aspect-ratio: 1;
+  overflow: hidden;
+  background: #f5f5f5;
+}
+.mn-wishlist-card-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.4s ease;
+}
+.mn-wishlist-card:hover .mn-wishlist-card-img img {
+  transform: scale(1.05);
+}
+.mn-wishlist-card-info {
+  padding: 14px 12px;
+}
+.mn-wishlist-card-info h3 {
+  font-size: 0.88rem;
+  font-weight: 500;
+  margin-bottom: 4px;
+  color: #111;
+}
+.mn-wishlist-card-info p {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #111;
+  margin: 0;
+}
+.mn-wishlist-remove {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 32px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #999;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+}
+.mn-wishlist-remove:hover {
+  color: #111;
+}
+
+/* --- Modern Login/Signup overrides --- */
+.modern-theme .auth-page,
+.modern-theme .login-page,
+.modern-theme .signup-page {
+  font-family: 'Inter', 'Helvetica Neue', sans-serif;
+}
+.modern-theme .auth-page h1,
+.modern-theme .auth-page h2 {
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.modern-theme .auth-submit-btn {
+  background: #111;
+  border-radius: 2px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+/* --- Modern Product Reviews --- */
+.modern-theme .product-reviews-section .section-title {
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+}
+.modern-theme .write-review-btn {
+  background: #111;
+  border-radius: 2px;
+  font-family: 'Inter', sans-serif;
+}
+.modern-theme .review-submit-btn {
+  background: #111;
+  border-radius: 2px;
+  font-family: 'Inter', sans-serif;
+}
+.modern-theme .related-products-section .section-title {
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}

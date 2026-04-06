@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useContext, useCallback } from 'rea
 import { useNavigate } from 'react-router-dom';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { useCurrency } from '../../hooks/useCurrency.js';
+import { useTheme } from '../../context/ThemeContext.jsx';
 import * as productService from '../../services/productService.js';
 import { resolveImageUrl } from '../../utils/imageUrl.js';
 
@@ -51,6 +52,7 @@ function fuzzyMatch(query, text) {
 export default function SearchOverlay({ isOpen, onClose }) {
   const { siteConfig } = useContext(SiteContext);
   const { formatAmount } = useCurrency();
+  const { isModern } = useTheme();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [allProducts, setAllProducts] = useState([]);
@@ -116,7 +118,7 @@ export default function SearchOverlay({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   return (
-    <div className="search-overlay active">
+    <div className={`search-overlay active${isModern ? ' modern-theme' : ''}`}>
       <div className="search-container">
         <div className="search-header">
           <div className="search-input-container">
