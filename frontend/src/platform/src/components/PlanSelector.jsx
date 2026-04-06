@@ -240,9 +240,9 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
     if (isOverlay) {
       return (
         <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '900px', position: 'relative' }}>
+          <div className="modal-content plan-overlay-modal" style={{ maxWidth: '900px', position: 'relative' }}>
             {onClose && (
-              <button onClick={onClose} style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b', lineHeight: 1 }}>×</button>
+              <button onClick={onClose} className="plan-overlay-close">×</button>
             )}
             {inner}
           </div>
@@ -394,15 +394,11 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
   if (isOverlay) {
     return (
       <div className="modal-overlay">
-        <div className="modal-content" style={{ maxWidth: '900px', position: 'relative' }}>
+        <div className="modal-content plan-overlay-modal" style={{ maxWidth: '900px', position: 'relative' }}>
           {onClose && (
             <button
               onClick={onClose}
-              style={{
-                position: 'absolute', top: '1rem', right: '1rem',
-                background: 'none', border: 'none', fontSize: '1.5rem',
-                cursor: 'pointer', color: '#64748b', lineHeight: 1
-              }}
+              className="plan-overlay-close"
             >
               ×
             </button>

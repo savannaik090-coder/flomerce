@@ -518,6 +518,25 @@
   }
   .plans-grid {
     grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  .modal-content {
+    padding: 1.25rem;
+    border-radius: 12px;
+    max-height: 95vh;
+  }
+  .duration-selector {
+    gap: 4px;
+    padding: 3px;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+  }
+  .dur-btn {
+    padding: 0.4rem 0.9rem;
+    font-size: 0.8rem;
+  }
+  .plan-card {
+    padding: 1.25rem;
   }
   .manage-header {
     padding: 0.5rem 1rem;
@@ -532,6 +551,51 @@
     min-height: auto;
     padding-bottom: calc(env(safe-area-inset-bottom) + 3.5rem);
     box-sizing: border-box;
+  }
+}
+
+.plan-overlay-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #64748b;
+  line-height: 1;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background 0.2s;
+  z-index: 1;
+}
+
+.plan-overlay-close:hover {
+  background: #f1f5f9;
+}
+
+@media (max-width: 480px) {
+  .plan-overlay-modal {
+    padding: 1rem !important;
+    max-height: 100vh !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+    height: 100%;
+  }
+  .modal-overlay {
+    padding: 0;
+  }
+  .plan-overlay-modal .duration-selector {
+    justify-content: center;
+    width: 100%;
+  }
+  .plan-overlay-close {
+    top: 0.5rem;
+    right: 0.5rem;
   }
 }
 
