@@ -93,6 +93,10 @@ export async function apiRequest(endpoint, options = {}) {
       credentials: 'omit',
     };
 
+    if (adminToken) {
+      fetchOptions.cache = 'no-store';
+    }
+
     const response = await fetch(url, fetchOptions);
 
     const contentType = response.headers.get('content-type');
