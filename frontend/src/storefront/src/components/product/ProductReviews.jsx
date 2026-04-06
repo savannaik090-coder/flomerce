@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { apiRequest, getAuthToken } from '../../services/api.js';
+import { useTheme } from '../../context/ThemeContext.jsx';
 
 const STAR_FULL = '\u2605';
 const STAR_EMPTY = '\u2606';
@@ -66,6 +67,7 @@ function RatingBreakdown({ stats }) {
 
 export default function ProductReviews({ productId }) {
   const { siteConfig } = useContext(SiteContext);
+  const { isModern } = useTheme();
   const siteId = siteConfig?.id;
 
   const [reviews, setReviews] = useState([]);
@@ -152,7 +154,7 @@ export default function ProductReviews({ productId }) {
   if (!reviewsEnabled) return null;
 
   return (
-    <div className="product-reviews-section">
+    <div className={`product-reviews-section${isModern ? ' modern-theme' : ''}`}>
       <h2 className="section-title">Customer Reviews</h2>
 
       {loading && reviews.length === 0 ? (

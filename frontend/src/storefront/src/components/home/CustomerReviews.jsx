@@ -2,9 +2,11 @@ import React, { useRef, useState } from 'react';
 import { useSiteConfig } from '../../hooks/useSiteConfig.js';
 import { resolveImageUrl } from '../../utils/imageUrl.js';
 import { getDefaultReviews } from '../../defaults/index.js';
+import { useTheme } from '../../context/ThemeContext.jsx';
 
 export default function CustomerReviews() {
   const { siteConfig } = useSiteConfig();
+  const { isModern } = useTheme();
   const scrollRef = useRef(null);
   const [modalImage, setModalImage] = useState(null);
 
@@ -33,7 +35,7 @@ export default function CustomerReviews() {
   };
 
   return (
-    <section className="customer-reviews-section" id="customer-reviews">
+    <section className={`customer-reviews-section${isModern ? ' modern-theme' : ''}`} id="customer-reviews">
       <div className="reviews-container">
         <div className="reviews-header">
           <h2 className="section-title">{sectionTitle}</h2>

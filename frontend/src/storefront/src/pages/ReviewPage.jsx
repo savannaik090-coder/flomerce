@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { SiteContext } from '../context/SiteContext.jsx';
 import { apiRequest } from '../services/api.js';
+import { useTheme } from '../context/ThemeContext.jsx';
 
 const STAR_FULL = '\u2605';
 const STAR_EMPTY = '\u2606';
@@ -30,6 +31,7 @@ export default function ReviewPage() {
   const token = searchParams.get('token');
   const navigate = useNavigate();
   const { siteConfig } = useContext(SiteContext);
+  const { isModern } = useTheme();
   const siteId = siteConfig?.id;
 
   const [order, setOrder] = useState(null);
@@ -100,9 +102,11 @@ export default function ReviewPage() {
     }
   }
 
+  const reviewPageClass = `review-page${isModern ? ' modern-theme' : ''}`;
+
   if (loading) {
     return (
-      <div className="review-page">
+      <div className={reviewPageClass}>
         <div className="review-page-inner">
           <div style={{ textAlign: 'center', padding: '60px 20px' }}>
             <div className="spinner" />
@@ -115,15 +119,15 @@ export default function ReviewPage() {
 
   if (error) {
     return (
-      <div className="review-page">
+      <div className={reviewPageClass}>
         <div className="review-page-inner">
           <div style={{ textAlign: 'center', padding: '60px 20px' }}>
             <div style={{ fontSize: 48, marginBottom: 16 }}>&#128533;</div>
-            <h2 style={{ color: '#0f172a', marginBottom: 8 }}>Unable to Load Review</h2>
+            <h2 style={{ color: isModern ? '#111' : '#0f172a', marginBottom: 8, fontFamily: isModern ? "'Inter', sans-serif" : undefined }}>Unable to Load Review</h2>
             <p style={{ color: '#64748b' }}>{error}</p>
             <button
               onClick={() => navigate('/')}
-              style={{ marginTop: 20, padding: '10px 24px', background: '#0f172a', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}
+              style={{ marginTop: 20, padding: '10px 24px', background: isModern ? '#111' : '#0f172a', color: '#fff', border: 'none', borderRadius: isModern ? 0 : 8, cursor: 'pointer', fontWeight: 600, fontFamily: isModern ? "'Inter', sans-serif" : undefined }}
             >
               Go to Store
             </button>
@@ -140,7 +144,7 @@ export default function ReviewPage() {
   const allReviewed = unreviewedItems.length === 0 && items.length > 0;
 
   return (
-    <div className="review-page">
+    <div className={reviewPageClass}>
       <div className="review-page-inner">
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <div style={{ fontSize: 40, marginBottom: 8 }}>&#11088;</div>
