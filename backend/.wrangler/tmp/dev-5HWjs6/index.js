@@ -11870,9 +11870,28 @@ async function handleSiteRouting(request, env) {
     });
   }
   try {
-    const hasNoPlan = !site.subscription_plan || !site.subscription_expires_at;
-    const isPlanExpired = site.subscription_expires_at && new Date(site.subscription_expires_at) < /* @__PURE__ */ new Date();
-    if (hasNoPlan || isPlanExpired) {
+    let planActive = false;
+    const now = /* @__PURE__ */ new Date();
+    if (site.subscription_plan === "enterprise") {
+      planActive = true;
+    } else if (site.subscription_plan) {
+      try {
+        const sub = await env.DB.prepare(
+          `SELECT status, current_period_end FROM subscriptions WHERE site_id = ? AND current_period_end IS NOT NULL ORDER BY current_period_end DESC LIMIT 1`
+        ).bind(site.id).first();
+        if (sub && new Date(sub.current_period_end) > now) {
+          planActive = true;
+        } else if (!sub && site.subscription_expires_at && new Date(site.subscription_expires_at) > now) {
+          planActive = true;
+        }
+      } catch (e) {
+        if (site.subscription_expires_at && new Date(site.subscription_expires_at) > now) {
+          planActive = true;
+        }
+      }
+    }
+    if (!planActive) {
+      const isPlanExpired = site.subscription_plan && (site.subscription_expires_at && new Date(site.subscription_expires_at) < now);
       return new Response(
         `<html>
           <head>
