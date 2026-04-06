@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { getAvailablePlans } from '../services/paymentService.js';
+import { SUPPORT_EMAIL } from '../config.js';
 
 const DURATION_LABELS = { '3months': '3 Months', '6months': '6 Months', yearly: 'Yearly', '3years': '3 Years' };
 const DURATION_MONTHS = { '3months': 3, '6months': 6, yearly: 12, '3years': 36 };
@@ -165,7 +166,7 @@ export default function LandingPricing() {
             <p className="lp-enterprise-desc">
               {enterpriseConfig.message || 'Need a custom solution for your business? Get in touch for a tailored plan.'}
             </p>
-            <a href={`mailto:${enterpriseConfig.email || 'support@fluxe.in'}`} className="btn lp-btn-enterprise">Contact Us</a>
+            <a href={`mailto:${enterpriseConfig.email || SUPPORT_EMAIL}`} className="btn lp-btn-enterprise">Contact Us</a>
           </div>
         )}
       </div>

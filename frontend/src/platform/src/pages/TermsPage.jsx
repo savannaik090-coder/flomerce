@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar.jsx';
 import '../styles/legal.css';
+import { PLATFORM_DOMAIN, PLATFORM_URL, SUPPORT_EMAIL } from '../config.js';
 
 export default function TermsPage() {
   return (
@@ -13,17 +14,17 @@ export default function TermsPage() {
 
           <section>
             <h2>1. Acceptance of Terms</h2>
-            <p>By accessing or using the Fluxe platform ("Service"), available at fluxe.in, you agree to be bound by these Terms & Conditions ("Terms"). If you do not agree with any part of these Terms, you may not use our Service. These Terms constitute a legally binding agreement between you and Fluxe.</p>
+            <p>By accessing or using the Fluxe platform ("Service"), available at {PLATFORM_DOMAIN}, you agree to be bound by these Terms & Conditions ("Terms"). If you do not agree with any part of these Terms, you may not use our Service. These Terms constitute a legally binding agreement between you and Fluxe.</p>
           </section>
 
           <section>
             <h2>2. Description of Service</h2>
-            <p>Fluxe is a software-as-a-service (SaaS) platform that enables users to create, manage, and host e-commerce websites on subdomains of fluxe.in (e.g., your-store.fluxe.in). The platform provides website building tools, product management, order processing, customer management, analytics, and payment integration capabilities. Fluxe is a digital product — no physical goods are shipped by Fluxe. Access to all platform features is granted immediately upon successful payment or trial activation.</p>
+            <p>Fluxe is a software-as-a-service (SaaS) platform that enables users to create, manage, and host e-commerce websites on subdomains of {PLATFORM_DOMAIN} (e.g., your-store.{PLATFORM_DOMAIN}). The platform provides website building tools, product management, order processing, customer management, analytics, and payment integration capabilities. Fluxe is a digital product — no physical goods are shipped by Fluxe. Access to all platform features is granted immediately upon successful payment or trial activation.</p>
           </section>
 
           <section>
             <h2>3. Account Registration</h2>
-            <p>To use the Service, you must create an account by providing accurate and complete information including your full name, email address, and a secure password. You are responsible for maintaining the confidentiality of your account credentials and for all activities that occur under your account. You must notify us immediately at support@fluxe.in of any unauthorized use of your account. You must be at least 18 years of age to create an account.</p>
+            <p>To use the Service, you must create an account by providing accurate and complete information including your full name, email address, and a secure password. You are responsible for maintaining the confidentiality of your account credentials and for all activities that occur under your account. You must notify us immediately at {SUPPORT_EMAIL} of any unauthorized use of your account. You must be at least 18 years of age to create an account.</p>
           </section>
 
           <section>
@@ -57,7 +58,7 @@ export default function TermsPage() {
 
           <section>
             <h2>7. Digital Delivery</h2>
-            <p>Fluxe is a digital SaaS product. No physical goods are shipped by Fluxe. Upon successful payment or trial activation, access to the platform and all included features is granted immediately. Your e-commerce website will be live and accessible at your chosen subdomain (your-store.fluxe.in) within seconds of creation.</p>
+            <p>Fluxe is a digital SaaS product. No physical goods are shipped by Fluxe. Upon successful payment or trial activation, access to the platform and all included features is granted immediately. Your e-commerce website will be live and accessible at your chosen subdomain (your-store.{PLATFORM_DOMAIN}) within seconds of creation.</p>
           </section>
 
           <section>
@@ -114,10 +115,10 @@ export default function TermsPage() {
             <h2>16. Contact Us</h2>
             <p>If you have any questions about these Terms & Conditions, please contact us at:</p>
             <p><strong>Fluxe</strong></p>
-            <p><strong>Email:</strong> <a href="mailto:support@fluxe.in">support@fluxe.in</a></p>
+            <p><strong>Email:</strong> <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a></p>
             <p><strong>Phone:</strong> <a href="tel:+919901954610">+91 9901954610</a></p>
             <p><strong>Address:</strong> Karwar, Karnataka, India — 581400</p>
-            <p><strong>Website:</strong> <a href="https://fluxe.in">https://fluxe.in</a></p>
+            <p><strong>Website:</strong> <a href={PLATFORM_URL}>{PLATFORM_URL}</a></p>
           </section>
         </div>
 
@@ -130,7 +131,7 @@ export default function TermsPage() {
             <Link to="/shipping-policy">Shipping & Delivery Policy</Link>
           </div>
           <p>&copy; {new Date().getFullYear()} Fluxe. All rights reserved.</p>
-          <p style={{ color: '#94a3b8', fontSize: '0.75rem', marginTop: '0.5rem' }}>Karwar, Karnataka, India — 581400 | +91 9901954610 | support@fluxe.in</p>
+          <p style={{ color: '#94a3b8', fontSize: '0.75rem', marginTop: '0.5rem' }}>Karwar, Karnataka, India — 581400 | +91 9901954610 | {SUPPORT_EMAIL}</p>
         </footer>
       </div>
     </div>

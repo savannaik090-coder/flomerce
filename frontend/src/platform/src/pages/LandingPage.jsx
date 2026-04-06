@@ -5,6 +5,7 @@ import LandingPricing from '../components/LandingPricing.jsx';
 import ContactForm from '../components/ContactForm.jsx';
 import '../styles/landing.css';
 import '../styles/legal.css';
+import { PLATFORM_DOMAIN, SUPPORT_EMAIL } from '../config.js';
 
 export default function LandingPage() {
   const [showPwa, setShowPwa] = useState(false);
@@ -112,7 +113,7 @@ export default function LandingPage() {
                 <span className="teaser-dot red"></span>
                 <span className="teaser-dot yellow"></span>
                 <span className="teaser-dot green"></span>
-                <span className="teaser-url-bar">fluxe.in</span>
+                <span className="teaser-url-bar">{PLATFORM_DOMAIN}</span>
               </div>
               <div className="teaser-video-container">
                 <video ref={videoRef} className="teaser-video" muted loop playsInline preload="auto">
@@ -172,7 +173,7 @@ export default function LandingPage() {
             </div>
             <div className="footer-links-group">
               <h4>Contact</h4>
-              <a href="mailto:support@fluxe.in">support@fluxe.in</a>
+              <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>
               <a href="tel:+919901954610">+91 9901954610</a>
               <span>Karwar, Karnataka, India — 581400</span>
             </div>

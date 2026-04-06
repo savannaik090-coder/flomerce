@@ -5,6 +5,7 @@ import { TIMEZONE_OPTIONS, safeFormatInTimezone } from '../../utils/dateFormatte
 import { getExchangeRates } from '../../services/currencyService.js';
 import { formatPrice } from '../../utils/priceFormatter.js';
 import { COUNTRIES, getStatesForCountry } from '../../utils/countryStates.js';
+import { API_BASE, PLATFORM_DOMAIN } from '../../config.js';
 
 export default function SettingsSection() {
   const { siteConfig, refetchSite } = useContext(SiteContext);
@@ -121,7 +122,7 @@ export default function SettingsSection() {
   async function loadSettings() {
     setLoading(true);
     try {
-      const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
+
       const response = await fetch(`${API_BASE}/api/site?subdomain=${encodeURIComponent(siteConfig.subdomain)}`);
       const result = await response.json();
       if (result.success && result.data) {
@@ -249,7 +250,7 @@ export default function SettingsSection() {
       if (razorpayKeySecret) {
         settings.razorpayKeySecret = razorpayKeySecret;
       }
-      const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
+
       const token = sessionStorage.getItem('site_admin_token');
       const response = await fetch(`${API_BASE}/api/sites/${siteConfig.id}`, {
         method: 'PUT',
@@ -293,7 +294,7 @@ export default function SettingsSection() {
     if (!pendingCurrency || !currencyExchangeRate) return;
     setCurrencyConverting(true);
     try {
-      const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
+
       const token = sessionStorage.getItem('site_admin_token');
       const authToken = localStorage.getItem('auth_token');
       const headers = { 'Content-Type': 'application/json' };
@@ -355,7 +356,7 @@ export default function SettingsSection() {
     setDomainMsg('');
     setDomainSaving(true);
     try {
-      const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
+
       const token = sessionStorage.getItem('site_admin_token');
       const response = await fetch(`${API_BASE}/api/sites/${siteConfig.id}/custom-domain`, {
         method: 'PUT',
@@ -386,7 +387,7 @@ export default function SettingsSection() {
     setDomainError('');
     setDomainVerifying(true);
     try {
-      const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
+
       const token = sessionStorage.getItem('site_admin_token');
       const response = await fetch(`${API_BASE}/api/sites/${siteConfig.id}/verify-domain`, {
         method: 'POST',
@@ -419,7 +420,7 @@ export default function SettingsSection() {
     setDomainMsg('');
     setDomainError('');
     try {
-      const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
+
       const token = sessionStorage.getItem('site_admin_token');
       const response = await fetch(`${API_BASE}/api/sites/${siteConfig.id}/custom-domain`, {
         method: 'DELETE',
@@ -465,7 +466,7 @@ export default function SettingsSection() {
     setSubdomainSaving(true);
     setShowSubdomainConfirm(false);
     try {
-      const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
+
       const token = sessionStorage.getItem('site_admin_token');
       const response = await fetch(`${API_BASE}/api/sites/${siteConfig.id}/rename-subdomain`, {
         method: 'PUT',
@@ -514,7 +515,7 @@ export default function SettingsSection() {
         <CollapsibleHeader sectionKey="storeUrl" title="Store URL" />
         {isSectionOpen('storeUrl') && <div className="card-content">
           <p style={{ fontSize: 13, color: '#64748b', marginBottom: 12 }}>
-            Your store is currently accessible at <a href={`https://${currentSubdomain}.fluxe.in`} target="_blank" rel="noopener noreferrer" style={{ fontWeight: 600, color: '#2563eb' }}>{currentSubdomain}.fluxe.in</a>
+            Your store is currently accessible at <a href={`https://${currentSubdomain}.${PLATFORM_DOMAIN}`} target="_blank" rel="noopener noreferrer" style={{ fontWeight: 600, color: '#2563eb' }}>{currentSubdomain}.{PLATFORM_DOMAIN}</a>
           </p>
           <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Subdomain</label>
           <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
@@ -525,7 +526,7 @@ export default function SettingsSection() {
               placeholder="my-store"
               style={{ flex: 1, padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: '6px 0 0 6px', fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }}
             />
-            <span style={{ padding: '10px 12px', background: '#f1f5f9', border: '1px solid #e2e8f0', borderLeft: 'none', borderRadius: '0 6px 6px 0', fontSize: 14, color: '#64748b', whiteSpace: 'nowrap' }}>.fluxe.in</span>
+            <span style={{ padding: '10px 12px', background: '#f1f5f9', border: '1px solid #e2e8f0', borderLeft: 'none', borderRadius: '0 6px 6px 0', fontSize: 14, color: '#64748b', whiteSpace: 'nowrap' }}>.{PLATFORM_DOMAIN}</span>
           </div>
           {subdomainInput && subdomainInput !== currentSubdomain && !showSubdomainConfirm && !subdomainSaving && (
             <button type="button" className="btn btn-primary" onClick={() => setShowSubdomainConfirm(true)} style={{ marginTop: 12, fontSize: 13 }}>
@@ -536,7 +537,7 @@ export default function SettingsSection() {
             <div style={{ marginTop: 12, padding: '14px 16px', borderRadius: 8, background: '#fffbeb', border: '1px solid #fde68a' }}>
               <p style={{ fontSize: 13, fontWeight: 600, color: '#92400e', marginBottom: 8 }}>Are you sure?</p>
               <p style={{ fontSize: 12, color: '#92400e', marginBottom: 12 }}>
-                Changing your subdomain will update your store URL from <strong>{currentSubdomain}.fluxe.in</strong> to <strong>{subdomainInput.trim()}.fluxe.in</strong>. The old URL will stop working immediately.
+                Changing your subdomain will update your store URL from <strong>{currentSubdomain}.{PLATFORM_DOMAIN}</strong> to <strong>{subdomainInput.trim()}.{PLATFORM_DOMAIN}</strong>. The old URL will stop working immediately.
               </p>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button type="button" className="btn btn-primary" onClick={handleRenameSubdomain} disabled={subdomainSaving} style={{ fontSize: 13, background: '#f59e0b', borderColor: '#f59e0b' }}>
@@ -605,9 +606,9 @@ export default function SettingsSection() {
                     <p style={{ fontSize: 12, color: '#92400e', fontWeight: 600, marginBottom: 4 }}>Cloudflare DNS:</p>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <code style={{ flex: 1, fontSize: 13, background: '#fff', padding: '6px 10px', borderRadius: 4, border: '1px solid #fde68a', wordBreak: 'break-all' }}>
-                        CNAME &nbsp; @ &nbsp; → &nbsp; fluxe.in
+                        CNAME &nbsp; @ &nbsp; → &nbsp; {PLATFORM_DOMAIN}
                       </code>
-                      <button type="button" onClick={() => copyToClipboard('fluxe.in')} style={{ padding: '6px 10px', border: '1px solid #fde68a', borderRadius: 4, background: '#fff', cursor: 'pointer', fontSize: 12, whiteSpace: 'nowrap' }}>Copy</button>
+                      <button type="button" onClick={() => copyToClipboard(PLATFORM_DOMAIN)} style={{ padding: '6px 10px', border: '1px solid #fde68a', borderRadius: 4, background: '#fff', cursor: 'pointer', fontSize: 12, whiteSpace: 'nowrap' }}>Copy</button>
                     </div>
                     <p style={{ fontSize: 11, color: '#92400e', marginTop: 4, opacity: 0.8 }}>Only works on Cloudflare (CNAME flattening). Then add a Redirect Rule: <strong>{customDomain.replace(/^www\./, '')}</strong> → <strong>https://{customDomain}</strong></p>
                   </div>
@@ -670,9 +671,9 @@ export default function SettingsSection() {
                     <p style={{ fontSize: 12, color: '#64748b', marginBottom: 4 }}>Step 1: CNAME Record (for routing)</p>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <code style={{ flex: 1, fontSize: 13, background: '#fff', padding: '6px 10px', borderRadius: 4, border: '1px solid #e2e8f0', wordBreak: 'break-all' }}>
-                        CNAME &nbsp; www &nbsp; → &nbsp; fluxe.in
+                        CNAME &nbsp; www &nbsp; → &nbsp; {PLATFORM_DOMAIN}
                       </code>
-                      <button type="button" onClick={() => copyToClipboard('fluxe.in')} style={{ padding: '6px 10px', border: '1px solid #e2e8f0', borderRadius: 4, background: '#fff', cursor: 'pointer', fontSize: 12, whiteSpace: 'nowrap' }}>Copy</button>
+                      <button type="button" onClick={() => copyToClipboard(PLATFORM_DOMAIN)} style={{ padding: '6px 10px', border: '1px solid #e2e8f0', borderRadius: 4, background: '#fff', cursor: 'pointer', fontSize: 12, whiteSpace: 'nowrap' }}>Copy</button>
                     </div>
                   </div>
                   <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: 14, marginBottom: 10 }}>
@@ -695,9 +696,9 @@ export default function SettingsSection() {
                       <p style={{ fontSize: 12, color: '#92400e', fontWeight: 600, marginBottom: 4 }}>Cloudflare DNS:</p>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <code style={{ flex: 1, fontSize: 13, background: '#fff', padding: '6px 10px', borderRadius: 4, border: '1px solid #fde68a', wordBreak: 'break-all' }}>
-                          CNAME &nbsp; @ &nbsp; → &nbsp; fluxe.in
+                          CNAME &nbsp; @ &nbsp; → &nbsp; {PLATFORM_DOMAIN}
                         </code>
-                        <button type="button" onClick={() => copyToClipboard('fluxe.in')} style={{ padding: '6px 10px', border: '1px solid #fde68a', borderRadius: 4, background: '#fff', cursor: 'pointer', fontSize: 12, whiteSpace: 'nowrap' }}>Copy</button>
+                        <button type="button" onClick={() => copyToClipboard(PLATFORM_DOMAIN)} style={{ padding: '6px 10px', border: '1px solid #fde68a', borderRadius: 4, background: '#fff', cursor: 'pointer', fontSize: 12, whiteSpace: 'nowrap' }}>Copy</button>
                       </div>
                       <p style={{ fontSize: 11, color: '#92400e', marginTop: 4, opacity: 0.8 }}>Only works on Cloudflare (CNAME flattening). Then add a Redirect Rule: <strong>{customDomain.replace(/^www\./, '')}</strong> → <strong>https://{customDomain}</strong></p>
                     </div>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { apiRequest } from '../../services/api.js';
+import { API_BASE } from '../../config.js';
 
 let ReactQuill = null;
 let quillCssLoaded = false;
@@ -267,7 +268,6 @@ function BlogPostEditor({ post, siteConfig, quillLoaded, onSave, onCancel, showM
       const formData = new FormData();
       formData.append('images', file);
       const adminToken = sessionStorage.getItem('site_admin_token');
-      const API_BASE = window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
       const res = await fetch(`${API_BASE}/api/upload/image?siteId=${siteConfig.id}`, {
         method: 'POST',
         headers: { 'Authorization': `SiteAdmin ${adminToken}` },

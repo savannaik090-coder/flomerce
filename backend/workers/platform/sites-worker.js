@@ -1,4 +1,5 @@
 import { generateId, generateSubdomain, sanitizeInput, jsonResponse, errorResponse, successResponse, handleCORS } from '../../utils/helpers.js';
+import { PLATFORM_DOMAIN } from '../../config.js';
 import { purgeStorefrontCache } from '../../utils/cache.js';
 import { validateAuth } from '../../utils/auth.js';
 import { validateSiteAdmin, handleStaffCRUD } from '../storefront/site-admin-worker.js';
@@ -821,7 +822,7 @@ async function handleVerifyDomain(env, siteId) {
       if (cnameData.Answer && cnameData.Answer.length > 0) {
         for (const record of cnameData.Answer) {
           const target = (record.data || '').replace(/\.$/, '').toLowerCase();
-          if (target.endsWith('.fluxe.in') || target.endsWith('.pages.dev')) {
+          if (target.endsWith(`.${env.DOMAIN || PLATFORM_DOMAIN}`) || target.endsWith('.pages.dev')) {
             cnameVerified = true;
             break;
           }
@@ -836,7 +837,7 @@ async function handleVerifyDomain(env, siteId) {
       }
 
       if (!cnameVerified) {
-        errors.push(`CNAME record not found. Add a CNAME record for ${domain} pointing to your .fluxe.in subdomain.`);
+        errors.push(`CNAME record not found. Add a CNAME record for ${domain} pointing to your .${env.DOMAIN || PLATFORM_DOMAIN} subdomain.`);
       }
     } catch (dnsErr) {
       errors.push('Could not verify CNAME record: ' + dnsErr.message);

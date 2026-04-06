@@ -2,8 +2,7 @@ import React, { useState, useEffect, useContext, useRef } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { getCategories } from '../../services/categoryService.js';
 import SaveBar from './SaveBar.jsx';
-
-const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
+import { API_BASE } from '../../config.js';
 
 function generateId() {
   return 'nav_' + Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 6);

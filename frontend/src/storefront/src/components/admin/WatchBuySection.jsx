@@ -5,8 +5,7 @@ import SectionToggle from './SectionToggle.jsx';
 import SaveBar from './SaveBar.jsx';
 import { formatPrice, getAdminCurrency } from '../../utils/priceFormatter.js';
 import { getWatchAndBuyDefaults } from '../../defaults/index.js';
-
-const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
+import { API_BASE } from '../../config.js';
 
 export default function WatchBuySection({ onSaved }) {
   const { siteConfig } = useContext(SiteContext);

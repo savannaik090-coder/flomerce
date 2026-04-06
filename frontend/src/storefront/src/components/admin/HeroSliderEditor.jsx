@@ -4,8 +4,7 @@ import { resolveImageUrl } from '../../utils/imageUrl.js';
 import SaveBar from './SaveBar.jsx';
 import LinkSelector from './LinkSelector.jsx';
 import { getHeroSliderDefaults } from '../../defaults/index.js';
-
-const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
+import { API_BASE } from '../../config.js';
 const currentYear = new Date().getFullYear();
 
 function compressImage(file, maxWidth = 1400, quality = 0.85) {

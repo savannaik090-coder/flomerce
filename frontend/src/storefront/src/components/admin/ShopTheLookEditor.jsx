@@ -6,8 +6,7 @@ import { formatPrice, getAdminCurrency } from '../../utils/priceFormatter.js';
 import SectionToggle from './SectionToggle.jsx';
 import SaveBar from './SaveBar.jsx';
 import { getShopTheLookDefaults } from '../../defaults/index.js';
-
-const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
+import { API_BASE } from '../../config.js';
 
 function compressImage(file, maxWidth = 1400, quality = 0.85) {
   return new Promise((resolve) => {

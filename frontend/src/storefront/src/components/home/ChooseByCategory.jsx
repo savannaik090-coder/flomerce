@@ -2,8 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useSiteConfig } from '../../hooks/useSiteConfig.js';
 import '../../styles/choose-by-category.css';
-
-const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
+import { API_BASE } from '../../config.js';
 
 function resolveImg(src) {
   if (!src) return '';

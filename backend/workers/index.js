@@ -19,6 +19,7 @@ import { handleReviews } from './storefront/reviews-worker.js';
 import { handleBlog } from './storefront/blog-worker.js';
 import { handleUsageAPI } from '../utils/usage-tracker.js';
 import { jsonResponse, errorResponse, corsHeaders, handleCORS } from '../utils/helpers.js';
+import { PLATFORM_DOMAIN } from '../config.js';
 import { cachedJsonResponse } from '../utils/cache.js';
 import { ensureTablesExist } from '../utils/db-init.js';
 import { resolveSiteDBById } from '../utils/site-db.js';
@@ -48,7 +49,8 @@ export default {
       }
 
       const hostname = url.hostname;
-      if (hostname === 'www.fluxe.in' || hostname === 'fluxe.in') {
+      const platformDomain = env.DOMAIN || PLATFORM_DOMAIN;
+      if (hostname === `www.${platformDomain}` || hostname === platformDomain) {
         const pagesHostname = env.PAGES_HOSTNAME || 'fluxe-8x1.pages.dev';
         const pagesUrl = new URL(request.url);
         pagesUrl.hostname = pagesHostname;
@@ -189,7 +191,7 @@ async function handleSiteInfo(request, env) {
          FROM sites s 
          WHERE LOWER(s.subdomain) = LOWER(?) AND s.is_active = 1`
       ).bind(subdomain).first();
-    } else if (!hostname.endsWith('fluxe.in') && !hostname.endsWith('pages.dev') && !hostname.includes('localhost') && !hostname.includes('workers.dev')) {
+    } else if (!hostname.endsWith(env.DOMAIN || PLATFORM_DOMAIN) && !hostname.endsWith('pages.dev') && !hostname.includes('localhost') && !hostname.includes('workers.dev')) {
       siteRow = await env.DB.prepare(
         `SELECT s.id, s.subdomain, s.brand_name, s.template_id,
                 s.custom_domain, s.domain_status, s.domain_verification_token
@@ -306,7 +308,7 @@ async function handleGoogleAuthFlow(request, env, path) {
     const siteId = url.searchParams.get('siteId') || '';
     const returnUrl = url.searchParams.get('returnUrl') || '';
     const mode = url.searchParams.get('mode') || 'login';
-    const domain = env.DOMAIN || 'fluxe.in';
+    const domain = env.DOMAIN || PLATFORM_DOMAIN;
 
     const html = `<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">

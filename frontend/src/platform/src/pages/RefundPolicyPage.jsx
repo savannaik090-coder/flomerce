@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar.jsx';
 import '../styles/legal.css';
+import { PLATFORM_URL, SUPPORT_EMAIL } from '../config.js';
 
 export default function RefundPolicyPage() {
   return (
@@ -66,7 +67,7 @@ export default function RefundPolicyPage() {
             <h2>7. How to Request a Refund</h2>
             <p>To request a refund, please follow these steps:</p>
             <ol>
-              <li>Send an email to <a href="mailto:support@fluxe.in"><strong>support@fluxe.in</strong></a> with the subject line "Refund Request"</li>
+              <li>Send an email to <a href={`mailto:${SUPPORT_EMAIL}`}><strong>{SUPPORT_EMAIL}</strong></a> with the subject line "Refund Request"</li>
               <li>Include your registered email address and the reason for the refund</li>
               <li>Provide the transaction ID or payment reference number if available</li>
             </ol>
@@ -105,10 +106,10 @@ export default function RefundPolicyPage() {
             <h2>11. Contact Us</h2>
             <p>If you have any questions about this Refund & Cancellation Policy, please contact us at:</p>
             <p><strong>Fluxe</strong></p>
-            <p><strong>Email:</strong> <a href="mailto:support@fluxe.in">support@fluxe.in</a></p>
+            <p><strong>Email:</strong> <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a></p>
             <p><strong>Phone:</strong> <a href="tel:+919901954610">+91 9901954610</a></p>
             <p><strong>Address:</strong> Karwar, Karnataka, India — 581400</p>
-            <p><strong>Website:</strong> <a href="https://fluxe.in">https://fluxe.in</a></p>
+            <p><strong>Website:</strong> <a href={PLATFORM_URL}>{PLATFORM_URL}</a></p>
           </section>
         </div>
 
@@ -121,7 +122,7 @@ export default function RefundPolicyPage() {
             <Link to="/shipping-policy">Shipping & Delivery Policy</Link>
           </div>
           <p>&copy; {new Date().getFullYear()} Fluxe. All rights reserved.</p>
-          <p style={{ color: '#94a3b8', fontSize: '0.75rem', marginTop: '0.5rem' }}>Karwar, Karnataka, India — 581400 | +91 9901954610 | support@fluxe.in</p>
+          <p style={{ color: '#94a3b8', fontSize: '0.75rem', marginTop: '0.5rem' }}>Karwar, Karnataka, India — 581400 | +91 9901954610 | {SUPPORT_EMAIL}</p>
         </footer>
       </div>
     </div>

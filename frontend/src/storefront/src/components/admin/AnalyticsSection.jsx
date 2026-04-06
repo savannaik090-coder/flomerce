@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { formatDateShortForAdmin } from '../../utils/dateFormatter.js';
+import { API_BASE } from '../../config.js';
 
 const COUNTRY_NAMES = {
   IN: 'India', US: 'United States', GB: 'United Kingdom', AE: 'UAE',
@@ -49,7 +50,6 @@ export default function AnalyticsSection() {
   async function loadAnalytics() {
     setLoading(true);
     try {
-      const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
       const res = await fetch(`${API_BASE}/api/analytics/stats?siteId=${siteConfig.id}&period=${period}`);
       if (res.ok) {
         const json = await res.json();

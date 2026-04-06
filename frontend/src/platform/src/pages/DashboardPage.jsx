@@ -8,6 +8,7 @@ import PlanSelector from '../components/PlanSelector.jsx';
 import { useNavigate } from 'react-router-dom';
 import { apiRequest } from '../services/api.js';
 import '../styles/dashboard.css';
+import { PLATFORM_DOMAIN } from '../config.js';
 
 export default function DashboardPage() {
   const { user, isAuthenticated, loading, logout, setUser } = useAuth();
@@ -116,7 +117,7 @@ export default function DashboardPage() {
     setAdminLoading(true);
     setManagedAdminUrl(null);
     try {
-      const siteUrl = `https://${site.subdomain}.fluxe.in`;
+      const siteUrl = `https://${site.subdomain}.${PLATFORM_DOMAIN}`;
       const result = await apiRequest('/api/site-admin/auto-login', {
         method: 'POST',
         body: JSON.stringify({ siteId: site.id }),
@@ -127,7 +128,7 @@ export default function DashboardPage() {
         : `${siteUrl}/admin`;
       setManagedAdminUrl(adminUrl);
     } catch (e) {
-      const siteUrl = `https://${site.subdomain}.fluxe.in`;
+      const siteUrl = `https://${site.subdomain}.${PLATFORM_DOMAIN}`;
       setManagedAdminUrl(`${siteUrl}/admin`);
     } finally {
       setAdminLoading(false);
@@ -662,7 +663,7 @@ export default function DashboardPage() {
             return (
               <div key={site.id} className="site-card" style={{ cursor: 'pointer' }} onClick={() => handleManageSite(site)}>
                 <h3 style={{ marginBottom: '0.25rem', fontSize: '1.125rem', fontWeight: 700 }}>{site.brand_name || site.subdomain}</h3>
-                <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>https://{site.subdomain}.fluxe.in</p>
+                <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>https://{site.subdomain}.{PLATFORM_DOMAIN}</p>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span className={`plan-status-pill ${subInfo.isCancelled ? 'status-cancelled' : subInfo.isActive ? 'status-active' : 'status-expired'}`} style={subInfo.isCancelled ? { background: '#fef3c7', color: '#92400e' } : {}}>
                     {subInfo.isCancelled ? formatPlanName(subInfo.plan) + ' - Cancelling' : subInfo.isActive ? formatPlanName(subInfo.plan) + ' - Active' : subInfo.plan && subInfo.plan !== 'expired' ? formatPlanName(subInfo.plan) + ' - Expired' : subInfo.plan === 'expired' ? 'Expired' : 'No Subscription'}
@@ -827,7 +828,7 @@ export default function DashboardPage() {
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                                 <div>
                                   <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700 }}>{site.brand_name || site.subdomain}</h2>
-                                  <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>https://{site.subdomain}.fluxe.in</p>
+                                  <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>https://{site.subdomain}.{PLATFORM_DOMAIN}</p>
                                 </div>
                                 <span className={`plan-status-pill ${subInfo.isCancelled ? 'status-cancelled' : subInfo.isActive ? 'status-active' : 'status-expired'}`} style={subInfo.isCancelled ? { background: '#fef3c7', color: '#92400e' } : {}}>
                                   {subInfo.isCancelled ? formatPlanName(subInfo.plan) + ' - Cancelling' : subInfo.isActive ? formatPlanName(subInfo.plan) + ' - Active' : subInfo.plan && subInfo.plan !== 'expired' ? formatPlanName(subInfo.plan) + ' - Expired' : subInfo.plan === 'expired' ? 'Expired' : 'No Subscription'}
@@ -877,7 +878,7 @@ export default function DashboardPage() {
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
                               <div style={{ flex: 1, minWidth: '200px' }}>
                                 <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 700 }}>{site.brand_name || site.subdomain}</h3>
-                                <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>https://{site.subdomain}.fluxe.in</p>
+                                <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>https://{site.subdomain}.{PLATFORM_DOMAIN}</p>
                               </div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                                 <div style={{ textAlign: 'right' }}>
@@ -933,7 +934,7 @@ export default function DashboardPage() {
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <div>
                               <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 700 }}>{site.brand_name || site.subdomain}</h3>
-                              <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>https://{site.subdomain}.fluxe.in</p>
+                              <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>https://{site.subdomain}.{PLATFORM_DOMAIN}</p>
                             </div>
                             <button className="btn btn-primary" style={{ fontSize: '0.8rem' }}>Manage Staff</button>
                           </div>
@@ -1104,7 +1105,7 @@ export default function DashboardPage() {
                       <div key={site.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
                         <div style={{ minWidth: 0 }}>
                           <div style={{ fontWeight: 600, fontSize: '0.9rem', color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{site.brand_name || site.brandName || site.subdomain}</div>
-                          <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{site.subdomain}.fluxe.in</div>
+                          <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{site.subdomain}.{PLATFORM_DOMAIN}</div>
                         </div>
                         <button
                           className="btn btn-outline"
@@ -1180,12 +1181,12 @@ export default function DashboardPage() {
               This will permanently delete <strong>{deleteModal.brand_name || deleteModal.brandName || deleteModal.subdomain}</strong> and all its data including products, orders, and customers. This action cannot be undone.
             </p>
             <div className="delete-modal-field">
-              <label>Type <strong>{deleteModal.subdomain}.fluxe.in</strong> to confirm</label>
+              <label>Type <strong>{deleteModal.subdomain}.{PLATFORM_DOMAIN}</strong> to confirm</label>
               <input
                 type="text"
                 value={deleteConfirmText}
                 onChange={e => setDeleteConfirmText(e.target.value)}
-                placeholder={`${deleteModal.subdomain}.fluxe.in`}
+                placeholder={`${deleteModal.subdomain}.${PLATFORM_DOMAIN}`}
                 autoFocus
               />
             </div>
@@ -1193,7 +1194,7 @@ export default function DashboardPage() {
               <button className="btn btn-outline" onClick={closeDeleteModal} disabled={deleteLoading}>Cancel</button>
               <button
                 className="btn btn-danger"
-                disabled={deleteConfirmText.trim() !== `${deleteModal.subdomain}.fluxe.in` || deleteLoading}
+                disabled={deleteConfirmText.trim() !== `${deleteModal.subdomain}.${PLATFORM_DOMAIN}` || deleteLoading}
                 onClick={handleConfirmDelete}
               >
                 {deleteLoading ? 'Deleting...' : 'Delete Permanently'}

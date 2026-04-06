@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useContext, useCallback } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import './SEOSection.css';
-
-const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
+import { API_BASE, PLATFORM_DOMAIN } from '../../config.js';
 
 function getAuthHeader() {
   const token = sessionStorage.getItem('site_admin_token');
@@ -129,7 +128,7 @@ function getDefaultSEODescription(brandName, category) {
 function SiteSEOTab({ siteConfig }) {
   const siteId = siteConfig?.id;
   const subdomain = siteConfig?.subdomain;
-  const storeUrl = subdomain ? `https://${subdomain}.fluxe.in` : window.location.origin;
+  const storeUrl = subdomain ? `https://${subdomain}.${PLATFORM_DOMAIN}` : window.location.origin;
 
   const [form, setForm] = useState({
     seo_title: '',
@@ -545,7 +544,7 @@ function CategoriesSEOTab({ siteConfig }) {
                   <SearchPreview
                     title={editForm.seo_title}
                     description={editForm.seo_description}
-                    url={`${siteConfig?.subdomain ? `https://${siteConfig.subdomain}.fluxe.in` : ''}/category/${cat.slug}`}
+                    url={`${siteConfig?.subdomain ? `https://${siteConfig.subdomain}.${PLATFORM_DOMAIN}` : ''}/category/${cat.slug}`}
                   />
                   <div className="seo-field">
                     <label>SEO Title</label>
@@ -749,7 +748,7 @@ function ProductsSEOTab({ siteConfig }) {
                   <SearchPreview
                     title={editForm.seo_title}
                     description={editForm.seo_description}
-                    url={`${siteConfig?.subdomain ? `https://${siteConfig.subdomain}.fluxe.in` : ''}/product/${product.slug}`}
+                    url={`${siteConfig?.subdomain ? `https://${siteConfig.subdomain}.${PLATFORM_DOMAIN}` : ''}/product/${product.slug}`}
                   />
                   <div className="seo-field">
                     <label>SEO Title</label>
@@ -1075,7 +1074,7 @@ function SocialMediaTab({ siteConfig }) {
   const twTitle = form.twitter_title || form.og_title || defaults.title;
   const twDesc = form.twitter_description || form.og_description || defaults.description;
   const twImg = form.twitter_image || form.og_image || defaults.image;
-  const storeUrl = siteConfig?.subdomain ? `https://${siteConfig.subdomain}.fluxe.in` : window.location.origin;
+  const storeUrl = siteConfig?.subdomain ? `https://${siteConfig.subdomain}.${PLATFORM_DOMAIN}` : window.location.origin;
 
   return (
     <form onSubmit={handleSave}>

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { getAvailablePlans, createSubscription, verifySubscriptionPayment, startFreeTrial } from '../services/paymentService.js';
 import { deleteSite } from '../services/siteService.js';
+import { ENTERPRISE_EMAIL } from '../config.js';
 
 const DURATION_LABELS = { '3months': '3 Months', '6months': '6 Months', yearly: 'Yearly', '3years': '3 Years' };
 const DURATION_MONTHS = { '3months': 3, '6months': 6, yearly: 12, '3years': 36 };
@@ -378,7 +379,7 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
               </p>
             </div>
             <a
-              href={`mailto:${enterpriseConfig.email || 'enterprise@fluxe.in'}`}
+              href={`mailto:${enterpriseConfig.email || ENTERPRISE_EMAIL}`}
               className="btn btn-primary"
               style={{ width: '100%', textAlign: 'center', textDecoration: 'none', background: '#6366f1', borderColor: '#6366f1' }}
             >

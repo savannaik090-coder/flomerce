@@ -4,9 +4,8 @@ import { resolveImageUrl } from '../../utils/imageUrl.js';
 import SectionToggle from './SectionToggle.jsx';
 import SaveBar from './SaveBar.jsx';
 
-const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
-
 import { getAboutPageWithBrand } from '../../defaults/index.js';
+import { API_BASE } from '../../config.js';
 
 const inputStyle = { width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' };
 const labelStyle = { display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 };

@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar.jsx';
 import '../styles/legal.css';
+import { PLATFORM_DOMAIN, PLATFORM_URL, SUPPORT_EMAIL } from '../config.js';
 
 export default function PrivacyPolicyPage() {
   return (
@@ -13,7 +14,7 @@ export default function PrivacyPolicyPage() {
 
           <section>
             <h2>1. Introduction</h2>
-            <p>Fluxe ("we", "our", "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our platform at fluxe.in and any websites created through our Service. This policy applies to all users of the Fluxe platform, including store owners and their customers.</p>
+            <p>Fluxe ("we", "our", "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our platform at {PLATFORM_DOMAIN} and any websites created through our Service. This policy applies to all users of the Fluxe platform, including store owners and their customers.</p>
           </section>
 
           <section>
@@ -100,7 +101,7 @@ export default function PrivacyPolicyPage() {
               <li>Export your data in a portable format</li>
               <li>Lodge a complaint with a data protection authority</li>
             </ul>
-            <p>To exercise any of these rights, please contact us at <a href="mailto:support@fluxe.in">support@fluxe.in</a> or call <a href="tel:+919901954610">+91 9901954610</a>.</p>
+            <p>To exercise any of these rights, please contact us at <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a> or call <a href="tel:+919901954610">+91 9901954610</a>.</p>
           </section>
 
           <section>
@@ -127,10 +128,10 @@ export default function PrivacyPolicyPage() {
             <h2>12. Contact Us</h2>
             <p>If you have any questions or concerns about this Privacy Policy, please contact us at:</p>
             <p><strong>Fluxe</strong></p>
-            <p><strong>Email:</strong> <a href="mailto:support@fluxe.in">support@fluxe.in</a></p>
+            <p><strong>Email:</strong> <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a></p>
             <p><strong>Phone:</strong> <a href="tel:+919901954610">+91 9901954610</a></p>
             <p><strong>Address:</strong> Karwar, Karnataka, India — 581400</p>
-            <p><strong>Website:</strong> <a href="https://fluxe.in">https://fluxe.in</a></p>
+            <p><strong>Website:</strong> <a href={PLATFORM_URL}>{PLATFORM_URL}</a></p>
           </section>
         </div>
 
@@ -143,7 +144,7 @@ export default function PrivacyPolicyPage() {
             <Link to="/shipping-policy">Shipping & Delivery Policy</Link>
           </div>
           <p>&copy; {new Date().getFullYear()} Fluxe. All rights reserved.</p>
-          <p style={{ color: '#94a3b8', fontSize: '0.75rem', marginTop: '0.5rem' }}>Karwar, Karnataka, India — 581400 | +91 9901954610 | support@fluxe.in</p>
+          <p style={{ color: '#94a3b8', fontSize: '0.75rem', marginTop: '0.5rem' }}>Karwar, Karnataka, India — 581400 | +91 9901954610 | {SUPPORT_EMAIL}</p>
         </footer>
       </div>
     </div>

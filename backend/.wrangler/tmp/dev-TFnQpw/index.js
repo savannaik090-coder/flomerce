@@ -75,6 +75,21 @@ var init_modules_watch_stub = __esm({
   }
 });
 
+// config.js
+var PLATFORM_DOMAIN, PLATFORM_URL, SUPPORT_EMAIL, FROM_EMAIL, VAPID_SUBJECT;
+var init_config = __esm({
+  "config.js"() {
+    init_checked_fetch();
+    init_strip_cf_connecting_ip_header();
+    init_modules_watch_stub();
+    PLATFORM_DOMAIN = "fluxe.in";
+    PLATFORM_URL = `https://${PLATFORM_DOMAIN}`;
+    SUPPORT_EMAIL = `support@${PLATFORM_DOMAIN}`;
+    FROM_EMAIL = `noreply@${PLATFORM_DOMAIN}`;
+    VAPID_SUBJECT = `mailto:noreply@${PLATFORM_DOMAIN}`;
+  }
+});
+
 // utils/helpers.js
 function generateId() {
   return crypto.randomUUID();
@@ -112,9 +127,9 @@ function jsonResponse(data, status = 200, request = null) {
 function getAllowedOrigin(origin) {
   if (!origin)
     return "*";
-  if (origin === "https://fluxe.in")
+  if (origin === PLATFORM_URL)
     return origin;
-  if (origin.endsWith(".fluxe.in") && origin.startsWith("https://"))
+  if (origin.endsWith(`.${PLATFORM_DOMAIN}`) && origin.startsWith("https://"))
     return origin;
   if (origin === "https://fluxe-8x1.pages.dev")
     return origin;
@@ -173,6 +188,7 @@ var init_helpers = __esm({
     init_checked_fetch();
     init_strip_cf_connecting_ip_header();
     init_modules_watch_stub();
+    init_config();
     __name(generateId, "generateId");
     __name(generateToken, "generateToken");
     __name(generateOrderNumber, "generateOrderNumber");
@@ -584,11 +600,12 @@ async function purgeStorefrontCache(env, siteId, types = [], resourceIds = {}) {
     if (!site)
       return;
     const domains = [];
+    const rootDomain = env.DOMAIN || PLATFORM_DOMAIN;
     if (site.subdomain)
-      domains.push(`${site.subdomain}.fluxe.in`);
+      domains.push(`${site.subdomain}.${rootDomain}`);
     if (site.custom_domain && site.domain_status === "verified")
       domains.push(site.custom_domain);
-    domains.push("fluxe.in");
+    domains.push(rootDomain);
     const cache = caches.default;
     const urls2 = [];
     for (const type of types) {
@@ -659,6 +676,7 @@ var init_cache = __esm({
     init_strip_cf_connecting_ip_header();
     init_modules_watch_stub();
     init_helpers();
+    init_config();
     CACHE_TTL = 604800;
     STALE_WHILE_REVALIDATE = 1209600;
     __name(cachedJsonResponse, "cachedJsonResponse");
@@ -3832,6 +3850,7 @@ init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 init_helpers();
+init_config();
 init_cache();
 init_auth();
 init_site_admin_worker();
@@ -4671,7 +4690,7 @@ async function handleVerifyDomain(env, siteId) {
       if (cnameData.Answer && cnameData.Answer.length > 0) {
         for (const record of cnameData.Answer) {
           const target = (record.data || "").replace(/\.$/, "").toLowerCase();
-          if (target.endsWith(".fluxe.in") || target.endsWith(".pages.dev")) {
+          if (target.endsWith(`.${env.DOMAIN || PLATFORM_DOMAIN}`) || target.endsWith(".pages.dev")) {
             cnameVerified = true;
             break;
           }
@@ -4684,7 +4703,7 @@ async function handleVerifyDomain(env, siteId) {
         }
       }
       if (!cnameVerified) {
-        errors.push(`CNAME record not found. Add a CNAME record for ${domain} pointing to your .fluxe.in subdomain.`);
+        errors.push(`CNAME record not found. Add a CNAME record for ${domain} pointing to your .${env.DOMAIN || PLATFORM_DOMAIN} subdomain.`);
       }
     } catch (dnsErr) {
       errors.push("Could not verify CNAME record: " + dnsErr.message);
@@ -10603,6 +10622,7 @@ init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 init_helpers();
+init_config();
 
 // workers/seo/index.js
 init_checked_fetch();
@@ -11361,7 +11381,8 @@ async function handleSiteRouting(request, env) {
   const hostname = url.hostname;
   const hostParts = hostname.split(".");
   let subdomain = null;
-  if (hostname.endsWith("fluxe.in")) {
+  const platformDomain2 = env.DOMAIN || PLATFORM_DOMAIN;
+  if (hostname.endsWith(platformDomain2)) {
     if (hostParts.length >= 3 && hostParts[0] !== "www") {
       subdomain = hostParts[0];
     }
@@ -11388,7 +11409,7 @@ async function handleSiteRouting(request, env) {
       console.error("Site routing subdomain lookup error:", error);
     }
   }
-  if (!siteRow && !hostname.endsWith("fluxe.in") && !hostname.endsWith("pages.dev") && !hostname.includes("localhost") && !hostname.includes("workers.dev")) {
+  if (!siteRow && !hostname.endsWith(platformDomain2) && !hostname.endsWith("pages.dev") && !hostname.includes("localhost") && !hostname.includes("workers.dev")) {
     try {
       siteRow = await env.DB.prepare(
         `SELECT * FROM sites WHERE custom_domain = ? AND domain_status = 'verified' AND is_active = 1`
@@ -11434,7 +11455,7 @@ async function handleSiteRouting(request, env) {
             <div class="container">
               <h1>Site Unavailable</h1>
               <p>${isPlanExpired ? `The subscription for <strong>${site.brand_name || subdomain}</strong> has expired. Please contact the site owner to renew the plan and restore access.` : `<strong>${site.brand_name || subdomain}</strong> is not currently available. Please contact the site owner for more information.`}</p>
-              <a href="https://fluxe.in" class="btn">Go to Fluxe</a>
+              <a href="https://${platformDomain2}" class="btn">Go to Fluxe</a>
             </div>
           </body>
         </html>`,
@@ -11511,7 +11532,7 @@ async function serveStorefrontApp(request, env, path, site) {
         console.error("[Storefront] ASSETS fetch error:", err);
       }
     }
-    const domain = env.DOMAIN || "fluxe.in";
+    const domain = env.DOMAIN || PLATFORM_DOMAIN;
     const response = await fetch(`https://${domain}${storefrontAssetPath}`);
     if (response.ok) {
       const headers = new Headers(response.headers);
@@ -11535,7 +11556,7 @@ async function serveStorefrontApp(request, env, path, site) {
     }
   }
   if (!rawHTML) {
-    const domain = env.DOMAIN || "fluxe.in";
+    const domain = env.DOMAIN || PLATFORM_DOMAIN;
     const response = await fetch(`https://${domain}${storefrontIndexPath}`);
     if (!response.ok) {
       return new Response("Storefront not available", { status: 500 });
@@ -11548,7 +11569,7 @@ async function serveStorefrontApp(request, env, path, site) {
     headers: {
       "Content-Type": "text/html; charset=utf-8",
       "Cache-Control": "no-cache",
-      "Content-Security-Policy": "frame-ancestors 'self' https://fluxe.in https://www.fluxe.in",
+      "Content-Security-Policy": `frame-ancestors 'self' https://${platformDomain} https://www.${platformDomain}`,
       ...corsHeaders()
     }
   });
@@ -16065,6 +16086,7 @@ __name(deletePost, "deletePost");
 // workers/index.js
 init_usage_tracker();
 init_helpers();
+init_config();
 init_cache();
 
 // utils/db-init.js
@@ -16459,7 +16481,8 @@ var workers_default = {
         return siteResponse;
       }
       const hostname = url.hostname;
-      if (hostname === "www.fluxe.in" || hostname === "fluxe.in") {
+      const platformDomain2 = env.DOMAIN || PLATFORM_DOMAIN;
+      if (hostname === `www.${platformDomain2}` || hostname === platformDomain2) {
         const pagesHostname = env.PAGES_HOSTNAME || "fluxe-8x1.pages.dev";
         const pagesUrl = new URL(request.url);
         pagesUrl.hostname = pagesHostname;
@@ -16570,7 +16593,7 @@ async function handleSiteInfo(request, env) {
          FROM sites s 
          WHERE LOWER(s.subdomain) = LOWER(?) AND s.is_active = 1`
       ).bind(subdomain).first();
-    } else if (!hostname.endsWith("fluxe.in") && !hostname.endsWith("pages.dev") && !hostname.includes("localhost") && !hostname.includes("workers.dev")) {
+    } else if (!hostname.endsWith(env.DOMAIN || PLATFORM_DOMAIN) && !hostname.endsWith("pages.dev") && !hostname.includes("localhost") && !hostname.includes("workers.dev")) {
       siteRow = await env.DB.prepare(
         `SELECT s.id, s.subdomain, s.brand_name, s.template_id,
                 s.custom_domain, s.domain_status, s.domain_verification_token
@@ -16679,7 +16702,7 @@ async function handleGoogleAuthFlow(request, env, path) {
     const siteId = url.searchParams.get("siteId") || "";
     const returnUrl = url.searchParams.get("returnUrl") || "";
     const mode = url.searchParams.get("mode") || "login";
-    const domain = env.DOMAIN || "fluxe.in";
+    const domain = env.DOMAIN || PLATFORM_DOMAIN;
     const html = `<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Sign in with Google - Fluxe</title>

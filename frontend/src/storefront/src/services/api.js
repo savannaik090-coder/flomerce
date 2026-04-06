@@ -1,6 +1,5 @@
-const API_BASE_URL = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in')
-  ? ''
-  : 'https://fluxe.in';
+import { API_BASE } from '../config.js';
+const API_BASE_URL = API_BASE;
 
 export function getApiUrl(endpoint) {
   return `${API_BASE_URL}${endpoint}`;

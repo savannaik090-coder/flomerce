@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { SiteContext } from '../context/SiteContext.jsx';
+import { API_BASE } from '../config.js';
 import AdminSidebar from '../components/admin/AdminSidebar.jsx';
 import DashboardSection from '../components/admin/DashboardSection.jsx';
 import ProductsSection from '../components/admin/ProductsSection.jsx';
@@ -60,7 +61,7 @@ export default function AdminPanel() {
     } else if (verified && siteConfig?.id && adminToken) {
       (async () => {
         try {
-          const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
+
           const response = await fetch(`${API_BASE}/api/site-admin/validate`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -111,7 +112,6 @@ export default function AdminPanel() {
   async function handleAutoLogin(token) {
     setAutoLoginLoading(true);
     try {
-      const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
       const response = await fetch(`${API_BASE}/api/site-admin/validate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -160,7 +160,6 @@ export default function AdminPanel() {
     setLoginError('');
     setLoginLoading(true);
     try {
-      const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
       const response = await fetch(`${API_BASE}/api/site-admin/staff-login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -205,7 +204,6 @@ export default function AdminPanel() {
     const token = sessionStorage.getItem('site_admin_token');
     if (token) {
       try {
-        const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
         await fetch(`${API_BASE}/api/site-admin/staff-logout`, {
           method: 'POST',
           headers: { 'Authorization': `SiteAdmin ${token}` },

@@ -1,4 +1,5 @@
 import { jsonResponse, errorResponse, corsHeaders } from '../utils/helpers.js';
+import { PLATFORM_DOMAIN } from '../config.js';
 import { applySEO, generateSitemap, generateRobots } from './seo/index.js';
 import { getSiteWithConfig } from '../utils/site-db.js';
 
@@ -9,8 +10,9 @@ export async function handleSiteRouting(request, env) {
 
   const hostParts = hostname.split('.');
   let subdomain = null;
+  const platformDomain = env.DOMAIN || PLATFORM_DOMAIN;
 
-  if (hostname.endsWith('fluxe.in')) {
+  if (hostname.endsWith(platformDomain)) {
     if (hostParts.length >= 3 && hostParts[0] !== 'www') {
       subdomain = hostParts[0];
     }
@@ -43,7 +45,7 @@ export async function handleSiteRouting(request, env) {
     }
   }
 
-  if (!siteRow && !hostname.endsWith('fluxe.in') && !hostname.endsWith('pages.dev') && !hostname.includes('localhost') && !hostname.includes('workers.dev')) {
+  if (!siteRow && !hostname.endsWith(platformDomain) && !hostname.endsWith('pages.dev') && !hostname.includes('localhost') && !hostname.includes('workers.dev')) {
     try {
       siteRow = await env.DB.prepare(
         `SELECT * FROM sites WHERE custom_domain = ? AND domain_status = 'verified' AND is_active = 1`
@@ -94,7 +96,7 @@ export async function handleSiteRouting(request, env) {
                 ? `The subscription for <strong>${site.brand_name || subdomain}</strong> has expired. Please contact the site owner to renew the plan and restore access.`
                 : `<strong>${site.brand_name || subdomain}</strong> is not currently available. Please contact the site owner for more information.`
               }</p>
-              <a href="https://fluxe.in" class="btn">Go to Fluxe</a>
+              <a href="https://${platformDomain}" class="btn">Go to Fluxe</a>
             </div>
           </body>
         </html>`,
@@ -187,7 +189,7 @@ async function serveStorefrontApp(request, env, path, site) {
       }
     }
 
-    const domain = env.DOMAIN || 'fluxe.in';
+    const domain = env.DOMAIN || PLATFORM_DOMAIN;
     const response = await fetch(`https://${domain}${storefrontAssetPath}`);
     if (response.ok) {
       const headers = new Headers(response.headers);
@@ -217,7 +219,7 @@ async function serveStorefrontApp(request, env, path, site) {
   }
 
   if (!rawHTML) {
-    const domain = env.DOMAIN || 'fluxe.in';
+    const domain = env.DOMAIN || PLATFORM_DOMAIN;
     const response = await fetch(`https://${domain}${storefrontIndexPath}`);
     if (!response.ok) {
       return new Response('Storefront not available', { status: 500 });
@@ -232,7 +234,7 @@ async function serveStorefrontApp(request, env, path, site) {
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
       'Cache-Control': 'no-cache',
-      'Content-Security-Policy': "frame-ancestors 'self' https://fluxe.in https://www.fluxe.in",
+      'Content-Security-Policy': `frame-ancestors 'self' https://${platformDomain} https://www.${platformDomain}`,
       ...corsHeaders(),
     },
   });
@@ -244,8 +246,9 @@ export async function resolveSiteFromRequest(request, env) {
 
   const hostParts = hostname.split('.');
   let subdomain = null;
+  const platformDomain = env.DOMAIN || PLATFORM_DOMAIN;
 
-  if (hostname.endsWith('fluxe.in')) {
+  if (hostname.endsWith(platformDomain)) {
     if (hostParts.length >= 3 && hostParts[0] !== 'www') {
       subdomain = hostParts[0];
     }
@@ -267,7 +270,7 @@ export async function resolveSiteFromRequest(request, env) {
     if (site) return site;
   }
 
-  if (!hostname.endsWith('fluxe.in') && !hostname.endsWith('pages.dev') && !hostname.includes('localhost') && !hostname.includes('workers.dev')) {
+  if (!hostname.endsWith(platformDomain) && !hostname.endsWith('pages.dev') && !hostname.includes('localhost') && !hostname.includes('workers.dev')) {
     const site = await env.DB.prepare(
       `SELECT * FROM sites WHERE custom_domain = ? AND domain_status = 'verified' AND is_active = 1`
     ).bind(hostname.toLowerCase()).first();

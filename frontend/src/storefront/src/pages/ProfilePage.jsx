@@ -7,11 +7,7 @@ import * as authService from '../services/authService.js';
 import * as orderService from '../services/orderService.js';
 import { apiRequest } from '../services/api.js';
 import { parseAsUTC, formatDateShortForCustomer } from '../utils/dateFormatter.js';
-
-function getApiBase() {
-  if (typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in')) return '';
-  return 'https://fluxe.in';
-}
+import { API_BASE } from '../config.js';
 
 const RETURN_REASONS = [
   'Received wrong item',
@@ -183,7 +179,6 @@ export default function ProfilePage() {
     if (returnPhotos.length + files.length > 5) { alert('You can upload a maximum of 5 photos.'); return; }
     setUploadingReturnPhotos(true);
     try {
-      const API_BASE = getApiBase();
       const newPhotos = [];
       for (const file of files) {
         const formData = new FormData();

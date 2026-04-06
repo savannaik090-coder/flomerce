@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import SectionToggle from './SectionToggle.jsx';
-
-const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
+import { API_BASE } from '../../config.js';
 
 export default function OrderTrackEditor({ onSaved, onPreviewUpdate }) {
   const { siteConfig, refetchSite } = useContext(SiteContext);

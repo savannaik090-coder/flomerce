@@ -3,8 +3,7 @@ import { Link } from 'react-router-dom';
 import { useSiteConfig } from '../../hooks/useSiteConfig.js';
 import * as productService from '../../services/productService.js';
 import ProductCard from '../product/ProductCard.jsx';
-
-const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
+import { API_BASE } from '../../config.js';
 
 function resolveImg(src) {
   if (!src) return '';

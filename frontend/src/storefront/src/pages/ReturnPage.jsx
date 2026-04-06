@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext, useRef } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { SiteContext } from '../context/SiteContext.jsx';
 import * as orderService from '../services/orderService.js';
+import { API_BASE } from '../config.js';
 
 const RETURN_REASONS = [
   'Received wrong item',
@@ -13,11 +14,6 @@ const RETURN_REASONS = [
 ];
 
 const IMAGE_REQUIRED_REASONS = ['Received wrong item', 'Item damaged or defective'];
-
-function getApiBase() {
-  if (typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in')) return '';
-  return 'https://fluxe.in';
-}
 
 export default function ReturnPage() {
   const { orderId } = useParams();
@@ -87,7 +83,6 @@ export default function ReturnPage() {
     }
     setUploadingPhotos(true);
     try {
-      const API_BASE = getApiBase();
       const newPhotos = [];
       for (const file of files) {
         const formData = new FormData();

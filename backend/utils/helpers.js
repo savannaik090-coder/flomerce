@@ -1,3 +1,5 @@
+import { PLATFORM_DOMAIN, PLATFORM_URL } from '../config.js';
+
 export function generateId() {
   return crypto.randomUUID();
 }
@@ -49,9 +51,9 @@ export function jsonResponse(data, status = 200, request = null) {
 function getAllowedOrigin(origin) {
   if (!origin) return '*';
   
-  if (origin === 'https://fluxe.in') return origin;
+  if (origin === PLATFORM_URL) return origin;
   
-  if (origin.endsWith('.fluxe.in') && origin.startsWith('https://')) return origin;
+  if (origin.endsWith(`.${PLATFORM_DOMAIN}`) && origin.startsWith('https://')) return origin;
   
   if (origin === 'https://fluxe-8x1.pages.dev') return origin;
   if (origin.endsWith('.pages.dev')) return origin;

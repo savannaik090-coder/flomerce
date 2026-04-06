@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar.jsx';
 import '../styles/legal.css';
+import { SUPPORT_EMAIL, PLATFORM_URL, PLATFORM_DOMAIN } from '../config.js';
 
 export default function AboutPage() {
   return (
@@ -19,7 +20,7 @@ export default function AboutPage() {
 
           <section>
             <h2>What We Do</h2>
-            <p>Fluxe provides a complete, all-in-one platform for creating and managing online stores. Each store gets its own branded subdomain (e.g., your-store.fluxe.in) and comes packed with everything needed to run a successful e-commerce business:</p>
+            <p>Fluxe provides a complete, all-in-one platform for creating and managing online stores. Each store gets its own branded subdomain (e.g., your-store.{PLATFORM_DOMAIN}) and comes packed with everything needed to run a successful e-commerce business:</p>
             <ul>
               <li><strong>Store Builder:</strong> Create a fully functional online store in minutes with beautiful, ready-to-use templates</li>
               <li><strong>Product Management:</strong> Add products with images, categories, variants, pricing, and inventory tracking</li>
@@ -63,10 +64,10 @@ export default function AboutPage() {
             <h2>Contact Us</h2>
             <p>We would love to hear from you. Whether you have questions, feedback, or need help getting started:</p>
             <p><strong>Fluxe</strong></p>
-            <p><strong>Email:</strong> <a href="mailto:support@fluxe.in">support@fluxe.in</a></p>
+            <p><strong>Email:</strong> <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a></p>
             <p><strong>Phone:</strong> <a href="tel:+919901954610">+91 9901954610</a></p>
             <p><strong>Address:</strong> Karwar, Karnataka, India — 581400</p>
-            <p><strong>Website:</strong> <a href="https://fluxe.in">https://fluxe.in</a></p>
+            <p><strong>Website:</strong> <a href={PLATFORM_URL}>{PLATFORM_URL}</a></p>
           </section>
         </div>
 
@@ -79,7 +80,7 @@ export default function AboutPage() {
             <Link to="/shipping-policy">Shipping & Delivery Policy</Link>
           </div>
           <p>&copy; {new Date().getFullYear()} Fluxe. All rights reserved.</p>
-          <p style={{ color: '#94a3b8', fontSize: '0.75rem', marginTop: '0.5rem' }}>Karwar, Karnataka, India — 581400 | +91 9901954610 | support@fluxe.in</p>
+          <p style={{ color: '#94a3b8', fontSize: '0.75rem', marginTop: '0.5rem' }}>Karwar, Karnataka, India — 581400 | +91 9901954610 | {SUPPORT_EMAIL}</p>
         </footer>
       </div>
     </div>

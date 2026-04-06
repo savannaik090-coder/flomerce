@@ -4,6 +4,7 @@ import { SiteContext } from '../context/SiteContext.jsx';
 import { AuthContext } from '../context/AuthContext.jsx';
 import * as authService from '../services/authService.js';
 import { setAuthToken } from '../services/api.js';
+import { PLATFORM_URL } from '../config.js';
 
 export default function SignupPage() {
   const navigate = useNavigate();
@@ -44,7 +45,7 @@ export default function SignupPage() {
 
   const handleGoogleSignup = () => {
     const returnUrl = window.location.origin + '/signup';
-    const googleAuthUrl = `https://fluxe.in/auth/google/start?siteId=${encodeURIComponent(siteConfig?.id || '')}&returnUrl=${encodeURIComponent(returnUrl)}&mode=signup`;
+    const googleAuthUrl = `${PLATFORM_URL}/auth/google/start?siteId=${encodeURIComponent(siteConfig?.id || '')}&returnUrl=${encodeURIComponent(returnUrl)}&mode=signup`;
     window.location.href = googleAuthUrl;
   };
 

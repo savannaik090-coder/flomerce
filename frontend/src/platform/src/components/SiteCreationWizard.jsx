@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { createSite, checkSubdomain } from '../services/siteService.js';
+import { PLATFORM_DOMAIN } from '../config.js';
 
 const BUSINESS_CATEGORIES = [
   { id: 'jewellery', name: 'Jewellery', icon: '💎' },
@@ -234,7 +235,7 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
                 />
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.25rem' }}>
                   <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                    {subdomain && `${subdomain}.fluxe.in`}
+                    {subdomain && `${subdomain}.${PLATFORM_DOMAIN}`}
                   </span>
                   {checkingSubdomain && (
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Checking...</span>

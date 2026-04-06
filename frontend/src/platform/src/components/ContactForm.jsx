@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { SUPPORT_EMAIL } from '../config.js';
 
 export default function ContactForm() {
   const [formData, setFormData] = useState({ name: '', email: '', subject: '', message: '' });
@@ -10,7 +11,7 @@ export default function ContactForm() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const mailtoLink = `mailto:support@fluxe.in?subject=${encodeURIComponent(formData.subject || 'Contact from Fluxe Website')}&body=${encodeURIComponent(`Name: ${formData.name}\nEmail: ${formData.email}\n\n${formData.message}`)}`;
+    const mailtoLink = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(formData.subject || 'Contact from Fluxe Website')}&body=${encodeURIComponent(`Name: ${formData.name}\nEmail: ${formData.email}\n\n${formData.message}`)}`;
     window.location.href = mailtoLink;
     setStatus('sent');
     setTimeout(() => setStatus(null), 4000);
@@ -29,7 +30,7 @@ export default function ContactForm() {
               </div>
               <div>
                 <span className="contact-detail-label">Email</span>
-                <a href="mailto:support@fluxe.in">support@fluxe.in</a>
+                <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>
               </div>
             </div>
             <div className="contact-detail-item">
@@ -68,7 +69,7 @@ export default function ContactForm() {
               Send Message
             </button>
             {status === 'sent' && (
-              <p className="contact-success-msg">Your email client should open shortly. If not, email us directly at support@fluxe.in</p>
+              <p className="contact-success-msg">Your email client should open shortly. If not, email us directly at {SUPPORT_EMAIL}</p>
             )}
           </form>
         </div>

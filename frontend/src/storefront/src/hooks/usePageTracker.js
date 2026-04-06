@@ -1,6 +1,7 @@
 import { useEffect, useRef, useContext } from 'react';
 import { useLocation } from 'react-router-dom';
 import { SiteContext } from '../context/SiteContext.jsx';
+import { API_BASE } from '../config.js';
 
 function getVisitorId() {
   const key = 'flx_vid';
@@ -24,8 +25,6 @@ export default function usePageTracker() {
     const trackKey = location.pathname + location.search;
     if (trackKey === lastTracked.current) return;
     lastTracked.current = trackKey;
-
-    const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
 
     try {
       const payload = {

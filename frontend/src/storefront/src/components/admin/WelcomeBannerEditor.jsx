@@ -4,8 +4,7 @@ import { resolveImageUrl } from '../../utils/imageUrl.js';
 import SectionToggle from './SectionToggle.jsx';
 import SaveBar from './SaveBar.jsx';
 import LinkSelector from './LinkSelector.jsx';
-
-const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
+import { API_BASE } from '../../config.js';
 
 function compressImage(file, maxWidth = 1200, quality = 0.85) {
   return new Promise((resolve) => {

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useSiteConfig } from '../hooks/useSiteConfig.js';
 import { useSEO } from '../hooks/useSEO.js';
+import { API_BASE } from '../config.js';
 
 export default function ContactPage() {
   const { siteConfig } = useSiteConfig();
@@ -18,8 +19,6 @@ export default function ContactPage() {
   function handleChange(e) {
     setForm({ ...form, [e.target.name]: e.target.value });
   }
-
-  const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
 
   async function handleSubmit(e) {
     e.preventDefault();

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useSiteConfig } from '../hooks/useSiteConfig.js';
+import { API_BASE } from '../config.js';
 
 const TIME_SLOTS = [
   '11:00 AM', '12:00 PM', '01:00 PM', '02:00 PM',
@@ -33,7 +34,6 @@ export default function BookAppointmentPage() {
     return d.toISOString().split('T')[0];
   }
 
-  const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
 
   async function handleSubmit(e) {
     e.preventDefault();

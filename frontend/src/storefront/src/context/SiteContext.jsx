@@ -1,10 +1,11 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
+import { PLATFORM_DOMAIN, PLATFORM_URL, API_BASE } from '../config.js';
 
 export const SiteContext = createContext(null);
 
 function isCustomDomain() {
   const hostname = window.location.hostname;
-  return !hostname.endsWith('fluxe.in') && !hostname.endsWith('pages.dev') &&
+  return !hostname.endsWith(PLATFORM_DOMAIN) && !hostname.endsWith('pages.dev') &&
     hostname !== 'localhost' && hostname !== '127.0.0.1' && !hostname.includes('replit') &&
     !hostname.includes('workers.dev');
 }
@@ -13,7 +14,7 @@ function getSubdomain() {
   const hostname = window.location.hostname;
   const hostParts = hostname.split('.');
 
-  if (hostname.endsWith('fluxe.in')) {
+  if (hostname.endsWith(PLATFORM_DOMAIN)) {
     if (hostParts.length >= 3 && hostParts[0] !== 'www') {
       return hostParts[0];
     }
@@ -81,7 +82,7 @@ export function SiteProvider({ children }) {
       if (sub === '__custom_domain__') {
         apiUrl = `/api/site`;
       } else {
-        const apiBase = window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
+        const apiBase = API_BASE;
         apiUrl = `${apiBase}/api/site?subdomain=${encodeURIComponent(sub)}`;
       }
       const response = await fetch(apiUrl);

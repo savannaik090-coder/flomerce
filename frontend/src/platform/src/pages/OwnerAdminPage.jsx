@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { useNavigate } from 'react-router-dom';
 import { apiRequest } from '../services/api.js';
 import '../styles/owner-admin.css';
+import { PLATFORM_DOMAIN } from '../config.js';
 
 function utcDate(s) { if (!s) return null; const v = String(s).trim(); const iso = v.includes('T') ? v : v.replace(' ', 'T'); return new Date(iso.endsWith('Z') || iso.includes('+') ? iso : iso + 'Z'); }
 
@@ -624,7 +625,7 @@ export default function OwnerAdminPage() {
                 <div className="oa-list-item" key={s.id || s.subdomain}>
                   <div className="oa-list-info">
                     <span className="oa-list-name">{s.brand_name || s.subdomain}</span>
-                    <span className="oa-list-sub">{s.subdomain}.fluxe.in</span>
+                    <span className="oa-list-sub">{s.subdomain}.{PLATFORM_DOMAIN}</span>
                   </div>
                   <span className="oa-badge oa-badge-green">Active</span>
                 </div>
@@ -712,7 +713,7 @@ export default function OwnerAdminPage() {
                   {allSites.map(s => (
                     <tr key={s.id || s.subdomain}>
                       <td data-label="Site">{s.brand_name || s.subdomain}</td>
-                      <td data-label="Subdomain">{s.subdomain}.fluxe.in</td>
+                      <td data-label="Subdomain">{s.subdomain}.{PLATFORM_DOMAIN}</td>
                       <td data-label="User">{s.user_id}</td>
                       <td data-label="Status"><span className="oa-badge oa-badge-green">Active</span></td>
                     </tr>
@@ -730,7 +731,7 @@ export default function OwnerAdminPage() {
                   <div className="oa-user-card-header">
                     <div>
                       <div className="oa-user-card-name">{s.brand_name || s.subdomain}</div>
-                      <div className="oa-user-card-email">{s.subdomain}.fluxe.in</div>
+                      <div className="oa-user-card-email">{s.subdomain}.{PLATFORM_DOMAIN}</div>
                     </div>
                     <span className="oa-badge oa-badge-green">Active</span>
                   </div>
@@ -835,7 +836,7 @@ export default function OwnerAdminPage() {
                             <tr key={s.siteId}>
                               <td data-label="Site">
                                 <div style={{ fontWeight: 600 }}>{s.brandName || s.subdomain}</div>
-                                <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{s.subdomain}.fluxe.in</div>
+                                <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{s.subdomain}.{PLATFORM_DOMAIN}</div>
                               </td>
                               <td data-label="D1">{formatBytes(s.d1BytesDisplayed || 0)}</td>
                               <td data-label="R2">{formatBytes(s.r2BytesUsed || 0)}</td>
@@ -862,7 +863,7 @@ export default function OwnerAdminPage() {
                           <div className="oa-user-card-header">
                             <div>
                               <div className="oa-user-card-name">{s.brandName || s.subdomain}</div>
-                              <div className="oa-user-card-email">{s.subdomain}.fluxe.in</div>
+                              <div className="oa-user-card-email">{s.subdomain}.{PLATFORM_DOMAIN}</div>
                               <div className="oa-user-card-email">D1: {formatBytes(s.d1BytesDisplayed || 0)} &middot; R2: {formatBytes(s.r2BytesUsed || 0)}</div>
                             </div>
                           </div>
@@ -1215,7 +1216,7 @@ export default function OwnerAdminPage() {
                             {site.brand_name || site.subdomain}
                             {site.is_enterprise ? <span style={{ marginLeft: '0.5rem', fontSize: '0.7rem', color: '#7c3aed', background: '#ede9fe', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>Already Enterprise</span> : null}
                           </div>
-                          <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{site.subdomain}.fluxe.in &middot; {site.user_email || 'No owner'}</div>
+                          <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{site.subdomain}.{PLATFORM_DOMAIN} &middot; {site.user_email || 'No owner'}</div>
                         </div>
                       ))}
                     </div>
@@ -1230,7 +1231,7 @@ export default function OwnerAdminPage() {
                 <form onSubmit={handleAssignEnterprise} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', padding: '0.75rem', background: '#f0f9ff', borderRadius: '0.5rem', border: '1px solid #bae6fd' }}>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{enterpriseSelectedAssignSite.brand_name || enterpriseSelectedAssignSite.subdomain}</div>
-                    <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{enterpriseSelectedAssignSite.subdomain}.fluxe.in &middot; {enterpriseSelectedAssignSite.user_email || 'No owner'}</div>
+                    <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{enterpriseSelectedAssignSite.subdomain}.{PLATFORM_DOMAIN} &middot; {enterpriseSelectedAssignSite.user_email || 'No owner'}</div>
                   </div>
                   <input
                     type="text"
@@ -1268,7 +1269,7 @@ export default function OwnerAdminPage() {
                         <tr key={site.siteId}>
                           <td data-label="Site">
                             <div>{site.brandName || site.subdomain}</div>
-                            <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{site.subdomain}.fluxe.in</div>
+                            <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{site.subdomain}.{PLATFORM_DOMAIN}</div>
                           </td>
                           <td data-label="Owner">
                             <div>{site.userName || '—'}</div>
@@ -1302,7 +1303,7 @@ export default function OwnerAdminPage() {
                       <div className="oa-user-card-header">
                         <div>
                           <div className="oa-user-card-name">{site.brandName || site.subdomain}</div>
-                          <div className="oa-user-card-email">{site.subdomain}.fluxe.in</div>
+                          <div className="oa-user-card-email">{site.subdomain}.{PLATFORM_DOMAIN}</div>
                         </div>
                         <span className={`oa-badge ${(site.currentMonthCost || 0) > 0 ? 'oa-badge-red' : 'oa-badge-green'}`}>
                           {(site.currentMonthCost || 0) > 0 ? `₹${(site.currentMonthCost || 0).toFixed(2)} overage` : '₹0.00'}
@@ -1529,7 +1530,7 @@ export default function OwnerAdminPage() {
                     type="email"
                     value={settingsForm.enterprise_email}
                     onChange={e => setSettingsForm({ ...settingsForm, enterprise_email: e.target.value })}
-                    placeholder="e.g. enterprise@fluxe.in"
+                    placeholder={`e.g. enterprise@${PLATFORM_DOMAIN}`}
                   />
                   <p className="oa-form-hint">The email address for the "Contact Us" button on the Enterprise card.</p>
                 </div>

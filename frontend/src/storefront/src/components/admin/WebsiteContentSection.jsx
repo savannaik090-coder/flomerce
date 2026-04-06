@@ -21,6 +21,7 @@ import FAQSection from './FAQSection.jsx';
 import BlogSection from './BlogSection.jsx';
 import SectionToggle from './SectionToggle.jsx';
 import SaveBar from './SaveBar.jsx';
+import { API_BASE, PLATFORM_DOMAIN } from '../../config.js';
 
 const TAB_GROUPS = [
   {
@@ -74,8 +75,8 @@ const ALL_TABS = TAB_GROUPS.flatMap(g => g.tabs);
 function getStoreUrl(siteConfig) {
   if (!siteConfig?.subdomain) return '';
   const host = window.location.hostname;
-  if (host.endsWith('fluxe.in')) {
-    return `https://${siteConfig.subdomain}.fluxe.in`;
+  if (host.endsWith(PLATFORM_DOMAIN)) {
+    return `https://${siteConfig.subdomain}.${PLATFORM_DOMAIN}`;
   }
   return `${window.location.protocol}//${window.location.host}`;
 }
@@ -531,7 +532,7 @@ function PromoBannerEditor({ onSaved, onPreviewUpdate }) {
   async function loadPromoBanner() {
     setLoading(true);
     try {
-      const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
+
       const response = await fetch(`${API_BASE}/api/site?subdomain=${encodeURIComponent(siteConfig.subdomain)}`);
       const result = await response.json();
       if (result.success && result.data) {
@@ -563,7 +564,7 @@ function PromoBannerEditor({ onSaved, onPreviewUpdate }) {
     setSaving(true);
     setStatus('');
     try {
-      const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
+
       const token = sessionStorage.getItem('site_admin_token');
 
       const filtered = messages.filter(m => m.trim() !== '');

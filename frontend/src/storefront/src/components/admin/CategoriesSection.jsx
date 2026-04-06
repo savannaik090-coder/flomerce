@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { getCategories, createCategory, updateCategory, deleteCategory } from '../../services/categoryService.js';
-
-const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
+import { API_BASE } from '../../config.js';
 
 function resolveImageUrl(src) {
   if (!src) return '';

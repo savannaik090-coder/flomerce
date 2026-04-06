@@ -1,4 +1,5 @@
 import { jsonResponse } from './helpers.js';
+import { PLATFORM_DOMAIN } from '../config.js';
 
 const CACHE_TTL = 604800;
 const STALE_WHILE_REVALIDATE = 1209600;
@@ -21,9 +22,10 @@ export async function purgeStorefrontCache(env, siteId, types = [], resourceIds 
     if (!site) return;
 
     const domains = [];
-    if (site.subdomain) domains.push(`${site.subdomain}.fluxe.in`);
+    const rootDomain = env.DOMAIN || PLATFORM_DOMAIN;
+    if (site.subdomain) domains.push(`${site.subdomain}.${rootDomain}`);
     if (site.custom_domain && site.domain_status === 'verified') domains.push(site.custom_domain);
-    domains.push('fluxe.in');
+    domains.push(rootDomain);
 
     const cache = caches.default;
     const urls = [];

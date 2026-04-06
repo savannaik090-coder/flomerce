@@ -3,9 +3,8 @@ import { SiteContext } from '../../context/SiteContext.jsx';
 import SectionToggle from './SectionToggle.jsx';
 import SaveBar from './SaveBar.jsx';
 
-const API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('fluxe.in') ? '' : 'https://fluxe.in';
-
 import { getPolicies, getPolicyPlaceholders } from '../../defaults/index.js';
+import { API_BASE } from '../../config.js';
 
 export default function ProductPoliciesEditor({ onSaved, onPreviewUpdate }) {
   const { siteConfig } = useContext(SiteContext);

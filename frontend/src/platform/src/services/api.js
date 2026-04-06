@@ -1,10 +1,4 @@
-const API_BASE_URL = (() => {
-  if (typeof window === 'undefined') return 'https://fluxe.in';
-  const host = window.location.hostname;
-  if (host === 'fluxe.in' || host === 'www.fluxe.in') return '';
-  if (host.endsWith('.fluxe.in')) return 'https://fluxe.in';
-  return 'http://localhost:8000';
-})();
+import { API_BASE_URL } from '../config.js';
 
 function getToken() {
   return localStorage.getItem('auth_token');
