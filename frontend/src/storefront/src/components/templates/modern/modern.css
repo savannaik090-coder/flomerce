@@ -76,6 +76,57 @@
   transform: translateY(-1px);
 }
 
+.modern-hero-dots {
+  display: flex;
+  gap: 8px;
+  margin-top: 32px;
+}
+.modern-hero-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1.5px solid #999;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.3s;
+}
+.modern-hero-dot.active {
+  background: #111;
+  border-color: #111;
+}
+.modern-hero-dot:hover {
+  border-color: #111;
+}
+
+.modern-hero-arrows {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  display: flex;
+  gap: 8px;
+  z-index: 2;
+}
+.modern-hero-arrow {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255,255,255,0.6);
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  padding: 0;
+  backdrop-filter: blur(4px);
+}
+.modern-hero-arrow:hover {
+  background: rgba(255,255,255,0.35);
+  border-color: #fff;
+}
+
 .modern-hero-image {
   flex: 1;
   min-height: 500px;
@@ -113,6 +164,9 @@
   }
   .modern-hero-btn {
     align-self: center;
+  }
+  .modern-hero-dots {
+    justify-content: center;
   }
   .modern-hero-image {
     min-height: 300px;

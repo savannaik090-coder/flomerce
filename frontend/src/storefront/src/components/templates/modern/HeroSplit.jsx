@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useSiteConfig } from '../../../hooks/useSiteConfig.js';
 import { resolveImageUrl } from '../../../utils/imageUrl.js';
 import { getHeroSliderDefaults } from '../../../defaults/index.js';
@@ -6,18 +6,44 @@ import './modern.css';
 
 export default function HeroSplit() {
   const { siteConfig } = useSiteConfig();
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+  const timerRef = useRef(null);
+
   const category = siteConfig?.category || 'generic';
   const savedSlides = siteConfig?.settings?.heroSlides;
   const rawSlides = savedSlides?.length ? savedSlides : getHeroSliderDefaults(category);
   const slides = rawSlides.filter(s => s.visible !== false);
-  const slide = slides[0];
-
-  if (!slide) return null;
-
   const primaryColor = siteConfig?.primaryColor || '#000000';
 
+  const nextSlide = useCallback(() => {
+    setCurrentIndex((prev) => (prev + 1) % slides.length);
+  }, [slides.length]);
+
+  const prevSlide = useCallback(() => {
+    setCurrentIndex((prev) => (prev - 1 + slides.length) % slides.length);
+  }, [slides.length]);
+
+  useEffect(() => {
+    if (isPaused || slides.length <= 1) return;
+    timerRef.current = setInterval(nextSlide, 5000);
+    return () => clearInterval(timerRef.current);
+  }, [isPaused, nextSlide, slides.length]);
+
+  useEffect(() => {
+    if (currentIndex >= slides.length) setCurrentIndex(0);
+  }, [slides.length, currentIndex]);
+
+  if (!slides.length) return null;
+
+  const slide = slides[currentIndex];
+
   return (
-    <section className="modern-hero">
+    <section
+      className="modern-hero"
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+    >
       <div className="modern-hero-inner">
         <div className="modern-hero-text">
           <span className="modern-hero-tag">{slide.subtitle || 'New Collection'}</span>
@@ -33,6 +59,18 @@ export default function HeroSplit() {
               <path d="M5 12h14M12 5l7 7-7 7"/>
             </svg>
           </button>
+          {slides.length > 1 && (
+            <div className="modern-hero-dots">
+              {slides.map((_, i) => (
+                <button
+                  key={i}
+                  className={`modern-hero-dot${i === currentIndex ? ' active' : ''}`}
+                  onClick={() => setCurrentIndex(i)}
+                  aria-label={`Go to slide ${i + 1}`}
+                />
+              ))}
+            </div>
+          )}
         </div>
         <div className="modern-hero-image">
           {slide.image ? (
@@ -44,6 +82,20 @@ export default function HeroSplit() {
                 <circle cx="8.5" cy="8.5" r="1.5"/>
                 <path d="M21 15l-5-5L5 21"/>
               </svg>
+            </div>
+          )}
+          {slides.length > 1 && (
+            <div className="modern-hero-arrows">
+              <button className="modern-hero-arrow" onClick={prevSlide} aria-label="Previous slide">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M15 18l-6-6 6-6"/>
+                </svg>
+              </button>
+              <button className="modern-hero-arrow" onClick={nextSlide} aria-label="Next slide">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M9 18l6-6-6-6"/>
+                </svg>
+              </button>
             </div>
           )}
         </div>
