@@ -2352,6 +2352,7 @@ init_auth();
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
+init_config();
 var CURRENCY_SYMBOLS = {
   INR: "\u20B9",
   USD: "$",
@@ -2408,7 +2409,7 @@ async function sendEmail(env, to, subject, html, text) {
       console.error("EMAIL FAILED: BREVO_API_KEY is not set. Email NOT sent to:", to, "Subject:", subject);
       return "No email provider configured";
     }
-    const fromEmail = env.FROM_EMAIL || "noreply@fluxe.in";
+    const fromEmail = env.FROM_EMAIL || FROM_EMAIL;
     const recipients = typeof to === "string" ? [{ email: to }] : Array.isArray(to) ? to.map((e) => typeof e === "string" ? { email: e } : e) : [to];
     const toPayload = recipients.map((r) => {
       const entry = { email: r.email };
@@ -5107,6 +5108,7 @@ __name(sendWebPush, "sendWebPush");
 
 // workers/storefront/notifications-worker.js
 init_usage_tracker();
+init_config();
 async function getSiteIcon(env, siteId) {
   try {
     const db = await resolveSiteDBById(env, siteId);
@@ -5264,14 +5266,14 @@ async function handleSend(request, env) {
       return errorResponse("Admin authentication required", 401);
     const vapidPublicKey = env.VAPID_PUBLIC_KEY;
     const vapidPrivateKey = env.VAPID_PRIVATE_KEY;
-    const vapidSubject = env.VAPID_SUBJECT || "mailto:noreply@fluxe.in";
+    const vapidSubject = env.VAPID_SUBJECT || VAPID_SUBJECT;
     if (!vapidPrivateKey) {
       return errorResponse("Push notifications not configured (VAPID_PRIVATE_KEY missing)", 500);
     }
     const db = await resolveSiteDBById(env, siteId);
     const siteIcon = await getSiteIcon(env, siteId);
     const site = await env.DB.prepare("SELECT subdomain, custom_domain FROM sites WHERE id = ?").bind(siteId).first();
-    const domain = env.DOMAIN || "fluxe.in";
+    const domain = env.DOMAIN || PLATFORM_DOMAIN;
     const siteOrigin = site?.custom_domain ? `https://${site.custom_domain}` : `https://${site?.subdomain || "store"}.${domain}`;
     let query = "SELECT endpoint, p256dh, auth FROM notifications WHERE site_id = ? AND is_active = 1";
     const params = [siteId];
@@ -5439,7 +5441,7 @@ async function triggerAutoNotification(env, siteId, type, payload) {
     if (!enabledMap[type])
       return;
     const site = await env.DB.prepare("SELECT subdomain, custom_domain FROM sites WHERE id = ?").bind(siteId).first();
-    const domain = env.DOMAIN || "fluxe.in";
+    const domain = env.DOMAIN || PLATFORM_DOMAIN;
     const siteOrigin = site?.custom_domain ? `https://${site.custom_domain}` : `https://${site?.subdomain || "store"}.${domain}`;
     const siteIcon = await getSiteIcon(env, siteId);
     const iconUrl = toAbsoluteUrl(siteIcon) || toAbsoluteUrl("/icon-192.png");
@@ -5452,7 +5454,7 @@ async function triggerAutoNotification(env, siteId, type, payload) {
     }
     const vapidPublicKey = env.VAPID_PUBLIC_KEY;
     const vapidPrivateKey = env.VAPID_PRIVATE_KEY;
-    const vapidSubject = env.VAPID_SUBJECT || "mailto:noreply@fluxe.in";
+    const vapidSubject = env.VAPID_SUBJECT || VAPID_SUBJECT;
     if (!vapidPrivateKey)
       return;
     const subscriptionsResult = await db.prepare(
@@ -6168,6 +6170,7 @@ init_helpers();
 init_auth();
 init_usage_tracker();
 init_site_db();
+init_config();
 async function handleOrders(request, env, path, ctx2) {
   const corsResponse = handleCORS(request);
   if (corsResponse)
@@ -6883,7 +6886,7 @@ async function updateOrderStatus(request, env, user, orderId) {
           const ownerEmail = statusSettings.email || statusSettings.ownerEmail || statusConfig.email;
           const statusCurrency = fullOrder.currency || statusSettings.defaultCurrency || "INR";
           const site = await env.DB.prepare("SELECT subdomain, custom_domain FROM sites WHERE id = ?").bind(fullOrder.site_id).first();
-          const domain = site?.custom_domain || `${site?.subdomain || "store"}.${env.DOMAIN || "fluxe.in"}`;
+          const domain = site?.custom_domain || `${site?.subdomain || "store"}.${env.DOMAIN || PLATFORM_DOMAIN}`;
           const trackingUrl = `https://${domain}/order-track?orderId=${fullOrder.order_number}`;
           const storeTz = statusSettings.timezone || "";
           const emailOrder = {
@@ -6982,7 +6985,7 @@ async function updateOrderStatus(request, env, user, orderId) {
           };
           let deliveryEmailOptions = {};
           const site = await env.DB.prepare("SELECT subdomain, custom_domain FROM sites WHERE id = ?").bind(fullOrder.site_id).first();
-          const delivDomain = site?.custom_domain || `${site?.subdomain || "store"}.${env.DOMAIN || "fluxe.in"}`;
+          const delivDomain = site?.custom_domain || `${site?.subdomain || "store"}.${env.DOMAIN || PLATFORM_DOMAIN}`;
           if (deliverySettings.returnsEnabled && fullOrder.customer_email) {
             try {
               const returnToken = generateReturnToken();
@@ -7629,7 +7632,7 @@ async function resendReturnLink(request, env, orderId) {
       await db.prepare(`UPDATE ${table} SET return_token = ? WHERE id = ?`).bind(returnToken, order.id).run();
     }
     const site = await env.DB.prepare("SELECT subdomain, custom_domain FROM sites WHERE id = ?").bind(siteId).first();
-    const domain = site?.custom_domain || `${site?.subdomain || "store"}.${env.DOMAIN || "fluxe.in"}`;
+    const domain = site?.custom_domain || `${site?.subdomain || "store"}.${env.DOMAIN || PLATFORM_DOMAIN}`;
     const returnUrl = `https://${domain}/return/${order.order_number || order.id}?token=${returnToken}`;
     const config = await getSiteConfig(env, siteId);
     const brandName = config.brand_name || "Store";
@@ -8093,7 +8096,7 @@ async function resendCancelLink(request, env, orderId) {
       await db.prepare(`UPDATE ${table} SET cancel_token = ? WHERE id = ?`).bind(cancelToken, order.id).run();
     }
     const site = await env.DB.prepare("SELECT subdomain, custom_domain FROM sites WHERE id = ?").bind(siteId).first();
-    const domain = site?.custom_domain || `${site?.subdomain || "store"}.${env.DOMAIN || "fluxe.in"}`;
+    const domain = site?.custom_domain || `${site?.subdomain || "store"}.${env.DOMAIN || PLATFORM_DOMAIN}`;
     const cancelUrl = `https://${domain}/cancel/${order.order_number || order.id}?token=${cancelToken}`;
     const config = await getSiteConfig(env, siteId);
     const brandName = config.brand_name || "Store";
@@ -13654,6 +13657,7 @@ init_helpers();
 init_auth();
 init_usage_tracker();
 init_site_db();
+init_config();
 async function handleCustomerAuth(request, env, path) {
   const corsResponse = handleCORS(request);
   if (corsResponse)
@@ -13866,7 +13870,7 @@ function getStorefrontUrl(env, site) {
   if (site.custom_domain && site.domain_status === "verified") {
     return `https://${site.custom_domain}`;
   }
-  const domain = env.DOMAIN || "fluxe.in";
+  const domain = env.DOMAIN || PLATFORM_DOMAIN;
   return `https://${site.subdomain}.${domain}`;
 }
 __name(getStorefrontUrl, "getStorefrontUrl");

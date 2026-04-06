@@ -103,4 +103,15 @@ The storefront Vite build outputs to `frontend/storefront/` and the platform bui
 - **Cloudflare R2:** Object storage.
 - **Cloudflare REST API:** Used for D1 database management and worker binding configurations.
 - **Razorpay:** Payment gateway for subscriptions and storefront transactions.
-- **Brevo:** Transactional email service (API: `https://api.brevo.com/v3/smtp/email`, `api-key` header auth via `BREVO_API_KEY`). From address: `noreply@fluxe.in`.
+- **Brevo:** Transactional email service (API: `https://api.brevo.com/v3/smtp/email`, `api-key` header auth via `BREVO_API_KEY`). From address configured via `FROM_EMAIL` in `backend/config.js`.
+
+## Domain Configuration
+
+All domain references are centralized into config files. To change the platform domain, update these files:
+
+1. **`backend/config.js`** — `PLATFORM_DOMAIN` (derives `PLATFORM_URL`, `SUPPORT_EMAIL`, `FROM_EMAIL`, `VAPID_SUBJECT`)
+2. **`frontend/src/storefront/src/config.js`** — `PLATFORM_DOMAIN` (derives `PLATFORM_URL`, `SUPPORT_EMAIL`, `API_BASE`)
+3. **`frontend/src/platform/src/config.js`** — `PLATFORM_DOMAIN` (derives `PLATFORM_URL`, `SUPPORT_EMAIL`, `ENTERPRISE_EMAIL`, `API_BASE_URL`)
+4. **`backend/wrangler.toml`** — Cloudflare deployment routes and env vars (infrastructure config, must match actual Cloudflare zone)
+
+No other source files contain hardcoded domain references. Backend workers use `env.DOMAIN || PLATFORM_DOMAIN` fallback pattern (env var from wrangler.toml overrides the config default). The `frontend/templates/` folder was intentionally left untouched.

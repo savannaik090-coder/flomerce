@@ -4,6 +4,7 @@ import { updateProductStock } from './products-worker.js';
 import { sendEmail, buildOrderConfirmationEmail, buildOwnerNotificationEmail, buildCancellationCustomerEmail, buildCancellationOwnerEmail, buildDeliveryCustomerEmail, buildDeliveryOwnerEmail, buildNewOrderReviewEmail, buildOrderPackedEmail, buildOrderShippedEmail, buildCancellationRequestNotifyEmail, buildCancellationStatusEmail } from '../../utils/email.js';
 import { checkUsageLimit, estimateRowBytes, trackD1Write, trackD1Update } from '../../utils/usage-tracker.js';
 import { resolveSiteDBById, checkMigrationLock, getSiteConfig, ensureProductOptionsColumn } from '../../utils/site-db.js';
+import { PLATFORM_DOMAIN } from '../../config.js';
 
 export async function handleOrders(request, env, path, ctx) {
   const corsResponse = handleCORS(request);
@@ -773,7 +774,7 @@ async function updateOrderStatus(request, env, user, orderId) {
           const statusCurrency = fullOrder.currency || statusSettings.defaultCurrency || 'INR';
 
           const site = await env.DB.prepare('SELECT subdomain, custom_domain FROM sites WHERE id = ?').bind(fullOrder.site_id).first();
-          const domain = site?.custom_domain || `${site?.subdomain || 'store'}.${env.DOMAIN || 'fluxe.in'}`;
+          const domain = site?.custom_domain || `${site?.subdomain || 'store'}.${env.DOMAIN || PLATFORM_DOMAIN}`;
 
           const trackingUrl = `https://${domain}/order-track?orderId=${fullOrder.order_number}`;
 
@@ -867,7 +868,7 @@ async function updateOrderStatus(request, env, user, orderId) {
 
           let deliveryEmailOptions = {};
           const site = await env.DB.prepare('SELECT subdomain, custom_domain FROM sites WHERE id = ?').bind(fullOrder.site_id).first();
-          const delivDomain = site?.custom_domain || `${site?.subdomain || 'store'}.${env.DOMAIN || 'fluxe.in'}`;
+          const delivDomain = site?.custom_domain || `${site?.subdomain || 'store'}.${env.DOMAIN || PLATFORM_DOMAIN}`;
 
           if (deliverySettings.returnsEnabled && fullOrder.customer_email) {
             try {
@@ -1484,7 +1485,7 @@ async function resendReturnLink(request, env, orderId) {
     }
 
     const site = await env.DB.prepare('SELECT subdomain, custom_domain FROM sites WHERE id = ?').bind(siteId).first();
-    const domain = site?.custom_domain || `${site?.subdomain || 'store'}.${env.DOMAIN || 'fluxe.in'}`;
+    const domain = site?.custom_domain || `${site?.subdomain || 'store'}.${env.DOMAIN || PLATFORM_DOMAIN}`;
     const returnUrl = `https://${domain}/return/${order.order_number || order.id}?token=${returnToken}`;
 
     const config = await getSiteConfig(env, siteId);
@@ -1922,7 +1923,7 @@ async function resendCancelLink(request, env, orderId) {
     }
 
     const site = await env.DB.prepare('SELECT subdomain, custom_domain FROM sites WHERE id = ?').bind(siteId).first();
-    const domain = site?.custom_domain || `${site?.subdomain || 'store'}.${env.DOMAIN || 'fluxe.in'}`;
+    const domain = site?.custom_domain || `${site?.subdomain || 'store'}.${env.DOMAIN || PLATFORM_DOMAIN}`;
     const cancelUrl = `https://${domain}/cancel/${order.order_number || order.id}?token=${cancelToken}`;
 
     const config = await getSiteConfig(env, siteId);

@@ -3,6 +3,7 @@ import { hashPassword, verifyPassword } from '../../utils/auth.js';
 import { sendEmail } from '../../utils/email.js';
 import { estimateRowBytes, trackD1Write, trackD1Update, trackD1Delete } from '../../utils/usage-tracker.js';
 import { resolveSiteDBById, checkMigrationLock, ensureAddressCountryColumn } from '../../utils/site-db.js';
+import { PLATFORM_DOMAIN } from '../../config.js';
 
 export async function handleCustomerAuth(request, env, path) {
   const corsResponse = handleCORS(request);
@@ -246,7 +247,7 @@ function getStorefrontUrl(env, site) {
   if (site.custom_domain && site.domain_status === 'verified') {
     return `https://${site.custom_domain}`;
   }
-  const domain = env.DOMAIN || 'fluxe.in';
+  const domain = env.DOMAIN || PLATFORM_DOMAIN;
   return `https://${site.subdomain}.${domain}`;
 }
 

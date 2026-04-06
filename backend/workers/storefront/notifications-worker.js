@@ -3,6 +3,7 @@ import { jsonResponse, errorResponse } from '../../utils/helpers.js';
 import { validateSiteAdmin } from './site-admin-worker.js';
 import { sendWebPush } from '../../utils/web-push.js';
 import { trackD1Write, trackD1Delete } from '../../utils/usage-tracker.js';
+import { PLATFORM_DOMAIN, VAPID_SUBJECT } from '../../config.js';
 
 async function getSiteIcon(env, siteId) {
   try {
@@ -159,7 +160,7 @@ async function handleSend(request, env) {
 
     const vapidPublicKey = env.VAPID_PUBLIC_KEY;
     const vapidPrivateKey = env.VAPID_PRIVATE_KEY;
-    const vapidSubject = env.VAPID_SUBJECT || 'mailto:noreply@fluxe.in';
+    const vapidSubject = env.VAPID_SUBJECT || VAPID_SUBJECT;
 
     if (!vapidPrivateKey) {
       return errorResponse('Push notifications not configured (VAPID_PRIVATE_KEY missing)', 500);
@@ -169,7 +170,7 @@ async function handleSend(request, env) {
     const siteIcon = await getSiteIcon(env, siteId);
 
     const site = await env.DB.prepare('SELECT subdomain, custom_domain FROM sites WHERE id = ?').bind(siteId).first();
-    const domain = env.DOMAIN || 'fluxe.in';
+    const domain = env.DOMAIN || PLATFORM_DOMAIN;
     const siteOrigin = site?.custom_domain
       ? `https://${site.custom_domain}`
       : `https://${site?.subdomain || 'store'}.${domain}`;
@@ -346,7 +347,7 @@ export async function triggerAutoNotification(env, siteId, type, payload) {
     if (!enabledMap[type]) return;
 
     const site = await env.DB.prepare('SELECT subdomain, custom_domain FROM sites WHERE id = ?').bind(siteId).first();
-    const domain = env.DOMAIN || 'fluxe.in';
+    const domain = env.DOMAIN || PLATFORM_DOMAIN;
     const siteOrigin = site?.custom_domain
       ? `https://${site.custom_domain}`
       : `https://${site?.subdomain || 'store'}.${domain}`;
@@ -373,7 +374,7 @@ export async function triggerAutoNotification(env, siteId, type, payload) {
 
     const vapidPublicKey = env.VAPID_PUBLIC_KEY;
     const vapidPrivateKey = env.VAPID_PRIVATE_KEY;
-    const vapidSubject = env.VAPID_SUBJECT || 'mailto:noreply@fluxe.in';
+    const vapidSubject = env.VAPID_SUBJECT || VAPID_SUBJECT;
     if (!vapidPrivateKey) return;
 
     const subscriptionsResult = await db.prepare(

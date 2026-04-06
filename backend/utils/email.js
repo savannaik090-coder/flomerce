@@ -1,3 +1,5 @@
+import { FROM_EMAIL } from '../config.js';
+
 const CURRENCY_SYMBOLS = {
   INR: '₹', USD: '$', EUR: '€', GBP: '£', AED: 'د.إ', CAD: 'CA$', AUD: 'A$', SAR: '﷼',
 };
@@ -46,7 +48,7 @@ export async function sendEmail(env, to, subject, html, text) {
       return 'No email provider configured';
     }
 
-    const fromEmail = env.FROM_EMAIL || 'noreply@fluxe.in';
+    const fromEmail = env.FROM_EMAIL || FROM_EMAIL;
 
     const recipients = typeof to === 'string'
       ? [{ email: to }]
