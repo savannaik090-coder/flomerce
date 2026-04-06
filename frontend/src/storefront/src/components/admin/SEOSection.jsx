@@ -185,6 +185,7 @@ function SiteSEOTab({ siteConfig }) {
       return;
     }
 
+    const oldFavicon = form.favicon_url;
     setFaviconUploading(true);
     setMsg(null);
     try {
@@ -202,6 +203,11 @@ function SiteSEOTab({ siteConfig }) {
         setForm(prev => ({ ...prev, favicon_url: urls[0] }));
         setMsg({ type: 'success', text: 'Favicon uploaded! Click "Save SEO Settings" to apply.' });
         setTimeout(() => setMsg(null), 4000);
+        if (oldFavicon && siteId) {
+          import('../../services/api.js').then(({ deleteMediaFromR2 }) => {
+            deleteMediaFromR2(siteId, oldFavicon);
+          });
+        }
       } else {
         setMsg({ type: 'error', text: result.error || 'Upload failed' });
       }
@@ -265,7 +271,7 @@ function SiteSEOTab({ siteConfig }) {
                   />
                   <button
                     type="button"
-                    onClick={() => setForm(prev => ({ ...prev, favicon_url: '' }))}
+                    onClick={() => { if (form.favicon_url && siteId) { import('../../services/api.js').then(({ deleteMediaFromR2 }) => { deleteMediaFromR2(siteId, form.favicon_url); }); } setForm(prev => ({ ...prev, favicon_url: '' })); }}
                     style={{ position: 'absolute', top: -6, right: -6, width: 18, height: 18, borderRadius: '50%', background: '#ef4444', color: '#fff', border: 'none', fontSize: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}
                   >
                     &times;
