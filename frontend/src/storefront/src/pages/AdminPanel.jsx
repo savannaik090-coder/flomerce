@@ -5,7 +5,6 @@ import AdminSidebar from '../components/admin/AdminSidebar.jsx';
 import DashboardSection from '../components/admin/DashboardSection.jsx';
 import ProductsSection from '../components/admin/ProductsSection.jsx';
 import InventorySection from '../components/admin/InventorySection.jsx';
-import LocationsSection from '../components/admin/LocationsSection.jsx';
 import OrdersSection from '../components/admin/OrdersSection.jsx';
 import CustomersSection from '../components/admin/CustomersSection.jsx';
 import AnalyticsSection from '../components/admin/AnalyticsSection.jsx';
@@ -336,7 +335,6 @@ export default function AdminPanel() {
             )
           )}
           {activeSection === 'inventory' && hasPermission('inventory') && <InventorySection />}
-          {activeSection === 'locations' && hasPermission('inventory') && <LocationsSection />}
           {activeSection === 'orders' && hasPermission('orders') && <OrdersSection />}
           {activeSection === 'customers' && hasPermission('customers') && <CustomersSection />}
           {activeSection === 'revenue' && (hasPermission('analytics') || hasPermission('orders')) && <RevenueSection />}

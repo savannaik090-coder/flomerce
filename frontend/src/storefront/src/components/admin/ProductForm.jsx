@@ -3,6 +3,7 @@ import { SiteContext } from '../../context/SiteContext.jsx';
 import { createProduct, updateProduct, getOptionsTemplate, saveOptionsTemplate } from '../../services/productService.js';
 import { getCategories } from '../../services/categoryService.js';
 import { getApiUrl } from '../../services/api.js';
+import { getLocations, getInventoryLevels, setInventoryLevel } from '../../services/inventoryService.js';
 
 const GST_RATES = [0, 3, 5, 12, 18, 28];
 
@@ -110,11 +111,39 @@ export default function ProductForm({ product, onSave, onCancel }) {
   const [showCustomOptions, setShowCustomOptions] = useState(false);
   const [showPricedOptions, setShowPricedOptions] = useState(false);
 
+  const [locations, setLocations] = useState([]);
+  const [locationStocks, setLocationStocks] = useState({});
+
   const isEdit = !!product;
 
   useEffect(() => {
-    if (siteConfig?.id) loadCategories();
+    if (siteConfig?.id) {
+      loadCategories();
+      loadLocations();
+    }
   }, [siteConfig?.id]);
+
+  async function loadLocations() {
+    try {
+      const res = await getLocations(siteConfig.id);
+      const locs = res.data || [];
+      setLocations(locs);
+      if (product && locs.length > 0) {
+        const levelsRes = await getInventoryLevels(siteConfig.id, product.id);
+        const lvls = levelsRes.data || [];
+        const stockMap = {};
+        lvls.forEach(l => { stockMap[l.location_id] = l.stock || 0; });
+        setLocationStocks(stockMap);
+      } else if (locs.length > 0) {
+        const defaultLoc = locs.find(l => l.is_default);
+        if (defaultLoc) {
+          setLocationStocks({ [defaultLoc.id]: '' });
+        }
+      }
+    } catch (err) {
+      console.error('Error loading locations:', err);
+    }
+  }
 
   const prevCategoryRef = useRef(form.category_id);
   useEffect(() => {
@@ -205,7 +234,12 @@ export default function ProductForm({ product, onSave, onCancel }) {
     const errs = {};
     if (!form.name.trim()) errs.name = 'Product name is required.';
     if (!form.price || parseFloat(form.price) < 1) errs.price = 'Price must be at least 1.';
-    if (form.stock === '' || parseInt(form.stock) < 0) errs.stock = 'Stock quantity is required.';
+    if (locations.length > 0) {
+      const hasNegative = Object.values(locationStocks).some(v => v !== '' && parseInt(v) < 0);
+      if (hasNegative) errs.stock = 'Stock per location cannot be negative.';
+    } else {
+      if (form.stock === '' || parseInt(form.stock) < 0) errs.stock = 'Stock quantity is required.';
+    }
     if (!form.category_id) errs.category_id = 'Please select a category.';
     if (!form.description.trim()) errs.description = 'Description is required.';
     if (!form.images || form.images.length === 0) errs.images = 'At least one product image is required.';
@@ -232,11 +266,15 @@ export default function ProductForm({ product, onSave, onCancel }) {
           values: opt.values.map(v => ({ ...v, price: Number(v.price) || 0 })),
         })),
       } : null;
+      const hasLocs = locations.length > 0;
+      const totalStock = hasLocs
+        ? Object.values(locationStocks).reduce((sum, v) => sum + (parseInt(v) || 0), 0)
+        : parseInt(form.stock);
       const payload = {
         siteId: siteConfig.id,
         name: form.name.trim(),
         price: parseFloat(form.price),
-        stock: parseInt(form.stock),
+        stock: totalStock,
         categoryId: form.category_id,
         subcategoryId: form.subcategory_id || null,
         description: form.description.trim(),
@@ -246,12 +284,22 @@ export default function ProductForm({ product, onSave, onCancel }) {
         hsnCode: form.hsn_code.trim() || null,
         gstRate: form.gst_rate !== '' ? parseFloat(form.gst_rate) : 0,
       };
+      let savedProductId = product?.id;
       if (isEdit) {
         await updateProduct(product.id, payload, siteConfig?.id);
       } else {
-        await createProduct(payload);
+        const createRes = await createProduct(payload);
+        savedProductId = createRes?.data?.id || createRes?.id;
         if (form.hsn_code.trim()) localStorage.setItem('last_hsn_code', form.hsn_code.trim());
         if (form.gst_rate !== '') localStorage.setItem('last_gst_rate', form.gst_rate);
+      }
+      if (hasLocs && savedProductId) {
+        const levelPromises = locations.map(loc => {
+          const val = locationStocks[loc.id];
+          const stockVal = (val === '' || val === undefined) ? 0 : (parseInt(val) || 0);
+          return setInventoryLevel(siteConfig.id, savedProductId, loc.id, stockVal);
+        });
+        await Promise.all(levelPromises);
       }
       if (siteConfig?.id) {
         saveOptionsTemplate(siteConfig.id, {
@@ -407,19 +455,52 @@ export default function ProductForm({ product, onSave, onCancel }) {
                 />
                 {errors.price && <p style={{ color: '#ef4444', fontSize: 12, marginTop: 4 }}>{errors.price}</p>}
               </div>
-              <div>
-                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Stock Quantity *</label>
-                <input
-                  type="number"
-                  min="0"
-                  value={form.stock}
-                  onChange={e => setForm(p => ({ ...p, stock: e.target.value }))}
-                  placeholder="0"
-                  style={{ width: '100%', padding: '10px 12px', border: `1px solid ${errors.stock ? '#ef4444' : '#e2e8f0'}`, borderRadius: 6, fontSize: 14, boxSizing: 'border-box' }}
-                />
+              {locations.length === 0 && (
+                <div>
+                  <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Stock Quantity *</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={form.stock}
+                    onChange={e => setForm(p => ({ ...p, stock: e.target.value }))}
+                    placeholder="0"
+                    style={{ width: '100%', padding: '10px 12px', border: `1px solid ${errors.stock ? '#ef4444' : '#e2e8f0'}`, borderRadius: 6, fontSize: 14, boxSizing: 'border-box' }}
+                  />
+                  {errors.stock && <p style={{ color: '#ef4444', fontSize: 12, marginTop: 4 }}>{errors.stock}</p>}
+                </div>
+              )}
+            </div>
+
+            {locations.length > 0 && (
+              <div style={{ marginBottom: 16, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '1rem 1.25rem' }}>
+                <label style={{ display: 'block', fontWeight: 600, marginBottom: 8, fontSize: 13 }}>
+                  <i className="fas fa-map-marker-alt" style={{ marginRight: 6, color: '#2563eb' }} />
+                  Stock by Location
+                </label>
+                <div style={{ display: 'grid', gap: 8 }}>
+                  {locations.map(loc => (
+                    <div key={loc.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ minWidth: 140, fontSize: 13, fontWeight: 500 }}>
+                        {loc.name}
+                        {loc.is_default ? <span style={{ fontSize: 10, background: '#2563eb', color: 'white', padding: '1px 6px', borderRadius: 8, marginLeft: 6, fontWeight: 600 }}>DEFAULT</span> : null}
+                      </span>
+                      <input
+                        type="number"
+                        min="0"
+                        value={locationStocks[loc.id] ?? ''}
+                        onChange={e => setLocationStocks(prev => ({ ...prev, [loc.id]: e.target.value }))}
+                        placeholder="0"
+                        style={{ width: 100, padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 14, boxSizing: 'border-box' }}
+                      />
+                    </div>
+                  ))}
+                </div>
+                <div style={{ marginTop: 8, fontSize: 12, color: '#64748b' }}>
+                  Total stock: <strong>{Object.values(locationStocks).reduce((sum, v) => sum + (parseInt(v) || 0), 0)}</strong>
+                </div>
                 {errors.stock && <p style={{ color: '#ef4444', fontSize: 12, marginTop: 4 }}>{errors.stock}</p>}
               </div>
-            </div>
+            )}
 
             <div style={{ marginBottom: 16 }}>
               <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Category *</label>
