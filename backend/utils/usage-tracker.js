@@ -5,7 +5,7 @@ const PLAN_LIMITS = {
   basic: { d1Bytes: 500 * 1024 * 1024, r2Bytes: 5 * 1024 * 1024 * 1024, allowOverage: false },
   standard: { d1Bytes: 1 * 1024 * 1024 * 1024, r2Bytes: 15 * 1024 * 1024 * 1024, allowOverage: false },
   pro: { d1Bytes: 2 * 1024 * 1024 * 1024, r2Bytes: 50 * 1024 * 1024 * 1024, allowOverage: false },
-  enterprise: { d1Bytes: 2 * 1024 * 1024 * 1024, r2Bytes: 50 * 1024 * 1024 * 1024, allowOverage: false },
+  enterprise: { d1Bytes: 2 * 1024 * 1024 * 1024, r2Bytes: 50 * 1024 * 1024 * 1024, allowOverage: true },
   trial: { d1Bytes: 500 * 1024 * 1024, r2Bytes: 5 * 1024 * 1024 * 1024, allowOverage: false },
   free: { d1Bytes: 500 * 1024 * 1024, r2Bytes: 5 * 1024 * 1024 * 1024, allowOverage: false },
 };
