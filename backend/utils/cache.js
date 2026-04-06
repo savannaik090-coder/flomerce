@@ -1,8 +1,8 @@
 import { jsonResponse } from './helpers.js';
 import { PLATFORM_DOMAIN } from '../config.js';
 
-const CDN_CACHE_TTL = 300;
-const CDN_STALE_WHILE_REVALIDATE = 600;
+const CDN_CACHE_TTL = 86400;
+const CDN_STALE_WHILE_REVALIDATE = 604800;
 const BROWSER_CACHE_TTL = 60;
 
 export function cachedJsonResponse(data, status = 200, request = null) {

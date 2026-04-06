@@ -724,8 +724,8 @@ var init_cache = __esm({
     init_modules_watch_stub();
     init_helpers();
     init_config();
-    CDN_CACHE_TTL = 300;
-    CDN_STALE_WHILE_REVALIDATE = 600;
+    CDN_CACHE_TTL = 86400;
+    CDN_STALE_WHILE_REVALIDATE = 604800;
     BROWSER_CACHE_TTL = 60;
     __name(cachedJsonResponse, "cachedJsonResponse");
     __name(purgeStorefrontCache, "purgeStorefrontCache");
