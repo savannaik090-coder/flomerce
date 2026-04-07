@@ -140,6 +140,39 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
                         const isSafe = link.url.startsWith('/') || link.url.startsWith('http://') || link.url.startsWith('https://');
                         if (!isSafe) return null;
                         const isExternal = link.url.startsWith('http://') || link.url.startsWith('https://');
+                        const linkedCat = link.categorySlug ? categories.find(c => c.slug === link.categorySlug) : null;
+                        const catChildren = linkedCat?.children || [];
+                        if (catChildren.length > 0) {
+                          const directSubs = catChildren.filter(c => !(c.children && c.children.length > 0));
+                          const groups = catChildren.filter(c => c.children && c.children.length > 0);
+                          return (
+                            <React.Fragment key={link.id}>
+                              <li>
+                                <Link to={link.url} onClick={closeMobileMenu} style={{ fontWeight: 600 }}>{link.label}</Link>
+                              </li>
+                              {directSubs.map(sub => (
+                                <li key={sub.id || sub.slug} style={{ paddingLeft: 10 }}>
+                                  <Link to={`/category/${linkedCat.slug}?subcategory=${sub.id}`} onClick={closeMobileMenu}>{sub.name}</Link>
+                                </li>
+                              ))}
+                              {groups.map(group => (
+                                <li key={group.id || group.slug} className={`sub-group${openSubGroup === group.id ? ' sub-group-open' : ''}`} style={{ paddingLeft: 10 }}>
+                                  <button className="sub-group-toggle" onClick={(e) => toggleSubGroup(group.id, e)}>
+                                    <span>{group.name}</span>
+                                    <i className="fas fa-chevron-right"></i>
+                                  </button>
+                                  <ul className="sub-group-menu">
+                                    {(group.children || []).map(val => (
+                                      <li key={val.id || val.slug}>
+                                        <Link to={`/category/${linkedCat.slug}?subcategory=${val.id}`} onClick={closeMobileMenu}>{val.name}</Link>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </li>
+                              ))}
+                            </React.Fragment>
+                          );
+                        }
                         return (
                           <li key={link.id}>
                             {isExternal ? (
