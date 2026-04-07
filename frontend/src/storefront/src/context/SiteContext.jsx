@@ -155,9 +155,13 @@ export function SiteProvider({ children }) {
 
   const effectiveSiteConfig = useMemo(() => {
     if (!previewSettings || !siteConfig) return siteConfig;
-    const { logoUrl: pLogoUrl, ...settingsOverrides } = previewSettings;
+    const { logoUrl: pLogoUrl, _previewCategories, ...settingsOverrides } = previewSettings;
     const merged = { ...siteConfig, settings: { ...(siteConfig.settings || {}), ...settingsOverrides } };
     if (pLogoUrl !== undefined) merged.logoUrl = pLogoUrl || null;
+    if (Array.isArray(_previewCategories)) {
+      merged.categories = _previewCategories;
+      merged.settings._previewCategories = _previewCategories;
+    }
     return merged;
   }, [previewSettings, siteConfig]);
 
