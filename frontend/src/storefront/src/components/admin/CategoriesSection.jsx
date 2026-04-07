@@ -39,10 +39,10 @@ export default function CategoriesSection({ onSaved }) {
   const [uploadingImage, setUploadingImage] = useState(null);
 
   const [expandedCat, setExpandedCat] = useState(null);
-  const [newGroupName, setNewGroupName] = useState('');
+  const [newSubName, setNewSubName] = useState('');
+  const [newSubGroupName, setNewSubGroupName] = useState('');
   const [newValueName, setNewValueName] = useState('');
   const [addingValueTo, setAddingValueTo] = useState(null);
-  const [newDirectSubName, setNewDirectSubName] = useState('');
 
   const [editingSubItem, setEditingSubItem] = useState(null);
   const [editSubItemName, setEditSubItemName] = useState('');
@@ -215,18 +215,35 @@ export default function CategoriesSection({ onSaved }) {
     } catch (e) { alert('Failed to remove image: ' + e.message); }
   }
 
-  function handleAddGroup(categoryId) {
-    if (!newGroupName.trim()) return;
-    const tempId = 'sub_' + Date.now();
-    setPendingSubAdds(prev => [...prev, { tempId, name: newGroupName.trim(), parentId: categoryId }]);
-    setNewGroupName('');
-  }
-
-  function handleAddDirectSub(categoryId) {
-    if (!newDirectSubName.trim()) return;
-    const tempId = 'sub_' + Date.now();
-    setPendingSubAdds(prev => [...prev, { tempId, name: newDirectSubName.trim(), parentId: categoryId }]);
-    setNewDirectSubName('');
+  function handleAddSubcategory(categoryId) {
+    if (!newSubName.trim()) return;
+    const groupName = newSubGroupName.trim();
+    if (!groupName) {
+      const tempId = 'sub_' + Date.now();
+      setPendingSubAdds(prev => [...prev, { tempId, name: newSubName.trim(), parentId: categoryId }]);
+    } else {
+      const cat = categories.find(c => c.id === categoryId);
+      const serverChildren = cat?.children || [];
+      const existingGroup = serverChildren.find(c => c.name.toLowerCase() === groupName.toLowerCase() && !pendingSubDeletes.includes(c.id));
+      const pendingGroup = pendingSubAdds.find(s => s.parentId === categoryId && s.name.toLowerCase() === groupName.toLowerCase());
+      if (existingGroup) {
+        const valTempId = 'sub_' + Date.now();
+        setPendingSubAdds(prev => [...prev, { tempId: valTempId, name: newSubName.trim(), parentId: existingGroup.id }]);
+      } else if (pendingGroup) {
+        const valTempId = 'sub_' + Date.now();
+        setPendingSubAdds(prev => [...prev, { tempId: valTempId, name: newSubName.trim(), parentId: pendingGroup.tempId }]);
+      } else {
+        const groupTempId = 'sub_' + Date.now();
+        const valTempId = 'sub_' + (Date.now() + 1);
+        setPendingSubAdds(prev => [
+          ...prev,
+          { tempId: groupTempId, name: groupName, parentId: categoryId },
+          { tempId: valTempId, name: newSubName.trim(), parentId: groupTempId },
+        ]);
+      }
+    }
+    setNewSubName('');
+    setNewSubGroupName('');
   }
 
   function handleAddValue(groupId) {
@@ -760,13 +777,18 @@ export default function CategoriesSection({ onSaved }) {
                     );
                   })}
 
-                  <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-                    <input type="text" value={newDirectSubName} onChange={e => setNewDirectSubName(e.target.value)} placeholder="Add subcategory (e.g. Gold Necklace, Silver Rings)" onKeyDown={e => { if (e.key === 'Enter') handleAddDirectSub(cat.id); }} style={{ flex: 1, padding: '8px 10px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
-                    <button onClick={() => handleAddDirectSub(cat.id)} disabled={!newDirectSubName.trim()} style={{ padding: '6px 14px', background: '#0ea5e9', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, cursor: 'pointer', fontWeight: 600, opacity: !newDirectSubName.trim() ? 0.5 : 1 }}>Add</button>
-                  </div>
-                  <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-                    <input type="text" value={newGroupName} onChange={e => setNewGroupName(e.target.value)} placeholder="New group name (e.g. Color, Size, Material)" onKeyDown={e => { if (e.key === 'Enter') handleAddGroup(cat.id); }} style={{ flex: 1, padding: '8px 10px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
-                    <button onClick={() => handleAddGroup(cat.id)} disabled={!newGroupName.trim()} className="btn btn-primary btn-sm" style={{ opacity: !newGroupName.trim() ? 0.5 : 1 }}>Add Group</button>
+                  <div style={{ marginTop: 12, background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0', padding: 12 }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 8 }}>Add Subcategory</div>
+                    <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
+                      <input type="text" value={newSubName} onChange={e => setNewSubName(e.target.value)} placeholder="Subcategory name (e.g. Gold Necklace, Silver Rings)" onKeyDown={e => { if (e.key === 'Enter') handleAddSubcategory(cat.id); }} style={{ flex: 1, padding: '8px 10px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', background: '#fff' }} />
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <input type="text" value={newSubGroupName} onChange={e => setNewSubGroupName(e.target.value)} placeholder="Group name — optional (e.g. Color, Size, Material)" onKeyDown={e => { if (e.key === 'Enter') handleAddSubcategory(cat.id); }} style={{ flex: 1, padding: '8px 10px', border: '1px dashed #cbd5e1', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', background: '#fff' }} />
+                      <button onClick={() => handleAddSubcategory(cat.id)} disabled={!newSubName.trim()} style={{ padding: '8px 16px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, cursor: 'pointer', fontWeight: 600, opacity: !newSubName.trim() ? 0.5 : 1, whiteSpace: 'nowrap' }}>Add</button>
+                    </div>
+                    <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 6 }}>
+                      Leave group name empty to add directly under the category. If a group name is provided, the subcategory will be nested under that group.
+                    </div>
                   </div>
                 </div>
                 );
