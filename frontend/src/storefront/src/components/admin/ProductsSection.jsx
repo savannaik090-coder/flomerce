@@ -4,6 +4,7 @@ import { getProducts, deleteProduct } from '../../services/productService.js';
 import { getCategories } from '../../services/categoryService.js';
 import { resolveImageUrl } from '../../utils/imageUrl.js';
 import { formatPrice, getAdminCurrency } from '../../utils/priceFormatter.js';
+import ConfirmModal from './ConfirmModal.jsx';
 
 export default function ProductsSection({ onEditProduct, onAddProduct }) {
   const { siteConfig } = useContext(SiteContext);
@@ -12,6 +13,7 @@ export default function ProductsSection({ onEditProduct, onAddProduct }) {
   const [activeCategory, setActiveCategory] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
+  const [confirmModal, setConfirmModal] = useState(null);
 
   useEffect(() => {
     if (siteConfig?.id) loadData();
@@ -33,14 +35,20 @@ export default function ProductsSection({ onEditProduct, onAddProduct }) {
     }
   }
 
-  async function handleDelete(productId) {
-    if (!window.confirm('Are you sure you want to delete this product?')) return;
-    try {
-      await deleteProduct(productId, siteConfig?.id);
-      setProducts(prev => prev.filter(p => p.id !== productId));
-    } catch (err) {
-      alert('Failed to delete product: ' + err.message);
-    }
+  function handleDelete(productId) {
+    setConfirmModal({
+      title: 'Delete Product',
+      message: 'Are you sure you want to delete this product?',
+      danger: true,
+      onConfirm: async () => {
+        try {
+          await deleteProduct(productId, siteConfig?.id);
+          setProducts(prev => prev.filter(p => p.id !== productId));
+        } catch (err) {
+          alert('Failed to delete product: ' + err.message);
+        }
+      }
+    });
   }
 
   const filtered = products.filter(p => {
@@ -52,6 +60,7 @@ export default function ProductsSection({ onEditProduct, onAddProduct }) {
   if (loading) return <div className="loading-spinner-admin"><div className="spinner" /></div>;
 
   return (
+    <>
     <div>
       <div className="search-bar">
         <input
@@ -130,5 +139,17 @@ export default function ProductsSection({ onEditProduct, onAddProduct }) {
         </div>
       )}
     </div>
+
+      <ConfirmModal
+        open={!!confirmModal}
+        title={confirmModal?.title || ''}
+        message={confirmModal?.message || ''}
+        confirmText={confirmModal?.confirmText}
+        cancelText={confirmModal?.cancelText}
+        danger={confirmModal?.danger}
+        onConfirm={() => { confirmModal?.onConfirm?.(); setConfirmModal(null); }}
+        onCancel={() => setConfirmModal(null)}
+      />
+    </>
   );
 }

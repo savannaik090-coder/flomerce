@@ -3,6 +3,7 @@ import { SiteContext } from '../../context/SiteContext.jsx';
 import { resolveImageUrl } from '../../utils/imageUrl.js';
 import SectionToggle from './SectionToggle.jsx';
 import SaveBar from './SaveBar.jsx';
+import ConfirmModal from './ConfirmModal.jsx';
 import { API_BASE } from '../../config.js';
 
 export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate }) {
@@ -14,6 +15,7 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate }) {
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [confirmModal, setConfirmModal] = useState(null);
   const [editingIndex, setEditingIndex] = useState(null);
   const [form, setForm] = useState({ text: '', name: '', rating: 5, image: '', imageKey: '' });
   const [uploading, setUploading] = useState(false);
@@ -193,20 +195,27 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate }) {
   }
 
   function handleDeleteReview(index) {
-    if (!window.confirm('Delete this review?')) return;
-    const deletedReview = reviews[index];
-    if (deletedReview?.image && siteConfig?.id) {
-      import('../../services/api.js').then(({ deleteMediaFromR2 }) => {
-        deleteMediaFromR2(siteConfig.id, deletedReview.image);
-      });
-    }
-    const updatedReviews = reviews.filter((_, i) => i !== index);
-    setReviews(updatedReviews);
+    setConfirmModal({
+      title: 'Delete Review',
+      message: 'Delete this review?',
+      danger: true,
+      onConfirm: () => {
+        const deletedReview = reviews[index];
+        if (deletedReview?.image && siteConfig?.id) {
+          import('../../services/api.js').then(({ deleteMediaFromR2 }) => {
+            deleteMediaFromR2(siteConfig.id, deletedReview.image);
+          });
+        }
+        const updatedReviews = reviews.filter((_, i) => i !== index);
+        setReviews(updatedReviews);
+      }
+    });
   }
 
   if (loading) return <div className="loading-spinner-admin"><div className="spinner" /></div>;
 
   return (
+    <>
     <div>
       <SaveBar topBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSaveSection(e || { preventDefault: () => {} })} />
       <SectionToggle
@@ -452,5 +461,17 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate }) {
         </div>
       )}
     </div>
+
+      <ConfirmModal
+        open={!!confirmModal}
+        title={confirmModal?.title || ''}
+        message={confirmModal?.message || ''}
+        confirmText={confirmModal?.confirmText}
+        cancelText={confirmModal?.cancelText}
+        danger={confirmModal?.danger}
+        onConfirm={() => { confirmModal?.onConfirm?.(); setConfirmModal(null); }}
+        onCancel={() => setConfirmModal(null)}
+      />
+    </>
   );
 }

@@ -3,6 +3,7 @@ import { SiteContext } from '../../context/SiteContext.jsx';
 import { apiRequest } from '../../services/api.js';
 import { TIMEZONE_OPTIONS, safeFormatInTimezone } from '../../utils/dateFormatter.js';
 import { getExchangeRates } from '../../services/currencyService.js';
+import ConfirmModal from './ConfirmModal.jsx';
 import { formatPrice } from '../../utils/priceFormatter.js';
 import { COUNTRIES, getStatesForCountry } from '../../utils/countryStates.js';
 import { API_BASE, PLATFORM_DOMAIN } from '../../config.js';
@@ -11,6 +12,7 @@ export default function SettingsSection() {
   const { siteConfig, refetchSite } = useContext(SiteContext);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
+  const [confirmModal, setConfirmModal] = useState(null);
 
   const [brandName, setBrandName] = useState('');
   const [phone, setPhone] = useState('');
@@ -415,8 +417,19 @@ export default function SettingsSection() {
     }
   }
 
-  async function handleRemoveDomain() {
-    if (!window.confirm('Are you sure you want to remove the custom domain?')) return;
+  function handleRemoveDomain() {
+    setConfirmModal({
+      title: 'Remove Domain',
+      message: 'Are you sure you want to remove the custom domain?',
+      danger: true,
+      confirmText: 'Yes, Remove',
+      onConfirm: async () => {
+        await doRemoveDomain();
+      }
+    });
+  }
+
+  async function doRemoveDomain() {
     setDomainMsg('');
     setDomainError('');
     try {
@@ -510,6 +523,7 @@ export default function SettingsSection() {
   if (loading) return <div className="loading-spinner-admin"><div className="spinner" /></div>;
 
   return (
+    <>
     <div style={{ maxWidth: 700 }}>
       <div className="card" style={{ marginBottom: 20 }}>
         <CollapsibleHeader sectionKey="storeUrl" title="Store URL" />
@@ -1353,5 +1367,17 @@ export default function SettingsSection() {
       )}
 
     </div>
+
+      <ConfirmModal
+        open={!!confirmModal}
+        title={confirmModal?.title || ''}
+        message={confirmModal?.message || ''}
+        confirmText={confirmModal?.confirmText}
+        cancelText={confirmModal?.cancelText}
+        danger={confirmModal?.danger}
+        onConfirm={() => { confirmModal?.onConfirm?.(); setConfirmModal(null); }}
+        onCancel={() => setConfirmModal(null)}
+      />
+    </>
   );
 }

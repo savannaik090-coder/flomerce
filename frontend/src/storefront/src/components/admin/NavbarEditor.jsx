@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext, useRef } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { getCategories } from '../../services/categoryService.js';
 import SaveBar from './SaveBar.jsx';
+import ConfirmModal from './ConfirmModal.jsx';
 import { API_BASE } from '../../config.js';
 
 function generateId() {
@@ -25,6 +26,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState('');
+  const [confirmModal, setConfirmModal] = useState(null);
   const [navbarMenus, setNavbarMenus] = useState([]);
   const [categories, setCategories] = useState([]);
   const [expandedMenu, setExpandedMenu] = useState(null);
@@ -220,9 +222,15 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
   }
 
   function removeMenu(menuId) {
-    if (!window.confirm('Delete this menu group? All links inside it will be removed.')) return;
-    setNavbarMenus(prev => prev.filter(m => m.id !== menuId));
-    if (expandedMenu === menuId) setExpandedMenu(null);
+    setConfirmModal({
+      title: 'Delete Menu Group',
+      message: 'Delete this menu group? All links inside it will be removed.',
+      danger: true,
+      onConfirm: () => {
+        setNavbarMenus(prev => prev.filter(m => m.id !== menuId));
+        if (expandedMenu === menuId) setExpandedMenu(null);
+      }
+    });
   }
 
   function updateMenuName(menuId, name) {
@@ -335,6 +343,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
   if (loading) return <div className="loading-spinner-admin"><div className="spinner" /></div>;
 
   return (
+    <>
     <div style={{ maxWidth: 750 }}>
       <SaveBar topBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       <form onSubmit={handleSave}>
@@ -954,5 +963,17 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
         <SaveBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       </form>
     </div>
+
+      <ConfirmModal
+        open={!!confirmModal}
+        title={confirmModal?.title || ''}
+        message={confirmModal?.message || ''}
+        confirmText={confirmModal?.confirmText}
+        cancelText={confirmModal?.cancelText}
+        danger={confirmModal?.danger}
+        onConfirm={() => { confirmModal?.onConfirm?.(); setConfirmModal(null); }}
+        onCancel={() => setConfirmModal(null)}
+      />
+    </>
   );
 }

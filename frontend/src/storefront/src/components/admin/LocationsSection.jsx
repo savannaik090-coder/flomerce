@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { getLocations, createLocation, updateLocation, deleteLocation } from '../../services/inventoryService.js';
+import ConfirmModal from './ConfirmModal.jsx';
 
 export default function LocationsSection() {
   const { siteConfig } = useContext(SiteContext);
@@ -10,6 +11,7 @@ export default function LocationsSection() {
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState({ name: '', address: '', priority: 0, is_default: false });
   const [saving, setSaving] = useState(false);
+  const [confirmModal, setConfirmModal] = useState(null);
 
   useEffect(() => {
     if (siteConfig?.id) loadLocations();
@@ -58,14 +60,20 @@ export default function LocationsSection() {
     }
   }
 
-  async function handleDelete(loc) {
-    if (!window.confirm(`Delete location "${loc.name}"? Stock must be zero or transferred first.`)) return;
-    try {
-      await deleteLocation(siteConfig.id, loc.id);
-      await loadLocations();
-    } catch (err) {
-      alert(err.message || 'Failed to delete location');
-    }
+  function handleDelete(loc) {
+    setConfirmModal({
+      title: 'Delete Location',
+      message: `Delete location "${loc.name}"? Stock must be zero or transferred first.`,
+      danger: true,
+      onConfirm: async () => {
+        try {
+          await deleteLocation(siteConfig.id, loc.id);
+          await loadLocations();
+        } catch (err) {
+          alert(err.message || 'Failed to delete location');
+        }
+      }
+    });
   }
 
   async function handleSetDefault(loc) {
@@ -80,6 +88,7 @@ export default function LocationsSection() {
   if (loading) return <div className="loading-spinner-admin"><div className="spinner" /></div>;
 
   return (
+    <>
     <div>
       <div className="card">
         <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -184,5 +193,17 @@ export default function LocationsSection() {
         </div>
       </div>
     </div>
+
+      <ConfirmModal
+        open={!!confirmModal}
+        title={confirmModal?.title || ''}
+        message={confirmModal?.message || ''}
+        confirmText={confirmModal?.confirmText}
+        cancelText={confirmModal?.cancelText}
+        danger={confirmModal?.danger}
+        onConfirm={() => { confirmModal?.onConfirm?.(); setConfirmModal(null); }}
+        onCancel={() => setConfirmModal(null)}
+      />
+    </>
   );
 }

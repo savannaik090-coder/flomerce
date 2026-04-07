@@ -3,6 +3,7 @@ import { SiteContext } from '../../context/SiteContext.jsx';
 import { getProducts } from '../../services/productService.js';
 import SectionToggle from './SectionToggle.jsx';
 import SaveBar from './SaveBar.jsx';
+import ConfirmModal from './ConfirmModal.jsx';
 import { formatPrice, getAdminCurrency } from '../../utils/priceFormatter.js';
 import { getWatchAndBuyDefaults } from '../../defaults/index.js';
 import { API_BASE } from '../../config.js';
@@ -13,6 +14,7 @@ export default function WatchBuySection({ onSaved }) {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [confirmModal, setConfirmModal] = useState(null);
   const [editingVideo, setEditingVideo] = useState(null);
   const [form, setForm] = useState({ productSku: '', videoUrl: '', videoKey: '' });
   const [saving, setSaving] = useState(false);
@@ -273,24 +275,30 @@ export default function WatchBuySection({ onSaved }) {
     }
   }
 
-  async function handleDelete(videoId) {
-    if (!window.confirm('Delete this video?')) return;
-    const deletedVideo = videos.find(v => v.id === videoId);
-    try {
-      const updatedVideos = videos.filter(v => v.id !== videoId);
-      await saveVideosToSettings(updatedVideos);
-      setVideos(updatedVideos);
-      serverShowRef.current = showSection;
-      setHasChanges(false);
-      if (onSaved) onSaved();
-      if (deletedVideo?.videoUrl && siteConfig?.id) {
-        import('../../services/api.js').then(({ deleteMediaFromR2 }) => {
-          deleteMediaFromR2(siteConfig.id, deletedVideo.videoUrl);
-        });
+  function handleDelete(videoId) {
+    setConfirmModal({
+      title: 'Delete Video',
+      message: 'Delete this video?',
+      danger: true,
+      onConfirm: async () => {
+        const deletedVideo = videos.find(v => v.id === videoId);
+        try {
+          const updatedVideos = videos.filter(v => v.id !== videoId);
+          await saveVideosToSettings(updatedVideos);
+          setVideos(updatedVideos);
+          serverShowRef.current = showSection;
+          setHasChanges(false);
+          if (onSaved) onSaved();
+          if (deletedVideo?.videoUrl && siteConfig?.id) {
+            import('../../services/api.js').then(({ deleteMediaFromR2 }) => {
+              deleteMediaFromR2(siteConfig.id, deletedVideo.videoUrl);
+            });
+          }
+        } catch (err) {
+          alert('Failed to delete: ' + err.message);
+        }
       }
-    } catch (err) {
-      alert('Failed to delete: ' + err.message);
-    }
+    });
   }
 
   function getProductNameForVideo(video) {
@@ -303,6 +311,7 @@ export default function WatchBuySection({ onSaved }) {
   }
 
   return (
+    <>
     <div>
       <SaveBar topBar saving={saving} hasChanges={hasChanges} onSave={handleSaveAll} />
       <SectionToggle
@@ -493,5 +502,17 @@ export default function WatchBuySection({ onSaved }) {
         </div>
       )}
     </div>
+
+      <ConfirmModal
+        open={!!confirmModal}
+        title={confirmModal?.title || ''}
+        message={confirmModal?.message || ''}
+        confirmText={confirmModal?.confirmText}
+        cancelText={confirmModal?.cancelText}
+        danger={confirmModal?.danger}
+        onConfirm={() => { confirmModal?.onConfirm?.(); setConfirmModal(null); }}
+        onCancel={() => setConfirmModal(null)}
+      />
+    </>
   );
 }

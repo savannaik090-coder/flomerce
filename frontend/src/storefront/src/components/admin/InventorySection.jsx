@@ -3,6 +3,7 @@ import { SiteContext } from '../../context/SiteContext.jsx';
 import { getProducts, updateProduct } from '../../services/productService.js';
 import { getLocations, createLocation, updateLocation, deleteLocation, getInventoryLevels, setInventoryLevel, createTransfer, getTransfers } from '../../services/inventoryService.js';
 import { formatPrice, getAdminCurrency } from '../../utils/priceFormatter.js';
+import ConfirmModal from './ConfirmModal.jsx';
 
 export default function InventorySection() {
   const { siteConfig } = useContext(SiteContext);
@@ -11,6 +12,7 @@ export default function InventorySection() {
   const [levels, setLevels] = useState([]);
   const [activeTab, setActiveTab] = useState('all');
   const [loading, setLoading] = useState(true);
+  const [confirmModal, setConfirmModal] = useState(null);
   const [viewMode, setViewMode] = useState('stock');
   const [subTab, setSubTab] = useState('stock');
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -135,14 +137,20 @@ export default function InventorySection() {
     }
   }
 
-  async function handleLocDelete(loc) {
-    if (!window.confirm(`Delete location "${loc.name}"? Stock must be zero or transferred first.`)) return;
-    try {
-      await deleteLocation(siteConfig.id, loc.id);
-      await loadData();
-    } catch (err) {
-      alert(err.message || 'Failed to delete location');
-    }
+  function handleLocDelete(loc) {
+    setConfirmModal({
+      title: 'Delete Location',
+      message: `Delete location "${loc.name}"? Stock must be zero or transferred first.`,
+      danger: true,
+      onConfirm: async () => {
+        try {
+          await deleteLocation(siteConfig.id, loc.id);
+          await loadData();
+        } catch (err) {
+          alert(err.message || 'Failed to delete location');
+        }
+      }
+    });
   }
 
   async function handleLocSetDefault(loc) {
@@ -303,6 +311,7 @@ export default function InventorySection() {
   }
 
   return (
+    <>
     <div>
       <div style={{ display: 'flex', gap: 0, marginBottom: '1.5rem', borderBottom: '2px solid #e2e8f0' }}>
         {['stock', 'locations'].map(tab => (
@@ -581,5 +590,17 @@ export default function InventorySection() {
         </div>
       )}
     </div>
+
+      <ConfirmModal
+        open={!!confirmModal}
+        title={confirmModal?.title || ''}
+        message={confirmModal?.message || ''}
+        confirmText={confirmModal?.confirmText}
+        cancelText={confirmModal?.cancelText}
+        danger={confirmModal?.danger}
+        onConfirm={() => { confirmModal?.onConfirm?.(); setConfirmModal(null); }}
+        onCancel={() => setConfirmModal(null)}
+      />
+    </>
   );
 }

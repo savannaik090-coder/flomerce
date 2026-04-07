@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import SaveBar from './SaveBar.jsx';
+import ConfirmModal from './ConfirmModal.jsx';
 import { getTermsDefaults } from '../../defaults/index.js';
 import { API_BASE } from '../../config.js';
 
@@ -10,6 +11,7 @@ export default function TermsEditor({ onSaved, onPreviewUpdate }) {
   const email = siteConfig?.email || 'support@example.com';
   const phone = siteConfig?.phone || '';
 
+  const [confirmModal, setConfirmModal] = useState(null);
   const [intro, setIntro] = useState('');
   const [sections, setSections] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -113,8 +115,15 @@ export default function TermsEditor({ onSaved, onPreviewUpdate }) {
   }
 
   function removeSection(index) {
-    if (!window.confirm('Remove this section?')) return;
-    setSections(prev => prev.filter((_, i) => i !== index));
+    setConfirmModal({
+      title: 'Remove Section',
+      message: 'Remove this section?',
+      danger: true,
+      confirmText: 'Yes, Remove',
+      onConfirm: () => {
+        setSections(prev => prev.filter((_, i) => i !== index));
+      }
+    });
   }
 
   function moveSection(index, direction) {
@@ -130,6 +139,7 @@ export default function TermsEditor({ onSaved, onPreviewUpdate }) {
   if (loading) return <div className="loading-spinner-admin"><div className="spinner" /></div>;
 
   return (
+    <>
     <div>
       <SaveBar topBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       <form onSubmit={handleSave} style={{ maxWidth: 700 }}>
@@ -225,5 +235,17 @@ export default function TermsEditor({ onSaved, onPreviewUpdate }) {
         <SaveBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       </form>
     </div>
+
+      <ConfirmModal
+        open={!!confirmModal}
+        title={confirmModal?.title || ''}
+        message={confirmModal?.message || ''}
+        confirmText={confirmModal?.confirmText}
+        cancelText={confirmModal?.cancelText}
+        danger={confirmModal?.danger}
+        onConfirm={() => { confirmModal?.onConfirm?.(); setConfirmModal(null); }}
+        onCancel={() => setConfirmModal(null)}
+      />
+    </>
   );
 }

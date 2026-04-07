@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext, useRef, useMemo } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { getCategories, createCategory, updateCategory, deleteCategory } from '../../services/categoryService.js';
 import { API_BASE } from '../../config.js';
+import ConfirmModal from './ConfirmModal.jsx';
 
 function resolveImageUrl(src) {
   if (!src) return '';
@@ -55,6 +56,7 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [confirmModal, setConfirmModal] = useState(null);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCategorySubtitle, setNewCategorySubtitle] = useState('');
   const [editingCategory, setEditingCategory] = useState(null);
@@ -215,13 +217,19 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
   }
 
   function handleDeleteCategory(categoryId) {
-    if (!window.confirm('Delete this category? Products in this category will not be deleted.')) return;
-    const isPending = pendingNewCats.find(c => c.tempId === categoryId);
-    if (isPending) {
-      setPendingNewCats(prev => prev.filter(c => c.tempId !== categoryId));
-    } else {
-      setPendingDeleteCats(prev => [...prev, categoryId]);
-    }
+    setConfirmModal({
+      title: 'Delete Category',
+      message: 'Delete this category? Products in this category will not be deleted.',
+      danger: true,
+      onConfirm: () => {
+        const isPending = pendingNewCats.find(c => c.tempId === categoryId);
+        if (isPending) {
+          setPendingNewCats(prev => prev.filter(c => c.tempId !== categoryId));
+        } else {
+          setPendingDeleteCats(prev => [...prev, categoryId]);
+        }
+      }
+    });
   }
 
   function handleUpdateCategory(categoryId) {
@@ -355,23 +363,29 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
   }
 
   function handleDeleteSubItem(itemId) {
-    if (!window.confirm('Delete this item?')) return;
-    const isPendingAdd = pendingSubAdds.find(s => s.tempId === itemId);
-    if (isPendingAdd) {
-      setPendingSubAdds(prev => prev.filter(s => s.tempId !== itemId && s.parentId !== itemId));
-    } else {
-      setPendingSubDeletes(prev => [...prev, itemId]);
-      setPendingSubAdds(prev => prev.filter(s => s.parentId !== itemId));
-    }
-    setPendingSubEdits(prev => {
-      const updated = { ...prev };
-      delete updated[itemId];
-      return updated;
+    setConfirmModal({
+      title: 'Delete Item',
+      message: 'Delete this item?',
+      danger: true,
+      onConfirm: () => {
+        const isPendingAdd = pendingSubAdds.find(s => s.tempId === itemId);
+        if (isPendingAdd) {
+          setPendingSubAdds(prev => prev.filter(s => s.tempId !== itemId && s.parentId !== itemId));
+        } else {
+          setPendingSubDeletes(prev => [...prev, itemId]);
+          setPendingSubAdds(prev => prev.filter(s => s.parentId !== itemId));
+        }
+        setPendingSubEdits(prev => {
+          const updated = { ...prev };
+          delete updated[itemId];
+          return updated;
+        });
+        if (editingSubItem === itemId) {
+          setEditingSubItem(null);
+          setEditSubItemName('');
+        }
+      }
     });
-    if (editingSubItem === itemId) {
-      setEditingSubItem(null);
-      setEditSubItemName('');
-    }
   }
 
   function handleStartEditSubItem(item) {
@@ -647,6 +661,7 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
   if (loading) return <div className="loading-spinner-admin"><div className="spinner" /></div>;
 
   return (
+    <>
     <div style={{ maxWidth: 760 }}>
       {hasUnsavedChanges && (
         <div style={{
@@ -1154,5 +1169,7 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
         >{saving ? 'Saving...' : hasUnsavedChanges ? 'Save All Changes' : 'All Changes Saved'}</button>
       </div>
     </div>
+    <ConfirmModal open={!!confirmModal} title={confirmModal?.title} message={confirmModal?.message} danger={confirmModal?.danger} confirmText={confirmModal?.confirmText} onConfirm={() => { confirmModal?.onConfirm?.(); setConfirmModal(null); }} onCancel={() => setConfirmModal(null)} />
+    </>
   );
 }
