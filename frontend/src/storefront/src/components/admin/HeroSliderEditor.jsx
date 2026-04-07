@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useRef } from 'react';
+import React, { useState, useEffect, useContext, useRef, createRef } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { resolveImageUrl } from '../../utils/imageUrl.js';
 import SaveBar from './SaveBar.jsx';
@@ -6,6 +6,12 @@ import LinkSelector from './LinkSelector.jsx';
 import { getHeroSliderDefaults } from '../../defaults/index.js';
 import { API_BASE } from '../../config.js';
 const currentYear = new Date().getFullYear();
+
+const MAX_SLIDES = 10;
+
+function newSlide() {
+  return { title: '', subtitle: '', description: '', buttonText: 'SHOP NOW', buttonLink: '', image: '', visible: true };
+}
 
 function compressImage(file, maxWidth = 1400, quality = 0.85) {
   return new Promise((resolve) => {
@@ -26,21 +32,24 @@ function compressImage(file, maxWidth = 1400, quality = 0.85) {
 
 export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
   const { siteConfig } = useContext(SiteContext);
-  const [slides, setSlides] = useState([
-    { title: '', subtitle: '', description: '', buttonText: 'SHOP NOW', buttonLink: '', image: '', visible: true },
-    { title: '', subtitle: '', description: '', buttonText: 'SHOP NOW', buttonLink: '', image: '', visible: true },
-    { title: '', subtitle: '', description: '', buttonText: 'SHOP NOW', buttonLink: '', image: '', visible: true },
-  ]);
+  const [slides, setSlides] = useState([newSlide(), newSlide(), newSlide()]);
   const [showScrollButtons, setShowScrollButtons] = useState(true);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState([false, false, false]);
+  const [uploading, setUploading] = useState({});
   const [hasChanges, setHasChanges] = useState(false);
   const [usingDefaults, setUsingDefaults] = useState(false);
-  const fileRefs = [useRef(null), useRef(null), useRef(null)];
+  const fileRefsMap = useRef({});
   const hasLoadedRef = useRef(false);
   const serverValuesRef = useRef(null);
+
+  function getFileRef(index) {
+    if (!fileRefsMap.current[index]) {
+      fileRefsMap.current[index] = createRef();
+    }
+    return fileRefsMap.current[index];
+  }
 
   useEffect(() => {
     if (siteConfig?.id) loadHeroSettings();
@@ -67,14 +76,14 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
         const existing = settings.heroSlides || [];
         let merged;
         if (existing.length > 0) {
-          merged = [0, 1, 2].map(i => ({
-            title: existing[i]?.title || '',
-            subtitle: existing[i]?.subtitle || '',
-            description: existing[i]?.description || '',
-            buttonText: existing[i]?.buttonText || 'SHOP NOW',
-            buttonLink: existing[i]?.buttonLink || '',
-            image: existing[i]?.image || '',
-            visible: existing[i]?.visible !== false,
+          merged = existing.map(s => ({
+            title: s.title || '',
+            subtitle: s.subtitle || '',
+            description: s.description || '',
+            buttonText: s.buttonText || 'SHOP NOW',
+            buttonLink: s.buttonLink || '',
+            image: s.image || '',
+            visible: s.visible !== false,
           }));
           setUsingDefaults(false);
         } else {
@@ -120,10 +129,41 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
     });
   }
 
+  function addSlide() {
+    if (slides.length >= MAX_SLIDES) return;
+    setSlides(prev => [...prev, newSlide()]);
+  }
+
+  function removeSlide(index) {
+    if (slides.length <= 1) return;
+    const slide = slides[index];
+    if (slide.image && siteConfig?.id) {
+      import('../../services/api.js').then(({ deleteMediaFromR2 }) => {
+        deleteMediaFromR2(siteConfig.id, slide.image);
+      });
+    }
+    setSlides(prev => prev.filter((_, i) => i !== index));
+    setUploading(prev => {
+      const updated = { ...prev };
+      delete updated[index];
+      return updated;
+    });
+  }
+
+  function moveSlide(index, direction) {
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= slides.length) return;
+    setSlides(prev => {
+      const updated = [...prev];
+      [updated[index], updated[newIndex]] = [updated[newIndex], updated[index]];
+      return updated;
+    });
+  }
+
   async function handleImageUpload(index, file) {
     if (!file) return;
     const oldImage = slides[index]?.image;
-    setUploading(prev => { const u = [...prev]; u[index] = true; return u; });
+    setUploading(prev => ({ ...prev, [index]: true }));
     try {
       const blob = await compressImage(file);
       const formData = new FormData();
@@ -146,7 +186,7 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
     } catch (e) {
       console.error('Failed to upload image:', e);
     } finally {
-      setUploading(prev => { const u = [...prev]; u[index] = false; return u; });
+      setUploading(prev => ({ ...prev, [index]: false }));
     }
   }
 
@@ -221,11 +261,12 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
               </div>
             )}
             <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
-              Configure up to 3 slides for the hero section. Use the eye icon to show or hide individual slides.
+              Configure slides for the hero section (up to {MAX_SLIDES}). Use the eye icon to show or hide individual slides.
             </p>
 
-            {[0, 1, 2].map(index => {
-              const isVisible = slides[index].visible !== false;
+            {slides.map((slide, index) => {
+              const isVisible = slide.visible !== false;
+              const fileRef = getFileRef(index);
               return (
                 <div key={index} style={{
                   border: '1px solid #e2e8f0',
@@ -237,41 +278,58 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
                   transition: 'all 0.2s ease',
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                    <h4 style={{ fontSize: 14, fontWeight: 600, color: '#334155' }}>
+                    <h4 style={{ fontSize: 14, fontWeight: 600, color: '#334155', margin: 0 }}>
                       Slide {index + 1} {index === 0 ? '' : '(optional)'}
                     </h4>
-                    <button
-                      type="button"
-                      onClick={() => toggleSlideVisibility(index)}
-                      title={isVisible ? 'Hide this slide' : 'Show this slide'}
-                      style={{
-                        background: isVisible ? '#eff6ff' : '#fef2f2',
-                        border: `1px solid ${isVisible ? '#bfdbfe' : '#fecaca'}`,
-                        borderRadius: 6,
-                        padding: '6px 10px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 6,
-                        fontSize: 12,
-                        color: isVisible ? '#2563eb' : '#dc2626',
-                        fontWeight: 500,
-                        transition: 'all 0.2s ease',
-                      }}
-                    >
-                      <i className={`fas ${isVisible ? 'fa-eye' : 'fa-eye-slash'}`} />
-                      {isVisible ? 'Visible' : 'Hidden'}
-                    </button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      {index > 0 && (
+                        <button type="button" onClick={() => moveSlide(index, 'up')} title="Move up" style={{ background: 'none', border: '1px solid #e2e8f0', borderRadius: 6, padding: '5px 8px', cursor: 'pointer', color: '#64748b', fontSize: 12 }}>
+                          <i className="fas fa-chevron-up" />
+                        </button>
+                      )}
+                      {index < slides.length - 1 && (
+                        <button type="button" onClick={() => moveSlide(index, 'down')} title="Move down" style={{ background: 'none', border: '1px solid #e2e8f0', borderRadius: 6, padding: '5px 8px', cursor: 'pointer', color: '#64748b', fontSize: 12 }}>
+                          <i className="fas fa-chevron-down" />
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => toggleSlideVisibility(index)}
+                        title={isVisible ? 'Hide this slide' : 'Show this slide'}
+                        style={{
+                          background: isVisible ? '#eff6ff' : '#fef2f2',
+                          border: `1px solid ${isVisible ? '#bfdbfe' : '#fecaca'}`,
+                          borderRadius: 6,
+                          padding: '5px 10px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          fontSize: 12,
+                          color: isVisible ? '#2563eb' : '#dc2626',
+                          fontWeight: 500,
+                          transition: 'all 0.2s ease',
+                        }}
+                      >
+                        <i className={`fas ${isVisible ? 'fa-eye' : 'fa-eye-slash'}`} />
+                        {isVisible ? 'Visible' : 'Hidden'}
+                      </button>
+                      {slides.length > 1 && (
+                        <button type="button" onClick={() => removeSlide(index)} title="Remove slide" style={{ background: 'none', border: '1px solid #fecaca', borderRadius: 6, padding: '5px 8px', cursor: 'pointer', color: '#ef4444', fontSize: 12 }}>
+                          <i className="fas fa-trash" />
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   <div style={{ marginBottom: 12 }}>
                     <label style={{ display: 'block', fontWeight: 600, marginBottom: 4, fontSize: 12, color: '#64748b' }}>
                       Image
                     </label>
-                    {slides[index].image ? (
+                    {slide.image ? (
                       <div style={{ position: 'relative', marginBottom: 8 }}>
                         <img
-                          src={resolveImageUrl(slides[index].image)}
+                          src={resolveImageUrl(slide.image)}
                           alt={`Slide ${index + 1}`}
                           style={{ width: '100%', height: 160, objectFit: 'cover', borderRadius: 6, border: '1px solid #e2e8f0' }}
                         />
@@ -290,7 +348,7 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
                       </div>
                     ) : (
                       <div
-                        onClick={() => !uploading[index] && fileRefs[index].current?.click()}
+                        onClick={() => !uploading[index] && fileRef.current?.click()}
                         style={{
                           border: '2px dashed #cbd5e1', borderRadius: 6, padding: '20px 0',
                           textAlign: 'center', cursor: uploading[index] ? 'not-allowed' : 'pointer', color: '#94a3b8', marginBottom: 8,
@@ -308,7 +366,7 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
                       </div>
                     )}
                     <input
-                      ref={fileRefs[index]}
+                      ref={fileRef}
                       type="file"
                       accept="image/*"
                       style={{ display: 'none' }}
@@ -321,7 +379,7 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
                       <label style={{ display: 'block', fontWeight: 600, marginBottom: 4, fontSize: 12, color: '#64748b' }}>Title</label>
                       <input
                         type="text"
-                        value={slides[index].title}
+                        value={slide.title}
                         onChange={e => updateSlide(index, 'title', e.target.value)}
                         placeholder="e.g., ELEGANT"
                         maxLength={50}
@@ -332,7 +390,7 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
                       <label style={{ display: 'block', fontWeight: 600, marginBottom: 4, fontSize: 12, color: '#64748b' }}>Subtitle</label>
                       <input
                         type="text"
-                        value={slides[index].subtitle}
+                        value={slide.subtitle}
                         onChange={e => updateSlide(index, 'subtitle', e.target.value)}
                         placeholder="e.g., Collection"
                         maxLength={50}
@@ -345,7 +403,7 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
                     <label style={{ display: 'block', fontWeight: 600, marginBottom: 4, fontSize: 12, color: '#64748b' }}>Description</label>
                     <input
                       type="text"
-                      value={slides[index].description}
+                      value={slide.description}
                       onChange={e => updateSlide(index, 'description', e.target.value)}
                       placeholder={`e.g., SUMMER CELEBRATIONS`}
                       maxLength={100}
@@ -361,7 +419,7 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
                       <label style={{ display: 'block', fontWeight: 600, marginBottom: 4, fontSize: 12, color: '#64748b' }}>Button Text</label>
                       <input
                         type="text"
-                        value={slides[index].buttonText}
+                        value={slide.buttonText}
                         onChange={e => updateSlide(index, 'buttonText', e.target.value)}
                         placeholder="SHOP NOW"
                         maxLength={30}
@@ -371,7 +429,7 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
                     <div>
                       <LinkSelector
                         label="Button Link"
-                        value={slides[index].buttonLink}
+                        value={slide.buttonLink}
                         onChange={val => updateSlide(index, 'buttonLink', val)}
                       />
                     </div>
@@ -379,6 +437,33 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
                 </div>
               );
             })}
+
+            {slides.length < MAX_SLIDES && (
+              <button
+                type="button"
+                onClick={addSlide}
+                style={{
+                  width: '100%',
+                  padding: '12px 0',
+                  border: '2px dashed #cbd5e1',
+                  borderRadius: 8,
+                  background: '#fff',
+                  color: '#3b82f6',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  marginBottom: 16,
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                <i className="fas fa-plus" />
+                Add Slide ({slides.length}/{MAX_SLIDES})
+              </button>
+            )}
 
             {visibleCount === 0 && (
               <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '12px 16px', marginBottom: 16, fontSize: 13, color: '#dc2626', display: 'flex', alignItems: 'center', gap: 8 }}>
