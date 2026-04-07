@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useState, useEffect, useContext, useMemo } from 'react';
 import { PLATFORM_DOMAIN, PLATFORM_URL, API_BASE } from '../config.js';
 
 export const SiteContext = createContext(null);
@@ -153,14 +153,13 @@ export function SiteProvider({ children }) {
     }
   }
 
-  const effectiveSiteConfig = previewSettings && siteConfig
-    ? (() => {
-        const { logoUrl: pLogoUrl, ...settingsOverrides } = previewSettings;
-        const merged = { ...siteConfig, settings: { ...(siteConfig.settings || {}), ...settingsOverrides } };
-        if (pLogoUrl !== undefined) merged.logoUrl = pLogoUrl || null;
-        return merged;
-      })()
-    : siteConfig;
+  const effectiveSiteConfig = useMemo(() => {
+    if (!previewSettings || !siteConfig) return siteConfig;
+    const { logoUrl: pLogoUrl, ...settingsOverrides } = previewSettings;
+    const merged = { ...siteConfig, settings: { ...(siteConfig.settings || {}), ...settingsOverrides } };
+    if (pLogoUrl !== undefined) merged.logoUrl = pLogoUrl || null;
+    return merged;
+  }, [previewSettings, siteConfig]);
 
   return (
     <SiteContext.Provider value={{ siteConfig: effectiveSiteConfig, loading, error, subdomain, refetchSite: () => subdomain && fetchSiteConfig(subdomain, true) }}>

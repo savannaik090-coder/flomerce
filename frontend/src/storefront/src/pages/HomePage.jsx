@@ -35,26 +35,20 @@ export default function HomePage() {
   const { siteConfig, loading: siteLoading } = useSiteConfig();
   const theme = useTheme();
   const isModern = theme.id === 'modern';
-  const [homeCategories, setHomeCategories] = useState([]);
-  const [allCategories, setAllCategories] = useState([]);
-  const [subcatSections, setSubcatSections] = useState([]);
-  const [sectionOrder, setSectionOrder] = useState([]);
+  const [apiCategories, setApiCategories] = useState([]);
   const [categoriesLoaded, setCategoriesLoaded] = useState(false);
 
   useSEO({ pageType: 'home' });
 
-  useEffect(() => {
-    if (siteConfig?.settings) {
-      let settings = {};
-      try {
-        settings = typeof siteConfig.settings === 'string' ? JSON.parse(siteConfig.settings) : (siteConfig.settings || {});
-      } catch (e) {
-        settings = {};
-      }
-      setSubcatSections(settings.subcategorySections || []);
-      setSectionOrder(settings.homepageSectionOrder || []);
-    }
+  const parsedSettings = useMemo(() => {
+    if (!siteConfig?.settings) return {};
+    try {
+      return typeof siteConfig.settings === 'string' ? JSON.parse(siteConfig.settings) : (siteConfig.settings || {});
+    } catch (e) { return {}; }
   }, [siteConfig?.settings]);
+
+  const subcatSections = parsedSettings.subcategorySections || [];
+  const sectionOrder = parsedSettings.homepageSectionOrder || [];
 
   useEffect(() => {
     if (!siteConfig?.id) {
@@ -64,8 +58,7 @@ export default function HomePage() {
     setCategoriesLoaded(false);
     getCategories(siteConfig.id)
       .then((res) => {
-        const all = res.data || res.categories || [];
-        setAllCategories(all);
+        setApiCategories(res.data || res.categories || []);
         setCategoriesLoaded(true);
       })
       .catch((err) => {
@@ -74,22 +67,13 @@ export default function HomePage() {
       });
   }, [siteConfig?.id, siteLoading]);
 
-  useEffect(() => {
-    let settings = {};
-    try {
-      settings = typeof siteConfig?.settings === 'string' ? JSON.parse(siteConfig.settings) : (siteConfig?.settings || {});
-    } catch (e) { settings = {}; }
-    const previewCats = settings._previewCategories;
+  const allCategories = parsedSettings._previewCategories || apiCategories;
 
-    const source = previewCats || allCategories;
-    if (!source.length) return;
-
-    if (previewCats) setAllCategories(previewCats);
-
-    const visible = source.filter(c => c.show_on_home === 1 && !c.parent_id);
+  const homeCategories = useMemo(() => {
+    const visible = allCategories.filter(c => c.show_on_home === 1 && !c.parent_id);
     visible.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
-    setHomeCategories(visible);
-  }, [allCategories, siteConfig?.settings]);
+    return visible;
+  }, [allCategories]);
 
   const orderedSections = useMemo(() => {
     const allItems = [];
