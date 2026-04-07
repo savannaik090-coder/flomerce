@@ -16,18 +16,28 @@ export default function TrendingNow() {
   const settings = siteConfig?.settings || {};
   const isHidden = settings.showTrendingNow === false;
 
+  const trendingIds = settings.trendingProductIds || [];
+
   useEffect(() => {
     if (!siteConfig?.id || isHidden) return;
     setLoading(true);
     productService
-      .getProducts(siteConfig.id, { featured: true, limit: 12 })
+      .getProducts(siteConfig.id, { limit: 500 })
       .then((res) => {
         const all = res.data || res.products || [];
-        setProducts(all);
+        if (trendingIds.length > 0) {
+          const idMap = {};
+          all.forEach(p => { idMap[p.id] = p; });
+          const ordered = trendingIds.map(id => idMap[id]).filter(Boolean);
+          setProducts(ordered);
+        } else {
+          const featured = all.filter(p => p.is_featured);
+          setProducts(featured.length > 0 ? featured.slice(0, 12) : all.slice(0, 12));
+        }
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [siteConfig?.id, isHidden]);
+  }, [siteConfig?.id, isHidden, trendingIds.join(',')]);
 
   if (isHidden) return null;
   if (!loading && products.length === 0) return null;
