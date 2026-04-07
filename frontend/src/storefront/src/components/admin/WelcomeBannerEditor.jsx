@@ -63,10 +63,11 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate }) {
         if (typeof settings === 'string') {
           try { settings = JSON.parse(settings); } catch (e) { settings = {}; }
         }
-        const hVal = settings.welcomeBannerHeading || '';
-        const mVal = settings.welcomeBannerMessage || '';
-        const btVal = settings.welcomeBannerButtonText || '';
-        const blVal = settings.welcomeBannerButtonLink || '';
+        const bn = siteConfig?.brand_name || siteConfig?.brandName || 'Our Store';
+        const hVal = settings.welcomeBannerHeading || `Welcome to ${bn}!`;
+        const mVal = settings.welcomeBannerMessage || 'Discover our exquisite collection. Sign up today to receive exclusive offers and updates.';
+        const btVal = settings.welcomeBannerButtonText || 'Sign Up Now';
+        const blVal = settings.welcomeBannerButtonLink || '/signup';
         const biVal = settings.welcomeBannerImage || '';
         const ssVal = settings.showWelcomeBanner !== false;
         setHeading(hVal);
