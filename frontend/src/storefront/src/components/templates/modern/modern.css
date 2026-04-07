@@ -334,7 +334,7 @@
 .mn-dropdown-menu li > span {
   display: block;
   padding: 12px 20px;
-  font-size: 0.95rem;
+  font-size: 1.05rem;
   color: #444;
   text-decoration: none;
   transition: background 0.15s;
@@ -350,10 +350,10 @@
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: 10px 20px;
+  padding: 12px 20px;
   border: none;
   background: none;
-  font-size: 0.9rem;
+  font-size: 1rem;
   color: #444;
   cursor: pointer;
 }
@@ -375,7 +375,7 @@
 
 .mn-sub-menu li a {
   padding-left: 36px;
-  font-size: 0.85rem;
+  font-size: 0.95rem;
 }
 
 .mn-grouped-cat-header {
@@ -388,8 +388,8 @@
 .mn-grouped-cat-header .mn-grouped-cat-link {
   flex: 1;
   display: block;
-  padding: 10px 8px 10px 20px;
-  font-size: 0.95rem;
+  padding: 12px 8px 12px 20px;
+  font-size: 1.05rem;
   font-weight: 600;
   color: #222;
   text-decoration: none;
@@ -405,7 +405,7 @@
   background: none;
   border: none;
   cursor: pointer;
-  padding: 10px 16px 10px 8px;
+  padding: 12px 18px 12px 8px;
   color: #999;
   display: flex;
   align-items: center;

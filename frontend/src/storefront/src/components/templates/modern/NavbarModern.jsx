@@ -120,7 +120,7 @@ export default function NavbarModern({ onSearchOpen, onCartOpen, onWishlistOpen 
                     <div className="mn-grouped-cat-header">
                       <Link to={link.url} onClick={closeMobileMenu} className="mn-grouped-cat-link">{link.label}</Link>
                       <button className="mn-subcategory-toggle" onClick={(e) => toggleSubGroup(`grouped-${link.id}`, e)} aria-label="Show subcategories">
-                        <svg className="mn-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14"/></svg>
+                        <svg className="mn-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14"/></svg>
                       </button>
                     </div>
                     <ul className="mn-sub-menu">
