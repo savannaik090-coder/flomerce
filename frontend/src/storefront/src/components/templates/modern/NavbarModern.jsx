@@ -203,7 +203,7 @@ export default function NavbarModern({ onSearchOpen, onCartOpen, onWishlistOpen 
                   src={siteConfig.logoUrl}
                   alt={siteConfig?.brandName || 'Store'}
                   className="mn-brand-logo"
-                  style={{ width: logoSize, height: 'auto' }}
+                  style={{ maxWidth: logoSize }}
                   onError={(e) => { e.target.style.display = 'none'; const txt = e.target.nextElementSibling; if (txt) txt.style.display = 'block'; }}
                 />
               ) : null}
@@ -235,7 +235,7 @@ export default function NavbarModern({ onSearchOpen, onCartOpen, onWishlistOpen 
                   src={siteConfig.logoUrl}
                   alt={siteConfig?.brandName || 'Store'}
                   className="mn-brand-logo"
-                  style={{ width: logoSize, height: 'auto' }}
+                  style={{ maxWidth: logoSize }}
                   onError={(e) => { e.target.style.display = 'none'; const txt = e.target.nextElementSibling; if (txt) txt.style.display = 'block'; }}
                 />
               ) : null}
