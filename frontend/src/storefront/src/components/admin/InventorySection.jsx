@@ -1,9 +1,33 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { getProducts, updateProduct } from '../../services/productService.js';
 import { getLocations, createLocation, updateLocation, deleteLocation, getInventoryLevels, setInventoryLevel, createTransfer, getTransfers } from '../../services/inventoryService.js';
 import { formatPrice, getAdminCurrency } from '../../utils/priceFormatter.js';
 import ConfirmModal from './ConfirmModal.jsx';
+
+const stepBtnStyle = {
+  width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center',
+  border: '1px solid #d1d5db', background: '#f8fafc', borderRadius: 4, cursor: 'pointer',
+  fontSize: 16, fontWeight: 700, color: '#374151', lineHeight: 1, padding: 0, fontFamily: 'inherit'
+};
+
+function StockStepper({ value, onChange, min = 0 }) {
+  const [localVal, setLocalVal] = useState(value);
+  const committed = useRef(value);
+  useEffect(() => { setLocalVal(value); committed.current = value; }, [value]);
+  function commit(v) { const n = Math.max(min, parseInt(v) || 0); setLocalVal(n); if (n !== committed.current) { committed.current = n; onChange(n); } }
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+      <button type="button" style={stepBtnStyle} onClick={() => commit(localVal - 1)} disabled={localVal <= min}>−</button>
+      <input type="number" min={min} value={localVal}
+        onChange={e => setLocalVal(parseInt(e.target.value) || 0)}
+        onBlur={() => commit(localVal)}
+        onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); commit(localVal); } }}
+        style={{ width: 60, padding: '5px 4px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 14, textAlign: 'center', boxSizing: 'border-box' }} />
+      <button type="button" style={stepBtnStyle} onClick={() => commit(localVal + 1)}>+</button>
+    </div>
+  );
+}
 
 export default function InventorySection() {
   const { siteConfig } = useContext(SiteContext);
@@ -219,8 +243,7 @@ export default function InventorySection() {
                   </div>
                   <div>
                     <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: 4, color: '#374151' }}>Qty</label>
-                    <input type="number" min="1" value={transferForm.quantity} onChange={e => setTransferForm({ ...transferForm, quantity: parseInt(e.target.value) || 1 })} required
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.85rem', boxSizing: 'border-box' }} />
+                    <StockStepper value={transferForm.quantity} min={1} onChange={v => setTransferForm({ ...transferForm, quantity: v })} />
                   </div>
                 </div>
                 <div style={{ marginTop: '0.75rem' }}>
@@ -260,12 +283,7 @@ export default function InventorySection() {
                           </td>
                           <td>{stock}</td>
                           <td>
-                            <input type="number" min="0" defaultValue={stock} style={{ width: 80, padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 14 }}
-                              onBlur={e => {
-                                const val = parseInt(e.target.value);
-                                if (!isNaN(val) && val !== stock) handleLevelUpdate(selectedProduct.id, loc.id, val);
-                              }}
-                              onKeyDown={e => { if (e.key === 'Enter') e.target.blur(); }} />
+                            <StockStepper value={stock} onChange={val => handleLevelUpdate(selectedProduct.id, loc.id, val)} />
                           </td>
                         </tr>
                       );
@@ -501,8 +519,7 @@ export default function InventorySection() {
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: 4 }}>Qty</label>
-                  <input type="number" min="1" value={transferForm.quantity} onChange={e => setTransferForm({ ...transferForm, quantity: parseInt(e.target.value) || 1 })} required
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.85rem', boxSizing: 'border-box' }} />
+                  <StockStepper value={transferForm.quantity} min={1} onChange={v => setTransferForm({ ...transferForm, quantity: v })} />
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 8, marginTop: '1rem' }}>
@@ -551,7 +568,7 @@ export default function InventorySection() {
                               <td style={{ fontSize: '0.75rem', color: '#64748b' }}>
                                 {productLevels.length > 0
                                   ? productLevels.map(l => `${l.location_name}: ${l.stock}`).join(', ')
-                                  : <span style={{ color: '#94a3b8' }}>Not assigned</span>}
+                                  : <span style={{ color: '#e09030', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => handleShowProductLevels(product)}>Not assigned — click to add</span>}
                               </td>
                             )}
                             <td>
@@ -561,13 +578,7 @@ export default function InventorySection() {
                             </td>
                             {!hasLocations && (
                               <td>
-                                <input type="number" min="0" defaultValue={stock}
-                                  style={{ width: 80, padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 14 }}
-                                  onBlur={e => {
-                                    const val = parseInt(e.target.value);
-                                    if (!isNaN(val) && val !== stock) handleStockUpdate(product.id, val);
-                                  }}
-                                  onKeyDown={e => { if (e.key === 'Enter') e.target.blur(); }} />
+                                <StockStepper value={stock} onChange={val => handleStockUpdate(product.id, val)} />
                               </td>
                             )}
                             {hasLocations && (
