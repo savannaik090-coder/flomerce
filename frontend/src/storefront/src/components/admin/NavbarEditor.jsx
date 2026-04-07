@@ -33,7 +33,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
   const hasLoadedRef = useRef(false);
   const serverValuesRef = useRef(null);
   const [logoUrl, setLogoUrl] = useState('');
-  const [logoSize, setLogoSize] = useState(120);
+  const [logoSize, setLogoSize] = useState(60);
   const [logoPosition, setLogoPosition] = useState('left');
   const [showAccountIcon, setShowAccountIcon] = useState(true);
   const [showCartIcon, setShowCartIcon] = useState(true);
@@ -76,7 +76,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
         }
         const menusVal = settings.navbarMenus || [];
         const logoVal = result.data.logo_url || '';
-        const sizeVal = settings.logoSize || 120;
+        const sizeVal = settings.logoSize || 60;
         const posVal = settings.logoPosition || 'left';
         const accVal = settings.showAccountIcon !== false;
         const cartVal = settings.showCartIcon !== false;

@@ -34,7 +34,7 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
   const orderTrackUrl = settings.orderTrackUrl || '';
   const showBookAppointment = settings.showBookAppointment !== false;
   const showContact = settings.showContact !== false;
-  const logoSize = Math.min(250, Math.max(40, Number(settings.logoSize) || 120));
+  const logoSize = Math.min(250, Math.max(40, Number(settings.logoSize) || 60));
   const logoPosition = settings.logoPosition || 'left';
   const isCentered = logoPosition === 'center';
   const showAccountIcon = settings.showAccountIcon !== false;
