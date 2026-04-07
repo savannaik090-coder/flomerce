@@ -36,6 +36,8 @@ export const THEMES = {
       showProductShowcase: true,
       showCustomerReviews: true,
       showStoreLocations: false,
+      showTrendingNow: true,
+      showBrandStory: true,
     },
   },
 };

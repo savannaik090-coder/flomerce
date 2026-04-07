@@ -13,6 +13,9 @@ import CustomerReviewsModern from '../components/templates/modern/CustomerReview
 import FirstVisitBanner from '../components/home/FirstVisitBanner.jsx';
 import HeroSplit from '../components/templates/modern/HeroSplit.jsx';
 import CategoryGrid from '../components/templates/modern/CategoryGrid.jsx';
+import TrendingNow from '../components/templates/modern/TrendingNow.jsx';
+import BrandStory from '../components/templates/modern/BrandStory.jsx';
+import ChooseByCategoryModern from '../components/templates/modern/ChooseByCategoryModern.jsx';
 import { useTheme } from '../context/ThemeContext.jsx';
 import { useSiteConfig } from '../hooks/useSiteConfig.js';
 import { getCategories } from '../services/categoryService.js';
@@ -119,12 +122,10 @@ export default function HomePage() {
       <div className="home-page">
         <ActiveHero />
         {orderedSections.map((item) => renderSection(item))}
-        <ChooseByCategory categories={allCategories} />
-        <WatchAndBuy />
-        <FeaturedVideoSection />
-        <ShopTheLook />
+        <ChooseByCategoryModern categories={allCategories} />
+        <TrendingNow />
+        <BrandStory />
         <ProductShowcase />
-        <StoreLocations />
         <ActiveCustomerReviews />
         <FirstVisitBanner />
       </div>
