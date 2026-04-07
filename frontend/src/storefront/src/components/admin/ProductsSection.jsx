@@ -97,9 +97,6 @@ export default function ProductsSection({ onEditProduct, onAddProduct }) {
           <i className="fas fa-box-open" />
           <h3>No products found</h3>
           <p>{searchTerm ? 'Try a different search term.' : 'Add your first product to get started.'}</p>
-          <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={onAddProduct}>
-            <i className="fas fa-plus" /> Add Product
-          </button>
         </div>
       ) : (
         <div className="product-grid">
@@ -140,6 +137,9 @@ export default function ProductsSection({ onEditProduct, onAddProduct }) {
       )}
     </div>
 
+      <button className="floating-add-btn" onClick={onAddProduct}>
+        <i className="fas fa-plus" /> Add Product
+      </button>
       <ConfirmModal
         open={!!confirmModal}
         title={confirmModal?.title || ''}
