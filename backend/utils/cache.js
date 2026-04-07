@@ -33,14 +33,6 @@ export async function purgeStorefrontCache(env, siteId, types = [], resourceIds 
 
     for (const type of types) {
       switch (type) {
-        case 'site':
-          for (const domain of allDomains) {
-            urls.push(`https://${domain}/api/site`);
-            if (site.subdomain) {
-              urls.push(`https://${domain}/api/site?subdomain=${site.subdomain}`);
-            }
-          }
-          break;
         case 'products':
           for (const domain of allDomains) {
             urls.push(`https://${domain}/api/products?siteId=${siteId}`);

@@ -406,7 +406,7 @@ async function saveSiteSEO(request, env, ctx) {
       await trackD1Update(env, siteId, oldBytes, newBytes);
     }
 
-    if (ctx) ctx.waitUntil(purgeStorefrontCache(env, siteId, ['site']));
+
 
     return jsonResponse({ success: true, message: 'SEO settings saved' });
   } catch (err) {
@@ -474,7 +474,7 @@ async function saveCategorySEO(request, env, categoryId, ctx) {
       await trackD1Update(env, siteId, oldBytes, newBytes);
     }
 
-    if (ctx) ctx.waitUntil(purgeStorefrontCache(env, siteId, ['categories', 'site']));
+    if (ctx) ctx.waitUntil(purgeStorefrontCache(env, siteId, ['categories']));
 
     return jsonResponse({ success: true, message: 'Category SEO saved' });
   } catch (err) {
@@ -640,7 +640,7 @@ async function savePageSEO(request, env, pageType, ctx) {
       await trackD1Write(env, siteId, rowBytes);
     }
 
-    if (ctx) ctx.waitUntil(purgeStorefrontCache(env, siteId, ['site']));
+
 
     return jsonResponse({ success: true, message: 'Page SEO saved' });
   } catch (err) {
@@ -722,7 +722,7 @@ async function saveSocialTags(request, env, ctx) {
       await trackD1Update(env, siteId, oldBytes, newBytes);
     }
 
-    if (ctx) ctx.waitUntil(purgeStorefrontCache(env, siteId, ['site']));
+
 
     return jsonResponse({ success: true, message: 'Social tags saved' });
   } catch (err) {

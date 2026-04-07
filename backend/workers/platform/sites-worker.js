@@ -1,6 +1,5 @@
 import { generateId, generateSubdomain, sanitizeInput, jsonResponse, errorResponse, successResponse, handleCORS } from '../../utils/helpers.js';
 import { PLATFORM_DOMAIN } from '../../config.js';
-import { purgeStorefrontCache } from '../../utils/cache.js';
 import { validateAuth } from '../../utils/auth.js';
 import { validateSiteAdmin, handleStaffCRUD } from '../storefront/site-admin-worker.js';
 import { registerCustomHostname, deleteCustomHostname, findCustomHostname } from '../../utils/cloudflare.js';
@@ -534,7 +533,7 @@ async function updateSite(request, env, user, siteId, ctx) {
       ).bind(brandNameUpdate[1], siteId).run();
     }
 
-    if (ctx) ctx.waitUntil(purgeStorefrontCache(env, siteId, ['site']));
+
 
     return successResponse(null, 'Site updated successfully');
   } catch (error) {
@@ -606,7 +605,7 @@ async function updateSiteAsAdmin(request, env, siteId, ctx) {
       ).bind(brandNameUpdate[1], siteId).run();
     }
 
-    if (ctx) ctx.waitUntil(purgeStorefrontCache(env, siteId, ['site']));
+
 
     return successResponse(null, 'Site updated successfully');
   } catch (error) {

@@ -260,7 +260,7 @@ async function createCategory(request, env, user, ctx) {
 
     await trackD1Write(env, siteId, rowBytes);
 
-    if (ctx) ctx.waitUntil(purgeStorefrontCache(env, siteId, ['categories', 'site'], { categoryId }));
+    if (ctx) ctx.waitUntil(purgeStorefrontCache(env, siteId, ['categories'], { categoryId }));
 
     return successResponse({ id: categoryId, slug }, 'Category created successfully');
   } catch (error) {
@@ -356,7 +356,7 @@ async function updateCategory(request, env, user, categoryId, ctx) {
     }
     await trackD1Update(env, resolvedSiteId, oldBytes, newBytes);
 
-    if (ctx) ctx.waitUntil(purgeStorefrontCache(env, resolvedSiteId, ['categories', 'site'], { categoryId }));
+    if (ctx) ctx.waitUntil(purgeStorefrontCache(env, resolvedSiteId, ['categories'], { categoryId }));
 
     return successResponse(null, 'Category updated successfully');
   } catch (error) {
@@ -427,7 +427,7 @@ async function deleteCategory(env, user, categoryId, ctx) {
       await trackD1Delete(env, resolvedSiteId, bytesToRemove);
     }
 
-    if (ctx) ctx.waitUntil(purgeStorefrontCache(env, resolvedSiteId, ['categories', 'site'], { categoryId }));
+    if (ctx) ctx.waitUntil(purgeStorefrontCache(env, resolvedSiteId, ['categories'], { categoryId }));
 
     return successResponse(null, 'Category deleted successfully');
   } catch (error) {
