@@ -416,24 +416,52 @@ async function deleteCategory(env, user, categoryId, ctx) {
     }
 
     const db = await resolveSiteDBById(env, resolvedSiteId);
-    const bytesToRemove = category.row_size_bytes || 0;
 
-    await db.prepare(
-      'UPDATE categories SET parent_id = NULL WHERE parent_id = ?'
-    ).bind(categoryId).run();
+    const directChildren = await db.prepare(
+      'SELECT id, row_size_bytes FROM categories WHERE parent_id = ? AND site_id = ?'
+    ).bind(categoryId, resolvedSiteId).all();
+    const childIds = (directChildren.results || []).map(c => c.id);
 
-    await db.prepare(
-      'UPDATE products SET category_id = NULL WHERE category_id = ?'
-    ).bind(categoryId).run();
+    let grandchildIds = [];
+    for (const childId of childIds) {
+      const grandchildren = await db.prepare(
+        'SELECT id, row_size_bytes FROM categories WHERE parent_id = ? AND site_id = ?'
+      ).bind(childId, resolvedSiteId).all();
+      grandchildIds = grandchildIds.concat((grandchildren.results || []).map(g => g.id));
+    }
 
-    await db.prepare(
-      'UPDATE products SET subcategory_id = NULL WHERE subcategory_id = ?'
-    ).bind(categoryId).run();
+    const allDescendantIds = [...childIds, ...grandchildIds];
+    const allIdsToDelete = [categoryId, ...allDescendantIds];
 
+    let totalBytesToRemove = category.row_size_bytes || 0;
+    for (const c of (directChildren.results || [])) {
+      totalBytesToRemove += c.row_size_bytes || 0;
+    }
+    for (const childId of childIds) {
+      const gc = (await db.prepare(
+        'SELECT row_size_bytes FROM categories WHERE parent_id = ? AND site_id = ?'
+      ).bind(childId, resolvedSiteId).all()).results || [];
+      for (const g of gc) {
+        totalBytesToRemove += g.row_size_bytes || 0;
+      }
+    }
+
+    for (const id of allIdsToDelete) {
+      await db.prepare(
+        'UPDATE products SET category_id = NULL WHERE category_id = ?'
+      ).bind(id).run();
+      await db.prepare(
+        'UPDATE products SET subcategory_id = NULL WHERE subcategory_id = ?'
+      ).bind(id).run();
+    }
+
+    for (const id of allDescendantIds) {
+      await db.prepare('DELETE FROM categories WHERE id = ?').bind(id).run();
+    }
     await db.prepare('DELETE FROM categories WHERE id = ?').bind(categoryId).run();
 
-    if (bytesToRemove > 0) {
-      await trackD1Delete(env, resolvedSiteId, bytesToRemove);
+    if (totalBytesToRemove > 0) {
+      await trackD1Delete(env, resolvedSiteId, totalBytesToRemove);
     }
 
     if (ctx) ctx.waitUntil(purgeStorefrontCache(env, resolvedSiteId, ['categories'], { categoryId }));
