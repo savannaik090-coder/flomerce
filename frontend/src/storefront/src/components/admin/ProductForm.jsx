@@ -9,6 +9,7 @@ const GST_RATES = [0, 3, 5, 12, 18, 28];
 
 const DEFAULT_FORM = {
   name: '',
+  sku: '',
   price: '',
   stock: '',
   category_id: '',
@@ -171,6 +172,7 @@ export default function ProductForm({ product, onSave, onCancel }) {
       }
       setForm({
         name: product.name || '',
+        sku: product.sku || '',
         price: product.price || '',
         stock: product.stock ?? '',
         category_id: product.category_id || '',
@@ -276,6 +278,7 @@ export default function ProductForm({ product, onSave, onCancel }) {
       const payload = {
         siteId: siteConfig.id,
         name: form.name.trim(),
+        sku: form.sku.trim() || null,
         price: parseFloat(form.price),
         stock: totalStock,
         categoryId: form.category_id,
@@ -442,6 +445,17 @@ export default function ProductForm({ product, onSave, onCancel }) {
                 style={{ width: '100%', padding: '10px 12px', border: `1px solid ${errors.name ? '#ef4444' : '#e2e8f0'}`, borderRadius: 6, fontSize: 14, boxSizing: 'border-box' }}
               />
               {errors.name && <p style={{ color: '#ef4444', fontSize: 12, marginTop: 4 }}>{errors.name}</p>}
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>SKU ID</label>
+              <input
+                type="text"
+                value={form.sku}
+                onChange={e => setForm(p => ({ ...p, sku: e.target.value }))}
+                placeholder="e.g., PROD-001"
+                style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box' }}
+              />
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>

@@ -115,7 +115,7 @@ export default function ProductsSection({ onEditProduct, onAddProduct }) {
                 )}
                 <div className="product-info">
                   <div className="product-name">{product.name}</div>
-                  {product.sku && <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: 2 }}>SKU: {product.sku}</div>}
+                  <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: 2 }}>SKU: {product.sku || '—'}</div>
                   <div className="product-price">{formatPrice(parseFloat(product.price || 0), getAdminCurrency(siteConfig))}</div>
                   <div className="product-stock">
                     Stock: {product.stock ?? 0}
