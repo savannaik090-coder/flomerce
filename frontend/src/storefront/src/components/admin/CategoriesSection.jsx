@@ -235,14 +235,25 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
         subtitle: editCategorySubtitle.trim() || null,
       } : c));
     } else {
-      setPendingEditCats(prev => ({
-        ...prev,
-        [categoryId]: {
-          name: editCategoryName.trim(),
-          slug: editCategoryName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
-          subtitle: editCategorySubtitle.trim() || null,
-        }
-      }));
+      const original = categories.find(c => c.id === categoryId);
+      const newName = editCategoryName.trim();
+      const newSubtitle = editCategorySubtitle.trim() || null;
+      if (original && newName === original.name && (newSubtitle || null) === (original.subtitle || null)) {
+        setPendingEditCats(prev => {
+          const updated = { ...prev };
+          delete updated[categoryId];
+          return updated;
+        });
+      } else {
+        setPendingEditCats(prev => ({
+          ...prev,
+          [categoryId]: {
+            name: newName,
+            slug: newName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
+            subtitle: newSubtitle,
+          }
+        }));
+      }
     }
     setEditingCategory(null);
     setEditCategoryName('');
@@ -375,7 +386,27 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
     if (isPendingAdd) {
       setPendingSubAdds(prev => prev.map(s => s.tempId === itemId ? { ...s, name: editSubItemName.trim() } : s));
     } else {
-      setPendingSubEdits(prev => ({ ...prev, [itemId]: { name: editSubItemName.trim() } }));
+      const newName = editSubItemName.trim();
+      let originalName = null;
+      for (const cat of categories) {
+        for (const child of (cat.children || [])) {
+          if (child.id === itemId) { originalName = child.name; break; }
+          for (const val of (child.children || [])) {
+            if (val.id === itemId) { originalName = val.name; break; }
+          }
+          if (originalName) break;
+        }
+        if (originalName) break;
+      }
+      if (originalName && newName === originalName) {
+        setPendingSubEdits(prev => {
+          const updated = { ...prev };
+          delete updated[itemId];
+          return updated;
+        });
+      } else {
+        setPendingSubEdits(prev => ({ ...prev, [itemId]: { name: newName } }));
+      }
     }
     setEditingSubItem(null);
     setEditSubItemName('');
