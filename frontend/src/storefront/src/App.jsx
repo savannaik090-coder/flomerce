@@ -93,14 +93,49 @@ function SiteErrorScreen({ error }) {
   );
 }
 
+class AdminErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, info) {
+    console.error('Admin panel error:', error, info);
+  }
+  handleRetry = () => {
+    this.setState({ hasError: false, error: null });
+  };
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', fontFamily: "'Inter', sans-serif" }}>
+          <div style={{ textAlign: 'center', maxWidth: 420, padding: 32 }}>
+            <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#fef2f2', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            </div>
+            <h2 style={{ fontSize: 20, fontWeight: 700, color: '#0f172a', marginBottom: 8 }}>Something went wrong</h2>
+            <p style={{ color: '#64748b', fontSize: 14, lineHeight: 1.6, marginBottom: 24 }}>The admin panel encountered an error. This is usually temporary.</p>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+              <button onClick={this.handleRetry} style={{ padding: '10px 24px', background: '#2563eb', color: 'white', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                Try Again
+              </button>
+              <button onClick={() => window.location.reload()} style={{ padding: '10px 24px', background: 'white', color: '#374151', border: '1px solid #d1d5db', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                Reload Page
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function App() {
   const { siteConfig, loading, error } = useSiteConfig();
-  const { cartOpen, openCart, closeCart, wishlistOpen, openWishlist, closeWishlist, searchOpen, openSearch, closeSearch } = useContext(PanelContext);
   const location = useLocation();
-  const { showPrompt, subscribe, dismissPrompt } = usePushNotifications();
-  const theme = useTheme();
-
-  usePageTracker();
 
   useEffect(() => {
     if (!loading) removePreloader();
@@ -114,12 +149,14 @@ export default function App() {
 
   if (isAdminRoute) {
     return (
-      <React.Suspense fallback={<PageLoading />}>
-        <Routes>
-          <Route path="/admin" element={<AdminPanel />} />
-          <Route path="/admin/products" element={<ProductsAdminPage />} />
-        </Routes>
-      </React.Suspense>
+      <AdminErrorBoundary>
+        <React.Suspense fallback={<PageLoading />}>
+          <Routes>
+            <Route path="/admin" element={<AdminPanel />} />
+            <Route path="/admin/products" element={<ProductsAdminPage />} />
+          </Routes>
+        </React.Suspense>
+      </AdminErrorBoundary>
     );
   }
 
@@ -132,6 +169,16 @@ export default function App() {
       </React.Suspense>
     );
   }
+
+  return <StorefrontShell />;
+}
+
+function StorefrontShell() {
+  const { cartOpen, openCart, closeCart, wishlistOpen, openWishlist, closeWishlist, searchOpen, openSearch, closeSearch } = useContext(PanelContext);
+  const { showPrompt, subscribe, dismissPrompt } = usePushNotifications();
+  const theme = useTheme();
+
+  usePageTracker();
 
   const isModern = theme.id === 'modern';
   const ActiveNavbar = isModern ? NavbarModern : Navbar;
