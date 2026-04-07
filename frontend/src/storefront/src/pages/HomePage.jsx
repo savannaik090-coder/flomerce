@@ -75,19 +75,18 @@ export default function HomePage() {
   }, [siteConfig?.id, siteLoading]);
 
   useEffect(() => {
-    if (!allCategories.length) return;
     let settings = {};
     try {
       settings = typeof siteConfig?.settings === 'string' ? JSON.parse(siteConfig.settings) : (siteConfig?.settings || {});
     } catch (e) { settings = {}; }
-    const previewVis = settings._previewCategoryVisibility;
-    const previewDeleted = settings._previewDeletedCategories || [];
+    const previewCats = settings._previewCategories;
 
-    let filtered = allCategories.filter(c => !c.parent_id && !previewDeleted.includes(c.id));
-    const visible = filtered.filter(c => {
-      if (previewVis && c.id in previewVis) return previewVis[c.id];
-      return c.show_on_home === 1;
-    });
+    const source = previewCats || allCategories;
+    if (!source.length) return;
+
+    if (previewCats) setAllCategories(previewCats);
+
+    const visible = source.filter(c => c.show_on_home === 1 && !c.parent_id);
     visible.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
     setHomeCategories(visible);
   }, [allCategories, siteConfig?.settings]);

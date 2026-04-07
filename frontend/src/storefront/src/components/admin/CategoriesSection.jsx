@@ -135,16 +135,34 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!onPreviewUpdate || loading) return;
-    const visibility = {};
-    allDisplayCats.forEach(cat => {
-      const realId = cat._isPending ? null : cat.id;
-      if (realId) {
-        visibility[realId] = getShowOnHome(cat);
-      }
+    const previewCats = allDisplayCats.map(cat => {
+      const children = cat.children || [];
+      const mergedChildren = [
+        ...children.filter(c => !pendingSubDeletes.includes(c.id)).map(c => {
+          if (pendingSubEdits[c.id]) return { ...c, name: pendingSubEdits[c.id].name || c.name };
+          return c;
+        }),
+        ...pendingSubAdds.filter(s => s.parentId === cat.id).map(s => ({
+          id: s.tempId, name: s.name, slug: s.name.toLowerCase().replace(/\s+/g,'-'), parent_id: cat.id, show_on_home: 0, _isPending: true,
+          children: pendingSubAdds.filter(v => v.parentId === s.tempId).map(v => ({
+            id: v.tempId, name: v.name, slug: v.name.toLowerCase().replace(/\s+/g,'-'), parent_id: s.tempId, show_on_home: 0, _isPending: true, children: []
+          }))
+        }))
+      ];
+      return {
+        id: cat.id,
+        name: cat.name,
+        subtitle: cat.subtitle,
+        slug: cat.slug,
+        show_on_home: getShowOnHome(cat) ? 1 : 0,
+        image_url: cat.image_url || null,
+        display_order: cat.display_order || 0,
+        children: mergedChildren,
+        _isPending: !!cat._isPending,
+      };
     });
-    const deletedIds = pendingDeleteCats;
-    onPreviewUpdate({ _previewCategoryVisibility: visibility, _previewDeletedCategories: deletedIds });
-  }, [pendingHomeToggles, pendingDeleteCats, categories, pendingNewCats, loading]);
+    onPreviewUpdate({ _previewCategories: previewCats });
+  }, [pendingHomeToggles, pendingDeleteCats, categories, pendingNewCats, pendingSubAdds, pendingSubDeletes, pendingSubEdits, pendingEditCats, loading]);
 
   async function loadCategories() {
     setLoading(true);
