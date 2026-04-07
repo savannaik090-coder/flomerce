@@ -490,6 +490,7 @@ export default function CategoriesSection({ onSaved }) {
       setChooseChanged(false);
       setSubcatChanged(false);
       setOrderChanged(false);
+      dirtyRef.current = false;
       await loadCategories();
       if (onSaved) onSaved();
     } catch (e) { alert('Failed to save: ' + e.message); }
