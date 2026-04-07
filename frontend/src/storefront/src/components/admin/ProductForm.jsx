@@ -103,7 +103,10 @@ export default function ProductForm({ product, onSave, onCancel }) {
   const [subcategories, setSubcategories] = useState([]);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
-  const [imageQuality, setImageQuality] = useState(0.8);
+  const [imageQuality, setImageQuality] = useState(() => {
+    const saved = localStorage.getItem('fluxe_image_quality');
+    return saved ? parseFloat(saved) : 0.8;
+  });
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef(null);
 
@@ -601,7 +604,7 @@ export default function ProductForm({ product, onSave, onCancel }) {
                 max="1"
                 step="0.1"
                 value={imageQuality}
-                onChange={e => setImageQuality(parseFloat(e.target.value))}
+                onChange={e => { const v = parseFloat(e.target.value); setImageQuality(v); localStorage.setItem('fluxe_image_quality', v); }}
                 style={{ width: 80 }}
               />
               <span style={{ color: '#64748b', minWidth: 30 }}>{Math.round(imageQuality * 100)}%</span>
