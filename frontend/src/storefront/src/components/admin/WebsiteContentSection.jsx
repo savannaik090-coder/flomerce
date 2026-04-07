@@ -381,7 +381,7 @@ export default function WebsiteContentSection() {
           {activeTab === 'promo-banner' && <PromoBannerEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
           {activeTab === 'hero-slider' && <HeroSliderEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
           {activeTab === 'welcome-banner' && <WelcomeBannerEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
-          {activeTab === 'categories' && <CategoriesSection onSaved={refreshPreview} />}
+          {activeTab === 'categories' && <CategoriesSection onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
           {activeTab === 'watchbuy' && <WatchBuySection onSaved={refreshPreview} />}
           {activeTab === 'featured-video' && <FeaturedVideoEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
           {activeTab === 'customer-reviews' && <CustomerReviewsEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
