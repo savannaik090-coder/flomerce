@@ -6,6 +6,12 @@ Fluxe is a multi-tenant SaaS platform designed for small businesses and entrepre
 ## User Preferences
 I prefer iterative development with clear communication on significant changes. Please ask before making major architectural decisions or large-scale code overhauls. Provide concise explanations and focus on effective solutions. Do not make changes to files in the `frontend/templates/` folder.
 
+## Build Instructions (IMPORTANT)
+**After every frontend code change, you MUST run the build scripts before finishing:**
+- Storefront: `cd frontend/src/storefront && npm run build`
+- Platform: `cd frontend/src/platform && npm run build`
+Both builds output to the `frontend/` directory (storefront to `frontend/storefront/`, platform to `frontend/`). Always run both builds after any change to files in `frontend/src/`.
+
 ## System Architecture
 
 ### Core Design
