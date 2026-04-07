@@ -490,8 +490,15 @@ export default function CategoriesSection({ onSaved }) {
       setChooseChanged(false);
       setSubcatChanged(false);
       setOrderChanged(false);
-      dirtyRef.current = false;
+      setPendingHomeToggles({});
+      setPendingNewCats([]);
+      setPendingDeleteCats([]);
+      setPendingEditCats({});
+      setPendingSubAdds([]);
+      setPendingSubDeletes([]);
+      setPendingSubEdits({});
       await loadCategories();
+      if (refetchSite) await refetchSite();
       if (onSaved) onSaved();
     } catch (e) { alert('Failed to save: ' + e.message); }
     finally { setSaving(false); }
