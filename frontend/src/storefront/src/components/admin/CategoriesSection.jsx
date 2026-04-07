@@ -44,6 +44,10 @@ export default function CategoriesSection({ onSaved }) {
   const [addingValueTo, setAddingValueTo] = useState(null);
   const [newDirectSubName, setNewDirectSubName] = useState('');
 
+  const [editingSubItem, setEditingSubItem] = useState(null);
+  const [editSubItemName, setEditSubItemName] = useState('');
+  const [pendingSubEdits, setPendingSubEdits] = useState({});
+
   const [pendingSubAdds, setPendingSubAdds] = useState([]);
   const [pendingSubDeletes, setPendingSubDeletes] = useState([]);
 
@@ -68,7 +72,7 @@ export default function CategoriesSection({ onSaved }) {
   const [orderChanged, setOrderChanged] = useState(false);
   const homeTogglesChanged = Object.keys(pendingHomeToggles).length > 0;
   const catsChanged = pendingNewCats.length > 0 || pendingDeleteCats.length > 0 || Object.keys(pendingEditCats).length > 0;
-  const subItemsChanged = pendingSubAdds.length > 0 || pendingSubDeletes.length > 0;
+  const subItemsChanged = pendingSubAdds.length > 0 || pendingSubDeletes.length > 0 || Object.keys(pendingSubEdits).length > 0;
   const dirtyRef = useRef(false);
   dirtyRef.current = chooseChanged || subcatChanged || orderChanged || homeTogglesChanged || catsChanged || subItemsChanged;
 
@@ -242,6 +246,33 @@ export default function CategoriesSection({ onSaved }) {
       setPendingSubDeletes(prev => [...prev, itemId]);
       setPendingSubAdds(prev => prev.filter(s => s.parentId !== itemId));
     }
+    setPendingSubEdits(prev => {
+      const updated = { ...prev };
+      delete updated[itemId];
+      return updated;
+    });
+    if (editingSubItem === itemId) {
+      setEditingSubItem(null);
+      setEditSubItemName('');
+    }
+  }
+
+  function handleStartEditSubItem(item) {
+    setEditingSubItem(item.id);
+    const pending = pendingSubAdds.find(s => s.tempId === item.id);
+    setEditSubItemName(pending ? pending.name : (pendingSubEdits[item.id]?.name || item.name));
+  }
+
+  function handleSaveEditSubItem(itemId) {
+    if (!editSubItemName.trim()) return;
+    const isPendingAdd = pendingSubAdds.find(s => s.tempId === itemId);
+    if (isPendingAdd) {
+      setPendingSubAdds(prev => prev.map(s => s.tempId === itemId ? { ...s, name: editSubItemName.trim() } : s));
+    } else {
+      setPendingSubEdits(prev => ({ ...prev, [itemId]: { name: editSubItemName.trim() } }));
+    }
+    setEditingSubItem(null);
+    setEditSubItemName('');
   }
 
   function handleChooseToggle() {
@@ -399,10 +430,35 @@ export default function CategoriesSection({ onSaved }) {
       }
 
       if (pendingSubAdds.length > 0) {
-        for (const sub of pendingSubAdds) {
-          await createCategory({ siteId: siteConfig.id, name: sub.name, parentId: sub.parentId, showOnHome: false });
+        const tempToRealId = {};
+        const groups = pendingSubAdds.filter(s => {
+          const isChildOfGroup = pendingSubAdds.some(g => g.tempId === s.parentId);
+          return !isChildOfGroup;
+        });
+        const values = pendingSubAdds.filter(s => {
+          return pendingSubAdds.some(g => g.tempId === s.parentId);
+        });
+
+        for (const sub of groups) {
+          const result = await createCategory({ siteId: siteConfig.id, name: sub.name, parentId: sub.parentId, showOnHome: false });
+          if (result?.data?.id || result?.id) {
+            tempToRealId[sub.tempId] = result?.data?.id || result?.id;
+          }
+        }
+
+        for (const sub of values) {
+          const resolvedParentId = tempToRealId[sub.parentId] || sub.parentId;
+          await createCategory({ siteId: siteConfig.id, name: sub.name, parentId: resolvedParentId, showOnHome: false });
         }
         setPendingSubAdds([]);
+      }
+
+      if (Object.keys(pendingSubEdits).length > 0) {
+        for (const [subId, edits] of Object.entries(pendingSubEdits)) {
+          if (pendingSubDeletes.includes(subId)) continue;
+          await updateCategory(subId, edits, siteConfig?.id);
+        }
+        setPendingSubEdits({});
       }
 
       if (homeTogglesChanged) {
@@ -612,48 +668,83 @@ export default function CategoriesSection({ onSaved }) {
                   )}
 
                   {allDirectItems.map(child => {
-                    const isPending = !!child._isPending;
+                    const isPendingChild = !!child._isPending;
+                    const displayChildName = pendingSubEdits[child.id]?.name || child.name;
                     const serverValues = (child.children || []).filter(v => !pendingSubDeletes.includes(v.id));
                     const pendingValues = pendingSubAdds.filter(s => s.parentId === child.id);
                     const allValues = [
-                      ...serverValues,
+                      ...serverValues.map(v => ({ ...v, name: pendingSubEdits[v.id]?.name || v.name })),
                       ...pendingValues.map(s => ({ id: s.tempId, name: s.name, _isPending: true })),
                     ];
                     const hasValues = allValues.length > 0;
 
                     if (!hasValues) {
                       return (
-                        <div key={child.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: isPending ? '#fef3c7' : '#e0f2fe', border: `1px ${isPending ? 'dashed #f59e0b' : 'solid #bae6fd'}`, borderRadius: 20, padding: '4px 10px', fontSize: 13, marginRight: 6, marginBottom: 6 }}>
-                          <span>{child.name}</span>
-                          {isPending && <i className="fas fa-clock" style={{ fontSize: 10, color: '#f59e0b' }} />}
-                          <button onClick={() => handleDeleteSubItem(child.id)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 14, padding: 0, lineHeight: 1 }} title="Remove">x</button>
+                        <div key={child.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: isPendingChild ? '#fef3c7' : '#e0f2fe', border: `1px ${isPendingChild ? 'dashed #f59e0b' : 'solid #bae6fd'}`, borderRadius: 20, padding: '4px 10px', fontSize: 13, marginRight: 6, marginBottom: 6 }}>
+                          {editingSubItem === child.id ? (
+                            <>
+                              <input type="text" value={editSubItemName} onChange={e => setEditSubItemName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') handleSaveEditSubItem(child.id); if (e.key === 'Escape') setEditingSubItem(null); }} style={{ padding: '2px 6px', border: '1px solid #bae6fd', borderRadius: 4, fontSize: 13, fontFamily: 'inherit', width: 120, boxSizing: 'border-box' }} autoFocus />
+                              <button onClick={() => handleSaveEditSubItem(child.id)} style={{ background: 'none', border: 'none', color: '#10b981', cursor: 'pointer', fontSize: 13, padding: 0 }} title="Save">✓</button>
+                              <button onClick={() => setEditingSubItem(null)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 13, padding: 0 }} title="Cancel">✕</button>
+                            </>
+                          ) : (
+                            <>
+                              <span>{displayChildName}</span>
+                              {isPendingChild && <i className="fas fa-clock" style={{ fontSize: 10, color: '#f59e0b' }} />}
+                              {(pendingSubEdits[child.id]) && <i className="fas fa-pen" style={{ fontSize: 9, color: '#3b82f6' }} />}
+                              <button onClick={() => handleStartEditSubItem({ ...child, name: displayChildName })} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 12, padding: 0, lineHeight: 1 }} title="Edit"><i className="fas fa-edit" /></button>
+                              <button onClick={() => handleDeleteSubItem(child.id)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 14, padding: 0, lineHeight: 1 }} title="Remove">x</button>
+                            </>
+                          )}
                         </div>
                       );
                     }
                     return (
-                      <div key={child.id} style={{ marginBottom: 12, background: '#fff', borderRadius: 8, border: isPending ? '2px dashed #f59e0b' : '1px solid #e2e8f0', padding: 12 }}>
+                      <div key={child.id} style={{ marginBottom: 12, background: '#fff', borderRadius: 8, border: isPendingChild ? '2px dashed #f59e0b' : '1px solid #e2e8f0', padding: 12 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                          <div style={{ fontWeight: 600, fontSize: 14, color: '#334155' }}>
-                            {child.name} <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 400 }}>(group)</span>
-                            {isPending && <span style={{ fontSize: 11, color: '#f59e0b', fontWeight: 500, marginLeft: 6 }}>unsaved</span>}
-                          </div>
+                          {editingSubItem === child.id ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <input type="text" value={editSubItemName} onChange={e => setEditSubItemName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') handleSaveEditSubItem(child.id); if (e.key === 'Escape') setEditingSubItem(null); }} style={{ padding: '4px 8px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, fontFamily: 'inherit', width: 160, boxSizing: 'border-box' }} autoFocus />
+                              <button onClick={() => handleSaveEditSubItem(child.id)} style={{ padding: '4px 8px', background: '#10b981', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}>Save</button>
+                              <button onClick={() => setEditingSubItem(null)} style={{ padding: '4px 8px', background: 'none', color: '#64748b', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}>Cancel</button>
+                            </div>
+                          ) : (
+                            <div style={{ fontWeight: 600, fontSize: 14, color: '#334155' }}>
+                              {displayChildName} <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 400 }}>(group)</span>
+                              {isPendingChild && <span style={{ fontSize: 11, color: '#f59e0b', fontWeight: 500, marginLeft: 6 }}>unsaved</span>}
+                              {(pendingSubEdits[child.id]) && <span style={{ fontSize: 11, color: '#3b82f6', fontWeight: 500, marginLeft: 6 }}>edited</span>}
+                            </div>
+                          )}
                           <div style={{ display: 'flex', gap: 4 }}>
-                            {!isPending && <button onClick={() => { setAddingValueTo(addingValueTo === child.id ? null : child.id); setNewValueName(''); }} style={{ padding: '4px 10px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}>+ Add Value</button>}
+                            {editingSubItem !== child.id && <button onClick={() => handleStartEditSubItem({ ...child, name: displayChildName })} style={{ padding: '4px 8px', background: 'none', color: '#64748b', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}><i className="fas fa-edit" style={{ fontSize: 11 }} /></button>}
+                            <button onClick={() => { setAddingValueTo(addingValueTo === child.id ? null : child.id); setNewValueName(''); }} style={{ padding: '4px 10px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}>+ Add Value</button>
                             <button onClick={() => handleDeleteSubItem(child.id)} style={{ padding: '4px 8px', background: 'none', color: '#ef4444', border: '1px solid #fecaca', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}><i className="fas fa-trash" style={{ fontSize: 11 }} /></button>
                           </div>
                         </div>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                           {allValues.map(val => (
                             <div key={val.id} style={{ display: 'flex', alignItems: 'center', gap: 6, background: val._isPending ? '#fef3c7' : '#f1f5f9', border: `1px ${val._isPending ? 'dashed #f59e0b' : 'solid #e2e8f0'}`, borderRadius: 20, padding: '4px 10px', fontSize: 13 }}>
-                              <span>{val.name}</span>
-                              {val._isPending && <i className="fas fa-clock" style={{ fontSize: 10, color: '#f59e0b' }} />}
-                              <button onClick={() => handleDeleteSubItem(val.id)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 14, padding: 0, lineHeight: 1 }} title="Remove">x</button>
+                              {editingSubItem === val.id ? (
+                                <>
+                                  <input type="text" value={editSubItemName} onChange={e => setEditSubItemName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') handleSaveEditSubItem(val.id); if (e.key === 'Escape') setEditingSubItem(null); }} style={{ padding: '2px 6px', border: '1px solid #e2e8f0', borderRadius: 4, fontSize: 13, fontFamily: 'inherit', width: 100, boxSizing: 'border-box' }} autoFocus />
+                                  <button onClick={() => handleSaveEditSubItem(val.id)} style={{ background: 'none', border: 'none', color: '#10b981', cursor: 'pointer', fontSize: 13, padding: 0 }} title="Save">✓</button>
+                                  <button onClick={() => setEditingSubItem(null)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 13, padding: 0 }} title="Cancel">✕</button>
+                                </>
+                              ) : (
+                                <>
+                                  <span>{val.name}</span>
+                                  {val._isPending && <i className="fas fa-clock" style={{ fontSize: 10, color: '#f59e0b' }} />}
+                                  {(pendingSubEdits[val.id]) && <i className="fas fa-pen" style={{ fontSize: 9, color: '#3b82f6' }} />}
+                                  <button onClick={() => handleStartEditSubItem(val)} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 12, padding: 0, lineHeight: 1 }} title="Edit"><i className="fas fa-edit" /></button>
+                                  <button onClick={() => handleDeleteSubItem(val.id)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 14, padding: 0, lineHeight: 1 }} title="Remove">x</button>
+                                </>
+                              )}
                             </div>
                           ))}
                         </div>
                         {addingValueTo === child.id && (
                           <div style={{ marginTop: 8, display: 'flex', gap: 6 }}>
-                            <input type="text" value={newValueName} onChange={e => setNewValueName(e.target.value)} placeholder={`Add value to ${child.name}`} onKeyDown={e => { if (e.key === 'Enter') handleAddValue(child.id); }} style={{ flex: 1, padding: '6px 10px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} autoFocus />
+                            <input type="text" value={newValueName} onChange={e => setNewValueName(e.target.value)} placeholder={`Add value to ${displayChildName}`} onKeyDown={e => { if (e.key === 'Enter') handleAddValue(child.id); }} style={{ flex: 1, padding: '6px 10px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} autoFocus />
                             <button onClick={() => handleAddValue(child.id)} disabled={!newValueName.trim()} style={{ padding: '6px 14px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, cursor: 'pointer', opacity: !newValueName.trim() ? 0.5 : 1 }}>Add</button>
                           </div>
                         )}

@@ -115,7 +115,7 @@ export default function FilterSortBar({ onSort, onFilter, currentSort, currentFi
                 const isGrouped = group.children && group.children.length > 0;
                 return (
                   <div className="filter-section" key={group.id}>
-                    <h3>{isGrouped ? group.name : 'Subcategory'}</h3>
+                    <h3>{group.name}</h3>
                     <div className="filter-options">
                       <label className="filter-option-label">
                         <input
