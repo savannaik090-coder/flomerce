@@ -373,9 +373,17 @@
   display: block;
 }
 
+.mn-sub-menu li {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.mn-sub-menu li:last-child {
+  border-bottom: none;
+}
+
 .mn-sub-menu li a {
-  padding-left: 36px;
-  font-size: 0.95rem;
+  padding: 12px 20px 12px 36px;
+  font-size: 1rem;
 }
 
 .mn-grouped-cat-header {
