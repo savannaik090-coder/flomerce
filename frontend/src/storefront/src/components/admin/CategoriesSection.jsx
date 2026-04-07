@@ -559,8 +559,20 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
         setPendingNewCats([]);
       }
 
+      const allDeletedSlugs = [];
+
       if (pendingDeleteCats.length > 0) {
         for (const catId of pendingDeleteCats) {
+          const cat = categories.find(c => c.id === catId);
+          if (cat) {
+            allDeletedSlugs.push(cat.slug);
+            if (cat.children) {
+              cat.children.forEach(child => {
+                allDeletedSlugs.push(child.slug);
+                if (child.children) child.children.forEach(gc => allDeletedSlugs.push(gc.slug));
+              });
+            }
+          }
           await deleteCategory(catId, siteConfig?.id);
         }
         setPendingDeleteCats([]);
@@ -574,10 +586,30 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
       }
 
       if (pendingSubDeletes.length > 0) {
+        const allCats = categories.flatMap(c => [c, ...(c.children || []).flatMap(ch => [ch, ...(ch.children || [])])]);
         for (const subId of pendingSubDeletes) {
+          const sub = allCats.find(c => c.id === subId);
+          if (sub?.slug) allDeletedSlugs.push(sub.slug);
           await deleteCategory(subId, siteConfig?.id);
         }
         setPendingSubDeletes([]);
+      }
+
+      if (allDeletedSlugs.length > 0) {
+        const currentMenus = siteConfig?.settings?.navbarMenus || [];
+        const cleanedMenus = currentMenus
+          .map(m => ({ ...m, links: (m.links || []).filter(l => !allDeletedSlugs.includes(l.categorySlug)) }))
+          .filter(m => m.links.length > 0 || !m.name);
+        if (JSON.stringify(cleanedMenus) !== JSON.stringify(currentMenus)) {
+          const resp = await fetch(`${API_BASE}/api/sites/${siteConfig.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Authorization': token ? `SiteAdmin ${token}` : '' },
+            body: JSON.stringify({ settings: { navbarMenus: cleanedMenus } }),
+          });
+          if (!resp.ok) {
+            console.warn('Failed to clean up navbar links for deleted categories');
+          }
+        }
       }
 
       if (pendingSubAdds.length > 0) {
