@@ -13437,7 +13437,8 @@ var MIGRATION_TABLES_SITE_ID = [
   "return_requests",
   "site_usage",
   "activity_log",
-  "page_views"
+  "page_views",
+  "blog_posts"
 ];
 var MIGRATION_TABLES_FK = [
   { table: "product_variants", fk: "product_id", resolveFrom: "products", resolveKey: "site_id" },

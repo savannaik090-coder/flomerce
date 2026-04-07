@@ -867,7 +867,7 @@ const MIGRATION_TABLES_SITE_ID = [
   'customer_addresses', 'customer_password_resets', 'customer_email_verifications',
   'coupons', 'notifications', 'reviews', 'page_seo', 'site_media', 'site_staff',
   'cancellation_requests', 'return_requests',
-  'site_usage', 'activity_log', 'page_views',
+  'site_usage', 'activity_log', 'page_views', 'blog_posts',
 ];
 
 const MIGRATION_TABLES_FK = [
