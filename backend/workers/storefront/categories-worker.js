@@ -221,14 +221,17 @@ async function createCategory(request, env, user, ctx) {
 
     const db = await resolveSiteDBById(env, siteId);
 
-    const slug = name.toLowerCase().trim().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-');
+    let slug = name.toLowerCase().trim().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-');
     
     const existing = await db.prepare(
       'SELECT id FROM categories WHERE site_id = ? AND slug = ?'
     ).bind(siteId, slug).first();
 
     if (existing) {
-      return errorResponse('Category with this name already exists', 400, 'SLUG_EXISTS');
+      if (!parentId) {
+        return errorResponse('Category with this name already exists', 400, 'SLUG_EXISTS');
+      }
+      slug = slug + '-' + Date.now().toString(36).slice(-4);
     }
 
     const categoryId = generateId();
@@ -331,7 +334,13 @@ async function updateCategory(request, env, user, categoryId, ctx) {
     }
 
     if (updates.name) {
-      const slug = updates.name.toLowerCase().trim().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-');
+      let slug = updates.name.toLowerCase().trim().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-');
+      const existing = await db.prepare(
+        'SELECT id FROM categories WHERE site_id = ? AND slug = ? AND id != ?'
+      ).bind(resolvedSiteId, slug, categoryId).first();
+      if (existing) {
+        slug = slug + '-' + categoryId.slice(-6);
+      }
       setClause.push('slug = ?');
       values.push(slug);
     }
