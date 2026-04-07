@@ -113,7 +113,7 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
                 src={siteConfig.logoUrl}
                 alt={siteConfig?.brandName || 'Store'}
                 className="brand-logo"
-                style={{ maxWidth: logoSize }}
+                style={{ width: logoSize, height: 'auto' }}
                 onError={(e) => { e.target.style.display = 'none'; const txt = e.target.nextElementSibling; if (txt) txt.style.display = 'block'; }}
               />
             ) : null}
