@@ -92,6 +92,7 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
   const [pendingDeleteCats, setPendingDeleteCats] = useState([]);
   const [pendingEditCats, setPendingEditCats] = useState({});
 
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [chooseChanged, setChooseChanged] = useState(false);
   const [subcatChanged, setSubcatChanged] = useState(false);
   const [orderChanged, setOrderChanged] = useState(false);
@@ -119,18 +120,18 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
       setChooseCats(conf.categories || {});
       setSubcatSections(settings.subcategorySections || []);
       setSectionOrder(settings.homepageSectionOrder || []);
+      setSettingsLoaded(true);
     }
   }, [siteConfig?.settings]);
 
   useEffect(() => {
-    if (onPreviewUpdate) {
-      onPreviewUpdate({
-        chooseByCategory: { enabled: chooseEnabled, categories: chooseCats },
-        subcategorySections: subcatSections,
-        homepageSectionOrder: sectionOrder,
-      });
-    }
-  }, [chooseEnabled, chooseCats, subcatSections, sectionOrder]);
+    if (!settingsLoaded || !onPreviewUpdate) return;
+    onPreviewUpdate({
+      chooseByCategory: { enabled: chooseEnabled, categories: chooseCats },
+      subcategorySections: subcatSections,
+      homepageSectionOrder: sectionOrder,
+    });
+  }, [settingsLoaded, chooseEnabled, chooseCats, subcatSections, sectionOrder]);
 
   async function loadCategories() {
     setLoading(true);
@@ -639,6 +640,7 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
             <i className="fas fa-lightbulb" style={{ color: '#3b82f6', marginTop: 2, flexShrink: 0 }} />
             <div style={{ fontSize: 13, color: '#1e40af', lineHeight: 1.5 }}>
               <strong>Categories</strong> help customers browse your products. Create main categories (like "Necklaces" or "Rings"), then add subcategories inside them for finer organization (like "Gold", "Silver"). Click on any category to manage its subcategories.
+              <br /><span style={{ color: '#3b82f6', fontSize: 12 }}><i className="fas fa-eye" style={{ marginRight: 4, fontSize: 10 }} />The preview will refresh automatically after you save your changes.</span>
             </div>
           </div>
 

@@ -101,7 +101,7 @@ export default function WebsiteContentSection() {
   const previewUrl = storeBaseUrl ? `${storeBaseUrl}${currentTab?.page || '/'}` : '';
 
   const refreshPreview = useCallback(() => {
-    setPreviewKey(k => k + 1);
+    setPreviewKey(Date.now());
   }, []);
 
   const accumulatedSettingsRef = useRef({});
@@ -431,7 +431,7 @@ export default function WebsiteContentSection() {
               <iframe
                 ref={iframeRef}
                 key={previewKey}
-                src={previewUrl}
+                src={`${previewUrl}${previewUrl.includes('?') ? '&' : '?'}_t=${previewKey}`}
                 style={{ width: '100%', height: 600, border: 'none', display: 'block' }}
                 title="Store Preview"
               />
@@ -501,7 +501,7 @@ export default function WebsiteContentSection() {
             <iframe
               ref={mobileIframeRef}
               key={previewKey}
-              src={previewUrl}
+              src={`${previewUrl}${previewUrl.includes('?') ? '&' : '?'}_t=${previewKey}`}
               onLoad={replayPreviewToMobile}
               style={{ flex: 1, width: '100%', border: 'none', display: 'block' }}
               title="Store Preview"
