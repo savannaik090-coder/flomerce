@@ -7,7 +7,7 @@ import { parseAsUTC, formatDateShortForAdmin, getStartOfDayInTimezone, getStartO
 
 export default function DashboardSection() {
   const { siteConfig } = useContext(SiteContext);
-  const [period, setPeriod] = useState('today');
+  const [period, setPeriod] = useState('month');
   const [stats, setStats] = useState({ orders: 0, revenue: 0, customers: 0, inventory: 0 });
   const [recentOrders, setRecentOrders] = useState([]);
   const [pendingOrders, setPendingOrders] = useState([]);
