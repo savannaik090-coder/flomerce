@@ -707,7 +707,6 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
             <i className="fas fa-lightbulb" style={{ color: '#3b82f6', marginTop: 2, flexShrink: 0 }} />
             <div style={{ fontSize: 13, color: '#1e40af', lineHeight: 1.5 }}>
               <strong>Categories</strong> help customers browse your products. Create main categories (like "Necklaces" or "Rings"), then add subcategories inside them for finer organization (like "Gold", "Silver"). Click on any category to manage its subcategories.
-              <br /><span style={{ color: '#3b82f6', fontSize: 12 }}><i className="fas fa-eye" style={{ marginRight: 4, fontSize: 10 }} />The preview will refresh automatically after you save your changes.</span>
             </div>
           </div>
 

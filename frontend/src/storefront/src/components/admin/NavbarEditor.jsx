@@ -220,6 +220,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
   }
 
   function removeMenu(menuId) {
+    if (!window.confirm('Delete this menu group? All links inside it will be removed.')) return;
     setNavbarMenus(prev => prev.filter(m => m.id !== menuId));
     if (expandedMenu === menuId) setExpandedMenu(null);
   }
