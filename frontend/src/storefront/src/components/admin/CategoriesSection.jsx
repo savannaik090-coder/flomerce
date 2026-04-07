@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useRef } from 'react';
+import React, { useState, useEffect, useContext, useRef, useMemo } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { getCategories, createCategory, updateCategory, deleteCategory } from '../../services/categoryService.js';
 import { API_BASE } from '../../config.js';
@@ -104,6 +104,53 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
 
   const [activeView, setActiveView] = useState('categories');
 
+  function getShowOnHome(cat) {
+    if (cat.id in pendingHomeToggles) return pendingHomeToggles[cat.id];
+    return !!cat.show_on_home;
+  }
+
+  const allDisplayCats = useMemo(() => {
+    const getDisplayCat = (cat) => {
+      if (pendingEditCats[cat.id]) {
+        return { ...cat, name: pendingEditCats[cat.id].name, subtitle: pendingEditCats[cat.id].subtitle, slug: pendingEditCats[cat.id].slug };
+      }
+      return cat;
+    };
+    return [
+      ...categories.filter(c => !pendingDeleteCats.includes(c.id)).map(getDisplayCat),
+      ...pendingNewCats.map(c => ({ id: c.tempId, name: c.name, subtitle: c.subtitle, slug: c.slug, show_on_home: c.showOnHome ? 1 : 0, image_url: null, children: [], _isPending: true })),
+    ];
+  }, [categories, pendingDeleteCats, pendingEditCats, pendingNewCats]);
+
+  const previewCategories = useMemo(() => {
+    return allDisplayCats.map(cat => {
+      const children = cat.children || [];
+      const mergedChildren = [
+        ...children.filter(c => !pendingSubDeletes.includes(c.id)).map(c => {
+          if (pendingSubEdits[c.id]) return { ...c, name: pendingSubEdits[c.id].name || c.name };
+          return c;
+        }),
+        ...pendingSubAdds.filter(s => s.parentId === cat.id).map(s => ({
+          id: s.tempId, name: s.name, slug: s.name.toLowerCase().replace(/\s+/g,'-'), parent_id: cat.id, show_on_home: 0, _isPending: true,
+          children: pendingSubAdds.filter(v => v.parentId === s.tempId).map(v => ({
+            id: v.tempId, name: v.name, slug: v.name.toLowerCase().replace(/\s+/g,'-'), parent_id: s.tempId, show_on_home: 0, _isPending: true, children: []
+          }))
+        }))
+      ];
+      return {
+        id: cat.id,
+        name: cat.name,
+        subtitle: cat.subtitle,
+        slug: cat.slug,
+        show_on_home: getShowOnHome(cat) ? 1 : 0,
+        image_url: cat.image_url || null,
+        display_order: cat.display_order || 0,
+        children: mergedChildren,
+        _isPending: !!cat._isPending,
+      };
+    });
+  }, [allDisplayCats, pendingSubDeletes, pendingSubEdits, pendingSubAdds, pendingHomeToggles]);
+
   useEffect(() => {
     if (siteConfig?.id) loadCategories();
   }, [siteConfig?.id]);
@@ -135,34 +182,8 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!onPreviewUpdate || loading) return;
-    const previewCats = allDisplayCats.map(cat => {
-      const children = cat.children || [];
-      const mergedChildren = [
-        ...children.filter(c => !pendingSubDeletes.includes(c.id)).map(c => {
-          if (pendingSubEdits[c.id]) return { ...c, name: pendingSubEdits[c.id].name || c.name };
-          return c;
-        }),
-        ...pendingSubAdds.filter(s => s.parentId === cat.id).map(s => ({
-          id: s.tempId, name: s.name, slug: s.name.toLowerCase().replace(/\s+/g,'-'), parent_id: cat.id, show_on_home: 0, _isPending: true,
-          children: pendingSubAdds.filter(v => v.parentId === s.tempId).map(v => ({
-            id: v.tempId, name: v.name, slug: v.name.toLowerCase().replace(/\s+/g,'-'), parent_id: s.tempId, show_on_home: 0, _isPending: true, children: []
-          }))
-        }))
-      ];
-      return {
-        id: cat.id,
-        name: cat.name,
-        subtitle: cat.subtitle,
-        slug: cat.slug,
-        show_on_home: getShowOnHome(cat) ? 1 : 0,
-        image_url: cat.image_url || null,
-        display_order: cat.display_order || 0,
-        children: mergedChildren,
-        _isPending: !!cat._isPending,
-      };
-    });
-    onPreviewUpdate({ _previewCategories: previewCats });
-  }, [pendingHomeToggles, pendingDeleteCats, categories, pendingNewCats, pendingSubAdds, pendingSubDeletes, pendingSubEdits, pendingEditCats, loading]);
+    onPreviewUpdate({ _previewCategories: previewCategories });
+  }, [previewCategories, loading]);
 
   async function loadCategories() {
     setLoading(true);
@@ -241,11 +262,6 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
       }
       return updated;
     });
-  }
-
-  function getShowOnHome(cat) {
-    if (cat.id in pendingHomeToggles) return pendingHomeToggles[cat.id];
-    return !!cat.show_on_home;
   }
 
   async function handleImageUpload(categoryId, file) {
@@ -594,17 +610,6 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
     finally { setSaving(false); }
   }
 
-  function getDisplayCat(cat) {
-    if (pendingEditCats[cat.id]) {
-      return { ...cat, name: pendingEditCats[cat.id].name, subtitle: pendingEditCats[cat.id].subtitle, slug: pendingEditCats[cat.id].slug };
-    }
-    return cat;
-  }
-
-  const allDisplayCats = [
-    ...categories.filter(c => !pendingDeleteCats.includes(c.id)).map(getDisplayCat),
-    ...pendingNewCats.map(c => ({ id: c.tempId, name: c.name, subtitle: c.subtitle, slug: c.slug, show_on_home: c.showOnHome ? 1 : 0, image_url: null, children: [], _isPending: true })),
-  ];
   const filtered = allDisplayCats.filter(c => !searchTerm || c.name.toLowerCase().includes(searchTerm.toLowerCase()));
   const unifiedSections = buildUnifiedSections();
 
