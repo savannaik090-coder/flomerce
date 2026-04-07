@@ -284,8 +284,10 @@ async function createProduct(request, env, user, ctx) {
     }
     const productId = generateId();
 
+    const autoSku = sku || ('SKU-' + productId.substring(0, 8).toUpperCase());
+
     const optionsStr = options ? JSON.stringify(options) : null;
-    const rowData = { id: productId, site_id: siteId, category_id: categoryId, subcategory_id: subcategoryId, name, slug, description, short_description: shortDescription, price, compare_price: comparePrice, cost_price: costPrice, sku, stock, images, thumbnail_url: resolvedThumbnail, tags, is_featured: isFeatured, weight, dimensions, options: optionsStr, hsn_code: hsnCode, gst_rate: gstRate };
+    const rowData = { id: productId, site_id: siteId, category_id: categoryId, subcategory_id: subcategoryId, name, slug, description, short_description: shortDescription, price, compare_price: comparePrice, cost_price: costPrice, sku: autoSku, stock, images, thumbnail_url: resolvedThumbnail, tags, is_featured: isFeatured, weight, dimensions, options: optionsStr, hsn_code: hsnCode, gst_rate: gstRate };
     const rowBytes = estimateRowBytes(rowData);
 
     const usageCheck = await checkUsageLimit(env, siteId, 'd1', rowBytes);
@@ -308,7 +310,7 @@ async function createProduct(request, env, user, ctx) {
       price,
       comparePrice || null,
       costPrice || null,
-      sku || null,
+      autoSku,
       stock || 0,
       3,
       weight || null,
