@@ -133,6 +133,19 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
     });
   }, [settingsLoaded, chooseEnabled, chooseCats, subcatSections, sectionOrder]);
 
+  useEffect(() => {
+    if (!onPreviewUpdate || loading) return;
+    const visibility = {};
+    allDisplayCats.forEach(cat => {
+      const realId = cat._isPending ? null : cat.id;
+      if (realId) {
+        visibility[realId] = getShowOnHome(cat);
+      }
+    });
+    const deletedIds = pendingDeleteCats;
+    onPreviewUpdate({ _previewCategoryVisibility: visibility, _previewDeletedCategories: deletedIds });
+  }, [pendingHomeToggles, pendingDeleteCats, categories, pendingNewCats, loading]);
+
   async function loadCategories() {
     setLoading(true);
     try {

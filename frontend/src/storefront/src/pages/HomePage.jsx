@@ -66,9 +66,6 @@ export default function HomePage() {
       .then((res) => {
         const all = res.data || res.categories || [];
         setAllCategories(all);
-        const visible = all.filter(c => c.show_on_home === 1 && !c.parent_id);
-        visible.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
-        setHomeCategories(visible);
         setCategoriesLoaded(true);
       })
       .catch((err) => {
@@ -76,6 +73,24 @@ export default function HomePage() {
         setCategoriesLoaded(true);
       });
   }, [siteConfig?.id, siteLoading]);
+
+  useEffect(() => {
+    if (!allCategories.length) return;
+    let settings = {};
+    try {
+      settings = typeof siteConfig?.settings === 'string' ? JSON.parse(siteConfig.settings) : (siteConfig?.settings || {});
+    } catch (e) { settings = {}; }
+    const previewVis = settings._previewCategoryVisibility;
+    const previewDeleted = settings._previewDeletedCategories || [];
+
+    let filtered = allCategories.filter(c => !c.parent_id && !previewDeleted.includes(c.id));
+    const visible = filtered.filter(c => {
+      if (previewVis && c.id in previewVis) return previewVis[c.id];
+      return c.show_on_home === 1;
+    });
+    visible.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+    setHomeCategories(visible);
+  }, [allCategories, siteConfig?.settings]);
 
   const orderedSections = useMemo(() => {
     const allItems = [];
