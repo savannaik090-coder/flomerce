@@ -333,8 +333,8 @@
 .mn-dropdown-menu li a,
 .mn-dropdown-menu li > span {
   display: block;
-  padding: 10px 20px;
-  font-size: 0.85rem;
+  padding: 12px 20px;
+  font-size: 0.95rem;
   color: #444;
   text-decoration: none;
   transition: background 0.15s;
@@ -353,7 +353,7 @@
   padding: 10px 20px;
   border: none;
   background: none;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   color: #444;
   cursor: pointer;
 }
@@ -369,13 +369,55 @@
   margin: 0;
 }
 
-.mn-sub-group-open .mn-sub-menu {
+.mn-sub-group-open > .mn-sub-menu {
   display: block;
 }
 
 .mn-sub-menu li a {
   padding-left: 36px;
-  font-size: 0.82rem;
+  font-size: 0.85rem;
+}
+
+.mn-grouped-cat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0;
+}
+
+.mn-grouped-cat-header .mn-grouped-cat-link {
+  flex: 1;
+  display: block;
+  padding: 10px 8px 10px 20px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #222;
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+}
+
+.mn-grouped-cat-header .mn-grouped-cat-link:hover {
+  background: #f5f5f5;
+  color: #111;
+}
+
+.mn-subcategory-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 10px 16px 10px 8px;
+  color: #999;
+  display: flex;
+  align-items: center;
+  transition: color 0.15s;
+}
+
+.mn-subcategory-toggle:hover {
+  color: #111;
+}
+
+.mn-sub-group-open > .mn-grouped-cat-header .mn-subcategory-toggle .mn-chevron {
+  transform: rotate(45deg);
 }
 
 .mn-nav-icons {

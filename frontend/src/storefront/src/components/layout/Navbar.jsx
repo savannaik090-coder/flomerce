@@ -12,7 +12,7 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
   const { wishlistCount } = useWishlist();
   const [menuOpen, setMenuOpen] = useState(false);
   const [openDropdown, setOpenDropdown] = useState(null);
-  const [openSubGroup, setOpenSubGroup] = useState(null);
+  const [openSubGroups, setOpenSubGroups] = useState(new Set());
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -55,7 +55,7 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
   function closeMobileMenu() {
     setMenuOpen(false);
     setOpenDropdown(null);
-    setOpenSubGroup(null);
+    setOpenSubGroups(new Set());
   }
 
   function toggleDropdown(id, e) {
@@ -63,7 +63,7 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
     e.stopPropagation();
     setOpenDropdown(prev => {
       if (prev === id) return null;
-      setOpenSubGroup(null);
+      setOpenSubGroups(new Set());
       return id;
     });
   }
@@ -71,7 +71,12 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
   function toggleSubGroup(id, e) {
     e.preventDefault();
     e.stopPropagation();
-    setOpenSubGroup(prev => prev === id ? null : id);
+    setOpenSubGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   }
 
   return (
@@ -145,32 +150,38 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
                         if (catChildren.length > 0) {
                           const directSubs = catChildren.filter(c => !(c.children && c.children.length > 0));
                           const groups = catChildren.filter(c => c.children && c.children.length > 0);
+                          const isExpanded = openSubGroups.has(`grouped-${link.id}`);
                           return (
-                            <React.Fragment key={link.id}>
-                              <li>
-                                <Link to={link.url} onClick={closeMobileMenu} style={{ fontWeight: 600 }}>{link.label}</Link>
-                              </li>
-                              {directSubs.map(sub => (
-                                <li key={sub.id || sub.slug} style={{ paddingLeft: 10 }}>
-                                  <Link to={`/category/${linkedCat.slug}?subcategory=${sub.id}`} onClick={closeMobileMenu}>{sub.name}</Link>
-                                </li>
-                              ))}
-                              {groups.map(group => (
-                                <li key={group.id || group.slug} className={`sub-group${openSubGroup === group.id ? ' sub-group-open' : ''}`} style={{ paddingLeft: 10 }}>
-                                  <button className="sub-group-toggle" onClick={(e) => toggleSubGroup(group.id, e)}>
-                                    <span>{group.name}</span>
-                                    <i className="fas fa-chevron-right"></i>
-                                  </button>
-                                  <ul className="sub-group-menu">
-                                    {(group.children || []).map(val => (
-                                      <li key={val.id || val.slug}>
-                                        <Link to={`/category/${linkedCat.slug}?subcategory=${val.id}`} onClick={closeMobileMenu}>{val.name}</Link>
-                                      </li>
-                                    ))}
-                                  </ul>
-                                </li>
-                              ))}
-                            </React.Fragment>
+                            <li key={link.id} className={`sub-group${isExpanded ? ' sub-group-open' : ''}`}>
+                              <div className="grouped-cat-header">
+                                <Link to={link.url} onClick={closeMobileMenu} className="grouped-cat-link">{link.label}</Link>
+                                <button className="subcategory-toggle" onClick={(e) => toggleSubGroup(`grouped-${link.id}`, e)} aria-label="Show subcategories">
+                                  <i className="fas fa-plus"></i>
+                                </button>
+                              </div>
+                              <ul className="sub-group-menu">
+                                {directSubs.map(sub => (
+                                  <li key={sub.id || sub.slug}>
+                                    <Link to={`/category/${linkedCat.slug}?subcategory=${sub.id}`} onClick={closeMobileMenu}>{sub.name}</Link>
+                                  </li>
+                                ))}
+                                {groups.map(group => (
+                                  <li key={group.id || group.slug} className={`sub-group${openSubGroups.has(group.id) ? ' sub-group-open' : ''}`}>
+                                    <button className="sub-group-toggle" onClick={(e) => toggleSubGroup(group.id, e)}>
+                                      <span>{group.name}</span>
+                                      <i className="fas fa-chevron-right"></i>
+                                    </button>
+                                    <ul className="sub-group-menu">
+                                      {(group.children || []).map(val => (
+                                        <li key={val.id || val.slug}>
+                                          <Link to={`/category/${linkedCat.slug}?subcategory=${val.id}`} onClick={closeMobileMenu}>{val.name}</Link>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </li>
+                                ))}
+                              </ul>
+                            </li>
                           );
                         }
                         return (
@@ -208,7 +219,7 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
                           </li>
                         ))}
                         {groups.map((group) => (
-                          <li key={group.id || group.slug} className={`sub-group${openSubGroup === group.id ? ' sub-group-open' : ''}`}>
+                          <li key={group.id || group.slug} className={`sub-group${openSubGroups.has(group.id) ? ' sub-group-open' : ''}`}>
                             <button className="sub-group-toggle" onClick={(e) => toggleSubGroup(group.id, e)}>
                               <span>{group.name}</span>
                               <i className="fas fa-chevron-right"></i>
