@@ -91,6 +91,14 @@ export async function purgeStorefrontCache(env, siteId, types = [], resourceIds 
             }
           }
           break;
+        case 'site':
+          for (const domain of allDomains) {
+            urls.push(`https://${domain}/api/site?siteId=${siteId}`);
+            if (site.subdomain) {
+              urls.push(`https://${domain}/api/site?subdomain=${site.subdomain}`);
+            }
+          }
+          break;
       }
     }
 

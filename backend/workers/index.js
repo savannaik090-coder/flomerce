@@ -20,6 +20,7 @@ import { handleInventoryLocations } from './storefront/inventory-locations-worke
 import { handleBlog } from './storefront/blog-worker.js';
 import { handleUsageAPI } from '../utils/usage-tracker.js';
 import { jsonResponse, errorResponse, corsHeaders, handleCORS } from '../utils/helpers.js';
+import { cachedJsonResponse } from '../utils/cache.js';
 import { PLATFORM_DOMAIN } from '../config.js';
 import { ensureTablesExist } from '../utils/db-init.js';
 import { resolveSiteDBById } from '../utils/site-db.js';
@@ -281,7 +282,7 @@ async function handleSiteInfo(request, env) {
       };
     }
 
-    return jsonResponse({
+    return cachedJsonResponse({
       success: true,
       data: {
         ...site,
@@ -292,7 +293,7 @@ async function handleSiteInfo(request, env) {
         googleClientId,
         vapidPublicKey,
       },
-    });
+    }, 200, request);
   } catch (error) {
     console.error('Get site info error:', error);
     return errorResponse('Failed to fetch site info: ' + error.message, 500);

@@ -5,6 +5,7 @@ import { validateSiteAdmin, handleStaffCRUD } from '../storefront/site-admin-wor
 import { registerCustomHostname, deleteCustomHostname, findCustomHostname } from '../../utils/cloudflare.js';
 import { resolveSiteDBById, getSiteConfig, getSiteWithConfig } from '../../utils/site-db.js';
 import { trackD1Write, trackD1Update, estimateRowBytes } from '../../utils/usage-tracker.js';
+import { purgeStorefrontCache } from '../../utils/cache.js';
 
 export async function handleSites(request, env, path, ctx) {
   const corsResponse = handleCORS(request);
@@ -533,7 +534,7 @@ async function updateSite(request, env, user, siteId, ctx) {
       ).bind(brandNameUpdate[1], siteId).run();
     }
 
-
+    if (ctx) ctx.waitUntil(purgeStorefrontCache(env, siteId, ['site']));
 
     return successResponse(null, 'Site updated successfully');
   } catch (error) {
@@ -605,7 +606,7 @@ async function updateSiteAsAdmin(request, env, siteId, ctx) {
       ).bind(brandNameUpdate[1], siteId).run();
     }
 
-
+    if (ctx) ctx.waitUntil(purgeStorefrontCache(env, siteId, ['site']));
 
     return successResponse(null, 'Site updated successfully');
   } catch (error) {

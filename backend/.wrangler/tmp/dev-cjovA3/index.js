@@ -667,6 +667,14 @@ async function purgeStorefrontCache(env, siteId, types = [], resourceIds = {}) {
             }
           }
           break;
+        case "site":
+          for (const domain of allDomains) {
+            urls2.push(`https://${domain}/api/site?siteId=${siteId}`);
+            if (site.subdomain) {
+              urls2.push(`https://${domain}/api/site?subdomain=${site.subdomain}`);
+            }
+          }
+          break;
       }
     }
     const uniqueUrls = [...new Set(urls2)];
@@ -3979,6 +3987,7 @@ __name(deleteCustomHostname, "deleteCustomHostname");
 // workers/platform/sites-worker.js
 init_site_db();
 init_usage_tracker();
+init_cache();
 async function handleSites(request, env, path, ctx2) {
   const corsResponse = handleCORS(request);
   if (corsResponse)
@@ -4459,6 +4468,8 @@ async function updateSite(request, env, user, siteId, ctx2) {
         'UPDATE sites SET brand_name = ?, updated_at = datetime("now") WHERE id = ?'
       ).bind(brandNameUpdate[1], siteId).run();
     }
+    if (ctx2)
+      ctx2.waitUntil(purgeStorefrontCache(env, siteId, ["site"]));
     return successResponse(null, "Site updated successfully");
   } catch (error) {
     console.error("Update site error:", error);
@@ -4521,6 +4532,8 @@ async function updateSiteAsAdmin(request, env, siteId, ctx2) {
         'UPDATE sites SET brand_name = ?, updated_at = datetime("now") WHERE id = ?'
       ).bind(brandNameUpdate[1], siteId).run();
     }
+    if (ctx2)
+      ctx2.waitUntil(purgeStorefrontCache(env, siteId, ["site"]));
     return successResponse(null, "Site updated successfully");
   } catch (error) {
     console.error("Update site as admin error:", error);
@@ -16624,6 +16637,7 @@ __name(deletePost, "deletePost");
 // workers/index.js
 init_usage_tracker();
 init_helpers();
+init_cache();
 init_config();
 
 // utils/db-init.js
@@ -17213,7 +17227,7 @@ async function handleSiteInfo(request, env) {
         seo_og_image: ps.seo_og_image
       };
     }
-    return jsonResponse({
+    return cachedJsonResponse({
       success: true,
       data: {
         ...site,
@@ -17224,7 +17238,7 @@ async function handleSiteInfo(request, env) {
         googleClientId,
         vapidPublicKey
       }
-    });
+    }, 200, request);
   } catch (error) {
     console.error("Get site info error:", error);
     return errorResponse("Failed to fetch site info: " + error.message, 500);
