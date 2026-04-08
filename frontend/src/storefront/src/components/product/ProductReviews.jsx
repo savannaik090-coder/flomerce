@@ -256,7 +256,7 @@ export default function ProductReviews({ productId }) {
                   {review.images.map((img, i) => (
                     <img
                       key={i}
-                      className="review-image"
+                      className="review-image-thumb"
                       src={img}
                       alt={`Review ${i + 1}`}
                       onClick={() => setReviewImageModal(img)}

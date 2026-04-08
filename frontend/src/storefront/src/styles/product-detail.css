@@ -399,17 +399,16 @@
     margin-top: 10px;
 }
 
-.review-image {
-    width: 80px;
-    height: 80px;
-    border-radius: 8px;
+.review-image-thumb {
+    width: 60px;
+    height: 60px;
+    border-radius: 6px;
     object-fit: cover;
     cursor: pointer;
     transition: transform 0.2s ease;
-    border: 1px solid #e2e8f0;
 }
 
-.review-image:hover {
+.review-image-thumb:hover {
     transform: scale(1.1);
 }
 
