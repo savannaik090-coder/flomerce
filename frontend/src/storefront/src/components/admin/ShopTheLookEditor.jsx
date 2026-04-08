@@ -47,6 +47,7 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate }) {
   const serverValuesRef = useRef(null);
   const fileInputRef = useRef(null);
   const imageContainerRef = useRef(null);
+  const draggingRef = useRef(null);
 
   useEffect(() => {
     if (siteConfig?.id) {
@@ -170,6 +171,50 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate }) {
     setEditDotIndex(dots.length);
   }
 
+  const dragCleanupRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (dragCleanupRef.current) dragCleanupRef.current();
+    };
+  }, []);
+
+  function handleDotDragStart(e, index) {
+    if (placingDot) return;
+    e.stopPropagation();
+    e.preventDefault();
+    draggingRef.current = { index, moved: false };
+    const onMove = (ev) => {
+      if (!draggingRef.current || !imageContainerRef.current) return;
+      ev.preventDefault();
+      draggingRef.current.moved = true;
+      const rect = imageContainerRef.current.getBoundingClientRect();
+      const clientX = ev.touches ? ev.touches[0].clientX : ev.clientX;
+      const clientY = ev.touches ? ev.touches[0].clientY : ev.clientY;
+      const x = Math.min(100, Math.max(0, ((clientX - rect.left) / rect.width) * 100));
+      const y = Math.min(100, Math.max(0, ((clientY - rect.top) / rect.height) * 100));
+      setDots(prev => prev.map((d, i) => i === draggingRef.current.index ? { ...d, x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 } : d));
+    };
+    const teardown = () => {
+      if (draggingRef.current && !draggingRef.current.moved) {
+        setEditDotIndex(draggingRef.current.index);
+      }
+      draggingRef.current = null;
+      dragCleanupRef.current = null;
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', teardown);
+      document.removeEventListener('touchmove', onMove);
+      document.removeEventListener('touchend', teardown);
+      document.removeEventListener('touchcancel', teardown);
+    };
+    dragCleanupRef.current = teardown;
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', teardown);
+    document.addEventListener('touchmove', onMove, { passive: false });
+    document.addEventListener('touchend', teardown);
+    document.addEventListener('touchcancel', teardown);
+  }
+
   function updateDot(index, field, value) {
     setDots(prev => prev.map((d, i) => i === index ? { ...d, [field]: value } : d));
   }
@@ -289,7 +334,7 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate }) {
           Main Image
         </h3>
         <p style={{ fontSize: 12, color: '#64748b', marginBottom: 12 }}>
-          Upload the look/collection image. After uploading, click "Place a Dot" and then click on the image to position product markers.
+          Upload the look/collection image. Click "Place a Dot" to add markers, then drag any dot to reposition it.
         </p>
 
         <input
@@ -321,28 +366,30 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate }) {
               {dots.map((dot, i) => (
                 <div
                   key={i}
-                  onClick={e => { e.stopPropagation(); setEditDotIndex(i); }}
+                  onMouseDown={e => handleDotDragStart(e, i)}
+                  onTouchStart={e => handleDotDragStart(e, i)}
                   style={{
                     position: 'absolute',
                     left: `${dot.x}%`,
                     top: `${dot.y}%`,
-                    width: 26,
-                    height: 26,
-                    marginLeft: -13,
-                    marginTop: -13,
+                    width: 30,
+                    height: 30,
+                    marginLeft: -15,
+                    marginTop: -15,
                     borderRadius: '50%',
-                    background: editDotIndex === i ? '#2563eb' : 'rgba(255,255,255,0.85)',
+                    background: editDotIndex === i ? '#2563eb' : 'rgba(255,255,255,0.9)',
                     border: `2px solid ${editDotIndex === i ? '#2563eb' : '#5a3f2a'}`,
-                    cursor: 'pointer',
+                    cursor: placingDot ? 'crosshair' : 'grab',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    fontSize: 10,
+                    fontSize: 11,
                     fontWeight: 700,
                     color: editDotIndex === i ? '#fff' : '#5a3f2a',
-                    boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
                     zIndex: editDotIndex === i ? 10 : 5,
-                    transition: 'all 0.2s ease',
+                    userSelect: 'none',
+                    touchAction: 'none',
                   }}
                 >
                   {i + 1}
@@ -421,7 +468,7 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate }) {
             Product Dots ({dots.length})
           </h3>
           <p style={{ fontSize: 12, color: '#64748b', marginBottom: 16 }}>
-            Each dot links to a product by its SKU. Click a dot on the image to select it, then assign a product below.
+            Drag dots on the image to reposition them. Click a dot to select it and assign a product below.
           </p>
 
           {dots.map((dot, i) => {
