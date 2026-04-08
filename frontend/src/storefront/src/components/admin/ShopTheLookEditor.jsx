@@ -47,7 +47,8 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate }) {
   const serverValuesRef = useRef(null);
   const fileInputRef = useRef(null);
   const imageContainerRef = useRef(null);
-  const draggingRef = useRef(null);
+  const [draggingIndex, setDraggingIndex] = useState(null);
+  const dragStartPosRef = useRef(null);
 
   useEffect(() => {
     if (siteConfig?.id) {
@@ -171,48 +172,35 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate }) {
     setEditDotIndex(dots.length);
   }
 
-  const dragCleanupRef = useRef(null);
-
-  useEffect(() => {
-    return () => {
-      if (dragCleanupRef.current) dragCleanupRef.current();
-    };
-  }, []);
-
-  function handleDotDragStart(e, index) {
+  function handleDotPointerDown(e, index) {
     if (placingDot) return;
     e.stopPropagation();
-    e.preventDefault();
-    draggingRef.current = { index, moved: false };
-    const onMove = (ev) => {
-      if (!draggingRef.current || !imageContainerRef.current) return;
-      ev.preventDefault();
-      draggingRef.current.moved = true;
-      const rect = imageContainerRef.current.getBoundingClientRect();
-      const clientX = ev.touches ? ev.touches[0].clientX : ev.clientX;
-      const clientY = ev.touches ? ev.touches[0].clientY : ev.clientY;
-      const x = Math.min(100, Math.max(0, ((clientX - rect.left) / rect.width) * 100));
-      const y = Math.min(100, Math.max(0, ((clientY - rect.top) / rect.height) * 100));
-      setDots(prev => prev.map((d, i) => i === draggingRef.current.index ? { ...d, x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 } : d));
-    };
-    const teardown = () => {
-      if (draggingRef.current && !draggingRef.current.moved) {
-        setEditDotIndex(draggingRef.current.index);
-      }
-      draggingRef.current = null;
-      dragCleanupRef.current = null;
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup', teardown);
-      document.removeEventListener('touchmove', onMove);
-      document.removeEventListener('touchend', teardown);
-      document.removeEventListener('touchcancel', teardown);
-    };
-    dragCleanupRef.current = teardown;
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', teardown);
-    document.addEventListener('touchmove', onMove, { passive: false });
-    document.addEventListener('touchend', teardown);
-    document.addEventListener('touchcancel', teardown);
+    e.target.setPointerCapture(e.pointerId);
+    dragStartPosRef.current = { x: e.clientX, y: e.clientY, moved: false };
+    setDraggingIndex(index);
+  }
+
+  function handleDotPointerMove(e, index) {
+    if (draggingIndex !== index || !imageContainerRef.current || !dragStartPosRef.current) return;
+    const dx = Math.abs(e.clientX - dragStartPosRef.current.x);
+    const dy = Math.abs(e.clientY - dragStartPosRef.current.y);
+    if (!dragStartPosRef.current.moved && dx < 3 && dy < 3) return;
+    dragStartPosRef.current.moved = true;
+    const rect = imageContainerRef.current.getBoundingClientRect();
+    const nx = Math.min(100, Math.max(0, ((e.clientX - rect.left) / rect.width) * 100));
+    const ny = Math.min(100, Math.max(0, ((e.clientY - rect.top) / rect.height) * 100));
+    const rx = Math.round(nx * 10) / 10;
+    const ry = Math.round(ny * 10) / 10;
+    setDots(prev => prev.map((d, i) => i === index ? { ...d, x: rx, y: ry } : d));
+  }
+
+  function handleDotPointerUp(e, index) {
+    if (draggingIndex !== index) return;
+    if (dragStartPosRef.current && !dragStartPosRef.current.moved) {
+      setEditDotIndex(index);
+    }
+    setDraggingIndex(null);
+    dragStartPosRef.current = null;
   }
 
   function updateDot(index, field, value) {
@@ -361,13 +349,17 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate }) {
               <img
                 src={resolveImageUrl(mainImage)}
                 alt="Shop the Look"
-                style={{ width: '100%', height: 'auto', display: 'block' }}
+                draggable="false"
+                onDragStart={e => e.preventDefault()}
+                style={{ width: '100%', height: 'auto', display: 'block', userSelect: 'none' }}
               />
               {dots.map((dot, i) => (
                 <div
                   key={i}
-                  onMouseDown={e => handleDotDragStart(e, i)}
-                  onTouchStart={e => handleDotDragStart(e, i)}
+                  onPointerDown={e => handleDotPointerDown(e, i)}
+                  onPointerMove={e => handleDotPointerMove(e, i)}
+                  onPointerUp={e => handleDotPointerUp(e, i)}
+                  onPointerCancel={() => { setDraggingIndex(null); dragStartPosRef.current = null; }}
                   style={{
                     position: 'absolute',
                     left: `${dot.x}%`,
@@ -377,17 +369,17 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate }) {
                     marginLeft: -15,
                     marginTop: -15,
                     borderRadius: '50%',
-                    background: editDotIndex === i ? '#2563eb' : 'rgba(255,255,255,0.9)',
-                    border: `2px solid ${editDotIndex === i ? '#2563eb' : '#5a3f2a'}`,
-                    cursor: placingDot ? 'crosshair' : 'grab',
+                    background: draggingIndex === i ? '#1d4ed8' : (editDotIndex === i ? '#2563eb' : 'rgba(255,255,255,0.9)'),
+                    border: `2px solid ${editDotIndex === i || draggingIndex === i ? '#2563eb' : '#5a3f2a'}`,
+                    cursor: placingDot ? 'crosshair' : (draggingIndex === i ? 'grabbing' : 'grab'),
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     fontSize: 11,
                     fontWeight: 700,
-                    color: editDotIndex === i ? '#fff' : '#5a3f2a',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
-                    zIndex: editDotIndex === i ? 10 : 5,
+                    color: editDotIndex === i || draggingIndex === i ? '#fff' : '#5a3f2a',
+                    boxShadow: draggingIndex === i ? '0 4px 12px rgba(0,0,0,0.35)' : '0 2px 8px rgba(0,0,0,0.25)',
+                    zIndex: draggingIndex === i ? 20 : (editDotIndex === i ? 10 : 5),
                     userSelect: 'none',
                     touchAction: 'none',
                   }}
