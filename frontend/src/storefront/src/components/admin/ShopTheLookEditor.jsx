@@ -465,23 +465,21 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate }) {
 
           {dots.map((dot, i) => {
             const matched = findProductBySku(dot.sku);
-            const isEditing = editDotIndex === i;
             return (
               <div
                 key={i}
                 style={{
-                  border: isEditing ? '2px solid #2563eb' : '1px solid #e2e8f0',
+                  border: '1px solid #e2e8f0',
                   borderRadius: 8, padding: 14, marginBottom: 12,
-                  background: isEditing ? '#eff6ff' : '#fafafa',
-                  transition: 'all 0.2s ease',
+                  background: '#fafafa',
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <div style={{
                       width: 24, height: 24, borderRadius: '50%',
-                      background: isEditing ? '#2563eb' : '#e2e8f0',
-                      color: isEditing ? '#fff' : '#64748b',
+                      background: '#e2e8f0',
+                      color: '#64748b',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       fontSize: 11, fontWeight: 700,
                     }}>
@@ -492,17 +490,6 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate }) {
                     </span>
                   </div>
                   <div style={{ display: 'flex', gap: 6 }}>
-                    <button
-                      type="button"
-                      onClick={() => setEditDotIndex(isEditing ? null : i)}
-                      style={{
-                        background: 'none', border: 'none', cursor: 'pointer',
-                        color: isEditing ? '#2563eb' : '#94a3b8', fontSize: 13,
-                      }}
-                      title={isEditing ? 'Close' : 'Edit'}
-                    >
-                      <i className={`fas ${isEditing ? 'fa-chevron-up' : 'fa-pencil-alt'}`} />
-                    </button>
                     <button
                       type="button"
                       onClick={() => removeDot(i)}
@@ -532,20 +519,18 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate }) {
                         SKU: {matched.sku || dot.sku} · {formatPrice(matched.price, currency)}
                       </div>
                     </div>
-                    {isEditing && (
-                      <button
-                        type="button"
-                        onClick={() => updateDot(i, 'sku', '')}
-                        style={{
-                          padding: '4px 10px', background: '#fef2f2', border: '1px solid #fecaca',
-                          borderRadius: 4, fontSize: 11, color: '#dc2626', cursor: 'pointer', fontFamily: 'inherit',
-                        }}
-                      >
-                        Change
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => updateDot(i, 'sku', '')}
+                      style={{
+                        padding: '4px 10px', background: '#fef2f2', border: '1px solid #fecaca',
+                        borderRadius: 4, fontSize: 11, color: '#dc2626', cursor: 'pointer', fontFamily: 'inherit',
+                      }}
+                    >
+                      Change
+                    </button>
                   </div>
-                ) : isEditing ? (
+                ) : (
                   <div>
                     <input
                       type="text"
@@ -590,43 +575,36 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate }) {
                       </div>
                     )}
                   </div>
-                ) : (
-                  <div style={{ fontSize: 12, color: '#ef4444', fontStyle: 'italic' }}>
-                    <i className="fas fa-exclamation-triangle" style={{ marginRight: 4 }} />
-                    No product assigned — click edit to assign a SKU
-                  </div>
                 )}
 
-                {isEditing && (
-                  <div style={{ marginTop: 10, display: 'flex', gap: 12 }}>
-                    <div style={{ flex: 1 }}>
-                      <label style={{ fontSize: 11, fontWeight: 600, color: '#64748b', display: 'block', marginBottom: 4 }}>X Position (%)</label>
-                      <input
-                        type="number"
-                        min="0" max="100" step="0.5"
-                        value={dot.x}
-                        onChange={e => updateDot(i, 'x', parseFloat(e.target.value) || 0)}
-                        style={{
-                          width: '100%', padding: '6px 10px', border: '1px solid #e2e8f0', borderRadius: 6,
-                          fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box',
-                        }}
-                      />
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <label style={{ fontSize: 11, fontWeight: 600, color: '#64748b', display: 'block', marginBottom: 4 }}>Y Position (%)</label>
-                      <input
-                        type="number"
-                        min="0" max="100" step="0.5"
-                        value={dot.y}
-                        onChange={e => updateDot(i, 'y', parseFloat(e.target.value) || 0)}
-                        style={{
-                          width: '100%', padding: '6px 10px', border: '1px solid #e2e8f0', borderRadius: 6,
-                          fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box',
-                        }}
-                      />
-                    </div>
+                <div style={{ marginTop: 10, display: 'flex', gap: 12 }}>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ fontSize: 11, fontWeight: 600, color: '#64748b', display: 'block', marginBottom: 4 }}>X Position (%)</label>
+                    <input
+                      type="number"
+                      min="0" max="100" step="0.5"
+                      value={dot.x}
+                      onChange={e => updateDot(i, 'x', parseFloat(e.target.value) || 0)}
+                      style={{
+                        width: '100%', padding: '6px 10px', border: '1px solid #e2e8f0', borderRadius: 6,
+                        fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box',
+                      }}
+                    />
                   </div>
-                )}
+                  <div style={{ flex: 1 }}>
+                    <label style={{ fontSize: 11, fontWeight: 600, color: '#64748b', display: 'block', marginBottom: 4 }}>Y Position (%)</label>
+                    <input
+                      type="number"
+                      min="0" max="100" step="0.5"
+                      value={dot.y}
+                      onChange={e => updateDot(i, 'y', parseFloat(e.target.value) || 0)}
+                      style={{
+                        width: '100%', padding: '6px 10px', border: '1px solid #e2e8f0', borderRadius: 6,
+                        fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box',
+                      }}
+                    />
+                  </div>
+                </div>
               </div>
             );
           })}
