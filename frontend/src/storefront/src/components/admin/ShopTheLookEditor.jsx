@@ -611,9 +611,7 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate }) {
         </div>
       )}
 
-      {!hasChanges && (
-        <SaveBar saving={saving} hasChanges={hasChanges} onSave={handleSave} />
-      )}
+      <SaveBar saving={saving} hasChanges={hasChanges} onSave={handleSave} />
     </div>
   );
 }
