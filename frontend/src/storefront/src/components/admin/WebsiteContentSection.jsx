@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useContext, useRef, useCallback, useMemo } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import CategoriesSection from './CategoriesSection.jsx';
 import WatchBuySection from './WatchBuySection.jsx';
@@ -25,26 +25,47 @@ import SectionToggle from './SectionToggle.jsx';
 import SaveBar from './SaveBar.jsx';
 import { API_BASE, PLATFORM_DOMAIN } from '../../config.js';
 
-const TAB_GROUPS = [
-  {
-    group: 'Homepage',
-    icon: 'fa-home',
-    tabs: [
-      { id: 'navbar',            icon: 'fa-bars',          label: 'Navbar',           page: '/' },
-      { id: 'promo-banner',      icon: 'fa-bullhorn',      label: 'Promo Banner',     page: '/' },
-      { id: 'hero-slider',       icon: 'fa-images',        label: 'Hero Slider',      page: '/' },
-      { id: 'welcome-banner',    icon: 'fa-hand-sparkles', label: 'Welcome Banner',   page: '/' },
-      { id: 'categories',        icon: 'fa-folder',        label: 'Categories',       page: '/' },
-      { id: 'watchbuy',          icon: 'fa-video',         label: 'Watch & Buy',      page: '/' },
-      { id: 'featured-video',    icon: 'fa-film',          label: 'Featured Video',   page: '/' },
-      { id: 'customer-reviews',  icon: 'fa-star',          label: 'Customer Reviews', page: '/' },
-      { id: 'shop-the-look',     icon: 'fa-crosshairs',    label: 'Shop the Look',    page: '/' },
-      { id: 'trending-now',      icon: 'fa-fire',          label: 'Trending Now',     page: '/' },
-      { id: 'brand-story',       icon: 'fa-book-open',     label: 'Brand Story',      page: '/' },
-      { id: 'store-locations',   icon: 'fa-store',         label: 'Store Locations',  page: '/' },
-      { id: 'footer',            icon: 'fa-shoe-prints',   label: 'Footer',           page: '/' },
-    ],
-  },
+function buildTabGroups(templateId) {
+  const isModern = templateId === 'modern';
+  const isClassic = !isModern;
+
+  const homepageTabs = [
+    { id: 'navbar',            icon: 'fa-bars',          label: 'Navbar',           page: '/' },
+    { id: 'promo-banner',      icon: 'fa-bullhorn',      label: 'Promo Banner',     page: '/' },
+    { id: 'hero-slider',       icon: 'fa-images',        label: 'Hero Slider',      page: '/' },
+    { id: 'welcome-banner',    icon: 'fa-hand-sparkles', label: 'Welcome Banner',   page: '/' },
+    { id: 'categories',        icon: 'fa-folder',        label: 'Categories',       page: '/' },
+    { id: 'customer-reviews',  icon: 'fa-star',          label: 'Customer Reviews', page: '/' },
+    { id: 'footer',            icon: 'fa-shoe-prints',   label: 'Footer',           page: '/' },
+  ];
+
+  const classicTabs = [
+    { id: 'watchbuy',          icon: 'fa-video',         label: 'Watch & Buy',      page: '/' },
+    { id: 'featured-video',    icon: 'fa-film',          label: 'Featured Video',   page: '/' },
+    { id: 'shop-the-look',     icon: 'fa-crosshairs',    label: 'Shop the Look',    page: '/' },
+    { id: 'store-locations',   icon: 'fa-store',         label: 'Store Locations',  page: '/' },
+  ];
+
+  const modernTabs = [
+    { id: 'trending-now',      icon: 'fa-fire',          label: 'Trending Now',     page: '/' },
+    { id: 'brand-story',       icon: 'fa-book-open',     label: 'Brand Story',      page: '/' },
+  ];
+
+  const groups = [
+    { group: 'Homepage', icon: 'fa-home', tabs: homepageTabs },
+  ];
+
+  if (isClassic) {
+    groups.push({ group: 'Classic Theme', icon: 'fa-gem', tabs: classicTabs });
+  }
+  if (isModern) {
+    groups.push({ group: 'Modern Theme', icon: 'fa-wand-magic-sparkles', tabs: modernTabs });
+  }
+
+  return groups;
+}
+
+const STATIC_GROUPS = [
   {
     group: 'Pages',
     icon: 'fa-file-alt',
@@ -74,8 +95,6 @@ const TAB_GROUPS = [
   },
 ];
 
-const ALL_TABS = TAB_GROUPS.flatMap(g => g.tabs);
-
 function getStoreUrl(siteConfig) {
   if (!siteConfig?.subdomain) return '';
   const host = window.location.hostname;
@@ -95,6 +114,10 @@ export default function WebsiteContentSection() {
   const [showMobileNav, setShowMobileNav] = useState(false);
   const iframeRef = useRef(null);
   const mobileIframeRef = useRef(null);
+
+  const templateId = siteConfig?.templateId || 'classic';
+  const TAB_GROUPS = useMemo(() => [...buildTabGroups(templateId), ...STATIC_GROUPS], [templateId]);
+  const ALL_TABS = useMemo(() => TAB_GROUPS.flatMap(g => g.tabs), [TAB_GROUPS]);
 
   const storeBaseUrl = getStoreUrl(siteConfig);
   const currentTab = ALL_TABS.find(t => t.id === activeTab);
