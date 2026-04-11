@@ -323,7 +323,7 @@ export async function ensureTablesExist(env) {
     await migrateSitesTable(env);
 
     try {
-      const shards = await env.DB.prepare('SELECT id, binding_name FROM shards WHERE is_active = 1').all();
+      const shards = await env.DB.prepare('SELECT id, binding_name FROM shards').all();
       for (const shard of (shards.results || [])) {
         const shardDB = env[shard.binding_name];
         if (shardDB) {
@@ -362,6 +362,22 @@ export async function ensureTablesExist(env) {
             )`).run();
           } catch (e) {
             console.error(`Failed to ensure site_config on shard ${shard.binding_name}:`, e.message || e);
+          }
+
+          const shardMigrations = [
+            'ALTER TABLE site_config ADD COLUMN seo_keywords TEXT',
+            'ALTER TABLE products ADD COLUMN seo_keywords TEXT',
+            'ALTER TABLE categories ADD COLUMN seo_keywords TEXT',
+            'ALTER TABLE page_seo ADD COLUMN seo_keywords TEXT',
+            'ALTER TABLE blog_posts ADD COLUMN seo_keywords TEXT',
+            'ALTER TABLE blog_posts ADD COLUMN featured_image TEXT',
+            'ALTER TABLE blog_posts ADD COLUMN author_name TEXT',
+            'ALTER TABLE blog_posts ADD COLUMN seo_title TEXT',
+            'ALTER TABLE blog_posts ADD COLUMN seo_description TEXT',
+            'ALTER TABLE blog_posts ADD COLUMN seo_og_image TEXT',
+          ];
+          for (const sql of shardMigrations) {
+            try { await shardDB.prepare(sql).run(); } catch (e) {}
           }
         }
       }
