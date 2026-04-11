@@ -358,6 +358,7 @@ async function getSiteSEO(request, env) {
       seo_title: config.seo_title || null,
       seo_description: config.seo_description || null,
       seo_og_image: config.seo_og_image || null,
+      seo_keywords: config.seo_keywords || null,
       seo_robots: config.seo_robots || 'index, follow',
       google_verification: config.google_verification || null,
       favicon_url: config.favicon_url || null,
@@ -372,7 +373,7 @@ async function getSiteSEO(request, env) {
 
 async function saveSiteSEO(request, env, ctx) {
   try {
-    const { siteId, seo_title, seo_description, seo_og_image, seo_robots, google_verification, favicon_url } = await request.json();
+    const { siteId, seo_title, seo_description, seo_og_image, seo_keywords, seo_robots, google_verification, favicon_url } = await request.json();
     if (!siteId) return errorResponse('siteId is required');
 
     const admin = await validateSiteAdmin(request, env, siteId);
@@ -387,12 +388,12 @@ async function saveSiteSEO(request, env, ctx) {
 
     await siteDB.prepare(
       `UPDATE site_config SET
-        seo_title = ?, seo_description = ?, seo_og_image = ?,
+        seo_title = ?, seo_description = ?, seo_og_image = ?, seo_keywords = ?,
         seo_robots = ?, google_verification = ?, favicon_url = ?,
         updated_at = datetime('now')
        WHERE site_id = ?`
     ).bind(
-      seo_title || null, seo_description || null, seo_og_image || null,
+      seo_title || null, seo_description || null, seo_og_image || null, seo_keywords || null,
       seo_robots || 'index, follow', google_verification || null, favicon_url || null,
       siteId
     ).run();
@@ -427,7 +428,7 @@ async function getCategoriesSEO(request, env) {
 
     const db = await resolveSiteDBById(env, siteId);
     const result = await db.prepare(
-      `SELECT id, name, slug, description, image_url, seo_title, seo_description, seo_og_image
+      `SELECT id, name, slug, description, image_url, seo_title, seo_description, seo_og_image, seo_keywords
        FROM categories WHERE site_id = ? AND is_active = 1 ORDER BY display_order ASC`
     ).bind(siteId).all();
 
@@ -440,7 +441,7 @@ async function getCategoriesSEO(request, env) {
 
 async function saveCategorySEO(request, env, categoryId, ctx) {
   try {
-    const { siteId, seo_title, seo_description, seo_og_image } = await request.json();
+    const { siteId, seo_title, seo_description, seo_og_image, seo_keywords } = await request.json();
     if (!siteId) return errorResponse('siteId is required');
 
     const admin = await validateSiteAdmin(request, env, siteId);
@@ -460,10 +461,10 @@ async function saveCategorySEO(request, env, categoryId, ctx) {
 
     await db.prepare(
       `UPDATE categories SET
-        seo_title = ?, seo_description = ?, seo_og_image = ?,
+        seo_title = ?, seo_description = ?, seo_og_image = ?, seo_keywords = ?,
         updated_at = datetime('now')
        WHERE id = ? AND site_id = ?`
-    ).bind(seo_title || null, seo_description || null, seo_og_image || null, categoryId, siteId).run();
+    ).bind(seo_title || null, seo_description || null, seo_og_image || null, seo_keywords || null, categoryId, siteId).run();
 
     const updatedRow = await db.prepare(
       'SELECT * FROM categories WHERE id = ? AND site_id = ?'
@@ -495,7 +496,7 @@ async function getProductsSEO(request, env) {
 
     const db = await resolveSiteDBById(env, siteId);
     const result = await db.prepare(
-      `SELECT id, name, slug, short_description, description, thumbnail_url, images, price, seo_title, seo_description, seo_og_image
+      `SELECT id, name, slug, short_description, description, thumbnail_url, images, price, seo_title, seo_description, seo_og_image, seo_keywords
        FROM products WHERE site_id = ? AND is_active = 1 ORDER BY created_at DESC`
     ).bind(siteId).all();
 
@@ -520,7 +521,7 @@ async function getProductsSEO(request, env) {
 
 async function saveProductSEO(request, env, productId, ctx) {
   try {
-    const { siteId, seo_title, seo_description, seo_og_image } = await request.json();
+    const { siteId, seo_title, seo_description, seo_og_image, seo_keywords } = await request.json();
     if (!siteId) return errorResponse('siteId is required');
 
     const admin = await validateSiteAdmin(request, env, siteId);
@@ -540,10 +541,10 @@ async function saveProductSEO(request, env, productId, ctx) {
 
     await db.prepare(
       `UPDATE products SET
-        seo_title = ?, seo_description = ?, seo_og_image = ?,
+        seo_title = ?, seo_description = ?, seo_og_image = ?, seo_keywords = ?,
         updated_at = datetime('now')
        WHERE id = ? AND site_id = ?`
-    ).bind(seo_title || null, seo_description || null, seo_og_image || null, productId, siteId).run();
+    ).bind(seo_title || null, seo_description || null, seo_og_image || null, seo_keywords || null, productId, siteId).run();
 
     const updatedRow = await db.prepare(
       'SELECT * FROM products WHERE id = ? AND site_id = ?'
@@ -577,14 +578,14 @@ async function getPagesSEO(request, env) {
 
     const db = await resolveSiteDBById(env, siteId);
     const result = await db.prepare(
-      `SELECT id, page_type, seo_title, seo_description, seo_og_image
+      `SELECT id, page_type, seo_title, seo_description, seo_og_image, seo_keywords
        FROM page_seo WHERE site_id = ? ORDER BY page_type ASC`
     ).bind(siteId).all();
 
     const existing = result.results || [];
     const pages = PAGE_TYPES.map(pt => {
       const found = existing.find(e => e.page_type === pt);
-      return found || { id: null, page_type: pt, seo_title: '', seo_description: '', seo_og_image: '' };
+      return found || { id: null, page_type: pt, seo_title: '', seo_description: '', seo_og_image: '', seo_keywords: '' };
     });
 
     return jsonResponse({ success: true, data: pages });
@@ -596,7 +597,7 @@ async function getPagesSEO(request, env) {
 
 async function savePageSEO(request, env, pageType, ctx) {
   try {
-    const { siteId, seo_title, seo_description, seo_og_image } = await request.json();
+    const { siteId, seo_title, seo_description, seo_og_image, seo_keywords } = await request.json();
     if (!siteId) return errorResponse('siteId is required');
     if (!PAGE_TYPES.includes(pageType)) return errorResponse('Invalid page type');
 
@@ -615,27 +616,27 @@ async function savePageSEO(request, env, pageType, ctx) {
 
     if (existing) {
       const oldBytes = existing.row_size_bytes || 0;
-      const newData = { id: existing.id, site_id: siteId, page_type: pageType, seo_title, seo_description, seo_og_image };
+      const newData = { id: existing.id, site_id: siteId, page_type: pageType, seo_title, seo_description, seo_og_image, seo_keywords };
       const newBytes = estimateRowBytes(newData);
 
       await db.prepare(
         `UPDATE page_seo SET
-          seo_title = ?, seo_description = ?, seo_og_image = ?,
+          seo_title = ?, seo_description = ?, seo_og_image = ?, seo_keywords = ?,
           row_size_bytes = ?,
           updated_at = datetime('now')
          WHERE id = ?`
-      ).bind(seo_title || null, seo_description || null, seo_og_image || null, newBytes, existing.id).run();
+      ).bind(seo_title || null, seo_description || null, seo_og_image || null, seo_keywords || null, newBytes, existing.id).run();
 
       await trackD1Update(env, siteId, oldBytes, newBytes);
     } else {
       const id = crypto.randomUUID();
-      const rowData = { id, site_id: siteId, page_type: pageType, seo_title, seo_description, seo_og_image };
+      const rowData = { id, site_id: siteId, page_type: pageType, seo_title, seo_description, seo_og_image, seo_keywords };
       const rowBytes = estimateRowBytes(rowData);
 
       await db.prepare(
-        `INSERT INTO page_seo (id, site_id, page_type, seo_title, seo_description, seo_og_image, row_size_bytes)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`
-      ).bind(id, siteId, pageType, seo_title || null, seo_description || null, seo_og_image || null, rowBytes).run();
+        `INSERT INTO page_seo (id, site_id, page_type, seo_title, seo_description, seo_og_image, seo_keywords, row_size_bytes)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      ).bind(id, siteId, pageType, seo_title || null, seo_description || null, seo_og_image || null, seo_keywords || null, rowBytes).run();
 
       await trackD1Write(env, siteId, rowBytes);
     }

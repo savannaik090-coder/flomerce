@@ -41,6 +41,10 @@ function buildMetaTagsString(tags) {
 
   lines.push(`  <meta name="viewport" content="width=device-width, initial-scale=1.0">`);
 
+  if (tags.themeColor) {
+    lines.push(`  <meta name="theme-color" content="${escapeAttr(tags.themeColor)}">`);
+  }
+
   if (tags.canonicalUrl) {
     lines.push(`  <link rel="canonical" href="${escapeAttr(tags.canonicalUrl)}">`);
   }

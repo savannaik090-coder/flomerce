@@ -21,6 +21,12 @@ export async function generateSitemap(env, site, baseUrl) {
     priority: '0.5',
   });
 
+  urls.push({
+    loc: `${baseUrl}/blog`,
+    changefreq: 'weekly',
+    priority: '0.6',
+  });
+
   const db = await resolveSiteDBById(env, site.id);
 
   try {

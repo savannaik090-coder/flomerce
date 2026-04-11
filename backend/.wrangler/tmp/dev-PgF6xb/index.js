@@ -1698,6 +1698,7 @@ async function getSiteSEO(request, env) {
       seo_title: config.seo_title || null,
       seo_description: config.seo_description || null,
       seo_og_image: config.seo_og_image || null,
+      seo_keywords: config.seo_keywords || null,
       seo_robots: config.seo_robots || "index, follow",
       google_verification: config.google_verification || null,
       favicon_url: config.favicon_url || null,
@@ -1711,7 +1712,7 @@ async function getSiteSEO(request, env) {
 }
 async function saveSiteSEO(request, env, ctx2) {
   try {
-    const { siteId, seo_title, seo_description, seo_og_image, seo_robots, google_verification, favicon_url } = await request.json();
+    const { siteId, seo_title, seo_description, seo_og_image, seo_keywords, seo_robots, google_verification, favicon_url } = await request.json();
     if (!siteId)
       return errorResponse("siteId is required");
     const admin = await validateSiteAdmin(request, env, siteId);
@@ -1726,7 +1727,7 @@ async function saveSiteSEO(request, env, ctx2) {
     const oldBytes = existingConfig?.row_size_bytes || 0;
     await siteDB.prepare(
       `UPDATE site_config SET
-        seo_title = ?, seo_description = ?, seo_og_image = ?,
+        seo_title = ?, seo_description = ?, seo_og_image = ?, seo_keywords = ?,
         seo_robots = ?, google_verification = ?, favicon_url = ?,
         updated_at = datetime('now')
        WHERE site_id = ?`
@@ -1734,6 +1735,7 @@ async function saveSiteSEO(request, env, ctx2) {
       seo_title || null,
       seo_description || null,
       seo_og_image || null,
+      seo_keywords || null,
       seo_robots || "index, follow",
       google_verification || null,
       favicon_url || null,
@@ -1766,7 +1768,7 @@ async function getCategoriesSEO(request, env) {
       return errorResponse("You do not have permission to access SEO settings", 403);
     const db = await resolveSiteDBById(env, siteId);
     const result = await db.prepare(
-      `SELECT id, name, slug, description, image_url, seo_title, seo_description, seo_og_image
+      `SELECT id, name, slug, description, image_url, seo_title, seo_description, seo_og_image, seo_keywords
        FROM categories WHERE site_id = ? AND is_active = 1 ORDER BY display_order ASC`
     ).bind(siteId).all();
     return jsonResponse({ success: true, data: result.results || [] });
@@ -1777,7 +1779,7 @@ async function getCategoriesSEO(request, env) {
 }
 async function saveCategorySEO(request, env, categoryId, ctx2) {
   try {
-    const { siteId, seo_title, seo_description, seo_og_image } = await request.json();
+    const { siteId, seo_title, seo_description, seo_og_image, seo_keywords } = await request.json();
     if (!siteId)
       return errorResponse("siteId is required");
     const admin = await validateSiteAdmin(request, env, siteId);
@@ -1795,10 +1797,10 @@ async function saveCategorySEO(request, env, categoryId, ctx2) {
     const oldBytes = oldRow?.row_size_bytes || 0;
     await db.prepare(
       `UPDATE categories SET
-        seo_title = ?, seo_description = ?, seo_og_image = ?,
+        seo_title = ?, seo_description = ?, seo_og_image = ?, seo_keywords = ?,
         updated_at = datetime('now')
        WHERE id = ? AND site_id = ?`
-    ).bind(seo_title || null, seo_description || null, seo_og_image || null, categoryId, siteId).run();
+    ).bind(seo_title || null, seo_description || null, seo_og_image || null, seo_keywords || null, categoryId, siteId).run();
     const updatedRow = await db.prepare(
       "SELECT * FROM categories WHERE id = ? AND site_id = ?"
     ).bind(categoryId, siteId).first();
@@ -1828,7 +1830,7 @@ async function getProductsSEO(request, env) {
       return errorResponse("You do not have permission to access SEO settings", 403);
     const db = await resolveSiteDBById(env, siteId);
     const result = await db.prepare(
-      `SELECT id, name, slug, short_description, description, thumbnail_url, images, price, seo_title, seo_description, seo_og_image
+      `SELECT id, name, slug, short_description, description, thumbnail_url, images, price, seo_title, seo_description, seo_og_image, seo_keywords
        FROM products WHERE site_id = ? AND is_active = 1 ORDER BY created_at DESC`
     ).bind(siteId).all();
     const products = (result.results || []).map((p) => {
@@ -1851,7 +1853,7 @@ async function getProductsSEO(request, env) {
 }
 async function saveProductSEO(request, env, productId, ctx2) {
   try {
-    const { siteId, seo_title, seo_description, seo_og_image } = await request.json();
+    const { siteId, seo_title, seo_description, seo_og_image, seo_keywords } = await request.json();
     if (!siteId)
       return errorResponse("siteId is required");
     const admin = await validateSiteAdmin(request, env, siteId);
@@ -1869,10 +1871,10 @@ async function saveProductSEO(request, env, productId, ctx2) {
     const oldBytes = oldRow?.row_size_bytes || 0;
     await db.prepare(
       `UPDATE products SET
-        seo_title = ?, seo_description = ?, seo_og_image = ?,
+        seo_title = ?, seo_description = ?, seo_og_image = ?, seo_keywords = ?,
         updated_at = datetime('now')
        WHERE id = ? AND site_id = ?`
-    ).bind(seo_title || null, seo_description || null, seo_og_image || null, productId, siteId).run();
+    ).bind(seo_title || null, seo_description || null, seo_og_image || null, seo_keywords || null, productId, siteId).run();
     const updatedRow = await db.prepare(
       "SELECT * FROM products WHERE id = ? AND site_id = ?"
     ).bind(productId, siteId).first();
@@ -1902,13 +1904,13 @@ async function getPagesSEO(request, env) {
       return errorResponse("You do not have permission to access SEO settings", 403);
     const db = await resolveSiteDBById(env, siteId);
     const result = await db.prepare(
-      `SELECT id, page_type, seo_title, seo_description, seo_og_image
+      `SELECT id, page_type, seo_title, seo_description, seo_og_image, seo_keywords
        FROM page_seo WHERE site_id = ? ORDER BY page_type ASC`
     ).bind(siteId).all();
     const existing = result.results || [];
     const pages = PAGE_TYPES.map((pt) => {
       const found = existing.find((e) => e.page_type === pt);
-      return found || { id: null, page_type: pt, seo_title: "", seo_description: "", seo_og_image: "" };
+      return found || { id: null, page_type: pt, seo_title: "", seo_description: "", seo_og_image: "", seo_keywords: "" };
     });
     return jsonResponse({ success: true, data: pages });
   } catch (err) {
@@ -1918,7 +1920,7 @@ async function getPagesSEO(request, env) {
 }
 async function savePageSEO(request, env, pageType, ctx2) {
   try {
-    const { siteId, seo_title, seo_description, seo_og_image } = await request.json();
+    const { siteId, seo_title, seo_description, seo_og_image, seo_keywords } = await request.json();
     if (!siteId)
       return errorResponse("siteId is required");
     if (!PAGE_TYPES.includes(pageType))
@@ -1937,24 +1939,24 @@ async function savePageSEO(request, env, pageType, ctx2) {
     ).bind(siteId, pageType).first();
     if (existing) {
       const oldBytes = existing.row_size_bytes || 0;
-      const newData = { id: existing.id, site_id: siteId, page_type: pageType, seo_title, seo_description, seo_og_image };
+      const newData = { id: existing.id, site_id: siteId, page_type: pageType, seo_title, seo_description, seo_og_image, seo_keywords };
       const newBytes = estimateRowBytes(newData);
       await db.prepare(
         `UPDATE page_seo SET
-          seo_title = ?, seo_description = ?, seo_og_image = ?,
+          seo_title = ?, seo_description = ?, seo_og_image = ?, seo_keywords = ?,
           row_size_bytes = ?,
           updated_at = datetime('now')
          WHERE id = ?`
-      ).bind(seo_title || null, seo_description || null, seo_og_image || null, newBytes, existing.id).run();
+      ).bind(seo_title || null, seo_description || null, seo_og_image || null, seo_keywords || null, newBytes, existing.id).run();
       await trackD1Update(env, siteId, oldBytes, newBytes);
     } else {
       const id = crypto.randomUUID();
-      const rowData = { id, site_id: siteId, page_type: pageType, seo_title, seo_description, seo_og_image };
+      const rowData = { id, site_id: siteId, page_type: pageType, seo_title, seo_description, seo_og_image, seo_keywords };
       const rowBytes = estimateRowBytes(rowData);
       await db.prepare(
-        `INSERT INTO page_seo (id, site_id, page_type, seo_title, seo_description, seo_og_image, row_size_bytes)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`
-      ).bind(id, siteId, pageType, seo_title || null, seo_description || null, seo_og_image || null, rowBytes).run();
+        `INSERT INTO page_seo (id, site_id, page_type, seo_title, seo_description, seo_og_image, seo_keywords, row_size_bytes)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      ).bind(id, siteId, pageType, seo_title || null, seo_description || null, seo_og_image || null, seo_keywords || null, rowBytes).run();
       await trackD1Write(env, siteId, rowBytes);
     }
     return jsonResponse({ success: true, message: "Page SEO saved" });
@@ -11180,6 +11182,9 @@ function buildMetaTagsString(tags) {
   }
   lines.push(`  <meta name="robots" content="${escapeAttr(tags.robots || "index, follow")}">`);
   lines.push(`  <meta name="viewport" content="width=device-width, initial-scale=1.0">`);
+  if (tags.themeColor) {
+    lines.push(`  <meta name="theme-color" content="${escapeAttr(tags.themeColor)}">`);
+  }
   if (tags.canonicalUrl) {
     lines.push(`  <link rel="canonical" href="${escapeAttr(tags.canonicalUrl)}">`);
   }
@@ -11275,6 +11280,11 @@ async function generateSitemap(env, site, baseUrl) {
     loc: `${baseUrl}/contact`,
     changefreq: "monthly",
     priority: "0.5"
+  });
+  urls2.push({
+    loc: `${baseUrl}/blog`,
+    changefreq: "weekly",
+    priority: "0.6"
   });
   const db = await resolveSiteDBById(env, site.id);
   try {
@@ -11647,6 +11657,7 @@ async function fetchSiteSEO(env, site) {
     seo_description: site.seo_description || null,
     seo_og_image: site.seo_og_image || null,
     seo_robots: site.seo_robots || "index, follow",
+    seo_keywords: site.seo_keywords || null,
     google_verification: site.google_verification || null,
     currency: site.currency || "INR"
   };
@@ -11656,7 +11667,7 @@ async function fetchProductSEO(db, site, slug) {
   try {
     return await db.prepare(
       `SELECT id, name, slug, description, short_description, price, compare_price, stock,
-              images, thumbnail_url, sku, barcode, seo_title, seo_description, seo_og_image
+              images, thumbnail_url, sku, barcode, seo_title, seo_description, seo_og_image, seo_keywords
        FROM products WHERE site_id = ? AND slug = ? AND is_active = 1`
     ).bind(site.id, slug).first();
   } catch {
@@ -11690,7 +11701,7 @@ __name(fetchProductReviewData, "fetchProductReviewData");
 async function fetchCategorySEO(db, site, slug) {
   try {
     const category = await db.prepare(
-      `SELECT id, name, slug, description, image_url, seo_title, seo_description, seo_og_image
+      `SELECT id, name, slug, description, image_url, seo_title, seo_description, seo_og_image, seo_keywords
        FROM categories WHERE site_id = ? AND slug = ? AND is_active = 1`
     ).bind(site.id, slug).first();
     if (!category)
@@ -11709,7 +11720,13 @@ __name(fetchCategorySEO, "fetchCategorySEO");
 async function fetchBlogPostSEO(db, site, slug) {
   try {
     return await db.prepare(
-      `SELECT id, title, slug, excerpt, content, featured_image, seo_title, seo_description, published_at, author_name
+      `SELECT id, title, slug, excerpt, content,
+              COALESCE(featured_image, cover_image) as featured_image,
+              COALESCE(seo_title, meta_title) as seo_title,
+              COALESCE(seo_description, meta_description) as seo_description,
+              seo_og_image, seo_keywords,
+              COALESCE(author_name, author) as author_name,
+              published_at, updated_at
        FROM blog_posts WHERE site_id = ? AND slug = ? AND status = 'published'`
     ).bind(site.id, slug).first();
   } catch {
@@ -11720,7 +11737,7 @@ __name(fetchBlogPostSEO, "fetchBlogPostSEO");
 async function fetchPageSEO(db, site, pageType) {
   try {
     return await db.prepare(
-      `SELECT seo_title, seo_description, seo_og_image
+      `SELECT seo_title, seo_description, seo_og_image, seo_keywords
        FROM page_seo WHERE site_id = ? AND page_type = ?`
     ).bind(site.id, pageType).first();
   } catch {
@@ -11731,7 +11748,7 @@ __name(fetchPageSEO, "fetchPageSEO");
 function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl, canonicalUrl, reviewData }) {
   const { type } = pageInfo;
   const structuredData = [];
-  let title, description, ogImage, ogType, breadcrumbs;
+  let title, description, ogImage, ogType, breadcrumbs, keywords;
   function absUrl2(url) {
     if (!url)
       return url;
@@ -11749,6 +11766,7 @@ function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl,
     description = pageData.seo_description || pageData.short_description || pageData.description || templateConfig.fallbackDescription(site);
     ogImage = pageData.seo_og_image || pageData.thumbnail_url || siteSEO.seo_og_image;
     ogType = "product";
+    keywords = pageData.seo_keywords || null;
     if (templateConfig.includeProductSchema) {
       structuredData.push(buildProductSchema(pageData, site, baseUrl, reviewData));
     }
@@ -11764,6 +11782,7 @@ function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl,
     title = cat.seo_title || templateConfig.titleFormat.replace("{pageTitle}", cat.name).replace("{brandName}", site.brand_name);
     description = cat.seo_description || cat.description || templateConfig.fallbackDescription(site);
     ogImage = cat.seo_og_image || cat.image_url || siteSEO.seo_og_image;
+    keywords = cat.seo_keywords || null;
     if (templateConfig.includeCategorySchema) {
       structuredData.push(buildCategorySchema(cat, pageData.products, site, baseUrl));
     }
@@ -11776,8 +11795,9 @@ function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl,
   } else if (type === "blog" && pageData) {
     title = pageData.seo_title || templateConfig.titleFormat.replace("{pageTitle}", pageData.title).replace("{brandName}", site.brand_name);
     description = pageData.seo_description || pageData.excerpt || (pageData.content ? pageData.content.replace(/<[^>]*>/g, "").substring(0, 160).trim() : "") || templateConfig.fallbackDescription(site);
-    ogImage = pageData.featured_image || siteSEO.seo_og_image;
+    ogImage = pageData.seo_og_image || pageData.featured_image || siteSEO.seo_og_image;
     ogType = "article";
+    keywords = pageData.seo_keywords || null;
     const articleSchema = {
       "@context": "https://schema.org",
       "@type": "Article",
@@ -11785,6 +11805,7 @@ function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl,
       description: pageData.excerpt || "",
       url: `${baseUrl}/blog/${pageData.slug}`,
       datePublished: pageData.published_at || void 0,
+      dateModified: pageData.updated_at || pageData.published_at || void 0,
       author: { "@type": "Person", name: pageData.author_name || site.brand_name },
       publisher: { "@type": "Organization", name: site.brand_name }
     };
@@ -11808,26 +11829,31 @@ function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl,
     title = pageSEO?.seo_title || templateConfig.titleFormat.replace("{pageTitle}", "About Us").replace("{brandName}", site.brand_name);
     description = pageSEO?.seo_description || siteSEO.seo_description || templateConfig.fallbackDescription(site);
     ogImage = pageSEO?.seo_og_image || siteSEO.seo_og_image;
+    keywords = pageSEO?.seo_keywords || null;
   } else if (type === "contact") {
     const pageSEO = pageData;
     title = pageSEO?.seo_title || templateConfig.titleFormat.replace("{pageTitle}", "Contact Us").replace("{brandName}", site.brand_name);
     description = pageSEO?.seo_description || siteSEO.seo_description || templateConfig.fallbackDescription(site);
     ogImage = pageSEO?.seo_og_image || siteSEO.seo_og_image;
+    keywords = pageSEO?.seo_keywords || null;
   } else if (type === "privacy") {
     const pageSEO = pageData;
     title = pageSEO?.seo_title || templateConfig.titleFormat.replace("{pageTitle}", "Privacy Policy").replace("{brandName}", site.brand_name);
     description = pageSEO?.seo_description || siteSEO.seo_description || templateConfig.fallbackDescription(site);
     ogImage = pageSEO?.seo_og_image || siteSEO.seo_og_image;
+    keywords = pageSEO?.seo_keywords || null;
   } else if (type === "terms") {
     const pageSEO = pageData;
     title = pageSEO?.seo_title || templateConfig.titleFormat.replace("{pageTitle}", "Terms & Conditions").replace("{brandName}", site.brand_name);
     description = pageSEO?.seo_description || siteSEO.seo_description || templateConfig.fallbackDescription(site);
     ogImage = pageSEO?.seo_og_image || siteSEO.seo_og_image;
+    keywords = pageSEO?.seo_keywords || null;
   } else {
     const pageSEO = pageData;
     title = pageSEO?.seo_title || siteSEO.seo_title || templateConfig.fallbackTitle(site);
     description = pageSEO?.seo_description || siteSEO.seo_description || templateConfig.fallbackDescription(site);
     ogImage = pageSEO?.seo_og_image || siteSEO.seo_og_image;
+    keywords = pageSEO?.seo_keywords || siteSEO.seo_keywords || null;
   }
   const resolvedOgImage = ogImage || site.og_image || site.logo_url || null;
   const finalOgImage = absUrl2(resolvedOgImage);
@@ -11835,6 +11861,7 @@ function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl,
   return {
     title,
     description,
+    keywords: keywords || siteSEO.seo_keywords || null,
     ogTitle: site.og_title || title,
     ogDescription: site.og_description || description,
     ogImage: finalOgImage,
@@ -11845,6 +11872,7 @@ function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl,
     robots: siteSEO.seo_robots || "index, follow",
     favicon: site.favicon_url || site.logo_url || null,
     author: site.brand_name,
+    themeColor: site.primary_color || "#000000",
     googleVerification: siteSEO.google_verification || null,
     twitterCard: site.twitter_card || "summary_large_image",
     twitterTitle: site.twitter_title || site.og_title || title,
@@ -12649,7 +12677,17 @@ function getSiteSchemaStatements() {
     "ALTER TABLE orders ADD COLUMN invoice_token TEXT",
     "ALTER TABLE orders ADD COLUMN customer_gstin TEXT",
     "ALTER TABLE guest_orders ADD COLUMN invoice_token TEXT",
-    "ALTER TABLE guest_orders ADD COLUMN customer_gstin TEXT"
+    "ALTER TABLE guest_orders ADD COLUMN customer_gstin TEXT",
+    "ALTER TABLE site_config ADD COLUMN seo_keywords TEXT",
+    "ALTER TABLE products ADD COLUMN seo_keywords TEXT",
+    "ALTER TABLE categories ADD COLUMN seo_keywords TEXT",
+    "ALTER TABLE page_seo ADD COLUMN seo_keywords TEXT",
+    "ALTER TABLE blog_posts ADD COLUMN featured_image TEXT",
+    "ALTER TABLE blog_posts ADD COLUMN author_name TEXT",
+    "ALTER TABLE blog_posts ADD COLUMN seo_title TEXT",
+    "ALTER TABLE blog_posts ADD COLUMN seo_description TEXT",
+    "ALTER TABLE blog_posts ADD COLUMN seo_og_image TEXT",
+    "ALTER TABLE blog_posts ADD COLUMN seo_keywords TEXT"
   ];
   return [...tables, ...indexes, ...addColumnMigrations];
 }

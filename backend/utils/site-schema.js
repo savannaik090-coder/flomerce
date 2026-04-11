@@ -552,6 +552,16 @@ export function getSiteSchemaStatements() {
     'ALTER TABLE orders ADD COLUMN customer_gstin TEXT',
     'ALTER TABLE guest_orders ADD COLUMN invoice_token TEXT',
     'ALTER TABLE guest_orders ADD COLUMN customer_gstin TEXT',
+    'ALTER TABLE site_config ADD COLUMN seo_keywords TEXT',
+    'ALTER TABLE products ADD COLUMN seo_keywords TEXT',
+    'ALTER TABLE categories ADD COLUMN seo_keywords TEXT',
+    'ALTER TABLE page_seo ADD COLUMN seo_keywords TEXT',
+    'ALTER TABLE blog_posts ADD COLUMN featured_image TEXT',
+    'ALTER TABLE blog_posts ADD COLUMN author_name TEXT',
+    'ALTER TABLE blog_posts ADD COLUMN seo_title TEXT',
+    'ALTER TABLE blog_posts ADD COLUMN seo_description TEXT',
+    'ALTER TABLE blog_posts ADD COLUMN seo_og_image TEXT',
+    'ALTER TABLE blog_posts ADD COLUMN seo_keywords TEXT',
   ];
 
   return [...tables, ...indexes, ...addColumnMigrations];

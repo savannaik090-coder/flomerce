@@ -51,6 +51,7 @@ async function fetchSiteSEO(env, site) {
     seo_description: site.seo_description || null,
     seo_og_image: site.seo_og_image || null,
     seo_robots: site.seo_robots || 'index, follow',
+    seo_keywords: site.seo_keywords || null,
     google_verification: site.google_verification || null,
     currency: site.currency || 'INR',
   };
@@ -60,7 +61,7 @@ async function fetchProductSEO(db, site, slug) {
   try {
     return await db.prepare(
       `SELECT id, name, slug, description, short_description, price, compare_price, stock,
-              images, thumbnail_url, sku, barcode, seo_title, seo_description, seo_og_image
+              images, thumbnail_url, sku, barcode, seo_title, seo_description, seo_og_image, seo_keywords
        FROM products WHERE site_id = ? AND slug = ? AND is_active = 1`
     ).bind(site.id, slug).first();
   } catch {
@@ -96,7 +97,7 @@ async function fetchProductReviewData(db, site, productId) {
 async function fetchCategorySEO(db, site, slug) {
   try {
     const category = await db.prepare(
-      `SELECT id, name, slug, description, image_url, seo_title, seo_description, seo_og_image
+      `SELECT id, name, slug, description, image_url, seo_title, seo_description, seo_og_image, seo_keywords
        FROM categories WHERE site_id = ? AND slug = ? AND is_active = 1`
     ).bind(site.id, slug).first();
 
@@ -117,7 +118,13 @@ async function fetchCategorySEO(db, site, slug) {
 async function fetchBlogPostSEO(db, site, slug) {
   try {
     return await db.prepare(
-      `SELECT id, title, slug, excerpt, content, featured_image, seo_title, seo_description, published_at, author_name
+      `SELECT id, title, slug, excerpt, content,
+              COALESCE(featured_image, cover_image) as featured_image,
+              COALESCE(seo_title, meta_title) as seo_title,
+              COALESCE(seo_description, meta_description) as seo_description,
+              seo_og_image, seo_keywords,
+              COALESCE(author_name, author) as author_name,
+              published_at, updated_at
        FROM blog_posts WHERE site_id = ? AND slug = ? AND status = 'published'`
     ).bind(site.id, slug).first();
   } catch {
@@ -128,7 +135,7 @@ async function fetchBlogPostSEO(db, site, slug) {
 async function fetchPageSEO(db, site, pageType) {
   try {
     return await db.prepare(
-      `SELECT seo_title, seo_description, seo_og_image
+      `SELECT seo_title, seo_description, seo_og_image, seo_keywords
        FROM page_seo WHERE site_id = ? AND page_type = ?`
     ).bind(site.id, pageType).first();
   } catch {
@@ -141,7 +148,7 @@ async function fetchPageSEO(db, site, pageType) {
 function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl, canonicalUrl, reviewData }) {
   const { type } = pageInfo;
   const structuredData = [];
-  let title, description, ogImage, ogType, breadcrumbs;
+  let title, description, ogImage, ogType, breadcrumbs, keywords;
 
   function absUrl(url) {
     if (!url) return url;
@@ -161,6 +168,7 @@ function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl,
     description = pageData.seo_description || pageData.short_description || pageData.description || templateConfig.fallbackDescription(site);
     ogImage = pageData.seo_og_image || pageData.thumbnail_url || siteSEO.seo_og_image;
     ogType = 'product';
+    keywords = pageData.seo_keywords || null;
 
     if (templateConfig.includeProductSchema) {
       structuredData.push(buildProductSchema(pageData, site, baseUrl, reviewData));
@@ -180,6 +188,7 @@ function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl,
       .replace('{brandName}', site.brand_name);
     description = cat.seo_description || cat.description || templateConfig.fallbackDescription(site);
     ogImage = cat.seo_og_image || cat.image_url || siteSEO.seo_og_image;
+    keywords = cat.seo_keywords || null;
 
     if (templateConfig.includeCategorySchema) {
       structuredData.push(buildCategorySchema(cat, pageData.products, site, baseUrl));
@@ -196,8 +205,9 @@ function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl,
       .replace('{pageTitle}', pageData.title)
       .replace('{brandName}', site.brand_name);
     description = pageData.seo_description || pageData.excerpt || (pageData.content ? pageData.content.replace(/<[^>]*>/g, '').substring(0, 160).trim() : '') || templateConfig.fallbackDescription(site);
-    ogImage = pageData.featured_image || siteSEO.seo_og_image;
+    ogImage = pageData.seo_og_image || pageData.featured_image || siteSEO.seo_og_image;
     ogType = 'article';
+    keywords = pageData.seo_keywords || null;
 
     const articleSchema = {
       '@context': 'https://schema.org',
@@ -206,6 +216,7 @@ function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl,
       description: pageData.excerpt || '',
       url: `${baseUrl}/blog/${pageData.slug}`,
       datePublished: pageData.published_at || undefined,
+      dateModified: pageData.updated_at || pageData.published_at || undefined,
       author: { '@type': 'Person', name: pageData.author_name || site.brand_name },
       publisher: { '@type': 'Organization', name: site.brand_name },
     };
@@ -236,6 +247,7 @@ function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl,
       .replace('{brandName}', site.brand_name);
     description = pageSEO?.seo_description || siteSEO.seo_description || templateConfig.fallbackDescription(site);
     ogImage = pageSEO?.seo_og_image || siteSEO.seo_og_image;
+    keywords = pageSEO?.seo_keywords || null;
 
   } else if (type === 'contact') {
     const pageSEO = pageData;
@@ -244,6 +256,7 @@ function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl,
       .replace('{brandName}', site.brand_name);
     description = pageSEO?.seo_description || siteSEO.seo_description || templateConfig.fallbackDescription(site);
     ogImage = pageSEO?.seo_og_image || siteSEO.seo_og_image;
+    keywords = pageSEO?.seo_keywords || null;
 
   } else if (type === 'privacy') {
     const pageSEO = pageData;
@@ -252,6 +265,7 @@ function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl,
       .replace('{brandName}', site.brand_name);
     description = pageSEO?.seo_description || siteSEO.seo_description || templateConfig.fallbackDescription(site);
     ogImage = pageSEO?.seo_og_image || siteSEO.seo_og_image;
+    keywords = pageSEO?.seo_keywords || null;
 
   } else if (type === 'terms') {
     const pageSEO = pageData;
@@ -260,12 +274,14 @@ function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl,
       .replace('{brandName}', site.brand_name);
     description = pageSEO?.seo_description || siteSEO.seo_description || templateConfig.fallbackDescription(site);
     ogImage = pageSEO?.seo_og_image || siteSEO.seo_og_image;
+    keywords = pageSEO?.seo_keywords || null;
 
   } else {
     const pageSEO = pageData;
     title = pageSEO?.seo_title || siteSEO.seo_title || templateConfig.fallbackTitle(site);
     description = pageSEO?.seo_description || siteSEO.seo_description || templateConfig.fallbackDescription(site);
     ogImage = pageSEO?.seo_og_image || siteSEO.seo_og_image;
+    keywords = pageSEO?.seo_keywords || siteSEO.seo_keywords || null;
   }
 
   const resolvedOgImage = ogImage || site.og_image || site.logo_url || null;
@@ -275,6 +291,7 @@ function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl,
   return {
     title,
     description,
+    keywords: keywords || siteSEO.seo_keywords || null,
     ogTitle: site.og_title || title,
     ogDescription: site.og_description || description,
     ogImage: finalOgImage,
@@ -285,6 +302,7 @@ function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl,
     robots: siteSEO.seo_robots || 'index, follow',
     favicon: site.favicon_url || site.logo_url || null,
     author: site.brand_name,
+    themeColor: site.primary_color || '#000000',
     googleVerification: siteSEO.google_verification || null,
     twitterCard: site.twitter_card || 'summary_large_image',
     twitterTitle: site.twitter_title || site.og_title || title,
