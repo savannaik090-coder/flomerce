@@ -9,7 +9,7 @@ function getAuthHeader() {
 }
 
 function getStoreUrl(siteConfig) {
-  if (siteConfig?.customDomain && siteConfig?.domainStatus === 'active') {
+  if (siteConfig?.customDomain && siteConfig?.domainStatus === 'verified') {
     return `https://${siteConfig.customDomain}`;
   }
   if (siteConfig?.subdomain) {
