@@ -4198,7 +4198,10 @@ async function createSite(request, env, user) {
     const { brandName, categories, templateId, phone, email, address, primaryColor, secondaryColor, theme } = body;
     let logoUrl = body.logoUrl || null;
     const logoBase64 = body.logo || null;
+    const faviconBase64 = body.favicon || null;
     const category = body.category || "general";
+    const seoTitle = body.seoTitle || null;
+    const seoDescription = body.seoDescription || null;
     const subdomain = (body.subdomain || generateSubdomain(brandName)).toLowerCase().trim();
     if (!brandName) {
       return errorResponse("Brand name is required");
@@ -4262,11 +4265,60 @@ async function createSite(request, env, user) {
         console.error("Failed to upload logo during site creation:", e);
       }
     }
+    let faviconUrl = null;
+    if (faviconBase64 && faviconBase64.startsWith("data:")) {
+      try {
+        const matches = faviconBase64.match(/^data:([^;]+);base64,(.+)$/);
+        if (matches) {
+          const mimeType = matches[1];
+          const base64Data = matches[2];
+          const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/x-icon", "image/vnd.microsoft.icon", "image/svg+xml"];
+          const mimeToExt = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/x-icon": "ico", "image/vnd.microsoft.icon": "ico", "image/svg+xml": "svg" };
+          if (allowedTypes.includes(mimeType)) {
+            const binaryString = atob(base64Data);
+            if (binaryString.length > 2 * 1024 * 1024) {
+              console.error("Favicon too large, skipping upload");
+            } else {
+              const buffer = new Uint8Array(binaryString.length);
+              for (let i = 0; i < binaryString.length; i++) {
+                buffer[i] = binaryString.charCodeAt(i);
+              }
+              const ext = mimeToExt[mimeType] || "png";
+              const key = `sites/${siteId}/images/favicon-${generateId()}.${ext}`;
+              await env.STORAGE.put(key, buffer, {
+                httpMetadata: { contentType: mimeType, cacheControl: "public, max-age=31536000" }
+              });
+              faviconUrl = `/api/upload/image?key=${encodeURIComponent(key)}`;
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Failed to upload favicon during site creation:", e);
+      }
+    }
+    const SEO_TITLE_DEFAULTS = {
+      jewellery: (n) => `${n} - Jewellery Store Online`,
+      clothing: (n) => `${n} - Fashion & Clothing Store`,
+      beauty: (n) => `${n} - Beauty & Cosmetics Store`,
+      general: (n) => `${n} - Shop Online`
+    };
+    const SEO_DESC_DEFAULTS = {
+      jewellery: (n) => `Shop exquisite jewellery at ${n}. Explore rings, necklaces, earrings, bracelets & more. Secure payments & nationwide delivery.`,
+      clothing: (n) => `Discover the latest fashion at ${n}. Shop clothing, accessories & more with easy returns & fast shipping.`,
+      beauty: (n) => `Shop premium beauty & cosmetics at ${n}. Skincare, makeup & more with secure checkout & fast delivery.`,
+      general: (n) => `Shop online at ${n}. Explore our curated collection with secure checkout, easy returns & fast delivery.`
+    };
+    const safeBrand = sanitizeInput(brandName);
+    const finalSeoTitle = seoTitle || (SEO_TITLE_DEFAULTS[category] || SEO_TITLE_DEFAULTS.general)(safeBrand);
+    const finalSeoDescription = seoDescription || (SEO_DESC_DEFAULTS[category] || SEO_DESC_DEFAULTS.general)(safeBrand);
     const configData = {
       site_id: siteId,
-      brand_name: sanitizeInput(brandName),
+      brand_name: safeBrand,
       category,
       logo_url: logoUrl || null,
+      favicon_url: faviconUrl || null,
+      seo_title: finalSeoTitle,
+      seo_description: finalSeoDescription,
       phone: phone || null,
       email: email || null,
       address: address || null,
@@ -4281,13 +4333,16 @@ async function createSite(request, env, user) {
     }
     const settingsJson = JSON.stringify(initialSettings);
     await siteDB.prepare(
-      `INSERT INTO site_config (site_id, brand_name, category, logo_url, phone, email, address, primary_color, secondary_color, settings, row_size_bytes, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
+      `INSERT INTO site_config (site_id, brand_name, category, logo_url, favicon_url, seo_title, seo_description, phone, email, address, primary_color, secondary_color, settings, row_size_bytes, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
     ).bind(
       siteId,
-      sanitizeInput(brandName),
+      safeBrand,
       category,
       logoUrl || null,
+      faviconUrl || null,
+      finalSeoTitle,
+      finalSeoDescription,
       phone || null,
       email || null,
       address || null,

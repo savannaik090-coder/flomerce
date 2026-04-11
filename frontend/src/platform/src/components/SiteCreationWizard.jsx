@@ -33,6 +33,28 @@ const DEFAULT_CATEGORIES = {
   ],
 };
 
+const SEO_TITLE_TEMPLATES = {
+  jewellery: (name) => `${name} - Jewellery Store Online`,
+  clothing: (name) => `${name} - Fashion & Clothing Store`,
+  beauty: (name) => `${name} - Beauty & Cosmetics Store`,
+  general: (name) => `${name} - Shop Online`,
+};
+
+const SEO_DESCRIPTION_TEMPLATES = {
+  jewellery: (name) => `Shop exquisite jewellery at ${name}. Explore rings, necklaces, earrings, bracelets & more. Secure payments & nationwide delivery.`,
+  clothing: (name) => `Discover the latest fashion at ${name}. Shop clothing, accessories & more with easy returns & fast shipping.`,
+  beauty: (name) => `Shop premium beauty & cosmetics at ${name}. Skincare, makeup & more with secure checkout & fast delivery.`,
+  general: (name) => `Shop online at ${name}. Explore our curated collection with secure checkout, easy returns & fast delivery.`,
+};
+
+function generateSEODefaults(category, brandName) {
+  const cat = category || 'general';
+  const name = brandName || 'Your Store';
+  const titleFn = SEO_TITLE_TEMPLATES[cat] || SEO_TITLE_TEMPLATES.general;
+  const descFn = SEO_DESCRIPTION_TEMPLATES[cat] || SEO_DESCRIPTION_TEMPLATES.general;
+  return { title: titleFn(name), description: descFn(name) };
+}
+
 export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, isTrialActive }) {
   const [step, setStep] = useState(1);
   const [businessCategory, setBusinessCategory] = useState(null);
@@ -47,6 +69,11 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
   const [subdomainStatus, setSubdomainStatus] = useState(null);
   const [checkingSubdomain, setCheckingSubdomain] = useState(false);
   const [agreedTerms, setAgreedTerms] = useState(false);
+  const [seoTitle, setSeoTitle] = useState('');
+  const [seoDescription, setSeoDescription] = useState('');
+  const [faviconFile, setFaviconFile] = useState(null);
+  const [faviconPreview, setFaviconPreview] = useState(null);
+  const [seoTouched, setSeoTouched] = useState(false);
   const debounceRef = useRef(null);
   const latestCheckRef = useRef('');
 
@@ -126,6 +153,17 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
         reader.readAsDataURL(logoFile);
       });
     }
+    let faviconBase64 = null;
+    if (faviconFile) {
+      faviconBase64 = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.readAsDataURL(faviconFile);
+      });
+    }
+    const defaults = generateSEODefaults(businessCategory, brandName);
+    const finalSeoTitle = seoTitle.trim() || defaults.title;
+    const finalSeoDescription = seoDescription.trim() || defaults.description;
     return {
       subdomain: subdomain.toLowerCase().replace(/[^a-z0-9-]/g, ''),
       brandName,
@@ -133,6 +171,9 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
       theme: selectedTheme,
       category: businessCategory,
       logo: logoBase64,
+      favicon: faviconBase64,
+      seoTitle: finalSeoTitle,
+      seoDescription: finalSeoDescription,
       categories: validCategories.map(c => ({
         name: c.name.trim(),
         subtitle: c.subtitle.trim() || null,
@@ -294,12 +335,113 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
             </div>
             <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
               <button className="btn btn-outline" onClick={() => setStep(1)} style={{ flex: 1 }}>Back</button>
-              <button className="btn btn-primary" onClick={() => setStep(3)} disabled={!subdomain || !brandName || !selectedTemplate || checkingSubdomain || !subdomainStatus?.available} style={{ flex: 1 }}>Next: Categories</button>
+              <button className="btn btn-primary" onClick={() => {
+                if (!seoTouched) {
+                  const defaults = generateSEODefaults(businessCategory, brandName);
+                  setSeoTitle(defaults.title);
+                  setSeoDescription(defaults.description);
+                }
+                setStep(3);
+              }} disabled={!subdomain || !brandName || !selectedTemplate || checkingSubdomain || !subdomainStatus?.available} style={{ flex: 1 }}>Next: SEO</button>
             </div>
           </div>
         )}
 
         {step === 3 && (
+          <div>
+            <h2 style={{ marginBottom: '0.5rem', fontWeight: 800 }}>SEO & Branding</h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
+              Help your store get discovered on Google. You can always change these later from the admin panel.
+            </p>
+            <div className="form-group">
+              <label style={{ fontWeight: 600 }}>Favicon (Optional)</label>
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0 0 0.5rem' }}>
+                Small icon shown in browser tabs. Recommended: 32×32 or 64×64 px.
+              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                {faviconPreview && (
+                  <img
+                    src={faviconPreview}
+                    alt="Favicon preview"
+                    style={{ width: '32px', height: '32px', objectFit: 'contain', border: '1px solid var(--border)', borderRadius: '4px' }}
+                  />
+                )}
+                <input
+                  type="file"
+                  accept="image/png,image/x-icon,image/vnd.microsoft.icon,image/svg+xml,image/jpeg,image/webp"
+                  onChange={(e) => {
+                    const file = e.target.files[0] || null;
+                    if (file && file.size > 2 * 1024 * 1024) {
+                      setError('Favicon must be under 2 MB');
+                      return;
+                    }
+                    if (faviconPreview) URL.revokeObjectURL(faviconPreview);
+                    setFaviconFile(file);
+                    setFaviconPreview(file ? URL.createObjectURL(file) : null);
+                    setError('');
+                  }}
+                  style={{ padding: '0.5rem', border: '1px dashed var(--border)', flex: 1 }}
+                />
+              </div>
+            </div>
+            <div className="form-group" style={{ marginTop: '1rem' }}>
+              <label style={{ fontWeight: 600 }}>Site Title</label>
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0 0 0.5rem' }}>
+                Appears in search results and browser tabs.
+              </p>
+              <input
+                type="text"
+                placeholder={generateSEODefaults(businessCategory, brandName).title}
+                value={seoTitle}
+                onChange={(e) => { setSeoTitle(e.target.value); setSeoTouched(true); }}
+                maxLength={70}
+              />
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.25rem' }}>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Recommended: 50–60 characters</span>
+                <span style={{ fontSize: '0.7rem', color: (seoTitle || '').length > 60 ? '#dc2626' : 'var(--text-muted)' }}>{(seoTitle || '').length}/70</span>
+              </div>
+            </div>
+            <div className="form-group" style={{ marginTop: '1rem' }}>
+              <label style={{ fontWeight: 600 }}>Meta Description</label>
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0 0 0.5rem' }}>
+                A short summary shown below your title in search results.
+              </p>
+              <textarea
+                placeholder={generateSEODefaults(businessCategory, brandName).description}
+                value={seoDescription}
+                onChange={(e) => { setSeoDescription(e.target.value); setSeoTouched(true); }}
+                maxLength={160}
+                rows={3}
+                style={{ width: '100%', resize: 'vertical', boxSizing: 'border-box' }}
+              />
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.25rem' }}>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Recommended: 120–160 characters</span>
+                <span style={{ fontSize: '0.7rem', color: (seoDescription || '').length > 155 ? '#dc2626' : 'var(--text-muted)' }}>{(seoDescription || '').length}/160</span>
+              </div>
+            </div>
+            {(seoTitle || seoDescription) && (
+              <div style={{ marginTop: '1rem', padding: '1rem', background: 'var(--bg-secondary, #f9fafb)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Google Search Preview</p>
+                <div style={{ fontSize: '1rem', color: '#1a0dab', fontWeight: 500, marginBottom: '0.25rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {seoTitle || generateSEODefaults(businessCategory, brandName).title}
+                </div>
+                <div style={{ fontSize: '0.75rem', color: '#006621', marginBottom: '0.25rem' }}>
+                  {subdomain}.{PLATFORM_DOMAIN}
+                </div>
+                <div style={{ fontSize: '0.8rem', color: '#545454', lineHeight: 1.4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                  {seoDescription || generateSEODefaults(businessCategory, brandName).description}
+                </div>
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
+              <button className="btn btn-outline" onClick={() => setStep(2)} style={{ flex: 1 }}>Back</button>
+              <button className="btn btn-outline" onClick={() => setStep(4)} style={{ flex: 1 }}>Skip</button>
+              <button className="btn btn-primary" onClick={() => setStep(4)} style={{ flex: 1 }}>Next: Categories</button>
+            </div>
+          </div>
+        )}
+
+        {step === 4 && (
           <div>
             <h2 style={{ marginBottom: '0.5rem', fontWeight: 800 }}>Product Categories</h2>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
@@ -346,7 +488,7 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
             </div>
             {error && <p style={{ color: '#ef4444', fontSize: '0.875rem', marginBottom: '1rem' }}>{error}</p>}
             <div style={{ display: 'flex', gap: '1rem' }}>
-              <button className="btn btn-outline" onClick={() => setStep(2)} style={{ flex: 1 }}>Back</button>
+              <button className="btn btn-outline" onClick={() => setStep(3)} style={{ flex: 1 }}>Back</button>
               <button className="btn btn-primary" onClick={handleCreate} disabled={creating || !agreedTerms} style={{ flex: 1 }}>
                 {creating ? 'Creating...' : 'Create Website'}
               </button>
