@@ -8,6 +8,16 @@ function getAuthHeader() {
   return token ? { Authorization: `SiteAdmin ${token}` } : {};
 }
 
+function getStoreUrl(siteConfig) {
+  if (siteConfig?.customDomain && siteConfig?.domainStatus === 'active') {
+    return `https://${siteConfig.customDomain}`;
+  }
+  if (siteConfig?.subdomain) {
+    return `https://${siteConfig.subdomain}.${PLATFORM_DOMAIN}`;
+  }
+  return window.location.origin;
+}
+
 function CharCounter({ value, max }) {
   const len = (value || '').length;
   const cls = len > max ? 'over' : len > max * 0.85 ? 'warn' : '';
@@ -121,8 +131,7 @@ function getDefaultSEODescription(brandName, category) {
 
 function SiteSEOTab({ siteConfig }) {
   const siteId = siteConfig?.id;
-  const subdomain = siteConfig?.subdomain;
-  const storeUrl = subdomain ? `https://${subdomain}.${PLATFORM_DOMAIN}` : window.location.origin;
+  const storeUrl = getStoreUrl(siteConfig);
 
   const [form, setForm] = useState({
     seo_title: '',
@@ -557,7 +566,7 @@ function CategoriesSEOTab({ siteConfig }) {
                   <SearchPreview
                     title={editForm.seo_title}
                     description={editForm.seo_description}
-                    url={`${siteConfig?.subdomain ? `https://${siteConfig.subdomain}.${PLATFORM_DOMAIN}` : ''}/category/${cat.slug}`}
+                    url={`${getStoreUrl(siteConfig)}/category/${cat.slug}`}
                   />
                   <div className="seo-field">
                     <label>SEO Title</label>
@@ -780,7 +789,7 @@ function ProductsSEOTab({ siteConfig }) {
                   <SearchPreview
                     title={editForm.seo_title}
                     description={editForm.seo_description}
-                    url={`${siteConfig?.subdomain ? `https://${siteConfig.subdomain}.${PLATFORM_DOMAIN}` : ''}/product/${product.slug}`}
+                    url={`${getStoreUrl(siteConfig)}/product/${product.slug}`}
                   />
                   <div className="seo-field">
                     <label>SEO Title</label>
@@ -1154,7 +1163,7 @@ function SocialMediaTab({ siteConfig }) {
   const twTitle = form.twitter_title || form.og_title || defaults.title;
   const twDesc = form.twitter_description || form.og_description || defaults.description;
   const twImg = form.twitter_image || form.og_image || defaults.image;
-  const storeUrl = siteConfig?.subdomain ? `https://${siteConfig.subdomain}.${PLATFORM_DOMAIN}` : window.location.origin;
+  const storeUrl = getStoreUrl(siteConfig);
 
   return (
     <form onSubmit={handleSave}>
@@ -1257,8 +1266,7 @@ function SEOOverviewTab({ siteConfig }) {
   const email = siteConfig?.email || null;
   const phone = siteConfig?.phone || null;
   const primaryColor = siteConfig?.primary_color || '#000000';
-  const subdomain = siteConfig?.subdomain;
-  const storeUrl = subdomain ? `https://${subdomain}.${PLATFORM_DOMAIN}` : 'https://yourstore.fluxe.in';
+  const storeUrl = getStoreUrl(siteConfig);
 
   let socialLinks = [];
   try {
