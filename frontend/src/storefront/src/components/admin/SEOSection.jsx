@@ -425,7 +425,7 @@ function SiteSEOTab({ siteConfig }) {
 
 function CategoriesSEOTab({ siteConfig }) {
   const siteId = siteConfig?.id;
-  const brandName = siteConfig?.brand_name || 'Store';
+  const brandName = siteConfig?.brandName || siteConfig?.brand_name || 'Store';
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState(null);
@@ -635,7 +635,7 @@ function CategoriesSEOTab({ siteConfig }) {
 
 function ProductsSEOTab({ siteConfig }) {
   const siteId = siteConfig?.id;
-  const brandName = siteConfig?.brand_name || 'Store';
+  const brandName = siteConfig?.brandName || siteConfig?.brand_name || 'Store';
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState(null);
@@ -878,7 +878,7 @@ const PAGE_DEFAULT_DESCS = {
 
 function PagesSEOTab({ siteConfig }) {
   const siteId = siteConfig?.id;
-  const brandName = siteConfig?.brand_name || 'Store';
+  const brandName = siteConfig?.brandName || siteConfig?.brand_name || 'Store';
   const [pages, setPages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState(null);
@@ -1204,7 +1204,7 @@ function SocialMediaTab({ siteConfig }) {
               />
             </div>
             <div style={{ flex: '0 0 280px' }}>
-              <SocialPreview type="og" title={ogTitle} description={ogDesc} image={ogImg ? (ogImg.startsWith('/') ? `${API_BASE}${ogImg}` : ogImg) : null} url={storeUrl} siteName={siteConfig?.brand_name} />
+              <SocialPreview type="og" title={ogTitle} description={ogDesc} image={ogImg ? (ogImg.startsWith('/') ? `${API_BASE}${ogImg}` : ogImg) : null} url={storeUrl} siteName={siteConfig?.brandName || siteConfig?.brand_name} />
             </div>
           </div>
         </div>
@@ -1261,17 +1261,18 @@ function SocialMediaTab({ siteConfig }) {
 }
 
 function SEOOverviewTab({ siteConfig }) {
-  const brandName = siteConfig?.brand_name || 'Your Store';
-  const logoUrl = siteConfig?.logo_url || null;
+  const brandName = siteConfig?.brandName || siteConfig?.brand_name || 'Your Store';
+  const logoUrl = siteConfig?.logoUrl || siteConfig?.logo_url || null;
   const email = siteConfig?.email || null;
   const phone = siteConfig?.phone || null;
-  const primaryColor = siteConfig?.primary_color || '#000000';
+  const primaryColor = siteConfig?.primaryColor || siteConfig?.primary_color || '#000000';
   const storeUrl = getStoreUrl(siteConfig);
 
   let socialLinks = [];
   try {
-    if (siteConfig?.social_links) {
-      const links = typeof siteConfig.social_links === 'string' ? JSON.parse(siteConfig.social_links) : siteConfig.social_links;
+    const rawLinks = siteConfig?.socialLinks || siteConfig?.social_links;
+    if (rawLinks) {
+      const links = typeof rawLinks === 'string' ? JSON.parse(rawLinks) : rawLinks;
       socialLinks = Object.values(links).filter(Boolean);
     }
   } catch {}

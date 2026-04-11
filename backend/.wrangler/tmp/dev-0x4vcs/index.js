@@ -11645,10 +11645,11 @@ function detectPageType(pathname) {
 }
 __name(detectPageType, "detectPageType");
 function buildBaseUrl(request, site) {
+  if (site.custom_domain && site.domain_status === "verified") {
+    return `https://${site.custom_domain}`;
+  }
   const url = new URL(request.url);
-  const proto = url.protocol;
-  const hostname = url.hostname;
-  return `${proto}//${hostname}`;
+  return `${url.protocol}//${url.hostname}`;
 }
 __name(buildBaseUrl, "buildBaseUrl");
 async function fetchSiteSEO(env, site) {
@@ -11919,6 +11920,14 @@ __name(applySEO, "applySEO");
 
 // workers/site-router.js
 init_site_db();
+function buildSiteBaseUrl(request, site) {
+  if (site.custom_domain && site.domain_status === "verified") {
+    return `https://${site.custom_domain}`;
+  }
+  const url = new URL(request.url);
+  return `${url.protocol}//${url.hostname}`;
+}
+__name(buildSiteBaseUrl, "buildSiteBaseUrl");
 async function handleSiteRouting(request, env) {
   const url = new URL(request.url);
   const hostname = url.hostname;
@@ -12042,8 +12051,7 @@ async function handleSiteRouting(request, env) {
 __name(handleSiteRouting, "handleSiteRouting");
 async function handleSitemap(request, env, site) {
   try {
-    const url = new URL(request.url);
-    const baseUrl = `${url.protocol}//${url.hostname}`;
+    const baseUrl = buildSiteBaseUrl(request, site);
     const xml = await generateSitemap(env, site, baseUrl);
     return new Response(xml, {
       headers: {
@@ -12060,8 +12068,7 @@ async function handleSitemap(request, env, site) {
 __name(handleSitemap, "handleSitemap");
 async function handleRobots(request, env, site) {
   try {
-    const url = new URL(request.url);
-    const baseUrl = `${url.protocol}//${url.hostname}`;
+    const baseUrl = buildSiteBaseUrl(request, site);
     const txt = generateRobots(site, baseUrl);
     return new Response(txt, {
       headers: {

@@ -4,6 +4,14 @@ import { applySEO, generateSitemap, generateRobots } from './seo/index.js';
 import { getSiteWithConfig } from '../utils/site-db.js';
 
 
+function buildSiteBaseUrl(request, site) {
+  if (site.custom_domain && site.domain_status === 'verified') {
+    return `https://${site.custom_domain}`;
+  }
+  const url = new URL(request.url);
+  return `${url.protocol}//${url.hostname}`;
+}
+
 export async function handleSiteRouting(request, env) {
   const url = new URL(request.url);
   const hostname = url.hostname;
@@ -151,8 +159,7 @@ export async function handleSiteRouting(request, env) {
 
 async function handleSitemap(request, env, site) {
   try {
-    const url = new URL(request.url);
-    const baseUrl = `${url.protocol}//${url.hostname}`;
+    const baseUrl = buildSiteBaseUrl(request, site);
     const xml = await generateSitemap(env, site, baseUrl);
     return new Response(xml, {
       headers: {
@@ -171,8 +178,7 @@ async function handleSitemap(request, env, site) {
 
 async function handleRobots(request, env, site) {
   try {
-    const url = new URL(request.url);
-    const baseUrl = `${url.protocol}//${url.hostname}`;
+    const baseUrl = buildSiteBaseUrl(request, site);
     const txt = generateRobots(site, baseUrl);
     return new Response(txt, {
       headers: {

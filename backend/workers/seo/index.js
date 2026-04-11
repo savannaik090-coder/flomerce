@@ -37,10 +37,11 @@ function detectPageType(pathname) {
 // ─── Base URL builder ────────────────────────────────────────────────────────
 
 function buildBaseUrl(request, site) {
+  if (site.custom_domain && site.domain_status === 'verified') {
+    return `https://${site.custom_domain}`;
+  }
   const url = new URL(request.url);
-  const proto = url.protocol;
-  const hostname = url.hostname;
-  return `${proto}//${hostname}`;
+  return `${url.protocol}//${url.hostname}`;
 }
 
 // ─── SEO data fetchers ───────────────────────────────────────────────────────
