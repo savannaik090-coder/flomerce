@@ -118,13 +118,6 @@ export default function LandingPage() {
     },
   ];
 
-  const stats = [
-    { value: '10K+', label: 'Stores Created' },
-    { value: '99.9%', label: 'Uptime' },
-    { value: '50+', label: 'Countries' },
-    { value: '24/7', label: 'Support' },
-  ];
-
   return (
     <>
       <div className="container landing-page">
@@ -148,17 +141,6 @@ export default function LandingPage() {
               </Link>
               <a href="#features" className="btn btn-hero-ghost" onClick={(e) => { e.preventDefault(); document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' }); }}>Learn More</a>
             </div>
-          </div>
-        </section>
-
-        <section className="landing-section stats-bar reveal">
-          <div className="stats-strip">
-            {stats.map((s, i) => (
-              <div key={i} className="stats-strip-item">
-                <span className="stats-strip-value">{s.value}</span>
-                <span className="stats-strip-label">{s.label}</span>
-              </div>
-            ))}
           </div>
         </section>
 
