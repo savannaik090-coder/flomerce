@@ -55,25 +55,43 @@ function generateSEODefaults(category, brandName) {
   return { title: titleFn(name), description: descFn(name) };
 }
 
+const WIZARD_STORAGE_KEY = 'fluxe_wizard_draft';
+
+function loadWizardDraft() {
+  try {
+    const raw = localStorage.getItem(WIZARD_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+function saveWizardDraft(data) {
+  try { localStorage.setItem(WIZARD_STORAGE_KEY, JSON.stringify(data)); } catch {}
+}
+
+function clearWizardDraft() {
+  try { localStorage.removeItem(WIZARD_STORAGE_KEY); } catch {}
+}
+
 export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, isTrialActive }) {
-  const [step, setStep] = useState(1);
-  const [businessCategory, setBusinessCategory] = useState(null);
-  const [selectedTemplate, setSelectedTemplate] = useState('storefront');
-  const [selectedTheme, setSelectedTheme] = useState('classic');
-  const [subdomain, setSubdomain] = useState('');
-  const [brandName, setBrandName] = useState('');
+  const draft = useRef(loadWizardDraft()).current;
+  const [step, setStep] = useState(draft?.step || 1);
+  const [businessCategory, setBusinessCategory] = useState(draft?.businessCategory || null);
+  const [selectedTemplate, setSelectedTemplate] = useState(draft?.selectedTemplate || 'storefront');
+  const [selectedTheme, setSelectedTheme] = useState(draft?.selectedTheme || 'classic');
+  const [subdomain, setSubdomain] = useState(draft?.subdomain || '');
+  const [brandName, setBrandName] = useState(draft?.brandName || '');
   const [logoFile, setLogoFile] = useState(null);
-  const [categories, setCategories] = useState([]);
+  const [categories, setCategories] = useState(draft?.categories || []);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
   const [subdomainStatus, setSubdomainStatus] = useState(null);
   const [checkingSubdomain, setCheckingSubdomain] = useState(false);
   const [agreedTerms, setAgreedTerms] = useState(false);
-  const [seoTitle, setSeoTitle] = useState('');
-  const [seoDescription, setSeoDescription] = useState('');
+  const [seoTitle, setSeoTitle] = useState(draft?.seoTitle || '');
+  const [seoDescription, setSeoDescription] = useState(draft?.seoDescription || '');
   const [faviconFile, setFaviconFile] = useState(null);
   const [faviconPreview, setFaviconPreview] = useState(null);
-  const [seoTouched, setSeoTouched] = useState(false);
+  const [seoTouched, setSeoTouched] = useState(draft?.seoTouched || false);
   const debounceRef = useRef(null);
   const latestCheckRef = useRef('');
 
@@ -113,6 +131,17 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
   useEffect(() => {
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, []);
+
+  useEffect(() => {
+    if (draft?.subdomain) validateSubdomain(draft.subdomain);
+  }, []);
+
+  useEffect(() => {
+    saveWizardDraft({
+      step, businessCategory, selectedTemplate, selectedTheme,
+      subdomain, brandName, categories, seoTitle, seoDescription, seoTouched,
+    });
+  }, [step, businessCategory, selectedTemplate, selectedTheme, subdomain, brandName, categories, seoTitle, seoDescription, seoTouched]);
 
   const handleBusinessCategorySelect = (catId) => {
     setBusinessCategory(catId);
@@ -189,6 +218,7 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
     if (!formData) return;
 
     if (!isTrialActive) {
+      clearWizardDraft();
       onNeedsPlan(formData);
       onClose();
       return;
@@ -198,6 +228,7 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
     try {
       const result = await createSite(formData);
       if (result.success || result.site) {
+        clearWizardDraft();
         onCreated(result.data || result.site || result);
         onClose();
       } else {
@@ -211,7 +242,7 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
   };
 
   return (
-    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+    <div className="modal-overlay">
       <div className="modal-content">
         {step === 1 && (
           <div>
