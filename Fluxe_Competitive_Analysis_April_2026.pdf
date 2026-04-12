@@ -10,7 +10,7 @@
 endobj
 4 0 obj
 <<
-/Length 3123
+/Length 3096
 >>
 stream
 0.200025 w
@@ -80,21 +80,21 @@ BT
 11.5 TL
 0.059 0.09 0.165 rg
 40. 465. Td
-(sales capabilities. Unlike Shopify \(Rs.1,499/mo minimum\), Dukaan \(limited customization\), and Instamojo \(5%) Tj
+(sales capabilities. Unlike Shopify \(Rs.1,499/mo + 2% platform fee\), Dukaan \(Rs.2,499/yr + 2-5% service fee per order\),) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
 40. 452. Td
-(transaction fees\), Fluxe offers a Cloudflare-native serverless architecture with deep customization, multi-currency) Tj
+(and Instamojo \(2-5% transaction fee\), Fluxe offers a Cloudflare-native serverless architecture with deep customization,) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
 40. 439. Td
-(support, and Indian payment integration starting at just Rs.299/month with 0% platform fee.) Tj
+(multi-currency support, and Indian payment integration starting at just Rs.299/month with a true 0% platform fee.) Tj
 ET
 BT
 /F2 13 Tf
@@ -115,21 +115,21 @@ BT
 11.5 TL
 0.059 0.09 0.165 rg
 52. 397. Td
-(Exploit the pricing sweet spot: At Rs.299/mo \(Starter\), Fluxe is 5x cheaper than Shopify Basic \(Rs.1,499/mo\) and) Tj
+(Exploit the "0% platform fee" advantage aggressively. Dukaan charges 2-5% service fees on every order \(even) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
 52. 384. Td
-(significantly cheaper than Dukaan's Rs.2,499/year when compared monthly. Lead with "0% platform fee" -- this is a) Tj
+(COD\). At Rs.1L monthly GMV, a Dukaan Starter seller pays Rs.3,990 in service fees alone -- on top of their) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
 52. 371. Td
-(killer differentiator vs Instamojo's 5% and Wix's 2%.) Tj
+(subscription. Fluxe charges zero. This is your strongest competitive message.) Tj
 ET
 BT
 /F1 10 Tf
@@ -164,21 +164,14 @@ BT
 11.5 TL
 0.059 0.09 0.165 rg
 52. 328. Td
-(Build WhatsApp Commerce beyond the support button. Fluxe already has a WhatsApp support button -- extend it to) Tj
+(Build WhatsApp Commerce beyond the support button. Extend to order confirmations, abandoned cart recovery, and) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
 52. 315. Td
-(order confirmations, abandoned cart recovery, and shareable product links. This closes the gap with Dukaan's) Tj
-ET
-BT
-/F1 10 Tf
-11.5 TL
-0.059 0.09 0.165 rg
-52. 302. Td
-(WhatsApp ordering.) Tj
+(shareable product links. This closes the gap with Dukaan's WhatsApp ordering while leveraging your cost advantage.) Tj
 ET
 BT
 /F1 8 Tf
@@ -199,7 +192,7 @@ endobj
 endobj
 6 0 obj
 <<
-/Length 8916
+/Length 10355
 >>
 stream
 1.5 w
@@ -254,7 +247,7 @@ BT
 9.7749999999999986 TL
 0.059 0.09 0.165 rg
 48. 684. Td
-(Up to 5 sites, no credit card, full feature access for evaluation) Tj
+(Up to 5 sites, no credit card required, full feature access for evaluation) Tj
 ET
 0.97 0.98 0.99 rg
 43. 661. m
@@ -460,320 +453,418 @@ BT
 /F2 16 Tf
 18.3999999999999986 TL
 0.059 0.09 0.165 rg
-40. 365. Td
-(Pricing Comparison: Fluxe vs Competitors) Tj
+40. 367. Td
+(Pricing + Fee Comparison \(Verified\)) Tj
 ET
 0.23 0.51 0.96 RG
 1.5 w
-40. 341. m
-572. 341. l
+40. 343. m
+572. 343. l
 S
 0.06 0.09 0.16 rg
-40. 329. 532. -18. re
+40. 331. 532. -18. re
 f
 BT
-/F2 8.5 Tf
-9.7749999999999986 TL
+/F2 8 Tf
+9.1999999999999993 TL
 1. g
-44. 316. Td
+44. 318. Td
 (Platform) Tj
 ET
 BT
-/F2 8.5 Tf
-9.7749999999999986 TL
+/F2 8 Tf
+9.1999999999999993 TL
 1. g
-139. 316. Td
-(Entry Price) Tj
+129. 318. Td
+(Subscription) Tj
 ET
-BT
-/F2 8.5 Tf
-9.7749999999999986 TL
-1. g
-244. 316. Td
-(Mid-Tier Price) Tj
-ET
-BT
-/F2 8.5 Tf
-9.7749999999999986 TL
-1. g
-354. 316. Td
-(Platform/Txn Fee) Tj
-ET
-BT
-/F2 8.5 Tf
-9.7749999999999986 TL
-1. g
-464. 316. Td
-(Verdict) Tj
-ET
-0.97 0.98 0.99 rg
-40. 313. 532. -16. re
-f
 BT
 /F2 8 Tf
 9.1999999999999993 TL
+1. g
+209. 318. Td
+(Platform/Service Fee) Tj
+ET
+BT
+/F2 8 Tf
+9.1999999999999993 TL
+1. g
+354. 318. Td
+(Payment Gateway) Tj
+ET
+BT
+/F2 8 Tf
+9.1999999999999993 TL
+1. g
+469. 318. Td
+(Source) Tj
+ET
+1. g
+40. 314. 532. -14. re
+f
+BT
+/F2 7.5 Tf
+8.625 TL
 0.231 0.51 0.965 rg
-44. 303. Td
+44. 305. Td
 (Fluxe) Tj
 ET
 BT
-/F1 8 Tf
-9.1999999999999993 TL
+/F1 7.5 Tf
+8.625 TL
 0.059 0.09 0.165 rg
-139. 303. Td
-(Rs.299/mo) Tj
+129. 305. Td
+(Rs.299-999/mo) Tj
 ET
 BT
-/F1 8 Tf
-9.1999999999999993 TL
-0.059 0.09 0.165 rg
-244. 303. Td
-(Rs.599/mo) Tj
-ET
-BT
-/F1 8 Tf
-9.1999999999999993 TL
+/F2 7.5 Tf
+8.625 TL
 0.063 0.725 0.506 rg
-354. 303. Td
-(0%) Tj
+209. 305. Td
+(0% on all plans) Tj
 ET
 BT
-/F2 8 Tf
-9.1999999999999993 TL
-0.063 0.725 0.506 rg
-464. 303. Td
-(Best value) Tj
-ET
-1. g
-40. 297. 532. -16. re
-f
-BT
-/F1 8 Tf
-9.1999999999999993 TL
-0.059 0.09 0.165 rg
-44. 287. Td
-(Shopify) Tj
-ET
-BT
-/F1 8 Tf
-9.1999999999999993 TL
-0.059 0.09 0.165 rg
-139. 287. Td
-(Rs.1,499/mo) Tj
-ET
-BT
-/F1 8 Tf
-9.1999999999999993 TL
-0.059 0.09 0.165 rg
-244. 287. Td
-(Rs.5,599/mo) Tj
-ET
-BT
-/F1 8 Tf
-9.1999999999999993 TL
-0.937 0.267 0.267 rg
-354. 287. Td
-(2% \(3rd party\)) Tj
-ET
-BT
-/F3 8 Tf
-9.1999999999999993 TL
+/F1 7.5 Tf
+8.625 TL
 0.392 0.455 0.545 rg
-464. 287. Td
-(5x costlier) Tj
+354. 305. Td
+(Razorpay only) Tj
+ET
+BT
+/F1 7.5 Tf
+8.625 TL
+0.392 0.455 0.545 rg
+469. 305. Td
+(Official plans) Tj
 ET
 0.97 0.98 0.99 rg
-40. 281. 532. -16. re
+40. 300. 532. -14. re
 f
 BT
-/F1 8 Tf
-9.1999999999999993 TL
+/F2 7.5 Tf
+8.625 TL
 0.059 0.09 0.165 rg
-44. 271. Td
+44. 291. Td
 (Dukaan) Tj
 ET
 BT
-/F1 8 Tf
-9.1999999999999993 TL
+/F1 7.5 Tf
+8.625 TL
 0.059 0.09 0.165 rg
-139. 271. Td
-(Rs.208/mo \(yearly\)) Tj
+129. 291. Td
+(Rs.2,499/yr+) Tj
 ET
 BT
-/F1 8 Tf
-9.1999999999999993 TL
-0.059 0.09 0.165 rg
-244. 271. Td
-(Rs.4,167/mo \(agency\)) Tj
+/F1 7.5 Tf
+8.625 TL
+0.937 0.267 0.267 rg
+209. 291. Td
+(4.99% \(Free\), 3.99%) Tj
 ET
 BT
-/F1 8 Tf
-9.1999999999999993 TL
-0.063 0.725 0.506 rg
-354. 271. Td
-(0%) Tj
-ET
-BT
-/F3 8 Tf
-9.1999999999999993 TL
+/F1 7.5 Tf
+8.625 TL
 0.392 0.455 0.545 rg
-464. 271. Td
-(Limited features) Tj
+354. 291. Td
+(Razorpay 1-3% or) Tj
 ET
-1. g
-40. 265. 532. -16. re
+BT
+/F1 7.5 Tf
+8.625 TL
+0.392 0.455 0.545 rg
+469. 291. Td
+(Dukaan Help) Tj
+ET
+0.97 0.98 0.99 rg
+40. 286. 532. -14. re
 f
 BT
-/F1 8 Tf
-9.1999999999999993 TL
+/F1 7.5 Tf
+8.625 TL
+0.937 0.267 0.267 rg
+209. 277. Td
+(\(Starter\), 1.99% \(Growth\)) Tj
+ET
+BT
+/F1 7.5 Tf
+8.625 TL
+0.392 0.455 0.545 rg
+354. 277. Td
+(Dukaan Pay 3%) Tj
+ET
+BT
+/F1 7.5 Tf
+8.625 TL
+0.392 0.455 0.545 rg
+469. 277. Td
+(Center) Tj
+ET
+1. g
+40. 272. 532. -14. re
+f
+BT
+/F2 7.5 Tf
+8.625 TL
 0.059 0.09 0.165 rg
-44. 255. Td
+44. 263. Td
 (Instamojo) Tj
 ET
 BT
-/F1 8 Tf
-9.1999999999999993 TL
+/F1 7.5 Tf
+8.625 TL
 0.059 0.09 0.165 rg
-139. 255. Td
-(Free) Tj
+129. 263. Td
+(Free-Rs.9,999/yr) Tj
 ET
 BT
-/F1 8 Tf
-9.1999999999999993 TL
-0.059 0.09 0.165 rg
-244. 255. Td
-(Rs.833/mo \(yearly\)) Tj
-ET
-BT
-/F1 8 Tf
-9.1999999999999993 TL
+/F1 7.5 Tf
+8.625 TL
 0.937 0.267 0.267 rg
-354. 255. Td
-(2-5% + Rs.3) Tj
+209. 263. Td
+(2%+Rs.3 \(physical\)) Tj
 ET
 BT
-/F3 8 Tf
-9.1999999999999993 TL
+/F1 7.5 Tf
+8.625 TL
 0.392 0.455 0.545 rg
-464. 255. Td
-(High txn fees) Tj
+354. 263. Td
+(Included in fee) Tj
 ET
-0.97 0.98 0.99 rg
-40. 249. 532. -16. re
+BT
+/F1 7.5 Tf
+8.625 TL
+0.392 0.455 0.545 rg
+469. 263. Td
+(Official pricing) Tj
+ET
+1. g
+40. 258. 532. -14. re
 f
 BT
-/F1 8 Tf
-9.1999999999999993 TL
+/F1 7.5 Tf
+8.625 TL
+0.937 0.267 0.267 rg
+209. 249. Td
+(5%+Rs.3 \(digital\) +GST) Tj
+ET
+0.97 0.98 0.99 rg
+40. 244. 532. -14. re
+f
+BT
+/F2 7.5 Tf
+8.625 TL
 0.059 0.09 0.165 rg
-44. 239. Td
+44. 235. Td
+(Shopify) Tj
+ET
+BT
+/F1 7.5 Tf
+8.625 TL
+0.059 0.09 0.165 rg
+129. 235. Td
+(Rs.1,499-22,680/mo) Tj
+ET
+BT
+/F1 7.5 Tf
+8.625 TL
+0.937 0.267 0.267 rg
+209. 235. Td
+(2% \(Basic\), 1% \(Grow\)) Tj
+ET
+BT
+/F1 7.5 Tf
+8.625 TL
+0.392 0.455 0.545 rg
+354. 235. Td
+(Razorpay ~2.36%) Tj
+ET
+BT
+/F1 7.5 Tf
+8.625 TL
+0.392 0.455 0.545 rg
+469. 235. Td
+(Shopify India) Tj
+ET
+0.97 0.98 0.99 rg
+40. 230. 532. -14. re
+f
+BT
+/F1 7.5 Tf
+8.625 TL
+0.937 0.267 0.267 rg
+209. 221. Td
+(0.6% \(Advanced\)) Tj
+ET
+BT
+/F1 7.5 Tf
+8.625 TL
+0.392 0.455 0.545 rg
+354. 221. Td
+(added on top) Tj
+ET
+1. g
+40. 216. 532. -14. re
+f
+BT
+/F2 7.5 Tf
+8.625 TL
+0.059 0.09 0.165 rg
+44. 207. Td
 (Zoho Commerce) Tj
 ET
 BT
-/F1 8 Tf
-9.1999999999999993 TL
+/F1 7.5 Tf
+8.625 TL
 0.059 0.09 0.165 rg
-139. 239. Td
-(Rs.1,850/mo \($22\)) Tj
+129. 207. Td
+($22-140/mo) Tj
 ET
 BT
-/F1 8 Tf
-9.1999999999999993 TL
-0.059 0.09 0.165 rg
-244. 239. Td
-(Rs.5,000/mo \($60\)) Tj
-ET
-BT
-/F1 8 Tf
-9.1999999999999993 TL
+/F2 7.5 Tf
+8.625 TL
 0.063 0.725 0.506 rg
-354. 239. Td
-(0%) Tj
+209. 207. Td
+(0% on paid plans) Tj
 ET
 BT
-/F3 8 Tf
-9.1999999999999993 TL
+/F1 7.5 Tf
+8.625 TL
 0.392 0.455 0.545 rg
-464. 239. Td
-(USD pricing) Tj
-ET
-1. g
-40. 233. 532. -16. re
-f
-BT
-/F1 8 Tf
-9.1999999999999993 TL
-0.059 0.09 0.165 rg
-44. 223. Td
-(StoreHippo) Tj
+354. 207. Td
+(Zoho Pay ~2%) Tj
 ET
 BT
-/F1 8 Tf
-9.1999999999999993 TL
-0.059 0.09 0.165 rg
-139. 223. Td
-(Rs.3,750/mo \($45\)) Tj
-ET
-BT
-/F1 8 Tf
-9.1999999999999993 TL
-0.059 0.09 0.165 rg
-244. 223. Td
-(Rs.7,500/mo \($89\)) Tj
-ET
-BT
-/F1 8 Tf
-9.1999999999999993 TL
-0.063 0.725 0.506 rg
-354. 223. Td
-(0%) Tj
-ET
-BT
-/F3 8 Tf
-9.1999999999999993 TL
+/F1 7.5 Tf
+8.625 TL
 0.392 0.455 0.545 rg
-464. 223. Td
-(Enterprise focus) Tj
+469. 207. Td
+(Zoho official) Tj
 ET
 0.97 0.98 0.99 rg
-40. 217. 532. -16. re
+40. 202. 532. -14. re
 f
 BT
-/F1 8 Tf
-9.1999999999999993 TL
+/F2 7.5 Tf
+8.625 TL
 0.059 0.09 0.165 rg
-44. 207. Td
+44. 193. Td
 (Wix) Tj
 ET
 BT
-/F1 8 Tf
-9.1999999999999993 TL
+/F1 7.5 Tf
+8.625 TL
 0.059 0.09 0.165 rg
-139. 207. Td
-(Rs.500/mo) Tj
+129. 193. Td
+(Rs.500-1,500/mo) Tj
 ET
 BT
-/F1 8 Tf
-9.1999999999999993 TL
-0.059 0.09 0.165 rg
-244. 207. Td
-(Rs.1,500/mo) Tj
+/F2 7.5 Tf
+8.625 TL
+0.063 0.725 0.506 rg
+209. 193. Td
+(0% in India) Tj
 ET
 BT
-/F1 8 Tf
-9.1999999999999993 TL
-0.937 0.267 0.267 rg
-354. 207. Td
-(2% \(Razorpay\)) Tj
-ET
-BT
-/F3 8 Tf
-9.1999999999999993 TL
+/F1 7.5 Tf
+8.625 TL
 0.392 0.455 0.545 rg
-464. 207. Td
-(No COD support) Tj
+354. 193. Td
+(Razorpay ~2%) Tj
 ET
 BT
-/F3 8 Tf
+/F1 7.5 Tf
+8.625 TL
+0.392 0.455 0.545 rg
+469. 193. Td
+(Wix Help) Tj
+ET
+1. g
+40. 188. 532. -14. re
+f
+BT
+/F2 7.5 Tf
+8.625 TL
+0.059 0.09 0.165 rg
+44. 179. Td
+(StoreHippo) Tj
+ET
+BT
+/F1 7.5 Tf
+8.625 TL
+0.059 0.09 0.165 rg
+129. 179. Td
+($45-179/mo) Tj
+ET
+BT
+/F1 7.5 Tf
+8.625 TL
+0.937 0.267 0.267 rg
+209. 179. Td
+(Not publicly disclosed) Tj
+ET
+BT
+/F1 7.5 Tf
+8.625 TL
+0.392 0.455 0.545 rg
+354. 179. Td
+(Varies by gateway) Tj
+ET
+BT
+/F1 7.5 Tf
+8.625 TL
+0.392 0.455 0.545 rg
+469. 179. Td
+(Custom quoted) Tj
+ET
+1. 0.95 0.91 rg
+44. 155. m
+568. 155. l
+570.2091389993231587 155. 572. 153.2091389993231587 572. 151. c
+572. 84. l
+572. 81.7908610006768413 569.7908610006768413 80. 568. 80. c
+44. 80. l
+41.7908610006768271 80. 40. 82.2091389993231587 40. 84. c
+40. 151. l
+40. 153.2091389993231587 42.2091389993231729 155. 44. 155. c
+h
+f
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0.918 0.345 0.047 rg
+50. 141. Td
+(Real Cost Impact: Rs.1,00,000/month GMV Seller) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.059 0.09 0.165 rg
+50. 125. Td
+(Fluxe Starter: Rs.299/mo subscription + Rs.0 platform fee = Rs.299 total \(+ Razorpay gateway fees\)) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.059 0.09 0.165 rg
+50. 113. Td
+(Dukaan Starter: Rs.208/mo subscription + Rs.3,990 service fee \(3.99%\) = Rs.4,198 total \(+ gateway fees\)) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.059 0.09 0.165 rg
+50. 101. Td
+(Instamojo Growth: Rs.833/mo subscription + Rs.2,000+ txn fees \(2%+Rs.3\) = Rs.2,833+ total) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.059 0.09 0.165 rg
+50. 89. Td
+(Shopify Basic: Rs.1,499/mo subscription + Rs.2,000 platform fee \(2%\) = Rs.3,499 total \(+ gateway fees\)) Tj
+ET
+BT
+/F1 8 Tf
 9.1999999999999993 TL
 0.392 0.455 0.545 rg
 216.7999999999999545 20. Td
@@ -791,7 +882,7 @@ endobj
 endobj
 8 0 obj
 <<
-/Length 6397
+/Length 6428
 >>
 stream
 1.5 w
@@ -1020,7 +1111,7 @@ BT
 9.7749999999999986 TL
 0.059 0.09 0.165 rg
 224. 419. Td
-(Rs.1,499-22,680/mo) Tj
+(Rs.1,499/mo + 2%) Tj
 ET
 BT
 /F1 8.5 Tf
@@ -1034,7 +1125,7 @@ BT
 9.7749999999999986 TL
 0.937 0.267 0.267 rg
 454. 419. Td
-(Expensive for India) Tj
+(Very expensive for India) Tj
 ET
 1. g
 40. 411. 532. -18. re
@@ -1058,7 +1149,7 @@ BT
 9.7749999999999986 TL
 0.059 0.09 0.165 rg
 224. 401. Td
-(Rs.2,499/yr+) Tj
+(Rs.2,499/yr + 2-5%) Tj
 ET
 BT
 /F1 8.5 Tf
@@ -1072,7 +1163,7 @@ BT
 9.7749999999999986 TL
 0.937 0.267 0.267 rg
 454. 401. Td
-(Limited customization) Tj
+(High service fees, limited) Tj
 ET
 0.97 0.98 0.99 rg
 40. 393. 532. -18. re
@@ -1096,7 +1187,7 @@ BT
 9.7749999999999986 TL
 0.059 0.09 0.165 rg
 224. 383. Td
-(Free-Rs.9,999/yr) Tj
+(Free + 2-5% txn) Tj
 ET
 BT
 /F1 8.5 Tf
@@ -1110,7 +1201,7 @@ BT
 9.7749999999999986 TL
 0.937 0.267 0.267 rg
 454. 383. Td
-(5% transaction fees) Tj
+(High transaction fees) Tj
 ET
 1. g
 40. 375. 532. -18. re
@@ -1134,7 +1225,7 @@ BT
 9.7749999999999986 TL
 0.059 0.09 0.165 rg
 224. 365. Td
-($22-140/mo) Tj
+($22-140/mo + 0%) Tj
 ET
 BT
 /F1 8.5 Tf
@@ -1148,7 +1239,7 @@ BT
 9.7749999999999986 TL
 0.937 0.267 0.267 rg
 454. 365. Td
-(Pricey, complex setup) Tj
+(USD pricing, complex) Tj
 ET
 0.97 0.98 0.99 rg
 40. 357. 532. -18. re
@@ -1217,14 +1308,14 @@ BT
 9.7749999999999986 TL
 0.063 0.725 0.506 rg
 339. 329. Td
-(Design flexibility) Tj
+(Design flexibility, 0%) Tj
 ET
 BT
 /F1 8.5 Tf
 9.7749999999999986 TL
 0.937 0.267 0.267 rg
 454. 329. Td
-(2% txn fee, no COD) Tj
+(No COD, limited India) Tj
 ET
 0.97 0.98 0.99 rg
 40. 321. 532. -18. re
@@ -1248,7 +1339,7 @@ BT
 9.7749999999999986 TL
 0.059 0.09 0.165 rg
 224. 311. Td
-($29-299/mo) Tj
+($29-299/mo + 0%) Tj
 ET
 BT
 /F1 8.5 Tf
@@ -1283,7 +1374,7 @@ endobj
 endobj
 10 0 obj
 <<
-/Length 14820
+/Length 14849
 >>
 stream
 1.5 w
@@ -1367,7 +1458,7 @@ BT
 8.625 TL
 0.059 0.09 0.165 rg
 43. 690. Td
-(Subdomain Stores) Tj
+(0% Platform/Service Fee) Tj
 ET
 BT
 /F2 7.5 Tf
@@ -1377,18 +1468,18 @@ BT
 (Yes) Tj
 ET
 BT
-/F2 7.5 Tf
+/F1 7.5 Tf
 8.625 TL
-0.063 0.725 0.506 rg
-214. 690. Td
-(Yes) Tj
+0.937 0.267 0.267 rg
+216. 690. Td
+(No) Tj
 ET
 BT
-/F2 7.5 Tf
+/F1 7.5 Tf
 8.625 TL
-0.063 0.725 0.506 rg
-254. 690. Td
-(Yes) Tj
+0.937 0.267 0.267 rg
+256. 690. Td
+(No) Tj
 ET
 BT
 /F2 7.5 Tf
@@ -1398,25 +1489,25 @@ BT
 (Yes) Tj
 ET
 BT
-/F1 7.5 Tf
+/F3 7.5 Tf
 8.625 TL
-0.937 0.267 0.267 rg
-336. 690. Td
-(No) Tj
-ET
-BT
-/F1 7.5 Tf
-8.625 TL
-0.937 0.267 0.267 rg
-376. 690. Td
-(No) Tj
+0.392 0.455 0.545 rg
+334. 690. Td
+(N/A) Tj
 ET
 BT
 /F2 7.5 Tf
 8.625 TL
 0.063 0.725 0.506 rg
-414. 690. Td
+374. 690. Td
 (Yes) Tj
+ET
+BT
+/F1 7.5 Tf
+8.625 TL
+0.937 0.267 0.267 rg
+416. 690. Td
+(No) Tj
 ET
 1. g
 40. 684. 532. -14. re
@@ -1426,7 +1517,7 @@ BT
 8.625 TL
 0.059 0.09 0.165 rg
 43. 676. Td
-(0% Platform Fee) Tj
+(Subdomain Stores) Tj
 ET
 BT
 /F2 7.5 Tf
@@ -1443,11 +1534,11 @@ BT
 (Yes) Tj
 ET
 BT
-/F1 7.5 Tf
+/F2 7.5 Tf
 8.625 TL
-0.937 0.267 0.267 rg
-256. 676. Td
-(No) Tj
+0.063 0.725 0.506 rg
+254. 676. Td
+(Yes) Tj
 ET
 BT
 /F2 7.5 Tf
@@ -1457,11 +1548,11 @@ BT
 (Yes) Tj
 ET
 BT
-/F2 7.5 Tf
+/F1 7.5 Tf
 8.625 TL
-0.063 0.725 0.506 rg
-334. 676. Td
-(Yes) Tj
+0.937 0.267 0.267 rg
+336. 676. Td
+(No) Tj
 ET
 BT
 /F1 7.5 Tf
@@ -1471,11 +1562,11 @@ BT
 (No) Tj
 ET
 BT
-/F1 7.5 Tf
+/F2 7.5 Tf
 8.625 TL
-0.937 0.267 0.267 rg
-416. 676. Td
-(No) Tj
+0.063 0.725 0.506 rg
+414. 676. Td
+(Yes) Tj
 ET
 0.97 0.98 0.99 rg
 40. 670. 532. -14. re
@@ -2721,7 +2812,7 @@ BT
 9.1999999999999993 TL
 0.392 0.455 0.545 rg
 40. 360. Td
-(Yes = Full support  |  Partial = Limited or add-on  |  No = Not available) Tj
+(Yes = Full support  |  Partial = Limited/add-on  |  No = Not available  |  N/A = Not disclosed) Tj
 ET
 BT
 /F3 8 Tf
@@ -2742,7 +2833,7 @@ endobj
 endobj
 12 0 obj
 <<
-/Length 5494
+/Length 5280
 >>
 stream
 1.5 w
@@ -2764,21 +2855,21 @@ BT
 11.5 TL
 0.059 0.09 0.165 rg
 40. 710. Td
-(Dukaan is the most direct competitor -- same market \(India SMBs\), same core use case \(simple online store setup\).) Tj
+(Dukaan is the most direct competitor -- same market \(India SMBs\), same core use case \(simple online store\). However,) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
 40. 697. Td
-(However, Fluxe offers significantly more features at a comparable price point.) Tj
+(Dukaan charges significant per-order service fees that most sellers don't realize until they start selling.) Tj
 ET
 BT
 /F2 13 Tf
 14.9499999999999993 TL
 0.231 0.51 0.965 rg
 40. 674. Td
-(Where Fluxe Wins) Tj
+(The Fee Advantage \(Fluxe's Biggest Edge\)) Tj
 ET
 BT
 /F1 10 Tf
@@ -2792,329 +2883,308 @@ BT
 11.5 TL
 0.059 0.09 0.165 rg
 52. 655. Td
-(0% platform fee vs Dukaan's 0% -- pricing parity, but Fluxe is Rs.299/mo vs Dukaan's Rs.208/mo \(yearly lock-in) Tj
+(Fluxe: 0% platform fee on all plans. Sellers only pay Razorpay's gateway processing fee.) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-52. 642. Td
-(required\)) Tj
-ET
-BT
-/F1 10 Tf
-11.5 TL
-0.059 0.09 0.165 rg
-42. 627. Td
+42. 640. Td
 (•) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-52. 627. Td
-(Deep theme customization with Classic & Modern variants vs Dukaan's limited templates \(their #1 complaint on) Tj
+52. 640. Td
+(Dukaan Free: 4.99% service fee on every order \(including COD\) + payment gateway fees) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-52. 614. Td
-(G2/Capterra with 6+ mentions\)) Tj
-ET
-BT
-/F1 10 Tf
-11.5 TL
-0.059 0.09 0.165 rg
-42. 599. Td
+42. 625. Td
 (•) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-52. 599. Td
-(Inventory locations \(2-unlimited by plan\) with stock transfers -- Dukaan has no multi-location support) Tj
+52. 625. Td
+(Dukaan Starter: 3.99% service fee + gateway fees. At Rs.50K/mo GMV = Rs.1,995 in fees alone.) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-42. 584. Td
+42. 610. Td
 (•) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-52. 584. Td
-(Full order cancellation and return system with admin approval workflow -- Dukaan has basic/partial support) Tj
+52. 610. Td
+(Dukaan Growth: 1.99% service fee + gateway fees. At Rs.1L/mo GMV = Rs.1,990 in fees.) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-42. 569. Td
+42. 595. Td
 (•) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-52. 569. Td
+52. 595. Td
+(Dukaan service fees apply even on COD orders -- the fee is deducted from the seller's Dukaan Wallet.) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.059 0.09 0.165 rg
+42. 580. Td
+(•) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.059 0.09 0.165 rg
+52. 580. Td
+(If the Dukaan Wallet balance hits zero from fee deductions, the store's services pause.) Tj
+ET
+BT
+/F2 13 Tf
+14.9499999999999993 TL
+0.231 0.51 0.965 rg
+40. 559. Td
+(Where Fluxe Wins \(Beyond Pricing\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.059 0.09 0.165 rg
+42. 540. Td
+(•) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.059 0.09 0.165 rg
+52. 540. Td
+(Deep theme customization with Classic & Modern variants vs Dukaan's limited templates \(#1 complaint on G2, 6+) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.059 0.09 0.165 rg
+52. 527. Td
+(mentions\)) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.059 0.09 0.165 rg
+42. 512. Td
+(•) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.059 0.09 0.165 rg
+52. 512. Td
+(Inventory locations \(2-unlimited by plan\) with stock transfers -- Dukaan has none) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.059 0.09 0.165 rg
+42. 497. Td
+(•) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.059 0.09 0.165 rg
+52. 497. Td
+(Full order cancellation and return system with admin approval -- Dukaan has basic support only) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.059 0.09 0.165 rg
+42. 482. Td
+(•) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.059 0.09 0.165 rg
+52. 482. Td
 (Push notifications \(manual + automated on Pro\) -- Dukaan has none) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-42. 554. Td
+42. 467. Td
 (•) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-52. 554. Td
+52. 467. Td
 (CDN edge caching with intelligent purging -- significant performance advantage) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-42. 539. Td
+42. 452. Td
 (•) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-52. 539. Td
-(Product reviews with moderation \(Growth+\) -- Dukaan offers partial/basic support) Tj
+52. 452. Td
+(Product reviews with moderation \(Growth+\) -- Dukaan has partial support) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-42. 524. Td
+42. 437. Td
 (•) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-52. 524. Td
+52. 437. Td
 (Blog system \(Growth+\) -- Dukaan has no blogging) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-42. 509. Td
+42. 422. Td
 (•) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-52. 509. Td
-(Advanced SEO with structured data and Google rich results \(Growth+\) -- Dukaan has basic SEO only) Tj
+52. 422. Td
+(Advanced SEO with structured data and Google rich results \(Growth+\)) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-42. 494. Td
+42. 407. Td
 (•) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-52. 494. Td
-(Appointment booking \(Starter+\) -- Dukaan doesn't offer this) Tj
+52. 407. Td
+(Appointment booking \(Starter+\) -- unique to Fluxe) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-42. 479. Td
+42. 392. Td
 (•) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-52. 479. Td
-(GST invoicing built-in \(Starter+\) -- important for Indian compliance) Tj
+52. 392. Td
+(GST invoicing built-in \(Starter+\)) Tj
 ET
 BT
 /F2 13 Tf
 14.9499999999999993 TL
 0.231 0.51 0.965 rg
-40. 458. Td
+40. 371. Td
 (Where Dukaan Wins) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-42. 439. Td
+42. 352. Td
 (•) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-52. 439. Td
+52. 352. Td
 (WhatsApp ordering -- customers can order directly via WhatsApp \(Fluxe has support button only\)) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-42. 424. Td
+42. 337. Td
 (•) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-52. 424. Td
-(Native mobile app \(AAB file\) for store owners on Agency+ plan -- Fluxe is web-only) Tj
+52. 337. Td
+(Native mobile app \(AAB file\) for store owners on Agency+ plan) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-42. 409. Td
+42. 322. Td
 (•) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-52. 409. Td
-(Established brand awareness and existing user base in India) Tj
+52. 322. Td
+(Established brand awareness and existing user base) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-42. 394. Td
+42. 307. Td
 (•) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-52. 394. Td
+52. 307. Td
 (Simpler onboarding -- can set up a store in under 2 minutes) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-42. 379. Td
+42. 292. Td
 (•) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-52. 379. Td
+52. 292. Td
 (Built-in logistics partner integrations \(Shiprocket, Delhivery, etc.\)) Tj
-ET
-BT
-/F2 13 Tf
-14.9499999999999993 TL
-0.231 0.51 0.965 rg
-40. 358. Td
-(Dukaan's Known Weaknesses \(from G2/Capterra Reviews\)) Tj
-ET
-BT
-/F1 10 Tf
-11.5 TL
-0.059 0.09 0.165 rg
-42. 339. Td
-(•) Tj
-ET
-BT
-/F1 10 Tf
-11.5 TL
-0.059 0.09 0.165 rg
-52. 339. Td
-(Limited customization -- most frequently cited complaint \(6+ mentions on G2\)) Tj
-ET
-BT
-/F1 10 Tf
-11.5 TL
-0.059 0.09 0.165 rg
-42. 324. Td
-(•) Tj
-ET
-BT
-/F1 10 Tf
-11.5 TL
-0.059 0.09 0.165 rg
-52. 324. Td
-(Missing features locked behind higher plans) Tj
-ET
-BT
-/F1 10 Tf
-11.5 TL
-0.059 0.09 0.165 rg
-42. 309. Td
-(•) Tj
-ET
-BT
-/F1 10 Tf
-11.5 TL
-0.059 0.09 0.165 rg
-52. 309. Td
-(Integration issues with third-party tools) Tj
-ET
-BT
-/F1 10 Tf
-11.5 TL
-0.059 0.09 0.165 rg
-42. 294. Td
-(•) Tj
-ET
-BT
-/F1 10 Tf
-11.5 TL
-0.059 0.09 0.165 rg
-52. 294. Td
-(Insufficient marketing tools for running offers and discounts) Tj
-ET
-BT
-/F1 10 Tf
-11.5 TL
-0.059 0.09 0.165 rg
-42. 279. Td
-(•) Tj
-ET
-BT
-/F1 10 Tf
-11.5 TL
-0.059 0.09 0.165 rg
-52. 279. Td
-(Weak order tracking causing customer confusion) Tj
-ET
-BT
-/F1 10 Tf
-11.5 TL
-0.059 0.09 0.165 rg
-42. 264. Td
-(•) Tj
-ET
-BT
-/F1 10 Tf
-11.5 TL
-0.059 0.09 0.165 rg
-52. 264. Td
-(Missing stock/inventory alerts for low inventory) Tj
 ET
 BT
 /F1 8 Tf
@@ -3135,7 +3205,7 @@ endobj
 endobj
 14 0 obj
 <<
-/Length 4930
+/Length 4806
 >>
 stream
 1.5 w
@@ -3171,288 +3241,281 @@ BT
 11.5 TL
 0.059 0.09 0.165 rg
 52. 691. Td
-(Serverless-first architecture: No competitor uses Cloudflare Workers/D1/R2. This gives Fluxe a genuine cost) Tj
+(True 0% platform fee with INR pricing: Only Fluxe and Zoho Commerce charge 0% platform fees, but Zoho prices in) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
 52. 678. Td
-(advantage at scale -- near-zero cold starts, global edge deployment, and no server management. This is a technical) Tj
+(USD \($22+/mo = Rs.1,850+/mo\). Fluxe is the only INR-priced, 0%-fee platform in India -- a unique position.) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-52. 665. Td
-(moat that translates directly to lower pricing.) Tj
-ET
-BT
-/F1 10 Tf
-11.5 TL
-0.059 0.09 0.165 rg
-42. 650. Td
+42. 663. Td
 (•) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.059 0.09 0.165 rg
+52. 663. Td
+(Serverless-first architecture: No competitor uses Cloudflare Workers/D1/R2. This gives Fluxe a genuine cost) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
 52. 650. Td
-(True multi-tenancy with shard isolation: Most competitors run isolated databases per store. Fluxe's shared-shard) Tj
+(advantage at scale and enables the 0% fee model sustainably.) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-52. 637. Td
-(model enables better resource utilization and lower per-store costs.) Tj
-ET
-BT
-/F1 10 Tf
-11.5 TL
-0.059 0.09 0.165 rg
-42. 622. Td
+42. 635. Td
 (•) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-52. 622. Td
+52. 635. Td
 (Feature-rich Starter plan at Rs.299/mo: Fluxe's Starter includes analytics, multi-currency, wishlist, returns,) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-52. 609. Td
+52. 622. Td
 (appointment booking, and GST invoicing -- features most competitors lock behind mid-tier plans.) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-42. 594. Td
+42. 607. Td
 (•) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-52. 594. Td
+52. 607. Td
 (Appointment booking in an e-commerce platform: This is rare and opens Fluxe to service-based businesses \(salons,) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-52. 581. Td
+52. 594. Td
 (consultants, tutors\) alongside product sellers.) Tj
 ET
 BT
 /F2 13 Tf
 14.9499999999999993 TL
 0.231 0.51 0.965 rg
-40. 560. Td
+40. 573. Td
 (Kano Analysis of Market Features) Tj
 ET
 0.86 0.99 0.91 rg
-40. 541. 532. -18. re
+40. 554. 532. -18. re
 f
 BT
 /F2 9 Tf
 10.3499999999999996 TL
 0.059 0.09 0.165 rg
-44. 529. Td
+44. 542. Td
 (BASIC \(Table Stakes -- Must Have\)) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-46. 515. Td
+46. 528. Td
 (•) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-56. 515. Td
+56. 528. Td
 (Product catalog, shopping cart, checkout, Razorpay/UPI/COD payments) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-46. 500. Td
+46. 513. Td
 (•) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-56. 500. Td
+56. 513. Td
 (Mobile-responsive storefront, SSL, custom domain support) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-46. 485. Td
+46. 498. Td
 (•) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-56. 485. Td
+56. 498. Td
 (Order management, customer accounts, discount coupons) Tj
 ET
 1. 0.98 0.76 rg
-40. 470. 532. -18. re
+40. 483. 532. -18. re
 f
 BT
 /F2 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-44. 458. Td
+44. 471. Td
 (PERFORMANCE \(More = Better -- Differentiator\)) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-46. 444. Td
+46. 457. Td
 (•) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-56. 444. Td
+56. 457. Td
 (Theme variety and customization depth -- Fluxe strong here) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-46. 429. Td
+46. 442. Td
 (•) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-56. 429. Td
-(SEO tools \(sitemaps, structured data, rich results\) -- Fluxe has advanced SEO on Growth+) Tj
+56. 442. Td
+(SEO tools \(sitemaps, structured data, rich results\) -- Fluxe Growth+ covers this) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-46. 414. Td
+46. 427. Td
 (•) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-56. 414. Td
+56. 427. Td
 (Analytics, revenue tracking, GST reporting -- Fluxe covers this well) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-46. 399. Td
+46. 412. Td
 (•) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-56. 399. Td
-(Multi-currency and international selling -- Fluxe has this on all plans) Tj
+56. 412. Td
+(0% platform fees -- now a key differentiator \(Dukaan/Shopify/Instamojo all charge\)) Tj
 ET
 0.86 0.92 1. rg
-40. 384. 532. -18. re
+40. 397. 532. -18. re
 f
 BT
 /F2 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-44. 372. Td
+44. 385. Td
 (DELIGHTER \(Unexpected -- Competitive Edge\)) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-46. 358. Td
+46. 371. Td
 (•) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-56. 358. Td
-(WhatsApp Commerce \(direct ordering via WhatsApp\) -- becoming table stakes fast) Tj
+56. 371. Td
+(WhatsApp Commerce \(direct ordering via WhatsApp\) -- becoming table stakes) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-46. 343. Td
+46. 356. Td
 (•) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-56. 343. Td
+56. 356. Td
 (AI-powered store setup and product descriptions -- no one does this well yet) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-46. 328. Td
+46. 341. Td
 (•) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-56. 328. Td
+56. 341. Td
 (Appointment booking on an e-commerce platform -- Fluxe already has this) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-46. 313. Td
+46. 326. Td
 (•) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-56. 313. Td
+56. 326. Td
 (Push notifications to customers -- Fluxe already has this \(Growth+\)) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-46. 298. Td
+46. 311. Td
 (•) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-56. 298. Td
+56. 311. Td
 (Built-in loyalty/rewards programs -- opportunity for differentiation) Tj
 ET
 BT
@@ -3474,7 +3537,7 @@ endobj
 endobj
 16 0 obj
 <<
-/Length 5041
+/Length 4885
 >>
 stream
 1.5 w
@@ -3495,10 +3558,10 @@ S
 44. 710. m
 568. 710. l
 570.2091389993231587 710. 572. 708.2091389993231587 572. 706. c
-572. 624. l
-572. 621.7908610006768413 569.7908610006768413 620. 568. 620. c
-44. 620. l
-41.7908610006768271 620. 40. 622.2091389993231587 40. 624. c
+572. 619. l
+572. 616.7908610006768413 569.7908610006768413 615. 568. 615. c
+44. 615. l
+41.7908610006768271 615. 40. 617.2091389993231587 40. 619. c
 40. 706. l
 40. 708.2091389993231587 42.2091389993231729 710. 44. 710. c
 h
@@ -3508,204 +3571,190 @@ BT
 14.9499999999999993 TL
 0.231 0.51 0.965 rg
 52. 694. Td
-(1. Lead with "0% Platform Fee at Rs.299/mo") Tj
+(1. Lead with "0% Platform Fee" as Primary Message) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
 52. 676. Td
-(Your Rs.299/mo Starter plan with 0% platform fee is the strongest price-value proposition in the Indian market.) Tj
+(Most Indian sellers don't realize Dukaan charges 2-5% on every order until they start selling. Create comparison) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
 52. 663. Td
-(Shopify charges Rs.1,499/mo + 2% fees. Instamojo takes 5% per transaction. At Rs.50K monthly revenue, an) Tj
+(calculators showing real cost: "At Rs.1L/mo revenue, Dukaan costs Rs.4,198/mo total vs Fluxe's Rs.299/mo." This) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
 52. 650. Td
-(Instamojo seller pays Rs.2,500+ in fees alone -- more than Fluxe's entire monthly cost. Make this the centerpiece) Tj
+(is the single most powerful acquisition message. Run targeted ads with "Are you paying hidden fees on every) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
 52. 637. Td
-(of all marketing.) Tj
+(order?" messaging.) Tj
 ET
 0.93 0.99 0.96 rg
-44. 608. m
-568. 608. l
-570.2091389993231587 608. 572. 606.2091389993231587 572. 604. c
-572. 522. l
-572. 519.7908610006768413 569.7908610006768413 518. 568. 518. c
-44. 518. l
-41.7908610006768271 518. 40. 520.2091389993231587 40. 522. c
-40. 604. l
-40. 606.2091389993231587 42.2091389993231729 608. 44. 608. c
+44. 606. m
+568. 606. l
+570.2091389993231587 606. 572. 604.2091389993231587 572. 602. c
+572. 520. l
+572. 517.7908610006768413 569.7908610006768413 516. 568. 516. c
+44. 516. l
+41.7908610006768271 516. 40. 518.2091389993231587 40. 520. c
+40. 602. l
+40. 604.2091389993231587 42.2091389993231729 606. 44. 606. c
 h
 f
 BT
 /F2 13 Tf
 14.9499999999999993 TL
 0.063 0.725 0.506 rg
-52. 592. Td
+52. 590. Td
 (2. Expand WhatsApp Commerce Beyond Support) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-52. 574. Td
-(Fluxe already has a WhatsApp support button -- extend it to: automated order confirmations and shipping updates) Tj
+52. 572. Td
+(Fluxe already has a WhatsApp support button -- extend to: automated order confirmations and shipping updates) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-52. 561. Td
-(via WhatsApp, shareable product/store links optimized for WhatsApp sharing, and abandoned cart recovery) Tj
+52. 559. Td
+(via WhatsApp, shareable product/store links optimized for WhatsApp, and abandoned cart recovery messages.) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-52. 548. Td
-(messages. This closes the biggest feature gap vs Dukaan and taps into how Indian SMBs actually acquire) Tj
-ET
-BT
-/F1 10 Tf
-11.5 TL
-0.059 0.09 0.165 rg
-52. 535. Td
-(customers.) Tj
+52. 546. Td
+(This closes the biggest feature gap vs Dukaan while leveraging your cost advantage.) Tj
 ET
 1. 0.97 0.93 rg
-44. 506. m
-568. 506. l
-570.2091389993231587 506. 572. 504.2091389993231587 572. 502. c
-572. 420. l
-572. 417.7908610006768413 569.7908610006768413 416. 568. 416. c
-44. 416. l
-41.7908610006768271 416. 40. 418.2091389993231587 40. 420. c
-40. 502. l
-40. 504.2091389993231587 42.2091389993231729 506. 44. 506. c
+44. 515. m
+568. 515. l
+570.2091389993231587 515. 572. 513.2091389993231587 572. 511. c
+572. 429. l
+572. 426.7908610006768413 569.7908610006768413 425. 568. 425. c
+44. 425. l
+41.7908610006768271 425. 40. 427.2091389993231587 40. 429. c
+40. 511. l
+40. 513.2091389993231587 42.2091389993231729 515. 44. 515. c
 h
 f
 BT
 /F2 13 Tf
 14.9499999999999993 TL
 0.918 0.345 0.047 rg
-52. 490. Td
+52. 499. Td
 (3. Target Service + Product Hybrid Businesses) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-52. 472. Td
-(Fluxe's appointment booking + e-commerce combo is unique in this market. No competitor offers both. Target) Tj
+52. 481. Td
+(Fluxe's appointment booking + e-commerce combo is unique. No competitor offers both natively. Target salons,) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-52. 459. Td
-(salons, fitness trainers, tutors, and consultants who sell products AND services. This is an underserved segment) Tj
+52. 468. Td
+(fitness trainers, tutors, and consultants who sell products AND services. Position as "The only platform for) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-52. 446. Td
-(that no one is actively pursuing. Position as "The only platform for businesses that sell products AND book) Tj
-ET
-BT
-/F1 10 Tf
-11.5 TL
-0.059 0.09 0.165 rg
-52. 433. Td
-(appointments.") Tj
+52. 455. Td
+(businesses that sell products AND book appointments -- with 0% platform fees.") Tj
 ET
 BT
 /F2 13 Tf
 14.9499999999999993 TL
 0.231 0.51 0.965 rg
-40. 404. Td
+40. 424. Td
 (Sales Battlecard: Trap-Setting Questions) Tj
 ET
 0.97 0.98 0.99 rg
-44. 385. m
-568. 385. l
-570.2091389993231587 385. 572. 383.2091389993231587 572. 381. c
-572. 289. l
-572. 286.7908610006768413 569.7908610006768413 285. 568. 285. c
-44. 285. l
-41.7908610006768271 285. 40. 287.2091389993231587 40. 289. c
-40. 381. l
-40. 383.2091389993231587 42.2091389993231729 385. 44. 385. c
+44. 405. m
+568. 405. l
+570.2091389993231587 405. 572. 403.2091389993231587 572. 401. c
+572. 309. l
+572. 306.7908610006768413 569.7908610006768413 305. 568. 305. c
+44. 305. l
+41.7908610006768271 305. 40. 307.2091389993231587 40. 309. c
+40. 401. l
+40. 403.2091389993231587 42.2091389993231729 405. 44. 405. c
 h
 f
 BT
 /F3 9.5 Tf
 10.9249999999999989 TL
 0.059 0.09 0.165 rg
-50. 373. Td
-(vs Dukaan: "How much control do you have over your store's look? Can you switch between completely different design) Tj
+50. 393. Td
+(vs Dukaan: "What percentage does your platform take from every order? Did you know Dukaan charges 2-5% service) Tj
 ET
 BT
 /F3 9.5 Tf
 10.9249999999999989 TL
 0.059 0.09 0.165 rg
-50. 361. Td
-(themes, or just change colors?") Tj
+50. 381. Td
+(fees on top of subscription -- even on COD orders?") Tj
 ET
 BT
 /F3 9.5 Tf
 10.9249999999999989 TL
 0.059 0.09 0.165 rg
-50. 345. Td
-(vs Instamojo: "What percentage of each sale goes to platform fees? At Rs.1L monthly revenue, how much are you paying) Tj
+50. 365. Td
+(vs Instamojo: "At Rs.1L monthly revenue, you're paying Rs.2,000+ in transaction fees. What if you paid Rs.299 flat with no) Tj
 ET
 BT
 /F3 9.5 Tf
 10.9249999999999989 TL
 0.059 0.09 0.165 rg
-50. 333. Td
-(in transaction fees alone?") Tj
+50. 353. Td
+(per-order fees?") Tj
 ET
 BT
 /F3 9.5 Tf
 10.9249999999999989 TL
 0.059 0.09 0.165 rg
-50. 317. Td
-(vs Shopify: "Are you paying Rs.1,500+/month before making your first sale? What if you could get analytics,) Tj
+50. 337. Td
+(vs Shopify: "You're paying Rs.1,499/mo + 2% per order. That's Rs.3,499/mo at Rs.1L revenue. What if you got the same) Tj
 ET
 BT
 /F3 9.5 Tf
 10.9249999999999989 TL
 0.059 0.09 0.165 rg
-50. 305. Td
-(multi-currency, and SEO for Rs.299/mo?") Tj
+50. 325. Td
+(features for Rs.299/mo + 0% fees?") Tj
 ET
 BT
 /F3 9.5 Tf
 10.9249999999999989 TL
 0.059 0.09 0.165 rg
-50. 289. Td
+50. 309. Td
 (vs All: "Do you need appointment booking AND product sales? Which platform lets you do both without extra plugins or) Tj
 ET
 BT
 /F3 9.5 Tf
 10.9249999999999989 TL
 0.059 0.09 0.165 rg
-50. 277. Td
-(fees?") Tj
+50. 297. Td
+(hidden per-order charges?") Tj
 ET
 BT
 /F3 8 Tf
@@ -3726,7 +3775,7 @@ endobj
 endobj
 18 0 obj
 <<
-/Length 5141
+/Length 5127
 >>
 stream
 1.5 w
@@ -3762,7 +3811,7 @@ BT
 11.5 TL
 0.059 0.09 0.165 rg
 52. 691. Td
-(Lead with Rs.299/mo pricing and 0% fee messaging across all channels) Tj
+(Lead with Rs.299/mo + 0% fee messaging. Create fee comparison calculators for social media.) Tj
 ET
 BT
 /F1 10 Tf
@@ -3776,7 +3825,7 @@ BT
 11.5 TL
 0.059 0.09 0.165 rg
 52. 676. Td
-(Target D2C brands and Instagram/WhatsApp sellers migrating to formal storefronts) Tj
+(Target Dukaan/Instamojo sellers frustrated by per-order fees with migration campaigns) Tj
 ET
 BT
 /F1 10 Tf
@@ -3790,7 +3839,7 @@ BT
 11.5 TL
 0.059 0.09 0.165 rg
 52. 661. Td
-(Expand WhatsApp integration \(order confirmations, product sharing, cart recovery\)) Tj
+(Target D2C brands and Instagram/WhatsApp sellers migrating to formal storefronts) Tj
 ET
 BT
 /F1 10 Tf
@@ -3804,7 +3853,7 @@ BT
 11.5 TL
 0.059 0.09 0.165 rg
 52. 646. Td
-(Partner with Indian logistics providers \(Shiprocket, Delhivery, Blue Dart\)) Tj
+(Expand WhatsApp integration \(order confirmations, product sharing, cart recovery\)) Tj
 ET
 BT
 /F1 10 Tf
@@ -3818,7 +3867,7 @@ BT
 11.5 TL
 0.059 0.09 0.165 rg
 52. 631. Td
-(Content marketing in Hindi + English targeting "how to start online store" keywords) Tj
+(Partner with Indian logistics providers \(Shiprocket, Delhivery, Blue Dart\)) Tj
 ET
 BT
 /F1 10 Tf
@@ -3832,28 +3881,28 @@ BT
 11.5 TL
 0.059 0.09 0.165 rg
 52. 616. Td
-(Target hybrid service+product businesses \(salons, trainers, consultants\) with appointment booking) Tj
-ET
-BT
-/F2 13 Tf
-14.9499999999999993 TL
-0.231 0.51 0.965 rg
-40. 595. Td
-(Phase 2: Feature Parity + Differentiation \(Months 6-12\)) Tj
+(Content marketing in Hindi + English targeting "how to start online store" keywords) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-42. 576. Td
+42. 601. Td
 (•) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-52. 576. Td
-(AI-powered store setup: auto-generate product descriptions, SEO content, and store design) Tj
+52. 601. Td
+(Target hybrid service+product businesses with appointment booking messaging) Tj
+ET
+BT
+/F2 13 Tf
+14.9499999999999993 TL
+0.231 0.51 0.965 rg
+40. 580. Td
+(Phase 2: Feature Parity + Differentiation \(Months 6-12\)) Tj
 ET
 BT
 /F1 10 Tf
@@ -3867,7 +3916,7 @@ BT
 11.5 TL
 0.059 0.09 0.165 rg
 52. 561. Td
-(Social commerce: Instagram Shop and Facebook Shop integration) Tj
+(AI-powered store setup: auto-generate product descriptions, SEO content, and store design) Tj
 ET
 BT
 /F1 10 Tf
@@ -3881,7 +3930,7 @@ BT
 11.5 TL
 0.059 0.09 0.165 rg
 52. 546. Td
-(Logistics dashboard with real-time tracking from integrated carriers) Tj
+(Social commerce: Instagram Shop and Facebook Shop integration) Tj
 ET
 BT
 /F1 10 Tf
@@ -3895,7 +3944,7 @@ BT
 11.5 TL
 0.059 0.09 0.165 rg
 52. 531. Td
-(Mobile app for store management \(admin app\)) Tj
+(Logistics dashboard with real-time tracking from integrated carriers) Tj
 ET
 BT
 /F1 10 Tf
@@ -3909,7 +3958,7 @@ BT
 11.5 TL
 0.059 0.09 0.165 rg
 52. 516. Td
-(Expand theme library to 10+ professionally designed templates) Tj
+(Mobile app for store management \(admin app\)) Tj
 ET
 BT
 /F1 10 Tf
@@ -3923,28 +3972,28 @@ BT
 11.5 TL
 0.059 0.09 0.165 rg
 52. 501. Td
-(Loyalty/rewards program system built into the platform) Tj
-ET
-BT
-/F2 13 Tf
-14.9499999999999993 TL
-0.231 0.51 0.965 rg
-40. 480. Td
-(Phase 3: Global Expansion \(Months 12-24\)) Tj
+(Expand theme library to 10+ professionally designed templates) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-42. 461. Td
+42. 486. Td
 (•) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-52. 461. Td
-(Localize for Southeast Asia \(Indonesia, Philippines, Vietnam\) -- similar SMB dynamics to India) Tj
+52. 486. Td
+(Loyalty/rewards program system built into the platform) Tj
+ET
+BT
+/F2 13 Tf
+14.9499999999999993 TL
+0.231 0.51 0.965 rg
+40. 465. Td
+(Phase 3: Global Expansion \(Months 12-24\)) Tj
 ET
 BT
 /F1 10 Tf
@@ -3958,7 +4007,7 @@ BT
 11.5 TL
 0.059 0.09 0.165 rg
 52. 446. Td
-(Add Stripe integration alongside Razorpay for international payments) Tj
+(Localize for Southeast Asia \(Indonesia, Philippines, Vietnam\)) Tj
 ET
 BT
 /F1 10 Tf
@@ -3972,7 +4021,7 @@ BT
 11.5 TL
 0.059 0.09 0.165 rg
 52. 431. Td
-(Multi-language storefront support) Tj
+(Add Stripe integration alongside Razorpay for international payments) Tj
 ET
 BT
 /F1 10 Tf
@@ -3986,7 +4035,7 @@ BT
 11.5 TL
 0.059 0.09 0.165 rg
 52. 416. Td
-(Regional CDN optimization \(Cloudflare stack already provides global edge\)) Tj
+(Multi-language storefront support) Tj
 ET
 BT
 /F1 10 Tf
@@ -4000,28 +4049,28 @@ BT
 11.5 TL
 0.059 0.09 0.165 rg
 52. 401. Td
-(Partner with regional logistics providers in target markets) Tj
-ET
-BT
-/F2 13 Tf
-14.9499999999999993 TL
-0.231 0.51 0.965 rg
-40. 376. Td
-(Key Metrics to Track) Tj
+(Regional CDN optimization \(Cloudflare stack already provides global edge\)) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-42. 357. Td
+42. 386. Td
 (•) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
-52. 357. Td
-(Monthly active stores \(target: 1,000 in first 6 months\)) Tj
+52. 386. Td
+(Partner with regional logistics providers in target markets) Tj
+ET
+BT
+/F2 13 Tf
+14.9499999999999993 TL
+0.231 0.51 0.965 rg
+40. 361. Td
+(Key Metrics to Track) Tj
 ET
 BT
 /F1 10 Tf
@@ -4035,7 +4084,7 @@ BT
 11.5 TL
 0.059 0.09 0.165 rg
 52. 342. Td
-(GMV processed through Fluxe stores) Tj
+(Monthly active stores \(target: 1,000 in first 6 months\)) Tj
 ET
 BT
 /F1 10 Tf
@@ -4049,7 +4098,7 @@ BT
 11.5 TL
 0.059 0.09 0.165 rg
 52. 327. Td
-(Conversion: free trial to paid plan \(target: 10-15%\)) Tj
+(GMV processed through Fluxe stores) Tj
 ET
 BT
 /F1 10 Tf
@@ -4063,7 +4112,7 @@ BT
 11.5 TL
 0.059 0.09 0.165 rg
 52. 312. Td
-(Plan upgrade rate: Starter to Growth/Pro) Tj
+(Conversion: free trial to paid plan \(target: 10-15%\)) Tj
 ET
 BT
 /F1 10 Tf
@@ -4077,7 +4126,7 @@ BT
 11.5 TL
 0.059 0.09 0.165 rg
 52. 297. Td
-(Churn rate by plan tier) Tj
+(Plan upgrade rate: Starter to Growth/Pro) Tj
 ET
 BT
 /F1 10 Tf
@@ -4091,7 +4140,7 @@ BT
 11.5 TL
 0.059 0.09 0.165 rg
 52. 282. Td
-(Feature adoption: which Starter features drive upgrades to Growth) Tj
+(Churn rate by plan tier) Tj
 ET
 BT
 /F1 8 Tf
@@ -4112,7 +4161,7 @@ endobj
 endobj
 20 0 obj
 <<
-/Length 3957
+/Length 4254
 >>
 stream
 1.5 w
@@ -4183,7 +4232,7 @@ BT
 10.3499999999999996 TL
 0.392 0.455 0.545 rg
 65. 662. Td
-(Shopify India pricing: shopify.com/in/pricing \(April 2026\)) Tj
+(Shopify India pricing + fees: shopify.com/in/pricing -- 2% \(Basic\), 1% \(Grow\), 0.6% \(Advanced\) third-party gateway fees) Tj
 ET
 BT
 /F1 9 Tf
@@ -4197,7 +4246,7 @@ BT
 10.3499999999999996 TL
 0.392 0.455 0.545 rg
 65. 646. Td
-(Dukaan pricing and features: dukaan.com, G2.com reviews, Capterra.com reviews) Tj
+(Dukaan pricing + service fees: Dukaan Help Center -- Free: 4.99%, Starter: 3.99%, Growth: 1.99% per-order service fee) Tj
 ET
 BT
 /F1 9 Tf
@@ -4211,7 +4260,7 @@ BT
 10.3499999999999996 TL
 0.392 0.455 0.545 rg
 65. 630. Td
-(Dukaan weaknesses: G2 AI-generated review summary \(34+ reviews analyzed\)) Tj
+(Dukaan weaknesses: G2.com AI-generated review summary \(34+ reviews\), Capterra.com reviews) Tj
 ET
 BT
 /F1 9 Tf
@@ -4225,7 +4274,7 @@ BT
 10.3499999999999996 TL
 0.392 0.455 0.545 rg
 65. 614. Td
-(Instamojo pricing: instamojo.com/pricing \(April 2026\)) Tj
+(Instamojo pricing + fees: instamojo.com -- 2%+Rs.3 \(physical\), 5%+Rs.3 \(digital\) + 18% GST) Tj
 ET
 BT
 /F1 9 Tf
@@ -4239,7 +4288,7 @@ BT
 10.3499999999999996 TL
 0.392 0.455 0.545 rg
 65. 598. Td
-(Zoho Commerce pricing: zoho.com/commerce/pricing \(April 2026\)) Tj
+(Zoho Commerce pricing: zoho.com/commerce -- 0% platform fee, plans $22-140/mo USD) Tj
 ET
 BT
 /F1 9 Tf
@@ -4253,7 +4302,7 @@ BT
 10.3499999999999996 TL
 0.392 0.455 0.545 rg
 65. 582. Td
-(StoreHippo pricing: storehippo.com, Crunchbase company profile) Tj
+(Wix eCommerce India: Wix Help Center -- 0% platform fee in India, Razorpay gateway fees only) Tj
 ET
 BT
 /F1 9 Tf
@@ -4267,7 +4316,7 @@ BT
 10.3499999999999996 TL
 0.392 0.455 0.545 rg
 65. 566. Td
-(BigCommerce pricing: bigcommerce.com/pricing \(April 2026\)) Tj
+(StoreHippo pricing: storehippo.com, Crunchbase -- $45-179/mo, transaction fees not publicly disclosed) Tj
 ET
 BT
 /F1 9 Tf
@@ -4281,7 +4330,7 @@ BT
 10.3499999999999996 TL
 0.392 0.455 0.545 rg
 65. 550. Td
-(Wix eCommerce: wix.com/upgrade/ecommerce \(April 2026\)) Tj
+(BigCommerce pricing: bigcommerce.com/pricing -- 0% transaction fees, $29-299/mo) Tj
 ET
 BT
 /F1 9 Tf
@@ -4309,7 +4358,7 @@ BT
 10.3499999999999996 TL
 0.392 0.455 0.545 rg
 65. 518. Td
-(Fluxe pricing and features: Internal product documentation and plan specifications) Tj
+(Fluxe pricing and features: Internal product plan specifications) Tj
 ET
 BT
 /F1 9 Tf
@@ -4335,21 +4384,21 @@ BT
 11.5 TL
 0.059 0.09 0.165 rg
 40. 452. Td
-(Note: Competitor profiles are based on publicly available pricing pages, G2/Capterra reviews, and web research.) Tj
+(Note: All fee data verified from official pricing pages and help center documentation as of April 2026. Payment gateway) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
 40. 439. Td
-(Enterprise pricing is often custom-quoted and may differ. Fluxe feature and pricing assessment based on provided plan) Tj
+(fees \(Razorpay, etc.\) are separate from platform fees and apply to all platforms equally. StoreHippo transaction fees are) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.059 0.09 0.165 rg
 40. 426. Td
-(specifications.) Tj
+(custom-quoted and not publicly available.) Tj
 ET
 BT
 /F1 8 Tf
@@ -4530,7 +4579,7 @@ endobj
 35 0 obj
 <<
 /Producer (jsPDF 4.2.1)
-/CreationDate (D:20260412152212-00'00')
+/CreationDate (D:20260412153416-00'00')
 >>
 endobj
 36 0 obj
@@ -4544,49 +4593,49 @@ endobj
 xref
 0 37
 0000000000 65535 f 
-0000059265 00000 n 
-0000061140 00000 n 
+0000060527 00000 n 
+0000062402 00000 n 
 0000000015 00000 n 
 0000000120 00000 n 
-0000003295 00000 n 
-0000003400 00000 n 
-0000012368 00000 n 
-0000012473 00000 n 
-0000018922 00000 n 
-0000019028 00000 n 
-0000033902 00000 n 
-0000034009 00000 n 
-0000039556 00000 n 
-0000039663 00000 n 
-0000044646 00000 n 
-0000044753 00000 n 
-0000049847 00000 n 
-0000049954 00000 n 
-0000055148 00000 n 
-0000055255 00000 n 
-0000059375 00000 n 
-0000059501 00000 n 
-0000059632 00000 n 
-0000059766 00000 n 
-0000059904 00000 n 
-0000060028 00000 n 
-0000060157 00000 n 
-0000060289 00000 n 
-0000060425 00000 n 
-0000060553 00000 n 
-0000060680 00000 n 
-0000060809 00000 n 
-0000060942 00000 n 
-0000061044 00000 n 
-0000061393 00000 n 
-0000061479 00000 n 
+0000003268 00000 n 
+0000003373 00000 n 
+0000013781 00000 n 
+0000013886 00000 n 
+0000020366 00000 n 
+0000020472 00000 n 
+0000035375 00000 n 
+0000035482 00000 n 
+0000040815 00000 n 
+0000040922 00000 n 
+0000045781 00000 n 
+0000045888 00000 n 
+0000050826 00000 n 
+0000050933 00000 n 
+0000056113 00000 n 
+0000056220 00000 n 
+0000060637 00000 n 
+0000060763 00000 n 
+0000060894 00000 n 
+0000061028 00000 n 
+0000061166 00000 n 
+0000061290 00000 n 
+0000061419 00000 n 
+0000061551 00000 n 
+0000061687 00000 n 
+0000061815 00000 n 
+0000061942 00000 n 
+0000062071 00000 n 
+0000062204 00000 n 
+0000062306 00000 n 
+0000062655 00000 n 
+0000062741 00000 n 
 trailer
 <<
 /Size 37
 /Root 36 0 R
 /Info 35 0 R
-/ID [ <9996FA0C0BE768ED2033EDAEF631D3BA> <9996FA0C0BE768ED2033EDAEF631D3BA> ]
+/ID [ <17F393EB74F72F564936ABB211E96945> <17F393EB74F72F564936ABB211E96945> ]
 >>
 startxref
-61583
+62845
 %%EOF
