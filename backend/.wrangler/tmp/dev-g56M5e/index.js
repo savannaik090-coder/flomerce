@@ -8111,19 +8111,21 @@ async function updateOrderStatus(request, env, user, orderId) {
     const { status, trackingNumber, carrier, cancellationReason } = await request.json();
     const updates = [];
     const values = [];
+    const isRegularOrder = await db.prepare("SELECT id FROM orders WHERE id = ?").bind(orderId).first();
+    const tableName = isRegularOrder ? "orders" : "guest_orders";
     if (status) {
       updates.push("status = ?");
       values.push(status);
       if (status === "confirmed") {
         updates.push('confirmed_at = datetime("now")');
         try {
-          await db.prepare(`ALTER TABLE orders ADD COLUMN confirmed_at TEXT`).run();
+          await db.prepare(`ALTER TABLE ${tableName} ADD COLUMN confirmed_at TEXT`).run();
         } catch {
         }
       } else if (status === "packed") {
         updates.push('packed_at = datetime("now")');
         try {
-          await db.prepare(`ALTER TABLE orders ADD COLUMN packed_at TEXT`).run();
+          await db.prepare(`ALTER TABLE ${tableName} ADD COLUMN packed_at TEXT`).run();
         } catch {
         }
       } else if (status === "shipped") {
@@ -8135,7 +8137,7 @@ async function updateOrderStatus(request, env, user, orderId) {
         if (cancellationReason) {
           try {
             await db.prepare(
-              `ALTER TABLE orders ADD COLUMN cancellation_reason TEXT`
+              `ALTER TABLE ${tableName} ADD COLUMN cancellation_reason TEXT`
             ).run();
           } catch {
           }
@@ -8158,8 +8160,6 @@ async function updateOrderStatus(request, env, user, orderId) {
     const oldBytes = order.row_size_bytes || 0;
     updates.push('updated_at = datetime("now")');
     values.push(orderId);
-    const isRegularOrder = await db.prepare("SELECT id FROM orders WHERE id = ?").bind(orderId).first();
-    const tableName = isRegularOrder ? "orders" : "guest_orders";
     await db.prepare(
       `UPDATE ${tableName} SET ${updates.join(", ")} WHERE id = ?`
     ).bind(...values).run();
@@ -8242,7 +8242,7 @@ async function updateOrderStatus(request, env, user, orderId) {
         let fullOrder = await db.prepare("SELECT * FROM orders WHERE id = ?").bind(orderId).first();
         if (!fullOrder)
           fullOrder = await db.prepare("SELECT * FROM guest_orders WHERE id = ?").bind(orderId).first();
-        if (fullOrder && fullOrder.customer_email) {
+        if (fullOrder) {
           const statusConfig = await getSiteConfig(env, fullOrder.site_id);
           const siteBrandName = statusConfig.brand_name || "Store";
           let statusSettings = {};
@@ -8272,48 +8272,49 @@ async function updateOrderStatus(request, env, user, orderId) {
             coupon_code: fullOrder.coupon_code,
             created_at: fullOrder.created_at
           };
-          let emailOptions = { trackingUrl };
-          if (status === "confirmed" && statusSettings.cancellationEnabled && fullOrder.customer_email) {
-            try {
-              const cancelToken = generateReturnToken();
+          if (fullOrder.customer_email) {
+            let emailOptions = { trackingUrl };
+            if (status === "confirmed" && statusSettings.cancellationEnabled) {
               try {
-                await db.prepare(`ALTER TABLE orders ADD COLUMN cancel_token TEXT`).run();
+                const cancelToken = generateReturnToken();
+                try {
+                  await db.prepare(`ALTER TABLE ${tableName} ADD COLUMN cancel_token TEXT`).run();
+                } catch (e) {
+                }
+                await db.prepare(`UPDATE ${tableName} SET cancel_token = ? WHERE id = ?`).bind(cancelToken, orderId).run();
+                emailOptions.helpUrl = `https://${domain}/order-help/${fullOrder.order_number}?cancelToken=${cancelToken}`;
               } catch (e) {
+                console.error("Cancel token generation error:", e);
               }
-              await db.prepare(`UPDATE orders SET cancel_token = ? WHERE id = ?`).bind(cancelToken, orderId).run();
-              emailOptions.helpUrl = `https://${domain}/order-help/${fullOrder.order_number}?cancelToken=${cancelToken}`;
-            } catch (e) {
-              console.error("Cancel token generation error:", e);
             }
-          }
-          if (status === "confirmed" && statusSettings.gstInvoiceEmailEnabled && fullOrder.customer_email) {
-            try {
-              const invoiceToken = generateReturnToken();
+            if (status === "confirmed" && statusSettings.gstInvoiceEmailEnabled) {
               try {
-                await db.prepare(`ALTER TABLE orders ADD COLUMN invoice_token TEXT`).run();
+                const invoiceToken = generateReturnToken();
+                try {
+                  await db.prepare(`ALTER TABLE orders ADD COLUMN invoice_token TEXT`).run();
+                } catch (e) {
+                }
+                try {
+                  await db.prepare(`ALTER TABLE guest_orders ADD COLUMN invoice_token TEXT`).run();
+                } catch (e) {
+                }
+                await db.prepare(`UPDATE ${tableName} SET invoice_token = ? WHERE id = ?`).bind(invoiceToken, orderId).run();
+                emailOptions.invoiceUrl = `https://${domain}/invoice?order=${fullOrder.order_number}&t=${invoiceToken}&subdomain=${encodeURIComponent(site?.subdomain || "")}`;
               } catch (e) {
+                console.error("Invoice token generation error:", e);
               }
-              try {
-                await db.prepare(`ALTER TABLE guest_orders ADD COLUMN invoice_token TEXT`).run();
-              } catch (e) {
-              }
-              const orderTable = await db.prepare("SELECT id FROM orders WHERE id = ?").bind(orderId).first() ? "orders" : "guest_orders";
-              await db.prepare(`UPDATE ${orderTable} SET invoice_token = ? WHERE id = ?`).bind(invoiceToken, orderId).run();
-              emailOptions.invoiceUrl = `https://${domain}/invoice?order=${fullOrder.order_number}&t=${invoiceToken}&subdomain=${encodeURIComponent(site?.subdomain || "")}`;
-            } catch (e) {
-              console.error("Invoice token generation error:", e);
             }
-          }
-          if (status === "confirmed") {
-            const { html, text } = buildOrderConfirmationEmail(emailOrder, siteBrandName, ownerEmail, statusCurrency, emailOptions, storeTz);
-            await sendEmail(env, fullOrder.customer_email, `Order Confirmed #${fullOrder.order_number} - ${siteBrandName}`, html, text).catch((e) => console.error("Confirmation email error:", e));
-          } else if (status === "packed") {
-            const { html, text } = buildOrderPackedEmail(emailOrder, siteBrandName, ownerEmail, statusCurrency, { trackingUrl }, storeTz);
-            await sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been packed! - ${siteBrandName}`, html, text).catch((e) => console.error("Packed email error:", e));
-          } else if (status === "shipped") {
-            const shipOptions = { trackingUrl, trackingNumber: fullOrder.tracking_number || trackingNumber, carrier: fullOrder.carrier || carrier };
-            const { html, text } = buildOrderShippedEmail(emailOrder, siteBrandName, ownerEmail, statusCurrency, shipOptions, storeTz);
-            await sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been shipped! - ${siteBrandName}`, html, text).catch((e) => console.error("Shipped email error:", e));
+            if (status === "confirmed") {
+              const { html, text } = buildOrderConfirmationEmail(emailOrder, siteBrandName, ownerEmail, statusCurrency, emailOptions, storeTz);
+              await sendEmail(env, fullOrder.customer_email, `Order Confirmed #${fullOrder.order_number} - ${siteBrandName}`, html, text).catch((e) => console.error("Confirmation email error:", e));
+            } else if (status === "packed") {
+              const { html, text } = buildOrderPackedEmail(emailOrder, siteBrandName, ownerEmail, statusCurrency, { trackingUrl }, storeTz);
+              await sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been packed! - ${siteBrandName}`, html, text).catch((e) => console.error("Packed email error:", e));
+            } else if (status === "shipped") {
+              const shipOptions = { trackingUrl, trackingNumber: fullOrder.tracking_number || trackingNumber, carrier: fullOrder.carrier || carrier };
+              const { html, text } = buildOrderShippedEmail(emailOrder, siteBrandName, ownerEmail, statusCurrency, shipOptions, storeTz);
+              await sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been shipped! - ${siteBrandName}`, html, text).catch((e) => console.error("Shipped email error:", e));
+            }
           }
           if (isWhatsAppConfigured(statusSettings) && fullOrder.customer_phone && fullOrder.whatsapp_opted_in) {
             try {
@@ -8333,7 +8334,7 @@ async function updateOrderStatus(request, env, user, orderId) {
           }
         }
       } catch (emailErr) {
-        console.error("Failed to send status update email:", emailErr);
+        console.error("Failed to send status update notifications:", emailErr);
       }
     }
     if (status === "delivered") {
