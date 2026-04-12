@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useSiteConfig } from '../hooks/useSiteConfig.js';
 import { API_BASE } from '../config.js';
+import PhoneInput from '../components/ui/PhoneInput.jsx';
 
 const TIME_SLOTS = [
   '11:00 AM', '12:00 PM', '01:00 PM', '02:00 PM',
@@ -191,7 +192,7 @@ export default function BookAppointmentPage() {
             </div>
             <div className="appt-form-group">
               <label>Phone Number *</label>
-              <input type="tel" name="phone" value={form.phone} onChange={handleChange} required />
+              <PhoneInput value={form.phone} onChange={val => setForm(prev => ({ ...prev, phone: val }))} countryCode="IN" />
             </div>
           </div>
 

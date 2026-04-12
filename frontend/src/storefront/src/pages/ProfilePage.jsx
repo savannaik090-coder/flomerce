@@ -8,6 +8,7 @@ import * as orderService from '../services/orderService.js';
 import { apiRequest } from '../services/api.js';
 import { parseAsUTC, formatDateShortForCustomer } from '../utils/dateFormatter.js';
 import { API_BASE } from '../config.js';
+import PhoneInput from '../components/ui/PhoneInput.jsx';
 
 const RETURN_REASONS = [
   'Received wrong item',
@@ -339,8 +340,8 @@ export default function ProfilePage() {
   const validateAddressForm = useCallback(() => {
     const errs = {};
     if (!addressForm.firstName || addressForm.firstName.trim().length < 2) errs.firstName = 'First name must be at least 2 characters';
-    const phoneDigits = (addressForm.phone || '').replace(/\D/g, '');
-    if (phoneDigits.length > 0 && phoneDigits.length !== 10) errs.phone = 'Please enter a valid 10-digit phone number';
+    const phoneDigits = (addressForm.phone || '').replace(/[^0-9]/g, '');
+    if (phoneDigits.length > 0 && (phoneDigits.length < 7 || phoneDigits.length > 15)) errs.phone = 'Please enter a valid phone number';
     if (!addressForm.houseNumber || addressForm.houseNumber.trim().length < 1) errs.houseNumber = 'House/Building number is required';
     if (addressForm.roadName && addressForm.roadName.trim().length > 0 && addressForm.roadName.trim().length < 5) errs.roadName = 'Road/Area must be at least 5 characters';
     if (!addressForm.city || addressForm.city.trim().length < 2) errs.city = 'City name must be at least 2 characters';
@@ -820,7 +821,12 @@ export default function ProfilePage() {
             </div>
             <div style={{ marginBottom: 20 }}>
               <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>Phone</label>
-              <input type="tel" value={addressForm.phone} onChange={e => handleAddressFieldChange('phone', e.target.value)} style={{ width: '100%', padding: 12, border: `1px solid ${addressFieldErrors.phone ? '#e74c3c' : '#ddd'}`, borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }} />
+              <PhoneInput
+                value={addressForm.phone}
+                onChange={val => handleAddressFieldChange('phone', val)}
+                countryCode="IN"
+                error={addressFieldErrors.phone}
+              />
               {addressFieldErrors.phone && <div style={{ color: '#e74c3c', fontSize: 12, marginTop: 4 }}>{addressFieldErrors.phone}</div>}
             </div>
             <div style={{ marginBottom: 20 }}>

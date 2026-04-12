@@ -3,6 +3,7 @@ import { useSiteConfig } from '../hooks/useSiteConfig.js';
 import { useSEO } from '../hooks/useSEO.js';
 import { useTheme } from '../context/ThemeContext.jsx';
 import { API_BASE } from '../config.js';
+import PhoneInput from '../components/ui/PhoneInput.jsx';
 import '../components/templates/modern/modern.css';
 
 function useContactForm(siteConfig) {
@@ -45,10 +46,10 @@ function useContactForm(siteConfig) {
     }
   }
 
-  return { form, status, submitting, handleChange, handleSubmit };
+  return { form, setForm, status, submitting, handleChange, handleSubmit };
 }
 
-function ClassicContactPage({ siteConfig, brandName, phone, email, address, socialLinks, form, status, submitting, handleChange, handleSubmit }) {
+function ClassicContactPage({ siteConfig, brandName, phone, email, address, socialLinks, form, setForm, status, submitting, handleChange, handleSubmit }) {
   return (
     <div className="contact-page">
       <style>{`
@@ -246,7 +247,7 @@ function ClassicContactPage({ siteConfig, brandName, phone, email, address, soci
                 <div className="form-group"><label>Email Address *</label><input type="email" name="email" value={form.email} onChange={handleChange} required /></div>
               </div>
               <div className="form-row">
-                <div className="form-group"><label>Phone Number</label><input type="tel" name="phone" value={form.phone} onChange={handleChange} /></div>
+                <div className="form-group"><label>Phone Number</label><PhoneInput value={form.phone} onChange={val => setForm(prev => ({ ...prev, phone: val }))} countryCode="IN" /></div>
                 <div className="form-group"><label>Subject *</label><input type="text" name="subject" value={form.subject} onChange={handleChange} required /></div>
               </div>
               <div className="form-group"><label>Message *</label><textarea name="message" value={form.message} onChange={handleChange} required placeholder="How can we help you?" /></div>
@@ -267,7 +268,7 @@ function ClassicContactPage({ siteConfig, brandName, phone, email, address, soci
   );
 }
 
-function ModernContactPage({ siteConfig, brandName, phone, email, address, socialLinks, form, status, submitting, handleChange, handleSubmit }) {
+function ModernContactPage({ siteConfig, brandName, phone, email, address, socialLinks, form, setForm, status, submitting, handleChange, handleSubmit }) {
   return (
     <div>
       <section className="mn-contact-hero">
@@ -309,7 +310,7 @@ function ModernContactPage({ siteConfig, brandName, phone, email, address, socia
                 <div className="mn-form-group"><label>Email Address *</label><input type="email" name="email" value={form.email} onChange={handleChange} required /></div>
               </div>
               <div className="mn-form-row">
-                <div className="mn-form-group"><label>Phone Number</label><input type="tel" name="phone" value={form.phone} onChange={handleChange} /></div>
+                <div className="mn-form-group"><label>Phone Number</label><PhoneInput value={form.phone} onChange={val => setForm(prev => ({ ...prev, phone: val }))} countryCode="IN" /></div>
                 <div className="mn-form-group"><label>Subject *</label><input type="text" name="subject" value={form.subject} onChange={handleChange} required /></div>
               </div>
               <div className="mn-form-group"><label>Message *</label><textarea name="message" value={form.message} onChange={handleChange} required placeholder="How can we help you?" /></div>
@@ -340,9 +341,9 @@ export default function ContactPage() {
   const address = siteConfig?.address || '';
   const socialLinks = siteConfig?.socialLinks || {};
 
-  const { form, status, submitting, handleChange, handleSubmit } = useContactForm(siteConfig);
+  const { form, setForm, status, submitting, handleChange, handleSubmit } = useContactForm(siteConfig);
 
-  const pageProps = { siteConfig, brandName, phone, email, address, socialLinks, form, status, submitting, handleChange, handleSubmit };
+  const pageProps = { siteConfig, brandName, phone, email, address, socialLinks, form, setForm, status, submitting, handleChange, handleSubmit };
 
   return isModern
     ? <ModernContactPage {...pageProps} />

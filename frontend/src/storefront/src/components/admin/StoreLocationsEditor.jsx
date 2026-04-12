@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext, useRef } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import SaveBar from './SaveBar.jsx';
 import { API_BASE } from '../../config.js';
+import PhoneInput from '../ui/PhoneInput.jsx';
 
 const EMPTY_STORE = { name: '', address: '', hours: '', phone: '', mapLink: '', image: '' };
 
@@ -294,7 +295,7 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate }) {
                   </div>
                   <div>
                     <label style={labelStyle}>Phone</label>
-                    <input type="text" value={store.phone} onChange={(e) => updateStore(index, 'phone', e.target.value)} placeholder="+91 9876543210" style={inputStyle} />
+                    <PhoneInput value={store.phone} onChange={val => updateStore(index, 'phone', val)} countryCode="IN" />
                   </div>
                 </div>
 
