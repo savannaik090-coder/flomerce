@@ -238,6 +238,7 @@ export async function ensureTablesExist(env) {
       'CREATE INDEX IF NOT EXISTS idx_sites_user ON sites(user_id)',
       'CREATE INDEX IF NOT EXISTS idx_subscriptions_user ON subscriptions(user_id)',
       'CREATE INDEX IF NOT EXISTS idx_subscriptions_status ON subscriptions(status)',
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_subscriptions_razorpay_sub ON subscriptions(razorpay_subscription_id) WHERE razorpay_subscription_id IS NOT NULL',
       'CREATE INDEX IF NOT EXISTS idx_transactions_order ON payment_transactions(order_id)',
       'CREATE INDEX IF NOT EXISTS idx_transactions_user ON payment_transactions(user_id)',
       'CREATE UNIQUE INDEX IF NOT EXISTS idx_sites_custom_domain ON sites(custom_domain) WHERE custom_domain IS NOT NULL',

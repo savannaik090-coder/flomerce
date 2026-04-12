@@ -269,7 +269,7 @@ async function verifyPayment(request, env) {
           await orderDb.prepare('UPDATE orders SET row_size_bytes = ? WHERE id = ?').bind(newOrderBytes, dbOrderId).run();
           await trackD1Update(env, orderSiteId, oldOrderBytes, newOrderBytes);
         }
-        await processPostPaymentActions(env, order, ctx);
+        await processPostPaymentActions(env, order);
       } else {
         if (orderSiteId) {
           orderDb = orderDb || await resolveSiteDBById(env, orderSiteId);
@@ -310,7 +310,7 @@ async function verifyPayment(request, env) {
                 await trackD1Update(env, guestSiteId, oldGuestBytes, newGuestBytes);
               }
             }
-            await processPostPaymentActions(env, guestOrder, ctx);
+            await processPostPaymentActions(env, guestOrder);
           }
         } catch (guestUpdateErr) {
           console.error('Failed to update guest order status:', guestUpdateErr);
@@ -405,16 +405,7 @@ async function verifySubscriptionPayment(request, env, { razorpay_subscription_i
   }
 }
 
-async function processPostPaymentActions(env, order, ctx) {
-  try {
-    const orderItems = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
-    for (const item of orderItems) {
-      await updateProductStock(env, item.productId, item.quantity, 'decrement', order.site_id, ctx);
-    }
-  } catch (stockErr) {
-    console.error('Failed to decrement stock after payment:', stockErr);
-  }
-
+async function processPostPaymentActions(env, order) {
   try {
     const orderItems = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
     const shippingAddress = typeof order.shipping_address === 'string' ? JSON.parse(order.shipping_address) : order.shipping_address;
@@ -1001,6 +992,29 @@ export async function activateSubscription(env, userId, planName, billingCycle, 
     }
 
     const resolvedAmount = amount || 0;
+
+    if (razorpaySubscriptionId) {
+      const existingSub = await env.DB.prepare(
+        `SELECT id, status FROM subscriptions WHERE razorpay_subscription_id = ?`
+      ).bind(razorpaySubscriptionId).first();
+      if (existingSub) {
+        if (existingSub.status === 'active') {
+          console.log(`Subscription already active for razorpay_subscription_id=${razorpaySubscriptionId}, skipping duplicate`);
+          return true;
+        }
+        await env.DB.prepare(
+          `UPDATE subscriptions SET status = 'active', plan = ?, billing_cycle = ?, amount = ?, site_id = ?, current_period_start = ?, current_period_end = ?, updated_at = datetime('now') WHERE id = ?`
+        ).bind(planName, billingCycle, resolvedAmount, siteId || null, periodStart.toISOString(), periodEnd.toISOString(), existingSub.id).run();
+        console.log(`Reactivated existing subscription for razorpay_subscription_id=${razorpaySubscriptionId}`);
+
+        if (siteId) {
+          await env.DB.prepare(
+            `UPDATE sites SET subscription_plan = ?, subscription_expires_at = ?, updated_at = datetime('now') WHERE id = ? AND COALESCE(subscription_plan, '') != 'enterprise'`
+          ).bind(planName, periodEnd.toISOString(), siteId).run();
+        }
+        return true;
+      }
+    }
 
     await env.DB.prepare(
       `INSERT INTO subscriptions (id, user_id, site_id, plan, billing_cycle, amount, status, razorpay_subscription_id, current_period_start, current_period_end, created_at)

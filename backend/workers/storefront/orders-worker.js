@@ -561,15 +561,15 @@ async function createOrder(request, env, user, ctx) {
 
     await trackD1Write(env, siteId, rowBytes);
 
-    if (!isPendingPayment) {
-      const orderDb = await resolveSiteDBById(env, siteId);
-      for (const item of processedItems) {
-        const locationDeducted = await deductStockByLocation(orderDb, siteId, item.productId, item.quantity);
-        if (!locationDeducted) {
-          await updateProductStock(env, item.productId, item.quantity, 'decrement', siteId, ctx);
-        }
+    const orderDb = await resolveSiteDBById(env, siteId);
+    for (const item of processedItems) {
+      const locationDeducted = await deductStockByLocation(orderDb, siteId, item.productId, item.quantity);
+      if (!locationDeducted) {
+        await updateProductStock(env, item.productId, item.quantity, 'decrement', siteId, ctx);
       }
+    }
 
+    if (!isPendingPayment) {
       try {
         await sendOrderEmails(env, siteId, {
           orderId, orderNumber, processedItems, subtotal, discount, coupon_code: appliedCouponCode, shippingCost, total, paymentMethod, customerName, customerEmail, customerPhone, shippingAddress, isGuest: false, currency: resolvedCurrency, created_at: new Date().toISOString()
@@ -619,9 +619,9 @@ async function updateOrderStatus(request, env, user, orderId) {
         const admin = await validateSiteAdmin(request, env, adminSiteId);
         if (admin && hasPermission(admin, 'orders')) {
           const sdb = await resolveSiteDBById(env, adminSiteId);
-          let found = await sdb.prepare('SELECT id, site_id, row_size_bytes FROM orders WHERE id = ? AND site_id = ?').bind(orderId, adminSiteId).first();
+          let found = await sdb.prepare('SELECT id, site_id, status, row_size_bytes FROM orders WHERE id = ? AND site_id = ?').bind(orderId, adminSiteId).first();
           if (!found) {
-            found = await sdb.prepare('SELECT id, site_id, row_size_bytes FROM guest_orders WHERE id = ? AND site_id = ?').bind(orderId, adminSiteId).first();
+            found = await sdb.prepare('SELECT id, site_id, status, row_size_bytes FROM guest_orders WHERE id = ? AND site_id = ?').bind(orderId, adminSiteId).first();
           }
           if (found) {
             order = found;
@@ -639,11 +639,11 @@ async function updateOrderStatus(request, env, user, orderId) {
       for (const s of (userSites.results || [])) {
         const sdb = await resolveSiteDBById(env, s.id);
         let found = await sdb.prepare(
-          'SELECT id, site_id, row_size_bytes FROM orders WHERE id = ? AND site_id = ?'
+          'SELECT id, site_id, status, row_size_bytes FROM orders WHERE id = ? AND site_id = ?'
         ).bind(orderId, s.id).first();
         if (!found) {
           found = await sdb.prepare(
-            'SELECT id, site_id, row_size_bytes FROM guest_orders WHERE id = ? AND site_id = ?'
+            'SELECT id, site_id, status, row_size_bytes FROM guest_orders WHERE id = ? AND site_id = ?'
           ).bind(orderId, s.id).first();
         }
         if (found) {
@@ -718,16 +718,39 @@ async function updateOrderStatus(request, env, user, orderId) {
     updates.push('updated_at = datetime("now")');
     values.push(orderId);
 
+    const isRegularOrder = await db.prepare('SELECT id FROM orders WHERE id = ?').bind(orderId).first();
+    const tableName = isRegularOrder ? 'orders' : 'guest_orders';
+
     await db.prepare(
-      `UPDATE orders SET ${updates.join(', ')} WHERE id = ?`
+      `UPDATE ${tableName} SET ${updates.join(', ')} WHERE id = ?`
     ).bind(...values).run();
 
-    const updatedOrderRow = await db.prepare('SELECT * FROM orders WHERE id = ?').bind(orderId).first();
+    const updatedOrderRow = await db.prepare(`SELECT * FROM ${tableName} WHERE id = ?`).bind(orderId).first();
     const newBytes = updatedOrderRow ? estimateRowBytes(updatedOrderRow) : oldBytes;
     if (updatedOrderRow) {
-      await db.prepare('UPDATE orders SET row_size_bytes = ? WHERE id = ?').bind(newBytes, orderId).run();
+      await db.prepare(`UPDATE ${tableName} SET row_size_bytes = ? WHERE id = ?`).bind(newBytes, orderId).run();
     }
     await trackD1Update(env, resolvedSiteId, oldBytes, newBytes);
+
+    if (status === 'cancelled') {
+      const prevStatus = order.status || order.prev_status;
+      if (prevStatus && prevStatus !== 'cancelled') {
+        try {
+          let cancelledOrder = await db.prepare('SELECT items, site_id FROM orders WHERE id = ?').bind(orderId).first();
+          if (!cancelledOrder) {
+            cancelledOrder = await db.prepare('SELECT items, site_id FROM guest_orders WHERE id = ?').bind(orderId).first();
+          }
+          if (cancelledOrder) {
+            const cancelItems = typeof cancelledOrder.items === 'string' ? JSON.parse(cancelledOrder.items) : cancelledOrder.items;
+            for (const item of cancelItems) {
+              await updateProductStock(env, item.productId, item.quantity, 'increment', cancelledOrder.site_id);
+            }
+          }
+        } catch (stockRestoreErr) {
+          console.error('Failed to restore stock on cancellation:', stockRestoreErr);
+        }
+      }
+    }
 
     if (status === 'cancelled' && cancellationReason) {
       try {
@@ -1122,15 +1145,15 @@ async function createGuestOrder(request, env, ctx) {
 
     await trackD1Write(env, siteId, rowBytes);
 
-    if (!isPendingPayment) {
-      const guestOrderDb = await resolveSiteDBById(env, siteId);
-      for (const item of processedItems) {
-        const locationDeducted = await deductStockByLocation(guestOrderDb, siteId, item.productId, item.quantity);
-        if (!locationDeducted) {
-          await updateProductStock(env, item.productId, item.quantity, 'decrement', siteId, ctx);
-        }
+    const guestOrderDb = await resolveSiteDBById(env, siteId);
+    for (const item of processedItems) {
+      const locationDeducted = await deductStockByLocation(guestOrderDb, siteId, item.productId, item.quantity);
+      if (!locationDeducted) {
+        await updateProductStock(env, item.productId, item.quantity, 'decrement', siteId, ctx);
       }
+    }
 
+    if (!isPendingPayment) {
       try {
         await sendOrderEmails(env, siteId, {
           orderId, orderNumber, processedItems, subtotal, discount: 0, coupon_code: null, shippingCost: guestShippingCost, total, paymentMethod, customerName, customerEmail, customerPhone, shippingAddress, isGuest: true, currency: resolvedGuestCurrency, created_at: new Date().toISOString()

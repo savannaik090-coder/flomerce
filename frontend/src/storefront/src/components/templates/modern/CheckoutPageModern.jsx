@@ -285,9 +285,15 @@ export default function CheckoutPageModern() {
       let apiRequest;
       try {
         ({ apiRequest } = await import('../../../services/api.js'));
+
+        const dbOrder = await orderService.createOrder(orderData);
+        const order = dbOrder.data || dbOrder.order || dbOrder;
+        const createdOrderId = order.id || order.orderId;
+        const orderNumber = order.orderNumber || order.order_number;
+
         const paymentResult = await apiRequest('/api/payments/create-order', {
           method: 'POST',
-          body: JSON.stringify({ amount: finalTotal, currency: siteDefaultCurrency, receipt: `order_${Date.now()}`, siteId: siteConfig?.id, notes: {} }),
+          body: JSON.stringify({ amount: finalTotal, currency: siteDefaultCurrency, receipt: `order_${createdOrderId || Date.now()}`, siteId: siteConfig?.id, orderId: createdOrderId, notes: {} }),
         });
         const paymentData = paymentResult.data || paymentResult;
         const razorpayOrderId = paymentData.orderId || paymentData.razorpay_order_id;
@@ -306,15 +312,11 @@ export default function CheckoutPageModern() {
           handler: async function (response) {
             setLoading(true);
             try {
-              const dbOrder = await orderService.createOrder(orderData);
-              const order = dbOrder.data || dbOrder.order || dbOrder;
-              const orderId = order.id || order.orderId;
-              const orderNumber = order.orderNumber || order.order_number;
               await apiRequest('/api/payments/verify', {
                 method: 'POST',
-                body: JSON.stringify({ razorpay_order_id: response.razorpay_order_id, razorpay_payment_id: response.razorpay_payment_id, razorpay_signature: response.razorpay_signature, siteId: siteConfig?.id, orderId }),
+                body: JSON.stringify({ razorpay_order_id: response.razorpay_order_id, razorpay_payment_id: response.razorpay_payment_id, razorpay_signature: response.razorpay_signature, siteId: siteConfig?.id, orderId: createdOrderId }),
               });
-              const ref = orderNumber || orderId || 'ORD-' + Date.now();
+              const ref = orderNumber || createdOrderId || 'ORD-' + Date.now();
               setOrderRef(ref);
               setPlacedOrderDetails({ items: snapshotItems, address: snapshotAddress, paymentMethod: 'razorpay', total: snapshotTotal, discount: snapshotDiscount, couponCode: snapshotCoupon, originalTotal: subtotal, shippingCost });
               setOrderPlaced(true);

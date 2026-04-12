@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-Qx9gwi/checked-fetch.js
+// .wrangler/tmp/bundle-0ELzVt/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-Qx9gwi/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-0ELzVt/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-Qx9gwi/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-0ELzVt/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-Qx9gwi/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-0ELzVt/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -1390,7 +1390,7 @@ __export(site_admin_worker_exports, {
   hasPermission: () => hasPermission,
   validateSiteAdmin: () => validateSiteAdmin
 });
-async function handleSiteAdmin(request, env, path, ctx2) {
+async function handleSiteAdmin(request, env, path, ctx) {
   const corsResponse = handleCORS(request);
   if (corsResponse)
     return corsResponse;
@@ -1406,7 +1406,7 @@ async function handleSiteAdmin(request, env, path, ctx2) {
     case "staff-logout":
       return staffLogout(request, env);
     case "seo":
-      return handleSEO(request, env, pathParts, ctx2);
+      return handleSEO(request, env, pathParts, ctx);
     default:
       return errorResponse("Site admin endpoint not found", 404);
   }
@@ -1647,38 +1647,38 @@ async function ensureSiteAdminSessionsTable(env) {
     console.error("Error ensuring site_admin_sessions table:", error);
   }
 }
-async function handleSEO(request, env, pathParts, ctx2) {
+async function handleSEO(request, env, pathParts, ctx) {
   const subResource = pathParts[3];
   const resourceId = pathParts[4];
   if (!subResource) {
     if (request.method === "GET")
       return getSiteSEO(request, env);
     if (request.method === "PUT")
-      return saveSiteSEO(request, env, ctx2);
+      return saveSiteSEO(request, env, ctx);
   }
   if (subResource === "categories") {
     if (request.method === "GET")
       return getCategoriesSEO(request, env);
     if (request.method === "PUT" && resourceId)
-      return saveCategorySEO(request, env, resourceId, ctx2);
+      return saveCategorySEO(request, env, resourceId, ctx);
   }
   if (subResource === "products") {
     if (request.method === "GET")
       return getProductsSEO(request, env);
     if (request.method === "PUT" && resourceId)
-      return saveProductSEO(request, env, resourceId, ctx2);
+      return saveProductSEO(request, env, resourceId, ctx);
   }
   if (subResource === "pages") {
     if (request.method === "GET")
       return getPagesSEO(request, env);
     if (request.method === "PUT" && resourceId)
-      return savePageSEO(request, env, resourceId, ctx2);
+      return savePageSEO(request, env, resourceId, ctx);
   }
   if (subResource === "social") {
     if (request.method === "GET")
       return getSocialTags(request, env);
     if (request.method === "PUT")
-      return saveSocialTags(request, env, ctx2);
+      return saveSocialTags(request, env, ctx);
   }
   return errorResponse("SEO endpoint not found", 404);
 }
@@ -1710,7 +1710,7 @@ async function getSiteSEO(request, env) {
     return errorResponse("Failed to fetch SEO settings", 500);
   }
 }
-async function saveSiteSEO(request, env, ctx2) {
+async function saveSiteSEO(request, env, ctx) {
   try {
     const { siteId, seo_title, seo_description, seo_og_image, seo_keywords, seo_robots, google_verification, favicon_url } = await request.json();
     if (!siteId)
@@ -1777,7 +1777,7 @@ async function getCategoriesSEO(request, env) {
     return errorResponse("Failed to fetch categories", 500);
   }
 }
-async function saveCategorySEO(request, env, categoryId, ctx2) {
+async function saveCategorySEO(request, env, categoryId, ctx) {
   try {
     const { siteId, seo_title, seo_description, seo_og_image, seo_keywords } = await request.json();
     if (!siteId)
@@ -1809,8 +1809,8 @@ async function saveCategorySEO(request, env, categoryId, ctx2) {
       await db.prepare("UPDATE categories SET row_size_bytes = ? WHERE id = ?").bind(newBytes, categoryId).run();
       await trackD1Update(env, siteId, oldBytes, newBytes);
     }
-    if (ctx2)
-      ctx2.waitUntil(purgeStorefrontCache(env, siteId, ["categories"]));
+    if (ctx)
+      ctx.waitUntil(purgeStorefrontCache(env, siteId, ["categories"]));
     return jsonResponse({ success: true, message: "Category SEO saved" });
   } catch (err) {
     console.error("saveCategorySEO error:", err);
@@ -1851,7 +1851,7 @@ async function getProductsSEO(request, env) {
     return errorResponse("Failed to fetch products", 500);
   }
 }
-async function saveProductSEO(request, env, productId, ctx2) {
+async function saveProductSEO(request, env, productId, ctx) {
   try {
     const { siteId, seo_title, seo_description, seo_og_image, seo_keywords } = await request.json();
     if (!siteId)
@@ -1883,8 +1883,8 @@ async function saveProductSEO(request, env, productId, ctx2) {
       await db.prepare("UPDATE products SET row_size_bytes = ? WHERE id = ?").bind(newBytes, productId).run();
       await trackD1Update(env, siteId, oldBytes, newBytes);
     }
-    if (ctx2)
-      ctx2.waitUntil(purgeStorefrontCache(env, siteId, ["products"]));
+    if (ctx)
+      ctx.waitUntil(purgeStorefrontCache(env, siteId, ["products"]));
     return jsonResponse({ success: true, message: "Product SEO saved" });
   } catch (err) {
     console.error("saveProductSEO error:", err);
@@ -1918,7 +1918,7 @@ async function getPagesSEO(request, env) {
     return errorResponse("Failed to fetch page SEO", 500);
   }
 }
-async function savePageSEO(request, env, pageType, ctx2) {
+async function savePageSEO(request, env, pageType, ctx) {
   try {
     const { siteId, seo_title, seo_description, seo_og_image, seo_keywords } = await request.json();
     if (!siteId)
@@ -1999,7 +1999,7 @@ async function getSocialTags(request, env) {
     return errorResponse("Failed to fetch social tags", 500);
   }
 }
-async function saveSocialTags(request, env, ctx2) {
+async function saveSocialTags(request, env, ctx) {
   try {
     const {
       siteId,
@@ -2365,12 +2365,12 @@ var init_site_admin_worker = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-Qx9gwi/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-0ELzVt/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-Qx9gwi/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-0ELzVt/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -3990,7 +3990,7 @@ __name(deleteCustomHostname, "deleteCustomHostname");
 init_site_db();
 init_usage_tracker();
 init_cache();
-async function handleSites(request, env, path, ctx2) {
+async function handleSites(request, env, path, ctx) {
   const corsResponse = handleCORS(request);
   if (corsResponse)
     return corsResponse;
@@ -4051,11 +4051,11 @@ async function handleSites(request, env, path, ctx2) {
   if (method === "PUT" && siteId) {
     const user2 = await validateAuth(request, env);
     if (user2) {
-      return updateSite(request, env, user2, siteId, ctx2);
+      return updateSite(request, env, user2, siteId, ctx);
     }
     const siteAdmin = await validateSiteAdmin(request, env, siteId);
     if (siteAdmin) {
-      return updateSiteAsAdmin(request, env, siteId, ctx2);
+      return updateSiteAsAdmin(request, env, siteId, ctx);
     }
     return errorResponse("Unauthorized", 401, "UNAUTHORIZED");
   }
@@ -4464,7 +4464,7 @@ async function createUserCategories(env, db, siteId, categories) {
 }
 __name(createUserCategories, "createUserCategories");
 var CONFIG_FIELDS = ["brand_name", "logo_url", "favicon_url", "primary_color", "secondary_color", "phone", "email", "address", "social_links", "settings", "currency"];
-async function updateSite(request, env, user, siteId, ctx2) {
+async function updateSite(request, env, user, siteId, ctx) {
   if (!siteId) {
     return errorResponse("Site ID is required");
   }
@@ -4528,8 +4528,8 @@ async function updateSite(request, env, user, siteId, ctx2) {
         'UPDATE sites SET brand_name = ?, updated_at = datetime("now") WHERE id = ?'
       ).bind(brandNameUpdate[1], siteId).run();
     }
-    if (ctx2)
-      ctx2.waitUntil(purgeStorefrontCache(env, siteId, ["site"]));
+    if (ctx)
+      ctx.waitUntil(purgeStorefrontCache(env, siteId, ["site"]));
     return successResponse(null, "Site updated successfully");
   } catch (error) {
     console.error("Update site error:", error);
@@ -4537,7 +4537,7 @@ async function updateSite(request, env, user, siteId, ctx2) {
   }
 }
 __name(updateSite, "updateSite");
-async function updateSiteAsAdmin(request, env, siteId, ctx2) {
+async function updateSiteAsAdmin(request, env, siteId, ctx) {
   try {
     const updates = await request.json();
     const siteDB = await resolveSiteDBById(env, siteId);
@@ -4592,8 +4592,8 @@ async function updateSiteAsAdmin(request, env, siteId, ctx2) {
         'UPDATE sites SET brand_name = ?, updated_at = datetime("now") WHERE id = ?'
       ).bind(brandNameUpdate[1], siteId).run();
     }
-    if (ctx2)
-      ctx2.waitUntil(purgeStorefrontCache(env, siteId, ["site"]));
+    if (ctx)
+      ctx.waitUntil(purgeStorefrontCache(env, siteId, ["site"]));
     return successResponse(null, "Site updated successfully");
   } catch (error) {
     console.error("Update site as admin error:", error);
@@ -5596,7 +5596,7 @@ async function triggerAutoNotification(env, siteId, type, payload) {
 __name(triggerAutoNotification, "triggerAutoNotification");
 
 // workers/storefront/products-worker.js
-async function handleProducts(request, env, path, ctx2) {
+async function handleProducts(request, env, path, ctx) {
   const corsResponse = handleCORS(request);
   if (corsResponse)
     return corsResponse;
@@ -5662,11 +5662,11 @@ async function handleProducts(request, env, path, ctx2) {
     case "POST":
       if (adminPerms && !hasPermission(adminPerms, "products"))
         return errorResponse("You do not have permission to manage products", 403);
-      return createProduct(request, env, user, ctx2);
+      return createProduct(request, env, user, ctx);
     case "PUT":
       if (adminPerms && !hasPermission(adminPerms, "products"))
         return errorResponse("You do not have permission to manage products", 403);
-      return updateProduct(request, env, user, productId, ctx2);
+      return updateProduct(request, env, user, productId, ctx);
     case "DELETE":
       if (adminPerms && !hasPermission(adminPerms, "products"))
         return errorResponse("You do not have permission to manage products", 403);
@@ -5804,7 +5804,7 @@ async function getProduct(env, productId, siteId, subdomain) {
   }
 }
 __name(getProduct, "getProduct");
-async function createProduct(request, env, user, ctx2) {
+async function createProduct(request, env, user, ctx) {
   try {
     const data = await request.json();
     const { siteId, name, description, shortDescription, price, comparePrice, costPrice, sku, stock, categoryId, subcategoryId, images, thumbnailUrl, mainImageIndex, tags, isFeatured, weight, dimensions, options, hsnCode, gstRate } = data;
@@ -5901,8 +5901,8 @@ async function createProduct(request, env, user, ctx2) {
       }
     }
     await trackD1Write(env, siteId, rowBytes);
-    if (ctx2) {
-      ctx2.waitUntil(
+    if (ctx) {
+      ctx.waitUntil(
         triggerAutoNotification(env, siteId, "newProduct", {
           title: "New Arrival!",
           body: `Check out our new product: ${sanitizeInput(name)}`,
@@ -5912,8 +5912,8 @@ async function createProduct(request, env, user, ctx2) {
         }).catch((err) => console.error("[Notifications] newProduct auto-trigger failed:", err))
       );
     }
-    if (ctx2)
-      ctx2.waitUntil(purgeStorefrontCache(env, siteId, ["products"], { productId }));
+    if (ctx)
+      ctx.waitUntil(purgeStorefrontCache(env, siteId, ["products"], { productId }));
     return successResponse({ id: productId, slug }, "Product created successfully");
   } catch (error) {
     console.error("Create product error:", error);
@@ -5924,7 +5924,7 @@ async function createProduct(request, env, user, ctx2) {
   }
 }
 __name(createProduct, "createProduct");
-async function updateProduct(request, env, user, productId, ctx2) {
+async function updateProduct(request, env, user, productId, ctx) {
   if (!productId) {
     return errorResponse("Product ID is required");
   }
@@ -6038,8 +6038,8 @@ async function updateProduct(request, env, user, productId, ctx2) {
       const prodThumb = updatedProdRow.thumbnail_url || oldProductData.thumbnail_url || "/icon-192.png";
       const prodLink = `/product/${productId}`;
       if (updates.price !== void 0 && typeof oldProductData.price === "number" && typeof updatedProdRow.price === "number" && updatedProdRow.price < oldProductData.price) {
-        if (ctx2) {
-          ctx2.waitUntil(
+        if (ctx) {
+          ctx.waitUntil(
             triggerAutoNotification(env, resolvedSiteId, "priceDrop", {
               title: "Price Drop!",
               body: `Great news! ${prodName} just got a price drop. Don't miss out!`,
@@ -6051,8 +6051,8 @@ async function updateProduct(request, env, user, productId, ctx2) {
         }
       }
       if (updates.stock !== void 0 && (oldProductData.stock === 0 || oldProductData.stock === null) && updatedProdRow.stock > 0) {
-        if (ctx2) {
-          ctx2.waitUntil(
+        if (ctx) {
+          ctx.waitUntil(
             triggerAutoNotification(env, resolvedSiteId, "backInStock", {
               title: "Back in Stock!",
               body: `${prodName} is available again. Grab it before it sells out!`,
@@ -6067,8 +6067,8 @@ async function updateProduct(request, env, user, productId, ctx2) {
         const oldStk = oldProductData.stock;
         const newStk = updatedProdRow.stock;
         if (newStk > 0 && newStk <= 3 && (oldStk === null || oldStk > 3)) {
-          if (ctx2) {
-            ctx2.waitUntil(
+          if (ctx) {
+            ctx.waitUntil(
               triggerAutoNotification(env, resolvedSiteId, "lowStock", {
                 title: "Selling Out Fast!",
                 body: `Only ${newStk} left in stock for ${prodName}. Hurry up!`,
@@ -6081,8 +6081,8 @@ async function updateProduct(request, env, user, productId, ctx2) {
         }
       }
     }
-    if (ctx2)
-      ctx2.waitUntil(purgeStorefrontCache(env, resolvedSiteId, ["products"], { productId }));
+    if (ctx)
+      ctx.waitUntil(purgeStorefrontCache(env, resolvedSiteId, ["products"], { productId }));
     return successResponse(null, "Product updated successfully");
   } catch (error) {
     console.error("Update product error:", error);
@@ -6164,7 +6164,7 @@ async function deleteProduct(env, user, productId) {
   }
 }
 __name(deleteProduct, "deleteProduct");
-async function updateProductStock(env, productId, quantity, operation = "decrement", siteId = null, ctx2 = null) {
+async function updateProductStock(env, productId, quantity, operation = "decrement", siteId = null, ctx = null) {
   try {
     if (siteId && await checkMigrationLock(env, siteId)) {
       console.error("Stock update blocked: site migration in progress");
@@ -6197,8 +6197,8 @@ async function updateProductStock(env, productId, quantity, operation = "decreme
           image: prodThumb,
           data: { url: `/product/${productId}` }
         }).catch((err) => console.error("[Notifications] lowStock auto-trigger failed:", err));
-        if (ctx2) {
-          ctx2.waitUntil(notifPromise);
+        if (ctx) {
+          ctx.waitUntil(notifPromise);
         }
       }
     }
@@ -6320,7 +6320,7 @@ async function ensureLocationTables(db) {
   )`).run();
 }
 __name(ensureLocationTables, "ensureLocationTables");
-async function handleInventoryLocations(request, env, path, ctx2) {
+async function handleInventoryLocations(request, env, path, ctx) {
   const corsResponse = handleCORS(request);
   if (corsResponse)
     return corsResponse;
@@ -6675,7 +6675,7 @@ __name(deductStockByLocation, "deductStockByLocation");
 init_usage_tracker();
 init_site_db();
 init_config();
-async function handleOrders(request, env, path, ctx2) {
+async function handleOrders(request, env, path, ctx) {
   const corsResponse = handleCORS(request);
   if (corsResponse)
     return corsResponse;
@@ -6699,7 +6699,7 @@ async function handleOrders(request, env, path, ctx2) {
     return validateStock(request, env);
   }
   if (action === "guest") {
-    return handleGuestOrder(request, env, method, orderId, ctx2);
+    return handleGuestOrder(request, env, method, orderId, ctx);
   }
   if (action === "track") {
     return trackOrder(env, orderId, request);
@@ -6745,7 +6745,7 @@ async function handleOrders(request, env, path, ctx2) {
       }
       return getOrders(request, env, user, db);
     case "POST":
-      return createOrder(request, env, user, ctx2);
+      return createOrder(request, env, user, ctx);
     case "PUT":
       return updateOrderStatus(request, env, user, orderId);
     default:
@@ -6923,7 +6923,7 @@ async function getOrder(env, user, orderId, request, preResolvedDb) {
   }
 }
 __name(getOrder, "getOrder");
-async function createOrder(request, env, user, ctx2) {
+async function createOrder(request, env, user, ctx) {
   try {
     const data = await request.json();
     const { siteId, items, shippingAddress, billingAddress, customerName, customerEmail, customerPhone, paymentMethod, notes, couponCode, currency: orderCurrency } = data;
@@ -7171,14 +7171,14 @@ async function createOrder(request, env, user, ctx2) {
       rowBytes
     ).run();
     await trackD1Write(env, siteId, rowBytes);
-    if (!isPendingPayment) {
-      const orderDb = await resolveSiteDBById(env, siteId);
-      for (const item of processedItems) {
-        const locationDeducted = await deductStockByLocation(orderDb, siteId, item.productId, item.quantity);
-        if (!locationDeducted) {
-          await updateProductStock(env, item.productId, item.quantity, "decrement", siteId, ctx2);
-        }
+    const orderDb = await resolveSiteDBById(env, siteId);
+    for (const item of processedItems) {
+      const locationDeducted = await deductStockByLocation(orderDb, siteId, item.productId, item.quantity);
+      if (!locationDeducted) {
+        await updateProductStock(env, item.productId, item.quantity, "decrement", siteId, ctx);
       }
+    }
+    if (!isPendingPayment) {
       try {
         await sendOrderEmails(env, siteId, {
           orderId,
@@ -7241,9 +7241,9 @@ async function updateOrderStatus(request, env, user, orderId) {
         const admin = await validateSiteAdmin2(request, env, adminSiteId);
         if (admin && hasPermission2(admin, "orders")) {
           const sdb = await resolveSiteDBById(env, adminSiteId);
-          let found = await sdb.prepare("SELECT id, site_id, row_size_bytes FROM orders WHERE id = ? AND site_id = ?").bind(orderId, adminSiteId).first();
+          let found = await sdb.prepare("SELECT id, site_id, status, row_size_bytes FROM orders WHERE id = ? AND site_id = ?").bind(orderId, adminSiteId).first();
           if (!found) {
-            found = await sdb.prepare("SELECT id, site_id, row_size_bytes FROM guest_orders WHERE id = ? AND site_id = ?").bind(orderId, adminSiteId).first();
+            found = await sdb.prepare("SELECT id, site_id, status, row_size_bytes FROM guest_orders WHERE id = ? AND site_id = ?").bind(orderId, adminSiteId).first();
           }
           if (found) {
             order = found;
@@ -7259,11 +7259,11 @@ async function updateOrderStatus(request, env, user, orderId) {
       for (const s of userSites.results || []) {
         const sdb = await resolveSiteDBById(env, s.id);
         let found = await sdb.prepare(
-          "SELECT id, site_id, row_size_bytes FROM orders WHERE id = ? AND site_id = ?"
+          "SELECT id, site_id, status, row_size_bytes FROM orders WHERE id = ? AND site_id = ?"
         ).bind(orderId, s.id).first();
         if (!found) {
           found = await sdb.prepare(
-            "SELECT id, site_id, row_size_bytes FROM guest_orders WHERE id = ? AND site_id = ?"
+            "SELECT id, site_id, status, row_size_bytes FROM guest_orders WHERE id = ? AND site_id = ?"
           ).bind(orderId, s.id).first();
         }
         if (found) {
@@ -7331,15 +7331,36 @@ async function updateOrderStatus(request, env, user, orderId) {
     const oldBytes = order.row_size_bytes || 0;
     updates.push('updated_at = datetime("now")');
     values.push(orderId);
+    const isRegularOrder = await db.prepare("SELECT id FROM orders WHERE id = ?").bind(orderId).first();
+    const tableName = isRegularOrder ? "orders" : "guest_orders";
     await db.prepare(
-      `UPDATE orders SET ${updates.join(", ")} WHERE id = ?`
+      `UPDATE ${tableName} SET ${updates.join(", ")} WHERE id = ?`
     ).bind(...values).run();
-    const updatedOrderRow = await db.prepare("SELECT * FROM orders WHERE id = ?").bind(orderId).first();
+    const updatedOrderRow = await db.prepare(`SELECT * FROM ${tableName} WHERE id = ?`).bind(orderId).first();
     const newBytes = updatedOrderRow ? estimateRowBytes(updatedOrderRow) : oldBytes;
     if (updatedOrderRow) {
-      await db.prepare("UPDATE orders SET row_size_bytes = ? WHERE id = ?").bind(newBytes, orderId).run();
+      await db.prepare(`UPDATE ${tableName} SET row_size_bytes = ? WHERE id = ?`).bind(newBytes, orderId).run();
     }
     await trackD1Update(env, resolvedSiteId, oldBytes, newBytes);
+    if (status === "cancelled") {
+      const prevStatus = order.status || order.prev_status;
+      if (prevStatus && prevStatus !== "cancelled") {
+        try {
+          let cancelledOrder = await db.prepare("SELECT items, site_id FROM orders WHERE id = ?").bind(orderId).first();
+          if (!cancelledOrder) {
+            cancelledOrder = await db.prepare("SELECT items, site_id FROM guest_orders WHERE id = ?").bind(orderId).first();
+          }
+          if (cancelledOrder) {
+            const cancelItems = typeof cancelledOrder.items === "string" ? JSON.parse(cancelledOrder.items) : cancelledOrder.items;
+            for (const item of cancelItems) {
+              await updateProductStock(env, item.productId, item.quantity, "increment", cancelledOrder.site_id);
+            }
+          }
+        } catch (stockRestoreErr) {
+          console.error("Failed to restore stock on cancellation:", stockRestoreErr);
+        }
+      }
+    }
     if (status === "cancelled" && cancellationReason) {
       try {
         const fullOrder = await db.prepare("SELECT * FROM orders WHERE id = ?").bind(orderId).first();
@@ -7561,9 +7582,9 @@ async function updateOrderStatus(request, env, user, orderId) {
   }
 }
 __name(updateOrderStatus, "updateOrderStatus");
-async function handleGuestOrder(request, env, method, orderId, ctx2) {
+async function handleGuestOrder(request, env, method, orderId, ctx) {
   if (method === "POST") {
-    return createGuestOrder(request, env, ctx2);
+    return createGuestOrder(request, env, ctx);
   }
   if (method === "GET" && orderId) {
     return getGuestOrder(env, orderId, request);
@@ -7571,7 +7592,7 @@ async function handleGuestOrder(request, env, method, orderId, ctx2) {
   return errorResponse("Method not allowed", 405);
 }
 __name(handleGuestOrder, "handleGuestOrder");
-async function createGuestOrder(request, env, ctx2) {
+async function createGuestOrder(request, env, ctx) {
   try {
     const data = await request.json();
     const { siteId, items, shippingAddress, customerName, customerEmail, customerPhone, paymentMethod, currency: guestOrderCurrency } = data;
@@ -7746,14 +7767,14 @@ async function createGuestOrder(request, env, ctx2) {
       rowBytes
     ).run();
     await trackD1Write(env, siteId, rowBytes);
-    if (!isPendingPayment) {
-      const guestOrderDb = await resolveSiteDBById(env, siteId);
-      for (const item of processedItems) {
-        const locationDeducted = await deductStockByLocation(guestOrderDb, siteId, item.productId, item.quantity);
-        if (!locationDeducted) {
-          await updateProductStock(env, item.productId, item.quantity, "decrement", siteId, ctx2);
-        }
+    const guestOrderDb = await resolveSiteDBById(env, siteId);
+    for (const item of processedItems) {
+      const locationDeducted = await deductStockByLocation(guestOrderDb, siteId, item.productId, item.quantity);
+      if (!locationDeducted) {
+        await updateProductStock(env, item.productId, item.quantity, "decrement", siteId, ctx);
       }
+    }
+    if (!isPendingPayment) {
       try {
         await sendOrderEmails(env, siteId, {
           orderId,
@@ -9561,7 +9582,7 @@ init_auth();
 init_site_db();
 init_usage_tracker();
 import crypto2 from "node:crypto";
-async function handlePayments(request, env, path, ctx2) {
+async function handlePayments(request, env, path, ctx) {
   const corsResponse = handleCORS(request);
   if (corsResponse)
     return corsResponse;
@@ -9794,7 +9815,7 @@ async function verifyPayment(request, env) {
           await orderDb.prepare("UPDATE orders SET row_size_bytes = ? WHERE id = ?").bind(newOrderBytes, dbOrderId).run();
           await trackD1Update(env, orderSiteId, oldOrderBytes, newOrderBytes);
         }
-        await processPostPaymentActions(env, order, ctx);
+        await processPostPaymentActions(env, order);
       } else {
         if (orderSiteId) {
           orderDb = orderDb || await resolveSiteDBById(env, orderSiteId);
@@ -9833,7 +9854,7 @@ async function verifyPayment(request, env) {
                 await trackD1Update(env, guestSiteId, oldGuestBytes, newGuestBytes);
               }
             }
-            await processPostPaymentActions(env, guestOrder, ctx);
+            await processPostPaymentActions(env, guestOrder);
           }
         } catch (guestUpdateErr) {
           console.error("Failed to update guest order status:", guestUpdateErr);
@@ -9917,15 +9938,7 @@ async function verifySubscriptionPayment(request, env, { razorpay_subscription_i
   }
 }
 __name(verifySubscriptionPayment, "verifySubscriptionPayment");
-async function processPostPaymentActions(env, order, ctx2) {
-  try {
-    const orderItems = typeof order.items === "string" ? JSON.parse(order.items) : order.items;
-    for (const item of orderItems) {
-      await updateProductStock(env, item.productId, item.quantity, "decrement", order.site_id, ctx2);
-    }
-  } catch (stockErr) {
-    console.error("Failed to decrement stock after payment:", stockErr);
-  }
+async function processPostPaymentActions(env, order) {
   try {
     const orderItems = typeof order.items === "string" ? JSON.parse(order.items) : order.items;
     const shippingAddress = typeof order.shipping_address === "string" ? JSON.parse(order.shipping_address) : order.shipping_address;
@@ -10468,6 +10481,27 @@ async function activateSubscription(env, userId, planName, billingCycle, razorpa
       ).bind(siteId).run();
     }
     const resolvedAmount = amount || 0;
+    if (razorpaySubscriptionId) {
+      const existingSub = await env.DB.prepare(
+        `SELECT id, status FROM subscriptions WHERE razorpay_subscription_id = ?`
+      ).bind(razorpaySubscriptionId).first();
+      if (existingSub) {
+        if (existingSub.status === "active") {
+          console.log(`Subscription already active for razorpay_subscription_id=${razorpaySubscriptionId}, skipping duplicate`);
+          return true;
+        }
+        await env.DB.prepare(
+          `UPDATE subscriptions SET status = 'active', plan = ?, billing_cycle = ?, amount = ?, site_id = ?, current_period_start = ?, current_period_end = ?, updated_at = datetime('now') WHERE id = ?`
+        ).bind(planName, billingCycle, resolvedAmount, siteId || null, periodStart.toISOString(), periodEnd.toISOString(), existingSub.id).run();
+        console.log(`Reactivated existing subscription for razorpay_subscription_id=${razorpaySubscriptionId}`);
+        if (siteId) {
+          await env.DB.prepare(
+            `UPDATE sites SET subscription_plan = ?, subscription_expires_at = ?, updated_at = datetime('now') WHERE id = ? AND COALESCE(subscription_plan, '') != 'enterprise'`
+          ).bind(planName, periodEnd.toISOString(), siteId).run();
+        }
+        return true;
+      }
+    }
     await env.DB.prepare(
       `INSERT INTO subscriptions (id, user_id, site_id, plan, billing_cycle, amount, status, razorpay_subscription_id, current_period_start, current_period_end, created_at)
        VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, datetime('now'))`
@@ -10511,7 +10545,7 @@ init_auth();
 init_site_admin_worker();
 init_usage_tracker();
 init_site_db();
-async function handleCategories(request, env, path, ctx2) {
+async function handleCategories(request, env, path, ctx) {
   const corsResponse = handleCORS(request);
   if (corsResponse)
     return corsResponse;
@@ -10565,15 +10599,15 @@ async function handleCategories(request, env, path, ctx2) {
     case "POST":
       if (adminPerms && !hasPermission(adminPerms, "website"))
         return errorResponse("You do not have permission to manage categories", 403);
-      return createCategory(request, env, user, ctx2);
+      return createCategory(request, env, user, ctx);
     case "PUT":
       if (adminPerms && !hasPermission(adminPerms, "website"))
         return errorResponse("You do not have permission to manage categories", 403);
-      return updateCategory(request, env, user, categoryId, ctx2);
+      return updateCategory(request, env, user, categoryId, ctx);
     case "DELETE":
       if (adminPerms && !hasPermission(adminPerms, "website"))
         return errorResponse("You do not have permission to manage categories", 403);
-      return deleteCategory(env, user, categoryId, ctx2);
+      return deleteCategory(env, user, categoryId, ctx);
     default:
       return errorResponse("Method not allowed", 405);
   }
@@ -10680,7 +10714,7 @@ async function getCategory(env, categoryId, siteId, subdomain) {
   }
 }
 __name(getCategory, "getCategory");
-async function createCategory(request, env, user, ctx2) {
+async function createCategory(request, env, user, ctx) {
   try {
     const { siteId, name, description, parentId, imageUrl, displayOrder, subtitle, showOnHome } = await request.json();
     if (!siteId || !name) {
@@ -10735,8 +10769,8 @@ async function createCategory(request, env, user, ctx2) {
       rowBytes
     ).run();
     await trackD1Write(env, siteId, rowBytes);
-    if (ctx2)
-      ctx2.waitUntil(purgeStorefrontCache(env, siteId, ["categories"], { categoryId }));
+    if (ctx)
+      ctx.waitUntil(purgeStorefrontCache(env, siteId, ["categories"], { categoryId }));
     return successResponse({ id: categoryId, slug }, "Category created successfully");
   } catch (error) {
     console.error("Create category error:", error);
@@ -10744,7 +10778,7 @@ async function createCategory(request, env, user, ctx2) {
   }
 }
 __name(createCategory, "createCategory");
-async function updateCategory(request, env, user, categoryId, ctx2) {
+async function updateCategory(request, env, user, categoryId, ctx) {
   if (!categoryId) {
     return errorResponse("Category ID is required");
   }
@@ -10820,8 +10854,8 @@ async function updateCategory(request, env, user, categoryId, ctx2) {
       await db.prepare("UPDATE categories SET row_size_bytes = ? WHERE id = ?").bind(newBytes, categoryId).run();
     }
     await trackD1Update(env, resolvedSiteId, oldBytes, newBytes);
-    if (ctx2)
-      ctx2.waitUntil(purgeStorefrontCache(env, resolvedSiteId, ["categories"], { categoryId }));
+    if (ctx)
+      ctx.waitUntil(purgeStorefrontCache(env, resolvedSiteId, ["categories"], { categoryId }));
     return successResponse(null, "Category updated successfully");
   } catch (error) {
     console.error("Update category error:", error);
@@ -10829,7 +10863,7 @@ async function updateCategory(request, env, user, categoryId, ctx2) {
   }
 }
 __name(updateCategory, "updateCategory");
-async function deleteCategory(env, user, categoryId, ctx2) {
+async function deleteCategory(env, user, categoryId, ctx) {
   if (!categoryId) {
     return errorResponse("Category ID is required");
   }
@@ -10904,8 +10938,8 @@ async function deleteCategory(env, user, categoryId, ctx2) {
     if (totalBytesToRemove > 0) {
       await trackD1Delete(env, resolvedSiteId, totalBytesToRemove);
     }
-    if (ctx2)
-      ctx2.waitUntil(purgeStorefrontCache(env, resolvedSiteId, ["categories"], { categoryId }));
+    if (ctx)
+      ctx.waitUntil(purgeStorefrontCache(env, resolvedSiteId, ["categories"], { categoryId }));
     return successResponse(null, "Category deleted successfully");
   } catch (error) {
     console.error("Delete category error:", error);
@@ -15239,19 +15273,55 @@ async function validateCustomerAuth(request, env) {
   }
   const token = authHeader.substring(13);
   try {
-    const allSites = await env.DB.prepare("SELECT id FROM sites").all();
-    const siteIds = (allSites.results || []).map((s) => s.id);
-    for (const siteId of siteIds) {
-      const db = await resolveSiteDBById(env, siteId);
+    const url = new URL(request.url);
+    const directSiteId = url.searchParams.get("siteId");
+    if (directSiteId) {
+      const db = await resolveSiteDBById(env, directSiteId);
       const session = await db.prepare(
         `SELECT cs.customer_id, cs.site_id FROM site_customer_sessions cs
-         WHERE cs.token = ? AND cs.expires_at > datetime('now')`
-      ).bind(token).first();
+         WHERE cs.token = ? AND cs.site_id = ? AND cs.expires_at > datetime('now')`
+      ).bind(token, directSiteId).first();
       if (session) {
         const customer = await db.prepare(
-          "SELECT id, site_id, email, name, phone FROM site_customers WHERE id = ?"
-        ).bind(session.customer_id).first();
-        return customer;
+          "SELECT id, site_id, email, name, phone FROM site_customers WHERE id = ? AND site_id = ?"
+        ).bind(session.customer_id, directSiteId).first();
+        if (customer)
+          return customer;
+      }
+    }
+    const allSites = await env.DB.prepare("SELECT id FROM sites").all();
+    const siteIds = (allSites.results || []).map((s) => s.id);
+    const checkedShards = /* @__PURE__ */ new Set();
+    for (const siteId of siteIds) {
+      if (siteId === directSiteId)
+        continue;
+      const db = await resolveSiteDBById(env, siteId);
+      const shardKey = db._binding || siteId;
+      if (checkedShards.has(shardKey)) {
+        const session = await db.prepare(
+          `SELECT cs.customer_id, cs.site_id FROM site_customer_sessions cs
+           WHERE cs.token = ? AND cs.site_id = ? AND cs.expires_at > datetime('now')`
+        ).bind(token, siteId).first();
+        if (session) {
+          const customer = await db.prepare(
+            "SELECT id, site_id, email, name, phone FROM site_customers WHERE id = ? AND site_id = ?"
+          ).bind(session.customer_id, siteId).first();
+          if (customer)
+            return customer;
+        }
+      } else {
+        checkedShards.add(shardKey);
+        const session = await db.prepare(
+          `SELECT cs.customer_id, cs.site_id FROM site_customer_sessions cs
+           WHERE cs.token = ? AND cs.expires_at > datetime('now')`
+        ).bind(token).first();
+        if (session) {
+          const customer = await db.prepare(
+            "SELECT id, site_id, email, name, phone FROM site_customers WHERE id = ? AND site_id = ?"
+          ).bind(session.customer_id, session.site_id).first();
+          if (customer)
+            return customer;
+        }
       }
     }
     return null;
@@ -15890,7 +15960,7 @@ async function ensureReviewTokenColumn(db, table) {
   }
 }
 __name(ensureReviewTokenColumn, "ensureReviewTokenColumn");
-async function handleReviews(request, env, path, ctx2) {
+async function handleReviews(request, env, path, ctx) {
   const corsResponse = handleCORS(request);
   if (corsResponse)
     return corsResponse;
@@ -15914,7 +15984,7 @@ async function handleReviews(request, env, path, ctx2) {
     return getAdminReviews(request, env);
   }
   if (action === "admin" && subAction && method === "PUT") {
-    return updateReviewStatus(request, env, subAction, ctx2);
+    return updateReviewStatus(request, env, subAction, ctx);
   }
   if (action === "summary" && method === "GET") {
     return getReviewSummary(request, env);
@@ -16262,7 +16332,7 @@ async function getAdminReviews(request, env) {
   }
 }
 __name(getAdminReviews, "getAdminReviews");
-async function updateReviewStatus(request, env, reviewId, ctx2) {
+async function updateReviewStatus(request, env, reviewId, ctx) {
   try {
     const data = await request.json();
     const { siteId, status } = data;
@@ -16295,8 +16365,8 @@ async function updateReviewStatus(request, env, reviewId, ctx2) {
     await db.prepare(
       `UPDATE reviews SET status = ?, is_approved = ? WHERE id = ? AND site_id = ?`
     ).bind(status, isApproved, reviewId, siteId).run();
-    if (ctx2 && review) {
-      ctx2.waitUntil(purgeStorefrontCache(env, siteId, ["reviews"], { productId: review.product_id }));
+    if (ctx && review) {
+      ctx.waitUntil(purgeStorefrontCache(env, siteId, ["reviews"], { productId: review.product_id }));
     }
     return successResponse(null, `Review ${status} successfully`);
   } catch (error) {
@@ -16396,7 +16466,7 @@ function slugify(text) {
   return text.toString().toLowerCase().trim().replace(/\s+/g, "-").replace(/[^\w\-]+/g, "").replace(/\-\-+/g, "-").replace(/^-+/, "").replace(/-+$/, "");
 }
 __name(slugify, "slugify");
-async function handleBlog(request, env, path, ctx2) {
+async function handleBlog(request, env, path, ctx) {
   const corsResponse = handleCORS(request);
   if (corsResponse)
     return corsResponse;
@@ -16417,13 +16487,13 @@ async function handleBlog(request, env, path, ctx2) {
     return adminGetPost(request, env, subAction);
   }
   if (action === "admin" && method === "POST" && !subAction) {
-    return createPost(request, env, ctx2);
+    return createPost(request, env, ctx);
   }
   if (action === "admin" && subAction && method === "PUT") {
-    return updatePost(request, env, subAction, ctx2);
+    return updatePost(request, env, subAction, ctx);
   }
   if (action === "admin" && subAction && method === "DELETE") {
-    return deletePost(request, env, subAction, ctx2);
+    return deletePost(request, env, subAction, ctx);
   }
   return errorResponse("Not found", 404);
 }
@@ -16559,7 +16629,7 @@ async function adminGetPost(request, env, postId) {
   }
 }
 __name(adminGetPost, "adminGetPost");
-async function createPost(request, env, ctx2) {
+async function createPost(request, env, ctx) {
   try {
     const body = await request.json();
     const { siteId, title, content, excerpt, coverImage, status, author, tags, metaTitle, metaDescription } = body;
@@ -16612,8 +16682,8 @@ async function createPost(request, env, ctx2) {
       await trackD1Write(env, siteId, rowBytes);
     } catch (e) {
     }
-    if (ctx2)
-      ctx2.waitUntil(purgeStorefrontCache(env, siteId, ["blog"], { postSlug: slug }));
+    if (ctx)
+      ctx.waitUntil(purgeStorefrontCache(env, siteId, ["blog"], { postSlug: slug }));
     return successResponse({ id, slug }, "Blog post created");
   } catch (error) {
     console.error("Create blog post error:", error);
@@ -16621,7 +16691,7 @@ async function createPost(request, env, ctx2) {
   }
 }
 __name(createPost, "createPost");
-async function updatePost(request, env, postId, ctx2) {
+async function updatePost(request, env, postId, ctx) {
   try {
     const body = await request.json();
     const { siteId, title, content, excerpt, coverImage, status, author, tags, metaTitle, metaDescription, slug: newSlug } = body;
@@ -16711,8 +16781,8 @@ async function updatePost(request, env, postId, ctx2) {
     } catch (e) {
     }
     const updatedPost = await db.prepare("SELECT slug FROM blog_posts WHERE id = ? AND site_id = ?").bind(postId, siteId).first();
-    if (ctx2)
-      ctx2.waitUntil(purgeStorefrontCache(env, siteId, ["blog"], { postSlug: updatedPost?.slug }));
+    if (ctx)
+      ctx.waitUntil(purgeStorefrontCache(env, siteId, ["blog"], { postSlug: updatedPost?.slug }));
     return successResponse({ id: postId }, "Blog post updated");
   } catch (error) {
     console.error("Update blog post error:", error);
@@ -16720,7 +16790,7 @@ async function updatePost(request, env, postId, ctx2) {
   }
 }
 __name(updatePost, "updatePost");
-async function deletePost(request, env, postId, ctx2) {
+async function deletePost(request, env, postId, ctx) {
   try {
     const url = new URL(request.url);
     const siteId = url.searchParams.get("siteId");
@@ -16738,8 +16808,8 @@ async function deletePost(request, env, postId, ctx2) {
     await db.prepare(
       "DELETE FROM blog_posts WHERE id = ? AND site_id = ?"
     ).bind(postId, siteId).run();
-    if (ctx2)
-      ctx2.waitUntil(purgeStorefrontCache(env, siteId, ["blog"], { postSlug: postToDelete?.slug }));
+    if (ctx)
+      ctx.waitUntil(purgeStorefrontCache(env, siteId, ["blog"], { postSlug: postToDelete?.slug }));
     return successResponse(null, "Blog post deleted");
   } catch (error) {
     console.error("Delete blog post error:", error);
@@ -16993,6 +17063,7 @@ async function ensureTablesExist(env) {
       "CREATE INDEX IF NOT EXISTS idx_sites_user ON sites(user_id)",
       "CREATE INDEX IF NOT EXISTS idx_subscriptions_user ON subscriptions(user_id)",
       "CREATE INDEX IF NOT EXISTS idx_subscriptions_status ON subscriptions(status)",
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_subscriptions_razorpay_sub ON subscriptions(razorpay_subscription_id) WHERE razorpay_subscription_id IS NOT NULL",
       "CREATE INDEX IF NOT EXISTS idx_transactions_order ON payment_transactions(order_id)",
       "CREATE INDEX IF NOT EXISTS idx_transactions_user ON payment_transactions(user_id)",
       "CREATE UNIQUE INDEX IF NOT EXISTS idx_sites_custom_domain ON sites(custom_domain) WHERE custom_domain IS NOT NULL",
@@ -17146,7 +17217,7 @@ __name(ensureTablesExist, "ensureTablesExist");
 // workers/index.js
 init_site_db();
 var workers_default = {
-  async fetch(request, env, ctx2) {
+  async fetch(request, env, ctx) {
     const corsResponse = handleCORS(request);
     if (corsResponse)
       return corsResponse;
@@ -17155,7 +17226,7 @@ var workers_default = {
     try {
       await ensureTablesExist(env);
       if (path.startsWith("/api/")) {
-        return handleAPI(request, env, path, ctx2);
+        return handleAPI(request, env, path, ctx);
       }
       if (path.startsWith("/auth/google/")) {
         return handleGoogleAuthFlow(request, env, path);
@@ -17187,11 +17258,11 @@ var workers_default = {
       return errorResponse("Internal server error", 500);
     }
   },
-  async scheduled(event, env, ctx2) {
-    ctx2.waitUntil(cleanupExpiredData(env));
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(cleanupExpiredData(env));
   }
 };
-async function handleAPI(request, env, path, ctx2) {
+async function handleAPI(request, env, path, ctx) {
   const pathParts = path.split("/").filter(Boolean);
   const apiVersion = pathParts[0];
   const resource = pathParts[1];
@@ -17202,29 +17273,29 @@ async function handleAPI(request, env, path, ctx2) {
     case "auth":
       return handleAuth(request, env, path);
     case "sites":
-      return handleSites(request, env, path, ctx2);
+      return handleSites(request, env, path, ctx);
     case "products":
-      return handleProducts(request, env, path, ctx2);
+      return handleProducts(request, env, path, ctx);
     case "inventory-locations":
-      return handleInventoryLocations(request, env, path, ctx2);
+      return handleInventoryLocations(request, env, path, ctx);
     case "orders":
-      return handleOrders(request, env, path, ctx2);
+      return handleOrders(request, env, path, ctx);
     case "cart":
       return handleCart(request, env, path);
     case "wishlist":
       return handleWishlist(request, env, path);
     case "payments":
-      return handlePayments(request, env, path, ctx2);
+      return handlePayments(request, env, path, ctx);
     case "email":
       return handleEmail(request, env, path);
     case "categories":
-      return handleCategories(request, env, path, ctx2);
+      return handleCategories(request, env, path, ctx);
     case "users":
       return handleUsers(request, env, path);
     case "admin":
       return handleAdmin(request, env, path);
     case "site-admin":
-      return handleSiteAdmin(request, env, path, ctx2);
+      return handleSiteAdmin(request, env, path, ctx);
     case "customer-auth":
       return handleCustomerAuth(request, env, path);
     case "upload":
@@ -17234,9 +17305,9 @@ async function handleAPI(request, env, path, ctx2) {
     case "notifications":
       return handleNotifications(request, env, path);
     case "reviews":
-      return handleReviews(request, env, path, ctx2);
+      return handleReviews(request, env, path, ctx);
     case "blog":
-      return handleBlog(request, env, path, ctx2);
+      return handleBlog(request, env, path, ctx);
     case "usage":
       return handleUsageAPI(request, env, path);
     case "health":
@@ -17496,7 +17567,46 @@ async function cleanupExpiredData(env) {
         console.error(`[Cleanup] shard for site ${site.id}:`, e.message || e);
       }
     }
-    console.log("[Cleanup] Expired sessions and tokens cleaned up successfully");
+    for (const site of allSites.results || []) {
+      try {
+        const db = await resolveSiteDBById(env, site.id);
+        const staleOrders = await db.prepare(
+          `SELECT id, items, site_id FROM orders WHERE status = 'pending_payment' AND created_at < datetime('now', '-30 minutes')`
+        ).all();
+        for (const staleOrder of staleOrders.results || []) {
+          try {
+            const orderItems = typeof staleOrder.items === "string" ? JSON.parse(staleOrder.items) : staleOrder.items;
+            for (const item of orderItems) {
+              await updateProductStock(env, item.productId, item.quantity, "increment", staleOrder.site_id);
+            }
+            await db.prepare(
+              `UPDATE orders SET status = 'cancelled', cancelled_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`
+            ).bind(staleOrder.id).run();
+          } catch (orderErr) {
+            console.error(`[Cleanup] stale order ${staleOrder.id}:`, orderErr.message || orderErr);
+          }
+        }
+        const staleGuestOrders = await db.prepare(
+          `SELECT id, items, site_id FROM guest_orders WHERE status = 'pending_payment' AND created_at < datetime('now', '-30 minutes')`
+        ).all();
+        for (const staleOrder of staleGuestOrders.results || []) {
+          try {
+            const orderItems = typeof staleOrder.items === "string" ? JSON.parse(staleOrder.items) : staleOrder.items;
+            for (const item of orderItems) {
+              await updateProductStock(env, item.productId, item.quantity, "increment", staleOrder.site_id);
+            }
+            await db.prepare(
+              `UPDATE guest_orders SET status = 'cancelled', cancelled_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`
+            ).bind(staleOrder.id).run();
+          } catch (orderErr) {
+            console.error(`[Cleanup] stale guest order ${staleOrder.id}:`, orderErr.message || orderErr);
+          }
+        }
+      } catch (e) {
+        console.error(`[Cleanup] stale orders for site ${site.id}:`, e.message || e);
+      }
+    }
+    console.log("[Cleanup] Expired sessions, tokens, and stale orders cleaned up successfully");
   } catch (error) {
     console.error("[Cleanup] Error during cleanup:", error);
   }
@@ -17550,7 +17660,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-Qx9gwi/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-0ELzVt/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -17566,26 +17676,26 @@ function __facade_register__(...args) {
   __facade_middleware__.push(...args.flat());
 }
 __name(__facade_register__, "__facade_register__");
-function __facade_invokeChain__(request, env, ctx2, dispatch, middlewareChain) {
+function __facade_invokeChain__(request, env, ctx, dispatch, middlewareChain) {
   const [head, ...tail] = middlewareChain;
   const middlewareCtx = {
     dispatch,
     next(newRequest, newEnv) {
-      return __facade_invokeChain__(newRequest, newEnv, ctx2, dispatch, tail);
+      return __facade_invokeChain__(newRequest, newEnv, ctx, dispatch, tail);
     }
   };
-  return head(request, env, ctx2, middlewareCtx);
+  return head(request, env, ctx, middlewareCtx);
 }
 __name(__facade_invokeChain__, "__facade_invokeChain__");
-function __facade_invoke__(request, env, ctx2, dispatch, finalMiddleware) {
-  return __facade_invokeChain__(request, env, ctx2, dispatch, [
+function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
+  return __facade_invokeChain__(request, env, ctx, dispatch, [
     ...__facade_middleware__,
     finalMiddleware
   ]);
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-Qx9gwi/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-0ELzVt/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;
@@ -17608,15 +17718,15 @@ function wrapExportedHandler(worker) {
   for (const middleware of __INTERNAL_WRANGLER_MIDDLEWARE__) {
     __facade_register__(middleware);
   }
-  const fetchDispatcher = /* @__PURE__ */ __name(function(request, env, ctx2) {
+  const fetchDispatcher = /* @__PURE__ */ __name(function(request, env, ctx) {
     if (worker.fetch === void 0) {
       throw new Error("Handler does not export a fetch() function.");
     }
-    return worker.fetch(request, env, ctx2);
+    return worker.fetch(request, env, ctx);
   }, "fetchDispatcher");
   return {
     ...worker,
-    fetch(request, env, ctx2) {
+    fetch(request, env, ctx) {
       const dispatcher = /* @__PURE__ */ __name(function(type, init) {
         if (type === "scheduled" && worker.scheduled !== void 0) {
           const controller = new __Facade_ScheduledController__(
@@ -17625,10 +17735,10 @@ function wrapExportedHandler(worker) {
             () => {
             }
           );
-          return worker.scheduled(controller, env, ctx2);
+          return worker.scheduled(controller, env, ctx);
         }
       }, "dispatcher");
-      return __facade_invoke__(request, env, ctx2, dispatcher, fetchDispatcher);
+      return __facade_invoke__(request, env, ctx, dispatcher, fetchDispatcher);
     }
   };
 }
@@ -17641,9 +17751,9 @@ function wrapWorkerEntrypoint(klass) {
     __facade_register__(middleware);
   }
   return class extends klass {
-    #fetchDispatcher = (request, env, ctx2) => {
+    #fetchDispatcher = (request, env, ctx) => {
       this.env = env;
-      this.ctx = ctx2;
+      this.ctx = ctx;
       if (super.fetch === void 0) {
         throw new Error("Entrypoint class does not define a fetch() function.");
       }

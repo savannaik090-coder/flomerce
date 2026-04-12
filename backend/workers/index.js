@@ -1,6 +1,6 @@
 import { handleAuth } from './platform/auth-worker.js';
 import { handleSites } from './platform/sites-worker.js';
-import { handleProducts } from './storefront/products-worker.js';
+import { handleProducts, updateProductStock } from './storefront/products-worker.js';
 import { handleOrders } from './storefront/orders-worker.js';
 import { handleCart, mergeCarts, clearCart } from './storefront/cart-worker.js';
 import { handleWishlist } from './storefront/wishlist-worker.js';
@@ -430,7 +430,48 @@ async function cleanupExpiredData(env) {
       }
     }
 
-    console.log('[Cleanup] Expired sessions and tokens cleaned up successfully');
+    for (const site of (allSites.results || [])) {
+      try {
+        const db = await resolveSiteDBById(env, site.id);
+        const staleOrders = await db.prepare(
+          `SELECT id, items, site_id FROM orders WHERE status = 'pending_payment' AND created_at < datetime('now', '-30 minutes')`
+        ).all();
+        for (const staleOrder of (staleOrders.results || [])) {
+          try {
+            const orderItems = typeof staleOrder.items === 'string' ? JSON.parse(staleOrder.items) : staleOrder.items;
+            for (const item of orderItems) {
+              await updateProductStock(env, item.productId, item.quantity, 'increment', staleOrder.site_id);
+            }
+            await db.prepare(
+              `UPDATE orders SET status = 'cancelled', cancelled_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`
+            ).bind(staleOrder.id).run();
+          } catch (orderErr) {
+            console.error(`[Cleanup] stale order ${staleOrder.id}:`, orderErr.message || orderErr);
+          }
+        }
+
+        const staleGuestOrders = await db.prepare(
+          `SELECT id, items, site_id FROM guest_orders WHERE status = 'pending_payment' AND created_at < datetime('now', '-30 minutes')`
+        ).all();
+        for (const staleOrder of (staleGuestOrders.results || [])) {
+          try {
+            const orderItems = typeof staleOrder.items === 'string' ? JSON.parse(staleOrder.items) : staleOrder.items;
+            for (const item of orderItems) {
+              await updateProductStock(env, item.productId, item.quantity, 'increment', staleOrder.site_id);
+            }
+            await db.prepare(
+              `UPDATE guest_orders SET status = 'cancelled', cancelled_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`
+            ).bind(staleOrder.id).run();
+          } catch (orderErr) {
+            console.error(`[Cleanup] stale guest order ${staleOrder.id}:`, orderErr.message || orderErr);
+          }
+        }
+      } catch (e) {
+        console.error(`[Cleanup] stale orders for site ${site.id}:`, e.message || e);
+      }
+    }
+
+    console.log('[Cleanup] Expired sessions, tokens, and stale orders cleaned up successfully');
   } catch (error) {
     console.error('[Cleanup] Error during cleanup:', error);
   }
