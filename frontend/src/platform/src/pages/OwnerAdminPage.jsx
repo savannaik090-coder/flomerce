@@ -183,6 +183,9 @@ export default function OwnerAdminPage() {
         tagline: planForm.tagline || '',
         cycles: enabledCycles,
       };
+      if (editingPlanName && editingPlanName !== planForm.plan_name) {
+        body.old_plan_name = editingPlanName;
+      }
 
       await apiRequest('/api/admin/plans/bulk', { method: 'POST', body: JSON.stringify(body) });
       resetPlanForm();
@@ -1047,7 +1050,7 @@ export default function OwnerAdminPage() {
                   <div className="oa-form-grid">
                     <div className="oa-form-group">
                       <label>Plan Name</label>
-                      <input type="text" value={planForm.plan_name} onChange={e => setPlanForm({ ...planForm, plan_name: e.target.value })} placeholder="e.g. Starter, Growth, Pro" required disabled={!!editingPlanName} />
+                      <input type="text" value={planForm.plan_name} onChange={e => setPlanForm({ ...planForm, plan_name: e.target.value })} placeholder="e.g. Starter, Growth, Pro" required />
                     </div>
                     <div className="oa-form-group">
                       <label>Tagline</label>

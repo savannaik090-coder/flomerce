@@ -389,7 +389,7 @@ async function updatePlan(request, env, planId) {
 
 async function bulkSavePlan(request, env) {
   try {
-    const { plan_name, plan_tier, features, is_popular, display_order, cycles, tagline } = await request.json();
+    const { plan_name, plan_tier, features, is_popular, display_order, cycles, tagline, old_plan_name } = await request.json();
 
     if (!plan_name || !plan_tier || !cycles || !Array.isArray(cycles) || cycles.length === 0) {
       return errorResponse('Plan name, tier, and at least one billing cycle are required');
@@ -402,13 +402,27 @@ async function bulkSavePlan(request, env) {
     const validCycles = ['monthly', '3months', '6months', 'yearly'];
     const featuresJson = JSON.stringify(features || []);
 
+    const lookupName = old_plan_name || plan_name;
     const existingResult = await env.DB.prepare(
       `SELECT * FROM subscription_plans WHERE plan_name = ?`
-    ).bind(plan_name).all();
+    ).bind(lookupName).all();
     const existingByName = existingResult.results || [];
     const existingMap = {};
     for (const row of existingByName) {
       existingMap[row.billing_cycle] = row;
+    }
+
+    if (old_plan_name && old_plan_name !== plan_name) {
+      try {
+        await env.DB.prepare(
+          `UPDATE subscriptions SET plan = ? WHERE plan = ?`
+        ).bind(plan_name, old_plan_name).run();
+        await env.DB.prepare(
+          `UPDATE sites SET subscription_plan = ? WHERE subscription_plan = ?`
+        ).bind(plan_name, old_plan_name).run();
+      } catch (e) {
+        console.error('Plan rename in subscriptions/sites failed (non-fatal):', e);
+      }
     }
 
     const activeCycleKeys = [];
