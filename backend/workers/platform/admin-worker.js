@@ -212,6 +212,10 @@ async function ensurePlansTables(env) {
     await env.DB.prepare(`ALTER TABLE subscription_plans ADD COLUMN original_price REAL DEFAULT NULL`).run();
   } catch (e) {}
 
+  try {
+    await env.DB.prepare(`ALTER TABLE subscription_plans ADD COLUMN tagline TEXT DEFAULT NULL`).run();
+  } catch (e) {}
+
   await env.DB.prepare(`
     CREATE TABLE IF NOT EXISTS platform_settings (
       setting_key TEXT PRIMARY KEY,
@@ -385,7 +389,7 @@ async function updatePlan(request, env, planId) {
 
 async function bulkSavePlan(request, env) {
   try {
-    const { plan_name, plan_tier, features, is_popular, display_order, cycles } = await request.json();
+    const { plan_name, plan_tier, features, is_popular, display_order, cycles, tagline } = await request.json();
 
     if (!plan_name || !plan_tier || !cycles || !Array.isArray(cycles) || cycles.length === 0) {
       return errorResponse('Plan name, tier, and at least one billing cycle are required');
@@ -450,20 +454,20 @@ async function bulkSavePlan(request, env) {
           `UPDATE subscription_plans SET
             plan_name = ?, plan_tier = ?, display_price = ?, original_price = ?,
             razorpay_plan_id = ?, features = ?, is_popular = ?, display_order = ?,
-            is_active = 1, updated_at = datetime('now')
+            tagline = ?, is_active = 1, updated_at = datetime('now')
           WHERE id = ?`
         ).bind(
           plan_name, plan_tier, cycle.dp, cycle.op, cycle.razorpay_plan_id,
-          featuresJson, is_popular ? 1 : 0, display_order || 0, existing.id
+          featuresJson, is_popular ? 1 : 0, display_order || 0, tagline || null, existing.id
         ));
       } else {
         const id = generateId();
         statements.push(env.DB.prepare(
-          `INSERT INTO subscription_plans (id, plan_name, billing_cycle, display_price, original_price, razorpay_plan_id, features, is_popular, display_order, plan_tier, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
+          `INSERT INTO subscription_plans (id, plan_name, billing_cycle, display_price, original_price, razorpay_plan_id, features, is_popular, display_order, plan_tier, tagline, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
         ).bind(
           id, plan_name, cycle.key, cycle.dp, cycle.op, cycle.razorpay_plan_id,
-          featuresJson, is_popular ? 1 : 0, display_order || 0, plan_tier
+          featuresJson, is_popular ? 1 : 0, display_order || 0, plan_tier, tagline || null
         ));
       }
     }

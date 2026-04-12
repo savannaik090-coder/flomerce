@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-DFVkzO/checked-fetch.js
+// .wrangler/tmp/bundle-JelZg0/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-DFVkzO/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-JelZg0/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-DFVkzO/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-JelZg0/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-DFVkzO/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-JelZg0/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -2365,12 +2365,12 @@ var init_site_admin_worker = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-DFVkzO/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-JelZg0/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-DFVkzO/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-JelZg0/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -10194,7 +10194,7 @@ async function getPublicPlans(request, env) {
   }
   try {
     const plansResult = await env.DB.prepare(
-      `SELECT id, plan_name, billing_cycle, display_price, original_price, features, is_popular, display_order, plan_tier 
+      `SELECT id, plan_name, billing_cycle, display_price, original_price, features, is_popular, display_order, plan_tier, tagline 
        FROM subscription_plans WHERE is_active = 1 AND billing_cycle IN ('monthly', '3months', '6months', 'yearly') ORDER BY display_order ASC, plan_name ASC`
     ).all();
     const plans = (plansResult.results || []).map((p) => ({
@@ -12939,6 +12939,10 @@ async function ensurePlansTables(env) {
     await env.DB.prepare(`ALTER TABLE subscription_plans ADD COLUMN original_price REAL DEFAULT NULL`).run();
   } catch (e) {
   }
+  try {
+    await env.DB.prepare(`ALTER TABLE subscription_plans ADD COLUMN tagline TEXT DEFAULT NULL`).run();
+  } catch (e) {
+  }
   await env.DB.prepare(`
     CREATE TABLE IF NOT EXISTS platform_settings (
       setting_key TEXT PRIMARY KEY,
@@ -13104,7 +13108,7 @@ async function updatePlan(request, env, planId) {
 __name(updatePlan, "updatePlan");
 async function bulkSavePlan(request, env) {
   try {
-    const { plan_name, plan_tier, features, is_popular, display_order, cycles } = await request.json();
+    const { plan_name, plan_tier, features, is_popular, display_order, cycles, tagline } = await request.json();
     if (!plan_name || !plan_tier || !cycles || !Array.isArray(cycles) || cycles.length === 0) {
       return errorResponse("Plan name, tier, and at least one billing cycle are required");
     }
@@ -13159,7 +13163,7 @@ async function bulkSavePlan(request, env) {
           `UPDATE subscription_plans SET
             plan_name = ?, plan_tier = ?, display_price = ?, original_price = ?,
             razorpay_plan_id = ?, features = ?, is_popular = ?, display_order = ?,
-            is_active = 1, updated_at = datetime('now')
+            tagline = ?, is_active = 1, updated_at = datetime('now')
           WHERE id = ?`
         ).bind(
           plan_name,
@@ -13170,13 +13174,14 @@ async function bulkSavePlan(request, env) {
           featuresJson,
           is_popular ? 1 : 0,
           display_order || 0,
+          tagline || null,
           existing.id
         ));
       } else {
         const id = generateId();
         statements.push(env.DB.prepare(
-          `INSERT INTO subscription_plans (id, plan_name, billing_cycle, display_price, original_price, razorpay_plan_id, features, is_popular, display_order, plan_tier, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
+          `INSERT INTO subscription_plans (id, plan_name, billing_cycle, display_price, original_price, razorpay_plan_id, features, is_popular, display_order, plan_tier, tagline, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
         ).bind(
           id,
           plan_name,
@@ -13187,7 +13192,8 @@ async function bulkSavePlan(request, env) {
           featuresJson,
           is_popular ? 1 : 0,
           display_order || 0,
-          plan_tier
+          plan_tier,
+          tagline || null
         ));
       }
     }
@@ -17036,6 +17042,7 @@ async function ensureTablesExist(env) {
       { col: "site_id", table: "subscriptions", sql: "ALTER TABLE subscriptions ADD COLUMN site_id TEXT" },
       { col: "plan_tier", table: "subscription_plans", sql: "ALTER TABLE subscription_plans ADD COLUMN plan_tier INTEGER DEFAULT 0" },
       { col: "original_price", table: "subscription_plans", sql: "ALTER TABLE subscription_plans ADD COLUMN original_price REAL DEFAULT NULL" },
+      { col: "tagline", table: "subscription_plans", sql: "ALTER TABLE subscription_plans ADD COLUMN tagline TEXT DEFAULT NULL" },
       { col: "staff_id", table: "site_admin_sessions", sql: "ALTER TABLE site_admin_sessions ADD COLUMN staff_id TEXT" },
       { col: "permissions", table: "site_admin_sessions", sql: "ALTER TABLE site_admin_sessions ADD COLUMN permissions TEXT" }
     ];
@@ -17530,7 +17537,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-DFVkzO/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-JelZg0/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -17565,7 +17572,7 @@ function __facade_invoke__(request, env, ctx2, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-DFVkzO/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-JelZg0/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

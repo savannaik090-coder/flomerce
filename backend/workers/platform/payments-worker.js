@@ -703,7 +703,7 @@ async function getPublicPlans(request, env) {
 
   try {
     const plansResult = await env.DB.prepare(
-      `SELECT id, plan_name, billing_cycle, display_price, original_price, features, is_popular, display_order, plan_tier 
+      `SELECT id, plan_name, billing_cycle, display_price, original_price, features, is_popular, display_order, plan_tier, tagline 
        FROM subscription_plans WHERE is_active = 1 AND billing_cycle IN ('monthly', '3months', '6months', 'yearly') ORDER BY display_order ASC, plan_name ASC`
     ).all();
 

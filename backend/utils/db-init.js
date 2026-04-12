@@ -306,6 +306,7 @@ export async function ensureTablesExist(env) {
       { col: 'site_id', table: 'subscriptions', sql: 'ALTER TABLE subscriptions ADD COLUMN site_id TEXT' },
       { col: 'plan_tier', table: 'subscription_plans', sql: 'ALTER TABLE subscription_plans ADD COLUMN plan_tier INTEGER DEFAULT 0' },
       { col: 'original_price', table: 'subscription_plans', sql: 'ALTER TABLE subscription_plans ADD COLUMN original_price REAL DEFAULT NULL' },
+      { col: 'tagline', table: 'subscription_plans', sql: 'ALTER TABLE subscription_plans ADD COLUMN tagline TEXT DEFAULT NULL' },
       { col: 'staff_id', table: 'site_admin_sessions', sql: 'ALTER TABLE site_admin_sessions ADD COLUMN staff_id TEXT' },
       { col: 'permissions', table: 'site_admin_sessions', sql: 'ALTER TABLE site_admin_sessions ADD COLUMN permissions TEXT' },
     ];

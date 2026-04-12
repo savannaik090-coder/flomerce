@@ -20,7 +20,7 @@ export default function OwnerAdminPage() {
   const [showPlanForm, setShowPlanForm] = useState(false);
   const [editingPlanName, setEditingPlanName] = useState(null);
   const [planForm, setPlanForm] = useState({
-    plan_name: '', plan_tier: 1, features: '', is_popular: false, display_order: 0,
+    plan_name: '', plan_tier: 1, features: '', is_popular: false, display_order: 0, tagline: '',
     monthly_price: '',
     cycles: {
       'monthly': { enabled: false, razorpay_plan_id: '', discount: 0 },
@@ -133,7 +133,7 @@ export default function OwnerAdminPage() {
   };
 
   const resetPlanForm = () => {
-    setPlanForm({ plan_name: '', plan_tier: 1, features: '', is_popular: false, display_order: 0, monthly_price: '', cycles: emptyCycles() });
+    setPlanForm({ plan_name: '', plan_tier: 1, features: '', is_popular: false, display_order: 0, tagline: '', monthly_price: '', cycles: emptyCycles() });
     setEditingPlanName(null);
     setShowPlanForm(false);
   };
@@ -142,7 +142,7 @@ export default function OwnerAdminPage() {
     const groups = {};
     for (const p of plans) {
       if (!groups[p.plan_name]) {
-        groups[p.plan_name] = { plan_name: p.plan_name, plan_tier: p.plan_tier, is_popular: !!p.is_popular, display_order: p.display_order || 0, features: p.features, cycles: [] };
+        groups[p.plan_name] = { plan_name: p.plan_name, plan_tier: p.plan_tier, is_popular: !!p.is_popular, display_order: p.display_order || 0, features: p.features, tagline: p.tagline || '', cycles: [] };
       }
       groups[p.plan_name].cycles.push(p);
     }
@@ -180,6 +180,7 @@ export default function OwnerAdminPage() {
         features: planForm.features ? planForm.features.split('\n').filter(f => f.trim()) : [],
         is_popular: planForm.is_popular,
         display_order: parseInt(planForm.display_order) || 0,
+        tagline: planForm.tagline || '',
         cycles: enabledCycles,
       };
 
@@ -218,6 +219,7 @@ export default function OwnerAdminPage() {
       features: Array.isArray(group.features) ? group.features.join('\n') : '',
       is_popular: !!group.is_popular,
       display_order: group.display_order || 0,
+      tagline: group.tagline || '',
       monthly_price: derivedMonthly || '',
       cycles: cyc,
     });
@@ -1045,7 +1047,11 @@ export default function OwnerAdminPage() {
                   <div className="oa-form-grid">
                     <div className="oa-form-group">
                       <label>Plan Name</label>
-                      <input type="text" value={planForm.plan_name} onChange={e => setPlanForm({ ...planForm, plan_name: e.target.value })} placeholder="e.g. Basic, Standard, Pro" required disabled={!!editingPlanName} />
+                      <input type="text" value={planForm.plan_name} onChange={e => setPlanForm({ ...planForm, plan_name: e.target.value })} placeholder="e.g. Starter, Growth, Pro" required disabled={!!editingPlanName} />
+                    </div>
+                    <div className="oa-form-group">
+                      <label>Tagline</label>
+                      <input type="text" value={planForm.tagline} onChange={e => setPlanForm({ ...planForm, tagline: e.target.value })} placeholder="e.g. Launch your online store" maxLength={80} />
                     </div>
                     <div className="oa-form-group">
                       <label>Plan Tier</label>
@@ -1146,6 +1152,11 @@ export default function OwnerAdminPage() {
                           </span>
                           {group.is_popular ? <span className="oa-badge oa-badge-popular">Popular</span> : null}
                         </div>
+                        {group.tagline && (
+                          <div style={{ fontSize: '0.8rem', color: '#6366f1', marginTop: '0.2rem', fontStyle: 'italic' }}>
+                            {group.tagline}
+                          </div>
+                        )}
                         {Array.isArray(group.features) && group.features.length > 0 && (
                           <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.35rem' }}>
                             {group.features.slice(0, 3).join(' · ')}{group.features.length > 3 ? ` · +${group.features.length - 3} more` : ''}

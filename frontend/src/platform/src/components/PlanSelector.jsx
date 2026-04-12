@@ -172,6 +172,7 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
         plans: {},
         display_order: plan.display_order ?? 999,
         plan_tier: plan.plan_tier ?? 1,
+        tagline: plan.tagline || '',
       };
     }
     acc[key].prices[plan.billing_cycle] = plan.display_price;
@@ -430,7 +431,10 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
           return (
             <div key={planGroup.name} className="site-card plan-card" style={{ position: 'relative', ...(planGroup.is_popular ? { borderColor: 'var(--accent)' } : {}) }}>
               {planGroup.is_popular && <span className="popular-badge">POPULAR</span>}
-              <h3 style={{ marginBottom: '0.5rem' }}>{planGroup.name}</h3>
+              <h3 style={{ marginBottom: planGroup.tagline ? '0.25rem' : '0.5rem' }}>{planGroup.name}</h3>
+              {planGroup.tagline && (
+                <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '0 0 0.5rem', fontWeight: 500 }}>{planGroup.tagline}</p>
+              )}
               <div style={{ marginBottom: '1.5rem' }}>
                 {originalPrice ? (
                   <p style={{ fontSize: '0.95rem', color: '#94a3b8', margin: '0 0 0.15rem', fontWeight: 500 }}>
