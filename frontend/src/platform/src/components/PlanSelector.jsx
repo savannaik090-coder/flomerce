@@ -6,6 +6,119 @@ const DURATION_LABELS = { monthly: 'Monthly', '3months': '3 Months', '6months': 
 const DURATION_MONTHS = { monthly: 1, '3months': 3, '6months': 6, yearly: 12 };
 const DURATION_TEXT = { monthly: 'month', '3months': '3 months', '6months': '6 months', yearly: '1 year' };
 
+function PaymentProcessingOverlay({ state, message, onDone }) {
+  if (!state) return null;
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 99999,
+      background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      animation: 'ppOverlayIn 0.3s ease',
+    }}>
+      <div style={{
+        background: '#fff', borderRadius: 20, padding: '48px 40px',
+        maxWidth: 420, width: '90%', textAlign: 'center',
+        boxShadow: '0 24px 64px rgba(0,0,0,0.2)',
+        animation: 'ppCardIn 0.4s cubic-bezier(0.16,1,0.3,1)',
+      }}>
+        {(state === 'verifying' || state === 'creating-site') && (
+          <>
+            <div style={{
+              width: 64, height: 64, margin: '0 auto 24px',
+              border: '4px solid #e5e7eb', borderTopColor: '#2563eb',
+              borderRadius: '50%', animation: 'ppSpin 0.8s linear infinite',
+            }} />
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0f172a', margin: '0 0 8px' }}>
+              {state === 'verifying' ? 'Verifying Payment' : 'Setting Up Your Store'}
+            </h3>
+            <p style={{ fontSize: '0.9rem', color: '#64748b', margin: 0, lineHeight: 1.5 }}>
+              {state === 'verifying'
+                ? 'Please wait while we confirm your payment...'
+                : 'Creating your website and activating your plan...'}
+            </p>
+          </>
+        )}
+
+        {state === 'success' && (
+          <>
+            <div style={{
+              width: 72, height: 72, margin: '0 auto 24px',
+              background: '#dcfce7', borderRadius: '50%',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              animation: 'ppBounce 0.5s cubic-bezier(0.16,1,0.3,1)',
+            }}>
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </div>
+            <h3 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#0f172a', margin: '0 0 8px' }}>
+              Payment Successful!
+            </h3>
+            <p style={{ fontSize: '0.9rem', color: '#64748b', margin: '0 0 24px', lineHeight: 1.6 }}>
+              {message || 'Your plan has been activated. You can now start building your store.'}
+            </p>
+            <button
+              onClick={onDone}
+              style={{
+                width: '100%', padding: '14px 24px',
+                background: '#2563eb', color: '#fff', border: 'none',
+                borderRadius: 12, fontSize: '0.95rem', fontWeight: 700,
+                cursor: 'pointer', fontFamily: 'inherit',
+                transition: 'background 0.2s',
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = '#1d4ed8'}
+              onMouseLeave={e => e.currentTarget.style.background = '#2563eb'}
+            >
+              Go to Dashboard
+            </button>
+          </>
+        )}
+
+        {state === 'error' && (
+          <>
+            <div style={{
+              width: 72, height: 72, margin: '0 auto 24px',
+              background: '#fef2f2', borderRadius: '50%',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="15" y1="9" x2="9" y2="15" />
+                <line x1="9" y1="9" x2="15" y2="15" />
+              </svg>
+            </div>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0f172a', margin: '0 0 8px' }}>
+              Something Went Wrong
+            </h3>
+            <p style={{ fontSize: '0.9rem', color: '#64748b', margin: '0 0 24px', lineHeight: 1.6 }}>
+              {message || 'Payment verification failed. Please contact support if you were charged.'}
+            </p>
+            <button
+              onClick={onDone}
+              style={{
+                width: '100%', padding: '14px 24px',
+                background: '#f1f5f9', color: '#334155', border: '1px solid #e2e8f0',
+                borderRadius: 12, fontSize: '0.95rem', fontWeight: 600,
+                cursor: 'pointer', fontFamily: 'inherit',
+              }}
+            >
+              Close
+            </button>
+          </>
+        )}
+      </div>
+
+      <style>{`
+        @keyframes ppOverlayIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes ppCardIn { from { opacity: 0; transform: scale(0.9) translateY(20px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+        @keyframes ppSpin { to { transform: rotate(360deg); } }
+        @keyframes ppBounce { 0% { transform: scale(0); } 60% { transform: scale(1.15); } 100% { transform: scale(1); } }
+      `}</style>
+    </div>
+  );
+}
+
 export default function PlanSelector({ siteId: initialSiteId, currentPlan, currentStatus, onUpgraded, isOverlay, hideTrial, onClose, isFirstTime, onCreateSite }) {
   const [duration, setDuration] = useState(null);
   const [upgrading, setUpgrading] = useState(null);
@@ -14,6 +127,7 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [enterpriseConfig, setEnterpriseConfig] = useState({ enabled: false, message: '', email: '' });
+  const [postPayment, setPostPayment] = useState({ state: null, message: '' });
 
   useEffect(() => {
     loadPlans();
@@ -87,15 +201,20 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
   const isExpired = currentStatus === 'expired' || currentStatus === 'none';
   const showTrialCard = !hideTrial && isExpired && currentPlanLower !== 'trial' && currentPlan !== 'trial';
 
+  const handlePostPaymentDone = () => {
+    setPostPayment({ state: null, message: '' });
+    onUpgraded?.();
+  };
+
   const handleUpgrade = async (planGroup) => {
     const selectedPlan = planGroup.plans[duration];
     if (!selectedPlan) {
-      alert('This plan is not available for the selected billing cycle.');
+      setPostPayment({ state: 'error', message: 'This plan is not available for the selected billing cycle.' });
       return;
     }
 
     if (!razorpayKeyId) {
-      alert('Payment is not configured. Please contact the administrator.');
+      setPostPayment({ state: 'error', message: 'Payment is not configured. Please contact the administrator.' });
       return;
     }
 
@@ -105,7 +224,7 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
       const res = await createSubscription(selectedPlan.id, siteId);
 
       if (!res.subscriptionId) {
-        alert('Failed to create subscription: ' + (res.error || 'Unknown error'));
+        setPostPayment({ state: 'error', message: res.error || 'Failed to create subscription. Please try again.' });
         return;
       }
 
@@ -115,6 +234,7 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
         name: 'Fluxe',
         description: `${res.planName} - ${DURATION_LABELS[res.billingCycle] || res.billingCycle}`,
         handler: async function (response) {
+          setPostPayment({ state: 'verifying', message: '' });
           try {
             const verifyRes = await verifySubscriptionPayment({
               razorpay_subscription_id: response.razorpay_subscription_id,
@@ -123,29 +243,28 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
             });
             if (verifyRes.verified || verifyRes.success) {
               if (!initialSiteId && onCreateSite) {
+                setPostPayment({ state: 'creating-site', message: '' });
                 try {
                   await onCreateSite();
                 } catch (siteErr) {
                   console.error('Site creation after payment failed:', siteErr);
-                  alert('Payment successful but site creation failed. Please refresh the page — your subscription is active and you can create your site from the dashboard.');
-                  onUpgraded?.();
+                  setPostPayment({ state: 'success', message: 'Your payment was successful and your plan is active! Your website will be created when you return to the dashboard.' });
                   return;
                 }
               }
-              alert('Payment successful! Your plan has been upgraded.');
-              onUpgraded?.();
+              setPostPayment({ state: 'success', message: 'Your plan has been activated successfully. You can now start building your store!' });
             } else {
-              alert('Payment verification failed. Please contact support.');
+              setPostPayment({ state: 'error', message: 'Payment verification failed. If you were charged, please contact support.' });
             }
           } catch (verifyErr) {
             if (verifyErr?.message?.includes('already activated') || verifyErr?.message?.includes('will activate shortly')) {
               if (!initialSiteId && onCreateSite) {
+                setPostPayment({ state: 'creating-site', message: '' });
                 try { await onCreateSite(); } catch (e) { console.error('Site creation after payment failed:', e); }
               }
-              alert('Payment successful! Your plan is being activated. Please refresh the page in a moment.');
-              onUpgraded?.();
+              setPostPayment({ state: 'success', message: 'Your plan has been activated successfully!' });
             } else {
-              alert('Payment verification failed. Please contact support.');
+              setPostPayment({ state: 'error', message: 'Payment verification failed. If you were charged, please contact support.' });
             }
           }
         },
@@ -170,7 +289,7 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
         rzp.open();
       }
     } catch (e) {
-      alert('Failed to process: ' + (e.message || 'Please try again.'));
+      setPostPayment({ state: 'error', message: e.message || 'Failed to process payment. Please try again.' });
     } finally {
       setUpgrading(null);
     }
@@ -179,18 +298,19 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
   const handleStartTrial = async () => {
     setUpgrading('trial');
     try {
+      setPostPayment({ state: 'verifying', message: '' });
       const data = await startFreeTrial();
       if (data.success || data.message) {
         if (onCreateSite) {
+          setPostPayment({ state: 'creating-site', message: '' });
           await onCreateSite();
         }
-        alert('Your 7-day free trial has started!');
-        onUpgraded?.();
+        setPostPayment({ state: 'success', message: 'Your 7-day free trial has started! Enjoy full access to all features.' });
       } else {
-        alert(data.error || 'Failed to start trial');
+        setPostPayment({ state: 'error', message: data.error || 'Failed to start trial. Please try again.' });
       }
     } catch (e) {
-      alert(e.message || 'Failed to start trial. Please try again.');
+      setPostPayment({ state: 'error', message: e.message || 'Failed to start trial. Please try again.' });
     } finally {
       setUpgrading(null);
     }
@@ -380,21 +500,29 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
 
   if (isOverlay) {
     return (
-      <div className="modal-overlay">
-        <div className="modal-content plan-overlay-modal" style={{ maxWidth: '900px', position: 'relative' }}>
-          {onClose && (
-            <button
-              onClick={onClose}
-              className="plan-overlay-close"
-            >
-              ×
-            </button>
-          )}
-          {content}
+      <>
+        <div className="modal-overlay">
+          <div className="modal-content plan-overlay-modal" style={{ maxWidth: '900px', position: 'relative' }}>
+            {onClose && (
+              <button
+                onClick={onClose}
+                className="plan-overlay-close"
+              >
+                ×
+              </button>
+            )}
+            {content}
+          </div>
         </div>
-      </div>
+        <PaymentProcessingOverlay state={postPayment.state} message={postPayment.message} onDone={handlePostPaymentDone} />
+      </>
     );
   }
 
-  return content;
+  return (
+    <>
+      {content}
+      <PaymentProcessingOverlay state={postPayment.state} message={postPayment.message} onDone={handlePostPaymentDone} />
+    </>
+  );
 }
