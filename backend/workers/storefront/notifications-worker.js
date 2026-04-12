@@ -2,7 +2,7 @@ import { resolveSiteDBById } from '../../utils/site-db.js';
 import { jsonResponse, errorResponse } from '../../utils/helpers.js';
 import { validateSiteAdmin } from './site-admin-worker.js';
 import { sendWebPush } from '../../utils/web-push.js';
-import { trackD1Write, trackD1Delete } from '../../utils/usage-tracker.js';
+import { trackD1Write, trackD1Delete, checkFeatureAccess } from '../../utils/usage-tracker.js';
 import { PLATFORM_DOMAIN, VAPID_SUBJECT } from '../../config.js';
 
 async function getSiteIcon(env, siteId) {
@@ -36,7 +36,20 @@ export async function handleNotifications(request, env, path) {
       if (request.method === 'GET') return handleStats(request, env);
       break;
     case 'send':
-      if (request.method === 'POST') return handleSend(request, env);
+      if (request.method === 'POST') {
+        const sendUrl = new URL(request.url);
+        let sendSiteId = sendUrl.searchParams.get('siteId');
+        if (!sendSiteId) {
+          try { const b = await request.clone().json(); sendSiteId = b.siteId; } catch (e) {}
+        }
+        if (sendSiteId) {
+          const access = await checkFeatureAccess(env, sendSiteId, 'pushManual');
+          if (!access.allowed) {
+            return errorResponse(`Push notifications are available on the ${(access.requiredPlan || 'growth').charAt(0).toUpperCase() + (access.requiredPlan || 'growth').slice(1)} plan. Upgrade to unlock.`, 403, 'FEATURE_LOCKED');
+          }
+        }
+        return handleSend(request, env);
+      }
       break;
     case 'settings':
       if (request.method === 'GET') return handleGetSettings(request, env);

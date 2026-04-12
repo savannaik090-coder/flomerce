@@ -1,6 +1,7 @@
 import { generateId, jsonResponse, errorResponse, successResponse, handleCORS } from '../../utils/helpers.js';
 import { validateSiteAdmin, hasPermission } from './site-admin-worker.js';
 import { resolveSiteDBById } from '../../utils/site-db.js';
+import { checkCountLimit } from '../../utils/usage-tracker.js';
 
 async function ensureLocationTables(db) {
   await db.prepare(`CREATE TABLE IF NOT EXISTS inventory_locations (
@@ -77,7 +78,7 @@ export async function handleInventoryLocations(request, env, path, ctx) {
   }
 
   if (method === 'GET') return getLocations(db, siteId);
-  if (method === 'POST') return createLocation(request, db, siteId);
+  if (method === 'POST') return createLocation(request, db, siteId, env);
   if (method === 'PUT' && segment) return updateLocation(request, db, siteId, segment);
   if (method === 'DELETE' && segment) return deleteLocation(db, siteId, segment);
 
@@ -96,10 +97,26 @@ async function getLocations(db, siteId) {
   }
 }
 
-async function createLocation(request, db, siteId) {
+async function createLocation(request, db, siteId, env) {
   try {
     const { name, address, priority, is_default } = await request.json();
     if (!name || !name.trim()) return errorResponse('Location name is required', 400);
+
+    const existing = await db.prepare(
+      'SELECT COUNT(*) as count FROM inventory_locations WHERE site_id = ? AND is_active = 1'
+    ).bind(siteId).first();
+    const currentCount = existing?.count || 0;
+
+    if (env) {
+      const limitCheck = await checkCountLimit(env, siteId, 'maxLocations');
+      if (limitCheck.limit !== null && currentCount >= limitCheck.limit) {
+        const upgradePlan = limitCheck.requiredPlan || 'growth';
+        return errorResponse(
+          `Location limit reached (${limitCheck.limit}). Upgrade to ${upgradePlan.charAt(0).toUpperCase() + upgradePlan.slice(1)} for more.`,
+          403, 'PLAN_LIMIT_REACHED'
+        );
+      }
+    }
 
     const id = generateId();
 
@@ -109,10 +126,7 @@ async function createLocation(request, db, siteId) {
       ).bind(siteId).run();
     }
 
-    const existing = await db.prepare(
-      'SELECT COUNT(*) as count FROM inventory_locations WHERE site_id = ? AND is_active = 1'
-    ).bind(siteId).first();
-    const makeDefault = is_default || (existing?.count === 0);
+    const makeDefault = is_default || (currentCount === 0);
 
     await db.prepare(
       `INSERT INTO inventory_locations (id, site_id, name, address, priority, is_default) VALUES (?, ?, ?, ?, ?, ?)`

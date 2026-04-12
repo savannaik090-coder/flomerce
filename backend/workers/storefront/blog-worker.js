@@ -2,7 +2,7 @@ import { generateId, jsonResponse, errorResponse, successResponse, handleCORS } 
 import { cachedJsonResponse, purgeStorefrontCache } from '../../utils/cache.js';
 import { resolveSiteDBById } from '../../utils/site-db.js';
 import { validateSiteAdmin } from './site-admin-worker.js';
-import { estimateRowBytes, trackD1Write, trackD1Update } from '../../utils/usage-tracker.js';
+import { estimateRowBytes, trackD1Write, trackD1Update, checkFeatureAccess } from '../../utils/usage-tracker.js';
 
 const _tableReady = new Set();
 
@@ -80,10 +80,32 @@ export async function handleBlog(request, env, path, ctx) {
   }
 
   if (action === 'admin' && method === 'POST' && !subAction) {
+    const url = new URL(request.url);
+    let siteId = url.searchParams.get('siteId');
+    if (!siteId) {
+      try { const b = await request.clone().json(); siteId = b.siteId; } catch (e) {}
+    }
+    if (siteId) {
+      const access = await checkFeatureAccess(env, siteId, 'blog');
+      if (!access.allowed) {
+        return errorResponse(`Blog is available on the ${(access.requiredPlan || 'growth').charAt(0).toUpperCase() + (access.requiredPlan || 'growth').slice(1)} plan. Upgrade to unlock.`, 403, 'FEATURE_LOCKED');
+      }
+    }
     return createPost(request, env, ctx);
   }
 
   if (action === 'admin' && subAction && method === 'PUT') {
+    const url = new URL(request.url);
+    let siteId = url.searchParams.get('siteId');
+    if (!siteId) {
+      try { const b = await request.clone().json(); siteId = b.siteId; } catch (e) {}
+    }
+    if (siteId) {
+      const access = await checkFeatureAccess(env, siteId, 'blog');
+      if (!access.allowed) {
+        return errorResponse(`Blog is available on the ${(access.requiredPlan || 'growth').charAt(0).toUpperCase() + (access.requiredPlan || 'growth').slice(1)} plan. Upgrade to unlock.`, 403, 'FEATURE_LOCKED');
+      }
+    }
     return updatePost(request, env, subAction, ctx);
   }
 

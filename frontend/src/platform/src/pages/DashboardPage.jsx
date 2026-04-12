@@ -252,6 +252,11 @@ export default function DashboardPage() {
   };
 
   const handleCreateSiteClick = () => {
+    const accountStatus = getAccountSubscriptionStatus();
+    if (accountStatus.isTrialActive && sites.length >= 5) {
+      alert('Trial accounts can create up to 5 websites. Please upgrade to a paid plan to create more.');
+      return;
+    }
     setShowWizard(true);
   };
 
@@ -987,14 +992,49 @@ export default function DashboardPage() {
                   )}
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                    <h2 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 700 }}>
-                      {(() => { const s = sites.find(s => s.id === staffSiteId); return s ? (s.brand_name || s.subdomain) : ''; })()} - Staff
-                    </h2>
-                    {!staffForm && (
-                      <button className="btn btn-primary" style={{ fontSize: '0.875rem' }} onClick={() => setStaffForm({ name: '', email: '', password: '', permissions: [...PERMISSION_OPTIONS.map(p => p.id)], is_active: true })}>
-                        Add Staff Member
-                      </button>
-                    )}
+                    <div>
+                      <h2 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 700 }}>
+                        {(() => { const s = sites.find(s => s.id === staffSiteId); return s ? (s.brand_name || s.subdomain) : ''; })()} - Staff
+                      </h2>
+                      {(() => {
+                        const site = sites.find(s => s.id === staffSiteId);
+                        const info = site ? getSiteSubscriptionInfo(site) : {};
+                        const plan = (info.plan || '').toLowerCase();
+                        const maxStaff = plan === 'starter' ? 5 : plan === 'growth' ? 25 : null;
+                        if (maxStaff) {
+                          return (
+                            <span style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 2, display: 'inline-block' }}>
+                              {staffList.length} / {maxStaff} staff members used
+                            </span>
+                          );
+                        }
+                        return null;
+                      })()}
+                    </div>
+                    {!staffForm && (() => {
+                      const site = sites.find(s => s.id === staffSiteId);
+                      const info = site ? getSiteSubscriptionInfo(site) : {};
+                      const plan = (info.plan || '').toLowerCase();
+                      const maxStaff = plan === 'starter' ? 5 : plan === 'growth' ? 25 : null;
+                      const limitReached = maxStaff && staffList.length >= maxStaff;
+                      return (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          {limitReached && (
+                            <span style={{ fontSize: '0.75rem', color: '#f59e0b', fontWeight: 500 }}>
+                              Limit reached
+                            </span>
+                          )}
+                          <button
+                            className="btn btn-primary"
+                            style={{ fontSize: '0.875rem', opacity: limitReached ? 0.5 : 1 }}
+                            disabled={limitReached}
+                            onClick={() => setStaffForm({ name: '', email: '', password: '', permissions: [...PERMISSION_OPTIONS.map(p => p.id)], is_active: true })}
+                          >
+                            Add Staff Member
+                          </button>
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   {staffMsg && (

@@ -1,4 +1,5 @@
 import React from 'react';
+import { isFeatureAvailable, getRequiredPlan, PlanBadge } from './FeatureGate.jsx';
 
 const navItems = [
   { id: 'dashboard', icon: 'fa-chart-line', label: 'Dashboard' },
@@ -6,15 +7,15 @@ const navItems = [
   { id: 'inventory', icon: 'fa-warehouse', label: 'Inventory' },
   { id: 'orders', icon: 'fa-shopping-bag', label: 'Orders', badgeKey: 'pendingOrders' },
   { id: 'customers', icon: 'fa-users', label: 'Customers' },
-  { id: 'revenue', icon: 'fa-money-bill-wave', label: 'Revenue' },
+  { id: 'revenue', icon: 'fa-money-bill-wave', label: 'Revenue', gatedFeature: 'revenue' },
   { id: 'analytics', icon: 'fa-chart-bar', label: 'Analytics' },
   { id: 'website', icon: 'fa-globe', label: 'Edit Website' },
   { id: 'seo', icon: 'fa-search', label: 'SEO' },
-  { id: 'notifications', icon: 'fa-bell', label: 'Push Notifications' },
+  { id: 'notifications', icon: 'fa-bell', label: 'Push Notifications', gatedFeature: 'notifications' },
   { id: 'settings', icon: 'fa-cog', label: 'Settings' },
 ];
 
-export default function AdminSidebar({ activeSection, onSectionChange, isOpen, onClose, brandName, badges, permissions, isOwner }) {
+export default function AdminSidebar({ activeSection, onSectionChange, isOpen, onClose, brandName, badges, permissions, isOwner, currentPlan }) {
   const visibleItems = navItems.filter(item => {
     if (isOwner) return true;
     if (!permissions) return false;
@@ -35,19 +36,25 @@ export default function AdminSidebar({ activeSection, onSectionChange, isOpen, o
           </div>
         </div>
         <nav className="sidebar-nav">
-          {visibleItems.map(item => (
-            <button
-              key={item.id}
-              className={`nav-item${activeSection === item.id ? ' active' : ''}`}
-              onClick={() => { onSectionChange(item.id); onClose(); }}
-            >
-              <i className={`fas ${item.icon}`} />
-              <span>{item.label}</span>
-              {item.badgeKey && badges?.[item.badgeKey] > 0 && (
-                <span className="nav-badge">{badges[item.badgeKey]}</span>
-              )}
-            </button>
-          ))}
+          {visibleItems.map(item => {
+            const isLocked = item.gatedFeature && !isFeatureAvailable(currentPlan, item.gatedFeature);
+            const requiredPlan = item.gatedFeature ? getRequiredPlan(item.gatedFeature) : null;
+
+            return (
+              <button
+                key={item.id}
+                className={`nav-item${activeSection === item.id ? ' active' : ''}${isLocked ? ' locked' : ''}`}
+                onClick={() => { onSectionChange(item.id); onClose(); }}
+              >
+                <i className={`fas ${isLocked ? 'fa-lock' : item.icon}`} style={isLocked ? { color: '#94a3b8', fontSize: 13 } : undefined} />
+                <span style={isLocked ? { color: '#94a3b8' } : undefined}>{item.label}</span>
+                {isLocked && <PlanBadge plan={requiredPlan} small />}
+                {!isLocked && item.badgeKey && badges?.[item.badgeKey] > 0 && (
+                  <span className="nav-badge">{badges[item.badgeKey]}</span>
+                )}
+              </button>
+            );
+          })}
         </nav>
       </aside>
       <div className={`admin-overlay${isOpen ? ' show' : ''}`} onClick={onClose} />

@@ -2,7 +2,7 @@ import { generateId, jsonResponse, errorResponse, successResponse, handleCORS } 
 import { cachedJsonResponse, purgeStorefrontCache } from '../../utils/cache.js';
 import { validateAnyAuth } from '../../utils/auth.js';
 import { resolveSiteDBById, checkMigrationLock, getSiteConfig } from '../../utils/site-db.js';
-import { estimateRowBytes, trackD1Write } from '../../utils/usage-tracker.js';
+import { estimateRowBytes, trackD1Write, checkFeatureAccess } from '../../utils/usage-tracker.js';
 
 async function ensureReviewColumns(db) {
   try { await db.prepare(`ALTER TABLE reviews ADD COLUMN order_id TEXT`).run(); } catch (e) {}
@@ -40,10 +40,32 @@ export async function handleReviews(request, env, path, ctx) {
   }
 
   if (action === 'submit' && method === 'POST') {
+    const url = new URL(request.url);
+    let siteId = url.searchParams.get('siteId');
+    if (!siteId) {
+      try { const b = await request.clone().json(); siteId = b.siteId; } catch (e) {}
+    }
+    if (siteId) {
+      const access = await checkFeatureAccess(env, siteId, 'reviews');
+      if (!access.allowed) {
+        return errorResponse(`Reviews are available on the ${(access.requiredPlan || 'growth').charAt(0).toUpperCase() + (access.requiredPlan || 'growth').slice(1)} plan.`, 403, 'FEATURE_LOCKED');
+      }
+    }
     return submitReview(request, env);
   }
 
   if (action === 'guest-submit' && method === 'POST') {
+    const url = new URL(request.url);
+    let siteId = url.searchParams.get('siteId');
+    if (!siteId) {
+      try { const b = await request.clone().json(); siteId = b.siteId; } catch (e) {}
+    }
+    if (siteId) {
+      const access = await checkFeatureAccess(env, siteId, 'reviews');
+      if (!access.allowed) {
+        return errorResponse(`Reviews are available on the ${(access.requiredPlan || 'growth').charAt(0).toUpperCase() + (access.requiredPlan || 'growth').slice(1)} plan.`, 403, 'FEATURE_LOCKED');
+      }
+    }
     return submitGuestReview(request, env);
   }
 
@@ -52,6 +74,17 @@ export async function handleReviews(request, env, path, ctx) {
   }
 
   if (action === 'admin' && subAction && method === 'PUT') {
+    const url = new URL(request.url);
+    let siteId = url.searchParams.get('siteId');
+    if (!siteId) {
+      try { const b = await request.clone().json(); siteId = b.siteId; } catch (e) {}
+    }
+    if (siteId) {
+      const access = await checkFeatureAccess(env, siteId, 'reviews');
+      if (!access.allowed) {
+        return errorResponse(`Reviews are available on the ${(access.requiredPlan || 'growth').charAt(0).toUpperCase() + (access.requiredPlan || 'growth').slice(1)} plan.`, 403, 'FEATURE_LOCKED');
+      }
+    }
     return updateReviewStatus(request, env, subAction, ctx);
   }
 

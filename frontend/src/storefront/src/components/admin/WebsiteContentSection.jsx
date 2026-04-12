@@ -23,6 +23,7 @@ import FAQSection from './FAQSection.jsx';
 import BlogSection from './BlogSection.jsx';
 import SectionToggle from './SectionToggle.jsx';
 import SaveBar from './SaveBar.jsx';
+import FeatureGate, { isFeatureAvailable, getRequiredPlan, PlanBadge } from './FeatureGate.jsx';
 import { API_BASE, PLATFORM_DOMAIN } from '../../config.js';
 
 function buildTabGroups(templateId) {
@@ -104,7 +105,9 @@ function getStoreUrl(siteConfig) {
   return `${window.location.protocol}//${window.location.host}`;
 }
 
-export default function WebsiteContentSection() {
+const GATED_TABS = { 'blog': 'blog', 'customer-reviews': 'reviews' };
+
+export default function WebsiteContentSection({ currentPlan }) {
   const { siteConfig } = useContext(SiteContext);
   const [activeTab, setActiveTab] = useState('navbar');
   const [showPreview, setShowPreview] = useState(true);
@@ -300,6 +303,8 @@ export default function WebsiteContentSection() {
                       </div>
                       {group.tabs.map(tab => {
                         const isActive = activeTab === tab.id;
+                        const gatedFeature = GATED_TABS[tab.id];
+                        const isLocked = gatedFeature && !isFeatureAvailable(currentPlan, gatedFeature);
                         return (
                           <button
                             key={tab.id}
@@ -312,7 +317,7 @@ export default function WebsiteContentSection() {
                               padding: '12px 18px',
                               border: 'none',
                               background: isActive ? '#eff6ff' : 'transparent',
-                              color: isActive ? '#2563eb' : '#334155',
+                              color: isLocked ? '#94a3b8' : isActive ? '#2563eb' : '#334155',
                               fontWeight: isActive ? 600 : 400,
                               fontSize: 14,
                               cursor: 'pointer',
@@ -320,14 +325,15 @@ export default function WebsiteContentSection() {
                               textAlign: 'left',
                             }}
                           >
-                            <i className={`fas ${tab.icon}`} style={{
+                            <i className={`fas ${isLocked ? 'fa-lock' : tab.icon}`} style={{
                               fontSize: 13,
                               width: 18,
                               textAlign: 'center',
-                              color: isActive ? '#2563eb' : '#94a3b8',
+                              color: isLocked ? '#94a3b8' : isActive ? '#2563eb' : '#94a3b8',
                             }} />
                             {tab.label}
-                            {isActive && (
+                            {isLocked && <PlanBadge plan={getRequiredPlan(gatedFeature)} small />}
+                            {!isLocked && isActive && (
                               <i className="fas fa-check" style={{ marginLeft: 'auto', fontSize: 12, color: '#2563eb' }} />
                             )}
                           </button>
@@ -371,6 +377,8 @@ export default function WebsiteContentSection() {
                 </div>
                 {group.tabs.map(tab => {
                   const isActive = activeTab === tab.id;
+                  const gatedFeature = GATED_TABS[tab.id];
+                  const isLocked = gatedFeature && !isFeatureAvailable(currentPlan, gatedFeature);
                   return (
                     <button
                       key={tab.id}
@@ -383,7 +391,7 @@ export default function WebsiteContentSection() {
                         padding: '8px 14px',
                         border: 'none',
                         background: isActive ? '#eff6ff' : 'transparent',
-                        color: isActive ? '#2563eb' : '#475569',
+                        color: isLocked ? '#94a3b8' : isActive ? '#2563eb' : '#475569',
                         fontWeight: isActive ? 600 : 400,
                         fontSize: 13,
                         cursor: 'pointer',
@@ -395,8 +403,9 @@ export default function WebsiteContentSection() {
                       onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background = '#f8fafc'; } }}
                       onMouseLeave={e => { if (!isActive) { e.currentTarget.style.background = 'transparent'; } }}
                     >
-                      <i className={`fas ${tab.icon}`} style={{ fontSize: 11, width: 14, textAlign: 'center', opacity: isActive ? 1 : 0.6 }} />
+                      <i className={`fas ${isLocked ? 'fa-lock' : tab.icon}`} style={{ fontSize: 11, width: 14, textAlign: 'center', opacity: isLocked ? 0.5 : isActive ? 1 : 0.6 }} />
                       {tab.label}
+                      {isLocked && <PlanBadge plan={getRequiredPlan(gatedFeature)} small />}
                     </button>
                   );
                 })}
@@ -413,7 +422,11 @@ export default function WebsiteContentSection() {
           {activeTab === 'categories' && <CategoriesSection onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
           {activeTab === 'watchbuy' && <WatchBuySection onSaved={refreshPreview} />}
           {activeTab === 'featured-video' && <FeaturedVideoEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
-          {activeTab === 'customer-reviews' && <CustomerReviewsEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
+          {activeTab === 'customer-reviews' && (
+            <FeatureGate currentPlan={currentPlan} requiredPlan="growth" featureName="Customer Reviews">
+              <CustomerReviewsEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />
+            </FeatureGate>
+          )}
           {activeTab === 'shop-the-look' && <ShopTheLookEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
           {activeTab === 'trending-now' && <TrendingNowEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
           {activeTab === 'brand-story' && <BrandStoryEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
@@ -424,7 +437,11 @@ export default function WebsiteContentSection() {
           {activeTab === 'product-policies' && <ProductPoliciesEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
           {activeTab === 'about-us' && <AboutUsEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
           {activeTab === 'faq' && <FAQSection />}
-          {activeTab === 'blog' && <BlogSection />}
+          {activeTab === 'blog' && (
+            <FeatureGate currentPlan={currentPlan} requiredPlan="growth" featureName="Blog">
+              <BlogSection />
+            </FeatureGate>
+          )}
           {activeTab === 'terms' && <TermsEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
           {activeTab === 'privacy' && <PrivacyEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
           {activeTab === 'footer' && <FooterEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}

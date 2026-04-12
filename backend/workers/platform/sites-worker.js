@@ -4,7 +4,7 @@ import { validateAuth } from '../../utils/auth.js';
 import { validateSiteAdmin, handleStaffCRUD } from '../storefront/site-admin-worker.js';
 import { registerCustomHostname, deleteCustomHostname, findCustomHostname } from '../../utils/cloudflare.js';
 import { resolveSiteDBById, getSiteConfig, getSiteWithConfig } from '../../utils/site-db.js';
-import { trackD1Write, trackD1Update, estimateRowBytes } from '../../utils/usage-tracker.js';
+import { trackD1Write, trackD1Update, estimateRowBytes, normalizePlanName, getPlanLimitsConfig } from '../../utils/usage-tracker.js';
 import { purgeStorefrontCache } from '../../utils/cache.js';
 
 export async function handleSites(request, env, path, ctx) {
@@ -252,6 +252,24 @@ async function createSite(request, env, user) {
 
     if (!brandName) {
       return errorResponse('Brand name is required');
+    }
+
+    const activeSub = await env.DB.prepare(
+      `SELECT plan FROM subscriptions WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1`
+    ).bind(user.id).first();
+    const userPlan = normalizePlanName(activeSub?.plan || 'free');
+    const planConfig = getPlanLimitsConfig(userPlan);
+
+    if (planConfig.maxSites !== Infinity) {
+      const siteCount = await env.DB.prepare(
+        'SELECT COUNT(*) as count FROM sites WHERE user_id = ? AND is_active = 1'
+      ).bind(user.id).first();
+      if ((siteCount?.count || 0) >= planConfig.maxSites) {
+        const limitMsg = userPlan === 'trial'
+          ? `Trial plan allows up to ${planConfig.maxSites} websites. Upgrade to a paid plan to create more.`
+          : `Your plan allows up to ${planConfig.maxSites} websites. Upgrade to create more.`;
+        return errorResponse(limitMsg, 403, 'PLAN_LIMIT_REACHED');
+      }
     }
 
     if (subdomain.length < 3) {

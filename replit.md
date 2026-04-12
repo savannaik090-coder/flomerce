@@ -30,6 +30,14 @@ Fluxe utilizes a shared shard-based D1 database architecture where multiple site
 - **R2 Tracking:** Managed via the `site_media` table.
 - **Plan Limits:** Hard limits for Basic/Standard/Pro plans, with enterprise plans allowing overage.
 
+### Plan-Based Feature Gating
+- **Plan hierarchy:** Trial (full Pro access, 5 sites max, 7-day expiry) → Starter → Growth → Pro → Enterprise.
+- **Count limits:** Sites (trial: 5), Staff (starter: 5, growth: 25), Inventory locations (starter: 2, growth: 50). Enforced in `sites-worker.js`, `site-admin-worker.js`, `inventory-locations-worker.js`.
+- **Feature flags:** Blog, Reviews, Push Notifications (manual), Advanced SEO, Revenue — require Growth+. Push Notifications (automated) requires Pro+. Coupons available on all plans.
+- **Backend enforcement:** `checkFeatureAccess(env, siteId, feature)` and `checkCountLimit(env, siteId, limitType)` in `backend/utils/usage-tracker.js`. Feature checks use `request.clone().json()` fallback to extract `siteId` from body when query param is missing. `GET /api/plan-limits` endpoint returns all limits for a site.
+- **Frontend gating:** `FeatureGate` overlay component (`frontend/src/storefront/src/components/admin/FeatureGate.jsx`) wraps locked sections with upgrade prompt. `AdminSidebar` shows lock icons and plan badges. `WebsiteContentSection` gates Blog and Customer Reviews tabs. `SEOSection` gates Pages/Categories/Products SEO tabs. `DashboardPage` enforces trial site creation limit and staff count limits with disabled buttons.
+- **`subscription_plan`** is included in site info response and mapped as `siteConfig.subscriptionPlan` in `SiteContext.jsx`.
+
 ### Admin Shard Management API
 - Provides endpoints for managing shards (listing, creating, reconciling, activating, moving, deleting).
 

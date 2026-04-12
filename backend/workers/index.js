@@ -18,7 +18,7 @@ import { handleNotifications } from './storefront/notifications-worker.js';
 import { handleReviews } from './storefront/reviews-worker.js';
 import { handleInventoryLocations } from './storefront/inventory-locations-worker.js';
 import { handleBlog } from './storefront/blog-worker.js';
-import { handleUsageAPI } from '../utils/usage-tracker.js';
+import { handleUsageAPI, handlePlanLimitsAPI } from '../utils/usage-tracker.js';
 import { jsonResponse, errorResponse, corsHeaders, handleCORS } from '../utils/helpers.js';
 import { cachedJsonResponse } from '../utils/cache.js';
 import { PLATFORM_DOMAIN } from '../config.js';
@@ -150,6 +150,9 @@ async function handleAPI(request, env, path, ctx) {
     case 'usage':
       return handleUsageAPI(request, env, path);
 
+    case 'plan-limits':
+      return handlePlanLimitsAPI(request, env, path);
+
     case 'health':
       return handleHealth(env);
 
@@ -191,14 +194,16 @@ async function handleSiteInfo(request, env) {
     if (subdomain) {
       siteRow = await env.DB.prepare(
         `SELECT s.id, s.subdomain, s.brand_name, s.template_id,
-                s.custom_domain, s.domain_status, s.domain_verification_token
+                s.custom_domain, s.domain_status, s.domain_verification_token,
+                s.subscription_plan
          FROM sites s 
          WHERE LOWER(s.subdomain) = LOWER(?) AND s.is_active = 1`
       ).bind(subdomain).first();
     } else if (!hostname.endsWith(env.DOMAIN || PLATFORM_DOMAIN) && !hostname.endsWith('pages.dev') && !hostname.includes('localhost') && !hostname.includes('workers.dev')) {
       siteRow = await env.DB.prepare(
         `SELECT s.id, s.subdomain, s.brand_name, s.template_id,
-                s.custom_domain, s.domain_status, s.domain_verification_token
+                s.custom_domain, s.domain_status, s.domain_verification_token,
+                s.subscription_plan
          FROM sites s 
          WHERE s.custom_domain = ? AND s.domain_status = 'verified' AND s.is_active = 1`
       ).bind(hostname.toLowerCase()).first();

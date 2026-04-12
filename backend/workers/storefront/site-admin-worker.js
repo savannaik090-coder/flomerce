@@ -2,7 +2,7 @@ import { generateId, generateToken, jsonResponse, errorResponse, successResponse
 import { purgeStorefrontCache } from '../../utils/cache.js';
 import { validateAuth, hashPassword, verifyPassword } from '../../utils/auth.js';
 import { resolveSiteDBById, checkMigrationLock, getSiteConfig } from '../../utils/site-db.js';
-import { estimateRowBytes, trackD1Write, trackD1Update } from '../../utils/usage-tracker.js';
+import { estimateRowBytes, trackD1Write, trackD1Update, checkCountLimit, checkFeatureAccess } from '../../utils/usage-tracker.js';
 
 const ALL_PERMISSIONS = ['dashboard', 'products', 'inventory', 'orders', 'customers', 'analytics', 'website', 'seo', 'notifications', 'faq', 'settings'];
 
@@ -321,17 +321,56 @@ async function handleSEO(request, env, pathParts, ctx) {
 
   if (subResource === 'categories') {
     if (request.method === 'GET') return getCategoriesSEO(request, env);
-    if (request.method === 'PUT' && resourceId) return saveCategorySEO(request, env, resourceId, ctx);
+    if (request.method === 'PUT' && resourceId) {
+      const cUrl = new URL(request.url);
+      let cSiteId = cUrl.searchParams.get('siteId');
+      if (!cSiteId) {
+        try { const b = await request.clone().json(); cSiteId = b.siteId; } catch (e) {}
+      }
+      if (cSiteId) {
+        const access = await checkFeatureAccess(env, cSiteId, 'advancedSeo');
+        if (!access.allowed) {
+          return errorResponse(`Category SEO is available on the ${(access.requiredPlan || 'growth').charAt(0).toUpperCase() + (access.requiredPlan || 'growth').slice(1)} plan. Upgrade to unlock.`, 403, 'FEATURE_LOCKED');
+        }
+      }
+      return saveCategorySEO(request, env, resourceId, ctx);
+    }
   }
 
   if (subResource === 'products') {
     if (request.method === 'GET') return getProductsSEO(request, env);
-    if (request.method === 'PUT' && resourceId) return saveProductSEO(request, env, resourceId, ctx);
+    if (request.method === 'PUT' && resourceId) {
+      const prUrl = new URL(request.url);
+      let prSiteId = prUrl.searchParams.get('siteId');
+      if (!prSiteId) {
+        try { const b = await request.clone().json(); prSiteId = b.siteId; } catch (e) {}
+      }
+      if (prSiteId) {
+        const access = await checkFeatureAccess(env, prSiteId, 'advancedSeo');
+        if (!access.allowed) {
+          return errorResponse(`Product SEO is available on the ${(access.requiredPlan || 'growth').charAt(0).toUpperCase() + (access.requiredPlan || 'growth').slice(1)} plan. Upgrade to unlock.`, 403, 'FEATURE_LOCKED');
+        }
+      }
+      return saveProductSEO(request, env, resourceId, ctx);
+    }
   }
 
   if (subResource === 'pages') {
     if (request.method === 'GET') return getPagesSEO(request, env);
-    if (request.method === 'PUT' && resourceId) return savePageSEO(request, env, resourceId, ctx);
+    if (request.method === 'PUT' && resourceId) {
+      const pUrl = new URL(request.url);
+      let pSiteId = pUrl.searchParams.get('siteId');
+      if (!pSiteId) {
+        try { const b = await request.clone().json(); pSiteId = b.siteId; } catch (e) {}
+      }
+      if (pSiteId) {
+        const access = await checkFeatureAccess(env, pSiteId, 'advancedSeo');
+        if (!access.allowed) {
+          return errorResponse(`Per-page SEO is available on the ${(access.requiredPlan || 'growth').charAt(0).toUpperCase() + (access.requiredPlan || 'growth').slice(1)} plan. Upgrade to unlock.`, 403, 'FEATURE_LOCKED');
+        }
+      }
+      return savePageSEO(request, env, resourceId, ctx);
+    }
   }
 
   if (subResource === 'social') {
@@ -888,6 +927,20 @@ async function addStaff(request, env, siteId) {
 
     const siteDB = await resolveSiteDBById(env, siteId);
     await ensureSiteStaffTable(siteDB);
+
+    const limitCheck = await checkCountLimit(env, siteId, 'maxStaff');
+    if (limitCheck.limit !== null) {
+      const staffCount = await siteDB.prepare(
+        'SELECT COUNT(*) as count FROM site_staff WHERE site_id = ? AND is_active = 1'
+      ).bind(siteId).first();
+      if ((staffCount?.count || 0) >= limitCheck.limit) {
+        const upgradePlan = limitCheck.requiredPlan || 'growth';
+        return errorResponse(
+          `Staff limit reached (${limitCheck.limit} members). Upgrade to ${upgradePlan.charAt(0).toUpperCase() + upgradePlan.slice(1)} for more.`,
+          403, 'PLAN_LIMIT_REACHED'
+        );
+      }
+    }
 
     const existing = await siteDB.prepare(
       'SELECT id FROM site_staff WHERE site_id = ? AND LOWER(email) = LOWER(?)'

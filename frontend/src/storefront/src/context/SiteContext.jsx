@@ -121,6 +121,7 @@ export function SiteProvider({ children }) {
         categories: data.categories || [],
         customDomain: data.custom_domain || null,
         domainStatus: data.domain_status || null,
+        subscriptionPlan: data.subscription_plan || null,
       };
 
       config.seo = {

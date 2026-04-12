@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useContext, useCallback } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
+import FeatureGate, { isFeatureAvailable, PlanBadge } from './FeatureGate.jsx';
 import './SEOSection.css';
 import { API_BASE, PLATFORM_DOMAIN } from '../../config.js';
 
@@ -1448,31 +1449,51 @@ const TABS = [
   { id: 'products', label: 'Products', icon: 'fa-box' },
 ];
 
-export default function SEOSection() {
+const ADVANCED_SEO_TABS = ['pages', 'categories', 'products'];
+
+export default function SEOSection({ currentPlan }) {
   const { siteConfig } = useContext(SiteContext);
   const [activeTab, setActiveTab] = useState('overview');
 
   return (
     <div className="seo-section">
       <div className="seo-tabs">
-        {TABS.map(tab => (
-          <button
-            key={tab.id}
-            className={`seo-tab${activeTab === tab.id ? ' active' : ''}`}
-            onClick={() => setActiveTab(tab.id)}
-          >
-            <i className={`fas ${tab.icon}`} style={{ marginRight: 6 }} />
-            {tab.label}
-          </button>
-        ))}
+        {TABS.map(tab => {
+          const isAdvanced = ADVANCED_SEO_TABS.includes(tab.id);
+          const isLocked = isAdvanced && !isFeatureAvailable(currentPlan, 'advancedSeo');
+          return (
+            <button
+              key={tab.id}
+              className={`seo-tab${activeTab === tab.id ? ' active' : ''}${isLocked ? ' locked' : ''}`}
+              onClick={() => setActiveTab(tab.id)}
+              style={isLocked ? { color: '#94a3b8' } : undefined}
+            >
+              <i className={`fas ${isLocked ? 'fa-lock' : tab.icon}`} style={{ marginRight: 6, ...(isLocked ? { fontSize: 11 } : {}) }} />
+              {tab.label}
+              {isLocked && <PlanBadge plan="growth" small />}
+            </button>
+          );
+        })}
       </div>
 
       {activeTab === 'overview' && <SEOOverviewTab siteConfig={siteConfig} />}
       {activeTab === 'site' && <SiteSEOTab siteConfig={siteConfig} />}
       {activeTab === 'social' && <SocialMediaTab siteConfig={siteConfig} />}
-      {activeTab === 'pages' && <PagesSEOTab siteConfig={siteConfig} />}
-      {activeTab === 'categories' && <CategoriesSEOTab siteConfig={siteConfig} />}
-      {activeTab === 'products' && <ProductsSEOTab siteConfig={siteConfig} />}
+      {activeTab === 'pages' && (
+        <FeatureGate currentPlan={currentPlan} requiredPlan="growth" featureName="Per-Page SEO">
+          <PagesSEOTab siteConfig={siteConfig} />
+        </FeatureGate>
+      )}
+      {activeTab === 'categories' && (
+        <FeatureGate currentPlan={currentPlan} requiredPlan="growth" featureName="Category SEO">
+          <CategoriesSEOTab siteConfig={siteConfig} />
+        </FeatureGate>
+      )}
+      {activeTab === 'products' && (
+        <FeatureGate currentPlan={currentPlan} requiredPlan="growth" featureName="Product SEO">
+          <ProductsSEOTab siteConfig={siteConfig} />
+        </FeatureGate>
+      )}
     </div>
   );
 }

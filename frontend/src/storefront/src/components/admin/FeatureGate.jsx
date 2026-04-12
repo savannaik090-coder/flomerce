@@ -1,0 +1,119 @@
+import React from 'react';
+
+const PLAN_HIERARCHY = ['free', 'starter', 'growth', 'pro', 'enterprise'];
+
+function normalizePlan(plan) {
+  if (!plan) return 'free';
+  const p = plan.toLowerCase();
+  if (p.includes('enterprise')) return 'enterprise';
+  if (p.includes('pro')) return 'pro';
+  if (p.includes('growth') || p.includes('standard')) return 'growth';
+  if (p.includes('starter') || p.includes('basic')) return 'starter';
+  if (p === 'trial') return 'trial';
+  return 'free';
+}
+
+export function isPlanSufficient(currentPlan, requiredPlan) {
+  const current = normalizePlan(currentPlan);
+  if (current === 'trial') return true;
+  const required = normalizePlan(requiredPlan);
+  return PLAN_HIERARCHY.indexOf(current) >= PLAN_HIERARCHY.indexOf(required);
+}
+
+export function getRequiredPlan(feature) {
+  const map = {
+    reviews: 'growth',
+    blog: 'growth',
+    pushManual: 'growth',
+    pushAutomated: 'pro',
+    advancedSeo: 'growth',
+    revenue: 'growth',
+    'customer-reviews': 'growth',
+    notifications: 'growth',
+  };
+  return map[feature] || 'growth';
+}
+
+export function isFeatureAvailable(currentPlan, feature) {
+  const required = getRequiredPlan(feature);
+  return isPlanSufficient(currentPlan, required);
+}
+
+export default function FeatureGate({ currentPlan, requiredPlan, featureName, children }) {
+  const plan = normalizePlan(currentPlan);
+  const hasPlan = isPlanSufficient(plan, requiredPlan);
+
+  if (hasPlan) return children;
+
+  const displayPlan = (requiredPlan || 'growth').charAt(0).toUpperCase() + (requiredPlan || 'growth').slice(1);
+
+  return (
+    <div style={{ position: 'relative', minHeight: 300 }}>
+      <div style={{
+        position: 'absolute', inset: 0, zIndex: 10,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: 'rgba(255,255,255,0.92)', borderRadius: 12,
+      }}>
+        <div style={{ textAlign: 'center', maxWidth: 360, padding: '2rem' }}>
+          <div style={{
+            width: 56, height: 56, borderRadius: '50%', background: '#f1f5f9',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            margin: '0 auto 1rem',
+          }}>
+            <i className="fas fa-lock" style={{ fontSize: 22, color: '#94a3b8' }} />
+          </div>
+          <h3 style={{ margin: '0 0 0.5rem', fontSize: '1.1rem', color: '#1e293b' }}>
+            {featureName || 'This feature'} requires {displayPlan}
+          </h3>
+          <p style={{ margin: '0 0 1.25rem', fontSize: '0.875rem', color: '#64748b', lineHeight: 1.5 }}>
+            Upgrade your plan to {displayPlan} to unlock {featureName ? featureName.toLowerCase() : 'this feature'} and more.
+          </p>
+          <a
+            href={`https://fluxe.in/dashboard/billing`}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: '0.6rem 1.5rem', background: '#4f46e5', color: '#fff',
+              borderRadius: 8, fontSize: '0.875rem', fontWeight: 600,
+              textDecoration: 'none', border: 'none', cursor: 'pointer',
+            }}
+          >
+            <i className="fas fa-arrow-up" style={{ fontSize: 12 }} />
+            Upgrade to {displayPlan}
+          </a>
+        </div>
+      </div>
+      <div style={{ opacity: 0.3, pointerEvents: 'none', filter: 'blur(1px)' }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+export function PlanBadge({ plan, small }) {
+  const displayPlan = (plan || 'growth').charAt(0).toUpperCase() + (plan || 'growth').slice(1);
+  const colors = {
+    growth: { bg: '#dbeafe', color: '#1d4ed8' },
+    pro: { bg: '#ede9fe', color: '#7c3aed' },
+    enterprise: { bg: '#fef3c7', color: '#b45309' },
+  };
+  const c = colors[plan] || colors.growth;
+  return (
+    <span style={{
+      display: 'inline-block',
+      padding: small ? '1px 6px' : '2px 8px',
+      borderRadius: 99,
+      fontSize: small ? 9 : 10,
+      fontWeight: 700,
+      textTransform: 'uppercase',
+      letterSpacing: '0.5px',
+      background: c.bg,
+      color: c.color,
+      lineHeight: small ? '14px' : '16px',
+      whiteSpace: 'nowrap',
+    }}>
+      {displayPlan}
+    </span>
+  );
+}

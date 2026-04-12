@@ -14,6 +14,7 @@ import WebsiteContentSection from '../components/admin/WebsiteContentSection.jsx
 import SettingsSection from '../components/admin/SettingsSection.jsx';
 import SEOSection from '../components/admin/SEOSection.jsx';
 import ProductForm from '../components/admin/ProductForm.jsx';
+import FeatureGate, { isFeatureAvailable, getRequiredPlan } from '../components/admin/FeatureGate.jsx';
 import { apiRequest } from '../services/api.js';
 import '../styles/admin.css';
 
@@ -305,6 +306,7 @@ export default function AdminPanel() {
         brandName={siteConfig?.brand_name || siteConfig?.brandName}
         permissions={permissions}
         isOwner={isOwner}
+        currentPlan={siteConfig?.subscriptionPlan}
       />
 
       <div className="admin-main">
@@ -337,11 +339,19 @@ export default function AdminPanel() {
           {activeSection === 'inventory' && hasPermission('inventory') && <InventorySection />}
           {activeSection === 'orders' && hasPermission('orders') && <OrdersSection />}
           {activeSection === 'customers' && hasPermission('customers') && <CustomersSection />}
-          {activeSection === 'revenue' && (hasPermission('analytics') || hasPermission('orders')) && <RevenueSection />}
+          {activeSection === 'revenue' && (hasPermission('analytics') || hasPermission('orders')) && (
+            <FeatureGate currentPlan={siteConfig?.subscriptionPlan} requiredPlan="growth" featureName="Revenue & GST Tracking">
+              <RevenueSection />
+            </FeatureGate>
+          )}
           {activeSection === 'analytics' && hasPermission('analytics') && <AnalyticsSection />}
-          {activeSection === 'website' && hasPermission('website') && <WebsiteContentSection />}
-          {activeSection === 'seo' && hasPermission('seo') && <SEOSection />}
-          {activeSection === 'notifications' && hasPermission('notifications') && <PushNotificationsSection />}
+          {activeSection === 'website' && hasPermission('website') && <WebsiteContentSection currentPlan={siteConfig?.subscriptionPlan} />}
+          {activeSection === 'seo' && hasPermission('seo') && <SEOSection currentPlan={siteConfig?.subscriptionPlan} />}
+          {activeSection === 'notifications' && hasPermission('notifications') && (
+            <FeatureGate currentPlan={siteConfig?.subscriptionPlan} requiredPlan="growth" featureName="Push Notifications">
+              <PushNotificationsSection />
+            </FeatureGate>
+          )}
           {activeSection === 'settings' && hasPermission('settings') && <SettingsSection />}
         </div>
       </div>

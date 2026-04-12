@@ -931,14 +931,20 @@ var init_d1_manager = __esm({
 // utils/usage-tracker.js
 var usage_tracker_exports = {};
 __export(usage_tracker_exports, {
+  checkCountLimit: () => checkCountLimit,
+  checkFeatureAccess: () => checkFeatureAccess,
   checkUsageLimit: () => checkUsageLimit,
   estimateRowBytes: () => estimateRowBytes,
+  getPlanLimitsConfig: () => getPlanLimitsConfig,
   getShardCorrectionFactor: () => getShardCorrectionFactor,
   getSiteUsage: () => getSiteUsage,
+  handlePlanLimitsAPI: () => handlePlanLimitsAPI,
   handleUsageAPI: () => handleUsageAPI,
+  normalizePlanName: () => normalizePlanName,
   reconcileShard: () => reconcileShard,
   recordMediaFile: () => recordMediaFile,
   removeMediaFile: () => removeMediaFile,
+  resolveSitePlan: () => resolveSitePlan,
   trackD1Delete: () => trackD1Delete,
   trackD1Update: () => trackD1Update,
   trackD1Usage: () => trackD1Usage,
@@ -1123,6 +1129,99 @@ function getSitePlan(site) {
   if (plan === "trial")
     return "trial";
   return "free";
+}
+function normalizePlanName(subscriptionPlan) {
+  return getSitePlan({ subscription_plan: subscriptionPlan });
+}
+function getPlanLimitsConfig(planKey) {
+  return PLAN_LIMITS[planKey] || PLAN_LIMITS.free;
+}
+async function resolveSitePlan(env, siteId) {
+  try {
+    const site = await env.DB.prepare(
+      "SELECT subscription_plan FROM sites WHERE id = ?"
+    ).bind(siteId).first();
+    if (!site)
+      return "free";
+    return getSitePlan(site);
+  } catch (e) {
+    return "free";
+  }
+}
+async function checkFeatureAccess(env, siteId, featureName) {
+  try {
+    const planKey = await resolveSitePlan(env, siteId);
+    const limits = PLAN_LIMITS[planKey] || PLAN_LIMITS.free;
+    const allowed = !!limits[featureName];
+    const requiredPlan = FEATURE_REQUIRED_PLAN[featureName] || null;
+    return { allowed, planKey, requiredPlan };
+  } catch (e) {
+    console.error("checkFeatureAccess error (non-fatal):", e.message || e);
+    return { allowed: true, planKey: "unknown", requiredPlan: null };
+  }
+}
+async function checkCountLimit(env, siteId, limitType) {
+  try {
+    const planKey = await resolveSitePlan(env, siteId);
+    const limits = PLAN_LIMITS[planKey] || PLAN_LIMITS.free;
+    const maxAllowed = limits[limitType];
+    if (maxAllowed === Infinity || maxAllowed === void 0) {
+      return { allowed: true, limit: null, planKey };
+    }
+    let requiredPlan = null;
+    if (limitType === "maxStaff")
+      requiredPlan = maxAllowed < 25 ? "growth" : "pro";
+    if (limitType === "maxLocations")
+      requiredPlan = maxAllowed < 50 ? "growth" : "pro";
+    return { allowed: true, limit: maxAllowed, planKey, requiredPlan };
+  } catch (e) {
+    console.error("checkCountLimit error (non-fatal):", e.message || e);
+    return { allowed: true, limit: null, planKey: "unknown", requiredPlan: null };
+  }
+}
+async function handlePlanLimitsAPI(request, env, path) {
+  const corsResponse = handleCORS(request);
+  if (corsResponse)
+    return corsResponse;
+  if (request.method !== "GET")
+    return errorResponse("Method not allowed", 405);
+  const url = new URL(request.url);
+  const siteId = url.searchParams.get("siteId");
+  if (!siteId)
+    return errorResponse("siteId is required", 400);
+  try {
+    const site = await env.DB.prepare(
+      "SELECT subscription_plan FROM sites WHERE id = ?"
+    ).bind(siteId).first();
+    if (!site)
+      return errorResponse("Site not found", 404);
+    const planKey = getSitePlan(site);
+    const limits = PLAN_LIMITS[planKey] || PLAN_LIMITS.free;
+    const safeLimit = /* @__PURE__ */ __name((v) => v === Infinity ? -1 : v, "safeLimit");
+    return successResponse({
+      plan: planKey,
+      limits: {
+        maxSites: safeLimit(limits.maxSites),
+        maxStaff: safeLimit(limits.maxStaff),
+        maxLocations: safeLimit(limits.maxLocations),
+        coupons: limits.coupons,
+        reviews: limits.reviews,
+        blog: limits.blog,
+        pushManual: limits.pushManual,
+        pushAutomated: limits.pushAutomated,
+        advancedSeo: limits.advancedSeo,
+        revenue: limits.revenue
+      },
+      featureRequiredPlan: FEATURE_REQUIRED_PLAN,
+      storage: {
+        d1Limit: limits.d1Bytes,
+        r2Limit: limits.r2Bytes
+      }
+    });
+  } catch (error) {
+    console.error("Plan limits API error:", error);
+    return errorResponse("Failed to fetch plan limits", 500);
+  }
 }
 async function checkUsageLimit(env, siteId, resourceType = "d1", additionalBytes = 0) {
   try {
@@ -1341,7 +1440,7 @@ async function handleReconcile(env, user, siteId) {
     return errorResponse("Failed to reconcile usage", 500);
   }
 }
-var PLAN_LIMITS, DEFAULT_OVERAGE_RATES, ONE_MB;
+var PLAN_LIMITS, FEATURE_REQUIRED_PLAN, DEFAULT_OVERAGE_RATES, ONE_MB;
 var init_usage_tracker = __esm({
   "utils/usage-tracker.js"() {
     init_checked_fetch();
@@ -1350,12 +1449,104 @@ var init_usage_tracker = __esm({
     init_helpers();
     init_auth();
     PLAN_LIMITS = {
-      starter: { d1Bytes: 500 * 1024 * 1024, r2Bytes: 5 * 1024 * 1024 * 1024, allowOverage: false },
-      growth: { d1Bytes: 1 * 1024 * 1024 * 1024, r2Bytes: 50 * 1024 * 1024 * 1024, allowOverage: false },
-      pro: { d1Bytes: 2 * 1024 * 1024 * 1024, r2Bytes: 100 * 1024 * 1024 * 1024, allowOverage: false },
-      enterprise: { d1Bytes: 2 * 1024 * 1024 * 1024, r2Bytes: 100 * 1024 * 1024 * 1024, allowOverage: false },
-      trial: { d1Bytes: 500 * 1024 * 1024, r2Bytes: 5 * 1024 * 1024 * 1024, allowOverage: false },
-      free: { d1Bytes: 500 * 1024 * 1024, r2Bytes: 5 * 1024 * 1024 * 1024, allowOverage: false }
+      starter: {
+        d1Bytes: 500 * 1024 * 1024,
+        r2Bytes: 5 * 1024 * 1024 * 1024,
+        allowOverage: false,
+        maxSites: Infinity,
+        maxStaff: 5,
+        maxLocations: 2,
+        coupons: true,
+        reviews: false,
+        blog: false,
+        pushManual: false,
+        pushAutomated: false,
+        advancedSeo: false,
+        revenue: false
+      },
+      growth: {
+        d1Bytes: 1 * 1024 * 1024 * 1024,
+        r2Bytes: 50 * 1024 * 1024 * 1024,
+        allowOverage: false,
+        maxSites: Infinity,
+        maxStaff: 25,
+        maxLocations: 50,
+        coupons: true,
+        reviews: true,
+        blog: true,
+        pushManual: true,
+        pushAutomated: false,
+        advancedSeo: true,
+        revenue: true
+      },
+      pro: {
+        d1Bytes: 2 * 1024 * 1024 * 1024,
+        r2Bytes: 100 * 1024 * 1024 * 1024,
+        allowOverage: false,
+        maxSites: Infinity,
+        maxStaff: Infinity,
+        maxLocations: Infinity,
+        coupons: true,
+        reviews: true,
+        blog: true,
+        pushManual: true,
+        pushAutomated: true,
+        advancedSeo: true,
+        revenue: true
+      },
+      enterprise: {
+        d1Bytes: 2 * 1024 * 1024 * 1024,
+        r2Bytes: 100 * 1024 * 1024 * 1024,
+        allowOverage: false,
+        maxSites: Infinity,
+        maxStaff: Infinity,
+        maxLocations: Infinity,
+        coupons: true,
+        reviews: true,
+        blog: true,
+        pushManual: true,
+        pushAutomated: true,
+        advancedSeo: true,
+        revenue: true
+      },
+      trial: {
+        d1Bytes: 500 * 1024 * 1024,
+        r2Bytes: 5 * 1024 * 1024 * 1024,
+        allowOverage: false,
+        maxSites: 5,
+        maxStaff: Infinity,
+        maxLocations: Infinity,
+        coupons: true,
+        reviews: true,
+        blog: true,
+        pushManual: true,
+        pushAutomated: true,
+        advancedSeo: true,
+        revenue: true
+      },
+      free: {
+        d1Bytes: 500 * 1024 * 1024,
+        r2Bytes: 5 * 1024 * 1024 * 1024,
+        allowOverage: false,
+        maxSites: 0,
+        maxStaff: 0,
+        maxLocations: 0,
+        coupons: false,
+        reviews: false,
+        blog: false,
+        pushManual: false,
+        pushAutomated: false,
+        advancedSeo: false,
+        revenue: false
+      }
+    };
+    FEATURE_REQUIRED_PLAN = {
+      reviews: "growth",
+      blog: "growth",
+      pushManual: "growth",
+      pushAutomated: "pro",
+      advancedSeo: "growth",
+      revenue: "growth"
     };
     DEFAULT_OVERAGE_RATES = {
       d1PerGB: 0.75,
@@ -1374,6 +1565,12 @@ var init_usage_tracker = __esm({
     __name(getShardCorrectionFactor, "getShardCorrectionFactor");
     __name(getSiteUsage, "getSiteUsage");
     __name(getSitePlan, "getSitePlan");
+    __name(normalizePlanName, "normalizePlanName");
+    __name(getPlanLimitsConfig, "getPlanLimitsConfig");
+    __name(resolveSitePlan, "resolveSitePlan");
+    __name(checkFeatureAccess, "checkFeatureAccess");
+    __name(checkCountLimit, "checkCountLimit");
+    __name(handlePlanLimitsAPI, "handlePlanLimitsAPI");
     __name(checkUsageLimit, "checkUsageLimit");
     __name(reconcileShard, "reconcileShard");
     __name(handleUsageAPI, "handleUsageAPI");
@@ -1659,20 +1856,68 @@ async function handleSEO(request, env, pathParts, ctx) {
   if (subResource === "categories") {
     if (request.method === "GET")
       return getCategoriesSEO(request, env);
-    if (request.method === "PUT" && resourceId)
+    if (request.method === "PUT" && resourceId) {
+      const cUrl = new URL(request.url);
+      let cSiteId = cUrl.searchParams.get("siteId");
+      if (!cSiteId) {
+        try {
+          const b = await request.clone().json();
+          cSiteId = b.siteId;
+        } catch (e) {
+        }
+      }
+      if (cSiteId) {
+        const access = await checkFeatureAccess(env, cSiteId, "advancedSeo");
+        if (!access.allowed) {
+          return errorResponse(`Category SEO is available on the ${(access.requiredPlan || "growth").charAt(0).toUpperCase() + (access.requiredPlan || "growth").slice(1)} plan. Upgrade to unlock.`, 403, "FEATURE_LOCKED");
+        }
+      }
       return saveCategorySEO(request, env, resourceId, ctx);
+    }
   }
   if (subResource === "products") {
     if (request.method === "GET")
       return getProductsSEO(request, env);
-    if (request.method === "PUT" && resourceId)
+    if (request.method === "PUT" && resourceId) {
+      const prUrl = new URL(request.url);
+      let prSiteId = prUrl.searchParams.get("siteId");
+      if (!prSiteId) {
+        try {
+          const b = await request.clone().json();
+          prSiteId = b.siteId;
+        } catch (e) {
+        }
+      }
+      if (prSiteId) {
+        const access = await checkFeatureAccess(env, prSiteId, "advancedSeo");
+        if (!access.allowed) {
+          return errorResponse(`Product SEO is available on the ${(access.requiredPlan || "growth").charAt(0).toUpperCase() + (access.requiredPlan || "growth").slice(1)} plan. Upgrade to unlock.`, 403, "FEATURE_LOCKED");
+        }
+      }
       return saveProductSEO(request, env, resourceId, ctx);
+    }
   }
   if (subResource === "pages") {
     if (request.method === "GET")
       return getPagesSEO(request, env);
-    if (request.method === "PUT" && resourceId)
+    if (request.method === "PUT" && resourceId) {
+      const pUrl = new URL(request.url);
+      let pSiteId = pUrl.searchParams.get("siteId");
+      if (!pSiteId) {
+        try {
+          const b = await request.clone().json();
+          pSiteId = b.siteId;
+        } catch (e) {
+        }
+      }
+      if (pSiteId) {
+        const access = await checkFeatureAccess(env, pSiteId, "advancedSeo");
+        if (!access.allowed) {
+          return errorResponse(`Per-page SEO is available on the ${(access.requiredPlan || "growth").charAt(0).toUpperCase() + (access.requiredPlan || "growth").slice(1)} plan. Upgrade to unlock.`, 403, "FEATURE_LOCKED");
+        }
+      }
       return savePageSEO(request, env, resourceId, ctx);
+    }
   }
   if (subResource === "social") {
     if (request.method === "GET")
@@ -2197,6 +2442,20 @@ async function addStaff(request, env, siteId) {
     }
     const siteDB = await resolveSiteDBById(env, siteId);
     await ensureSiteStaffTable(siteDB);
+    const limitCheck = await checkCountLimit(env, siteId, "maxStaff");
+    if (limitCheck.limit !== null) {
+      const staffCount = await siteDB.prepare(
+        "SELECT COUNT(*) as count FROM site_staff WHERE site_id = ? AND is_active = 1"
+      ).bind(siteId).first();
+      if ((staffCount?.count || 0) >= limitCheck.limit) {
+        const upgradePlan = limitCheck.requiredPlan || "growth";
+        return errorResponse(
+          `Staff limit reached (${limitCheck.limit} members). Upgrade to ${upgradePlan.charAt(0).toUpperCase() + upgradePlan.slice(1)} for more.`,
+          403,
+          "PLAN_LIMIT_REACHED"
+        );
+      }
+    }
     const existing = await siteDB.prepare(
       "SELECT id FROM site_staff WHERE site_id = ? AND LOWER(email) = LOWER(?)"
     ).bind(siteId, email.trim()).first();
@@ -4299,6 +4558,20 @@ async function createSite(request, env, user) {
     if (!brandName) {
       return errorResponse("Brand name is required");
     }
+    const activeSub = await env.DB.prepare(
+      `SELECT plan FROM subscriptions WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1`
+    ).bind(user.id).first();
+    const userPlan = normalizePlanName(activeSub?.plan || "free");
+    const planConfig = getPlanLimitsConfig(userPlan);
+    if (planConfig.maxSites !== Infinity) {
+      const siteCount = await env.DB.prepare(
+        "SELECT COUNT(*) as count FROM sites WHERE user_id = ? AND is_active = 1"
+      ).bind(user.id).first();
+      if ((siteCount?.count || 0) >= planConfig.maxSites) {
+        const limitMsg = userPlan === "trial" ? `Trial plan allows up to ${planConfig.maxSites} websites. Upgrade to a paid plan to create more.` : `Your plan allows up to ${planConfig.maxSites} websites. Upgrade to create more.`;
+        return errorResponse(limitMsg, 403, "PLAN_LIMIT_REACHED");
+      }
+    }
     if (subdomain.length < 3) {
       return errorResponse("Subdomain must be at least 3 characters", 400, "INVALID_SUBDOMAIN");
     }
@@ -4471,16 +4744,16 @@ async function createSite(request, env, user) {
       console.error("Category creation failed (non-fatal):", catError.message || catError);
     }
     try {
-      const activeSub = await env.DB.prepare(
+      const activeSub2 = await env.DB.prepare(
         `SELECT id, plan, status, current_period_end, site_id FROM subscriptions WHERE user_id = ? AND status = 'active' AND site_id IS NULL ORDER BY created_at DESC LIMIT 1`
       ).bind(user.id).first();
-      if (activeSub && activeSub.current_period_end && new Date(activeSub.current_period_end) > /* @__PURE__ */ new Date()) {
+      if (activeSub2 && activeSub2.current_period_end && new Date(activeSub2.current_period_end) > /* @__PURE__ */ new Date()) {
         await env.DB.prepare(
           `UPDATE sites SET subscription_plan = ?, subscription_expires_at = ?, updated_at = datetime('now') WHERE id = ?`
-        ).bind(activeSub.plan, activeSub.current_period_end, siteId).run();
+        ).bind(activeSub2.plan, activeSub2.current_period_end, siteId).run();
         await env.DB.prepare(
           `UPDATE subscriptions SET site_id = ?, updated_at = datetime('now') WHERE id = ?`
-        ).bind(siteId, activeSub.id).run();
+        ).bind(siteId, activeSub2.id).run();
       }
     } catch (subErr) {
       console.error("Check subscription for new site failed (non-fatal):", subErr);
@@ -5389,8 +5662,24 @@ async function handleNotifications(request, env, path) {
         return handleStats(request, env);
       break;
     case "send":
-      if (request.method === "POST")
+      if (request.method === "POST") {
+        const sendUrl = new URL(request.url);
+        let sendSiteId = sendUrl.searchParams.get("siteId");
+        if (!sendSiteId) {
+          try {
+            const b = await request.clone().json();
+            sendSiteId = b.siteId;
+          } catch (e) {
+          }
+        }
+        if (sendSiteId) {
+          const access = await checkFeatureAccess(env, sendSiteId, "pushManual");
+          if (!access.allowed) {
+            return errorResponse(`Push notifications are available on the ${(access.requiredPlan || "growth").charAt(0).toUpperCase() + (access.requiredPlan || "growth").slice(1)} plan. Upgrade to unlock.`, 403, "FEATURE_LOCKED");
+          }
+        }
         return handleSend(request, env);
+      }
       break;
     case "settings":
       if (request.method === "GET")
@@ -6418,6 +6707,7 @@ init_modules_watch_stub();
 init_helpers();
 init_site_admin_worker();
 init_site_db();
+init_usage_tracker();
 async function ensureLocationTables(db) {
   await db.prepare(`CREATE TABLE IF NOT EXISTS inventory_locations (
     id TEXT PRIMARY KEY,
@@ -6493,7 +6783,7 @@ async function handleInventoryLocations(request, env, path, ctx) {
   if (method === "GET")
     return getLocations(db, siteId);
   if (method === "POST")
-    return createLocation(request, db, siteId);
+    return createLocation(request, db, siteId, env);
   if (method === "PUT" && segment)
     return updateLocation(request, db, siteId, segment);
   if (method === "DELETE" && segment)
@@ -6513,21 +6803,33 @@ async function getLocations(db, siteId) {
   }
 }
 __name(getLocations, "getLocations");
-async function createLocation(request, db, siteId) {
+async function createLocation(request, db, siteId, env) {
   try {
     const { name, address, priority, is_default } = await request.json();
     if (!name || !name.trim())
       return errorResponse("Location name is required", 400);
+    const existing = await db.prepare(
+      "SELECT COUNT(*) as count FROM inventory_locations WHERE site_id = ? AND is_active = 1"
+    ).bind(siteId).first();
+    const currentCount = existing?.count || 0;
+    if (env) {
+      const limitCheck = await checkCountLimit(env, siteId, "maxLocations");
+      if (limitCheck.limit !== null && currentCount >= limitCheck.limit) {
+        const upgradePlan = limitCheck.requiredPlan || "growth";
+        return errorResponse(
+          `Location limit reached (${limitCheck.limit}). Upgrade to ${upgradePlan.charAt(0).toUpperCase() + upgradePlan.slice(1)} for more.`,
+          403,
+          "PLAN_LIMIT_REACHED"
+        );
+      }
+    }
     const id = generateId();
     if (is_default) {
       await db.prepare(
         "UPDATE inventory_locations SET is_default = 0 WHERE site_id = ?"
       ).bind(siteId).run();
     }
-    const existing = await db.prepare(
-      "SELECT COUNT(*) as count FROM inventory_locations WHERE site_id = ? AND is_active = 1"
-    ).bind(siteId).first();
-    const makeDefault = is_default || existing?.count === 0;
+    const makeDefault = is_default || currentCount === 0;
     await db.prepare(
       `INSERT INTO inventory_locations (id, site_id, name, address, priority, is_default) VALUES (?, ?, ?, ?, ?, ?)`
     ).bind(id, siteId, name.trim(), address || "", priority || 0, makeDefault ? 1 : 0).run();
@@ -11832,6 +12134,7 @@ var seo_config_default = {
 
 // workers/seo/index.js
 init_site_db();
+init_usage_tracker();
 var TEMPLATE_CONFIGS = {
   storefront: seo_config_default,
   template1: seo_config_default
@@ -11962,7 +12265,7 @@ async function fetchPageSEO(db, site, pageType) {
   }
 }
 __name(fetchPageSEO, "fetchPageSEO");
-function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl, canonicalUrl, reviewData }) {
+function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl, canonicalUrl, reviewData, hasAdvancedSeo = true }) {
   const { type } = pageInfo;
   const structuredData = [];
   let title, description, ogImage, ogType, breadcrumbs, keywords;
@@ -11974,20 +12277,22 @@ function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl,
     return baseUrl + (url.startsWith("/") ? url : "/" + url);
   }
   __name(absUrl2, "absUrl");
-  if (templateConfig.includeOrganizationSchema) {
-    structuredData.push(buildOrganizationSchema(site, baseUrl));
+  if (hasAdvancedSeo) {
+    if (templateConfig.includeOrganizationSchema) {
+      structuredData.push(buildOrganizationSchema(site, baseUrl));
+    }
+    structuredData.push(buildWebsiteSchema(site, baseUrl));
   }
-  structuredData.push(buildWebsiteSchema(site, baseUrl));
   if (type === "product" && pageData) {
     title = pageData.seo_title || templateConfig.titleFormat.replace("{pageTitle}", pageData.name).replace("{brandName}", site.brand_name);
     description = pageData.seo_description || pageData.short_description || pageData.description || templateConfig.fallbackDescription(site);
     ogImage = pageData.seo_og_image || pageData.thumbnail_url || siteSEO.seo_og_image;
     ogType = "product";
     keywords = pageData.seo_keywords || null;
-    if (templateConfig.includeProductSchema) {
+    if (hasAdvancedSeo && templateConfig.includeProductSchema) {
       structuredData.push(buildProductSchema(pageData, site, baseUrl, reviewData));
     }
-    if (templateConfig.includeBreadcrumbs) {
+    if (hasAdvancedSeo && templateConfig.includeBreadcrumbs) {
       structuredData.push(buildBreadcrumbSchema([
         { name: "Home", url: "/" },
         { name: "Products", url: "/products" },
@@ -12000,10 +12305,10 @@ function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl,
     description = cat.seo_description || cat.description || templateConfig.fallbackDescription(site);
     ogImage = cat.seo_og_image || cat.image_url || siteSEO.seo_og_image;
     keywords = cat.seo_keywords || null;
-    if (templateConfig.includeCategorySchema) {
+    if (hasAdvancedSeo && templateConfig.includeCategorySchema) {
       structuredData.push(buildCategorySchema(cat, pageData.products, site, baseUrl));
     }
-    if (templateConfig.includeBreadcrumbs) {
+    if (hasAdvancedSeo && templateConfig.includeBreadcrumbs) {
       structuredData.push(buildBreadcrumbSchema([
         { name: "Home", url: "/" },
         { name: cat.name, url: `/category/${cat.slug}` }
@@ -12015,27 +12320,29 @@ function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl,
     ogImage = pageData.seo_og_image || pageData.featured_image || siteSEO.seo_og_image;
     ogType = "article";
     keywords = pageData.seo_keywords || null;
-    const articleSchema = {
-      "@context": "https://schema.org",
-      "@type": "Article",
-      headline: pageData.title,
-      description: pageData.excerpt || "",
-      url: `${baseUrl}/blog/${pageData.slug}`,
-      datePublished: pageData.published_at || void 0,
-      dateModified: pageData.updated_at || pageData.published_at || void 0,
-      author: { "@type": "Person", name: pageData.author_name || site.brand_name },
-      publisher: { "@type": "Organization", name: site.brand_name }
-    };
-    if (pageData.featured_image) {
-      articleSchema.image = absUrl2(pageData.featured_image);
-    }
-    structuredData.push(JSON.stringify(articleSchema));
-    if (templateConfig.includeBreadcrumbs) {
-      structuredData.push(buildBreadcrumbSchema([
-        { name: "Home", url: "/" },
-        { name: "Blog", url: "/blog" },
-        { name: pageData.title, url: `/blog/${pageData.slug}` }
-      ], baseUrl));
+    if (hasAdvancedSeo) {
+      const articleSchema = {
+        "@context": "https://schema.org",
+        "@type": "Article",
+        headline: pageData.title,
+        description: pageData.excerpt || "",
+        url: `${baseUrl}/blog/${pageData.slug}`,
+        datePublished: pageData.published_at || void 0,
+        dateModified: pageData.updated_at || pageData.published_at || void 0,
+        author: { "@type": "Person", name: pageData.author_name || site.brand_name },
+        publisher: { "@type": "Organization", name: site.brand_name }
+      };
+      if (pageData.featured_image) {
+        articleSchema.image = absUrl2(pageData.featured_image);
+      }
+      structuredData.push(JSON.stringify(articleSchema));
+      if (templateConfig.includeBreadcrumbs) {
+        structuredData.push(buildBreadcrumbSchema([
+          { name: "Home", url: "/" },
+          { name: "Blog", url: "/blog" },
+          { name: pageData.title, url: `/blog/${pageData.slug}` }
+        ], baseUrl));
+      }
     }
   } else if (type === "blogList") {
     title = templateConfig.titleFormat.replace("{pageTitle}", "Blog").replace("{brandName}", site.brand_name);
@@ -12109,6 +12416,9 @@ async function applySEO(request, env, site, rawHTML) {
     const pageInfo = detectPageType(pathname);
     const templateConfig = loadTemplateConfig(site.template_id);
     const siteSEO = await fetchSiteSEO(env, site);
+    const planKey = normalizePlanName(site.subscription_plan);
+    const planConfig = getPlanLimitsConfig(planKey);
+    const hasAdvancedSeo = planConfig.advancedSeo;
     const db = await resolveSiteDBById(env, site.id);
     let pageData = null;
     let reviewData = null;
@@ -12125,7 +12435,7 @@ async function applySEO(request, env, site, rawHTML) {
       pageData = await fetchPageSEO(db, site, pageInfo.type);
     }
     const siteWithCurrency = { ...site, currency: siteSEO.currency || site.currency || "INR" };
-    const tags = buildTags({ pageInfo, site: siteWithCurrency, siteSEO, pageData, templateConfig, baseUrl, canonicalUrl, reviewData });
+    const tags = buildTags({ pageInfo, site: siteWithCurrency, siteSEO, pageData, templateConfig, baseUrl, canonicalUrl, reviewData, hasAdvancedSeo });
     return injectSEOTags(rawHTML, tags);
   } catch (err) {
     console.error("[SEO] applySEO error:", err);
@@ -16107,15 +16417,60 @@ async function handleReviews(request, env, path, ctx) {
     return checkReviewEligibility(request, env);
   }
   if (action === "submit" && method === "POST") {
+    const url = new URL(request.url);
+    let siteId = url.searchParams.get("siteId");
+    if (!siteId) {
+      try {
+        const b = await request.clone().json();
+        siteId = b.siteId;
+      } catch (e) {
+      }
+    }
+    if (siteId) {
+      const access = await checkFeatureAccess(env, siteId, "reviews");
+      if (!access.allowed) {
+        return errorResponse(`Reviews are available on the ${(access.requiredPlan || "growth").charAt(0).toUpperCase() + (access.requiredPlan || "growth").slice(1)} plan.`, 403, "FEATURE_LOCKED");
+      }
+    }
     return submitReview(request, env);
   }
   if (action === "guest-submit" && method === "POST") {
+    const url = new URL(request.url);
+    let siteId = url.searchParams.get("siteId");
+    if (!siteId) {
+      try {
+        const b = await request.clone().json();
+        siteId = b.siteId;
+      } catch (e) {
+      }
+    }
+    if (siteId) {
+      const access = await checkFeatureAccess(env, siteId, "reviews");
+      if (!access.allowed) {
+        return errorResponse(`Reviews are available on the ${(access.requiredPlan || "growth").charAt(0).toUpperCase() + (access.requiredPlan || "growth").slice(1)} plan.`, 403, "FEATURE_LOCKED");
+      }
+    }
     return submitGuestReview(request, env);
   }
   if (action === "admin" && method === "GET") {
     return getAdminReviews(request, env);
   }
   if (action === "admin" && subAction && method === "PUT") {
+    const url = new URL(request.url);
+    let siteId = url.searchParams.get("siteId");
+    if (!siteId) {
+      try {
+        const b = await request.clone().json();
+        siteId = b.siteId;
+      } catch (e) {
+      }
+    }
+    if (siteId) {
+      const access = await checkFeatureAccess(env, siteId, "reviews");
+      if (!access.allowed) {
+        return errorResponse(`Reviews are available on the ${(access.requiredPlan || "growth").charAt(0).toUpperCase() + (access.requiredPlan || "growth").slice(1)} plan.`, 403, "FEATURE_LOCKED");
+      }
+    }
     return updateReviewStatus(request, env, subAction, ctx);
   }
   if (action === "summary" && method === "GET") {
@@ -16619,9 +16974,39 @@ async function handleBlog(request, env, path, ctx) {
     return adminGetPost(request, env, subAction);
   }
   if (action === "admin" && method === "POST" && !subAction) {
+    const url = new URL(request.url);
+    let siteId = url.searchParams.get("siteId");
+    if (!siteId) {
+      try {
+        const b = await request.clone().json();
+        siteId = b.siteId;
+      } catch (e) {
+      }
+    }
+    if (siteId) {
+      const access = await checkFeatureAccess(env, siteId, "blog");
+      if (!access.allowed) {
+        return errorResponse(`Blog is available on the ${(access.requiredPlan || "growth").charAt(0).toUpperCase() + (access.requiredPlan || "growth").slice(1)} plan. Upgrade to unlock.`, 403, "FEATURE_LOCKED");
+      }
+    }
     return createPost(request, env, ctx);
   }
   if (action === "admin" && subAction && method === "PUT") {
+    const url = new URL(request.url);
+    let siteId = url.searchParams.get("siteId");
+    if (!siteId) {
+      try {
+        const b = await request.clone().json();
+        siteId = b.siteId;
+      } catch (e) {
+      }
+    }
+    if (siteId) {
+      const access = await checkFeatureAccess(env, siteId, "blog");
+      if (!access.allowed) {
+        return errorResponse(`Blog is available on the ${(access.requiredPlan || "growth").charAt(0).toUpperCase() + (access.requiredPlan || "growth").slice(1)} plan. Upgrade to unlock.`, 403, "FEATURE_LOCKED");
+      }
+    }
     return updatePost(request, env, subAction, ctx);
   }
   if (action === "admin" && subAction && method === "DELETE") {
@@ -17442,6 +17827,8 @@ async function handleAPI(request, env, path, ctx) {
       return handleBlog(request, env, path, ctx);
     case "usage":
       return handleUsageAPI(request, env, path);
+    case "plan-limits":
+      return handlePlanLimitsAPI(request, env, path);
     case "health":
       return handleHealth(env);
     case "site":
@@ -17478,14 +17865,16 @@ async function handleSiteInfo(request, env) {
     if (subdomain) {
       siteRow = await env.DB.prepare(
         `SELECT s.id, s.subdomain, s.brand_name, s.template_id,
-                s.custom_domain, s.domain_status, s.domain_verification_token
+                s.custom_domain, s.domain_status, s.domain_verification_token,
+                s.subscription_plan
          FROM sites s 
          WHERE LOWER(s.subdomain) = LOWER(?) AND s.is_active = 1`
       ).bind(subdomain).first();
     } else if (!hostname.endsWith(env.DOMAIN || PLATFORM_DOMAIN) && !hostname.endsWith("pages.dev") && !hostname.includes("localhost") && !hostname.includes("workers.dev")) {
       siteRow = await env.DB.prepare(
         `SELECT s.id, s.subdomain, s.brand_name, s.template_id,
-                s.custom_domain, s.domain_status, s.domain_verification_token
+                s.custom_domain, s.domain_status, s.domain_verification_token,
+                s.subscription_plan
          FROM sites s 
          WHERE s.custom_domain = ? AND s.domain_status = 'verified' AND s.is_active = 1`
       ).bind(hostname.toLowerCase()).first();

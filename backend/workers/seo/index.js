@@ -10,6 +10,7 @@ import {
 } from './structured-data.js';
 import storefrontConfig from './templates/storefront/seo-config.js';
 import { resolveSiteDBById } from '../../utils/site-db.js';
+import { normalizePlanName, getPlanLimitsConfig } from '../../utils/usage-tracker.js';
 
 const TEMPLATE_CONFIGS = {
   storefront: storefrontConfig,
@@ -146,7 +147,7 @@ async function fetchPageSEO(db, site, pageType) {
 
 // ─── Tag builder ─────────────────────────────────────────────────────────────
 
-function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl, canonicalUrl, reviewData }) {
+function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl, canonicalUrl, reviewData, hasAdvancedSeo = true }) {
   const { type } = pageInfo;
   const structuredData = [];
   let title, description, ogImage, ogType, breadcrumbs, keywords;
@@ -157,10 +158,12 @@ function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl,
     return baseUrl + (url.startsWith('/') ? url : '/' + url);
   }
 
-  if (templateConfig.includeOrganizationSchema) {
-    structuredData.push(buildOrganizationSchema(site, baseUrl));
+  if (hasAdvancedSeo) {
+    if (templateConfig.includeOrganizationSchema) {
+      structuredData.push(buildOrganizationSchema(site, baseUrl));
+    }
+    structuredData.push(buildWebsiteSchema(site, baseUrl));
   }
-  structuredData.push(buildWebsiteSchema(site, baseUrl));
 
   if (type === 'product' && pageData) {
     title = pageData.seo_title || templateConfig.titleFormat
@@ -171,10 +174,10 @@ function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl,
     ogType = 'product';
     keywords = pageData.seo_keywords || null;
 
-    if (templateConfig.includeProductSchema) {
+    if (hasAdvancedSeo && templateConfig.includeProductSchema) {
       structuredData.push(buildProductSchema(pageData, site, baseUrl, reviewData));
     }
-    if (templateConfig.includeBreadcrumbs) {
+    if (hasAdvancedSeo && templateConfig.includeBreadcrumbs) {
       structuredData.push(buildBreadcrumbSchema([
         { name: 'Home', url: '/' },
         { name: 'Products', url: '/products' },
@@ -191,10 +194,10 @@ function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl,
     ogImage = cat.seo_og_image || cat.image_url || siteSEO.seo_og_image;
     keywords = cat.seo_keywords || null;
 
-    if (templateConfig.includeCategorySchema) {
+    if (hasAdvancedSeo && templateConfig.includeCategorySchema) {
       structuredData.push(buildCategorySchema(cat, pageData.products, site, baseUrl));
     }
-    if (templateConfig.includeBreadcrumbs) {
+    if (hasAdvancedSeo && templateConfig.includeBreadcrumbs) {
       structuredData.push(buildBreadcrumbSchema([
         { name: 'Home', url: '/' },
         { name: cat.name, url: `/category/${cat.slug}` },
@@ -210,28 +213,30 @@ function buildTags({ pageInfo, site, siteSEO, pageData, templateConfig, baseUrl,
     ogType = 'article';
     keywords = pageData.seo_keywords || null;
 
-    const articleSchema = {
-      '@context': 'https://schema.org',
-      '@type': 'Article',
-      headline: pageData.title,
-      description: pageData.excerpt || '',
-      url: `${baseUrl}/blog/${pageData.slug}`,
-      datePublished: pageData.published_at || undefined,
-      dateModified: pageData.updated_at || pageData.published_at || undefined,
-      author: { '@type': 'Person', name: pageData.author_name || site.brand_name },
-      publisher: { '@type': 'Organization', name: site.brand_name },
-    };
-    if (pageData.featured_image) {
-      articleSchema.image = absUrl(pageData.featured_image);
-    }
-    structuredData.push(JSON.stringify(articleSchema));
+    if (hasAdvancedSeo) {
+      const articleSchema = {
+        '@context': 'https://schema.org',
+        '@type': 'Article',
+        headline: pageData.title,
+        description: pageData.excerpt || '',
+        url: `${baseUrl}/blog/${pageData.slug}`,
+        datePublished: pageData.published_at || undefined,
+        dateModified: pageData.updated_at || pageData.published_at || undefined,
+        author: { '@type': 'Person', name: pageData.author_name || site.brand_name },
+        publisher: { '@type': 'Organization', name: site.brand_name },
+      };
+      if (pageData.featured_image) {
+        articleSchema.image = absUrl(pageData.featured_image);
+      }
+      structuredData.push(JSON.stringify(articleSchema));
 
-    if (templateConfig.includeBreadcrumbs) {
-      structuredData.push(buildBreadcrumbSchema([
-        { name: 'Home', url: '/' },
-        { name: 'Blog', url: '/blog' },
-        { name: pageData.title, url: `/blog/${pageData.slug}` },
-      ], baseUrl));
+      if (templateConfig.includeBreadcrumbs) {
+        structuredData.push(buildBreadcrumbSchema([
+          { name: 'Home', url: '/' },
+          { name: 'Blog', url: '/blog' },
+          { name: pageData.title, url: `/blog/${pageData.slug}` },
+        ], baseUrl));
+      }
     }
 
   } else if (type === 'blogList') {
@@ -326,6 +331,10 @@ export async function applySEO(request, env, site, rawHTML) {
     const templateConfig = loadTemplateConfig(site.template_id);
     const siteSEO = await fetchSiteSEO(env, site);
 
+    const planKey = normalizePlanName(site.subscription_plan);
+    const planConfig = getPlanLimitsConfig(planKey);
+    const hasAdvancedSeo = planConfig.advancedSeo;
+
     const db = await resolveSiteDBById(env, site.id);
 
     let pageData = null;
@@ -344,7 +353,7 @@ export async function applySEO(request, env, site, rawHTML) {
     }
 
     const siteWithCurrency = { ...site, currency: siteSEO.currency || site.currency || 'INR' };
-    const tags = buildTags({ pageInfo, site: siteWithCurrency, siteSEO, pageData, templateConfig, baseUrl, canonicalUrl, reviewData });
+    const tags = buildTags({ pageInfo, site: siteWithCurrency, siteSEO, pageData, templateConfig, baseUrl, canonicalUrl, reviewData, hasAdvancedSeo });
 
     return injectSEOTags(rawHTML, tags);
   } catch (err) {

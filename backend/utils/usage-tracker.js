@@ -2,12 +2,57 @@ import { jsonResponse, errorResponse, successResponse, handleCORS } from './help
 import { validateAuth } from './auth.js';
 
 const PLAN_LIMITS = {
-  starter: { d1Bytes: 500 * 1024 * 1024, r2Bytes: 5 * 1024 * 1024 * 1024, allowOverage: false },
-  growth: { d1Bytes: 1 * 1024 * 1024 * 1024, r2Bytes: 50 * 1024 * 1024 * 1024, allowOverage: false },
-  pro: { d1Bytes: 2 * 1024 * 1024 * 1024, r2Bytes: 100 * 1024 * 1024 * 1024, allowOverage: false },
-  enterprise: { d1Bytes: 2 * 1024 * 1024 * 1024, r2Bytes: 100 * 1024 * 1024 * 1024, allowOverage: false },
-  trial: { d1Bytes: 500 * 1024 * 1024, r2Bytes: 5 * 1024 * 1024 * 1024, allowOverage: false },
-  free: { d1Bytes: 500 * 1024 * 1024, r2Bytes: 5 * 1024 * 1024 * 1024, allowOverage: false },
+  starter: {
+    d1Bytes: 500 * 1024 * 1024, r2Bytes: 5 * 1024 * 1024 * 1024, allowOverage: false,
+    maxSites: Infinity, maxStaff: 5, maxLocations: 2,
+    coupons: true, reviews: false, blog: false,
+    pushManual: false, pushAutomated: false,
+    advancedSeo: false, revenue: false,
+  },
+  growth: {
+    d1Bytes: 1 * 1024 * 1024 * 1024, r2Bytes: 50 * 1024 * 1024 * 1024, allowOverage: false,
+    maxSites: Infinity, maxStaff: 25, maxLocations: 50,
+    coupons: true, reviews: true, blog: true,
+    pushManual: true, pushAutomated: false,
+    advancedSeo: true, revenue: true,
+  },
+  pro: {
+    d1Bytes: 2 * 1024 * 1024 * 1024, r2Bytes: 100 * 1024 * 1024 * 1024, allowOverage: false,
+    maxSites: Infinity, maxStaff: Infinity, maxLocations: Infinity,
+    coupons: true, reviews: true, blog: true,
+    pushManual: true, pushAutomated: true,
+    advancedSeo: true, revenue: true,
+  },
+  enterprise: {
+    d1Bytes: 2 * 1024 * 1024 * 1024, r2Bytes: 100 * 1024 * 1024 * 1024, allowOverage: false,
+    maxSites: Infinity, maxStaff: Infinity, maxLocations: Infinity,
+    coupons: true, reviews: true, blog: true,
+    pushManual: true, pushAutomated: true,
+    advancedSeo: true, revenue: true,
+  },
+  trial: {
+    d1Bytes: 500 * 1024 * 1024, r2Bytes: 5 * 1024 * 1024 * 1024, allowOverage: false,
+    maxSites: 5, maxStaff: Infinity, maxLocations: Infinity,
+    coupons: true, reviews: true, blog: true,
+    pushManual: true, pushAutomated: true,
+    advancedSeo: true, revenue: true,
+  },
+  free: {
+    d1Bytes: 500 * 1024 * 1024, r2Bytes: 5 * 1024 * 1024 * 1024, allowOverage: false,
+    maxSites: 0, maxStaff: 0, maxLocations: 0,
+    coupons: false, reviews: false, blog: false,
+    pushManual: false, pushAutomated: false,
+    advancedSeo: false, revenue: false,
+  },
+};
+
+const FEATURE_REQUIRED_PLAN = {
+  reviews: 'growth',
+  blog: 'growth',
+  pushManual: 'growth',
+  pushAutomated: 'pro',
+  advancedSeo: 'growth',
+  revenue: 'growth',
 };
 
 const DEFAULT_OVERAGE_RATES = {
@@ -196,6 +241,104 @@ function getSitePlan(site) {
   if (plan.includes('starter') || plan.includes('basic')) return 'starter';
   if (plan === 'trial') return 'trial';
   return 'free';
+}
+
+export function normalizePlanName(subscriptionPlan) {
+  return getSitePlan({ subscription_plan: subscriptionPlan });
+}
+
+export function getPlanLimitsConfig(planKey) {
+  return PLAN_LIMITS[planKey] || PLAN_LIMITS.free;
+}
+
+export async function resolveSitePlan(env, siteId) {
+  try {
+    const site = await env.DB.prepare(
+      'SELECT subscription_plan FROM sites WHERE id = ?'
+    ).bind(siteId).first();
+    if (!site) return 'free';
+    return getSitePlan(site);
+  } catch (e) {
+    return 'free';
+  }
+}
+
+export async function checkFeatureAccess(env, siteId, featureName) {
+  try {
+    const planKey = await resolveSitePlan(env, siteId);
+    const limits = PLAN_LIMITS[planKey] || PLAN_LIMITS.free;
+    const allowed = !!limits[featureName];
+    const requiredPlan = FEATURE_REQUIRED_PLAN[featureName] || null;
+    return { allowed, planKey, requiredPlan };
+  } catch (e) {
+    console.error('checkFeatureAccess error (non-fatal):', e.message || e);
+    return { allowed: true, planKey: 'unknown', requiredPlan: null };
+  }
+}
+
+export async function checkCountLimit(env, siteId, limitType) {
+  try {
+    const planKey = await resolveSitePlan(env, siteId);
+    const limits = PLAN_LIMITS[planKey] || PLAN_LIMITS.free;
+    const maxAllowed = limits[limitType];
+    if (maxAllowed === Infinity || maxAllowed === undefined) {
+      return { allowed: true, limit: null, planKey };
+    }
+    let requiredPlan = null;
+    if (limitType === 'maxStaff') requiredPlan = maxAllowed < 25 ? 'growth' : 'pro';
+    if (limitType === 'maxLocations') requiredPlan = maxAllowed < 50 ? 'growth' : 'pro';
+    return { allowed: true, limit: maxAllowed, planKey, requiredPlan };
+  } catch (e) {
+    console.error('checkCountLimit error (non-fatal):', e.message || e);
+    return { allowed: true, limit: null, planKey: 'unknown', requiredPlan: null };
+  }
+}
+
+export async function handlePlanLimitsAPI(request, env, path) {
+  const corsResponse = handleCORS(request);
+  if (corsResponse) return corsResponse;
+
+  if (request.method !== 'GET') return errorResponse('Method not allowed', 405);
+
+  const url = new URL(request.url);
+  const siteId = url.searchParams.get('siteId');
+  if (!siteId) return errorResponse('siteId is required', 400);
+
+  try {
+    const site = await env.DB.prepare(
+      'SELECT subscription_plan FROM sites WHERE id = ?'
+    ).bind(siteId).first();
+    if (!site) return errorResponse('Site not found', 404);
+
+    const planKey = getSitePlan(site);
+    const limits = PLAN_LIMITS[planKey] || PLAN_LIMITS.free;
+
+    const safeLimit = (v) => v === Infinity ? -1 : v;
+
+    return successResponse({
+      plan: planKey,
+      limits: {
+        maxSites: safeLimit(limits.maxSites),
+        maxStaff: safeLimit(limits.maxStaff),
+        maxLocations: safeLimit(limits.maxLocations),
+        coupons: limits.coupons,
+        reviews: limits.reviews,
+        blog: limits.blog,
+        pushManual: limits.pushManual,
+        pushAutomated: limits.pushAutomated,
+        advancedSeo: limits.advancedSeo,
+        revenue: limits.revenue,
+      },
+      featureRequiredPlan: FEATURE_REQUIRED_PLAN,
+      storage: {
+        d1Limit: limits.d1Bytes,
+        r2Limit: limits.r2Bytes,
+      },
+    });
+  } catch (error) {
+    console.error('Plan limits API error:', error);
+    return errorResponse('Failed to fetch plan limits', 500);
+  }
 }
 
 export async function checkUsageLimit(env, siteId, resourceType = 'd1', additionalBytes = 0) {
