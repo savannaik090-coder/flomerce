@@ -7519,6 +7519,9 @@ async function handleOrders(request, env, path, ctx) {
   if (orderId === "validate-stock" && method === "POST") {
     return validateStock(request, env);
   }
+  if (orderId === "test-whatsapp" && method === "POST") {
+    return handleTestWhatsApp(request, env);
+  }
   if (action === "guest") {
     return handleGuestOrder(request, env, method, orderId, ctx);
   }
