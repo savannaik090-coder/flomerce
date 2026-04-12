@@ -97,12 +97,34 @@ export async function handleSites(request, env, path, ctx) {
   }
 }
 
+const RESERVED_SUBDOMAINS = new Set([
+  'admin', 'api', 'www', 'support', 'help', 'mail', 'email', 'ftp',
+  'blog', 'shop', 'store', 'app', 'dashboard', 'billing', 'status',
+  'docs', 'developer', 'developers', 'dev', 'staging', 'test',
+  'login', 'signup', 'register', 'account', 'accounts', 'settings',
+  'profile', 'user', 'users', 'auth', 'oauth', 'sso',
+  'cdn', 'assets', 'static', 'media', 'images', 'img',
+  'payment', 'payments', 'checkout', 'cart', 'order', 'orders',
+  'contact', 'about', 'terms', 'privacy', 'legal', 'security',
+  'root', 'system', 'internal', 'platform', 'fluxe', 'buildflux',
+  'ns1', 'ns2', 'mx', 'smtp', 'pop', 'imap', 'webmail',
+  'cpanel', 'whm', 'plesk', 'server', 'host', 'hosting',
+  'demo', 'example', 'sandbox', 'preview',
+]);
+
+function isReservedSubdomain(subdomain) {
+  return RESERVED_SUBDOMAINS.has(subdomain.toLowerCase());
+}
+
 async function checkSubdomainAvailability(env, subdomain) {
   if (!subdomain || subdomain.length < 3) {
     return jsonResponse({ available: false, reason: 'Subdomain must be at least 3 characters' });
   }
   if (!/^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(subdomain) && subdomain.length > 1) {
     return jsonResponse({ available: false, reason: 'Only lowercase letters, numbers, and hyphens allowed' });
+  }
+  if (isReservedSubdomain(subdomain)) {
+    return jsonResponse({ available: false, reason: 'This subdomain is reserved and cannot be used' });
   }
   try {
     const existing = await env.DB.prepare(
@@ -238,6 +260,9 @@ async function createSite(request, env, user) {
     if (!/^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(subdomain)) {
       return errorResponse('Subdomain can only contain lowercase letters, numbers, and hyphens (not at start/end)', 400, 'INVALID_SUBDOMAIN');
     }
+    if (isReservedSubdomain(subdomain)) {
+      return errorResponse('This subdomain is reserved and cannot be used. Please choose a different name.', 400, 'SUBDOMAIN_RESERVED');
+    }
 
     const existingSubdomain = await env.DB.prepare(
       'SELECT id FROM sites WHERE LOWER(subdomain) = ?'
@@ -283,6 +308,9 @@ async function createSite(request, env, user) {
           const mimeToExt = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif', 'image/svg+xml': 'svg' };
           if (allowedTypes.includes(mimeType)) {
             const binaryString = atob(base64Data);
+            if (binaryString.length > 2 * 1024 * 1024) {
+              console.error('Logo too large, skipping upload');
+            } else {
             const buffer = new Uint8Array(binaryString.length);
             for (let i = 0; i < binaryString.length; i++) {
               buffer[i] = binaryString.charCodeAt(i);
@@ -293,6 +321,7 @@ async function createSite(request, env, user) {
               httpMetadata: { contentType: mimeType, cacheControl: 'public, max-age=31536000' },
             });
             logoUrl = `/api/upload/image?key=${encodeURIComponent(key)}`;
+            }
           }
         }
       } catch (e) {
@@ -433,6 +462,15 @@ async function createSite(request, env, user) {
     return successResponse({ id: siteId, subdomain: finalSubdomain }, 'Site created successfully');
   } catch (error) {
     console.error('Create site error:', error);
+    if (siteId) {
+      try {
+        await env.DB.prepare('DELETE FROM sites WHERE id = ?').bind(siteId).run();
+        await env.DB.prepare('DELETE FROM site_usage WHERE site_id = ?').bind(siteId).run();
+        console.log(`Rolled back partial site creation for site ${siteId}`);
+      } catch (rollbackErr) {
+        console.error('Rollback failed:', rollbackErr.message || rollbackErr);
+      }
+    }
     if (error.message && error.message.includes('UNIQUE constraint failed')) {
       return errorResponse('Subdomain already taken', 400, 'SUBDOMAIN_TAKEN');
     }
@@ -1006,6 +1044,9 @@ async function handleRenameSubdomain(request, env, siteId) {
     if (!/^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(newSubdomain) && newSubdomain.length > 1) {
       return errorResponse('Only lowercase letters, numbers, and hyphens allowed. Must start and end with a letter or number.', 400);
     }
+    if (isReservedSubdomain(newSubdomain)) {
+      return errorResponse('This subdomain is reserved and cannot be used', 400, 'SUBDOMAIN_RESERVED');
+    }
 
     const site = await env.DB.prepare(
       'SELECT id, subdomain FROM sites WHERE id = ?'
@@ -1068,7 +1109,7 @@ async function handleConvertCurrency(request, env, siteId) {
       return errorResponse(`Currency mismatch: store is currently set to ${currentCurrency}, but conversion requested from ${fromCurrency}. Please refresh and try again.`);
     }
 
-    const converted = { products: 0, coupons: 0 };
+    const converted = { products: 0, variants: 0, coupons: 0 };
 
     const products = await siteDB.prepare(
       'SELECT id, price, compare_price, cost_price, row_size_bytes FROM products WHERE site_id = ?'
@@ -1092,6 +1133,30 @@ async function handleConvertCurrency(request, env, siteId) {
           await trackD1Update(env, siteId, oldBytes, newBytes);
         }
         converted.products++;
+
+        const variants = await siteDB.prepare(
+          'SELECT id, price, compare_price, row_size_bytes FROM product_variants WHERE product_id = ?'
+        ).bind(product.id).all();
+
+        if (variants.results && variants.results.length > 0) {
+          for (const variant of variants.results) {
+            const newVarPrice = variant.price != null ? Math.round(variant.price * exchangeRate * 100) / 100 : null;
+            const newVarComparePrice = variant.compare_price != null ? Math.round(variant.compare_price * exchangeRate * 100) / 100 : null;
+
+            const oldVarBytes = variant.row_size_bytes || 0;
+            await siteDB.prepare(
+              `UPDATE product_variants SET price = ?, compare_price = ? WHERE id = ?`
+            ).bind(newVarPrice, newVarComparePrice, variant.id).run();
+
+            const updatedVar = await siteDB.prepare('SELECT * FROM product_variants WHERE id = ?').bind(variant.id).first();
+            if (updatedVar) {
+              const newVarBytes = estimateRowBytes(updatedVar);
+              await siteDB.prepare('UPDATE product_variants SET row_size_bytes = ? WHERE id = ?').bind(newVarBytes, variant.id).run();
+              await trackD1Update(env, siteId, oldVarBytes, newVarBytes);
+            }
+            converted.variants++;
+          }
+        }
       }
     }
 
