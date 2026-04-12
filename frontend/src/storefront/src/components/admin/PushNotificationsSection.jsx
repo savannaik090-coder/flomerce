@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext, useRef } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { apiRequest, getApiUrl } from '../../services/api.js';
 import LinkSelector from './LinkSelector.jsx';
+import FeatureGate from './FeatureGate.jsx';
 
 export default function PushNotificationsSection() {
   const { siteConfig } = useContext(SiteContext);
@@ -377,6 +378,7 @@ export default function PushNotificationsSection() {
           </div>
         </div>
 
+        <FeatureGate currentPlan={siteConfig?.subscriptionPlan} requiredPlan="pro" featureName="Automated Notifications">
         <div className="card">
           <div className="card-header">
             <h3 className="card-title">
@@ -434,6 +436,7 @@ export default function PushNotificationsSection() {
             ))}
           </div>
         </div>
+        </FeatureGate>
       </div>
     </div>
   );
