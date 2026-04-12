@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { getUserSites, deleteSite, createSite } from '../services/siteService.js';
 import { getUserProfile, cancelSubscription } from '../services/paymentService.js';
 import SiteCard from '../components/SiteCard.jsx';
-import SiteCreationWizard from '../components/SiteCreationWizard.jsx';
+import SiteCreationWizard, { clearWizardDraft } from '../components/SiteCreationWizard.jsx';
 import PlanSelector from '../components/PlanSelector.jsx';
 import { useNavigate } from 'react-router-dom';
 import { apiRequest } from '../services/api.js';
@@ -194,6 +194,7 @@ export default function DashboardPage() {
     try {
       const result = await createSite(pendingSiteData);
       if (result.success || result.site) {
+        clearWizardDraft();
         const newSite = result.site || result.data || result;
         return newSite.id || newSite.siteId;
       } else {

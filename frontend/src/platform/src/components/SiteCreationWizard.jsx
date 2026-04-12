@@ -68,7 +68,7 @@ function saveWizardDraft(data) {
   try { localStorage.setItem(WIZARD_STORAGE_KEY, JSON.stringify(data)); } catch {}
 }
 
-function clearWizardDraft() {
+export function clearWizardDraft() {
   try { localStorage.removeItem(WIZARD_STORAGE_KEY); } catch {}
 }
 
@@ -218,7 +218,6 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
     if (!formData) return;
 
     if (!isTrialActive) {
-      clearWizardDraft();
       onNeedsPlan(formData);
       onClose();
       return;
