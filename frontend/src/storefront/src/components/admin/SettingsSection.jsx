@@ -6,6 +6,7 @@ import { getExchangeRates } from '../../services/currencyService.js';
 import ConfirmModal from './ConfirmModal.jsx';
 import { formatPrice } from '../../utils/priceFormatter.js';
 import { COUNTRIES, getStatesForCountry } from '../../utils/countryStates.js';
+import PhoneInput from '../ui/PhoneInput.jsx';
 import { API_BASE, PLATFORM_DOMAIN } from '../../config.js';
 
 export default function SettingsSection() {
@@ -777,14 +778,22 @@ export default function SettingsSection() {
               <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>
                 <i className="fas fa-phone" style={{ marginRight: 6, color: '#2563eb' }} />Phone Number
               </label>
-              <input type="text" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+91 9876543210" style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
+              <PhoneInput
+                value={phone}
+                onChange={setPhone}
+                countryCode="IN"
+              />
               <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>Used for contact page, store locations, and as fallback for the floating button if no WhatsApp is set</p>
             </div>
             <div style={{ marginBottom: 16 }}>
               <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>
                 <i className="fab fa-whatsapp" style={{ marginRight: 6, color: '#25D366' }} />WhatsApp Number
               </label>
-              <input type="text" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder="+91 9876543210" style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
+              <PhoneInput
+                value={whatsapp}
+                onChange={setWhatsapp}
+                countryCode="IN"
+              />
               <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>If added, the floating button and featured video chat will redirect to WhatsApp</p>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, padding: '12px 14px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
