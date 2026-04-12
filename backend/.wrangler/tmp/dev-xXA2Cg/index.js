@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-wVNbHI/checked-fetch.js
+// .wrangler/tmp/bundle-g4O7R4/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-wVNbHI/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-g4O7R4/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-wVNbHI/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-g4O7R4/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-wVNbHI/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-g4O7R4/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -1156,8 +1156,8 @@ async function checkFeatureAccess(env, siteId, featureName) {
     const requiredPlan = FEATURE_REQUIRED_PLAN[featureName] || null;
     return { allowed, planKey, requiredPlan };
   } catch (e) {
-    console.error("checkFeatureAccess error (non-fatal):", e.message || e);
-    return { allowed: true, planKey: "unknown", requiredPlan: null };
+    console.error("checkFeatureAccess error:", e.message || e);
+    return { allowed: false, planKey: "unknown", requiredPlan: null };
   }
 }
 async function checkCountLimit(env, siteId, limitType) {
@@ -1175,8 +1175,8 @@ async function checkCountLimit(env, siteId, limitType) {
       requiredPlan = maxAllowed < 50 ? "growth" : "pro";
     return { allowed: true, limit: maxAllowed, planKey, requiredPlan };
   } catch (e) {
-    console.error("checkCountLimit error (non-fatal):", e.message || e);
-    return { allowed: true, limit: null, planKey: "unknown", requiredPlan: null };
+    console.error("checkCountLimit error:", e.message || e);
+    return { allowed: false, limit: 0, planKey: "unknown", requiredPlan: null };
   }
 }
 async function handlePlanLimitsAPI(request, env, path) {
@@ -1260,8 +1260,8 @@ async function checkUsageLimit(env, siteId, resourceType = "d1", additionalBytes
       reason: `Storage limit reached. ${resourceType.toUpperCase()} usage: ${usedMB}MB / ${limitMB}MB. Upgrade your plan for more storage.`
     };
   } catch (e) {
-    console.error("checkUsageLimit error (non-fatal):", e.message || e);
-    return { allowed: true, reason: null };
+    console.error("checkUsageLimit error:", e.message || e);
+    return { allowed: false, reason: "Unable to verify storage limits. Please try again." };
   }
 }
 async function reconcileShard(env, shardId) {
@@ -2624,12 +2624,12 @@ var init_site_admin_worker = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-wVNbHI/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-g4O7R4/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-wVNbHI/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-g4O7R4/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -5954,6 +5954,9 @@ async function triggerAutoNotification(env, siteId, type, payload) {
       return siteOrigin + (url.startsWith("/") ? url : "/" + url);
     };
     __name(toAbsoluteUrl, "toAbsoluteUrl");
+    const access = await checkFeatureAccess(env, siteId, "pushAutomated");
+    if (!access.allowed)
+      return;
     const db = await resolveSiteDBById(env, siteId);
     let config = null;
     try {
@@ -17010,6 +17013,21 @@ async function handleBlog(request, env, path, ctx) {
     return updatePost(request, env, subAction, ctx);
   }
   if (action === "admin" && subAction && method === "DELETE") {
+    const delUrl = new URL(request.url);
+    let delSiteId = delUrl.searchParams.get("siteId");
+    if (!delSiteId) {
+      try {
+        const b = await request.clone().json();
+        delSiteId = b.siteId;
+      } catch (e) {
+      }
+    }
+    if (delSiteId) {
+      const access = await checkFeatureAccess(env, delSiteId, "blog");
+      if (!access.allowed) {
+        return errorResponse(`Blog is available on the ${(access.requiredPlan || "growth").charAt(0).toUpperCase() + (access.requiredPlan || "growth").slice(1)} plan. Upgrade to unlock.`, 403, "FEATURE_LOCKED");
+      }
+    }
     return deletePost(request, env, subAction, ctx);
   }
   return errorResponse("Not found", 404);
@@ -18181,7 +18199,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-wVNbHI/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-g4O7R4/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -18216,7 +18234,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-wVNbHI/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-g4O7R4/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

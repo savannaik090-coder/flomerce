@@ -342,6 +342,9 @@ async function handleSaveSettings(request, env) {
 
 export async function triggerAutoNotification(env, siteId, type, payload) {
   try {
+    const access = await checkFeatureAccess(env, siteId, 'pushAutomated');
+    if (!access.allowed) return;
+
     const db = await resolveSiteDBById(env, siteId);
 
     let config = null;

@@ -271,8 +271,8 @@ export async function checkFeatureAccess(env, siteId, featureName) {
     const requiredPlan = FEATURE_REQUIRED_PLAN[featureName] || null;
     return { allowed, planKey, requiredPlan };
   } catch (e) {
-    console.error('checkFeatureAccess error (non-fatal):', e.message || e);
-    return { allowed: true, planKey: 'unknown', requiredPlan: null };
+    console.error('checkFeatureAccess error:', e.message || e);
+    return { allowed: false, planKey: 'unknown', requiredPlan: null };
   }
 }
 
@@ -289,8 +289,8 @@ export async function checkCountLimit(env, siteId, limitType) {
     if (limitType === 'maxLocations') requiredPlan = maxAllowed < 50 ? 'growth' : 'pro';
     return { allowed: true, limit: maxAllowed, planKey, requiredPlan };
   } catch (e) {
-    console.error('checkCountLimit error (non-fatal):', e.message || e);
-    return { allowed: true, limit: null, planKey: 'unknown', requiredPlan: null };
+    console.error('checkCountLimit error:', e.message || e);
+    return { allowed: false, limit: 0, planKey: 'unknown', requiredPlan: null };
   }
 }
 
@@ -382,8 +382,8 @@ export async function checkUsageLimit(env, siteId, resourceType = 'd1', addition
       reason: `Storage limit reached. ${resourceType.toUpperCase()} usage: ${usedMB}MB / ${limitMB}MB. Upgrade your plan for more storage.`,
     };
   } catch (e) {
-    console.error('checkUsageLimit error (non-fatal):', e.message || e);
-    return { allowed: true, reason: null };
+    console.error('checkUsageLimit error:', e.message || e);
+    return { allowed: false, reason: 'Unable to verify storage limits. Please try again.' };
   }
 }
 

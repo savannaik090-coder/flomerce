@@ -110,6 +110,17 @@ export async function handleBlog(request, env, path, ctx) {
   }
 
   if (action === 'admin' && subAction && method === 'DELETE') {
+    const delUrl = new URL(request.url);
+    let delSiteId = delUrl.searchParams.get('siteId');
+    if (!delSiteId) {
+      try { const b = await request.clone().json(); delSiteId = b.siteId; } catch (e) {}
+    }
+    if (delSiteId) {
+      const access = await checkFeatureAccess(env, delSiteId, 'blog');
+      if (!access.allowed) {
+        return errorResponse(`Blog is available on the ${(access.requiredPlan || 'growth').charAt(0).toUpperCase() + (access.requiredPlan || 'growth').slice(1)} plan. Upgrade to unlock.`, 403, 'FEATURE_LOCKED');
+      }
+    }
     return deletePost(request, env, subAction, ctx);
   }
 
