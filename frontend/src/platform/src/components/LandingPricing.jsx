@@ -56,6 +56,7 @@ export default function LandingPricing() {
         plans: {},
         display_order: plan.display_order ?? 999,
         plan_tier: plan.plan_tier ?? 1,
+        tagline: plan.tagline || '',
       };
     }
     acc[key].prices[plan.billing_cycle] = plan.display_price;
@@ -133,6 +134,9 @@ export default function LandingPricing() {
             <div key={planGroup.name} className={`lp-plan-card${planGroup.is_popular ? ' lp-plan-popular' : ''}`}>
               {planGroup.is_popular && <div className="lp-plan-badge lp-badge-popular">POPULAR</div>}
               <h3>{planGroup.name}</h3>
+              {planGroup.tagline && (
+                <p className="lp-plan-tagline">{planGroup.tagline}</p>
+              )}
               <div className="lp-plan-price">
                 {originalPrice && (
                   <span className="lp-price-original">&#8377;{originalPrice}</span>
