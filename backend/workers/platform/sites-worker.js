@@ -414,13 +414,19 @@ async function createSite(request, env, user) {
 
     try {
       const activeSub = await env.DB.prepare(
-        `SELECT plan, status, current_period_end FROM subscriptions WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1`
+        `SELECT id, plan, status, current_period_end, site_id FROM subscriptions WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1`
       ).bind(user.id).first();
 
-      if (activeSub && activeSub.plan === 'trial' && activeSub.current_period_end && new Date(activeSub.current_period_end) > new Date()) {
+      if (activeSub && activeSub.current_period_end && new Date(activeSub.current_period_end) > new Date()) {
         await env.DB.prepare(
-          `UPDATE sites SET subscription_plan = 'trial', subscription_expires_at = ?, updated_at = datetime('now') WHERE id = ?`
-        ).bind(activeSub.current_period_end, siteId).run();
+          `UPDATE sites SET subscription_plan = ?, subscription_expires_at = ?, updated_at = datetime('now') WHERE id = ?`
+        ).bind(activeSub.plan, activeSub.current_period_end, siteId).run();
+
+        if (!activeSub.site_id) {
+          await env.DB.prepare(
+            `UPDATE subscriptions SET site_id = ?, updated_at = datetime('now') WHERE id = ?`
+          ).bind(siteId, activeSub.id).run();
+        }
       }
     } catch (subErr) {
       console.error('Check subscription for new site failed (non-fatal):', subErr);
