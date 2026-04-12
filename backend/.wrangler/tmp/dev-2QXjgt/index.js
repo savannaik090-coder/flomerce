@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-vfwoJK/checked-fetch.js
+// .wrangler/tmp/bundle-DFVkzO/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-vfwoJK/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-DFVkzO/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-vfwoJK/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-DFVkzO/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-vfwoJK/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-DFVkzO/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -2365,12 +2365,12 @@ var init_site_admin_worker = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-vfwoJK/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-DFVkzO/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-vfwoJK/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-DFVkzO/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -4372,17 +4372,15 @@ async function createSite(request, env, user) {
     }
     try {
       const activeSub = await env.DB.prepare(
-        `SELECT id, plan, status, current_period_end, site_id FROM subscriptions WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1`
+        `SELECT id, plan, status, current_period_end, site_id FROM subscriptions WHERE user_id = ? AND status = 'active' AND site_id IS NULL ORDER BY created_at DESC LIMIT 1`
       ).bind(user.id).first();
       if (activeSub && activeSub.current_period_end && new Date(activeSub.current_period_end) > /* @__PURE__ */ new Date()) {
         await env.DB.prepare(
           `UPDATE sites SET subscription_plan = ?, subscription_expires_at = ?, updated_at = datetime('now') WHERE id = ?`
         ).bind(activeSub.plan, activeSub.current_period_end, siteId).run();
-        if (!activeSub.site_id) {
-          await env.DB.prepare(
-            `UPDATE subscriptions SET site_id = ?, updated_at = datetime('now') WHERE id = ?`
-          ).bind(siteId, activeSub.id).run();
-        }
+        await env.DB.prepare(
+          `UPDATE subscriptions SET site_id = ?, updated_at = datetime('now') WHERE id = ?`
+        ).bind(siteId, activeSub.id).run();
       }
     } catch (subErr) {
       console.error("Check subscription for new site failed (non-fatal):", subErr);
@@ -10454,24 +10452,20 @@ async function activateSubscription(env, userId, planName, billingCycle, razorpa
       periodEnd = new Date(periodStart);
       periodEnd.setMonth(periodEnd.getMonth() + periodMonths);
     }
-    const oldSubs = siteId ? (await env.DB.prepare(`SELECT id, razorpay_subscription_id FROM subscriptions WHERE site_id = ? AND status = 'active'`).bind(siteId).all()).results || [] : (await env.DB.prepare(`SELECT id, razorpay_subscription_id FROM subscriptions WHERE user_id = ? AND status = 'active'`).bind(userId).all()).results || [];
-    for (const oldSub of oldSubs) {
-      if (oldSub.razorpay_subscription_id && oldSub.razorpay_subscription_id !== razorpaySubscriptionId) {
-        const cancelled = await cancelRazorpaySubscription(env, oldSub.razorpay_subscription_id);
-        if (!cancelled) {
-          console.error(`Failed to cancel old Razorpay subscription ${oldSub.razorpay_subscription_id} during plan upgrade to ${planName}. Aborting activation.`);
-          return false;
+    if (siteId) {
+      const oldSubs = (await env.DB.prepare(`SELECT id, razorpay_subscription_id FROM subscriptions WHERE site_id = ? AND status = 'active'`).bind(siteId).all()).results || [];
+      for (const oldSub of oldSubs) {
+        if (oldSub.razorpay_subscription_id && oldSub.razorpay_subscription_id !== razorpaySubscriptionId) {
+          const cancelled = await cancelRazorpaySubscription(env, oldSub.razorpay_subscription_id);
+          if (!cancelled) {
+            console.error(`Failed to cancel old Razorpay subscription ${oldSub.razorpay_subscription_id} during plan upgrade to ${planName}. Aborting activation.`);
+            return false;
+          }
         }
       }
-    }
-    if (siteId) {
       await env.DB.prepare(
         `UPDATE subscriptions SET status = 'cancelled', cancelled_at = datetime('now') WHERE site_id = ? AND status = 'active'`
       ).bind(siteId).run();
-    } else {
-      await env.DB.prepare(
-        `UPDATE subscriptions SET status = 'cancelled', cancelled_at = datetime('now') WHERE user_id = ? AND status = 'active'`
-      ).bind(userId).run();
     }
     const resolvedAmount = amount || 0;
     await env.DB.prepare(
@@ -10495,10 +10489,6 @@ async function activateSubscription(env, userId, planName, billingCycle, razorpa
       await env.DB.prepare(
         `UPDATE sites SET subscription_plan = ?, subscription_expires_at = ?, updated_at = datetime('now') WHERE id = ? AND COALESCE(subscription_plan, '') != 'enterprise'`
       ).bind(planName, periodEnd.toISOString(), siteId).run();
-    } else {
-      await env.DB.prepare(
-        `UPDATE sites SET subscription_plan = ?, subscription_expires_at = ?, updated_at = datetime('now') WHERE user_id = ? AND COALESCE(subscription_plan, '') != 'enterprise'`
-      ).bind(planName, periodEnd.toISOString(), userId).run();
     }
     console.log(`Subscription activated: user=${userId}, site=${siteId || "all"}, plan=${planName}, cycle=${billingCycle}`);
     return true;
@@ -17540,7 +17530,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-vfwoJK/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-DFVkzO/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -17575,7 +17565,7 @@ function __facade_invoke__(request, env, ctx2, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-vfwoJK/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-DFVkzO/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

@@ -982,28 +982,22 @@ export async function activateSubscription(env, userId, planName, billingCycle, 
       periodEnd.setMonth(periodEnd.getMonth() + periodMonths);
     }
 
-    const oldSubs = siteId
-      ? (await env.DB.prepare(`SELECT id, razorpay_subscription_id FROM subscriptions WHERE site_id = ? AND status = 'active'`).bind(siteId).all()).results || []
-      : (await env.DB.prepare(`SELECT id, razorpay_subscription_id FROM subscriptions WHERE user_id = ? AND status = 'active'`).bind(userId).all()).results || [];
+    if (siteId) {
+      const oldSubs = (await env.DB.prepare(`SELECT id, razorpay_subscription_id FROM subscriptions WHERE site_id = ? AND status = 'active'`).bind(siteId).all()).results || [];
 
-    for (const oldSub of oldSubs) {
-      if (oldSub.razorpay_subscription_id && oldSub.razorpay_subscription_id !== razorpaySubscriptionId) {
-        const cancelled = await cancelRazorpaySubscription(env, oldSub.razorpay_subscription_id);
-        if (!cancelled) {
-          console.error(`Failed to cancel old Razorpay subscription ${oldSub.razorpay_subscription_id} during plan upgrade to ${planName}. Aborting activation.`);
-          return false;
+      for (const oldSub of oldSubs) {
+        if (oldSub.razorpay_subscription_id && oldSub.razorpay_subscription_id !== razorpaySubscriptionId) {
+          const cancelled = await cancelRazorpaySubscription(env, oldSub.razorpay_subscription_id);
+          if (!cancelled) {
+            console.error(`Failed to cancel old Razorpay subscription ${oldSub.razorpay_subscription_id} during plan upgrade to ${planName}. Aborting activation.`);
+            return false;
+          }
         }
       }
-    }
 
-    if (siteId) {
       await env.DB.prepare(
         `UPDATE subscriptions SET status = 'cancelled', cancelled_at = datetime('now') WHERE site_id = ? AND status = 'active'`
       ).bind(siteId).run();
-    } else {
-      await env.DB.prepare(
-        `UPDATE subscriptions SET status = 'cancelled', cancelled_at = datetime('now') WHERE user_id = ? AND status = 'active'`
-      ).bind(userId).run();
     }
 
     const resolvedAmount = amount || 0;
@@ -1031,10 +1025,6 @@ export async function activateSubscription(env, userId, planName, billingCycle, 
       await env.DB.prepare(
         `UPDATE sites SET subscription_plan = ?, subscription_expires_at = ?, updated_at = datetime('now') WHERE id = ? AND COALESCE(subscription_plan, '') != 'enterprise'`
       ).bind(planName, periodEnd.toISOString(), siteId).run();
-    } else {
-      await env.DB.prepare(
-        `UPDATE sites SET subscription_plan = ?, subscription_expires_at = ?, updated_at = datetime('now') WHERE user_id = ? AND COALESCE(subscription_plan, '') != 'enterprise'`
-      ).bind(planName, periodEnd.toISOString(), userId).run();
     }
 
     console.log(`Subscription activated: user=${userId}, site=${siteId || 'all'}, plan=${planName}, cycle=${billingCycle}`);
