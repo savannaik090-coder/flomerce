@@ -131,7 +131,7 @@ export default function LandingPage() {
 
         <section className="hero">
           <div className="hero-content reveal">
-            <div className="hero-badge">E-Commerce Platform for Everyone</div>
+            <div className="hero-badge">Launch Your E-Commerce Store for Less Than ₹10/Day</div>
             <h1>Build Your<br /><span className="hero-accent">Online Store</span><br />No Code Needed</h1>
             <p className="hero-desc">Fluxe helps small businesses and entrepreneurs create professional e-commerce websites with product management, order processing, and secure payments — all from one dashboard.</p>
             <div className="hero-buttons">
