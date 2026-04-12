@@ -9,6 +9,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { apiRequest } from '../services/api.js';
 import '../styles/dashboard.css';
 import { PLATFORM_DOMAIN } from '../config.js';
+import PlanLimitModal, { isPlanError } from '../components/PlanLimitModal.jsx';
 
 const VALID_PAGES = ['dashboard', 'admin', 'billing', 'staff', 'account'];
 
@@ -44,6 +45,7 @@ export default function DashboardPage() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [cancellingSubscription, setCancellingSubscription] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(null);
+  const [planLimitMsg, setPlanLimitMsg] = useState(null);
 
   const navigateDashboard = useCallback((page, siteId = null) => {
     setActivePage(page);
@@ -254,7 +256,7 @@ export default function DashboardPage() {
   const handleCreateSiteClick = () => {
     const accountStatus = getAccountSubscriptionStatus();
     if (accountStatus.isTrialActive && sites.length >= 5) {
-      alert('Trial accounts can create up to 5 websites. Please upgrade to a paid plan to create more.');
+      setPlanLimitMsg('Trial accounts can create up to 5 websites. Please upgrade to a paid plan to create more.');
       return;
     }
     setShowWizard(true);
@@ -349,7 +351,11 @@ export default function DashboardPage() {
       setStaffForm(null);
       await loadStaff(staffSiteId);
     } catch (e) {
-      setStaffError(e.message || 'Failed to save staff member.');
+      if (isPlanError(e)) {
+        setPlanLimitMsg(e.message);
+      } else {
+        setStaffError(e.message || 'Failed to save staff member.');
+      }
     } finally {
       setStaffSaving(false);
     }
@@ -1277,6 +1283,7 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+      <PlanLimitModal message={planLimitMsg} onClose={() => setPlanLimitMsg(null)} />
     </div>
   );
 }

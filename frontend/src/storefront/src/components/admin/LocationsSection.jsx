@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { getLocations, createLocation, updateLocation, deleteLocation } from '../../services/inventoryService.js';
 import ConfirmModal from './ConfirmModal.jsx';
+import PlanLimitModal, { isPlanError } from './PlanLimitModal.jsx';
 
 export default function LocationsSection() {
   const { siteConfig } = useContext(SiteContext);
@@ -12,6 +13,7 @@ export default function LocationsSection() {
   const [form, setForm] = useState({ name: '', address: '', priority: 0, is_default: false });
   const [saving, setSaving] = useState(false);
   const [confirmModal, setConfirmModal] = useState(null);
+  const [planLimitMsg, setPlanLimitMsg] = useState(null);
 
   useEffect(() => {
     if (siteConfig?.id) loadLocations();
@@ -54,7 +56,11 @@ export default function LocationsSection() {
       resetForm();
       await loadLocations();
     } catch (err) {
-      alert('Failed to save location: ' + err.message);
+      if (isPlanError(err)) {
+        setPlanLimitMsg(err.message);
+      } else {
+        alert('Failed to save location: ' + err.message);
+      }
     } finally {
       setSaving(false);
     }
@@ -204,6 +210,7 @@ export default function LocationsSection() {
         onConfirm={() => { confirmModal?.onConfirm?.(); setConfirmModal(null); }}
         onCancel={() => setConfirmModal(null)}
       />
+      <PlanLimitModal message={planLimitMsg} onClose={() => setPlanLimitMsg(null)} />
     </>
   );
 }
