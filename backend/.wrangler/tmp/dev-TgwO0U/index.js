@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-bfSXqB/checked-fetch.js
+// .wrangler/tmp/bundle-22yvqF/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-bfSXqB/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-22yvqF/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-bfSXqB/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-22yvqF/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-bfSXqB/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-22yvqF/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -1116,10 +1116,10 @@ function getSitePlan(site) {
     return "enterprise";
   if (plan.includes("pro"))
     return "pro";
-  if (plan.includes("standard"))
-    return "standard";
-  if (plan.includes("basic"))
-    return "basic";
+  if (plan.includes("growth") || plan.includes("standard"))
+    return "growth";
+  if (plan.includes("starter") || plan.includes("basic"))
+    return "starter";
   if (plan === "trial")
     return "trial";
   return "free";
@@ -1350,8 +1350,8 @@ var init_usage_tracker = __esm({
     init_helpers();
     init_auth();
     PLAN_LIMITS = {
-      basic: { d1Bytes: 500 * 1024 * 1024, r2Bytes: 5 * 1024 * 1024 * 1024, allowOverage: false },
-      standard: { d1Bytes: 1 * 1024 * 1024 * 1024, r2Bytes: 50 * 1024 * 1024 * 1024, allowOverage: false },
+      starter: { d1Bytes: 500 * 1024 * 1024, r2Bytes: 5 * 1024 * 1024 * 1024, allowOverage: false },
+      growth: { d1Bytes: 1 * 1024 * 1024 * 1024, r2Bytes: 50 * 1024 * 1024 * 1024, allowOverage: false },
       pro: { d1Bytes: 2 * 1024 * 1024 * 1024, r2Bytes: 100 * 1024 * 1024 * 1024, allowOverage: false },
       enterprise: { d1Bytes: 2 * 1024 * 1024 * 1024, r2Bytes: 100 * 1024 * 1024 * 1024, allowOverage: false },
       trial: { d1Bytes: 500 * 1024 * 1024, r2Bytes: 5 * 1024 * 1024 * 1024, allowOverage: false },
@@ -2365,12 +2365,12 @@ var init_site_admin_worker = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-bfSXqB/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-22yvqF/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-bfSXqB/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-22yvqF/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -17537,7 +17537,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-bfSXqB/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-22yvqF/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -17572,7 +17572,7 @@ function __facade_invoke__(request, env, ctx2, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-bfSXqB/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-22yvqF/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

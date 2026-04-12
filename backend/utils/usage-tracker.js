@@ -2,8 +2,8 @@ import { jsonResponse, errorResponse, successResponse, handleCORS } from './help
 import { validateAuth } from './auth.js';
 
 const PLAN_LIMITS = {
-  basic: { d1Bytes: 500 * 1024 * 1024, r2Bytes: 5 * 1024 * 1024 * 1024, allowOverage: false },
-  standard: { d1Bytes: 1 * 1024 * 1024 * 1024, r2Bytes: 50 * 1024 * 1024 * 1024, allowOverage: false },
+  starter: { d1Bytes: 500 * 1024 * 1024, r2Bytes: 5 * 1024 * 1024 * 1024, allowOverage: false },
+  growth: { d1Bytes: 1 * 1024 * 1024 * 1024, r2Bytes: 50 * 1024 * 1024 * 1024, allowOverage: false },
   pro: { d1Bytes: 2 * 1024 * 1024 * 1024, r2Bytes: 100 * 1024 * 1024 * 1024, allowOverage: false },
   enterprise: { d1Bytes: 2 * 1024 * 1024 * 1024, r2Bytes: 100 * 1024 * 1024 * 1024, allowOverage: false },
   trial: { d1Bytes: 500 * 1024 * 1024, r2Bytes: 5 * 1024 * 1024 * 1024, allowOverage: false },
@@ -192,8 +192,8 @@ function getSitePlan(site) {
   const plan = (site.subscription_plan || 'free').toLowerCase();
   if (plan.includes('enterprise')) return 'enterprise';
   if (plan.includes('pro')) return 'pro';
-  if (plan.includes('standard')) return 'standard';
-  if (plan.includes('basic')) return 'basic';
+  if (plan.includes('growth') || plan.includes('standard')) return 'growth';
+  if (plan.includes('starter') || plan.includes('basic')) return 'starter';
   if (plan === 'trial') return 'trial';
   return 'free';
 }
