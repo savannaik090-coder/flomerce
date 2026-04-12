@@ -770,3 +770,70 @@ export function buildCancellationStatusEmail(request, brandName, status, adminNo
   const text = `Cancellation Request Update\nOrder: #${request.order_number}\nStatus: ${label}${adminNote ? '\nNote: ' + adminNote : ''}`;
   return { html, text };
 }
+
+export function buildAbandonedCartEmail(customerName, brandName, items, cartTotal, storeUrl, currency = 'INR') {
+  const fmtH = (amt) => formatCurrencyHtml(amt, currency);
+
+  const itemsHtml = items.slice(0, 5).map(item => `
+    <tr>
+      <td style="padding: 12px 16px; border-bottom: 1px solid #f0f0f0; font-size: 14px;">${item.name || 'Product'}</td>
+      <td style="padding: 12px 16px; border-bottom: 1px solid #f0f0f0; text-align: center; font-size: 14px;">${item.quantity || 1}</td>
+      <td style="padding: 12px 16px; border-bottom: 1px solid #f0f0f0; text-align: right; font-size: 14px; font-weight: 600;">${fmtH(Number(item.price || 0) * Number(item.quantity || 1))}</td>
+    </tr>
+  `).join('');
+
+  const moreItems = items.length > 5 ? `<p style="color:#64748b;font-size:13px;text-align:center;">...and ${items.length - 5} more item(s)</p>` : '';
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="utf-8"></head>
+    <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background: #f5f5f5;">
+      <div style="max-width: 600px; margin: 0 auto; background: #ffffff;">
+        <div style="background: #0f172a; color: #ffffff; padding: 32px; text-align: center;">
+          <h1 style="margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.5px;">${brandName || 'Your Store'}</h1>
+        </div>
+        <div style="padding: 32px;">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <div style="font-size: 48px; margin-bottom: 12px;">🛒</div>
+            <h2 style="margin: 0 0 8px; font-size: 22px; color: #0f172a;">You left something behind!</h2>
+            <p style="margin: 0; color: #64748b; font-size: 14px;">Hi ${customerName || 'there'}, your cart at ${brandName} is waiting for you</p>
+          </div>
+
+          <table style="width: 100%; border-collapse: collapse; margin: 24px 0;">
+            <thead>
+              <tr style="background: #f8f9fa;">
+                <th style="padding: 12px 16px; text-align: left; font-size: 12px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Product</th>
+                <th style="padding: 12px 16px; text-align: center; font-size: 12px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Qty</th>
+                <th style="padding: 12px 16px; text-align: right; font-size: 12px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${itemsHtml}
+            </tbody>
+          </table>
+          ${moreItems}
+
+          <div style="text-align: right; padding: 16px; background: #f8f9fa; border-radius: 8px; margin: 16px 0;">
+            <span style="font-size: 16px; font-weight: 700; color: #0f172a;">Cart Total: ${fmtH(cartTotal)}</span>
+          </div>
+
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="${storeUrl}" style="display: inline-block; background: #0f172a; color: #ffffff; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-size: 16px; font-weight: 600;">Complete Your Purchase</a>
+          </div>
+
+          <p style="text-align: center; color: #94a3b8; font-size: 13px; margin-top: 24px;">
+            If you've already completed your purchase, please ignore this email.
+          </p>
+        </div>
+        <div style="background: #f8f9fa; padding: 24px; text-align: center;">
+          <p style="margin: 0; color: #94a3b8; font-size: 12px;">&copy; ${brandName || 'Your Store'}. All rights reserved.</p>
+        </div>
+      </div>
+    </body>
+    </html>`;
+
+  const itemsList = items.slice(0, 5).map(item => `${item.name} x${item.quantity}`).join(', ');
+  const text = `Hi ${customerName || 'there'}, you left items in your cart at ${brandName}! Items: ${itemsList}. Cart Total: ${formatCurrency(cartTotal, currency)}. Complete your purchase: ${storeUrl}`;
+  return { html, text };
+}

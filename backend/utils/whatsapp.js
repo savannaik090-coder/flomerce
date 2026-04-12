@@ -332,6 +332,29 @@ export async function sendOrderWhatsApp(settings, phone, messageData) {
   return sendWhatsAppText(settings, phone, text);
 }
 
+export function buildAbandonedCartWA(customerName, brandName, itemsSummary, cartTotal, storeUrl, currency = 'INR') {
+  const total = formatCurrency(cartTotal, currency);
+
+  const text = `🛒 *Don't forget your cart!*\n\nHi ${customerName || 'there'},\n\nYou left some items in your cart at *${brandName}*!\n\n📦 *Your items:*\n${itemsSummary}\n\n💰 *Cart Total:* ${total}\n\n👉 Complete your purchase now: ${storeUrl}\n\nDon't miss out — your items are waiting for you!`;
+
+  return {
+    text,
+    templateName: 'abandoned_cart_reminder',
+    components: [
+      {
+        type: 'body',
+        parameters: [
+          { type: 'text', text: customerName || 'Customer' },
+          { type: 'text', text: brandName },
+          { type: 'text', text: itemsSummary },
+          { type: 'text', text: total },
+          { type: 'text', text: storeUrl },
+        ],
+      },
+    ],
+  };
+}
+
 export function isWhatsAppConfigured(settings) {
   if (!settings || !settings.whatsappNotificationsEnabled) return false;
   const provider = settings.whatsappProvider || 'meta';

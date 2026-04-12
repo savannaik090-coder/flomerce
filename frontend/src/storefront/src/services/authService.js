@@ -11,10 +11,10 @@ export async function login(siteId, email, password) {
   return data;
 }
 
-export async function signup(siteId, name, email, password) {
+export async function signup(siteId, name, email, password, phone) {
   const data = await apiRequest('/api/customer-auth/signup', {
     method: 'POST',
-    body: JSON.stringify({ siteId, name, email, password }),
+    body: JSON.stringify({ siteId, name, email, password, phone: phone || undefined }),
   });
   if (data.token) {
     setAuthToken(data.token);

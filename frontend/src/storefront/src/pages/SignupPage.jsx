@@ -5,6 +5,7 @@ import { AuthContext } from '../context/AuthContext.jsx';
 import * as authService from '../services/authService.js';
 import { setAuthToken } from '../services/api.js';
 import { PLATFORM_URL } from '../config.js';
+import PhoneInput from '../components/ui/PhoneInput.jsx';
 
 export default function SignupPage() {
   const navigate = useNavigate();
@@ -12,6 +13,7 @@ export default function SignupPage() {
   const { isAuthenticated, login } = useContext(AuthContext);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
@@ -66,7 +68,7 @@ export default function SignupPage() {
     setLoading(true);
     setError('');
     try {
-      const result = await authService.signup(siteConfig?.id, name, email, password);
+      const result = await authService.signup(siteConfig?.id, name, email, password, phone);
       const userData = result.customer || result.data;
       const token = result.token;
       if (result.requiresVerification) {
@@ -111,6 +113,15 @@ export default function SignupPage() {
             <label style={{ display: 'block', marginBottom: 8, fontFamily: "'Lato', sans-serif", fontSize: 14, color: '#333' }}>Email</label>
             <input type="email" value={email} onChange={e => { setEmail(e.target.value); setFieldErrors(p => ({ ...p, email: undefined })); }} required style={{ width: '100%', padding: 12, border: `1px solid ${fieldErrors.email ? '#d32f2f' : '#ddd'}`, borderRadius: 4, fontFamily: "'Lato', sans-serif", fontSize: 16, boxSizing: 'border-box' }} />
             {fieldErrors.email && <div style={{ color: '#d32f2f', fontSize: 14, marginTop: 5 }}>{fieldErrors.email}</div>}
+          </div>
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ display: 'block', marginBottom: 8, fontFamily: "'Lato', sans-serif", fontSize: 14, color: '#333' }}>Phone Number <span style={{ color: '#999', fontWeight: 400 }}>(optional)</span></label>
+            <PhoneInput
+              value={phone}
+              onChange={val => setPhone(val)}
+              placeholder="Phone number"
+              style={{ width: '100%', padding: 12, border: '1px solid #ddd', borderRadius: 4, fontFamily: "'Lato', sans-serif", fontSize: 16, boxSizing: 'border-box' }}
+            />
           </div>
           <div style={{ marginBottom: 20 }}>
             <label style={{ display: 'block', marginBottom: 8, fontFamily: "'Lato', sans-serif", fontSize: 14, color: '#333' }}>Password (8+ characters)</label>

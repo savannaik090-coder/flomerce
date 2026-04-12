@@ -23,7 +23,7 @@ import { jsonResponse, errorResponse, corsHeaders, handleCORS } from '../utils/h
 import { cachedJsonResponse } from '../utils/cache.js';
 import { PLATFORM_DOMAIN } from '../config.js';
 import { ensureTablesExist } from '../utils/db-init.js';
-import { resolveSiteDBById } from '../utils/site-db.js';
+import { resolveSiteDBById, getSiteConfig } from '../utils/site-db.js';
 
 export default {
   async fetch(request, env, ctx) {
@@ -77,6 +77,7 @@ export default {
 
   async scheduled(event, env, ctx) {
     ctx.waitUntil(cleanupExpiredData(env));
+    ctx.waitUntil(processAbandonedCartReminders(env));
   },
 };
 
@@ -479,5 +480,163 @@ async function cleanupExpiredData(env) {
     console.log('[Cleanup] Expired sessions, tokens, and stale orders cleaned up successfully');
   } catch (error) {
     console.error('[Cleanup] Error during cleanup:', error);
+  }
+}
+
+async function processAbandonedCartReminders(env) {
+  const { sendEmail } = await import('../utils/email.js');
+  const { buildAbandonedCartEmail } = await import('../utils/email.js');
+  const { sendOrderWhatsApp, buildAbandonedCartWA, isWhatsAppConfigured } = await import('../utils/whatsapp.js');
+
+  try {
+    const allSites = await env.DB.prepare('SELECT id, brand_name, subdomain, custom_domain, domain_status FROM sites WHERE is_active = 1').all();
+
+    for (const site of (allSites.results || [])) {
+      try {
+        const db = await resolveSiteDBById(env, site.id);
+        const siteConfig = await getSiteConfig(env, site.id);
+        if (!siteConfig.settings) continue;
+
+        let settings = siteConfig.settings;
+        if (typeof settings === 'string') settings = JSON.parse(settings);
+
+        const acConfig = settings.abandonedCartConfig;
+        if (!acConfig || !acConfig.enabled) continue;
+
+        const delayHours = Number(acConfig.delayHours) || 1;
+        const maxReminders = Number(acConfig.maxReminders) || 1;
+        const sendWhatsApp = acConfig.whatsapp !== false;
+        const sendEmailChannel = acConfig.email !== false;
+
+        try {
+          await db.prepare('ALTER TABLE carts ADD COLUMN reminder_sent_at TEXT').run();
+        } catch (e) {}
+        try {
+          await db.prepare('ALTER TABLE carts ADD COLUMN reminder_count INTEGER DEFAULT 0').run();
+        } catch (e) {}
+
+        const abandonedCarts = await db.prepare(
+          `SELECT c.id, c.site_id, c.user_id, c.items, c.subtotal, c.updated_at,
+                  c.reminder_count, c.reminder_sent_at
+           FROM carts c
+           WHERE c.user_id IS NOT NULL
+             AND c.items != '[]'
+             AND c.items != ''
+             AND (c.reminder_count IS NULL OR c.reminder_count < ?)
+             AND c.updated_at < datetime('now', '-' || ? || ' hours')
+           ORDER BY c.updated_at ASC
+           LIMIT 50`
+        ).bind(maxReminders, delayHours).all();
+
+        if (!abandonedCarts.results || abandonedCarts.results.length === 0) continue;
+
+        const brandName = site.brand_name || 'Store';
+        const domain = env.DOMAIN || PLATFORM_DOMAIN;
+        const storeUrl = (site.custom_domain && site.domain_status === 'verified')
+          ? `https://${site.custom_domain}`
+          : `https://${site.subdomain}.${domain}`;
+        const currency = settings.defaultCurrency || settings.currency || 'INR';
+
+        for (const cart of abandonedCarts.results) {
+          try {
+            const currentReminderCount = cart.reminder_count || 0;
+            if (currentReminderCount > 0 && cart.reminder_sent_at) {
+              const nextDelay = delayHours * Math.pow(2, currentReminderCount);
+              const nextSendTime = new Date(new Date(cart.reminder_sent_at).getTime() + nextDelay * 60 * 60 * 1000);
+              if (new Date() < nextSendTime) continue;
+            }
+
+            const recentOrder = await db.prepare(
+              `SELECT id FROM orders WHERE user_id = ? AND site_id = ? AND created_at > ? LIMIT 1`
+            ).bind(cart.user_id, cart.site_id, cart.updated_at).first();
+
+            if (recentOrder) {
+              await db.prepare(
+                `UPDATE carts SET reminder_count = ?, reminder_sent_at = datetime('now') WHERE id = ?`
+              ).bind(maxReminders, cart.id).run();
+              continue;
+            }
+
+            const customer = await db.prepare(
+              `SELECT name, email, phone FROM site_customers WHERE id = ? AND site_id = ?`
+            ).bind(cart.user_id, cart.site_id).first();
+
+            if (!customer) continue;
+            if (!customer.email && !customer.phone) continue;
+
+            let items = [];
+            try {
+              items = typeof cart.items === 'string' ? JSON.parse(cart.items) : cart.items;
+            } catch (e) { continue; }
+            if (!Array.isArray(items) || items.length === 0) continue;
+
+            const enrichedItems = [];
+            for (const item of items) {
+              const product = await db.prepare(
+                'SELECT name, price FROM products WHERE id = ? AND site_id = ?'
+              ).bind(item.productId, cart.site_id).first();
+              enrichedItems.push({
+                name: item.name || product?.name || 'Product',
+                price: item.price || product?.price || 0,
+                quantity: item.quantity || 1,
+              });
+            }
+
+            const cartTotal = cart.subtotal || enrichedItems.reduce((sum, item) =>
+              sum + (Number(item.price) * Number(item.quantity)), 0);
+
+            const itemsSummary = enrichedItems.slice(0, 5).map(item =>
+              `${item.name} x${item.quantity}`
+            ).join('\n');
+
+            let emailSent = false;
+            let whatsappSent = false;
+
+            if (sendEmailChannel && customer.email) {
+              try {
+                const emailContent = buildAbandonedCartEmail(
+                  customer.name, brandName, enrichedItems, cartTotal, storeUrl, currency
+                );
+                const result = await sendEmail(
+                  env, customer.email,
+                  `You left items in your cart - ${brandName}`,
+                  emailContent.html, emailContent.text
+                );
+                emailSent = result === true;
+              } catch (emailErr) {
+                console.error(`[AbandonedCart] Email error for cart ${cart.id}:`, emailErr.message || emailErr);
+              }
+            }
+
+            if (sendWhatsApp && customer.phone && isWhatsAppConfigured(settings)) {
+              try {
+                const waMessage = buildAbandonedCartWA(
+                  customer.name, brandName, itemsSummary, cartTotal, storeUrl, currency
+                );
+                const result = await sendOrderWhatsApp(settings, customer.phone, waMessage);
+                whatsappSent = result?.success === true;
+              } catch (waErr) {
+                console.error(`[AbandonedCart] WhatsApp error for cart ${cart.id}:`, waErr.message || waErr);
+              }
+            }
+
+            if (emailSent || whatsappSent) {
+              await db.prepare(
+                `UPDATE carts SET reminder_count = ?, reminder_sent_at = datetime('now') WHERE id = ?`
+              ).bind(currentReminderCount + 1, cart.id).run();
+              console.log(`[AbandonedCart] Reminder #${currentReminderCount + 1} sent for cart ${cart.id} (email: ${emailSent}, whatsapp: ${whatsappSent})`);
+            }
+          } catch (cartErr) {
+            console.error(`[AbandonedCart] Error processing cart ${cart.id}:`, cartErr.message || cartErr);
+          }
+        }
+      } catch (siteErr) {
+        console.error(`[AbandonedCart] Error for site ${site.id}:`, siteErr.message || siteErr);
+      }
+    }
+
+    console.log('[AbandonedCart] Processing complete');
+  } catch (error) {
+    console.error('[AbandonedCart] Error:', error.message || error);
   }
 }

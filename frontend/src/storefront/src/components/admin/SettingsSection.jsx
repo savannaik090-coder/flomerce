@@ -62,6 +62,12 @@ export default function SettingsSection() {
   const [whatsappTestSending, setWhatsappTestSending] = useState(false);
   const [whatsappTestResult, setWhatsappTestResult] = useState('');
 
+  const [abandonedCartEnabled, setAbandonedCartEnabled] = useState(false);
+  const [abandonedCartDelayHours, setAbandonedCartDelayHours] = useState('1');
+  const [abandonedCartMaxReminders, setAbandonedCartMaxReminders] = useState('1');
+  const [abandonedCartWhatsApp, setAbandonedCartWhatsApp] = useState(true);
+  const [abandonedCartEmail, setAbandonedCartEmail] = useState(true);
+
   const defaultOpenSections = { storeUrl: true, customDomain: true, brand: true, contact: true };
   const [openSections, setOpenSections] = useState(defaultOpenSections);
 
@@ -188,6 +194,12 @@ export default function SettingsSection() {
         setWhatsappApiKey(settings.whatsappApiKey || '');
         setWhatsappUseTemplates(settings.whatsappUseTemplates !== false);
         setWhatsappLanguage(settings.whatsappLanguage || 'en');
+        const ac = settings.abandonedCartConfig || {};
+        setAbandonedCartEnabled(ac.enabled === true);
+        setAbandonedCartDelayHours(ac.delayHours != null ? String(ac.delayHours) : '1');
+        setAbandonedCartMaxReminders(ac.maxReminders != null ? String(ac.maxReminders) : '1');
+        setAbandonedCartWhatsApp(ac.whatsapp !== false);
+        setAbandonedCartEmail(ac.email !== false);
         if (data.custom_domain) {
           setCustomDomain(data.custom_domain);
           setDomainInput(data.custom_domain);
@@ -267,6 +279,13 @@ export default function SettingsSection() {
         whatsappProvider,
         whatsappUseTemplates,
         whatsappLanguage,
+        abandonedCartConfig: {
+          enabled: abandonedCartEnabled,
+          delayHours: Number(abandonedCartDelayHours) || 1,
+          maxReminders: Number(abandonedCartMaxReminders) || 1,
+          whatsapp: abandonedCartWhatsApp,
+          email: abandonedCartEmail,
+        },
       };
       if (whatsappProvider === 'meta') {
         if (whatsappAccessToken) settings.whatsappAccessToken = whatsappAccessToken;
@@ -1366,6 +1385,94 @@ export default function SettingsSection() {
                     <p style={{ margin: 0, fontWeight: 600, fontSize: 13, color: '#0c4a6e', marginBottom: 6 }}>Template Setup Required</p>
                     <p style={{ margin: 0, fontSize: 12, color: '#0369a1', lineHeight: 1.6 }}>
                       Create these templates in your WhatsApp Business account: <strong>order_confirmation</strong>, <strong>order_packed</strong>, <strong>order_shipped</strong>, <strong>order_delivered</strong>, <strong>order_cancelled</strong>. Each template should accept the parameters shown in the notification list above.
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
+          </div>}
+        </div>
+
+        <div className="card" style={{ marginBottom: 20 }}>
+          <CollapsibleHeader sectionKey="abandonedCart" title="Abandoned Cart Reminders" />
+          {isSectionOpen("abandonedCart") && <div className="card-content">
+            <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
+              Automatically remind customers who left items in their cart. Only works for logged-in customers who have a phone number or email on their account.
+            </p>
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', border: '1px solid #e2e8f0', borderRadius: 8, marginBottom: 16, background: abandonedCartEnabled ? '#f0fdf4' : '#f8fafc' }}>
+              <div>
+                <div style={{ fontWeight: 600, fontSize: 14, color: '#1e293b' }}>
+                  <i className="fas fa-shopping-cart" style={{ marginRight: 6, color: '#f59e0b' }} />Enable Abandoned Cart Reminders
+                </div>
+                <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>Send reminders via WhatsApp and/or email when customers leave items in their cart</div>
+              </div>
+              <label style={{ position: 'relative', display: 'inline-block', width: 44, height: 24, flexShrink: 0 }}>
+                <input type="checkbox" checked={abandonedCartEnabled} onChange={e => setAbandonedCartEnabled(e.target.checked)} style={{ opacity: 0, width: 0, height: 0 }} />
+                <span style={{ position: 'absolute', cursor: 'pointer', inset: 0, borderRadius: 24, transition: '0.3s', background: abandonedCartEnabled ? '#f59e0b' : '#cbd5e1' }}>
+                  <span style={{ position: 'absolute', left: abandonedCartEnabled ? 22 : 2, top: 2, width: 20, height: 20, background: '#fff', borderRadius: '50%', transition: '0.3s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+                </span>
+              </label>
+            </div>
+
+            {abandonedCartEnabled && (
+              <>
+                <div style={{ marginBottom: 16 }}>
+                  <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Send Reminder After</label>
+                  <select value={abandonedCartDelayHours} onChange={e => setAbandonedCartDelayHours(e.target.value)} style={{ width: '100%', maxWidth: 300, padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, fontFamily: 'inherit', background: '#fff' }}>
+                    <option value="1">1 hour</option>
+                    <option value="3">3 hours</option>
+                    <option value="6">6 hours</option>
+                    <option value="12">12 hours</option>
+                    <option value="24">24 hours</option>
+                  </select>
+                  <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>How long after the cart becomes inactive before sending the first reminder</p>
+                </div>
+
+                <div style={{ marginBottom: 16 }}>
+                  <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Maximum Reminders Per Cart</label>
+                  <select value={abandonedCartMaxReminders} onChange={e => setAbandonedCartMaxReminders(e.target.value)} style={{ width: '100%', maxWidth: 300, padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, fontFamily: 'inherit', background: '#fff' }}>
+                    <option value="1">1 reminder</option>
+                    <option value="2">2 reminders</option>
+                    <option value="3">3 reminders</option>
+                  </select>
+                  <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>Additional reminders are sent at double the delay interval each time</p>
+                </div>
+
+                <div style={{ marginBottom: 16 }}>
+                  <label style={{ display: 'block', fontWeight: 600, marginBottom: 8, fontSize: 13 }}>Reminder Channels</label>
+                  <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', border: '1px solid #e2e8f0', borderRadius: 8, background: abandonedCartEmail ? '#f0fdf4' : '#f8fafc', cursor: 'pointer' }}>
+                      <input type="checkbox" checked={abandonedCartEmail} onChange={e => setAbandonedCartEmail(e.target.checked)} />
+                      <i className="fas fa-envelope" style={{ color: '#3b82f6' }} />
+                      <span style={{ fontSize: 14 }}>Email</span>
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', border: '1px solid #e2e8f0', borderRadius: 8, background: abandonedCartWhatsApp ? '#f0fdf4' : '#f8fafc', cursor: 'pointer' }}>
+                      <input type="checkbox" checked={abandonedCartWhatsApp} onChange={e => setAbandonedCartWhatsApp(e.target.checked)} />
+                      <i className="fab fa-whatsapp" style={{ color: '#25D366' }} />
+                      <span style={{ fontSize: 14 }}>WhatsApp</span>
+                    </label>
+                  </div>
+                  {abandonedCartWhatsApp && !whatsappNotificationsEnabled && (
+                    <p style={{ fontSize: 12, color: '#dc2626', marginTop: 6 }}>WhatsApp notifications must be enabled above with valid credentials for WhatsApp cart reminders to work.</p>
+                  )}
+                </div>
+
+                <div style={{ padding: '14px 16px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8 }}>
+                  <p style={{ margin: 0, fontWeight: 600, fontSize: 13, color: '#92400e', marginBottom: 6 }}>How it works:</p>
+                  <ul style={{ margin: 0, padding: '0 0 0 16px', fontSize: 13, color: '#78350f', lineHeight: 1.8 }}>
+                    <li>Only logged-in customers with a phone number or email receive reminders</li>
+                    <li>Customers who complete their order won't receive reminders</li>
+                    <li>Phone numbers are collected during account signup</li>
+                    <li>Reminders include product names, cart total, and a link back to the store</li>
+                  </ul>
+                </div>
+
+                {abandonedCartWhatsApp && whatsappNotificationsEnabled && whatsappUseTemplates && (
+                  <div style={{ padding: '14px 16px', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 8, marginTop: 16 }}>
+                    <p style={{ margin: 0, fontWeight: 600, fontSize: 13, color: '#0c4a6e', marginBottom: 6 }}>WhatsApp Template Required</p>
+                    <p style={{ margin: 0, fontSize: 12, color: '#0369a1', lineHeight: 1.6 }}>
+                      Create a template named <strong>abandoned_cart_reminder</strong> in your WhatsApp Business account. It should accept parameters: customer name, store name, cart items summary, cart total, and store link.
                     </p>
                   </div>
                 )}

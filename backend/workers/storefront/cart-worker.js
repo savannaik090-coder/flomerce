@@ -274,7 +274,7 @@ async function addToCart(request, env, siteId, user, sessionId) {
     const newBytes = estimateRowBytes({ items: newItemsStr, cart_id: cart.id });
 
     await db.prepare(
-      `UPDATE carts SET items = ?, row_size_bytes = ?, updated_at = datetime('now') WHERE id = ?`
+      `UPDATE carts SET items = ?, row_size_bytes = ?, reminder_count = 0, reminder_sent_at = NULL, updated_at = datetime('now') WHERE id = ?`
     ).bind(newItemsStr, newBytes, cart.id).run();
 
     await trackD1Update(env, siteId, oldBytes, newBytes);
@@ -332,7 +332,7 @@ async function updateCartItem(request, env, siteId, user, sessionId) {
     const newBytes = estimateRowBytes({ items: newItemsStr, cart_id: cart.id });
 
     await db.prepare(
-      `UPDATE carts SET items = ?, row_size_bytes = ?, updated_at = datetime('now') WHERE id = ?`
+      `UPDATE carts SET items = ?, row_size_bytes = ?, reminder_count = 0, reminder_sent_at = NULL, updated_at = datetime('now') WHERE id = ?`
     ).bind(newItemsStr, newBytes, cart.id).run();
 
     await trackD1Update(env, siteId, oldBytes, newBytes);
@@ -377,7 +377,7 @@ async function removeFromCart(request, env, siteId, user, sessionId) {
     const newBytes = estimateRowBytes({ items: newItemsStr, cart_id: cart.id });
 
     await db.prepare(
-      `UPDATE carts SET items = ?, row_size_bytes = ?, updated_at = datetime('now') WHERE id = ?`
+      `UPDATE carts SET items = ?, row_size_bytes = ?, reminder_count = 0, reminder_sent_at = NULL, updated_at = datetime('now') WHERE id = ?`
     ).bind(newItemsStr, newBytes, cart.id).run();
 
     await trackD1Update(env, siteId, oldBytes, newBytes);
@@ -427,13 +427,13 @@ export async function mergeCarts(env, siteId, userId, sessionId) {
       const newBytes = estimateRowBytes({ items: newItemsStr, cart_id: userCart.id });
 
       await db.prepare(
-        `UPDATE carts SET items = ?, row_size_bytes = ?, updated_at = datetime('now') WHERE id = ?`
+        `UPDATE carts SET items = ?, row_size_bytes = ?, reminder_count = 0, reminder_sent_at = NULL, updated_at = datetime('now') WHERE id = ?`
       ).bind(newItemsStr, newBytes, userCart.id).run();
 
       await trackD1Update(env, siteId, oldBytes, newBytes);
     } else {
       await db.prepare(
-        `UPDATE carts SET user_id = ?, session_id = NULL, updated_at = datetime('now') WHERE id = ?`
+        `UPDATE carts SET user_id = ?, session_id = NULL, reminder_count = 0, reminder_sent_at = NULL, updated_at = datetime('now') WHERE id = ?`
       ).bind(userId, guestCart.id).run();
       return;
     }

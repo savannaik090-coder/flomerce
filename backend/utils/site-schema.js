@@ -565,6 +565,8 @@ export function getSiteSchemaStatements() {
     'ALTER TABLE site_customers ADD COLUMN whatsapp_opted_in INTEGER DEFAULT 0',
     'ALTER TABLE orders ADD COLUMN whatsapp_opted_in INTEGER DEFAULT 0',
     'ALTER TABLE guest_orders ADD COLUMN whatsapp_opted_in INTEGER DEFAULT 0',
+    'ALTER TABLE carts ADD COLUMN reminder_sent_at TEXT',
+    'ALTER TABLE carts ADD COLUMN reminder_count INTEGER DEFAULT 0',
   ];
 
   return [...tables, ...indexes, ...addColumnMigrations];
