@@ -114,7 +114,7 @@ export default function OwnerAdminPage() {
 
   const CYCLE_LABELS = { 'monthly': 'Monthly', '3months': '3 Months', '6months': '6 Months', 'yearly': 'Yearly' };
   const CYCLE_MONTHS = { 'monthly': 1, '3months': 3, '6months': 6, 'yearly': 12 };
-  const TIER_LABELS = { 1: 'Tier 1 (Basic)', 2: 'Tier 2 (Standard)', 3: 'Tier 3 (Pro)', 4: 'Tier 4 (Enterprise)' };
+  const TIER_LABELS = { 1: 'Tier 1 (Starter)', 2: 'Tier 2 (Growth)', 3: 'Tier 3 (Pro)', 4: 'Tier 4 (Enterprise)' };
 
   const emptyCycles = () => ({
     'monthly': { enabled: false, razorpay_plan_id: '', discount: 0 },
@@ -1557,7 +1557,7 @@ export default function OwnerAdminPage() {
             <h3>Setup Instructions</h3>
             <div style={{ fontSize: '0.8rem', color: '#475569', lineHeight: 1.7 }}>
               <p><strong>Step 1:</strong> Go to Razorpay Dashboard → Subscriptions → Plans</p>
-              <p><strong>Step 2:</strong> Create plans for each tier and billing cycle (e.g., Basic Monthly, Basic Yearly, etc.)</p>
+              <p><strong>Step 2:</strong> Create plans for each tier and billing cycle (e.g., Starter Monthly, Starter Yearly, etc.)</p>
               <p><strong>Step 3:</strong> Copy the Plan ID (e.g., plan_XXXXXX) for each plan</p>
               <p><strong>Step 4:</strong> Go to the "Plans" tab above and add each plan with its Razorpay Plan ID</p>
               <p><strong>Step 5:</strong> Enter your Razorpay public key above</p>

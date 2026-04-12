@@ -36,7 +36,7 @@ export default function TermsPage() {
             <h2>5. Payment Processing & Gateway Integration</h2>
             <p>Fluxe operates as a <strong>standard merchant</strong> and is <strong>not a payment aggregator, facilitator, or intermediary</strong>. The platform handles two distinct types of payments:</p>
             <ul>
-              <li><strong>Platform Subscription Payments:</strong> Fees paid by website owners for Fluxe subscription plans (Basic, Standard, Pro, etc.) are collected directly by Fluxe through its own Razorpay merchant account. These are payments for Fluxe's SaaS services only.</li>
+              <li><strong>Platform Subscription Payments:</strong> Fees paid by website owners for Fluxe subscription plans (Starter, Growth, Pro, etc.) are collected directly by Fluxe through its own Razorpay merchant account. These are payments for Fluxe's SaaS services only.</li>
               <li><strong>Website Customer Payments:</strong> Payments made by end customers on websites created through Fluxe are processed entirely through the <strong>website owner's own, independently registered Razorpay merchant account</strong>. Website owners are required to obtain their own Razorpay account, complete their own KYC verification, and enter their own API credentials in their website dashboard settings.</li>
             </ul>
             <p>Fluxe does <strong>not collect, hold, pool, settle, or route</strong> any payments on behalf of website owners or their customers. All transaction funds flow directly from the customer to the website owner's Razorpay account. Fluxe has no access to or control over these funds at any point.</p>
