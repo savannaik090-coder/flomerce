@@ -115,8 +115,14 @@ export default function WebsiteContentSection() {
   const iframeRef = useRef(null);
   const mobileIframeRef = useRef(null);
 
-  const templateId = siteConfig?.templateId || 'classic';
-  const TAB_GROUPS = useMemo(() => [...buildTabGroups(templateId), ...STATIC_GROUPS], [templateId]);
+  const resolvedTheme = useMemo(() => {
+    let settings = siteConfig?.settings || {};
+    if (typeof settings === 'string') {
+      try { settings = JSON.parse(settings); } catch (e) { settings = {}; }
+    }
+    return settings.theme || siteConfig?.templateId || 'classic';
+  }, [siteConfig?.settings, siteConfig?.templateId]);
+  const TAB_GROUPS = useMemo(() => [...buildTabGroups(resolvedTheme), ...STATIC_GROUPS], [resolvedTheme]);
   const ALL_TABS = useMemo(() => TAB_GROUPS.flatMap(g => g.tabs), [TAB_GROUPS]);
 
   const storeBaseUrl = getStoreUrl(siteConfig);
