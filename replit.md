@@ -73,6 +73,7 @@ Fluxe utilizes a shared shard-based D1 database architecture where multiple site
 - **Product Options:** Supports Color, Custom Selection, and Priced options.
 - **Subcategories:** Three-level category hierarchy with associated homepage sections.
 - **Multi-Currency Support:** Product prices stored in default currency, with frontend conversion using `exchangerate-api.com`.
+- **WhatsApp Business Notifications:** Automated order updates via WhatsApp Business API (Meta Cloud API or Interakt). Store owners bring their own API credentials, stored in `sites.settings` JSON. Supports template and plain text messages. Order notifications: confirmed, packed, shipped (with tracking), delivered (with review link), cancelled. Customers opt-in at checkout. Backend: `backend/utils/whatsapp.js`. Schema: `whatsapp_opted_in` column on `orders` and `guest_orders`. Gated as a Growth+ feature (credential-based).
 - **Order Flow:** Full order lifecycle (Pending to Delivered) with COD and Razorpay, stock management, customer notifications, and order tracking.
 - **Order Cancellation:** Opt-in customer-initiated order cancellation with admin approval workflow.
 - **Return Orders:** Opt-in customer-initiated return system with admin approval/refund workflow, supporting photos and resolution preferences.
@@ -89,4 +90,5 @@ Fluxe utilizes a shared shard-based D1 database architecture where multiple site
 - **Cloudflare REST API:** D1 database management and worker configuration.
 - **Razorpay:** Payment gateway.
 - **Brevo:** Transactional email service (`https://api.brevo.com/v3/smtp/email`).
+- **WhatsApp Business API:** Meta Cloud API (`graph.facebook.com/v21.0`) or Interakt (`api.interakt.ai/v1`) for order notifications. Per-store credentials.
 - **api.exchangerate-api.com:** Exchange rate data for multi-currency support.

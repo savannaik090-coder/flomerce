@@ -49,9 +49,12 @@ export default function CheckoutPage() {
   const [couponError, setCouponError] = useState('');
   const [couponApplying, setCouponApplying] = useState(false);
 
+  const [whatsappOptIn, setWhatsappOptIn] = useState(false);
+
   const settings = siteConfig?.settings || {};
   const codEnabled = settings.codEnabled !== false;
   const availableCoupons = Array.isArray(settings.coupons) ? settings.coupons : [];
+  const whatsappNotificationsAvailable = settings.whatsappNotificationsEnabled === true;
 
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -330,6 +333,7 @@ export default function CheckoutPage() {
       customerPhone: address.phone,
       paymentMethod,
       currency: siteDefaultCurrency,
+      whatsappOptIn: whatsappNotificationsAvailable && whatsappOptIn,
     };
 
     if (paymentMethod === 'razorpay') {
@@ -843,6 +847,19 @@ export default function CheckoutPage() {
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: 20, padding: '12px 16px', background: '#f8f6f0', borderRadius: 6, border: `1px solid ${'#e8e0d0'}` }}>
               <input type="checkbox" id="saveAddr" checked={saveAddress} onChange={e => setSaveAddress(e.target.checked)} style={{ width: 'auto', marginRight: 10, accentColor: '#7a4012' }} />
               <label htmlFor="saveAddr" style={{ color: '#333', fontSize: 14, cursor: 'pointer' }}>Save this address to my account for faster checkout</label>
+            </div>
+          )}
+
+          {whatsappNotificationsAvailable && (
+            <div style={{ display: 'flex', alignItems: 'flex-start', marginBottom: 20, padding: '12px 16px', background: '#f0fdf4', borderRadius: 6, border: '1px solid #bbf7d0' }}>
+              <input type="checkbox" id="whatsappOptIn" checked={whatsappOptIn} onChange={e => setWhatsappOptIn(e.target.checked)} style={{ width: 'auto', marginRight: 10, marginTop: 2, accentColor: '#25D366' }} />
+              <label htmlFor="whatsappOptIn" style={{ color: '#333', fontSize: 14, cursor: 'pointer', lineHeight: 1.4 }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <i className="fab fa-whatsapp" style={{ color: '#25D366', fontSize: 16 }} />
+                  Get order updates on WhatsApp
+                </span>
+                <span style={{ fontSize: 12, color: '#64748b', display: 'block', marginTop: 2 }}>Receive confirmation, shipping and delivery updates on your phone number</span>
+              </label>
             </div>
           )}
 

@@ -265,7 +265,7 @@ async function handleSiteInfo(request, env) {
       }
     }
 
-    const { razorpayKeySecret, adminVerificationCode, ...publicSettings } = settings;
+    const { razorpayKeySecret, adminVerificationCode, whatsappAccessToken, whatsappApiKey, whatsappPhoneNumberId, ...publicSettings } = settings;
 
     const googleClientId = env.GOOGLE_CLIENT_ID || null;
     const vapidPublicKey = env.VAPID_PUBLIC_KEY || null;

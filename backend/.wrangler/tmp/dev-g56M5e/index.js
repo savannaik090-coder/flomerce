@@ -7108,6 +7108,390 @@ async function deductStockByLocation(db, siteId, productId, quantity) {
 }
 __name(deductStockByLocation, "deductStockByLocation");
 
+// utils/whatsapp.js
+init_checked_fetch();
+init_strip_cf_connecting_ip_header();
+init_modules_watch_stub();
+var CURRENCY_SYMBOLS2 = {
+  INR: "\u20B9",
+  USD: "$",
+  EUR: "\u20AC",
+  GBP: "\xA3",
+  AED: "\u062F.\u0625",
+  CAD: "CA$",
+  AUD: "A$",
+  SAR: "\uFDFC"
+};
+function formatCurrency2(amount, currency = "INR") {
+  const sym = CURRENCY_SYMBOLS2[currency] || currency + " ";
+  const num = Number(amount || 0);
+  if (currency === "INR") {
+    return `${sym}${num.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
+  return `${sym}${num.toFixed(2)}`;
+}
+__name(formatCurrency2, "formatCurrency");
+function cleanPhone(phone) {
+  if (!phone)
+    return null;
+  let cleaned = phone.replace(/[\s\-\(\)]/g, "");
+  if (cleaned.startsWith("+"))
+    cleaned = cleaned.slice(1);
+  if (cleaned.length === 10 && /^[6-9]/.test(cleaned)) {
+    cleaned = "91" + cleaned;
+  }
+  return cleaned;
+}
+__name(cleanPhone, "cleanPhone");
+function parseItems(items) {
+  if (!items)
+    return [];
+  if (typeof items === "string") {
+    try {
+      return JSON.parse(items);
+    } catch {
+      return [];
+    }
+  }
+  return Array.isArray(items) ? items : [];
+}
+__name(parseItems, "parseItems");
+async function sendWhatsAppMessage(settings, to, templateName, components) {
+  const provider = settings.whatsappProvider || "meta";
+  if (provider === "interakt") {
+    return sendViaInterakt(settings, to, templateName, components);
+  }
+  return sendViaMeta(settings, to, templateName, components);
+}
+__name(sendWhatsAppMessage, "sendWhatsAppMessage");
+async function sendViaMeta(settings, to, templateName, components) {
+  const { whatsappAccessToken, whatsappPhoneNumberId } = settings;
+  if (!whatsappAccessToken || !whatsappPhoneNumberId) {
+    console.log("WhatsApp Meta: Missing credentials, skipping");
+    return null;
+  }
+  const phone = cleanPhone(to);
+  if (!phone) {
+    console.log("WhatsApp Meta: Invalid phone number");
+    return null;
+  }
+  const payload = {
+    messaging_product: "whatsapp",
+    to: phone,
+    type: "template",
+    template: {
+      name: templateName,
+      language: { code: settings.whatsappLanguage || "en" }
+    }
+  };
+  if (components && components.length > 0) {
+    payload.template.components = components;
+  }
+  try {
+    const response = await fetch(
+      `https://graph.facebook.com/v21.0/${whatsappPhoneNumberId}/messages`,
+      {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${whatsappAccessToken}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      }
+    );
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      console.error("WhatsApp Meta API error:", JSON.stringify(body), "Status:", response.status);
+      return { success: false, error: body.error?.message || "API error" };
+    }
+    console.log("WhatsApp message sent via Meta to:", phone, "Template:", templateName, "MessageId:", body.messages?.[0]?.id || "");
+    return { success: true, messageId: body.messages?.[0]?.id };
+  } catch (error) {
+    console.error("WhatsApp Meta send error:", error.message || error);
+    return { success: false, error: error.message };
+  }
+}
+__name(sendViaMeta, "sendViaMeta");
+async function sendViaInterakt(settings, to, templateName, components) {
+  const { whatsappApiKey } = settings;
+  if (!whatsappApiKey) {
+    console.log("WhatsApp Interakt: Missing API key, skipping");
+    return null;
+  }
+  const phone = cleanPhone(to);
+  if (!phone) {
+    console.log("WhatsApp Interakt: Invalid phone number");
+    return null;
+  }
+  const countryCode = phone.length > 10 ? phone.slice(0, phone.length - 10) : "91";
+  const phoneNumber = phone.length > 10 ? phone.slice(-10) : phone;
+  const bodyParams = [];
+  if (components) {
+    const bodyComp = components.find((c) => c.type === "body");
+    if (bodyComp?.parameters) {
+      bodyComp.parameters.forEach((p) => {
+        bodyParams.push(p.text || "");
+      });
+    }
+  }
+  const payload = {
+    countryCode,
+    phoneNumber,
+    type: "Template",
+    template: {
+      name: templateName,
+      languageCode: settings.whatsappLanguage || "en",
+      bodyValues: bodyParams
+    }
+  };
+  try {
+    const response = await fetch("https://api.interakt.ai/v1/public/message/", {
+      method: "POST",
+      headers: {
+        "Authorization": `Basic ${whatsappApiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      console.error("WhatsApp Interakt API error:", JSON.stringify(body), "Status:", response.status);
+      return { success: false, error: body.message || "API error" };
+    }
+    console.log("WhatsApp message sent via Interakt to:", phone, "Template:", templateName);
+    return { success: true, messageId: body.id || "" };
+  } catch (error) {
+    console.error("WhatsApp Interakt send error:", error.message || error);
+    return { success: false, error: error.message };
+  }
+}
+__name(sendViaInterakt, "sendViaInterakt");
+async function sendWhatsAppText(settings, to, text) {
+  const provider = settings.whatsappProvider || "meta";
+  if (provider !== "meta") {
+    console.log("WhatsApp text messages only supported via Meta Cloud API");
+    return null;
+  }
+  const { whatsappAccessToken, whatsappPhoneNumberId } = settings;
+  if (!whatsappAccessToken || !whatsappPhoneNumberId)
+    return null;
+  const phone = cleanPhone(to);
+  if (!phone)
+    return null;
+  try {
+    const response = await fetch(
+      `https://graph.facebook.com/v21.0/${whatsappPhoneNumberId}/messages`,
+      {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${whatsappAccessToken}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          messaging_product: "whatsapp",
+          to: phone,
+          type: "text",
+          text: { body: text }
+        })
+      }
+    );
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      console.error("WhatsApp text error:", JSON.stringify(body));
+      return { success: false, error: body.error?.message || "API error" };
+    }
+    return { success: true, messageId: body.messages?.[0]?.id };
+  } catch (error) {
+    console.error("WhatsApp text send error:", error.message);
+    return { success: false, error: error.message };
+  }
+}
+__name(sendWhatsAppText, "sendWhatsAppText");
+function buildOrderConfirmationWA(order, brandName, currency = "INR") {
+  const items = parseItems(order.items);
+  const itemsList = items.slice(0, 5).map(
+    (item) => `${item.name} x${item.quantity} - ${formatCurrency2(Number(item.price) * Number(item.quantity), currency)}`
+  ).join("\n");
+  const total = formatCurrency2(order.total, currency);
+  const paymentMethod = order.payment_method === "cod" || order.paymentMethod === "cod" ? "Cash on Delivery" : "Online Payment";
+  const text = `\u{1F6CD}\uFE0F *Order Confirmed!*
+
+Hi ${order.customer_name || "there"},
+
+Your order *#${order.order_number || order.orderNumber}* from *${brandName}* has been confirmed!
+
+\u{1F4E6} *Items:*
+${itemsList}
+${items.length > 5 ? `...and ${items.length - 5} more item(s)
+` : ""}
+\u{1F4B0} *Total:* ${total}
+\u{1F4B3} *Payment:* ${paymentMethod}
+
+We'll update you once your order is packed and on its way. Thank you for shopping with us!`;
+  return {
+    text,
+    templateName: "order_confirmation",
+    components: [
+      {
+        type: "body",
+        parameters: [
+          { type: "text", text: order.customer_name || "Customer" },
+          { type: "text", text: order.order_number || order.orderNumber || "" },
+          { type: "text", text: brandName },
+          { type: "text", text: total },
+          { type: "text", text: paymentMethod }
+        ]
+      }
+    ]
+  };
+}
+__name(buildOrderConfirmationWA, "buildOrderConfirmationWA");
+function buildOrderShippedWA(order, brandName, trackingUrl, currency = "INR") {
+  const trackingNumber = order.tracking_number || order.trackingNumber || "";
+  const carrier = order.carrier || "";
+  const text = `\u{1F4E6} *Order Shipped!*
+
+Hi ${order.customer_name || "there"},
+
+Great news! Your order *#${order.order_number || order.orderNumber}* from *${brandName}* has been shipped!
+
+${carrier ? `\u{1F69A} *Courier:* ${carrier}
+` : ""}${trackingNumber ? `\u{1F4CB} *Tracking:* ${trackingNumber}
+` : ""}
+${trackingUrl ? `\u{1F517} *Track your order:* ${trackingUrl}
+` : ""}
+Thank you for shopping with us!`;
+  return {
+    text,
+    templateName: "order_shipped",
+    components: [
+      {
+        type: "body",
+        parameters: [
+          { type: "text", text: order.customer_name || "Customer" },
+          { type: "text", text: order.order_number || order.orderNumber || "" },
+          { type: "text", text: brandName },
+          { type: "text", text: carrier || "Courier" },
+          { type: "text", text: trackingNumber || "N/A" }
+        ]
+      }
+    ]
+  };
+}
+__name(buildOrderShippedWA, "buildOrderShippedWA");
+function buildOrderDeliveredWA(order, brandName, reviewUrl, currency = "INR") {
+  const total = formatCurrency2(order.total, currency);
+  const text = `\u2705 *Order Delivered!*
+
+Hi ${order.customer_name || "there"},
+
+Your order *#${order.order_number || order.orderNumber}* from *${brandName}* has been delivered!
+
+\u{1F4B0} *Total Paid:* ${total}
+
+We hope you love your purchase! \u{1F389}
+${reviewUrl ? `
+\u2B50 *Share your feedback:* ${reviewUrl}
+` : ""}
+Thank you for shopping with us!`;
+  return {
+    text,
+    templateName: "order_delivered",
+    components: [
+      {
+        type: "body",
+        parameters: [
+          { type: "text", text: order.customer_name || "Customer" },
+          { type: "text", text: order.order_number || order.orderNumber || "" },
+          { type: "text", text: brandName },
+          { type: "text", text: total }
+        ]
+      }
+    ]
+  };
+}
+__name(buildOrderDeliveredWA, "buildOrderDeliveredWA");
+function buildOrderCancelledWA(order, brandName, reason, currency = "INR") {
+  const total = formatCurrency2(order.total, currency);
+  const text = `\u274C *Order Cancelled*
+
+Hi ${order.customer_name || "there"},
+
+Your order *#${order.order_number || order.orderNumber}* from *${brandName}* has been cancelled.
+
+\u{1F4DD} *Reason:* ${reason || "No reason provided"}
+\u{1F4B0} *Order Total:* ${total}
+
+If you paid online, your refund will be processed within 5-7 business days.
+
+For any queries, please contact us. Thank you!`;
+  return {
+    text,
+    templateName: "order_cancelled",
+    components: [
+      {
+        type: "body",
+        parameters: [
+          { type: "text", text: order.customer_name || "Customer" },
+          { type: "text", text: order.order_number || order.orderNumber || "" },
+          { type: "text", text: brandName },
+          { type: "text", text: reason || "No reason provided" },
+          { type: "text", text: total }
+        ]
+      }
+    ]
+  };
+}
+__name(buildOrderCancelledWA, "buildOrderCancelledWA");
+function buildOrderPackedWA(order, brandName) {
+  const text = `\u{1F4E6} *Order Packed!*
+
+Hi ${order.customer_name || "there"},
+
+Your order *#${order.order_number || order.orderNumber}* from *${brandName}* has been packed and is ready for dispatch!
+
+We'll update you once it's shipped. Thank you for your patience!`;
+  return {
+    text,
+    templateName: "order_packed",
+    components: [
+      {
+        type: "body",
+        parameters: [
+          { type: "text", text: order.customer_name || "Customer" },
+          { type: "text", text: order.order_number || order.orderNumber || "" },
+          { type: "text", text: brandName }
+        ]
+      }
+    ]
+  };
+}
+__name(buildOrderPackedWA, "buildOrderPackedWA");
+async function sendOrderWhatsApp(settings, phone, messageData) {
+  if (!settings.whatsappNotificationsEnabled)
+    return null;
+  const hasCredentials = settings.whatsappProvider === "interakt" ? !!settings.whatsappApiKey : !!settings.whatsappAccessToken && !!settings.whatsappPhoneNumberId;
+  if (!hasCredentials)
+    return null;
+  if (!phone)
+    return null;
+  const { text, templateName, components } = messageData;
+  if (settings.whatsappUseTemplates !== false) {
+    return sendWhatsAppMessage(settings, phone, templateName, components);
+  }
+  return sendWhatsAppText(settings, phone, text);
+}
+__name(sendOrderWhatsApp, "sendOrderWhatsApp");
+function isWhatsAppConfigured(settings) {
+  if (!settings || !settings.whatsappNotificationsEnabled)
+    return false;
+  const provider = settings.whatsappProvider || "meta";
+  if (provider === "interakt")
+    return !!settings.whatsappApiKey;
+  return !!settings.whatsappAccessToken && !!settings.whatsappPhoneNumberId;
+}
+__name(isWhatsAppConfigured, "isWhatsAppConfigured");
+
 // workers/storefront/orders-worker.js
 init_usage_tracker();
 init_site_db();
@@ -7363,7 +7747,7 @@ __name(getOrder, "getOrder");
 async function createOrder(request, env, user, ctx) {
   try {
     const data = await request.json();
-    const { siteId, items, shippingAddress, billingAddress, customerName, customerEmail, customerPhone, paymentMethod, notes, couponCode, currency: orderCurrency } = data;
+    const { siteId, items, shippingAddress, billingAddress, customerName, customerEmail, customerPhone, paymentMethod, notes, couponCode, currency: orderCurrency, whatsappOptIn } = data;
     const missingFields = [];
     if (!siteId)
       missingFields.push("siteId");
@@ -7581,9 +7965,13 @@ async function createOrder(request, env, user, ctx) {
       return errorResponse(usageCheck.reason, 403, "STORAGE_LIMIT");
     }
     const resolvedCurrency = orderCurrency || siteDefaultCurrency;
+    try {
+      await db.prepare("ALTER TABLE orders ADD COLUMN whatsapp_opted_in INTEGER DEFAULT 0").run();
+    } catch (e) {
+    }
     await db.prepare(
-      `INSERT INTO orders (id, site_id, user_id, order_number, items, subtotal, discount, shipping_cost, tax, total, currency, payment_method, status, shipping_address, billing_address, customer_name, customer_email, customer_phone, coupon_code, notes, row_size_bytes, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+      `INSERT INTO orders (id, site_id, user_id, order_number, items, subtotal, discount, shipping_cost, tax, total, currency, payment_method, status, shipping_address, billing_address, customer_name, customer_email, customer_phone, coupon_code, notes, whatsapp_opted_in, row_size_bytes, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(
       orderId,
       siteId,
@@ -7605,6 +7993,7 @@ async function createOrder(request, env, user, ctx) {
       customerPhone,
       appliedCouponCode || null,
       notes || null,
+      whatsappOptIn ? 1 : 0,
       rowBytes
     ).run();
     await trackD1Write(env, siteId, rowBytes);
@@ -7633,7 +8022,8 @@ async function createOrder(request, env, user, ctx) {
           shippingAddress,
           isGuest: false,
           currency: resolvedCurrency,
-          created_at: (/* @__PURE__ */ new Date()).toISOString()
+          created_at: (/* @__PURE__ */ new Date()).toISOString(),
+          whatsappOptIn: !!whatsappOptIn
         });
       } catch (emailErr) {
         console.error("Order email notification error:", emailErr);
@@ -7798,9 +8188,11 @@ async function updateOrderStatus(request, env, user, orderId) {
         }
       }
     }
-    if (status === "cancelled" && cancellationReason) {
+    if (status === "cancelled") {
       try {
-        const fullOrder = await db.prepare("SELECT * FROM orders WHERE id = ?").bind(orderId).first();
+        let fullOrder = await db.prepare("SELECT * FROM orders WHERE id = ?").bind(orderId).first();
+        if (!fullOrder)
+          fullOrder = await db.prepare("SELECT * FROM guest_orders WHERE id = ?").bind(orderId).first();
         if (fullOrder) {
           const cancelConfig = await getSiteConfig(env, fullOrder.site_id);
           const siteBrandName = cancelConfig.brand_name || "Store";
@@ -7832,6 +8224,14 @@ async function updateOrderStatus(request, env, user, orderId) {
             emailJobs.push(sendEmail(env, ownerEmail, `Order #${fullOrder.order_number} cancelled - ${siteBrandName}`, html, text).catch((e) => console.error("Cancellation owner email error:", e)));
           }
           await Promise.all(emailJobs);
+          if (isWhatsAppConfigured(cancelSettings) && fullOrder.customer_phone && fullOrder.whatsapp_opted_in) {
+            try {
+              const waMsg = buildOrderCancelledWA(emailOrder, siteBrandName, cancellationReason, cancelCurrency);
+              await sendOrderWhatsApp(cancelSettings, fullOrder.customer_phone, waMsg);
+            } catch (waErr) {
+              console.error("WhatsApp cancellation error:", waErr);
+            }
+          }
         }
       } catch (emailErr) {
         console.error("Failed to send cancellation emails:", emailErr);
@@ -7839,7 +8239,9 @@ async function updateOrderStatus(request, env, user, orderId) {
     }
     if (status === "confirmed" || status === "packed" || status === "shipped") {
       try {
-        const fullOrder = await db.prepare("SELECT * FROM orders WHERE id = ?").bind(orderId).first();
+        let fullOrder = await db.prepare("SELECT * FROM orders WHERE id = ?").bind(orderId).first();
+        if (!fullOrder)
+          fullOrder = await db.prepare("SELECT * FROM guest_orders WHERE id = ?").bind(orderId).first();
         if (fullOrder && fullOrder.customer_email) {
           const statusConfig = await getSiteConfig(env, fullOrder.site_id);
           const siteBrandName = statusConfig.brand_name || "Store";
@@ -7912,6 +8314,22 @@ async function updateOrderStatus(request, env, user, orderId) {
             const shipOptions = { trackingUrl, trackingNumber: fullOrder.tracking_number || trackingNumber, carrier: fullOrder.carrier || carrier };
             const { html, text } = buildOrderShippedEmail(emailOrder, siteBrandName, ownerEmail, statusCurrency, shipOptions, storeTz);
             await sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been shipped! - ${siteBrandName}`, html, text).catch((e) => console.error("Shipped email error:", e));
+          }
+          if (isWhatsAppConfigured(statusSettings) && fullOrder.customer_phone && fullOrder.whatsapp_opted_in) {
+            try {
+              let waMsg;
+              if (status === "confirmed") {
+                waMsg = buildOrderConfirmationWA(emailOrder, siteBrandName, statusCurrency);
+              } else if (status === "packed") {
+                waMsg = buildOrderPackedWA(emailOrder, siteBrandName);
+              } else if (status === "shipped") {
+                waMsg = buildOrderShippedWA(emailOrder, siteBrandName, trackingUrl, statusCurrency);
+              }
+              if (waMsg)
+                await sendOrderWhatsApp(statusSettings, fullOrder.customer_phone, waMsg);
+            } catch (waErr) {
+              console.error("WhatsApp status update error:", waErr);
+            }
           }
         }
       } catch (emailErr) {
@@ -8007,6 +8425,14 @@ async function updateOrderStatus(request, env, user, orderId) {
             }
           }
           await Promise.all(emailJobs);
+          if (isWhatsAppConfigured(deliverySettings) && fullOrder.customer_phone && fullOrder.whatsapp_opted_in) {
+            try {
+              const waMsg = buildOrderDeliveredWA(emailOrder, siteBrandName, deliveryEmailOptions.reviewUrl || "", deliveryCurrency);
+              await sendOrderWhatsApp(deliverySettings, fullOrder.customer_phone, waMsg);
+            } catch (waErr) {
+              console.error("WhatsApp delivery error:", waErr);
+            }
+          }
         }
       } catch (emailErr) {
         console.error("Failed to send delivery emails:", emailErr);
@@ -8032,7 +8458,7 @@ __name(handleGuestOrder, "handleGuestOrder");
 async function createGuestOrder(request, env, ctx) {
   try {
     const data = await request.json();
-    const { siteId, items, shippingAddress, customerName, customerEmail, customerPhone, paymentMethod, currency: guestOrderCurrency } = data;
+    const { siteId, items, shippingAddress, customerName, customerEmail, customerPhone, paymentMethod, currency: guestOrderCurrency, whatsappOptIn } = data;
     const missingFields = [];
     if (!siteId)
       missingFields.push("siteId");
@@ -8182,9 +8608,13 @@ async function createGuestOrder(request, env, ctx) {
     const isPendingPayment = paymentMethod === "razorpay";
     const orderStatus = isPendingPayment ? "pending_payment" : "pending";
     const resolvedGuestCurrency = guestOrderCurrency || guestSiteDefaultCurrency;
+    try {
+      await db.prepare("ALTER TABLE guest_orders ADD COLUMN whatsapp_opted_in INTEGER DEFAULT 0").run();
+    } catch (e) {
+    }
     await db.prepare(
-      `INSERT INTO guest_orders (id, site_id, order_number, items, subtotal, shipping_cost, tax, total, currency, payment_method, status, shipping_address, customer_name, customer_email, customer_phone, row_size_bytes, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+      `INSERT INTO guest_orders (id, site_id, order_number, items, subtotal, shipping_cost, tax, total, currency, payment_method, status, shipping_address, customer_name, customer_email, customer_phone, whatsapp_opted_in, row_size_bytes, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(
       orderId,
       siteId,
@@ -8201,6 +8631,7 @@ async function createGuestOrder(request, env, ctx) {
       customerName,
       customerEmail || null,
       customerPhone,
+      whatsappOptIn ? 1 : 0,
       rowBytes
     ).run();
     await trackD1Write(env, siteId, rowBytes);
@@ -8229,7 +8660,8 @@ async function createGuestOrder(request, env, ctx) {
           shippingAddress,
           isGuest: true,
           currency: resolvedGuestCurrency,
-          created_at: (/* @__PURE__ */ new Date()).toISOString()
+          created_at: (/* @__PURE__ */ new Date()).toISOString(),
+          whatsappOptIn: !!whatsappOptIn
         });
       } catch (emailErr) {
         console.error("Guest order email notification error:", emailErr);
@@ -13223,7 +13655,10 @@ function getSiteSchemaStatements() {
     "ALTER TABLE blog_posts ADD COLUMN seo_title TEXT",
     "ALTER TABLE blog_posts ADD COLUMN seo_description TEXT",
     "ALTER TABLE blog_posts ADD COLUMN seo_og_image TEXT",
-    "ALTER TABLE blog_posts ADD COLUMN seo_keywords TEXT"
+    "ALTER TABLE blog_posts ADD COLUMN seo_keywords TEXT",
+    "ALTER TABLE site_customers ADD COLUMN whatsapp_opted_in INTEGER DEFAULT 0",
+    "ALTER TABLE orders ADD COLUMN whatsapp_opted_in INTEGER DEFAULT 0",
+    "ALTER TABLE guest_orders ADD COLUMN whatsapp_opted_in INTEGER DEFAULT 0"
   ];
   return [...tables, ...indexes, ...addColumnMigrations];
 }
@@ -17951,7 +18386,7 @@ async function handleSiteInfo(request, env) {
         }
       }
     }
-    const { razorpayKeySecret, adminVerificationCode, ...publicSettings } = settings;
+    const { razorpayKeySecret, adminVerificationCode, whatsappAccessToken, whatsappApiKey, whatsappPhoneNumberId, ...publicSettings } = settings;
     const googleClientId = env.GOOGLE_CLIENT_ID || null;
     const vapidPublicKey = env.VAPID_PUBLIC_KEY || null;
     let pageSEOResult = [];

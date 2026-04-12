@@ -3,6 +3,7 @@ import { validateAuth, validateAnyAuth } from '../../utils/auth.js';
 import { updateProductStock } from './products-worker.js';
 import { deductStockByLocation } from './inventory-locations-worker.js';
 import { sendEmail, buildOrderConfirmationEmail, buildOwnerNotificationEmail, buildCancellationCustomerEmail, buildCancellationOwnerEmail, buildDeliveryCustomerEmail, buildDeliveryOwnerEmail, buildNewOrderReviewEmail, buildOrderPackedEmail, buildOrderShippedEmail, buildCancellationRequestNotifyEmail, buildCancellationStatusEmail } from '../../utils/email.js';
+import { sendOrderWhatsApp, buildOrderConfirmationWA, buildOrderShippedWA, buildOrderDeliveredWA, buildOrderCancelledWA, buildOrderPackedWA, isWhatsAppConfigured } from '../../utils/whatsapp.js';
 import { checkUsageLimit, estimateRowBytes, trackD1Write, trackD1Update } from '../../utils/usage-tracker.js';
 import { resolveSiteDBById, checkMigrationLock, getSiteConfig, ensureProductOptionsColumn } from '../../utils/site-db.js';
 import { PLATFORM_DOMAIN } from '../../config.js';
@@ -301,7 +302,7 @@ async function getOrder(env, user, orderId, request, preResolvedDb) {
 async function createOrder(request, env, user, ctx) {
   try {
     const data = await request.json();
-    const { siteId, items, shippingAddress, billingAddress, customerName, customerEmail, customerPhone, paymentMethod, notes, couponCode, currency: orderCurrency } = data;
+    const { siteId, items, shippingAddress, billingAddress, customerName, customerEmail, customerPhone, paymentMethod, notes, couponCode, currency: orderCurrency, whatsappOptIn } = data;
 
     const missingFields = [];
     if (!siteId) missingFields.push('siteId');
@@ -532,9 +533,10 @@ async function createOrder(request, env, user, ctx) {
     }
 
     const resolvedCurrency = orderCurrency || siteDefaultCurrency;
+    try { await db.prepare('ALTER TABLE orders ADD COLUMN whatsapp_opted_in INTEGER DEFAULT 0').run(); } catch (e) {}
     await db.prepare(
-      `INSERT INTO orders (id, site_id, user_id, order_number, items, subtotal, discount, shipping_cost, tax, total, currency, payment_method, status, shipping_address, billing_address, customer_name, customer_email, customer_phone, coupon_code, notes, row_size_bytes, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+      `INSERT INTO orders (id, site_id, user_id, order_number, items, subtotal, discount, shipping_cost, tax, total, currency, payment_method, status, shipping_address, billing_address, customer_name, customer_email, customer_phone, coupon_code, notes, whatsapp_opted_in, row_size_bytes, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(
       orderId,
       siteId,
@@ -556,6 +558,7 @@ async function createOrder(request, env, user, ctx) {
       customerPhone,
       appliedCouponCode || null,
       notes || null,
+      whatsappOptIn ? 1 : 0,
       rowBytes
     ).run();
 
@@ -572,7 +575,7 @@ async function createOrder(request, env, user, ctx) {
     if (!isPendingPayment) {
       try {
         await sendOrderEmails(env, siteId, {
-          orderId, orderNumber, processedItems, subtotal, discount, coupon_code: appliedCouponCode, shippingCost, total, paymentMethod, customerName, customerEmail, customerPhone, shippingAddress, isGuest: false, currency: resolvedCurrency, created_at: new Date().toISOString()
+          orderId, orderNumber, processedItems, subtotal, discount, coupon_code: appliedCouponCode, shippingCost, total, paymentMethod, customerName, customerEmail, customerPhone, shippingAddress, isGuest: false, currency: resolvedCurrency, created_at: new Date().toISOString(), whatsappOptIn: !!whatsappOptIn
         });
       } catch (emailErr) {
         console.error('Order email notification error:', emailErr);
@@ -752,9 +755,10 @@ async function updateOrderStatus(request, env, user, orderId) {
       }
     }
 
-    if (status === 'cancelled' && cancellationReason) {
+    if (status === 'cancelled') {
       try {
-        const fullOrder = await db.prepare('SELECT * FROM orders WHERE id = ?').bind(orderId).first();
+        let fullOrder = await db.prepare('SELECT * FROM orders WHERE id = ?').bind(orderId).first();
+        if (!fullOrder) fullOrder = await db.prepare('SELECT * FROM guest_orders WHERE id = ?').bind(orderId).first();
         if (fullOrder) {
           const cancelConfig = await getSiteConfig(env, fullOrder.site_id);
           const siteBrandName = cancelConfig.brand_name || 'Store';
@@ -784,6 +788,15 @@ async function updateOrderStatus(request, env, user, orderId) {
             emailJobs.push(sendEmail(env, ownerEmail, `Order #${fullOrder.order_number} cancelled - ${siteBrandName}`, html, text).catch(e => console.error('Cancellation owner email error:', e)));
           }
           await Promise.all(emailJobs);
+
+          if (isWhatsAppConfigured(cancelSettings) && fullOrder.customer_phone && fullOrder.whatsapp_opted_in) {
+            try {
+              const waMsg = buildOrderCancelledWA(emailOrder, siteBrandName, cancellationReason, cancelCurrency);
+              await sendOrderWhatsApp(cancelSettings, fullOrder.customer_phone, waMsg);
+            } catch (waErr) {
+              console.error('WhatsApp cancellation error:', waErr);
+            }
+          }
         }
       } catch (emailErr) {
         console.error('Failed to send cancellation emails:', emailErr);
@@ -792,7 +805,8 @@ async function updateOrderStatus(request, env, user, orderId) {
 
     if (status === 'confirmed' || status === 'packed' || status === 'shipped') {
       try {
-        const fullOrder = await db.prepare('SELECT * FROM orders WHERE id = ?').bind(orderId).first();
+        let fullOrder = await db.prepare('SELECT * FROM orders WHERE id = ?').bind(orderId).first();
+        if (!fullOrder) fullOrder = await db.prepare('SELECT * FROM guest_orders WHERE id = ?').bind(orderId).first();
         if (fullOrder && fullOrder.customer_email) {
           const statusConfig = await getSiteConfig(env, fullOrder.site_id);
           const siteBrandName = statusConfig.brand_name || 'Store';
@@ -858,6 +872,22 @@ async function updateOrderStatus(request, env, user, orderId) {
             const shipOptions = { trackingUrl, trackingNumber: fullOrder.tracking_number || trackingNumber, carrier: fullOrder.carrier || carrier };
             const { html, text } = buildOrderShippedEmail(emailOrder, siteBrandName, ownerEmail, statusCurrency, shipOptions, storeTz);
             await sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been shipped! - ${siteBrandName}`, html, text).catch(e => console.error('Shipped email error:', e));
+          }
+
+          if (isWhatsAppConfigured(statusSettings) && fullOrder.customer_phone && fullOrder.whatsapp_opted_in) {
+            try {
+              let waMsg;
+              if (status === 'confirmed') {
+                waMsg = buildOrderConfirmationWA(emailOrder, siteBrandName, statusCurrency);
+              } else if (status === 'packed') {
+                waMsg = buildOrderPackedWA(emailOrder, siteBrandName);
+              } else if (status === 'shipped') {
+                waMsg = buildOrderShippedWA(emailOrder, siteBrandName, trackingUrl, statusCurrency);
+              }
+              if (waMsg) await sendOrderWhatsApp(statusSettings, fullOrder.customer_phone, waMsg);
+            } catch (waErr) {
+              console.error('WhatsApp status update error:', waErr);
+            }
           }
         }
       } catch (emailErr) {
@@ -946,6 +976,15 @@ async function updateOrderStatus(request, env, user, orderId) {
             }
           }
           await Promise.all(emailJobs);
+
+          if (isWhatsAppConfigured(deliverySettings) && fullOrder.customer_phone && fullOrder.whatsapp_opted_in) {
+            try {
+              const waMsg = buildOrderDeliveredWA(emailOrder, siteBrandName, deliveryEmailOptions.reviewUrl || '', deliveryCurrency);
+              await sendOrderWhatsApp(deliverySettings, fullOrder.customer_phone, waMsg);
+            } catch (waErr) {
+              console.error('WhatsApp delivery error:', waErr);
+            }
+          }
         }
       } catch (emailErr) {
         console.error('Failed to send delivery emails:', emailErr);
@@ -972,7 +1011,7 @@ async function handleGuestOrder(request, env, method, orderId, ctx) {
 async function createGuestOrder(request, env, ctx) {
   try {
     const data = await request.json();
-    const { siteId, items, shippingAddress, customerName, customerEmail, customerPhone, paymentMethod, currency: guestOrderCurrency } = data;
+    const { siteId, items, shippingAddress, customerName, customerEmail, customerPhone, paymentMethod, currency: guestOrderCurrency, whatsappOptIn } = data;
 
     const missingFields = [];
     if (!siteId) missingFields.push('siteId');
@@ -1132,14 +1171,16 @@ async function createGuestOrder(request, env, ctx) {
     const orderStatus = isPendingPayment ? 'pending_payment' : 'pending';
 
     const resolvedGuestCurrency = guestOrderCurrency || guestSiteDefaultCurrency;
+    try { await db.prepare('ALTER TABLE guest_orders ADD COLUMN whatsapp_opted_in INTEGER DEFAULT 0').run(); } catch (e) {}
     await db.prepare(
-      `INSERT INTO guest_orders (id, site_id, order_number, items, subtotal, shipping_cost, tax, total, currency, payment_method, status, shipping_address, customer_name, customer_email, customer_phone, row_size_bytes, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+      `INSERT INTO guest_orders (id, site_id, order_number, items, subtotal, shipping_cost, tax, total, currency, payment_method, status, shipping_address, customer_name, customer_email, customer_phone, whatsapp_opted_in, row_size_bytes, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(
       orderId, siteId, orderNumber, JSON.stringify(processedItems), subtotal, guestShippingCost, guestTax, total,
       resolvedGuestCurrency,
       paymentMethod || 'cod', orderStatus,
       JSON.stringify(shippingAddress), customerName, customerEmail || null, customerPhone,
+      whatsappOptIn ? 1 : 0,
       rowBytes
     ).run();
 
@@ -1156,7 +1197,7 @@ async function createGuestOrder(request, env, ctx) {
     if (!isPendingPayment) {
       try {
         await sendOrderEmails(env, siteId, {
-          orderId, orderNumber, processedItems, subtotal, discount: 0, coupon_code: null, shippingCost: guestShippingCost, total, paymentMethod, customerName, customerEmail, customerPhone, shippingAddress, isGuest: true, currency: resolvedGuestCurrency, created_at: new Date().toISOString()
+          orderId, orderNumber, processedItems, subtotal, discount: 0, coupon_code: null, shippingCost: guestShippingCost, total, paymentMethod, customerName, customerEmail, customerPhone, shippingAddress, isGuest: true, currency: resolvedGuestCurrency, created_at: new Date().toISOString(), whatsappOptIn: !!whatsappOptIn
         });
       } catch (emailErr) {
         console.error('Guest order email notification error:', emailErr);
@@ -1645,6 +1686,7 @@ export async function sendOrderEmails(env, siteId, orderData) {
     }
 
     await Promise.all(emailJobs);
+
   } catch (error) {
     console.error('Send order emails error:', error);
   }

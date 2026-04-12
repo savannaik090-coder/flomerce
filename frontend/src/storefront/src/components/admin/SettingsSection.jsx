@@ -51,6 +51,16 @@ export default function SettingsSection() {
   const [gstInvoiceEmailEnabled, setGstInvoiceEmailEnabled] = useState(false);
   const [gstinError, setGstinError] = useState('');
 
+  const [whatsappNotificationsEnabled, setWhatsappNotificationsEnabled] = useState(false);
+  const [whatsappProvider, setWhatsappProvider] = useState('meta');
+  const [whatsappAccessToken, setWhatsappAccessToken] = useState('');
+  const [whatsappPhoneNumberId, setWhatsappPhoneNumberId] = useState('');
+  const [whatsappApiKey, setWhatsappApiKey] = useState('');
+  const [whatsappUseTemplates, setWhatsappUseTemplates] = useState(true);
+  const [whatsappLanguage, setWhatsappLanguage] = useState('en');
+  const [whatsappTestSending, setWhatsappTestSending] = useState(false);
+  const [whatsappTestResult, setWhatsappTestResult] = useState('');
+
   const defaultOpenSections = { storeUrl: true, customDomain: true, brand: true, contact: true };
   const [openSections, setOpenSections] = useState(defaultOpenSections);
 
@@ -170,6 +180,13 @@ export default function SettingsSection() {
         setGstState(settings.gstState || '');
         setGstAddress(settings.gstAddress || '');
         setGstInvoiceEmailEnabled(settings.gstInvoiceEmailEnabled === true);
+        setWhatsappNotificationsEnabled(settings.whatsappNotificationsEnabled === true);
+        setWhatsappProvider(settings.whatsappProvider || 'meta');
+        setWhatsappAccessToken(settings.whatsappAccessToken || '');
+        setWhatsappPhoneNumberId(settings.whatsappPhoneNumberId || '');
+        setWhatsappApiKey(settings.whatsappApiKey || '');
+        setWhatsappUseTemplates(settings.whatsappUseTemplates !== false);
+        setWhatsappLanguage(settings.whatsappLanguage || 'en');
         if (data.custom_domain) {
           setCustomDomain(data.custom_domain);
           setDomainInput(data.custom_domain);
@@ -245,7 +262,17 @@ export default function SettingsSection() {
         gstState: gstEnabled ? (gstState.trim() || null) : null,
         gstAddress: gstEnabled ? (gstAddress.trim() || null) : null,
         gstInvoiceEmailEnabled,
+        whatsappNotificationsEnabled,
+        whatsappProvider,
+        whatsappUseTemplates,
+        whatsappLanguage,
       };
+      if (whatsappProvider === 'meta') {
+        if (whatsappAccessToken) settings.whatsappAccessToken = whatsappAccessToken;
+        if (whatsappPhoneNumberId) settings.whatsappPhoneNumberId = whatsappPhoneNumberId;
+      } else if (whatsappProvider === 'interakt') {
+        if (whatsappApiKey) settings.whatsappApiKey = whatsappApiKey;
+      }
       if (razorpayKeyId) {
         settings.razorpayKeyId = razorpayKeyId;
       }
@@ -1226,6 +1253,115 @@ export default function SettingsSection() {
                 </span>
               </label>
             </div>
+          </div>}
+        </div>
+
+        <div className="card" style={{ marginBottom: 20 }}>
+          <CollapsibleHeader sectionKey="whatsappBusiness" title="WhatsApp Business Notifications" />
+          {isSectionOpen("whatsappBusiness") && <div className="card-content">
+            <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
+              Send automated order updates to customers via WhatsApp. Customers must opt-in at checkout. You need your own WhatsApp Business API credentials.
+            </p>
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', border: '1px solid #e2e8f0', borderRadius: 8, marginBottom: 16, background: whatsappNotificationsEnabled ? '#f0fdf4' : '#f8fafc' }}>
+              <div>
+                <div style={{ fontWeight: 600, fontSize: 14, color: '#1e293b' }}>
+                  <i className="fab fa-whatsapp" style={{ marginRight: 6, color: '#25D366' }} />Enable WhatsApp Notifications
+                </div>
+                <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>Send order confirmation, shipping, delivery updates via WhatsApp</div>
+              </div>
+              <label style={{ position: 'relative', display: 'inline-block', width: 44, height: 24, flexShrink: 0 }}>
+                <input type="checkbox" checked={whatsappNotificationsEnabled} onChange={e => setWhatsappNotificationsEnabled(e.target.checked)} style={{ opacity: 0, width: 0, height: 0 }} />
+                <span style={{ position: 'absolute', cursor: 'pointer', inset: 0, borderRadius: 24, transition: '0.3s', background: whatsappNotificationsEnabled ? '#25D366' : '#cbd5e1' }}>
+                  <span style={{ position: 'absolute', left: whatsappNotificationsEnabled ? 22 : 2, top: 2, width: 20, height: 20, background: '#fff', borderRadius: '50%', transition: '0.3s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+                </span>
+              </label>
+            </div>
+
+            {whatsappNotificationsEnabled && (
+              <>
+                <div style={{ marginBottom: 16 }}>
+                  <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>API Provider</label>
+                  <select value={whatsappProvider} onChange={e => setWhatsappProvider(e.target.value)} style={{ width: '100%', maxWidth: 300, padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, fontFamily: 'inherit', background: '#fff' }}>
+                    <option value="meta">Meta Cloud API (Direct)</option>
+                    <option value="interakt">Interakt</option>
+                  </select>
+                  <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>
+                    {whatsappProvider === 'meta' ? 'Free for first 1,000 conversations/month. Get credentials from Meta Business Suite.' : 'India-focused provider backed by Razorpay. Get your API key from app.interakt.ai'}
+                  </p>
+                </div>
+
+                {whatsappProvider === 'meta' && (
+                  <>
+                    <div style={{ marginBottom: 16 }}>
+                      <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Access Token</label>
+                      <input type="password" value={whatsappAccessToken} onChange={e => setWhatsappAccessToken(e.target.value)} placeholder="Your Meta WhatsApp access token" style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
+                    </div>
+                    <div style={{ marginBottom: 16 }}>
+                      <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Phone Number ID</label>
+                      <input type="text" value={whatsappPhoneNumberId} onChange={e => setWhatsappPhoneNumberId(e.target.value)} placeholder="e.g., 1234567890" style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
+                      <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>Found in Meta Business Suite &gt; WhatsApp &gt; API Setup</p>
+                    </div>
+                  </>
+                )}
+
+                {whatsappProvider === 'interakt' && (
+                  <div style={{ marginBottom: 16 }}>
+                    <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Interakt API Key</label>
+                    <input type="password" value={whatsappApiKey} onChange={e => setWhatsappApiKey(e.target.value)} placeholder="Your Interakt API key" style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
+                    <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>Get this from Interakt Dashboard &gt; Settings &gt; Developer Settings</p>
+                  </div>
+                )}
+
+                <div style={{ marginBottom: 16 }}>
+                  <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Message Language</label>
+                  <select value={whatsappLanguage} onChange={e => setWhatsappLanguage(e.target.value)} style={{ width: '100%', maxWidth: 200, padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, fontFamily: 'inherit', background: '#fff' }}>
+                    <option value="en">English</option>
+                    <option value="hi">Hindi</option>
+                    <option value="ta">Tamil</option>
+                    <option value="te">Telugu</option>
+                    <option value="kn">Kannada</option>
+                    <option value="ml">Malayalam</option>
+                    <option value="mr">Marathi</option>
+                    <option value="bn">Bengali</option>
+                    <option value="gu">Gujarati</option>
+                  </select>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', border: '1px solid #e2e8f0', borderRadius: 8, marginBottom: 16, background: '#f8fafc' }}>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 13, color: '#1e293b' }}>Use Template Messages</div>
+                    <div style={{ fontSize: 12, color: '#94a3b8' }}>Send pre-approved WhatsApp templates (recommended). Turn off to send plain text.</div>
+                  </div>
+                  <label style={{ position: 'relative', display: 'inline-block', width: 44, height: 24, flexShrink: 0 }}>
+                    <input type="checkbox" checked={whatsappUseTemplates} onChange={e => setWhatsappUseTemplates(e.target.checked)} style={{ opacity: 0, width: 0, height: 0 }} />
+                    <span style={{ position: 'absolute', cursor: 'pointer', inset: 0, borderRadius: 24, transition: '0.3s', background: whatsappUseTemplates ? '#10b981' : '#cbd5e1' }}>
+                      <span style={{ position: 'absolute', left: whatsappUseTemplates ? 22 : 2, top: 2, width: 20, height: 20, background: '#fff', borderRadius: '50%', transition: '0.3s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+                    </span>
+                  </label>
+                </div>
+
+                <div style={{ padding: '14px 16px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, marginBottom: 16 }}>
+                  <p style={{ margin: 0, fontWeight: 600, fontSize: 13, color: '#92400e', marginBottom: 6 }}>Notifications sent to customers who opt-in:</p>
+                  <ul style={{ margin: 0, padding: '0 0 0 16px', fontSize: 13, color: '#78350f', lineHeight: 1.8 }}>
+                    <li>Order placed / confirmed</li>
+                    <li>Order packed</li>
+                    <li>Order shipped (with tracking info)</li>
+                    <li>Order delivered (with review link)</li>
+                    <li>Order cancelled</li>
+                  </ul>
+                </div>
+
+                {whatsappUseTemplates && (
+                  <div style={{ padding: '14px 16px', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 8 }}>
+                    <p style={{ margin: 0, fontWeight: 600, fontSize: 13, color: '#0c4a6e', marginBottom: 6 }}>Template Setup Required</p>
+                    <p style={{ margin: 0, fontSize: 12, color: '#0369a1', lineHeight: 1.6 }}>
+                      Create these templates in your WhatsApp Business account: <strong>order_confirmation</strong>, <strong>order_packed</strong>, <strong>order_shipped</strong>, <strong>order_delivered</strong>, <strong>order_cancelled</strong>. Each template should accept the parameters shown in the notification list above.
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
           </div>}
         </div>
 

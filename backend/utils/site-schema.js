@@ -562,6 +562,9 @@ export function getSiteSchemaStatements() {
     'ALTER TABLE blog_posts ADD COLUMN seo_description TEXT',
     'ALTER TABLE blog_posts ADD COLUMN seo_og_image TEXT',
     'ALTER TABLE blog_posts ADD COLUMN seo_keywords TEXT',
+    'ALTER TABLE site_customers ADD COLUMN whatsapp_opted_in INTEGER DEFAULT 0',
+    'ALTER TABLE orders ADD COLUMN whatsapp_opted_in INTEGER DEFAULT 0',
+    'ALTER TABLE guest_orders ADD COLUMN whatsapp_opted_in INTEGER DEFAULT 0',
   ];
 
   return [...tables, ...indexes, ...addColumnMigrations];
