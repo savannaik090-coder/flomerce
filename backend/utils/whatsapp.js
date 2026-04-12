@@ -18,6 +18,7 @@ function cleanPhone(phone) {
   if (cleaned.length === 10 && /^[6-9]/.test(cleaned)) {
     cleaned = '91' + cleaned;
   }
+  if (cleaned.length < 7 || cleaned.length > 15) return null;
   return cleaned;
 }
 

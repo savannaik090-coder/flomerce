@@ -81,6 +81,7 @@ Fluxe utilizes a shared shard-based D1 database architecture where multiple site
 - **Product Reviews:** Per-product customer review system with star ratings, optional images, and admin moderation.
 - **Inventory Locations:** Multi-location inventory tracking with stock transfers and fulfillment priority.
 - **Delivery Charges:** Configurable global shipping fees with flat rates, free-above thresholds, and country/region-based overrides. Checkout address forms support international countries with dynamic state dropdowns.
+- **International Phone Input:** Phone fields use a country code dropdown with flag emoji + dial code (e.g., 🇮🇳 +91) and searchable country selector. Auto-selects dial code based on selected country. Phone stored in E.164 format (e.g., `+919876543210`). Shared `PhoneInput` component at `frontend/src/storefront/src/components/ui/PhoneInput.jsx`. Country dial codes in `countryStates.js` (`COUNTRIES[].dial`, `COUNTRY_FLAGS`, `getDialCode()`).
 
 ## External Dependencies
 - **Cloudflare Pages:** Frontend hosting.

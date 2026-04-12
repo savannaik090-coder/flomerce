@@ -5,7 +5,8 @@ import { AuthContext } from '../../../context/AuthContext.jsx';
 import { SiteContext } from '../../../context/SiteContext.jsx';
 import { resolveImageUrl } from '../../../utils/imageUrl.js';
 import { CurrencyContext } from '../../../context/CurrencyContext.jsx';
-import { COUNTRIES, getStatesForCountry, getCountryName } from '../../../utils/countryStates.js';
+import { COUNTRIES, getStatesForCountry, getCountryName, getDialCode } from '../../../utils/countryStates.js';
+import PhoneInput from '../../ui/PhoneInput.jsx';
 import * as orderService from '../../../services/orderService.js';
 import * as authService from '../../../services/authService.js';
 import '../../../styles/checkout.css';
@@ -88,7 +89,7 @@ export default function CheckoutPageModern() {
     if (address.lastName.trim().length < 2) errs.lastName = 'Last name must be at least 2 characters';
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     if (!emailRegex.test(address.email.trim())) errs.email = 'Please enter a valid email';
-    const phoneDigits = address.phone.replace(/\D/g, '');
+    const phoneDigits = address.phone.replace(/[^0-9]/g, '');
     if (phoneDigits.length < 7 || phoneDigits.length > 15) errs.phone = 'Please enter a valid phone number';
     if (address.houseNumber.trim().length < 1) errs.houseNumber = 'House/Building number is required';
     if (address.roadName.trim().length < 5) errs.roadName = 'Road/Area must be at least 5 characters';
@@ -645,7 +646,12 @@ export default function CheckoutPageModern() {
             </div>
             <div style={{ marginBottom: 20 }}>
               <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333', fontSize: 14 }}>Phone *</label>
-              <input type="tel" value={address.phone} onChange={e => handleAddressChange('phone', e.target.value)} style={inputStyle(addressErrors.phone)} />
+              <PhoneInput
+                value={address.phone}
+                onChange={val => handleAddressChange('phone', val)}
+                countryCode={address.country}
+                error={addressErrors.phone}
+              />
               {addressErrors.phone && <div style={{ color: '#e74c3c', fontSize: 12, marginTop: 4 }}>{addressErrors.phone}</div>}
             </div>
             <div style={{ marginBottom: 20 }}>
