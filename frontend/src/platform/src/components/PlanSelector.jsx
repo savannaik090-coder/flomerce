@@ -321,15 +321,18 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
     const planNameLower = planGroup.name.toLowerCase();
     if (isActive && planNameLower === currentPlanLower) return 'Current Plan';
     if (!isActive || planGroup.plan_tier > currentPlanTier) return planGroup.plan_tier > currentPlanTier && isActive ? 'Upgrade' : 'Subscribe';
-    if (planGroup.plan_tier < currentPlanTier) return 'Lower Tier';
+    if (planGroup.plan_tier < currentPlanTier) return 'Downgrade';
     return 'Subscribe';
   };
 
   const isButtonDisabled = (planGroup) => {
     const planNameLower = planGroup.name.toLowerCase();
     if (isActive && planNameLower === currentPlanLower) return true;
-    if (isActive && planGroup.plan_tier < currentPlanTier) return true;
     return false;
+  };
+
+  const isDowngrade = (planGroup) => {
+    return isActive && planGroup.plan_tier < currentPlanTier;
   };
 
   const hasContent = planList.filter(p => p.plan_tier < 4).length > 0 || enterpriseConfig.enabled;
@@ -462,13 +465,24 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
                 ))}
               </ul>
               <button
-                className={`btn ${isButtonDisabled(planGroup) ? 'btn-outline' : 'btn-primary'}`}
+                className={`btn ${isButtonDisabled(planGroup) ? 'btn-outline' : isDowngrade(planGroup) ? 'btn-outline' : 'btn-primary'}`}
                 style={{ width: '100%', opacity: isButtonDisabled(planGroup) ? 0.6 : 1 }}
                 disabled={isButtonDisabled(planGroup) || upgrading !== null}
-                onClick={() => handleUpgrade(planGroup)}
+                onClick={() => {
+                  if (isDowngrade(planGroup)) {
+                    if (window.confirm(`Are you sure you want to downgrade to ${planGroup.name}? Your current plan will be cancelled and replaced with the new plan.`)) {
+                      handleUpgrade(planGroup);
+                    }
+                  } else {
+                    handleUpgrade(planGroup);
+                  }
+                }}
               >
                 {upgrading === planGroup.plans[duration]?.id ? 'Processing...' : getButtonText(planGroup)}
               </button>
+              {isDowngrade(planGroup) && (
+                <p style={{ fontSize: '0.7rem', color: '#92400e', marginTop: '0.5rem', textAlign: 'center' }}>Replaces your current plan immediately</p>
+              )}
             </div>
           );
         })}

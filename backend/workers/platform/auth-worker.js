@@ -204,6 +204,12 @@ async function handleLogin(request, env) {
 
     const token = await generateJWT({ userId: user.id, email: user.email }, env.JWT_SECRET || 'your-secret-key');
 
+    try {
+      await env.DB.prepare('DELETE FROM sessions WHERE user_id = ?').bind(user.id).run();
+    } catch (cleanupErr) {
+      console.error('Session cleanup on login failed (non-fatal):', cleanupErr);
+    }
+
     const sessionId = generateId();
     await env.DB.prepare(
       `INSERT INTO sessions (id, user_id, token, expires_at)
@@ -561,6 +567,13 @@ async function handleGoogleLogin(request, env) {
     }
 
     const token = await generateJWT({ userId: user.id, email: user.email }, env.JWT_SECRET);
+
+    try {
+      await env.DB.prepare('DELETE FROM sessions WHERE user_id = ?').bind(user.id).run();
+    } catch (cleanupErr) {
+      console.error('Session cleanup on Google login failed (non-fatal):', cleanupErr);
+    }
+
     const sessionId = generateId();
     await env.DB.prepare(
       'INSERT INTO sessions (id, user_id, token, expires_at) VALUES (?, ?, ?, ?)'

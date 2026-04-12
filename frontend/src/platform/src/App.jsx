@@ -21,6 +21,8 @@ export default function App() {
       <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/dashboard" element={<DashboardPage />} />
+      <Route path="/dashboard/:page" element={<DashboardPage />} />
+      <Route path="/dashboard/:page/:siteId" element={<DashboardPage />} />
       <Route path="/admin" element={<OwnerAdminPage />} />
       <Route path="/terms" element={<TermsPage />} />
       <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
