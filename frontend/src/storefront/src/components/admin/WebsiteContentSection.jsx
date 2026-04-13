@@ -21,9 +21,11 @@ import BookAppointmentEditor from './BookAppointmentEditor.jsx';
 import ContactEditor from './ContactEditor.jsx';
 import FAQSection from './FAQSection.jsx';
 import BlogSection from './BlogSection.jsx';
+import PromoBannerEditor from './PromoBannerEditor.jsx';
 import SectionToggle from './SectionToggle.jsx';
 import SaveBar from './SaveBar.jsx';
 import FeatureGate, { isFeatureAvailable, getRequiredPlan, PlanBadge } from './FeatureGate.jsx';
+import VisualCustomizer from './VisualCustomizer.jsx';
 import { API_BASE, PLATFORM_DOMAIN } from '../../config.js';
 
 function buildTabGroups(templateId) {
@@ -115,6 +117,7 @@ export default function WebsiteContentSection({ currentPlan }) {
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 900);
   const [showMobilePreview, setShowMobilePreview] = useState(false);
   const [showMobileNav, setShowMobileNav] = useState(false);
+  const [showVisualCustomizer, setShowVisualCustomizer] = useState(false);
   const iframeRef = useRef(null);
   const mobileIframeRef = useRef(null);
 
@@ -172,8 +175,50 @@ export default function WebsiteContentSection({ currentPlan }) {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  if (showVisualCustomizer && !isMobile) {
+    return <VisualCustomizer currentPlan={currentPlan} onBack={() => setShowVisualCustomizer(false)} />;
+  }
+
   return (
     <div>
+      {!isMobile && (
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          marginBottom: 16, padding: '12px 16px',
+          background: 'linear-gradient(135deg, #eff6ff, #f0f9ff)',
+          borderRadius: 10, border: '1px solid #bfdbfe',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <i className="fas fa-palette" style={{ fontSize: 16, color: '#2563eb' }} />
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#1e40af' }}>Visual Customizer</div>
+              <div style={{ fontSize: 12, color: '#3b82f6', marginTop: 1 }}>
+                Full-screen editor with live preview, section toggles, and device preview
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowVisualCustomizer(true)}
+            style={{
+              padding: '8px 18px',
+              background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+              color: '#fff', border: 'none', borderRadius: 8,
+              fontSize: 13, fontWeight: 600, cursor: 'pointer',
+              boxShadow: '0 2px 8px rgba(37,99,235,0.3)',
+              display: 'flex', alignItems: 'center', gap: 6,
+              fontFamily: 'inherit',
+              transition: 'all 0.15s ease',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(37,99,235,0.4)'; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(37,99,235,0.3)'; }}
+          >
+            <i className="fas fa-external-link-alt" style={{ fontSize: 11 }} />
+            Open
+          </button>
+        </div>
+      )}
+
       {isMobile && (
         <>
           <div style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center' }}>
@@ -416,7 +461,7 @@ export default function WebsiteContentSection({ currentPlan }) {
 
         <div style={{ flex: '1 1 0', minWidth: 0 }}>
           {activeTab === 'navbar' && <NavbarEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
-          {activeTab === 'promo-banner' && <PromoBannerEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
+          {activeTab === 'promo-banner' && <PromoBannerEditor key="promo-banner-editor" onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
           {activeTab === 'hero-slider' && <HeroSliderEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
           {activeTab === 'welcome-banner' && <WelcomeBannerEditor onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
           {activeTab === 'categories' && <CategoriesSection onSaved={refreshPreview} onPreviewUpdate={sendPreviewUpdate} />}
@@ -559,166 +604,3 @@ export default function WebsiteContentSection({ currentPlan }) {
   );
 }
 
-function PromoBannerEditor({ onSaved, onPreviewUpdate }) {
-  const { siteConfig } = useContext(SiteContext);
-  const [messages, setMessages] = useState(['', '', '']);
-  const [showSection, setShowSection] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [status, setStatus] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [hasChanges, setHasChanges] = useState(false);
-  const hasLoadedRef = useRef(false);
-  const serverValuesRef = useRef(null);
-
-  useEffect(() => {
-    if (siteConfig?.id) loadPromoBanner();
-  }, [siteConfig?.id]);
-
-  useEffect(() => {
-    if (!hasLoadedRef.current) return;
-    const current = JSON.stringify({ messages, showSection });
-    setHasChanges(current !== serverValuesRef.current);
-    if (onPreviewUpdate) onPreviewUpdate({ promoBanner: messages.filter(m => m.trim() !== ''), showPromoBanner: showSection });
-  }, [messages, showSection]);
-
-  async function loadPromoBanner() {
-    setLoading(true);
-    try {
-
-      const response = await fetch(`${API_BASE}/api/site?subdomain=${encodeURIComponent(siteConfig.subdomain)}`);
-      const result = await response.json();
-      if (result.success && result.data) {
-        let settings = result.data.settings || {};
-        if (typeof settings === 'string') {
-          try { settings = JSON.parse(settings); } catch (e) { settings = {}; }
-        }
-        const existing = settings.promoBanner || [];
-        const mVal = [
-          existing[0] || '',
-          existing[1] || '',
-          existing[2] || '',
-        ];
-        const ssVal = settings.showPromoBanner !== false;
-        setMessages(mVal);
-        setShowSection(ssVal);
-        serverValuesRef.current = JSON.stringify({ messages: mVal, showSection: ssVal });
-      }
-    } catch (e) {
-      console.error('Failed to load promo banner:', e);
-    } finally {
-      setLoading(false);
-      setTimeout(() => { hasLoadedRef.current = true; }, 0);
-    }
-  }
-
-  async function handleSave(e) {
-    e.preventDefault();
-    setSaving(true);
-    setStatus('');
-    try {
-
-      const token = sessionStorage.getItem('site_admin_token');
-
-      const filtered = messages.filter(m => m.trim() !== '');
-
-      const response = await fetch(`${API_BASE}/api/sites/${siteConfig.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': token ? `SiteAdmin ${token}` : '',
-        },
-        body: JSON.stringify({ settings: { promoBanner: filtered, showPromoBanner: showSection } }),
-      });
-      const result = await response.json();
-      if (response.ok && result.success) {
-        setStatus('success');
-        serverValuesRef.current = JSON.stringify({ messages, showSection });
-        setHasChanges(false);
-        if (onSaved) onSaved();
-      } else {
-        setStatus('error:' + (result.error || 'Unknown error'));
-      }
-    } catch (e) {
-      setStatus('error:' + e.message);
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  function updateMessage(index, value) {
-    setMessages(prev => {
-      const updated = [...prev];
-      updated[index] = value;
-      return updated;
-    });
-  }
-
-  if (loading) return <div className="loading-spinner-admin"><div className="spinner" /></div>;
-
-  return (
-    <div style={{ maxWidth: 700 }}>
-      <SaveBar topBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
-      <form onSubmit={handleSave}>
-        <SectionToggle
-          enabled={showSection}
-          onChange={setShowSection}
-          label="Show Promo Banner"
-          description="Toggle the scrolling promo banner at the top of your store"
-        />
-        <div className="card" style={{ marginBottom: 20 }}>
-          <div className="card-header">
-            <h3 className="card-title">Promo Banner Messages</h3>
-          </div>
-          <div className="card-content">
-            <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
-              Add up to 3 messages that scroll horizontally across the top of your store. Leave empty to show the default welcome message.
-            </p>
-
-            {[0, 1, 2].map(index => (
-              <div key={index} style={{ marginBottom: 16 }}>
-                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>
-                  Message {index + 1} {index === 0 ? '' : '(optional)'}
-                </label>
-                <input
-                  type="text"
-                  value={messages[index]}
-                  onChange={e => updateMessage(index, e.target.value)}
-                  placeholder={index === 0 ? 'e.g., Free shipping on orders above ₹999' : index === 1 ? 'e.g., New collection now available!' : 'e.g., Use code SAVE10 for 10% off'}
-                  maxLength={120}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    border: '1px solid #e2e8f0',
-                    borderRadius: 6,
-                    fontSize: 14,
-                    boxSizing: 'border-box',
-                    fontFamily: 'inherit',
-                  }}
-                />
-                <div style={{ textAlign: 'right', fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
-                  {messages[index].length}/120
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {status && (
-          <div style={{
-            background: status === 'success' ? '#f0fdf4' : '#fef2f2',
-            border: `1px solid ${status === 'success' ? '#bbf7d0' : '#fecaca'}`,
-            borderRadius: 8,
-            padding: '12px 16px',
-            color: status === 'success' ? '#166534' : '#dc2626',
-            marginBottom: 16,
-            fontSize: 14,
-          }}>
-            {status === 'success' ? 'Promo banner saved successfully!' : status.replace('error:', 'Failed to save: ')}
-          </div>
-        )}
-
-        <SaveBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
-      </form>
-    </div>
-  );
-}
