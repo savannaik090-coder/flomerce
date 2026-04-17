@@ -146,7 +146,7 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
     accumulatedSettingsRef.current = { ...accumulatedSettingsRef.current, ...settingsPatch };
     try {
       if (iframeRef.current?.contentWindow) {
-        iframeRef.current.contentWindow.postMessage({ type: 'FLUXE_PREVIEW_UPDATE', settings: settingsPatch }, '*');
+        iframeRef.current.contentWindow.postMessage({ type: 'FLOMERCE_PREVIEW_UPDATE', settings: settingsPatch }, '*');
       }
     } catch (e) {}
   }, []);

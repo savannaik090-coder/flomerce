@@ -96,7 +96,7 @@ export default function SettingsSection() {
   const [domainVerifying, setDomainVerifying] = useState(false);
   const [domainMsg, setDomainMsg] = useState('');
   const [domainError, setDomainError] = useState('');
-  const storageKey = siteConfig?.id ? `fluxe_domain_tips_${siteConfig.id}` : null;
+  const storageKey = siteConfig?.id ? `flomerce_domain_tips_${siteConfig.id}` : null;
 
   function getDismissedDomain() {
     if (!storageKey) return null;
@@ -741,11 +741,11 @@ export default function SettingsSection() {
                     <p style={{ fontSize: 12, color: '#64748b', marginBottom: 4 }}>Step 2: TXT Record (for ownership verification)</p>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                       <code style={{ flex: 1, fontSize: 13, background: '#fff', padding: '6px 10px', borderRadius: 4, border: '1px solid #e2e8f0', wordBreak: 'break-all' }}>
-                        TXT &nbsp; _fluxe-verify &nbsp; → &nbsp; {domainToken}
+                        TXT &nbsp; _flomerce-verify &nbsp; → &nbsp; {domainToken}
                       </code>
                       <button type="button" onClick={() => copyToClipboard(domainToken)} style={{ padding: '6px 10px', border: '1px solid #e2e8f0', borderRadius: 4, background: '#fff', cursor: 'pointer', fontSize: 12, whiteSpace: 'nowrap' }}>Copy</button>
                     </div>
-                    <p style={{ fontSize: 11, color: '#94a3b8' }}>Add this as a TXT record with host <code>_fluxe-verify</code> on your domain provider.</p>
+                    <p style={{ fontSize: 11, color: '#94a3b8' }}>Add this as a TXT record with host <code>_flomerce-verify</code> on your domain provider.</p>
                   </div>
 
                   <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: 14, marginBottom: 10 }}>

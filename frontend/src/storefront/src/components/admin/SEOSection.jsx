@@ -1235,7 +1235,7 @@ function SocialMediaTab({ siteConfig }) {
               <div className="seo-field">
                 <label>Twitter @handle</label>
                 <input type="text" value={form.twitter_site} onChange={set('twitter_site')} placeholder="@yourbrand" maxLength={50} />
-                <div className="seo-hint">Your Twitter/X handle (e.g. @fluxe_in)</div>
+                <div className="seo-hint">Your Twitter/X handle (e.g. @flomerce_in)</div>
               </div>
               <ImageUploadField
                 label="Twitter Image"

@@ -109,7 +109,7 @@ export async function handleSiteRouting(request, env) {
       return new Response(
         `<html>
           <head>
-            <title>Site Disabled - Fluxe</title>
+            <title>Site Disabled - Flomerce</title>
             <style>
               body { font-family: 'Inter', sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #f8fafc; color: #1e293b; }
               .container { text-align: center; padding: 2rem; background: white; border-radius: 12px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); max-width: 400px; }
@@ -125,7 +125,7 @@ export async function handleSiteRouting(request, env) {
                 ? `The subscription for <strong>${site.brand_name || subdomain}</strong> has expired. Please contact the site owner to renew the plan and restore access.`
                 : `<strong>${site.brand_name || subdomain}</strong> is not currently available. Please contact the site owner for more information.`
               }</p>
-              <a href="https://${platformDomain}" class="btn">Go to Fluxe</a>
+              <a href="https://${platformDomain}" class="btn">Go to Flomerce</a>
             </div>
           </body>
         </html>`,

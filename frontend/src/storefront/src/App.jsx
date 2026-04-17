@@ -57,7 +57,7 @@ const BlogPostPage = React.lazy(() => import('./pages/BlogPostPage.jsx'));
 const InvoicePage = React.lazy(() => import('./pages/InvoicePage.jsx'));
 
 function removePreloader() {
-  const el = document.getElementById('fluxe-preloader');
+  const el = document.getElementById('flomerce-preloader');
   if (el) el.remove();
 }
 
@@ -87,7 +87,7 @@ function SiteErrorScreen({ error }) {
       <div style={{ textAlign: 'center', maxWidth: 400, padding: 32 }}>
         <h1 style={{ fontSize: 24, marginBottom: 12, color: '#ef4444' }}>Store Not Found</h1>
         <p style={{ color: '#64748b', lineHeight: 1.6, marginBottom: 24 }}>{error || 'The store you are looking for could not be found.'}</p>
-        <a href={PLATFORM_URL} style={{ background: '#000', color: '#fff', padding: '12px 24px', borderRadius: 6, textDecoration: 'none', fontWeight: 600 }}>Go to Fluxe</a>
+        <a href={PLATFORM_URL} style={{ background: '#000', color: '#fff', padding: '12px 24px', borderRadius: 6, textDecoration: 'none', fontWeight: 600 }}>Go to Flomerce</a>
       </div>
     </div>
   );

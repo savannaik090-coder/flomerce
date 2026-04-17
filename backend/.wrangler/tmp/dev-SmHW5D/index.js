@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-fMUR2M/checked-fetch.js
+// .wrangler/tmp/bundle-JTbFis/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-fMUR2M/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-JTbFis/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-fMUR2M/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-JTbFis/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-fMUR2M/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-JTbFis/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -82,7 +82,7 @@ var init_config = __esm({
     init_checked_fetch();
     init_strip_cf_connecting_ip_header();
     init_modules_watch_stub();
-    PLATFORM_DOMAIN = "fluxe.in";
+    PLATFORM_DOMAIN = "flomerce.com";
     PLATFORM_URL = `https://${PLATFORM_DOMAIN}`;
     SUPPORT_EMAIL = `support@${PLATFORM_DOMAIN}`;
     FROM_EMAIL = `noreply@${PLATFORM_DOMAIN}`;
@@ -131,7 +131,7 @@ function getAllowedOrigin(origin) {
     return origin;
   if (origin.endsWith(`.${PLATFORM_DOMAIN}`) && origin.startsWith("https://"))
     return origin;
-  if (origin === "https://fluxe-8x1.pages.dev")
+  if (origin === "https://flomerce-8x1.pages.dev")
     return origin;
   if (origin.endsWith(".pages.dev"))
     return origin;
@@ -652,7 +652,7 @@ async function sendEmail(env, to, subject, html, text) {
       return entry;
     });
     const payload = {
-      sender: { email: fromEmail, name: "Fluxe" },
+      sender: { email: fromEmail, name: "Flomerce" },
       to: toPayload,
       subject,
       htmlContent: html
@@ -990,7 +990,7 @@ function buildDeliveryOwnerEmail(order, brandName, currency = "INR", timezone = 
           <p style="margin-top: 20px; color: #64748b; font-size: 14px;">The customer has been notified and prompted to leave a review. Keep up the great work!</p>
         </div>
         <div style="background: #f8f9fa; padding: 16px 32px; text-align: center; font-size: 12px; color: #94a3b8;">
-          <p style="margin: 0;">This is an automated notification from ${brandName || "Fluxe"}.</p>
+          <p style="margin: 0;">This is an automated notification from ${brandName || "Flomerce"}.</p>
         </div>
       </div>
     </body>
@@ -1030,7 +1030,7 @@ function buildCancellationOwnerEmail(order, brandName, reason, currency = "INR",
           </div>
         </div>
         <div style="background: #f8f9fa; padding: 16px 32px; text-align: center; font-size: 12px; color: #94a3b8;">
-          <p style="margin: 0;">This is an automated notification from ${brandName || "Fluxe"}.</p>
+          <p style="margin: 0;">This is an automated notification from ${brandName || "Flomerce"}.</p>
         </div>
       </div>
     </body>
@@ -1106,7 +1106,7 @@ function buildOwnerNotificationEmail(order, brandName, currency = "INR", timezon
           </table>
         </div>
         <div style="background: #f8f9fa; padding: 16px 32px; text-align: center; font-size: 12px; color: #94a3b8;">
-          <p style="margin: 0;">This is an automated notification from ${brandName || "Fluxe"}.</p>
+          <p style="margin: 0;">This is an automated notification from ${brandName || "Flomerce"}.</p>
         </div>
       </div>
     </body>
@@ -1186,7 +1186,7 @@ function buildNewOrderReviewEmail(order, brandName, currency = "INR", timezone =
           </table>
         </div>
         <div style="background: #f8f9fa; padding: 16px 32px; text-align: center; font-size: 12px; color: #94a3b8;">
-          <p style="margin: 0;">This is an automated notification from ${brandName || "Fluxe"}.</p>
+          <p style="margin: 0;">This is an automated notification from ${brandName || "Flomerce"}.</p>
         </div>
       </div>
     </body>
@@ -3937,12 +3937,12 @@ var init_whatsapp = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-fMUR2M/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-JTbFis/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-fMUR2M/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-JTbFis/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -3995,9 +3995,9 @@ async function sendTestEmail(request, env) {
   const { email } = await request.json();
   if (!email)
     return errorResponse("Email is required");
-  const html = `<h3>Test Email</h3><p>This is a test email from Fluxe.</p>`;
-  const text = `Test Email from Fluxe`;
-  const sent = await sendEmail2(env, email, "Fluxe Test Email", html, text);
+  const html = `<h3>Test Email</h3><p>This is a test email from Flomerce.</p>`;
+  const text = `Test Email from Flomerce`;
+  const sent = await sendEmail2(env, email, "Flomerce Test Email", html, text);
   if (sent !== true)
     return errorResponse(typeof sent === "string" ? sent : "Failed to send test email", 500);
   return successResponse(null, "Test email sent");
@@ -5004,7 +5004,7 @@ var RESERVED_SUBDOMAINS = /* @__PURE__ */ new Set([
   "system",
   "internal",
   "platform",
-  "fluxe",
+  "flomerce",
   "buildflux",
   "ns1",
   "ns2",
@@ -5750,7 +5750,7 @@ async function handleVerifyDomain(env, siteId) {
     let txtVerified = false;
     try {
       const baseDomain = domain.replace(/^www\./, "");
-      const txtHost = `_fluxe-verify.${baseDomain}`;
+      const txtHost = `_flomerce-verify.${baseDomain}`;
       const txtResponse = await fetch(
         `https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(txtHost)}&type=TXT`,
         { headers: { "Accept": "application/dns-json" } }
@@ -5766,7 +5766,7 @@ async function handleVerifyDomain(env, siteId) {
         }
       }
       if (!txtVerified) {
-        errors.push(`TXT record not found. Add a TXT record for _fluxe-verify.${baseDomain} with value: ${expectedToken}`);
+        errors.push(`TXT record not found. Add a TXT record for _flomerce-verify.${baseDomain} with value: ${expectedToken}`);
       }
     } catch (dnsErr) {
       errors.push("Could not verify TXT record: " + dnsErr.message);
@@ -13192,7 +13192,7 @@ async function handleSiteRouting(request, env) {
       return new Response(
         `<html>
           <head>
-            <title>Site Disabled - Fluxe</title>
+            <title>Site Disabled - Flomerce</title>
             <style>
               body { font-family: 'Inter', sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #f8fafc; color: #1e293b; }
               .container { text-align: center; padding: 2rem; background: white; border-radius: 12px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); max-width: 400px; }
@@ -13205,7 +13205,7 @@ async function handleSiteRouting(request, env) {
             <div class="container">
               <h1>Site Unavailable</h1>
               <p>${isPlanExpired ? `The subscription for <strong>${site.brand_name || subdomain}</strong> has expired. Please contact the site owner to renew the plan and restore access.` : `<strong>${site.brand_name || subdomain}</strong> is not currently available. Please contact the site owner for more information.`}</p>
-              <a href="https://${platformDomain}" class="btn">Go to Fluxe</a>
+              <a href="https://${platformDomain}" class="btn">Go to Flomerce</a>
             </div>
           </body>
         </html>`,
@@ -18429,7 +18429,7 @@ var workers_default = {
       const hostname = url.hostname;
       const platformDomain = env.DOMAIN || PLATFORM_DOMAIN;
       if (hostname === `www.${platformDomain}` || hostname === platformDomain) {
-        const pagesHostname = env.PAGES_HOSTNAME || "fluxe-8x1.pages.dev";
+        const pagesHostname = env.PAGES_HOSTNAME || "flomerce-8x1.pages.dev";
         const pagesUrl = new URL(request.url);
         pagesUrl.hostname = pagesHostname;
         const pagesRequest = new Request(pagesUrl.toString(), {
@@ -18658,7 +18658,7 @@ async function handleGoogleAuthFlow(request, env, path) {
     const domain = env.DOMAIN || PLATFORM_DOMAIN;
     const html = `<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Sign in with Google - Fluxe</title>
+<title>Sign in with Google - Flomerce</title>
 <style>
 body{margin:0;font-family:'Lato',sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f8f9fa}
 .container{text-align:center;background:#fff;padding:40px;border-radius:12px;box-shadow:0 2px 20px rgba(0,0,0,0.1);max-width:400px;width:90%}
@@ -19012,7 +19012,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-fMUR2M/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-JTbFis/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -19047,7 +19047,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-fMUR2M/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-JTbFis/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

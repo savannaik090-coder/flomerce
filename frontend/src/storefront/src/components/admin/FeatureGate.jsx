@@ -69,7 +69,7 @@ export default function FeatureGate({ currentPlan, requiredPlan, featureName, ch
             Upgrade your plan to {displayPlan} to unlock {featureName ? featureName.toLowerCase() : 'this feature'} and more.
           </p>
           <a
-            href={`https://fluxe.in/dashboard/billing`}
+            href={`https://flomerce.com/dashboard/billing`}
             target="_blank"
             rel="noopener noreferrer"
             style={{

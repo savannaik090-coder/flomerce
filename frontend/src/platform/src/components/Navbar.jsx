@@ -29,7 +29,7 @@ export default function Navbar({ showMenu = false }) {
   return (
     <nav className="nav">
       <Link to="/" className="logo">
-        <img src="/assets/images/fluxe-logo.png" alt="Fluxe" className="logo-img" />
+        <img src="/assets/images/flomerce-logo.png" alt="Flomerce" className="logo-img" />
       </Link>
 
       <button

@@ -154,7 +154,7 @@ export default function FooterModern() {
       </div>
 
       <div className="mn-footer-bottom">
-        <p>&copy; {new Date().getFullYear()} {siteConfig?.brandName || 'Store'}. All rights reserved. Powered by <a href={PLATFORM_URL} target="_blank" rel="noopener noreferrer">Fluxe</a></p>
+        <p>&copy; {new Date().getFullYear()} {siteConfig?.brandName || 'Store'}. All rights reserved. Powered by <a href={PLATFORM_URL} target="_blank" rel="noopener noreferrer">Flomerce</a></p>
         <div className="mn-footer-payment">
           <span><i className="fab fa-cc-visa"></i></span>
           <span><i className="fab fa-cc-mastercard"></i></span>

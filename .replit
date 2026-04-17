@@ -45,23 +45,23 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Fluxe Backend (Production Mode)"
+args = "Start Website"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Start Website"
+args = "Flomerce Backend (Production Mode)"
 
 [[workflows.workflow]]
-name = "Fluxe Backend (Production Mode)"
+name = "Flomerce Backend (Production Mode)"
 author = "agent"
-
-[workflows.workflow.metadata]
-outputType = "console"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "cd backend && npx wrangler dev workers/index.js --port 8000 --ip 0.0.0.0 --local-protocol http --experimental-local"
 waitForPort = 8000
+
+[workflows.workflow.metadata]
+outputType = "console"
 
 [agent]
 expertMode = true

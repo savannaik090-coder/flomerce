@@ -54,7 +54,7 @@ app.get('*', (req, res) => {
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Fluxe server running at http://0.0.0.0:${PORT}`);
+  console.log(`Flomerce server running at http://0.0.0.0:${PORT}`);
   console.log(`  Platform:   http://0.0.0.0:${PORT}/`);
   console.log(`  Storefront: http://0.0.0.0:${PORT}/storefront/`);
 });

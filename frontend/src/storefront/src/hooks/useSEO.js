@@ -24,7 +24,7 @@ export function useSEO({ title, description, ogImage, ogType, seoOverrides, page
     } else if (title) {
       finalTitle = `${title} | ${brandName}`;
     } else {
-      finalTitle = seo.seo_title || `${brandName} | Fluxe Store`;
+      finalTitle = seo.seo_title || `${brandName} | Flomerce Store`;
     }
 
     const finalDescription = seoDesc || description || seo.seo_description || '';

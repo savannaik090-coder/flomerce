@@ -14,7 +14,7 @@ export default function PrivacyPolicyPage() {
 
           <section>
             <h2>1. Introduction</h2>
-            <p>Fluxe ("we", "our", "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our platform at {PLATFORM_DOMAIN} and any websites created through our Service. This policy applies to all users of the Fluxe platform, including store owners and their customers.</p>
+            <p>Flomerce ("we", "our", "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our platform at {PLATFORM_DOMAIN} and any websites created through our Service. This policy applies to all users of the Flomerce platform, including store owners and their customers.</p>
           </section>
 
           <section>
@@ -68,7 +68,7 @@ export default function PrivacyPolicyPage() {
               <li><strong>Cloud Infrastructure:</strong> With Cloudflare for hosting, content delivery, and database services</li>
               <li><strong>Email Service:</strong> With Brevo (formerly Sendinblue) for transactional email delivery</li>
               <li><strong>Legal Requirements:</strong> When required by law, regulation, court order, or legal process</li>
-              <li><strong>Protection of Rights:</strong> To protect the rights, property, or safety of Fluxe, our users, or others</li>
+              <li><strong>Protection of Rights:</strong> To protect the rights, property, or safety of Flomerce, our users, or others</li>
             </ul>
           </section>
 
@@ -127,7 +127,7 @@ export default function PrivacyPolicyPage() {
           <section>
             <h2>12. Contact Us</h2>
             <p>If you have any questions or concerns about this Privacy Policy, please contact us at:</p>
-            <p><strong>Fluxe</strong></p>
+            <p><strong>Flomerce</strong></p>
             <p><strong>Email:</strong> <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a></p>
             <p><strong>Phone:</strong> <a href="tel:+919901954610">+91 9901954610</a></p>
             <p><strong>Address:</strong> Karwar, Karnataka, India — 581400</p>
@@ -143,7 +143,7 @@ export default function PrivacyPolicyPage() {
             <Link to="/refund-policy">Refund & Cancellation Policy</Link>
             <Link to="/shipping-policy">Shipping & Delivery Policy</Link>
           </div>
-          <p>&copy; {new Date().getFullYear()} Fluxe. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} Flomerce. All rights reserved.</p>
           <p style={{ color: '#94a3b8', fontSize: '0.75rem', marginTop: '0.5rem' }}>Karwar, Karnataka, India — 581400 | +91 9901954610 | {SUPPORT_EMAIL}</p>
         </footer>
       </div>

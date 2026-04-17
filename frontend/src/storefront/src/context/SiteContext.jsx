@@ -54,7 +54,7 @@ export function SiteProvider({ children }) {
     if (!isInIframe) return;
 
     function handleMessage(event) {
-      if (!event.data || event.data.type !== 'FLUXE_PREVIEW_UPDATE') return;
+      if (!event.data || event.data.type !== 'FLOMERCE_PREVIEW_UPDATE') return;
       setPreviewSettings(prev => ({ ...(prev || {}), ...event.data.settings }));
     }
 

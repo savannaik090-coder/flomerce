@@ -55,7 +55,7 @@ export default function PlanLimitModal({ message, onClose }) {
             Maybe Later
           </button>
           <a
-            href="https://fluxe.in/dashboard/billing"
+            href="https://flomerce.com/dashboard/billing"
             target="_blank"
             rel="noopener noreferrer"
             style={{

@@ -14,17 +14,17 @@ export default function RefundPolicyPage() {
 
           <section>
             <h2>1. Overview</h2>
-            <p>This Refund & Cancellation Policy outlines the terms under which you may cancel your subscription and request a refund for the Fluxe platform services. Fluxe is a digital SaaS product — no physical goods are shipped. Access to the platform is granted immediately upon successful payment. We aim to be fair and transparent in our refund process.</p>
+            <p>This Refund & Cancellation Policy outlines the terms under which you may cancel your subscription and request a refund for the Flomerce platform services. Flomerce is a digital SaaS product — no physical goods are shipped. Access to the platform is granted immediately upon successful payment. We aim to be fair and transparent in our refund process.</p>
           </section>
 
           <section>
             <h2>2. Digital Delivery</h2>
-            <p>Fluxe is a software-as-a-service platform. All services are delivered digitally via the internet. Upon successful payment, access to your subscription plan and all included features is activated immediately. There is no physical shipment involved in any of our services.</p>
+            <p>Flomerce is a software-as-a-service platform. All services are delivered digitally via the internet. Upon successful payment, access to your subscription plan and all included features is activated immediately. There is no physical shipment involved in any of our services.</p>
           </section>
 
           <section>
             <h2>3. Free Trial</h2>
-            <p>Fluxe offers a 7-day free trial for new users. During the trial period, you have full access to the platform features at no cost. No payment information is required to start a free trial. At the end of the trial, your account will be suspended and your website will be disabled unless you choose to subscribe to a paid plan.</p>
+            <p>Flomerce offers a 7-day free trial for new users. During the trial period, you have full access to the platform features at no cost. No payment information is required to start a free trial. At the end of the trial, your account will be suspended and your website will be disabled unless you choose to subscribe to a paid plan.</p>
           </section>
 
           <section>
@@ -105,7 +105,7 @@ export default function RefundPolicyPage() {
           <section>
             <h2>11. Contact Us</h2>
             <p>If you have any questions about this Refund & Cancellation Policy, please contact us at:</p>
-            <p><strong>Fluxe</strong></p>
+            <p><strong>Flomerce</strong></p>
             <p><strong>Email:</strong> <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a></p>
             <p><strong>Phone:</strong> <a href="tel:+919901954610">+91 9901954610</a></p>
             <p><strong>Address:</strong> Karwar, Karnataka, India — 581400</p>
@@ -121,7 +121,7 @@ export default function RefundPolicyPage() {
             <Link to="/refund-policy">Refund & Cancellation Policy</Link>
             <Link to="/shipping-policy">Shipping & Delivery Policy</Link>
           </div>
-          <p>&copy; {new Date().getFullYear()} Fluxe. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} Flomerce. All rights reserved.</p>
           <p style={{ color: '#94a3b8', fontSize: '0.75rem', marginTop: '0.5rem' }}>Karwar, Karnataka, India — 581400 | +91 9901954610 | {SUPPORT_EMAIL}</p>
         </footer>
       </div>

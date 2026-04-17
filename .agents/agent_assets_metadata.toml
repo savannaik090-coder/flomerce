@@ -5,10 +5,10 @@ generated = []
 id = "hgjova_qvIjGRD-NjdZij"
 uri = "file://DATABASE_ARCHITECTURE.md"
 type = "text"
-title = "Fluxe Database Architecture Reference"
+title = "Flomerce Database Architecture Reference"
 
 [[outputs]]
 id = "h-WRnXnX4soP907rEZ9Ua"
-uri = "file://Fluxe_Competitive_Analysis_April_2026.pdf"
+uri = "file://Flomerce_Competitive_Analysis_April_2026.pdf"
 type = "pdf"
-title = "Fluxe Competitive Analysis - Corrected with Verified Fees"
+title = "Flomerce Competitive Analysis - Corrected with Verified Fees"

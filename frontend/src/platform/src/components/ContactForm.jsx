@@ -11,7 +11,7 @@ export default function ContactForm() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const mailtoLink = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(formData.subject || 'Contact from Fluxe Website')}&body=${encodeURIComponent(`Name: ${formData.name}\nEmail: ${formData.email}\n\n${formData.message}`)}`;
+    const mailtoLink = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(formData.subject || 'Contact from Flomerce Website')}&body=${encodeURIComponent(`Name: ${formData.name}\nEmail: ${formData.email}\n\n${formData.message}`)}`;
     window.location.href = mailtoLink;
     setStatus('sent');
     setTimeout(() => setStatus(null), 4000);
@@ -22,7 +22,7 @@ export default function ContactForm() {
       <div className="contact-wrapper">
         <div className="contact-info-side">
           <h2>Get in Touch</h2>
-          <p>Have questions about Fluxe? Need help getting started? We'd love to hear from you.</p>
+          <p>Have questions about Flomerce? Need help getting started? We'd love to hear from you.</p>
           <div className="contact-details">
             <div className="contact-detail-item">
               <div className="contact-detail-icon">

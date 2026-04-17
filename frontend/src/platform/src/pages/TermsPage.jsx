@@ -14,12 +14,12 @@ export default function TermsPage() {
 
           <section>
             <h2>1. Acceptance of Terms</h2>
-            <p>By accessing or using the Fluxe platform ("Service"), available at {PLATFORM_DOMAIN}, you agree to be bound by these Terms & Conditions ("Terms"). If you do not agree with any part of these Terms, you may not use our Service. These Terms constitute a legally binding agreement between you and Fluxe.</p>
+            <p>By accessing or using the Flomerce platform ("Service"), available at {PLATFORM_DOMAIN}, you agree to be bound by these Terms & Conditions ("Terms"). If you do not agree with any part of these Terms, you may not use our Service. These Terms constitute a legally binding agreement between you and Flomerce.</p>
           </section>
 
           <section>
             <h2>2. Description of Service</h2>
-            <p>Fluxe is a software-as-a-service (SaaS) platform that enables users to create, manage, and host e-commerce websites on subdomains of {PLATFORM_DOMAIN} (e.g., your-store.{PLATFORM_DOMAIN}). The platform provides website building tools, product management, order processing, customer management, analytics, and payment integration capabilities. Fluxe is a digital product — no physical goods are shipped by Fluxe. Access to all platform features is granted immediately upon successful payment or trial activation.</p>
+            <p>Flomerce is a software-as-a-service (SaaS) platform that enables users to create, manage, and host e-commerce websites on subdomains of {PLATFORM_DOMAIN} (e.g., your-store.{PLATFORM_DOMAIN}). The platform provides website building tools, product management, order processing, customer management, analytics, and payment integration capabilities. Flomerce is a digital product — no physical goods are shipped by Flomerce. Access to all platform features is granted immediately upon successful payment or trial activation.</p>
           </section>
 
           <section>
@@ -29,17 +29,17 @@ export default function TermsPage() {
 
           <section>
             <h2>4. Subscription Plans & Payments</h2>
-            <p>Fluxe offers various subscription plans with different features and pricing, viewable on our website. By subscribing to a paid plan, you agree to pay the applicable fees as described at the time of purchase. All payments are processed securely through Razorpay, a PCI DSS-compliant payment gateway. Subscription fees are billed in advance on a recurring basis depending on your chosen billing cycle. All prices are displayed in Indian Rupees (INR). Razorpay supports payments via credit cards, debit cards, UPI, net banking, and digital wallets. Standard payment gateway transaction fees as charged by Razorpay (currently 2% per transaction for most payment methods) may apply and are borne by Fluxe for platform subscription payments. These rates are determined by Razorpay and may change; refer to <a href="https://razorpay.com/pricing" target="_blank" rel="noopener noreferrer">Razorpay's pricing page</a> for current rates.</p>
+            <p>Flomerce offers various subscription plans with different features and pricing, viewable on our website. By subscribing to a paid plan, you agree to pay the applicable fees as described at the time of purchase. All payments are processed securely through Razorpay, a PCI DSS-compliant payment gateway. Subscription fees are billed in advance on a recurring basis depending on your chosen billing cycle. All prices are displayed in Indian Rupees (INR). Razorpay supports payments via credit cards, debit cards, UPI, net banking, and digital wallets. Standard payment gateway transaction fees as charged by Razorpay (currently 2% per transaction for most payment methods) may apply and are borne by Flomerce for platform subscription payments. These rates are determined by Razorpay and may change; refer to <a href="https://razorpay.com/pricing" target="_blank" rel="noopener noreferrer">Razorpay's pricing page</a> for current rates.</p>
           </section>
 
           <section>
             <h2>5. Payment Processing & Gateway Integration</h2>
-            <p>Fluxe operates as a <strong>standard merchant</strong> and is <strong>not a payment aggregator, facilitator, or intermediary</strong>. The platform handles two distinct types of payments:</p>
+            <p>Flomerce operates as a <strong>standard merchant</strong> and is <strong>not a payment aggregator, facilitator, or intermediary</strong>. The platform handles two distinct types of payments:</p>
             <ul>
-              <li><strong>Platform Subscription Payments:</strong> Fees paid by website owners for Fluxe subscription plans (Starter, Growth, Pro, etc.) are collected directly by Fluxe through its own Razorpay merchant account. These are payments for Fluxe's SaaS services only.</li>
-              <li><strong>Website Customer Payments:</strong> Payments made by end customers on websites created through Fluxe are processed entirely through the <strong>website owner's own, independently registered Razorpay merchant account</strong>. Website owners are required to obtain their own Razorpay account, complete their own KYC verification, and enter their own API credentials in their website dashboard settings.</li>
+              <li><strong>Platform Subscription Payments:</strong> Fees paid by website owners for Flomerce subscription plans (Starter, Growth, Pro, etc.) are collected directly by Flomerce through its own Razorpay merchant account. These are payments for Flomerce's SaaS services only.</li>
+              <li><strong>Website Customer Payments:</strong> Payments made by end customers on websites created through Flomerce are processed entirely through the <strong>website owner's own, independently registered Razorpay merchant account</strong>. Website owners are required to obtain their own Razorpay account, complete their own KYC verification, and enter their own API credentials in their website dashboard settings.</li>
             </ul>
-            <p>Fluxe does <strong>not collect, hold, pool, settle, or route</strong> any payments on behalf of website owners or their customers. All transaction funds flow directly from the customer to the website owner's Razorpay account. Fluxe has no access to or control over these funds at any point.</p>
+            <p>Flomerce does <strong>not collect, hold, pool, settle, or route</strong> any payments on behalf of website owners or their customers. All transaction funds flow directly from the customer to the website owner's Razorpay account. Flomerce has no access to or control over these funds at any point.</p>
             <p>Each website owner is solely responsible for:</p>
             <ul>
               <li>Maintaining their own valid Razorpay merchant account and KYC compliance</li>
@@ -47,8 +47,8 @@ export default function TermsPage() {
               <li>Handling refunds, disputes, and chargebacks for their own website transactions</li>
               <li>Complying with all applicable payment regulations, including RBI guidelines on digital payments</li>
             </ul>
-            <p>Payment gateway transaction fees charged by Razorpay on website customer payments (e.g., 2% per transaction) are applied to the website owner's Razorpay account as per their own agreement with Razorpay. Fluxe does not charge any additional commission or processing fee on these transactions.</p>
-            <p>Razorpay API keys entered by website owners are stored securely in encrypted form and are used solely for processing transactions on their respective websites. Fluxe does not share, transfer, or use one merchant's credentials for any other purpose.</p>
+            <p>Payment gateway transaction fees charged by Razorpay on website customer payments (e.g., 2% per transaction) are applied to the website owner's Razorpay account as per their own agreement with Razorpay. Flomerce does not charge any additional commission or processing fee on these transactions.</p>
+            <p>Razorpay API keys entered by website owners are stored securely in encrypted form and are used solely for processing transactions on their respective websites. Flomerce does not share, transfer, or use one merchant's credentials for any other purpose.</p>
           </section>
 
           <section>
@@ -58,12 +58,12 @@ export default function TermsPage() {
 
           <section>
             <h2>7. Digital Delivery</h2>
-            <p>Fluxe is a digital SaaS product. No physical goods are shipped by Fluxe. Upon successful payment or trial activation, access to the platform and all included features is granted immediately. Your e-commerce website will be live and accessible at your chosen subdomain (your-store.{PLATFORM_DOMAIN}) within seconds of creation.</p>
+            <p>Flomerce is a digital SaaS product. No physical goods are shipped by Flomerce. Upon successful payment or trial activation, access to the platform and all included features is granted immediately. Your e-commerce website will be live and accessible at your chosen subdomain (your-store.{PLATFORM_DOMAIN}) within seconds of creation.</p>
           </section>
 
           <section>
             <h2>8. User Content</h2>
-            <p>You retain ownership of all content you upload to your websites created through Fluxe, including but not limited to product images, descriptions, logos, and text. You are solely responsible for ensuring that your content does not violate any applicable laws, infringe upon intellectual property rights, or contain prohibited material. You grant Fluxe a limited, non-exclusive license to host and display your content as necessary to provide the Service.</p>
+            <p>You retain ownership of all content you upload to your websites created through Flomerce, including but not limited to product images, descriptions, logos, and text. You are solely responsible for ensuring that your content does not violate any applicable laws, infringe upon intellectual property rights, or contain prohibited material. You grant Flomerce a limited, non-exclusive license to host and display your content as necessary to provide the Service.</p>
           </section>
 
           <section>
@@ -83,7 +83,7 @@ export default function TermsPage() {
 
           <section>
             <h2>10. Intellectual Property</h2>
-            <p>The Fluxe platform, including its design, code, features, and branding, is the intellectual property of Fluxe and is protected by applicable copyright and trademark laws. You may not copy, modify, distribute, or reverse-engineer any part of the Service without prior written consent.</p>
+            <p>The Flomerce platform, including its design, code, features, and branding, is the intellectual property of Flomerce and is protected by applicable copyright and trademark laws. You may not copy, modify, distribute, or reverse-engineer any part of the Service without prior written consent.</p>
           </section>
 
           <section>
@@ -93,7 +93,7 @@ export default function TermsPage() {
 
           <section>
             <h2>12. Limitation of Liability</h2>
-            <p>To the maximum extent permitted by law, Fluxe shall not be liable for any indirect, incidental, special, consequential, or punitive damages, including but not limited to loss of profits, data, or business opportunities, arising out of or in connection with the use of the Service. Our total liability shall not exceed the amount paid by you in the preceding 12 months.</p>
+            <p>To the maximum extent permitted by law, Flomerce shall not be liable for any indirect, incidental, special, consequential, or punitive damages, including but not limited to loss of profits, data, or business opportunities, arising out of or in connection with the use of the Service. Our total liability shall not exceed the amount paid by you in the preceding 12 months.</p>
           </section>
 
           <section>
@@ -114,7 +114,7 @@ export default function TermsPage() {
           <section>
             <h2>16. Contact Us</h2>
             <p>If you have any questions about these Terms & Conditions, please contact us at:</p>
-            <p><strong>Fluxe</strong></p>
+            <p><strong>Flomerce</strong></p>
             <p><strong>Email:</strong> <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a></p>
             <p><strong>Phone:</strong> <a href="tel:+919901954610">+91 9901954610</a></p>
             <p><strong>Address:</strong> Karwar, Karnataka, India — 581400</p>
@@ -130,7 +130,7 @@ export default function TermsPage() {
             <Link to="/refund-policy">Refund & Cancellation Policy</Link>
             <Link to="/shipping-policy">Shipping & Delivery Policy</Link>
           </div>
-          <p>&copy; {new Date().getFullYear()} Fluxe. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} Flomerce. All rights reserved.</p>
           <p style={{ color: '#94a3b8', fontSize: '0.75rem', marginTop: '0.5rem' }}>Karwar, Karnataka, India — 581400 | +91 9901954610 | {SUPPORT_EMAIL}</p>
         </footer>
       </div>

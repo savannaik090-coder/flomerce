@@ -133,7 +133,7 @@ export default function LandingPage() {
           <div className="hero-content reveal">
             <div className="hero-badge">Launch Your E-Commerce Store for Less Than ₹10/Day</div>
             <h1>Build Your<br /><span className="hero-accent">Online Store</span><br />No Code Needed</h1>
-            <p className="hero-desc">Fluxe helps small businesses and entrepreneurs create professional e-commerce websites with product management, order processing, and secure payments — all from one dashboard.</p>
+            <p className="hero-desc">Flomerce helps small businesses and entrepreneurs create professional e-commerce websites with product management, order processing, and secure payments — all from one dashboard.</p>
             <div className="hero-buttons">
               <Link to="/signup" className="btn btn-hero-primary">
                 Get Started Free
@@ -147,7 +147,7 @@ export default function LandingPage() {
         <section className="landing-section teaser-section reveal">
           <div className="section-header">
             <span className="section-pill">Demo</span>
-            <h2>See Fluxe in Action</h2>
+            <h2>See Flomerce in Action</h2>
             <p>Watch how easy it is to build and manage your online store.</p>
           </div>
           <div className="teaser-wrapper">
@@ -178,7 +178,7 @@ export default function LandingPage() {
           <div className="section-header">
             <span className="section-pill">Features</span>
             <h2>Everything You Need to Sell Online</h2>
-            <p>From store setup to order delivery, Fluxe gives you all the tools to run your online business.</p>
+            <p>From store setup to order delivery, Flomerce gives you all the tools to run your online business.</p>
           </div>
           <div className="features-grid">
             {features.map((f, i) => (
@@ -207,7 +207,7 @@ export default function LandingPage() {
         <footer className="landing-footer">
           <div className="footer-top">
             <div className="footer-brand">
-              <img src="/assets/images/fluxe-logo.png" alt="Fluxe" className="footer-logo" />
+              <img src="/assets/images/flomerce-logo.png" alt="Flomerce" className="footer-logo" />
               <p>Empowering small businesses to sell online with ease.</p>
             </div>
             <div className="footer-links-group">
@@ -226,16 +226,16 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="footer-bottom">
-            <p>&copy; {new Date().getFullYear()} Fluxe. All rights reserved.</p>
+            <p>&copy; {new Date().getFullYear()} Flomerce. All rights reserved.</p>
           </div>
         </footer>
       </div>
 
       <div className={`pwa-install-bar${showPwa ? ' show' : ''}`}>
         <div className="pwa-info">
-          <img src="/assets/images/fluxe-logo.png" alt="Logo" className="pwa-logo" />
+          <img src="/assets/images/flomerce-logo.png" alt="Logo" className="pwa-logo" />
           <div className="pwa-text">
-            <h4>Install Fluxe</h4>
+            <h4>Install Flomerce</h4>
             <p>Add to home screen for better experience</p>
           </div>
         </div>

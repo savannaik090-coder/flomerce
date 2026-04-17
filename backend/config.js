@@ -1,4 +1,4 @@
-export const PLATFORM_DOMAIN = 'fluxe.in';
+export const PLATFORM_DOMAIN = 'flomerce.com';
 export const PLATFORM_URL = `https://${PLATFORM_DOMAIN}`;
 export const SUPPORT_EMAIL = `support@${PLATFORM_DOMAIN}`;
 export const FROM_EMAIL = `noreply@${PLATFORM_DOMAIN}`;

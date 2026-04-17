@@ -134,7 +134,7 @@ export default function LoginPage() {
           <a href="#" onClick={(e) => { e.preventDefault(); setShowForgotModal(true); }}>Forgot password?</a>
         </div>
         <p className="auth-footer">
-          New to Fluxe? <Link to="/signup">Create an account</Link>
+          New to Flomerce? <Link to="/signup">Create an account</Link>
         </p>
       </div>
 

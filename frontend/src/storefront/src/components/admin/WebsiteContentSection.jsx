@@ -146,7 +146,7 @@ export default function WebsiteContentSection({ currentPlan }) {
     [iframeRef.current, mobileIframeRef.current].forEach(frame => {
       try {
         if (frame?.contentWindow) {
-          frame.contentWindow.postMessage({ type: 'FLUXE_PREVIEW_UPDATE', settings: settingsPatch }, '*');
+          frame.contentWindow.postMessage({ type: 'FLOMERCE_PREVIEW_UPDATE', settings: settingsPatch }, '*');
         }
       } catch (e) {}
     });
@@ -158,7 +158,7 @@ export default function WebsiteContentSection({ currentPlan }) {
       try {
         if (mobileIframeRef.current?.contentWindow) {
           mobileIframeRef.current.contentWindow.postMessage(
-            { type: 'FLUXE_PREVIEW_UPDATE', settings: accumulatedSettingsRef.current }, '*'
+            { type: 'FLOMERCE_PREVIEW_UPDATE', settings: accumulatedSettingsRef.current }, '*'
           );
         }
       } catch (e) {}

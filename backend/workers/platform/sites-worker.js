@@ -106,7 +106,7 @@ const RESERVED_SUBDOMAINS = new Set([
   'cdn', 'assets', 'static', 'media', 'images', 'img',
   'payment', 'payments', 'checkout', 'cart', 'order', 'orders',
   'contact', 'about', 'terms', 'privacy', 'legal', 'security',
-  'root', 'system', 'internal', 'platform', 'fluxe', 'buildflux',
+  'root', 'system', 'internal', 'platform', 'flomerce', 'buildflux',
   'ns1', 'ns2', 'mx', 'smtp', 'pop', 'imap', 'webmail',
   'cpanel', 'whm', 'plesk', 'server', 'host', 'hosting',
   'demo', 'example', 'sandbox', 'preview',
@@ -915,7 +915,7 @@ async function handleVerifyDomain(env, siteId) {
     let txtVerified = false;
     try {
       const baseDomain = domain.replace(/^www\./, '');
-      const txtHost = `_fluxe-verify.${baseDomain}`;
+      const txtHost = `_flomerce-verify.${baseDomain}`;
       const txtResponse = await fetch(
         `https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(txtHost)}&type=TXT`,
         { headers: { 'Accept': 'application/dns-json' } }
@@ -931,7 +931,7 @@ async function handleVerifyDomain(env, siteId) {
         }
       }
       if (!txtVerified) {
-        errors.push(`TXT record not found. Add a TXT record for _fluxe-verify.${baseDomain} with value: ${expectedToken}`);
+        errors.push(`TXT record not found. Add a TXT record for _flomerce-verify.${baseDomain} with value: ${expectedToken}`);
       }
     } catch (dnsErr) {
       errors.push('Could not verify TXT record: ' + dnsErr.message);

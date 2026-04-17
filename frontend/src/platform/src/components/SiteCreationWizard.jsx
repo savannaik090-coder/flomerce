@@ -55,7 +55,7 @@ function generateSEODefaults(category, brandName) {
   return { title: titleFn(name), description: descFn(name) };
 }
 
-const WIZARD_STORAGE_KEY = 'fluxe_wizard_draft';
+const WIZARD_STORAGE_KEY = 'flomerce_wizard_draft';
 
 function loadWizardDraft() {
   try {

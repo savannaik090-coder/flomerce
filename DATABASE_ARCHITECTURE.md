@@ -1,4 +1,4 @@
-# Fluxe Database Architecture
+# Flomerce Database Architecture
 
 Complete reference for how data is stored, routed, and managed across the platform.
 
@@ -6,7 +6,7 @@ Complete reference for how data is stored, routed, and managed across the platfo
 
 ## Database Overview
 
-Fluxe uses **two types of D1 databases**:
+Flomerce uses **two types of D1 databases**:
 
 | Database | Binding | Purpose |
 |----------|---------|---------|
@@ -77,7 +77,7 @@ The central routing table — maps subdomains to shards and stores site configur
 |--------|------|-------------|
 | id | TEXT PK | Site ID |
 | user_id | TEXT FK → users | Site owner |
-| subdomain | TEXT UNIQUE | e.g., `my-store` → `my-store.fluxe.in` |
+| subdomain | TEXT UNIQUE | e.g., `my-store` → `my-store.flomerce.com` |
 | brand_name | TEXT | Store display name |
 | category | TEXT | Store category |
 | template_id | TEXT | Template used (default: `storefront`) |

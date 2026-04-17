@@ -1,7 +1,7 @@
-# Fluxe SaaS Platform
+# Flomerce SaaS Platform
 
 ## Overview
-Fluxe is a multi-tenant SaaS platform designed for small businesses and entrepreneurs to create scalable e-commerce websites from templates, each hosted on a unique subdomain (e.g., `store-name.fluxe.in`). It provides efficient online storefronts, comprehensive sales capabilities, and brand-building tools through a Cloudflare-centric serverless architecture. The platform aims to be an accessible and powerful solution for establishing an online presence. Key features include dynamic content, subscription management, an admin panel with an iframe preview, product options, subcategories, multi-currency support, a robust order flow with cancellation and return systems, product reviews, inventory locations, storage usage tracking, admin shard management, built-in analytics, and global shipping configurations.
+Flomerce is a multi-tenant SaaS platform designed for small businesses and entrepreneurs to create scalable e-commerce websites from templates, each hosted on a unique subdomain (e.g., `store-name.flomerce.com`). It provides efficient online storefronts, comprehensive sales capabilities, and brand-building tools through a Cloudflare-centric serverless architecture. The platform aims to be an accessible and powerful solution for establishing an online presence. Key features include dynamic content, subscription management, an admin panel with an iframe preview, product options, subcategories, multi-currency support, a robust order flow with cancellation and return systems, product reviews, inventory locations, storage usage tracking, admin shard management, built-in analytics, and global shipping configurations.
 
 ## User Preferences
 I prefer iterative development with clear communication on significant changes. Please ask before making major architectural decisions or large-scale code overhauls. Provide concise explanations and focus on effective solutions. Do not make changes to files in the `frontend/templates/` folder.
@@ -15,7 +15,7 @@ Both builds output to the `frontend/` directory (storefront to `frontend/storefr
 ## System Architecture
 
 ### Core Design
-Fluxe utilizes a shared shard-based D1 database architecture where multiple sites share Cloudflare D1 databases (shards) with `site_id`-based row isolation. A platform database (`env.DB`) stores global data (users, site metadata, subscriptions), while site-specific data (products, orders) resides in shard D1 databases, always filtered by `site_id`.
+Flomerce utilizes a shared shard-based D1 database architecture where multiple sites share Cloudflare D1 databases (shards) with `site_id`-based row isolation. A platform database (`env.DB`) stores global data (users, site metadata, subscriptions), while site-specific data (products, orders) resides in shard D1 databases, always filtered by `site_id`.
 
 ### Shared Shard Architecture
 - **Shards Registry:** `shards` table in the platform DB tracks all shard databases.

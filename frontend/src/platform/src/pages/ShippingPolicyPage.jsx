@@ -14,12 +14,12 @@ export default function ShippingPolicyPage() {
 
           <section>
             <h2>1. Digital Product — No Physical Shipping</h2>
-            <p>Fluxe is a software-as-a-service (SaaS) platform. All our services are delivered digitally via the internet. <strong>No physical goods are shipped by Fluxe.</strong> There is no physical shipment, courier, or logistics involved in any of our services.</p>
+            <p>Flomerce is a software-as-a-service (SaaS) platform. All our services are delivered digitally via the internet. <strong>No physical goods are shipped by Flomerce.</strong> There is no physical shipment, courier, or logistics involved in any of our services.</p>
           </section>
 
           <section>
             <h2>2. Instant Digital Delivery</h2>
-            <p>Upon successful payment or free trial activation, access to the Fluxe platform and all included features is granted <strong>immediately</strong>. Specifically:</p>
+            <p>Upon successful payment or free trial activation, access to the Flomerce platform and all included features is granted <strong>immediately</strong>. Specifically:</p>
             <ul>
               <li>Your account is activated instantly after payment confirmation</li>
               <li>Your e-commerce website is created and live within seconds at your chosen subdomain (e.g., your-store.{PLATFORM_DOMAIN})</li>
@@ -30,22 +30,22 @@ export default function ShippingPolicyPage() {
 
           <section>
             <h2>3. Service Availability</h2>
-            <p>Fluxe is a cloud-based platform accessible 24/7 from any device with an internet connection and a modern web browser. We strive for 99.9% uptime. In case of scheduled maintenance, we will notify users in advance via email.</p>
+            <p>Flomerce is a cloud-based platform accessible 24/7 from any device with an internet connection and a modern web browser. We strive for 99.9% uptime. In case of scheduled maintenance, we will notify users in advance via email.</p>
           </section>
 
           <section>
             <h2>4. Access Methods</h2>
-            <p>You can access the Fluxe platform through:</p>
+            <p>You can access the Flomerce platform through:</p>
             <ul>
               <li><strong>Web Browser:</strong> Visit <a href={PLATFORM_URL}>{PLATFORM_DOMAIN}</a> and log in to your account</li>
               <li><strong>Mobile Browser:</strong> The platform is fully responsive and works on all mobile devices</li>
-              <li><strong>PWA (Progressive Web App):</strong> Install Fluxe on your device for a native app-like experience</li>
+              <li><strong>PWA (Progressive Web App):</strong> Install Flomerce on your device for a native app-like experience</li>
             </ul>
           </section>
 
           <section>
-            <h2>5. Regarding Stores Created on Fluxe</h2>
-            <p>Fluxe enables merchants to create their own e-commerce websites. Shipping and delivery of physical products sold through stores built on Fluxe is the <strong>sole responsibility of the respective store owner (merchant)</strong>. Fluxe does not handle, manage, or take any responsibility for:</p>
+            <h2>5. Regarding Stores Created on Flomerce</h2>
+            <p>Flomerce enables merchants to create their own e-commerce websites. Shipping and delivery of physical products sold through stores built on Flomerce is the <strong>sole responsibility of the respective store owner (merchant)</strong>. Flomerce does not handle, manage, or take any responsibility for:</p>
             <ul>
               <li>Shipping or delivery of products sold by merchants on their stores</li>
               <li>Shipping costs, delivery timelines, or courier services used by merchants</li>
@@ -58,7 +58,7 @@ export default function ShippingPolicyPage() {
           <section>
             <h2>6. Contact Us</h2>
             <p>If you have any questions about this Shipping & Delivery Policy, please contact us at:</p>
-            <p><strong>Fluxe</strong></p>
+            <p><strong>Flomerce</strong></p>
             <p><strong>Email:</strong> <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a></p>
             <p><strong>Phone:</strong> <a href="tel:+919901954610">+91 9901954610</a></p>
             <p><strong>Address:</strong> Karwar, Karnataka, India — 581400</p>
@@ -74,7 +74,7 @@ export default function ShippingPolicyPage() {
             <Link to="/refund-policy">Refund & Cancellation Policy</Link>
             <Link to="/shipping-policy">Shipping & Delivery Policy</Link>
           </div>
-          <p>&copy; {new Date().getFullYear()} Fluxe. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} Flomerce. All rights reserved.</p>
           <p style={{ color: '#94a3b8', fontSize: '0.75rem', marginTop: '0.5rem' }}>Karwar, Karnataka, India — 581400 | +91 9901954610 | {SUPPORT_EMAIL}</p>
         </footer>
       </div>

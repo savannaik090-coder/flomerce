@@ -35,10 +35,10 @@ async function sendTestEmail(request, env) {
   const { email } = await request.json();
   if (!email) return errorResponse('Email is required');
 
-  const html = `<h3>Test Email</h3><p>This is a test email from Fluxe.</p>`;
-  const text = `Test Email from Fluxe`;
+  const html = `<h3>Test Email</h3><p>This is a test email from Flomerce.</p>`;
+  const text = `Test Email from Flomerce`;
 
-  const sent = await sendEmail(env, email, 'Fluxe Test Email', html, text);
+  const sent = await sendEmail(env, email, 'Flomerce Test Email', html, text);
   if (sent !== true) return errorResponse(typeof sent === 'string' ? sent : 'Failed to send test email', 500);
 
   return successResponse(null, 'Test email sent');

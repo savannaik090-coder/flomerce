@@ -5,10 +5,10 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const frontendDir = path.join(__dirname, 'frontend');
 
-console.log('Building Fluxe Platform...');
+console.log('Building Flomerce Platform...');
 execSync('npm run build', { cwd: path.join(frontendDir, 'src/platform'), stdio: 'inherit' });
 
-console.log('Building Fluxe Storefront...');
+console.log('Building Flomerce Storefront...');
 execSync('npm run build', { cwd: path.join(frontendDir, 'src/storefront'), stdio: 'inherit' });
 
 console.log('Build complete!');

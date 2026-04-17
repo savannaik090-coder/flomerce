@@ -14,13 +14,13 @@ export default function AboutPage() {
 
           <section>
             <h2>Who We Are</h2>
-            <p>Fluxe is a software-as-a-service (SaaS) platform built to help small businesses, entrepreneurs, and creators launch their own professional e-commerce websites — without writing a single line of code. We believe that every business, no matter how small, deserves a powerful online presence.</p>
-            <p>Based in Karwar, Karnataka, India, Fluxe was founded with a simple mission: make online selling accessible, affordable, and effortless for everyone.</p>
+            <p>Flomerce is a software-as-a-service (SaaS) platform built to help small businesses, entrepreneurs, and creators launch their own professional e-commerce websites — without writing a single line of code. We believe that every business, no matter how small, deserves a powerful online presence.</p>
+            <p>Based in Karwar, Karnataka, India, Flomerce was founded with a simple mission: make online selling accessible, affordable, and effortless for everyone.</p>
           </section>
 
           <section>
             <h2>What We Do</h2>
-            <p>Fluxe provides a complete, all-in-one platform for creating and managing online stores. Each store gets its own branded subdomain (e.g., your-store.{PLATFORM_DOMAIN}) and comes packed with everything needed to run a successful e-commerce business:</p>
+            <p>Flomerce provides a complete, all-in-one platform for creating and managing online stores. Each store gets its own branded subdomain (e.g., your-store.{PLATFORM_DOMAIN}) and comes packed with everything needed to run a successful e-commerce business:</p>
             <ul>
               <li><strong>Store Builder:</strong> Create a fully functional online store in minutes with beautiful, ready-to-use templates</li>
               <li><strong>Product Management:</strong> Add products with images, categories, variants, pricing, and inventory tracking</li>
@@ -36,8 +36,8 @@ export default function AboutPage() {
 
           <section>
             <h2>Our Mission</h2>
-            <p>We are on a mission to democratize e-commerce for small businesses across India and beyond. Traditional e-commerce solutions are often expensive, complex, and require technical expertise. Fluxe eliminates these barriers by providing an intuitive, affordable platform that anyone can use.</p>
-            <p>Whether you sell jewellery, clothing, beauty products, or any other retail goods — Fluxe gives you the tools to build your brand, reach customers, and grow your business online.</p>
+            <p>We are on a mission to democratize e-commerce for small businesses across India and beyond. Traditional e-commerce solutions are often expensive, complex, and require technical expertise. Flomerce eliminates these barriers by providing an intuitive, affordable platform that anyone can use.</p>
+            <p>Whether you sell jewellery, clothing, beauty products, or any other retail goods — Flomerce gives you the tools to build your brand, reach customers, and grow your business online.</p>
           </section>
 
           <section>
@@ -63,7 +63,7 @@ export default function AboutPage() {
           <section>
             <h2>Contact Us</h2>
             <p>We would love to hear from you. Whether you have questions, feedback, or need help getting started:</p>
-            <p><strong>Fluxe</strong></p>
+            <p><strong>Flomerce</strong></p>
             <p><strong>Email:</strong> <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a></p>
             <p><strong>Phone:</strong> <a href="tel:+919901954610">+91 9901954610</a></p>
             <p><strong>Address:</strong> Karwar, Karnataka, India — 581400</p>
@@ -79,7 +79,7 @@ export default function AboutPage() {
             <Link to="/refund-policy">Refund & Cancellation Policy</Link>
             <Link to="/shipping-policy">Shipping & Delivery Policy</Link>
           </div>
-          <p>&copy; {new Date().getFullYear()} Fluxe. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} Flomerce. All rights reserved.</p>
           <p style={{ color: '#94a3b8', fontSize: '0.75rem', marginTop: '0.5rem' }}>Karwar, Karnataka, India — 581400 | +91 9901954610 | {SUPPORT_EMAIL}</p>
         </footer>
       </div>

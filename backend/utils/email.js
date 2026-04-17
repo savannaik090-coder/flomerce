@@ -63,7 +63,7 @@ export async function sendEmail(env, to, subject, html, text) {
     });
 
     const payload = {
-      sender: { email: fromEmail, name: 'Fluxe' },
+      sender: { email: fromEmail, name: 'Flomerce' },
       to: toPayload,
       subject,
       htmlContent: html,
@@ -413,7 +413,7 @@ export function buildDeliveryOwnerEmail(order, brandName, currency = 'INR', time
           <p style="margin-top: 20px; color: #64748b; font-size: 14px;">The customer has been notified and prompted to leave a review. Keep up the great work!</p>
         </div>
         <div style="background: #f8f9fa; padding: 16px 32px; text-align: center; font-size: 12px; color: #94a3b8;">
-          <p style="margin: 0;">This is an automated notification from ${brandName || 'Fluxe'}.</p>
+          <p style="margin: 0;">This is an automated notification from ${brandName || 'Flomerce'}.</p>
         </div>
       </div>
     </body>
@@ -450,7 +450,7 @@ export function buildCancellationOwnerEmail(order, brandName, reason, currency =
           </div>
         </div>
         <div style="background: #f8f9fa; padding: 16px 32px; text-align: center; font-size: 12px; color: #94a3b8;">
-          <p style="margin: 0;">This is an automated notification from ${brandName || 'Fluxe'}.</p>
+          <p style="margin: 0;">This is an automated notification from ${brandName || 'Flomerce'}.</p>
         </div>
       </div>
     </body>
@@ -527,7 +527,7 @@ export function buildOwnerNotificationEmail(order, brandName, currency = 'INR', 
           </table>
         </div>
         <div style="background: #f8f9fa; padding: 16px 32px; text-align: center; font-size: 12px; color: #94a3b8;">
-          <p style="margin: 0;">This is an automated notification from ${brandName || 'Fluxe'}.</p>
+          <p style="margin: 0;">This is an automated notification from ${brandName || 'Flomerce'}.</p>
         </div>
       </div>
     </body>
@@ -609,7 +609,7 @@ export function buildNewOrderReviewEmail(order, brandName, currency = 'INR', tim
           </table>
         </div>
         <div style="background: #f8f9fa; padding: 16px 32px; text-align: center; font-size: 12px; color: #94a3b8;">
-          <p style="margin: 0;">This is an automated notification from ${brandName || 'Fluxe'}.</p>
+          <p style="margin: 0;">This is an automated notification from ${brandName || 'Flomerce'}.</p>
         </div>
       </div>
     </body>

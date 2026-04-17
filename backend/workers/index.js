@@ -52,7 +52,7 @@ export default {
       const hostname = url.hostname;
       const platformDomain = env.DOMAIN || PLATFORM_DOMAIN;
       if (hostname === `www.${platformDomain}` || hostname === platformDomain) {
-        const pagesHostname = env.PAGES_HOSTNAME || 'fluxe-8x1.pages.dev';
+        const pagesHostname = env.PAGES_HOSTNAME || 'flomerce-8x1.pages.dev';
         const pagesUrl = new URL(request.url);
         pagesUrl.hostname = pagesHostname;
         const pagesRequest = new Request(pagesUrl.toString(), {
@@ -322,7 +322,7 @@ async function handleGoogleAuthFlow(request, env, path) {
 
     const html = `<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Sign in with Google - Fluxe</title>
+<title>Sign in with Google - Flomerce</title>
 <style>
 body{margin:0;font-family:'Lato',sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f8f9fa}
 .container{text-align:center;background:#fff;padding:40px;border-radius:12px;box-shadow:0 2px 20px rgba(0,0,0,0.1);max-width:400px;width:90%}

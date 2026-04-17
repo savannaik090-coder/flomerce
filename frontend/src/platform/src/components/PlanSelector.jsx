@@ -232,7 +232,7 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
       const options = {
         key: razorpayKeyId,
         subscription_id: res.subscriptionId,
-        name: 'Fluxe',
+        name: 'Flomerce',
         description: `${res.planName} - ${DURATION_LABELS[res.billingCycle] || res.billingCycle}`,
         handler: async function (response) {
           setPostPayment({ state: 'verifying', message: '' });
