@@ -10,7 +10,7 @@ const ADMIN_EMAILS = [
   'savannaik090@gmail.com',
   'xiyohe3598@indevgo.com',
 ];
-
+ 
 async function isOwner(user, env) {
   if (!user) return false;
   return ADMIN_EMAILS.some(e => e.toLowerCase() === user.email?.toLowerCase());
