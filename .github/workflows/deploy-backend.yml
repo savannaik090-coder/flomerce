@@ -3,7 +3,7 @@ name: Deploy Backend to Cloudflare Workers
 on:
   push:
     branches:
-      - fluxe
+      - main
     paths:
       - "backend/**"
   workflow_dispatch:
