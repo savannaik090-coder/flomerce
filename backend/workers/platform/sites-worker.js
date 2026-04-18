@@ -155,7 +155,7 @@ async function getUserSites(env, user) {
     for (const site of sites.results) {
       const config = await getSiteConfig(env, site.id);
 
-      let subscription = { plan: site.subscription_plan || null, status: 'none', billingCycle: null, periodStart: null, periodEnd: null };
+      let subscription = { plan: null, status: 'none', billingCycle: null, periodStart: null, periodEnd: null };
       try {
         if (site.subscription_plan === 'enterprise') {
           subscription = {
@@ -166,31 +166,40 @@ async function getUserSites(env, user) {
             periodEnd: site.subscription_expires_at || '2099-12-31T23:59:59',
           };
         } else {
-          const sub = await env.DB.prepare(
+          // Prefer an active sub. Otherwise fall back to most recent (so the UI can show
+          // "expired"/"cancelled" + a scheduled downgrade if any). Trial is recognised by
+          // plan='trial' on the subscriptions row (we no longer trust sites.subscription_plan).
+          const activeSub = await env.DB.prepare(
+            `SELECT plan, status, billing_cycle, current_period_start, current_period_end, razorpay_subscription_id FROM subscriptions WHERE site_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1`
+          ).bind(site.id).first();
+          const sub = activeSub || await env.DB.prepare(
             `SELECT plan, status, billing_cycle, current_period_start, current_period_end, razorpay_subscription_id FROM subscriptions WHERE site_id = ? AND status != 'enterprise_override' ORDER BY created_at DESC LIMIT 1`
           ).bind(site.id).first();
+
           if (sub) {
             let subStatus = sub.status;
             if (subStatus === 'active' && sub.current_period_end && new Date(sub.current_period_end) < new Date()) {
               subStatus = 'expired';
             }
             subscription = {
-              plan: sub.plan,
+              plan: subStatus === 'active' ? sub.plan : null,
+              latestPlan: sub.plan,
               status: subStatus,
               billingCycle: sub.billing_cycle,
               periodStart: sub.current_period_start,
               periodEnd: sub.current_period_end,
               hasRazorpay: !!sub.razorpay_subscription_id,
             };
-          } else if (site.subscription_plan && site.subscription_expires_at) {
-            const isExpired = new Date(site.subscription_expires_at) < new Date();
-            subscription = {
-              plan: site.subscription_plan,
-              status: isExpired ? 'expired' : 'active',
-              billingCycle: null,
-              periodStart: null,
-              periodEnd: site.subscription_expires_at,
-            };
+          }
+
+          // Surface any scheduled downgrade so the dashboard can show "switching to X on Y".
+          const scheduled = await env.DB.prepare(
+            `SELECT plan, billing_cycle, current_period_start FROM subscriptions WHERE site_id = ? AND status = 'scheduled' ORDER BY current_period_start ASC LIMIT 1`
+          ).bind(site.id).first();
+          if (scheduled) {
+            subscription.scheduledPlan = scheduled.plan;
+            subscription.scheduledBillingCycle = scheduled.billing_cycle;
+            subscription.scheduledStartAt = scheduled.current_period_start;
           }
         }
       } catch (e) {}

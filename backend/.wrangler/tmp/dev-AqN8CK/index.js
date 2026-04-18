@@ -5094,7 +5094,7 @@ async function getUserSites(env, user) {
     const enrichedSites = [];
     for (const site of sites.results) {
       const config = await getSiteConfig(env, site.id);
-      let subscription = { plan: site.subscription_plan || null, status: "none", billingCycle: null, periodStart: null, periodEnd: null };
+      let subscription = { plan: null, status: "none", billingCycle: null, periodStart: null, periodEnd: null };
       try {
         if (site.subscription_plan === "enterprise") {
           subscription = {
@@ -5105,7 +5105,10 @@ async function getUserSites(env, user) {
             periodEnd: site.subscription_expires_at || "2099-12-31T23:59:59"
           };
         } else {
-          const sub = await env.DB.prepare(
+          const activeSub = await env.DB.prepare(
+            `SELECT plan, status, billing_cycle, current_period_start, current_period_end, razorpay_subscription_id FROM subscriptions WHERE site_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1`
+          ).bind(site.id).first();
+          const sub = activeSub || await env.DB.prepare(
             `SELECT plan, status, billing_cycle, current_period_start, current_period_end, razorpay_subscription_id FROM subscriptions WHERE site_id = ? AND status != 'enterprise_override' ORDER BY created_at DESC LIMIT 1`
           ).bind(site.id).first();
           if (sub) {
@@ -5114,22 +5117,22 @@ async function getUserSites(env, user) {
               subStatus = "expired";
             }
             subscription = {
-              plan: sub.plan,
+              plan: subStatus === "active" ? sub.plan : null,
+              latestPlan: sub.plan,
               status: subStatus,
               billingCycle: sub.billing_cycle,
               periodStart: sub.current_period_start,
               periodEnd: sub.current_period_end,
               hasRazorpay: !!sub.razorpay_subscription_id
             };
-          } else if (site.subscription_plan && site.subscription_expires_at) {
-            const isExpired2 = new Date(site.subscription_expires_at) < /* @__PURE__ */ new Date();
-            subscription = {
-              plan: site.subscription_plan,
-              status: isExpired2 ? "expired" : "active",
-              billingCycle: null,
-              periodStart: null,
-              periodEnd: site.subscription_expires_at
-            };
+          }
+          const scheduled = await env.DB.prepare(
+            `SELECT plan, billing_cycle, current_period_start FROM subscriptions WHERE site_id = ? AND status = 'scheduled' ORDER BY current_period_start ASC LIMIT 1`
+          ).bind(site.id).first();
+          if (scheduled) {
+            subscription.scheduledPlan = scheduled.plan;
+            subscription.scheduledBillingCycle = scheduled.billing_cycle;
+            subscription.scheduledStartAt = scheduled.current_period_start;
           }
         }
       } catch (e) {
@@ -11061,6 +11064,25 @@ async function verifyPayment(request, env) {
   }
 }
 __name(verifyPayment, "verifyPayment");
+async function fetchRazorpaySubscriptionEntity(env, subId) {
+  try {
+    const platformKeyId = await getPlatformRazorpayKeyId(env);
+    const keyId = platformKeyId || env.RAZORPAY_KEY_ID;
+    const keySecret = env.RAZORPAY_KEY_SECRET;
+    if (!keyId || !keySecret)
+      return null;
+    const res = await fetch(`https://api.razorpay.com/v1/subscriptions/${subId}`, {
+      headers: { "Authorization": "Basic " + btoa(`${keyId}:${keySecret}`) }
+    });
+    if (!res.ok)
+      return null;
+    return await res.json();
+  } catch (e) {
+    console.error("fetchRazorpaySubscriptionEntity error:", e);
+    return null;
+  }
+}
+__name(fetchRazorpaySubscriptionEntity, "fetchRazorpaySubscriptionEntity");
 async function verifySubscriptionPayment(request, env, { razorpay_subscription_id, razorpay_payment_id, razorpay_signature }) {
   try {
     const keySecret = env.RAZORPAY_KEY_SECRET;
@@ -11104,7 +11126,8 @@ async function verifySubscriptionPayment(request, env, { razorpay_subscription_i
            WHERE ps.razorpay_subscription_id = ? AND ps.user_id = ?`
         ).bind(razorpay_subscription_id, user.id).first();
         if (retryPending) {
-          const retryActivated = await activateSubscription(env, user.id, retryPending.plan_name, retryPending.billing_cycle, razorpay_payment_id, razorpay_subscription_id, retryPending.display_price, retryPending.site_id || null);
+          const retryEntity = await fetchRazorpaySubscriptionEntity(env, razorpay_subscription_id);
+          const retryActivated = await activateSubscription(env, user.id, retryPending.plan_name, retryPending.billing_cycle, razorpay_payment_id, razorpay_subscription_id, retryPending.display_price, retryPending.site_id || null, retryEntity);
           if (retryActivated) {
             try {
               await env.DB.prepare(`DELETE FROM pending_subscriptions WHERE razorpay_subscription_id = ?`).bind(razorpay_subscription_id).run();
@@ -11116,7 +11139,8 @@ async function verifySubscriptionPayment(request, env, { razorpay_subscription_i
       }
       return errorResponse("No matching pending subscription found. If you were charged, your plan will activate shortly via webhook. Please refresh the page in a minute.", 400);
     }
-    const activated = await activateSubscription(env, user.id, pending.plan_name, pending.billing_cycle, razorpay_payment_id, razorpay_subscription_id, pending.display_price, pending.site_id || null);
+    const subEntity = await fetchRazorpaySubscriptionEntity(env, razorpay_subscription_id);
+    const activated = await activateSubscription(env, user.id, pending.plan_name, pending.billing_cycle, razorpay_payment_id, razorpay_subscription_id, pending.display_price, pending.site_id || null, subEntity);
     if (!activated) {
       return errorResponse("Failed to activate subscription", 500);
     }
@@ -11319,6 +11343,13 @@ async function createRazorpaySubscription(request, env, user) {
       if (!site) {
         return errorResponse("Site not found or you do not own this site.", 403);
       }
+      const alreadyScheduled = await env.DB.prepare(
+        `SELECT plan, billing_cycle, current_period_start FROM subscriptions WHERE site_id = ? AND status = 'scheduled' ORDER BY current_period_start ASC LIMIT 1`
+      ).bind(siteId).first();
+      if (alreadyScheduled) {
+        const dt = alreadyScheduled.current_period_start ? new Date(alreadyScheduled.current_period_start).toLocaleDateString() : "the end of your current billing period";
+        return errorResponse(`A plan change to "${alreadyScheduled.plan}" is already scheduled to start on ${dt}. Please wait for it to take effect or contact support to cancel it.`, 409, "PLAN_CHANGE_PENDING");
+      }
     }
     const platformKeyId = await getPlatformRazorpayKeyId(env);
     const keyId = platformKeyId || env.RAZORPAY_KEY_ID;
@@ -11326,24 +11357,50 @@ async function createRazorpaySubscription(request, env, user) {
     if (!keyId || !keySecret) {
       return errorResponse("Razorpay credentials not configured", 500);
     }
+    let scheduledStartAt = null;
+    let isDowngrade = false;
+    let oldSubToCancel = null;
+    if (siteId && plan.plan_tier != null) {
+      const currentSub = await env.DB.prepare(
+        `SELECT s.*, sp.plan_tier AS current_tier
+         FROM subscriptions s
+         LEFT JOIN subscription_plans sp ON sp.plan_name = s.plan AND sp.billing_cycle = s.billing_cycle
+         WHERE s.site_id = ? AND s.status = 'active'
+         ORDER BY s.created_at DESC LIMIT 1`
+      ).bind(siteId).first();
+      if (currentSub && currentSub.current_tier != null && plan.plan_tier < currentSub.current_tier) {
+        if (currentSub.current_period_end) {
+          const periodEndMs = new Date(currentSub.current_period_end).getTime();
+          if (periodEndMs > Date.now()) {
+            scheduledStartAt = Math.floor(periodEndMs / 1e3);
+            isDowngrade = true;
+            oldSubToCancel = currentSub.razorpay_subscription_id || null;
+          }
+        }
+      }
+    }
+    const subBody = {
+      plan_id: plan.razorpay_plan_id,
+      total_count: plan.billing_cycle === "monthly" ? 300 : plan.billing_cycle === "3months" ? 100 : plan.billing_cycle === "6months" ? 50 : 25,
+      quantity: 1,
+      notes: {
+        userId: user.id,
+        planId: plan.id,
+        planName: plan.plan_name,
+        billingCycle: plan.billing_cycle,
+        siteId: siteId || "",
+        scheduled: isDowngrade ? "1" : ""
+      }
+    };
+    if (scheduledStartAt)
+      subBody.start_at = scheduledStartAt;
     const response = await fetch("https://api.razorpay.com/v1/subscriptions", {
       method: "POST",
       headers: {
         "Authorization": "Basic " + btoa(`${keyId}:${keySecret}`),
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({
-        plan_id: plan.razorpay_plan_id,
-        total_count: plan.billing_cycle === "monthly" ? 300 : plan.billing_cycle === "3months" ? 100 : plan.billing_cycle === "6months" ? 50 : 25,
-        quantity: 1,
-        notes: {
-          userId: user.id,
-          planId: plan.id,
-          planName: plan.plan_name,
-          billingCycle: plan.billing_cycle,
-          siteId: siteId || ""
-        }
-      })
+      body: JSON.stringify(subBody)
     });
     if (!response.ok) {
       const errorText = await response.text();
@@ -11386,7 +11443,9 @@ async function createRazorpaySubscription(request, env, user) {
       planId: plan.id,
       planName: plan.plan_name,
       billingCycle: plan.billing_cycle,
-      amount: plan.display_price
+      amount: plan.display_price,
+      scheduled: isDowngrade,
+      scheduledStartAt: scheduledStartAt ? new Date(scheduledStartAt * 1e3).toISOString() : null
     });
   } catch (error) {
     console.error("Create subscription error:", error);
@@ -11464,23 +11523,52 @@ async function handleRazorpayWebhook(request, env) {
     const payload = JSON.parse(body);
     const event = payload.event;
     const entity = payload.payload?.subscription?.entity || payload.payload?.payment?.entity;
-    console.log("Razorpay webhook event:", event);
-    switch (event) {
-      case "subscription.activated":
-        await handleSubscriptionActivated(env, entity);
-        break;
-      case "subscription.charged":
-        await handleSubscriptionCharged(env, entity, payload.payload?.payment?.entity);
-        break;
-      case "subscription.cancelled":
-      case "subscription.completed":
-        await handleSubscriptionCancelled(env, entity);
-        break;
-      case "subscription.paused":
-        await handleSubscriptionPaused(env, entity);
-        break;
-      default:
-        console.log("Unhandled webhook event:", event);
+    const eventId = request.headers.get("x-razorpay-event-id") || payload.id || `${event}:${entity?.id}:${payload.created_at || ""}`;
+    let claimed = false;
+    if (eventId) {
+      try {
+        const insertRes = await env.DB.prepare(
+          `INSERT OR IGNORE INTO processed_webhooks (event_id, event_type, processed_at) VALUES (?, ?, datetime('now'))`
+        ).bind(eventId, event || null).run();
+        const changes = insertRes?.meta?.changes ?? insertRes?.changes ?? 0;
+        if (!changes) {
+          console.log("Duplicate webhook event ignored:", eventId, event);
+          return jsonResponse({ status: "ok", duplicate: true });
+        }
+        claimed = true;
+      } catch (e) {
+        console.error("Webhook idempotency check failed (continuing without dedupe):", e.message || e);
+      }
+    }
+    console.log("Razorpay webhook event:", event, eventId);
+    try {
+      switch (event) {
+        case "subscription.activated":
+          await handleSubscriptionActivated(env, entity);
+          break;
+        case "subscription.charged":
+          await handleSubscriptionCharged(env, entity, payload.payload?.payment?.entity);
+          break;
+        case "subscription.cancelled":
+        case "subscription.completed":
+          await handleSubscriptionCancelled(env, entity);
+          break;
+        case "subscription.paused":
+          await handleSubscriptionPaused(env, entity);
+          break;
+        default:
+          console.log("Unhandled webhook event:", event);
+      }
+    } catch (handlerErr) {
+      if (claimed && eventId) {
+        try {
+          await env.DB.prepare(`DELETE FROM processed_webhooks WHERE event_id = ?`).bind(eventId).run();
+        } catch (delErr) {
+          console.error("Failed to release webhook claim:", delErr.message || delErr);
+        }
+      }
+      console.error("Webhook handler failed for event", event, eventId, ":", handlerErr.message || handlerErr);
+      return errorResponse("Webhook processing failed", 500);
     }
     return jsonResponse({ status: "ok" });
   } catch (error) {
@@ -11547,6 +11635,11 @@ async function handleSubscriptionCharged(env, subEntity, paymentEntity) {
       if (subEntity.current_start) {
         newStart = new Date(subEntity.current_start * 1e3);
       }
+      const existingEnd = existingSub.current_period_end ? new Date(existingSub.current_period_end).getTime() : 0;
+      if (existingEnd && Math.abs(existingEnd - newEnd.getTime()) < 6e4) {
+        console.log("subscription.charged duplicate (period_end unchanged), skipping:", subId);
+        return;
+      }
       await env.DB.prepare(
         `UPDATE subscriptions SET current_period_start = COALESCE(?, current_period_start), current_period_end = ?, updated_at = datetime('now') WHERE id = ?`
       ).bind(newStart ? newStart.toISOString() : null, newEnd.toISOString(), existingSub.id).run();
@@ -11572,19 +11665,27 @@ async function handleSubscriptionCancelled(env, entity) {
   const subId = entity.id;
   try {
     const sub = await env.DB.prepare(
-      `SELECT * FROM subscriptions WHERE razorpay_subscription_id = ? AND status = 'active'`
+      `SELECT * FROM subscriptions WHERE razorpay_subscription_id = ? AND status IN ('active', 'scheduled')`
     ).bind(subId).first();
     if (sub) {
       await env.DB.prepare(
         `UPDATE subscriptions SET status = 'cancelled', cancelled_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`
       ).bind(sub.id).run();
+      const periodEndCovered = sub.current_period_end && new Date(sub.current_period_end) > /* @__PURE__ */ new Date();
       if (sub.site_id) {
-        await env.DB.prepare(
-          `UPDATE sites SET subscription_expires_at = datetime('now'), updated_at = datetime('now') WHERE id = ? AND COALESCE(subscription_plan, '') != 'enterprise'`
-        ).bind(sub.site_id).run();
+        const scheduled = await env.DB.prepare(
+          `SELECT * FROM subscriptions WHERE site_id = ? AND status = 'scheduled' AND (current_period_start IS NULL OR datetime(current_period_start) <= datetime('now')) ORDER BY created_at ASC LIMIT 1`
+        ).bind(sub.site_id).first();
+        if (scheduled) {
+          await activateScheduledSubscription(env, scheduled);
+        } else {
+          await env.DB.prepare(
+            `UPDATE sites SET subscription_plan = NULL, subscription_expires_at = ?, updated_at = datetime('now') WHERE id = ? AND COALESCE(subscription_plan, '') != 'enterprise'`
+          ).bind(periodEndCovered ? sub.current_period_end : null, sub.site_id).run();
+        }
       } else {
         await env.DB.prepare(
-          `UPDATE sites SET subscription_expires_at = datetime('now'), updated_at = datetime('now') WHERE user_id = ? AND COALESCE(subscription_plan, '') != 'enterprise'`
+          `UPDATE sites SET subscription_plan = NULL, subscription_expires_at = NULL, updated_at = datetime('now') WHERE user_id = ? AND COALESCE(subscription_plan, '') != 'enterprise'`
         ).bind(sub.user_id).run();
       }
     }
@@ -11594,6 +11695,22 @@ async function handleSubscriptionCancelled(env, entity) {
   }
 }
 __name(handleSubscriptionCancelled, "handleSubscriptionCancelled");
+async function activateScheduledSubscription(env, sub) {
+  try {
+    await env.DB.prepare(
+      `UPDATE subscriptions SET status = 'active', updated_at = datetime('now') WHERE id = ?`
+    ).bind(sub.id).run();
+    if (sub.site_id) {
+      await env.DB.prepare(
+        `UPDATE sites SET subscription_plan = ?, subscription_expires_at = ?, updated_at = datetime('now') WHERE id = ? AND COALESCE(subscription_plan, '') != 'enterprise'`
+      ).bind(sub.plan, sub.current_period_end, sub.site_id).run();
+    }
+    console.log(`Activated scheduled subscription ${sub.id} (plan=${sub.plan}) for site=${sub.site_id || "n/a"}`);
+  } catch (e) {
+    console.error("activateScheduledSubscription error:", e);
+  }
+}
+__name(activateScheduledSubscription, "activateScheduledSubscription");
 async function handleSubscriptionPaused(env, entity) {
   if (!entity)
     return;
@@ -11652,13 +11769,38 @@ async function activateSubscription(env, userId, planName, billingCycle, razorpa
     if (razorpayEntity?.current_start && razorpayEntity?.current_end) {
       periodStart = new Date(razorpayEntity.current_start * 1e3);
       periodEnd = new Date(razorpayEntity.current_end * 1e3);
+    } else if (razorpayEntity?.start_at) {
+      periodStart = new Date(razorpayEntity.start_at * 1e3);
+      const periodMonths = billingCycle === "monthly" ? 1 : billingCycle === "3months" ? 3 : billingCycle === "6months" ? 6 : billingCycle === "yearly" ? 12 : 1;
+      periodEnd = new Date(periodStart);
+      periodEnd.setMonth(periodEnd.getMonth() + periodMonths);
     } else {
       const periodMonths = billingCycle === "monthly" ? 1 : billingCycle === "3months" ? 3 : billingCycle === "6months" ? 6 : billingCycle === "yearly" ? 12 : 1;
       periodStart = /* @__PURE__ */ new Date();
       periodEnd = new Date(periodStart);
       periodEnd.setMonth(periodEnd.getMonth() + periodMonths);
     }
+    const now = Date.now();
+    const isScheduledStart = periodStart.getTime() > now + 6e4;
+    const targetStatus = isScheduledStart ? "scheduled" : "active";
+    let isUpgradeOrSameTier = true;
     if (siteId) {
+      try {
+        const tierRow = await env.DB.prepare(
+          `SELECT s.id, s.razorpay_subscription_id, sp_old.plan_tier AS old_tier, sp_new.plan_tier AS new_tier
+           FROM subscriptions s
+           LEFT JOIN subscription_plans sp_old ON sp_old.plan_name = s.plan AND sp_old.billing_cycle = s.billing_cycle
+           LEFT JOIN subscription_plans sp_new ON sp_new.plan_name = ? AND sp_new.billing_cycle = ?
+           WHERE s.site_id = ? AND s.status = 'active'
+           ORDER BY s.created_at DESC LIMIT 1`
+        ).bind(planName, billingCycle, siteId).first();
+        if (tierRow && tierRow.old_tier != null && tierRow.new_tier != null && tierRow.new_tier < tierRow.old_tier) {
+          isUpgradeOrSameTier = false;
+        }
+      } catch (e) {
+      }
+    }
+    if (siteId && isUpgradeOrSameTier && !isScheduledStart) {
       const oldSubs = (await env.DB.prepare(`SELECT id, razorpay_subscription_id FROM subscriptions WHERE site_id = ? AND status = 'active'`).bind(siteId).all()).results || [];
       for (const oldSub of oldSubs) {
         if (oldSub.razorpay_subscription_id && oldSub.razorpay_subscription_id !== razorpaySubscriptionId) {
@@ -11674,50 +11816,76 @@ async function activateSubscription(env, userId, planName, billingCycle, razorpa
       ).bind(siteId).run();
     }
     const resolvedAmount = amount || 0;
+    const newId = generateId();
+    let inserted = true;
     if (razorpaySubscriptionId) {
-      const existingSub = await env.DB.prepare(
-        `SELECT id, status FROM subscriptions WHERE razorpay_subscription_id = ?`
-      ).bind(razorpaySubscriptionId).first();
-      if (existingSub) {
-        if (existingSub.status === "active") {
-          console.log(`Subscription already active for razorpay_subscription_id=${razorpaySubscriptionId}, skipping duplicate`);
-          return true;
-        }
-        await env.DB.prepare(
-          `UPDATE subscriptions SET status = 'active', plan = ?, billing_cycle = ?, amount = ?, site_id = ?, current_period_start = ?, current_period_end = ?, updated_at = datetime('now') WHERE id = ?`
-        ).bind(planName, billingCycle, resolvedAmount, siteId || null, periodStart.toISOString(), periodEnd.toISOString(), existingSub.id).run();
-        console.log(`Reactivated existing subscription for razorpay_subscription_id=${razorpaySubscriptionId}`);
-        if (siteId) {
+      const insertRes = await env.DB.prepare(
+        `INSERT OR IGNORE INTO subscriptions (id, user_id, site_id, plan, billing_cycle, amount, status, razorpay_subscription_id, current_period_start, current_period_end, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+      ).bind(
+        newId,
+        userId,
+        siteId || null,
+        planName,
+        billingCycle,
+        resolvedAmount,
+        targetStatus,
+        razorpaySubscriptionId,
+        periodStart.toISOString(),
+        periodEnd.toISOString()
+      ).run();
+      const changes = insertRes?.meta?.changes ?? insertRes?.changes ?? 0;
+      inserted = changes > 0;
+      if (!inserted) {
+        const existingSub = await env.DB.prepare(
+          `SELECT id, status FROM subscriptions WHERE razorpay_subscription_id = ?`
+        ).bind(razorpaySubscriptionId).first();
+        if (existingSub) {
+          if (existingSub.status === "active") {
+            console.log(`Subscription already active for razorpay_subscription_id=${razorpaySubscriptionId}, skipping duplicate`);
+            if (siteId && !isScheduledStart) {
+              await env.DB.prepare(
+                `UPDATE sites SET subscription_plan = ?, subscription_expires_at = ?, updated_at = datetime('now') WHERE id = ? AND COALESCE(subscription_plan, '') != 'enterprise'`
+              ).bind(planName, periodEnd.toISOString(), siteId).run();
+            }
+            return true;
+          }
           await env.DB.prepare(
-            `UPDATE sites SET subscription_plan = ?, subscription_expires_at = ?, updated_at = datetime('now') WHERE id = ? AND COALESCE(subscription_plan, '') != 'enterprise'`
-          ).bind(planName, periodEnd.toISOString(), siteId).run();
+            `UPDATE subscriptions SET status = ?, plan = ?, billing_cycle = ?, amount = ?, site_id = ?, current_period_start = ?, current_period_end = ?, updated_at = datetime('now') WHERE id = ?`
+          ).bind(targetStatus, planName, billingCycle, resolvedAmount, siteId || null, periodStart.toISOString(), periodEnd.toISOString(), existingSub.id).run();
+          console.log(`Reconciled existing subscription row for razorpay_subscription_id=${razorpaySubscriptionId} \u2192 ${targetStatus}`);
         }
-        return true;
       }
+    } else {
+      await env.DB.prepare(
+        `INSERT INTO subscriptions (id, user_id, site_id, plan, billing_cycle, amount, status, razorpay_subscription_id, current_period_start, current_period_end, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, datetime('now'))`
+      ).bind(newId, userId, siteId || null, planName, billingCycle, resolvedAmount, targetStatus, periodStart.toISOString(), periodEnd.toISOString()).run();
     }
-    await env.DB.prepare(
-      `INSERT INTO subscriptions (id, user_id, site_id, plan, billing_cycle, amount, status, razorpay_subscription_id, current_period_start, current_period_end, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, datetime('now'))`
-    ).bind(
-      generateId(),
-      userId,
-      siteId || null,
-      planName,
-      billingCycle,
-      resolvedAmount,
-      razorpaySubscriptionId || null,
-      periodStart.toISOString(),
-      periodEnd.toISOString()
-    ).run();
     await env.DB.prepare(
       `UPDATE users SET updated_at = datetime('now') WHERE id = ?`
     ).bind(userId).run();
-    if (siteId) {
+    if (siteId && !isScheduledStart) {
       await env.DB.prepare(
         `UPDATE sites SET subscription_plan = ?, subscription_expires_at = ?, updated_at = datetime('now') WHERE id = ? AND COALESCE(subscription_plan, '') != 'enterprise'`
       ).bind(planName, periodEnd.toISOString(), siteId).run();
     }
-    console.log(`Subscription activated: user=${userId}, site=${siteId || "all"}, plan=${planName}, cycle=${billingCycle}`);
+    if (isScheduledStart && siteId) {
+      try {
+        const oldActive = await env.DB.prepare(
+          `SELECT id, razorpay_subscription_id FROM subscriptions
+           WHERE site_id = ? AND status = 'active'
+             AND COALESCE(razorpay_subscription_id, '') != COALESCE(?, '')
+           ORDER BY created_at DESC LIMIT 1`
+        ).bind(siteId, razorpaySubscriptionId || "").first();
+        if (oldActive?.razorpay_subscription_id) {
+          await cancelRazorpaySubscription(env, oldActive.razorpay_subscription_id);
+        }
+      } catch (e) {
+        console.error("Failed to schedule old sub cancel for downgrade (post-activation):", e);
+      }
+    }
+    console.log(`Subscription ${targetStatus}: user=${userId}, site=${siteId || "all"}, plan=${planName}, cycle=${billingCycle}, startsAt=${periodStart.toISOString()}`);
     return true;
   } catch (error) {
     console.error("Activate subscription error:", error);
@@ -18375,6 +18543,11 @@ async function ensureTablesExist(env) {
         last_updated TEXT DEFAULT (datetime('now')),
         FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
       )`,
+      `CREATE TABLE IF NOT EXISTS processed_webhooks (
+        event_id TEXT PRIMARY KEY,
+        event_type TEXT,
+        processed_at TEXT DEFAULT (datetime('now'))
+      )`,
       `CREATE TABLE IF NOT EXISTS site_media (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         site_id TEXT NOT NULL,
@@ -18401,7 +18574,8 @@ async function ensureTablesExist(env) {
       "CREATE INDEX IF NOT EXISTS idx_transactions_user ON payment_transactions(user_id)",
       "CREATE UNIQUE INDEX IF NOT EXISTS idx_sites_custom_domain ON sites(custom_domain) WHERE custom_domain IS NOT NULL",
       "CREATE INDEX IF NOT EXISTS idx_site_media_site ON site_media(site_id)",
-      "CREATE INDEX IF NOT EXISTS idx_site_media_key ON site_media(storage_key)"
+      "CREATE INDEX IF NOT EXISTS idx_site_media_key ON site_media(storage_key)",
+      "CREATE INDEX IF NOT EXISTS idx_processed_webhooks_at ON processed_webhooks(processed_at)"
     ];
     for (const sql of tables) {
       await env.DB.prepare(sql).run();
@@ -18944,7 +19118,72 @@ async function cleanupExpiredData(env) {
         console.error(`[Cleanup] stale orders for site ${site.id}:`, e.message || e);
       }
     }
-    console.log("[Cleanup] Expired sessions, tokens, and stale orders cleaned up successfully");
+    try {
+      await env.DB.prepare(
+        `UPDATE subscriptions SET status = 'expired', updated_at = datetime('now')
+         WHERE status = 'active' AND current_period_end IS NOT NULL AND datetime(current_period_end) < datetime('now')`
+      ).run();
+    } catch (e) {
+      console.error("[Cleanup] expire subscriptions:", e.message || e);
+    }
+    try {
+      const dueScheduled = await env.DB.prepare(
+        `SELECT id, site_id, plan, current_period_end FROM subscriptions
+         WHERE status = 'scheduled' AND current_period_start IS NOT NULL AND datetime(current_period_start) <= datetime('now')`
+      ).all();
+      for (const s of dueScheduled.results || []) {
+        await env.DB.prepare(
+          `UPDATE subscriptions SET status = 'active', updated_at = datetime('now') WHERE id = ?`
+        ).bind(s.id).run();
+        if (s.site_id) {
+          await env.DB.prepare(
+            `UPDATE sites SET subscription_plan = ?, subscription_expires_at = ?, updated_at = datetime('now')
+             WHERE id = ? AND COALESCE(subscription_plan, '') != 'enterprise'`
+          ).bind(s.plan, s.current_period_end, s.site_id).run();
+        }
+      }
+    } catch (e) {
+      console.error("[Cleanup] activate scheduled subs:", e.message || e);
+    }
+    try {
+      await env.DB.prepare(
+        `UPDATE sites SET is_active = 0, updated_at = datetime('now')
+         WHERE subscription_plan = 'trial'
+           AND subscription_expires_at IS NOT NULL
+           AND datetime(subscription_expires_at) < datetime('now')
+           AND is_active = 1`
+      ).run();
+    } catch (e) {
+      console.error("[Cleanup] disable expired trial sites:", e.message || e);
+    }
+    try {
+      await env.DB.prepare(
+        `UPDATE sites SET subscription_plan = NULL, updated_at = datetime('now')
+         WHERE subscription_expires_at IS NOT NULL
+           AND datetime(subscription_expires_at) < datetime('now')
+           AND COALESCE(subscription_plan, '') NOT IN ('enterprise', '')
+           AND NOT EXISTS (
+             SELECT 1 FROM subscriptions s WHERE s.site_id = sites.id AND s.status = 'active'
+           )`
+      ).run();
+    } catch (e) {
+      console.error("[Cleanup] reset stale subscription_plan on sites:", e.message || e);
+    }
+    try {
+      await env.DB.prepare(
+        `DELETE FROM pending_subscriptions WHERE created_at < datetime('now', '-24 hours')`
+      ).run();
+    } catch (e) {
+      console.error("[Cleanup] orphaned pending_subscriptions:", e.message || e);
+    }
+    try {
+      await env.DB.prepare(
+        `DELETE FROM processed_webhooks WHERE processed_at < datetime('now', '-30 days')`
+      ).run();
+    } catch (e) {
+      console.error("[Cleanup] processed_webhooks:", e.message || e);
+    }
+    console.log("[Cleanup] Expired sessions, tokens, stale orders, and subscriptions cleaned up successfully");
   } catch (error) {
     console.error("[Cleanup] Error during cleanup:", error);
   }

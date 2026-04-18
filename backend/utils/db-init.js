@@ -215,6 +215,12 @@ export async function ensureTablesExist(env) {
         FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
       )`,
 
+      `CREATE TABLE IF NOT EXISTS processed_webhooks (
+        event_id TEXT PRIMARY KEY,
+        event_type TEXT,
+        processed_at TEXT DEFAULT (datetime('now'))
+      )`,
+
       `CREATE TABLE IF NOT EXISTS site_media (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         site_id TEXT NOT NULL,
@@ -244,6 +250,7 @@ export async function ensureTablesExist(env) {
       'CREATE UNIQUE INDEX IF NOT EXISTS idx_sites_custom_domain ON sites(custom_domain) WHERE custom_domain IS NOT NULL',
       'CREATE INDEX IF NOT EXISTS idx_site_media_site ON site_media(site_id)',
       'CREATE INDEX IF NOT EXISTS idx_site_media_key ON site_media(storage_key)',
+      'CREATE INDEX IF NOT EXISTS idx_processed_webhooks_at ON processed_webhooks(processed_at)',
     ];
 
     for (const sql of tables) {

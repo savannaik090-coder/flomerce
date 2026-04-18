@@ -477,7 +477,86 @@ async function cleanupExpiredData(env) {
       }
     }
 
-    console.log('[Cleanup] Expired sessions, tokens, and stale orders cleaned up successfully');
+    // Mark active subscriptions whose period has ended as expired (for paid subs not yet renewed).
+    try {
+      await env.DB.prepare(
+        `UPDATE subscriptions SET status = 'expired', updated_at = datetime('now')
+         WHERE status = 'active' AND current_period_end IS NOT NULL AND datetime(current_period_end) < datetime('now')`
+      ).run();
+    } catch (e) {
+      console.error('[Cleanup] expire subscriptions:', e.message || e);
+    }
+
+    // Activate any scheduled (downgrade) subscriptions whose start time has arrived,
+    // and reflect the new plan onto the site row.
+    try {
+      const dueScheduled = await env.DB.prepare(
+        `SELECT id, site_id, plan, current_period_end FROM subscriptions
+         WHERE status = 'scheduled' AND current_period_start IS NOT NULL AND datetime(current_period_start) <= datetime('now')`
+      ).all();
+      for (const s of (dueScheduled.results || [])) {
+        await env.DB.prepare(
+          `UPDATE subscriptions SET status = 'active', updated_at = datetime('now') WHERE id = ?`
+        ).bind(s.id).run();
+        if (s.site_id) {
+          await env.DB.prepare(
+            `UPDATE sites SET subscription_plan = ?, subscription_expires_at = ?, updated_at = datetime('now')
+             WHERE id = ? AND COALESCE(subscription_plan, '') != 'enterprise'`
+          ).bind(s.plan, s.current_period_end, s.site_id).run();
+        }
+      }
+    } catch (e) {
+      console.error('[Cleanup] activate scheduled subs:', e.message || e);
+    }
+
+    // Disable trial sites whose trial expired (do this before clearing the cached plan column).
+    try {
+      await env.DB.prepare(
+        `UPDATE sites SET is_active = 0, updated_at = datetime('now')
+         WHERE subscription_plan = 'trial'
+           AND subscription_expires_at IS NOT NULL
+           AND datetime(subscription_expires_at) < datetime('now')
+           AND is_active = 1`
+      ).run();
+    } catch (e) {
+      console.error('[Cleanup] disable expired trial sites:', e.message || e);
+    }
+
+    // Clear the cached subscription_plan column on sites whose subscription has expired
+    // (keeps sites.subscription_plan in sync with subscriptions table).
+    try {
+      await env.DB.prepare(
+        `UPDATE sites SET subscription_plan = NULL, updated_at = datetime('now')
+         WHERE subscription_expires_at IS NOT NULL
+           AND datetime(subscription_expires_at) < datetime('now')
+           AND COALESCE(subscription_plan, '') NOT IN ('enterprise', '')
+           AND NOT EXISTS (
+             SELECT 1 FROM subscriptions s WHERE s.site_id = sites.id AND s.status = 'active'
+           )`
+      ).run();
+    } catch (e) {
+      console.error('[Cleanup] reset stale subscription_plan on sites:', e.message || e);
+    }
+
+    // Delete pending_subscriptions older than 24h that never converted.
+    try {
+      await env.DB.prepare(
+        `DELETE FROM pending_subscriptions WHERE created_at < datetime('now', '-24 hours')`
+      ).run();
+    } catch (e) {
+      console.error('[Cleanup] orphaned pending_subscriptions:', e.message || e);
+    }
+
+    // Drop processed_webhooks rows older than 30 days to keep the idempotency table small.
+    try {
+      await env.DB.prepare(
+        `DELETE FROM processed_webhooks WHERE processed_at < datetime('now', '-30 days')`
+      ).run();
+    } catch (e) {
+      console.error('[Cleanup] processed_webhooks:', e.message || e);
+    }
+
+    console.log('[Cleanup] Expired sessions, tokens, stale orders, and subscriptions cleaned up successfully');
   } catch (error) {
     console.error('[Cleanup] Error during cleanup:', error);
   }
