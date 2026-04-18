@@ -32,7 +32,7 @@ VAPID_PRIVATE_KEY = '{"key_ops":["sign"],"ext":true,"kty":"EC","x":"EW2N-1Y6luCa
 # CF_ZONE_ID: Zone ID for flomerce.com (find in Cloudflare dashboard → Overview → right sidebar)
 # CF_API_TOKEN must be set as a secret: cd backend && npx wrangler secret put CF_API_TOKEN
 # Token needs permission: Zone > Custom Hostnames > Edit
-CF_ZONE_ID = "b65a77c931d934fdf0a05d201eb225e8"
+CF_ZONE_ID = "26b94cc472428f25d8d5998fbe3f151e"
 
 # IMPORTANT: These must be set as secrets (not vars):
 # cd backend && npx wrangler secret put JWT_SECRET
