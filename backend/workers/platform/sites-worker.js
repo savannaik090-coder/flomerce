@@ -609,7 +609,23 @@ async function updateSite(request, env, user, siteId, ctx) {
               existingSettings = JSON.parse(existingConfig.settings);
             }
           } catch (e) {}
-          const mergedSettings = { ...existingSettings, ...value };
+          const incoming = { ...value };
+          if ('notificationCcEmails' in incoming) {
+            const arr = Array.isArray(incoming.notificationCcEmails) ? incoming.notificationCcEmails : [];
+            const seen = new Set();
+            const cleaned = [];
+            for (const raw of arr) {
+              if (typeof raw !== 'string') continue;
+              const e = raw.trim().toLowerCase();
+              if (!e || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) continue;
+              if (seen.has(e)) continue;
+              seen.add(e);
+              cleaned.push(e);
+              if (cleaned.length >= 5) break;
+            }
+            incoming.notificationCcEmails = cleaned;
+          }
+          const mergedSettings = { ...existingSettings, ...incoming };
           setClause.push(`${dbKey} = ?`);
           values.push(JSON.stringify(mergedSettings));
         } else {
@@ -681,7 +697,23 @@ async function updateSiteAsAdmin(request, env, siteId, ctx) {
               existingSettings = JSON.parse(existingConfig.settings);
             }
           } catch (e) {}
-          const mergedSettings = { ...existingSettings, ...value };
+          const incoming = { ...value };
+          if ('notificationCcEmails' in incoming) {
+            const arr = Array.isArray(incoming.notificationCcEmails) ? incoming.notificationCcEmails : [];
+            const seen = new Set();
+            const cleaned = [];
+            for (const raw of arr) {
+              if (typeof raw !== 'string') continue;
+              const e = raw.trim().toLowerCase();
+              if (!e || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) continue;
+              if (seen.has(e)) continue;
+              seen.add(e);
+              cleaned.push(e);
+              if (cleaned.length >= 5) break;
+            }
+            incoming.notificationCcEmails = cleaned;
+          }
+          const mergedSettings = { ...existingSettings, ...incoming };
           setClause.push(`${dbKey} = ?`);
           values.push(JSON.stringify(mergedSettings));
         } else {

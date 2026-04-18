@@ -40,6 +40,25 @@ function formatCurrencyHtml(amount, currency = 'INR') {
   return formatCurrency(amount, currency);
 }
 
+export function getOwnerRecipients(settings = {}, config = {}) {
+  const primary = (settings.email || settings.ownerEmail || config.email || '').trim();
+  const ccRaw = Array.isArray(settings.notificationCcEmails) ? settings.notificationCcEmails : [];
+  const seen = new Set();
+  const out = [];
+  const addEmail = (raw) => {
+    if (!raw || typeof raw !== 'string') return;
+    const e = raw.trim().toLowerCase();
+    if (!e) return;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) return;
+    if (seen.has(e)) return;
+    seen.add(e);
+    out.push(e);
+  };
+  addEmail(primary);
+  for (const cc of ccRaw.slice(0, 5)) addEmail(cc);
+  return out;
+}
+
 export async function sendEmail(env, to, subject, html, text, options = {}) {
   try {
     const apiKey = (env.BREVO_API_KEY || '').trim();

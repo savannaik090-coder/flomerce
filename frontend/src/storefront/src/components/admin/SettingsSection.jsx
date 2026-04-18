@@ -8,6 +8,7 @@ import { formatPrice } from '../../utils/priceFormatter.js';
 import { COUNTRIES, getStatesForCountry } from '../../utils/countryStates.js';
 import PhoneInput from '../ui/PhoneInput.jsx';
 import { API_BASE, PLATFORM_DOMAIN } from '../../config.js';
+import { isPlanSufficient } from './FeatureGate.jsx';
 
 export default function SettingsSection() {
   const { siteConfig, refetchSite } = useContext(SiteContext);
@@ -20,6 +21,7 @@ export default function SettingsSection() {
   const [whatsapp, setWhatsapp] = useState('');
   const [showFloatingButton, setShowFloatingButton] = useState(true);
   const [email, setEmail] = useState('');
+  const [notificationCcEmails, setNotificationCcEmails] = useState([]);
   const [address, setAddress] = useState('');
   const [razorpayKeyId, setRazorpayKeyId] = useState('');
   const [razorpayKeySecret, setRazorpayKeySecret] = useState('');
@@ -159,6 +161,7 @@ export default function SettingsSection() {
         setWhatsapp(settings.whatsapp || '');
         setShowFloatingButton(settings.showFloatingButton !== false);
         setEmail(settings.email || data.email || '');
+        setNotificationCcEmails(Array.isArray(settings.notificationCcEmails) ? settings.notificationCcEmails.slice(0, 5) : []);
         setAddress(settings.address || data.address || '');
         setRazorpayKeyId(settings.razorpayKeyId || '');
         setRazorpayKeySecret(settings.razorpayKeySecret || '');
@@ -250,6 +253,10 @@ export default function SettingsSection() {
         whatsapp,
         showFloatingButton,
         email,
+        notificationCcEmails: (notificationCcEmails || [])
+          .map(e => (e || '').trim())
+          .filter(e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e))
+          .slice(0, 5),
         address,
         codEnabled,
         defaultCurrency,
@@ -833,6 +840,64 @@ export default function SettingsSection() {
               <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Email</label>
               <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="contact@store.com" style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
             </div>
+            {(() => {
+              const ccAllowed = isPlanSufficient(siteConfig?.subscriptionPlan, 'growth');
+              return (
+                <div style={{ marginBottom: 16, padding: 12, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <label style={{ fontWeight: 600, fontSize: 13 }}>
+                      Additional notification emails
+                      {!ccAllowed && (
+                        <span style={{ marginLeft: 8, fontSize: 11, padding: '2px 8px', background: '#fef3c7', color: '#92400e', borderRadius: 999, fontWeight: 600 }}>Growth+</span>
+                      )}
+                    </label>
+                    <span style={{ fontSize: 11, color: '#94a3b8' }}>{notificationCcEmails.length}/5</span>
+                  </div>
+                  <p style={{ margin: '0 0 10px', fontSize: 12, color: '#64748b' }}>
+                    Staff or team members added here will receive the same order notifications (new order, cancellation, return, delivery) sent to your owner email. Up to 5 addresses.
+                  </p>
+                  {!ccAllowed ? (
+                    <div style={{ fontSize: 12, color: '#64748b', padding: '8px 0' }}>
+                      Upgrade to <strong>Growth</strong> or higher to add staff notification recipients.
+                    </div>
+                  ) : (
+                    <>
+                      {notificationCcEmails.map((cc, idx) => (
+                        <div key={idx} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                          <input
+                            type="email"
+                            value={cc}
+                            onChange={(e) => {
+                              const next = [...notificationCcEmails];
+                              next[idx] = e.target.value;
+                              setNotificationCcEmails(next);
+                            }}
+                            placeholder="staff@store.com"
+                            style={{ flex: 1, padding: '8px 10px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, boxSizing: 'border-box', fontFamily: 'inherit' }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setNotificationCcEmails(notificationCcEmails.filter((_, i) => i !== idx))}
+                            style={{ padding: '6px 10px', background: '#fff', color: '#dc2626', border: '1px solid #fecaca', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 600 }}
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ))}
+                      {notificationCcEmails.length < 5 && (
+                        <button
+                          type="button"
+                          onClick={() => setNotificationCcEmails([...notificationCcEmails, ''])}
+                          style={{ padding: '8px 12px', background: '#fff', color: '#0f172a', border: '1px dashed #cbd5e1', borderRadius: 6, cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
+                        >
+                          + Add email
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
+              );
+            })()}
             <div>
               <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Address</label>
               <textarea value={address} onChange={(e) => setAddress(e.target.value)} rows={2} placeholder="Store address" style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }} />

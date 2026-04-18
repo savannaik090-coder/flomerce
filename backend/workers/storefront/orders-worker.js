@@ -2,7 +2,7 @@ import { generateId, generateOrderNumber, jsonResponse, errorResponse, successRe
 import { validateAuth, validateAnyAuth } from '../../utils/auth.js';
 import { updateProductStock } from './products-worker.js';
 import { deductStockByLocation } from './inventory-locations-worker.js';
-import { sendEmail, buildOrderConfirmationEmail, buildOwnerNotificationEmail, buildCancellationCustomerEmail, buildCancellationOwnerEmail, buildDeliveryCustomerEmail, buildDeliveryOwnerEmail, buildNewOrderReviewEmail, buildOrderPackedEmail, buildOrderShippedEmail, buildCancellationRequestNotifyEmail, buildCancellationStatusEmail } from '../../utils/email.js';
+import { sendEmail, getOwnerRecipients, buildOrderConfirmationEmail, buildOwnerNotificationEmail, buildCancellationCustomerEmail, buildCancellationOwnerEmail, buildDeliveryCustomerEmail, buildDeliveryOwnerEmail, buildNewOrderReviewEmail, buildOrderPackedEmail, buildOrderShippedEmail, buildCancellationRequestNotifyEmail, buildCancellationStatusEmail } from '../../utils/email.js';
 import { sendOrderWhatsApp, buildOrderConfirmationWA, buildOrderShippedWA, buildOrderDeliveredWA, buildOrderCancelledWA, buildOrderPackedWA, isWhatsAppConfigured } from '../../utils/whatsapp.js';
 import { checkUsageLimit, estimateRowBytes, trackD1Write, trackD1Update } from '../../utils/usage-tracker.js';
 import { resolveSiteDBById, checkMigrationLock, getSiteConfig, ensureProductOptionsColumn } from '../../utils/site-db.js';
@@ -783,9 +783,12 @@ async function updateOrderStatus(request, env, user, orderId) {
             const { html, text } = buildCancellationCustomerEmail(emailOrder, siteBrandName, cancellationReason, ownerEmail, cancelCurrency, storeTz);
             emailJobs.push(sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been cancelled`, html, text, { senderName: siteBrandName, replyTo: ownerEmail || undefined }).catch(e => console.error('Cancellation customer email error:', e)));
           }
-          if (ownerEmail) {
-            const { html, text } = buildCancellationOwnerEmail(emailOrder, siteBrandName, cancellationReason, cancelCurrency, storeTz);
-            emailJobs.push(sendEmail(env, ownerEmail, `Order #${fullOrder.order_number} cancelled - ${siteBrandName}`, html, text, { senderName: siteBrandName }).catch(e => console.error('Cancellation owner email error:', e)));
+          {
+            const ownerRecipients = getOwnerRecipients(cancelSettings, cancelConfig);
+            if (ownerRecipients.length) {
+              const { html, text } = buildCancellationOwnerEmail(emailOrder, siteBrandName, cancellationReason, cancelCurrency, storeTz);
+              emailJobs.push(sendEmail(env, ownerRecipients, `Order #${fullOrder.order_number} cancelled - ${siteBrandName}`, html, text, { senderName: siteBrandName }).catch(e => console.error('Cancellation owner email error:', e)));
+            }
           }
           await Promise.all(emailJobs);
 
@@ -968,12 +971,15 @@ async function updateOrderStatus(request, env, user, orderId) {
               console.error('Delivery customer email build error:', buildErr);
             }
           }
-          if (ownerEmail) {
-            try {
-              const { html, text } = buildDeliveryOwnerEmail(emailOrder, siteBrandName, deliveryCurrency, storeTz);
-              emailJobs.push(sendEmail(env, ownerEmail, `Order #${fullOrder.order_number} delivered - ${siteBrandName}`, html, text, { senderName: siteBrandName }).catch(e => console.error('Delivery owner email send error:', e)));
-            } catch (buildErr) {
-              console.error('Delivery owner email build error:', buildErr);
+          {
+            const ownerRecipients = getOwnerRecipients(deliverySettings, deliveryConfig);
+            if (ownerRecipients.length) {
+              try {
+                const { html, text } = buildDeliveryOwnerEmail(emailOrder, siteBrandName, deliveryCurrency, storeTz);
+                emailJobs.push(sendEmail(env, ownerRecipients, `Order #${fullOrder.order_number} delivered - ${siteBrandName}`, html, text, { senderName: siteBrandName }).catch(e => console.error('Delivery owner email send error:', e)));
+              } catch (buildErr) {
+                console.error('Delivery owner email build error:', buildErr);
+              }
             }
           }
           await Promise.all(emailJobs);
@@ -1398,10 +1404,10 @@ async function createReturnRequest(request, env, orderId) {
 
     try {
       const brandName = config.brand_name || 'Store';
-      const ownerEmail = settings.email || settings.ownerEmail || config.email;
-      if (ownerEmail) {
+      const ownerRecipients = getOwnerRecipients(settings, config);
+      if (ownerRecipients.length) {
         const { html, text } = buildReturnRequestEmail(order, brandName, reason, reasonDetail);
-        await sendEmail(env, ownerEmail, `Return Request #${order.order_number} - ${brandName}`, html, text, { senderName: brandName }).catch(() => {});
+        await sendEmail(env, ownerRecipients, `Return Request #${order.order_number} - ${brandName}`, html, text, { senderName: brandName }).catch(() => {});
       }
     } catch (e) {}
 
@@ -1680,15 +1686,18 @@ export async function sendOrderEmails(env, siteId, orderData) {
 
     const emailJobs = [];
 
-    if (ownerEmail) {
-      try {
-        const { html, text } = buildNewOrderReviewEmail(emailOrder, siteBrandName, currency, storeTz);
-        emailJobs.push(
-          sendEmail(env, ownerEmail, `New Order #${orderData.orderNumber} - Review Required - ${siteBrandName}`, html, text, { senderName: siteBrandName })
-            .catch(e => console.error('Owner email send error:', e))
-        );
-      } catch (buildErr) {
-        console.error('Owner email build error:', buildErr);
+    {
+      const ownerRecipients = getOwnerRecipients(siteSettings, config);
+      if (ownerRecipients.length) {
+        try {
+          const { html, text } = buildNewOrderReviewEmail(emailOrder, siteBrandName, currency, storeTz);
+          emailJobs.push(
+            sendEmail(env, ownerRecipients, `New Order #${orderData.orderNumber} - Review Required - ${siteBrandName}`, html, text, { senderName: siteBrandName })
+              .catch(e => console.error('Owner email send error:', e))
+          );
+        } catch (buildErr) {
+          console.error('Owner email build error:', buildErr);
+        }
       }
     }
 
@@ -1798,10 +1807,10 @@ async function createCancellationRequest(request, env, orderId) {
 
     try {
       const brandName = config.brand_name || 'Store';
-      const ownerEmail = settings.email || settings.ownerEmail || config.email;
-      if (ownerEmail) {
+      const ownerRecipients = getOwnerRecipients(settings, config);
+      if (ownerRecipients.length) {
         const { html, text } = buildCancellationRequestNotifyEmail(order, brandName, reason, reasonDetail);
-        await sendEmail(env, ownerEmail, `Cancellation Request #${order.order_number} - ${brandName}`, html, text, { senderName: brandName }).catch(() => {});
+        await sendEmail(env, ownerRecipients, `Cancellation Request #${order.order_number} - ${brandName}`, html, text, { senderName: brandName }).catch(() => {});
       }
     } catch (e) {}
 
