@@ -40,7 +40,7 @@ function formatCurrencyHtml(amount, currency = 'INR') {
   return formatCurrency(amount, currency);
 }
 
-export async function sendEmail(env, to, subject, html, text) {
+export async function sendEmail(env, to, subject, html, text, options = {}) {
   try {
     const apiKey = (env.BREVO_API_KEY || '').trim();
     if (!apiKey) {
@@ -49,6 +49,7 @@ export async function sendEmail(env, to, subject, html, text) {
     }
 
     const fromEmail = env.FROM_EMAIL || FROM_EMAIL;
+    const senderName = (options && options.senderName) ? options.senderName : 'Flomerce';
 
     const recipients = typeof to === 'string'
       ? [{ email: to }]
@@ -63,12 +64,17 @@ export async function sendEmail(env, to, subject, html, text) {
     });
 
     const payload = {
-      sender: { email: fromEmail, name: 'Flomerce' },
+      sender: { email: fromEmail, name: senderName },
       to: toPayload,
       subject,
       htmlContent: html,
     };
     if (text) payload.textContent = text;
+    if (options && options.replyTo) {
+      payload.replyTo = typeof options.replyTo === 'string'
+        ? { email: options.replyTo, name: senderName }
+        : options.replyTo;
+    }
 
     const response = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',

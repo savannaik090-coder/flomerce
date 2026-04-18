@@ -2,7 +2,7 @@ import { generateId, generateToken, getExpiryDate, validateEmail, sanitizeInput,
 import { hashPassword, verifyPassword } from '../../utils/auth.js';
 import { sendEmail } from '../../utils/email.js';
 import { estimateRowBytes, trackD1Write, trackD1Update, trackD1Delete } from '../../utils/usage-tracker.js';
-import { resolveSiteDBById, checkMigrationLock, ensureAddressCountryColumn } from '../../utils/site-db.js';
+import { resolveSiteDBById, checkMigrationLock, ensureAddressCountryColumn, getSiteConfig } from '../../utils/site-db.js';
 import { PLATFORM_DOMAIN } from '../../config.js';
 
 export async function handleCustomerAuth(request, env, path) {
@@ -330,7 +330,14 @@ async function handleSignup(request, env) {
       const baseUrl = getStorefrontUrl(env, site);
       const verifyUrl = `${baseUrl}/verify-email?token=${verifyToken}&email=${encodeURIComponent(email.toLowerCase())}`;
       const emailContent = buildVerificationEmail(site.brand_name, verifyUrl);
-      const emailResult = await sendEmail(env, email.toLowerCase(), `Verify your email - ${site.brand_name}`, emailContent.html, emailContent.text);
+      let signupOwnerEmail = '';
+      try {
+        const sCfg = await getSiteConfig(env, siteId);
+        let sSet = {};
+        try { if (sCfg?.settings) sSet = typeof sCfg.settings === 'string' ? JSON.parse(sCfg.settings) : sCfg.settings; } catch (e) {}
+        signupOwnerEmail = sSet.email || sSet.ownerEmail || sCfg?.email || '';
+      } catch (e) {}
+      const emailResult = await sendEmail(env, email.toLowerCase(), `Verify your email - ${site.brand_name}`, emailContent.html, emailContent.text, { senderName: site.brand_name, replyTo: signupOwnerEmail || undefined });
       if (emailResult !== true) {
         console.error('Verification email send failed:', emailResult);
       }
@@ -705,7 +712,14 @@ async function handleRequestPasswordReset(request, env) {
     const baseUrl = getStorefrontUrl(env, site);
     const resetUrl = `${baseUrl}/reset-password?token=${resetToken}&email=${encodeURIComponent(email.toLowerCase())}`;
     const emailContent = buildPasswordResetEmail(site.brand_name, resetUrl, customer.name);
-    const emailResult = await sendEmail(env, email.toLowerCase(), `Reset your password - ${site.brand_name}`, emailContent.html, emailContent.text);
+    let resetOwnerEmail = '';
+    try {
+      const rCfg = await getSiteConfig(env, siteId);
+      let rSet = {};
+      try { if (rCfg?.settings) rSet = typeof rCfg.settings === 'string' ? JSON.parse(rCfg.settings) : rCfg.settings; } catch (e) {}
+      resetOwnerEmail = rSet.email || rSet.ownerEmail || rCfg?.email || '';
+    } catch (e) {}
+    const emailResult = await sendEmail(env, email.toLowerCase(), `Reset your password - ${site.brand_name}`, emailContent.html, emailContent.text, { senderName: site.brand_name, replyTo: resetOwnerEmail || undefined });
     if (emailResult !== true) {
       console.error('Password reset email send failed:', emailResult);
     }
@@ -963,7 +977,14 @@ async function handleResendVerification(request, env) {
     const baseUrl = getStorefrontUrl(env, site);
     const verifyUrl = `${baseUrl}/verify-email?token=${verifyToken}&email=${encodeURIComponent(email.toLowerCase())}`;
     const emailContent = buildVerificationEmail(site.brand_name, verifyUrl);
-    const emailResult = await sendEmail(env, email.toLowerCase(), `Verify your email - ${site.brand_name}`, emailContent.html, emailContent.text);
+    let resendOwnerEmail = '';
+    try {
+      const rvCfg = await getSiteConfig(env, siteId);
+      let rvSet = {};
+      try { if (rvCfg?.settings) rvSet = typeof rvCfg.settings === 'string' ? JSON.parse(rvCfg.settings) : rvCfg.settings; } catch (e) {}
+      resendOwnerEmail = rvSet.email || rvSet.ownerEmail || rvCfg?.email || '';
+    } catch (e) {}
+    const emailResult = await sendEmail(env, email.toLowerCase(), `Verify your email - ${site.brand_name}`, emailContent.html, emailContent.text, { senderName: site.brand_name, replyTo: resendOwnerEmail || undefined });
     if (emailResult !== true) {
       console.error('Resend verification email send failed:', emailResult);
     }

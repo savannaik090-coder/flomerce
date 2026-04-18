@@ -781,11 +781,11 @@ async function updateOrderStatus(request, env, user, orderId) {
           const emailJobs = [];
           if (fullOrder.customer_email) {
             const { html, text } = buildCancellationCustomerEmail(emailOrder, siteBrandName, cancellationReason, ownerEmail, cancelCurrency, storeTz);
-            emailJobs.push(sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been cancelled`, html, text).catch(e => console.error('Cancellation customer email error:', e)));
+            emailJobs.push(sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been cancelled`, html, text, { senderName: siteBrandName, replyTo: ownerEmail || undefined }).catch(e => console.error('Cancellation customer email error:', e)));
           }
           if (ownerEmail) {
             const { html, text } = buildCancellationOwnerEmail(emailOrder, siteBrandName, cancellationReason, cancelCurrency, storeTz);
-            emailJobs.push(sendEmail(env, ownerEmail, `Order #${fullOrder.order_number} cancelled - ${siteBrandName}`, html, text).catch(e => console.error('Cancellation owner email error:', e)));
+            emailJobs.push(sendEmail(env, ownerEmail, `Order #${fullOrder.order_number} cancelled - ${siteBrandName}`, html, text, { senderName: siteBrandName }).catch(e => console.error('Cancellation owner email error:', e)));
           }
           await Promise.all(emailJobs);
 
@@ -864,14 +864,14 @@ async function updateOrderStatus(request, env, user, orderId) {
 
             if (status === 'confirmed') {
               const { html, text } = buildOrderConfirmationEmail(emailOrder, siteBrandName, ownerEmail, statusCurrency, emailOptions, storeTz);
-              await sendEmail(env, fullOrder.customer_email, `Order Confirmed #${fullOrder.order_number} - ${siteBrandName}`, html, text).catch(e => console.error('Confirmation email error:', e));
+              await sendEmail(env, fullOrder.customer_email, `Order Confirmed #${fullOrder.order_number} - ${siteBrandName}`, html, text, { senderName: siteBrandName, replyTo: ownerEmail || undefined }).catch(e => console.error('Confirmation email error:', e));
             } else if (status === 'packed') {
               const { html, text } = buildOrderPackedEmail(emailOrder, siteBrandName, ownerEmail, statusCurrency, { trackingUrl }, storeTz);
-              await sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been packed! - ${siteBrandName}`, html, text).catch(e => console.error('Packed email error:', e));
+              await sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been packed! - ${siteBrandName}`, html, text, { senderName: siteBrandName, replyTo: ownerEmail || undefined }).catch(e => console.error('Packed email error:', e));
             } else if (status === 'shipped') {
               const shipOptions = { trackingUrl, trackingNumber: fullOrder.tracking_number || trackingNumber, carrier: fullOrder.carrier || carrier };
               const { html, text } = buildOrderShippedEmail(emailOrder, siteBrandName, ownerEmail, statusCurrency, shipOptions, storeTz);
-              await sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been shipped! - ${siteBrandName}`, html, text).catch(e => console.error('Shipped email error:', e));
+              await sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been shipped! - ${siteBrandName}`, html, text, { senderName: siteBrandName, replyTo: ownerEmail || undefined }).catch(e => console.error('Shipped email error:', e));
             }
           }
 
@@ -963,7 +963,7 @@ async function updateOrderStatus(request, env, user, orderId) {
           if (fullOrder.customer_email) {
             try {
               const { html, text } = buildDeliveryCustomerEmail(emailOrder, siteBrandName, ownerEmail, deliveryCurrency, deliveryEmailOptions, storeTz);
-              emailJobs.push(sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been delivered!`, html, text).catch(e => console.error('Delivery customer email send error:', e)));
+              emailJobs.push(sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been delivered!`, html, text, { senderName: siteBrandName, replyTo: ownerEmail || undefined }).catch(e => console.error('Delivery customer email send error:', e)));
             } catch (buildErr) {
               console.error('Delivery customer email build error:', buildErr);
             }
@@ -971,7 +971,7 @@ async function updateOrderStatus(request, env, user, orderId) {
           if (ownerEmail) {
             try {
               const { html, text } = buildDeliveryOwnerEmail(emailOrder, siteBrandName, deliveryCurrency, storeTz);
-              emailJobs.push(sendEmail(env, ownerEmail, `Order #${fullOrder.order_number} delivered - ${siteBrandName}`, html, text).catch(e => console.error('Delivery owner email send error:', e)));
+              emailJobs.push(sendEmail(env, ownerEmail, `Order #${fullOrder.order_number} delivered - ${siteBrandName}`, html, text, { senderName: siteBrandName }).catch(e => console.error('Delivery owner email send error:', e)));
             } catch (buildErr) {
               console.error('Delivery owner email build error:', buildErr);
             }
@@ -1401,7 +1401,7 @@ async function createReturnRequest(request, env, orderId) {
       const ownerEmail = settings.email || settings.ownerEmail || config.email;
       if (ownerEmail) {
         const { html, text } = buildReturnRequestEmail(order, brandName, reason, reasonDetail);
-        await sendEmail(env, ownerEmail, `Return Request #${order.order_number} - ${brandName}`, html, text).catch(() => {});
+        await sendEmail(env, ownerEmail, `Return Request #${order.order_number} - ${brandName}`, html, text, { senderName: brandName }).catch(() => {});
       }
     } catch (e) {}
 
@@ -1521,9 +1521,12 @@ async function handleReturnUpdate(request, env, returnId) {
       try {
         const config = await getSiteConfig(env, siteId);
         const brandName = config.brand_name || 'Store';
+        let retSettings = {};
+        try { if (config.settings) retSettings = typeof config.settings === 'string' ? JSON.parse(config.settings) : config.settings; } catch (e) {}
+        const ownerEmail = retSettings.email || retSettings.ownerEmail || config.email;
         const updatedRet = { ...ret, status, admin_note: adminNote !== undefined ? adminNote : ret.admin_note, refund_amount: refundAmount !== undefined ? refundAmount : ret.refund_amount };
         const { html, text } = buildReturnStatusEmail(updatedRet, brandName, status, adminNote);
-        await sendEmail(env, ret.customer_email, `Return Update #${ret.order_number} - ${brandName}`, html, text).catch(() => {});
+        await sendEmail(env, ret.customer_email, `Return Update #${ret.order_number} - ${brandName}`, html, text, { senderName: brandName, replyTo: ownerEmail || undefined }).catch(() => {});
       } catch (e) {}
     }
 
@@ -1564,6 +1567,9 @@ async function resendReturnLink(request, env, orderId) {
 
     const config = await getSiteConfig(env, siteId);
     const brandName = config.brand_name || 'Store';
+    let retLinkSettings = {};
+    try { if (config.settings) retLinkSettings = typeof config.settings === 'string' ? JSON.parse(config.settings) : config.settings; } catch (e) {}
+    const ownerEmail = retLinkSettings.email || retLinkSettings.ownerEmail || config.email;
 
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="margin:0;padding:0;font-family:'Segoe UI',Arial,sans-serif;background:#f5f5f5;">
       <div style="max-width:600px;margin:0 auto;background:#fff;">
@@ -1582,7 +1588,7 @@ async function resendReturnLink(request, env, orderId) {
     </body></html>`;
     const text = `Your return link for order #${order.order_number}: ${returnUrl}`;
 
-    await sendEmail(env, email, `Return Link for Order #${order.order_number} - ${brandName}`, html, text);
+    await sendEmail(env, email, `Return Link for Order #${order.order_number} - ${brandName}`, html, text, { senderName: brandName, replyTo: ownerEmail || undefined });
 
     return successResponse(null, 'Return link sent to your email');
   } catch (error) {
@@ -1678,7 +1684,7 @@ export async function sendOrderEmails(env, siteId, orderData) {
       try {
         const { html, text } = buildNewOrderReviewEmail(emailOrder, siteBrandName, currency, storeTz);
         emailJobs.push(
-          sendEmail(env, ownerEmail, `New Order #${orderData.orderNumber} - Review Required - ${siteBrandName}`, html, text)
+          sendEmail(env, ownerEmail, `New Order #${orderData.orderNumber} - Review Required - ${siteBrandName}`, html, text, { senderName: siteBrandName })
             .catch(e => console.error('Owner email send error:', e))
         );
       } catch (buildErr) {
@@ -1795,7 +1801,7 @@ async function createCancellationRequest(request, env, orderId) {
       const ownerEmail = settings.email || settings.ownerEmail || config.email;
       if (ownerEmail) {
         const { html, text } = buildCancellationRequestNotifyEmail(order, brandName, reason, reasonDetail);
-        await sendEmail(env, ownerEmail, `Cancellation Request #${order.order_number} - ${brandName}`, html, text).catch(() => {});
+        await sendEmail(env, ownerEmail, `Cancellation Request #${order.order_number} - ${brandName}`, html, text, { senderName: brandName }).catch(() => {});
       }
     } catch (e) {}
 
@@ -1942,7 +1948,7 @@ async function handleCancellationUpdate(request, env, cancelId) {
           if (order.customer_email) {
             const emailOrder = { order_number: order.order_number, customer_name: order.customer_name, customer_email: order.customer_email, total: order.total, payment_method: order.payment_method, created_at: order.created_at };
             const { html, text } = buildCancellationCustomerEmail(emailOrder, brandName, reason, ownerEmail, currency, storeTz, true);
-            await sendEmail(env, order.customer_email, `Cancellation approved - Order #${order.order_number} - ${brandName}`, html, text).catch(() => {});
+            await sendEmail(env, order.customer_email, `Cancellation approved - Order #${order.order_number} - ${brandName}`, html, text, { senderName: brandName, replyTo: ownerEmail || undefined }).catch(() => {});
           }
         }
       } catch (e) {
@@ -1954,9 +1960,12 @@ async function handleCancellationUpdate(request, env, cancelId) {
       try {
         const config = await getSiteConfig(env, siteId);
         const brandName = config.brand_name || 'Store';
+        let cancelRejSettings = {};
+        try { if (config.settings) cancelRejSettings = typeof config.settings === 'string' ? JSON.parse(config.settings) : config.settings; } catch (e) {}
+        const ownerEmail = cancelRejSettings.email || cancelRejSettings.ownerEmail || config.email;
         const updatedReq = { ...req, status, admin_note: adminNote !== undefined ? adminNote : req.admin_note };
         const { html, text } = buildCancellationStatusEmail(updatedReq, brandName, status, adminNote);
-        await sendEmail(env, req.customer_email, `Cancellation Update #${req.order_number} - ${brandName}`, html, text).catch(() => {});
+        await sendEmail(env, req.customer_email, `Cancellation Update #${req.order_number} - ${brandName}`, html, text, { senderName: brandName, replyTo: ownerEmail || undefined }).catch(() => {});
       } catch (e) {}
     }
 
@@ -2003,6 +2012,9 @@ async function resendCancelLink(request, env, orderId) {
 
     const config = await getSiteConfig(env, siteId);
     const brandName = config.brand_name || 'Store';
+    let cancelLinkSettings = {};
+    try { if (config.settings) cancelLinkSettings = typeof config.settings === 'string' ? JSON.parse(config.settings) : config.settings; } catch (e) {}
+    const ownerEmail = cancelLinkSettings.email || cancelLinkSettings.ownerEmail || config.email;
 
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="margin:0;padding:0;font-family:'Segoe UI',Arial,sans-serif;background:#f5f5f5;">
       <div style="max-width:600px;margin:0 auto;background:#fff;">
@@ -2021,7 +2033,7 @@ async function resendCancelLink(request, env, orderId) {
     </body></html>`;
     const text = `Your cancellation link for order #${order.order_number}: ${cancelUrl}`;
 
-    await sendEmail(env, email, `Cancellation Link for Order #${order.order_number} - ${brandName}`, html, text);
+    await sendEmail(env, email, `Cancellation Link for Order #${order.order_number} - ${brandName}`, html, text, { senderName: brandName, replyTo: ownerEmail || undefined });
 
     return successResponse(null, 'Cancellation link sent to your email');
   } catch (error) {

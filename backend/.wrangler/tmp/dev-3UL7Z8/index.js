@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-XrErWl/checked-fetch.js
+// .wrangler/tmp/bundle-aMPPbt/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-XrErWl/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-aMPPbt/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-XrErWl/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-aMPPbt/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-XrErWl/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-aMPPbt/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -636,7 +636,7 @@ function formatCurrencyHtml(amount, currency = "INR") {
   }
   return formatCurrency(amount, currency);
 }
-async function sendEmail(env, to, subject, html, text) {
+async function sendEmail(env, to, subject, html, text, options = {}) {
   try {
     const apiKey = (env.BREVO_API_KEY || "").trim();
     if (!apiKey) {
@@ -644,6 +644,7 @@ async function sendEmail(env, to, subject, html, text) {
       return "No email provider configured";
     }
     const fromEmail = env.FROM_EMAIL || FROM_EMAIL;
+    const senderName = options && options.senderName ? options.senderName : "Flomerce";
     const recipients = typeof to === "string" ? [{ email: to }] : Array.isArray(to) ? to.map((e) => typeof e === "string" ? { email: e } : e) : [to];
     const toPayload = recipients.map((r) => {
       const entry = { email: r.email };
@@ -652,13 +653,16 @@ async function sendEmail(env, to, subject, html, text) {
       return entry;
     });
     const payload = {
-      sender: { email: fromEmail, name: "Flomerce" },
+      sender: { email: fromEmail, name: senderName },
       to: toPayload,
       subject,
       htmlContent: html
     };
     if (text)
       payload.textContent = text;
+    if (options && options.replyTo) {
+      payload.replyTo = typeof options.replyTo === "string" ? { email: options.replyTo, name: senderName } : options.replyTo;
+    }
     const response = await fetch("https://api.brevo.com/v3/smtp/email", {
       method: "POST",
       headers: {
@@ -3937,12 +3941,12 @@ var init_whatsapp = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-XrErWl/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-aMPPbt/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-XrErWl/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-aMPPbt/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -8434,11 +8438,11 @@ async function updateOrderStatus(request, env, user, orderId) {
           const emailJobs = [];
           if (fullOrder.customer_email) {
             const { html, text } = buildCancellationCustomerEmail(emailOrder, siteBrandName, cancellationReason, ownerEmail, cancelCurrency, storeTz);
-            emailJobs.push(sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been cancelled`, html, text).catch((e) => console.error("Cancellation customer email error:", e)));
+            emailJobs.push(sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been cancelled`, html, text, { senderName: siteBrandName, replyTo: ownerEmail || void 0 }).catch((e) => console.error("Cancellation customer email error:", e)));
           }
           if (ownerEmail) {
             const { html, text } = buildCancellationOwnerEmail(emailOrder, siteBrandName, cancellationReason, cancelCurrency, storeTz);
-            emailJobs.push(sendEmail(env, ownerEmail, `Order #${fullOrder.order_number} cancelled - ${siteBrandName}`, html, text).catch((e) => console.error("Cancellation owner email error:", e)));
+            emailJobs.push(sendEmail(env, ownerEmail, `Order #${fullOrder.order_number} cancelled - ${siteBrandName}`, html, text, { senderName: siteBrandName }).catch((e) => console.error("Cancellation owner email error:", e)));
           }
           await Promise.all(emailJobs);
           if (isWhatsAppConfigured(cancelSettings) && fullOrder.customer_phone && fullOrder.whatsapp_opted_in) {
@@ -8523,14 +8527,14 @@ async function updateOrderStatus(request, env, user, orderId) {
             }
             if (status === "confirmed") {
               const { html, text } = buildOrderConfirmationEmail(emailOrder, siteBrandName, ownerEmail, statusCurrency, emailOptions, storeTz);
-              await sendEmail(env, fullOrder.customer_email, `Order Confirmed #${fullOrder.order_number} - ${siteBrandName}`, html, text).catch((e) => console.error("Confirmation email error:", e));
+              await sendEmail(env, fullOrder.customer_email, `Order Confirmed #${fullOrder.order_number} - ${siteBrandName}`, html, text, { senderName: siteBrandName, replyTo: ownerEmail || void 0 }).catch((e) => console.error("Confirmation email error:", e));
             } else if (status === "packed") {
               const { html, text } = buildOrderPackedEmail(emailOrder, siteBrandName, ownerEmail, statusCurrency, { trackingUrl }, storeTz);
-              await sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been packed! - ${siteBrandName}`, html, text).catch((e) => console.error("Packed email error:", e));
+              await sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been packed! - ${siteBrandName}`, html, text, { senderName: siteBrandName, replyTo: ownerEmail || void 0 }).catch((e) => console.error("Packed email error:", e));
             } else if (status === "shipped") {
               const shipOptions = { trackingUrl, trackingNumber: fullOrder.tracking_number || trackingNumber, carrier: fullOrder.carrier || carrier };
               const { html, text } = buildOrderShippedEmail(emailOrder, siteBrandName, ownerEmail, statusCurrency, shipOptions, storeTz);
-              await sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been shipped! - ${siteBrandName}`, html, text).catch((e) => console.error("Shipped email error:", e));
+              await sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been shipped! - ${siteBrandName}`, html, text, { senderName: siteBrandName, replyTo: ownerEmail || void 0 }).catch((e) => console.error("Shipped email error:", e));
             }
           }
           if (isWhatsAppConfigured(statusSettings) && fullOrder.customer_phone && fullOrder.whatsapp_opted_in) {
@@ -8629,7 +8633,7 @@ async function updateOrderStatus(request, env, user, orderId) {
           if (fullOrder.customer_email) {
             try {
               const { html, text } = buildDeliveryCustomerEmail(emailOrder, siteBrandName, ownerEmail, deliveryCurrency, deliveryEmailOptions, storeTz);
-              emailJobs.push(sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been delivered!`, html, text).catch((e) => console.error("Delivery customer email send error:", e)));
+              emailJobs.push(sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been delivered!`, html, text, { senderName: siteBrandName, replyTo: ownerEmail || void 0 }).catch((e) => console.error("Delivery customer email send error:", e)));
             } catch (buildErr) {
               console.error("Delivery customer email build error:", buildErr);
             }
@@ -8637,7 +8641,7 @@ async function updateOrderStatus(request, env, user, orderId) {
           if (ownerEmail) {
             try {
               const { html, text } = buildDeliveryOwnerEmail(emailOrder, siteBrandName, deliveryCurrency, storeTz);
-              emailJobs.push(sendEmail(env, ownerEmail, `Order #${fullOrder.order_number} delivered - ${siteBrandName}`, html, text).catch((e) => console.error("Delivery owner email send error:", e)));
+              emailJobs.push(sendEmail(env, ownerEmail, `Order #${fullOrder.order_number} delivered - ${siteBrandName}`, html, text, { senderName: siteBrandName }).catch((e) => console.error("Delivery owner email send error:", e)));
             } catch (buildErr) {
               console.error("Delivery owner email build error:", buildErr);
             }
@@ -9084,7 +9088,7 @@ async function createReturnRequest(request, env, orderId) {
       const ownerEmail = settings.email || settings.ownerEmail || config.email;
       if (ownerEmail) {
         const { html, text } = buildReturnRequestEmail(order, brandName, reason, reasonDetail);
-        await sendEmail(env, ownerEmail, `Return Request #${order.order_number} - ${brandName}`, html, text).catch(() => {
+        await sendEmail(env, ownerEmail, `Return Request #${order.order_number} - ${brandName}`, html, text, { senderName: brandName }).catch(() => {
         });
       }
     } catch (e) {
@@ -9212,9 +9216,16 @@ async function handleReturnUpdate(request, env, returnId) {
       try {
         const config = await getSiteConfig(env, siteId);
         const brandName = config.brand_name || "Store";
+        let retSettings = {};
+        try {
+          if (config.settings)
+            retSettings = typeof config.settings === "string" ? JSON.parse(config.settings) : config.settings;
+        } catch (e) {
+        }
+        const ownerEmail = retSettings.email || retSettings.ownerEmail || config.email;
         const updatedRet = { ...ret, status, admin_note: adminNote !== void 0 ? adminNote : ret.admin_note, refund_amount: refundAmount !== void 0 ? refundAmount : ret.refund_amount };
         const { html, text } = buildReturnStatusEmail(updatedRet, brandName, status, adminNote);
-        await sendEmail(env, ret.customer_email, `Return Update #${ret.order_number} - ${brandName}`, html, text).catch(() => {
+        await sendEmail(env, ret.customer_email, `Return Update #${ret.order_number} - ${brandName}`, html, text, { senderName: brandName, replyTo: ownerEmail || void 0 }).catch(() => {
         });
       } catch (e) {
       }
@@ -9256,6 +9267,13 @@ async function resendReturnLink(request, env, orderId) {
     const returnUrl = `https://${domain}/return/${order.order_number || order.id}?token=${returnToken}`;
     const config = await getSiteConfig(env, siteId);
     const brandName = config.brand_name || "Store";
+    let retLinkSettings = {};
+    try {
+      if (config.settings)
+        retLinkSettings = typeof config.settings === "string" ? JSON.parse(config.settings) : config.settings;
+    } catch (e) {
+    }
+    const ownerEmail = retLinkSettings.email || retLinkSettings.ownerEmail || config.email;
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="margin:0;padding:0;font-family:'Segoe UI',Arial,sans-serif;background:#f5f5f5;">
       <div style="max-width:600px;margin:0 auto;background:#fff;">
         <div style="background:#0f172a;color:#fff;padding:32px;text-align:center;">
@@ -9272,7 +9290,7 @@ async function resendReturnLink(request, env, orderId) {
       </div>
     </body></html>`;
     const text = `Your return link for order #${order.order_number}: ${returnUrl}`;
-    await sendEmail(env, email, `Return Link for Order #${order.order_number} - ${brandName}`, html, text);
+    await sendEmail(env, email, `Return Link for Order #${order.order_number} - ${brandName}`, html, text, { senderName: brandName, replyTo: ownerEmail || void 0 });
     return successResponse(null, "Return link sent to your email");
   } catch (error) {
     console.error("Resend return link error:", error);
@@ -9368,7 +9386,7 @@ async function sendOrderEmails(env, siteId, orderData) {
       try {
         const { html, text } = buildNewOrderReviewEmail(emailOrder, siteBrandName, currency, storeTz);
         emailJobs.push(
-          sendEmail(env, ownerEmail, `New Order #${orderData.orderNumber} - Review Required - ${siteBrandName}`, html, text).catch((e) => console.error("Owner email send error:", e))
+          sendEmail(env, ownerEmail, `New Order #${orderData.orderNumber} - Review Required - ${siteBrandName}`, html, text, { senderName: siteBrandName }).catch((e) => console.error("Owner email send error:", e))
         );
       } catch (buildErr) {
         console.error("Owner email build error:", buildErr);
@@ -9498,7 +9516,7 @@ async function createCancellationRequest(request, env, orderId) {
       const ownerEmail = settings.email || settings.ownerEmail || config.email;
       if (ownerEmail) {
         const { html, text } = buildCancellationRequestNotifyEmail(order, brandName, reason, reasonDetail);
-        await sendEmail(env, ownerEmail, `Cancellation Request #${order.order_number} - ${brandName}`, html, text).catch(() => {
+        await sendEmail(env, ownerEmail, `Cancellation Request #${order.order_number} - ${brandName}`, html, text, { senderName: brandName }).catch(() => {
         });
       }
     } catch (e) {
@@ -9656,7 +9674,7 @@ async function handleCancellationUpdate(request, env, cancelId) {
           if (order.customer_email) {
             const emailOrder = { order_number: order.order_number, customer_name: order.customer_name, customer_email: order.customer_email, total: order.total, payment_method: order.payment_method, created_at: order.created_at };
             const { html, text } = buildCancellationCustomerEmail(emailOrder, brandName, reason, ownerEmail, currency, storeTz, true);
-            await sendEmail(env, order.customer_email, `Cancellation approved - Order #${order.order_number} - ${brandName}`, html, text).catch(() => {
+            await sendEmail(env, order.customer_email, `Cancellation approved - Order #${order.order_number} - ${brandName}`, html, text, { senderName: brandName, replyTo: ownerEmail || void 0 }).catch(() => {
             });
           }
         }
@@ -9668,9 +9686,16 @@ async function handleCancellationUpdate(request, env, cancelId) {
       try {
         const config = await getSiteConfig(env, siteId);
         const brandName = config.brand_name || "Store";
+        let cancelRejSettings = {};
+        try {
+          if (config.settings)
+            cancelRejSettings = typeof config.settings === "string" ? JSON.parse(config.settings) : config.settings;
+        } catch (e) {
+        }
+        const ownerEmail = cancelRejSettings.email || cancelRejSettings.ownerEmail || config.email;
         const updatedReq = { ...req, status, admin_note: adminNote !== void 0 ? adminNote : req.admin_note };
         const { html, text } = buildCancellationStatusEmail(updatedReq, brandName, status, adminNote);
-        await sendEmail(env, req.customer_email, `Cancellation Update #${req.order_number} - ${brandName}`, html, text).catch(() => {
+        await sendEmail(env, req.customer_email, `Cancellation Update #${req.order_number} - ${brandName}`, html, text, { senderName: brandName, replyTo: ownerEmail || void 0 }).catch(() => {
         });
       } catch (e) {
       }
@@ -9720,6 +9745,13 @@ async function resendCancelLink(request, env, orderId) {
     const cancelUrl = `https://${domain}/cancel/${order.order_number || order.id}?token=${cancelToken}`;
     const config = await getSiteConfig(env, siteId);
     const brandName = config.brand_name || "Store";
+    let cancelLinkSettings = {};
+    try {
+      if (config.settings)
+        cancelLinkSettings = typeof config.settings === "string" ? JSON.parse(config.settings) : config.settings;
+    } catch (e) {
+    }
+    const ownerEmail = cancelLinkSettings.email || cancelLinkSettings.ownerEmail || config.email;
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="margin:0;padding:0;font-family:'Segoe UI',Arial,sans-serif;background:#f5f5f5;">
       <div style="max-width:600px;margin:0 auto;background:#fff;">
         <div style="background:#0f172a;color:#fff;padding:32px;text-align:center;">
@@ -9736,7 +9768,7 @@ async function resendCancelLink(request, env, orderId) {
       </div>
     </body></html>`;
     const text = `Your cancellation link for order #${order.order_number}: ${cancelUrl}`;
-    await sendEmail(env, email, `Cancellation Link for Order #${order.order_number} - ${brandName}`, html, text);
+    await sendEmail(env, email, `Cancellation Link for Order #${order.order_number} - ${brandName}`, html, text, { senderName: brandName, replyTo: ownerEmail || void 0 });
     return successResponse(null, "Cancellation link sent to your email");
   } catch (error) {
     console.error("Resend cancel link error:", error);
@@ -15730,7 +15762,19 @@ async function handleSignup2(request, env) {
       const baseUrl = getStorefrontUrl(env, site);
       const verifyUrl = `${baseUrl}/verify-email?token=${verifyToken}&email=${encodeURIComponent(email.toLowerCase())}`;
       const emailContent = buildVerificationEmail(site.brand_name, verifyUrl);
-      const emailResult = await sendEmail(env, email.toLowerCase(), `Verify your email - ${site.brand_name}`, emailContent.html, emailContent.text);
+      let signupOwnerEmail = "";
+      try {
+        const sCfg = await getSiteConfig(env, siteId);
+        let sSet = {};
+        try {
+          if (sCfg?.settings)
+            sSet = typeof sCfg.settings === "string" ? JSON.parse(sCfg.settings) : sCfg.settings;
+        } catch (e) {
+        }
+        signupOwnerEmail = sSet.email || sSet.ownerEmail || sCfg?.email || "";
+      } catch (e) {
+      }
+      const emailResult = await sendEmail(env, email.toLowerCase(), `Verify your email - ${site.brand_name}`, emailContent.html, emailContent.text, { senderName: site.brand_name, replyTo: signupOwnerEmail || void 0 });
       if (emailResult !== true) {
         console.error("Verification email send failed:", emailResult);
       }
@@ -16054,7 +16098,19 @@ async function handleRequestPasswordReset(request, env) {
     const baseUrl = getStorefrontUrl(env, site);
     const resetUrl = `${baseUrl}/reset-password?token=${resetToken}&email=${encodeURIComponent(email.toLowerCase())}`;
     const emailContent = buildPasswordResetEmail(site.brand_name, resetUrl, customer.name);
-    const emailResult = await sendEmail(env, email.toLowerCase(), `Reset your password - ${site.brand_name}`, emailContent.html, emailContent.text);
+    let resetOwnerEmail = "";
+    try {
+      const rCfg = await getSiteConfig(env, siteId);
+      let rSet = {};
+      try {
+        if (rCfg?.settings)
+          rSet = typeof rCfg.settings === "string" ? JSON.parse(rCfg.settings) : rCfg.settings;
+      } catch (e) {
+      }
+      resetOwnerEmail = rSet.email || rSet.ownerEmail || rCfg?.email || "";
+    } catch (e) {
+    }
+    const emailResult = await sendEmail(env, email.toLowerCase(), `Reset your password - ${site.brand_name}`, emailContent.html, emailContent.text, { senderName: site.brand_name, replyTo: resetOwnerEmail || void 0 });
     if (emailResult !== true) {
       console.error("Password reset email send failed:", emailResult);
     }
@@ -16275,7 +16331,19 @@ async function handleResendVerification2(request, env) {
     const baseUrl = getStorefrontUrl(env, site);
     const verifyUrl = `${baseUrl}/verify-email?token=${verifyToken}&email=${encodeURIComponent(email.toLowerCase())}`;
     const emailContent = buildVerificationEmail(site.brand_name, verifyUrl);
-    const emailResult = await sendEmail(env, email.toLowerCase(), `Verify your email - ${site.brand_name}`, emailContent.html, emailContent.text);
+    let resendOwnerEmail = "";
+    try {
+      const rvCfg = await getSiteConfig(env, siteId);
+      let rvSet = {};
+      try {
+        if (rvCfg?.settings)
+          rvSet = typeof rvCfg.settings === "string" ? JSON.parse(rvCfg.settings) : rvCfg.settings;
+      } catch (e) {
+      }
+      resendOwnerEmail = rvSet.email || rvSet.ownerEmail || rvCfg?.email || "";
+    } catch (e) {
+    }
+    const emailResult = await sendEmail(env, email.toLowerCase(), `Verify your email - ${site.brand_name}`, emailContent.html, emailContent.text, { senderName: site.brand_name, replyTo: resendOwnerEmail || void 0 });
     if (emailResult !== true) {
       console.error("Resend verification email send failed:", emailResult);
     }
@@ -19012,7 +19080,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-XrErWl/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-aMPPbt/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -19047,7 +19115,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-XrErWl/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-aMPPbt/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;
