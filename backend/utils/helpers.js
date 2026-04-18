@@ -55,7 +55,7 @@ function getAllowedOrigin(origin) {
   
   if (origin.endsWith(`.${PLATFORM_DOMAIN}`) && origin.startsWith('https://')) return origin;
   
-  if (origin === 'https://flomerce-8x1.pages.dev') return origin;
+  if (origin === 'https://flomerce.pages.dev') return origin;
   if (origin.endsWith('.pages.dev')) return origin;
   
   if (origin === 'https://saas-platform.savannaik090.workers.dev') return origin;

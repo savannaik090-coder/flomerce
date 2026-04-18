@@ -52,7 +52,7 @@ export default {
       const hostname = url.hostname;
       const platformDomain = env.DOMAIN || PLATFORM_DOMAIN;
       if (hostname === `www.${platformDomain}` || hostname === platformDomain) {
-        const pagesHostname = env.PAGES_HOSTNAME || 'flomerce-8x1.pages.dev';
+        const pagesHostname = env.PAGES_HOSTNAME || 'flomerce.pages.dev';
         const pagesUrl = new URL(request.url);
         pagesUrl.hostname = pagesHostname;
         const pagesRequest = new Request(pagesUrl.toString(), {

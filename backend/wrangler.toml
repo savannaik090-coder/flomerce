@@ -23,7 +23,7 @@ SKIP_EMAIL_VERIFICATION = "false"
 DOMAIN = "flomerce.com"
 APP_URL = "https://flomerce.com"
 FROM_EMAIL = "noreply@flomerce.com"
-PAGES_HOSTNAME = "flomerce-8x1.pages.dev"
+PAGES_HOSTNAME = "flomerce.pages.dev"
 VAPID_PUBLIC_KEY = "BBFtjftWOpbgmrZGuPuWePb0ZIEyDz9pVppnsZqwMXewpiu3-JQy5nbBtqOjftgv8332Oy4i94j6NUBDphTh08s"
 VAPID_SUBJECT = "mailto:noreply@flomerce.com"
 # VAPID_PRIVATE_KEY for local dev only — in production, set as secret: wrangler secret put VAPID_PRIVATE_KEY
