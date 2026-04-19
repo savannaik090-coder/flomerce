@@ -5081,6 +5081,60 @@ async function checkSubdomainAvailability(env, subdomain) {
   }
 }
 __name(checkSubdomainAvailability, "checkSubdomainAvailability");
+async function reconcileSiteSubscription(env, site) {
+  if (!site || !site.id)
+    return site;
+  if (site.subscription_plan === "enterprise")
+    return site;
+  try {
+    const activeSub = await env.DB.prepare(
+      `SELECT plan, current_period_end FROM subscriptions
+       WHERE site_id = ? AND status = 'active'
+       ORDER BY created_at DESC LIMIT 1`
+    ).bind(site.id).first();
+    if (activeSub) {
+      const planMismatch = (site.subscription_plan || "") !== (activeSub.plan || "");
+      const periodMismatch = (site.subscription_expires_at || "") !== (activeSub.current_period_end || "");
+      if (planMismatch || periodMismatch) {
+        await env.DB.prepare(
+          `UPDATE sites SET subscription_plan = ?, subscription_expires_at = ?, updated_at = datetime('now')
+           WHERE id = ? AND COALESCE(subscription_plan, '') != 'enterprise'`
+        ).bind(activeSub.plan, activeSub.current_period_end, site.id).run();
+        site.subscription_plan = activeSub.plan;
+        site.subscription_expires_at = activeSub.current_period_end;
+        console.log(`[Reconcile] site=${site.id}: synced to active sub plan=${activeSub.plan}`);
+      }
+      return site;
+    }
+    const cached = site.subscription_plan;
+    if (!cached)
+      return site;
+    if (cached === "trial") {
+      const expiresAt = site.subscription_expires_at;
+      if (expiresAt && new Date(expiresAt) < /* @__PURE__ */ new Date()) {
+        await env.DB.prepare(
+          `UPDATE sites SET subscription_plan = NULL, subscription_expires_at = NULL, updated_at = datetime('now')
+           WHERE id = ? AND COALESCE(subscription_plan, '') NOT IN ('enterprise')`
+        ).bind(site.id).run();
+        site.subscription_plan = null;
+        site.subscription_expires_at = null;
+        console.log(`[Reconcile] site=${site.id}: cleared expired trial`);
+      }
+      return site;
+    }
+    await env.DB.prepare(
+      `UPDATE sites SET subscription_plan = NULL, subscription_expires_at = NULL, updated_at = datetime('now')
+       WHERE id = ? AND COALESCE(subscription_plan, '') NOT IN ('enterprise')`
+    ).bind(site.id).run();
+    site.subscription_plan = null;
+    site.subscription_expires_at = null;
+    console.log(`[Reconcile] site=${site.id}: cleared stale paid plan '${cached}' (no active sub)`);
+  } catch (e) {
+    console.error("reconcileSiteSubscription error:", e.message || e);
+  }
+  return site;
+}
+__name(reconcileSiteSubscription, "reconcileSiteSubscription");
 async function getUserSites(env, user) {
   try {
     const sites = await env.DB.prepare(
@@ -5093,6 +5147,7 @@ async function getUserSites(env, user) {
     ).bind(user.id).all();
     const enrichedSites = [];
     for (const site of sites.results) {
+      await reconcileSiteSubscription(env, site);
       const config = await getSiteConfig(env, site.id);
       let subscription = { plan: null, status: "none", billingCycle: null, periodStart: null, periodEnd: null };
       try {
@@ -5161,6 +5216,7 @@ async function getSite(env, user, siteId) {
     if (!siteRow) {
       return errorResponse("Site not found", 404, "NOT_FOUND");
     }
+    await reconcileSiteSubscription(env, siteRow);
     const site = await getSiteWithConfig(env, siteRow);
     const siteDB = await resolveSiteDBById(env, siteId);
     const categories = await siteDB.prepare(
@@ -19158,16 +19214,43 @@ async function cleanupExpiredData(env) {
     }
     try {
       await env.DB.prepare(
-        `UPDATE sites SET subscription_plan = NULL, updated_at = datetime('now')
-         WHERE subscription_expires_at IS NOT NULL
-           AND datetime(subscription_expires_at) < datetime('now')
-           AND COALESCE(subscription_plan, '') NOT IN ('enterprise', '')
-           AND NOT EXISTS (
+        `UPDATE sites SET
+            subscription_plan = (SELECT s.plan FROM subscriptions s WHERE s.site_id = sites.id AND s.status = 'active' ORDER BY s.created_at DESC LIMIT 1),
+            subscription_expires_at = (SELECT s.current_period_end FROM subscriptions s WHERE s.site_id = sites.id AND s.status = 'active' ORDER BY s.created_at DESC LIMIT 1),
+            updated_at = datetime('now')
+         WHERE COALESCE(subscription_plan, '') != 'enterprise'
+           AND EXISTS (
              SELECT 1 FROM subscriptions s WHERE s.site_id = sites.id AND s.status = 'active'
+               AND (
+                 COALESCE(s.plan, '') != COALESCE(sites.subscription_plan, '')
+                 OR COALESCE(s.current_period_end, '') != COALESCE(sites.subscription_expires_at, '')
+               )
            )`
       ).run();
     } catch (e) {
-      console.error("[Cleanup] reset stale subscription_plan on sites:", e.message || e);
+      console.error("[Cleanup] forward-sync site subscription:", e.message || e);
+    }
+    try {
+      await env.DB.prepare(
+        `UPDATE sites SET subscription_plan = NULL, subscription_expires_at = NULL, updated_at = datetime('now')
+         WHERE COALESCE(subscription_plan, '') NOT IN ('enterprise', '', 'trial')
+           AND (updated_at IS NULL OR datetime(updated_at) < datetime('now', '-5 minutes'))
+           AND NOT EXISTS (
+             SELECT 1 FROM subscriptions s WHERE s.site_id = sites.id AND s.status IN ('active', 'scheduled')
+           )`
+      ).run();
+    } catch (e) {
+      console.error("[Cleanup] clear stale paid plan on sites:", e.message || e);
+    }
+    try {
+      await env.DB.prepare(
+        `UPDATE sites SET subscription_plan = NULL, subscription_expires_at = NULL, updated_at = datetime('now')
+         WHERE subscription_plan = 'trial'
+           AND subscription_expires_at IS NOT NULL
+           AND datetime(subscription_expires_at) < datetime('now')`
+      ).run();
+    } catch (e) {
+      console.error("[Cleanup] clear expired trial cache:", e.message || e);
     }
     try {
       await env.DB.prepare(

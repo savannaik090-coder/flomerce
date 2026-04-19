@@ -119,7 +119,7 @@ function PaymentProcessingOverlay({ state, message, onDone }) {
   );
 }
 
-export default function PlanSelector({ siteId: initialSiteId, currentPlan, currentStatus, onUpgraded, isOverlay, hideTrial, onClose, isFirstTime, onCreateSite }) {
+export default function PlanSelector({ siteId: initialSiteId, currentPlan, currentStatus, scheduledPlan, scheduledStartAt, onUpgraded, isOverlay, hideTrial, onClose, isFirstTime, onCreateSite }) {
   const [duration, setDuration] = useState(null);
   const [upgrading, setUpgrading] = useState(null);
   const [plans, setPlans] = useState([]);
@@ -382,6 +382,25 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
         </div>
       )}
 
+      {scheduledPlan && (
+        <div style={{
+          display: 'flex', alignItems: 'flex-start', gap: 12,
+          background: '#fef3c7', border: '1px solid #fcd34d',
+          borderRadius: 12, padding: '14px 16px', marginBottom: '1.5rem',
+        }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#b45309" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 2 }}>
+            <circle cx="12" cy="12" r="10" />
+            <polyline points="12 6 12 12 16 14" />
+          </svg>
+          <div style={{ fontSize: '0.875rem', color: '#78350f', lineHeight: 1.5 }}>
+            <strong style={{ fontWeight: 700 }}>Scheduled plan change:</strong>{' '}
+            Your subscription will switch to <strong style={{ textTransform: 'capitalize' }}>{scheduledPlan}</strong>
+            {scheduledStartAt ? <> on <strong>{new Date(scheduledStartAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</strong></> : ' at the end of your current billing period'}.
+            Your current plan stays active until then. To cancel this change, please contact support.
+          </div>
+        </div>
+      )}
+
       {availableDurations.length > 1 && (
         <div className="duration-selector">
           {availableDurations.map(key => (
@@ -470,7 +489,7 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
                 disabled={isButtonDisabled(planGroup) || upgrading !== null}
                 onClick={() => {
                   if (isDowngrade(planGroup)) {
-                    if (window.confirm(`Are you sure you want to downgrade to ${planGroup.name}? Your current plan will be cancelled and replaced with the new plan.`)) {
+                    if (window.confirm(`Schedule a downgrade to ${planGroup.name}? Your current plan will keep running until the end of your billing period, and the new plan will start automatically after that.`)) {
                       handleUpgrade(planGroup);
                     }
                   } else {
@@ -480,8 +499,10 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
               >
                 {upgrading === planGroup.plans[duration]?.id ? 'Processing...' : getButtonText(planGroup)}
               </button>
-              {isDowngrade(planGroup) && (
-                <p style={{ fontSize: '0.7rem', color: '#92400e', marginTop: '0.5rem', textAlign: 'center' }}>Replaces your current plan immediately</p>
+              {isDowngrade(planGroup) && !scheduledPlan && (
+                <p style={{ fontSize: '0.7rem', color: '#92400e', marginTop: '0.5rem', textAlign: 'center' }}>
+                  Takes effect at the end of your current billing period. Your current plan keeps running until then.
+                </p>
               )}
             </div>
           );

@@ -401,28 +401,30 @@ export default function DashboardPage() {
     const rawStatus = sub.status || 'none';
     const periodEnd = sub.periodEnd || site.subscription_expires_at || null;
     const hasRazorpay = sub.hasRazorpay || false;
+    const scheduledPlan = sub.scheduledPlan || null;
+    const scheduledStartAt = sub.scheduledStartAt || null;
 
     if (plan === 'enterprise') {
-      return { plan: 'enterprise', status: 'active', periodEnd: null, isActive: true, isExpired: false, isCancelled: false, hasRazorpay: false };
+      return { plan: 'enterprise', status: 'active', periodEnd: null, isActive: true, isExpired: false, isCancelled: false, hasRazorpay: false, scheduledPlan, scheduledStartAt };
     }
 
     if (rawStatus === 'cancelled' && periodEnd && new Date(periodEnd) > new Date()) {
-      return { plan, status: 'cancelled', periodEnd, isActive: true, isExpired: false, isCancelled: true, hasRazorpay };
+      return { plan, status: 'cancelled', periodEnd, isActive: true, isExpired: false, isCancelled: true, hasRazorpay, scheduledPlan, scheduledStartAt };
     }
 
     if (plan && rawStatus === 'active' && periodEnd && new Date(periodEnd) > new Date()) {
-      return { plan, status: 'active', periodEnd, isActive: true, isExpired: false, isCancelled: false, hasRazorpay };
+      return { plan, status: 'active', periodEnd, isActive: true, isExpired: false, isCancelled: false, hasRazorpay, scheduledPlan, scheduledStartAt };
     }
 
     const accountStatus = getAccountSubscriptionStatus();
     if (accountStatus.isTrialActive && (!plan || plan === 'trial' || plan === 'free' || rawStatus !== 'active')) {
-      return { plan: 'trial', status: 'active', periodEnd: accountStatus.trialEndDate, isActive: true, isExpired: false, isCancelled: false, hasRazorpay: false };
+      return { plan: 'trial', status: 'active', periodEnd: accountStatus.trialEndDate, isActive: true, isExpired: false, isCancelled: false, hasRazorpay: false, scheduledPlan, scheduledStartAt };
     }
 
     const isExpired = rawStatus === 'expired' || rawStatus === 'cancelled' || rawStatus === 'paused' || (rawStatus === 'active' && periodEnd && new Date(periodEnd) < new Date());
     const isActive = rawStatus === 'active' && !isExpired;
     const displayStatus = isExpired ? 'expired' : rawStatus;
-    return { plan, status: displayStatus, periodEnd, isActive, isExpired, isCancelled: rawStatus === 'cancelled', hasRazorpay };
+    return { plan, status: displayStatus, periodEnd, isActive, isExpired, isCancelled: rawStatus === 'cancelled', hasRazorpay, scheduledPlan, scheduledStartAt };
   };
 
   const formatPlanName = (plan) => {
@@ -1213,19 +1215,24 @@ export default function DashboardPage() {
         />
       )}
 
-      {showPlanOverlay && (
-        <PlanSelector
-          siteId={planOverlaySiteId}
-          currentPlan={planOverlaySiteId ? (getSiteSubscriptionInfo(sites.find(s => s.id === planOverlaySiteId) || {}).plan || null) : null}
-          currentStatus={planOverlaySiteId ? (getSiteSubscriptionInfo(sites.find(s => s.id === planOverlaySiteId) || {}).isActive ? 'active' : 'none') : 'none'}
-          onUpgraded={handlePlanOverlayDone}
-          isOverlay={true}
-          hideTrial={showPlanOverlayHideTrial}
-          isFirstTime={!profileData?.hadSubscription}
-          onClose={handlePlanOverlayClose}
-          onCreateSite={pendingSiteData ? handleCreatePendingSite : null}
-        />
-      )}
+      {showPlanOverlay && (() => {
+        const overlayInfo = planOverlaySiteId ? getSiteSubscriptionInfo(sites.find(s => s.id === planOverlaySiteId) || {}) : {};
+        return (
+          <PlanSelector
+            siteId={planOverlaySiteId}
+            currentPlan={planOverlaySiteId ? (overlayInfo.plan || null) : null}
+            currentStatus={planOverlaySiteId ? (overlayInfo.isActive ? 'active' : 'none') : 'none'}
+            scheduledPlan={overlayInfo.scheduledPlan || null}
+            scheduledStartAt={overlayInfo.scheduledStartAt || null}
+            onUpgraded={handlePlanOverlayDone}
+            isOverlay={true}
+            hideTrial={showPlanOverlayHideTrial}
+            isFirstTime={!profileData?.hadSubscription}
+            onClose={handlePlanOverlayClose}
+            onCreateSite={pendingSiteData ? handleCreatePendingSite : null}
+          />
+        );
+      })()}
 
       {showCancelModal && (
         <div className="modal-overlay" onClick={() => !cancellingSubscription && setShowCancelModal(null)}>

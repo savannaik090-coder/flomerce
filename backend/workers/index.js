@@ -522,20 +522,61 @@ async function cleanupExpiredData(env) {
       console.error('[Cleanup] disable expired trial sites:', e.message || e);
     }
 
-    // Clear the cached subscription_plan column on sites whose subscription has expired
-    // (keeps sites.subscription_plan in sync with subscriptions table).
+    // ----- Sites <-> subscriptions reconciliation -----
+    // The subscriptions table is the source of truth. Three sweeps:
+    //   1) Sites with an active sub whose plan/expiry differs from the cache: sync forward.
+    //   2) Sites whose cached paid plan has no matching active sub: clear the cache.
+    //   3) Trial sites whose subscription_expires_at is in the past: clear the cache.
+    // 'enterprise' is an admin override and is left alone.
+
+    // 1) Forward-sync sites where the cached plan/expiry diverges from the active subscription.
     try {
       await env.DB.prepare(
-        `UPDATE sites SET subscription_plan = NULL, updated_at = datetime('now')
-         WHERE subscription_expires_at IS NOT NULL
-           AND datetime(subscription_expires_at) < datetime('now')
-           AND COALESCE(subscription_plan, '') NOT IN ('enterprise', '')
-           AND NOT EXISTS (
+        `UPDATE sites SET
+            subscription_plan = (SELECT s.plan FROM subscriptions s WHERE s.site_id = sites.id AND s.status = 'active' ORDER BY s.created_at DESC LIMIT 1),
+            subscription_expires_at = (SELECT s.current_period_end FROM subscriptions s WHERE s.site_id = sites.id AND s.status = 'active' ORDER BY s.created_at DESC LIMIT 1),
+            updated_at = datetime('now')
+         WHERE COALESCE(subscription_plan, '') != 'enterprise'
+           AND EXISTS (
              SELECT 1 FROM subscriptions s WHERE s.site_id = sites.id AND s.status = 'active'
+               AND (
+                 COALESCE(s.plan, '') != COALESCE(sites.subscription_plan, '')
+                 OR COALESCE(s.current_period_end, '') != COALESCE(sites.subscription_expires_at, '')
+               )
            )`
       ).run();
     } catch (e) {
-      console.error('[Cleanup] reset stale subscription_plan on sites:', e.message || e);
+      console.error('[Cleanup] forward-sync site subscription:', e.message || e);
+    }
+
+    // 2) Clear cached paid plan on sites that have no active subscription. (Trial handled below.)
+    // Race protection: only clear rows that haven't been touched in the last 5 minutes.
+    // In-flight subscription transitions (cancel old -> insert new) update sites.updated_at,
+    // so this grace window prevents the cron from clearing a row mid-transition before the
+    // new active subscription has been written.
+    try {
+      await env.DB.prepare(
+        `UPDATE sites SET subscription_plan = NULL, subscription_expires_at = NULL, updated_at = datetime('now')
+         WHERE COALESCE(subscription_plan, '') NOT IN ('enterprise', '', 'trial')
+           AND (updated_at IS NULL OR datetime(updated_at) < datetime('now', '-5 minutes'))
+           AND NOT EXISTS (
+             SELECT 1 FROM subscriptions s WHERE s.site_id = sites.id AND s.status IN ('active', 'scheduled')
+           )`
+      ).run();
+    } catch (e) {
+      console.error('[Cleanup] clear stale paid plan on sites:', e.message || e);
+    }
+
+    // 3) Clear expired trial cache (the disable-trial-site sweep above already set is_active=0).
+    try {
+      await env.DB.prepare(
+        `UPDATE sites SET subscription_plan = NULL, subscription_expires_at = NULL, updated_at = datetime('now')
+         WHERE subscription_plan = 'trial'
+           AND subscription_expires_at IS NOT NULL
+           AND datetime(subscription_expires_at) < datetime('now')`
+      ).run();
+    } catch (e) {
+      console.error('[Cleanup] clear expired trial cache:', e.message || e);
     }
 
     // Delete pending_subscriptions older than 24h that never converted.

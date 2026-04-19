@@ -140,6 +140,78 @@ async function checkSubdomainAvailability(env, subdomain) {
   }
 }
 
+/**
+ * Reconcile sites.subscription_plan / subscription_expires_at against the
+ * subscriptions table. The subscriptions table is the source of truth.
+ * Mutates the passed-in `site` object in place so callers see the corrected values.
+ *
+ * Rules:
+ *   - 'enterprise' on sites is an admin override and is never touched.
+ *   - If an active subscription exists, sites.subscription_plan must equal sub.plan
+ *     and subscription_expires_at must equal sub.current_period_end.
+ *   - If no active subscription exists and sites.subscription_plan is set to a
+ *     paid plan, clear it (the cached value is stale). Trial sites are left alone
+ *     until their subscription_expires_at has passed.
+ */
+export async function reconcileSiteSubscription(env, site) {
+  if (!site || !site.id) return site;
+  if (site.subscription_plan === 'enterprise') return site;
+
+  try {
+    const activeSub = await env.DB.prepare(
+      `SELECT plan, current_period_end FROM subscriptions
+       WHERE site_id = ? AND status = 'active'
+       ORDER BY created_at DESC LIMIT 1`
+    ).bind(site.id).first();
+
+    if (activeSub) {
+      const planMismatch = (site.subscription_plan || '') !== (activeSub.plan || '');
+      const periodMismatch = (site.subscription_expires_at || '') !== (activeSub.current_period_end || '');
+      if (planMismatch || periodMismatch) {
+        await env.DB.prepare(
+          `UPDATE sites SET subscription_plan = ?, subscription_expires_at = ?, updated_at = datetime('now')
+           WHERE id = ? AND COALESCE(subscription_plan, '') != 'enterprise'`
+        ).bind(activeSub.plan, activeSub.current_period_end, site.id).run();
+        site.subscription_plan = activeSub.plan;
+        site.subscription_expires_at = activeSub.current_period_end;
+        console.log(`[Reconcile] site=${site.id}: synced to active sub plan=${activeSub.plan}`);
+      }
+      return site;
+    }
+
+    // No active sub. Clear any stale paid-plan cache, but leave trial alone unless expired.
+    const cached = site.subscription_plan;
+    if (!cached) return site;
+
+    if (cached === 'trial') {
+      const expiresAt = site.subscription_expires_at;
+      if (expiresAt && new Date(expiresAt) < new Date()) {
+        await env.DB.prepare(
+          `UPDATE sites SET subscription_plan = NULL, subscription_expires_at = NULL, updated_at = datetime('now')
+           WHERE id = ? AND COALESCE(subscription_plan, '') NOT IN ('enterprise')`
+        ).bind(site.id).run();
+        site.subscription_plan = null;
+        site.subscription_expires_at = null;
+        console.log(`[Reconcile] site=${site.id}: cleared expired trial`);
+      }
+      return site;
+    }
+
+    // Cached paid plan but no active subscription row — stale. Clear both the plan
+    // and the cached expiry so callers don't see a half-stale state.
+    await env.DB.prepare(
+      `UPDATE sites SET subscription_plan = NULL, subscription_expires_at = NULL, updated_at = datetime('now')
+       WHERE id = ? AND COALESCE(subscription_plan, '') NOT IN ('enterprise')`
+    ).bind(site.id).run();
+    site.subscription_plan = null;
+    site.subscription_expires_at = null;
+    console.log(`[Reconcile] site=${site.id}: cleared stale paid plan '${cached}' (no active sub)`);
+  } catch (e) {
+    console.error('reconcileSiteSubscription error:', e.message || e);
+  }
+  return site;
+}
+
 async function getUserSites(env, user) {
   try {
     const sites = await env.DB.prepare(
@@ -153,6 +225,9 @@ async function getUserSites(env, user) {
 
     const enrichedSites = [];
     for (const site of sites.results) {
+      // Self-heal any sites/subscriptions divergence before computing the response.
+      await reconcileSiteSubscription(env, site);
+
       const config = await getSiteConfig(env, site.id);
 
       let subscription = { plan: null, status: 'none', billingCycle: null, periodStart: null, periodEnd: null };
@@ -229,6 +304,8 @@ async function getSite(env, user, siteId) {
     if (!siteRow) {
       return errorResponse('Site not found', 404, 'NOT_FOUND');
     }
+
+    await reconcileSiteSubscription(env, siteRow);
 
     const site = await getSiteWithConfig(env, siteRow);
 
