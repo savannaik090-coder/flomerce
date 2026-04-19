@@ -700,3 +700,9 @@
   background: #dc2626;
   border-color: #dc2626;
 }
+
+@keyframes usageSpin { to { transform: rotate(360deg); } }
+.usage-spinner { animation: usageSpin 0.8s linear infinite; }
+@keyframes usagePulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
+.usage-skeleton { animation: usagePulse 1.4s ease-in-out infinite; }
+

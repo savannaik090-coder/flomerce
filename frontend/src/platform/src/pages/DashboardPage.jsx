@@ -34,6 +34,7 @@ export default function DashboardPage() {
   const [planOverlaySiteId, setPlanOverlaySiteId] = useState(null);
   const [pendingSiteData, setPendingSiteData] = useState(null);
   const [siteUsage, setSiteUsage] = useState({});
+  const [siteUsageLoading, setSiteUsageLoading] = useState({});
   const [staffList, setStaffList] = useState([]);
   const [staffLoading, setStaffLoading] = useState(false);
   const [staffSiteId, setStaffSiteId] = useState(null);
@@ -172,12 +173,15 @@ export default function DashboardPage() {
   };
 
   const loadSiteUsage = useCallback(async (siteId) => {
+    setSiteUsageLoading(prev => ({ ...prev, [siteId]: true }));
     try {
       const result = await apiRequest(`/api/usage?siteId=${siteId}`);
       const data = result.data || result;
       setSiteUsage(prev => ({ ...prev, [siteId]: data }));
     } catch (e) {
       console.error('Failed to load usage for site', siteId, e);
+    } finally {
+      setSiteUsageLoading(prev => ({ ...prev, [siteId]: false }));
     }
   }, []);
 
@@ -451,7 +455,33 @@ export default function DashboardPage() {
 
   const renderUsageBars = (siteId) => {
     const usage = siteUsage[siteId];
-    if (!usage) return null;
+    const isLoading = siteUsageLoading[siteId];
+
+    if (!usage) {
+      if (!isLoading) return null;
+      return (
+        <div className="site-card" style={{ display: 'block', marginTop: '1rem' }}>
+          <h3 style={{ margin: '0 0 1rem', fontSize: '1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+            Storage Usage
+          </h3>
+          {[0, 1].map(i => (
+            <div key={i} style={{ marginBottom: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.375rem' }}>
+                <span style={{ display: 'inline-block', width: '120px', height: '12px', background: '#e5e7eb', borderRadius: '4px' }} className="usage-skeleton" />
+                <span style={{ display: 'inline-block', width: '90px', height: '12px', background: '#e5e7eb', borderRadius: '4px' }} className="usage-skeleton" />
+              </div>
+              <div style={{ height: '8px', background: '#e5e7eb', borderRadius: '4px', overflow: 'hidden' }} className="usage-skeleton" />
+              <div style={{ marginTop: '0.5rem', width: '60px', height: '10px', background: '#e5e7eb', borderRadius: '4px' }} className="usage-skeleton" />
+            </div>
+          ))}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '0.5rem' }}>
+            <span className="usage-spinner" style={{ width: '14px', height: '14px', border: '2px solid #e5e7eb', borderTopColor: '#6366f1', borderRadius: '50%', display: 'inline-block' }} />
+            Loading storage usage...
+          </div>
+        </div>
+      );
+    }
 
     const d1Pct = Math.min(100, usage.d1?.percentage || 0);
     const r2Pct = Math.min(100, usage.r2?.percentage || 0);
