@@ -10,6 +10,7 @@ import { apiRequest } from '../services/api.js';
 import '../styles/dashboard.css';
 import { PLATFORM_DOMAIN } from '../config.js';
 import PlanLimitModal, { isPlanError } from '../components/PlanLimitModal.jsx';
+import { getSubscriptionBadge, formatScheduledChange } from '../utils/subscriptionStatus.js';
 
 const VALID_PAGES = ['dashboard', 'admin', 'billing', 'staff', 'account'];
 
@@ -427,7 +428,10 @@ export default function DashboardPage() {
     return { plan, status: displayStatus, periodEnd, isActive, isExpired, isCancelled: rawStatus === 'cancelled', hasRazorpay, scheduledPlan, scheduledStartAt };
   };
 
-  const formatPlanName = (plan) => {
+  // Tiny inline helper kept only for legacy non-badge call sites (if any). All status pills
+  // should use getSubscriptionBadge() from utils/subscriptionStatus.js for consistency.
+  // eslint-disable-next-line no-unused-vars
+  const _formatPlanNameLegacy = (plan) => {
     if (!plan || plan === 'free' || plan === 'expired' || plan === 'paused') return 'Inactive';
     if (plan === 'trial') return 'Trial';
     if (plan === 'enterprise') return 'Enterprise';
@@ -631,11 +635,15 @@ export default function DashboardPage() {
               Back
             </button>
             <span className="manage-site-name" style={{ marginLeft: 'auto' }}>{managedSite.brand_name || managedSite.brandName || managedSite.subdomain}</span>
-            {siteInfo.plan && (
-              <span className={`plan-status-pill ${siteInfo.isCancelled ? 'status-cancelled' : siteInfo.isActive ? 'status-active' : 'status-expired'}`} style={siteInfo.isCancelled ? { marginLeft: '0.5rem', background: '#fef3c7', color: '#92400e' } : { marginLeft: '0.5rem' }}>
-                {siteInfo.isCancelled ? formatPlanName(siteInfo.plan) + ' - Cancelling' : siteInfo.isActive ? formatPlanName(siteInfo.plan) + ' - Active' : siteInfo.plan !== 'expired' ? formatPlanName(siteInfo.plan) + ' - Expired' : 'Expired'}
-              </span>
-            )}
+            {(() => {
+              const b = getSubscriptionBadge(siteInfo);
+              if (!siteInfo.plan && b.tone === 'inactive') return null;
+              return (
+                <span className={`plan-status-pill status-${b.tone}`} style={{ marginLeft: '0.5rem', background: b.bg, color: b.color }}>
+                  {b.text}
+                </span>
+              );
+            })()}
           </div>
           {siteInfo.isExpired ? (
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '1rem', padding: '2rem' }}>
@@ -712,9 +720,14 @@ export default function DashboardPage() {
                 <h3 style={{ marginBottom: '0.25rem', fontSize: '1.125rem', fontWeight: 700 }}>{site.brand_name || site.subdomain}</h3>
                 <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>https://{site.subdomain}.{PLATFORM_DOMAIN}</p>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span className={`plan-status-pill ${subInfo.isCancelled ? 'status-cancelled' : subInfo.isActive ? 'status-active' : 'status-expired'}`} style={subInfo.isCancelled ? { background: '#fef3c7', color: '#92400e' } : {}}>
-                    {subInfo.isCancelled ? formatPlanName(subInfo.plan) + ' - Cancelling' : subInfo.isActive ? formatPlanName(subInfo.plan) + ' - Active' : subInfo.plan && subInfo.plan !== 'expired' ? formatPlanName(subInfo.plan) + ' - Expired' : subInfo.plan === 'expired' ? 'Expired' : 'No Subscription'}
-                  </span>
+                  {(() => {
+                    const b = getSubscriptionBadge(subInfo);
+                    return (
+                      <span className={`plan-status-pill status-${b.tone}`} style={{ background: b.bg, color: b.color }}>
+                        {b.text}
+                      </span>
+                    );
+                  })()}
                   <button className="btn btn-primary" style={{ fontSize: '0.8rem', padding: '0.5rem 1rem' }}>
                     Open Admin
                   </button>
@@ -877,10 +890,23 @@ export default function DashboardPage() {
                                   <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700 }}>{site.brand_name || site.subdomain}</h2>
                                   <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>https://{site.subdomain}.{PLATFORM_DOMAIN}</p>
                                 </div>
-                                <span className={`plan-status-pill ${subInfo.isCancelled ? 'status-cancelled' : subInfo.isActive ? 'status-active' : 'status-expired'}`} style={subInfo.isCancelled ? { background: '#fef3c7', color: '#92400e' } : {}}>
-                                  {subInfo.isCancelled ? formatPlanName(subInfo.plan) + ' - Cancelling' : subInfo.isActive ? formatPlanName(subInfo.plan) + ' - Active' : subInfo.plan && subInfo.plan !== 'expired' ? formatPlanName(subInfo.plan) + ' - Expired' : subInfo.plan === 'expired' ? 'Expired' : 'No Subscription'}
-                                </span>
+                                {(() => {
+                                  const b = getSubscriptionBadge(subInfo);
+                                  return (
+                                    <span className={`plan-status-pill status-${b.tone}`} style={{ background: b.bg, color: b.color }}>
+                                      {b.text}
+                                    </span>
+                                  );
+                                })()}
                               </div>
+                              {(() => {
+                                const note = formatScheduledChange(subInfo);
+                                return note ? (
+                                  <p style={{ fontSize: '0.85rem', color: '#b45309', margin: '0 0 1rem 0' }}>
+                                    ⏰ {note}. Your current plan keeps running until then.
+                                  </p>
+                                ) : null;
+                              })()}
                               {subInfo.isCancelled && subInfo.periodEnd && (
                                 <p style={{ fontSize: '0.875rem', color: '#92400e', margin: '0 0 1rem 0' }}>
                                   Your plan is cancelled and will expire on {new Date(subInfo.periodEnd).toLocaleDateString()}. You can continue using all features until then.
@@ -929,9 +955,14 @@ export default function DashboardPage() {
                               </div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                                 <div style={{ textAlign: 'right' }}>
-                                  <span className={`plan-status-pill ${subInfo.isCancelled ? 'status-cancelled' : subInfo.isActive ? 'status-active' : 'status-expired'}`} style={subInfo.isCancelled ? { background: '#fef3c7', color: '#92400e' } : {}}>
-                                    {subInfo.isCancelled ? formatPlanName(subInfo.plan) + ' - Cancelling' : formatPlanName(subInfo.plan)}
-                                  </span>
+                                  {(() => {
+                                    const b = getSubscriptionBadge(subInfo);
+                                    return (
+                                      <span className={`plan-status-pill status-${b.tone}`} style={{ background: b.bg, color: b.color }}>
+                                        {b.text}
+                                      </span>
+                                    );
+                                  })()}
                                   {subInfo.isCancelled && subInfo.periodEnd && (
                                     <p style={{ fontSize: '0.75rem', color: '#92400e', margin: '0.25rem 0 0' }}>
                                       Ends: {new Date(subInfo.periodEnd).toLocaleDateString()}
