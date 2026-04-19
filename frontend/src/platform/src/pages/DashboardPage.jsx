@@ -998,20 +998,26 @@ export default function DashboardPage() {
                                   Managed enterprise plan
                                 </p>
                               )}
-                              {subInfo.plan !== 'enterprise' && (
-                              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.75rem', gap: '0.75rem' }}>
-                                {subInfo.isActive && !subInfo.isCancelled && subInfo.plan !== 'trial' && subInfo.hasRazorpay && (
-                                  <button className="btn btn-outline" style={{ fontSize: '0.875rem', padding: '0.5rem 1.25rem', color: '#ef4444', borderColor: '#fecaca' }} onClick={() => setShowCancelModal(billingSiteId)}>
-                                    Cancel Subscription
-                                  </button>
-                                )}
-                                {!subInfo.isCancelled && (
-                                <button className="btn btn-primary" style={{ fontSize: '0.875rem', padding: '0.5rem 1.25rem' }} onClick={() => { setPlanOverlaySiteId(billingSiteId); setShowPlanOverlayHideTrial(!!profileData?.hadSubscription); setShowPlanOverlay(true); }}>
-                                  {subInfo.isActive && subInfo.plan !== 'trial' ? 'Change Plan' : 'Upgrade'}
-                                </button>
-                                )}
-                              </div>
-                              )}
+                              {subInfo.plan !== 'enterprise' && (() => {
+                                const canCancel = subInfo.isActive && !subInfo.isCancelled && subInfo.plan !== 'trial' && subInfo.hasRazorpay;
+                                let primaryLabel;
+                                if (subInfo.isExpired || !subInfo.plan) primaryLabel = 'Subscribe';
+                                else if (subInfo.isCancelled && subInfo.isActive) primaryLabel = 'Resubscribe / Change Plan';
+                                else if (subInfo.isActive && subInfo.plan !== 'trial') primaryLabel = 'Change Plan';
+                                else primaryLabel = 'Upgrade';
+                                return (
+                                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.75rem', gap: '0.75rem', flexWrap: 'wrap' }}>
+                                    {canCancel && (
+                                      <button className="btn btn-outline" style={{ fontSize: '0.875rem', padding: '0.5rem 1.25rem', color: '#ef4444', borderColor: '#fecaca' }} onClick={() => setShowCancelModal(billingSiteId)}>
+                                        Cancel Subscription
+                                      </button>
+                                    )}
+                                    <button className="btn btn-primary" style={{ fontSize: '0.875rem', padding: '0.5rem 1.25rem' }} onClick={() => { setPlanOverlaySiteId(billingSiteId); setShowPlanOverlayHideTrial(!!profileData?.hadSubscription); setShowPlanOverlay(true); }}>
+                                      {primaryLabel}
+                                    </button>
+                                  </div>
+                                );
+                              })()}
                             </div>
                             {renderUsageBars(billingSiteId)}
                           </div>
