@@ -948,9 +948,14 @@ export default function DashboardPage() {
                                   </p>
                                 ) : null;
                               })()}
-                              {subInfo.isCancelled && subInfo.periodEnd && (
+                              {subInfo.isCancelled && subInfo.isActive && subInfo.periodEnd && (
                                 <p style={{ fontSize: '0.875rem', color: '#92400e', margin: '0 0 1rem 0' }}>
                                   Your plan is cancelled and will expire on {new Date(subInfo.periodEnd).toLocaleDateString()}. You can continue using all features until then.
+                                </p>
+                              )}
+                              {subInfo.isCancelled && !subInfo.isActive && subInfo.periodEnd && (
+                                <p style={{ fontSize: '0.875rem', color: '#dc2626', margin: '0 0 1rem 0' }}>
+                                  Your plan expired on {new Date(subInfo.periodEnd).toLocaleDateString()}. Pick a plan below to restore access.
                                 </p>
                               )}
                               {!subInfo.isCancelled && subInfo.periodEnd && subInfo.isActive && subInfo.plan !== 'enterprise' && (
