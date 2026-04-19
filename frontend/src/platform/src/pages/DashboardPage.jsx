@@ -398,7 +398,10 @@ export default function DashboardPage() {
 
   const getSiteSubscriptionInfo = (site) => {
     const sub = site.subscription || {};
-    const plan = sub.plan || site.subscription_plan || null;
+    // For cancelled/expired states the backend nulls `plan` and exposes the
+    // real plan name as `latestPlan` — fall back so the badge can still say
+    // "Starter - Cancelling" / "Starter - Expired" instead of just the status.
+    const plan = sub.plan || sub.latestPlan || site.subscription_plan || null;
     const rawStatus = sub.status || 'none';
     const periodEnd = sub.periodEnd || site.subscription_expires_at || null;
     const hasRazorpay = sub.hasRazorpay || false;
