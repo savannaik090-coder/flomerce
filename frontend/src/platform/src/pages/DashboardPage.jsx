@@ -741,15 +741,34 @@ export default function DashboardPage() {
               <div key={site.id} className="site-card" style={{ cursor: 'pointer' }} onClick={() => handleManageSite(site)}>
                 <h3 style={{ marginBottom: '0.25rem', fontSize: '1.125rem', fontWeight: 700 }}>{site.brand_name || site.subdomain}</h3>
                 <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>https://{site.subdomain}.{PLATFORM_DOMAIN}</p>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  {(() => {
-                    const b = getSubscriptionBadge(subInfo);
-                    return (
-                      <span className={`plan-status-pill status-${b.tone}`} style={{ background: b.bg, color: b.color }}>
-                        {b.text}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    {(() => {
+                      const b = getSubscriptionBadge(subInfo);
+                      return (
+                        <span className={`plan-status-pill status-${b.tone}`} style={{ background: b.bg, color: b.color, alignSelf: 'flex-start' }}>
+                          {b.text}
+                        </span>
+                      );
+                    })()}
+                    {subInfo.periodEnd && subInfo.plan !== 'enterprise' && (
+                      <span style={{ fontSize: '0.7rem', color: subInfo.isCancelled ? '#92400e' : subInfo.isExpired ? '#dc2626' : 'var(--text-muted)' }}>
+                        {subInfo.isCancelled
+                          ? `Ends ${new Date(subInfo.periodEnd).toLocaleDateString()}`
+                          : subInfo.isExpired
+                            ? `Expired ${new Date(subInfo.periodEnd).toLocaleDateString()}`
+                            : subInfo.plan === 'trial'
+                              ? `Trial ends ${new Date(subInfo.periodEnd).toLocaleDateString()}`
+                              : `Renews ${new Date(subInfo.periodEnd).toLocaleDateString()}`}
                       </span>
-                    );
-                  })()}
+                    )}
+                    {(() => {
+                      const note = formatScheduledChange(subInfo);
+                      return note ? (
+                        <span style={{ fontSize: '0.7rem', color: '#b45309' }}>⏰ {note}</span>
+                      ) : null;
+                    })()}
+                  </div>
                   <button className="btn btn-primary" style={{ fontSize: '0.8rem', padding: '0.5rem 1rem' }}>
                     Open Admin
                   </button>
