@@ -647,6 +647,25 @@ export default function DashboardPage() {
                 </span>
               );
             })()}
+            {siteInfo.periodEnd && siteInfo.plan !== 'enterprise' && (
+              <span style={{ marginLeft: '0.75rem', fontSize: '0.8rem', color: siteInfo.isCancelled ? '#92400e' : siteInfo.isExpired ? '#dc2626' : 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                {siteInfo.isCancelled
+                  ? `Ends ${new Date(siteInfo.periodEnd).toLocaleDateString()}`
+                  : siteInfo.isExpired
+                    ? `Expired ${new Date(siteInfo.periodEnd).toLocaleDateString()}`
+                    : siteInfo.plan === 'trial'
+                      ? `Trial ends ${new Date(siteInfo.periodEnd).toLocaleDateString()}`
+                      : `Renews ${new Date(siteInfo.periodEnd).toLocaleDateString()}`}
+              </span>
+            )}
+            {(() => {
+              const note = formatScheduledChange(siteInfo);
+              return note ? (
+                <span style={{ marginLeft: '0.75rem', fontSize: '0.8rem', color: '#b45309', whiteSpace: 'nowrap' }}>
+                  ⏰ {note}
+                </span>
+              ) : null;
+            })()}
           </div>
           {siteInfo.isExpired ? (
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '1rem', padding: '2rem' }}>
