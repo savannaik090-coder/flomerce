@@ -28,7 +28,7 @@ export default function ChooseByCategory({ categories }) {
   if (visibleCats.length === 0) return null;
 
   return (
-    <section className="choose-by-category">
+    <section className="choose-by-category" data-flomerce-section="categories">
       <div className="choose-by-category-container">
         <div className="choose-by-category-header">
           <h2 className="choose-by-category-title">Choose by Category</h2>

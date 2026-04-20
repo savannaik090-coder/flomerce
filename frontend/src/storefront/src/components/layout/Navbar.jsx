@@ -80,7 +80,7 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
   }
 
   return (
-    <header className="header">
+    <header className="header" data-flomerce-section="navbar">
       {siteConfig?.settings?.showPromoBanner !== false && (() => {
         const msgs = siteConfig?.settings?.promoBanner;
         const validMsgs = msgs && Array.isArray(msgs) ? msgs.filter(m => m.trim()) : [];

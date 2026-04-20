@@ -41,6 +41,7 @@ export default function HeroSlider() {
   return (
     <section
       className="hero-slider"
+      data-flomerce-section="hero-slider"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >

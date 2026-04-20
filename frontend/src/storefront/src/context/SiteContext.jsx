@@ -86,7 +86,12 @@ export function SiteProvider({ children }) {
         try { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) {}
         return;
       }
-      if (attempt < 4) setTimeout(() => tryScroll(sectionId, attempt + 1), 400);
+      // The section may not be rendered yet (data still loading, route just
+      // changed, etc.). Retry over ~4s with backoff before giving up.
+      const delays = [200, 400, 600, 900, 1200, 1500];
+      if (attempt < delays.length) {
+        setTimeout(() => tryScroll(sectionId, attempt + 1), delays[attempt]);
+      }
     }
 
     function handleMessage(event) {

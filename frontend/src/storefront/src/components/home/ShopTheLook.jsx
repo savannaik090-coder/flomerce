@@ -72,7 +72,7 @@ export default function ShopTheLook() {
   }
 
   return (
-    <section className="stl-section">
+    <section className="stl-section" data-flomerce-section="shop-the-look">
       <div className="stl-container">
         {title && (
           <div className="stl-header">
