@@ -72,9 +72,9 @@ function getHomepageSections(theme) {
 const PAGE_SECTIONS = [
   { id: 'about-us', label: 'About Us', icon: 'fa-info-circle', page: '/about' },
   { id: 'contact-us', label: 'Contact Us', icon: 'fa-envelope', page: '/contact' },
-  { id: 'book-appointment', label: 'Book Appointment', icon: 'fa-calendar-check', page: '/book-appointment' },
+  { id: 'book-appointment', label: 'Book Appointment', icon: 'fa-calendar-check', page: '/book-appointment', gated: 'appointmentBooking' },
   { id: 'faq', label: 'FAQ', icon: 'fa-question-circle', page: '/faq' },
-  { id: 'blog', label: 'Blog', icon: 'fa-pen-fancy', page: '/blog', gated: 'blog' },
+  { id: 'blog', label: 'Blog', icon: 'fa-pen-fancy', page: '/blog' },
 ];
 
 const SETTINGS_SECTIONS = [
@@ -84,7 +84,7 @@ const SETTINGS_SECTIONS = [
   { id: 'privacy', label: 'Privacy Policy', icon: 'fa-user-shield', page: '/privacy-policy' },
 ];
 
-const GATED_TABS = { 'blog': 'blog', 'customer-reviews': 'reviews' };
+const GATED_TABS = { 'book-appointment': 'appointmentBooking' };
 
 function getViewport() {
   if (typeof window === 'undefined') return 'desktop';
@@ -421,28 +421,22 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
       case 'categories': return <CategoriesSection {...props} />;
       case 'watchbuy': return <WatchBuySection {...props} />;
       case 'featured-video': return <FeaturedVideoEditor {...props} />;
-      case 'customer-reviews': {
-        const gated = GATED_TABS['customer-reviews'];
-        const locked = gated && !isFeatureAvailable(currentPlan, gated);
-        if (locked) return <FeatureGate currentPlan={currentPlan} requiredPlan="growth" featureName="Customer Reviews"><CustomerReviewsEditor {...props} /></FeatureGate>;
-        return <CustomerReviewsEditor {...props} />;
-      }
+      case 'customer-reviews': return <CustomerReviewsEditor {...props} />;
       case 'shop-the-look': return <ShopTheLookEditor {...props} />;
       case 'trending-now': return <TrendingNowEditor {...props} />;
       case 'brand-story': return <BrandStoryEditor {...props} />;
       case 'store-locations': return <StoreLocationsEditor {...props} />;
-      case 'book-appointment': return <BookAppointmentEditor {...props} />;
+      case 'book-appointment': {
+        const locked = !isFeatureAvailable(currentPlan, 'appointmentBooking');
+        if (locked) return <FeatureGate currentPlan={currentPlan} requiredPlan="growth" featureName="Appointment Booking"><BookAppointmentEditor {...props} /></FeatureGate>;
+        return <BookAppointmentEditor {...props} />;
+      }
       case 'contact-us': return <ContactEditor {...props} />;
       case 'checkout': return <CheckoutEditor {...props} />;
       case 'product-policies': return <ProductPoliciesEditor {...props} />;
       case 'about-us': return <AboutUsEditor {...props} />;
       case 'faq': return <FAQSection />;
-      case 'blog': {
-        const gated = GATED_TABS['blog'];
-        const locked = gated && !isFeatureAvailable(currentPlan, gated);
-        if (locked) return <FeatureGate currentPlan={currentPlan} requiredPlan="growth" featureName="Blog"><BlogSection /></FeatureGate>;
-        return <BlogSection />;
-      }
+      case 'blog': return <BlogSection />;
       case 'terms': return <TermsEditor {...props} />;
       case 'privacy': return <PrivacyEditor {...props} />;
       case 'footer': return <FooterEditor {...props} />;

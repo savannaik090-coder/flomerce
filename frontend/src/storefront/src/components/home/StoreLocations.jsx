@@ -10,6 +10,8 @@ export default function StoreLocations() {
   const stores = settings.storeLocations || [];
   const address = siteConfig?.address;
   const phone = siteConfig?.phone;
+  const planTier = (siteConfig?.subscriptionPlan || '').toLowerCase();
+  const appointmentBookingAllowed = planTier === 'trial' || planTier.includes('growth') || planTier.includes('standard') || planTier.includes('pro') || planTier.includes('enterprise');
 
   if (settings.showStoreLocations !== true) return null;
   if (!stores.length && !address) return null;
@@ -91,9 +93,11 @@ export default function StoreLocations() {
                   )}
                 </div>
                 <div className="store-actions">
-                  <Link to="/book-appointment" className="book-appointment-btn">
-                    BOOK APPOINTMENT
-                  </Link>
+                  {appointmentBookingAllowed && (
+                    <Link to="/book-appointment" className="book-appointment-btn">
+                      BOOK APPOINTMENT
+                    </Link>
+                  )}
                   {store.phone && (
                     <a href={`tel:${store.phone}`} className="call-btn">
                       <i className="fas fa-phone"></i>

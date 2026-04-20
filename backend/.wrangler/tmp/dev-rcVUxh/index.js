@@ -1487,155 +1487,6 @@ var init_email = __esm({
   }
 });
 
-// utils/cache.js
-function cachedJsonResponse(data, status = 200, request = null) {
-  const response = jsonResponse(data, status, request);
-  const headers = new Headers(response.headers);
-  headers.set("Cache-Control", `public, max-age=${BROWSER_CACHE_TTL}, stale-while-revalidate=${BROWSER_CACHE_TTL * 2}`);
-  headers.set("CDN-Cache-Control", `public, max-age=${CDN_CACHE_TTL}, stale-while-revalidate=${CDN_STALE_WHILE_REVALIDATE}`);
-  headers.set("Vary", "Accept-Encoding");
-  return new Response(response.body, { status: response.status, headers });
-}
-async function purgeStorefrontCache(env, siteId, types = [], resourceIds = {}) {
-  try {
-    const site = await env.DB.prepare(
-      "SELECT subdomain, custom_domain, domain_status FROM sites WHERE id = ?"
-    ).bind(siteId).first();
-    if (!site)
-      return;
-    const rootDomain = env.DOMAIN || PLATFORM_DOMAIN;
-    const storeDomains = [];
-    if (site.subdomain)
-      storeDomains.push(`${site.subdomain}.${rootDomain}`);
-    if (site.custom_domain && site.domain_status === "verified")
-      storeDomains.push(site.custom_domain);
-    const allDomains = [...storeDomains, rootDomain];
-    const urls2 = [];
-    for (const type of types) {
-      switch (type) {
-        case "products":
-          for (const domain of allDomains) {
-            urls2.push(`https://${domain}/api/products?siteId=${siteId}`);
-            if (site.subdomain) {
-              urls2.push(`https://${domain}/api/products?subdomain=${site.subdomain}`);
-            }
-          }
-          if (resourceIds.productId) {
-            for (const domain of allDomains) {
-              urls2.push(`https://${domain}/api/products/${resourceIds.productId}?siteId=${siteId}`);
-              if (site.subdomain) {
-                urls2.push(`https://${domain}/api/products/${resourceIds.productId}?subdomain=${site.subdomain}`);
-              }
-            }
-          }
-          break;
-        case "categories":
-          for (const domain of allDomains) {
-            urls2.push(`https://${domain}/api/categories?siteId=${siteId}`);
-            if (site.subdomain) {
-              urls2.push(`https://${domain}/api/categories?subdomain=${site.subdomain}`);
-            }
-          }
-          if (resourceIds.categoryId) {
-            for (const domain of allDomains) {
-              urls2.push(`https://${domain}/api/categories/${resourceIds.categoryId}?siteId=${siteId}`);
-              if (site.subdomain) {
-                urls2.push(`https://${domain}/api/categories/${resourceIds.categoryId}?subdomain=${site.subdomain}`);
-              }
-            }
-          }
-          break;
-        case "blog":
-          for (const domain of allDomains) {
-            urls2.push(`https://${domain}/api/blog/posts?siteId=${siteId}`);
-            if (site.subdomain) {
-              urls2.push(`https://${domain}/api/blog/posts?subdomain=${site.subdomain}`);
-            }
-          }
-          if (resourceIds.postSlug) {
-            for (const domain of allDomains) {
-              urls2.push(`https://${domain}/api/blog/post/${resourceIds.postSlug}?siteId=${siteId}`);
-              if (site.subdomain) {
-                urls2.push(`https://${domain}/api/blog/post/${resourceIds.postSlug}?subdomain=${site.subdomain}`);
-              }
-            }
-          }
-          break;
-        case "reviews":
-          if (resourceIds.productId) {
-            for (const domain of allDomains) {
-              urls2.push(`https://${domain}/api/reviews/product/${resourceIds.productId}?siteId=${siteId}`);
-              if (site.subdomain) {
-                urls2.push(`https://${domain}/api/reviews/product/${resourceIds.productId}?subdomain=${site.subdomain}`);
-              }
-            }
-          }
-          break;
-        case "site":
-          for (const domain of allDomains) {
-            urls2.push(`https://${domain}/api/site?siteId=${siteId}`);
-            if (site.subdomain) {
-              urls2.push(`https://${domain}/api/site?subdomain=${site.subdomain}`);
-            }
-          }
-          break;
-      }
-    }
-    const uniqueUrls = [...new Set(urls2)];
-    const cache = caches.default;
-    const cachePromises = uniqueUrls.map(
-      (url) => cache.delete(new Request(url)).catch(
-        (e) => console.error(`[Cache] Workers Cache API purge failed for ${url}:`, e.message)
-      )
-    );
-    await Promise.allSettled(cachePromises);
-    const token = env.CF_API_TOKEN;
-    const zoneId = env.CF_ZONE_ID;
-    if (token && zoneId) {
-      try {
-        const batchSize = 30;
-        for (let i = 0; i < uniqueUrls.length; i += batchSize) {
-          const batch = uniqueUrls.slice(i, i + batchSize);
-          const resp = await fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}/purge_cache`, {
-            method: "POST",
-            headers: {
-              "Authorization": `Bearer ${token}`,
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ files: batch })
-          });
-          if (!resp.ok) {
-            const errText = await resp.text().catch(() => "");
-            console.error(`[Cache] Cloudflare API purge failed (batch ${i}):`, resp.status, errText);
-          }
-        }
-      } catch (apiErr) {
-        console.error("[Cache] Cloudflare API purge error:", apiErr.message);
-      }
-    } else {
-      console.warn(`[Cache] CF_API_TOKEN not configured \u2014 Cloudflare CDN purge skipped for site ${siteId}. Only Workers Cache API purge was performed.`);
-    }
-    console.log(`[Cache] Purged ${uniqueUrls.length} URLs for site ${siteId} (types: ${types.join(", ")})`);
-  } catch (e) {
-    console.error("[Cache] Purge error:", e.message);
-  }
-}
-var CDN_CACHE_TTL, CDN_STALE_WHILE_REVALIDATE, BROWSER_CACHE_TTL;
-var init_cache = __esm({
-  "utils/cache.js"() {
-    init_checked_fetch();
-    init_strip_cf_connecting_ip_header();
-    init_modules_watch_stub();
-    init_helpers();
-    init_config();
-    CDN_CACHE_TTL = 86400;
-    CDN_STALE_WHILE_REVALIDATE = 604800;
-    BROWSER_CACHE_TTL = 60;
-    __name(cachedJsonResponse, "cachedJsonResponse");
-    __name(purgeStorefrontCache, "purgeStorefrontCache");
-  }
-});
-
 // utils/d1-manager.js
 var d1_manager_exports = {};
 __export(d1_manager_exports, {
@@ -2114,7 +1965,8 @@ async function handlePlanLimitsAPI(request, env, path) {
         pushManual: limits.pushManual,
         pushAutomated: limits.pushAutomated,
         advancedSeo: limits.advancedSeo,
-        revenue: limits.revenue
+        revenue: limits.revenue,
+        appointmentBooking: limits.appointmentBooking
       },
       featureRequiredPlan: FEATURE_REQUIRED_PLAN,
       storage: {
@@ -2361,12 +2213,13 @@ var init_usage_tracker = __esm({
         maxStaff: 5,
         maxLocations: 2,
         coupons: true,
-        reviews: false,
-        blog: false,
+        reviews: true,
+        blog: true,
         pushManual: false,
         pushAutomated: false,
-        advancedSeo: false,
-        revenue: false
+        advancedSeo: true,
+        revenue: false,
+        appointmentBooking: false
       },
       growth: {
         d1Bytes: 1 * 1024 * 1024 * 1024,
@@ -2381,7 +2234,8 @@ var init_usage_tracker = __esm({
         pushManual: true,
         pushAutomated: false,
         advancedSeo: true,
-        revenue: true
+        revenue: true,
+        appointmentBooking: true
       },
       pro: {
         d1Bytes: 2 * 1024 * 1024 * 1024,
@@ -2396,7 +2250,8 @@ var init_usage_tracker = __esm({
         pushManual: true,
         pushAutomated: true,
         advancedSeo: true,
-        revenue: true
+        revenue: true,
+        appointmentBooking: true
       },
       enterprise: {
         d1Bytes: 2 * 1024 * 1024 * 1024,
@@ -2411,7 +2266,8 @@ var init_usage_tracker = __esm({
         pushManual: true,
         pushAutomated: true,
         advancedSeo: true,
-        revenue: true
+        revenue: true,
+        appointmentBooking: true
       },
       trial: {
         d1Bytes: 500 * 1024 * 1024,
@@ -2426,7 +2282,8 @@ var init_usage_tracker = __esm({
         pushManual: true,
         pushAutomated: true,
         advancedSeo: true,
-        revenue: true
+        revenue: true,
+        appointmentBooking: true
       },
       free: {
         d1Bytes: 500 * 1024 * 1024,
@@ -2441,16 +2298,18 @@ var init_usage_tracker = __esm({
         pushManual: false,
         pushAutomated: false,
         advancedSeo: false,
-        revenue: false
+        revenue: false,
+        appointmentBooking: false
       }
     };
     FEATURE_REQUIRED_PLAN = {
-      reviews: "growth",
-      blog: "growth",
+      reviews: "starter",
+      blog: "starter",
+      advancedSeo: "starter",
       pushManual: "growth",
       pushAutomated: "pro",
-      advancedSeo: "growth",
-      revenue: "growth"
+      revenue: "growth",
+      appointmentBooking: "growth"
     };
     DEFAULT_OVERAGE_RATES = {
       d1PerGB: 0.75,
@@ -2480,6 +2339,155 @@ var init_usage_tracker = __esm({
     __name(handleUsageAPI, "handleUsageAPI");
     __name(handleOverageToggle, "handleOverageToggle");
     __name(handleReconcile, "handleReconcile");
+  }
+});
+
+// utils/cache.js
+function cachedJsonResponse(data, status = 200, request = null) {
+  const response = jsonResponse(data, status, request);
+  const headers = new Headers(response.headers);
+  headers.set("Cache-Control", `public, max-age=${BROWSER_CACHE_TTL}, stale-while-revalidate=${BROWSER_CACHE_TTL * 2}`);
+  headers.set("CDN-Cache-Control", `public, max-age=${CDN_CACHE_TTL}, stale-while-revalidate=${CDN_STALE_WHILE_REVALIDATE}`);
+  headers.set("Vary", "Accept-Encoding");
+  return new Response(response.body, { status: response.status, headers });
+}
+async function purgeStorefrontCache(env, siteId, types = [], resourceIds = {}) {
+  try {
+    const site = await env.DB.prepare(
+      "SELECT subdomain, custom_domain, domain_status FROM sites WHERE id = ?"
+    ).bind(siteId).first();
+    if (!site)
+      return;
+    const rootDomain = env.DOMAIN || PLATFORM_DOMAIN;
+    const storeDomains = [];
+    if (site.subdomain)
+      storeDomains.push(`${site.subdomain}.${rootDomain}`);
+    if (site.custom_domain && site.domain_status === "verified")
+      storeDomains.push(site.custom_domain);
+    const allDomains = [...storeDomains, rootDomain];
+    const urls2 = [];
+    for (const type of types) {
+      switch (type) {
+        case "products":
+          for (const domain of allDomains) {
+            urls2.push(`https://${domain}/api/products?siteId=${siteId}`);
+            if (site.subdomain) {
+              urls2.push(`https://${domain}/api/products?subdomain=${site.subdomain}`);
+            }
+          }
+          if (resourceIds.productId) {
+            for (const domain of allDomains) {
+              urls2.push(`https://${domain}/api/products/${resourceIds.productId}?siteId=${siteId}`);
+              if (site.subdomain) {
+                urls2.push(`https://${domain}/api/products/${resourceIds.productId}?subdomain=${site.subdomain}`);
+              }
+            }
+          }
+          break;
+        case "categories":
+          for (const domain of allDomains) {
+            urls2.push(`https://${domain}/api/categories?siteId=${siteId}`);
+            if (site.subdomain) {
+              urls2.push(`https://${domain}/api/categories?subdomain=${site.subdomain}`);
+            }
+          }
+          if (resourceIds.categoryId) {
+            for (const domain of allDomains) {
+              urls2.push(`https://${domain}/api/categories/${resourceIds.categoryId}?siteId=${siteId}`);
+              if (site.subdomain) {
+                urls2.push(`https://${domain}/api/categories/${resourceIds.categoryId}?subdomain=${site.subdomain}`);
+              }
+            }
+          }
+          break;
+        case "blog":
+          for (const domain of allDomains) {
+            urls2.push(`https://${domain}/api/blog/posts?siteId=${siteId}`);
+            if (site.subdomain) {
+              urls2.push(`https://${domain}/api/blog/posts?subdomain=${site.subdomain}`);
+            }
+          }
+          if (resourceIds.postSlug) {
+            for (const domain of allDomains) {
+              urls2.push(`https://${domain}/api/blog/post/${resourceIds.postSlug}?siteId=${siteId}`);
+              if (site.subdomain) {
+                urls2.push(`https://${domain}/api/blog/post/${resourceIds.postSlug}?subdomain=${site.subdomain}`);
+              }
+            }
+          }
+          break;
+        case "reviews":
+          if (resourceIds.productId) {
+            for (const domain of allDomains) {
+              urls2.push(`https://${domain}/api/reviews/product/${resourceIds.productId}?siteId=${siteId}`);
+              if (site.subdomain) {
+                urls2.push(`https://${domain}/api/reviews/product/${resourceIds.productId}?subdomain=${site.subdomain}`);
+              }
+            }
+          }
+          break;
+        case "site":
+          for (const domain of allDomains) {
+            urls2.push(`https://${domain}/api/site?siteId=${siteId}`);
+            if (site.subdomain) {
+              urls2.push(`https://${domain}/api/site?subdomain=${site.subdomain}`);
+            }
+          }
+          break;
+      }
+    }
+    const uniqueUrls = [...new Set(urls2)];
+    const cache = caches.default;
+    const cachePromises = uniqueUrls.map(
+      (url) => cache.delete(new Request(url)).catch(
+        (e) => console.error(`[Cache] Workers Cache API purge failed for ${url}:`, e.message)
+      )
+    );
+    await Promise.allSettled(cachePromises);
+    const token = env.CF_API_TOKEN;
+    const zoneId = env.CF_ZONE_ID;
+    if (token && zoneId) {
+      try {
+        const batchSize = 30;
+        for (let i = 0; i < uniqueUrls.length; i += batchSize) {
+          const batch = uniqueUrls.slice(i, i + batchSize);
+          const resp = await fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}/purge_cache`, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${token}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ files: batch })
+          });
+          if (!resp.ok) {
+            const errText = await resp.text().catch(() => "");
+            console.error(`[Cache] Cloudflare API purge failed (batch ${i}):`, resp.status, errText);
+          }
+        }
+      } catch (apiErr) {
+        console.error("[Cache] Cloudflare API purge error:", apiErr.message);
+      }
+    } else {
+      console.warn(`[Cache] CF_API_TOKEN not configured \u2014 Cloudflare CDN purge skipped for site ${siteId}. Only Workers Cache API purge was performed.`);
+    }
+    console.log(`[Cache] Purged ${uniqueUrls.length} URLs for site ${siteId} (types: ${types.join(", ")})`);
+  } catch (e) {
+    console.error("[Cache] Purge error:", e.message);
+  }
+}
+var CDN_CACHE_TTL, CDN_STALE_WHILE_REVALIDATE, BROWSER_CACHE_TTL;
+var init_cache = __esm({
+  "utils/cache.js"() {
+    init_checked_fetch();
+    init_strip_cf_connecting_ip_header();
+    init_modules_watch_stub();
+    init_helpers();
+    init_config();
+    CDN_CACHE_TTL = 86400;
+    CDN_STALE_WHILE_REVALIDATE = 604800;
+    BROWSER_CACHE_TTL = 60;
+    __name(cachedJsonResponse, "cachedJsonResponse");
+    __name(purgeStorefrontCache, "purgeStorefrontCache");
   }
 });
 
@@ -3993,6 +4001,7 @@ init_modules_watch_stub();
 init_helpers();
 init_auth();
 init_email();
+init_usage_tracker();
 async function handleEmail(request, env, path) {
   const corsResponse = handleCORS(request);
   if (corsResponse)
@@ -4214,9 +4223,15 @@ ${message}`;
 __name(sendContactEmail, "sendContactEmail");
 async function sendAppointmentEmail(request, env) {
   try {
-    const { name, email, phone, date, time, notes, siteEmail, brandName } = await request.json();
+    const { name, email, phone, date, time, notes, siteEmail, brandName, siteId } = await request.json();
     if (!name || !email || !date) {
       return errorResponse("Name, email and date are required");
+    }
+    if (siteId) {
+      const access = await checkFeatureAccess(env, siteId, "appointmentBooking");
+      if (!access.allowed) {
+        return errorResponse("Appointment booking is not available on this plan", 403);
+      }
     }
     const toEmail = siteEmail || env.CONTACT_EMAIL;
     if (!toEmail) {

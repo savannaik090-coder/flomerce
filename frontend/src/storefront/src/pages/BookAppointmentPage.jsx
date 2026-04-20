@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Navigate } from 'react-router-dom';
 import { useSiteConfig } from '../hooks/useSiteConfig.js';
 import { API_BASE } from '../config.js';
 import PhoneInput from '../components/ui/PhoneInput.jsx';
@@ -24,6 +25,12 @@ export default function BookAppointmentPage() {
     fullName: '', email: '', phone: '',
     appointmentDate: '', purpose: '', notes: '',
   });
+
+  const planTier = (siteConfig?.subscriptionPlan || '').toLowerCase();
+  const appointmentBookingAllowed = planTier === 'trial' || planTier.includes('growth') || planTier.includes('standard') || planTier.includes('pro') || planTier.includes('enterprise');
+  if (siteConfig && !appointmentBookingAllowed) {
+    return <Navigate to="/" replace />;
+  }
 
   function handleChange(e) {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -56,6 +63,7 @@ export default function BookAppointmentPage() {
           notes: `Type: ${appointmentType}\nPurpose: ${purposeLabel}${form.notes ? '\n' + form.notes : ''}`,
           siteEmail: siteConfig?.email,
           brandName: siteConfig?.brandName,
+          siteId: siteConfig?.id,
         }),
       });
       const result = await response.json();

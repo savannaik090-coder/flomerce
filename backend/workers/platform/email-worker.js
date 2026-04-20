@@ -1,6 +1,7 @@
 import { jsonResponse, errorResponse, successResponse, handleCORS } from '../../utils/helpers.js';
 import { validateAuth } from '../../utils/auth.js';
 import { sendEmail as sendEmailUtil, buildOrderConfirmationEmail } from '../../utils/email.js';
+import { checkFeatureAccess } from '../../utils/usage-tracker.js';
 
 export async function handleEmail(request, env, path) {
   const corsResponse = handleCORS(request);
@@ -233,10 +234,17 @@ async function sendContactEmail(request, env) {
 
 async function sendAppointmentEmail(request, env) {
   try {
-    const { name, email, phone, date, time, notes, siteEmail, brandName } = await request.json();
+    const { name, email, phone, date, time, notes, siteEmail, brandName, siteId } = await request.json();
 
     if (!name || !email || !date) {
       return errorResponse('Name, email and date are required');
+    }
+
+    if (siteId) {
+      const access = await checkFeatureAccess(env, siteId, 'appointmentBooking');
+      if (!access.allowed) {
+        return errorResponse('Appointment booking is not available on this plan', 403);
+      }
     }
 
     const toEmail = siteEmail || env.CONTACT_EMAIL;

@@ -32,7 +32,9 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
   const showAbout = settings.showAboutUs !== false;
   const showOrderTrack = settings.showOrderTrack !== false;
   const orderTrackUrl = settings.orderTrackUrl || '';
-  const showBookAppointment = settings.showBookAppointment !== false;
+  const planTier = (siteConfig?.subscriptionPlan || '').toLowerCase();
+  const appointmentBookingAllowed = planTier === 'trial' || planTier.includes('growth') || planTier.includes('standard') || planTier.includes('pro') || planTier.includes('enterprise');
+  const showBookAppointment = settings.showBookAppointment !== false && appointmentBookingAllowed;
   const showContact = settings.showContact !== false;
   const logoSize = Math.min(250, Math.max(40, Number(settings.logoSize) || 60));
   const logoPosition = settings.logoPosition || 'left';

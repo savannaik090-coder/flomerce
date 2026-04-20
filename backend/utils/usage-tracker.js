@@ -5,9 +5,10 @@ const PLAN_LIMITS = {
   starter: {
     d1Bytes: 500 * 1024 * 1024, r2Bytes: 5 * 1024 * 1024 * 1024, allowOverage: false,
     maxSites: Infinity, maxStaff: 5, maxLocations: 2,
-    coupons: true, reviews: false, blog: false,
+    coupons: true, reviews: true, blog: true,
     pushManual: false, pushAutomated: false,
-    advancedSeo: false, revenue: false,
+    advancedSeo: true, revenue: false,
+    appointmentBooking: false,
   },
   growth: {
     d1Bytes: 1 * 1024 * 1024 * 1024, r2Bytes: 50 * 1024 * 1024 * 1024, allowOverage: false,
@@ -15,6 +16,7 @@ const PLAN_LIMITS = {
     coupons: true, reviews: true, blog: true,
     pushManual: true, pushAutomated: false,
     advancedSeo: true, revenue: true,
+    appointmentBooking: true,
   },
   pro: {
     d1Bytes: 2 * 1024 * 1024 * 1024, r2Bytes: 100 * 1024 * 1024 * 1024, allowOverage: false,
@@ -22,6 +24,7 @@ const PLAN_LIMITS = {
     coupons: true, reviews: true, blog: true,
     pushManual: true, pushAutomated: true,
     advancedSeo: true, revenue: true,
+    appointmentBooking: true,
   },
   enterprise: {
     d1Bytes: 2 * 1024 * 1024 * 1024, r2Bytes: 100 * 1024 * 1024 * 1024, allowOverage: false,
@@ -29,6 +32,7 @@ const PLAN_LIMITS = {
     coupons: true, reviews: true, blog: true,
     pushManual: true, pushAutomated: true,
     advancedSeo: true, revenue: true,
+    appointmentBooking: true,
   },
   trial: {
     d1Bytes: 500 * 1024 * 1024, r2Bytes: 5 * 1024 * 1024 * 1024, allowOverage: false,
@@ -36,6 +40,7 @@ const PLAN_LIMITS = {
     coupons: true, reviews: true, blog: true,
     pushManual: true, pushAutomated: true,
     advancedSeo: true, revenue: true,
+    appointmentBooking: true,
   },
   free: {
     d1Bytes: 500 * 1024 * 1024, r2Bytes: 5 * 1024 * 1024 * 1024, allowOverage: false,
@@ -43,16 +48,18 @@ const PLAN_LIMITS = {
     coupons: false, reviews: false, blog: false,
     pushManual: false, pushAutomated: false,
     advancedSeo: false, revenue: false,
+    appointmentBooking: false,
   },
 };
 
 const FEATURE_REQUIRED_PLAN = {
-  reviews: 'growth',
-  blog: 'growth',
+  reviews: 'starter',
+  blog: 'starter',
+  advancedSeo: 'starter',
   pushManual: 'growth',
   pushAutomated: 'pro',
-  advancedSeo: 'growth',
   revenue: 'growth',
+  appointmentBooking: 'growth',
 };
 
 const DEFAULT_OVERAGE_RATES = {
@@ -328,6 +335,7 @@ export async function handlePlanLimitsAPI(request, env, path) {
         pushAutomated: limits.pushAutomated,
         advancedSeo: limits.advancedSeo,
         revenue: limits.revenue,
+        appointmentBooking: limits.appointmentBooking,
       },
       featureRequiredPlan: FEATURE_REQUIRED_PLAN,
       storage: {

@@ -22,14 +22,16 @@ export function isPlanSufficient(currentPlan, requiredPlan) {
 
 export function getRequiredPlan(feature) {
   const map = {
-    reviews: 'growth',
-    blog: 'growth',
+    reviews: 'starter',
+    blog: 'starter',
+    advancedSeo: 'starter',
+    'customer-reviews': 'starter',
     pushManual: 'growth',
     pushAutomated: 'pro',
-    advancedSeo: 'growth',
     revenue: 'growth',
-    'customer-reviews': 'growth',
     notifications: 'growth',
+    appointmentBooking: 'growth',
+    'book-appointment': 'growth',
   };
   return map[feature] || 'growth';
 }
