@@ -49,11 +49,21 @@ export default function ChooseByCategory({ categories }) {
                 className="choose-by-category-card"
               >
                 <div className="choose-by-category-img-wrapper">
-                  <img
-                    src={resolveImg(conf.browseImage)}
-                    alt={cat.name}
-                    loading="lazy"
-                  />
+                  {conf.browseImage ? (
+                    <img
+                      src={resolveImg(conf.browseImage)}
+                      alt={cat.name}
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div style={{ width: '100%', height: '100%', minHeight: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f5f5' }}>
+                      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="1">
+                        <rect x="3" y="3" width="18" height="18" rx="2"/>
+                        <circle cx="8.5" cy="8.5" r="1.5"/>
+                        <path d="M21 15l-5-5L5 21"/>
+                      </svg>
+                    </div>
+                  )}
                   <div className="choose-by-category-overlay" />
                 </div>
                 <div className="choose-by-category-label">
