@@ -3,6 +3,7 @@ import { SiteContext } from '../../context/SiteContext.jsx';
 import SectionToggle from './SectionToggle.jsx';
 import SaveBar from './SaveBar.jsx';
 import { API_BASE } from '../../config.js';
+import { usePendingMedia } from '../../hooks/usePendingMedia.js';
 
 function resolveImg(src) {
   if (!src) return '';
@@ -27,6 +28,7 @@ export default function BrandStoryEditor({ onSaved, onPreviewUpdate }) {
   const fileInputRef = useRef(null);
   const hasLoadedRef = useRef(false);
   const serverValuesRef = useRef(null);
+  const pendingMedia = usePendingMedia(siteConfig?.id);
 
   useEffect(() => {
     if (siteConfig?.id) loadSettings();
@@ -104,11 +106,8 @@ export default function BrandStoryEditor({ onSaved, onPreviewUpdate }) {
       .then(res => res.json())
       .then(result => {
         if (result.success && result.data?.url) {
-          if (image) {
-            import('../../services/api.js').then(({ deleteMediaFromR2 }) => {
-              deleteMediaFromR2(siteConfig.id, image);
-            });
-          }
+          if (image) pendingMedia.markForDeletion(image);
+          pendingMedia.markUploaded(result.data.url);
           setImage(result.data.url);
         } else {
           setStatus('error:Upload failed: ' + (result.error || 'Unknown error'));
@@ -146,6 +145,8 @@ export default function BrandStoryEditor({ onSaved, onPreviewUpdate }) {
         setStatus('success');
         serverValuesRef.current = JSON.stringify({ showSection, headline, text, image, ctaText, ctaLink });
         setHasChanges(false);
+        const cleanup = await pendingMedia.commit([image]);
+        if (!cleanup.ok) console.warn('Some images failed to delete from storage:', cleanup.failed);
         if (onSaved) onSaved();
       } else {
         setStatus('error:' + (result.error || 'Unknown error'));
@@ -190,9 +191,7 @@ export default function BrandStoryEditor({ onSaved, onPreviewUpdate }) {
                   <button
                     type="button"
                     onClick={() => {
-                      if (image && siteConfig?.id) {
-                        import('../../services/api.js').then(({ deleteMediaFromR2 }) => { deleteMediaFromR2(siteConfig.id, image); });
-                      }
+                      if (image) pendingMedia.markForDeletion(image);
                       setImage('');
                       if (fileInputRef.current) fileInputRef.current.value = '';
                     }}

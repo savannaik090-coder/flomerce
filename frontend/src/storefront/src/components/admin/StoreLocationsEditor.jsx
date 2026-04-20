@@ -3,6 +3,7 @@ import { SiteContext } from '../../context/SiteContext.jsx';
 import SaveBar from './SaveBar.jsx';
 import { API_BASE } from '../../config.js';
 import PhoneInput from '../ui/PhoneInput.jsx';
+import { usePendingMedia } from '../../hooks/usePendingMedia.js';
 
 const EMPTY_STORE = { name: '', address: '', hours: '', phone: '', mapLink: '', image: '' };
 
@@ -38,6 +39,7 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate }) {
   const fileInputRefs = useRef({});
   const hasLoadedRef = useRef(false);
   const serverValuesRef = useRef(null);
+  const pendingMedia = usePendingMedia(siteConfig?.id);
 
   useEffect(() => {
     if (siteConfig?.id) loadSettings();
@@ -98,11 +100,8 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate }) {
   function removeStore(index) {
     if (stores.length <= 1) return;
     const removedStore = stores[index];
-    if (removedStore?.image && siteConfig?.id) {
-      import('../../services/api.js').then(({ deleteMediaFromR2 }) => {
-        deleteMediaFromR2(siteConfig.id, removedStore.image);
-      });
-    }
+    // Defer R2 deletion until save; if user cancels, image stays on the live site.
+    if (removedStore?.image) pendingMedia.markForDeletion(removedStore.image);
     setStores(prev => prev.filter((_, i) => i !== index));
   }
 
@@ -132,12 +131,10 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate }) {
       });
       const result = await response.json();
       if (result.success && result.data?.images?.length > 0 && result.data.images[0].url) {
-        updateStore(index, 'image', result.data.images[0].url);
-        if (oldImage) {
-          import('../../services/api.js').then(({ deleteMediaFromR2 }) => {
-            deleteMediaFromR2(siteConfig.id, oldImage);
-          });
-        }
+        const newUrl = result.data.images[0].url;
+        updateStore(index, 'image', newUrl);
+        pendingMedia.markUploaded(newUrl);
+        if (oldImage) pendingMedia.markForDeletion(oldImage);
       } else {
         setStatus('error:Image upload failed. Please try again.');
       }
@@ -155,6 +152,7 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate }) {
     setStatus('');
     try {
       const token = sessionStorage.getItem('site_admin_token');
+      const persistedStores = stores.filter(s => s.name || s.address);
       const response = await fetch(`${API_BASE}/api/sites/${siteConfig.id}`, {
         method: 'PUT',
         headers: {
@@ -164,7 +162,7 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate }) {
         body: JSON.stringify({
           settings: {
             showStoreLocations: showSection,
-            storeLocations: stores.filter(s => s.name || s.address),
+            storeLocations: persistedStores,
           }
         }),
       });
@@ -173,6 +171,8 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate }) {
         setStatus('success');
         serverValuesRef.current = JSON.stringify({ showSection, stores });
         setHasChanges(false);
+        const cleanup = await pendingMedia.commit(persistedStores.map(s => s.image).filter(Boolean));
+        if (!cleanup.ok) console.warn('Some images failed to delete from storage:', cleanup.failed);
         if (onSaved) onSaved();
       } else {
         setStatus('error:' + (result.error || 'Unknown error'));
@@ -242,7 +242,7 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate }) {
                         </button>
                         <button
                           type="button"
-                          onClick={() => { const oldImg = stores[index]?.image; if (oldImg && siteConfig?.id) { import('../../services/api.js').then(({ deleteMediaFromR2 }) => { deleteMediaFromR2(siteConfig.id, oldImg); }); } updateStore(index, 'image', ''); }}
+                          onClick={() => { const oldImg = stores[index]?.image; if (oldImg) pendingMedia.markForDeletion(oldImg); updateStore(index, 'image', ''); }}
                           style={{ background: 'rgba(220,38,38,0.8)', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 10px', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}
                         >
                           <i className="fas fa-trash" />

@@ -7,6 +7,7 @@ import SectionToggle from './SectionToggle.jsx';
 import SaveBar from './SaveBar.jsx';
 import { getShopTheLookDefaults } from '../../defaults/index.js';
 import { API_BASE } from '../../config.js';
+import { usePendingMedia } from '../../hooks/usePendingMedia.js';
 
 function compressImage(file, maxWidth = 1400, quality = 0.85) {
   return new Promise((resolve) => {
@@ -47,6 +48,7 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate }) {
   const serverValuesRef = useRef(null);
   const fileInputRef = useRef(null);
   const imageContainerRef = useRef(null);
+  const pendingMedia = usePendingMedia(siteConfig?.id);
   const [draggingIndex, setDraggingIndex] = useState(null);
   const dragStartPosRef = useRef(null);
 
@@ -145,13 +147,11 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate }) {
       });
       const result = await response.json();
       if (result.success && result.data?.images?.[0]) {
-        setMainImage(result.data.images[0].url);
+        const newUrl = result.data.images[0].url;
+        setMainImage(newUrl);
         setMainImageKey(result.data.images[0].key || '');
-        if (oldImage) {
-          import('../../services/api.js').then(({ deleteMediaFromR2 }) => {
-            deleteMediaFromR2(siteConfig.id, oldImage);
-          });
-        }
+        pendingMedia.markUploaded(newUrl);
+        if (oldImage) pendingMedia.markForDeletion(oldImage);
       } else {
         setError(result.error || 'Failed to upload image');
       }
@@ -249,6 +249,8 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate }) {
         serverValuesRef.current = JSON.stringify({ title, mainImage, mainImageKey, dots, showSection });
         setHasChanges(false);
         setUsingDefaults(false);
+        const cleanup = await pendingMedia.commit([mainImage]);
+        if (!cleanup.ok) console.warn('Some images failed to delete from storage:', cleanup.failed);
         if (onSaved) onSaved();
       } else {
         setError(result.error || 'Failed to save');

@@ -7,6 +7,7 @@ import ConfirmModal from './ConfirmModal.jsx';
 
 import { getAboutPageWithBrand } from '../../defaults/index.js';
 import { API_BASE } from '../../config.js';
+import { usePendingMedia } from '../../hooks/usePendingMedia.js';
 
 const inputStyle = { width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' };
 const labelStyle = { display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 };
@@ -28,6 +29,7 @@ export default function AboutUsEditor({ onSaved, onPreviewUpdate }) {
   const fileInputRef = useRef(null);
   const hasLoadedRef = useRef(false);
   const serverValuesRef = useRef(null);
+  const pendingMedia = usePendingMedia(siteConfig?.id);
 
   useEffect(() => {
     if (siteConfig?.id) loadSettings();
@@ -116,12 +118,10 @@ export default function AboutUsEditor({ onSaved, onPreviewUpdate }) {
       });
       const result = await response.json();
       if (response.ok && result.success && result.data?.images?.[0]?.url) {
-        setStoryImage(result.data.images[0].url);
-        if (oldImage) {
-          import('../../services/api.js').then(({ deleteMediaFromR2 }) => {
-            deleteMediaFromR2(siteConfig.id, oldImage);
-          });
-        }
+        const newUrl = result.data.images[0].url;
+        setStoryImage(newUrl);
+        pendingMedia.markUploaded(newUrl);
+        if (oldImage) pendingMedia.markForDeletion(oldImage);
       } else {
         setStatus('error:Upload failed: ' + (result.error || result.message || 'Unknown error'));
       }
@@ -191,6 +191,8 @@ export default function AboutUsEditor({ onSaved, onPreviewUpdate }) {
         setStatus('success');
         serverValuesRef.current = JSON.stringify({ heroSubtitle, storyText, storyImage, sections, showSection });
         setHasChanges(false);
+        const cleanup = await pendingMedia.commit([storyImage]);
+        if (!cleanup.ok) console.warn('Some images failed to delete from storage:', cleanup.failed);
         if (onSaved) onSaved();
       } else {
         setStatus('error:' + (result.error || 'Unknown error'));
@@ -261,7 +263,7 @@ export default function AboutUsEditor({ onSaved, onPreviewUpdate }) {
                   <img src={resolveImageUrl(storyImage)} alt="Story" style={{ width: '100%', maxHeight: 220, objectFit: 'cover', display: 'block' }} />
                   <button
                     type="button"
-                    onClick={() => { if (storyImage && siteConfig?.id) { import('../../services/api.js').then(({ deleteMediaFromR2 }) => { deleteMediaFromR2(siteConfig.id, storyImage); }); } setStoryImage(''); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+                    onClick={() => { if (storyImage) pendingMedia.markForDeletion(storyImage); setStoryImage(''); if (fileInputRef.current) fileInputRef.current.value = ''; }}
                     style={{
                       position: 'absolute', top: 8, right: 8,
                       background: 'rgba(0,0,0,0.7)', color: '#fff', border: 'none',
