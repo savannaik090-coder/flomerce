@@ -5,6 +5,7 @@ import { useTheme } from '../../context/ThemeContext.jsx';
 import * as productService from '../../services/productService.js';
 import ProductCard from '../product/ProductCard.jsx';
 import ProductCardModern from '../templates/modern/ProductCardModern.jsx';
+import { getDemoProductsForCategory } from '../../defaults/index.js';
 
 export default function SubcategorySection({ section }) {
   const { siteConfig } = useSiteConfig();
@@ -12,10 +13,13 @@ export default function SubcategorySection({ section }) {
   const Card = theme.id === 'modern' ? ProductCardModern : ProductCard;
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isDemo, setIsDemo] = useState(false);
   const scrollRef = useRef(null);
 
   useEffect(() => {
     if (!siteConfig?.id || !section?.subcategoryId) {
+      setProducts(getDemoProductsForCategory(siteConfig?.category, section?.name));
+      setIsDemo(true);
       setLoading(false);
       return;
     }
@@ -23,11 +27,21 @@ export default function SubcategorySection({ section }) {
     productService
       .getProducts(siteConfig.id, { subcategoryId: section.subcategoryId, limit: 20 })
       .then((res) => {
-        setProducts(res.data || res.products || []);
+        const list = res.data || res.products || [];
+        if (list.length === 0) {
+          setProducts(getDemoProductsForCategory(siteConfig?.category, section?.name));
+          setIsDemo(true);
+        } else {
+          setProducts(list);
+          setIsDemo(false);
+        }
       })
-      .catch(console.error)
+      .catch(() => {
+        setProducts(getDemoProductsForCategory(siteConfig?.category, section?.name));
+        setIsDemo(true);
+      })
       .finally(() => setLoading(false));
-  }, [siteConfig?.id, section?.subcategoryId]);
+  }, [siteConfig?.id, siteConfig?.category, section?.subcategoryId, section?.name]);
 
   const scroll = (direction) => {
     if (scrollRef.current) {
@@ -69,14 +83,10 @@ export default function SubcategorySection({ section }) {
               <div className="product-loader-spinner"></div>
               <div className="product-loader-text">Loading {section.name.toLowerCase()}...</div>
             </div>
-          ) : products.length > 0 ? (
-            products.map((product) => (
-              <Card key={product.id} product={product} variant="scroll" />
-            ))
           ) : (
-            <p style={{ padding: '40px', color: '#999', textAlign: 'center', width: '100%' }}>
-              No products in {section.name} yet
-            </p>
+            products.map((product) => (
+              <Card key={product.id} product={product} variant="scroll" isDemo={isDemo || product._isDemo} />
+            ))
           )}
         </div>
 

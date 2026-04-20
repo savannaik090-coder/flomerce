@@ -6,7 +6,7 @@ import { useCurrency } from '../../../hooks/useCurrency.js';
 import { resolveImageUrl } from '../../../utils/imageUrl.js';
 import './modern.css';
 
-export default function ProductCardModern({ product, variant = 'grid', onWishlistToggle, isInWishlist: isInWishlistProp }) {
+export default function ProductCardModern({ product, variant = 'grid', onWishlistToggle, isInWishlist: isInWishlistProp, isDemo = false }) {
   const wishlist = useWishlist();
   const { openWishlist } = useContext(PanelContext);
   const { formatAmount } = useCurrency();
@@ -38,7 +38,7 @@ export default function ProductCardModern({ product, variant = 'grid', onWishlis
     <div
       className={`mn-product-card${isScroll ? ' mn-product-card--scroll' : ''}`}
     >
-      <Link to={`/product/${product.id}`} className="mn-product-link">
+      <Link to={(isDemo || product._isDemo) ? '/' : `/product/${product.id}`} className="mn-product-link">
         <div className="mn-product-image-wrap">
           {imageUrl ? (
             <img

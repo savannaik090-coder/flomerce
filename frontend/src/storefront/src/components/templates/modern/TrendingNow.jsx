@@ -4,6 +4,7 @@ import { useSiteConfig } from '../../../hooks/useSiteConfig.js';
 import { useCurrency } from '../../../hooks/useCurrency.js';
 import { resolveImageUrl } from '../../../utils/imageUrl.js';
 import * as productService from '../../../services/productService.js';
+import { getTrendingProductsDefaults } from '../../../defaults/index.js';
 import './modern.css';
 
 export default function TrendingNow() {
@@ -11,6 +12,7 @@ export default function TrendingNow() {
   const { formatAmount } = useCurrency();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isDemo, setIsDemo] = useState(false);
   const scrollRef = useRef(null);
 
   const settings = siteConfig?.settings || {};
@@ -25,22 +27,31 @@ export default function TrendingNow() {
       .getProducts(siteConfig.id, { limit: 500 })
       .then((res) => {
         const all = res.data || res.products || [];
+        let picked = [];
         if (trendingIds.length > 0) {
           const idMap = {};
           all.forEach(p => { idMap[p.id] = p; });
-          const ordered = trendingIds.map(id => idMap[id]).filter(Boolean);
-          setProducts(ordered);
+          picked = trendingIds.map(id => idMap[id]).filter(Boolean);
         } else {
           const featured = all.filter(p => p.is_featured);
-          setProducts(featured.length > 0 ? featured.slice(0, 12) : all.slice(0, 12));
+          picked = featured.length > 0 ? featured.slice(0, 12) : all.slice(0, 12);
+        }
+        if (picked.length === 0) {
+          setProducts(getTrendingProductsDefaults(siteConfig?.category));
+          setIsDemo(true);
+        } else {
+          setProducts(picked);
+          setIsDemo(false);
         }
       })
-      .catch(console.error)
+      .catch(() => {
+        setProducts(getTrendingProductsDefaults(siteConfig?.category));
+        setIsDemo(true);
+      })
       .finally(() => setLoading(false));
-  }, [siteConfig?.id, isHidden, trendingIds.join(',')]);
+  }, [siteConfig?.id, siteConfig?.category, isHidden, trendingIds.join(',')]);
 
   if (isHidden) return null;
-  if (!loading && products.length === 0) return null;
 
   const scroll = (dir) => {
     if (!scrollRef.current) return;
@@ -75,8 +86,9 @@ export default function TrendingNow() {
           {products.map((product) => {
             const img = product.images?.[0] || product.image_url || '';
             const hasCompare = product.compare_at_price && Number(product.compare_at_price) > Number(product.price);
+            const linkTo = (isDemo || product._isDemo) ? '/' : `/product/${product.slug || product.id}`;
             return (
-              <Link key={product.id} to={`/product/${product.slug || product.id}`} className="mn-trending-card">
+              <Link key={product.id} to={linkTo} className="mn-trending-card">
                 <div className="mn-trending-img-wrap">
                   <img src={resolveImageUrl(img)} alt={product.name} loading="lazy" />
                 </div>

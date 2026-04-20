@@ -67,6 +67,26 @@ export const shopTheLookDefaults = {
   ],
 };
 
+export const trendingProductsDefaults = [
+  { id: 'demo-b-1', name: 'Vitamin C Serum', slug: 'demo', price: 999, compare_at_price: 1499, images: ['https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=600&auto=format&fit=crop&q=75'], _isDemo: true },
+  { id: 'demo-b-2', name: 'Matte Lipstick', slug: 'demo', price: 599, compare_at_price: 899, images: ['https://images.unsplash.com/photo-1631214540242-c11dafff5cc3?w=600&auto=format&fit=crop&q=75'], _isDemo: true },
+  { id: 'demo-b-3', name: 'Hydrating Cream', slug: 'demo', price: 799, compare_at_price: 1199, images: ['https://images.unsplash.com/photo-1556228720-195a672e8a03?w=600&auto=format&fit=crop&q=75'], _isDemo: true },
+  { id: 'demo-b-4', name: 'Eau de Parfum', slug: 'demo', price: 1999, compare_at_price: 2999, images: ['https://images.unsplash.com/photo-1541643600914-78b084683601?w=600&auto=format&fit=crop&q=75'], _isDemo: true },
+  { id: 'demo-b-5', name: 'Foundation Stick', slug: 'demo', price: 899, compare_at_price: 1299, images: ['https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=600&auto=format&fit=crop&q=75'], _isDemo: true },
+  { id: 'demo-b-6', name: 'Eye Palette', slug: 'demo', price: 1299, compare_at_price: 1799, images: ['https://images.unsplash.com/photo-1583241800698-9c2e0c1a7ae5?w=600&auto=format&fit=crop&q=75'], _isDemo: true },
+  { id: 'demo-b-7', name: 'Face Cleanser', slug: 'demo', price: 449, compare_at_price: 699, images: ['https://images.unsplash.com/photo-1522335789203-aaa2f8264c4f?w=600&auto=format&fit=crop&q=75'], _isDemo: true },
+  { id: 'demo-b-8', name: 'Liquid Mascara', slug: 'demo', price: 549, compare_at_price: 799, images: ['https://images.unsplash.com/photo-1571781926291-c477ebfd024b?w=600&auto=format&fit=crop&q=75'], _isDemo: true },
+];
+
+export const demoCategoriesDefaults = [
+  { id: 'demo-cat-b-1', name: 'Skincare', slug: 'demo', subtitle: 'Glow essentials', image_url: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=900&auto=format&fit=crop&q=75', browseImage: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=900&auto=format&fit=crop&q=75', _isDemo: true },
+  { id: 'demo-cat-b-2', name: 'Makeup', slug: 'demo', subtitle: 'Color your day', image_url: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=900&auto=format&fit=crop&q=75', browseImage: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=900&auto=format&fit=crop&q=75', _isDemo: true },
+  { id: 'demo-cat-b-3', name: 'Lips', slug: 'demo', subtitle: 'Bold lip looks', image_url: 'https://images.unsplash.com/photo-1631214540242-c11dafff5cc3?w=900&auto=format&fit=crop&q=75', browseImage: 'https://images.unsplash.com/photo-1631214540242-c11dafff5cc3?w=900&auto=format&fit=crop&q=75', _isDemo: true },
+  { id: 'demo-cat-b-4', name: 'Fragrance', slug: 'demo', subtitle: 'Signature scents', image_url: 'https://images.unsplash.com/photo-1541643600914-78b084683601?w=900&auto=format&fit=crop&q=75', browseImage: 'https://images.unsplash.com/photo-1541643600914-78b084683601?w=900&auto=format&fit=crop&q=75', _isDemo: true },
+  { id: 'demo-cat-b-5', name: 'Haircare', slug: 'demo', subtitle: 'Salon at home', image_url: 'https://images.unsplash.com/photo-1522338242992-e1a54906a8da?w=900&auto=format&fit=crop&q=75', browseImage: 'https://images.unsplash.com/photo-1522338242992-e1a54906a8da?w=900&auto=format&fit=crop&q=75', _isDemo: true },
+  { id: 'demo-cat-b-6', name: 'Wellness', slug: 'demo', subtitle: 'Self-care rituals', image_url: 'https://images.unsplash.com/photo-1607602132700-068258431c6c?w=900&auto=format&fit=crop&q=75', browseImage: 'https://images.unsplash.com/photo-1607602132700-068258431c6c?w=900&auto=format&fit=crop&q=75', _isDemo: true },
+];
+
 export const defaultReviews = [
   { text: '"My skin feels so much better after using these products. Absolutely love them!"', rating: 5, image: 'https://placehold.co/400x400/fdf2f8/c084a0?text=Glowing+Skin' },
   { text: '"Amazing quality skincare! The results are visible within a week. Highly recommend"', rating: 5, image: 'https://placehold.co/400x400/f0fdf4/6b8e5a?text=Great+Results' },

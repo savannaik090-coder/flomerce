@@ -102,3 +102,19 @@ export function getShopTheLookDefaults(category) {
 export function getDefaultReviews(category) {
   return getCategory(category).defaultReviews || generic.defaultReviews;
 }
+
+export function getTrendingProductsDefaults(category) {
+  return getCategory(category).trendingProductsDefaults || generic.trendingProductsDefaults;
+}
+
+export function getDemoCategoriesDefaults(category) {
+  return getCategory(category).demoCategoriesDefaults || generic.demoCategoriesDefaults;
+}
+
+export function getDemoProductsForCategory(category, categoryName) {
+  const products = getTrendingProductsDefaults(category);
+  return products.slice(0, 6).map((p, i) => ({
+    ...p,
+    id: `${p.id}-${(categoryName || 'cat').toLowerCase().replace(/\s+/g, '-')}-${i}`,
+  }));
+}

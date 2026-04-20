@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useSiteConfig } from '../../../hooks/useSiteConfig.js';
 import { API_BASE } from '../../../config.js';
+import { getDemoCategoriesDefaults } from '../../../defaults/index.js';
 import './modern.css';
 
 function resolveImg(src) {
@@ -24,7 +25,10 @@ export default function ChooseByCategoryModern({ categories }) {
     return conf && conf.visible && conf.browseImage;
   });
 
-  if (visibleCats.length === 0) return null;
+  const isDemo = visibleCats.length === 0;
+  const renderCats = isDemo
+    ? getDemoCategoriesDefaults(siteConfig?.category).map(c => ({ ...c, _conf: { browseImage: c.browseImage } }))
+    : visibleCats.map(cat => ({ ...cat, _conf: catMap[cat.id] }));
 
   return (
     <section className="mn-choose-section">
@@ -33,13 +37,14 @@ export default function ChooseByCategoryModern({ categories }) {
         <h2 className="mn-section-title">Shop by Category</h2>
       </div>
       <div className="mn-choose-grid">
-        {visibleCats.map((cat, index) => {
-          const conf = catMap[cat.id];
-          const isWide = index === 0 || (visibleCats.length >= 4 && index === 3);
+        {renderCats.map((cat, index) => {
+          const conf = cat._conf;
+          const isWide = index === 0 || (renderCats.length >= 4 && index === 3);
+          const linkTo = (isDemo || cat._isDemo) ? '/' : `/category/${cat.slug}`;
           return (
             <Link
               key={cat.id}
-              to={`/category/${cat.slug}`}
+              to={linkTo}
               className={`mn-choose-card ${isWide ? 'mn-choose-card--wide' : ''}`}
             >
               <div className="mn-choose-img-wrap">

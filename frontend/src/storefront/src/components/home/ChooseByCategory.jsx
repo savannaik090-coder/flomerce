@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useSiteConfig } from '../../hooks/useSiteConfig.js';
 import '../../styles/choose-by-category.css';
 import { API_BASE } from '../../config.js';
+import { getDemoCategoriesDefaults } from '../../defaults/index.js';
 
 function resolveImg(src) {
   if (!src) return '';
@@ -25,7 +26,10 @@ export default function ChooseByCategory({ categories }) {
     return conf && conf.visible && conf.browseImage;
   });
 
-  if (visibleCats.length === 0) return null;
+  const isDemo = visibleCats.length === 0;
+  const renderCats = isDemo
+    ? getDemoCategoriesDefaults(siteConfig?.category).map(c => ({ ...c, _conf: { browseImage: c.browseImage } }))
+    : visibleCats.map(cat => ({ ...cat, _conf: catMap[cat.id] }));
 
   return (
     <section className="choose-by-category">
@@ -35,12 +39,13 @@ export default function ChooseByCategory({ categories }) {
           <hr className="choose-by-category-divider" />
         </div>
         <div className="choose-by-category-grid">
-          {visibleCats.map((cat) => {
-            const conf = catMap[cat.id];
+          {renderCats.map((cat) => {
+            const conf = cat._conf;
+            const linkTo = (isDemo || cat._isDemo) ? '/' : `/category/${cat.slug}`;
             return (
               <Link
                 key={cat.id}
-                to={`/category/${cat.slug}`}
+                to={linkTo}
                 className="choose-by-category-card"
               >
                 <div className="choose-by-category-img-wrapper">

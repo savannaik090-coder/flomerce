@@ -4,6 +4,7 @@ import { useSiteConfig } from '../../../hooks/useSiteConfig.js';
 import * as productService from '../../../services/productService.js';
 import ProductCardModern from './ProductCardModern.jsx';
 import { API_BASE } from '../../../config.js';
+import { getDemoProductsForCategory } from '../../../defaults/index.js';
 import './modern.css';
 
 function resolveImg(src) {
@@ -17,6 +18,7 @@ export default function CategoryGrid({ category }) {
   const { siteConfig } = useSiteConfig();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isDemo, setIsDemo] = useState(false);
 
   useEffect(() => {
     if (!siteConfig?.id || !category?.id) return;
@@ -24,11 +26,21 @@ export default function CategoryGrid({ category }) {
     productService
       .getProducts(siteConfig.id, { categoryId: category.id, limit: 8 })
       .then((res) => {
-        setProducts(res.data || res.products || []);
+        const list = res.data || res.products || [];
+        if (list.length === 0) {
+          setProducts(getDemoProductsForCategory(siteConfig?.category, category.name));
+          setIsDemo(true);
+        } else {
+          setProducts(list);
+          setIsDemo(false);
+        }
       })
-      .catch(console.error)
+      .catch(() => {
+        setProducts(getDemoProductsForCategory(siteConfig?.category, category.name));
+        setIsDemo(true);
+      })
       .finally(() => setLoading(false));
-  }, [siteConfig?.id, category?.id]);
+  }, [siteConfig?.id, siteConfig?.category, category?.id, category?.name]);
 
   const hasImage = !!category.image_url;
 
@@ -66,14 +78,12 @@ export default function CategoryGrid({ category }) {
             <div className="product-loader-spinner"></div>
             <p>Loading {category.name.toLowerCase()}...</p>
           </div>
-        ) : products.length > 0 ? (
+        ) : (
           <div className="mn-product-grid">
             {products.map((product) => (
-              <ProductCardModern key={product.id} product={product} variant="grid" />
+              <ProductCardModern key={product.id} product={product} variant="grid" isDemo={isDemo || product._isDemo} />
             ))}
           </div>
-        ) : (
-          <p className="mn-category-empty">No products in {category.name} yet</p>
         )}
       </div>
     </section>

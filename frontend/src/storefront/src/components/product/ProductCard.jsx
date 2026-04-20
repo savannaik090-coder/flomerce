@@ -5,7 +5,7 @@ import { useWishlist } from '../../hooks/useWishlist.js';
 import { useCurrency } from '../../hooks/useCurrency.js';
 import { resolveImageUrl } from '../../utils/imageUrl.js';
 
-export default function ProductCard({ product, variant = 'grid', onWishlistToggle, isInWishlist: isInWishlistProp }) {
+export default function ProductCard({ product, variant = 'grid', onWishlistToggle, isInWishlist: isInWishlistProp, isDemo = false }) {
   const wishlist = useWishlist();
   const { openWishlist } = useContext(PanelContext);
 
@@ -50,7 +50,7 @@ export default function ProductCard({ product, variant = 'grid', onWishlistToggl
       }}
     >
       <Link
-        to={`/product/${product.id}`}
+        to={(isDemo || product._isDemo) ? '/' : `/product/${product.id}`}
         style={{ textDecoration: 'none', color: 'inherit' }}
       >
         <div className="product-image" style={{ position: 'relative', overflow: 'hidden' }}>

@@ -4,6 +4,7 @@ import { useSiteConfig } from '../../hooks/useSiteConfig.js';
 import * as productService from '../../services/productService.js';
 import ProductCard from '../product/ProductCard.jsx';
 import { API_BASE } from '../../config.js';
+import { getDemoProductsForCategory } from '../../defaults/index.js';
 
 function resolveImg(src) {
   if (!src) return '';
@@ -16,6 +17,7 @@ export default function CategorySection({ category }) {
   const { siteConfig } = useSiteConfig();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isDemo, setIsDemo] = useState(false);
   const scrollRef = useRef(null);
 
   useEffect(() => {
@@ -24,11 +26,21 @@ export default function CategorySection({ category }) {
     productService
       .getProducts(siteConfig.id, { categoryId: category.id, limit: 20 })
       .then((res) => {
-        setProducts(res.data || res.products || []);
+        const list = res.data || res.products || [];
+        if (list.length === 0) {
+          setProducts(getDemoProductsForCategory(siteConfig?.category, category.name));
+          setIsDemo(true);
+        } else {
+          setProducts(list);
+          setIsDemo(false);
+        }
       })
-      .catch(console.error)
+      .catch(() => {
+        setProducts(getDemoProductsForCategory(siteConfig?.category, category.name));
+        setIsDemo(true);
+      })
       .finally(() => setLoading(false));
-  }, [siteConfig?.id, category?.id]);
+  }, [siteConfig?.id, siteConfig?.category, category?.id, category?.name]);
 
   const scroll = (direction) => {
     if (scrollRef.current) {
@@ -86,14 +98,10 @@ export default function CategorySection({ category }) {
               <div className="product-loader-spinner"></div>
               <div className="product-loader-text">Loading {category.name.toLowerCase()}...</div>
             </div>
-          ) : products.length > 0 ? (
-            products.map((product) => (
-              <ProductCard key={product.id} product={product} variant="scroll" />
-            ))
           ) : (
-            <p style={{ padding: '40px', color: '#999', textAlign: 'center', width: '100%' }}>
-              No products in {category.name} yet
-            </p>
+            products.map((product) => (
+              <ProductCard key={product.id} product={product} variant="scroll" isDemo={isDemo || product._isDemo} />
+            ))
           )}
         </div>
 

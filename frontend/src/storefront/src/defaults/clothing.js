@@ -67,6 +67,26 @@ export const shopTheLookDefaults = {
   ],
 };
 
+export const trendingProductsDefaults = [
+  { id: 'demo-c-1', name: 'Floral Maxi Dress', slug: 'demo', price: 1499, compare_at_price: 2499, images: ['https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?w=600&auto=format&fit=crop&q=75'], _isDemo: true },
+  { id: 'demo-c-2', name: 'Embroidered Kurti', slug: 'demo', price: 999, compare_at_price: 1799, images: ['https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=600&auto=format&fit=crop&q=75'], _isDemo: true },
+  { id: 'demo-c-3', name: 'Silk Saree', slug: 'demo', price: 3499, compare_at_price: 4999, images: ['https://images.unsplash.com/photo-1583391733956-6c78276477e2?w=600&auto=format&fit=crop&q=75'], _isDemo: true },
+  { id: 'demo-c-4', name: 'Designer Lehenga', slug: 'demo', price: 6999, compare_at_price: 9999, images: ['https://images.unsplash.com/photo-1610189000613-77d27cca0a48?w=600&auto=format&fit=crop&q=75'], _isDemo: true },
+  { id: 'demo-c-5', name: 'Casual Top', slug: 'demo', price: 799, compare_at_price: 1299, images: ['https://images.unsplash.com/photo-1485518882345-15568b007407?w=600&auto=format&fit=crop&q=75'], _isDemo: true },
+  { id: 'demo-c-6', name: 'Anarkali Suit', slug: 'demo', price: 2299, compare_at_price: 3499, images: ['https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?w=600&auto=format&fit=crop&q=75'], _isDemo: true },
+  { id: 'demo-c-7', name: 'Denim Jacket', slug: 'demo', price: 1899, compare_at_price: 2999, images: ['https://images.unsplash.com/photo-1551028719-00167b16eac5?w=600&auto=format&fit=crop&q=75'], _isDemo: true },
+  { id: 'demo-c-8', name: 'Co-ord Set', slug: 'demo', price: 1799, compare_at_price: 2799, images: ['https://images.unsplash.com/photo-1539109136881-3be0616acf4b?w=600&auto=format&fit=crop&q=75'], _isDemo: true },
+];
+
+export const demoCategoriesDefaults = [
+  { id: 'demo-cat-c-1', name: 'New Arrivals', slug: 'demo', subtitle: 'Fresh styles this season', image_url: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=900&auto=format&fit=crop&q=75', browseImage: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=900&auto=format&fit=crop&q=75', _isDemo: true },
+  { id: 'demo-cat-c-2', name: 'Ethnic Wear', slug: 'demo', subtitle: 'Traditional elegance', image_url: 'https://images.unsplash.com/photo-1583391733956-6c78276477e2?w=900&auto=format&fit=crop&q=75', browseImage: 'https://images.unsplash.com/photo-1583391733956-6c78276477e2?w=900&auto=format&fit=crop&q=75', _isDemo: true },
+  { id: 'demo-cat-c-3', name: 'Western Wear', slug: 'demo', subtitle: 'Everyday chic', image_url: 'https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=900&auto=format&fit=crop&q=75', browseImage: 'https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=900&auto=format&fit=crop&q=75', _isDemo: true },
+  { id: 'demo-cat-c-4', name: 'Bridal Collection', slug: 'demo', subtitle: 'Wedding statements', image_url: 'https://images.unsplash.com/photo-1610189000613-77d27cca0a48?w=900&auto=format&fit=crop&q=75', browseImage: 'https://images.unsplash.com/photo-1610189000613-77d27cca0a48?w=900&auto=format&fit=crop&q=75', _isDemo: true },
+  { id: 'demo-cat-c-5', name: 'Casual Tops', slug: 'demo', subtitle: 'Light & comfy', image_url: 'https://images.unsplash.com/photo-1485518882345-15568b007407?w=900&auto=format&fit=crop&q=75', browseImage: 'https://images.unsplash.com/photo-1485518882345-15568b007407?w=900&auto=format&fit=crop&q=75', _isDemo: true },
+  { id: 'demo-cat-c-6', name: 'Accessories', slug: 'demo', subtitle: 'Complete the look', image_url: 'https://images.unsplash.com/photo-1581338834647-b0fb40704e21?w=900&auto=format&fit=crop&q=75', browseImage: 'https://images.unsplash.com/photo-1581338834647-b0fb40704e21?w=900&auto=format&fit=crop&q=75', _isDemo: true },
+];
+
 export const defaultReviews = [
   { text: '"The fabric quality is amazing and the fit is perfect. Exactly as shown in the pictures!"', rating: 5, image: 'https://placehold.co/400x400/f0f4ff/5b6abf?text=Perfect+Fit' },
   { text: '"Loved the outfit! Great stitching, comfortable material, and fast delivery"', rating: 5, image: 'https://placehold.co/400x400/fdf2f8/a855a0?text=Loved+It' },

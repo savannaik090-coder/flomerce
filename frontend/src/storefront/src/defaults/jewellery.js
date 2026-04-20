@@ -67,6 +67,26 @@ export const shopTheLookDefaults = {
   ],
 };
 
+export const trendingProductsDefaults = [
+  { id: 'demo-j-1', name: 'Gold Necklace Set', slug: 'demo', price: 24999, compare_at_price: 29999, images: ['https://images.unsplash.com/photo-1599643477877-530eb83abc8e?w=600&auto=format&fit=crop&q=75'], _isDemo: true },
+  { id: 'demo-j-2', name: 'Diamond Earrings', slug: 'demo', price: 18999, compare_at_price: 22999, images: ['https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?w=600&auto=format&fit=crop&q=75'], _isDemo: true },
+  { id: 'demo-j-3', name: 'Bridal Choker', slug: 'demo', price: 34999, compare_at_price: 39999, images: ['https://images.unsplash.com/photo-1611652022419-a9419f74343d?w=600&auto=format&fit=crop&q=75'], _isDemo: true },
+  { id: 'demo-j-4', name: 'Temple Bangles', slug: 'demo', price: 9999, compare_at_price: 12999, images: ['https://images.unsplash.com/photo-1602173574767-37ac01994b2a?w=600&auto=format&fit=crop&q=75'], _isDemo: true },
+  { id: 'demo-j-5', name: 'Solitaire Ring', slug: 'demo', price: 15999, compare_at_price: 19999, images: ['https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=600&auto=format&fit=crop&q=75'], _isDemo: true },
+  { id: 'demo-j-6', name: 'Pearl Pendant', slug: 'demo', price: 4999, compare_at_price: 6999, images: ['https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=600&auto=format&fit=crop&q=75'], _isDemo: true },
+  { id: 'demo-j-7', name: 'Kundan Set', slug: 'demo', price: 28999, compare_at_price: 34999, images: ['https://images.unsplash.com/photo-1573408301185-9146fe634ad0?w=600&auto=format&fit=crop&q=75'], _isDemo: true },
+  { id: 'demo-j-8', name: 'Gold Bracelet', slug: 'demo', price: 12999, compare_at_price: 15999, images: ['https://images.unsplash.com/photo-1602751584552-8ba73aad10e1?w=600&auto=format&fit=crop&q=75'], _isDemo: true },
+];
+
+export const demoCategoriesDefaults = [
+  { id: 'demo-cat-j-1', name: 'Necklaces', slug: 'demo', subtitle: 'Statement neckpieces', image_url: 'https://images.unsplash.com/photo-1599643477877-530eb83abc8e?w=900&auto=format&fit=crop&q=75', browseImage: 'https://images.unsplash.com/photo-1599643477877-530eb83abc8e?w=900&auto=format&fit=crop&q=75', _isDemo: true },
+  { id: 'demo-cat-j-2', name: 'Earrings', slug: 'demo', subtitle: 'Studs to chandeliers', image_url: 'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?w=900&auto=format&fit=crop&q=75', browseImage: 'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?w=900&auto=format&fit=crop&q=75', _isDemo: true },
+  { id: 'demo-cat-j-3', name: 'Rings', slug: 'demo', subtitle: 'Timeless rings', image_url: 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=900&auto=format&fit=crop&q=75', browseImage: 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=900&auto=format&fit=crop&q=75', _isDemo: true },
+  { id: 'demo-cat-j-4', name: 'Bridal', slug: 'demo', subtitle: 'For your big day', image_url: 'https://images.unsplash.com/photo-1611652022419-a9419f74343d?w=900&auto=format&fit=crop&q=75', browseImage: 'https://images.unsplash.com/photo-1611652022419-a9419f74343d?w=900&auto=format&fit=crop&q=75', _isDemo: true },
+  { id: 'demo-cat-j-5', name: 'Bangles', slug: 'demo', subtitle: 'Tradition reimagined', image_url: 'https://images.unsplash.com/photo-1602751584552-8ba73aad10e1?w=900&auto=format&fit=crop&q=75', browseImage: 'https://images.unsplash.com/photo-1602751584552-8ba73aad10e1?w=900&auto=format&fit=crop&q=75', _isDemo: true },
+  { id: 'demo-cat-j-6', name: 'Temple Jewellery', slug: 'demo', subtitle: 'Heritage craft', image_url: 'https://images.unsplash.com/photo-1602173574767-37ac01994b2a?w=900&auto=format&fit=crop&q=75', browseImage: 'https://images.unsplash.com/photo-1602173574767-37ac01994b2a?w=900&auto=format&fit=crop&q=75', _isDemo: true },
+];
+
 export const defaultReviews = [
   { text: '"Received parcel. Jewelry quality is excellent. Thank you so much!"', rating: 5, image: 'https://placehold.co/400x400/fff5f5/d4a574?text=Customer+Review' },
   { text: '"Loved my purchase. You have a great collection... will definitely add more!"', rating: 5, image: 'https://placehold.co/400x400/fdf2f8/c084a0?text=Happy+Customer' },

@@ -161,6 +161,26 @@ export const defaultReviews = [
   { text: '"Loved everything about this order. From ordering to delivery, experience was smooth"', rating: 5, image: 'https://placehold.co/400x400/fff5f5/d4746a?text=Loved+It' },
 ];
 
+export const trendingProductsDefaults = [
+  { id: 'demo-g-1', name: 'Premium Product', slug: 'demo', price: 1499, compare_at_price: 1999, images: ['https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600&auto=format&fit=crop&q=75'], _isDemo: true },
+  { id: 'demo-g-2', name: 'Best Seller', slug: 'demo', price: 999, compare_at_price: 1499, images: ['https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&auto=format&fit=crop&q=75'], _isDemo: true },
+  { id: 'demo-g-3', name: 'New Arrival', slug: 'demo', price: 1799, compare_at_price: 2299, images: ['https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=600&auto=format&fit=crop&q=75'], _isDemo: true },
+  { id: 'demo-g-4', name: 'Customer Favourite', slug: 'demo', price: 899, compare_at_price: 1299, images: ['https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=600&auto=format&fit=crop&q=75'], _isDemo: true },
+  { id: 'demo-g-5', name: 'Trending Pick', slug: 'demo', price: 1299, compare_at_price: 1699, images: ['https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&auto=format&fit=crop&q=75'], _isDemo: true },
+  { id: 'demo-g-6', name: 'Limited Edition', slug: 'demo', price: 2499, compare_at_price: 2999, images: ['https://images.unsplash.com/photo-1560343090-f0409e92791a?w=600&auto=format&fit=crop&q=75'], _isDemo: true },
+  { id: 'demo-g-7', name: 'Staff Pick', slug: 'demo', price: 1099, compare_at_price: 1399, images: ['https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=600&auto=format&fit=crop&q=75'], _isDemo: true },
+  { id: 'demo-g-8', name: 'Featured Item', slug: 'demo', price: 1599, compare_at_price: 1999, images: ['https://images.unsplash.com/photo-1491553895911-0055eca6402d?w=600&auto=format&fit=crop&q=75'], _isDemo: true },
+];
+
+export const demoCategoriesDefaults = [
+  { id: 'demo-cat-g-1', name: 'New Arrivals', slug: 'demo', subtitle: 'Just landed', image_url: 'https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=900&auto=format&fit=crop&q=75', browseImage: 'https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=900&auto=format&fit=crop&q=75', _isDemo: true },
+  { id: 'demo-cat-g-2', name: 'Best Sellers', slug: 'demo', subtitle: 'Most loved', image_url: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=900&auto=format&fit=crop&q=75', browseImage: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=900&auto=format&fit=crop&q=75', _isDemo: true },
+  { id: 'demo-cat-g-3', name: 'Featured', slug: 'demo', subtitle: 'Curated for you', image_url: 'https://images.unsplash.com/photo-1491553895911-0055eca6402d?w=900&auto=format&fit=crop&q=75', browseImage: 'https://images.unsplash.com/photo-1491553895911-0055eca6402d?w=900&auto=format&fit=crop&q=75', _isDemo: true },
+  { id: 'demo-cat-g-4', name: 'Trending', slug: 'demo', subtitle: 'Popular now', image_url: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=900&auto=format&fit=crop&q=75', browseImage: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=900&auto=format&fit=crop&q=75', _isDemo: true },
+  { id: 'demo-cat-g-5', name: 'Premium', slug: 'demo', subtitle: 'Top quality', image_url: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=900&auto=format&fit=crop&q=75', browseImage: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=900&auto=format&fit=crop&q=75', _isDemo: true },
+  { id: 'demo-cat-g-6', name: 'Special Offers', slug: 'demo', subtitle: 'Limited time', image_url: 'https://images.unsplash.com/photo-1560343090-f0409e92791a?w=900&auto=format&fit=crop&q=75', browseImage: 'https://images.unsplash.com/photo-1560343090-f0409e92791a?w=900&auto=format&fit=crop&q=75', _isDemo: true },
+];
+
 export const orderActionNotes = {
   returnRefund: 'Your return request has been approved. If any payment was made, the refund will be processed within 5\u20137 business days. Please pack the product securely \u2014 our delivery partner will contact you for pickup within 8\u201312 days.',
   returnReplacement: 'Your return request has been approved for a replacement. Please pack the product securely \u2014 our delivery partner will contact you within 8\u201312 days to pick up the old product and deliver the replacement at the same time.',
