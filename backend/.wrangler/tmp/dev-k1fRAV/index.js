@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-M8LYnw/checked-fetch.js
+// .wrangler/tmp/bundle-xEetg3/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-M8LYnw/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-xEetg3/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-M8LYnw/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-xEetg3/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-M8LYnw/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-xEetg3/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -3966,12 +3966,12 @@ var init_whatsapp = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-M8LYnw/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-xEetg3/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-M8LYnw/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-xEetg3/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -18647,6 +18647,11 @@ async function ensureTablesExist(env) {
         media_type TEXT DEFAULT 'image',
         created_at TEXT DEFAULT (datetime('now')),
         FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
+      )`,
+      `CREATE TABLE IF NOT EXISTS system_flags (
+        key TEXT PRIMARY KEY,
+        value TEXT,
+        updated_at TEXT DEFAULT (datetime('now'))
       )`
     ];
     const indexes = [
@@ -18866,19 +18871,50 @@ var workers_default = {
 async function cleanupOrphanMedia(env) {
   if (!env.STORAGE || !env.DB)
     return;
+  try {
+    const flag = await env.DB.prepare(
+      "SELECT value FROM system_flags WHERE key = 'orphan_cleanup_enabled'"
+    ).first();
+    if (flag && String(flag.value).toLowerCase() === "false") {
+      console.log("[OrphanCleanup] disabled via system_flags kill switch \u2014 skipping run");
+      return;
+    }
+  } catch {
+  }
   const SAFETY_WINDOW_MS = 24 * 60 * 60 * 1e3;
   const MAX_KEYS_PER_SITE = 2e3;
   const MAX_DELETES_PER_SITE = 500;
   const cutoff = Date.now() - SAFETY_WINDOW_MS;
   let totalDeleted = 0;
   try {
-    const allSites = await env.DB.prepare("SELECT id FROM sites").all();
+    const allSites = await env.DB.prepare(
+      `SELECT s.id, s.migration_locked,
+              COALESCE(sh.binding_name, s.d1_binding_name) AS binding_name
+       FROM sites s
+       LEFT JOIN shards sh ON s.shard_id = sh.id`
+    ).all();
     for (const site of allSites.results || []) {
+      if (site.migration_locked)
+        continue;
       try {
         const knownRes = await env.DB.prepare(
           "SELECT storage_key FROM site_media WHERE site_id = ?"
         ).bind(site.id).all();
         const knownKeys = new Set((knownRes.results || []).map((r) => r.storage_key));
+        const shardDB = site.binding_name ? env[site.binding_name] : null;
+        if (shardDB) {
+          try {
+            const referenced = await collectReferencedStorageKeys(shardDB, site.id);
+            for (const k of referenced)
+              knownKeys.add(k);
+          } catch (refErr) {
+            console.error(`[OrphanCleanup] shard read failed for site ${site.id}, skipping site:`, refErr.message || refErr);
+            continue;
+          }
+        } else {
+          console.error(`[OrphanCleanup] no shard binding for site ${site.id}, skipping site`);
+          continue;
+        }
         const prefix = `sites/${site.id}/`;
         let cursor = void 0;
         let scanned = 0;
@@ -18904,6 +18940,11 @@ async function cleanupOrphanMedia(env) {
         }
         for (const key of orphans) {
           try {
+            const stillReferenced = await env.DB.prepare(
+              "SELECT 1 FROM site_media WHERE storage_key = ? LIMIT 1"
+            ).bind(key).first();
+            if (stillReferenced)
+              continue;
             await env.STORAGE.delete(key);
             totalDeleted++;
           } catch (delErr) {
@@ -18925,6 +18966,102 @@ async function cleanupOrphanMedia(env) {
   }
 }
 __name(cleanupOrphanMedia, "cleanupOrphanMedia");
+async function collectReferencedStorageKeys(shardDB, siteId) {
+  const queries = [
+    // Single-URL columns
+    { sql: "SELECT image_url AS v FROM categories WHERE site_id = ?", json: false },
+    { sql: "SELECT seo_og_image AS v FROM categories WHERE site_id = ?", json: false },
+    { sql: "SELECT thumbnail_url AS v FROM products WHERE site_id = ?", json: false },
+    { sql: "SELECT seo_og_image AS v FROM products WHERE site_id = ?", json: false },
+    { sql: "SELECT image_url AS v FROM product_variants WHERE product_id IN (SELECT id FROM products WHERE site_id = ?)", json: false },
+    { sql: "SELECT seo_og_image AS v FROM page_seo WHERE site_id = ?", json: false },
+    { sql: "SELECT logo_url AS v FROM site_config WHERE site_id = ?", json: false },
+    { sql: "SELECT favicon_url AS v FROM site_config WHERE site_id = ?", json: false },
+    { sql: "SELECT seo_og_image AS v FROM site_config WHERE site_id = ?", json: false },
+    { sql: "SELECT og_image AS v FROM site_config WHERE site_id = ?", json: false },
+    { sql: "SELECT twitter_image AS v FROM site_config WHERE site_id = ?", json: false },
+    { sql: "SELECT cover_image AS v FROM blog_posts WHERE site_id = ?", json: false },
+    { sql: "SELECT featured_image AS v FROM blog_posts WHERE site_id = ?", json: false },
+    { sql: "SELECT seo_og_image AS v FROM blog_posts WHERE site_id = ?", json: false },
+    // Free-text/HTML/JSON columns that may embed uploaded image URLs.
+    // blog_posts.content is HTML — can contain <img src="/api/upload/...">.
+    // orders.items / guest_orders.items are JSON line items with persisted
+    // product thumbnails for historical invoice/order rendering.
+    { sql: "SELECT content AS v FROM blog_posts WHERE site_id = ?", json: false },
+    { sql: "SELECT items AS v FROM orders WHERE site_id = ?", json: false },
+    { sql: "SELECT items AS v FROM guest_orders WHERE site_id = ?", json: false },
+    // JSON-array columns (TEXT holding a JSON list of URLs)
+    { sql: "SELECT images AS v FROM products WHERE site_id = ?", json: true },
+    { sql: "SELECT images AS v FROM reviews WHERE site_id = ?", json: true },
+    { sql: "SELECT photos AS v FROM return_requests WHERE site_id = ?", json: true },
+    // site_config.settings is JSON; scan it as text for any embedded keys.
+    { sql: "SELECT settings AS v FROM site_config WHERE site_id = ?", json: false }
+  ];
+  const keys = /* @__PURE__ */ new Set();
+  for (const q of queries) {
+    try {
+      const rows = await shardDB.prepare(q.sql).bind(siteId).all();
+      for (const row of rows.results || []) {
+        const raw = row.v;
+        if (!raw)
+          continue;
+        if (q.json) {
+          try {
+            const arr = JSON.parse(raw);
+            if (Array.isArray(arr)) {
+              for (const item of arr)
+                addKeysFromValue(item, keys);
+            } else {
+              addKeysFromValue(raw, keys);
+            }
+          } catch {
+            addKeysFromValue(raw, keys);
+          }
+        } else {
+          addKeysFromValue(raw, keys);
+        }
+      }
+    } catch {
+    }
+  }
+  return keys;
+}
+__name(collectReferencedStorageKeys, "collectReferencedStorageKeys");
+function addKeysFromValue(value, outSet) {
+  if (value == null)
+    return;
+  const s = typeof value === "string" ? value : String(value);
+  if (!s)
+    return;
+  const add = /* @__PURE__ */ __name((raw) => {
+    if (!raw)
+      return;
+    let key = raw.replace(/[)\]},.;:!?'"`>]+$/g, "");
+    if (key.startsWith("sites/"))
+      outSet.add(key);
+  }, "add");
+  const keyParam = /[?&]key=([^&"'\s]+)/g;
+  let m;
+  while ((m = keyParam.exec(s)) !== null) {
+    let candidate = m[1];
+    for (let i = 0; i < 3; i++) {
+      try {
+        const decoded = decodeURIComponent(candidate);
+        if (decoded === candidate)
+          break;
+        candidate = decoded;
+      } catch {
+        break;
+      }
+    }
+    add(candidate);
+  }
+  const rawKey = /sites\/[A-Za-z0-9_-]+\/[^\s"'<>?&\\]+/g;
+  while ((m = rawKey.exec(s)) !== null) {
+    add(m[0]);
+  }
+}
+__name(addKeysFromValue, "addKeysFromValue");
 async function handleAPI(request, env, path, ctx) {
   const pathParts = path.split("/").filter(Boolean);
   const apiVersion = pathParts[0];
@@ -19584,7 +19721,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-M8LYnw/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-xEetg3/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -19619,7 +19756,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-M8LYnw/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-xEetg3/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

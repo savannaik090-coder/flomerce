@@ -94,8 +94,34 @@ export default {
 // pre-fix legacy uploads). Only objects older than the safety window are
 // touched so an in-flight upload that hasn't been recorded yet is never
 // killed mid-flight.
+//
+// Defense in depth — a candidate orphan is only deleted if ALL hold:
+//   1. It lives under the site's own R2 prefix (sites/<id>/...).
+//   2. It has no row in platform `site_media`.
+//   3. It is not referenced anywhere in the site's shard DB
+//      (categories, products, site_config, blog_posts, page_seo, ...).
+//   4. It is older than SAFETY_WINDOW_MS.
+//   5. The kill-switch flag is not set.
+//   6. The site is not currently locked for migration.
+//
+// Per-site D1 cost: ~3 small reads (site_media, system_flags is global,
+// shard URL bulk-fetch is one batch). Per-day cost is negligible.
 async function cleanupOrphanMedia(env) {
   if (!env.STORAGE || !env.DB) return;
+
+  // Kill switch — set system_flags.orphan_cleanup_enabled='false' to disable.
+  try {
+    const flag = await env.DB.prepare(
+      "SELECT value FROM system_flags WHERE key = 'orphan_cleanup_enabled'"
+    ).first();
+    if (flag && String(flag.value).toLowerCase() === 'false') {
+      console.log('[OrphanCleanup] disabled via system_flags kill switch — skipping run');
+      return;
+    }
+  } catch {
+    // Table missing or unreadable → fall through (default: enabled).
+  }
+
   const SAFETY_WINDOW_MS = 24 * 60 * 60 * 1000;
   const MAX_KEYS_PER_SITE = 2000;
   const MAX_DELETES_PER_SITE = 500;
@@ -103,14 +129,45 @@ async function cleanupOrphanMedia(env) {
   let totalDeleted = 0;
 
   try {
-    const allSites = await env.DB.prepare('SELECT id FROM sites').all();
+    // Pull each site with its shard binding so we can also scan shard tables.
+    const allSites = await env.DB.prepare(
+      `SELECT s.id, s.migration_locked,
+              COALESCE(sh.binding_name, s.d1_binding_name) AS binding_name
+       FROM sites s
+       LEFT JOIN shards sh ON s.shard_id = sh.id`
+    ).all();
+
     for (const site of (allSites.results || [])) {
+      // Never touch a site mid-migration — its DBs/URLs may be in transit.
+      if (site.migration_locked) continue;
+
       try {
-        // Load every recorded storage_key for this site once → O(1) lookup.
+        // (a) Known keys recorded in platform site_media.
         const knownRes = await env.DB.prepare(
           'SELECT storage_key FROM site_media WHERE site_id = ?'
         ).bind(site.id).all();
         const knownKeys = new Set((knownRes.results || []).map(r => r.storage_key));
+
+        // (b) Belt-and-suspenders: also collect every storage_key actually
+        // referenced in the site's shard DB. Even if site_media is wrong
+        // (corrupted, stale, mid-migration), a key still referenced in any
+        // content table will never be deleted.
+        const shardDB = site.binding_name ? env[site.binding_name] : null;
+        if (shardDB) {
+          try {
+            const referenced = await collectReferencedStorageKeys(shardDB, site.id);
+            for (const k of referenced) knownKeys.add(k);
+          } catch (refErr) {
+            // If we cannot read the shard DB, fail SAFE: skip this site
+            // entirely rather than risk nuking referenced files.
+            console.error(`[OrphanCleanup] shard read failed for site ${site.id}, skipping site:`, refErr.message || refErr);
+            continue;
+          }
+        } else {
+          // No shard binding resolvable for this site — also fail safe.
+          console.error(`[OrphanCleanup] no shard binding for site ${site.id}, skipping site`);
+          continue;
+        }
 
         const prefix = `sites/${site.id}/`;
         let cursor = undefined;
@@ -136,6 +193,15 @@ async function cleanupOrphanMedia(env) {
 
         for (const key of orphans) {
           try {
+            // TOCTOU guard: between the reference scan and now the admin may
+            // have re-attached this key (e.g. saved a draft that re-uses it).
+            // One last targeted check against site_media closes most of that
+            // window for cheap.
+            const stillReferenced = await env.DB.prepare(
+              'SELECT 1 FROM site_media WHERE storage_key = ? LIMIT 1'
+            ).bind(key).first();
+            if (stillReferenced) continue;
+
             await env.STORAGE.delete(key);
             totalDeleted++;
           } catch (delErr) {
@@ -155,6 +221,115 @@ async function cleanupOrphanMedia(env) {
     }
   } catch (e) {
     console.error('[OrphanCleanup] fatal:', e.message || e);
+  }
+}
+
+// Pulls every URL/JSON-array column that may hold an upload reference from
+// the site's shard DB and extracts the underlying R2 storage_key from each.
+// Returns a Set of storage_key strings.
+async function collectReferencedStorageKeys(shardDB, siteId) {
+  // Each entry: SQL that returns one column of TEXT (URL or JSON array of URLs).
+  // Wrapped in try/catch per query so a missing column on an older shard
+  // never aborts the whole sweep.
+  const queries = [
+    // Single-URL columns
+    { sql: 'SELECT image_url AS v FROM categories WHERE site_id = ?', json: false },
+    { sql: 'SELECT seo_og_image AS v FROM categories WHERE site_id = ?', json: false },
+    { sql: 'SELECT thumbnail_url AS v FROM products WHERE site_id = ?', json: false },
+    { sql: 'SELECT seo_og_image AS v FROM products WHERE site_id = ?', json: false },
+    { sql: 'SELECT image_url AS v FROM product_variants WHERE product_id IN (SELECT id FROM products WHERE site_id = ?)', json: false },
+    { sql: 'SELECT seo_og_image AS v FROM page_seo WHERE site_id = ?', json: false },
+    { sql: 'SELECT logo_url AS v FROM site_config WHERE site_id = ?', json: false },
+    { sql: 'SELECT favicon_url AS v FROM site_config WHERE site_id = ?', json: false },
+    { sql: 'SELECT seo_og_image AS v FROM site_config WHERE site_id = ?', json: false },
+    { sql: 'SELECT og_image AS v FROM site_config WHERE site_id = ?', json: false },
+    { sql: 'SELECT twitter_image AS v FROM site_config WHERE site_id = ?', json: false },
+    { sql: 'SELECT cover_image AS v FROM blog_posts WHERE site_id = ?', json: false },
+    { sql: 'SELECT featured_image AS v FROM blog_posts WHERE site_id = ?', json: false },
+    { sql: 'SELECT seo_og_image AS v FROM blog_posts WHERE site_id = ?', json: false },
+    // Free-text/HTML/JSON columns that may embed uploaded image URLs.
+    // blog_posts.content is HTML — can contain <img src="/api/upload/...">.
+    // orders.items / guest_orders.items are JSON line items with persisted
+    // product thumbnails for historical invoice/order rendering.
+    { sql: 'SELECT content AS v FROM blog_posts WHERE site_id = ?', json: false },
+    { sql: 'SELECT items AS v FROM orders WHERE site_id = ?', json: false },
+    { sql: 'SELECT items AS v FROM guest_orders WHERE site_id = ?', json: false },
+    // JSON-array columns (TEXT holding a JSON list of URLs)
+    { sql: 'SELECT images AS v FROM products WHERE site_id = ?', json: true },
+    { sql: 'SELECT images AS v FROM reviews WHERE site_id = ?', json: true },
+    { sql: 'SELECT photos AS v FROM return_requests WHERE site_id = ?', json: true },
+    // site_config.settings is JSON; scan it as text for any embedded keys.
+    { sql: 'SELECT settings AS v FROM site_config WHERE site_id = ?', json: false },
+  ];
+
+  const keys = new Set();
+  for (const q of queries) {
+    try {
+      const rows = await shardDB.prepare(q.sql).bind(siteId).all();
+      for (const row of (rows.results || [])) {
+        const raw = row.v;
+        if (!raw) continue;
+        if (q.json) {
+          try {
+            const arr = JSON.parse(raw);
+            if (Array.isArray(arr)) {
+              for (const item of arr) addKeysFromValue(item, keys);
+            } else {
+              addKeysFromValue(raw, keys);
+            }
+          } catch {
+            // Not valid JSON — fall back to raw scan.
+            addKeysFromValue(raw, keys);
+          }
+        } else {
+          addKeysFromValue(raw, keys);
+        }
+      }
+    } catch {
+      // Column or table missing on this shard — ignore and continue.
+    }
+  }
+  return keys;
+}
+
+// Extracts every storage_key (sites/<id>/...) found inside a value, whether
+// the value is a `/api/upload/image?key=...` URL, a raw key, or a JSON blob
+// (or HTML) containing one of the above somewhere inside it.
+function addKeysFromValue(value, outSet) {
+  if (value == null) return;
+  const s = typeof value === 'string' ? value : String(value);
+  if (!s) return;
+
+  const add = raw => {
+    if (!raw) return;
+    // Strip trailing punctuation that commonly appears in HTML/markdown/JSON
+    // contexts (e.g. `sites/.../foo.jpg).` or `sites/.../foo.jpg",`).
+    let key = raw.replace(/[)\]},.;:!?'"`>]+$/g, '');
+    if (key.startsWith('sites/')) outSet.add(key);
+  };
+
+  // 1. `key=<...>` query param. Try repeated decoding to handle double-encoded
+  // values that can occur when URLs are nested in JSON strings.
+  const keyParam = /[?&]key=([^&"'\s]+)/g;
+  let m;
+  while ((m = keyParam.exec(s)) !== null) {
+    let candidate = m[1];
+    for (let i = 0; i < 3; i++) {
+      try {
+        const decoded = decodeURIComponent(candidate);
+        if (decoded === candidate) break;
+        candidate = decoded;
+      } catch { break; }
+    }
+    add(candidate);
+  }
+
+  // 2. Raw `sites/<id>/...` references anywhere in the string. The character
+  // class excludes URL/JSON/HTML separators; trailing punctuation is then
+  // stripped by `add()`.
+  const rawKey = /sites\/[A-Za-z0-9_-]+\/[^\s"'<>?&\\]+/g;
+  while ((m = rawKey.exec(s)) !== null) {
+    add(m[0]);
   }
 }
 

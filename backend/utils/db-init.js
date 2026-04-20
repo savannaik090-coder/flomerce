@@ -231,6 +231,12 @@ export async function ensureTablesExist(env) {
         FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
       )`,
 
+      `CREATE TABLE IF NOT EXISTS system_flags (
+        key TEXT PRIMARY KEY,
+        value TEXT,
+        updated_at TEXT DEFAULT (datetime('now'))
+      )`,
+
     ];
 
     const indexes = [
