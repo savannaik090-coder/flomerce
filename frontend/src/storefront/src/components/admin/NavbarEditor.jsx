@@ -4,6 +4,7 @@ import { getCategories } from '../../services/categoryService.js';
 import SaveBar from './SaveBar.jsx';
 import ConfirmModal from './ConfirmModal.jsx';
 import { API_BASE } from '../../config.js';
+import { usePendingMedia } from '../../hooks/usePendingMedia.js';
 
 function generateId() {
   return 'nav_' + Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 6);
@@ -42,6 +43,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const logoInputRef = useRef(null);
+  const pendingMedia = usePendingMedia(siteConfig?.id);
 
   useEffect(() => {
     if (siteConfig?.id) {
@@ -139,13 +141,12 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
       });
       const result = await res.json();
       if (result.success && result.data?.images?.[0]?.url) {
-        setLogoUrl(result.data.images[0].url);
-        if (onPreviewUpdate) onPreviewUpdate({ logoUrl: result.data.images[0].url });
-        if (oldLogo) {
-          import('../../services/api.js').then(({ deleteMediaFromR2 }) => {
-            deleteMediaFromR2(siteConfig.id, oldLogo);
-          });
-        }
+        const newUrl = result.data.images[0].url;
+        setLogoUrl(newUrl);
+        if (onPreviewUpdate) onPreviewUpdate({ logoUrl: newUrl });
+        // Track new upload for cleanup-on-cancel; defer old logo deletion to save.
+        pendingMedia.markUploaded(newUrl);
+        if (oldLogo) pendingMedia.markForDeletion(oldLogo);
       } else {
         setStatus('error:' + (result.error || 'Failed to upload logo'));
       }
@@ -158,11 +159,8 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
   }
 
   function handleRemoveLogo() {
-    if (logoUrl && siteConfig?.id) {
-      import('../../services/api.js').then(({ deleteMediaFromR2 }) => {
-        deleteMediaFromR2(siteConfig.id, logoUrl);
-      });
-    }
+    // Defer deletion to save; if user cancels, live site keeps its logo.
+    if (logoUrl) pendingMedia.markForDeletion(logoUrl);
     setLogoUrl('');
     if (onPreviewUpdate) onPreviewUpdate({ logoUrl: '' });
   }
@@ -196,6 +194,10 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
         setStatus('success');
         serverValuesRef.current = JSON.stringify({ navbarMenus, logoUrl, logoSize, logoPosition, showAccountIcon, showCartIcon });
         setHasChanges(false);
+        // Save succeeded — clean up R2 (delete replaced original logo + any
+        // intermediate uploads not in the final state).
+        const cleanup = await pendingMedia.commit([logoUrl]);
+        if (!cleanup.ok) console.warn('Some images failed to delete from storage:', cleanup.failed);
         if (refetchSite) refetchSite();
         if (onSaved) onSaved();
       } else {

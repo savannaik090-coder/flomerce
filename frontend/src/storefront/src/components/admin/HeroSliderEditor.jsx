@@ -5,6 +5,7 @@ import SaveBar from './SaveBar.jsx';
 import LinkSelector from './LinkSelector.jsx';
 import { getHeroSliderDefaults } from '../../defaults/index.js';
 import { API_BASE } from '../../config.js';
+import { usePendingMedia } from '../../hooks/usePendingMedia.js';
 const currentYear = new Date().getFullYear();
 
 const MAX_SLIDES = 10;
@@ -43,6 +44,7 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
   const fileRefsMap = useRef({});
   const hasLoadedRef = useRef(false);
   const serverValuesRef = useRef(null);
+  const pendingMedia = usePendingMedia(siteConfig?.id);
 
   function getFileRef(index) {
     if (!fileRefsMap.current[index]) {
@@ -137,11 +139,9 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
   function removeSlide(index) {
     if (slides.length <= 1) return;
     const slide = slides[index];
-    if (slide.image && siteConfig?.id) {
-      import('../../services/api.js').then(({ deleteMediaFromR2 }) => {
-        deleteMediaFromR2(siteConfig.id, slide.image);
-      });
-    }
+    // Defer R2 deletion until the user actually saves; if they cancel, the
+    // image remains live on the saved site config.
+    if (slide.image) pendingMedia.markForDeletion(slide.image);
     setSlides(prev => prev.filter((_, i) => i !== index));
     setUploading(prev => {
       const updated = { ...prev };
@@ -176,12 +176,11 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
       });
       const result = await response.json();
       if (result.success && result.data?.images?.length > 0 && result.data.images[0].url) {
-        updateSlide(index, 'image', result.data.images[0].url);
-        if (oldImage) {
-          import('../../services/api.js').then(({ deleteMediaFromR2 }) => {
-            deleteMediaFromR2(siteConfig.id, oldImage);
-          });
-        }
+        const newUrl = result.data.images[0].url;
+        updateSlide(index, 'image', newUrl);
+        // Track for cleanup on cancel; defer the old image's deletion until save.
+        pendingMedia.markUploaded(newUrl);
+        if (oldImage) pendingMedia.markForDeletion(oldImage);
       }
     } catch (e) {
       console.error('Failed to upload image:', e);
@@ -192,11 +191,8 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
 
   function removeImage(index) {
     const oldImage = slides[index]?.image;
-    if (oldImage && siteConfig?.id) {
-      import('../../services/api.js').then(({ deleteMediaFromR2 }) => {
-        deleteMediaFromR2(siteConfig.id, oldImage);
-      });
-    }
+    // Defer R2 deletion until the user saves; preserves live site if they cancel.
+    if (oldImage) pendingMedia.markForDeletion(oldImage);
     updateSlide(index, 'image', '');
   }
 
@@ -230,6 +226,13 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
         setUsingDefaults(false);
         serverValuesRef.current = JSON.stringify({ slides, showScrollButtons });
         setHasChanges(false);
+        // Save succeeded — now safe to remove old/orphan R2 files.
+        // keepUrls = the slide images that are actually saved.
+        const keepUrls = slidesWithVisibility.map(s => s.image).filter(Boolean);
+        const cleanup = await pendingMedia.commit(keepUrls);
+        if (!cleanup.ok) {
+          console.warn('Some images failed to delete from storage:', cleanup.failed);
+        }
         if (onSaved) onSaved();
       } else {
         setStatus('error:' + (result.error || 'Unknown error'));

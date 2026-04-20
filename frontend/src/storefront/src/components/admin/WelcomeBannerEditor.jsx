@@ -5,6 +5,7 @@ import SectionToggle from './SectionToggle.jsx';
 import SaveBar from './SaveBar.jsx';
 import LinkSelector from './LinkSelector.jsx';
 import { API_BASE } from '../../config.js';
+import { usePendingMedia } from '../../hooks/usePendingMedia.js';
 
 function compressImage(file, maxWidth = 1200, quality = 0.85) {
   return new Promise((resolve) => {
@@ -39,6 +40,7 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate }) {
   const fileRef = useRef(null);
   const hasLoadedRef = useRef(false);
   const serverValuesRef = useRef(null);
+  const pendingMedia = usePendingMedia(siteConfig?.id);
 
   const brandName = siteConfig?.brand_name || siteConfig?.brandName || 'Our Store';
 
@@ -102,12 +104,11 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate }) {
       });
       const result = await response.json();
       if (result.success && result.data?.images?.length > 0 && result.data.images[0].url) {
-        setBannerImage(result.data.images[0].url);
-        if (oldImage) {
-          import('../../services/api.js').then(({ deleteMediaFromR2 }) => {
-            deleteMediaFromR2(siteConfig.id, oldImage);
-          });
-        }
+        const newUrl = result.data.images[0].url;
+        setBannerImage(newUrl);
+        // Track for cleanup on cancel; defer old image deletion until save.
+        pendingMedia.markUploaded(newUrl);
+        if (oldImage) pendingMedia.markForDeletion(oldImage);
       }
     } catch (e) {
       console.error('Failed to upload image:', e);
@@ -144,6 +145,10 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate }) {
         setStatus('success');
         serverValuesRef.current = JSON.stringify({ heading, message, buttonText, buttonLink, bannerImage, showSection });
         setHasChanges(false);
+        // Save succeeded — clean up R2 (delete replaced originals + orphan
+        // intermediate uploads not in the final state).
+        const cleanup = await pendingMedia.commit([bannerImage]);
+        if (!cleanup.ok) console.warn('Some images failed to delete from storage:', cleanup.failed);
         if (onSaved) onSaved();
       } else {
         setStatus('error:' + (result.error || 'Unknown error'));
@@ -187,7 +192,7 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate }) {
                   />
                   <button
                     type="button"
-                    onClick={() => { if (bannerImage && siteConfig?.id) { import('../../services/api.js').then(({ deleteMediaFromR2 }) => { deleteMediaFromR2(siteConfig.id, bannerImage); }); } setBannerImage(''); }}
+                    onClick={() => { if (bannerImage) pendingMedia.markForDeletion(bannerImage); setBannerImage(''); }}
                     style={{
                       position: 'absolute', top: 6, right: 6,
                       background: 'rgba(0,0,0,0.6)', color: '#fff', border: 'none',

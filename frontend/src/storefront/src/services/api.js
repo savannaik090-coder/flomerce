@@ -57,6 +57,34 @@ export async function deleteMediaFromR2(siteId, url) {
   }
 }
 
+// Strict variant: returns a Promise that resolves to true on success and
+// false on failure (instead of swallowing). Used by usePendingMedia so the
+// caller can show a toast / surface storage-leak warnings.
+export async function safeDeleteMedia(siteId, url) {
+  if (!siteId || !url) return true;
+  const key = extractR2Key(url);
+  if (!key) return true; // not an R2-managed asset; nothing to delete
+  const isVideo = url.includes('/upload/video');
+  const type = isVideo ? 'video' : 'image';
+  const adminToken = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('site_admin_token') : null;
+  try {
+    const res = await fetch(getApiUrl(`/api/upload/${type}?siteId=${siteId}&key=${encodeURIComponent(key)}`), {
+      method: 'DELETE',
+      headers: adminToken ? { 'Authorization': `SiteAdmin ${adminToken}` } : {},
+      mode: 'cors',
+      credentials: 'omit',
+    });
+    if (!res.ok) {
+      console.warn('safeDeleteMedia: backend returned', res.status, 'for', key);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn('safeDeleteMedia: network error deleting', key, err);
+    return false;
+  }
+}
+
 export class APIError extends Error {
   constructor(message, status, code) {
     super(message);
