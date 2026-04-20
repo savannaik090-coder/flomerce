@@ -7,6 +7,7 @@ import ConfirmModal from './ConfirmModal.jsx';
 import { formatPrice, getAdminCurrency } from '../../utils/priceFormatter.js';
 import { getWatchAndBuyDefaults } from '../../defaults/index.js';
 import { API_BASE } from '../../config.js';
+import { usePendingMedia } from '../../hooks/usePendingMedia.js';
 
 export default function WatchBuySection({ onSaved }) {
   const { siteConfig } = useContext(SiteContext);
@@ -30,6 +31,7 @@ export default function WatchBuySection({ onSaved }) {
   const hasLoadedRef = useRef(false);
   const skipNextChangeRef = useRef(false);
   const serverShowRef = useRef(true);
+  const { markUploaded, markForDeletion, commit } = usePendingMedia(siteConfig?.id);
 
   useEffect(() => {
     if (siteConfig?.id) {
@@ -161,11 +163,8 @@ export default function WatchBuySection({ onSaved }) {
         if (xhr.status >= 200 && xhr.status < 300 && result.success && result.data?.url) {
           setForm(p => ({ ...p, videoUrl: result.data.url, videoKey: result.data.key || '' }));
           setUploadProgress(100);
-          if (oldVideo) {
-            import('../../services/api.js').then(({ deleteMediaFromR2 }) => {
-              deleteMediaFromR2(siteConfig.id, oldVideo);
-            });
-          }
+          markUploaded(result.data.url);
+          if (oldVideo) markForDeletion(oldVideo);
         } else {
           setError('Upload failed: ' + (result.error || result.message || 'Unknown error'));
         }
@@ -218,6 +217,8 @@ export default function WatchBuySection({ onSaved }) {
       if (response.ok && result.success) {
         serverShowRef.current = showSection;
         setHasChanges(false);
+        const keepUrls = videos.map(v => v.videoUrl).filter(Boolean);
+        commit(keepUrls);
         if (onSaved) onSaved();
       }
     } catch (e) {
@@ -267,6 +268,10 @@ export default function WatchBuySection({ onSaved }) {
       serverShowRef.current = showSection;
       setHasChanges(false);
       setShowModal(false);
+      // Only after the settings PUT succeeds do we actually clean up any
+      // replaced/removed video files from R2.
+      const keepUrls = updatedVideos.map(v => v.videoUrl).filter(Boolean);
+      commit(keepUrls);
       if (onSaved) onSaved();
     } catch (err) {
       setError('Failed to save: ' + err.message);
@@ -284,16 +289,14 @@ export default function WatchBuySection({ onSaved }) {
         const deletedVideo = videos.find(v => v.id === videoId);
         try {
           const updatedVideos = videos.filter(v => v.id !== videoId);
+          if (deletedVideo?.videoUrl) markForDeletion(deletedVideo.videoUrl);
           await saveVideosToSettings(updatedVideos);
           setVideos(updatedVideos);
           serverShowRef.current = showSection;
           setHasChanges(false);
+          const keepUrls = updatedVideos.map(v => v.videoUrl).filter(Boolean);
+          commit(keepUrls);
           if (onSaved) onSaved();
-          if (deletedVideo?.videoUrl && siteConfig?.id) {
-            import('../../services/api.js').then(({ deleteMediaFromR2 }) => {
-              deleteMediaFromR2(siteConfig.id, deletedVideo.videoUrl);
-            });
-          }
         } catch (err) {
           alert('Failed to delete: ' + err.message);
         }
@@ -437,7 +440,7 @@ export default function WatchBuySection({ onSaved }) {
                     />
                     <button
                       type="button"
-                      onClick={() => { if (form.videoUrl && siteConfig?.id) { import('../../services/api.js').then(({ deleteMediaFromR2 }) => { deleteMediaFromR2(siteConfig.id, form.videoUrl); }); } setForm(p => ({ ...p, videoUrl: '', videoKey: '' })); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+                      onClick={() => { if (form.videoUrl) markForDeletion(form.videoUrl); setForm(p => ({ ...p, videoUrl: '', videoKey: '' })); if (fileInputRef.current) fileInputRef.current.value = ''; }}
                       style={{
                         position: 'absolute', top: 8, right: 8,
                         background: 'rgba(0,0,0,0.7)', color: '#fff', border: 'none',

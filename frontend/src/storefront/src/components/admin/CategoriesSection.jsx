@@ -4,6 +4,7 @@ import { getCategories, createCategory, updateCategory, deleteCategory } from '.
 import { API_BASE } from '../../config.js';
 import ConfirmModal from './ConfirmModal.jsx';
 import { setEditorDirty } from '../../admin/editorDirtyStore.js';
+import { usePendingMedia } from '../../hooks/usePendingMedia.js';
 
 function resolveImageUrl(src) {
   if (!src) return '';
@@ -82,6 +83,7 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
   const [chooseEnabled, setChooseEnabled] = useState(false);
   const [chooseCats, setChooseCats] = useState({});
   const [chooseUploadingId, setChooseUploadingId] = useState(null);
+  const { markUploaded, markForDeletion, commit } = usePendingMedia(siteConfig?.id);
 
   const [subcatSections, setSubcatSections] = useState([]);
   const [newSectionName, setNewSectionName] = useState('');
@@ -451,16 +453,14 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
       const response = await fetch(`${API_BASE}/api/upload/image?siteId=${siteConfig.id}`, { method: 'POST', headers: { 'Authorization': token ? `SiteAdmin ${token}` : '' }, body: formData });
       const result = await response.json();
       if (result.success && result.data?.images?.length > 0 && result.data.images[0].url) {
+        const newUrl = result.data.images[0].url;
         setChooseCats(prev => {
           const current = prev[catId] || {};
-          return { ...prev, [catId]: { ...current, browseImage: result.data.images[0].url } };
+          return { ...prev, [catId]: { ...current, browseImage: newUrl } };
         });
         setChooseChanged(true);
-        if (oldImage) {
-          import('../../services/api.js').then(({ deleteMediaFromR2 }) => {
-            deleteMediaFromR2(siteConfig.id, oldImage);
-          });
-        }
+        markUploaded(newUrl);
+        if (oldImage) markForDeletion(oldImage);
       } else { alert('Image upload failed'); }
     } catch (e) { alert('Failed to upload: ' + e.message); }
     finally { setChooseUploadingId(null); }
@@ -468,11 +468,7 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
 
   function handleChooseImageRemove(catId) {
     const oldImage = chooseCats[catId]?.browseImage;
-    if (oldImage && siteConfig?.id) {
-      import('../../services/api.js').then(({ deleteMediaFromR2 }) => {
-        deleteMediaFromR2(siteConfig.id, oldImage);
-      });
-    }
+    if (oldImage) markForDeletion(oldImage);
     setChooseCats(prev => {
       const current = prev[catId] || {};
       return { ...prev, [catId]: { ...current, browseImage: null } };
@@ -678,6 +674,16 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
           return;
         }
       }
+
+      // All category/settings writes succeeded. Collect every image URL that
+      // is still referenced in the saved state and commit the pending R2
+      // queue. This deletes replaced/removed browseImages (and any category
+      // images freed by deletes above) while preserving the kept ones.
+      const keepUrls = [
+        ...Object.values(chooseCats).map(c => c?.browseImage).filter(Boolean),
+        ...categories.flatMap(c => [c.image_url, ...(c.children || []).flatMap(ch => [ch.image_url, ...(ch.children || []).map(gc => gc.image_url)])]).filter(Boolean),
+      ];
+      commit(keepUrls);
 
       setChooseChanged(false);
       setSubcatChanged(false);

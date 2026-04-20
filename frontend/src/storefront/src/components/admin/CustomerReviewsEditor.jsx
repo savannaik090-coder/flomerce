@@ -5,6 +5,7 @@ import SectionToggle from './SectionToggle.jsx';
 import SaveBar from './SaveBar.jsx';
 import ConfirmModal from './ConfirmModal.jsx';
 import { API_BASE } from '../../config.js';
+import { usePendingMedia } from '../../hooks/usePendingMedia.js';
 
 export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate }) {
   const { siteConfig } = useContext(SiteContext);
@@ -25,6 +26,7 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate }) {
   const fileInputRef = useRef(null);
   const hasLoadedRef = useRef(false);
   const serverValuesRef = useRef(null);
+  const { markUploaded, markForDeletion, commit } = usePendingMedia(siteConfig?.id);
 
   useEffect(() => {
     if (siteConfig?.id) loadSettings();
@@ -96,6 +98,11 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate }) {
       setStatus('success');
       serverValuesRef.current = JSON.stringify({ sectionTitle, sectionSubtitle, reviews, showSection });
       setHasChanges(false);
+      // Only after the settings PUT succeeds do we actually delete any
+      // replaced/removed images from R2. Anything still referenced in the
+      // final reviews array is passed as keepUrls so it's never touched.
+      const keepUrls = reviews.map(r => r.image).filter(Boolean);
+      commit(keepUrls);
       if (onSaved) onSaved();
     } catch (e) {
       setStatus('error:' + e.message);
@@ -132,11 +139,8 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate }) {
       if (response.ok && result.success && result.data?.images?.[0]?.url) {
         const uploaded = result.data.images[0];
         setForm(p => ({ ...p, image: uploaded.url, imageKey: uploaded.key || '' }));
-        if (oldImage) {
-          import('../../services/api.js').then(({ deleteMediaFromR2 }) => {
-            deleteMediaFromR2(siteConfig.id, oldImage);
-          });
-        }
+        markUploaded(uploaded.url);
+        if (oldImage) markForDeletion(oldImage);
       } else {
         setError('Upload failed: ' + (result.error || result.message || 'Unknown error'));
       }
@@ -201,11 +205,7 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate }) {
       danger: true,
       onConfirm: () => {
         const deletedReview = reviews[index];
-        if (deletedReview?.image && siteConfig?.id) {
-          import('../../services/api.js').then(({ deleteMediaFromR2 }) => {
-            deleteMediaFromR2(siteConfig.id, deletedReview.image);
-          });
-        }
+        if (deletedReview?.image) markForDeletion(deletedReview.image);
         const updatedReviews = reviews.filter((_, i) => i !== index);
         setReviews(updatedReviews);
       }
@@ -351,7 +351,7 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate }) {
                     <img src={resolveImageUrl(form.image)} alt="Review" style={{ width: '100%', maxHeight: 200, objectFit: 'cover', display: 'block' }} />
                     <button
                       type="button"
-                      onClick={() => { if (form.image && siteConfig?.id) { import('../../services/api.js').then(({ deleteMediaFromR2 }) => { deleteMediaFromR2(siteConfig.id, form.image); }); } setForm(p => ({ ...p, image: '', imageKey: '' })); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+                      onClick={() => { if (form.image) markForDeletion(form.image); setForm(p => ({ ...p, image: '', imageKey: '' })); if (fileInputRef.current) fileInputRef.current.value = ''; }}
                       style={{
                         position: 'absolute', top: 8, right: 8,
                         background: 'rgba(0,0,0,0.7)', color: '#fff', border: 'none',

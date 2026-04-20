@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext, useRef } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { apiRequest } from '../../services/api.js';
 import { API_BASE } from '../../config.js';
+import { usePendingMedia } from '../../hooks/usePendingMedia.js';
 
 let ReactQuill = null;
 let quillCssLoaded = false;
@@ -248,6 +249,7 @@ function BlogPostEditor({ post, siteConfig, quillLoaded, onSave, onCancel, showM
   const [uploading, setUploading] = useState(false);
   const [showSeo, setShowSeo] = useState(false);
   const fileInputRef = useRef(null);
+  const { markUploaded, markForDeletion, commit } = usePendingMedia(siteConfig?.id);
 
   const quillModules = {
     toolbar: [
@@ -278,11 +280,8 @@ function BlogPostEditor({ post, siteConfig, quillLoaded, onSave, onCancel, showM
         const url = data.data?.urls?.[0] || data.data?.images?.[0]?.url || data.url;
         if (url) {
           setCoverImage(url);
-          if (oldImage) {
-            import('../../services/api.js').then(({ deleteMediaFromR2 }) => {
-              deleteMediaFromR2(siteConfig.id, oldImage);
-            });
-          }
+          markUploaded(url);
+          if (oldImage) markForDeletion(oldImage);
         } else {
           showMsg('Failed to upload image');
         }
@@ -319,6 +318,9 @@ function BlogPostEditor({ post, siteConfig, quillLoaded, onSave, onCancel, showM
         await apiRequest('/api/blog/admin', { method: 'POST', body: JSON.stringify(payload) });
         showMsg('Post created');
       }
+      // Only after the post PUT/POST succeeds do we clean up any replaced or
+      // removed cover image from R2. The final coverImage is the kept URL.
+      commit(coverImage ? [coverImage] : []);
       onSave();
     } catch (err) {
       showMsg('Failed to save: ' + (err.message || 'Unknown error'));
@@ -358,7 +360,7 @@ function BlogPostEditor({ post, siteConfig, quillLoaded, onSave, onCancel, showM
           {coverImage && (
             <div style={{ position: 'relative' }}>
               <img src={coverImage} alt="Cover" style={{ width: 120, height: 80, objectFit: 'cover', borderRadius: 8 }} />
-              <button onClick={() => { if (coverImage && siteConfig?.id) { import('../../services/api.js').then(({ deleteMediaFromR2 }) => { deleteMediaFromR2(siteConfig.id, coverImage); }); } setCoverImage(''); }} style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%', background: '#ef4444', color: '#fff', border: 'none', fontSize: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <button onClick={() => { if (coverImage) markForDeletion(coverImage); setCoverImage(''); }} style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%', background: '#ef4444', color: '#fff', border: 'none', fontSize: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <i className="fas fa-times"></i>
               </button>
             </div>

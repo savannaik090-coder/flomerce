@@ -4,6 +4,7 @@ import { createProduct, updateProduct, getOptionsTemplate, saveOptionsTemplate }
 import { getCategories } from '../../services/categoryService.js';
 import { getApiUrl } from '../../services/api.js';
 import { getLocations, getInventoryLevels, setInventoryLevel } from '../../services/inventoryService.js';
+import { usePendingMedia } from '../../hooks/usePendingMedia.js';
 
 const GST_RATES = [0, 3, 5, 12, 18, 28];
 
@@ -108,6 +109,7 @@ export default function ProductForm({ product, onSave, onCancel }) {
     return saved ? parseFloat(saved) : 0.8;
   });
   const [uploading, setUploading] = useState(false);
+  const { markUploaded, markForDeletion, commit } = usePendingMedia(siteConfig?.id);
   const fileInputRef = useRef(null);
 
   const [showColors, setShowColors] = useState(false);
@@ -311,6 +313,10 @@ export default function ProductForm({ product, onSave, onCancel }) {
           pricedOptions: showPricedOptions ? options.pricedOptions : [],
         }).catch(() => {});
       }
+      // Product has been created/updated with the final image list. Clean up
+      // any uploads the user added then removed before saving, plus any
+      // originals they removed (now unreferenced in the DB).
+      commit(form.images);
       onSave && onSave();
     } catch (err) {
       setErrors({ submit: 'Failed to save product: ' + err.message });
@@ -326,6 +332,7 @@ export default function ProductForm({ product, onSave, onCancel }) {
     setErrors(prev => ({ ...prev, upload: undefined }));
     try {
       const urls = await uploadImagesToR2(files, siteConfig.id, imageQuality);
+      urls.forEach(u => markUploaded(u));
       setForm(prev => ({ ...prev, images: [...prev.images, ...urls] }));
     } catch (err) {
       setErrors(prev => ({ ...prev, upload: 'Upload failed: ' + err.message }));
@@ -343,6 +350,7 @@ export default function ProductForm({ product, onSave, onCancel }) {
     setErrors(prev => ({ ...prev, upload: undefined }));
     try {
       const urls = await uploadImagesToR2(files, siteConfig.id, imageQuality);
+      urls.forEach(u => markUploaded(u));
       setForm(prev => ({ ...prev, images: [...prev.images, ...urls] }));
     } catch (err) {
       setErrors(prev => ({ ...prev, upload: 'Upload failed: ' + err.message }));
@@ -353,11 +361,7 @@ export default function ProductForm({ product, onSave, onCancel }) {
 
   function removeImage(idx) {
     const removedUrl = form.images[idx];
-    if (removedUrl && siteConfig?.id) {
-      import('../../services/api.js').then(({ deleteMediaFromR2 }) => {
-        deleteMediaFromR2(siteConfig.id, removedUrl);
-      });
-    }
+    if (removedUrl) markForDeletion(removedUrl);
     setForm(prev => {
       const imgs = prev.images.filter((_, i) => i !== idx);
       return { ...prev, images: imgs, mainImageIndex: Math.min(prev.mainImageIndex, imgs.length - 1) };

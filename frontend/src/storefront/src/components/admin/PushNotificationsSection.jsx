@@ -3,6 +3,7 @@ import { SiteContext } from '../../context/SiteContext.jsx';
 import { apiRequest, getApiUrl } from '../../services/api.js';
 import LinkSelector from './LinkSelector.jsx';
 import FeatureGate from './FeatureGate.jsx';
+import { usePendingMedia } from '../../hooks/usePendingMedia.js';
 
 export default function PushNotificationsSection() {
   const { siteConfig } = useContext(SiteContext);
@@ -14,6 +15,7 @@ export default function PushNotificationsSection() {
   const [error, setError] = useState('');
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef(null);
+  const { markUploaded, markForDeletion, commit } = usePendingMedia(siteConfig?.id);
 
   const [form, setForm] = useState({
     title: '',
@@ -97,12 +99,10 @@ export default function PushNotificationsSection() {
       const result = await response.json();
       if (result.success && result.data?.images?.length > 0 && result.data.images[0].url) {
         const imgUrl = result.data.images[0].url;
-        setForm(p => ({ ...p, imageUrl: imgUrl.startsWith('http') ? imgUrl : getApiUrl(imgUrl) }));
-        if (oldImage) {
-          import('../../services/api.js').then(({ deleteMediaFromR2 }) => {
-            deleteMediaFromR2(siteConfig.id, oldImage);
-          });
-        }
+        const resolved = imgUrl.startsWith('http') ? imgUrl : getApiUrl(imgUrl);
+        setForm(p => ({ ...p, imageUrl: resolved }));
+        markUploaded(resolved);
+        if (oldImage) markForDeletion(oldImage);
       } else {
         setError(result.error || result.message || 'Failed to upload image.');
       }
@@ -144,6 +144,9 @@ export default function PushNotificationsSection() {
       if (data?.success) {
         const { sent, failed, total } = data.data || {};
         setSuccess(`Notification sent to ${sent} of ${total} subscriber${total !== 1 ? 's' : ''}${failed > 0 ? ` (${failed} failed)` : ''}.`);
+        // The sent notification's image must remain in R2 so delivered
+        // clients can fetch it. Clean up only replaced/removed uploads.
+        commit(form.imageUrl ? [form.imageUrl] : []);
         setForm({ title: '', message: '', imageUrl: '', link: '', customLink: false, buttonLabel: '', buttonLink: '', buttonCustomLink: false, target: 'all' });
         loadStats();
       } else {
@@ -287,7 +290,7 @@ export default function PushNotificationsSection() {
                     />
                     <button
                       type="button"
-                      onClick={() => { if (form.imageUrl && siteConfig?.id) { import('../../services/api.js').then(({ deleteMediaFromR2 }) => { deleteMediaFromR2(siteConfig.id, form.imageUrl); }); } setForm(p => ({ ...p, imageUrl: '' })); }}
+                      onClick={() => { if (form.imageUrl) markForDeletion(form.imageUrl); setForm(p => ({ ...p, imageUrl: '' })); }}
                       style={{
                         position: 'absolute', top: 6, right: 6,
                         width: 28, height: 28, borderRadius: '50%',

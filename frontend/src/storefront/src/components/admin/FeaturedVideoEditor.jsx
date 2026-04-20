@@ -5,6 +5,7 @@ import SaveBar from './SaveBar.jsx';
 
 import { getFeaturedVideoPlaceholders, getFeaturedVideoDefaults } from '../../defaults/index.js';
 import { API_BASE } from '../../config.js';
+import { usePendingMedia } from '../../hooks/usePendingMedia.js';
 
 export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate }) {
   const { siteConfig } = useContext(SiteContext);
@@ -24,6 +25,7 @@ export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate }) {
   const fileInputRef = useRef(null);
   const hasLoadedRef = useRef(false);
   const serverValuesRef = useRef(null);
+  const { markUploaded, markForDeletion, commit } = usePendingMedia(siteConfig?.id);
 
   const placeholders = getFeaturedVideoPlaceholders(siteConfig?.category);
 
@@ -110,11 +112,8 @@ export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate }) {
           setVideoUrl(result.data.url);
           setVideoKey(result.data.key || '');
           setUploadProgress(100);
-          if (oldVideo) {
-            import('../../services/api.js').then(({ deleteMediaFromR2 }) => {
-              deleteMediaFromR2(siteConfig.id, oldVideo);
-            });
-          }
+          markUploaded(result.data.url);
+          if (oldVideo) markForDeletion(oldVideo);
         } else {
           setStatus('error:Upload failed: ' + (result.error || result.message || 'Unknown error'));
         }
@@ -163,6 +162,9 @@ export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate }) {
         setStatus('success');
         serverValuesRef.current = JSON.stringify({ title, description, videoUrl, chatLink, chatButtonText, showSection });
         setHasChanges(false);
+        // Only after the settings PUT succeeds do we clean up any replaced/
+        // removed video from R2. videoUrl (if present) is the live value.
+        commit(videoUrl ? [videoUrl] : []);
         if (onSaved) onSaved();
       } else {
         setStatus('error:' + (result.error || 'Unknown error'));
@@ -207,7 +209,7 @@ export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate }) {
                   />
                   <button
                     type="button"
-                    onClick={() => { if (videoUrl && siteConfig?.id) { import('../../services/api.js').then(({ deleteMediaFromR2 }) => { deleteMediaFromR2(siteConfig.id, videoUrl); }); } setVideoUrl(''); setVideoKey(''); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+                    onClick={() => { if (videoUrl) markForDeletion(videoUrl); setVideoUrl(''); setVideoKey(''); if (fileInputRef.current) fileInputRef.current.value = ''; }}
                     style={{
                       position: 'absolute', top: 8, right: 8,
                       background: 'rgba(0,0,0,0.7)', color: '#fff', border: 'none',

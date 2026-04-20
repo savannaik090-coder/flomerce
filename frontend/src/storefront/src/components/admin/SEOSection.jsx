@@ -3,6 +3,7 @@ import { SiteContext } from '../../context/SiteContext.jsx';
 import FeatureGate, { isFeatureAvailable, PlanBadge } from './FeatureGate.jsx';
 import './SEOSection.css';
 import { API_BASE, PLATFORM_DOMAIN } from '../../config.js';
+import { usePendingMedia } from '../../hooks/usePendingMedia.js';
 
 function getAuthHeader() {
   const token = sessionStorage.getItem('site_admin_token');
@@ -25,7 +26,7 @@ function CharCounter({ value, max }) {
   return <div className={`seo-char-counter ${cls}`}>{len} / {max}</div>;
 }
 
-function ImageUploadField({ label, hint, value, onChange, siteId }) {
+function ImageUploadField({ label, hint, value, onChange, siteId, markUploaded, markForDeletion }) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
   const imgSrc = value ? (value.startsWith('/') ? `${API_BASE}${value}` : value) : null;
@@ -60,11 +61,10 @@ function ImageUploadField({ label, hint, value, onChange, siteId }) {
       const urls = data.urls || (data.images || []).filter(r => r.url).map(r => r.url);
       if (result.success && urls.length > 0) {
         onChange(urls[0]);
-        if (oldValue && siteId) {
-          import('../../services/api.js').then(({ deleteMediaFromR2 }) => {
-            deleteMediaFromR2(siteId, oldValue);
-          });
-        }
+        // Defer R2 mutations until the parent commits on save. markUploaded
+        // and markForDeletion are required props from the parent tab.
+        markUploaded?.(urls[0]);
+        if (oldValue) markForDeletion?.(oldValue);
       } else {
         setError(result.error || 'Upload failed');
       }
@@ -82,7 +82,7 @@ function ImageUploadField({ label, hint, value, onChange, siteId }) {
         {imgSrc ? (
           <div style={{ position: 'relative', flexShrink: 0 }}>
             <img src={imgSrc} alt="" style={{ width: 120, height: 63, objectFit: 'cover', borderRadius: 6, border: '1px solid #e2e8f0' }} onError={e => e.target.style.display = 'none'} />
-            <button type="button" onClick={() => { if (value && siteId) { import('../../services/api.js').then(({ deleteMediaFromR2 }) => { deleteMediaFromR2(siteId, value); }); } onChange(''); }} style={{ position: 'absolute', top: -6, right: -6, background: '#ef4444', color: '#fff', border: 'none', borderRadius: '50%', width: 20, height: 20, fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>&times;</button>
+            <button type="button" onClick={() => { if (value) markForDeletion?.(value); onChange(''); }} style={{ position: 'absolute', top: -6, right: -6, background: '#ef4444', color: '#fff', border: 'none', borderRadius: '50%', width: 20, height: 20, fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>&times;</button>
           </div>
         ) : null}
         <div style={{ flex: 1 }}>
@@ -149,6 +149,7 @@ function SiteSEOTab({ siteConfig }) {
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState(null);
   const [faviconUploading, setFaviconUploading] = useState(false);
+  const { markUploaded, markForDeletion, commit } = usePendingMedia(siteId);
 
   const brandName = apiBrandName || siteConfig?.brandName || siteConfig?.brand_name || 'Your Store';
   const defaultTitle = getDefaultSEOTitle(brandName);
@@ -205,13 +206,10 @@ function SiteSEOTab({ siteConfig }) {
       const urls = data.urls || (data.images || []).filter(r => r.url).map(r => r.url);
       if (result.success && urls.length > 0) {
         setForm(prev => ({ ...prev, favicon_url: urls[0] }));
+        markUploaded(urls[0]);
+        if (oldFavicon) markForDeletion(oldFavicon);
         setMsg({ type: 'success', text: 'Favicon uploaded! Click "Save SEO Settings" to apply.' });
         setTimeout(() => setMsg(null), 4000);
-        if (oldFavicon && siteId) {
-          import('../../services/api.js').then(({ deleteMediaFromR2 }) => {
-            deleteMediaFromR2(siteId, oldFavicon);
-          });
-        }
       } else {
         setMsg({ type: 'error', text: result.error || 'Upload failed' });
       }
@@ -233,9 +231,14 @@ function SiteSEOTab({ siteConfig }) {
         body: JSON.stringify({ siteId, ...form }),
       });
       const result = await res.json();
-      setMsg(result.success
-        ? { type: 'success', text: 'SEO settings saved successfully!' }
-        : { type: 'error', text: result.error || 'Failed to save' });
+      if (result.success) {
+        setMsg({ type: 'success', text: 'SEO settings saved successfully!' });
+        // Only after the SEO PUT succeeds do we clean up replaced/removed
+        // favicons from R2. The current favicon_url is the kept URL.
+        commit(form.favicon_url ? [form.favicon_url] : []);
+      } else {
+        setMsg({ type: 'error', text: result.error || 'Failed to save' });
+      }
     } catch {
       setMsg({ type: 'error', text: 'Failed to save SEO settings' });
     }
@@ -275,7 +278,7 @@ function SiteSEOTab({ siteConfig }) {
                   />
                   <button
                     type="button"
-                    onClick={() => { if (form.favicon_url && siteId) { import('../../services/api.js').then(({ deleteMediaFromR2 }) => { deleteMediaFromR2(siteId, form.favicon_url); }); } setForm(prev => ({ ...prev, favicon_url: '' })); }}
+                    onClick={() => { if (form.favicon_url) markForDeletion(form.favicon_url); setForm(prev => ({ ...prev, favicon_url: '' })); }}
                     style={{ position: 'absolute', top: -6, right: -6, width: 18, height: 18, borderRadius: '50%', background: '#ef4444', color: '#fff', border: 'none', fontSize: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}
                   >
                     &times;
@@ -433,6 +436,7 @@ function CategoriesSEOTab({ siteConfig }) {
   const [editForm, setEditForm] = useState({});
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState(null);
+  const { markUploaded, markForDeletion, commit } = usePendingMedia(siteId);
 
   useEffect(() => {
     if (!siteId) return;
@@ -462,7 +466,11 @@ function CategoriesSEOTab({ siteConfig }) {
     setEditForm({
       seo_title: cat.seo_title || getAutoTitle(cat),
       seo_description: cat.seo_description || getAutoDesc(cat),
-      seo_og_image: cat.seo_og_image || cat.image_url || '',
+      // Only use the actual persisted seo_og_image here. Do NOT fall back to
+      // cat.image_url — that's a live category image; if the user then
+      // replaces or clears the field, markForDeletion would schedule the
+      // category image for R2 deletion on save.
+      seo_og_image: cat.seo_og_image || '',
       seo_keywords: cat.seo_keywords || '',
     });
     setMsg(null);
@@ -489,8 +497,12 @@ function CategoriesSEOTab({ siteConfig }) {
       });
       const result = await res.json();
       if (result.success) {
-        setCategories(prev => prev.map(c => c.id === catId ? { ...c, seo_title: payload.seo_title, seo_description: payload.seo_description, seo_og_image: payload.seo_og_image, seo_keywords: payload.seo_keywords } : c));
+        const nextCategories = categories.map(c => c.id === catId ? { ...c, seo_title: payload.seo_title, seo_description: payload.seo_description, seo_og_image: payload.seo_og_image, seo_keywords: payload.seo_keywords } : c);
+        setCategories(nextCategories);
         setEditingId(null);
+        // Preserve every og_image across all rows so a pending upload in one
+        // row doesn't delete a live image still referenced by another row.
+        commit(nextCategories.map(c => c.seo_og_image).filter(Boolean));
         setMsg({ type: 'success', text: 'Category SEO saved!' });
         setTimeout(() => setMsg(null), 3000);
       } else {
@@ -606,6 +618,8 @@ function CategoriesSEOTab({ siteConfig }) {
                     value={editForm.seo_og_image}
                     onChange={url => setEditForm(p => ({ ...p, seo_og_image: url }))}
                     siteId={siteId}
+                    markUploaded={markUploaded}
+                    markForDeletion={markForDeletion}
                   />
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button
@@ -644,6 +658,7 @@ function ProductsSEOTab({ siteConfig }) {
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState(null);
   const [search, setSearch] = useState('');
+  const { markUploaded, markForDeletion, commit } = usePendingMedia(siteId);
 
   useEffect(() => {
     if (!siteId) return;
@@ -673,7 +688,10 @@ function ProductsSEOTab({ siteConfig }) {
     setEditForm({
       seo_title: product.seo_title || getAutoTitle(product),
       seo_description: product.seo_description || getAutoDesc(product),
-      seo_og_image: product.seo_og_image || product.thumbnail_url || '',
+      // Only use the actual persisted seo_og_image. Do NOT fall back to
+      // product.thumbnail_url — that's a live product image and would be
+      // scheduled for R2 deletion if the user replaces or clears the field.
+      seo_og_image: product.seo_og_image || '',
       seo_keywords: product.seo_keywords || '',
     });
     setMsg(null);
@@ -700,8 +718,12 @@ function ProductsSEOTab({ siteConfig }) {
       });
       const result = await res.json();
       if (result.success) {
-        setProducts(prev => prev.map(p => p.id === productId ? { ...p, seo_title: payload.seo_title, seo_description: payload.seo_description, seo_og_image: payload.seo_og_image, seo_keywords: payload.seo_keywords } : p));
+        const nextProducts = products.map(p => p.id === productId ? { ...p, seo_title: payload.seo_title, seo_description: payload.seo_description, seo_og_image: payload.seo_og_image, seo_keywords: payload.seo_keywords } : p);
+        setProducts(nextProducts);
         setEditingId(null);
+        // Keep every row's og_image so editing one product doesn't delete
+        // another product's live image.
+        commit(nextProducts.map(p => p.seo_og_image).filter(Boolean));
         setMsg({ type: 'success', text: 'Product SEO saved!' });
         setTimeout(() => setMsg(null), 3000);
       } else {
@@ -829,6 +851,8 @@ function ProductsSEOTab({ siteConfig }) {
                     value={editForm.seo_og_image}
                     onChange={url => setEditForm(p => ({ ...p, seo_og_image: url }))}
                     siteId={siteId}
+                    markUploaded={markUploaded}
+                    markForDeletion={markForDeletion}
                   />
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button
@@ -886,6 +910,7 @@ function PagesSEOTab({ siteConfig }) {
   const [editForm, setEditForm] = useState({});
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState(null);
+  const { markUploaded, markForDeletion, commit } = usePendingMedia(siteId);
 
   useEffect(() => {
     if (!siteId) return;
@@ -943,8 +968,12 @@ function PagesSEOTab({ siteConfig }) {
       });
       const result = await res.json();
       if (result.success) {
-        setPages(prev => prev.map(p => p.page_type === pageType ? { ...p, seo_title: payload.seo_title, seo_description: payload.seo_description, seo_og_image: payload.seo_og_image, seo_keywords: payload.seo_keywords } : p));
+        const nextPages = pages.map(p => p.page_type === pageType ? { ...p, seo_title: payload.seo_title, seo_description: payload.seo_description, seo_og_image: payload.seo_og_image, seo_keywords: payload.seo_keywords } : p);
+        setPages(nextPages);
         setEditingId(null);
+        // Keep every page's og_image so editing one page doesn't delete
+        // another page's live image.
+        commit(nextPages.map(p => p.seo_og_image).filter(Boolean));
         setMsg({ type: 'success', text: 'Page SEO saved!' });
         setTimeout(() => setMsg(null), 3000);
       } else {
@@ -1031,6 +1060,8 @@ function PagesSEOTab({ siteConfig }) {
                     value={editForm.seo_og_image}
                     onChange={url => setEditForm(p => ({ ...p, seo_og_image: url }))}
                     siteId={siteId}
+                    markUploaded={markUploaded}
+                    markForDeletion={markForDeletion}
                   />
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button
@@ -1103,6 +1134,7 @@ function SocialMediaTab({ siteConfig }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState(null);
+  const { markUploaded, markForDeletion, commit } = usePendingMedia(siteId);
 
   const set = key => e => setForm(prev => ({ ...prev, [key]: e.target.value }));
 
@@ -1146,9 +1178,13 @@ function SocialMediaTab({ siteConfig }) {
         body: JSON.stringify({ siteId, ...form }),
       });
       const result = await res.json();
-      setMsg(result.success
-        ? { type: 'success', text: 'Social media tags saved!' }
-        : { type: 'error', text: result.error || 'Failed to save' });
+      if (result.success) {
+        setMsg({ type: 'success', text: 'Social media tags saved!' });
+        // Keep both og_image and twitter_image (either may be a live URL).
+        commit([form.og_image, form.twitter_image].filter(Boolean));
+      } else {
+        setMsg({ type: 'error', text: result.error || 'Failed to save' });
+      }
     } catch {
       setMsg({ type: 'error', text: 'Failed to save social media tags' });
     }
@@ -1202,6 +1238,8 @@ function SocialMediaTab({ siteConfig }) {
                 value={form.og_image}
                 onChange={url => setForm(prev => ({ ...prev, og_image: url }))}
                 siteId={siteId}
+                markUploaded={markUploaded}
+                markForDeletion={markForDeletion}
               />
             </div>
             <div style={{ flex: '0 0 280px' }}>
@@ -1243,6 +1281,8 @@ function SocialMediaTab({ siteConfig }) {
                 value={form.twitter_image}
                 onChange={url => setForm(prev => ({ ...prev, twitter_image: url }))}
                 siteId={siteId}
+                markUploaded={markUploaded}
+                markForDeletion={markForDeletion}
               />
             </div>
             <div style={{ flex: '0 0 280px' }}>
