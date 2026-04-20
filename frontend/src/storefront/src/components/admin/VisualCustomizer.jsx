@@ -951,39 +951,6 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
           {renderPreview(false)}
         </div>
 
-        {/* Floating "Edit" pill — only when sheet is closed.
-            Positioned well above the viewport edge so mobile browser chrome
-            (URL bar, home indicator) never hides it. Pulses on appearance so
-            new users immediately notice how to get back into editing.
-            Label changes contextually so the user knows they'll resume
-            exactly where they left off. */}
-        {!sheetOpen && (
-          <button
-            type="button"
-            onClick={() => { setSheetOpen(true); setSheetExpanded(false); }}
-            className="vc-edit-fab"
-            style={{
-              position: 'absolute',
-              bottom: `calc(28px + env(safe-area-inset-bottom, 0px))`,
-              left: '50%', transform: 'translateX(-50%)',
-              padding: '14px 26px', borderRadius: 999,
-              background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
-              color: '#fff', border: 'none',
-              fontSize: 15, fontWeight: 600, cursor: 'pointer',
-              boxShadow: '0 10px 28px rgba(37,99,235,0.5), 0 2px 6px rgba(0,0,0,0.12)',
-              display: 'flex', alignItems: 'center', gap: 10,
-              fontFamily: 'inherit',
-              zIndex: 50,
-              whiteSpace: 'nowrap',
-              maxWidth: 'calc(100% - 32px)',
-              overflow: 'hidden', textOverflow: 'ellipsis',
-            }}
-          >
-            <i className="fas fa-pen" style={{ fontSize: 13 }} />
-            {activeSection ? `Edit ${getSectionLabel(activeSection)}` : 'Edit Website'}
-          </button>
-        )}
-
         {/* Bottom sheet — slides up from the bottom over the preview */}
         <div
           role={sheetOpen ? 'dialog' : undefined}
@@ -1072,6 +1039,36 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
           )}
         </div>
       </div>
+
+      {/* Floating "Edit" pill — pinned to the viewport (position:fixed) so it
+          stays visible regardless of iframe scroll position or any parent
+          stacking context. Only shown when the bottom sheet is closed. */}
+      {!sheetOpen && (
+        <button
+          type="button"
+          onClick={() => { setSheetOpen(true); setSheetExpanded(false); }}
+          className="vc-edit-fab"
+          style={{
+            position: 'fixed',
+            bottom: `calc(28px + env(safe-area-inset-bottom, 0px))`,
+            left: '50%', transform: 'translateX(-50%)',
+            padding: '14px 26px', borderRadius: 999,
+            background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+            color: '#fff', border: 'none',
+            fontSize: 15, fontWeight: 600, cursor: 'pointer',
+            boxShadow: '0 10px 28px rgba(37,99,235,0.5), 0 2px 6px rgba(0,0,0,0.12)',
+            display: 'flex', alignItems: 'center', gap: 10,
+            fontFamily: 'inherit',
+            zIndex: 2000,
+            whiteSpace: 'nowrap',
+            maxWidth: 'calc(100vw - 32px)',
+            overflow: 'hidden', textOverflow: 'ellipsis',
+          }}
+        >
+          <i className="fas fa-pen" style={{ fontSize: 13 }} />
+          {activeSection ? `Edit ${getSectionLabel(activeSection)}` : 'Edit Website'}
+        </button>
+      )}
     </div>
   );
 }
