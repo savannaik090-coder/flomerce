@@ -83,6 +83,14 @@ const SETTINGS_SECTIONS = [
 
 const GATED_TABS = { 'blog': 'blog', 'customer-reviews': 'reviews' };
 
+function getViewport() {
+  if (typeof window === 'undefined') return 'desktop';
+  const w = window.innerWidth;
+  if (w < 768) return 'mobile';
+  if (w < 1024) return 'tablet';
+  return 'desktop';
+}
+
 export default function VisualCustomizer({ currentPlan, onBack }) {
   const { siteConfig } = useContext(SiteContext);
   const [activeSection, setActiveSection] = useState(null);
@@ -93,9 +101,62 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
   const [sectionOrder, setSectionOrder] = useState([]);
   const [sectionVisibility, setSectionVisibility] = useState({});
   const [savingVisibility, setSavingVisibility] = useState(false);
+  const [viewport, setViewport] = useState(getViewport);
+  // On compact viewports (mobile/tablet) the side panel is a slide-up sheet
+  // that overlays the preview. `sheetOpen` controls visibility; `sheetExpanded`
+  // controls half-screen vs full-screen. Default sheet auto-opens to the section
+  // list on first load so users immediately see what they can edit.
+  const [sheetOpen, setSheetOpen] = useState(() => getViewport() !== 'desktop');
+  const [sheetExpanded, setSheetExpanded] = useState(false);
   const iframeRef = useRef(null);
   const dragItemRef = useRef(null);
   const accumulatedSettingsRef = useRef({});
+
+  const isCompact = viewport !== 'desktop';
+  const isMobile = viewport === 'mobile';
+
+  useEffect(() => {
+    function handleResize() {
+      const next = getViewport();
+      setViewport(prev => {
+        if (prev !== next) {
+          // Normalize sheet state across breakpoint transitions:
+          //  desktop → compact: open the sheet so the user can see editing controls.
+          //  compact → desktop: collapse the sheet (it's irrelevant on desktop).
+          if (next === 'desktop') {
+            setSheetOpen(false);
+            setSheetExpanded(false);
+          } else if (prev === 'desktop') {
+            setSheetOpen(true);
+            setSheetExpanded(false);
+          }
+        }
+        return next;
+      });
+    }
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Escape key: close the sheet on compact viewports (or close the editor
+  // first if one is open). On desktop, close the active section.
+  useEffect(() => {
+    function handleKey(e) {
+      if (e.key !== 'Escape') return;
+      if (isCompact) {
+        if (activeSection) {
+          setActiveSection(null);
+        } else if (sheetOpen) {
+          setSheetOpen(false);
+          setSheetExpanded(false);
+        }
+      } else if (activeSection) {
+        setActiveSection(null);
+      }
+    }
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [isCompact, activeSection, sheetOpen]);
 
   const resolvedTheme = useMemo(() => {
     let settings = siteConfig?.settings || {};
@@ -278,148 +339,12 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
     return id;
   }
 
-  return (
-    <div style={{
-      position: 'fixed', inset: 0, zIndex: 1000,
-      display: 'flex', flexDirection: 'column',
-      background: '#f1f5f9',
-      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-    }}>
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '0 16px', height: 52, background: '#fff',
-        borderBottom: '1px solid #e2e8f0', flexShrink: 0, zIndex: 10,
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <button
-            type="button"
-            onClick={onBack}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              padding: '6px 12px', background: '#f1f5f9', border: '1px solid #e2e8f0',
-              borderRadius: 6, fontSize: 13, color: '#475569', cursor: 'pointer',
-              fontWeight: 500, fontFamily: 'inherit',
-            }}
-          >
-            <i className="fas fa-arrow-left" style={{ fontSize: 11 }} />
-            Admin
-          </button>
-          <div style={{ width: 1, height: 24, background: '#e2e8f0' }} />
-          <span style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.01em' }}>
-            <i className="fas fa-palette" style={{ marginRight: 8, color: '#2563eb', fontSize: 14 }} />
-            Visual Customizer
-          </span>
-        </div>
+  // ===== Reusable subviews =====================================================
+  // SectionListView and EditorView are rendered inside either the desktop sidebar
+  // or the mobile/tablet bottom sheet, so we extract them once.
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {savingVisibility && (
-            <span style={{ fontSize: 12, color: '#64748b' }}>
-              <i className="fas fa-circle-notch fa-spin" style={{ marginRight: 4, fontSize: 10 }} />
-              Saving...
-            </span>
-          )}
-          <div style={{
-            display: 'flex', background: '#f1f5f9', borderRadius: 6,
-            border: '1px solid #e2e8f0', overflow: 'hidden',
-          }}>
-            <button
-              type="button"
-              onClick={() => setPreviewDevice('desktop')}
-              style={{
-                padding: '6px 12px', border: 'none', fontSize: 13, cursor: 'pointer',
-                background: previewDevice === 'desktop' ? '#2563eb' : 'transparent',
-                color: previewDevice === 'desktop' ? '#fff' : '#64748b',
-                fontFamily: 'inherit', fontWeight: 500,
-                transition: 'all 0.15s ease',
-              }}
-              title="Desktop preview"
-            >
-              <i className="fas fa-desktop" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setPreviewDevice('mobile')}
-              style={{
-                padding: '6px 12px', border: 'none', fontSize: 13, cursor: 'pointer',
-                background: previewDevice === 'mobile' ? '#2563eb' : 'transparent',
-                color: previewDevice === 'mobile' ? '#fff' : '#64748b',
-                fontFamily: 'inherit', fontWeight: 500,
-                transition: 'all 0.15s ease',
-              }}
-              title="Mobile preview"
-            >
-              <i className="fas fa-mobile-alt" />
-            </button>
-          </div>
-          <button
-            type="button"
-            onClick={refreshPreview}
-            title="Refresh preview"
-            style={{
-              padding: '6px 10px', background: '#f1f5f9', border: '1px solid #e2e8f0',
-              borderRadius: 6, cursor: 'pointer', color: '#64748b', fontSize: 13,
-            }}
-          >
-            <i className="fas fa-sync-alt" />
-          </button>
-          {storeBaseUrl && (
-            <a
-              href={storeBaseUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                padding: '6px 12px', background: '#f1f5f9', border: '1px solid #e2e8f0',
-                borderRadius: 6, color: '#64748b', fontSize: 12, textDecoration: 'none',
-                fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4,
-              }}
-            >
-              <i className="fas fa-external-link-alt" style={{ fontSize: 10 }} />
-              Visit Store
-            </a>
-          )}
-        </div>
-      </div>
-
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        <div style={{
-          width: activeSection ? 400 : 280,
-          flexShrink: 0,
-          background: '#fff',
-          borderRight: '1px solid #e2e8f0',
-          display: 'flex', flexDirection: 'column',
-          transition: 'width 0.2s ease',
-          overflow: 'hidden',
-        }}>
-          {activeSection ? (
-            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 8,
-                padding: '12px 16px', borderBottom: '1px solid #f1f5f9',
-                flexShrink: 0,
-              }}>
-                <button
-                  type="button"
-                  onClick={() => setActiveSection(null)}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 6,
-                    padding: '5px 10px', background: '#f8fafc', border: '1px solid #e2e8f0',
-                    borderRadius: 5, fontSize: 12, color: '#64748b', cursor: 'pointer',
-                    fontFamily: 'inherit', fontWeight: 500,
-                  }}
-                >
-                  <i className="fas fa-chevron-left" style={{ fontSize: 9 }} />
-                  Back
-                </button>
-                <span style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>
-                  {getSectionLabel(activeSection)}
-                </span>
-              </div>
-              <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
-                {renderEditor()}
-              </div>
-            </div>
-          ) : (
-            <div style={{ overflowY: 'auto', flex: 1 }}>
+  const renderSectionList = () => (
+    <div style={{ overflowY: 'auto', flex: 1 }}>
               <div style={{ padding: '12px 16px 4px' }}>
                 <div style={{
                   display: 'flex', background: '#f1f5f9', borderRadius: 8,
@@ -637,60 +562,389 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
                   ))}
                 </div>
               )}
-            </div>
-          )}
-        </div>
+    </div>
+  );
+  // ----- end SectionListView -----
 
+  const renderEditorPanel = (onEditorBack) => (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 8,
+        padding: '12px 16px', borderBottom: '1px solid #f1f5f9',
+        flexShrink: 0,
+      }}>
+        <button
+          type="button"
+          onClick={onEditorBack}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '5px 10px', background: '#f8fafc', border: '1px solid #e2e8f0',
+            borderRadius: 5, fontSize: 12, color: '#64748b', cursor: 'pointer',
+            fontFamily: 'inherit', fontWeight: 500,
+          }}
+        >
+          <i className="fas fa-chevron-left" style={{ fontSize: 9 }} />
+          Back
+        </button>
+        <span style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>
+          {getSectionLabel(activeSection)}
+        </span>
+      </div>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
+        {renderEditor()}
+      </div>
+    </div>
+  );
+
+  const renderPreview = (allowMobileFrame = true) => {
+    // On a real mobile device the "fake mobile frame" inside the preview is silly —
+    // the iframe is already on a phone. Only show the framed mobile preview on
+    // desktop/tablet when the user explicitly toggled it.
+    const useMobileFrame = allowMobileFrame && previewDevice === 'mobile' && !isMobile;
+    return (
+      <div style={{
+        // On compact viewports the parent uses absolute positioning + explicit
+        // height, so we need to fill it explicitly. On desktop the parent is a
+        // flex row, so flex:1 works.
+        flex: isCompact ? undefined : 1,
+        width: isCompact ? '100%' : undefined,
+        height: isCompact ? '100%' : undefined,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: isCompact ? 0 : 20, overflow: 'hidden',
+        background: '#f1f5f9',
+      }}>
+        {previewUrl ? (
+          <div style={{
+            width: useMobileFrame ? 390 : '100%',
+            height: '100%',
+            maxWidth: useMobileFrame ? 390 : '100%',
+            transition: 'all 0.3s ease',
+            borderRadius: useMobileFrame ? 24 : (isCompact ? 0 : 12),
+            overflow: 'hidden',
+            boxShadow: useMobileFrame
+              ? '0 0 0 8px #1e293b, 0 20px 60px rgba(0,0,0,0.2)'
+              : (isCompact ? 'none' : '0 4px 24px rgba(0,0,0,0.08)'),
+            background: '#fff',
+            position: 'relative',
+          }}>
+            {useMobileFrame && (
+              <div style={{
+                height: 28, background: '#1e293b', display: 'flex',
+                alignItems: 'center', justifyContent: 'center',
+              }}>
+                <div style={{
+                  width: 60, height: 6, borderRadius: 3, background: '#334155',
+                }} />
+              </div>
+            )}
+            <iframe
+              ref={iframeRef}
+              key={`${previewKey}-${previewDevice}`}
+              src={`${previewUrl}${previewUrl.includes('?') ? '&' : '?'}_t=${previewKey}`}
+              style={{
+                width: useMobileFrame ? 390 : '100%',
+                height: useMobileFrame ? 'calc(100% - 28px)' : '100%',
+                border: 'none', display: 'block',
+              }}
+              title="Store Preview"
+            />
+          </div>
+        ) : (
+          <div style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'center',
+            justifyContent: 'center', color: '#94a3b8',
+          }}>
+            <i className="fas fa-globe" style={{ fontSize: 48, marginBottom: 16, opacity: 0.3 }} />
+            <p style={{ fontSize: 15, fontWeight: 500 }}>Preview not available</p>
+            <p style={{ fontSize: 13, marginTop: 4 }}>Store URL could not be determined</p>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // ===== Top bar ===============================================================
+  const renderTopBar = () => (
+    <div style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      padding: isMobile ? '0 10px' : '0 16px', height: isMobile ? 48 : 52, background: '#fff',
+      borderBottom: '1px solid #e2e8f0', flexShrink: 0, zIndex: 10, gap: 8,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 12, minWidth: 0, flex: 1 }}>
+        <button
+          type="button"
+          onClick={onBack}
+          aria-label="Back to admin"
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: isMobile ? '6px 10px' : '6px 12px',
+            background: '#f1f5f9', border: '1px solid #e2e8f0',
+            borderRadius: 6, fontSize: 13, color: '#475569', cursor: 'pointer',
+            fontWeight: 500, fontFamily: 'inherit', flexShrink: 0,
+          }}
+        >
+          <i className="fas fa-arrow-left" style={{ fontSize: 11 }} />
+          {!isMobile && 'Admin'}
+        </button>
+        {!isMobile && <div style={{ width: 1, height: 24, background: '#e2e8f0' }} />}
+        <span style={{
+          fontSize: isMobile ? 14 : 15, fontWeight: 700, color: '#0f172a',
+          letterSpacing: '-0.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+        }}>
+          <i className="fas fa-palette" style={{ marginRight: 8, color: '#2563eb', fontSize: 14 }} />
+          {isMobile ? 'Edit' : 'Visual Customizer'}
+        </span>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 6 : 8, flexShrink: 0 }}>
+        {savingVisibility && !isMobile && (
+          <span style={{ fontSize: 12, color: '#64748b' }}>
+            <i className="fas fa-circle-notch fa-spin" style={{ marginRight: 4, fontSize: 10 }} />
+            Saving...
+          </span>
+        )}
+        {savingVisibility && isMobile && (
+          <i className="fas fa-circle-notch fa-spin" style={{ fontSize: 12, color: '#64748b' }} title="Saving" />
+        )}
+        {/* Device toggle: meaningful on desktop/tablet (where we can fake a phone frame); hidden on mobile */}
+        {!isMobile && (
+          <div style={{
+            display: 'flex', background: '#f1f5f9', borderRadius: 6,
+            border: '1px solid #e2e8f0', overflow: 'hidden',
+          }}>
+            <button
+              type="button"
+              onClick={() => setPreviewDevice('desktop')}
+              style={{
+                padding: '6px 12px', border: 'none', fontSize: 13, cursor: 'pointer',
+                background: previewDevice === 'desktop' ? '#2563eb' : 'transparent',
+                color: previewDevice === 'desktop' ? '#fff' : '#64748b',
+                fontFamily: 'inherit', fontWeight: 500,
+                transition: 'all 0.15s ease',
+              }}
+              title="Desktop preview"
+            >
+              <i className="fas fa-desktop" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setPreviewDevice('mobile')}
+              style={{
+                padding: '6px 12px', border: 'none', fontSize: 13, cursor: 'pointer',
+                background: previewDevice === 'mobile' ? '#2563eb' : 'transparent',
+                color: previewDevice === 'mobile' ? '#fff' : '#64748b',
+                fontFamily: 'inherit', fontWeight: 500,
+                transition: 'all 0.15s ease',
+              }}
+              title="Mobile preview"
+            >
+              <i className="fas fa-mobile-alt" />
+            </button>
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={refreshPreview}
+          title="Refresh preview"
+          aria-label="Refresh preview"
+          style={{
+            padding: isMobile ? '6px 8px' : '6px 10px',
+            background: '#f1f5f9', border: '1px solid #e2e8f0',
+            borderRadius: 6, cursor: 'pointer', color: '#64748b', fontSize: 13,
+          }}
+        >
+          <i className="fas fa-sync-alt" />
+        </button>
+        {storeBaseUrl && !isMobile && (
+          <a
+            href={storeBaseUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              padding: '6px 12px', background: '#f1f5f9', border: '1px solid #e2e8f0',
+              borderRadius: 6, color: '#64748b', fontSize: 12, textDecoration: 'none',
+              fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4,
+            }}
+          >
+            <i className="fas fa-external-link-alt" style={{ fontSize: 10 }} />
+            Visit Store
+          </a>
+        )}
+      </div>
+    </div>
+  );
+
+  // ===== Layout ================================================================
+  // Desktop (≥1024): classic side-by-side with resizable-feel sidebar.
+  // Tablet (768-1023) & Mobile (<768): preview is the canvas; the panel is a
+  // bottom sheet that can be hidden, half-screen, or full-screen.
+  // On mobile in particular this gives the "see your store, tap edit, work in
+  // a sheet, see changes live above" flow the user asked for.
+
+  if (!isCompact) {
+    // ----- DESKTOP -----
+    return (
+      <div style={{
+        position: 'fixed', inset: 0, zIndex: 1000,
+        display: 'flex', flexDirection: 'column',
+        background: '#f1f5f9',
+        fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+      }}>
+        {renderTopBar()}
+        <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+          <div style={{
+            width: activeSection ? 400 : 280,
+            flexShrink: 0,
+            background: '#fff',
+            borderRight: '1px solid #e2e8f0',
+            display: 'flex', flexDirection: 'column',
+            transition: 'width 0.2s ease',
+            overflow: 'hidden',
+          }}>
+            {activeSection
+              ? renderEditorPanel(() => setActiveSection(null))
+              : renderSectionList()}
+          </div>
+          {renderPreview()}
+        </div>
+      </div>
+    );
+  }
+
+  // ----- MOBILE / TABLET -----
+  // Three sheet states:
+  //   closed       → preview full-screen, floating "Edit" pill visible
+  //   half (open)  → preview at top (~40%), sheet at bottom (~60%) — split view
+  //                  with live changes visible above
+  //   full         → sheet covers entire screen (preview hidden behind it) for
+  //                  long forms like the hero slider
+  const sheetHeightPct = sheetOpen ? (sheetExpanded ? 100 : 60) : 0;
+  const previewHeightPct = sheetOpen && sheetExpanded ? 0 : 100; // preview always rendered to keep iframe alive
+  const previewVisualPct = sheetOpen ? (sheetExpanded ? 0 : 40) : 100;
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 1000,
+      display: 'flex', flexDirection: 'column',
+      background: '#f1f5f9',
+      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+      overscrollBehavior: 'contain',
+    }}>
+      {renderTopBar()}
+
+      <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+        {/* Preview area — stays mounted so the iframe doesn't reload when the sheet opens/closes */}
         <div style={{
-          flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          padding: 20, overflow: 'hidden',
+          position: 'absolute', left: 0, right: 0, top: 0,
+          height: `${previewVisualPct}%`,
+          transition: 'height 0.28s ease',
+          overflow: 'hidden',
           background: '#f1f5f9',
         }}>
-          {previewUrl ? (
-            <div style={{
-              width: previewDevice === 'mobile' ? 390 : '100%',
-              height: '100%',
-              maxWidth: previewDevice === 'mobile' ? 390 : '100%',
-              transition: 'all 0.3s ease',
-              borderRadius: previewDevice === 'mobile' ? 24 : 12,
-              overflow: 'hidden',
-              boxShadow: previewDevice === 'mobile'
-                ? '0 0 0 8px #1e293b, 0 20px 60px rgba(0,0,0,0.2)'
-                : '0 4px 24px rgba(0,0,0,0.08)',
-              background: '#fff',
-              position: 'relative',
-            }}>
-              {previewDevice === 'mobile' && (
-                <div style={{
-                  height: 28, background: '#1e293b', display: 'flex',
-                  alignItems: 'center', justifyContent: 'center',
-                }}>
+          {renderPreview(false)}
+        </div>
+
+        {/* Floating "Edit" pill — only when sheet is closed */}
+        {!sheetOpen && (
+          <button
+            type="button"
+            onClick={() => { setSheetOpen(true); setSheetExpanded(false); }}
+            style={{
+              position: 'absolute', bottom: 20, left: '50%', transform: 'translateX(-50%)',
+              padding: '12px 22px', borderRadius: 999,
+              background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+              color: '#fff', border: 'none',
+              fontSize: 14, fontWeight: 600, cursor: 'pointer',
+              boxShadow: '0 6px 20px rgba(37,99,235,0.4)',
+              display: 'flex', alignItems: 'center', gap: 8,
+              fontFamily: 'inherit',
+              zIndex: 5,
+            }}
+          >
+            <i className="fas fa-pen" style={{ fontSize: 13 }} />
+            Edit
+          </button>
+        )}
+
+        {/* Bottom sheet — slides up from the bottom over the preview */}
+        <div
+          role={sheetOpen ? 'dialog' : undefined}
+          aria-modal={sheetOpen ? 'true' : undefined}
+          aria-label={activeSection ? `Edit ${getSectionLabel(activeSection)}` : 'Choose a section to edit'}
+          aria-hidden={sheetOpen ? undefined : 'true'}
+          style={{
+            position: 'absolute', left: 0, right: 0, bottom: 0,
+            height: `${sheetHeightPct}%`,
+            background: '#fff',
+            borderRadius: sheetExpanded ? '0' : '18px 18px 0 0',
+            boxShadow: '0 -6px 24px rgba(0,0,0,0.15)',
+            transition: 'height 0.28s ease, border-radius 0.2s ease',
+            display: 'flex', flexDirection: 'column',
+            overflow: 'hidden',
+          }}
+        >
+          {sheetOpen && (
+            <>
+              {/* Drag handle / sheet toolbar */}
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '8px 12px 4px', flexShrink: 0,
+                borderBottom: '1px solid #f1f5f9',
+              }}>
+                <button
+                  type="button"
+                  onClick={() => setSheetExpanded(e => !e)}
+                  aria-label={sheetExpanded ? 'Collapse editor' : 'Expand editor'}
+                  style={{
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    padding: '6px 10px', borderRadius: 6, color: '#94a3b8',
+                    fontSize: 13, display: 'flex', alignItems: 'center', gap: 6,
+                  }}
+                >
+                  <i className={`fas ${sheetExpanded ? 'fa-compress-alt' : 'fa-expand-alt'}`} />
+                </button>
+                {/* Centered drag handle (visual only — tap to toggle) */}
+                <button
+                  type="button"
+                  onClick={() => setSheetExpanded(e => !e)}
+                  aria-label="Toggle sheet size"
+                  style={{
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    padding: '8px 24px', position: 'absolute', left: '50%', transform: 'translateX(-50%)', top: 0,
+                  }}
+                >
                   <div style={{
-                    width: 60, height: 6, borderRadius: 3, background: '#334155',
+                    width: 44, height: 5, borderRadius: 3, background: '#cbd5e1',
                   }} />
-                </div>
-              )}
-              <iframe
-                ref={iframeRef}
-                key={`${previewKey}-${previewDevice}`}
-                src={`${previewUrl}${previewUrl.includes('?') ? '&' : '?'}_t=${previewKey}`}
-                style={{
-                  width: previewDevice === 'mobile' ? 390 : '100%',
-                  height: previewDevice === 'mobile' ? 'calc(100% - 28px)' : '100%',
-                  border: 'none', display: 'block',
-                }}
-                title="Store Preview"
-              />
-            </div>
-          ) : (
-            <div style={{
-              display: 'flex', flexDirection: 'column', alignItems: 'center',
-              justifyContent: 'center', color: '#94a3b8',
-            }}>
-              <i className="fas fa-globe" style={{ fontSize: 48, marginBottom: 16, opacity: 0.3 }} />
-              <p style={{ fontSize: 15, fontWeight: 500 }}>Preview not available</p>
-              <p style={{ fontSize: 13, marginTop: 4 }}>Store URL could not be determined</p>
-            </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (activeSection) {
+                      // Close just the editor; keep the sheet open showing the section list.
+                      setActiveSection(null);
+                    } else {
+                      setSheetOpen(false);
+                      setSheetExpanded(false);
+                    }
+                  }}
+                  aria-label="Close"
+                  style={{
+                    background: '#f1f5f9', border: 'none', borderRadius: '50%',
+                    width: 32, height: 32, cursor: 'pointer', color: '#64748b',
+                    fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}
+                >
+                  <i className={`fas ${activeSection ? 'fa-chevron-down' : 'fa-times'}`} />
+                </button>
+              </div>
+
+              <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                {activeSection
+                  ? renderEditorPanel(() => setActiveSection(null))
+                  : renderSectionList()}
+              </div>
+            </>
           )}
         </div>
       </div>

@@ -175,49 +175,49 @@ export default function WebsiteContentSection({ currentPlan }) {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  if (showVisualCustomizer && !isMobile) {
+  if (showVisualCustomizer) {
     return <VisualCustomizer currentPlan={currentPlan} onBack={() => setShowVisualCustomizer(false)} />;
   }
 
   return (
     <div>
-      {!isMobile && (
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          marginBottom: 16, padding: '12px 16px',
-          background: 'linear-gradient(135deg, #eff6ff, #f0f9ff)',
-          borderRadius: 10, border: '1px solid #bfdbfe',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <i className="fas fa-palette" style={{ fontSize: 16, color: '#2563eb' }} />
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: '#1e40af' }}>Visual Customizer</div>
-              <div style={{ fontSize: 12, color: '#3b82f6', marginTop: 1 }}>
-                Full-screen editor with live preview, section toggles, and device preview
-              </div>
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        gap: 12, flexWrap: 'wrap',
+        marginBottom: 16, padding: isMobile ? '10px 12px' : '12px 16px',
+        background: 'linear-gradient(135deg, #eff6ff, #f0f9ff)',
+        borderRadius: 10, border: '1px solid #bfdbfe',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: '1 1 200px', minWidth: 0 }}>
+          <i className="fas fa-palette" style={{ fontSize: 16, color: '#2563eb', flexShrink: 0 }} />
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: '#1e40af' }}>Visual Editor</div>
+            <div style={{ fontSize: 12, color: '#3b82f6', marginTop: 1 }}>
+              {isMobile ? 'Edit your store with live preview' : 'Full-screen editor with live preview, section toggles, and device preview'}
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => setShowVisualCustomizer(true)}
-            style={{
-              padding: '8px 18px',
-              background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
-              color: '#fff', border: 'none', borderRadius: 8,
-              fontSize: 13, fontWeight: 600, cursor: 'pointer',
-              boxShadow: '0 2px 8px rgba(37,99,235,0.3)',
-              display: 'flex', alignItems: 'center', gap: 6,
-              fontFamily: 'inherit',
-              transition: 'all 0.15s ease',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(37,99,235,0.4)'; }}
-            onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(37,99,235,0.3)'; }}
-          >
-            <i className="fas fa-external-link-alt" style={{ fontSize: 11 }} />
-            Open
-          </button>
         </div>
-      )}
+        <button
+          type="button"
+          onClick={() => setShowVisualCustomizer(true)}
+          style={{
+            padding: '8px 18px',
+            background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+            color: '#fff', border: 'none', borderRadius: 8,
+            fontSize: 13, fontWeight: 600, cursor: 'pointer',
+            boxShadow: '0 2px 8px rgba(37,99,235,0.3)',
+            display: 'flex', alignItems: 'center', gap: 6,
+            fontFamily: 'inherit',
+            transition: 'all 0.15s ease',
+            flexShrink: 0,
+          }}
+          onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(37,99,235,0.4)'; }}
+          onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(37,99,235,0.3)'; }}
+        >
+          <i className="fas fa-external-link-alt" style={{ fontSize: 11 }} />
+          Open
+        </button>
+      </div>
 
       {isMobile && (
         <>
