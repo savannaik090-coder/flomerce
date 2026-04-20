@@ -98,8 +98,50 @@ async function createRazorpayOrder(request, env) {
   try {
     const { amount, currency, receipt, notes, orderId, type, siteId } = await request.json();
 
-    if (!amount) {
-      return errorResponse('Amount is required');
+    if (!siteId) return errorResponse('siteId is required');
+    if (!orderId) return errorResponse('orderId is required');
+
+    // SECURITY: never trust the client-supplied amount. Look up the storefront
+    // order in the per-site DB and use its server-side total. Also enforces that
+    // we only create payment intents for real, pending orders that belong to
+    // the supplied siteId.
+    let serverAmount = null;
+    let serverCurrency = null;
+    try {
+      const orderDb = await resolveSiteDBById(env, siteId);
+      const order = await orderDb.prepare(
+        `SELECT total_amount, currency, payment_status, status FROM orders WHERE id = ? AND site_id = ?`
+      ).bind(orderId, siteId).first();
+      if (!order) {
+        const guest = await orderDb.prepare(
+          `SELECT total_amount, currency, payment_status, status FROM guest_orders WHERE id = ? AND site_id = ?`
+        ).bind(orderId, siteId).first();
+        if (guest) {
+          serverAmount = Number(guest.total_amount);
+          serverCurrency = guest.currency || 'INR';
+          if (guest.payment_status === 'paid') {
+            return errorResponse('This order is already paid', 409);
+          }
+        }
+      } else {
+        serverAmount = Number(order.total_amount);
+        serverCurrency = order.currency || 'INR';
+        if (order.payment_status === 'paid') {
+          return errorResponse('This order is already paid', 409);
+        }
+      }
+    } catch (lookupErr) {
+      console.error('Order lookup failed during create-order:', lookupErr);
+      return errorResponse('Could not load order details', 500);
+    }
+
+    if (!serverAmount || serverAmount <= 0 || !Number.isFinite(serverAmount)) {
+      return errorResponse('Order not found or has no payable amount', 404);
+    }
+
+    // Sanity-check the client-supplied amount, but the server value wins.
+    if (typeof amount === 'number' && Math.abs(amount - serverAmount) > 0.01) {
+      console.warn(`create-order amount mismatch: client=${amount} server=${serverAmount} order=${orderId}`);
     }
 
     const { keyId, keySecret } = await getRazorpayCredentials(env, siteId);
@@ -108,7 +150,8 @@ async function createRazorpayOrder(request, env) {
       return errorResponse('Razorpay credentials not configured. Please add Razorpay Key ID and Key Secret in your store settings.', 500);
     }
 
-    const amountInPaise = Math.round(amount * 100);
+    const amountInPaise = Math.round(serverAmount * 100);
+    const finalCurrency = serverCurrency || currency || 'INR';
 
     const response = await fetch('https://api.razorpay.com/v1/orders', {
       method: 'POST',
@@ -118,7 +161,7 @@ async function createRazorpayOrder(request, env) {
       },
       body: JSON.stringify({
         amount: amountInPaise,
-        currency: currency || 'INR',
+        currency: finalCurrency,
         receipt: receipt || `order_${Date.now()}`,
         notes: notes || {},
       }),
@@ -146,7 +189,7 @@ async function createRazorpayOrder(request, env) {
       await env.DB.prepare(
         `INSERT INTO payment_transactions (id, site_id, order_id, razorpay_order_id, amount, currency, status, created_at)
          VALUES (?, ?, ?, ?, ?, ?, 'pending', datetime('now'))`
-      ).bind(generateId(), siteId || null, orderId || null, razorpayOrder.id, amount, currency || 'INR').run();
+      ).bind(generateId(), siteId || null, orderId || null, razorpayOrder.id, serverAmount, finalCurrency).run();
     } catch (dbErr) {
       console.error('Failed to log payment transaction (non-fatal):', dbErr);
     }
@@ -645,27 +688,27 @@ async function createRazorpaySubscription(request, env, user) {
       return errorResponse('Razorpay credentials not configured', 500);
     }
 
-    // Detect downgrade: keep the higher-tier subscription running until its period ends,
-    // then start the lower-tier plan via Razorpay's `start_at`.
+    // Plan change handling: if the site already has a paid subscription that the
+    // user has already paid for (period not yet over), schedule the NEW plan to
+    // start at the end of that period via Razorpay's `start_at`. This applies to
+    // BOTH downgrades and upgrades — it prevents double-billing (the user gave
+    // money for the current month already) and avoids losing prepaid days.
+    // Trial → paid stays immediate (trial is free, no money to lose).
     let scheduledStartAt = null;
-    let isDowngrade = false;
+    let isPlanChange = false;
     let oldSubToCancel = null;
-    if (siteId && plan.plan_tier != null) {
+    if (siteId) {
       const currentSub = await env.DB.prepare(
-        `SELECT s.*, sp.plan_tier AS current_tier
-         FROM subscriptions s
-         LEFT JOIN subscription_plans sp ON sp.plan_name = s.plan AND sp.billing_cycle = s.billing_cycle
-         WHERE s.site_id = ? AND s.status = 'active'
-         ORDER BY s.created_at DESC LIMIT 1`
+        `SELECT * FROM subscriptions
+         WHERE site_id = ? AND status = 'active'
+         ORDER BY created_at DESC LIMIT 1`
       ).bind(siteId).first();
-      if (currentSub && currentSub.current_tier != null && plan.plan_tier < currentSub.current_tier) {
-        if (currentSub.current_period_end) {
-          const periodEndMs = new Date(currentSub.current_period_end).getTime();
-          if (periodEndMs > Date.now()) {
-            scheduledStartAt = Math.floor(periodEndMs / 1000);
-            isDowngrade = true;
-            oldSubToCancel = currentSub.razorpay_subscription_id || null;
-          }
+      if (currentSub && currentSub.plan && currentSub.plan !== 'trial' && currentSub.current_period_end) {
+        const periodEndMs = new Date(currentSub.current_period_end).getTime();
+        if (periodEndMs > Date.now() + 60_000) {
+          scheduledStartAt = Math.floor(periodEndMs / 1000);
+          isPlanChange = true;
+          oldSubToCancel = currentSub.razorpay_subscription_id || null;
         }
       }
     }
@@ -680,7 +723,7 @@ async function createRazorpaySubscription(request, env, user) {
         planName: plan.plan_name,
         billingCycle: plan.billing_cycle,
         siteId: siteId || '',
-        scheduled: isDowngrade ? '1' : '',
+        scheduled: isPlanChange ? '1' : '',
       },
     };
     if (scheduledStartAt) subBody.start_at = scheduledStartAt;
@@ -741,7 +784,7 @@ async function createRazorpaySubscription(request, env, user) {
       planName: plan.plan_name,
       billingCycle: plan.billing_cycle,
       amount: plan.display_price,
-      scheduled: isDowngrade,
+      scheduled: isPlanChange,
       scheduledStartAt: scheduledStartAt ? new Date(scheduledStartAt * 1000).toISOString() : null,
     });
   } catch (error) {
@@ -1052,19 +1095,12 @@ async function handleSubscriptionPaused(env, entity) {
     ).bind(subId).first();
 
     if (sub) {
+      // Mark as paused but DO NOT immediately wipe site expiry. The user already
+      // paid for this period; honor it. The sites.subscription_expires_at stays
+      // as-is, and cron will expire it naturally when the date passes.
       await env.DB.prepare(
         `UPDATE subscriptions SET status = 'paused', updated_at = datetime('now') WHERE id = ?`
       ).bind(sub.id).run();
-
-      if (sub.site_id) {
-        await env.DB.prepare(
-          `UPDATE sites SET subscription_expires_at = datetime('now'), updated_at = datetime('now') WHERE id = ? AND COALESCE(subscription_plan, '') != 'enterprise'`
-        ).bind(sub.site_id).run();
-      } else {
-        await env.DB.prepare(
-          `UPDATE sites SET subscription_expires_at = datetime('now'), updated_at = datetime('now') WHERE user_id = ? AND COALESCE(subscription_plan, '') != 'enterprise'`
-        ).bind(sub.user_id).run();
-      }
     }
 
     console.log('Subscription paused:', subId);

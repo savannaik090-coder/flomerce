@@ -335,6 +335,16 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
     return isActive && planGroup.plan_tier < currentPlanTier;
   };
 
+  // Any paid → paid plan change (upgrade OR downgrade) is now scheduled to take
+  // effect at the end of the current billing period to avoid double-billing the
+  // user. Trial → paid is NOT scheduled (trial is free, no money to lose).
+  const isScheduledPlanChange = (planGroup) => {
+    if (!isActive) return false;
+    if (currentPlanLower === 'trial') return false;
+    if (planGroup.name.toLowerCase() === currentPlanLower) return false;
+    return true;
+  };
+
   const hasContent = planList.filter(p => p.plan_tier < 4).length > 0 || enterpriseConfig.enabled;
 
   if (loading || error || (!hasContent && planList.length === 0)) {
@@ -488,8 +498,9 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
                 style={{ width: '100%', opacity: isButtonDisabled(planGroup) ? 0.6 : 1 }}
                 disabled={isButtonDisabled(planGroup) || upgrading !== null}
                 onClick={() => {
-                  if (isDowngrade(planGroup)) {
-                    if (window.confirm(`Schedule a downgrade to ${planGroup.name}? Your current plan will keep running until the end of your billing period, and the new plan will start automatically after that.`)) {
+                  if (isScheduledPlanChange(planGroup)) {
+                    const action = isDowngrade(planGroup) ? 'downgrade' : 'switch';
+                    if (window.confirm(`Schedule a ${action} to ${planGroup.name}? Your current plan keeps running until the end of your billing period, then ${planGroup.name} starts automatically. You won't be charged twice.`)) {
                       handleUpgrade(planGroup);
                     }
                   } else {
@@ -499,7 +510,7 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
               >
                 {upgrading === planGroup.plans[duration]?.id ? 'Processing...' : getButtonText(planGroup)}
               </button>
-              {isDowngrade(planGroup) && !scheduledPlan && (
+              {isScheduledPlanChange(planGroup) && !scheduledPlan && (
                 <p style={{ fontSize: '0.7rem', color: '#92400e', marginTop: '0.5rem', textAlign: 'center' }}>
                   Takes effect at the end of your current billing period. Your current plan keeps running until then.
                 </p>

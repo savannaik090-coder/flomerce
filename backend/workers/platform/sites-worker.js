@@ -158,10 +158,21 @@ export async function reconcileSiteSubscription(env, site) {
   if (site.subscription_plan === 'enterprise') return site;
 
   try {
+    // A subscription is "effectively active" if status='active' OR it's been cancelled
+    // but we're still inside the paid period the user already paid for. Either way,
+    // sites.subscription_plan should reflect that plan so the user keeps full access
+    // until the period truly ends.
     const activeSub = await env.DB.prepare(
       `SELECT plan, current_period_end FROM subscriptions
-       WHERE site_id = ? AND status = 'active'
-       ORDER BY created_at DESC LIMIT 1`
+       WHERE site_id = ?
+         AND (
+           status = 'active'
+           OR (status = 'cancelled' AND current_period_end IS NOT NULL AND current_period_end > datetime('now'))
+         )
+       ORDER BY
+         CASE status WHEN 'active' THEN 0 ELSE 1 END,
+         created_at DESC
+       LIMIT 1`
     ).bind(site.id).first();
 
     if (activeSub) {

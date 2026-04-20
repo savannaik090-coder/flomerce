@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-LVYc8s/checked-fetch.js
+// .wrangler/tmp/bundle-SRo9LM/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-LVYc8s/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-SRo9LM/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-LVYc8s/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-SRo9LM/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-LVYc8s/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-SRo9LM/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -3966,12 +3966,12 @@ var init_whatsapp = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-LVYc8s/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-SRo9LM/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-LVYc8s/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-SRo9LM/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -5089,8 +5089,15 @@ async function reconcileSiteSubscription(env, site) {
   try {
     const activeSub = await env.DB.prepare(
       `SELECT plan, current_period_end FROM subscriptions
-       WHERE site_id = ? AND status = 'active'
-       ORDER BY created_at DESC LIMIT 1`
+       WHERE site_id = ?
+         AND (
+           status = 'active'
+           OR (status = 'cancelled' AND current_period_end IS NOT NULL AND current_period_end > datetime('now'))
+         )
+       ORDER BY
+         CASE status WHEN 'active' THEN 0 ELSE 1 END,
+         created_at DESC
+       LIMIT 1`
     ).bind(site.id).first();
     if (activeSub) {
       const planMismatch = (site.subscription_plan || "") !== (activeSub.plan || "");
@@ -10926,14 +10933,51 @@ async function createRazorpayOrder(request, env) {
   }
   try {
     const { amount, currency, receipt, notes, orderId, type, siteId } = await request.json();
-    if (!amount) {
-      return errorResponse("Amount is required");
+    if (!siteId)
+      return errorResponse("siteId is required");
+    if (!orderId)
+      return errorResponse("orderId is required");
+    let serverAmount = null;
+    let serverCurrency = null;
+    try {
+      const orderDb = await resolveSiteDBById(env, siteId);
+      const order = await orderDb.prepare(
+        `SELECT total_amount, currency, payment_status, status FROM orders WHERE id = ? AND site_id = ?`
+      ).bind(orderId, siteId).first();
+      if (!order) {
+        const guest = await orderDb.prepare(
+          `SELECT total_amount, currency, payment_status, status FROM guest_orders WHERE id = ? AND site_id = ?`
+        ).bind(orderId, siteId).first();
+        if (guest) {
+          serverAmount = Number(guest.total_amount);
+          serverCurrency = guest.currency || "INR";
+          if (guest.payment_status === "paid") {
+            return errorResponse("This order is already paid", 409);
+          }
+        }
+      } else {
+        serverAmount = Number(order.total_amount);
+        serverCurrency = order.currency || "INR";
+        if (order.payment_status === "paid") {
+          return errorResponse("This order is already paid", 409);
+        }
+      }
+    } catch (lookupErr) {
+      console.error("Order lookup failed during create-order:", lookupErr);
+      return errorResponse("Could not load order details", 500);
+    }
+    if (!serverAmount || serverAmount <= 0 || !Number.isFinite(serverAmount)) {
+      return errorResponse("Order not found or has no payable amount", 404);
+    }
+    if (typeof amount === "number" && Math.abs(amount - serverAmount) > 0.01) {
+      console.warn(`create-order amount mismatch: client=${amount} server=${serverAmount} order=${orderId}`);
     }
     const { keyId, keySecret } = await getRazorpayCredentials(env, siteId);
     if (!keyId || !keySecret) {
       return errorResponse("Razorpay credentials not configured. Please add Razorpay Key ID and Key Secret in your store settings.", 500);
     }
-    const amountInPaise = Math.round(amount * 100);
+    const amountInPaise = Math.round(serverAmount * 100);
+    const finalCurrency = serverCurrency || currency || "INR";
     const response = await fetch("https://api.razorpay.com/v1/orders", {
       method: "POST",
       headers: {
@@ -10942,7 +10986,7 @@ async function createRazorpayOrder(request, env) {
       },
       body: JSON.stringify({
         amount: amountInPaise,
-        currency: currency || "INR",
+        currency: finalCurrency,
         receipt: receipt || `order_${Date.now()}`,
         notes: notes || {}
       })
@@ -10966,7 +11010,7 @@ async function createRazorpayOrder(request, env) {
       await env.DB.prepare(
         `INSERT INTO payment_transactions (id, site_id, order_id, razorpay_order_id, amount, currency, status, created_at)
          VALUES (?, ?, ?, ?, ?, ?, 'pending', datetime('now'))`
-      ).bind(generateId(), siteId || null, orderId || null, razorpayOrder.id, amount, currency || "INR").run();
+      ).bind(generateId(), siteId || null, orderId || null, razorpayOrder.id, serverAmount, finalCurrency).run();
     } catch (dbErr) {
       console.error("Failed to log payment transaction (non-fatal):", dbErr);
     }
@@ -11414,24 +11458,20 @@ async function createRazorpaySubscription(request, env, user) {
       return errorResponse("Razorpay credentials not configured", 500);
     }
     let scheduledStartAt = null;
-    let isDowngrade = false;
+    let isPlanChange = false;
     let oldSubToCancel = null;
-    if (siteId && plan.plan_tier != null) {
+    if (siteId) {
       const currentSub = await env.DB.prepare(
-        `SELECT s.*, sp.plan_tier AS current_tier
-         FROM subscriptions s
-         LEFT JOIN subscription_plans sp ON sp.plan_name = s.plan AND sp.billing_cycle = s.billing_cycle
-         WHERE s.site_id = ? AND s.status = 'active'
-         ORDER BY s.created_at DESC LIMIT 1`
+        `SELECT * FROM subscriptions
+         WHERE site_id = ? AND status = 'active'
+         ORDER BY created_at DESC LIMIT 1`
       ).bind(siteId).first();
-      if (currentSub && currentSub.current_tier != null && plan.plan_tier < currentSub.current_tier) {
-        if (currentSub.current_period_end) {
-          const periodEndMs = new Date(currentSub.current_period_end).getTime();
-          if (periodEndMs > Date.now()) {
-            scheduledStartAt = Math.floor(periodEndMs / 1e3);
-            isDowngrade = true;
-            oldSubToCancel = currentSub.razorpay_subscription_id || null;
-          }
+      if (currentSub && currentSub.plan && currentSub.plan !== "trial" && currentSub.current_period_end) {
+        const periodEndMs = new Date(currentSub.current_period_end).getTime();
+        if (periodEndMs > Date.now() + 6e4) {
+          scheduledStartAt = Math.floor(periodEndMs / 1e3);
+          isPlanChange = true;
+          oldSubToCancel = currentSub.razorpay_subscription_id || null;
         }
       }
     }
@@ -11445,7 +11485,7 @@ async function createRazorpaySubscription(request, env, user) {
         planName: plan.plan_name,
         billingCycle: plan.billing_cycle,
         siteId: siteId || "",
-        scheduled: isDowngrade ? "1" : ""
+        scheduled: isPlanChange ? "1" : ""
       }
     };
     if (scheduledStartAt)
@@ -11500,7 +11540,7 @@ async function createRazorpaySubscription(request, env, user) {
       planName: plan.plan_name,
       billingCycle: plan.billing_cycle,
       amount: plan.display_price,
-      scheduled: isDowngrade,
+      scheduled: isPlanChange,
       scheduledStartAt: scheduledStartAt ? new Date(scheduledStartAt * 1e3).toISOString() : null
     });
   } catch (error) {
@@ -11779,15 +11819,6 @@ async function handleSubscriptionPaused(env, entity) {
       await env.DB.prepare(
         `UPDATE subscriptions SET status = 'paused', updated_at = datetime('now') WHERE id = ?`
       ).bind(sub.id).run();
-      if (sub.site_id) {
-        await env.DB.prepare(
-          `UPDATE sites SET subscription_expires_at = datetime('now'), updated_at = datetime('now') WHERE id = ? AND COALESCE(subscription_plan, '') != 'enterprise'`
-        ).bind(sub.site_id).run();
-      } else {
-        await env.DB.prepare(
-          `UPDATE sites SET subscription_expires_at = datetime('now'), updated_at = datetime('now') WHERE user_id = ? AND COALESCE(subscription_plan, '') != 'enterprise'`
-        ).bind(sub.user_id).run();
-      }
     }
     console.log("Subscription paused:", subId);
   } catch (err) {
@@ -19236,7 +19267,16 @@ async function cleanupExpiredData(env) {
          WHERE COALESCE(subscription_plan, '') NOT IN ('enterprise', '', 'trial')
            AND (updated_at IS NULL OR datetime(updated_at) < datetime('now', '-5 minutes'))
            AND NOT EXISTS (
-             SELECT 1 FROM subscriptions s WHERE s.site_id = sites.id AND s.status IN ('active', 'scheduled')
+             SELECT 1 FROM subscriptions s
+             WHERE s.site_id = sites.id
+               AND (
+                 s.status IN ('active', 'scheduled')
+                 OR (
+                   s.status IN ('cancelled', 'paused')
+                   AND s.current_period_end IS NOT NULL
+                   AND datetime(s.current_period_end) > datetime('now')
+                 )
+               )
            )`
       ).run();
     } catch (e) {
@@ -19476,7 +19516,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-LVYc8s/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-SRo9LM/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -19511,7 +19551,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-LVYc8s/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-SRo9LM/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

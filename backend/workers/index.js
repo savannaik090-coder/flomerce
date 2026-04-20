@@ -549,18 +549,31 @@ async function cleanupExpiredData(env) {
       console.error('[Cleanup] forward-sync site subscription:', e.message || e);
     }
 
-    // 2) Clear cached paid plan on sites that have no active subscription. (Trial handled below.)
-    // Race protection: only clear rows that haven't been touched in the last 5 minutes.
-    // In-flight subscription transitions (cancel old -> insert new) update sites.updated_at,
-    // so this grace window prevents the cron from clearing a row mid-transition before the
-    // new active subscription has been written.
+    // 2) Clear cached paid plan on sites that have no effectively-active subscription.
+    // (Trial handled below.) "Effectively active" includes:
+    //   - status='active'  or 'scheduled'                       (normal cases)
+    //   - status='cancelled' AND current_period_end is in future (user cancelled but
+    //     already paid through the end of the period — must keep access)
+    //   - status='paused'    AND current_period_end is in future (Razorpay paused the
+    //     auto-renewal but the current paid period is still valid)
+    // Race protection: only clear rows that haven't been touched in the last 5 minutes
+    // so in-flight transitions (cancel old -> insert new) aren't wiped mid-flight.
     try {
       await env.DB.prepare(
         `UPDATE sites SET subscription_plan = NULL, subscription_expires_at = NULL, updated_at = datetime('now')
          WHERE COALESCE(subscription_plan, '') NOT IN ('enterprise', '', 'trial')
            AND (updated_at IS NULL OR datetime(updated_at) < datetime('now', '-5 minutes'))
            AND NOT EXISTS (
-             SELECT 1 FROM subscriptions s WHERE s.site_id = sites.id AND s.status IN ('active', 'scheduled')
+             SELECT 1 FROM subscriptions s
+             WHERE s.site_id = sites.id
+               AND (
+                 s.status IN ('active', 'scheduled')
+                 OR (
+                   s.status IN ('cancelled', 'paused')
+                   AND s.current_period_end IS NOT NULL
+                   AND datetime(s.current_period_end) > datetime('now')
+                 )
+               )
            )`
       ).run();
     } catch (e) {
