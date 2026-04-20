@@ -90,7 +90,17 @@ export default function TrendingNow() {
             return (
               <Link key={product.id} to={linkTo} className="mn-trending-card">
                 <div className="mn-trending-img-wrap">
-                  <img src={resolveImageUrl(img)} alt={product.name} loading="lazy" />
+                  {img ? (
+                    <img src={resolveImageUrl(img)} alt={product.name} loading="lazy" />
+                  ) : (
+                    <div style={{ width: '100%', height: '100%', minHeight: 280, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f5f5' }}>
+                      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="1">
+                        <rect x="3" y="3" width="18" height="18" rx="2"/>
+                        <circle cx="8.5" cy="8.5" r="1.5"/>
+                        <path d="M21 15l-5-5L5 21"/>
+                      </svg>
+                    </div>
+                  )}
                 </div>
                 <div className="mn-trending-info">
                   <span className="mn-trending-name">{product.name}</span>
