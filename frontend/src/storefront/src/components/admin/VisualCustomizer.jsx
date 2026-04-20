@@ -100,8 +100,6 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
   const [previewDevice, setPreviewDevice] = useState('desktop');
   const [previewKey, setPreviewKey] = useState(0);
   const [sidebarTab, setSidebarTab] = useState('sections');
-  const [dragOverId, setDragOverId] = useState(null);
-  const [sectionOrder, setSectionOrder] = useState([]);
   const [sectionVisibility, setSectionVisibility] = useState({});
   const [savingVisibility, setSavingVisibility] = useState(false);
   const [viewport, setViewport] = useState(getViewport);
@@ -116,7 +114,7 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
   const [sheetCustomHeight, setSheetCustomHeight] = useState(null);
   const [isDraggingSheet, setIsDraggingSheet] = useState(false);
   const iframeRef = useRef(null);
-  const dragItemRef = useRef(null);
+  const iframeLoadedRef = useRef(false);
   const accumulatedSettingsRef = useRef({});
   const sheetContainerRef = useRef(null);
   const dragStateRef = useRef(null);
@@ -209,6 +207,9 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
   }, [siteConfig?.settings, homepageSections]);
 
   const refreshPreview = useCallback(() => {
+    // Explicit remount of the iframe — mark as not-yet-loaded so
+    // handleIframeLoad re-signals readiness after the reload finishes.
+    iframeLoadedRef.current = false;
     setPreviewKey(Date.now());
   }, []);
 
@@ -229,21 +230,40 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
     } catch (e) {}
   }, []);
 
+  // When the iframe URL changes (page navigation — e.g. switching from a
+  // homepage section to /about), mark it as not-yet-loaded so subsequent
+  // scroll messages wait for the new page's load event instead of being
+  // posted to the doc that's mid-unloading.
+  useEffect(() => {
+    iframeLoadedRef.current = false;
+  }, [previewUrl]);
+
   // Auto-scroll the preview iframe to whichever section the user starts editing.
   // Page-level sections (about/contact/blog/etc.) navigate the iframe URL instead,
   // so they don't need a scroll — the page itself is the section.
+  //
+  // Race we're avoiding: posting a message to an iframe that hasn't finished
+  // loading its new page silently drops the message. Rather than a 700ms
+  // guess, we send immediately AND let handleIframeLoad re-send after the
+  // iframe's own load event fires — whichever happens later wins.
   useEffect(() => {
     if (!activeSection) return;
     const isPageSection =
       PAGE_SECTIONS.some(p => p.id === activeSection) ||
       SETTINGS_SECTIONS.some(s => s.id === activeSection && s.page);
     if (isPageSection) return;
-    sendScrollToSection(activeSection);
-    // The iframe may still be navigating from a previous page or the section may
-    // not be mounted yet; retry once shortly after to handle that race.
-    const t = setTimeout(() => sendScrollToSection(activeSection), 700);
-    return () => clearTimeout(t);
+    if (iframeLoadedRef.current) sendScrollToSection(activeSection);
   }, [activeSection, previewKey, sendScrollToSection]);
+
+  const handleIframeLoad = useCallback(() => {
+    iframeLoadedRef.current = true;
+    if (!activeSection) return;
+    const isPageSection =
+      PAGE_SECTIONS.some(p => p.id === activeSection) ||
+      SETTINGS_SECTIONS.some(s => s.id === activeSection && s.page);
+    if (isPageSection) return;
+    sendScrollToSection(activeSection);
+  }, [activeSection, sendScrollToSection]);
 
   // ===== Bottom-sheet drag-to-resize ==========================================
   // Lets the user pull the top edge of the sheet up or down to set any custom
@@ -389,57 +409,6 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
     setActiveSection(next);
   }
 
-  function handleDragStart(e, sectionId) {
-    dragItemRef.current = sectionId;
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', sectionId);
-    e.currentTarget.style.opacity = '0.4';
-  }
-
-  function handleDragEnd(e) {
-    e.currentTarget.style.opacity = '1';
-    dragItemRef.current = null;
-    setDragOverId(null);
-  }
-
-  function handleDragOver(e, sectionId) {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    if (sectionId !== dragItemRef.current) {
-      setDragOverId(sectionId);
-    }
-  }
-
-  function handleDrop(e, targetId) {
-    e.preventDefault();
-    setDragOverId(null);
-    const sourceId = dragItemRef.current;
-    if (!sourceId || sourceId === targetId) return;
-
-    const currentOrder = homepageSections.map(s => s.id);
-    const sourceIdx = currentOrder.indexOf(sourceId);
-    const targetIdx = currentOrder.indexOf(targetId);
-    if (sourceIdx === -1 || targetIdx === -1) return;
-
-    const newOrder = [...currentOrder];
-    newOrder.splice(sourceIdx, 1);
-    newOrder.splice(targetIdx, 0, sourceId);
-    setSectionOrder(newOrder);
-  }
-
-  const orderedSections = useMemo(() => {
-    if (sectionOrder.length === 0) return homepageSections;
-    const ordered = [];
-    const remaining = [...homepageSections];
-    for (const id of sectionOrder) {
-      const idx = remaining.findIndex(s => s.id === id);
-      if (idx !== -1) {
-        ordered.push(remaining.splice(idx, 1)[0]);
-      }
-    }
-    return [...ordered, ...remaining];
-  }, [homepageSections, sectionOrder]);
-
   function renderEditor() {
     if (!activeSection) return null;
     const props = { onSaved: refreshPreview, onPreviewUpdate: sendPreviewUpdate };
@@ -534,39 +503,27 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
                   <p style={{ fontSize: 11, color: '#94a3b8', margin: '4px 0 10px', padding: '0 4px' }}>
                     Click a section to edit it. Toggle visibility with the eye icon.
                   </p>
-                  {orderedSections.map((section) => {
+                  {homepageSections.map((section) => {
                     const isVisible = section.fixed || sectionVisibility[section.id] !== false;
                     const gatedFeature = GATED_TABS[section.id];
                     const isLocked = gatedFeature && !isFeatureAvailable(currentPlan, gatedFeature);
-                    const isDraggedOver = dragOverId === section.id;
 
                     return (
                       <div
                         key={section.id}
-                        draggable={!section.fixed}
-                        onDragStart={(e) => handleDragStart(e, section.id)}
-                        onDragEnd={handleDragEnd}
-                        onDragOver={(e) => handleDragOver(e, section.id)}
-                        onDrop={(e) => handleDrop(e, section.id)}
                         style={{
                           display: 'flex', alignItems: 'center', gap: 8,
                           padding: '9px 10px', marginBottom: 2,
                           borderRadius: 8, cursor: 'pointer',
-                          background: isDraggedOver ? '#eff6ff' : '#fff',
-                          border: isDraggedOver ? '1px dashed #2563eb' : '1px solid transparent',
+                          background: '#fff',
+                          border: '1px solid transparent',
                           transition: 'all 0.12s ease',
                           opacity: isVisible ? 1 : 0.5,
                         }}
-                        onMouseEnter={e => { if (!isDraggedOver) e.currentTarget.style.background = '#f8fafc'; }}
-                        onMouseLeave={e => { if (!isDraggedOver) e.currentTarget.style.background = isDraggedOver ? '#eff6ff' : '#fff'; }}
+                        onMouseEnter={e => { e.currentTarget.style.background = '#f8fafc'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = '#fff'; }}
                       >
-                        {!section.fixed && (
-                          <i className="fas fa-grip-vertical" style={{
-                            fontSize: 10, color: '#cbd5e1', cursor: 'grab',
-                            width: 12, textAlign: 'center', flexShrink: 0,
-                          }} />
-                        )}
-                        {section.fixed && <div style={{ width: 12, flexShrink: 0 }} />}
+                        <div style={{ width: 12, flexShrink: 0 }} />
 
                         <div
                           onClick={() => !isLocked && changeActiveSection(section.id)}
@@ -791,12 +748,14 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
             )}
             <iframe
               ref={iframeRef}
-              key={`${previewKey}-${previewDevice}`}
+              key={previewKey}
               src={`${previewUrl}${previewUrl.includes('?') ? '&' : '?'}_t=${previewKey}`}
+              onLoad={handleIframeLoad}
               style={{
                 width: useMobileFrame ? 390 : '100%',
                 height: useMobileFrame ? 'calc(100% - 28px)' : '100%',
                 border: 'none', display: 'block',
+                transition: 'width 0.2s ease',
               }}
               title="Store Preview"
             />
