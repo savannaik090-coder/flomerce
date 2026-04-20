@@ -84,8 +84,79 @@ export default {
   async scheduled(event, env, ctx) {
     ctx.waitUntil(cleanupExpiredData(env));
     ctx.waitUntil(processAbandonedCartReminders(env));
+    ctx.waitUntil(cleanupOrphanMedia(env));
   },
 };
+
+// Sweeps R2 for files that have no matching row in `site_media`.
+// These come from edge cases the frontend deferred-delete hook can't catch
+// (worker died after R2 put but before D1 insert, network drops on cleanup,
+// pre-fix legacy uploads). Only objects older than the safety window are
+// touched so an in-flight upload that hasn't been recorded yet is never
+// killed mid-flight.
+async function cleanupOrphanMedia(env) {
+  if (!env.STORAGE || !env.DB) return;
+  const SAFETY_WINDOW_MS = 24 * 60 * 60 * 1000;
+  const MAX_KEYS_PER_SITE = 2000;
+  const MAX_DELETES_PER_SITE = 500;
+  const cutoff = Date.now() - SAFETY_WINDOW_MS;
+  let totalDeleted = 0;
+
+  try {
+    const allSites = await env.DB.prepare('SELECT id FROM sites').all();
+    for (const site of (allSites.results || [])) {
+      try {
+        // Load every recorded storage_key for this site once → O(1) lookup.
+        const knownRes = await env.DB.prepare(
+          'SELECT storage_key FROM site_media WHERE site_id = ?'
+        ).bind(site.id).all();
+        const knownKeys = new Set((knownRes.results || []).map(r => r.storage_key));
+
+        const prefix = `sites/${site.id}/`;
+        let cursor = undefined;
+        let scanned = 0;
+        const orphans = [];
+
+        while (scanned < MAX_KEYS_PER_SITE && orphans.length < MAX_DELETES_PER_SITE) {
+          const listing = await env.STORAGE.list({ prefix, cursor, limit: 200 });
+          for (const obj of listing.objects || []) {
+            scanned++;
+            if (knownKeys.has(obj.key)) continue;
+            // Safety: if we can't determine the upload time, never delete.
+            // Better to leak storage than to nuke a legitimate file.
+            const uploadedMs = obj.uploaded ? new Date(obj.uploaded).getTime() : NaN;
+            if (!Number.isFinite(uploadedMs) || uploadedMs <= 0) continue;
+            if (uploadedMs > cutoff) continue;
+            orphans.push(obj.key);
+            if (orphans.length >= MAX_DELETES_PER_SITE) break;
+          }
+          if (!listing.truncated) break;
+          cursor = listing.cursor;
+        }
+
+        for (const key of orphans) {
+          try {
+            await env.STORAGE.delete(key);
+            totalDeleted++;
+          } catch (delErr) {
+            console.error(`[OrphanCleanup] delete ${key}:`, delErr.message || delErr);
+          }
+        }
+
+        if (orphans.length > 0) {
+          console.log(`[OrphanCleanup] site ${site.id}: scanned ${scanned}, deleted ${orphans.length} orphan objects`);
+        }
+      } catch (siteErr) {
+        console.error(`[OrphanCleanup] site ${site.id}:`, siteErr.message || siteErr);
+      }
+    }
+    if (totalDeleted > 0) {
+      console.log(`[OrphanCleanup] total deleted across all sites: ${totalDeleted}`);
+    }
+  } catch (e) {
+    console.error('[OrphanCleanup] fatal:', e.message || e);
+  }
+}
 
 async function handleAPI(request, env, path, ctx) {
   const pathParts = path.split('/').filter(Boolean);

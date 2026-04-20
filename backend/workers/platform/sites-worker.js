@@ -4,7 +4,7 @@ import { validateAuth } from '../../utils/auth.js';
 import { validateSiteAdmin, handleStaffCRUD } from '../storefront/site-admin-worker.js';
 import { registerCustomHostname, deleteCustomHostname, findCustomHostname } from '../../utils/cloudflare.js';
 import { resolveSiteDBById, getSiteConfig, getSiteWithConfig } from '../../utils/site-db.js';
-import { trackD1Write, trackD1Update, estimateRowBytes, normalizePlanName, getPlanLimitsConfig } from '../../utils/usage-tracker.js';
+import { trackD1Write, trackD1Update, estimateRowBytes, normalizePlanName, getPlanLimitsConfig, recordMediaFile } from '../../utils/usage-tracker.js';
 import { purgeStorefrontCache } from '../../utils/cache.js';
 
 export async function handleSites(request, env, path, ctx) {
@@ -435,6 +435,7 @@ async function createSite(request, env, user) {
             await env.STORAGE.put(key, buffer, {
               httpMetadata: { contentType: mimeType, cacheControl: 'public, max-age=31536000' },
             });
+            await recordMediaFile(env, siteId, key, buffer.length, 'image');
             logoUrl = `/api/upload/image?key=${encodeURIComponent(key)}`;
             }
           }
@@ -467,6 +468,7 @@ async function createSite(request, env, user) {
             await env.STORAGE.put(key, buffer, {
               httpMetadata: { contentType: mimeType, cacheControl: 'public, max-age=31536000' },
             });
+            await recordMediaFile(env, siteId, key, buffer.length, 'image');
             faviconUrl = `/api/upload/image?key=${encodeURIComponent(key)}`;
             }
           }

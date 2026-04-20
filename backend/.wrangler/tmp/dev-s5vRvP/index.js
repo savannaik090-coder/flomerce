@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-k8zN7n/checked-fetch.js
+// .wrangler/tmp/bundle-m56F0q/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-k8zN7n/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-m56F0q/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-k8zN7n/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-m56F0q/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-k8zN7n/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-m56F0q/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -3966,12 +3966,12 @@ var init_whatsapp = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-k8zN7n/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-m56F0q/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-k8zN7n/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-m56F0q/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -5324,6 +5324,7 @@ async function createSite(request, env, user) {
               await env.STORAGE.put(key, buffer, {
                 httpMetadata: { contentType: mimeType, cacheControl: "public, max-age=31536000" }
               });
+              await recordMediaFile(env, siteId, key, buffer.length, "image");
               logoUrl = `/api/upload/image?key=${encodeURIComponent(key)}`;
             }
           }
@@ -5355,6 +5356,7 @@ async function createSite(request, env, user) {
               await env.STORAGE.put(key, buffer, {
                 httpMetadata: { contentType: mimeType, cacheControl: "public, max-age=31536000" }
               });
+              await recordMediaFile(env, siteId, key, buffer.length, "image");
               faviconUrl = `/api/upload/image?key=${encodeURIComponent(key)}`;
             }
           }
@@ -18858,8 +18860,71 @@ var workers_default = {
   async scheduled(event, env, ctx) {
     ctx.waitUntil(cleanupExpiredData(env));
     ctx.waitUntil(processAbandonedCartReminders(env));
+    ctx.waitUntil(cleanupOrphanMedia(env));
   }
 };
+async function cleanupOrphanMedia(env) {
+  if (!env.STORAGE || !env.DB)
+    return;
+  const SAFETY_WINDOW_MS = 24 * 60 * 60 * 1e3;
+  const MAX_KEYS_PER_SITE = 2e3;
+  const MAX_DELETES_PER_SITE = 500;
+  const cutoff = Date.now() - SAFETY_WINDOW_MS;
+  let totalDeleted = 0;
+  try {
+    const allSites = await env.DB.prepare("SELECT id FROM sites").all();
+    for (const site of allSites.results || []) {
+      try {
+        const knownRes = await env.DB.prepare(
+          "SELECT storage_key FROM site_media WHERE site_id = ?"
+        ).bind(site.id).all();
+        const knownKeys = new Set((knownRes.results || []).map((r) => r.storage_key));
+        const prefix = `sites/${site.id}/`;
+        let cursor = void 0;
+        let scanned = 0;
+        const orphans = [];
+        while (scanned < MAX_KEYS_PER_SITE && orphans.length < MAX_DELETES_PER_SITE) {
+          const listing = await env.STORAGE.list({ prefix, cursor, limit: 200 });
+          for (const obj of listing.objects || []) {
+            scanned++;
+            if (knownKeys.has(obj.key))
+              continue;
+            const uploadedMs = obj.uploaded ? new Date(obj.uploaded).getTime() : NaN;
+            if (!Number.isFinite(uploadedMs) || uploadedMs <= 0)
+              continue;
+            if (uploadedMs > cutoff)
+              continue;
+            orphans.push(obj.key);
+            if (orphans.length >= MAX_DELETES_PER_SITE)
+              break;
+          }
+          if (!listing.truncated)
+            break;
+          cursor = listing.cursor;
+        }
+        for (const key of orphans) {
+          try {
+            await env.STORAGE.delete(key);
+            totalDeleted++;
+          } catch (delErr) {
+            console.error(`[OrphanCleanup] delete ${key}:`, delErr.message || delErr);
+          }
+        }
+        if (orphans.length > 0) {
+          console.log(`[OrphanCleanup] site ${site.id}: scanned ${scanned}, deleted ${orphans.length} orphan objects`);
+        }
+      } catch (siteErr) {
+        console.error(`[OrphanCleanup] site ${site.id}:`, siteErr.message || siteErr);
+      }
+    }
+    if (totalDeleted > 0) {
+      console.log(`[OrphanCleanup] total deleted across all sites: ${totalDeleted}`);
+    }
+  } catch (e) {
+    console.error("[OrphanCleanup] fatal:", e.message || e);
+  }
+}
+__name(cleanupOrphanMedia, "cleanupOrphanMedia");
 async function handleAPI(request, env, path, ctx) {
   const pathParts = path.split("/").filter(Boolean);
   const apiVersion = pathParts[0];
@@ -19519,7 +19584,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-k8zN7n/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-m56F0q/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -19554,7 +19619,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-k8zN7n/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-m56F0q/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;
