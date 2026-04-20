@@ -180,6 +180,12 @@ function StorefrontShell() {
 
   usePageTracker();
 
+  // When the storefront is loaded inside the visual editor preview iframe
+  // (e.g. ?previewMode=1), suppress chrome that would clash with the editor's
+  // own controls (mobile bottom nav, push prompt, WhatsApp button).
+  const isPreviewMode = typeof window !== 'undefined'
+    && new URLSearchParams(window.location.search).get('previewMode') === '1';
+
   const isModern = theme.id === 'modern';
   const ActiveNavbar = isModern ? NavbarModern : Navbar;
   const ActiveFooter = isModern ? FooterModern : Footer;
@@ -230,12 +236,12 @@ function StorefrontShell() {
       </main>
 
       <ActiveFooter />
-      <MobileBottomNav onCartOpen={openCart} />
-      <WhatsAppButton />
+      {!isPreviewMode && <MobileBottomNav onCartOpen={openCart} />}
+      {!isPreviewMode && <WhatsAppButton />}
       <SearchOverlay isOpen={searchOpen} onClose={closeSearch} />
       <CartPanel isOpen={cartOpen} onClose={closeCart} />
       <WishlistPanel isOpen={wishlistOpen} onClose={closeWishlist} />
-      {showPrompt && <PushPrompt onAllow={subscribe} onDismiss={dismissPrompt} />}
+      {!isPreviewMode && showPrompt && <PushPrompt onAllow={subscribe} onDismiss={dismissPrompt} />}
     </>
   );
 }

@@ -183,7 +183,12 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
     if (settingsPage?.page) return settingsPage.page;
     return '/';
   }, [activeSection]);
-  const previewUrl = storeBaseUrl ? `${storeBaseUrl}${currentPage}` : '';
+  // `previewMode=1` tells the storefront to suppress its mobile bottom nav
+  // (and any other UI that would clash with the editor's own controls) so the
+  // preview shows pure design surface.
+  const previewUrl = storeBaseUrl
+    ? `${storeBaseUrl}${currentPage}${currentPage.includes('?') ? '&' : '?'}previewMode=1`
+    : '';
 
   useEffect(() => {
     if (!siteConfig?.settings) return;
@@ -1051,6 +1056,9 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
           style={{
             position: 'fixed',
             bottom: `calc(28px + env(safe-area-inset-bottom, 0px))`,
+            // Note: storefront preview is told to hide its own mobile bottom
+            // nav via the `previewMode=1` query param, so the FAB sits in
+            // clean space at the bottom of the screen.
             left: '50%', transform: 'translateX(-50%)',
             padding: '14px 26px', borderRadius: 999,
             background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
