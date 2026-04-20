@@ -53,9 +53,52 @@ export function SiteProvider({ children }) {
     try { isInIframe = window.self !== window.top; } catch (e) { isInIframe = true; }
     if (!isInIframe) return;
 
+    const SECTION_SELECTORS = {
+      'navbar': ['.header', '.mn-navbar', 'header'],
+      'promo-banner': ['.promo-banner', '.announcement-bar'],
+      'hero-slider': ['.hero-slider', '.modern-hero'],
+      'welcome-banner': ['.welcome-banner', '.first-visit-modal-content'],
+      'categories': ['.choose-by-category', '.mn-choose-section', '.home-category-section', '.mn-category-section'],
+      'watchbuy': ['.wb-section'],
+      'featured-video': ['.fv-section'],
+      'shop-the-look': ['.stl-section'],
+      'store-locations': ['.store-locations-section'],
+      'trending-now': ['.mn-trending-section'],
+      'brand-story': ['.mn-brand-section'],
+      'customer-reviews': ['#customer-reviews', '.customer-reviews-section', '.mn-customer-reviews'],
+      'footer': ['.footer-minimalist', '.mn-footer', 'footer'],
+    };
+
+    function findSectionEl(sectionId) {
+      const dataMatch = document.querySelector(`[data-flomerce-section="${sectionId}"]`);
+      if (dataMatch) return dataMatch;
+      const selectors = SECTION_SELECTORS[sectionId] || [];
+      for (const sel of selectors) {
+        const el = document.querySelector(sel);
+        if (el) return el;
+      }
+      return null;
+    }
+
+    function tryScroll(sectionId, attempt = 0) {
+      const el = findSectionEl(sectionId);
+      if (el) {
+        try { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) {}
+        return;
+      }
+      if (attempt < 4) setTimeout(() => tryScroll(sectionId, attempt + 1), 400);
+    }
+
     function handleMessage(event) {
-      if (!event.data || event.data.type !== 'FLOMERCE_PREVIEW_UPDATE') return;
-      setPreviewSettings(prev => ({ ...(prev || {}), ...event.data.settings }));
+      if (!event.data) return;
+      if (event.data.type === 'FLOMERCE_PREVIEW_UPDATE') {
+        setPreviewSettings(prev => ({ ...(prev || {}), ...event.data.settings }));
+        return;
+      }
+      if (event.data.type === 'FLOMERCE_SCROLL_TO_SECTION' && event.data.sectionId) {
+        tryScroll(event.data.sectionId);
+        return;
+      }
     }
 
     window.addEventListener('message', handleMessage);

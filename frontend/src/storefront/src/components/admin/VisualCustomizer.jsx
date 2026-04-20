@@ -108,9 +108,15 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
   // list on first load so users immediately see what they can edit.
   const [sheetOpen, setSheetOpen] = useState(() => getViewport() !== 'desktop');
   const [sheetExpanded, setSheetExpanded] = useState(false);
+  // Custom user-chosen sheet height percentage (20–80). null = use the default
+  // 60% (or 100% when sheetExpanded). Set when the user drags the handle bar.
+  const [sheetCustomHeight, setSheetCustomHeight] = useState(null);
+  const [isDraggingSheet, setIsDraggingSheet] = useState(false);
   const iframeRef = useRef(null);
   const dragItemRef = useRef(null);
   const accumulatedSettingsRef = useRef({});
+  const sheetContainerRef = useRef(null);
+  const dragStateRef = useRef(null);
 
   const isCompact = viewport !== 'desktop';
   const isMobile = viewport === 'mobile';
@@ -210,6 +216,79 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
         iframeRef.current.contentWindow.postMessage({ type: 'FLOMERCE_PREVIEW_UPDATE', settings: settingsPatch }, '*');
       }
     } catch (e) {}
+  }, []);
+
+  const sendScrollToSection = useCallback((sectionId) => {
+    try {
+      if (iframeRef.current?.contentWindow) {
+        iframeRef.current.contentWindow.postMessage({ type: 'FLOMERCE_SCROLL_TO_SECTION', sectionId }, '*');
+      }
+    } catch (e) {}
+  }, []);
+
+  // Auto-scroll the preview iframe to whichever section the user starts editing.
+  // Page-level sections (about/contact/blog/etc.) navigate the iframe URL instead,
+  // so they don't need a scroll — the page itself is the section.
+  useEffect(() => {
+    if (!activeSection) return;
+    const isPageSection =
+      PAGE_SECTIONS.some(p => p.id === activeSection) ||
+      SETTINGS_SECTIONS.some(s => s.id === activeSection && s.page);
+    if (isPageSection) return;
+    sendScrollToSection(activeSection);
+    // The iframe may still be navigating from a previous page or the section may
+    // not be mounted yet; retry once shortly after to handle that race.
+    const t = setTimeout(() => sendScrollToSection(activeSection), 700);
+    return () => clearTimeout(t);
+  }, [activeSection, previewKey, sendScrollToSection]);
+
+  // ===== Bottom-sheet drag-to-resize ==========================================
+  // Lets the user pull the top edge of the sheet up or down to set any custom
+  // editor/preview split (clamped to 20–80%). Tap-only on the handle still
+  // works as a half/full toggle via the existing button next to it.
+  const startSheetDrag = useCallback((e) => {
+    if (!sheetContainerRef.current) return;
+    const rect = sheetContainerRef.current.getBoundingClientRect();
+    const startY = e.touches ? e.touches[0].clientY : e.clientY;
+    // When dragging out of full-screen mode, start the baseline at the max custom
+    // height (80) so the first move frame doesn't snap down jarringly.
+    const startHeightPct = sheetExpanded ? 80 : (sheetCustomHeight ?? 60);
+    dragStateRef.current = {
+      startY,
+      startHeightPct,
+      containerHeight: rect.height,
+      moved: false,
+      pointerId: e.pointerId,
+    };
+    setIsDraggingSheet(true);
+    if (e.target && e.pointerId !== undefined && e.target.setPointerCapture) {
+      try { e.target.setPointerCapture(e.pointerId); } catch (err) {}
+    }
+    e.preventDefault();
+  }, [sheetExpanded, sheetCustomHeight]);
+
+  const onSheetDragMove = useCallback((e) => {
+    const state = dragStateRef.current;
+    if (!state) return;
+    const y = e.touches ? e.touches[0].clientY : e.clientY;
+    const dy = y - state.startY;
+    if (Math.abs(dy) > 4) state.moved = true;
+    const deltaPct = -(dy / state.containerHeight) * 100;
+    let next = state.startHeightPct + deltaPct;
+    next = Math.max(20, Math.min(80, next));
+    setSheetCustomHeight(next);
+    if (sheetExpanded) setSheetExpanded(false);
+  }, [sheetExpanded]);
+
+  const endSheetDrag = useCallback(() => {
+    const state = dragStateRef.current;
+    dragStateRef.current = null;
+    setIsDraggingSheet(false);
+    if (state && !state.moved) {
+      // Treat tap-only as half/full toggle, like the existing button.
+      setSheetCustomHeight(null);
+      setSheetExpanded(e => !e);
+    }
   }, []);
 
   async function toggleSectionVisibility(sectionId, showKey) {
@@ -818,9 +897,9 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
   //                  with live changes visible above
   //   full         → sheet covers entire screen (preview hidden behind it) for
   //                  long forms like the hero slider
-  const sheetHeightPct = sheetOpen ? (sheetExpanded ? 100 : 60) : 0;
-  const previewHeightPct = sheetOpen && sheetExpanded ? 0 : 100; // preview always rendered to keep iframe alive
-  const previewVisualPct = sheetOpen ? (sheetExpanded ? 0 : 40) : 100;
+  const baseSheetHeight = sheetExpanded ? 100 : (sheetCustomHeight ?? 60);
+  const sheetHeightPct = sheetOpen ? baseSheetHeight : 0;
+  const previewVisualPct = sheetOpen ? (100 - baseSheetHeight) : 100;
 
   return (
     <div style={{
@@ -832,12 +911,12 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
     }}>
       {renderTopBar()}
 
-      <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+      <div ref={sheetContainerRef} style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
         {/* Preview area — stays mounted so the iframe doesn't reload when the sheet opens/closes */}
         <div style={{
           position: 'absolute', left: 0, right: 0, top: 0,
           height: `${previewVisualPct}%`,
-          transition: 'height 0.28s ease',
+          transition: isDraggingSheet ? 'none' : 'height 0.28s ease',
           overflow: 'hidden',
           background: '#f1f5f9',
         }}>
@@ -878,7 +957,7 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
             background: '#fff',
             borderRadius: sheetExpanded ? '0' : '18px 18px 0 0',
             boxShadow: '0 -6px 24px rgba(0,0,0,0.15)',
-            transition: 'height 0.28s ease, border-radius 0.2s ease',
+            transition: isDraggingSheet ? 'border-radius 0.2s ease' : 'height 0.28s ease, border-radius 0.2s ease',
             display: 'flex', flexDirection: 'column',
             overflow: 'hidden',
           }}
@@ -903,20 +982,31 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
                 >
                   <i className={`fas ${sheetExpanded ? 'fa-compress-alt' : 'fa-expand-alt'}`} />
                 </button>
-                {/* Centered drag handle (visual only — tap to toggle) */}
-                <button
-                  type="button"
-                  onClick={() => setSheetExpanded(e => !e)}
-                  aria-label="Toggle sheet size"
+                {/* Centered draggable handle — drag up/down to resize, tap to toggle half/full */}
+                <div
+                  role="slider"
+                  aria-label="Resize editor sheet"
+                  aria-valuemin={20}
+                  aria-valuemax={80}
+                  aria-valuenow={Math.round(baseSheetHeight)}
+                  onPointerDown={startSheetDrag}
+                  onPointerMove={onSheetDragMove}
+                  onPointerUp={endSheetDrag}
+                  onPointerCancel={endSheetDrag}
                   style={{
-                    background: 'none', border: 'none', cursor: 'pointer',
-                    padding: '8px 24px', position: 'absolute', left: '50%', transform: 'translateX(-50%)', top: 0,
+                    position: 'absolute', left: '50%', transform: 'translateX(-50%)', top: 0,
+                    padding: '10px 28px',
+                    cursor: isDraggingSheet ? 'grabbing' : 'grab',
+                    touchAction: 'none',
+                    userSelect: 'none',
                   }}
                 >
                   <div style={{
-                    width: 44, height: 5, borderRadius: 3, background: '#cbd5e1',
+                    width: 44, height: 5, borderRadius: 3,
+                    background: isDraggingSheet ? '#2563eb' : '#cbd5e1',
+                    transition: 'background 0.15s ease',
                   }} />
-                </button>
+                </div>
                 <button
                   type="button"
                   onClick={() => {
