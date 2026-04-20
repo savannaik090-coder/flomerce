@@ -150,9 +150,9 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
     function handleKey(e) {
       if (e.key !== 'Escape') return;
       if (isCompact) {
-        if (activeSection) {
-          setActiveSection(null);
-        } else if (sheetOpen) {
+        if (sheetOpen) {
+          // Minimize the sheet — keep activeSection so the floating Edit pill
+          // resumes the user where they left off.
           setSheetOpen(false);
           setSheetExpanded(false);
         }
@@ -951,25 +951,36 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
           {renderPreview(false)}
         </div>
 
-        {/* Floating "Edit" pill — only when sheet is closed */}
+        {/* Floating "Edit" pill — only when sheet is closed.
+            Positioned well above the viewport edge so mobile browser chrome
+            (URL bar, home indicator) never hides it. Pulses on appearance so
+            new users immediately notice how to get back into editing.
+            Label changes contextually so the user knows they'll resume
+            exactly where they left off. */}
         {!sheetOpen && (
           <button
             type="button"
             onClick={() => { setSheetOpen(true); setSheetExpanded(false); }}
+            className="vc-edit-fab"
             style={{
-              position: 'absolute', bottom: 20, left: '50%', transform: 'translateX(-50%)',
-              padding: '12px 22px', borderRadius: 999,
+              position: 'absolute',
+              bottom: `calc(28px + env(safe-area-inset-bottom, 0px))`,
+              left: '50%', transform: 'translateX(-50%)',
+              padding: '14px 26px', borderRadius: 999,
               background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
               color: '#fff', border: 'none',
-              fontSize: 14, fontWeight: 600, cursor: 'pointer',
-              boxShadow: '0 6px 20px rgba(37,99,235,0.4)',
-              display: 'flex', alignItems: 'center', gap: 8,
+              fontSize: 15, fontWeight: 600, cursor: 'pointer',
+              boxShadow: '0 10px 28px rgba(37,99,235,0.5), 0 2px 6px rgba(0,0,0,0.12)',
+              display: 'flex', alignItems: 'center', gap: 10,
               fontFamily: 'inherit',
-              zIndex: 5,
+              zIndex: 50,
+              whiteSpace: 'nowrap',
+              maxWidth: 'calc(100% - 32px)',
+              overflow: 'hidden', textOverflow: 'ellipsis',
             }}
           >
             <i className="fas fa-pen" style={{ fontSize: 13 }} />
-            Edit
+            {activeSection ? `Edit ${getSectionLabel(activeSection)}` : 'Edit Website'}
           </button>
         )}
 
@@ -1035,22 +1046,20 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
                 <button
                   type="button"
                   onClick={() => {
-                    if (activeSection) {
-                      // Close just the editor; keep the sheet open showing the section list.
-                      setActiveSection(null);
-                    } else {
-                      setSheetOpen(false);
-                      setSheetExpanded(false);
-                    }
+                    // Always just minimize the sheet — keep the user's editing
+                    // context (activeSection) alive so the floating Edit pill
+                    // can resume them right where they left off.
+                    setSheetOpen(false);
+                    setSheetExpanded(false);
                   }}
-                  aria-label="Close"
+                  aria-label="Minimize editor"
                   style={{
                     background: '#f1f5f9', border: 'none', borderRadius: '50%',
                     width: 32, height: 32, cursor: 'pointer', color: '#64748b',
                     fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}
                 >
-                  <i className={`fas ${activeSection ? 'fa-chevron-down' : 'fa-times'}`} />
+                  <i className="fas fa-chevron-down" />
                 </button>
               </div>
 
