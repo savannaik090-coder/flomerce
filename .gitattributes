@@ -1,3 +1,0 @@
-VID_20260331_002038.mp4 filter=lfs diff=lfs merge=lfs -text
-frontend/assets/flomerce-teaser.mp4 filter=lfs diff=lfs merge=lfs -text
-frontend/src/platform/public/assets/flomerce-teaser.mp4 filter=lfs diff=lfs merge=lfs -text
