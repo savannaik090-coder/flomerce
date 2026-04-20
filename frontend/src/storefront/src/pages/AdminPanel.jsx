@@ -10,7 +10,7 @@ import CustomersSection from '../components/admin/CustomersSection.jsx';
 import AnalyticsSection from '../components/admin/AnalyticsSection.jsx';
 import RevenueSection from '../components/admin/RevenueSection.jsx';
 import PushNotificationsSection from '../components/admin/PushNotificationsSection.jsx';
-import WebsiteContentSection from '../components/admin/WebsiteContentSection.jsx';
+import VisualCustomizer from '../components/admin/VisualCustomizer.jsx';
 import SettingsSection from '../components/admin/SettingsSection.jsx';
 import SEOSection from '../components/admin/SEOSection.jsx';
 import ProductForm from '../components/admin/ProductForm.jsx';
@@ -345,7 +345,7 @@ export default function AdminPanel() {
             </FeatureGate>
           )}
           {activeSection === 'analytics' && hasPermission('analytics') && <AnalyticsSection />}
-          {activeSection === 'website' && hasPermission('website') && <WebsiteContentSection currentPlan={siteConfig?.subscriptionPlan} />}
+          {activeSection === 'website' && hasPermission('website') && <VisualCustomizer currentPlan={siteConfig?.subscriptionPlan} onBack={() => setActiveSection(hasPermission('dashboard') ? 'dashboard' : (permissions && permissions.find(p => p !== 'website')) || 'website')} />}
           {activeSection === 'seo' && hasPermission('seo') && <SEOSection currentPlan={siteConfig?.subscriptionPlan} />}
           {activeSection === 'notifications' && hasPermission('notifications') && (
             <FeatureGate currentPlan={siteConfig?.subscriptionPlan} requiredPlan="growth" featureName="Push Notifications">
