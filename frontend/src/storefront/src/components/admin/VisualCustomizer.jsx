@@ -1055,10 +1055,10 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
           className="vc-edit-fab"
           style={{
             position: 'fixed',
-            bottom: `calc(28px + env(safe-area-inset-bottom, 0px))`,
-            // Note: storefront preview is told to hide its own mobile bottom
-            // nav via the `previewMode=1` query param, so the FAB sits in
-            // clean space at the bottom of the screen.
+            // Sit above the storefront's mobile bottom nav (65px tall) plus
+            // any device safe-area inset, with breathing room. This guarantees
+            // the Edit pill is always visible regardless of preview chrome.
+            bottom: `calc(85px + env(safe-area-inset-bottom, 0px))`,
             left: '50%', transform: 'translateX(-50%)',
             padding: '14px 26px', borderRadius: 999,
             background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
