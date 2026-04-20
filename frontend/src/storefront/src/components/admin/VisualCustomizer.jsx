@@ -183,12 +183,7 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
     if (settingsPage?.page) return settingsPage.page;
     return '/';
   }, [activeSection]);
-  // `previewMode=1` tells the storefront to suppress its mobile bottom nav
-  // (and any other UI that would clash with the editor's own controls) so the
-  // preview shows pure design surface.
-  const previewUrl = storeBaseUrl
-    ? `${storeBaseUrl}${currentPage}${currentPage.includes('?') ? '&' : '?'}previewMode=1`
-    : '';
+  const previewUrl = storeBaseUrl ? `${storeBaseUrl}${currentPage}` : '';
 
   useEffect(() => {
     if (!siteConfig?.settings) return;
