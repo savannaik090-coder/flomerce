@@ -13667,7 +13667,9 @@ async function serveStorefrontApp(request, env, path, site) {
   }
   if (!rawHTML) {
     const domain = env.DOMAIN || PLATFORM_DOMAIN;
-    const response = await fetch(`https://${domain}${storefrontIndexPath}`);
+    const response = await fetch(`https://${domain}${storefrontIndexPath}`, {
+      cf: { cacheTtl: 0, cacheEverything: false }
+    });
     if (!response.ok) {
       return new Response("Storefront not available", { status: 500 });
     }
@@ -18841,7 +18843,8 @@ var workers_default = {
           body: request.body,
           redirect: "follow"
         });
-        return fetch(pagesRequest);
+        const isHTMLShell = pagesUrl.pathname === "/" || pagesUrl.pathname.endsWith("/") || pagesUrl.pathname.endsWith(".html") || !pagesUrl.pathname.includes(".");
+        return fetch(pagesRequest, isHTMLShell ? { cf: { cacheTtl: 0, cacheEverything: false } } : void 0);
       }
       if (env.ASSETS) {
         return env.ASSETS.fetch(request);

@@ -61,7 +61,13 @@ export default {
           body: request.body,
           redirect: 'follow',
         });
-        return fetch(pagesRequest);
+        const isHTMLShell = pagesUrl.pathname === '/' ||
+          pagesUrl.pathname.endsWith('/') ||
+          pagesUrl.pathname.endsWith('.html') ||
+          !pagesUrl.pathname.includes('.');
+        return fetch(pagesRequest, isHTMLShell
+          ? { cf: { cacheTtl: 0, cacheEverything: false } }
+          : undefined);
       }
 
       if (env.ASSETS) {
