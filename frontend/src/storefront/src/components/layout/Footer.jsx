@@ -33,7 +33,7 @@ export default function Footer() {
   }
 
   return (
-    <footer className="footer-minimalist" data-flomerce-section="footer">
+    <footer className="footer-minimalist">
       <div className="container">
         <div className="footer-section">
           <button className="footer-toggle" onClick={() => toggleSection('info')}>

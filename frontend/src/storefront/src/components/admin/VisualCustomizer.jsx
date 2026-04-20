@@ -748,20 +748,6 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
               ref={iframeRef}
               key={`${previewKey}-${previewDevice}`}
               src={`${previewUrl}${previewUrl.includes('?') ? '&' : '?'}_t=${previewKey}`}
-              onLoad={() => {
-                // Re-fire scroll once the iframe has finished navigating —
-                // the React app inside may have just mounted, so any earlier
-                // postMessage was likely missed.
-                if (activeSection) {
-                  const isPageSection =
-                    PAGE_SECTIONS.some(p => p.id === activeSection) ||
-                    SETTINGS_SECTIONS.some(s => s.id === activeSection && s.page);
-                  if (!isPageSection) {
-                    setTimeout(() => sendScrollToSection(activeSection), 250);
-                    setTimeout(() => sendScrollToSection(activeSection), 1200);
-                  }
-                }
-              }}
               style={{
                 width: useMobileFrame ? 390 : '100%',
                 height: useMobileFrame ? 'calc(100% - 28px)' : '100%',

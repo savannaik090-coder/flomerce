@@ -28,7 +28,7 @@ export default function FeaturedVideoSection() {
   if (settings.showFeaturedVideo === false) return null;
 
   return (
-    <section className="fv-section" data-flomerce-section="featured-video">
+    <section className="fv-section">
       <div className="fv-background">
         {videoUrl ? (
           <video autoPlay muted loop playsInline className="fv-video">

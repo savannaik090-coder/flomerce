@@ -124,7 +124,7 @@ export default function WatchAndBuy() {
   if (!videos.length || isSectionHidden) return null;
 
   return (
-    <section className="wb-section" data-flomerce-section="watchbuy">
+    <section className="wb-section">
       <div className="wb-header">
         <h2 className="wb-title">Watch And Buy</h2>
         <hr className="wb-divider" />

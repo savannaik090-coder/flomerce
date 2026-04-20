@@ -33,7 +33,7 @@ export default function CustomerReviews() {
   };
 
   return (
-    <section className="customer-reviews-section" id="customer-reviews" data-flomerce-section="customer-reviews">
+    <section className="customer-reviews-section" id="customer-reviews">
       <div className="reviews-container">
         <div className="reviews-header">
           <h2 className="section-title">{sectionTitle}</h2>

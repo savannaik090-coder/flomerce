@@ -49,7 +49,7 @@ export default function TrendingNow() {
   };
 
   return (
-    <section className="mn-trending-section" data-flomerce-section="trending-now">
+    <section className="mn-trending-section">
       <div className="mn-trending-header">
         <div className="mn-trending-header-left">
           <h2 className="mn-section-title">Trending Now</h2>

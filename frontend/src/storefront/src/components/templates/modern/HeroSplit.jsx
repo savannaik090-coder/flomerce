@@ -42,7 +42,6 @@ export default function HeroSplit() {
   return (
     <section
       className="modern-hero"
-      data-flomerce-section="hero-slider"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >

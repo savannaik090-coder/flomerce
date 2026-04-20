@@ -40,7 +40,7 @@ export default function StoreLocations() {
   }
 
   return (
-    <section className="store-locations-section" data-flomerce-section="store-locations">
+    <section className="store-locations-section">
       <div className="store-locations-container">
         <div className="store-locations-header">
           <h2>Come Visit Us at Our Store</h2>

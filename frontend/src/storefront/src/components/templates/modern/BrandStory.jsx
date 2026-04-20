@@ -18,7 +18,7 @@ export default function BrandStory() {
   const ctaLink = settings.brandStoryCtaLink || '/about';
 
   return (
-    <section className="mn-brand-section" data-flomerce-section="brand-story">
+    <section className="mn-brand-section">
       <div className="mn-brand-container">
         {image && (
           <div className="mn-brand-image-side">

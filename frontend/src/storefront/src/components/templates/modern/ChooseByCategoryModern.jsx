@@ -27,7 +27,7 @@ export default function ChooseByCategoryModern({ categories }) {
   if (visibleCats.length === 0) return null;
 
   return (
-    <section className="mn-choose-section" data-flomerce-section="categories">
+    <section className="mn-choose-section">
       <div className="mn-choose-header">
         <span className="mn-choose-label">Collections</span>
         <h2 className="mn-section-title">Shop by Category</h2>

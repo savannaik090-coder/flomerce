@@ -40,7 +40,7 @@ export default function FooterModern() {
   }
 
   return (
-    <footer className="mn-footer" data-flomerce-section="footer">
+    <footer className="mn-footer">
       <div className="mn-footer-main">
         <div className="mn-footer-grid">
           <div className="mn-footer-col mn-footer-brand-col">
