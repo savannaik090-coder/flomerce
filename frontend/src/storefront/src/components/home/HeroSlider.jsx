@@ -58,14 +58,23 @@ export default function HeroSlider() {
                 <div
                   className="slide-image"
                   style={{
-                    background: 'linear-gradient(135deg, #2c2c2c 0%, #1a1a2e 100%)',
+                    background: '#f5f5f5',
                     position: 'absolute',
                     top: 0,
                     left: 0,
                     width: '100%',
                     height: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
                   }}
-                />
+                >
+                  <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="1">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/>
+                    <circle cx="8.5" cy="8.5" r="1.5"/>
+                    <path d="M21 15l-5-5L5 21"/>
+                  </svg>
+                </div>
               )}
               <div className="slide-content">
                 <h1 className="slide-title">{slide.title}</h1>

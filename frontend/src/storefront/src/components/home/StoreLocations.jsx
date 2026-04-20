@@ -56,11 +56,19 @@ export default function StoreLocations() {
           <div className="stores-grid" ref={scrollRef}>
             {defaultStore.map((store, i) => (
             <div key={i} className="store-card">
-              {store.image && (
-                <div className="store-image">
+              <div className="store-image">
+                {store.image ? (
                   <img src={store.image} alt={store.name} />
-                </div>
-              )}
+                ) : (
+                  <div style={{ width: '100%', height: '100%', minHeight: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f5f5' }}>
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="1">
+                      <rect x="3" y="3" width="18" height="18" rx="2"/>
+                      <circle cx="8.5" cy="8.5" r="1.5"/>
+                      <path d="M21 15l-5-5L5 21"/>
+                    </svg>
+                  </div>
+                )}
+              </div>
               <div className="store-details">
                 <h3 className="store-name">{store.name}</h3>
                 {store.address && <p className="store-address">{store.address}</p>}
