@@ -2,6 +2,7 @@ import React, { useState, useContext } from 'react';
 import { Link } from 'react-router-dom';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { PLATFORM_URL } from '../../config.js';
+import { isPlanAtLeast } from '../../utils/plan.js';
 
 export default function Footer() {
   const { siteConfig } = useContext(SiteContext);
@@ -223,7 +224,7 @@ export default function Footer() {
         <div className="footer-bottom">
           <div className="footer-info">
             <div className="copyright">
-              <p>&copy; {new Date().getFullYear()} {siteConfig?.brandName || 'Store'}. All rights reserved. Powered by <a href={PLATFORM_URL} target="_blank" rel="noopener noreferrer" className="powered-by-link">Flomerce</a></p>
+              <p>&copy; {new Date().getFullYear()} {siteConfig?.brandName || 'Store'}. All rights reserved.{(!(settings?.footer?.hideBranding === true && isPlanAtLeast(siteConfig?.subscriptionPlan, 'growth'))) && <> Powered by <a href={PLATFORM_URL} target="_blank" rel="noopener noreferrer" className="powered-by-link">Flomerce</a></>}</p>
             </div>
             <div className="footer-links">
               <Link to="/terms">Terms and Conditions</Link>

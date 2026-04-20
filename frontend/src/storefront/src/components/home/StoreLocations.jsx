@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useSiteConfig } from '../../hooks/useSiteConfig.js';
+import { isPlanAtLeast } from '../../utils/plan.js';
 
 export default function StoreLocations() {
   const { siteConfig } = useSiteConfig();
@@ -10,8 +11,7 @@ export default function StoreLocations() {
   const stores = settings.storeLocations || [];
   const address = siteConfig?.address;
   const phone = siteConfig?.phone;
-  const planTier = (siteConfig?.subscriptionPlan || '').toLowerCase();
-  const appointmentBookingAllowed = planTier === 'trial' || planTier.includes('growth') || planTier.includes('standard') || planTier.includes('pro') || planTier.includes('enterprise');
+  const appointmentBookingAllowed = isPlanAtLeast(siteConfig?.subscriptionPlan, 'growth');
 
   if (settings.showStoreLocations !== true) return null;
   if (!stores.length && !address) return null;

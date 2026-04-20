@@ -1959,14 +1959,14 @@ async function handlePlanLimitsAPI(request, env, path) {
         maxSites: safeLimit(limits.maxSites),
         maxStaff: safeLimit(limits.maxStaff),
         maxLocations: safeLimit(limits.maxLocations),
-        coupons: limits.coupons,
         reviews: limits.reviews,
         blog: limits.blog,
         pushManual: limits.pushManual,
         pushAutomated: limits.pushAutomated,
         advancedSeo: limits.advancedSeo,
         revenue: limits.revenue,
-        appointmentBooking: limits.appointmentBooking
+        appointmentBooking: limits.appointmentBooking,
+        removeBranding: limits.removeBranding
       },
       featureRequiredPlan: FEATURE_REQUIRED_PLAN,
       storage: {
@@ -2154,7 +2154,6 @@ async function handleUsageAPI(request, env, path) {
         overageBytes: r2OverageBytes,
         overageCostINR: isEnterprise ? Math.round(r2CostINR * 100) / 100 : 0
       },
-      allowOverage: false,
       overageEnabled: false,
       overageCostINR: Math.round(overageCostINR * 100) / 100,
       overageRates: rates,
@@ -2208,98 +2207,92 @@ var init_usage_tracker = __esm({
       starter: {
         d1Bytes: 500 * 1024 * 1024,
         r2Bytes: 5 * 1024 * 1024 * 1024,
-        allowOverage: false,
         maxSites: Infinity,
         maxStaff: 5,
         maxLocations: 2,
-        coupons: true,
         reviews: true,
         blog: true,
         pushManual: false,
         pushAutomated: false,
         advancedSeo: true,
         revenue: false,
-        appointmentBooking: false
+        appointmentBooking: false,
+        removeBranding: false
       },
       growth: {
         d1Bytes: 1 * 1024 * 1024 * 1024,
         r2Bytes: 50 * 1024 * 1024 * 1024,
-        allowOverage: false,
         maxSites: Infinity,
         maxStaff: 25,
         maxLocations: 50,
-        coupons: true,
         reviews: true,
         blog: true,
         pushManual: true,
         pushAutomated: false,
         advancedSeo: true,
         revenue: true,
-        appointmentBooking: true
+        appointmentBooking: true,
+        removeBranding: true
       },
       pro: {
         d1Bytes: 2 * 1024 * 1024 * 1024,
         r2Bytes: 100 * 1024 * 1024 * 1024,
-        allowOverage: false,
         maxSites: Infinity,
         maxStaff: Infinity,
         maxLocations: Infinity,
-        coupons: true,
         reviews: true,
         blog: true,
         pushManual: true,
         pushAutomated: true,
         advancedSeo: true,
         revenue: true,
-        appointmentBooking: true
+        appointmentBooking: true,
+        removeBranding: true
       },
       enterprise: {
         d1Bytes: 2 * 1024 * 1024 * 1024,
         r2Bytes: 100 * 1024 * 1024 * 1024,
-        allowOverage: false,
         maxSites: Infinity,
         maxStaff: Infinity,
         maxLocations: Infinity,
-        coupons: true,
         reviews: true,
         blog: true,
         pushManual: true,
         pushAutomated: true,
         advancedSeo: true,
         revenue: true,
-        appointmentBooking: true
+        appointmentBooking: true,
+        removeBranding: true
       },
       trial: {
         d1Bytes: 500 * 1024 * 1024,
         r2Bytes: 5 * 1024 * 1024 * 1024,
-        allowOverage: false,
         maxSites: 5,
         maxStaff: Infinity,
         maxLocations: Infinity,
-        coupons: true,
         reviews: true,
         blog: true,
         pushManual: true,
         pushAutomated: true,
         advancedSeo: true,
         revenue: true,
-        appointmentBooking: true
+        appointmentBooking: true,
+        removeBranding: true
       },
       free: {
         d1Bytes: 500 * 1024 * 1024,
         r2Bytes: 5 * 1024 * 1024 * 1024,
-        allowOverage: false,
         maxSites: 0,
         maxStaff: 0,
         maxLocations: 0,
-        coupons: false,
         reviews: false,
         blog: false,
         pushManual: false,
         pushAutomated: false,
         advancedSeo: false,
         revenue: false,
-        appointmentBooking: false
+        appointmentBooking: false,
+        removeBranding: false
       }
     };
     FEATURE_REQUIRED_PLAN = {
@@ -2309,7 +2302,8 @@ var init_usage_tracker = __esm({
       pushManual: "growth",
       pushAutomated: "pro",
       revenue: "growth",
-      appointmentBooking: "growth"
+      appointmentBooking: "growth",
+      removeBranding: "growth"
     };
     DEFAULT_OVERAGE_RATES = {
       d1PerGB: 0.75,

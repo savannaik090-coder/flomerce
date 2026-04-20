@@ -4,6 +4,7 @@ import { SiteContext } from '../../context/SiteContext.jsx';
 import { CartContext } from '../../context/CartContext.jsx';
 import { AuthContext } from '../../context/AuthContext.jsx';
 import { useWishlist } from '../../hooks/useWishlist.js';
+import { isPlanAtLeast } from '../../utils/plan.js';
 
 export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
   const { siteConfig } = useContext(SiteContext);
@@ -32,8 +33,7 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
   const showAbout = settings.showAboutUs !== false;
   const showOrderTrack = settings.showOrderTrack !== false;
   const orderTrackUrl = settings.orderTrackUrl || '';
-  const planTier = (siteConfig?.subscriptionPlan || '').toLowerCase();
-  const appointmentBookingAllowed = planTier === 'trial' || planTier.includes('growth') || planTier.includes('standard') || planTier.includes('pro') || planTier.includes('enterprise');
+  const appointmentBookingAllowed = isPlanAtLeast(siteConfig?.subscriptionPlan, 'growth');
   const showBookAppointment = settings.showBookAppointment !== false && appointmentBookingAllowed;
   const showContact = settings.showContact !== false;
   const logoSize = Math.min(250, Math.max(40, Number(settings.logoSize) || 60));

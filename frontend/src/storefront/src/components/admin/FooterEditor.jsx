@@ -3,6 +3,7 @@ import { SiteContext } from '../../context/SiteContext.jsx';
 import { getCategories } from '../../services/categoryService.js';
 import SaveBar from './SaveBar.jsx';
 import { API_BASE } from '../../config.js';
+import FeatureGate, { isFeatureAvailable } from './FeatureGate.jsx';
 
 export default function FooterEditor({ onSaved, onPreviewUpdate }) {
   const { siteConfig, refetchSite } = useContext(SiteContext);
@@ -12,6 +13,9 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
   const [hasChanges, setHasChanges] = useState(false);
   const hasLoadedRef = useRef(false);
   const serverValuesRef = useRef(null);
+
+  const currentPlan = siteConfig?.subscriptionPlan;
+  const canRemoveBranding = isFeatureAvailable(currentPlan, 'removeBranding');
 
   const [instagram, setInstagram] = useState('');
   const [facebook, setFacebook] = useState('');
@@ -26,6 +30,8 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
   const [appStoreUrl, setAppStoreUrl] = useState('');
   const [playStoreUrl, setPlayStoreUrl] = useState('');
 
+  const [hideBranding, setHideBranding] = useState(false);
+
   const [categories, setCategories] = useState([]);
 
   useEffect(() => {
@@ -37,7 +43,7 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
-    const current = JSON.stringify({ instagram, facebook, twitter, youtube, shopRedirect, showAppBanner, showAppStore, showPlayStore, appStoreUrl, playStoreUrl });
+    const current = JSON.stringify({ instagram, facebook, twitter, youtube, shopRedirect, showAppBanner, showAppStore, showPlayStore, appStoreUrl, playStoreUrl, hideBranding });
     setHasChanges(current !== serverValuesRef.current);
     const social = { instagram, facebook, twitter, youtube };
     if (onPreviewUpdate) onPreviewUpdate({
@@ -46,9 +52,10 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
         social,
         bottomNav: { shopRedirect },
         appBanner: { show: showAppBanner, showAppStore, showPlayStore, appStoreUrl, playStoreUrl },
+        hideBranding,
       },
     });
-  }, [instagram, facebook, twitter, youtube, shopRedirect, showAppBanner, showAppStore, showPlayStore, appStoreUrl, playStoreUrl]);
+  }, [instagram, facebook, twitter, youtube, shopRedirect, showAppBanner, showAppStore, showPlayStore, appStoreUrl, playStoreUrl, hideBranding]);
 
   async function loadCategories() {
     try {
@@ -99,7 +106,9 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
         setShowPlayStore(showPlayVal);
         setAppStoreUrl(appUrlVal);
         setPlayStoreUrl(playUrlVal);
-        serverValuesRef.current = JSON.stringify({ instagram: igVal, facebook: fbVal, twitter: twVal, youtube: ytVal, shopRedirect: shopVal, showAppBanner: showBannerVal, showAppStore: showAppVal, showPlayStore: showPlayVal, appStoreUrl: appUrlVal, playStoreUrl: playUrlVal });
+        const hideBrandingVal = footer.hideBranding === true;
+        setHideBranding(hideBrandingVal);
+        serverValuesRef.current = JSON.stringify({ instagram: igVal, facebook: fbVal, twitter: twVal, youtube: ytVal, shopRedirect: shopVal, showAppBanner: showBannerVal, showAppStore: showAppVal, showPlayStore: showPlayVal, appStoreUrl: appUrlVal, playStoreUrl: playUrlVal, hideBranding: hideBrandingVal });
       }
     } catch (e) {
       console.error('Failed to load footer config:', e);
@@ -122,6 +131,7 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
             social: { instagram: instagram, facebook: facebook, twitter: twitter, youtube: youtube },
             bottomNav: { shopRedirect: shopRedirect },
             appBanner: { show: showAppBanner, showAppStore: showAppStore, showPlayStore: showPlayStore, appStoreUrl: appStoreUrl, playStoreUrl: playStoreUrl },
+            hideBranding: canRemoveBranding ? hideBranding : false,
           },
         },
       };
@@ -136,7 +146,7 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
       var result = await response.json();
       if (response.ok && result.success) {
         setStatus('success');
-        serverValuesRef.current = JSON.stringify({ instagram, facebook, twitter, youtube, shopRedirect, showAppBanner, showAppStore, showPlayStore, appStoreUrl, playStoreUrl });
+        serverValuesRef.current = JSON.stringify({ instagram, facebook, twitter, youtube, shopRedirect, showAppBanner, showAppStore, showPlayStore, appStoreUrl, playStoreUrl, hideBranding });
         setHasChanges(false);
         if (onSaved) onSaved();
         if (refetchSite) refetchSite();
@@ -261,6 +271,26 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
               )}
             </div>
           )}
+        </div>
+      </div>
+
+      <div className="card" style={{ marginBottom: 20 }}>
+        <div className="card-header"><h3 className="card-title">Branding</h3></div>
+        <div className="card-content">
+          <FeatureGate currentPlan={currentPlan} requiredPlan="growth" featureName="Remove Flomerce Branding">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <label style={{ fontWeight: 600, fontSize: 13, display: 'block' }}>Hide "Powered by Flomerce"</label>
+                <span style={{ fontSize: 12, color: '#94a3b8' }}>Remove the platform branding from your storefront footer.</span>
+              </div>
+              <label style={{ position: 'relative', display: 'inline-block', width: 44, height: 24, cursor: 'pointer' }}>
+                <input type="checkbox" checked={hideBranding} onChange={function () { setHideBranding(!hideBranding); }} style={{ opacity: 0, width: 0, height: 0 }} />
+                <span style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: hideBranding ? '#10b981' : '#cbd5e1', borderRadius: 24, transition: 'background-color 0.2s' }}>
+                  <span style={{ position: 'absolute', left: hideBranding ? 22 : 2, top: 2, width: 20, height: 20, backgroundColor: '#fff', borderRadius: '50%', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+                </span>
+              </label>
+            </div>
+          </FeatureGate>
         </div>
       </div>
 

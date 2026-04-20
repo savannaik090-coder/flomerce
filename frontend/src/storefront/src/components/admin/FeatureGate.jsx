@@ -1,23 +1,8 @@
 import React from 'react';
-
-const PLAN_HIERARCHY = ['free', 'starter', 'growth', 'pro', 'enterprise'];
-
-function normalizePlan(plan) {
-  if (!plan) return 'free';
-  const p = plan.toLowerCase();
-  if (p.includes('enterprise')) return 'enterprise';
-  if (p.includes('pro')) return 'pro';
-  if (p.includes('growth') || p.includes('standard')) return 'growth';
-  if (p.includes('starter') || p.includes('basic')) return 'starter';
-  if (p === 'trial') return 'trial';
-  return 'free';
-}
+import { normalizePlan, isPlanAtLeast } from '../../utils/plan.js';
 
 export function isPlanSufficient(currentPlan, requiredPlan) {
-  const current = normalizePlan(currentPlan);
-  if (current === 'trial') return true;
-  const required = normalizePlan(requiredPlan);
-  return PLAN_HIERARCHY.indexOf(current) >= PLAN_HIERARCHY.indexOf(required);
+  return isPlanAtLeast(currentPlan, requiredPlan);
 }
 
 export function getRequiredPlan(feature) {
@@ -32,6 +17,7 @@ export function getRequiredPlan(feature) {
     notifications: 'growth',
     appointmentBooking: 'growth',
     'book-appointment': 'growth',
+    removeBranding: 'growth',
   };
   return map[feature] || 'growth';
 }

@@ -3,6 +3,7 @@ import { Navigate } from 'react-router-dom';
 import { useSiteConfig } from '../hooks/useSiteConfig.js';
 import { API_BASE } from '../config.js';
 import PhoneInput from '../components/ui/PhoneInput.jsx';
+import { isPlanAtLeast } from '../utils/plan.js';
 
 const TIME_SLOTS = [
   '11:00 AM', '12:00 PM', '01:00 PM', '02:00 PM',
@@ -26,8 +27,7 @@ export default function BookAppointmentPage() {
     appointmentDate: '', purpose: '', notes: '',
   });
 
-  const planTier = (siteConfig?.subscriptionPlan || '').toLowerCase();
-  const appointmentBookingAllowed = planTier === 'trial' || planTier.includes('growth') || planTier.includes('standard') || planTier.includes('pro') || planTier.includes('enterprise');
+  const appointmentBookingAllowed = isPlanAtLeast(siteConfig?.subscriptionPlan, 'growth');
   if (siteConfig && !appointmentBookingAllowed) {
     return <Navigate to="/" replace />;
   }
