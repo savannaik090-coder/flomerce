@@ -968,8 +968,21 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
             overflow: 'hidden',
           }}
         >
-          {sheetOpen && (
-            <>
+          {/* IMPORTANT: the sheet contents are *always* rendered (never
+              conditionally mounted on `sheetOpen`). When the user minimizes the
+              sheet, the parent slides it off-screen via height:0 + overflow:
+              hidden — but the form components below stay mounted, so any
+              in-progress edits the user typed survive a minimize/restore. */}
+          <div
+            inert={sheetOpen ? undefined : ''}
+            style={{
+              flex: 1, display: 'flex', flexDirection: 'column',
+              minHeight: 0,
+              pointerEvents: sheetOpen ? 'auto' : 'none',
+              opacity: sheetOpen ? 1 : 0,
+              transition: 'opacity 0.18s ease',
+            }}
+          >
               {/* Drag handle / sheet toolbar */}
               <div style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -1035,8 +1048,7 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
                   ? renderEditorPanel(() => setActiveSection(null))
                   : renderSectionList()}
               </div>
-            </>
-          )}
+          </div>
         </div>
       </div>
 
