@@ -3,6 +3,7 @@ import { SiteContext } from '../../context/SiteContext.jsx';
 import { getCategories, createCategory, updateCategory, deleteCategory } from '../../services/categoryService.js';
 import { API_BASE } from '../../config.js';
 import ConfirmModal from './ConfirmModal.jsx';
+import { setEditorDirty } from '../../admin/editorDirtyStore.js';
 
 function resolveImageUrl(src) {
   if (!src) return '';
@@ -543,6 +544,14 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
   }
 
   const hasUnsavedChanges = chooseChanged || subcatChanged || orderChanged || homeTogglesChanged || catsChanged || subItemsChanged;
+
+  // Publish dirty state so VisualCustomizer can prompt before discarding
+  // unsaved category edits when the user switches sections. This editor
+  // doesn't use SaveBar (which normally publishes the flag), so we wire it
+  // directly here.
+  useEffect(() => {
+    setEditorDirty(hasUnsavedChanges);
+  }, [hasUnsavedChanges]);
 
   async function handleSaveAllSettings() {
     setSaving(true);

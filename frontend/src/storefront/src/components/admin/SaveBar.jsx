@@ -1,6 +1,11 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { setEditorDirty } from '../../admin/editorDirtyStore.js';
 
 export default function SaveBar({ saving, hasChanges, onSave, topBar = false }) {
+  useEffect(() => {
+    setEditorDirty(hasChanges);
+  }, [hasChanges]);
+
   if (topBar) {
     if (!hasChanges) return null;
     return (

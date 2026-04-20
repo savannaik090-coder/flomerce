@@ -24,6 +24,9 @@ import BlogSection from './BlogSection.jsx';
 import PromoBannerEditor from './PromoBannerEditor.jsx';
 import FeatureGate, { isFeatureAvailable, getRequiredPlan, PlanBadge } from './FeatureGate.jsx';
 import { API_BASE, PLATFORM_DOMAIN } from '../../config.js';
+import { isEditorDirty, clearEditorDirty } from '../../admin/editorDirtyStore.js';
+
+const UNSAVED_PROMPT = 'You have unsaved changes in this section. Discard them?';
 
 function getStoreUrl(siteConfig) {
   if (!siteConfig?.subdomain) return '';
@@ -157,7 +160,7 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
           setSheetExpanded(false);
         }
       } else if (activeSection) {
-        setActiveSection(null);
+        changeActiveSection(null);
       }
     }
     window.addEventListener('keydown', handleKey);
@@ -319,29 +322,71 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
     };
   }, [isDraggingSheet]);
 
+  // Per-section save queue: rapid toggles can race because each click fires its
+  // own PUT and the server applies them in network-arrival order, not click
+  // order. We serialize per section, always sending the LATEST desired value,
+  // so the final server state matches what the user sees.
+  const visibilityQueueRef = useRef({});
+  const visibilityInflightRef = useRef({});
+
   async function toggleSectionVisibility(sectionId, showKey) {
     const newVal = !sectionVisibility[sectionId];
     setSectionVisibility(prev => ({ ...prev, [sectionId]: newVal }));
-
     sendPreviewUpdate({ [showKey]: newVal });
 
+    visibilityQueueRef.current[sectionId] = { val: newVal, showKey };
+    if (visibilityInflightRef.current[sectionId]) return;
+    visibilityInflightRef.current[sectionId] = true;
     setSavingVisibility(true);
+
     try {
-      const token = sessionStorage.getItem('site_admin_token');
-      await fetch(`${API_BASE}/api/sites/${siteConfig.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': token ? `SiteAdmin ${token}` : '',
-        },
-        body: JSON.stringify({ settings: { [showKey]: newVal } }),
-      });
-    } catch (e) {
-      console.error('Failed to toggle section:', e);
-      setSectionVisibility(prev => ({ ...prev, [sectionId]: !newVal }));
+      while (visibilityQueueRef.current[sectionId]) {
+        const { val, showKey: sk } = visibilityQueueRef.current[sectionId];
+        visibilityQueueRef.current[sectionId] = null;
+        try {
+          const token = sessionStorage.getItem('site_admin_token');
+          const res = await fetch(`${API_BASE}/api/sites/${siteConfig.id}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': token ? `SiteAdmin ${token}` : '',
+            },
+            body: JSON.stringify({ settings: { [sk]: val } }),
+          });
+          if (!res.ok) throw new Error('save failed');
+        } catch (e) {
+          console.error('Failed to toggle section:', e);
+          // Only revert UI if the user hasn't queued a newer click. If they
+          // have, the next loop iteration will send that new value and the
+          // server-vs-UI mismatch will resolve naturally.
+          if (!visibilityQueueRef.current[sectionId]) {
+            setSectionVisibility(prev => ({ ...prev, [sectionId]: !val }));
+            sendPreviewUpdate({ [sk]: !val });
+          }
+        }
+      }
     } finally {
-      setSavingVisibility(false);
+      visibilityInflightRef.current[sectionId] = false;
+      // Only clear the global "saving" indicator when no other section is
+      // still mid-save. Two sections can be toggled concurrently and we don't
+      // want one finishing first to falsely show "saved" while another is in
+      // flight.
+      const stillSaving = Object.values(visibilityInflightRef.current).some(Boolean);
+      if (!stillSaving) setSavingVisibility(false);
     }
+  }
+
+  // Guarded section change: prompts the user before discarding unsaved edits
+  // in the currently active editor. SaveBar publishes the dirty flag into a
+  // tiny external store as it renders, so we can read it synchronously here
+  // without prop-drilling through every editor.
+  function changeActiveSection(next) {
+    if (next === activeSection) return;
+    if (isEditorDirty()) {
+      if (!window.confirm(UNSAVED_PROMPT)) return;
+    }
+    clearEditorDirty();
+    setActiveSection(next);
   }
 
   function handleDragStart(e, sectionId) {
@@ -524,7 +569,7 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
                         {section.fixed && <div style={{ width: 12, flexShrink: 0 }} />}
 
                         <div
-                          onClick={() => !isLocked && setActiveSection(section.id)}
+                          onClick={() => !isLocked && changeActiveSection(section.id)}
                           style={{
                             flex: 1, display: 'flex', alignItems: 'center', gap: 8,
                             cursor: isLocked ? 'default' : 'pointer',
@@ -572,7 +617,7 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
                         {!section.showKey && !isLocked && (
                           <button
                             type="button"
-                            onClick={() => setActiveSection(section.id)}
+                            onClick={() => changeActiveSection(section.id)}
                             style={{
                               background: 'none', border: 'none', cursor: 'pointer',
                               padding: '4px 6px', color: '#cbd5e1', fontSize: 11,
@@ -600,7 +645,7 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
                       <button
                         key={page.id}
                         type="button"
-                        onClick={() => !isLocked && setActiveSection(page.id)}
+                        onClick={() => !isLocked && changeActiveSection(page.id)}
                         style={{
                           display: 'flex', alignItems: 'center', gap: 10, width: '100%',
                           padding: '10px 10px', marginBottom: 2, border: 'none',
@@ -644,7 +689,7 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
                     <button
                       key={section.id}
                       type="button"
-                      onClick={() => setActiveSection(section.id)}
+                      onClick={() => changeActiveSection(section.id)}
                       style={{
                         display: 'flex', alignItems: 'center', gap: 10, width: '100%',
                         padding: '10px 10px', marginBottom: 2, border: 'none',
@@ -909,7 +954,7 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
             overflow: 'hidden',
           }}>
             {activeSection
-              ? renderEditorPanel(() => setActiveSection(null))
+              ? renderEditorPanel(() => changeActiveSection(null))
               : renderSectionList()}
           </div>
           {renderPreview()}
@@ -1045,7 +1090,7 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
 
               <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                 {activeSection
-                  ? renderEditorPanel(() => setActiveSection(null))
+                  ? renderEditorPanel(() => changeActiveSection(null))
                   : renderSectionList()}
               </div>
           </div>

@@ -58,7 +58,7 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
   }, [siteConfig?.id]);
 
   useEffect(() => {
-    if (!hasLoadedRef.current) return;
+    if (serverValuesRef.current === null) return;
     const current = JSON.stringify({ slides, showScrollButtons });
     setHasChanges(current !== serverValuesRef.current);
     const filtered = slides.filter(s => s.title.trim() || s.subtitle.trim() || s.description.trim() || s.image);
@@ -111,7 +111,13 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
       console.error('Failed to load hero settings:', e);
     } finally {
       setLoading(false);
-      setTimeout(() => { hasLoadedRef.current = true; }, 0);
+      // If the load didn't establish a baseline — whether because fetch threw,
+      // result.success was false, or result.data was missing — fall back to
+      // baselining against current state. Otherwise change-detection stays
+      // dormant and the Save button can never light up.
+      if (serverValuesRef.current === null) {
+        serverValuesRef.current = JSON.stringify({ slides, showScrollButtons });
+      }
     }
   }
 
