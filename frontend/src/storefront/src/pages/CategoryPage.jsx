@@ -10,6 +10,7 @@ import ProductGrid from '../components/product/ProductGrid.jsx';
 import FilterSortBar from '../components/product/FilterSortBar.jsx';
 import { resolveImageUrl } from '../utils/imageUrl.js';
 import { parseAsUTC } from '../utils/dateFormatter.js';
+import { getDemoProductsForCategory } from '../defaults/index.js';
 import '../styles/category.css';
 
 function formatSlugToTitle(slug) {
@@ -70,12 +71,18 @@ export default function CategoryPage() {
           prodResult = await productService.getProducts(siteConfig.id, { category: slug });
         }
         const prods = prodResult.data || prodResult.products || prodResult || [];
-        setProducts(prods);
-        setFilteredProducts(prods);
+        const displayName = cat?.name || formatSlugToTitle(slug);
+        const finalProds = prods.length === 0
+          ? getDemoProductsForCategory(siteConfig?.category, displayName)
+          : prods;
+        setProducts(finalProds);
+        setFilteredProducts(finalProds);
       } catch (err) {
         console.error('Failed to load category:', err);
-        setProducts([]);
-        setFilteredProducts([]);
+        const displayName = formatSlugToTitle(slug);
+        const demos = getDemoProductsForCategory(siteConfig?.category, displayName);
+        setProducts(demos);
+        setFilteredProducts(demos);
       } finally {
         setLoading(false);
       }
