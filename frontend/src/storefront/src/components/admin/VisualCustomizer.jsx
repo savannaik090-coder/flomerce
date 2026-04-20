@@ -245,51 +245,79 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
   // ===== Bottom-sheet drag-to-resize ==========================================
   // Lets the user pull the top edge of the sheet up or down to set any custom
   // editor/preview split (clamped to 20–80%). Tap-only on the handle still
-  // works as a half/full toggle via the existing button next to it.
+  // works as a half/full toggle.
+  // We attach the move/up listeners to `window` (not the handle element) so the
+  // drag keeps working even if the user's finger or cursor drifts off the small
+  // 44×5 handle bar — this was the cause of "drag missing in some sections".
   const startSheetDrag = useCallback((e) => {
     if (!sheetContainerRef.current) return;
     const rect = sheetContainerRef.current.getBoundingClientRect();
-    const startY = e.touches ? e.touches[0].clientY : e.clientY;
+    const point = e.touches ? e.touches[0] : e;
     // When dragging out of full-screen mode, start the baseline at the max custom
     // height (80) so the first move frame doesn't snap down jarringly.
     const startHeightPct = sheetExpanded ? 80 : (sheetCustomHeight ?? 60);
     dragStateRef.current = {
-      startY,
+      startY: point.clientY,
       startHeightPct,
       containerHeight: rect.height,
       moved: false,
-      pointerId: e.pointerId,
+      startedExpanded: sheetExpanded,
     };
     setIsDraggingSheet(true);
-    if (e.target && e.pointerId !== undefined && e.target.setPointerCapture) {
-      try { e.target.setPointerCapture(e.pointerId); } catch (err) {}
-    }
     e.preventDefault();
+    e.stopPropagation();
   }, [sheetExpanded, sheetCustomHeight]);
 
-  const onSheetDragMove = useCallback((e) => {
-    const state = dragStateRef.current;
-    if (!state) return;
-    const y = e.touches ? e.touches[0].clientY : e.clientY;
-    const dy = y - state.startY;
-    if (Math.abs(dy) > 4) state.moved = true;
-    const deltaPct = -(dy / state.containerHeight) * 100;
-    let next = state.startHeightPct + deltaPct;
-    next = Math.max(20, Math.min(80, next));
-    setSheetCustomHeight(next);
-    if (sheetExpanded) setSheetExpanded(false);
-  }, [sheetExpanded]);
+  // While dragging, listen on the window so move/end events fire no matter
+  // where the pointer goes (over the iframe, off-screen, etc.).
+  useEffect(() => {
+    if (!isDraggingSheet) return;
 
-  const endSheetDrag = useCallback(() => {
-    const state = dragStateRef.current;
-    dragStateRef.current = null;
-    setIsDraggingSheet(false);
-    if (state && !state.moved) {
-      // Treat tap-only as half/full toggle, like the existing button.
-      setSheetCustomHeight(null);
-      setSheetExpanded(e => !e);
-    }
-  }, []);
+    const handleMove = (ev) => {
+      const state = dragStateRef.current;
+      if (!state) return;
+      const point = ev.touches ? ev.touches[0] : ev;
+      const dy = point.clientY - state.startY;
+      if (Math.abs(dy) > 4) state.moved = true;
+      const deltaPct = -(dy / state.containerHeight) * 100;
+      let next = state.startHeightPct + deltaPct;
+      next = Math.max(20, Math.min(80, next));
+      setSheetCustomHeight(next);
+      if (state.startedExpanded) {
+        // Once the user has moved, leave full-screen so the drag actually shrinks.
+        setSheetExpanded(false);
+        state.startedExpanded = false;
+      }
+      // Prevent the page/iframe from scrolling along with the drag.
+      if (ev.cancelable) ev.preventDefault();
+    };
+
+    const handleEnd = () => {
+      const state = dragStateRef.current;
+      dragStateRef.current = null;
+      setIsDraggingSheet(false);
+      if (state && !state.moved) {
+        // Tap-only on the handle behaves like the half/full toggle button.
+        setSheetCustomHeight(null);
+        setSheetExpanded(e => !e);
+      }
+    };
+
+    window.addEventListener('pointermove', handleMove, { passive: false });
+    window.addEventListener('pointerup', handleEnd);
+    window.addEventListener('pointercancel', handleEnd);
+    window.addEventListener('touchmove', handleMove, { passive: false });
+    window.addEventListener('touchend', handleEnd);
+    window.addEventListener('touchcancel', handleEnd);
+    return () => {
+      window.removeEventListener('pointermove', handleMove);
+      window.removeEventListener('pointerup', handleEnd);
+      window.removeEventListener('pointercancel', handleEnd);
+      window.removeEventListener('touchmove', handleMove);
+      window.removeEventListener('touchend', handleEnd);
+      window.removeEventListener('touchcancel', handleEnd);
+    };
+  }, [isDraggingSheet]);
 
   async function toggleSectionVisibility(sectionId, showKey) {
     const newVal = !sectionVisibility[sectionId];
@@ -990,9 +1018,6 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
                   aria-valuemax={80}
                   aria-valuenow={Math.round(baseSheetHeight)}
                   onPointerDown={startSheetDrag}
-                  onPointerMove={onSheetDragMove}
-                  onPointerUp={endSheetDrag}
-                  onPointerCancel={endSheetDrag}
                   style={{
                     position: 'absolute', left: '50%', transform: 'translateX(-50%)', top: 0,
                     padding: '10px 28px',
