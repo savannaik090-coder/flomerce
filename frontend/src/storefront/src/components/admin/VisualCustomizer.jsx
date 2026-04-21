@@ -419,9 +419,24 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
 
   function renderEditor() {
     if (!activeSection) return null;
-    const props = { onSaved: refreshPreview, onPreviewUpdate: sendPreviewUpdate };
+    const sec = homepageSections.find(s => s.id === activeSection);
+    const props = {
+      onSaved: refreshPreview,
+      onPreviewUpdate: sendPreviewUpdate,
+      // Visibility is owned by the outer customizer so the eye icon and the
+      // inner SectionToggle are always in sync. Editors that show a toggle
+      // should call onToggleVisibility() instead of managing local state.
+      sectionVisible: sec?.fixed ? true : (sectionVisibility[activeSection] !== false),
+      onToggleVisibility: sec?.showKey
+        ? () => toggleSectionVisibility(activeSection, sec.showKey)
+        : null,
+    };
 
-    switch (activeSection) {
+    // `key={activeSection}` forces a fresh mount each time the user switches
+    // sections — prevents a previously-opened editor from staying mounted and
+    // republishing stale preview updates that would override the eye-icon
+    // toggle (the original "hide works, show doesn't" bug).
+    const inner = (() => { switch (activeSection) {
       case 'navbar': return <NavbarEditor {...props} />;
       case 'promo-banner': return <PromoBannerEditor {...props} />;
       case 'hero-slider': return <HeroSliderEditor {...props} />;
@@ -449,7 +464,8 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
       case 'privacy': return <PrivacyEditor {...props} />;
       case 'footer': return <FooterEditor {...props} />;
       default: return null;
-    }
+    } })();
+    return <React.Fragment key={activeSection}>{inner}</React.Fragment>;
   }
 
   function getSectionLabel(id) {

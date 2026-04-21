@@ -24,14 +24,13 @@ function compressImage(file, maxWidth = 1200, quality = 0.85) {
   });
 }
 
-export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate }) {
+export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate, sectionVisible = true, onToggleVisibility }) {
   const { siteConfig } = useContext(SiteContext);
   const [heading, setHeading] = useState('');
   const [message, setMessage] = useState('');
   const [buttonText, setButtonText] = useState('');
   const [buttonLink, setButtonLink] = useState('');
   const [bannerImage, setBannerImage] = useState('');
-  const [showSection, setShowSection] = useState(true);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(true);
@@ -50,10 +49,12 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
-    const current = JSON.stringify({ heading, message, buttonText, buttonLink, bannerImage, showSection });
+    const current = JSON.stringify({ heading, message, buttonText, buttonLink, bannerImage });
     setHasChanges(current !== serverValuesRef.current);
-    if (onPreviewUpdate) onPreviewUpdate({ welcomeBannerImage: bannerImage, welcomeBannerHeading: heading, welcomeBannerMessage: message, welcomeBannerButtonText: buttonText, welcomeBannerButtonLink: buttonLink, showWelcomeBanner: showSection });
-  }, [heading, message, buttonText, buttonLink, bannerImage, showSection]);
+    // Visibility is owned by the outer customizer's eye icon — don't republish
+    // showWelcomeBanner here or it would override the eye-icon toggle.
+    if (onPreviewUpdate) onPreviewUpdate({ welcomeBannerImage: bannerImage, welcomeBannerHeading: heading, welcomeBannerMessage: message, welcomeBannerButtonText: buttonText, welcomeBannerButtonLink: buttonLink });
+  }, [heading, message, buttonText, buttonLink, bannerImage]);
 
   async function loadSettings() {
     setLoading(true);
@@ -71,14 +72,12 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate }) {
         const btVal = settings.welcomeBannerButtonText || 'Sign Up Now';
         const blVal = settings.welcomeBannerButtonLink || '/signup';
         const biVal = settings.welcomeBannerImage || '';
-        const ssVal = settings.showWelcomeBanner !== false;
         setHeading(hVal);
         setMessage(mVal);
         setButtonText(btVal);
         setButtonLink(blVal);
         setBannerImage(biVal);
-        setShowSection(ssVal);
-        serverValuesRef.current = JSON.stringify({ heading: hVal, message: mVal, buttonText: btVal, buttonLink: blVal, bannerImage: biVal, showSection: ssVal });
+        serverValuesRef.current = JSON.stringify({ heading: hVal, message: mVal, buttonText: btVal, buttonLink: blVal, bannerImage: biVal });
       }
     } catch (e) {
       console.error('Failed to load welcome banner settings:', e);
@@ -136,14 +135,13 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate }) {
             welcomeBannerMessage: message,
             welcomeBannerButtonText: buttonText,
             welcomeBannerButtonLink: buttonLink,
-            showWelcomeBanner: showSection,
           }
         }),
       });
       const result = await response.json();
       if (response.ok && result.success) {
         setStatus('success');
-        serverValuesRef.current = JSON.stringify({ heading, message, buttonText, buttonLink, bannerImage, showSection });
+        serverValuesRef.current = JSON.stringify({ heading, message, buttonText, buttonLink, bannerImage });
         setHasChanges(false);
         // Save succeeded — clean up R2 (delete replaced originals + orphan
         // intermediate uploads not in the final state).
@@ -167,8 +165,8 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate }) {
       <SaveBar topBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       <form onSubmit={handleSave}>
         <SectionToggle
-          enabled={showSection}
-          onChange={setShowSection}
+          enabled={sectionVisible}
+          onChange={() => { if (onToggleVisibility) onToggleVisibility(); }}
           label="Show Welcome Banner"
           description="Toggle the first-visit popup banner for new customers"
         />

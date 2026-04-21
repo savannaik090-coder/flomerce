@@ -4,10 +4,9 @@ import SectionToggle from './SectionToggle.jsx';
 import SaveBar from './SaveBar.jsx';
 import { API_BASE } from '../../config.js';
 
-export default function PromoBannerEditor({ onSaved, onPreviewUpdate }) {
+export default function PromoBannerEditor({ onSaved, onPreviewUpdate, sectionVisible = true, onToggleVisibility }) {
   const { siteConfig } = useContext(SiteContext);
   const [messages, setMessages] = useState(['', '', '']);
-  const [showSection, setShowSection] = useState(true);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(true);
@@ -21,10 +20,14 @@ export default function PromoBannerEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
-    const current = JSON.stringify({ messages, showSection });
+    const current = JSON.stringify({ messages });
     setHasChanges(current !== serverValuesRef.current);
-    if (onPreviewUpdate) onPreviewUpdate({ promoBanner: messages.filter(m => m.trim() !== ''), showPromoBanner: showSection });
-  }, [messages, showSection]);
+    // Visibility is owned by the outer customizer's eye icon, so we only
+    // publish the editable fields here. Otherwise this debounced effect
+    // would republish a stale showPromoBanner value and overwrite the
+    // user's eye-icon toggle.
+    if (onPreviewUpdate) onPreviewUpdate({ promoBanner: messages.filter(m => m.trim() !== '') });
+  }, [messages]);
 
   async function loadPromoBanner() {
     setLoading(true);
@@ -38,10 +41,8 @@ export default function PromoBannerEditor({ onSaved, onPreviewUpdate }) {
         }
         const existing = settings.promoBanner || [];
         const mVal = [existing[0] || '', existing[1] || '', existing[2] || ''];
-        const ssVal = settings.showPromoBanner !== false;
         setMessages(mVal);
-        setShowSection(ssVal);
-        serverValuesRef.current = JSON.stringify({ messages: mVal, showSection: ssVal });
+        serverValuesRef.current = JSON.stringify({ messages: mVal });
       }
     } catch (e) {
       console.error('Failed to load promo banner:', e);
@@ -64,12 +65,12 @@ export default function PromoBannerEditor({ onSaved, onPreviewUpdate }) {
           'Content-Type': 'application/json',
           'Authorization': token ? `SiteAdmin ${token}` : '',
         },
-        body: JSON.stringify({ settings: { promoBanner: filtered, showPromoBanner: showSection } }),
+        body: JSON.stringify({ settings: { promoBanner: filtered } }),
       });
       const result = await response.json();
       if (response.ok && result.success) {
         setStatus('success');
-        serverValuesRef.current = JSON.stringify({ messages, showSection });
+        serverValuesRef.current = JSON.stringify({ messages });
         setHasChanges(false);
         if (onSaved) onSaved();
       } else {
@@ -97,8 +98,8 @@ export default function PromoBannerEditor({ onSaved, onPreviewUpdate }) {
       <SaveBar topBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       <form onSubmit={handleSave}>
         <SectionToggle
-          enabled={showSection}
-          onChange={setShowSection}
+          enabled={sectionVisible}
+          onChange={() => { if (onToggleVisibility) onToggleVisibility(); }}
           label="Show Promo Banner"
           description="Toggle the scrolling promo banner at the top of your store"
         />
