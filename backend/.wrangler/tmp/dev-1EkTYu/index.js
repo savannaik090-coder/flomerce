@@ -15811,9 +15811,15 @@ async function runEnterpriseSnapshot(env, siteId, yearMonth, opts = {}) {
       skippedReason: "already_paid"
     };
   }
-  const invoiceNumber = existing?.invoice_number || buildInvoiceNumber(yearMonth, siteId);
-  const invoiceToken = existing?.invoice_token || generateId() + generateId();
-  const dueDateISO = existing?.due_date || (() => {
+  const blankToNull = /* @__PURE__ */ __name((v) => {
+    if (v == null)
+      return null;
+    const s = String(v).trim();
+    return s === "" ? null : s;
+  }, "blankToNull");
+  const invoiceNumber = blankToNull(existing?.invoice_number) || buildInvoiceNumber(yearMonth, siteId);
+  const invoiceToken = blankToNull(existing?.invoice_token) || generateId() + generateId();
+  const dueDateISO = blankToNull(existing?.due_date) || (() => {
     const d = /* @__PURE__ */ new Date();
     d.setUTCDate(d.getUTCDate() + 14);
     return d.toISOString();
@@ -15837,11 +15843,13 @@ async function runEnterpriseSnapshot(env, siteId, yearMonth, opts = {}) {
       d1_limit_bytes = excluded.d1_limit_bytes,
       r2_limit_bytes = excluded.r2_limit_bytes,
       -- Backfill identifiers for legacy rows that pre-date 0016 (where these
-      -- columns were null after the ALTER TABLE). COALESCE ensures we never
-      -- rotate an existing invoice_number/token/due_date that's already in use.
-      invoice_number = COALESCE(invoice_number, excluded.invoice_number),
-      invoice_token = COALESCE(invoice_token, excluded.invoice_token),
-      due_date = COALESCE(due_date, excluded.due_date),
+      -- columns were null after the ALTER TABLE). NULLIF + COALESCE treats
+      -- empty strings the same as NULL so blank legacy values get repaired,
+      -- while preserving any real existing identifier (never rotating a
+      -- token/number that's already in use).
+      invoice_number = COALESCE(NULLIF(TRIM(IFNULL(invoice_number,'')), ''), excluded.invoice_number),
+      invoice_token = COALESCE(NULLIF(TRIM(IFNULL(invoice_token,'')), ''), excluded.invoice_token),
+      due_date = COALESCE(NULLIF(TRIM(IFNULL(due_date,'')), ''), excluded.due_date),
       snapshot_at = datetime('now')
   `).bind(
     siteId,

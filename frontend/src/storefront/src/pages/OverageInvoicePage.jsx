@@ -121,8 +121,11 @@ export default function OverageInvoicePage() {
         prefill: { name: data.brandName || '' },
         theme: { color: '#0f172a' },
         handler: function () {
+          // Always re-enable the button so the user can retry if the webhook
+          // is delayed (paid state will hide the button on its own once the
+          // refresh sees status=paid).
+          setPaying(false);
           setStatusMsg('Payment received. Updating invoice…');
-          // Poll once — webhook usually flips status within a few seconds.
           setTimeout(() => fetchInvoice().then(() => setStatusMsg('')), 4000);
         },
         modal: {
