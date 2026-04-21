@@ -4,12 +4,16 @@ import { useNavigate } from 'react-router-dom';
 import { apiRequest } from '../services/api.js';
 import '../styles/owner-admin.css';
 import { PLATFORM_DOMAIN } from '../config.js';
+import { useToast } from '../../../shared/ui/Toast.jsx';
+import { useConfirm } from '../../../shared/ui/ConfirmDialog.jsx';
 
 function utcDate(s) { if (!s) return null; const v = String(s).trim(); const iso = v.includes('T') ? v : v.replace(' ', 'T'); return new Date(iso.endsWith('Z') || iso.includes('+') ? iso : iso + 'Z'); }
 
 export default function OwnerAdminPage() {
   const { isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
+  const toast = useToast();
+  const confirm = useConfirm();
   const [adminData, setAdminData] = useState(null);
   const [error, setError] = useState('');
   const [dataLoading, setDataLoading] = useState(true);
@@ -93,12 +97,13 @@ export default function OwnerAdminPage() {
   };
 
   const handleBlockUser = async (userId) => {
-    if (!window.confirm('Are you sure you want to block this user?')) return;
+    if (!(await confirm({ title: 'Block this user?', message: 'They will lose access immediately.', variant: 'danger', confirmText: 'Block' }))) return;
     try {
       await apiRequest(`/api/admin/users/${userId}/block`, { method: 'POST' });
       await loadAdminData();
+      toast.success('User blocked');
     } catch (e) {
-      alert('Failed to block user: ' + e.message);
+      toast.error('Failed to block user: ' + e.message);
     }
   };
 
@@ -155,7 +160,7 @@ export default function OwnerAdminPage() {
     e.preventDefault();
     const mp = parseFloat(planForm.monthly_price);
     if (!isFinite(mp) || mp <= 0) {
-      alert('Please enter a valid monthly price.');
+      toast.warning('Please enter a valid monthly price.');
       return;
     }
     try {
@@ -172,7 +177,7 @@ export default function OwnerAdminPage() {
         });
 
       if (enabledCycles.length === 0) {
-        alert('Please enable at least one billing cycle with a Razorpay Plan ID.');
+        toast.warning('Please enable at least one billing cycle with a Razorpay Plan ID.');
         return;
       }
 
@@ -193,7 +198,7 @@ export default function OwnerAdminPage() {
       resetPlanForm();
       await loadPlans();
     } catch (e) {
-      alert('Failed to save plan: ' + e.message);
+      toast.error('Failed to save plan: ' + e.message);
     }
   };
 
@@ -233,12 +238,13 @@ export default function OwnerAdminPage() {
   };
 
   const handleDeleteGroupedPlan = async (group) => {
-    if (!window.confirm(`Are you sure you want to delete "${group.plan_name}" and all its billing cycles?`)) return;
+    if (!(await confirm({ title: 'Delete plan?', message: `Delete "${group.plan_name}" and all its billing cycles?`, variant: 'danger', confirmText: 'Delete' }))) return;
     try {
       await apiRequest('/api/admin/plans/bulk', { method: 'DELETE', body: JSON.stringify({ plan_name: group.plan_name }) });
       await loadPlans();
+      toast.success('Plan deleted');
     } catch (e) {
-      alert('Failed to delete plan: ' + e.message);
+      toast.error('Failed to delete plan: ' + e.message);
     }
   };
 
@@ -276,10 +282,10 @@ export default function OwnerAdminPage() {
         enterprise_enabled: String(settingsForm.enterprise_enabled),
       };
       await apiRequest('/api/admin/settings', { method: 'PUT', body: JSON.stringify(payload) });
-      alert('Settings saved successfully!');
+      toast.success('Settings saved successfully');
       await loadSettings();
     } catch (e) {
-      alert('Failed to save settings: ' + e.message);
+      toast.error('Failed to save settings: ' + e.message);
     }
   };
 
@@ -327,7 +333,7 @@ export default function OwnerAdminPage() {
       const d1Val = parseGB(enterpriseAssignD1GB);
       const r2Val = parseGB(enterpriseAssignR2GB);
       if (d1Val === undefined || r2Val === undefined) {
-        alert('D1 and R2 quotas must be a non-negative number of GB (or blank for plan default).');
+        toast.warning('D1 and R2 quotas must be a non-negative number of GB (or blank for plan default).');
         return;
       }
       await apiRequest('/api/admin/enterprise/assign', {
@@ -348,12 +354,12 @@ export default function OwnerAdminPage() {
       setEnterpriseAssignR2GB('');
       await loadEnterpriseSites();
     } catch (e) {
-      alert('Failed to assign: ' + e.message);
+      toast.error('Failed to assign: ' + e.message);
     }
   };
 
   const handleRemoveEnterprise = async (siteId) => {
-    if (!window.confirm('Remove enterprise status from this site? It will be set back to free plan.')) return;
+    if (!(await confirm({ title: 'Remove enterprise status?', message: 'This site will be set back to free plan.', variant: 'danger', confirmText: 'Remove' }))) return;
     try {
       await apiRequest('/api/admin/enterprise/remove', {
         method: 'POST',
@@ -365,7 +371,7 @@ export default function OwnerAdminPage() {
       }
       await loadEnterpriseSites();
     } catch (e) {
-      alert('Failed to remove: ' + e.message);
+      toast.error('Failed to remove: ' + e.message);
     }
   };
 
@@ -404,7 +410,7 @@ export default function OwnerAdminPage() {
     const d1Val = parseGB(d1Input);
     const r2Val = parseGB(r2Input);
     if (d1Val === undefined || r2Val === undefined) {
-      alert('Quotas must be a non-negative number of GB (or blank for plan default).');
+      toast.warning('Quotas must be a non-negative number of GB (or blank for plan default).');
       return;
     }
     try {
@@ -419,21 +425,21 @@ export default function OwnerAdminPage() {
       await loadEnterpriseSites();
       if (enterpriseSelectedSite === site.siteId) await loadEnterpriseSiteUsage(site.siteId);
     } catch (e) {
-      alert('Failed to update quota: ' + e.message);
+      toast.error('Failed to update quota: ' + e.message);
     }
   };
 
   const handleSnapshotUsage = async (siteId) => {
-    if (!window.confirm('Snapshot current month usage for this site? This will record the current overage charges.')) return;
+    if (!(await confirm({ title: 'Snapshot usage?', message: 'This will record the current month overage charges for this site.', confirmText: 'Snapshot' }))) return;
     try {
       await apiRequest('/api/admin/enterprise/snapshot', {
         method: 'POST',
         body: JSON.stringify({ siteId }),
       });
-      alert('Usage snapshot saved!');
+      toast.success('Usage snapshot saved');
       await loadEnterpriseSiteUsage(siteId);
     } catch (e) {
-      alert('Failed to snapshot: ' + e.message);
+      toast.error('Failed to snapshot: ' + e.message);
     }
   };
 
@@ -447,7 +453,7 @@ export default function OwnerAdminPage() {
       });
       await loadEnterpriseSiteUsage(siteId);
     } catch (e) {
-      alert('Failed to mark as paid: ' + e.message);
+      toast.error('Failed to mark as paid: ' + e.message);
     }
   };
 
@@ -457,9 +463,9 @@ export default function OwnerAdminPage() {
         method: 'PUT',
         body: JSON.stringify(enterpriseRates),
       });
-      alert('Overage rates updated!');
+      toast.success('Overage rates updated');
     } catch (e) {
-      alert('Failed to update rates: ' + e.message);
+      toast.error('Failed to update rates: ' + e.message);
     }
   };
 
@@ -499,15 +505,15 @@ export default function OwnerAdminPage() {
       });
       const result = data.data || data;
       if (result.note) {
-        alert(`Shard created. Note: ${result.note}`);
+        toast.success(`Shard created. Note: ${result.note}`);
       } else {
-        alert('Shard created successfully!');
+        toast.success('Shard created successfully');
       }
       setNewShardName('');
       setShowCreateShard(false);
       await loadShards();
     } catch (e) {
-      alert('Failed to create shard: ' + e.message);
+      toast.error('Failed to create shard: ' + e.message);
     } finally {
       setCreatingShardLoading(false);
     }
@@ -532,13 +538,13 @@ export default function OwnerAdminPage() {
     setReconcilingShardId(shardId);
     try {
       await apiRequest(`/api/admin/shards/${shardId}/reconcile`, { method: 'POST' });
-      alert('Shard reconciled successfully!');
+      toast.success('Shard reconciled successfully');
       await refreshSelectedShard();
       if (selectedShard?.id === shardId) {
         await loadShardSites(shardId);
       }
     } catch (e) {
-      alert('Reconciliation failed: ' + e.message);
+      toast.error('Reconciliation failed: ' + e.message);
     } finally {
       setReconcilingShardId(null);
     }
@@ -552,7 +558,7 @@ export default function OwnerAdminPage() {
       });
       await refreshSelectedShard();
     } catch (e) {
-      alert('Failed to set shard active: ' + e.message);
+      toast.error('Failed to set shard active: ' + e.message);
     }
   };
 
@@ -564,7 +570,7 @@ export default function OwnerAdminPage() {
         method: 'POST',
         body: JSON.stringify({ siteId: showMoveSite.siteId, targetShardId: moveSiteTarget }),
       });
-      alert('Site moved successfully!');
+      toast.success('Site moved successfully');
       setShowMoveSite(null);
       setMoveSiteTarget('');
       await refreshSelectedShard();
@@ -572,21 +578,21 @@ export default function OwnerAdminPage() {
         await loadShardSites(selectedShard.id);
       }
     } catch (e) {
-      alert('Failed to move site: ' + e.message);
+      toast.error('Failed to move site: ' + e.message);
     } finally {
       setMovingSite(false);
     }
   };
 
   const handleDeleteShard = async (shardId, shardName) => {
-    if (!window.confirm(`Delete shard "${shardName}"? This shard must have zero sites.`)) return;
+    if (!(await confirm({ title: 'Delete shard?', message: `Delete shard "${shardName}"? This shard must have zero sites.`, variant: 'danger', confirmText: 'Delete' }))) return;
     try {
       await apiRequest(`/api/admin/shards/${shardId}`, { method: 'DELETE' });
-      alert('Shard deleted.');
+      toast.success('Shard deleted');
       setSelectedShard(null);
       await loadShards();
     } catch (e) {
-      alert('Failed to delete shard: ' + e.message);
+      toast.error('Failed to delete shard: ' + e.message);
     }
   };
 

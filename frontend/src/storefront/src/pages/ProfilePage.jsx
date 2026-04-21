@@ -9,6 +9,7 @@ import { apiRequest } from '../services/api.js';
 import { parseAsUTC, formatDateShortForCustomer } from '../utils/dateFormatter.js';
 import { API_BASE } from '../config.js';
 import PhoneInput from '../components/ui/PhoneInput.jsx';
+import { useToast } from '../../../shared/ui/Toast.jsx';
 
 const RETURN_REASONS = [
   'Received wrong item',
@@ -34,6 +35,7 @@ export default function ProfilePage() {
   const { user, isAuthenticated, loading: authLoading, logout } = useContext(AuthContext);
   const { siteConfig } = useContext(SiteContext);
   const { formatAmount } = useContext(CurrencyContext);
+  const toast = useToast();
 
   const [activeTab, setActiveTab] = useState('account');
   const [orders, setOrders] = useState([]);
@@ -177,7 +179,7 @@ export default function ProfilePage() {
   const handleReturnPhotoChange = async (e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
-    if (returnPhotos.length + files.length > 5) { alert('You can upload a maximum of 5 photos.'); return; }
+    if (returnPhotos.length + files.length > 5) { toast.warning('You can upload a maximum of 5 photos.'); return; }
     setUploadingReturnPhotos(true);
     try {
       const newPhotos = [];
@@ -189,7 +191,7 @@ export default function ProfilePage() {
         if (result.success && result.data?.url) newPhotos.push(result.data.url);
       }
       setReturnPhotos(prev => [...prev, ...newPhotos]);
-    } catch { alert('Failed to upload one or more images.'); }
+    } catch { toast.error('Failed to upload one or more images.'); }
     finally {
       setUploadingReturnPhotos(false);
       if (returnFileRef.current) returnFileRef.current.value = '';
@@ -213,9 +215,9 @@ export default function ProfilePage() {
       setReturnDetail('');
       setReturnPhotos([]);
       setReturnResolution('refund');
-      alert('Return request submitted successfully!');
+      toast.success('Return request submitted successfully!');
     } catch (err) {
-      alert('Failed to submit return: ' + (err.message || 'Unknown error'));
+      toast.error('Failed to submit return: ' + (err.message || 'Unknown error'));
     } finally {
       setReturningOrder(false);
     }
@@ -234,9 +236,9 @@ export default function ProfilePage() {
       setCancelModal(null);
       setCancelReason('');
       setCancelDetail('');
-      alert('Cancellation request submitted successfully!');
+      toast.success('Cancellation request submitted successfully!');
     } catch (err) {
-      alert('Failed to submit cancellation: ' + (err.message || 'Unknown error'));
+      toast.error('Failed to submit cancellation: ' + (err.message || 'Unknown error'));
     } finally {
       setCancellingOrder(false);
     }

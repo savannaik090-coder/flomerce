@@ -3,6 +3,7 @@ import { useParams, useSearchParams } from 'react-router-dom';
 import { SiteContext } from '../context/SiteContext.jsx';
 import * as orderService from '../services/orderService.js';
 import { API_BASE } from '../config.js';
+import { useToast } from '../../../shared/ui/Toast.jsx';
 
 const RETURN_REASONS = [
   'Received wrong item',
@@ -20,6 +21,7 @@ export default function ReturnPage() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
   const { siteConfig } = useContext(SiteContext);
+  const toast = useToast();
 
   const [mode, setMode] = useState(orderId && token ? 'form' : 'lookup');
   const [lookupOrderId, setLookupOrderId] = useState('');
@@ -78,7 +80,7 @@ export default function ReturnPage() {
     const files = Array.from(e.target.files);
     if (!files.length) return;
     if (photos.length + files.length > 5) {
-      alert('You can upload a maximum of 5 photos.');
+      toast.warning('You can upload a maximum of 5 photos.');
       return;
     }
     setUploadingPhotos(true);
@@ -98,7 +100,7 @@ export default function ReturnPage() {
       }
       setPhotos(prev => [...prev, ...newPhotos]);
     } catch {
-      alert('Failed to upload one or more images. Please try again.');
+      toast.error('Failed to upload one or more images. Please try again.');
     } finally {
       setUploadingPhotos(false);
       if (fileInputRef.current) fileInputRef.current.value = '';

@@ -8,12 +8,14 @@ import { formatPrice, getAdminCurrency } from '../../utils/priceFormatter.js';
 import { getWatchAndBuyDefaults } from '../../defaults/index.js';
 import { API_BASE } from '../../config.js';
 import { usePendingMedia } from '../../hooks/usePendingMedia.js';
+import { useToast } from '../../../../shared/ui/Toast.jsx';
 
 export default function WatchBuySection({ onSaved }) {
   const { siteConfig } = useContext(SiteContext);
   const [videos, setVideos] = useState([]);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const toast = useToast();
   const [showModal, setShowModal] = useState(false);
   const [confirmModal, setConfirmModal] = useState(null);
   const [editingVideo, setEditingVideo] = useState(null);
@@ -298,7 +300,7 @@ export default function WatchBuySection({ onSaved }) {
           commit(keepUrls);
           if (onSaved) onSaved();
         } catch (err) {
-          alert('Failed to delete: ' + err.message);
+          toast.error('Failed to delete: ' + err.message);
         }
       }
     });

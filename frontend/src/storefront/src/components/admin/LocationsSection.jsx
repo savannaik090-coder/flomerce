@@ -3,11 +3,13 @@ import { SiteContext } from '../../context/SiteContext.jsx';
 import { getLocations, createLocation, updateLocation, deleteLocation } from '../../services/inventoryService.js';
 import ConfirmModal from './ConfirmModal.jsx';
 import AlertModal, { isPlanError } from '../../../../shared/ui/AlertModal.jsx';
+import { useToast } from '../../../../shared/ui/Toast.jsx';
 
 export default function LocationsSection() {
   const { siteConfig } = useContext(SiteContext);
   const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const toast = useToast();
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState({ name: '', address: '', priority: 0, is_default: false });
@@ -45,7 +47,7 @@ export default function LocationsSection() {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!form.name.trim()) return alert('Location name is required');
+    if (!form.name.trim()) return toast.warning('Location name is required');
     setSaving(true);
     try {
       if (editingId) {
@@ -59,7 +61,7 @@ export default function LocationsSection() {
       if (isPlanError(err)) {
         setPlanLimitMsg(err.message);
       } else {
-        alert('Failed to save location: ' + err.message);
+        toast.error('Failed to save location: ' + err.message);
       }
     } finally {
       setSaving(false);
@@ -76,7 +78,7 @@ export default function LocationsSection() {
           await deleteLocation(siteConfig.id, loc.id);
           await loadLocations();
         } catch (err) {
-          alert(err.message || 'Failed to delete location');
+          toast.error(err.message || 'Failed to delete location');
         }
       }
     });
@@ -87,7 +89,7 @@ export default function LocationsSection() {
       await updateLocation(siteConfig.id, loc.id, { ...loc, is_default: true });
       await loadLocations();
     } catch (err) {
-      alert('Failed to set default: ' + err.message);
+      toast.error('Failed to set default: ' + err.message);
     }
   }
 

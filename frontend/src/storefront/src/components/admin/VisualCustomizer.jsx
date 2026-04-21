@@ -25,6 +25,7 @@ import PromoBannerEditor from './PromoBannerEditor.jsx';
 import FeatureGate, { isFeatureAvailable, getRequiredPlan, PlanBadge } from './FeatureGate.jsx';
 import { API_BASE, PLATFORM_DOMAIN } from '../../config.js';
 import { isEditorDirty, clearEditorDirty } from '../../admin/editorDirtyStore.js';
+import { useConfirm } from '../../../../shared/ui/ConfirmDialog.jsx';
 
 const UNSAVED_PROMPT = 'You have unsaved changes in this section. Discard them?';
 
@@ -96,6 +97,7 @@ function getViewport() {
 
 export default function VisualCustomizer({ currentPlan, onBack }) {
   const { siteConfig } = useContext(SiteContext);
+  const confirm = useConfirm();
   const [activeSection, setActiveSection] = useState(null);
   const [previewDevice, setPreviewDevice] = useState('desktop');
   const [previewKey, setPreviewKey] = useState(0);
@@ -400,10 +402,16 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
   // in the currently active editor. SaveBar publishes the dirty flag into a
   // tiny external store as it renders, so we can read it synchronously here
   // without prop-drilling through every editor.
-  function changeActiveSection(next) {
+  async function changeActiveSection(next) {
     if (next === activeSection) return;
     if (isEditorDirty()) {
-      if (!window.confirm(UNSAVED_PROMPT)) return;
+      const ok = await confirm({
+        title: 'Discard unsaved changes?',
+        message: UNSAVED_PROMPT,
+        variant: 'danger',
+        confirmText: 'Discard',
+      });
+      if (!ok) return;
     }
     clearEditorDirty();
     setActiveSection(next);

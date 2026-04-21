@@ -5,11 +5,13 @@ import { getCategories } from '../../services/categoryService.js';
 import { resolveImageUrl } from '../../utils/imageUrl.js';
 import { formatPrice, getAdminCurrency } from '../../utils/priceFormatter.js';
 import ConfirmModal from './ConfirmModal.jsx';
+import { useToast } from '../../../../shared/ui/Toast.jsx';
 
 export default function ProductsSection({ onEditProduct, onAddProduct }) {
   const { siteConfig } = useContext(SiteContext);
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
+  const toast = useToast();
   const [activeCategory, setActiveCategory] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
@@ -45,7 +47,7 @@ export default function ProductsSection({ onEditProduct, onAddProduct }) {
           await deleteProduct(productId, siteConfig?.id);
           setProducts(prev => prev.filter(p => p.id !== productId));
         } catch (err) {
-          alert('Failed to delete product: ' + err.message);
+          toast.error('Failed to delete product: ' + err.message);
         }
       }
     });

@@ -4,6 +4,7 @@ import { getProducts, updateProduct } from '../../services/productService.js';
 import { getLocations, createLocation, updateLocation, deleteLocation, getInventoryLevels, setInventoryLevel, createTransfer, getTransfers } from '../../services/inventoryService.js';
 import { formatPrice, getAdminCurrency } from '../../utils/priceFormatter.js';
 import ConfirmModal from './ConfirmModal.jsx';
+import { useToast } from '../../../../shared/ui/Toast.jsx';
 
 const stepBtnStyle = {
   width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -31,6 +32,7 @@ function StockStepper({ value, onChange, min = 0 }) {
 
 export default function InventorySection() {
   const { siteConfig } = useContext(SiteContext);
+  const toast = useToast();
   const [products, setProducts] = useState([]);
   const [locations, setLocations] = useState([]);
   const [levels, setLevels] = useState([]);
@@ -82,7 +84,7 @@ export default function InventorySection() {
       await updateProduct(productId, { stock: parseInt(newStock) || 0 }, siteConfig?.id);
       setProducts(prev => prev.map(p => p.id === productId ? { ...p, stock: parseInt(newStock) || 0 } : p));
     } catch (err) {
-      alert('Failed to update stock: ' + err.message);
+      toast.error('Failed to update stock: ' + err.message);
     }
   }
 
@@ -94,7 +96,7 @@ export default function InventorySection() {
       const prodRes = await getProducts(siteConfig.id);
       setProducts(prodRes.data || prodRes.products || []);
     } catch (err) {
-      alert('Failed to update stock level: ' + err.message);
+      toast.error('Failed to update stock level: ' + err.message);
     }
   }
 
@@ -119,7 +121,7 @@ export default function InventorySection() {
   async function handleTransfer(e) {
     e.preventDefault();
     if (!transferForm.product_id || !transferForm.from_location_id || !transferForm.to_location_id) return;
-    if (transferForm.from_location_id === transferForm.to_location_id) return alert('Source and destination must be different');
+    if (transferForm.from_location_id === transferForm.to_location_id) return toast.warning('Source and destination must be different');
     setTransferSaving(true);
     try {
       await createTransfer(siteConfig.id, transferForm);
@@ -130,7 +132,7 @@ export default function InventorySection() {
         await handleShowProductLevels(selectedProduct);
       }
     } catch (err) {
-      alert(err.message || 'Transfer failed');
+      toast.error(err.message || 'Transfer failed');
     } finally {
       setTransferSaving(false);
     }
@@ -144,7 +146,7 @@ export default function InventorySection() {
 
   async function handleLocSubmit(e) {
     e.preventDefault();
-    if (!locForm.name.trim()) return alert('Location name is required');
+    if (!locForm.name.trim()) return toast.warning('Location name is required');
     setLocSaving(true);
     try {
       if (locEditingId) {
@@ -155,7 +157,7 @@ export default function InventorySection() {
       resetLocForm();
       await loadData();
     } catch (err) {
-      alert('Failed to save location: ' + err.message);
+      toast.error('Failed to save location: ' + err.message);
     } finally {
       setLocSaving(false);
     }
@@ -171,7 +173,7 @@ export default function InventorySection() {
           await deleteLocation(siteConfig.id, loc.id);
           await loadData();
         } catch (err) {
-          alert(err.message || 'Failed to delete location');
+          toast.error(err.message || 'Failed to delete location');
         }
       }
     });
@@ -182,7 +184,7 @@ export default function InventorySection() {
       await updateLocation(siteConfig.id, loc.id, { ...loc, is_default: true });
       await loadData();
     } catch (err) {
-      alert('Failed to set default: ' + err.message);
+      toast.error('Failed to set default: ' + err.message);
     }
   }
 

@@ -6,6 +6,7 @@ import { formatPrice, getAdminCurrency } from '../../utils/priceFormatter.js';
 import { parseAsUTC, formatDateForAdmin, formatDateShortForAdmin } from '../../utils/dateFormatter.js';
 import { getOrderActionNotes } from '../../defaults/index.js';
 import GSTInvoice from './GSTInvoice.jsx';
+import { useToast } from '../../../../shared/ui/Toast.jsx';
 
 const CANCEL_REASONS = [
   'Item out of stock',
@@ -54,6 +55,7 @@ function safeImageUrl(url) {
 
 export default function OrdersSection() {
   const { siteConfig } = useContext(SiteContext);
+  const toast = useToast();
   const adminCur = getAdminCurrency(siteConfig);
   const fmtOrd = (amount, order) => formatPrice(amount, order?.currency || adminCur);
   const fmtOrdAmt = (amount) => formatPrice(amount, adminCur);
@@ -205,7 +207,7 @@ export default function OrdersSection() {
       }
       setReviewDetailModal(null);
     } catch (err) {
-      alert('Failed to update review: ' + err.message);
+      toast.error('Failed to update review: ' + err.message);
     } finally {
       setReviewUpdating(false);
     }
@@ -232,7 +234,7 @@ export default function OrdersSection() {
       setCancellationAction('');
       setCancellationNote('');
     } catch (err) {
-      alert('Failed to update cancellation: ' + err.message);
+      toast.error('Failed to update cancellation: ' + err.message);
     } finally {
       setCancellationUpdating(false);
     }
@@ -254,7 +256,7 @@ export default function OrdersSection() {
       setReturnNote('');
       setReturnRefundAmount('');
     } catch (err) {
-      alert('Failed to update return: ' + err.message);
+      toast.error('Failed to update return: ' + err.message);
     } finally {
       setReturnUpdating(false);
     }
@@ -265,7 +267,7 @@ export default function OrdersSection() {
       await updateOrderStatus(orderId, newStatus, siteConfig?.id);
       setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
     } catch (err) {
-      alert('Failed to update status: ' + err.message);
+      toast.error('Failed to update status: ' + err.message);
     }
   }
 
@@ -283,12 +285,12 @@ export default function OrdersSection() {
 
   async function confirmCancellation() {
     if (!cancelReason) {
-      alert('Please select a cancellation reason.');
+      toast.warning('Please select a cancellation reason.');
       return;
     }
     const finalReason = cancelReason === 'Other' ? cancelCustomReason.trim() : cancelReason;
     if (cancelReason === 'Other' && !finalReason) {
-      alert('Please enter a specific cancellation reason.');
+      toast.warning('Please enter a specific cancellation reason.');
       return;
     }
     setCancelling(true);
@@ -297,7 +299,7 @@ export default function OrdersSection() {
       setOrders(prev => prev.map(o => o.id === cancelModal.id ? { ...o, status: 'cancelled', cancellation_reason: finalReason } : o));
       closeCancelModal();
     } catch (err) {
-      alert('Failed to cancel order: ' + err.message);
+      toast.error('Failed to cancel order: ' + err.message);
     } finally {
       setCancelling(false);
     }

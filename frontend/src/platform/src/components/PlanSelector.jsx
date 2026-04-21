@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getAvailablePlans, createSubscription, verifySubscriptionPayment, startFreeTrial } from '../services/paymentService.js';
 import { ENTERPRISE_EMAIL } from '../config.js';
+import { useConfirm } from '../../../shared/ui/ConfirmDialog.jsx';
 
 const DURATION_LABELS = { monthly: 'Monthly', '3months': '3 Months', '6months': '6 Months', yearly: 'Yearly' };
 const DURATION_MONTHS = { monthly: 1, '3months': 3, '6months': 6, yearly: 12 };
@@ -120,6 +121,7 @@ function PaymentProcessingOverlay({ state, message, onDone }) {
 }
 
 export default function PlanSelector({ siteId: initialSiteId, currentPlan, currentStatus, scheduledPlan, scheduledStartAt, onUpgraded, isOverlay, hideTrial, onClose, isFirstTime, onCreateSite }) {
+  const confirm = useConfirm();
   const [duration, setDuration] = useState(null);
   const [upgrading, setUpgrading] = useState(null);
   const [plans, setPlans] = useState([]);
@@ -497,12 +499,15 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
                 className={`btn ${isButtonDisabled(planGroup) ? 'btn-outline' : isDowngrade(planGroup) ? 'btn-outline' : 'btn-primary'}`}
                 style={{ width: '100%', opacity: isButtonDisabled(planGroup) ? 0.6 : 1 }}
                 disabled={isButtonDisabled(planGroup) || upgrading !== null}
-                onClick={() => {
+                onClick={async () => {
                   if (isScheduledPlanChange(planGroup)) {
                     const action = isDowngrade(planGroup) ? 'downgrade' : 'switch';
-                    if (window.confirm(`Schedule a ${action} to ${planGroup.name}? Your current plan keeps running until the end of your billing period, then ${planGroup.name} starts automatically. You won't be charged twice.`)) {
-                      handleUpgrade(planGroup);
-                    }
+                    const ok = await confirm({
+                      title: `Schedule ${action}?`,
+                      message: `Schedule a ${action} to ${planGroup.name}? Your current plan keeps running until the end of your billing period, then ${planGroup.name} starts automatically. You won't be charged twice.`,
+                      confirmText: `Schedule ${action}`,
+                    });
+                    if (ok) handleUpgrade(planGroup);
                   } else {
                     handleUpgrade(planGroup);
                   }

@@ -10,12 +10,16 @@ import { apiRequest } from '../services/api.js';
 import '../styles/dashboard.css';
 import { PLATFORM_DOMAIN } from '../config.js';
 import AlertModal, { isPlanError } from '../../../shared/ui/AlertModal.jsx';
+import { useToast } from '../../../shared/ui/Toast.jsx';
+import { useConfirm } from '../../../shared/ui/ConfirmDialog.jsx';
 import { getSubscriptionBadge, formatScheduledChange } from '../utils/subscriptionStatus.js';
 
 const VALID_PAGES = ['dashboard', 'admin', 'billing', 'staff', 'account'];
 
 export default function DashboardPage() {
   const { user, isAuthenticated, loading, logout, setUser } = useAuth();
+  const toast = useToast();
+  const confirm = useConfirm();
   const navigate = useNavigate();
   const { page: urlPage, siteId: urlSiteId } = useParams();
   const initialPage = urlPage && VALID_PAGES.includes(urlPage) ? urlPage : 'dashboard';
@@ -134,11 +138,11 @@ export default function DashboardPage() {
         closeDeleteModal();
         await loadSites();
       } else {
-        alert('Failed to delete site: ' + (result.error || 'Unknown error'));
+        toast.error('Failed to delete site: ' + (result.error || 'Unknown error'));
         setDeleteLoading(false);
       }
     } catch (e) {
-      alert('Failed to delete site: ' + e.message);
+      toast.error('Failed to delete site: ' + e.message);
       setDeleteLoading(false);
     }
   };
@@ -194,7 +198,7 @@ export default function DashboardPage() {
       await loadSiteUsage(siteId);
     } catch (e) {
       console.error('Failed to toggle overage for site', siteId, e);
-      alert('Failed to update overage setting. Please try again.');
+      toast.error('Failed to update overage setting. Please try again.');
     }
   }, [loadSiteUsage]);
 
@@ -206,7 +210,7 @@ export default function DashboardPage() {
       await loadSites();
       await loadProfile();
     } catch (e) {
-      alert(e.message || 'Failed to cancel subscription. Please try again.');
+      toast.error(e.message || 'Failed to cancel subscription. Please try again.');
     } finally {
       setCancellingSubscription(false);
     }
@@ -367,7 +371,7 @@ export default function DashboardPage() {
   };
 
   const handleDeleteStaff = async (staffId) => {
-    if (!window.confirm('Are you sure you want to remove this staff member?')) return;
+    if (!(await confirm({ title: 'Remove staff member?', message: 'They will lose access to this site immediately.', variant: 'danger', confirmText: 'Remove' }))) return;
     try {
       await apiRequest(`/api/sites/${staffSiteId}/staff/${staffId}`, {
         method: 'DELETE',

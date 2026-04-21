@@ -5,6 +5,7 @@ import { API_BASE } from '../../config.js';
 import ConfirmModal from './ConfirmModal.jsx';
 import { setEditorDirty } from '../../admin/editorDirtyStore.js';
 import { usePendingMedia } from '../../hooks/usePendingMedia.js';
+import { useToast } from '../../../../shared/ui/Toast.jsx';
 
 function resolveImageUrl(src) {
   if (!src) return '';
@@ -55,6 +56,7 @@ function SectionCard({ title, subtitle, icon, children, defaultOpen = true }) {
 
 export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
   const { siteConfig, refetchSite } = useContext(SiteContext);
+  const toast = useToast();
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -306,8 +308,8 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
         }
         await loadCategories();
         if (onSaved) onSaved();
-      } else { alert('Image upload failed'); }
-    } catch (e) { alert('Failed to upload image: ' + e.message); }
+      } else { toast.error('Image upload failed'); }
+    } catch (e) { toast.error('Failed to upload image: ' + e.message); }
     finally { setUploadingImage(null); }
   }
 
@@ -323,7 +325,7 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
       }
       await loadCategories();
       if (onSaved) onSaved();
-    } catch (e) { alert('Failed to remove image: ' + e.message); }
+    } catch (e) { toast.error('Failed to remove image: ' + e.message); }
   }
 
   function handleAddSubcategory(categoryId) {
@@ -461,8 +463,8 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
         setChooseChanged(true);
         markUploaded(newUrl);
         if (oldImage) markForDeletion(oldImage);
-      } else { alert('Image upload failed'); }
-    } catch (e) { alert('Failed to upload: ' + e.message); }
+      } else { toast.error('Image upload failed'); }
+    } catch (e) { toast.error('Failed to upload: ' + e.message); }
     finally { setChooseUploadingId(null); }
   }
 
@@ -669,7 +671,7 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
         });
         const result = await response.json();
         if (!response.ok || !result.success) {
-          alert('Failed to save: ' + (result.error || 'Unknown error'));
+          toast.error('Failed to save: ' + (result.error || 'Unknown error'));
           setSaving(false);
           return;
         }
@@ -698,7 +700,7 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
       await loadCategories();
       if (refetchSite) await refetchSite();
       if (onSaved) onSaved();
-    } catch (e) { alert('Failed to save: ' + e.message); }
+    } catch (e) { toast.error('Failed to save: ' + e.message); }
     finally { setSaving(false); }
   }
 

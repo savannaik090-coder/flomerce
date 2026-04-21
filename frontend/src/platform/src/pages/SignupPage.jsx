@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { signup as signupService, resendVerification, googleAuth } from '../services/authService.js';
 import '../styles/landing.css';
+import { useToast } from '../../../shared/ui/Toast.jsx';
 
 export default function SignupPage() {
   const [name, setName] = useState('');
@@ -17,6 +18,7 @@ export default function SignupPage() {
   const agreedTermsRef = useRef(false);
   const { isAuthenticated, login, loading } = useAuth();
   const navigate = useNavigate();
+  const toast = useToast();
 
   useEffect(() => {
     if (!loading && isAuthenticated) {
@@ -107,9 +109,9 @@ export default function SignupPage() {
   async function handleResend() {
     try {
       await resendVerification(registeredEmail);
-      alert('Verification email resent!');
+      toast.success('Verification email resent!');
     } catch (err) {
-      alert(err.message || 'Failed to resend');
+      toast.error(err.message || 'Failed to resend');
     }
   }
 

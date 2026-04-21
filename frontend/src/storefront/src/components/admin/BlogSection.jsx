@@ -3,12 +3,14 @@ import { SiteContext } from '../../context/SiteContext.jsx';
 import { apiRequest } from '../../services/api.js';
 import { API_BASE } from '../../config.js';
 import { usePendingMedia } from '../../hooks/usePendingMedia.js';
+import { useConfirm } from '../../../../shared/ui/ConfirmDialog.jsx';
 
 let ReactQuill = null;
 let quillCssLoaded = false;
 
 export default function BlogSection() {
   const { siteConfig, refetchSite } = useContext(SiteContext);
+  const confirm = useConfirm();
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(null);
@@ -157,7 +159,7 @@ export default function BlogSection() {
               }
             }}
             onDelete={async () => {
-              if (!confirm('Delete this blog post?')) return;
+              if (!(await confirm({ title: 'Delete blog post?', message: 'This cannot be undone.', variant: 'danger', confirmText: 'Delete' }))) return;
               try {
                 await apiRequest(`/api/blog/admin/${post.id}?siteId=${siteConfig.id}`, { method: 'DELETE' });
                 if (post.cover_image && siteConfig?.id) {
