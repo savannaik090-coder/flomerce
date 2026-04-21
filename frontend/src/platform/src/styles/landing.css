@@ -531,9 +531,9 @@
 }
 
 .landing-page .footer-logo {
-  height: 56px;
+  height: 48px;
   width: auto;
-  max-width: 220px;
+  max-width: 190px;
   object-fit: contain;
   align-self: flex-start;
 }
