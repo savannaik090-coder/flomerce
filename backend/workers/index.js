@@ -380,6 +380,15 @@ async function handleAPI(request, env, path, ctx) {
     case 'payments':
       return handlePayments(request, env, path, ctx);
 
+    case 'webhooks':
+      // Alias for Razorpay's configured webhook URL: /api/webhooks/razorpay
+      // Rewrite to the path shape handlePayments expects (/api/payments/webhook)
+      // so handleRazorpayWebhook is invoked.
+      if (pathParts[2] === 'razorpay') {
+        return handlePayments(request, env, '/api/payments/webhook', ctx);
+      }
+      return errorResponse('Not found', 404);
+
     case 'billing':
       return handleBilling(request, env, path, ctx);
 

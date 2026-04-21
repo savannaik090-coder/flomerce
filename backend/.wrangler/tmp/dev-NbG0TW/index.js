@@ -19699,6 +19699,11 @@ async function handleAPI(request, env, path, ctx) {
       return handleWishlist(request, env, path);
     case "payments":
       return handlePayments(request, env, path, ctx);
+    case "webhooks":
+      if (pathParts[2] === "razorpay") {
+        return handlePayments(request, env, "/api/payments/webhook", ctx);
+      }
+      return errorResponse("Not found", 404);
     case "billing":
       return handleBilling(request, env, path, ctx);
     case "email":
