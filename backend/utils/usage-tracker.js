@@ -1,5 +1,6 @@
 import { jsonResponse, errorResponse, successResponse, handleCORS } from './helpers.js';
 import { validateAuth } from './auth.js';
+import { resolveEnterpriseLimits } from '../workers/platform/admin-worker.js';
 
 const PLAN_LIMITS = {
   starter: {
@@ -504,27 +505,41 @@ export async function handleUsageAPI(request, env, path) {
     }
 
     const planKey = getSitePlan(site);
-    const limits = PLAN_LIMITS[planKey] || PLAN_LIMITS.free;
+    const planLimits = PLAN_LIMITS[planKey] || PLAN_LIMITS.free;
 
-    const d1OverageBytes = Math.max(0, usage.d1BytesUsed - limits.d1Bytes);
-    const r2OverageBytes = Math.max(0, usage.r2BytesUsed - limits.r2Bytes);
-    const d1OverageGB = d1OverageBytes / (1024 * 1024 * 1024);
-    const r2OverageGB = r2OverageBytes / (1024 * 1024 * 1024);
-
-    const rates = await getOverageRates(env);
-
+    // For enterprise sites we must honour any per-site quota override stored
+    // on enterprise_sites (d1_bytes_limit / r2_bytes_limit). Without this the
+    // merchant dashboard widget shows the plan default (e.g. 2 GB) even after
+    // a platform admin has lifted the quota for that site.
     let isEnterprise = false;
     let enterpriseInvoices = [];
+    let effectiveLimits = planLimits;
+    let d1OverrideActive = false;
+    let r2OverrideActive = false;
     try {
-      const entCheck = await env.DB.prepare('SELECT site_id FROM enterprise_sites WHERE site_id = ?').bind(siteId).first();
-      isEnterprise = !!entCheck;
+      const entRow = await env.DB.prepare(
+        'SELECT site_id, d1_bytes_limit, r2_bytes_limit FROM enterprise_sites WHERE site_id = ?'
+      ).bind(siteId).first();
+      isEnterprise = !!entRow;
       if (isEnterprise) {
+        const resolved = resolveEnterpriseLimits(entRow);
+        effectiveLimits = { d1Bytes: resolved.d1Bytes, r2Bytes: resolved.r2Bytes };
+        d1OverrideActive = entRow.d1_bytes_limit != null;
+        r2OverrideActive = entRow.r2_bytes_limit != null;
         const invResult = await env.DB.prepare(
           'SELECT year_month, d1_overage_bytes, r2_overage_bytes, d1_cost_inr, r2_cost_inr, total_cost_inr, status, paid_at, snapshot_at FROM enterprise_usage_monthly WHERE site_id = ? ORDER BY year_month DESC LIMIT 12'
         ).bind(siteId).all();
         enterpriseInvoices = invResult.results || [];
       }
     } catch (_) {}
+
+    const limits = effectiveLimits;
+    const d1OverageBytes = Math.max(0, usage.d1BytesUsed - limits.d1Bytes);
+    const r2OverageBytes = Math.max(0, usage.r2BytesUsed - limits.r2Bytes);
+    const d1OverageGB = d1OverageBytes / (1024 * 1024 * 1024);
+    const r2OverageGB = r2OverageBytes / (1024 * 1024 * 1024);
+
+    const rates = await getOverageRates(env);
 
     let overageCostINR = 0;
     let d1CostINR = 0;
