@@ -67,9 +67,11 @@ binding = "SHARD_3"
 database_name = "saas-sites-db-3"
 database_id = "7cd02690-e40c-40b3-822a-683da3d93ed2"
 
-# Scheduled Cleanup (runs daily at 3:00 AM UTC)
+# Scheduled jobs
+#  - "0 3 * * *"  : daily cleanup (orphan media, expired data, abandoned cart reminders)
+#  - "5 0 1 * *"  : monthly enterprise overage snapshot + invoice email (00:05 UTC on the 1st)
 [triggers]
-crons = ["0 3 * * *"]
+crons = ["0 3 * * *", "5 0 1 * *"]
 
 # R2 Storage Configuration
 # Bucket: saas-platform-s

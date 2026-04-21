@@ -51,6 +51,8 @@ export default function OwnerAdminPage() {
   const [enterpriseLoading, setEnterpriseLoading] = useState(false);
   const [enterpriseRates, setEnterpriseRates] = useState({ d1PerGB: 0.75, r2PerGB: 0.015 });
   const [enterpriseAssignNotes, setEnterpriseAssignNotes] = useState('');
+  const [enterpriseAssignD1GB, setEnterpriseAssignD1GB] = useState('');
+  const [enterpriseAssignR2GB, setEnterpriseAssignR2GB] = useState('');
   const [enterpriseSelectedSite, setEnterpriseSelectedSite] = useState(null);
   const [enterpriseSiteUsage, setEnterpriseSiteUsage] = useState(null);
   const [enterpriseUsageLoading, setEnterpriseUsageLoading] = useState(false);
@@ -318,12 +320,20 @@ export default function OwnerAdminPage() {
     try {
       await apiRequest('/api/admin/enterprise/assign', {
         method: 'POST',
-        body: JSON.stringify({ siteId: enterpriseSelectedAssignSite.id, notes: enterpriseAssignNotes.trim() || null }),
+        body: JSON.stringify({
+          siteId: enterpriseSelectedAssignSite.id,
+          notes: enterpriseAssignNotes.trim() || null,
+          // Empty string means "use plan default" — backend treats null/'' the same.
+          d1LimitGB: enterpriseAssignD1GB.trim() === '' ? null : Number(enterpriseAssignD1GB),
+          r2LimitGB: enterpriseAssignR2GB.trim() === '' ? null : Number(enterpriseAssignR2GB),
+        }),
       });
       setEnterpriseSelectedAssignSite(null);
       setEnterpriseSearchQuery('');
       setEnterpriseSearchResults([]);
       setEnterpriseAssignNotes('');
+      setEnterpriseAssignD1GB('');
+      setEnterpriseAssignR2GB('');
       await loadEnterpriseSites();
     } catch (e) {
       alert('Failed to assign: ' + e.message);
@@ -357,6 +367,35 @@ export default function OwnerAdminPage() {
       console.error('Failed to load enterprise usage:', e);
     } finally {
       setEnterpriseUsageLoading(false);
+    }
+  };
+
+  const handleUpdateQuota = async (site) => {
+    const currentD1GB = site.d1LimitOverride ? (site.d1Limit / (1024 * 1024 * 1024)).toString() : '';
+    const currentR2GB = site.r2LimitOverride ? (site.r2Limit / (1024 * 1024 * 1024)).toString() : '';
+    const d1Input = window.prompt(
+      `D1 included quota in GB for ${site.subdomain}\n(blank = use enterprise plan default)`,
+      currentD1GB
+    );
+    if (d1Input === null) return;
+    const r2Input = window.prompt(
+      `R2 included quota in GB for ${site.subdomain}\n(blank = use enterprise plan default)`,
+      currentR2GB
+    );
+    if (r2Input === null) return;
+    try {
+      await apiRequest('/api/admin/enterprise/update-quota', {
+        method: 'POST',
+        body: JSON.stringify({
+          siteId: site.siteId,
+          d1LimitGB: d1Input.trim() === '' ? null : Number(d1Input),
+          r2LimitGB: r2Input.trim() === '' ? null : Number(r2Input),
+        }),
+      });
+      await loadEnterpriseSites();
+      if (enterpriseSelectedSite === site.siteId) await loadEnterpriseSiteUsage(site.siteId);
+    } catch (e) {
+      alert('Failed to update quota: ' + e.message);
     }
   };
 
@@ -1254,8 +1293,28 @@ export default function OwnerAdminPage() {
                     placeholder="Notes (optional)"
                     style={{ flex: '0 1 200px', minWidth: '120px' }}
                   />
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value={enterpriseAssignD1GB}
+                    onChange={e => setEnterpriseAssignD1GB(e.target.value)}
+                    placeholder="D1 GB (default)"
+                    title="D1 included quota in GB. Leave blank to use the enterprise plan default."
+                    style={{ flex: '0 1 130px', minWidth: '110px' }}
+                  />
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value={enterpriseAssignR2GB}
+                    onChange={e => setEnterpriseAssignR2GB(e.target.value)}
+                    placeholder="R2 GB (default)"
+                    title="R2 included quota in GB. Leave blank to use the enterprise plan default."
+                    style={{ flex: '0 1 130px', minWidth: '110px' }}
+                  />
                   <button type="submit" className="oa-btn oa-btn-primary">Assign Enterprise</button>
-                  <button type="button" className="oa-btn oa-btn-outline" onClick={() => { setEnterpriseSelectedAssignSite(null); setEnterpriseSearchQuery(''); }}>Cancel</button>
+                  <button type="button" className="oa-btn oa-btn-outline" onClick={() => { setEnterpriseSelectedAssignSite(null); setEnterpriseSearchQuery(''); setEnterpriseAssignD1GB(''); setEnterpriseAssignR2GB(''); }}>Cancel</button>
                 </form>
               )}
             </div>
@@ -1289,8 +1348,14 @@ export default function OwnerAdminPage() {
                             <div>{site.userName || '—'}</div>
                             <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{site.userEmail}</div>
                           </td>
-                          <td data-label="D1">{formatBytes(site.d1Used || 0)} / {formatBytes(site.d1Limit || 0)}</td>
-                          <td data-label="R2">{formatBytes(site.r2Used || 0)} / {formatBytes(site.r2Limit || 0)}</td>
+                          <td data-label="D1">
+                            {formatBytes(site.d1Used || 0)} / {formatBytes(site.d1Limit || 0)}
+                            {site.d1LimitOverride && <span style={{ display: 'block', fontSize: '0.65rem', color: '#2563eb' }}>custom quota</span>}
+                          </td>
+                          <td data-label="R2">
+                            {formatBytes(site.r2Used || 0)} / {formatBytes(site.r2Limit || 0)}
+                            {site.r2LimitOverride && <span style={{ display: 'block', fontSize: '0.65rem', color: '#2563eb' }}>custom quota</span>}
+                          </td>
                           <td data-label="Overage">
                             {(site.currentMonthCost || 0) > 0 ? (
                               <span style={{ color: '#dc2626', fontWeight: 700 }}>₹{(site.currentMonthCost || 0).toFixed(2)}</span>
@@ -1302,6 +1367,7 @@ export default function OwnerAdminPage() {
                             <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
                               <button className="oa-btn-sm oa-btn-edit" onClick={() => loadEnterpriseSiteUsage(site.siteId)}>Details</button>
                               <button className="oa-btn-sm oa-btn-toggle" onClick={() => handleSnapshotUsage(site.siteId)}>Snapshot</button>
+                              <button className="oa-btn-sm oa-btn-edit" onClick={() => handleUpdateQuota(site)}>Quota</button>
                               <button className="oa-btn-sm oa-btn-danger" onClick={() => handleRemoveEnterprise(site.siteId)}>Remove</button>
                             </div>
                           </td>
@@ -1330,6 +1396,7 @@ export default function OwnerAdminPage() {
                       <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
                         <button className="oa-btn-sm oa-btn-edit" onClick={() => loadEnterpriseSiteUsage(site.siteId)}>Details</button>
                         <button className="oa-btn-sm oa-btn-toggle" onClick={() => handleSnapshotUsage(site.siteId)}>Snapshot</button>
+                        <button className="oa-btn-sm oa-btn-edit" onClick={() => handleUpdateQuota(site)}>Quota</button>
                         <button className="oa-btn-sm oa-btn-danger" onClick={() => handleRemoveEnterprise(site.siteId)}>Remove</button>
                       </div>
                     </div>

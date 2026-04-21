@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-NIfsUP/checked-fetch.js
+// .wrangler/tmp/bundle-lTdZsX/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-NIfsUP/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-lTdZsX/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-NIfsUP/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-lTdZsX/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-NIfsUP/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-lTdZsX/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -3968,12 +3968,12 @@ var init_whatsapp = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-NIfsUP/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-lTdZsX/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-NIfsUP/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-lTdZsX/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -11629,7 +11629,8 @@ async function handleRazorpayWebhook(request, env) {
     }
     const payload = JSON.parse(body);
     const event = payload.event;
-    const entity = payload.payload?.subscription?.entity || payload.payload?.payment?.entity;
+    const isPaymentEvent = typeof event === "string" && event.startsWith("payment.");
+    const entity = isPaymentEvent ? payload.payload?.payment?.entity || payload.payload?.subscription?.entity : payload.payload?.subscription?.entity || payload.payload?.payment?.entity;
     const eventId = request.headers.get("x-razorpay-event-id") || payload.id || `${event}:${entity?.id}:${payload.created_at || ""}`;
     let claimed = false;
     if (eventId) {
@@ -11662,6 +11663,9 @@ async function handleRazorpayWebhook(request, env) {
           break;
         case "subscription.paused":
           await handleSubscriptionPaused(env, entity);
+          break;
+        case "payment.captured":
+          await handleOverageInvoicePaid(env, entity);
           break;
         default:
           console.log("Unhandled webhook event:", event);
@@ -11993,6 +11997,31 @@ async function activateSubscription(env, userId, planName, billingCycle, razorpa
   }
 }
 __name(activateSubscription, "activateSubscription");
+async function handleOverageInvoicePaid(env, paymentEntity) {
+  if (!paymentEntity || !paymentEntity.order_id)
+    return;
+  const invoice = await env.DB.prepare(
+    `SELECT id, status FROM enterprise_usage_monthly WHERE razorpay_order_id = ? LIMIT 1`
+  ).bind(paymentEntity.order_id).first();
+  if (!invoice)
+    return;
+  if (invoice.status === "paid") {
+    console.log("Overage invoice already paid, ignoring duplicate webhook:", invoice.id);
+    return;
+  }
+  await env.DB.prepare(
+    `UPDATE enterprise_usage_monthly
+     SET status = 'paid', paid_at = datetime('now'),
+         payment_ref = ?, payment_method = ?
+     WHERE id = ?`
+  ).bind(
+    paymentEntity.id || null,
+    paymentEntity.method || null,
+    invoice.id
+  ).run();
+  console.log("Overage invoice paid via webhook:", invoice.id, "payment:", paymentEntity.id);
+}
+__name(handleOverageInvoicePaid, "handleOverageInvoicePaid");
 
 // workers/storefront/categories-worker.js
 init_checked_fetch();
@@ -14261,6 +14290,7 @@ __name(getSiteSchemaStatements, "getSiteSchemaStatements");
 // workers/platform/admin-worker.js
 init_usage_tracker();
 init_site_db();
+init_email();
 var ADMIN_EMAILS = [
   "savannaik090@gmail.com",
   "xiyohe3598@indevgo.com"
@@ -15425,6 +15455,14 @@ async function handleEnterpriseManagement(request, env, pathParts, user) {
   if (method === "POST" && subAction === "mark-paid") {
     return markInvoicePaid(request, env);
   }
+  if (method === "POST" && subAction === "update-quota") {
+    return updateEnterpriseQuota(request, env);
+  }
+  if (method === "POST" && subAction === "run-monthly-snapshots") {
+    const { yearMonth } = await request.json().catch(() => ({}));
+    const result = await runMonthlyEnterpriseSnapshots(env, yearMonth || null);
+    return successResponse(result, "Monthly snapshot run complete");
+  }
   if (method === "GET" && subAction === "search") {
     const url = new URL(request.url);
     const q = (url.searchParams.get("q") || "").trim();
@@ -15487,10 +15525,38 @@ async function updateOverageRates(request, env) {
   }
 }
 __name(updateOverageRates, "updateOverageRates");
+function resolveEnterpriseLimits(entRow) {
+  const planLimits = getPlanLimitsConfig("enterprise");
+  const d1 = entRow && entRow.d1_bytes_limit != null ? Number(entRow.d1_bytes_limit) : planLimits.d1Bytes;
+  const r2 = entRow && entRow.r2_bytes_limit != null ? Number(entRow.r2_bytes_limit) : planLimits.r2Bytes;
+  return { d1Bytes: d1, r2Bytes: r2 };
+}
+__name(resolveEnterpriseLimits, "resolveEnterpriseLimits");
+async function loadOverageRates(env) {
+  const ratesResult = await env.DB.prepare(
+    `SELECT setting_key, setting_value FROM platform_settings WHERE setting_key IN ('overage_rate_d1_per_gb', 'overage_rate_r2_per_gb')`
+  ).all();
+  const rates = { d1PerGB: 0.75, r2PerGB: 0.015 };
+  for (const row of ratesResult.results || []) {
+    if (row.setting_key === "overage_rate_d1_per_gb") {
+      const v = parseFloat(row.setting_value);
+      if (!isNaN(v) && v >= 0)
+        rates.d1PerGB = v;
+    }
+    if (row.setting_key === "overage_rate_r2_per_gb") {
+      const v = parseFloat(row.setting_value);
+      if (!isNaN(v) && v >= 0)
+        rates.r2PerGB = v;
+    }
+  }
+  return rates;
+}
+__name(loadOverageRates, "loadOverageRates");
 async function listEnterpriseSites(env) {
   try {
     const result = await env.DB.prepare(`
       SELECT es.site_id, es.assigned_at, es.assigned_by, es.notes,
+             es.d1_bytes_limit, es.r2_bytes_limit,
              s.subdomain, s.brand_name, s.user_id,
              u.name as user_name, u.email as user_email,
              su.d1_bytes_used, su.r2_bytes_used, su.last_updated as usage_updated
@@ -15500,30 +15566,14 @@ async function listEnterpriseSites(env) {
       LEFT JOIN site_usage su ON es.site_id = su.site_id
       ORDER BY es.assigned_at DESC
     `).all();
-    const ratesResult = await env.DB.prepare(
-      `SELECT setting_key, setting_value FROM platform_settings WHERE setting_key IN ('overage_rate_d1_per_gb', 'overage_rate_r2_per_gb')`
-    ).all();
-    const rates = { d1PerGB: 0.75, r2PerGB: 0.015 };
-    for (const row of ratesResult.results || []) {
-      if (row.setting_key === "overage_rate_d1_per_gb") {
-        const v = parseFloat(row.setting_value);
-        if (!isNaN(v) && v >= 0)
-          rates.d1PerGB = v;
-      }
-      if (row.setting_key === "overage_rate_r2_per_gb") {
-        const v = parseFloat(row.setting_value);
-        if (!isNaN(v) && v >= 0)
-          rates.r2PerGB = v;
-      }
-    }
-    const d1LimitBytes = 2 * 1024 * 1024 * 1024;
-    const r2LimitBytes = 50 * 1024 * 1024 * 1024;
+    const rates = await loadOverageRates(env);
     const sites = await Promise.all((result.results || []).map(async (row) => {
       const usage = await getSiteUsage(env, row.site_id);
+      const limits = resolveEnterpriseLimits(row);
       const d1Used = usage.d1BytesUsed;
       const r2Used = usage.r2BytesUsed;
-      const d1Overage = Math.max(0, d1Used - d1LimitBytes);
-      const r2Overage = Math.max(0, r2Used - r2LimitBytes);
+      const d1Overage = Math.max(0, d1Used - limits.d1Bytes);
+      const r2Overage = Math.max(0, r2Used - limits.r2Bytes);
       const d1Cost = d1Overage / (1024 * 1024 * 1024) * rates.d1PerGB;
       const r2Cost = r2Overage / (1024 * 1024 * 1024) * rates.r2PerGB;
       return {
@@ -15538,8 +15588,10 @@ async function listEnterpriseSites(env) {
         notes: row.notes,
         d1Used,
         r2Used,
-        d1Limit: d1LimitBytes,
-        r2Limit: r2LimitBytes,
+        d1Limit: limits.d1Bytes,
+        r2Limit: limits.r2Bytes,
+        d1LimitOverride: row.d1_bytes_limit != null,
+        r2LimitOverride: row.r2_bytes_limit != null,
         d1Overage,
         r2Overage,
         currentMonthCost: Math.round((d1Cost + r2Cost) * 100) / 100,
@@ -15555,11 +15607,26 @@ async function listEnterpriseSites(env) {
   }
 }
 __name(listEnterpriseSites, "listEnterpriseSites");
+function parseLimitGB(val) {
+  if (val === null || val === void 0 || val === "")
+    return null;
+  const num = Number(val);
+  if (!Number.isFinite(num) || num < 0)
+    return void 0;
+  return Math.round(num * 1024 * 1024 * 1024);
+}
+__name(parseLimitGB, "parseLimitGB");
 async function assignEnterpriseSite(request, env, user) {
   try {
-    const { siteId, notes } = await request.json();
+    const { siteId, notes, d1LimitGB, r2LimitGB } = await request.json();
     if (!siteId)
       return errorResponse("siteId is required", 400);
+    const d1Override = parseLimitGB(d1LimitGB);
+    const r2Override = parseLimitGB(r2LimitGB);
+    if (d1Override === void 0)
+      return errorResponse("d1LimitGB must be a non-negative number", 400);
+    if (r2Override === void 0)
+      return errorResponse("r2LimitGB must be a non-negative number", 400);
     const site = await env.DB.prepare("SELECT id, subdomain, brand_name FROM sites WHERE id = ?").bind(siteId).first();
     if (!site)
       return errorResponse("Site not found", 404);
@@ -15573,10 +15640,21 @@ async function assignEnterpriseSite(request, env, user) {
       }
     }
     await env.DB.prepare(`
-      INSERT INTO enterprise_sites (site_id, assigned_at, assigned_by, notes)
-      VALUES (?, datetime('now'), ?, ?)
-      ON CONFLICT(site_id) DO UPDATE SET assigned_by = ?, notes = ?, assigned_at = datetime('now')
-    `).bind(siteId, user.email, notes || null, user.email, notes || null).run();
+      INSERT INTO enterprise_sites (site_id, assigned_at, assigned_by, notes, d1_bytes_limit, r2_bytes_limit)
+      VALUES (?, datetime('now'), ?, ?, ?, ?)
+      ON CONFLICT(site_id) DO UPDATE SET assigned_by = ?, notes = ?, assigned_at = datetime('now'),
+        d1_bytes_limit = ?, r2_bytes_limit = ?
+    `).bind(
+      siteId,
+      user.email,
+      notes || null,
+      d1Override,
+      r2Override,
+      user.email,
+      notes || null,
+      d1Override,
+      r2Override
+    ).run();
     await env.DB.prepare(
       `UPDATE sites SET subscription_plan = 'enterprise', subscription_expires_at = '2099-12-31T23:59:59', is_active = 1, updated_at = datetime('now') WHERE id = ?`
     ).bind(siteId).run();
@@ -15613,7 +15691,8 @@ __name(removeEnterpriseSite, "removeEnterpriseSite");
 async function getEnterpriseSiteUsage(env, siteId) {
   try {
     const site = await env.DB.prepare(`
-      SELECT es.site_id, s.subdomain, s.brand_name
+      SELECT es.site_id, es.d1_bytes_limit, es.r2_bytes_limit,
+             s.subdomain, s.brand_name
       FROM enterprise_sites es
       JOIN sites s ON es.site_id = s.id
       WHERE es.site_id = ?
@@ -15621,28 +15700,12 @@ async function getEnterpriseSiteUsage(env, siteId) {
     if (!site)
       return errorResponse("Enterprise site not found", 404);
     const usage = await getSiteUsage(env, siteId);
-    const ratesResult = await env.DB.prepare(
-      `SELECT setting_key, setting_value FROM platform_settings WHERE setting_key IN ('overage_rate_d1_per_gb', 'overage_rate_r2_per_gb')`
-    ).all();
-    const rates = { d1PerGB: 0.75, r2PerGB: 0.015 };
-    for (const row of ratesResult.results || []) {
-      if (row.setting_key === "overage_rate_d1_per_gb") {
-        const v = parseFloat(row.setting_value);
-        if (!isNaN(v) && v >= 0)
-          rates.d1PerGB = v;
-      }
-      if (row.setting_key === "overage_rate_r2_per_gb") {
-        const v = parseFloat(row.setting_value);
-        if (!isNaN(v) && v >= 0)
-          rates.r2PerGB = v;
-      }
-    }
-    const d1LimitBytes = 2 * 1024 * 1024 * 1024;
-    const r2LimitBytes = 50 * 1024 * 1024 * 1024;
+    const rates = await loadOverageRates(env);
+    const limits = resolveEnterpriseLimits(site);
     const d1Used = usage.d1BytesUsed;
     const r2Used = usage.r2BytesUsed;
-    const d1Overage = Math.max(0, d1Used - d1LimitBytes);
-    const r2Overage = Math.max(0, r2Used - r2LimitBytes);
+    const d1Overage = Math.max(0, d1Used - limits.d1Bytes);
+    const r2Overage = Math.max(0, r2Used - limits.r2Bytes);
     const d1Cost = d1Overage / (1024 * 1024 * 1024) * rates.d1PerGB;
     const r2Cost = r2Overage / (1024 * 1024 * 1024) * rates.r2PerGB;
     const invoices = await env.DB.prepare(
@@ -15654,8 +15717,10 @@ async function getEnterpriseSiteUsage(env, siteId) {
       brandName: site.brand_name,
       d1Used,
       r2Used,
-      d1Limit: d1LimitBytes,
-      r2Limit: r2LimitBytes,
+      d1Limit: limits.d1Bytes,
+      r2Limit: limits.r2Bytes,
+      d1LimitOverride: site.d1_bytes_limit != null,
+      r2LimitOverride: site.r2_bytes_limit != null,
       d1Overage,
       r2Overage,
       currentMonthCost: Math.round((d1Cost + r2Cost) * 100) / 100,
@@ -15671,6 +15736,30 @@ async function getEnterpriseSiteUsage(env, siteId) {
   }
 }
 __name(getEnterpriseSiteUsage, "getEnterpriseSiteUsage");
+async function updateEnterpriseQuota(request, env) {
+  try {
+    const { siteId, d1LimitGB, r2LimitGB } = await request.json();
+    if (!siteId)
+      return errorResponse("siteId is required", 400);
+    const ent = await env.DB.prepare("SELECT site_id FROM enterprise_sites WHERE site_id = ?").bind(siteId).first();
+    if (!ent)
+      return errorResponse("Enterprise site not found", 404);
+    const d1Override = parseLimitGB(d1LimitGB);
+    const r2Override = parseLimitGB(r2LimitGB);
+    if (d1Override === void 0)
+      return errorResponse("d1LimitGB must be a non-negative number", 400);
+    if (r2Override === void 0)
+      return errorResponse("r2LimitGB must be a non-negative number", 400);
+    await env.DB.prepare(
+      `UPDATE enterprise_sites SET d1_bytes_limit = ?, r2_bytes_limit = ? WHERE site_id = ?`
+    ).bind(d1Override, r2Override, siteId).run();
+    return successResponse({ siteId, d1LimitBytes: d1Override, r2LimitBytes: r2Override }, "Quota updated");
+  } catch (error) {
+    console.error("Update enterprise quota error:", error);
+    return errorResponse("Failed to update quota: " + error.message, 500);
+  }
+}
+__name(updateEnterpriseQuota, "updateEnterpriseQuota");
 async function getEnterpriseInvoices(env, siteId) {
   try {
     let query = `SELECT eum.*, s.subdomain, s.brand_name
@@ -15690,70 +15779,254 @@ async function getEnterpriseInvoices(env, siteId) {
   }
 }
 __name(getEnterpriseInvoices, "getEnterpriseInvoices");
+async function runEnterpriseSnapshot(env, siteId, yearMonth, opts = {}) {
+  const ent = await env.DB.prepare(
+    "SELECT site_id, d1_bytes_limit, r2_bytes_limit FROM enterprise_sites WHERE site_id = ?"
+  ).bind(siteId).first();
+  if (!ent) {
+    return { siteId, yearMonth, skippedReason: "not_enterprise", billed: false };
+  }
+  const limits = resolveEnterpriseLimits(ent);
+  const usage = await getSiteUsage(env, siteId);
+  const rates = await loadOverageRates(env);
+  const d1Used = usage.d1BytesUsed;
+  const r2Used = usage.r2BytesUsed;
+  const d1Overage = Math.max(0, d1Used - limits.d1Bytes);
+  const r2Overage = Math.max(0, r2Used - limits.r2Bytes);
+  const d1Cost = d1Overage / (1024 * 1024 * 1024) * rates.d1PerGB;
+  const r2Cost = r2Overage / (1024 * 1024 * 1024) * rates.r2PerGB;
+  const totalCost = Math.round((d1Cost + r2Cost) * 100) / 100;
+  const billed = totalCost > 0;
+  const existing = await env.DB.prepare(
+    "SELECT * FROM enterprise_usage_monthly WHERE site_id = ? AND year_month = ?"
+  ).bind(siteId, yearMonth).first();
+  if (existing && existing.status === "paid") {
+    return {
+      siteId,
+      yearMonth,
+      totalCost: existing.total_cost_inr || 0,
+      billed: (existing.total_cost_inr || 0) > 0,
+      invoiceNumber: existing.invoice_number,
+      emailed: !!existing.emailed_at,
+      skippedReason: "already_paid"
+    };
+  }
+  const invoiceNumber = existing?.invoice_number || buildInvoiceNumber(yearMonth, siteId);
+  const invoiceToken = existing?.invoice_token || generateId() + generateId();
+  const dueDateISO = existing?.due_date || (() => {
+    const d = /* @__PURE__ */ new Date();
+    d.setUTCDate(d.getUTCDate() + 14);
+    return d.toISOString();
+  })();
+  const d1CostR = Math.round(d1Cost * 100) / 100;
+  const r2CostR = Math.round(r2Cost * 100) / 100;
+  await env.DB.prepare(`
+    INSERT INTO enterprise_usage_monthly (
+      site_id, year_month, d1_overage_bytes, r2_overage_bytes,
+      d1_cost_inr, r2_cost_inr, total_cost_inr, status, snapshot_at,
+      invoice_number, invoice_token, due_date,
+      d1_limit_bytes, r2_limit_bytes
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, 'unpaid', datetime('now'), ?, ?, ?, ?, ?)
+    ON CONFLICT(site_id, year_month) DO UPDATE SET
+      d1_overage_bytes = excluded.d1_overage_bytes,
+      r2_overage_bytes = excluded.r2_overage_bytes,
+      d1_cost_inr = excluded.d1_cost_inr,
+      r2_cost_inr = excluded.r2_cost_inr,
+      total_cost_inr = excluded.total_cost_inr,
+      d1_limit_bytes = excluded.d1_limit_bytes,
+      r2_limit_bytes = excluded.r2_limit_bytes,
+      snapshot_at = datetime('now')
+  `).bind(
+    siteId,
+    yearMonth,
+    d1Overage,
+    r2Overage,
+    d1CostR,
+    r2CostR,
+    totalCost,
+    invoiceNumber,
+    invoiceToken,
+    dueDateISO,
+    limits.d1Bytes,
+    limits.r2Bytes
+  ).run();
+  let emailed = false;
+  if (opts.sendEmailIfBilled && billed && !existing?.emailed_at) {
+    try {
+      await sendOverageInvoiceEmail(env, siteId, {
+        invoiceNumber,
+        invoiceToken,
+        yearMonth,
+        totalCost,
+        d1Overage,
+        r2Overage,
+        d1Cost: d1CostR,
+        r2Cost: r2CostR,
+        d1Limit: limits.d1Bytes,
+        r2Limit: limits.r2Bytes,
+        rates,
+        dueDateISO
+      });
+      await env.DB.prepare(
+        `UPDATE enterprise_usage_monthly SET emailed_at = datetime('now') WHERE site_id = ? AND year_month = ?`
+      ).bind(siteId, yearMonth).run();
+      emailed = true;
+    } catch (emailErr) {
+      console.error("Overage invoice email failed for", siteId, yearMonth, ":", emailErr.message || emailErr);
+    }
+  }
+  return { siteId, yearMonth, totalCost, billed, invoiceNumber, emailed };
+}
+__name(runEnterpriseSnapshot, "runEnterpriseSnapshot");
+function buildInvoiceNumber(yearMonth, siteId) {
+  const shortId = String(siteId || "").replace(/-/g, "").slice(0, 6).toUpperCase();
+  return `FLM-${yearMonth}-${shortId}`;
+}
+__name(buildInvoiceNumber, "buildInvoiceNumber");
+function previousYearMonth(now = /* @__PURE__ */ new Date()) {
+  const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+__name(previousYearMonth, "previousYearMonth");
+async function runMonthlyEnterpriseSnapshots(env, yearMonth = null) {
+  const month = yearMonth || previousYearMonth();
+  const sitesResult = await env.DB.prepare(
+    "SELECT site_id FROM enterprise_sites"
+  ).all();
+  const rows = sitesResult.results || [];
+  const summary = { yearMonth: month, total: rows.length, billed: 0, emailed: 0, errors: 0, sites: [] };
+  for (const row of rows) {
+    try {
+      const r = await runEnterpriseSnapshot(env, row.site_id, month, { sendEmailIfBilled: true });
+      if (r.billed)
+        summary.billed += 1;
+      if (r.emailed)
+        summary.emailed += 1;
+      summary.sites.push(r);
+    } catch (e) {
+      summary.errors += 1;
+      console.error("runMonthlyEnterpriseSnapshots site failed:", row.site_id, e.message || e);
+    }
+  }
+  console.log("[Cron] Monthly enterprise snapshots:", JSON.stringify({
+    yearMonth: summary.yearMonth,
+    total: summary.total,
+    billed: summary.billed,
+    emailed: summary.emailed,
+    errors: summary.errors
+  }));
+  return summary;
+}
+__name(runMonthlyEnterpriseSnapshots, "runMonthlyEnterpriseSnapshots");
 async function snapshotEnterpriseUsage(request, env) {
   try {
-    const { siteId, yearMonth } = await request.json();
+    const { siteId, yearMonth, sendEmail: emailFlag } = await request.json();
     if (!siteId)
       return errorResponse("siteId is required", 400);
     const now = /* @__PURE__ */ new Date();
-    const month = yearMonth || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-    const entCheck = await env.DB.prepare("SELECT site_id FROM enterprise_sites WHERE site_id = ?").bind(siteId).first();
-    if (!entCheck)
+    const month = yearMonth || `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
+    const result = await runEnterpriseSnapshot(env, siteId, month, { sendEmailIfBilled: !!emailFlag });
+    if (result.skippedReason === "not_enterprise") {
       return errorResponse("Enterprise site not found", 404);
-    const usage = await getSiteUsage(env, siteId);
-    const ratesResult = await env.DB.prepare(
-      `SELECT setting_key, setting_value FROM platform_settings WHERE setting_key IN ('overage_rate_d1_per_gb', 'overage_rate_r2_per_gb')`
-    ).all();
-    const rates = { d1PerGB: 0.75, r2PerGB: 0.015 };
-    for (const row of ratesResult.results || []) {
-      if (row.setting_key === "overage_rate_d1_per_gb") {
-        const v = parseFloat(row.setting_value);
-        if (!isNaN(v) && v >= 0)
-          rates.d1PerGB = v;
-      }
-      if (row.setting_key === "overage_rate_r2_per_gb") {
-        const v = parseFloat(row.setting_value);
-        if (!isNaN(v) && v >= 0)
-          rates.r2PerGB = v;
-      }
     }
-    const d1LimitBytes = 2 * 1024 * 1024 * 1024;
-    const r2LimitBytes = 50 * 1024 * 1024 * 1024;
-    const d1Used = usage.d1BytesUsed;
-    const r2Used = usage.r2BytesUsed;
-    const d1Overage = Math.max(0, d1Used - d1LimitBytes);
-    const r2Overage = Math.max(0, r2Used - r2LimitBytes);
-    const d1Cost = d1Overage / (1024 * 1024 * 1024) * rates.d1PerGB;
-    const r2Cost = r2Overage / (1024 * 1024 * 1024) * rates.r2PerGB;
-    const totalCost = Math.round((d1Cost + r2Cost) * 100) / 100;
-    await env.DB.prepare(`
-      INSERT INTO enterprise_usage_monthly (site_id, year_month, d1_overage_bytes, r2_overage_bytes, d1_cost_inr, r2_cost_inr, total_cost_inr, status, snapshot_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, 'unpaid', datetime('now'))
-      ON CONFLICT(site_id, year_month) DO UPDATE SET
-        d1_overage_bytes = ?, r2_overage_bytes = ?,
-        d1_cost_inr = ?, r2_cost_inr = ?, total_cost_inr = ?,
-        snapshot_at = datetime('now')
-    `).bind(
-      siteId,
-      month,
-      d1Overage,
-      r2Overage,
-      Math.round(d1Cost * 100) / 100,
-      Math.round(r2Cost * 100) / 100,
-      totalCost,
-      d1Overage,
-      r2Overage,
-      Math.round(d1Cost * 100) / 100,
-      Math.round(r2Cost * 100) / 100,
-      totalCost
-    ).run();
-    return successResponse({ siteId, yearMonth: month, totalCost }, "Usage snapshot saved");
+    return successResponse(result, "Usage snapshot saved");
   } catch (error) {
     console.error("Snapshot error:", error);
     return errorResponse("Failed to snapshot usage: " + error.message, 500);
   }
 }
 __name(snapshotEnterpriseUsage, "snapshotEnterpriseUsage");
+async function sendOverageInvoiceEmail(env, siteId, ctx) {
+  const site = await env.DB.prepare(
+    "SELECT id, subdomain, brand_name FROM sites WHERE id = ?"
+  ).bind(siteId).first();
+  if (!site)
+    return;
+  const config = await getSiteConfig(env, siteId);
+  let settings = config?.settings || {};
+  if (typeof settings === "string") {
+    try {
+      settings = JSON.parse(settings);
+    } catch {
+      settings = {};
+    }
+  }
+  const recipients = getOwnerRecipients(settings, config || {});
+  if (!recipients.length) {
+    console.warn("No owner email for enterprise site", siteId, "\u2014 skipping invoice email");
+    return;
+  }
+  const platformDomain = env.DOMAIN || "flomerce.com";
+  const appUrl = env.APP_URL || `https://${platformDomain}`;
+  const invoiceUrl = `${appUrl}/billing/invoice?invoice=${encodeURIComponent(ctx.invoiceNumber)}&t=${encodeURIComponent(ctx.invoiceToken)}&site=${encodeURIComponent(site.id)}`;
+  const fmt = /* @__PURE__ */ __name((n) => `&#8377;${Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, "fmt");
+  const gb = /* @__PURE__ */ __name((b) => (Number(b || 0) / (1024 * 1024 * 1024)).toFixed(3), "gb");
+  const due = new Date(ctx.dueDateISO).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
+  const monthLabel = (() => {
+    const [y, m] = ctx.yearMonth.split("-").map(Number);
+    return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString("en-IN", { month: "long", year: "numeric", timeZone: "UTC" });
+  })();
+  const html = `
+    <!DOCTYPE html><html><head><meta charset="utf-8"></head>
+    <body style="margin:0;padding:0;background:#f5f5f5;font-family:'Segoe UI',Arial,sans-serif;">
+      <div style="max-width:600px;margin:0 auto;background:#fff;">
+        <div style="background:#0f172a;color:#fff;padding:28px 32px;">
+          <h1 style="margin:0;font-size:22px;font-weight:700;">Overage invoice \u2014 ${monthLabel}</h1>
+          <p style="margin:4px 0 0;color:#cbd5e1;font-size:13px;">Invoice ${ctx.invoiceNumber}</p>
+        </div>
+        <div style="padding:28px 32px;color:#0f172a;">
+          <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">
+            Hi ${site.brand_name || "there"}, your enterprise site <strong>${site.subdomain}</strong> used storage
+            beyond your included quota in ${monthLabel}. Here is the breakdown.
+          </p>
+          <table style="width:100%;border-collapse:collapse;margin:18px 0;font-size:14px;">
+            <thead>
+              <tr style="background:#f8fafc;">
+                <th align="left" style="padding:10px;border-bottom:1px solid #e2e8f0;">Resource</th>
+                <th align="right" style="padding:10px;border-bottom:1px solid #e2e8f0;">Overage</th>
+                <th align="right" style="padding:10px;border-bottom:1px solid #e2e8f0;">Rate</th>
+                <th align="right" style="padding:10px;border-bottom:1px solid #e2e8f0;">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="padding:10px;border-bottom:1px solid #f1f5f9;">D1 storage</td>
+                <td align="right" style="padding:10px;border-bottom:1px solid #f1f5f9;">${gb(ctx.d1Overage)} GB</td>
+                <td align="right" style="padding:10px;border-bottom:1px solid #f1f5f9;">${fmt(ctx.rates.d1PerGB)}/GB</td>
+                <td align="right" style="padding:10px;border-bottom:1px solid #f1f5f9;">${fmt(ctx.d1Cost)}</td>
+              </tr>
+              <tr>
+                <td style="padding:10px;border-bottom:1px solid #f1f5f9;">R2 storage</td>
+                <td align="right" style="padding:10px;border-bottom:1px solid #f1f5f9;">${gb(ctx.r2Overage)} GB</td>
+                <td align="right" style="padding:10px;border-bottom:1px solid #f1f5f9;">${fmt(ctx.rates.r2PerGB)}/GB</td>
+                <td align="right" style="padding:10px;border-bottom:1px solid #f1f5f9;">${fmt(ctx.r2Cost)}</td>
+              </tr>
+              <tr>
+                <td colspan="3" align="right" style="padding:14px 10px;font-weight:700;">Total due</td>
+                <td align="right" style="padding:14px 10px;font-weight:700;font-size:16px;">${fmt(ctx.totalCost)}</td>
+              </tr>
+            </tbody>
+          </table>
+          <p style="margin:16px 0;color:#475569;font-size:14px;">Please pay by <strong>${due}</strong>.</p>
+          <p style="text-align:center;margin:28px 0;">
+            <a href="${invoiceUrl}" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;font-size:15px;">View &amp; pay invoice</a>
+          </p>
+          <p style="font-size:12px;color:#94a3b8;line-height:1.6;margin-top:24px;">
+            This is an automated invoice from Flomerce. If you believe this charge is incorrect,
+            reply to this email and we'll look into it.
+          </p>
+        </div>
+      </div>
+    </body></html>
+  `;
+  const text = `Overage invoice ${ctx.invoiceNumber} \u2014 ${monthLabel}
+Total due: \u20B9${ctx.totalCost.toFixed(2)} (due ${due})
+View & pay: ${invoiceUrl}`;
+  const subject = `Flomerce overage invoice \u2014 ${monthLabel} \u2014 \u20B9${ctx.totalCost.toFixed(2)}`;
+  await sendEmail(env, recipients, subject, html, text);
+}
+__name(sendOverageInvoiceEmail, "sendOverageInvoiceEmail");
 async function markInvoicePaid(request, env) {
   try {
     const { siteId, yearMonth, notes } = await request.json();
@@ -15814,6 +16087,191 @@ async function deleteShardEndpoint(env, shardId) {
   }
 }
 __name(deleteShardEndpoint, "deleteShardEndpoint");
+
+// workers/platform/billing-worker.js
+init_checked_fetch();
+init_strip_cf_connecting_ip_header();
+init_modules_watch_stub();
+init_helpers();
+async function handleBilling(request, env, path) {
+  if (request.method === "OPTIONS")
+    return handleCORS();
+  const parts = path.split("/").filter(Boolean);
+  const sub = parts[2] || "";
+  try {
+    if (request.method === "GET" && sub === "invoice") {
+      return getPublicInvoice2(request, env);
+    }
+    if (request.method === "GET" && sub === "invoices") {
+      return listInvoicesForSite(request, env);
+    }
+    if (request.method === "POST" && sub === "invoices" && parts[3] && parts[4] === "pay") {
+      return createInvoiceOrder(request, env, parts[3]);
+    }
+    return errorResponse("Billing endpoint not found", 404);
+  } catch (err) {
+    console.error("Billing worker error:", err);
+    return errorResponse("Billing request failed: " + (err.message || err), 500);
+  }
+}
+__name(handleBilling, "handleBilling");
+async function getPublicInvoice2(request, env) {
+  const url = new URL(request.url);
+  const invoiceNumber = url.searchParams.get("invoice");
+  const token = url.searchParams.get("t");
+  if (!invoiceNumber || !token) {
+    return errorResponse("invoice and t are required", 400);
+  }
+  const row = await env.DB.prepare(`
+    SELECT eum.*, s.subdomain, s.brand_name, s.id as site_id_full
+    FROM enterprise_usage_monthly eum
+    JOIN sites s ON eum.site_id = s.id
+    WHERE eum.invoice_number = ? AND eum.invoice_token = ?
+    LIMIT 1
+  `).bind(invoiceNumber, token).first();
+  if (!row)
+    return errorResponse("Invoice not found or token invalid", 404);
+  const platformKeyId = await getPlatformRazorpayKeyId(env) || env.RAZORPAY_KEY_ID || null;
+  return successResponse({
+    invoice: shapeInvoice(row),
+    razorpayKeyId: platformKeyId,
+    platformName: "Flomerce"
+  });
+}
+__name(getPublicInvoice2, "getPublicInvoice");
+async function listInvoicesForSite(request, env) {
+  const url = new URL(request.url);
+  const siteId = url.searchParams.get("siteId");
+  if (!siteId)
+    return errorResponse("siteId is required", 400);
+  const { validateSiteAdmin: validateSiteAdmin2 } = await Promise.resolve().then(() => (init_site_admin_worker(), site_admin_worker_exports));
+  const admin = await validateSiteAdmin2(request, env, siteId);
+  if (!admin)
+    return errorResponse("Unauthorized", 401);
+  const result = await env.DB.prepare(`
+    SELECT eum.*, s.subdomain, s.brand_name
+    FROM enterprise_usage_monthly eum
+    JOIN sites s ON eum.site_id = s.id
+    WHERE eum.site_id = ?
+    ORDER BY eum.year_month DESC
+    LIMIT 36
+  `).bind(siteId).all();
+  const invoices = (result.results || []).map(shapeInvoice);
+  return successResponse({ invoices });
+}
+__name(listInvoicesForSite, "listInvoicesForSite");
+async function createInvoiceOrder(request, env, invoiceNumber) {
+  let token;
+  try {
+    const body = await request.json();
+    token = body.token;
+  } catch {
+    return errorResponse("Request body must be JSON with { token }", 400);
+  }
+  if (!invoiceNumber || !token)
+    return errorResponse("invoice and token are required", 400);
+  const invoice = await env.DB.prepare(`
+    SELECT eum.*, s.subdomain, s.brand_name
+    FROM enterprise_usage_monthly eum
+    JOIN sites s ON eum.site_id = s.id
+    WHERE eum.invoice_number = ? AND eum.invoice_token = ?
+    LIMIT 1
+  `).bind(invoiceNumber, token).first();
+  if (!invoice)
+    return errorResponse("Invoice not found or token invalid", 404);
+  if (invoice.status === "paid") {
+    return errorResponse("Invoice is already paid", 409);
+  }
+  const totalCost = Number(invoice.total_cost_inr || 0);
+  if (!(totalCost > 0)) {
+    return errorResponse("Invoice has no amount due", 400);
+  }
+  if (invoice.razorpay_order_id) {
+    const platformKeyId2 = await getPlatformRazorpayKeyId(env) || env.RAZORPAY_KEY_ID || null;
+    return successResponse({
+      orderId: invoice.razorpay_order_id,
+      amount: Math.round(totalCost * 100),
+      currency: "INR",
+      razorpayKeyId: platformKeyId2,
+      invoiceNumber: invoice.invoice_number,
+      brandName: invoice.brand_name,
+      reused: true
+    });
+  }
+  const platformKeyId = await getPlatformRazorpayKeyId(env) || env.RAZORPAY_KEY_ID;
+  const platformKeySecret = env.RAZORPAY_KEY_SECRET;
+  if (!platformKeyId || !platformKeySecret) {
+    return errorResponse("Razorpay platform credentials are not configured", 500);
+  }
+  const amountPaise = Math.round(totalCost * 100);
+  const receipt = `inv_${invoice.id}_${Date.now()}`.slice(0, 40);
+  const orderPayload = {
+    amount: amountPaise,
+    currency: "INR",
+    receipt,
+    notes: {
+      type: "enterprise_overage_invoice",
+      overageInvoiceId: String(invoice.id),
+      invoiceNumber: invoice.invoice_number,
+      siteId: invoice.site_id,
+      yearMonth: invoice.year_month
+    }
+  };
+  const auth = btoa(`${platformKeyId}:${platformKeySecret}`);
+  const resp = await fetch("https://api.razorpay.com/v1/orders", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Basic ${auth}`
+    },
+    body: JSON.stringify(orderPayload)
+  });
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok || !data.id) {
+    console.error("Razorpay order create failed for overage invoice", invoice.id, ":", data);
+    return errorResponse("Failed to create payment order: " + (data?.error?.description || resp.statusText), 502);
+  }
+  await env.DB.prepare(
+    `UPDATE enterprise_usage_monthly SET razorpay_order_id = ? WHERE id = ?`
+  ).bind(data.id, invoice.id).run();
+  return successResponse({
+    orderId: data.id,
+    amount: amountPaise,
+    currency: "INR",
+    razorpayKeyId: platformKeyId,
+    invoiceNumber: invoice.invoice_number,
+    brandName: invoice.brand_name,
+    reused: false
+  });
+}
+__name(createInvoiceOrder, "createInvoiceOrder");
+function shapeInvoice(row) {
+  return {
+    id: row.id,
+    siteId: row.site_id,
+    subdomain: row.subdomain,
+    brandName: row.brand_name,
+    invoiceNumber: row.invoice_number,
+    yearMonth: row.year_month,
+    status: row.status,
+    totalCostINR: Number(row.total_cost_inr || 0),
+    d1CostINR: Number(row.d1_cost_inr || 0),
+    r2CostINR: Number(row.r2_cost_inr || 0),
+    d1OverageBytes: Number(row.d1_overage_bytes || 0),
+    r2OverageBytes: Number(row.r2_overage_bytes || 0),
+    d1LimitBytes: row.d1_limit_bytes != null ? Number(row.d1_limit_bytes) : null,
+    r2LimitBytes: row.r2_limit_bytes != null ? Number(row.r2_limit_bytes) : null,
+    snapshotAt: row.snapshot_at,
+    dueDate: row.due_date,
+    paidAt: row.paid_at,
+    paymentRef: row.payment_ref,
+    paymentMethod: row.payment_method,
+    razorpayOrderId: row.razorpay_order_id,
+    emailedAt: row.emailed_at,
+    notes: row.notes
+  };
+}
+__name(shapeInvoice, "shapeInvoice");
 
 // workers/index.js
 init_site_admin_worker();
@@ -18709,6 +19167,8 @@ async function ensureTablesExist(env) {
         assigned_at TEXT DEFAULT (datetime('now')),
         assigned_by TEXT,
         notes TEXT,
+        d1_bytes_limit INTEGER,
+        r2_bytes_limit INTEGER,
         FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
       )
     `).run();
@@ -18726,6 +19186,15 @@ async function ensureTablesExist(env) {
         paid_at TEXT,
         notes TEXT,
         snapshot_at TEXT DEFAULT (datetime('now')),
+        invoice_number TEXT,
+        due_date TEXT,
+        invoice_token TEXT,
+        payment_ref TEXT,
+        payment_method TEXT,
+        razorpay_order_id TEXT,
+        d1_limit_bytes INTEGER,
+        r2_limit_bytes INTEGER,
+        emailed_at TEXT,
         FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
         UNIQUE(site_id, year_month)
       )
@@ -18740,7 +19209,18 @@ async function ensureTablesExist(env) {
       { col: "original_price", table: "subscription_plans", sql: "ALTER TABLE subscription_plans ADD COLUMN original_price REAL DEFAULT NULL" },
       { col: "tagline", table: "subscription_plans", sql: "ALTER TABLE subscription_plans ADD COLUMN tagline TEXT DEFAULT NULL" },
       { col: "staff_id", table: "site_admin_sessions", sql: "ALTER TABLE site_admin_sessions ADD COLUMN staff_id TEXT" },
-      { col: "permissions", table: "site_admin_sessions", sql: "ALTER TABLE site_admin_sessions ADD COLUMN permissions TEXT" }
+      { col: "permissions", table: "site_admin_sessions", sql: "ALTER TABLE site_admin_sessions ADD COLUMN permissions TEXT" },
+      { col: "d1_bytes_limit", table: "enterprise_sites", sql: "ALTER TABLE enterprise_sites ADD COLUMN d1_bytes_limit INTEGER" },
+      { col: "r2_bytes_limit", table: "enterprise_sites", sql: "ALTER TABLE enterprise_sites ADD COLUMN r2_bytes_limit INTEGER" },
+      { col: "invoice_number", table: "enterprise_usage_monthly", sql: "ALTER TABLE enterprise_usage_monthly ADD COLUMN invoice_number TEXT" },
+      { col: "due_date", table: "enterprise_usage_monthly", sql: "ALTER TABLE enterprise_usage_monthly ADD COLUMN due_date TEXT" },
+      { col: "invoice_token", table: "enterprise_usage_monthly", sql: "ALTER TABLE enterprise_usage_monthly ADD COLUMN invoice_token TEXT" },
+      { col: "payment_ref", table: "enterprise_usage_monthly", sql: "ALTER TABLE enterprise_usage_monthly ADD COLUMN payment_ref TEXT" },
+      { col: "payment_method", table: "enterprise_usage_monthly", sql: "ALTER TABLE enterprise_usage_monthly ADD COLUMN payment_method TEXT" },
+      { col: "razorpay_order_id", table: "enterprise_usage_monthly", sql: "ALTER TABLE enterprise_usage_monthly ADD COLUMN razorpay_order_id TEXT" },
+      { col: "d1_limit_bytes", table: "enterprise_usage_monthly", sql: "ALTER TABLE enterprise_usage_monthly ADD COLUMN d1_limit_bytes INTEGER" },
+      { col: "r2_limit_bytes", table: "enterprise_usage_monthly", sql: "ALTER TABLE enterprise_usage_monthly ADD COLUMN r2_limit_bytes INTEGER" },
+      { col: "emailed_at", table: "enterprise_usage_monthly", sql: "ALTER TABLE enterprise_usage_monthly ADD COLUMN emailed_at TEXT" }
     ];
     for (const m of migrations) {
       try {
@@ -18875,6 +19355,13 @@ var workers_default = {
     ctx.waitUntil(cleanupExpiredData(env));
     ctx.waitUntil(processAbandonedCartReminders(env));
     ctx.waitUntil(cleanupOrphanMedia(env));
+    if (event && event.cron === "5 0 1 * *") {
+      ctx.waitUntil(
+        runMonthlyEnterpriseSnapshots(env).catch(
+          (err) => console.error("[Cron] runMonthlyEnterpriseSnapshots failed:", err.message || err)
+        )
+      );
+    }
   }
 };
 async function cleanupOrphanMedia(env) {
@@ -19095,6 +19582,8 @@ async function handleAPI(request, env, path, ctx) {
       return handleWishlist(request, env, path);
     case "payments":
       return handlePayments(request, env, path, ctx);
+    case "billing":
+      return handleBilling(request, env, path, ctx);
     case "email":
       return handleEmail(request, env, path);
     case "categories":
@@ -19730,7 +20219,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-NIfsUP/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-lTdZsX/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -19765,7 +20254,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-NIfsUP/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-lTdZsX/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

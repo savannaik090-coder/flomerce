@@ -55,6 +55,7 @@ const FaqPage = React.lazy(() => import('./pages/FaqPage.jsx'));
 const BlogListPage = React.lazy(() => import('./pages/BlogListPage.jsx'));
 const BlogPostPage = React.lazy(() => import('./pages/BlogPostPage.jsx'));
 const InvoicePage = React.lazy(() => import('./pages/InvoicePage.jsx'));
+const OverageInvoicePage = React.lazy(() => import('./pages/OverageInvoicePage.jsx'));
 
 function removePreloader() {
   const el = document.getElementById('flomerce-preloader');
@@ -146,6 +147,7 @@ export default function App() {
 
   const isAdminRoute = location.pathname.startsWith('/admin');
   const isInvoiceRoute = location.pathname === '/invoice';
+  const isOverageInvoiceRoute = location.pathname === '/billing/invoice';
 
   if (isAdminRoute) {
     return (
@@ -165,6 +167,16 @@ export default function App() {
       <React.Suspense fallback={<PageLoading />}>
         <Routes>
           <Route path="/invoice" element={<InvoicePage />} />
+        </Routes>
+      </React.Suspense>
+    );
+  }
+
+  if (isOverageInvoiceRoute) {
+    return (
+      <React.Suspense fallback={<PageLoading />}>
+        <Routes>
+          <Route path="/billing/invoice" element={<OverageInvoicePage />} />
         </Routes>
       </React.Suspense>
     );

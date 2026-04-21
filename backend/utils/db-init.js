@@ -289,6 +289,8 @@ export async function ensureTablesExist(env) {
         assigned_at TEXT DEFAULT (datetime('now')),
         assigned_by TEXT,
         notes TEXT,
+        d1_bytes_limit INTEGER,
+        r2_bytes_limit INTEGER,
         FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
       )
     `).run();
@@ -307,6 +309,15 @@ export async function ensureTablesExist(env) {
         paid_at TEXT,
         notes TEXT,
         snapshot_at TEXT DEFAULT (datetime('now')),
+        invoice_number TEXT,
+        due_date TEXT,
+        invoice_token TEXT,
+        payment_ref TEXT,
+        payment_method TEXT,
+        razorpay_order_id TEXT,
+        d1_limit_bytes INTEGER,
+        r2_limit_bytes INTEGER,
+        emailed_at TEXT,
         FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
         UNIQUE(site_id, year_month)
       )
@@ -323,6 +334,17 @@ export async function ensureTablesExist(env) {
       { col: 'tagline', table: 'subscription_plans', sql: 'ALTER TABLE subscription_plans ADD COLUMN tagline TEXT DEFAULT NULL' },
       { col: 'staff_id', table: 'site_admin_sessions', sql: 'ALTER TABLE site_admin_sessions ADD COLUMN staff_id TEXT' },
       { col: 'permissions', table: 'site_admin_sessions', sql: 'ALTER TABLE site_admin_sessions ADD COLUMN permissions TEXT' },
+      { col: 'd1_bytes_limit', table: 'enterprise_sites', sql: 'ALTER TABLE enterprise_sites ADD COLUMN d1_bytes_limit INTEGER' },
+      { col: 'r2_bytes_limit', table: 'enterprise_sites', sql: 'ALTER TABLE enterprise_sites ADD COLUMN r2_bytes_limit INTEGER' },
+      { col: 'invoice_number', table: 'enterprise_usage_monthly', sql: 'ALTER TABLE enterprise_usage_monthly ADD COLUMN invoice_number TEXT' },
+      { col: 'due_date', table: 'enterprise_usage_monthly', sql: 'ALTER TABLE enterprise_usage_monthly ADD COLUMN due_date TEXT' },
+      { col: 'invoice_token', table: 'enterprise_usage_monthly', sql: 'ALTER TABLE enterprise_usage_monthly ADD COLUMN invoice_token TEXT' },
+      { col: 'payment_ref', table: 'enterprise_usage_monthly', sql: 'ALTER TABLE enterprise_usage_monthly ADD COLUMN payment_ref TEXT' },
+      { col: 'payment_method', table: 'enterprise_usage_monthly', sql: 'ALTER TABLE enterprise_usage_monthly ADD COLUMN payment_method TEXT' },
+      { col: 'razorpay_order_id', table: 'enterprise_usage_monthly', sql: 'ALTER TABLE enterprise_usage_monthly ADD COLUMN razorpay_order_id TEXT' },
+      { col: 'd1_limit_bytes', table: 'enterprise_usage_monthly', sql: 'ALTER TABLE enterprise_usage_monthly ADD COLUMN d1_limit_bytes INTEGER' },
+      { col: 'r2_limit_bytes', table: 'enterprise_usage_monthly', sql: 'ALTER TABLE enterprise_usage_monthly ADD COLUMN r2_limit_bytes INTEGER' },
+      { col: 'emailed_at', table: 'enterprise_usage_monthly', sql: 'ALTER TABLE enterprise_usage_monthly ADD COLUMN emailed_at TEXT' },
     ];
     for (const m of migrations) {
       try {

@@ -1,0 +1,154 @@
+import React, { useContext, useEffect, useState } from 'react';
+import { SiteContext } from '../../context/SiteContext.jsx';
+import { apiRequest } from '../../services/api.js';
+
+function fmtINR(n) {
+  const num = Number(n) || 0;
+  try {
+    return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(num);
+  } catch {
+    return `₹${num.toFixed(2)}`;
+  }
+}
+
+function fmtMonth(yearMonth) {
+  if (!yearMonth) return '';
+  const [y, m] = yearMonth.split('-').map(Number);
+  try {
+    return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString('en-IN', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+  } catch { return yearMonth; }
+}
+
+function fmtDate(iso) {
+  if (!iso) return '—';
+  try { return new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }); }
+  catch { return iso; }
+}
+
+export default function BillingSection() {
+  const { siteConfig } = useContext(SiteContext);
+  const [invoices, setInvoices] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!siteConfig?.id) return;
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const res = await apiRequest(`/api/billing/invoices?siteId=${encodeURIComponent(siteConfig.id)}`);
+        if (cancelled) return;
+        if (res.success) setInvoices(res.data.invoices || []);
+        else setError(res.error || 'Failed to load invoices');
+      } catch (e) {
+        if (!cancelled) setError(e.message || 'Failed to load invoices');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [siteConfig?.id]);
+
+  if (siteConfig?.subscriptionPlan !== 'enterprise') {
+    return (
+      <div style={emptyStyle}>
+        <h2 style={{ margin: '0 0 8px' }}>Billing</h2>
+        <p style={{ margin: 0, color: '#64748b' }}>
+          Overage billing is available on the Enterprise plan. Your current plan has fixed pricing — no usage invoices to show here.
+        </p>
+      </div>
+    );
+  }
+
+  const unpaid = invoices.filter(i => i.status !== 'paid' && Number(i.totalCostINR || 0) > 0);
+  const paid = invoices.filter(i => i.status === 'paid');
+  const skipped = invoices.filter(i => i.status !== 'paid' && Number(i.totalCostINR || 0) === 0);
+
+  return (
+    <div>
+      <div style={{ marginBottom: 24 }}>
+        <h2 style={{ margin: '0 0 4px', color: '#0f172a' }}>Billing &amp; overage invoices</h2>
+        <p style={{ margin: 0, color: '#64748b' }}>
+          Monthly invoices for storage above your enterprise plan's included quota.
+          Invoices are emailed to your owner email on the 1st of each month.
+        </p>
+      </div>
+
+      {loading ? (
+        <div style={{ padding: 32, textAlign: 'center', color: '#64748b' }}>Loading invoices…</div>
+      ) : error ? (
+        <div style={{ padding: 16, background: '#fee2e2', color: '#991b1b', borderRadius: 8 }}>{error}</div>
+      ) : (
+        <>
+          <Group title="Unpaid" tone="warning" empty="No unpaid invoices. You're all caught up.">
+            {unpaid.map(inv => <InvoiceRow key={inv.id} inv={inv} />)}
+          </Group>
+          <Group title="Paid" empty="No paid invoices yet.">
+            {paid.map(inv => <InvoiceRow key={inv.id} inv={inv} />)}
+          </Group>
+          {skipped.length > 0 && (
+            <Group title="No-charge months" empty="">
+              {skipped.map(inv => <InvoiceRow key={inv.id} inv={inv} muted />)}
+            </Group>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function Group({ title, children, empty, tone }) {
+  const items = React.Children.toArray(children);
+  return (
+    <section style={{ marginBottom: 28 }}>
+      <h3 style={{ margin: '0 0 12px', fontSize: 15, color: tone === 'warning' ? '#b45309' : '#0f172a' }}>{title}</h3>
+      {items.length === 0 ? (
+        empty ? <div style={{ padding: 16, background: '#f8fafc', borderRadius: 8, color: '#64748b', fontSize: 14 }}>{empty}</div> : null
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>{items}</div>
+      )}
+    </section>
+  );
+}
+
+function InvoiceRow({ inv, muted }) {
+  const isPaid = inv.status === 'paid';
+  const hasAmount = Number(inv.totalCostINR || 0) > 0;
+  const link = inv.invoiceNumber && inv.id
+    ? `/billing/invoice?invoice=${encodeURIComponent(inv.invoiceNumber)}&t=__token__&site=${encodeURIComponent(inv.siteId)}`
+    : null;
+
+  // The token isn't returned to the merchant API for safety. Merchants use
+  // the email link to access the public invoice page; this row just shows
+  // status + amount. We expose Razorpay payment ref for paid invoices.
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+      padding: '14px 16px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10,
+      opacity: muted ? 0.7 : 1,
+    }}>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontWeight: 600, color: '#0f172a' }}>{fmtMonth(inv.yearMonth)}</div>
+        <div style={{ fontSize: 13, color: '#64748b' }}>
+          {inv.invoiceNumber || '—'}
+          {!isPaid && hasAmount && inv.dueDate && <> · Due {fmtDate(inv.dueDate)}</>}
+          {isPaid && inv.paidAt && <> · Paid {fmtDate(inv.paidAt)}{inv.paymentMethod ? ` · ${inv.paymentMethod}` : ''}</>}
+        </div>
+      </div>
+      <div style={{ textAlign: 'right' }}>
+        <div style={{ fontWeight: 700, color: '#0f172a' }}>{fmtINR(inv.totalCostINR)}</div>
+        <div style={{ fontSize: 12 }}>
+          {isPaid ? <span style={pillPaid}>Paid</span> : hasAmount ? <span style={pillUnpaid}>Unpaid</span> : <span style={pillNone}>No charge</span>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const pillPaid = { display: 'inline-block', padding: '2px 8px', borderRadius: 999, background: '#dcfce7', color: '#166534', fontWeight: 600 };
+const pillUnpaid = { display: 'inline-block', padding: '2px 8px', borderRadius: 999, background: '#fee2e2', color: '#991b1b', fontWeight: 600 };
+const pillNone = { display: 'inline-block', padding: '2px 8px', borderRadius: 999, background: '#f1f5f9', color: '#64748b', fontWeight: 600 };
+
+const emptyStyle = { padding: 24, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10 };

@@ -52,7 +52,7 @@ async function getRazorpayCredentials(env, siteId) {
   return { keyId: platformKeyId || env.RAZORPAY_KEY_ID, keySecret: env.RAZORPAY_KEY_SECRET, perSite: false };
 }
 
-async function getPlatformRazorpayKeyId(env) {
+export async function getPlatformRazorpayKeyId(env) {
   try {
     const setting = await env.DB.prepare(
       `SELECT setting_value FROM platform_settings WHERE setting_key = 'razorpay_key_id'`
@@ -866,7 +866,13 @@ async function handleRazorpayWebhook(request, env) {
 
     const payload = JSON.parse(body);
     const event = payload.event;
-    const entity = payload.payload?.subscription?.entity || payload.payload?.payment?.entity;
+    // For payment.* events we want the payment entity directly (so we can read
+    // its `order_id` and look up the matching overage invoice). For
+    // subscription.* events we want the subscription entity.
+    const isPaymentEvent = typeof event === 'string' && event.startsWith('payment.');
+    const entity = isPaymentEvent
+      ? (payload.payload?.payment?.entity || payload.payload?.subscription?.entity)
+      : (payload.payload?.subscription?.entity || payload.payload?.payment?.entity);
 
     const eventId = request.headers.get('x-razorpay-event-id') || payload.id || `${event}:${entity?.id}:${payload.created_at || ''}`;
 
@@ -907,6 +913,13 @@ async function handleRazorpayWebhook(request, env) {
           break;
         case 'subscription.paused':
           await handleSubscriptionPaused(env, entity);
+          break;
+        case 'payment.captured':
+          // We only care about overage-invoice payments here. Storefront
+          // order payments are confirmed by the explicit verify endpoint, not
+          // by this webhook. handleOverageInvoicePaid is a no-op when the
+          // payment's order_id doesn't match an overage invoice.
+          await handleOverageInvoicePaid(env, entity);
           break;
         default:
           console.log('Unhandled webhook event:', event);
@@ -1278,4 +1291,38 @@ export async function activateSubscription(env, userId, planName, billingCycle, 
     if (error.message) console.error('Error message:', error.message);
     return false;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Overage invoice payment handler (called from the Razorpay webhook).
+// ---------------------------------------------------------------------------
+// Marks an `enterprise_usage_monthly` row as paid when its `razorpay_order_id`
+// matches the order_id on a captured payment. No-op if the payment is for
+// anything else (storefront orders, subscriptions, etc.) so it is safe to
+// always invoke on payment.captured events.
+async function handleOverageInvoicePaid(env, paymentEntity) {
+  if (!paymentEntity || !paymentEntity.order_id) return;
+
+  const invoice = await env.DB.prepare(
+    `SELECT id, status FROM enterprise_usage_monthly WHERE razorpay_order_id = ? LIMIT 1`
+  ).bind(paymentEntity.order_id).first();
+  if (!invoice) return; // not an overage invoice — ignore
+
+  if (invoice.status === 'paid') {
+    console.log('Overage invoice already paid, ignoring duplicate webhook:', invoice.id);
+    return;
+  }
+
+  await env.DB.prepare(
+    `UPDATE enterprise_usage_monthly
+     SET status = 'paid', paid_at = datetime('now'),
+         payment_ref = ?, payment_method = ?
+     WHERE id = ?`
+  ).bind(
+    paymentEntity.id || null,
+    paymentEntity.method || null,
+    invoice.id
+  ).run();
+
+  console.log('Overage invoice paid via webhook:', invoice.id, 'payment:', paymentEntity.id);
 }

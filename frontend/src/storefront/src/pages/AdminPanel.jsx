@@ -12,6 +12,7 @@ import RevenueSection from '../components/admin/RevenueSection.jsx';
 import PushNotificationsSection from '../components/admin/PushNotificationsSection.jsx';
 import VisualCustomizer from '../components/admin/VisualCustomizer.jsx';
 import SettingsSection from '../components/admin/SettingsSection.jsx';
+import BillingSection from '../components/admin/BillingSection.jsx';
 import SEOSection from '../components/admin/SEOSection.jsx';
 import ProductForm from '../components/admin/ProductForm.jsx';
 import FeatureGate, { isFeatureAvailable, getRequiredPlan } from '../components/admin/FeatureGate.jsx';
@@ -352,6 +353,7 @@ export default function AdminPanel() {
               <PushNotificationsSection />
             </FeatureGate>
           )}
+          {activeSection === 'billing' && <BillingSection />}
           {activeSection === 'settings' && hasPermission('settings') && <SettingsSection />}
         </div>
       </div>

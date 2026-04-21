@@ -2,9 +2,10 @@ import { generateId, errorResponse, successResponse, handleCORS, validateEmail }
 import { validateAuth } from '../../utils/auth.js';
 import { listAllSiteDatabases, getDatabaseSize, deleteDatabase, createDatabase, runSchemaOnDB, addBindingAndRedeploy } from '../../utils/d1-manager.js';
 import { getSiteSchemaStatements } from '../../utils/site-schema.js';
-import { reconcileShard, estimateRowBytes, trackD1Write, getSiteUsage } from '../../utils/usage-tracker.js';
-import { resolveSiteDBById } from '../../utils/site-db.js';
+import { reconcileShard, estimateRowBytes, trackD1Write, getSiteUsage, getPlanLimitsConfig } from '../../utils/usage-tracker.js';
+import { resolveSiteDBById, getSiteConfig } from '../../utils/site-db.js';
 import { cancelRazorpaySubscription } from './payments-worker.js';
+import { sendEmail, getOwnerRecipients } from '../../utils/email.js';
 
 const ADMIN_EMAILS = [
   'savannaik090@gmail.com',
@@ -1260,6 +1261,17 @@ async function handleEnterpriseManagement(request, env, pathParts, user) {
     return markInvoicePaid(request, env);
   }
 
+  if (method === 'POST' && subAction === 'update-quota') {
+    return updateEnterpriseQuota(request, env);
+  }
+
+  if (method === 'POST' && subAction === 'run-monthly-snapshots') {
+    // Manual trigger for the monthly cron — useful for ops backfills.
+    const { yearMonth } = await request.json().catch(() => ({}));
+    const result = await runMonthlyEnterpriseSnapshots(env, yearMonth || null);
+    return successResponse(result, 'Monthly snapshot run complete');
+  }
+
   if (method === 'GET' && subAction === 'search') {
     const url = new URL(request.url);
     const q = (url.searchParams.get('q') || '').trim();
@@ -1317,10 +1329,37 @@ async function updateOverageRates(request, env) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Enterprise quota helpers (single source of truth)
+// ---------------------------------------------------------------------------
+// Limits used for overage billing. Resolution order:
+//   1. Per-site override stored on `enterprise_sites` (d1_bytes_limit / r2_bytes_limit)
+//   2. PLAN_LIMITS.enterprise from utils/usage-tracker.js
+// Pass the `enterprise_sites` row in if you already have it to avoid a re-fetch.
+export function resolveEnterpriseLimits(entRow) {
+  const planLimits = getPlanLimitsConfig('enterprise');
+  const d1 = entRow && entRow.d1_bytes_limit != null ? Number(entRow.d1_bytes_limit) : planLimits.d1Bytes;
+  const r2 = entRow && entRow.r2_bytes_limit != null ? Number(entRow.r2_bytes_limit) : planLimits.r2Bytes;
+  return { d1Bytes: d1, r2Bytes: r2 };
+}
+
+async function loadOverageRates(env) {
+  const ratesResult = await env.DB.prepare(
+    `SELECT setting_key, setting_value FROM platform_settings WHERE setting_key IN ('overage_rate_d1_per_gb', 'overage_rate_r2_per_gb')`
+  ).all();
+  const rates = { d1PerGB: 0.75, r2PerGB: 0.015 };
+  for (const row of (ratesResult.results || [])) {
+    if (row.setting_key === 'overage_rate_d1_per_gb') { const v = parseFloat(row.setting_value); if (!isNaN(v) && v >= 0) rates.d1PerGB = v; }
+    if (row.setting_key === 'overage_rate_r2_per_gb') { const v = parseFloat(row.setting_value); if (!isNaN(v) && v >= 0) rates.r2PerGB = v; }
+  }
+  return rates;
+}
+
 async function listEnterpriseSites(env) {
   try {
     const result = await env.DB.prepare(`
       SELECT es.site_id, es.assigned_at, es.assigned_by, es.notes,
+             es.d1_bytes_limit, es.r2_bytes_limit,
              s.subdomain, s.brand_name, s.user_id,
              u.name as user_name, u.email as user_email,
              su.d1_bytes_used, su.r2_bytes_used, su.last_updated as usage_updated
@@ -1331,24 +1370,15 @@ async function listEnterpriseSites(env) {
       ORDER BY es.assigned_at DESC
     `).all();
 
-    const ratesResult = await env.DB.prepare(
-      `SELECT setting_key, setting_value FROM platform_settings WHERE setting_key IN ('overage_rate_d1_per_gb', 'overage_rate_r2_per_gb')`
-    ).all();
-    const rates = { d1PerGB: 0.75, r2PerGB: 0.015 };
-    for (const row of (ratesResult.results || [])) {
-      if (row.setting_key === 'overage_rate_d1_per_gb') { const v = parseFloat(row.setting_value); if (!isNaN(v) && v >= 0) rates.d1PerGB = v; }
-      if (row.setting_key === 'overage_rate_r2_per_gb') { const v = parseFloat(row.setting_value); if (!isNaN(v) && v >= 0) rates.r2PerGB = v; }
-    }
-
-    const d1LimitBytes = 2 * 1024 * 1024 * 1024;
-    const r2LimitBytes = 50 * 1024 * 1024 * 1024;
+    const rates = await loadOverageRates(env);
 
     const sites = await Promise.all((result.results || []).map(async (row) => {
       const usage = await getSiteUsage(env, row.site_id);
+      const limits = resolveEnterpriseLimits(row);
       const d1Used = usage.d1BytesUsed;
       const r2Used = usage.r2BytesUsed;
-      const d1Overage = Math.max(0, d1Used - d1LimitBytes);
-      const r2Overage = Math.max(0, r2Used - r2LimitBytes);
+      const d1Overage = Math.max(0, d1Used - limits.d1Bytes);
+      const r2Overage = Math.max(0, r2Used - limits.r2Bytes);
       const d1Cost = (d1Overage / (1024 * 1024 * 1024)) * rates.d1PerGB;
       const r2Cost = (r2Overage / (1024 * 1024 * 1024)) * rates.r2PerGB;
 
@@ -1363,8 +1393,10 @@ async function listEnterpriseSites(env) {
         assignedBy: row.assigned_by,
         notes: row.notes,
         d1Used, r2Used,
-        d1Limit: d1LimitBytes,
-        r2Limit: r2LimitBytes,
+        d1Limit: limits.d1Bytes,
+        r2Limit: limits.r2Bytes,
+        d1LimitOverride: row.d1_bytes_limit != null,
+        r2LimitOverride: row.r2_bytes_limit != null,
         d1Overage, r2Overage,
         currentMonthCost: Math.round((d1Cost + r2Cost) * 100) / 100,
         d1CostINR: Math.round(d1Cost * 100) / 100,
@@ -1380,10 +1412,22 @@ async function listEnterpriseSites(env) {
   }
 }
 
+function parseLimitGB(val) {
+  if (val === null || val === undefined || val === '') return null;
+  const num = Number(val);
+  if (!Number.isFinite(num) || num < 0) return undefined; // signal invalid
+  return Math.round(num * 1024 * 1024 * 1024);
+}
+
 async function assignEnterpriseSite(request, env, user) {
   try {
-    const { siteId, notes } = await request.json();
+    const { siteId, notes, d1LimitGB, r2LimitGB } = await request.json();
     if (!siteId) return errorResponse('siteId is required', 400);
+
+    const d1Override = parseLimitGB(d1LimitGB);
+    const r2Override = parseLimitGB(r2LimitGB);
+    if (d1Override === undefined) return errorResponse('d1LimitGB must be a non-negative number', 400);
+    if (r2Override === undefined) return errorResponse('r2LimitGB must be a non-negative number', 400);
 
     const site = await env.DB.prepare('SELECT id, subdomain, brand_name FROM sites WHERE id = ?').bind(siteId).first();
     if (!site) return errorResponse('Site not found', 404);
@@ -1400,10 +1444,14 @@ async function assignEnterpriseSite(request, env, user) {
     }
 
     await env.DB.prepare(`
-      INSERT INTO enterprise_sites (site_id, assigned_at, assigned_by, notes)
-      VALUES (?, datetime('now'), ?, ?)
-      ON CONFLICT(site_id) DO UPDATE SET assigned_by = ?, notes = ?, assigned_at = datetime('now')
-    `).bind(siteId, user.email, notes || null, user.email, notes || null).run();
+      INSERT INTO enterprise_sites (site_id, assigned_at, assigned_by, notes, d1_bytes_limit, r2_bytes_limit)
+      VALUES (?, datetime('now'), ?, ?, ?, ?)
+      ON CONFLICT(site_id) DO UPDATE SET assigned_by = ?, notes = ?, assigned_at = datetime('now'),
+        d1_bytes_limit = ?, r2_bytes_limit = ?
+    `).bind(
+      siteId, user.email, notes || null, d1Override, r2Override,
+      user.email, notes || null, d1Override, r2Override
+    ).run();
 
     await env.DB.prepare(
       `UPDATE sites SET subscription_plan = 'enterprise', subscription_expires_at = '2099-12-31T23:59:59', is_active = 1, updated_at = datetime('now') WHERE id = ?`
@@ -1446,7 +1494,8 @@ async function removeEnterpriseSite(request, env) {
 async function getEnterpriseSiteUsage(env, siteId) {
   try {
     const site = await env.DB.prepare(`
-      SELECT es.site_id, s.subdomain, s.brand_name
+      SELECT es.site_id, es.d1_bytes_limit, es.r2_bytes_limit,
+             s.subdomain, s.brand_name
       FROM enterprise_sites es
       JOIN sites s ON es.site_id = s.id
       WHERE es.site_id = ?
@@ -1455,22 +1504,13 @@ async function getEnterpriseSiteUsage(env, siteId) {
     if (!site) return errorResponse('Enterprise site not found', 404);
 
     const usage = await getSiteUsage(env, siteId);
+    const rates = await loadOverageRates(env);
+    const limits = resolveEnterpriseLimits(site);
 
-    const ratesResult = await env.DB.prepare(
-      `SELECT setting_key, setting_value FROM platform_settings WHERE setting_key IN ('overage_rate_d1_per_gb', 'overage_rate_r2_per_gb')`
-    ).all();
-    const rates = { d1PerGB: 0.75, r2PerGB: 0.015 };
-    for (const row of (ratesResult.results || [])) {
-      if (row.setting_key === 'overage_rate_d1_per_gb') { const v = parseFloat(row.setting_value); if (!isNaN(v) && v >= 0) rates.d1PerGB = v; }
-      if (row.setting_key === 'overage_rate_r2_per_gb') { const v = parseFloat(row.setting_value); if (!isNaN(v) && v >= 0) rates.r2PerGB = v; }
-    }
-
-    const d1LimitBytes = 2 * 1024 * 1024 * 1024;
-    const r2LimitBytes = 50 * 1024 * 1024 * 1024;
     const d1Used = usage.d1BytesUsed;
     const r2Used = usage.r2BytesUsed;
-    const d1Overage = Math.max(0, d1Used - d1LimitBytes);
-    const r2Overage = Math.max(0, r2Used - r2LimitBytes);
+    const d1Overage = Math.max(0, d1Used - limits.d1Bytes);
+    const r2Overage = Math.max(0, r2Used - limits.r2Bytes);
     const d1Cost = (d1Overage / (1024 * 1024 * 1024)) * rates.d1PerGB;
     const r2Cost = (r2Overage / (1024 * 1024 * 1024)) * rates.r2PerGB;
 
@@ -1483,8 +1523,10 @@ async function getEnterpriseSiteUsage(env, siteId) {
       subdomain: site.subdomain,
       brandName: site.brand_name,
       d1Used, r2Used,
-      d1Limit: d1LimitBytes,
-      r2Limit: r2LimitBytes,
+      d1Limit: limits.d1Bytes,
+      r2Limit: limits.r2Bytes,
+      d1LimitOverride: site.d1_bytes_limit != null,
+      r2LimitOverride: site.r2_bytes_limit != null,
       d1Overage, r2Overage,
       currentMonthCost: Math.round((d1Cost + r2Cost) * 100) / 100,
       d1CostINR: Math.round(d1Cost * 100) / 100,
@@ -1496,6 +1538,30 @@ async function getEnterpriseSiteUsage(env, siteId) {
   } catch (error) {
     console.error('Get enterprise usage error:', error);
     return errorResponse('Failed to get enterprise usage', 500);
+  }
+}
+
+async function updateEnterpriseQuota(request, env) {
+  try {
+    const { siteId, d1LimitGB, r2LimitGB } = await request.json();
+    if (!siteId) return errorResponse('siteId is required', 400);
+
+    const ent = await env.DB.prepare('SELECT site_id FROM enterprise_sites WHERE site_id = ?').bind(siteId).first();
+    if (!ent) return errorResponse('Enterprise site not found', 404);
+
+    const d1Override = parseLimitGB(d1LimitGB);
+    const r2Override = parseLimitGB(r2LimitGB);
+    if (d1Override === undefined) return errorResponse('d1LimitGB must be a non-negative number', 400);
+    if (r2Override === undefined) return errorResponse('r2LimitGB must be a non-negative number', 400);
+
+    await env.DB.prepare(
+      `UPDATE enterprise_sites SET d1_bytes_limit = ?, r2_bytes_limit = ? WHERE site_id = ?`
+    ).bind(d1Override, r2Override, siteId).run();
+
+    return successResponse({ siteId, d1LimitBytes: d1Override, r2LimitBytes: r2Override }, 'Quota updated');
+  } catch (error) {
+    console.error('Update enterprise quota error:', error);
+    return errorResponse('Failed to update quota: ' + error.message, 500);
   }
 }
 
@@ -1523,58 +1589,264 @@ async function getEnterpriseInvoices(env, siteId) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Snapshot core: produces (or refreshes) the monthly invoice row for one site.
+// ---------------------------------------------------------------------------
+// Idempotent — safe to re-run for the same (site, month). On the first
+// snapshot for a month we mint an invoice_number, invoice_token and due_date
+// so the row is immediately payable. Subsequent re-snapshots only refresh the
+// usage/cost numbers and do not rotate identifiers (so emailed links keep
+// working) and do not change the status (so paid invoices stay paid).
+//
+// `opts.sendEmailIfBilled` (default false): if true and the snapshot has a
+// non-zero overage AND the invoice has not been emailed yet, fire off the
+// invoice email and stamp `emailed_at`.
+//
+// Returns: { siteId, yearMonth, totalCost, billed, invoiceNumber, emailed,
+//            skippedReason? }.
+export async function runEnterpriseSnapshot(env, siteId, yearMonth, opts = {}) {
+  const ent = await env.DB.prepare(
+    'SELECT site_id, d1_bytes_limit, r2_bytes_limit FROM enterprise_sites WHERE site_id = ?'
+  ).bind(siteId).first();
+  if (!ent) {
+    return { siteId, yearMonth, skippedReason: 'not_enterprise', billed: false };
+  }
+
+  const limits = resolveEnterpriseLimits(ent);
+  const usage = await getSiteUsage(env, siteId);
+  const rates = await loadOverageRates(env);
+
+  const d1Used = usage.d1BytesUsed;
+  const r2Used = usage.r2BytesUsed;
+  const d1Overage = Math.max(0, d1Used - limits.d1Bytes);
+  const r2Overage = Math.max(0, r2Used - limits.r2Bytes);
+  const d1Cost = (d1Overage / (1024 * 1024 * 1024)) * rates.d1PerGB;
+  const r2Cost = (r2Overage / (1024 * 1024 * 1024)) * rates.r2PerGB;
+  const totalCost = Math.round((d1Cost + r2Cost) * 100) / 100;
+  const billed = totalCost > 0;
+
+  const existing = await env.DB.prepare(
+    'SELECT * FROM enterprise_usage_monthly WHERE site_id = ? AND year_month = ?'
+  ).bind(siteId, yearMonth).first();
+
+  // Once an invoice is paid it is financially finalized — never mutate its
+  // cost/usage figures or status on a re-snapshot. We return the stored
+  // values so callers still see a consistent shape.
+  if (existing && existing.status === 'paid') {
+    return {
+      siteId,
+      yearMonth,
+      totalCost: existing.total_cost_inr || 0,
+      billed: (existing.total_cost_inr || 0) > 0,
+      invoiceNumber: existing.invoice_number,
+      emailed: !!existing.emailed_at,
+      skippedReason: 'already_paid',
+    };
+  }
+
+  // Mint invoice identifiers only on first snapshot for this site+month.
+  // Due date = 14 days from snapshot (configurable later if needed).
+  const invoiceNumber = existing?.invoice_number || buildInvoiceNumber(yearMonth, siteId);
+  const invoiceToken = existing?.invoice_token || generateId() + generateId();
+  const dueDateISO = existing?.due_date || (() => {
+    const d = new Date();
+    d.setUTCDate(d.getUTCDate() + 14);
+    return d.toISOString();
+  })();
+
+  const d1CostR = Math.round(d1Cost * 100) / 100;
+  const r2CostR = Math.round(r2Cost * 100) / 100;
+
+  await env.DB.prepare(`
+    INSERT INTO enterprise_usage_monthly (
+      site_id, year_month, d1_overage_bytes, r2_overage_bytes,
+      d1_cost_inr, r2_cost_inr, total_cost_inr, status, snapshot_at,
+      invoice_number, invoice_token, due_date,
+      d1_limit_bytes, r2_limit_bytes
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, 'unpaid', datetime('now'), ?, ?, ?, ?, ?)
+    ON CONFLICT(site_id, year_month) DO UPDATE SET
+      d1_overage_bytes = excluded.d1_overage_bytes,
+      r2_overage_bytes = excluded.r2_overage_bytes,
+      d1_cost_inr = excluded.d1_cost_inr,
+      r2_cost_inr = excluded.r2_cost_inr,
+      total_cost_inr = excluded.total_cost_inr,
+      d1_limit_bytes = excluded.d1_limit_bytes,
+      r2_limit_bytes = excluded.r2_limit_bytes,
+      snapshot_at = datetime('now')
+  `).bind(
+    siteId, yearMonth, d1Overage, r2Overage,
+    d1CostR, r2CostR, totalCost,
+    invoiceNumber, invoiceToken, dueDateISO,
+    limits.d1Bytes, limits.r2Bytes
+  ).run();
+
+  let emailed = false;
+  if (opts.sendEmailIfBilled && billed && !existing?.emailed_at) {
+    try {
+      await sendOverageInvoiceEmail(env, siteId, {
+        invoiceNumber, invoiceToken, yearMonth, totalCost,
+        d1Overage, r2Overage, d1Cost: d1CostR, r2Cost: r2CostR,
+        d1Limit: limits.d1Bytes, r2Limit: limits.r2Bytes,
+        rates, dueDateISO,
+      });
+      await env.DB.prepare(
+        `UPDATE enterprise_usage_monthly SET emailed_at = datetime('now') WHERE site_id = ? AND year_month = ?`
+      ).bind(siteId, yearMonth).run();
+      emailed = true;
+    } catch (emailErr) {
+      console.error('Overage invoice email failed for', siteId, yearMonth, ':', emailErr.message || emailErr);
+    }
+  }
+
+  return { siteId, yearMonth, totalCost, billed, invoiceNumber, emailed };
+}
+
+function buildInvoiceNumber(yearMonth, siteId) {
+  const shortId = String(siteId || '').replace(/-/g, '').slice(0, 6).toUpperCase();
+  return `FLM-${yearMonth}-${shortId}`;
+}
+
+function previousYearMonth(now = new Date()) {
+  const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+
+// Cron entry point — invoked monthly from `scheduled()` in workers/index.js.
+// Snapshots every enterprise site for the previous calendar month and emails
+// the merchant when there is a non-zero invoice. Safe to re-run.
+export async function runMonthlyEnterpriseSnapshots(env, yearMonth = null) {
+  const month = yearMonth || previousYearMonth();
+  const sitesResult = await env.DB.prepare(
+    'SELECT site_id FROM enterprise_sites'
+  ).all();
+  const rows = sitesResult.results || [];
+
+  const summary = { yearMonth: month, total: rows.length, billed: 0, emailed: 0, errors: 0, sites: [] };
+  for (const row of rows) {
+    try {
+      const r = await runEnterpriseSnapshot(env, row.site_id, month, { sendEmailIfBilled: true });
+      if (r.billed) summary.billed += 1;
+      if (r.emailed) summary.emailed += 1;
+      summary.sites.push(r);
+    } catch (e) {
+      summary.errors += 1;
+      console.error('runMonthlyEnterpriseSnapshots site failed:', row.site_id, e.message || e);
+    }
+  }
+  console.log('[Cron] Monthly enterprise snapshots:', JSON.stringify({
+    yearMonth: summary.yearMonth, total: summary.total, billed: summary.billed,
+    emailed: summary.emailed, errors: summary.errors,
+  }));
+  return summary;
+}
+
 async function snapshotEnterpriseUsage(request, env) {
   try {
-    const { siteId, yearMonth } = await request.json();
+    const { siteId, yearMonth, sendEmail: emailFlag } = await request.json();
     if (!siteId) return errorResponse('siteId is required', 400);
 
     const now = new Date();
-    const month = yearMonth || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const month = yearMonth || `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
 
-    const entCheck = await env.DB.prepare('SELECT site_id FROM enterprise_sites WHERE site_id = ?').bind(siteId).first();
-    if (!entCheck) return errorResponse('Enterprise site not found', 404);
-
-    const usage = await getSiteUsage(env, siteId);
-
-    const ratesResult = await env.DB.prepare(
-      `SELECT setting_key, setting_value FROM platform_settings WHERE setting_key IN ('overage_rate_d1_per_gb', 'overage_rate_r2_per_gb')`
-    ).all();
-    const rates = { d1PerGB: 0.75, r2PerGB: 0.015 };
-    for (const row of (ratesResult.results || [])) {
-      if (row.setting_key === 'overage_rate_d1_per_gb') { const v = parseFloat(row.setting_value); if (!isNaN(v) && v >= 0) rates.d1PerGB = v; }
-      if (row.setting_key === 'overage_rate_r2_per_gb') { const v = parseFloat(row.setting_value); if (!isNaN(v) && v >= 0) rates.r2PerGB = v; }
+    const result = await runEnterpriseSnapshot(env, siteId, month, { sendEmailIfBilled: !!emailFlag });
+    if (result.skippedReason === 'not_enterprise') {
+      return errorResponse('Enterprise site not found', 404);
     }
-
-    const d1LimitBytes = 2 * 1024 * 1024 * 1024;
-    const r2LimitBytes = 50 * 1024 * 1024 * 1024;
-    const d1Used = usage.d1BytesUsed;
-    const r2Used = usage.r2BytesUsed;
-    const d1Overage = Math.max(0, d1Used - d1LimitBytes);
-    const r2Overage = Math.max(0, r2Used - r2LimitBytes);
-    const d1Cost = (d1Overage / (1024 * 1024 * 1024)) * rates.d1PerGB;
-    const r2Cost = (r2Overage / (1024 * 1024 * 1024)) * rates.r2PerGB;
-    const totalCost = Math.round((d1Cost + r2Cost) * 100) / 100;
-
-    await env.DB.prepare(`
-      INSERT INTO enterprise_usage_monthly (site_id, year_month, d1_overage_bytes, r2_overage_bytes, d1_cost_inr, r2_cost_inr, total_cost_inr, status, snapshot_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, 'unpaid', datetime('now'))
-      ON CONFLICT(site_id, year_month) DO UPDATE SET
-        d1_overage_bytes = ?, r2_overage_bytes = ?,
-        d1_cost_inr = ?, r2_cost_inr = ?, total_cost_inr = ?,
-        snapshot_at = datetime('now')
-    `).bind(
-      siteId, month,
-      d1Overage, r2Overage,
-      Math.round(d1Cost * 100) / 100, Math.round(r2Cost * 100) / 100, totalCost,
-      d1Overage, r2Overage,
-      Math.round(d1Cost * 100) / 100, Math.round(r2Cost * 100) / 100, totalCost
-    ).run();
-
-    return successResponse({ siteId, yearMonth: month, totalCost }, 'Usage snapshot saved');
+    return successResponse(result, 'Usage snapshot saved');
   } catch (error) {
     console.error('Snapshot error:', error);
     return errorResponse('Failed to snapshot usage: ' + error.message, 500);
   }
+}
+
+async function sendOverageInvoiceEmail(env, siteId, ctx) {
+  const site = await env.DB.prepare(
+    'SELECT id, subdomain, brand_name FROM sites WHERE id = ?'
+  ).bind(siteId).first();
+  if (!site) return;
+
+  const config = await getSiteConfig(env, siteId);
+  let settings = config?.settings || {};
+  if (typeof settings === 'string') {
+    try { settings = JSON.parse(settings); } catch { settings = {}; }
+  }
+  const recipients = getOwnerRecipients(settings, config || {});
+  if (!recipients.length) {
+    console.warn('No owner email for enterprise site', siteId, '— skipping invoice email');
+    return;
+  }
+
+  const platformDomain = env.DOMAIN || 'flomerce.com';
+  const appUrl = env.APP_URL || `https://${platformDomain}`;
+  const invoiceUrl = `${appUrl}/billing/invoice?invoice=${encodeURIComponent(ctx.invoiceNumber)}&t=${encodeURIComponent(ctx.invoiceToken)}&site=${encodeURIComponent(site.id)}`;
+
+  const fmt = (n) => `&#8377;${Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const gb = (b) => (Number(b || 0) / (1024 * 1024 * 1024)).toFixed(3);
+  const due = new Date(ctx.dueDateISO).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+  const monthLabel = (() => {
+    const [y, m] = ctx.yearMonth.split('-').map(Number);
+    return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString('en-IN', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+  })();
+
+  const html = `
+    <!DOCTYPE html><html><head><meta charset="utf-8"></head>
+    <body style="margin:0;padding:0;background:#f5f5f5;font-family:'Segoe UI',Arial,sans-serif;">
+      <div style="max-width:600px;margin:0 auto;background:#fff;">
+        <div style="background:#0f172a;color:#fff;padding:28px 32px;">
+          <h1 style="margin:0;font-size:22px;font-weight:700;">Overage invoice — ${monthLabel}</h1>
+          <p style="margin:4px 0 0;color:#cbd5e1;font-size:13px;">Invoice ${ctx.invoiceNumber}</p>
+        </div>
+        <div style="padding:28px 32px;color:#0f172a;">
+          <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">
+            Hi ${site.brand_name || 'there'}, your enterprise site <strong>${site.subdomain}</strong> used storage
+            beyond your included quota in ${monthLabel}. Here is the breakdown.
+          </p>
+          <table style="width:100%;border-collapse:collapse;margin:18px 0;font-size:14px;">
+            <thead>
+              <tr style="background:#f8fafc;">
+                <th align="left" style="padding:10px;border-bottom:1px solid #e2e8f0;">Resource</th>
+                <th align="right" style="padding:10px;border-bottom:1px solid #e2e8f0;">Overage</th>
+                <th align="right" style="padding:10px;border-bottom:1px solid #e2e8f0;">Rate</th>
+                <th align="right" style="padding:10px;border-bottom:1px solid #e2e8f0;">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="padding:10px;border-bottom:1px solid #f1f5f9;">D1 storage</td>
+                <td align="right" style="padding:10px;border-bottom:1px solid #f1f5f9;">${gb(ctx.d1Overage)} GB</td>
+                <td align="right" style="padding:10px;border-bottom:1px solid #f1f5f9;">${fmt(ctx.rates.d1PerGB)}/GB</td>
+                <td align="right" style="padding:10px;border-bottom:1px solid #f1f5f9;">${fmt(ctx.d1Cost)}</td>
+              </tr>
+              <tr>
+                <td style="padding:10px;border-bottom:1px solid #f1f5f9;">R2 storage</td>
+                <td align="right" style="padding:10px;border-bottom:1px solid #f1f5f9;">${gb(ctx.r2Overage)} GB</td>
+                <td align="right" style="padding:10px;border-bottom:1px solid #f1f5f9;">${fmt(ctx.rates.r2PerGB)}/GB</td>
+                <td align="right" style="padding:10px;border-bottom:1px solid #f1f5f9;">${fmt(ctx.r2Cost)}</td>
+              </tr>
+              <tr>
+                <td colspan="3" align="right" style="padding:14px 10px;font-weight:700;">Total due</td>
+                <td align="right" style="padding:14px 10px;font-weight:700;font-size:16px;">${fmt(ctx.totalCost)}</td>
+              </tr>
+            </tbody>
+          </table>
+          <p style="margin:16px 0;color:#475569;font-size:14px;">Please pay by <strong>${due}</strong>.</p>
+          <p style="text-align:center;margin:28px 0;">
+            <a href="${invoiceUrl}" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;font-size:15px;">View &amp; pay invoice</a>
+          </p>
+          <p style="font-size:12px;color:#94a3b8;line-height:1.6;margin-top:24px;">
+            This is an automated invoice from Flomerce. If you believe this charge is incorrect,
+            reply to this email and we'll look into it.
+          </p>
+        </div>
+      </div>
+    </body></html>
+  `;
+
+  const text = `Overage invoice ${ctx.invoiceNumber} — ${monthLabel}\nTotal due: ₹${ctx.totalCost.toFixed(2)} (due ${due})\nView & pay: ${invoiceUrl}`;
+  const subject = `Flomerce overage invoice — ${monthLabel} — ₹${ctx.totalCost.toFixed(2)}`;
+
+  await sendEmail(env, recipients, subject, html, text);
 }
 
 async function markInvoicePaid(request, env) {

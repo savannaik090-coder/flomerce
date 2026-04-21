@@ -9,7 +9,8 @@ import { handleEmail } from './platform/email-worker.js';
 import { handleCategories } from './storefront/categories-worker.js';
 import { handleUsers } from './platform/users-worker.js';
 import { handleSiteRouting, resolveSiteFromRequest } from './site-router.js';
-import { handleAdmin } from './platform/admin-worker.js';
+import { handleAdmin, runMonthlyEnterpriseSnapshots } from './platform/admin-worker.js';
+import { handleBilling } from './platform/billing-worker.js';
 import { handleSiteAdmin } from './storefront/site-admin-worker.js';
 import { handleCustomerAuth } from './storefront/customer-auth-worker.js';
 import { handleUpload } from './storefront/upload-worker.js';
@@ -82,9 +83,21 @@ export default {
   },
 
   async scheduled(event, env, ctx) {
+    // Daily cleanup runs every cron tick (cheap, idempotent).
     ctx.waitUntil(cleanupExpiredData(env));
     ctx.waitUntil(processAbandonedCartReminders(env));
     ctx.waitUntil(cleanupOrphanMedia(env));
+
+    // Monthly enterprise snapshot — only on the dedicated monthly cron tick.
+    // Cloudflare passes the cron expression that triggered the event in
+    // `event.cron`; we use it to dispatch instead of the daily cleanup.
+    if (event && event.cron === '5 0 1 * *') {
+      ctx.waitUntil(
+        runMonthlyEnterpriseSnapshots(env).catch(err =>
+          console.error('[Cron] runMonthlyEnterpriseSnapshots failed:', err.message || err)
+        )
+      );
+    }
   },
 };
 
@@ -366,6 +379,9 @@ async function handleAPI(request, env, path, ctx) {
 
     case 'payments':
       return handlePayments(request, env, path, ctx);
+
+    case 'billing':
+      return handleBilling(request, env, path, ctx);
 
     case 'email':
       return handleEmail(request, env, path);

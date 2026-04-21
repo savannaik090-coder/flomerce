@@ -12,14 +12,19 @@ const navItems = [
   { id: 'website', icon: 'fa-globe', label: 'Edit Website' },
   { id: 'seo', icon: 'fa-search', label: 'SEO' },
   { id: 'notifications', icon: 'fa-bell', label: 'Push Notifications', gatedFeature: 'notifications' },
+  { id: 'billing', icon: 'fa-file-invoice-dollar', label: 'Billing', enterpriseOnly: true },
   { id: 'settings', icon: 'fa-cog', label: 'Settings' },
 ];
 
 export default function AdminSidebar({ activeSection, onSectionChange, isOpen, onClose, brandName, badges, permissions, isOwner, currentPlan }) {
   const visibleItems = navItems.filter(item => {
+    // Billing is only meaningful on the enterprise plan (where overage
+    // invoices exist). Hide for everyone else regardless of permissions.
+    if (item.enterpriseOnly && currentPlan !== 'enterprise') return false;
     if (isOwner) return true;
     if (!permissions) return false;
     if (item.id === 'revenue') return permissions.includes('analytics') || permissions.includes('orders');
+    if (item.id === 'billing') return true; // visible to all admins on enterprise sites
     return permissions.includes(item.id);
   });
 
