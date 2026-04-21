@@ -7,7 +7,7 @@ import { getFeaturedVideoPlaceholders, getFeaturedVideoDefaults } from '../../de
 import { API_BASE } from '../../config.js';
 import { usePendingMedia } from '../../hooks/usePendingMedia.js';
 
-export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate }) {
+export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate, sectionVisible = true, onToggleVisibility }) {
   const { siteConfig } = useContext(SiteContext);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -15,7 +15,6 @@ export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate }) {
   const [videoKey, setVideoKey] = useState('');
   const [chatLink, setChatLink] = useState('');
   const [chatButtonText, setChatButtonText] = useState('CHAT NOW');
-  const [showSection, setShowSection] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -35,10 +34,10 @@ export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
-    const current = JSON.stringify({ title, description, videoUrl, chatLink, chatButtonText, showSection });
+    const current = JSON.stringify({ title, description, videoUrl, chatLink, chatButtonText });
     setHasChanges(current !== serverValuesRef.current);
-    if (onPreviewUpdate) onPreviewUpdate({ featuredVideoTitle: title, featuredVideoDescription: description, featuredVideoUrl: videoUrl, featuredVideoChatLink: chatLink, featuredVideoChatButtonText: chatButtonText || 'CHAT NOW', showFeaturedVideo: showSection });
-  }, [title, description, videoUrl, chatLink, chatButtonText, showSection]);
+    if (onPreviewUpdate) onPreviewUpdate({ featuredVideoTitle: title, featuredVideoDescription: description, featuredVideoUrl: videoUrl, featuredVideoChatLink: chatLink, featuredVideoChatButtonText: chatButtonText || 'CHAT NOW' });
+  }, [title, description, videoUrl, chatLink, chatButtonText]);
 
   async function loadSettings() {
     setLoading(true);
@@ -56,15 +55,13 @@ export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate }) {
         const vVal = settings.featuredVideoUrl || '';
         const clVal = settings.featuredVideoChatLink || '';
         const cbVal = settings.featuredVideoChatButtonText || 'CHAT NOW';
-        const ssVal = settings.showFeaturedVideo !== false;
         setTitle(tVal);
         setDescription(dVal);
         setVideoUrl(vVal);
         setVideoKey(settings.featuredVideoKey || '');
         setChatLink(clVal);
         setChatButtonText(cbVal);
-        setShowSection(ssVal);
-        serverValuesRef.current = JSON.stringify({ title: tVal, description: dVal, videoUrl: vVal, chatLink: clVal, chatButtonText: cbVal, showSection: ssVal });
+        serverValuesRef.current = JSON.stringify({ title: tVal, description: dVal, videoUrl: vVal, chatLink: clVal, chatButtonText: cbVal });
       }
     } catch (e) {
       console.error('Failed to load featured video settings:', e);
@@ -153,14 +150,13 @@ export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate }) {
             featuredVideoKey: videoKey,
             featuredVideoChatLink: chatLink,
             featuredVideoChatButtonText: chatButtonText || 'CHAT NOW',
-            showFeaturedVideo: showSection,
           }
         }),
       });
       const result = await response.json();
       if (response.ok && result.success) {
         setStatus('success');
-        serverValuesRef.current = JSON.stringify({ title, description, videoUrl, chatLink, chatButtonText, showSection });
+        serverValuesRef.current = JSON.stringify({ title, description, videoUrl, chatLink, chatButtonText });
         setHasChanges(false);
         // Only after the settings PUT succeeds do we clean up any replaced/
         // removed video from R2. videoUrl (if present) is the live value.
@@ -183,8 +179,8 @@ export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate }) {
       <SaveBar topBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       <form onSubmit={handleSave}>
         <SectionToggle
-          enabled={showSection}
-          onChange={setShowSection}
+          enabled={sectionVisible}
+          onChange={() => onToggleVisibility?.()}
           label="Show Featured Video"
           description="Toggle the featured video section on your homepage"
         />

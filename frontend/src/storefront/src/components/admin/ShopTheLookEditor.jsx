@@ -26,13 +26,12 @@ function compressImage(file, maxWidth = 1400, quality = 0.85) {
   });
 }
 
-export default function ShopTheLookEditor({ onSaved, onPreviewUpdate }) {
+export default function ShopTheLookEditor({ onSaved, onPreviewUpdate, sectionVisible = true, onToggleVisibility }) {
   const { siteConfig } = useContext(SiteContext);
   const [title, setTitle] = useState('');
   const [mainImage, setMainImage] = useState('');
   const [mainImageKey, setMainImageKey] = useState('');
   const [dots, setDots] = useState([]);
-  const [showSection, setShowSection] = useState(true);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -61,15 +60,14 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
-    const current = JSON.stringify({ title, mainImage, mainImageKey, dots, showSection });
+    const current = JSON.stringify({ title, mainImage, mainImageKey, dots });
     setHasChanges(current !== serverValuesRef.current);
     if (onPreviewUpdate) {
       onPreviewUpdate({
         shopTheLook: { title, image: mainImage, imageKey: mainImageKey, dots },
-        showShopTheLook: showSection,
       });
     }
-  }, [title, mainImage, mainImageKey, dots, showSection]);
+  }, [title, mainImage, mainImageKey, dots]);
 
   async function loadProducts() {
     try {
@@ -107,14 +105,11 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate }) {
           setDots(defaults.dots || []);
           setUsingDefaults(true);
         }
-        const sv = settings.showShopTheLook !== false;
-        setShowSection(sv);
         serverValuesRef.current = JSON.stringify({
           title: config.title || '',
           mainImage: config.image || '',
           mainImageKey: config.imageKey || '',
           dots: config.dots || [],
-          showSection: sv,
         });
       }
     } catch (e) {
@@ -240,13 +235,12 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate }) {
         body: JSON.stringify({
           settings: {
             shopTheLook: { title, image: mainImage, imageKey: mainImageKey, dots },
-            showShopTheLook: showSection,
           },
         }),
       });
       const result = await response.json();
       if (response.ok && result.success) {
-        serverValuesRef.current = JSON.stringify({ title, mainImage, mainImageKey, dots, showSection });
+        serverValuesRef.current = JSON.stringify({ title, mainImage, mainImageKey, dots });
         setHasChanges(false);
         setUsingDefaults(false);
         const cleanup = await pendingMedia.commit([mainImage]);
@@ -278,8 +272,8 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate }) {
     <div>
       <SaveBar topBar saving={saving} hasChanges={hasChanges} onSave={handleSave} />
       <SectionToggle
-        enabled={showSection}
-        onChange={v => setShowSection(v)}
+        enabled={sectionVisible}
+        onChange={() => onToggleVisibility?.()}
         label="Show Shop the Look"
         description="Display interactive product showcase on homepage"
       />

@@ -6,9 +6,8 @@ import SectionToggle from './SectionToggle.jsx';
 import SaveBar from './SaveBar.jsx';
 import { API_BASE } from '../../config.js';
 
-export default function TrendingNowEditor({ onSaved, onPreviewUpdate }) {
+export default function TrendingNowEditor({ onSaved, onPreviewUpdate, sectionVisible = true, onToggleVisibility }) {
   const { siteConfig } = useContext(SiteContext);
-  const [showSection, setShowSection] = useState(true);
   const [selectedProductIds, setSelectedProductIds] = useState([]);
   const [allProducts, setAllProducts] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -27,10 +26,10 @@ export default function TrendingNowEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
-    const current = JSON.stringify({ showSection, selectedProductIds });
+    const current = JSON.stringify({ selectedProductIds });
     setHasChanges(current !== serverValuesRef.current);
-    if (onPreviewUpdate) onPreviewUpdate({ showTrendingNow: showSection, trendingProductIds: selectedProductIds });
-  }, [showSection, selectedProductIds]);
+    if (onPreviewUpdate) onPreviewUpdate({ trendingProductIds: selectedProductIds });
+  }, [selectedProductIds]);
 
   async function loadProducts() {
     try {
@@ -51,11 +50,9 @@ export default function TrendingNowEditor({ onSaved, onPreviewUpdate }) {
         if (typeof settings === 'string') {
           try { settings = JSON.parse(settings); } catch (e) { settings = {}; }
         }
-        const ssVal = settings.showTrendingNow !== false;
         const idsVal = settings.trendingProductIds || [];
-        setShowSection(ssVal);
         setSelectedProductIds(idsVal);
-        serverValuesRef.current = JSON.stringify({ showSection: ssVal, selectedProductIds: idsVal });
+        serverValuesRef.current = JSON.stringify({ selectedProductIds: idsVal });
       }
     } catch (e) {
       console.error('Failed to load trending now settings:', e);
@@ -102,13 +99,13 @@ export default function TrendingNowEditor({ onSaved, onPreviewUpdate }) {
           'Authorization': token ? `SiteAdmin ${token}` : '',
         },
         body: JSON.stringify({
-          settings: { showTrendingNow: showSection, trendingProductIds: selectedProductIds }
+          settings: { trendingProductIds: selectedProductIds }
         }),
       });
       const result = await response.json();
       if (response.ok && result.success) {
         setStatus('success');
-        serverValuesRef.current = JSON.stringify({ showSection, selectedProductIds });
+        serverValuesRef.current = JSON.stringify({ selectedProductIds });
         setHasChanges(false);
         if (onSaved) onSaved();
       } else {
@@ -138,8 +135,8 @@ export default function TrendingNowEditor({ onSaved, onPreviewUpdate }) {
       <SaveBar topBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       <form onSubmit={handleSave}>
         <SectionToggle
-          enabled={showSection}
-          onChange={setShowSection}
+          enabled={sectionVisible}
+          onChange={() => onToggleVisibility?.()}
           label="Show Trending Now"
           description="Display a horizontal scrollable row of selected products"
         />

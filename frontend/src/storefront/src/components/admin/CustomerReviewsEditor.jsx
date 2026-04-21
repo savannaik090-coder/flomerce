@@ -7,7 +7,7 @@ import ConfirmModal from './ConfirmModal.jsx';
 import { API_BASE } from '../../config.js';
 import { usePendingMedia } from '../../hooks/usePendingMedia.js';
 
-export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate }) {
+export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate, sectionVisible = true, onToggleVisibility }) {
   const { siteConfig } = useContext(SiteContext);
   const [sectionTitle, setSectionTitle] = useState('What Our Customers Say');
   const [sectionSubtitle, setSectionSubtitle] = useState('Real reviews from our happy customers');
@@ -20,7 +20,6 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate }) {
   const [editingIndex, setEditingIndex] = useState(null);
   const [form, setForm] = useState({ text: '', name: '', rating: 5, image: '', imageKey: '' });
   const [uploading, setUploading] = useState(false);
-  const [showSection, setShowSection] = useState(true);
   const [error, setError] = useState('');
   const [hasChanges, setHasChanges] = useState(false);
   const fileInputRef = useRef(null);
@@ -34,10 +33,10 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
-    const current = JSON.stringify({ sectionTitle, sectionSubtitle, reviews, showSection });
+    const current = JSON.stringify({ sectionTitle, sectionSubtitle, reviews });
     setHasChanges(current !== serverValuesRef.current);
-    if (onPreviewUpdate) onPreviewUpdate({ reviewsSectionTitle: sectionTitle, reviewsSectionSubtitle: sectionSubtitle, reviews, showCustomerReviews: showSection });
-  }, [sectionTitle, sectionSubtitle, reviews, showSection]);
+    if (onPreviewUpdate) onPreviewUpdate({ reviewsSectionTitle: sectionTitle, reviewsSectionSubtitle: sectionSubtitle, reviews });
+  }, [sectionTitle, sectionSubtitle, reviews]);
 
   async function loadSettings() {
     setLoading(true);
@@ -52,12 +51,10 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate }) {
         const stVal = settings.reviewsSectionTitle || 'What Our Customers Say';
         const ssVal = settings.reviewsSectionSubtitle || 'Real reviews from our happy customers';
         const rvVal = settings.reviews || [];
-        const shVal = settings.showCustomerReviews !== false;
         setSectionTitle(stVal);
         setSectionSubtitle(ssVal);
         setReviews(rvVal);
-        setShowSection(shVal);
-        serverValuesRef.current = JSON.stringify({ sectionTitle: stVal, sectionSubtitle: ssVal, reviews: rvVal, showSection: shVal });
+        serverValuesRef.current = JSON.stringify({ sectionTitle: stVal, sectionSubtitle: ssVal, reviews: rvVal });
       }
     } catch (e) {
       console.error('Failed to load reviews settings:', e);
@@ -92,11 +89,10 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate }) {
       await saveToSettings({
         reviewsSectionTitle: sectionTitle,
         reviewsSectionSubtitle: sectionSubtitle,
-        showCustomerReviews: showSection,
         reviews,
       });
       setStatus('success');
-      serverValuesRef.current = JSON.stringify({ sectionTitle, sectionSubtitle, reviews, showSection });
+      serverValuesRef.current = JSON.stringify({ sectionTitle, sectionSubtitle, reviews });
       setHasChanges(false);
       // Only after the settings PUT succeeds do we actually delete any
       // replaced/removed images from R2. Anything still referenced in the
@@ -219,8 +215,8 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate }) {
     <div>
       <SaveBar topBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSaveSection(e || { preventDefault: () => {} })} />
       <SectionToggle
-        enabled={showSection}
-        onChange={setShowSection}
+        enabled={sectionVisible}
+        onChange={() => onToggleVisibility?.()}
         label="Show Customer Reviews"
         description="Toggle the customer reviews section on your homepage"
       />

@@ -12,9 +12,8 @@ function resolveImg(src) {
   return src;
 }
 
-export default function BrandStoryEditor({ onSaved, onPreviewUpdate }) {
+export default function BrandStoryEditor({ onSaved, onPreviewUpdate, sectionVisible = true, onToggleVisibility }) {
   const { siteConfig } = useContext(SiteContext);
-  const [showSection, setShowSection] = useState(true);
   const [headline, setHeadline] = useState('Our Story');
   const [text, setText] = useState('');
   const [image, setImage] = useState('');
@@ -36,17 +35,16 @@ export default function BrandStoryEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
-    const current = JSON.stringify({ showSection, headline, text, image, ctaText, ctaLink });
+    const current = JSON.stringify({ headline, text, image, ctaText, ctaLink });
     setHasChanges(current !== serverValuesRef.current);
     if (onPreviewUpdate) onPreviewUpdate({
-      showBrandStory: showSection,
       brandStoryHeadline: headline,
       brandStoryText: text,
       brandStoryImage: image,
       brandStoryCtaText: ctaText,
       brandStoryCtaLink: ctaLink,
     });
-  }, [showSection, headline, text, image, ctaText, ctaLink]);
+  }, [headline, text, image, ctaText, ctaLink]);
 
   async function loadSettings() {
     setLoading(true);
@@ -58,19 +56,17 @@ export default function BrandStoryEditor({ onSaved, onPreviewUpdate }) {
         if (typeof settings === 'string') {
           try { settings = JSON.parse(settings); } catch (e) { settings = {}; }
         }
-        const ssVal = settings.showBrandStory !== false;
         const hVal = settings.brandStoryHeadline || 'Our Story';
         const tVal = settings.brandStoryText || '';
         const iVal = settings.brandStoryImage || '';
         const ctVal = settings.brandStoryCtaText || '';
         const clVal = settings.brandStoryCtaLink || '/about';
-        setShowSection(ssVal);
         setHeadline(hVal);
         setText(tVal);
         setImage(iVal);
         setCtaText(ctVal);
         setCtaLink(clVal);
-        serverValuesRef.current = JSON.stringify({ showSection: ssVal, headline: hVal, text: tVal, image: iVal, ctaText: ctVal, ctaLink: clVal });
+        serverValuesRef.current = JSON.stringify({ headline: hVal, text: tVal, image: iVal, ctaText: ctVal, ctaLink: clVal });
       }
     } catch (e) {
       console.error('Failed to load brand story settings:', e);
@@ -131,7 +127,6 @@ export default function BrandStoryEditor({ onSaved, onPreviewUpdate }) {
         },
         body: JSON.stringify({
           settings: {
-            showBrandStory: showSection,
             brandStoryHeadline: headline,
             brandStoryText: text,
             brandStoryImage: image,
@@ -143,7 +138,7 @@ export default function BrandStoryEditor({ onSaved, onPreviewUpdate }) {
       const result = await response.json();
       if (response.ok && result.success) {
         setStatus('success');
-        serverValuesRef.current = JSON.stringify({ showSection, headline, text, image, ctaText, ctaLink });
+        serverValuesRef.current = JSON.stringify({ headline, text, image, ctaText, ctaLink });
         setHasChanges(false);
         const cleanup = await pendingMedia.commit([image]);
         if (!cleanup.ok) console.warn('Some images failed to delete from storage:', cleanup.failed);
@@ -165,8 +160,8 @@ export default function BrandStoryEditor({ onSaved, onPreviewUpdate }) {
       <SaveBar topBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       <form onSubmit={handleSave}>
         <SectionToggle
-          enabled={showSection}
-          onChange={setShowSection}
+          enabled={sectionVisible}
+          onChange={() => onToggleVisibility?.()}
           label="Show Brand Story"
           description="Display a brand narrative section with image and text on your homepage"
         />
