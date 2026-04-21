@@ -18,6 +18,24 @@ const BUNDLED = {
 const PRESHIPPED = ['en', 'hi', 'es', 'zh-CN', 'ar'];
 const RTL_LOCALES = new Set(['ar', 'he', 'fa', 'ur']);
 
+// Map from base/regional codes to our pre-shipped locale codes so things like
+// `zh`, `zh-Hans`, `zh-TW`, `es-ES`, `hi-IN`, `pt-BR` resolve to a real bundled
+// catalog instead of triggering a lazy fetch.
+function normalizeLocale(lng) {
+  if (!lng) return 'en';
+  if (BUNDLED[lng]) return lng;
+  const lower = String(lng).toLowerCase();
+  if (lower === 'zh' || lower.startsWith('zh-hans') || lower === 'zh-cn' || lower === 'zh-sg') return 'zh-CN';
+  if (lower.startsWith('zh')) return 'zh-CN';
+  if (lower.startsWith('es')) return 'es';
+  if (lower.startsWith('hi')) return 'hi';
+  if (lower.startsWith('ar')) return 'ar';
+  if (lower.startsWith('en')) return 'en';
+  // For other base codes, return as-is so the lazy-gen path can attempt them.
+  const base = lower.split('-')[0];
+  return base;
+}
+
 function applyDirection(lng) {
   if (typeof document === 'undefined') return;
   const dir = RTL_LOCALES.has(lng) ? 'rtl' : 'ltr';
@@ -75,8 +93,13 @@ export function initI18n(options = {}) {
     .init({
       fallbackLng: 'en',
       supportedLngs: false,
-      load: 'languageOnly',
+      load: 'currentOnly',
+      cleanCode: true,
       nonExplicitSupportedLngs: true,
+      // Normalize browser-detected and switcher-supplied codes so regional
+      // variants resolve to a bundled pre-shipped catalog (e.g. zh-Hans→zh-CN,
+      // es-ES→es, hi-IN→hi, pt-BR→pt) instead of going through lazy-gen.
+      convertDetectedLanguage: (lng) => normalizeLocale(lng),
       ns: ['translation'],
       defaultNS: 'translation',
       resources: Object.fromEntries(Object.entries(BUNDLED).map(([k, v]) => [k, { translation: v }])),
@@ -98,5 +121,5 @@ export function initI18n(options = {}) {
   return initPromise;
 }
 
-export { PRESHIPPED, RTL_LOCALES };
+export { PRESHIPPED, RTL_LOCALES, normalizeLocale };
 export default i18n;
