@@ -1343,7 +1343,7 @@ export function resolveEnterpriseLimits(entRow) {
   return { d1Bytes: d1, r2Bytes: r2 };
 }
 
-async function loadOverageRates(env) {
+export async function loadOverageRates(env) {
   const ratesResult = await env.DB.prepare(
     `SELECT setting_key, setting_value FROM platform_settings WHERE setting_key IN ('overage_rate_d1_per_gb', 'overage_rate_r2_per_gb')`
   ).all();

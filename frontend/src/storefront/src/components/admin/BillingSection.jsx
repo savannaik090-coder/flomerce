@@ -28,6 +28,7 @@ function fmtDate(iso) {
 export default function BillingSection() {
   const { siteConfig } = useContext(SiteContext);
   const [invoices, setInvoices] = useState([]);
+  const [quota, setQuota] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -40,8 +41,12 @@ export default function BillingSection() {
       try {
         const res = await apiRequest(`/api/billing/invoices?siteId=${encodeURIComponent(siteConfig.id)}`);
         if (cancelled) return;
-        if (res.success) setInvoices(res.data.invoices || []);
-        else setError(res.error || 'Failed to load invoices');
+        if (res.success) {
+          setInvoices(res.data.invoices || []);
+          setQuota(res.data.quota || null);
+        } else {
+          setError(res.error || 'Failed to load invoices');
+        }
       } catch (e) {
         if (!cancelled) setError(e.message || 'Failed to load invoices');
       } finally {
@@ -82,6 +87,7 @@ export default function BillingSection() {
         <div style={{ padding: 16, background: '#fee2e2', color: '#991b1b', borderRadius: 8 }}>{error}</div>
       ) : (
         <>
+          {quota && <QuotaBlock quota={quota} />}
           <Group title="Unpaid" tone="warning" empty="No unpaid invoices. You're all caught up.">
             {unpaid.map(inv => <InvoiceRow key={inv.id} inv={inv} />)}
           </Group>
@@ -95,6 +101,82 @@ export default function BillingSection() {
           )}
         </>
       )}
+    </div>
+  );
+}
+
+function fmtBytes(b) {
+  const n = Number(b) || 0;
+  if (n < 1024) return `${n} B`;
+  const units = ['KB', 'MB', 'GB', 'TB'];
+  let v = n / 1024, i = 0;
+  while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
+  return `${v.toFixed(v >= 100 ? 0 : v >= 10 ? 1 : 2)} ${units[i]}`;
+}
+
+function QuotaBlock({ quota }) {
+  const d1Pct = quota.d1LimitBytes > 0 ? Math.min(100, (quota.d1UsedBytes / quota.d1LimitBytes) * 100) : 0;
+  const r2Pct = quota.r2LimitBytes > 0 ? Math.min(100, (quota.r2UsedBytes / quota.r2LimitBytes) * 100) : 0;
+  const projected = Number(quota.projectedCurrentMonthCostINR || 0);
+
+  return (
+    <section style={{ marginBottom: 28, padding: 16, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
+        <h3 style={{ margin: 0, fontSize: 15, color: '#0f172a' }}>Your enterprise plan</h3>
+        <div style={{ fontSize: 13, color: '#64748b' }}>
+          Projected this month:&nbsp;
+          <strong style={{ color: projected > 0 ? '#b45309' : '#166534' }}>{fmtINR(projected)}</strong>
+        </div>
+      </div>
+
+      <Meter
+        label="Database (D1)"
+        used={quota.d1UsedBytes}
+        limit={quota.d1LimitBytes}
+        pct={d1Pct}
+        custom={quota.d1OverrideActive}
+        rate={`${fmtINR(quota.rates?.d1PerGB || 0)}/GB over quota`}
+      />
+      <div style={{ height: 12 }} />
+      <Meter
+        label="File storage (R2)"
+        used={quota.r2UsedBytes}
+        limit={quota.r2LimitBytes}
+        pct={r2Pct}
+        custom={quota.r2OverrideActive}
+        rate={`${fmtINR(quota.rates?.r2PerGB || 0)}/GB over quota`}
+      />
+
+      {(quota.d1OverrideActive || quota.r2OverrideActive) && (
+        <div style={{ marginTop: 12, fontSize: 12, color: '#2563eb' }}>
+          A custom quota is in effect on your account.
+        </div>
+      )}
+    </section>
+  );
+}
+
+function Meter({ label, used, limit, pct, custom, rate }) {
+  const over = used > limit;
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
+        <span style={{ color: '#0f172a', fontWeight: 600 }}>
+          {label}
+          {custom && <span style={{ marginLeft: 8, fontSize: 11, color: '#2563eb', fontWeight: 500 }}>custom</span>}
+        </span>
+        <span style={{ color: over ? '#b45309' : '#64748b' }}>
+          {fmtBytes(used)} / {fmtBytes(limit)}
+        </span>
+      </div>
+      <div style={{ height: 8, background: '#f1f5f9', borderRadius: 999, overflow: 'hidden' }}>
+        <div style={{
+          height: '100%', width: `${pct}%`,
+          background: over ? '#f59e0b' : pct > 80 ? '#fbbf24' : '#10b981',
+          transition: 'width 200ms ease',
+        }} />
+      </div>
+      <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>{rate}</div>
     </div>
   );
 }

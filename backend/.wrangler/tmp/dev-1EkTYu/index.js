@@ -16099,6 +16099,7 @@ init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 init_helpers();
+init_usage_tracker();
 async function handleBilling(request, env, path) {
   if (request.method === "OPTIONS")
     return handleCORS(request);
@@ -16163,7 +16164,37 @@ async function listInvoicesForSite(request, env) {
     LIMIT 36
   `).bind(siteId).all();
   const invoices = (result.results || []).map(shapeInvoice);
-  return successResponse({ invoices });
+  let quota = null;
+  try {
+    const ent = await env.DB.prepare(
+      "SELECT site_id, d1_bytes_limit, r2_bytes_limit FROM enterprise_sites WHERE site_id = ?"
+    ).bind(siteId).first();
+    if (ent) {
+      const limits = resolveEnterpriseLimits(ent);
+      const usage = await getSiteUsage(env, siteId);
+      const rates = await loadOverageRates(env);
+      const d1Used = usage.d1BytesUsed || 0;
+      const r2Used = usage.r2BytesUsed || 0;
+      const d1Overage = Math.max(0, d1Used - limits.d1Bytes);
+      const r2Overage = Math.max(0, r2Used - limits.r2Bytes);
+      const d1Cost = d1Overage / (1024 * 1024 * 1024) * rates.d1PerGB;
+      const r2Cost = r2Overage / (1024 * 1024 * 1024) * rates.r2PerGB;
+      const projected = Math.round((d1Cost + r2Cost) * 100) / 100;
+      quota = {
+        d1LimitBytes: limits.d1Bytes,
+        r2LimitBytes: limits.r2Bytes,
+        d1UsedBytes: d1Used,
+        r2UsedBytes: r2Used,
+        d1OverrideActive: ent.d1_bytes_limit != null,
+        r2OverrideActive: ent.r2_bytes_limit != null,
+        rates: { d1PerGB: rates.d1PerGB, r2PerGB: rates.r2PerGB },
+        projectedCurrentMonthCostINR: projected
+      };
+    }
+  } catch (e) {
+    console.error("Quota block lookup failed for", siteId, ":", e.message || e);
+  }
+  return successResponse({ invoices, quota });
 }
 __name(listInvoicesForSite, "listInvoicesForSite");
 async function createInvoiceOrder(request, env, invoiceNumber) {
