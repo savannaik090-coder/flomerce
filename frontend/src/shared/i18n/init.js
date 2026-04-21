@@ -2,6 +2,18 @@ import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
 import enCatalog from './locales/en.json';
+import hiCatalog from './locales/hi.json';
+import esCatalog from './locales/es.json';
+import zhCnCatalog from './locales/zh-CN.json';
+import arCatalog from './locales/ar.json';
+
+const BUNDLED = {
+  en: enCatalog,
+  hi: hiCatalog,
+  es: esCatalog,
+  'zh-CN': zhCnCatalog,
+  ar: arCatalog,
+};
 
 const PRESHIPPED = ['en', 'hi', 'es', 'zh-CN', 'ar'];
 const RTL_LOCALES = new Set(['ar', 'he', 'fa', 'ur']);
@@ -14,7 +26,7 @@ function applyDirection(lng) {
 }
 
 async function loadLocale(lng) {
-  if (lng === 'en') return enCatalog;
+  if (BUNDLED[lng]) return BUNDLED[lng];
   try {
     const res = await fetch(`/api/i18n/locale/${encodeURIComponent(lng)}`, {
       headers: { Accept: 'application/json' },
@@ -32,8 +44,18 @@ const backendPlugin = {
   type: 'backend',
   init: () => {},
   read: async (lng, _ns, callback) => {
-    if (lng === 'en') {
-      callback(null, enCatalog);
+    if (BUNDLED[lng]) {
+      callback(null, BUNDLED[lng]);
+      // For pre-shipped locales, fetch the latest translated catalog from the
+      // worker in the background so users get real translations once the owner
+      // regenerates them — avoids refresh-needed-to-see-new-translations.
+      if (lng !== 'en') {
+        loadLocale(lng).then((fresh) => {
+          if (fresh && fresh !== BUNDLED[lng]) {
+            i18n.addResourceBundle(lng, 'translation', fresh, true, true);
+          }
+        }).catch(() => {});
+      }
       return;
     }
     const data = await loadLocale(lng);
@@ -56,7 +78,7 @@ export function initI18n(options = {}) {
       load: 'currentOnly',
       ns: ['translation'],
       defaultNS: 'translation',
-      resources: { en: { translation: enCatalog } },
+      resources: Object.fromEntries(Object.entries(BUNDLED).map(([k, v]) => [k, { translation: v }])),
       partialBundledLanguages: true,
       interpolation: { escapeValue: false },
       detection: {
