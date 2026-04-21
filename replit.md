@@ -46,7 +46,17 @@ Flomerce utilizes a shared shard-based D1 database architecture where multiple s
 - Microsoft Translator key/region for the platform are managed in Owner Admin → Settings under the "Microsoft Translator" card. Stored in `platform_settings` (`translator_api_key`, `translator_region`); the key is encrypted at rest with AES-GCM using the `SETTINGS_ENCRYPTION_KEY` Cloudflare secret (32 raw bytes, base64-encoded). `backend/utils/crypto.js` provides `encryptSecret`/`decryptSecret`/`maskSecret` helpers.
 - `GET /api/admin/settings` never returns the raw key — only `translator_api_key_masked` (last 4 chars) and `translator_api_key_configured` (boolean).
 - `POST /api/admin/settings/translator/test` performs a 1-character round-trip translation against `api.cognitive.microsofttranslator.com` to validate creds. Accepts `{ api_key, region }` in the body to test before saving, or falls back to the stored credentials when the body is empty.
-- `getTranslatorCredentials(env)` (exported from `admin-worker.js`) returns the decrypted `{ apiKey, region }` for server-side use — this is what the Phase 1B admin-UI translation cache will call.
+- `getTranslatorCredentials(env)` (exported from `admin-worker.js`) returns the decrypted `{ apiKey, region }` for server-side use — this is what the Phase 1B admin-UI translation cache calls.
+
+### Admin UI Internationalization (Multilingual Phase 1B)
+- Both apps initialize `i18next` (with `react-i18next` + browser language detector) from `frontend/src/shared/i18n/init.js`. `initI18n()` is called at the top of each `main.jsx`. The active language is persisted in `localStorage.flomerce_lang` and applied to `document.documentElement.lang`/`dir` (`ar/he/fa/ur` → RTL).
+- Catalog: 5 pre-shipped locales — `en` (bundled in `frontend/src/shared/i18n/locales/en.json` and mirrored to `backend/i18n-en.json` for the worker). Other pre-shipped languages (`hi/es/zh-CN/ar`) and any future locale are lazy-translated via Microsoft Translator and cached in R2 under `i18n/admin/<lang>.json`.
+- Backend: `backend/workers/platform/i18n-worker.js` exposes:
+  - Public `GET /api/i18n/locale/:lang` — returns the cached catalog (R2), generating on miss; falls back to `en` on translator failure. Cached at the edge for 1h.
+  - Admin (owner only) `GET /api/admin/i18n/locales`, `POST /api/admin/i18n/regenerate/:lang` (5/day/locale rate cap via `i18n_regen_log` table), `DELETE /api/admin/i18n/locale/:lang`.
+- `backend/utils/translator.js` provides batch flatten/translate/inflate of the JSON catalog so nested keys round-trip through Microsoft Translator with order preserved.
+- Owner Admin → Translations tab (`I18nAdminPanel.jsx`) lets the owner trigger regeneration and purge cached locales. The `LanguageSwitcher` component is mounted in the platform Navbar and the storefront AdminPanel header.
+- `isOwner(user, env)` is exported from `admin-worker.js`; Vite alias for React is set in `frontend/src/platform/vite.config.js` so both subprojects deduplicate `react` and `react-dom` (required because `react-i18next` is installed in both and would otherwise cause hook errors).
 
 ### Database Tables
 - **Platform DB:** `users`, `sessions`, `sites`, `subscriptions`, `payments`, `shards`, `enterprise_sites`, `enterprise_usage_monthly`.

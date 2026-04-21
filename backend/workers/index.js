@@ -10,6 +10,7 @@ import { handleCategories } from './storefront/categories-worker.js';
 import { handleUsers } from './platform/users-worker.js';
 import { handleSiteRouting, resolveSiteFromRequest } from './site-router.js';
 import { handleAdmin, runMonthlyEnterpriseSnapshots } from './platform/admin-worker.js';
+import { handleI18nPublic } from './platform/i18n-worker.js';
 import { handleBilling } from './platform/billing-worker.js';
 import { handleSiteAdmin } from './storefront/site-admin-worker.js';
 import { handleCustomerAuth } from './storefront/customer-auth-worker.js';
@@ -436,6 +437,9 @@ async function handleAPI(request, env, path, ctx) {
 
     case 'site':
       return handleSiteInfo(request, env);
+
+    case 'i18n':
+      return handleI18nPublic(request, env, path, ctx);
 
     default:
       return errorResponse('API endpoint not found', 404);

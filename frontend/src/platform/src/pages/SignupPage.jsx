@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { signup as signupService, resendVerification, googleAuth } from '../services/authService.js';
 import '../styles/landing.css';
 import { useToast } from '../../../shared/ui/Toast.jsx';
+import { useTranslation } from 'react-i18next';
 
 export default function SignupPage() {
   const [name, setName] = useState('');
@@ -19,6 +20,7 @@ export default function SignupPage() {
   const { isAuthenticated, login, loading } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (!loading && isAuthenticated) {
@@ -62,7 +64,7 @@ export default function SignupPage() {
 
   async function handleGoogleResponse(response) {
     if (!agreedTermsRef.current) {
-      setError('Please agree to the Terms & Conditions, Privacy Policy, and Refund Policy before signing up.');
+      setError(t('auth.termsAgreementRequired'));
       return;
     }
     try {
@@ -81,12 +83,12 @@ export default function SignupPage() {
     setError('');
 
     if (password.length < 8) {
-      setError('Password must be at least 8 characters.');
+      setError(t('auth.passwordMin'));
       return;
     }
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match.');
+      setError(t('auth.passwordsNoMatch'));
       return;
     }
 
@@ -109,7 +111,7 @@ export default function SignupPage() {
   async function handleResend() {
     try {
       await resendVerification(registeredEmail);
-      toast.success('Verification email resent!');
+      toast.success(t('auth.verifyEmailResent'));
     } catch (err) {
       toast.error(err.message || 'Failed to resend');
     }
@@ -120,14 +122,14 @@ export default function SignupPage() {
   return (
     <div className="auth-wrapper">
       <div className="auth-card">
-        <h2>Create an account</h2>
-        <p>Start your 60-second website journey today.</p>
+        <h2>{t('auth.signupTitle')}</h2>
+        <p>{t('auth.signupSubtitle')}</p>
 
         {!showSuccess ? (
           <>
             <form onSubmit={handleSubmit}>
               <div className="form-group">
-                <label>Full Name</label>
+                <label>{t('auth.fullName')}</label>
                 <input
                   type="text"
                   placeholder="John Doe"
@@ -137,7 +139,7 @@ export default function SignupPage() {
                 />
               </div>
               <div className="form-group">
-                <label>Email address</label>
+                <label>{t('common.email')}</label>
                 <input
                   type="email"
                   placeholder="name@company.com"
@@ -147,7 +149,7 @@ export default function SignupPage() {
                 />
               </div>
               <div className="form-group">
-                <label>Password</label>
+                <label>{t('common.password')}</label>
                 <input
                   type="password"
                   placeholder="••••••••"
@@ -158,7 +160,7 @@ export default function SignupPage() {
                 />
               </div>
               <div className="form-group">
-                <label>Confirm Password</label>
+                <label>{t('auth.confirmPassword')}</label>
                 <input
                   type="password"
                   placeholder="••••••••"
@@ -170,26 +172,26 @@ export default function SignupPage() {
               <div className="terms-agree-group">
                 <input type="checkbox" id="agree-terms" required checked={agreedTerms} onChange={(e) => setAgreedTerms(e.target.checked)} />
                 <label htmlFor="agree-terms">
-                  I agree to the <Link to="/terms" target="_blank">Terms & Conditions</Link>, <Link to="/privacy-policy" target="_blank">Privacy Policy</Link>, and <Link to="/refund-policy" target="_blank">Refund & Cancellation Policy</Link>.
+                  {t('auth.agreeTerms')} <Link to="/terms" target="_blank">{t('landing.footerTerms')}</Link>, <Link to="/privacy-policy" target="_blank">{t('landing.footerPrivacy')}</Link>, {t('auth.agreeTermsAnd')} <Link to="/refund-policy" target="_blank">{t('landing.footerRefund')}</Link>.
                 </label>
               </div>
               <button type="submit" className="btn btn-primary" style={{ width: '100%' }} disabled={submitting}>
-                {submitting ? 'Creating Account...' : 'Create account'}
+                {submitting ? t('auth.creatingAccount') : t('auth.createAccountBtn')}
               </button>
               <div id="google-signin-btn" className="google-btn-wrapper"></div>
               {error && <div className="error-msg">{error}</div>}
             </form>
             <p className="auth-footer">
-              Already have an account? <Link to="/login">Sign in</Link>
+              {t('auth.alreadyHaveAccount')} <Link to="/login">{t('auth.signIn')}</Link>
             </p>
           </>
         ) : (
           <div className="success-box">
-            <h3>Verification Required</h3>
-            <p>Please check your email to verify your account. If you didn't receive it, check your spam folder.</p>
-            <button className="btn btn-outline" onClick={handleResend}>Resend Email</button>
+            <h3>{t('auth.verificationRequired')}</h3>
+            <p>{t('auth.verificationDesc')}</p>
+            <button className="btn btn-outline" onClick={handleResend}>{t('auth.resendEmail')}</button>
             <p className="auth-footer" style={{ marginTop: '1rem' }}>
-              <Link to="/login">Back to Login</Link>
+              <Link to="/login">{t('auth.backToLogin')}</Link>
             </p>
           </div>
         )}

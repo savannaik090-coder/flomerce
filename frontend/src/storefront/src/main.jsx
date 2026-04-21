@@ -9,7 +9,10 @@ import { WishlistProvider } from './context/WishlistContext.jsx';
 import { CurrencyProvider } from './context/CurrencyContext.jsx';
 import { PanelProvider } from './context/PanelContext.jsx';
 import { ThemeProvider } from './context/ThemeContext.jsx';
+import { initI18n } from '../../shared/i18n/init.js';
 import './styles/global.css';
+
+initI18n();
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext.jsx';
 import { login as loginService, requestPasswordReset, googleAuth } from '../services/authService.js';
 
@@ -13,6 +14,7 @@ export default function LoginPage() {
   const [forgotMsg, setForgotMsg] = useState('');
   const [forgotError, setForgotError] = useState('');
   const { isAuthenticated, login, loading } = useAuth();
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -73,12 +75,12 @@ export default function LoginPage() {
         login(result.token, result.user);
         navigate('/dashboard');
       } else if (result.error?.includes('verify') || result.message?.includes('verify')) {
-        setError('Please verify your email before logging in. Check your inbox.');
+        setError(t('auth.verifyEmailNotice'));
       } else {
-        throw new Error(result.error || 'Login failed');
+        throw new Error(result.error || t('auth.loginFailed'));
       }
     } catch (err) {
-      setError(err.message || 'Login failed');
+      setError(err.message || t('auth.loginFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -90,7 +92,7 @@ export default function LoginPage() {
     setForgotError('');
     try {
       await requestPasswordReset(forgotEmail);
-      setForgotMsg('If an account exists, a reset link has been sent.');
+      setForgotMsg(t('auth.resetSent'));
     } catch (err) {
       setForgotError(err.message || 'Failed to send reset email');
     }
@@ -101,11 +103,11 @@ export default function LoginPage() {
   return (
     <div className="auth-wrapper">
       <div className="auth-card">
-        <h2>Welcome back</h2>
-        <p>Enter your details to access your account.</p>
+        <h2>{t('auth.loginTitle')}</h2>
+        <p>{t('auth.loginSubtitle')}</p>
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label>Email address</label>
+            <label>{t('common.email')}</label>
             <input
               type="email"
               placeholder="name@company.com"
@@ -115,7 +117,7 @@ export default function LoginPage() {
             />
           </div>
           <div className="form-group">
-            <label>Password</label>
+            <label>{t('common.password')}</label>
             <input
               type="password"
               placeholder="••••••••"
@@ -125,27 +127,27 @@ export default function LoginPage() {
             />
           </div>
           <button type="submit" className="btn btn-primary" style={{ width: '100%' }} disabled={submitting}>
-            {submitting ? 'Logging in...' : 'Sign in'}
+            {submitting ? t('auth.signingIn') : t('auth.signIn')}
           </button>
           <div id="google-signin-btn" className="google-btn-wrapper"></div>
           {error && <div className="error-msg">{error}</div>}
         </form>
         <div className="auth-link">
-          <a href="#" onClick={(e) => { e.preventDefault(); setShowForgotModal(true); }}>Forgot password?</a>
+          <a href="#" onClick={(e) => { e.preventDefault(); setShowForgotModal(true); }}>{t('auth.forgotPassword')}</a>
         </div>
         <p className="auth-footer">
-          New to Flomerce? <Link to="/signup">Create an account</Link>
+          {t('auth.newToFlomerce')} <Link to="/signup">{t('auth.createAccount')}</Link>
         </p>
       </div>
 
       {showForgotModal && (
         <div className="forgot-modal-overlay" onClick={() => setShowForgotModal(false)}>
           <div className="forgot-modal" onClick={(e) => e.stopPropagation()}>
-            <h3>Forgot Password</h3>
-            <p>Enter your email to receive a reset link.</p>
+            <h3>{t('auth.forgotTitle')}</h3>
+            <p>{t('auth.forgotDesc')}</p>
             <form onSubmit={handleForgotPassword}>
               <div className="form-group">
-                <label>Email address</label>
+                <label>{t('common.email')}</label>
                 <input
                   type="email"
                   required
@@ -155,8 +157,8 @@ export default function LoginPage() {
                 />
               </div>
               <div className="modal-actions">
-                <button type="button" className="btn btn-outline" onClick={() => setShowForgotModal(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary">Send Reset Link</button>
+                <button type="button" className="btn btn-outline" onClick={() => setShowForgotModal(false)}>{t('common.cancel')}</button>
+                <button type="submit" className="btn btn-primary">{t('auth.sendResetLink')}</button>
               </div>
               {forgotMsg && <div className="success-msg">{forgotMsg}</div>}
               {forgotError && <div className="error-msg">{forgotError}</div>}

@@ -9288,6 +9288,463 @@ var init_crypto = __esm({
   }
 });
 
+// utils/translator.js
+function chunk(arr, size) {
+  const out = [];
+  for (let i = 0; i < arr.length; i += size)
+    out.push(arr.slice(i, i + size));
+  return out;
+}
+async function translateBatch(env, texts, targetLang, sourceLang = "en") {
+  if (!Array.isArray(texts) || texts.length === 0)
+    return [];
+  const creds = await getTranslatorCredentials(env);
+  if (!creds) {
+    throw new Error("Microsoft Translator credentials are not configured.");
+  }
+  const { apiKey, region } = creds;
+  if (!apiKey)
+    throw new Error("Translator API key missing.");
+  const url = `${TRANSLATE_ENDPOINT}&from=${encodeURIComponent(sourceLang)}&to=${encodeURIComponent(targetLang)}&textType=plain`;
+  const out = [];
+  for (const group of chunk(texts, MAX_BATCH)) {
+    const headers = {
+      "Content-Type": "application/json",
+      "Ocp-Apim-Subscription-Key": apiKey
+    };
+    if (region)
+      headers["Ocp-Apim-Subscription-Region"] = region;
+    const res = await fetch(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(group.map((t) => ({ Text: t })))
+    });
+    if (!res.ok) {
+      const errText = await res.text().catch(() => "");
+      throw new Error(`Translator HTTP ${res.status}: ${errText.slice(0, 200)}`);
+    }
+    const data = await res.json();
+    for (const item of data) {
+      out.push(item?.translations?.[0]?.text ?? "");
+    }
+  }
+  return out;
+}
+function flattenCatalog(obj, prefix = "", acc = { paths: [], values: [] }) {
+  for (const [k, v] of Object.entries(obj || {})) {
+    const p = prefix ? `${prefix}.${k}` : k;
+    if (v && typeof v === "object" && !Array.isArray(v)) {
+      flattenCatalog(v, p, acc);
+    } else if (typeof v === "string") {
+      acc.paths.push(p);
+      acc.values.push(v);
+    }
+  }
+  return acc;
+}
+function inflateCatalog(paths, values) {
+  const root = {};
+  for (let i = 0; i < paths.length; i++) {
+    const segs = paths[i].split(".");
+    let cur = root;
+    for (let j = 0; j < segs.length - 1; j++) {
+      cur[segs[j]] = cur[segs[j]] || {};
+      cur = cur[segs[j]];
+    }
+    cur[segs[segs.length - 1]] = values[i];
+  }
+  return root;
+}
+async function translateCatalog(env, sourceCatalog, targetLang) {
+  const { paths, values } = flattenCatalog(sourceCatalog);
+  if (paths.length === 0)
+    return {};
+  const translated = await translateBatch(env, values, targetLang, "en");
+  return inflateCatalog(paths, translated);
+}
+var TRANSLATE_ENDPOINT, MAX_BATCH;
+var init_translator = __esm({
+  "utils/translator.js"() {
+    init_checked_fetch();
+    init_strip_cf_connecting_ip_header();
+    init_modules_watch_stub();
+    init_admin_worker();
+    TRANSLATE_ENDPOINT = "https://api.cognitive.microsofttranslator.com/translate?api-version=3.0";
+    MAX_BATCH = 100;
+    __name(chunk, "chunk");
+    __name(translateBatch, "translateBatch");
+    __name(flattenCatalog, "flattenCatalog");
+    __name(inflateCatalog, "inflateCatalog");
+    __name(translateCatalog, "translateCatalog");
+  }
+});
+
+// i18n-en.json
+var i18n_en_default;
+var init_i18n_en = __esm({
+  "i18n-en.json"() {
+    i18n_en_default = {
+      common: {
+        loading: "Loading...",
+        save: "Save",
+        saving: "Saving...",
+        cancel: "Cancel",
+        delete: "Delete",
+        edit: "Edit",
+        add: "Add",
+        back: "Back",
+        close: "Close",
+        submit: "Submit",
+        confirm: "Confirm",
+        yes: "Yes",
+        no: "No",
+        search: "Search",
+        actions: "Actions",
+        status: "Status",
+        name: "Name",
+        email: "Email address",
+        password: "Password",
+        language: "Language",
+        error: "Something went wrong"
+      },
+      nav: {
+        features: "Features",
+        pricing: "Pricing",
+        contact: "Contact",
+        dashboard: "Dashboard",
+        logout: "Logout",
+        login: "Login",
+        getStarted: "Get Started",
+        toggleMenu: "Toggle menu"
+      },
+      landing: {
+        heroBadge: "Launch Your E-Commerce Store for Less Than \u20B910/Day",
+        heroTitleLine1: "Build Your",
+        heroTitleLine2: "Online Store",
+        heroTitleLine3: "No Code Needed",
+        heroDesc: "Flomerce helps small businesses and entrepreneurs create professional e-commerce websites with product management, order processing, and secure payments \u2014 all from one dashboard.",
+        heroCtaPrimary: "Get Started Free",
+        heroCtaSecondary: "Learn More",
+        demoPill: "Demo",
+        demoTitle: "See Flomerce in Action",
+        demoSubtitle: "Watch how easy it is to build and manage your online store.",
+        playVideo: "Play video",
+        featuresPill: "Features",
+        featuresTitle: "Everything You Need to Sell Online",
+        featuresSubtitle: "From store setup to order delivery, Flomerce gives you all the tools to run your online business.",
+        pricingPill: "Pricing",
+        pricingTitle: "Simple, Transparent Pricing",
+        pricingSubtitle: "Choose a plan that fits your business. Start with a free trial, upgrade anytime.",
+        footerTagline: "Empowering small businesses to sell online with ease.",
+        footerCompany: "Company",
+        footerContact: "Contact",
+        footerAbout: "About Us",
+        footerTerms: "Terms & Conditions",
+        footerPrivacy: "Privacy Policy",
+        footerRefund: "Refund & Cancellation Policy",
+        footerShipping: "Shipping & Delivery Policy",
+        rightsReserved: "All rights reserved.",
+        pwaInstallTitle: "Install Flomerce",
+        pwaInstallDesc: "Add to home screen for better experience",
+        pwaInstall: "Install",
+        features: {
+          store: { title: "Complete Online Store", desc: "Launch a fully functional e-commerce store with product listings, categories, and a beautiful storefront \u2014 ready to sell in minutes." },
+          orders: { title: "Order Management", desc: "Track orders from placement to delivery with status updates, customer notifications, and shipping management built in." },
+          payments: { title: "Secure Payments", desc: "Accept payments via Razorpay with support for UPI, cards, net banking, and wallets. Cash on delivery also supported." },
+          analytics: { title: "Built-in Analytics", desc: "Monitor your store performance with visitor tracking, page views, traffic sources, and sales insights from your admin panel." },
+          push: { title: "Push Notifications", desc: "Engage customers with web push notifications for new products, price drops, and back-in-stock alerts \u2014 all automated." },
+          seo: { title: "Custom Domain & SEO", desc: "Connect your own domain, optimize for search engines with built-in SEO tools, sitemaps, and structured data for Google rich results." }
+        }
+      },
+      auth: {
+        loginTitle: "Welcome back",
+        loginSubtitle: "Enter your details to access your account.",
+        signIn: "Sign in",
+        signingIn: "Logging in...",
+        forgotPassword: "Forgot password?",
+        newToFlomerce: "New to Flomerce?",
+        createAccount: "Create an account",
+        forgotTitle: "Forgot Password",
+        forgotDesc: "Enter your email to receive a reset link.",
+        sendResetLink: "Send Reset Link",
+        resetSent: "If an account exists, a reset link has been sent.",
+        verifyEmailNotice: "Please verify your email before logging in. Check your inbox.",
+        googleFailed: "Google sign-in failed",
+        loginFailed: "Login failed",
+        signupTitle: "Create an account",
+        signupSubtitle: "Start your 60-second website journey today.",
+        fullName: "Full Name",
+        confirmPassword: "Confirm Password",
+        createAccountBtn: "Create account",
+        creatingAccount: "Creating Account...",
+        verificationRequired: "Verification Required",
+        verificationDesc: "Please check your email to verify your account. If you didn't receive it, check your spam folder.",
+        resendEmail: "Resend Email",
+        backToLogin: "Back to Login",
+        alreadyHaveAccount: "Already have an account?",
+        passwordMin: "Password must be at least 8 characters.",
+        passwordsNoMatch: "Passwords do not match.",
+        agreeTerms: "I agree to the",
+        agreeTermsAnd: "and",
+        termsAgreementRequired: "Please agree to the Terms & Conditions, Privacy Policy, and Refund Policy before signing up.",
+        verifyEmailResent: "Verification email resent!"
+      },
+      admin: {
+        panelTitle: "Admin Panel",
+        staffLogin: "Staff Login",
+        staffLoginDesc: "Enter your email and password to access the admin panel.",
+        logIn: "Log In",
+        loggingIn: "Logging in...",
+        authenticating: "Authenticating...",
+        invalidCredentials: "Invalid email or password",
+        loginFailed: "Login failed. Please try again.",
+        autoLoginInvalid: "Auto-login token is invalid or expired. Please log in.",
+        autoLoginFailed: "Auto-login failed. Please log in.",
+        store: "Store",
+        sections: {
+          dashboard: "Dashboard",
+          products: "Products",
+          addProduct: "Add Product",
+          editProduct: "Edit Product",
+          inventory: "Inventory",
+          orders: "Orders",
+          customers: "Customers",
+          revenue: "Revenue",
+          analytics: "Analytics",
+          website: "Edit Website",
+          seo: "SEO",
+          notifications: "Push Notifications",
+          billing: "Billing",
+          settings: "Settings"
+        }
+      },
+      owner: {
+        tabs: {
+          overview: "Overview",
+          users: "Users",
+          sites: "Websites",
+          databases: "Databases",
+          plans: "Plans",
+          enterprise: "Enterprise",
+          settings: "Settings",
+          i18n: "Translations"
+        },
+        i18n: {
+          title: "Admin UI Translations",
+          desc: "Pre-shipped languages: English, Hindi, Spanish, Simplified Chinese, Arabic. Other locales are auto-generated via Microsoft Translator on first request and cached in R2 storage.",
+          regenerate: "Regenerate",
+          regenerating: "Regenerating...",
+          regenerated: "Regenerated {{lang}} successfully ({{count}} keys).",
+          regenerateFailed: "Regeneration failed",
+          rateLimited: "Rate limit reached for this locale (5/day). Try again tomorrow.",
+          cachedLocales: "Cached locales",
+          noLocales: "No locales cached yet.",
+          lastUpdated: "Last updated",
+          keyCount: "Keys",
+          selectLocale: "Select locale to regenerate",
+          configureFirst: "Configure Microsoft Translator credentials in Settings first.",
+          purge: "Purge cache"
+        }
+      },
+      languages: {
+        en: "English",
+        hi: "\u0939\u093F\u0928\u094D\u0926\u0940",
+        es: "Espa\xF1ol",
+        "zh-CN": "\u7B80\u4F53\u4E2D\u6587",
+        ar: "\u0627\u0644\u0639\u0631\u0628\u064A\u0629"
+      }
+    };
+  }
+});
+
+// workers/platform/i18n-worker.js
+var i18n_worker_exports = {};
+__export(i18n_worker_exports, {
+  handleI18nAdmin: () => handleI18nAdmin,
+  handleI18nPublic: () => handleI18nPublic
+});
+function r2Key(lang) {
+  return `${R2_PREFIX}${lang}.json`;
+}
+function isValidLocale(lang) {
+  return typeof lang === "string" && /^[a-zA-Z]{2,3}(-[a-zA-Z]{2,4})?$/.test(lang) && lang.length <= 12;
+}
+async function readCachedLocale(env, lang) {
+  if (!env.STORAGE)
+    return null;
+  try {
+    const obj = await env.STORAGE.get(r2Key(lang));
+    if (!obj)
+      return null;
+    const text = await obj.text();
+    return { data: JSON.parse(text), uploaded: obj.uploaded, size: obj.size };
+  } catch (e) {
+    console.warn("[i18n] readCachedLocale error:", e.message || e);
+    return null;
+  }
+}
+async function writeCachedLocale(env, lang, data) {
+  if (!env.STORAGE)
+    throw new Error("R2 STORAGE binding missing");
+  await env.STORAGE.put(r2Key(lang), JSON.stringify(data), {
+    httpMetadata: { contentType: "application/json; charset=utf-8" }
+  });
+}
+async function checkRateLimit(env, lang) {
+  if (!env.DB)
+    return { ok: true };
+  try {
+    await env.DB.prepare(
+      `CREATE TABLE IF NOT EXISTS i18n_regen_log (
+         id INTEGER PRIMARY KEY AUTOINCREMENT,
+         lang TEXT NOT NULL,
+         day TEXT NOT NULL,
+         count INTEGER NOT NULL DEFAULT 0,
+         updated_at INTEGER NOT NULL,
+         UNIQUE(lang, day)
+       )`
+    ).run();
+  } catch {
+  }
+  const day = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+  const row = await env.DB.prepare(
+    `SELECT count FROM i18n_regen_log WHERE lang = ? AND day = ?`
+  ).bind(lang, day).first();
+  const used = Number(row?.count || 0);
+  if (used >= RATE_LIMIT_PER_DAY) {
+    return { ok: false, used, limit: RATE_LIMIT_PER_DAY };
+  }
+  return { ok: true, used, limit: RATE_LIMIT_PER_DAY, day };
+}
+async function bumpRateLimit(env, lang, day) {
+  if (!env.DB)
+    return;
+  const now = Date.now();
+  await env.DB.prepare(
+    `INSERT INTO i18n_regen_log (lang, day, count, updated_at)
+     VALUES (?, ?, 1, ?)
+     ON CONFLICT(lang, day) DO UPDATE SET count = count + 1, updated_at = excluded.updated_at`
+  ).bind(lang, day, now).run();
+}
+async function generateAndCache(env, lang) {
+  const data = await translateCatalog(env, i18n_en_default, lang);
+  await writeCachedLocale(env, lang, data);
+  return data;
+}
+async function handleI18nPublic(request, env, path, ctx) {
+  const corsResponse = handleCORS(request);
+  if (corsResponse)
+    return corsResponse;
+  const parts = path.split("/").filter(Boolean);
+  if (parts[2] !== "locale" || !parts[3]) {
+    return errorResponse("Not found", 404);
+  }
+  const lang = parts[3];
+  if (!isValidLocale(lang)) {
+    return errorResponse("Invalid locale code", 400);
+  }
+  if (lang === "en") {
+    return successResponse(i18n_en_default);
+  }
+  const cached = await readCachedLocale(env, lang);
+  if (cached) {
+    return successResponse(cached.data);
+  }
+  if (!SUPPORTED_LOCALES.has(lang)) {
+    return successResponse(i18n_en_default, "i18n fallback to en (locale not pre-generated)");
+  }
+  try {
+    const data = await generateAndCache(env, lang);
+    return successResponse(data);
+  } catch (e) {
+    console.error("[i18n] lazy generation failed for", lang, e.message || e);
+    return successResponse(i18n_en_default, "i18n fallback to en");
+  }
+}
+async function handleI18nAdmin(request, env, pathParts) {
+  const user = await validateAuth(request, env);
+  if (!user)
+    return errorResponse("Unauthorized", 401);
+  const owner = await isOwner(user, env);
+  if (!owner)
+    return errorResponse("Forbidden", 403);
+  const action = pathParts[3];
+  const lang = pathParts[4];
+  if (request.method === "GET" && action === "locales") {
+    if (!env.STORAGE)
+      return successResponse({ locales: [] });
+    const list = await env.STORAGE.list({ prefix: R2_PREFIX });
+    const locales = (list.objects || []).map((o) => ({
+      lang: o.key.slice(R2_PREFIX.length).replace(/\.json$/, ""),
+      size: o.size,
+      uploaded: o.uploaded
+    }));
+    return successResponse({ locales });
+  }
+  if (request.method === "POST" && action === "regenerate" && lang) {
+    if (!isValidLocale(lang))
+      return errorResponse("Invalid locale code", 400);
+    if (lang === "en")
+      return errorResponse("English is the source catalog and cannot be regenerated", 400);
+    const rl = await checkRateLimit(env, lang);
+    if (!rl.ok) {
+      return errorResponse(`Rate limit reached (${rl.used}/${rl.limit} per day for ${lang})`, 429);
+    }
+    try {
+      const data = await generateAndCache(env, lang);
+      await bumpRateLimit(env, lang, rl.day);
+      const keyCount = countKeys(data);
+      return successResponse({ ok: true, lang, keyCount });
+    } catch (e) {
+      return errorResponse(e.message || "Regeneration failed", 500);
+    }
+  }
+  if (request.method === "DELETE" && action === "locale" && lang) {
+    if (!isValidLocale(lang))
+      return errorResponse("Invalid locale code", 400);
+    if (env.STORAGE)
+      await env.STORAGE.delete(r2Key(lang));
+    return successResponse({ ok: true, lang });
+  }
+  return errorResponse("i18n admin endpoint not found", 404);
+}
+function countKeys(obj) {
+  let n = 0;
+  for (const v of Object.values(obj || {})) {
+    if (v && typeof v === "object")
+      n += countKeys(v);
+    else if (typeof v === "string")
+      n += 1;
+  }
+  return n;
+}
+var SUPPORTED_LOCALES, RATE_LIMIT_PER_DAY, R2_PREFIX;
+var init_i18n_worker = __esm({
+  "workers/platform/i18n-worker.js"() {
+    init_checked_fetch();
+    init_strip_cf_connecting_ip_header();
+    init_modules_watch_stub();
+    init_helpers();
+    init_auth();
+    init_admin_worker();
+    init_translator();
+    init_i18n_en();
+    SUPPORTED_LOCALES = /* @__PURE__ */ new Set(["en", "hi", "es", "zh-CN", "ar"]);
+    RATE_LIMIT_PER_DAY = 5;
+    R2_PREFIX = "i18n/locales/";
+    __name(r2Key, "r2Key");
+    __name(isValidLocale, "isValidLocale");
+    __name(readCachedLocale, "readCachedLocale");
+    __name(writeCachedLocale, "writeCachedLocale");
+    __name(checkRateLimit, "checkRateLimit");
+    __name(bumpRateLimit, "bumpRateLimit");
+    __name(generateAndCache, "generateAndCache");
+    __name(handleI18nPublic, "handleI18nPublic");
+    __name(handleI18nAdmin, "handleI18nAdmin");
+    __name(countKeys, "countKeys");
+  }
+});
+
 // workers/platform/admin-worker.js
 async function isOwner(user, env) {
   if (!user)
@@ -9325,6 +9782,8 @@ async function handleAdmin(request, env, path) {
       return handleShardManagement(request, env, pathParts);
     case "enterprise":
       return handleEnterpriseManagement(request, env, pathParts, user);
+    case "i18n":
+      return (await Promise.resolve().then(() => (init_i18n_worker(), i18n_worker_exports))).handleI18nAdmin(request, env, pathParts);
     default:
       return errorResponse("Admin endpoint not found", 404);
   }
@@ -16367,6 +16826,7 @@ __name(serveStorefrontApp, "serveStorefrontApp");
 
 // workers/index.js
 init_admin_worker();
+init_i18n_worker();
 
 // workers/platform/billing-worker.js
 init_checked_fetch();
@@ -19948,6 +20408,8 @@ async function handleAPI(request, env, path, ctx) {
       return handleHealth(env);
     case "site":
       return handleSiteInfo(request, env);
+    case "i18n":
+      return handleI18nPublic(request, env, path, ctx);
     default:
       return errorResponse("API endpoint not found", 404);
   }
