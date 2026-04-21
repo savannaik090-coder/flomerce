@@ -9,7 +9,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { apiRequest } from '../services/api.js';
 import '../styles/dashboard.css';
 import { PLATFORM_DOMAIN } from '../config.js';
-import PlanLimitModal, { isPlanError } from '../components/PlanLimitModal.jsx';
+import AlertModal, { isPlanError } from '../../../shared/ui/AlertModal.jsx';
 import { getSubscriptionBadge, formatScheduledChange } from '../utils/subscriptionStatus.js';
 
 const VALID_PAGES = ['dashboard', 'admin', 'billing', 'staff', 'account'];
@@ -1403,7 +1403,20 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
-      <PlanLimitModal message={planLimitMsg} onClose={() => setPlanLimitMsg(null)} />
+      <AlertModal
+        open={!!planLimitMsg}
+        variant="upgrade"
+        title="Upgrade Required"
+        message={planLimitMsg}
+        onClose={() => setPlanLimitMsg(null)}
+        secondaryAction={{ label: 'Maybe Later' }}
+        primaryAction={{
+          label: 'Upgrade Plan',
+          icon: 'fa-arrow-up',
+          variant: 'upgrade',
+          onClick: () => { document.querySelector('[data-page="billing"]')?.click(); },
+        }}
+      />
     </div>
   );
 }

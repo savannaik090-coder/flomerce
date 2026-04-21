@@ -98,7 +98,7 @@ Flomerce utilizes a shared shard-based D1 database architecture where multiple s
   - `styles.css` — all styling (BEM-style `flo-ui-*` classes, mobile-responsive, font-awesome icons).
   - `index.js` — barrel re-exports.
 - **Providers** are mounted at the top of both `App.jsx` files (`<ToastProvider><ConfirmProvider>...`).
-- **Legacy `PlanLimitModal.jsx`** in `platform/src/components/` and `storefront/src/components/admin/` are now thin wrappers over the shared `AlertModal` (variant `upgrade`) — keeps existing call sites working unchanged. Prefer importing `AlertModal` directly from `shared/ui` for new code.
+- **Plan-limit/upgrade prompts** use the shared `AlertModal` directly with `variant="upgrade"` (the old `PlanLimitModal.jsx` wrapper files have been removed). Callers: `platform/src/pages/DashboardPage.jsx` and `storefront/src/components/admin/LocationsSection.jsx`.
 - **Storefront vite config** has a `resolve.alias` block pointing `react`, `react-dom`, and the JSX runtimes back to its own `node_modules/` so files in `frontend/src/shared/` resolve React correctly.
 - **Migration goal:** progressively replace remaining `window.alert(...)` / `window.confirm(...)` / one-off inline modals with `useToast()` / `useConfirm()` / `<AlertModal>`.
 

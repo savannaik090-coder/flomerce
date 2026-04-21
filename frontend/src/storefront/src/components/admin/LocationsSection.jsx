@@ -2,7 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { getLocations, createLocation, updateLocation, deleteLocation } from '../../services/inventoryService.js';
 import ConfirmModal from './ConfirmModal.jsx';
-import PlanLimitModal, { isPlanError } from './PlanLimitModal.jsx';
+import AlertModal, { isPlanError } from '../../../../shared/ui/AlertModal.jsx';
 
 export default function LocationsSection() {
   const { siteConfig } = useContext(SiteContext);
@@ -210,7 +210,21 @@ export default function LocationsSection() {
         onConfirm={() => { confirmModal?.onConfirm?.(); setConfirmModal(null); }}
         onCancel={() => setConfirmModal(null)}
       />
-      <PlanLimitModal message={planLimitMsg} onClose={() => setPlanLimitMsg(null)} />
+      <AlertModal
+        open={!!planLimitMsg}
+        variant="upgrade"
+        title="Upgrade Required"
+        message={planLimitMsg}
+        onClose={() => setPlanLimitMsg(null)}
+        secondaryAction={{ label: 'Maybe Later' }}
+        primaryAction={{
+          label: 'Upgrade Plan',
+          icon: 'fa-arrow-up',
+          variant: 'upgrade',
+          href: 'https://flomerce.com/dashboard/billing',
+          target: '_blank',
+        }}
+      />
     </>
   );
 }
