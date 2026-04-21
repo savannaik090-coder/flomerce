@@ -9,7 +9,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// .wrangler/tmp/bundle-lTdZsX/checked-fetch.js
+// .wrangler/tmp/bundle-2VQwK4/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -27,7 +27,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-lTdZsX/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-2VQwK4/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     __name(checkURL, "checkURL");
     globalThis.fetch = new Proxy(globalThis.fetch, {
@@ -40,14 +40,14 @@ var init_checked_fetch = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-lTdZsX/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-2VQwK4/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
 var init_strip_cf_connecting_ip_header = __esm({
-  ".wrangler/tmp/bundle-lTdZsX/strip-cf-connecting-ip-header.js"() {
+  ".wrangler/tmp/bundle-2VQwK4/strip-cf-connecting-ip-header.js"() {
     __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -3968,12 +3968,12 @@ var init_whatsapp = __esm({
   }
 });
 
-// .wrangler/tmp/bundle-lTdZsX/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-2VQwK4/middleware-loader.entry.ts
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-lTdZsX/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-2VQwK4/middleware-insertion-facade.js
 init_checked_fetch();
 init_strip_cf_connecting_ip_header();
 init_modules_watch_stub();
@@ -19244,9 +19244,6 @@ async function ensureTablesExist(env) {
         UNIQUE(site_id, year_month)
       )
     `).run();
-    await env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_enterprise_usage_invoice_number ON enterprise_usage_monthly(invoice_number)`).run();
-    await env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_enterprise_usage_invoice_token ON enterprise_usage_monthly(invoice_token)`).run();
-    await env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_enterprise_usage_razorpay_order ON enterprise_usage_monthly(razorpay_order_id)`).run();
     const migrations = [
       { col: "role", table: "users", sql: "ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'" },
       { col: "baseline_bytes", table: "site_usage", sql: "ALTER TABLE site_usage ADD COLUMN baseline_bytes INTEGER DEFAULT 0" },
@@ -19273,6 +19270,16 @@ async function ensureTablesExist(env) {
     for (const m of migrations) {
       try {
         await env.DB.prepare(m.sql).run();
+      } catch (e) {
+      }
+    }
+    for (const ix of [
+      `CREATE INDEX IF NOT EXISTS idx_enterprise_usage_invoice_number ON enterprise_usage_monthly(invoice_number)`,
+      `CREATE INDEX IF NOT EXISTS idx_enterprise_usage_invoice_token ON enterprise_usage_monthly(invoice_token)`,
+      `CREATE INDEX IF NOT EXISTS idx_enterprise_usage_razorpay_order ON enterprise_usage_monthly(razorpay_order_id)`
+    ]) {
+      try {
+        await env.DB.prepare(ix).run();
       } catch (e) {
       }
     }
@@ -20267,7 +20274,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-lTdZsX/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-2VQwK4/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -20302,7 +20309,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-lTdZsX/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-2VQwK4/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

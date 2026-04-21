@@ -323,12 +323,6 @@ export async function ensureTablesExist(env) {
       )
     `).run();
 
-    // Hot-path indexes for invoice lookup (public token-gated page) and
-    // Razorpay webhook order-id reverse lookup. Mirror migration 0016.
-    await env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_enterprise_usage_invoice_number ON enterprise_usage_monthly(invoice_number)`).run();
-    await env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_enterprise_usage_invoice_token ON enterprise_usage_monthly(invoice_token)`).run();
-    await env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_enterprise_usage_razorpay_order ON enterprise_usage_monthly(razorpay_order_id)`).run();
-
     const migrations = [
       { col: 'role', table: 'users', sql: "ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'" },
       { col: 'baseline_bytes', table: 'site_usage', sql: 'ALTER TABLE site_usage ADD COLUMN baseline_bytes INTEGER DEFAULT 0' },
@@ -357,6 +351,19 @@ export async function ensureTablesExist(env) {
         await env.DB.prepare(m.sql).run();
       } catch (e) {
       }
+    }
+
+    // Hot-path indexes for invoice lookup (public token-gated page) and
+    // Razorpay webhook order-id reverse lookup. Must run AFTER the migrations
+    // loop because on databases that pre-date 0016 these columns don't exist
+    // until the ALTER TABLE migrations above have applied. Each index is
+    // wrapped so a failure on one doesn't abort the whole init.
+    for (const ix of [
+      `CREATE INDEX IF NOT EXISTS idx_enterprise_usage_invoice_number ON enterprise_usage_monthly(invoice_number)`,
+      `CREATE INDEX IF NOT EXISTS idx_enterprise_usage_invoice_token ON enterprise_usage_monthly(invoice_token)`,
+      `CREATE INDEX IF NOT EXISTS idx_enterprise_usage_razorpay_order ON enterprise_usage_monthly(razorpay_order_id)`,
+    ]) {
+      try { await env.DB.prepare(ix).run(); } catch (e) { /* index is best-effort */ }
     }
 
     try {
