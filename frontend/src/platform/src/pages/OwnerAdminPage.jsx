@@ -37,6 +37,8 @@ export default function OwnerAdminPage() {
   const [settings, setSettings] = useState({});
   const [settingsLoading, setSettingsLoading] = useState(false);
   const [settingsForm, setSettingsForm] = useState({ razorpay_key_id: '' });
+  const [translatorTesting, setTranslatorTesting] = useState(false);
+  const [translatorTestResult, setTranslatorTestResult] = useState(null);
 
   const [shards, setShards] = useState([]);
   const [shardsLoading, setShardsLoading] = useState(false);
@@ -266,7 +268,13 @@ export default function OwnerAdminPage() {
         enterprise_enabled: s.enterprise_enabled === 'true',
         enterprise_message: s.enterprise_message || '',
         enterprise_email: s.enterprise_email || '',
+        translator_region: s.translator_region || '',
+        // When a key is configured, prefill the input with the masked placeholder.
+        // updateSettings on the backend skips values starting with '•', so leaving
+        // this untouched preserves the stored key.
+        translator_api_key: s.translator_api_key_masked || '',
       });
+      setTranslatorTestResult(null);
     } catch (e) {
       console.error('Failed to load settings:', e);
     } finally {
@@ -286,6 +294,34 @@ export default function OwnerAdminPage() {
       await loadSettings();
     } catch (e) {
       toast.error('Failed to save settings: ' + e.message);
+    }
+  };
+
+  const handleTranslatorTest = async () => {
+    setTranslatorTesting(true);
+    setTranslatorTestResult(null);
+    try {
+      const body = {
+        api_key: settingsForm.translator_api_key || '',
+        region: settingsForm.translator_region || '',
+      };
+      const res = await apiRequest('/api/admin/settings/translator/test', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      });
+      const r = res.data || res;
+      setTranslatorTestResult(r);
+      if (r.ok) {
+        toast.success('Microsoft Translator: connection OK');
+      } else {
+        toast.error('Translator test failed: ' + (r.error || 'Unknown error'));
+      }
+    } catch (e) {
+      const msg = e.message || 'Test failed';
+      setTranslatorTestResult({ ok: false, error: msg });
+      toast.error('Translator test failed: ' + msg);
+    } finally {
+      setTranslatorTesting(false);
     }
   };
 
@@ -1604,6 +1640,78 @@ export default function OwnerAdminPage() {
                 </div>
                 <button type="submit" className="oa-btn oa-btn-primary" style={{ marginTop: '1rem' }}>Save Settings</button>
               </form>
+            )}
+          </div>
+
+          <div className="oa-card" style={{ marginTop: '1rem' }}>
+            <h3>Microsoft Translator</h3>
+            <p style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '1rem' }}>
+              Platform-paid Microsoft Translator credentials used to power admin-UI translations. The key is encrypted at rest using <code>SETTINGS_ENCRYPTION_KEY</code> and is never returned in plaintext after saving.
+            </p>
+            {settingsLoading ? (
+              <p className="oa-empty">Loading settings...</p>
+            ) : (
+              <>
+                <div className="oa-form-group">
+                  <label>Region</label>
+                  <input
+                    type="text"
+                    value={settingsForm.translator_region || ''}
+                    onChange={e => { setSettingsForm({ ...settingsForm, translator_region: e.target.value }); setTranslatorTestResult(null); }}
+                    placeholder="e.g. centralindia, eastus, global"
+                  />
+                  <p className="oa-form-hint">Find this in your Azure Translator resource → Keys and Endpoint.</p>
+                </div>
+                <div className="oa-form-group" style={{ marginTop: '0.75rem' }}>
+                  <label>Translator Key</label>
+                  <input
+                    type="password"
+                    autoComplete="new-password"
+                    value={settingsForm.translator_api_key || ''}
+                    onChange={e => { setSettingsForm({ ...settingsForm, translator_api_key: e.target.value }); setTranslatorTestResult(null); }}
+                    placeholder={settings.translator_api_key_configured ? 'A key is configured — paste a new one to replace it' : 'Paste your Microsoft Translator key'}
+                  />
+                  <p className="oa-form-hint">
+                    {settings.translator_api_key_configured
+                      ? <>Currently stored: <code>{settings.translator_api_key_masked}</code>. Leave the field as-is to keep the existing key.</>
+                      : 'No key configured yet.'}
+                  </p>
+                </div>
+                {translatorTestResult && (
+                  <div
+                    style={{
+                      marginTop: '0.75rem',
+                      padding: '0.6rem 0.75rem',
+                      borderRadius: '6px',
+                      fontSize: '0.8rem',
+                      background: translatorTestResult.ok ? '#dcfce7' : '#fee2e2',
+                      color: translatorTestResult.ok ? '#166534' : '#991b1b',
+                      border: `1px solid ${translatorTestResult.ok ? '#86efac' : '#fca5a5'}`,
+                    }}
+                  >
+                    {translatorTestResult.ok
+                      ? <>Connection OK. Test translation: <strong>{translatorTestResult.translation || 'ok'}</strong></>
+                      : <>Failed: {translatorTestResult.error}{translatorTestResult.status ? ` (HTTP ${translatorTestResult.status})` : ''}</>}
+                  </div>
+                )}
+                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
+                  <button
+                    type="button"
+                    className="oa-btn"
+                    onClick={handleTranslatorTest}
+                    disabled={translatorTesting}
+                  >
+                    {translatorTesting ? 'Testing...' : 'Test Connection'}
+                  </button>
+                  <button
+                    type="button"
+                    className="oa-btn oa-btn-primary"
+                    onClick={handleSettingsSave}
+                  >
+                    Save Translator Settings
+                  </button>
+                </div>
+              </>
             )}
           </div>
 

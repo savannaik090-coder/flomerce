@@ -42,6 +42,12 @@ Flomerce utilizes a shared shard-based D1 database architecture where multiple s
 ### Admin Shard Management API
 - Provides endpoints for managing shards (listing, creating, reconciling, activating, moving, deleting).
 
+### Platform Settings — Translator Credentials (Multilingual Phase 1A)
+- Microsoft Translator key/region for the platform are managed in Owner Admin → Settings under the "Microsoft Translator" card. Stored in `platform_settings` (`translator_api_key`, `translator_region`); the key is encrypted at rest with AES-GCM using the `SETTINGS_ENCRYPTION_KEY` Cloudflare secret (32 raw bytes, base64-encoded). `backend/utils/crypto.js` provides `encryptSecret`/`decryptSecret`/`maskSecret` helpers.
+- `GET /api/admin/settings` never returns the raw key — only `translator_api_key_masked` (last 4 chars) and `translator_api_key_configured` (boolean).
+- `POST /api/admin/settings/translator/test` performs a 1-character round-trip translation against `api.cognitive.microsofttranslator.com` to validate creds. Accepts `{ api_key, region }` in the body to test before saving, or falls back to the stored credentials when the body is empty.
+- `getTranslatorCredentials(env)` (exported from `admin-worker.js`) returns the decrypted `{ apiKey, region }` for server-side use — this is what the Phase 1B admin-UI translation cache will call.
+
 ### Database Tables
 - **Platform DB:** `users`, `sessions`, `sites`, `subscriptions`, `payments`, `shards`, `enterprise_sites`, `enterprise_usage_monthly`.
 - **Shard DBs:** `site_config`, `categories`, `products`, `orders`, `carts`, `site_customers`, `reviews`, `page_views`, `site_media`. All tables include `row_size_bytes` and are filtered by `site_id`.

@@ -9195,6 +9195,99 @@ var init_payments_worker = __esm({
   }
 });
 
+// utils/crypto.js
+function base64Encode(bytes) {
+  let bin = "";
+  for (let i = 0; i < bytes.length; i++)
+    bin += String.fromCharCode(bytes[i]);
+  return btoa(bin);
+}
+function base64Decode(str) {
+  const bin = atob(str);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++)
+    out[i] = bin.charCodeAt(i);
+  return out;
+}
+async function loadKey(env) {
+  const raw = env?.SETTINGS_ENCRYPTION_KEY;
+  if (!raw) {
+    throw new Error("SETTINGS_ENCRYPTION_KEY is not configured");
+  }
+  if (cachedKeyPromise && cachedKeySource === raw)
+    return cachedKeyPromise;
+  cachedKeySource = raw;
+  cachedKeyPromise = (async () => {
+    let keyBytes;
+    try {
+      keyBytes = base64Decode(raw.trim());
+    } catch (e) {
+      throw new Error("SETTINGS_ENCRYPTION_KEY must be base64-encoded");
+    }
+    if (keyBytes.length !== KEY_LENGTH) {
+      throw new Error(`SETTINGS_ENCRYPTION_KEY must decode to exactly ${KEY_LENGTH} bytes (got ${keyBytes.length})`);
+    }
+    return crypto.subtle.importKey("raw", keyBytes, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
+  })();
+  return cachedKeyPromise;
+}
+async function encryptSecret(env, plaintext) {
+  if (plaintext == null || plaintext === "")
+    return "";
+  const key = await loadKey(env);
+  const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH));
+  const enc = new TextEncoder().encode(String(plaintext));
+  const cipherBuf = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, enc);
+  const cipher = new Uint8Array(cipherBuf);
+  const out = new Uint8Array(1 + IV_LENGTH + cipher.length);
+  out[0] = VERSION_BYTE;
+  out.set(iv, 1);
+  out.set(cipher, 1 + IV_LENGTH);
+  return base64Encode(out);
+}
+async function decryptSecret(env, ciphertext) {
+  if (!ciphertext)
+    return "";
+  const key = await loadKey(env);
+  const bytes = base64Decode(ciphertext);
+  if (bytes.length < 1 + IV_LENGTH + 16) {
+    throw new Error("Ciphertext too short");
+  }
+  if (bytes[0] !== VERSION_BYTE) {
+    throw new Error(`Unsupported ciphertext version ${bytes[0]}`);
+  }
+  const iv = bytes.slice(1, 1 + IV_LENGTH);
+  const cipher = bytes.slice(1 + IV_LENGTH);
+  const plainBuf = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, cipher);
+  return new TextDecoder().decode(plainBuf);
+}
+function maskSecret(plaintext, visibleChars = 4) {
+  if (!plaintext)
+    return "";
+  const s = String(plaintext);
+  const tail = s.length <= visibleChars ? s : s.slice(-visibleChars);
+  return "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022" + tail;
+}
+var VERSION_BYTE, IV_LENGTH, KEY_LENGTH, cachedKeyPromise, cachedKeySource;
+var init_crypto = __esm({
+  "utils/crypto.js"() {
+    init_checked_fetch();
+    init_strip_cf_connecting_ip_header();
+    init_modules_watch_stub();
+    VERSION_BYTE = 1;
+    IV_LENGTH = 12;
+    KEY_LENGTH = 32;
+    cachedKeyPromise = null;
+    cachedKeySource = null;
+    __name(base64Encode, "base64Encode");
+    __name(base64Decode, "base64Decode");
+    __name(loadKey, "loadKey");
+    __name(encryptSecret, "encryptSecret");
+    __name(decryptSecret, "decryptSecret");
+    __name(maskSecret, "maskSecret");
+  }
+});
+
 // workers/platform/admin-worker.js
 async function isOwner(user, env) {
   if (!user)
@@ -9225,7 +9318,7 @@ async function handleAdmin(request, env, path) {
     case "plans":
       return handlePlansManagement(request, env, pathParts);
     case "settings":
-      return handleSettingsManagement(request, env);
+      return handleSettingsManagement(request, env, pathParts);
     case "databases":
       return handleDatabaseManagement(request, env, pathParts);
     case "shards":
@@ -9677,8 +9770,13 @@ async function deletePlan(env, planId) {
     return errorResponse("Failed to delete plan", 500);
   }
 }
-async function handleSettingsManagement(request, env) {
+async function handleSettingsManagement(request, env, pathParts = []) {
   await ensurePlansTables(env);
+  if (pathParts[3] === "translator" && pathParts[4] === "test") {
+    if (request.method !== "POST")
+      return errorResponse("Method not allowed", 405);
+    return testTranslatorConnection(request, env);
+  }
   if (request.method === "GET") {
     return getSettings(env);
   }
@@ -9694,6 +9792,21 @@ async function getSettings(env) {
     ).all();
     const settings = {};
     for (const row of result.results || []) {
+      if (ENCRYPTED_SETTING_KEYS.has(row.setting_key)) {
+        if (row.setting_value) {
+          try {
+            const plain = await decryptSecret(env, row.setting_value);
+            settings[`${row.setting_key}_masked`] = maskSecret(plain);
+            settings[`${row.setting_key}_configured`] = true;
+          } catch (e) {
+            console.error(`Failed to decrypt ${row.setting_key}:`, e.message || e);
+            settings[`${row.setting_key}_configured`] = false;
+          }
+        } else {
+          settings[`${row.setting_key}_configured`] = false;
+        }
+        continue;
+      }
       settings[row.setting_key] = row.setting_value;
     }
     return successResponse(settings);
@@ -9705,10 +9818,23 @@ async function getSettings(env) {
 async function updateSettings(request, env) {
   try {
     const updates = await request.json();
-    const allowedKeys = ["razorpay_key_id", "enterprise_enabled", "enterprise_message", "enterprise_email"];
-    for (const [key, value] of Object.entries(updates)) {
+    const allowedKeys = [
+      "razorpay_key_id",
+      "enterprise_enabled",
+      "enterprise_message",
+      "enterprise_email",
+      "translator_api_key",
+      "translator_region"
+    ];
+    for (const [key, rawValue] of Object.entries(updates)) {
       if (!allowedKeys.includes(key))
         continue;
+      let value = rawValue == null ? "" : String(rawValue);
+      if (ENCRYPTED_SETTING_KEYS.has(key)) {
+        if (value && value.startsWith("\u2022"))
+          continue;
+        value = value ? await encryptSecret(env, value) : "";
+      }
       await env.DB.prepare(
         `INSERT INTO platform_settings (setting_key, setting_value, updated_at) 
          VALUES (?, ?, datetime('now'))
@@ -9718,7 +9844,89 @@ async function updateSettings(request, env) {
     return successResponse(null, "Settings updated successfully");
   } catch (error) {
     console.error("Update settings error:", error);
+    if (error?.message?.includes("SETTINGS_ENCRYPTION_KEY")) {
+      return errorResponse("Server is missing SETTINGS_ENCRYPTION_KEY. Configure it in Cloudflare secrets before saving the translator key.", 500);
+    }
     return errorResponse("Failed to update settings", 500);
+  }
+}
+async function getTranslatorCredentials(env) {
+  try {
+    const rows = await env.DB.prepare(
+      `SELECT setting_key, setting_value FROM platform_settings WHERE setting_key IN ('translator_api_key', 'translator_region')`
+    ).all();
+    let encKey = "";
+    let region = "";
+    for (const row of rows.results || []) {
+      if (row.setting_key === "translator_api_key")
+        encKey = row.setting_value || "";
+      if (row.setting_key === "translator_region")
+        region = row.setting_value || "";
+    }
+    if (!encKey)
+      return null;
+    const apiKey = await decryptSecret(env, encKey);
+    if (!apiKey)
+      return null;
+    return { apiKey, region };
+  } catch (e) {
+    console.error("getTranslatorCredentials error:", e.message || e);
+    return null;
+  }
+}
+async function testTranslatorConnection(request, env) {
+  let body = {};
+  try {
+    body = await request.json();
+  } catch {
+  }
+  let apiKey = body?.api_key ? String(body.api_key).trim() : "";
+  let region = body?.region ? String(body.region).trim() : "";
+  if (!apiKey || apiKey.startsWith("\u2022")) {
+    const stored = await getTranslatorCredentials(env);
+    if (!stored) {
+      return successResponse({ ok: false, error: "No translator key configured. Paste your key and region above and click Test Connection." });
+    }
+    apiKey = stored.apiKey;
+    if (!region)
+      region = stored.region;
+  }
+  if (!apiKey) {
+    return successResponse({ ok: false, error: "Translator API key is required." });
+  }
+  if (!region) {
+    return successResponse({ ok: false, error: "Translator region is required (e.g. centralindia, eastus, global)." });
+  }
+  try {
+    const url = "https://api.cognitive.microsofttranslator.com/translate?api-version=3.0&from=en&to=es";
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Ocp-Apim-Subscription-Key": apiKey,
+        "Ocp-Apim-Subscription-Region": region,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify([{ Text: "ok" }])
+    });
+    if (!res.ok) {
+      let errMsg = `HTTP ${res.status}`;
+      try {
+        const errJson = await res.json();
+        errMsg = errJson?.error?.message || errMsg;
+      } catch {
+        try {
+          errMsg = await res.text() || errMsg;
+        } catch {
+        }
+      }
+      return successResponse({ ok: false, error: errMsg, status: res.status });
+    }
+    const data = await res.json();
+    const translation = data?.[0]?.translations?.[0]?.text || "";
+    return successResponse({ ok: true, translation, region });
+  } catch (error) {
+    console.error("Translator test error:", error);
+    return successResponse({ ok: false, error: error.message || "Network error reaching Microsoft Translator" });
   }
 }
 async function handleDatabaseManagement(request, env, pathParts) {
@@ -10920,7 +11128,7 @@ async function deleteShardEndpoint(env, shardId) {
     return errorResponse("Failed to delete shard: " + (error.message || "Unknown error"), 500);
   }
 }
-var ADMIN_EMAILS, MIGRATION_TABLES_SITE_ID, MIGRATION_TABLES_FK, AUTOINCREMENT_TABLES;
+var ADMIN_EMAILS, ENCRYPTED_SETTING_KEYS, MIGRATION_TABLES_SITE_ID, MIGRATION_TABLES_FK, AUTOINCREMENT_TABLES;
 var init_admin_worker = __esm({
   "workers/platform/admin-worker.js"() {
     init_checked_fetch();
@@ -10934,6 +11142,7 @@ var init_admin_worker = __esm({
     init_site_db();
     init_payments_worker();
     init_email();
+    init_crypto();
     ADMIN_EMAILS = [
       "savannaik090@gmail.com",
       "xiyohe3598@indevgo.com"
@@ -10952,9 +11161,12 @@ var init_admin_worker = __esm({
     __name(bulkSavePlan, "bulkSavePlan");
     __name(bulkDeletePlan, "bulkDeletePlan");
     __name(deletePlan, "deletePlan");
+    ENCRYPTED_SETTING_KEYS = /* @__PURE__ */ new Set(["translator_api_key"]);
     __name(handleSettingsManagement, "handleSettingsManagement");
     __name(getSettings, "getSettings");
     __name(updateSettings, "updateSettings");
+    __name(getTranslatorCredentials, "getTranslatorCredentials");
+    __name(testTranslatorConnection, "testTranslatorConnection");
     __name(handleDatabaseManagement, "handleDatabaseManagement");
     __name(listSiteDatabases, "listSiteDatabases");
     __name(getSiteDatabaseSizes, "getSiteDatabaseSizes");
