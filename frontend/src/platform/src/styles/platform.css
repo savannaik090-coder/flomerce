@@ -58,9 +58,9 @@ body {
 }
 
 .logo-img {
-  height: 96px;
+  height: 56px;
   width: auto;
-  max-width: 360px;
+  max-width: 220px;
   object-fit: contain;
   display: block;
 }
