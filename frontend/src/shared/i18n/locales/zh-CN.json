@@ -167,6 +167,31 @@
     "staffManagement": "员工管理",
     "account": "账户"
   },
+  "products": {
+    "addProduct": "添加商品",
+    "all": "全部",
+    "searchPlaceholder": "搜索商品...",
+    "noneFound": "未找到商品",
+    "tryDifferentSearch": "尝试其他搜索词。",
+    "addFirstHint": "添加您的第一个商品开始使用。",
+    "deleteTitle": "删除商品",
+    "deleteConfirm": "确定要删除此商品吗?",
+    "deleteFailed": "删除商品失败: {{msg}}",
+    "stock": "库存",
+    "outOfStock": "缺货",
+    "lowStock": "库存不足"
+  },
+  "customers": {
+    "title": "客户",
+    "guest": "访客",
+    "searchPlaceholder": "按姓名或邮箱搜索客户...",
+    "noneFound": "未找到客户",
+    "derivedFromOrders": "客户数据来自订单。有订单后,客户将显示在此处。",
+    "phone": "电话",
+    "orders": "订单",
+    "totalSpent": "总消费",
+    "lastOrder": "最近订单"
+  },
   "languages": {
     "en": "English",
     "hi": "हिन्दी",

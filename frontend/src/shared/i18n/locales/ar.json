@@ -167,6 +167,31 @@
     "staffManagement": "إدارة الموظفين",
     "account": "الحساب"
   },
+  "products": {
+    "addProduct": "إضافة منتج",
+    "all": "الكل",
+    "searchPlaceholder": "ابحث عن المنتجات...",
+    "noneFound": "لم يتم العثور على منتجات",
+    "tryDifferentSearch": "جرب مصطلح بحث آخر.",
+    "addFirstHint": "أضف منتجك الأول للبدء.",
+    "deleteTitle": "حذف المنتج",
+    "deleteConfirm": "هل أنت متأكد من حذف هذا المنتج؟",
+    "deleteFailed": "فشل حذف المنتج: {{msg}}",
+    "stock": "المخزون",
+    "outOfStock": "نفد المخزون",
+    "lowStock": "مخزون منخفض"
+  },
+  "customers": {
+    "title": "العملاء",
+    "guest": "ضيف",
+    "searchPlaceholder": "ابحث عن العملاء بالاسم أو البريد...",
+    "noneFound": "لم يتم العثور على عملاء",
+    "derivedFromOrders": "بيانات العملاء مشتقة من الطلبات. بمجرد أن تكون لديك طلبات، سيظهر العملاء هنا.",
+    "phone": "الهاتف",
+    "orders": "الطلبات",
+    "totalSpent": "إجمالي الإنفاق",
+    "lastOrder": "آخر طلب"
+  },
   "languages": {
     "en": "English",
     "hi": "हिन्दी",

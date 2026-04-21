@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
+import { useTranslation } from 'react-i18next';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { getProducts, deleteProduct } from '../../services/productService.js';
 import { getCategories } from '../../services/categoryService.js';
@@ -8,6 +9,7 @@ import ConfirmModal from './ConfirmModal.jsx';
 import { useToast } from '../../../../shared/ui/Toast.jsx';
 
 export default function ProductsSection({ onEditProduct, onAddProduct }) {
+  const { t } = useTranslation();
   const { siteConfig } = useContext(SiteContext);
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -39,15 +41,15 @@ export default function ProductsSection({ onEditProduct, onAddProduct }) {
 
   function handleDelete(productId) {
     setConfirmModal({
-      title: 'Delete Product',
-      message: 'Are you sure you want to delete this product?',
+      title: t('products.deleteTitle'),
+      message: t('products.deleteConfirm'),
       danger: true,
       onConfirm: async () => {
         try {
           await deleteProduct(productId, siteConfig?.id);
           setProducts(prev => prev.filter(p => p.id !== productId));
         } catch (err) {
-          toast.error('Failed to delete product: ' + err.message);
+          toast.error(t('products.deleteFailed', { msg: err.message }));
         }
       }
     });
@@ -67,18 +69,18 @@ export default function ProductsSection({ onEditProduct, onAddProduct }) {
       <div className="search-bar">
         <input
           type="text"
-          placeholder="Search products..."
+          placeholder={t('products.searchPlaceholder')}
           value={searchTerm}
           onChange={e => setSearchTerm(e.target.value)}
         />
         <button className="btn btn-primary" onClick={onAddProduct}>
-          <i className="fas fa-plus" /> Add Product
+          <i className="fas fa-plus" /> {t('products.addProduct')}
         </button>
       </div>
 
       <div className="tabs">
         <button className={`tab${activeCategory === 'all' ? ' active' : ''}`} onClick={() => setActiveCategory('all')}>
-          All ({products.length})
+          {t('products.all')} ({products.length})
         </button>
         {categories.map(cat => {
           const count = products.filter(p => p.category_id === cat.id || p.category === cat.slug).length;
@@ -97,8 +99,8 @@ export default function ProductsSection({ onEditProduct, onAddProduct }) {
       {filtered.length === 0 ? (
         <div className="empty-state">
           <i className="fas fa-box-open" />
-          <h3>No products found</h3>
-          <p>{searchTerm ? 'Try a different search term.' : 'Add your first product to get started.'}</p>
+          <h3>{t('products.noneFound')}</h3>
+          <p>{searchTerm ? t('products.tryDifferentSearch') : t('products.addFirstHint')}</p>
         </div>
       ) : (
         <div className="product-grid">
@@ -120,14 +122,14 @@ export default function ProductsSection({ onEditProduct, onAddProduct }) {
                   <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: 2 }}>SKU: {product.sku || '—'}</div>
                   <div className="product-price">{formatPrice(parseFloat(product.price || 0), getAdminCurrency(siteConfig))}</div>
                   <div className="product-stock">
-                    Stock: {product.stock ?? 0}
-                    {(product.stock ?? 0) === 0 && <span style={{ color: '#dc2626', marginLeft: 8 }}>Out of Stock</span>}
-                    {(product.stock ?? 0) > 0 && (product.stock ?? 0) <= 3 && <span style={{ color: '#f59e0b', marginLeft: 8 }}>Low Stock</span>}
+                    {t('products.stock')}: {product.stock ?? 0}
+                    {(product.stock ?? 0) === 0 && <span style={{ color: '#dc2626', marginInlineStart: 8 }}>{t('products.outOfStock')}</span>}
+                    {(product.stock ?? 0) > 0 && (product.stock ?? 0) <= 3 && <span style={{ color: '#f59e0b', marginInlineStart: 8 }}>{t('products.lowStock')}</span>}
                   </div>
                 </div>
                 <div className="product-actions">
                   <button className="btn btn-sm btn-outline" onClick={() => onEditProduct(product)}>
-                    <i className="fas fa-edit" /> Edit
+                    <i className="fas fa-edit" /> {t('common.edit')}
                   </button>
                   <button className="btn btn-sm btn-danger" onClick={() => handleDelete(product.id)}>
                     <i className="fas fa-trash" />
@@ -141,7 +143,7 @@ export default function ProductsSection({ onEditProduct, onAddProduct }) {
     </div>
 
       <button className="floating-add-btn" onClick={onAddProduct}>
-        <i className="fas fa-plus" /> Add Product
+        <i className="fas fa-plus" /> {t('products.addProduct')}
       </button>
       <ConfirmModal
         open={!!confirmModal}

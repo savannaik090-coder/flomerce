@@ -167,6 +167,31 @@
     "staffManagement": "स्टाफ प्रबंधन",
     "account": "खाता"
   },
+  "products": {
+    "addProduct": "उत्पाद जोड़ें",
+    "all": "सभी",
+    "searchPlaceholder": "उत्पाद खोजें...",
+    "noneFound": "कोई उत्पाद नहीं मिला",
+    "tryDifferentSearch": "अलग खोज शब्द आज़माएं।",
+    "addFirstHint": "शुरू करने के लिए अपना पहला उत्पाद जोड़ें।",
+    "deleteTitle": "उत्पाद हटाएं",
+    "deleteConfirm": "क्या आप वाकई इस उत्पाद को हटाना चाहते हैं?",
+    "deleteFailed": "उत्पाद हटाने में विफल: {{msg}}",
+    "stock": "स्टॉक",
+    "outOfStock": "स्टॉक खत्म",
+    "lowStock": "कम स्टॉक"
+  },
+  "customers": {
+    "title": "ग्राहक",
+    "guest": "अतिथि",
+    "searchPlaceholder": "नाम या ईमेल से ग्राहक खोजें...",
+    "noneFound": "कोई ग्राहक नहीं मिला",
+    "derivedFromOrders": "ग्राहक डेटा ऑर्डर से आता है। ऑर्डर आने पर ग्राहक यहां दिखेंगे।",
+    "phone": "फ़ोन",
+    "orders": "ऑर्डर",
+    "totalSpent": "कुल खर्च",
+    "lastOrder": "अंतिम ऑर्डर"
+  },
   "languages": {
     "en": "English",
     "hi": "हिन्दी",

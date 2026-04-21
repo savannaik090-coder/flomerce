@@ -167,6 +167,31 @@
     "staffManagement": "Gestión de Personal",
     "account": "Cuenta"
   },
+  "products": {
+    "addProduct": "Añadir Producto",
+    "all": "Todos",
+    "searchPlaceholder": "Buscar productos...",
+    "noneFound": "No se encontraron productos",
+    "tryDifferentSearch": "Prueba con un término diferente.",
+    "addFirstHint": "Añade tu primer producto para empezar.",
+    "deleteTitle": "Eliminar Producto",
+    "deleteConfirm": "¿Estás seguro de eliminar este producto?",
+    "deleteFailed": "Error al eliminar el producto: {{msg}}",
+    "stock": "Stock",
+    "outOfStock": "Agotado",
+    "lowStock": "Stock Bajo"
+  },
+  "customers": {
+    "title": "Clientes",
+    "guest": "Invitado",
+    "searchPlaceholder": "Buscar clientes por nombre o correo...",
+    "noneFound": "No se encontraron clientes",
+    "derivedFromOrders": "Los datos de los clientes provienen de los pedidos. Una vez que tengas pedidos, los clientes aparecerán aquí.",
+    "phone": "Teléfono",
+    "orders": "Pedidos",
+    "totalSpent": "Total Gastado",
+    "lastOrder": "Último Pedido"
+  },
   "languages": {
     "en": "English",
     "hi": "हिन्दी",
