@@ -1,0 +1,98 @@
+/* Shared UI animations & primitives */
+@keyframes flo-ui-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes flo-ui-fade-in-up { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes flo-ui-toast-in { from { opacity: 0; transform: translateY(-12px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes flo-ui-toast-out { to { opacity: 0; transform: translateY(-12px) scale(0.98); } }
+
+.flo-ui-overlay {
+  position: fixed; inset: 0; z-index: 99999;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: flo-ui-fade-in 0.18s ease;
+  padding: 16px;
+}
+.flo-ui-modal {
+  background: #fff; border-radius: 16px; padding: 1.75rem;
+  max-width: 440px; width: 100%; text-align: center;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  animation: flo-ui-fade-in-up 0.22s ease;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  box-sizing: border-box;
+}
+.flo-ui-modal__icon {
+  width: 64px; height: 64px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 1.25rem; font-size: 28px;
+}
+.flo-ui-modal__title {
+  margin: 0 0 0.5rem; font-size: 1.25rem; font-weight: 700; color: #0f172a;
+}
+.flo-ui-modal__message {
+  margin: 0 0 1.5rem; font-size: 0.9rem; color: #64748b; line-height: 1.6;
+  white-space: pre-line;
+}
+.flo-ui-modal__actions {
+  display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;
+}
+.flo-ui-btn {
+  padding: 0.6rem 1.25rem; border-radius: 8px; cursor: pointer;
+  font-size: 0.875rem; font-weight: 600; font-family: inherit;
+  border: 1px solid transparent; transition: opacity 0.15s, transform 0.05s;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.flo-ui-btn:active { transform: translateY(1px); }
+.flo-ui-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.flo-ui-btn--secondary { background: #fff; border-color: #e2e8f0; color: #64748b; }
+.flo-ui-btn--secondary:hover { background: #f8fafc; }
+.flo-ui-btn--primary { background: #2563eb; color: #fff; }
+.flo-ui-btn--primary:hover { background: #1d4ed8; }
+.flo-ui-btn--danger { background: #dc2626; color: #fff; }
+.flo-ui-btn--danger:hover { background: #b91c1c; }
+.flo-ui-btn--success { background: #16a34a; color: #fff; }
+.flo-ui-btn--upgrade { background: linear-gradient(135deg, #4f46e5, #7c3aed); color: #fff; box-shadow: 0 2px 8px rgba(79,70,229,0.3); }
+.flo-ui-btn--upgrade:hover { filter: brightness(1.05); }
+
+/* Toast container */
+.flo-ui-toast-stack {
+  position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
+  z-index: 100000; display: flex; flex-direction: column; gap: 8px;
+  pointer-events: none; max-width: calc(100vw - 32px);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+.flo-ui-toast {
+  pointer-events: auto;
+  display: flex; align-items: flex-start; gap: 10px;
+  background: #fff; color: #0f172a;
+  padding: 12px 14px; border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.12), 0 0 0 1px rgba(15,23,42,0.04);
+  font-size: 0.875rem; min-width: 240px; max-width: 420px;
+  animation: flo-ui-toast-in 0.2s ease;
+  border-left: 4px solid #2563eb;
+}
+.flo-ui-toast--leaving { animation: flo-ui-toast-out 0.2s ease forwards; }
+.flo-ui-toast--success { border-left-color: #16a34a; }
+.flo-ui-toast--error   { border-left-color: #dc2626; }
+.flo-ui-toast--warning { border-left-color: #d97706; }
+.flo-ui-toast--info    { border-left-color: #2563eb; }
+.flo-ui-toast__icon { flex-shrink: 0; width: 20px; height: 20px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; font-size: 12px; color: #fff; margin-top: 1px; }
+.flo-ui-toast--success .flo-ui-toast__icon { background: #16a34a; }
+.flo-ui-toast--error   .flo-ui-toast__icon { background: #dc2626; }
+.flo-ui-toast--warning .flo-ui-toast__icon { background: #d97706; }
+.flo-ui-toast--info    .flo-ui-toast__icon { background: #2563eb; }
+.flo-ui-toast__body { flex: 1; line-height: 1.45; }
+.flo-ui-toast__title { font-weight: 600; margin: 0 0 2px; font-size: 0.875rem; }
+.flo-ui-toast__msg { margin: 0; color: #475569; font-size: 0.8125rem; }
+.flo-ui-toast__close {
+  background: transparent; border: none; cursor: pointer; color: #94a3b8;
+  font-size: 16px; padding: 0 4px; line-height: 1;
+}
+.flo-ui-toast__close:hover { color: #475569; }
+
+@media (max-width: 480px) {
+  .flo-ui-modal { padding: 1.25rem; border-radius: 12px; }
+  .flo-ui-modal__actions { flex-direction: column-reverse; }
+  .flo-ui-modal__actions .flo-ui-btn { width: 100%; justify-content: center; }
+}

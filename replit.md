@@ -89,6 +89,19 @@ Flomerce utilizes a shared shard-based D1 database architecture where multiple s
 - **International Phone Input:** Phone fields use a country code dropdown with flag emoji + dial code (e.g., 🇮🇳 +91) and searchable country selector. Auto-selects dial code based on selected country. Phone stored in E.164 format (e.g., `+919876543210`). Shared `PhoneInput` component at `frontend/src/storefront/src/components/ui/PhoneInput.jsx`. Country dial codes in `countryStates.js` (`COUNTRIES[].dial`, `COUNTRY_FLAGS`, `getDialCode()`). Phone field is also included in customer signup form (optional).
 - **Abandoned Cart Reminders:** Automated reminders via WhatsApp and/or email for logged-in customers who leave items in their cart. Settings in admin panel under "Abandoned Cart Reminders": enable/disable, delay hours (1/3/6/12/24h), max reminders (1-3), channel selection (email/WhatsApp). Processed by Cloudflare Cron Trigger (`scheduled` handler in `index.js`). Cart table has `reminder_sent_at` and `reminder_count` columns — reset when cart is updated. Subsequent reminders use exponential backoff (delay doubles each time). Skips carts where the customer has placed an order since the cart was last updated. WhatsApp template: `abandoned_cart_reminder`. Email template: `buildAbandonedCartEmail()` in `email.js`. WhatsApp builder: `buildAbandonedCartWA()` in `whatsapp.js`. Config stored in `site_config.settings.abandonedCartConfig`.
 
+### Shared UI Components (Alerts / Confirms / Toasts)
+- **Single source of truth:** `frontend/src/shared/ui/` (imported by both the storefront and platform apps).
+  - `Modal.jsx` — base overlay/box primitive (Esc to close, scroll lock, backdrop click).
+  - `AlertModal.jsx` — declarative alert dialog with variants (`info`, `success`, `warning`, `error`, `upgrade`); supports `primaryAction`/`secondaryAction` (button or link). Also exports `isPlanError(err)`.
+  - `ConfirmDialog.jsx` — `<ConfirmProvider>` + `useConfirm()` promise-based hook: `const ok = await confirm({ title, message, confirmText, cancelText, variant: 'danger' })`.
+  - `Toast.jsx` — `<ToastProvider>` + `useToast()` with `.success/.error/.warning/.info(msg, { title?, duration? })`.
+  - `styles.css` — all styling (BEM-style `flo-ui-*` classes, mobile-responsive, font-awesome icons).
+  - `index.js` — barrel re-exports.
+- **Providers** are mounted at the top of both `App.jsx` files (`<ToastProvider><ConfirmProvider>...`).
+- **Legacy `PlanLimitModal.jsx`** in `platform/src/components/` and `storefront/src/components/admin/` are now thin wrappers over the shared `AlertModal` (variant `upgrade`) — keeps existing call sites working unchanged. Prefer importing `AlertModal` directly from `shared/ui` for new code.
+- **Storefront vite config** has a `resolve.alias` block pointing `react`, `react-dom`, and the JSX runtimes back to its own `node_modules/` so files in `frontend/src/shared/` resolve React correctly.
+- **Migration goal:** progressively replace remaining `window.alert(...)` / `window.confirm(...)` / one-off inline modals with `useToast()` / `useConfirm()` / `<AlertModal>`.
+
 ## External Dependencies
 - **Cloudflare Pages:** Frontend hosting.
 - **Cloudflare Workers:** Backend serverless compute.

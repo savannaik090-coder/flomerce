@@ -16,6 +16,8 @@ import WishlistPanel from './components/wishlist/WishlistPanel.jsx';
 import WhatsAppButton from './components/ui/WhatsAppButton.jsx';
 import PageLoadingBar from './components/ui/PageLoadingBar.jsx';
 import PushPrompt from './components/ui/PushPrompt.jsx';
+import { ToastProvider } from '../../shared/ui/Toast.jsx';
+import { ConfirmProvider } from '../../shared/ui/ConfirmDialog.jsx';
 import usePushNotifications from './hooks/usePushNotifications.js';
 import './styles/variables.css';
 import './styles/navbar.css';
@@ -135,6 +137,16 @@ class AdminErrorBoundary extends React.Component {
 }
 
 export default function App() {
+  return (
+    <ToastProvider>
+      <ConfirmProvider>
+        <AppRoutes />
+      </ConfirmProvider>
+    </ToastProvider>
+  );
+}
+
+function AppRoutes() {
   const { siteConfig, loading, error } = useSiteConfig();
   const location = useLocation();
 
