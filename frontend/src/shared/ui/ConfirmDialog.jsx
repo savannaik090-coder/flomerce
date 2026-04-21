@@ -14,6 +14,11 @@ export function ConfirmProvider({ children }) {
 
   const confirm = useCallback((opts = {}) => {
     return new Promise((resolve) => {
+      // If a previous confirm is still pending (e.g. user double-triggered),
+      // resolve the prior promise as `false` so it never hangs forever.
+      if (resolverRef.current) {
+        try { resolverRef.current(false); } catch { /* ignore */ }
+      }
       resolverRef.current = resolve;
       setState({
         title: opts.title || 'Are you sure?',
