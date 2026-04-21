@@ -323,6 +323,12 @@ export async function ensureTablesExist(env) {
       )
     `).run();
 
+    // Hot-path indexes for invoice lookup (public token-gated page) and
+    // Razorpay webhook order-id reverse lookup. Mirror migration 0016.
+    await env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_enterprise_usage_invoice_number ON enterprise_usage_monthly(invoice_number)`).run();
+    await env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_enterprise_usage_invoice_token ON enterprise_usage_monthly(invoice_token)`).run();
+    await env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_enterprise_usage_razorpay_order ON enterprise_usage_monthly(razorpay_order_id)`).run();
+
     const migrations = [
       { col: 'role', table: 'users', sql: "ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'" },
       { col: 'baseline_bytes', table: 'site_usage', sql: 'ALTER TABLE site_usage ADD COLUMN baseline_bytes INTEGER DEFAULT 0' },

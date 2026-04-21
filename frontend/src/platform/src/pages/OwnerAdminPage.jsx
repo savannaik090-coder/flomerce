@@ -318,14 +318,26 @@ export default function OwnerAdminPage() {
     e.preventDefault();
     if (!enterpriseSelectedAssignSite) return;
     try {
+      const parseGB = (s) => {
+        if (s.trim() === '') return null;
+        const n = Number(s);
+        if (!Number.isFinite(n) || n < 0) return undefined;
+        return n;
+      };
+      const d1Val = parseGB(enterpriseAssignD1GB);
+      const r2Val = parseGB(enterpriseAssignR2GB);
+      if (d1Val === undefined || r2Val === undefined) {
+        alert('D1 and R2 quotas must be a non-negative number of GB (or blank for plan default).');
+        return;
+      }
       await apiRequest('/api/admin/enterprise/assign', {
         method: 'POST',
         body: JSON.stringify({
           siteId: enterpriseSelectedAssignSite.id,
           notes: enterpriseAssignNotes.trim() || null,
-          // Empty string means "use plan default" — backend treats null/'' the same.
-          d1LimitGB: enterpriseAssignD1GB.trim() === '' ? null : Number(enterpriseAssignD1GB),
-          r2LimitGB: enterpriseAssignR2GB.trim() === '' ? null : Number(enterpriseAssignR2GB),
+          // null = use plan default
+          d1LimitGB: d1Val,
+          r2LimitGB: r2Val,
         }),
       });
       setEnterpriseSelectedAssignSite(null);
@@ -383,13 +395,25 @@ export default function OwnerAdminPage() {
       currentR2GB
     );
     if (r2Input === null) return;
+    const parseGB = (s) => {
+      if (s.trim() === '') return null;
+      const n = Number(s);
+      if (!Number.isFinite(n) || n < 0) return undefined; // sentinel for invalid
+      return n;
+    };
+    const d1Val = parseGB(d1Input);
+    const r2Val = parseGB(r2Input);
+    if (d1Val === undefined || r2Val === undefined) {
+      alert('Quotas must be a non-negative number of GB (or blank for plan default).');
+      return;
+    }
     try {
       await apiRequest('/api/admin/enterprise/update-quota', {
         method: 'POST',
         body: JSON.stringify({
           siteId: site.siteId,
-          d1LimitGB: d1Input.trim() === '' ? null : Number(d1Input),
-          r2LimitGB: r2Input.trim() === '' ? null : Number(r2Input),
+          d1LimitGB: d1Val,
+          r2LimitGB: r2Val,
         }),
       });
       await loadEnterpriseSites();

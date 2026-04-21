@@ -163,6 +163,7 @@ export default function OverageInvoicePage() {
 
   const inv = data;
   const isPaid = inv.status === 'paid';
+  const hasAmount = Number(inv.totalCostINR || 0) > 0;
 
   return (
     <div style={shellStyle}>
@@ -170,7 +171,7 @@ export default function OverageInvoicePage() {
 
       <div className="invoice-actions" style={{ width: '100%', maxWidth: 800, marginBottom: 16, display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
         <button onClick={() => window.print()} style={btnSecondary}>🖨️ Print / Save PDF</button>
-        {!isPaid && (
+        {!isPaid && hasAmount && (
           <button onClick={handlePay} disabled={paying} style={{ ...btnPrimary, opacity: paying ? 0.7 : 1, cursor: paying ? 'wait' : 'pointer' }}>
             {paying ? 'Opening checkout…' : `Pay ${fmtINR(inv.totalCostINR)}`}
           </button>

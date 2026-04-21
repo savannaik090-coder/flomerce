@@ -15836,6 +15836,12 @@ async function runEnterpriseSnapshot(env, siteId, yearMonth, opts = {}) {
       total_cost_inr = excluded.total_cost_inr,
       d1_limit_bytes = excluded.d1_limit_bytes,
       r2_limit_bytes = excluded.r2_limit_bytes,
+      -- Backfill identifiers for legacy rows that pre-date 0016 (where these
+      -- columns were null after the ALTER TABLE). COALESCE ensures we never
+      -- rotate an existing invoice_number/token/due_date that's already in use.
+      invoice_number = COALESCE(invoice_number, excluded.invoice_number),
+      invoice_token = COALESCE(invoice_token, excluded.invoice_token),
+      due_date = COALESCE(due_date, excluded.due_date),
       snapshot_at = datetime('now')
   `).bind(
     siteId,
@@ -15851,7 +15857,7 @@ async function runEnterpriseSnapshot(env, siteId, yearMonth, opts = {}) {
     limits.d1Bytes,
     limits.r2Bytes
   ).run();
-  let emailed = false;
+  let emailed = !!existing?.emailed_at;
   if (opts.sendEmailIfBilled && billed && !existing?.emailed_at) {
     try {
       await sendOverageInvoiceEmail(env, siteId, {
@@ -16095,7 +16101,7 @@ init_modules_watch_stub();
 init_helpers();
 async function handleBilling(request, env, path) {
   if (request.method === "OPTIONS")
-    return handleCORS();
+    return handleCORS(request);
   const parts = path.split("/").filter(Boolean);
   const sub = parts[2] || "";
   try {
@@ -19199,6 +19205,9 @@ async function ensureTablesExist(env) {
         UNIQUE(site_id, year_month)
       )
     `).run();
+    await env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_enterprise_usage_invoice_number ON enterprise_usage_monthly(invoice_number)`).run();
+    await env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_enterprise_usage_invoice_token ON enterprise_usage_monthly(invoice_token)`).run();
+    await env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_enterprise_usage_razorpay_order ON enterprise_usage_monthly(razorpay_order_id)`).run();
     const migrations = [
       { col: "role", table: "users", sql: "ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'" },
       { col: "baseline_bytes", table: "site_usage", sql: "ALTER TABLE site_usage ADD COLUMN baseline_bytes INTEGER DEFAULT 0" },

@@ -14,7 +14,7 @@ import { errorResponse, successResponse, jsonResponse, handleCORS } from '../../
 import { getPlatformRazorpayKeyId } from './payments-worker.js';
 
 export async function handleBilling(request, env, path) {
-  if (request.method === 'OPTIONS') return handleCORS();
+  if (request.method === 'OPTIONS') return handleCORS(request);
 
   const parts = path.split('/').filter(Boolean); // ['api','billing',...]
   const sub = parts[2] || '';

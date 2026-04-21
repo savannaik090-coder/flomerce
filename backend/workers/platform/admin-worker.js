@@ -1673,6 +1673,12 @@ export async function runEnterpriseSnapshot(env, siteId, yearMonth, opts = {}) {
       total_cost_inr = excluded.total_cost_inr,
       d1_limit_bytes = excluded.d1_limit_bytes,
       r2_limit_bytes = excluded.r2_limit_bytes,
+      -- Backfill identifiers for legacy rows that pre-date 0016 (where these
+      -- columns were null after the ALTER TABLE). COALESCE ensures we never
+      -- rotate an existing invoice_number/token/due_date that's already in use.
+      invoice_number = COALESCE(invoice_number, excluded.invoice_number),
+      invoice_token = COALESCE(invoice_token, excluded.invoice_token),
+      due_date = COALESCE(due_date, excluded.due_date),
       snapshot_at = datetime('now')
   `).bind(
     siteId, yearMonth, d1Overage, r2Overage,
@@ -1681,7 +1687,7 @@ export async function runEnterpriseSnapshot(env, siteId, yearMonth, opts = {}) {
     limits.d1Bytes, limits.r2Bytes
   ).run();
 
-  let emailed = false;
+  let emailed = !!existing?.emailed_at;
   if (opts.sendEmailIfBilled && billed && !existing?.emailed_at) {
     try {
       await sendOverageInvoiceEmail(env, siteId, {
