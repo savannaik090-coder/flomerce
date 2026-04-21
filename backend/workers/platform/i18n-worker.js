@@ -4,9 +4,17 @@ import { isOwner } from './admin-worker.js';
 import { translateCatalog } from '../../utils/translator.js';
 import EN_CATALOG from '../../i18n-en.json';
 
-const SUPPORTED_LOCALES = new Set(['en', 'hi', 'es', 'zh-CN', 'ar']);
+const SUPPORTED_LOCALES = new Set([
+  'en', 'hi', 'es', 'zh-CN', 'ar',
+  // Long-tail allowlist of locales the platform will lazy-generate on demand.
+  // Anything outside this set falls back to English to bound spend.
+  'fr', 'de', 'pt', 'pt-BR', 'it', 'ja', 'ko', 'ru', 'tr', 'pl', 'nl', 'sv',
+  'th', 'vi', 'id', 'ms', 'fil', 'bn', 'ta', 'te', 'mr', 'gu', 'kn', 'ml',
+  'pa', 'ur', 'fa', 'he', 'el', 'cs', 'da', 'fi', 'no', 'ro', 'hu', 'uk',
+  'zh-TW', 'en-GB',
+]);
 const RATE_LIMIT_PER_DAY = 5;
-const R2_PREFIX = 'i18n/locales/';
+const R2_PREFIX = 'locales/';
 
 function r2Key(lang) {
   return `${R2_PREFIX}${lang}.json`;
@@ -105,9 +113,13 @@ export async function handleI18nPublic(request, env, path, ctx) {
     return cachedJson(request, { success: true, message: 'Success', data: cached.data });
   }
 
-  // Lazy-generate any supported locale, but apply the per-day rate limit
-  // (5/day/locale) to the public path too so unauthenticated callers cannot
-  // drive unbounded paid Translator API usage / R2 growth.
+  // Bound spend: only locales on the supported allowlist may be lazy-generated.
+  // Unknown locale-shaped codes fall back to English so an attacker cannot
+  // bypass the per-locale day cap by spamming many distinct codes.
+  if (!SUPPORTED_LOCALES.has(lang)) {
+    return cachedJson(request, { success: true, message: 'i18n fallback to en (locale not supported)', data: EN_CATALOG });
+  }
+
   const rl = await checkRateLimit(env, lang);
   if (!rl.ok) {
     return cachedJson(request, { success: true, message: 'i18n fallback to en (rate limit reached)', data: EN_CATALOG });

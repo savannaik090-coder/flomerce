@@ -62,6 +62,14 @@
     "pwaInstallTitle": "Install Flomerce",
     "pwaInstallDesc": "Add to home screen for better experience",
     "pwaInstall": "Install",
+    "aboutTitle": "About Us",
+    "aboutTagline": "Empowering small businesses to sell online",
+    "aboutWhoTitle": "Who We Are",
+    "aboutWhatTitle": "What We Do",
+    "aboutMissionTitle": "Our Mission",
+    "aboutHowTitle": "How It Works",
+    "aboutValuesTitle": "Our Values",
+    "aboutContactTitle": "Contact Us",
     "features": {
       "store": { "title": "Complete Online Store", "desc": "Launch a fully functional e-commerce store with product listings, categories, and a beautiful storefront — ready to sell in minutes." },
       "orders": { "title": "Order Management", "desc": "Track orders from placement to delivery with status updates, customer notifications, and shipping management built in." },
@@ -160,6 +168,23 @@
       "configureFirst": "Configure Microsoft Translator credentials in Settings first.",
       "purge": "Purge cache"
     }
+  },
+  "dashboard": {
+    "tabs": {
+      "dashboard": "Dashboard",
+      "admin": "Admin",
+      "billing": "Billing",
+      "staff": "Staff",
+      "account": "Account"
+    },
+    "myWebsites": "My Websites",
+    "loadingWebsites": "Loading your websites...",
+    "noWebsitesYet": "You haven't created any websites yet.",
+    "createFirstWebsite": "Create Your First Website",
+    "createNewSite": "Create New Site",
+    "billing": "Billing",
+    "staffManagement": "Staff Management",
+    "account": "Account"
   },
   "languages": {
     "en": "English",

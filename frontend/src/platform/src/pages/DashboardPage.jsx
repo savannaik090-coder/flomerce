@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext.jsx';
 import { getUserSites, deleteSite, createSite } from '../services/siteService.js';
 import { getUserProfile, cancelSubscription } from '../services/paymentService.js';
@@ -17,6 +18,7 @@ import { getSubscriptionBadge, formatScheduledChange } from '../utils/subscripti
 const VALID_PAGES = ['dashboard', 'admin', 'billing', 'staff', 'account'];
 
 export default function DashboardPage() {
+  const { t } = useTranslation();
   const { user, isAuthenticated, loading, logout, setUser } = useAuth();
   const toast = useToast();
   const confirm = useConfirm();
@@ -733,7 +735,7 @@ export default function DashboardPage() {
     if (sitesLoading) {
       return (
         <main className="main-content">
-          <div className="header"><h1>Admin Panel</h1></div>
+          <div className="header"><h1>{t('admin.panelTitle')}</h1></div>
           <p style={{ color: 'var(--text-muted)' }}>Loading sites...</p>
         </main>
       );
@@ -742,7 +744,7 @@ export default function DashboardPage() {
     if (sites.length === 0) {
       return (
         <main className="main-content">
-          <div className="header"><h1>Admin Panel</h1></div>
+          <div className="header"><h1>{t('admin.panelTitle')}</h1></div>
           <div className="empty-state">
             <p>You don't have any websites yet. Create one first.</p>
             <button className="btn btn-primary" onClick={() => { navigateDashboard('dashboard'); setShowWizard(true); }}>Create a Website</button>
@@ -861,23 +863,23 @@ export default function DashboardPage() {
       <div className="mobile-nav">
         <button className={`mobile-nav-item${activePage === 'dashboard' ? ' active' : ''}`} onClick={() => { setManagedSite(null); setManagedAdminUrl(null); navigateDashboard('dashboard'); }}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-          <span>Dashboard</span>
+          <span>{t('dashboard.tabs.dashboard')}</span>
         </button>
         <button className={`mobile-nav-item${activePage === 'admin' ? ' active' : ''}`} onClick={() => { setManagedSite(null); setManagedAdminUrl(null); navigateDashboard('admin'); }}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
-          <span>Admin</span>
+          <span>{t('dashboard.tabs.admin')}</span>
         </button>
         <button className={`mobile-nav-item${activePage === 'billing' ? ' active' : ''}`} onClick={() => { setManagedSite(null); setManagedAdminUrl(null); if (sites.length === 1) { setBillingSiteId(sites[0].id); loadSiteUsage(sites[0].id); } else { setBillingSiteId(null); } navigateDashboard('billing'); }}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
-          <span>Billing</span>
+          <span>{t('dashboard.tabs.billing')}</span>
         </button>
         <button className={`mobile-nav-item${activePage === 'staff' ? ' active' : ''}`} onClick={() => { setManagedSite(null); setManagedAdminUrl(null); if (sites.length === 1) { setStaffSiteId(null); setStaffForm(null); handleStaffSite(sites[0].id); } else { setStaffSiteId(null); setStaffForm(null); } navigateDashboard('staff'); }}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-          <span>Staff</span>
+          <span>{t('dashboard.tabs.staff')}</span>
         </button>
         <button className={`mobile-nav-item${activePage === 'account' ? ' active' : ''}`} onClick={() => { setManagedSite(null); setManagedAdminUrl(null); navigateDashboard('account'); }}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-          <span>Account</span>
+          <span>{t('dashboard.tabs.account')}</span>
         </button>
       </div>
 
@@ -886,17 +888,17 @@ export default function DashboardPage() {
           {activePage === 'dashboard' && (
             <div>
               <div className="header">
-                <h1>My Websites</h1>
+                <h1>{t('dashboard.myWebsites')}</h1>
               </div>
 
               {renderTrialBanner()}
 
               {sitesLoading ? (
-                <p style={{ color: 'var(--text-muted)' }}>Loading your websites...</p>
+                <p style={{ color: 'var(--text-muted)' }}>{t('dashboard.loadingWebsites')}</p>
               ) : sites.length === 0 ? (
                 <div className="empty-state">
-                  <p>You haven't created any websites yet.</p>
-                  <button className="btn btn-primary" onClick={handleCreateSiteClick}>Create Your First Website</button>
+                  <p>{t('dashboard.noWebsitesYet')}</p>
+                  <button className="btn btn-primary" onClick={handleCreateSiteClick}>{t('dashboard.createFirstWebsite')}</button>
                 </div>
               ) : (
                 <div className="sites-grid">
@@ -913,7 +915,7 @@ export default function DashboardPage() {
 
               <button className="floating-create-btn" onClick={handleCreateSiteClick}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                <span>Create New Site</span>
+                <span>{t('dashboard.createNewSite')}</span>
               </button>
             </div>
           )}
@@ -921,7 +923,7 @@ export default function DashboardPage() {
           {activePage === 'billing' && (
             <div>
               <div className="header">
-                <h1>Billing</h1>
+                <h1>{t('dashboard.billing')}</h1>
               </div>
 
               {accountStatus.isTrialActive && (
@@ -1078,7 +1080,7 @@ export default function DashboardPage() {
           {activePage === 'staff' && (
             <div>
               <div className="header">
-                <h1>Staff Management</h1>
+                <h1>{t('dashboard.staffManagement')}</h1>
               </div>
 
               {!staffSiteId ? (
@@ -1272,8 +1274,8 @@ export default function DashboardPage() {
           {activePage === 'account' && (
             <div>
               <div className="header">
-                <h1>Account</h1>
-                <button className="btn btn-outline" onClick={handleLogout} style={{ color: '#ef4444', borderColor: '#fecaca' }}>Logout</button>
+                <h1>{t('dashboard.account')}</h1>
+                <button className="btn btn-outline" onClick={handleLogout} style={{ color: '#ef4444', borderColor: '#fecaca' }}>{t('nav.logout')}</button>
               </div>
 
               <div className="site-card" style={{ display: 'block', maxWidth: '500px' }}>

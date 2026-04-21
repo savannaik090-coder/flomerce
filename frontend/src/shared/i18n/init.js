@@ -75,7 +75,8 @@ export function initI18n(options = {}) {
     .init({
       fallbackLng: 'en',
       supportedLngs: false,
-      load: 'currentOnly',
+      load: 'languageOnly',
+      nonExplicitSupportedLngs: true,
       ns: ['translation'],
       defaultNS: 'translation',
       resources: Object.fromEntries(Object.entries(BUNDLED).map(([k, v]) => [k, { translation: v }])),
