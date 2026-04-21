@@ -53,7 +53,11 @@ export default function PrivacyEditor({ onSaved, onPreviewUpdate }) {
         }
         setIntro(iVal);
         setSections(sVal);
-        serverValuesRef.current = JSON.stringify({ intro: iVal, sections: sVal });
+        // Stringify with the same {title, content} shape we save with —
+        // otherwise extra fields on the loaded sections (e.g. id) make the
+        // baseline mismatch the post-save baseline and "unsaved changes"
+        // never clears.
+        serverValuesRef.current = JSON.stringify({ intro: iVal, sections: sVal.map(s => ({ title: s.title, content: s.content })) });
       }
     } catch (e) {
       console.error('Failed to load privacy settings:', e);
@@ -62,7 +66,7 @@ export default function PrivacyEditor({ onSaved, onPreviewUpdate }) {
       const sVal = d.sections;
       setIntro(iVal);
       setSections(sVal);
-      serverValuesRef.current = JSON.stringify({ intro: iVal, sections: sVal });
+      serverValuesRef.current = JSON.stringify({ intro: iVal, sections: sVal.map(s => ({ title: s.title, content: s.content })) });
     } finally {
       setLoading(false);
       setTimeout(() => { hasLoadedRef.current = true; }, 0);

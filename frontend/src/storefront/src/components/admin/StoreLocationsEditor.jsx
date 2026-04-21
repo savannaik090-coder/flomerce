@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import SaveBar from './SaveBar.jsx';
+import SectionToggle from './SectionToggle.jsx';
 import { API_BASE } from '../../config.js';
 import PhoneInput from '../ui/PhoneInput.jsx';
 import { usePendingMedia } from '../../hooks/usePendingMedia.js';
@@ -27,9 +28,8 @@ function compressImage(file, maxWidth = 1200, quality = 0.85) {
   });
 }
 
-export default function StoreLocationsEditor({ onSaved, onPreviewUpdate }) {
+export default function StoreLocationsEditor({ onSaved, onPreviewUpdate, sectionVisible = true, onToggleVisibility }) {
   const { siteConfig } = useContext(SiteContext);
-  const [showSection, setShowSection] = useState(true);
   const [stores, setStores] = useState([{ ...EMPTY_STORE }]);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -47,10 +47,10 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
-    const current = JSON.stringify({ showSection, stores });
+    const current = JSON.stringify({ stores });
     setHasChanges(current !== serverValuesRef.current);
-    if (onPreviewUpdate) onPreviewUpdate({ showStoreLocations: showSection, storeLocations: stores.filter(s => s.name || s.address) });
-  }, [showSection, stores]);
+    if (onPreviewUpdate) onPreviewUpdate({ storeLocations: stores.filter(s => s.name || s.address) });
+  }, [stores]);
 
   async function loadSettings() {
     setLoading(true);
@@ -62,8 +62,6 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate }) {
         if (typeof settings === 'string') {
           try { settings = JSON.parse(settings); } catch (e) { settings = {}; }
         }
-        const ssVal = settings.showStoreLocations === true;
-        setShowSection(ssVal);
         const saved = settings.storeLocations || [];
         let storesVal;
         if (saved.length > 0) {
@@ -79,7 +77,7 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate }) {
           }];
         }
         setStores(storesVal);
-        serverValuesRef.current = JSON.stringify({ showSection: ssVal, stores: storesVal });
+        serverValuesRef.current = JSON.stringify({ stores: storesVal });
       }
     } catch (e) {
       console.error('Failed to load store locations:', e);
@@ -161,7 +159,6 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate }) {
         },
         body: JSON.stringify({
           settings: {
-            showStoreLocations: showSection,
             storeLocations: persistedStores,
           }
         }),
@@ -169,7 +166,7 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate }) {
       const result = await response.json();
       if (response.ok && result.success) {
         setStatus('success');
-        serverValuesRef.current = JSON.stringify({ showSection, stores });
+        serverValuesRef.current = JSON.stringify({ stores });
         setHasChanges(false);
         const cleanup = await pendingMedia.commit(persistedStores.map(s => s.image).filter(Boolean));
         if (!cleanup.ok) console.warn('Some images failed to delete from storage:', cleanup.failed);
@@ -192,22 +189,15 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate }) {
   return (
     <div style={{ maxWidth: 700 }}>
       <SaveBar topBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
+      {onToggleVisibility && (
+        <SectionToggle enabled={sectionVisible} onChange={() => onToggleVisibility?.()} label="Store Locations Section" />
+      )}
       <form onSubmit={handleSave}>
         <div className="card" style={{ marginBottom: 20 }}>
-          <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div className="card-header">
             <h3 className="card-title">Come Visit Us at Our Store</h3>
-            <label style={{ position: 'relative', display: 'inline-block', width: 44, height: 24, cursor: 'pointer' }}>
-              <input type="checkbox" checked={showSection} onChange={() => setShowSection(!showSection)} style={{ opacity: 0, width: 0, height: 0 }} />
-              <span style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: showSection ? '#10b981' : '#cbd5e1', borderRadius: 24, transition: 'background-color 0.2s' }}>
-                <span style={{ position: 'absolute', left: showSection ? 22 : 2, top: 2, width: 20, height: 20, backgroundColor: '#fff', borderRadius: '50%', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
-              </span>
-            </label>
           </div>
           <div className="card-content">
-            <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
-              {showSection ? 'This section is visible on your storefront.' : 'This section is hidden from your storefront.'}
-            </p>
-
             {stores.map((store, index) => (
               <div key={index} style={{ padding: 16, border: '1px solid #e2e8f0', borderRadius: 8, marginBottom: 16, background: '#fafbfc' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>

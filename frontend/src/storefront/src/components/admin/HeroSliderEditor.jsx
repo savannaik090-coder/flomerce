@@ -106,18 +106,19 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
         const scrollVal = settings.heroShowScrollButtons !== false;
         setShowScrollButtons(scrollVal);
         serverValuesRef.current = JSON.stringify({ slides: merged, showScrollButtons: scrollVal });
+      } else {
+        setStatus('error:Failed to load hero slider settings. Please refresh the page before making changes.');
       }
     } catch (e) {
       console.error('Failed to load hero settings:', e);
+      setStatus('error:Failed to load hero slider settings. Please refresh the page before making changes.');
     } finally {
       setLoading(false);
-      // If the load didn't establish a baseline — whether because fetch threw,
-      // result.success was false, or result.data was missing — fall back to
-      // baselining against current state. Otherwise change-detection stays
-      // dormant and the Save button can never light up.
-      if (serverValuesRef.current === null) {
-        serverValuesRef.current = JSON.stringify({ slides, showScrollButtons });
-      }
+      // Note: if load failed (serverValuesRef.current is still null), the
+      // change-detection useEffect early-returns and hasChanges stays false,
+      // so the Save button is disabled. This prevents accidentally
+      // overwriting the real saved slides with the in-memory default 3.
+      // The user sees the error banner above and is told to refresh.
     }
   }
 

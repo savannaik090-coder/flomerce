@@ -198,11 +198,7 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
     homepageSections.forEach(sec => {
       if (sec.showKey) {
         const val = settings[sec.showKey];
-        if (sec.id === 'store-locations') {
-          vis[sec.id] = val === true;
-        } else {
-          vis[sec.id] = val !== false;
-        }
+        vis[sec.id] = val !== false;
       }
     });
     setSectionVisibility(vis);
@@ -221,7 +217,7 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
       if (iframeRef.current?.contentWindow) {
         iframeRef.current.contentWindow.postMessage({ type: 'FLOMERCE_PREVIEW_UPDATE', settings: settingsPatch }, '*');
       }
-    } catch (e) {}
+    } catch (e) { console.warn('[preview] postMessage failed:', e); }
   }, []);
 
   const sendScrollToSection = useCallback((sectionId) => {
@@ -229,7 +225,7 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
       if (iframeRef.current?.contentWindow) {
         iframeRef.current.contentWindow.postMessage({ type: 'FLOMERCE_SCROLL_TO_SECTION', sectionId }, '*');
       }
-    } catch (e) {}
+    } catch (e) { console.warn('[preview] scroll postMessage failed:', e); }
   }, []);
 
   // When the iframe URL changes (page navigation — e.g. switching from a

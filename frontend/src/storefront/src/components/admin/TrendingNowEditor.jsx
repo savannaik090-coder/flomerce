@@ -20,7 +20,11 @@ export default function TrendingNowEditor({ onSaved, onPreviewUpdate, sectionVis
 
   useEffect(() => {
     if (siteConfig?.id) {
-      Promise.all([loadSettings(), loadProducts()]).then(() => {});
+      // Use allSettled so a failure in one fetch doesn't swallow the other.
+      // Each loader handles its own success/failure (loadSettings only sets
+      // the baseline on success — see below — preventing accidental overwrite
+      // of real saved IDs with an empty array if the fetch fails).
+      Promise.allSettled([loadSettings(), loadProducts()]);
     }
   }, [siteConfig?.id]);
 
@@ -53,12 +57,18 @@ export default function TrendingNowEditor({ onSaved, onPreviewUpdate, sectionVis
         const idsVal = settings.trendingProductIds || [];
         setSelectedProductIds(idsVal);
         serverValuesRef.current = JSON.stringify({ selectedProductIds: idsVal });
+        // Only flip the change-detection gate after a successful baseline.
+        // If load fails, hasChanges stays false → save button stays disabled,
+        // so a flaky request can't cause us to overwrite real data with [].
+        setTimeout(() => { hasLoadedRef.current = true; }, 0);
+      } else {
+        setStatus('error:Failed to load trending products. Please refresh the page.');
       }
     } catch (e) {
       console.error('Failed to load trending now settings:', e);
+      setStatus('error:Failed to load trending products. Please refresh the page.');
     } finally {
       setLoading(false);
-      setTimeout(() => { hasLoadedRef.current = true; }, 0);
     }
   }
 
