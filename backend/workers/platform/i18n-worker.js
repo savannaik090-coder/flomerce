@@ -182,16 +182,27 @@ export async function handleI18nPublic(request, env, path, ctx) {
 
   // Hand-curated seed languages: serve the bundled translation immediately
   // (no translator call, no rate-limit charge) and write it to R2 with
-  // current EN hashes so future smart-refresh diffs work correctly.
+  // current EN hashes so future smart-refresh diffs work correctly. The
+  // seed-write is conditional-on-absence: if a concurrent owner regenerate
+  // wrote a fresher copy in the meantime, we must not clobber it.
   if (SEED_CATALOGS[lang]) {
     const seed = SEED_CATALOGS[lang];
-    try {
-      const hashes = await hashCatalog(EN_CATALOG);
-      ctx?.waitUntil?.(writeCachedLocale(env, lang, seed, hashes).catch((e) => {
-        console.warn('[i18n] seed write failed for', lang, e.message || e);
-      }));
-    } catch (e) {
-      console.warn('[i18n] seed hash failed for', lang, e.message || e);
+    const persistSeedIfAbsent = async () => {
+      try {
+        if (!env.STORAGE) return;
+        const existing = await env.STORAGE.head(r2Key(lang));
+        if (existing) return; // someone else wrote it first; do nothing
+        const hashes = await hashCatalog(EN_CATALOG);
+        await writeCachedLocale(env, lang, seed, hashes);
+      } catch (e) {
+        console.warn('[i18n] seed persist failed for', lang, e.message || e);
+      }
+    };
+    if (ctx?.waitUntil) {
+      ctx.waitUntil(persistSeedIfAbsent());
+    } else {
+      // No ctx (e.g. tests/local): fire-and-forget without blocking response.
+      persistSeedIfAbsent();
     }
     return cachedJson(request, { success: true, message: 'Success', data: seed });
   }
