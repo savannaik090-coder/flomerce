@@ -271,10 +271,17 @@ export async function handleI18nAdmin(request, env, pathParts) {
         results.push({ lang: langCode, skipped: true, reason: 'up-to-date' });
         continue;
       }
-      const rl = await checkRateLimit(env, langCode);
-      if (!rl.ok) {
-        results.push({ lang: langCode, skipped: true, reason: `rate-limit ${rl.used}/${rl.limit}` });
-        continue;
+      // Pure-deletion case (only `removed > 0`, no new/changed strings) needs
+      // zero translator calls — just rewriting the file. Bypass rate limit so
+      // owners aren't blocked from cleaning up stale keys when at quota.
+      const needsTranslator = diff.neverGenerated || diff.stale > 0 || diff.added > 0;
+      let rl = { ok: true, day: new Date().toISOString().slice(0, 10) };
+      if (needsTranslator) {
+        rl = await checkRateLimit(env, langCode);
+        if (!rl.ok) {
+          results.push({ lang: langCode, skipped: true, reason: `rate-limit ${rl.used}/${rl.limit}` });
+          continue;
+        }
       }
       try {
         const { stats } = await regenerateIncremental(env, langCode);
