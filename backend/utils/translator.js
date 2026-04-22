@@ -33,7 +33,13 @@ export async function translateBatchWithCreds(texts, targetLang, sourceLang, cre
   const fromParam = (!sourceLang || sourceLang === 'auto')
     ? ''
     : `&from=${encodeURIComponent(sourceLang)}`;
-  const url = `${TRANSLATE_ENDPOINT}${fromParam}&to=${encodeURIComponent(targetLang)}&textType=plain`;
+  // textType=html lets us mark interpolation placeholders as untranslatable
+  // via <span class="notranslate">…</span>. Without this, Microsoft happily
+  // translates the variable name inside `{{date}}` → `{{दिनांक}}`, which
+  // breaks i18next interpolation at render time. See protectPlaceholders /
+  // restorePlaceholders below — every leaf string is wrapped on the way in
+  // and unwrapped on the way out so callers see plain text both sides.
+  const url = `${TRANSLATE_ENDPOINT}${fromParam}&to=${encodeURIComponent(targetLang)}&textType=html`;
   const out = [];
 
   for (const group of chunk(texts, MAX_BATCH)) {
@@ -43,10 +49,12 @@ export async function translateBatchWithCreds(texts, targetLang, sourceLang, cre
     };
     if (region) headers['Ocp-Apim-Subscription-Region'] = region;
 
+    const protectedTexts = group.map(protectPlaceholders);
+
     const res = await fetch(url, {
       method: 'POST',
       headers,
-      body: JSON.stringify(group.map((t) => ({ Text: t }))),
+      body: JSON.stringify(protectedTexts.map((t) => ({ Text: t }))),
     });
     if (!res.ok) {
       const errText = await res.text().catch(() => '');
@@ -54,9 +62,46 @@ export async function translateBatchWithCreds(texts, targetLang, sourceLang, cre
     }
     const data = await res.json();
     for (const item of data) {
-      out.push(item?.translations?.[0]?.text ?? '');
+      const raw = item?.translations?.[0]?.text ?? '';
+      out.push(restorePlaceholders(raw));
     }
   }
+  return out;
+}
+
+// i18next interpolation tokens look like `{{name}}` or `{{count, number}}`.
+// Wrap each one in a no-translate span so Microsoft leaves the contents alone
+// when textType=html is used. The span is stripped again on the way back so
+// callers (and i18next) see the original `{{...}}` syntax untouched.
+const PLACEHOLDER_RE = /\{\{[^{}]+\}\}/g;
+const PROTECT_OPEN = '<span class="notranslate" translate="no">';
+const PROTECT_CLOSE = '</span>';
+
+export function protectPlaceholders(text) {
+  if (typeof text !== 'string' || text.indexOf('{{') === -1) return text;
+  return text.replace(PLACEHOLDER_RE, (m) => `${PROTECT_OPEN}${m}${PROTECT_CLOSE}`);
+}
+
+export function restorePlaceholders(text) {
+  if (typeof text !== 'string') return text;
+  // Strip our exact wrapper plus any whitespace the translator may have
+  // inserted around it, and also unescape HTML entities Microsoft emits when
+  // it sees `{`/`}` in HTML mode.
+  let out = text;
+  // Tolerate altered attribute order or extra whitespace: match any
+  // <span ... class="notranslate" ...> ... </span> wrapping a {{...}} token.
+  out = out.replace(
+    /<span\b[^>]*\bclass=["']notranslate["'][^>]*>\s*(\{\{[^{}]+\}\})\s*<\/span>/gi,
+    '$1',
+  );
+  // HTML entity decoding for the characters Microsoft escapes inside text
+  // nodes when textType=html. Only the safe minimum.
+  out = out
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
   return out;
 }
 
