@@ -3,21 +3,9 @@ import { validateAuth } from '../../utils/auth.js';
 import { isOwner } from './admin-worker.js';
 import { translateCatalogIncremental, hashCatalog } from '../../utils/translator.js';
 // Single source of truth for all catalogs lives under shared/i18n/locales/.
-// English is the source for translation; the other four are hand-curated seeds
-// served on first request for a locale that is not yet in R2 — they avoid a
-// machine-translation roundtrip for the launch languages.
+// English is the source for translation; every non-English locale is lazy-
+// generated via Microsoft Translator on first request and then cached in R2.
 import EN_CATALOG from '../../../frontend/src/shared/i18n/locales/en.json';
-import HI_SEED from '../../../frontend/src/shared/i18n/locales/hi.json';
-import ES_SEED from '../../../frontend/src/shared/i18n/locales/es.json';
-import ZH_CN_SEED from '../../../frontend/src/shared/i18n/locales/zh-CN.json';
-import AR_SEED from '../../../frontend/src/shared/i18n/locales/ar.json';
-
-const SEED_CATALOGS = {
-  hi: HI_SEED,
-  es: ES_SEED,
-  'zh-CN': ZH_CN_SEED,
-  ar: AR_SEED,
-};
 
 const SUPPORTED_LOCALES = new Set([
   'en', 'hi', 'es', 'zh-CN', 'ar',
@@ -178,33 +166,6 @@ export async function handleI18nPublic(request, env, path, ctx) {
   const cached = await readCachedLocale(env, lang);
   if (cached) {
     return cachedJson(request, { success: true, message: 'Success', data: cached.data });
-  }
-
-  // Hand-curated seed languages: serve the bundled translation immediately
-  // (no translator call, no rate-limit charge) and write it to R2 with
-  // current EN hashes so future smart-refresh diffs work correctly. The
-  // seed-write is conditional-on-absence: if a concurrent owner regenerate
-  // wrote a fresher copy in the meantime, we must not clobber it.
-  if (SEED_CATALOGS[lang]) {
-    const seed = SEED_CATALOGS[lang];
-    const persistSeedIfAbsent = async () => {
-      try {
-        if (!env.STORAGE) return;
-        const existing = await env.STORAGE.head(r2Key(lang));
-        if (existing) return; // someone else wrote it first; do nothing
-        const hashes = await hashCatalog(EN_CATALOG);
-        await writeCachedLocale(env, lang, seed, hashes);
-      } catch (e) {
-        console.warn('[i18n] seed persist failed for', lang, e.message || e);
-      }
-    };
-    if (ctx?.waitUntil) {
-      ctx.waitUntil(persistSeedIfAbsent());
-    } else {
-      // No ctx (e.g. tests/local): fire-and-forget without blocking response.
-      persistSeedIfAbsent();
-    }
-    return cachedJson(request, { success: true, message: 'Success', data: seed });
   }
 
   // Bound spend: only locales on the supported allowlist may be lazy-generated.
