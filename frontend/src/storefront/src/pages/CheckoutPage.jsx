@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useContext, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { CartContext } from '../context/CartContext.jsx';
 import { AuthContext } from '../context/AuthContext.jsx';
 import { SiteContext } from '../context/SiteContext.jsx';
@@ -12,6 +13,7 @@ import * as authService from '../services/authService.js';
 import '../styles/checkout.css';
 
 export default function CheckoutPage() {
+  const { t } = useTranslation('storefront');
   const { items, subtotal, updateQuantity, removeItem, clearAll, cartItemKey } = useContext(CartContext);
   const { user, isAuthenticated } = useContext(AuthContext);
   const { siteConfig } = useContext(SiteContext);
@@ -93,22 +95,22 @@ export default function CheckoutPage() {
 
   const validateAddress = useCallback(() => {
     const errs = {};
-    if (address.firstName.trim().length < 2) errs.firstName = 'First name must be at least 2 characters';
-    if (address.lastName.trim().length < 2) errs.lastName = 'Last name must be at least 2 characters';
+    if (address.firstName.trim().length < 2) errs.firstName = t('checkout.errors.firstNameMin', 'First name must be at least 2 characters');
+    if (address.lastName.trim().length < 2) errs.lastName = t('checkout.errors.lastNameMin', 'Last name must be at least 2 characters');
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-    if (!emailRegex.test(address.email.trim())) errs.email = 'Please enter a valid email';
+    if (!emailRegex.test(address.email.trim())) errs.email = t('checkout.errors.invalidEmail', 'Please enter a valid email');
     const phoneDigits = address.phone.replace(/[^0-9]/g, '');
-    if (phoneDigits.length < 7 || phoneDigits.length > 15) errs.phone = 'Please enter a valid phone number';
-    if (address.houseNumber.trim().length < 1) errs.houseNumber = 'House/Building number is required';
-    if (address.roadName.trim().length < 5) errs.roadName = 'Road/Area must be at least 5 characters';
-    if (address.city.trim().length < 2) errs.city = 'City name must be at least 2 characters';
-    if (!address.country) errs.country = 'Please select a country';
+    if (phoneDigits.length < 7 || phoneDigits.length > 15) errs.phone = t('checkout.errors.invalidPhone', 'Please enter a valid phone number');
+    if (address.houseNumber.trim().length < 1) errs.houseNumber = t('checkout.errors.houseRequired', 'House/Building number is required');
+    if (address.roadName.trim().length < 5) errs.roadName = t('checkout.errors.roadMin', 'Road/Area must be at least 5 characters');
+    if (address.city.trim().length < 2) errs.city = t('checkout.errors.cityMin', 'City name must be at least 2 characters');
+    if (!address.country) errs.country = t('checkout.errors.selectCountry', 'Please select a country');
     const countryStates = getStatesForCountry(address.country);
-    if (countryStates.length > 0 && !address.state) errs.state = 'Please select a state/region';
+    if (countryStates.length > 0 && !address.state) errs.state = t('checkout.errors.selectState', 'Please select a state/region');
     if (address.country === 'IN') {
-      if (!/^\d{6}$/.test(address.pinCode.trim())) errs.pinCode = 'Please enter a valid 6-digit PIN code';
+      if (!/^\d{6}$/.test(address.pinCode.trim())) errs.pinCode = t('checkout.errors.invalidPinIN', 'Please enter a valid 6-digit PIN code');
     } else {
-      if (address.pinCode.trim().length < 3) errs.pinCode = 'Please enter a valid postal/ZIP code';
+      if (address.pinCode.trim().length < 3) errs.pinCode = t('checkout.errors.invalidPinOther', 'Please enter a valid postal/ZIP code');
     }
     setAddressErrors(errs);
     return Object.keys(errs).length === 0;
@@ -130,7 +132,7 @@ export default function CheckoutPage() {
         }));
         setAddressErrors(prev => ({ ...prev, pinCode: undefined }));
       } else {
-        setAddressErrors(prev => ({ ...prev, pinCode: 'Invalid PIN code' }));
+        setAddressErrors(prev => ({ ...prev, pinCode: t('checkout.errors.invalidPin', 'Invalid PIN code') }));
       }
     } catch {
       setAddressErrors(prev => ({ ...prev, pinCode: undefined }));
@@ -210,12 +212,12 @@ export default function CheckoutPage() {
   const applyCoupon = useCallback(() => {
     setCouponError('');
     const code = couponCode.trim().toUpperCase();
-    if (!code) { setCouponError('Please enter a coupon code'); return; }
+    if (!code) { setCouponError(t('checkout.coupon.errors.empty', 'Please enter a coupon code')); return; }
     setCouponApplying(true);
     const found = availableCoupons.find(c => c.active && c.code.toUpperCase() === code);
-    if (!found) { setCouponError('Invalid coupon code'); setCouponApplying(false); return; }
-    if (found.expiryDate && new Date(found.expiryDate) < new Date()) { setCouponError('This coupon has expired'); setCouponApplying(false); return; }
-    if (found.minOrder && subtotal < found.minOrder) { setCouponError(`Minimum order amount for this coupon is ${formatAmount(found.minOrder)}`); setCouponApplying(false); return; }
+    if (!found) { setCouponError(t('checkout.coupon.errors.invalid', 'Invalid coupon code')); setCouponApplying(false); return; }
+    if (found.expiryDate && new Date(found.expiryDate) < new Date()) { setCouponError(t('checkout.coupon.errors.expired', 'This coupon has expired')); setCouponApplying(false); return; }
+    if (found.minOrder && subtotal < found.minOrder) { setCouponError(t('checkout.coupon.errors.minOrder', { amount: formatAmount(found.minOrder), defaultValue: 'Minimum order amount for this coupon is {{amount}}' })); setCouponApplying(false); return; }
     setAppliedCoupon(found);
     setCouponApplying(false);
   }, [couponCode, availableCoupons, subtotal]);
@@ -243,14 +245,14 @@ export default function CheckoutPage() {
       });
       return true;
     } catch (err) {
-      setError(err.message || 'Some items in your cart are no longer available. Please update your cart and try again.');
+      setError(err.message || t('checkout.errors.stockUnavailable', 'Some items in your cart are no longer available. Please update your cart and try again.'));
       return false;
     }
   }, [siteConfig, items]);
 
   const goToStep = useCallback(async (s) => {
     if (s === 2 && items.length === 0) {
-      setError('Your cart is empty');
+      setError(t('checkout.errors.cartEmpty', 'Your cart is empty'));
       return;
     }
     if (s === 2) {
@@ -291,7 +293,7 @@ export default function CheckoutPage() {
     setError('');
 
     if (!siteConfig?.id) {
-      setError('Store configuration not loaded. Please refresh the page and try again.');
+      setError(t('checkout.errors.storeNotLoaded', 'Store configuration not loaded. Please refresh the page and try again.'));
       setLoading(false);
       return;
     }
@@ -340,12 +342,12 @@ export default function CheckoutPage() {
     if (paymentMethod === 'razorpay') {
       const razorpayKeyId = siteConfig?.settings?.razorpayKeyId || siteConfig?.settings?.razorpay_key_id;
       if (!razorpayKeyId) {
-        setError('Online payment is not configured for this store. Please use Cash on Delivery.');
+        setError(t('checkout.errors.onlineNotConfigured', 'Online payment is not configured for this store. Please use Cash on Delivery.'));
         setLoading(false);
         return;
       }
       if (!window.Razorpay) {
-        setError('Payment gateway not loaded. Please refresh and try again.');
+        setError(t('checkout.errors.gatewayNotLoaded', 'Payment gateway not loaded. Please refresh and try again.'));
         setLoading(false);
         return;
       }
@@ -375,7 +377,7 @@ export default function CheckoutPage() {
         const razorpayOrderId = paymentData.orderId || paymentData.razorpay_order_id;
 
         if (!razorpayOrderId) {
-          setError('Failed to initialize payment. Please try again.');
+          setError(t('checkout.errors.initPayment', 'Failed to initialize payment. Please try again.'));
           setLoading(false);
           return;
         }
@@ -391,7 +393,7 @@ export default function CheckoutPage() {
           amount: paymentData.amount || Math.round(finalTotal * 100),
           currency: paymentData.currency || 'INR',
           name: siteConfig?.brandName || 'Store',
-          description: 'Store Order',
+          description: t('checkout.payment.razorpayDescription', 'Store Order'),
           order_id: razorpayOrderId,
           handler: async function (response) {
             setLoading(true);
@@ -413,7 +415,7 @@ export default function CheckoutPage() {
               clearAll();
             } catch (verifyErr) {
               console.error('Payment verification error:', verifyErr);
-              setError('Payment verification failed. If money was deducted, please contact support with your order reference.');
+              setError(t('checkout.errors.paymentVerify', 'Payment verification failed. If money was deducted, please contact support with your order reference.'));
               setLoading(false);
             }
           },
@@ -432,12 +434,12 @@ export default function CheckoutPage() {
 
         const rzp = new window.Razorpay(options);
         rzp.on('payment.failed', function (resp) {
-          setError(`Payment failed: ${resp.error?.description || 'Unknown error'}. Please try again.`);
+          setError(t('checkout.errors.paymentFailed', { reason: resp.error?.description || t('checkout.errors.paymentUnknown', 'Unknown error'), defaultValue: 'Payment failed: {{reason}}. Please try again.' }));
           setLoading(false);
         });
         rzp.open();
       } catch (err) {
-        setError(err.message || 'Failed to initialize payment. Please try again.');
+        setError(err.message || t('checkout.errors.initPayment', 'Failed to initialize payment. Please try again.'));
         setLoading(false);
       }
       return;
@@ -452,7 +454,7 @@ export default function CheckoutPage() {
       setOrderPlaced(true);
       clearAll();
     } catch (err) {
-      setError(err.message || 'Failed to place order. Please try again.');
+      setError(err.message || t('checkout.errors.placeOrder', 'Failed to place order. Please try again.'));
     }
     setLoading(false);
   }, [siteConfig, items, subtotal, address, paymentMethod, clearAll, validateCartStock]);
@@ -464,19 +466,19 @@ export default function CheckoutPage() {
         <div style={{ background: '#fff', borderRadius: 10, boxShadow: '0 4px 20px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
           <div style={{ background: '#25ab00', padding: '32px 24px', textAlign: 'center' }}>
             <div style={{ width: 64, height: 64, background: 'rgba(255,255,255,0.2)', borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14, fontSize: 34 }}>✓</div>
-            <h2 style={{ color: '#fff', margin: '0 0 6px', fontFamily: "'Playfair Display', serif", fontSize: 24 }}>Order Placed Successfully!</h2>
-            <p style={{ color: 'rgba(255,255,255,0.85)', margin: 0, fontSize: 14 }}>Thank you for your purchase. We'll get it ready for you.</p>
+            <h2 style={{ color: '#fff', margin: '0 0 6px', fontFamily: "'Playfair Display', serif", fontSize: 24 }}>{t('checkout.success.title', 'Order Placed Successfully!')}</h2>
+            <p style={{ color: 'rgba(255,255,255,0.85)', margin: 0, fontSize: 14 }}>{t('checkout.success.message', "Thank you for your purchase. We'll get it ready for you.")}</p>
           </div>
 
           <div style={{ padding: '24px 24px 0' }}>
             <div style={{ background: '#f5f5f5', borderRadius: 6, padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-              <span style={{ color: '#555', fontSize: 14 }}>Order Reference</span>
+              <span style={{ color: '#555', fontSize: 14 }}>{t('checkout.success.orderRef', 'Order Reference')}</span>
               <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: 15, color: '#1a1a1a' }}>{orderRef}</span>
             </div>
 
             {od && (
               <>
-                <h4 style={{ margin: '0 0 12px', fontSize: 15, color: '#333', borderBottom: '1px solid #f0f0f0', paddingBottom: 8 }}>Items Ordered</h4>
+                <h4 style={{ margin: '0 0 12px', fontSize: 15, color: '#333', borderBottom: '1px solid #f0f0f0', paddingBottom: 8 }}>{t('checkout.success.itemsOrdered', 'Items Ordered')}</h4>
                 <div style={{ marginBottom: 20 }}>
                   {od.items.map((item, i) => {
                     const price = item.product_price || item.price || 0;
@@ -491,7 +493,7 @@ export default function CheckoutPage() {
                           <div style={{ fontWeight: 600, fontSize: 14, color: '#1a1a1a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.product_name || item.name}</div>
                           {item.selectedOptions && (() => {
                             const parts = [];
-                            if (item.selectedOptions.color) parts.push(`Color: ${item.selectedOptions.color}`);
+                            if (item.selectedOptions.color) parts.push(`${t('checkout.summary.color', 'Color')}: ${item.selectedOptions.color}`);
                             if (item.selectedOptions.customOptions) {
                               for (const [label, value] of Object.entries(item.selectedOptions.customOptions)) {
                                 parts.push(`${label}: ${value}`);
@@ -504,7 +506,7 @@ export default function CheckoutPage() {
                             }
                             return parts.length > 0 ? <div style={{ fontSize: 11, color: '#888', marginTop: 1 }}>{parts.join(' \u2022 ')}</div> : null;
                           })()}
-                          <div style={{ fontSize: 13, color: '#888', marginTop: 2 }}>Qty: {qty} × {formatAmount(price)}</div>
+                          <div style={{ fontSize: 13, color: '#888', marginTop: 2 }}>{t('checkout.success.qtyByPrice', { qty, price: formatAmount(price), defaultValue: 'Qty: {{qty}} × {{price}}' })}</div>
                         </div>
                         <div style={{ fontWeight: 700, color: '#7a4012', fontSize: 14, flexShrink: 0 }}>{formatAmount(price * qty)}</div>
                       </div>
@@ -514,46 +516,46 @@ export default function CheckoutPage() {
 
                 {od.discount > 0 && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderTop: '1px solid #f0f0f0' }}>
-                    <span style={{ color: '#16a34a', fontSize: 14 }}>Coupon ({od.couponCode})</span>
+                    <span style={{ color: '#16a34a', fontSize: 14 }}>{t('checkout.success.couponLabel', { code: od.couponCode, defaultValue: 'Coupon ({{code}})' })}</span>
                     <span style={{ color: '#16a34a', fontWeight: 600, fontSize: 14 }}>- {formatAmount(od.discount)}</span>
                   </div>
                 )}
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderTop: '1px solid #f0f0f0' }}>
-                  <span style={{ fontSize: 14 }}>Shipping</span>
+                  <span style={{ fontSize: 14 }}>{t('checkout.success.shipping', 'Shipping')}</span>
                   <span style={{ fontWeight: 500, fontSize: 14, color: od.shippingCost > 0 ? '#1a1a1a' : '#25ab00' }}>
-                    {od.shippingCost > 0 ? formatAmount(od.shippingCost) : 'Free'}
+                    {od.shippingCost > 0 ? formatAmount(od.shippingCost) : t('checkout.success.free', 'Free')}
                   </span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderTop: '2px solid #f0f0f0', marginBottom: 24 }}>
-                  <span style={{ fontWeight: 700, fontSize: 16 }}>Total Paid</span>
+                  <span style={{ fontWeight: 700, fontSize: 16 }}>{t('checkout.success.totalPaid', 'Total Paid')}</span>
                   <span style={{ fontWeight: 700, fontSize: 18, color: '#7a4012' }}>{formatAmount(od.total)}</span>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
                   <div style={{ background: '#f9f9f9', borderRadius: 8, padding: 14 }}>
-                    <div style={{ fontSize: 12, color: '#888', textTransform: 'uppercase', fontWeight: 600, marginBottom: 8, letterSpacing: 0.5 }}>Shipping To</div>
+                    <div style={{ fontSize: 12, color: '#888', textTransform: 'uppercase', fontWeight: 600, marginBottom: 8, letterSpacing: 0.5 }}>{t('checkout.success.shippingTo', 'Shipping To')}</div>
                     <div style={{ fontSize: 13, color: '#333', lineHeight: 1.7 }}>
                       <div style={{ fontWeight: 600 }}>{od.address.firstName} {od.address.lastName}</div>
                       <div>{od.address.houseNumber}, {od.address.roadName}</div>
                       <div>{od.address.city}, {od.address.state}</div>
                       <div>{od.address.country ? getCountryName(od.address.country) : ''}</div>
-                      <div>{od.address.country === 'IN' ? 'PIN' : 'Postal Code'}: {od.address.pinCode}</div>
+                      <div>{od.address.country === 'IN' ? t('checkout.success.pin', 'PIN') : t('checkout.success.postalCode', 'Postal Code')}: {od.address.pinCode}</div>
                       <div style={{ marginTop: 4, color: '#666' }}>{od.address.phone}</div>
                     </div>
                   </div>
                   <div style={{ background: '#f9f9f9', borderRadius: 8, padding: 14 }}>
-                    <div style={{ fontSize: 12, color: '#888', textTransform: 'uppercase', fontWeight: 600, marginBottom: 8, letterSpacing: 0.5 }}>Payment</div>
+                    <div style={{ fontSize: 12, color: '#888', textTransform: 'uppercase', fontWeight: 600, marginBottom: 8, letterSpacing: 0.5 }}>{t('checkout.success.payment', 'Payment')}</div>
                     <div style={{ fontSize: 13, color: '#333' }}>
                       <div style={{ fontWeight: 600, marginBottom: 4 }}>
-                        {od.paymentMethod === 'cod' ? 'Cash on Delivery' : 'Online Payment (Razorpay)'}
+                        {od.paymentMethod === 'cod' ? t('checkout.success.cod', 'Cash on Delivery') : t('checkout.success.online', 'Online Payment (Razorpay)')}
                       </div>
                       <div style={{ fontSize: 12, color: '#888' }}>
                         {od.paymentMethod === 'cod'
-                          ? 'You will pay when the order is delivered to you.'
-                          : 'Payment completed successfully online.'}
+                          ? t('checkout.success.codNote', 'You will pay when the order is delivered to you.')
+                          : t('checkout.success.onlineNote', 'Payment completed successfully online.')}
                       </div>
                       <div style={{ marginTop: 10, display: 'inline-block', background: od.paymentMethod === 'cod' ? '#fff3e0' : '#e8f5e9', color: od.paymentMethod === 'cod' ? '#e65100' : '#2e7d32', fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 20 }}>
-                        {od.paymentMethod === 'cod' ? 'Pending' : 'Paid'}
+                        {od.paymentMethod === 'cod' ? t('checkout.success.statusPending', 'Pending') : t('checkout.success.statusPaid', 'Paid')}
                       </div>
                     </div>
                   </div>
@@ -564,7 +566,7 @@ export default function CheckoutPage() {
 
           <div style={{ padding: '0 24px 24px' }}>
             <Link to="/" style={{ display: 'block', textAlign: 'center', padding: '13px 20px', background: '#7a4012', color: '#fff', borderRadius: 6, textDecoration: 'none', fontWeight: 600, fontSize: 15,  }}>
-              Continue Shopping
+              {t('checkout.success.continueShopping', 'Continue Shopping')}
             </Link>
           </div>
         </div>
@@ -576,10 +578,10 @@ export default function CheckoutPage() {
     return (
       <div className="checkout-page" style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ textAlign: 'center' }}>
-          <h2 style={{ fontFamily: "'Playfair Display', serif", marginBottom: 15 }}>Your cart is empty</h2>
-          <p style={{ color: '#777', marginBottom: 20 }}>Add some items to your cart before checkout.</p>
+          <h2 style={{ fontFamily: "'Playfair Display', serif", marginBottom: 15 }}>{t('checkout.empty.title', 'Your cart is empty')}</h2>
+          <p style={{ color: '#777', marginBottom: 20 }}>{t('checkout.empty.message', 'Add some items to your cart before checkout.')}</p>
           <Link to="/" style={{ background: '#7a4012', color: '#fff', padding: '12px 24px', borderRadius: 4, textDecoration: 'none', fontWeight: 600 }}>
-            Browse Products
+            {t('checkout.empty.browse', 'Browse Products')}
           </Link>
         </div>
       </div>
@@ -588,13 +590,13 @@ export default function CheckoutPage() {
 
   return (
     <div className="checkout-page" style={{ maxWidth: 900, margin: '40px auto 60px', padding: '0 20px' }}>
-      <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 28, marginBottom: 30, textAlign: 'center',  }}>Checkout</h1>
+      <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 28, marginBottom: 30, textAlign: 'center',  }}>{t('checkout.title', 'Checkout')}</h1>
 
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 40, gap: 0 }}>
         {[
-          { num: 1, label: 'Order Summary', icon: '&#128722;' },
-          { num: 2, label: 'Address', icon: '&#128205;' },
-          { num: 3, label: 'Payment', icon: '&#128179;' },
+          { num: 1, label: t('checkout.steps.summary', 'Order Summary'), icon: '&#128722;' },
+          { num: 2, label: t('checkout.steps.address', 'Address'), icon: '&#128205;' },
+          { num: 3, label: t('checkout.steps.payment', 'Payment'), icon: '&#128179;' },
         ].map((s) => (
           <div key={s.num} style={{ textAlign: 'center', flex: 1 }}>
             <div style={{
@@ -620,7 +622,7 @@ export default function CheckoutPage() {
 
       {step === 1 && (
         <div style={{ background: '#fff', padding: 24, boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
-          <h3 style={{ fontFamily: "'Playfair Display', serif", marginBottom: 20,  }}>Order Summary</h3>
+          <h3 style={{ fontFamily: "'Playfair Display', serif", marginBottom: 20,  }}>{t('checkout.summary.heading', 'Order Summary')}</h3>
           <div style={{ maxHeight: 400, overflowY: 'auto' }}>
             {items.map((item, index) => {
               const price = item.product_price || item.price || 0;

@@ -1,22 +1,23 @@
 import React, { useContext } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { CurrencyContext } from '../context/CurrencyContext.jsx';
 import { useWishlist } from '../hooks/useWishlist.js';
 import { useTheme } from '../context/ThemeContext.jsx';
 import { resolveImageUrl } from '../utils/imageUrl.js';
 import '../components/templates/modern/modern.css';
 
-function ClassicWishlistPage({ items, removeFromWishlist, formatAmount }) {
+function ClassicWishlistPage({ items, removeFromWishlist, formatAmount, t }) {
   return (
     <div style={{ maxWidth: 1000, margin: '40px auto 60px', padding: '0 20px' }}>
-      <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 28, marginBottom: 30, textAlign: 'center' }}>My Wishlist</h1>
+      <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 28, marginBottom: 30, textAlign: 'center' }}>{t('wishlist.heading', 'My Wishlist')}</h1>
 
       {items.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px 20px' }}>
           <div style={{ fontSize: 60, marginBottom: 20 }}>♡</div>
-          <h2 style={{ fontFamily: "'Playfair Display', serif", marginBottom: 10, color: '#333' }}>Your wishlist is empty</h2>
-          <p style={{ color: '#777', marginBottom: 24 }}>Browse our products and add your favorites here.</p>
-          <Link to="/" style={{ display: 'inline-block', background: '#c8a97e', color: '#fff', padding: '12px 24px', borderRadius: 4, textDecoration: 'none', fontWeight: 600 }}>Browse Products</Link>
+          <h2 style={{ fontFamily: "'Playfair Display', serif", marginBottom: 10, color: '#333' }}>{t('wishlist.empty', 'Your wishlist is empty')}</h2>
+          <p style={{ color: '#777', marginBottom: 24 }}>{t('wishlist.emptyMessage', 'Browse our products and add your favorites here.')}</p>
+          <Link to="/" style={{ display: 'inline-block', background: '#c8a97e', color: '#fff', padding: '12px 24px', borderRadius: 4, textDecoration: 'none', fontWeight: 600 }}>{t('wishlist.browseProducts', 'Browse Products')}</Link>
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 20 }}>
@@ -32,7 +33,7 @@ function ClassicWishlistPage({ items, removeFromWishlist, formatAmount }) {
                     {image ? (
                       <img src={image} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.3s ease' }} />
                     ) : (
-                      <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999' }}>No Image</div>
+                      <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999' }}>{t('wishlist.noImage', 'No Image')}</div>
                     )}
                   </div>
                   <div style={{ padding: 16 }}>
@@ -50,15 +51,15 @@ function ClassicWishlistPage({ items, removeFromWishlist, formatAmount }) {
   );
 }
 
-function ModernWishlistPage({ items, removeFromWishlist, formatAmount }) {
+function ModernWishlistPage({ items, removeFromWishlist, formatAmount, t }) {
   return (
     <div className="mn-wishlist-page">
-      <h1>My Wishlist</h1>
+      <h1>{t('wishlist.heading', 'My Wishlist')}</h1>
       {items.length === 0 ? (
         <div className="mn-wishlist-empty">
-          <h2>Your wishlist is empty</h2>
-          <p>Browse our products and add your favorites here.</p>
-          <Link to="/">Browse Products</Link>
+          <h2>{t('wishlist.empty', 'Your wishlist is empty')}</h2>
+          <p>{t('wishlist.emptyMessage', 'Browse our products and add your favorites here.')}</p>
+          <Link to="/">{t('wishlist.browseProducts', 'Browse Products')}</Link>
         </div>
       ) : (
         <div className="mn-wishlist-grid">
@@ -74,7 +75,7 @@ function ModernWishlistPage({ items, removeFromWishlist, formatAmount }) {
                     {image ? (
                       <img src={image} alt={name} />
                     ) : (
-                      <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999' }}>No Image</div>
+                      <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999' }}>{t('wishlist.noImage', 'No Image')}</div>
                     )}
                   </div>
                   <div className="mn-wishlist-card-info">
@@ -96,6 +97,7 @@ export default function WishlistPage() {
   const { items, removeFromWishlist, loading } = useWishlist();
   const { formatAmount } = useContext(CurrencyContext);
   const { isModern } = useTheme();
+  const { t } = useTranslation('storefront');
 
   if (loading) {
     return (
@@ -106,7 +108,7 @@ export default function WishlistPage() {
     );
   }
 
-  const pageProps = { items, removeFromWishlist, formatAmount };
+  const pageProps = { items, removeFromWishlist, formatAmount, t };
 
   return isModern
     ? <ModernWishlistPage {...pageProps} />

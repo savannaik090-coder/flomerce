@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useContext, useCallback, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { AuthContext } from '../context/AuthContext.jsx';
 import { SiteContext } from '../context/SiteContext.jsx';
 import { CurrencyContext } from '../context/CurrencyContext.jsx';
@@ -31,6 +32,7 @@ const INDIAN_STATES = [
 ];
 
 export default function ProfilePage() {
+  const { t } = useTranslation('storefront');
   const navigate = useNavigate();
   const { user, isAuthenticated, loading: authLoading, logout } = useContext(AuthContext);
   const { siteConfig } = useContext(SiteContext);
@@ -179,7 +181,7 @@ export default function ProfilePage() {
   const handleReturnPhotoChange = async (e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
-    if (returnPhotos.length + files.length > 5) { toast.warning('You can upload a maximum of 5 photos.'); return; }
+    if (returnPhotos.length + files.length > 5) { toast.warning(t('account.toasts.maxPhotos', 'You can upload a maximum of 5 photos.')); return; }
     setUploadingReturnPhotos(true);
     try {
       const newPhotos = [];
@@ -191,7 +193,7 @@ export default function ProfilePage() {
         if (result.success && result.data?.url) newPhotos.push(result.data.url);
       }
       setReturnPhotos(prev => [...prev, ...newPhotos]);
-    } catch { toast.error('Failed to upload one or more images.'); }
+    } catch { toast.error(t('account.toasts.uploadFail', 'Failed to upload one or more images.')); }
     finally {
       setUploadingReturnPhotos(false);
       if (returnFileRef.current) returnFileRef.current.value = '';
@@ -215,9 +217,9 @@ export default function ProfilePage() {
       setReturnDetail('');
       setReturnPhotos([]);
       setReturnResolution('refund');
-      toast.success('Return request submitted successfully!');
+      toast.success(t('account.toasts.returnSuccess', 'Return request submitted successfully!'));
     } catch (err) {
-      toast.error('Failed to submit return: ' + (err.message || 'Unknown error'));
+      toast.error(t('account.toasts.returnFail', { error: err.message || t('account.errors.unknown', 'Unknown error'), defaultValue: 'Failed to submit return: {{error}}' }));
     } finally {
       setReturningOrder(false);
     }
@@ -236,9 +238,9 @@ export default function ProfilePage() {
       setCancelModal(null);
       setCancelReason('');
       setCancelDetail('');
-      toast.success('Cancellation request submitted successfully!');
+      toast.success(t('account.toasts.cancelSuccess', 'Cancellation request submitted successfully!'));
     } catch (err) {
-      toast.error('Failed to submit cancellation: ' + (err.message || 'Unknown error'));
+      toast.error(t('account.toasts.cancelFail', { error: err.message || t('account.errors.unknown', 'Unknown error'), defaultValue: 'Failed to submit cancellation: {{error}}' }));
     } finally {
       setCancellingOrder(false);
     }
@@ -322,7 +324,7 @@ export default function ProfilePage() {
         }));
         setAddressFieldErrors(prev => ({ ...prev, pinCode: undefined }));
       } else {
-        setAddressFieldErrors(prev => ({ ...prev, pinCode: 'Invalid PIN code' }));
+        setAddressFieldErrors(prev => ({ ...prev, pinCode: t('account.errors.invalidPinCheck', 'Invalid PIN code') }));
       }
     } catch {
       setAddressFieldErrors(prev => ({ ...prev, pinCode: undefined }));
@@ -341,14 +343,14 @@ export default function ProfilePage() {
 
   const validateAddressForm = useCallback(() => {
     const errs = {};
-    if (!addressForm.firstName || addressForm.firstName.trim().length < 2) errs.firstName = 'First name must be at least 2 characters';
+    if (!addressForm.firstName || addressForm.firstName.trim().length < 2) errs.firstName = t('account.errors.firstNameMin', 'First name must be at least 2 characters');
     const phoneDigits = (addressForm.phone || '').replace(/[^0-9]/g, '');
-    if (phoneDigits.length > 0 && (phoneDigits.length < 7 || phoneDigits.length > 15)) errs.phone = 'Please enter a valid phone number';
-    if (!addressForm.houseNumber || addressForm.houseNumber.trim().length < 1) errs.houseNumber = 'House/Building number is required';
-    if (addressForm.roadName && addressForm.roadName.trim().length > 0 && addressForm.roadName.trim().length < 5) errs.roadName = 'Road/Area must be at least 5 characters';
-    if (!addressForm.city || addressForm.city.trim().length < 2) errs.city = 'City name must be at least 2 characters';
-    if (!addressForm.state || addressForm.state.trim().length < 2) errs.state = 'Please select a state';
-    if (!/^\d{6}$/.test((addressForm.pinCode || '').trim())) errs.pinCode = 'Please enter a valid 6-digit PIN code';
+    if (phoneDigits.length > 0 && (phoneDigits.length < 7 || phoneDigits.length > 15)) errs.phone = t('account.errors.invalidPhone', 'Please enter a valid phone number');
+    if (!addressForm.houseNumber || addressForm.houseNumber.trim().length < 1) errs.houseNumber = t('account.errors.houseRequired', 'House/Building number is required');
+    if (addressForm.roadName && addressForm.roadName.trim().length > 0 && addressForm.roadName.trim().length < 5) errs.roadName = t('account.errors.roadMin', 'Road/Area must be at least 5 characters');
+    if (!addressForm.city || addressForm.city.trim().length < 2) errs.city = t('account.errors.cityMin', 'City name must be at least 2 characters');
+    if (!addressForm.state || addressForm.state.trim().length < 2) errs.state = t('account.errors.selectState', 'Please select a state');
+    if (!/^\d{6}$/.test((addressForm.pinCode || '').trim())) errs.pinCode = t('account.errors.invalidPin', 'Please enter a valid 6-digit PIN code');
     setAddressFieldErrors(errs);
     return Object.keys(errs).length === 0;
   }, [addressForm]);
@@ -370,7 +372,7 @@ export default function ProfilePage() {
       setEditAddress(null);
       setAddressForm({ label: 'Home', firstName: '', lastName: '', phone: '', houseNumber: '', roadName: '', city: '', state: '', pinCode: '', isDefault: false });
     } catch (err) {
-      setAddressError(err.message || 'Failed to save address');
+      setAddressError(err.message || t('account.errors.saveAddress', 'Failed to save address'));
     } finally {
       setSavingAddress(false);
     }
@@ -410,8 +412,16 @@ export default function ProfilePage() {
   };
 
   const getStatusLabel = (status) => {
-    const labels = { pending: 'Pending', pending_payment: 'Awaiting Payment', paid: 'Paid', confirmed: 'Confirmed', shipped: 'Shipped', delivered: 'Delivered', cancelled: 'Cancelled' };
-    return labels[status?.toLowerCase()] || (status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Pending');
+    const labels = {
+      pending: t('account.status.pending', 'Pending'),
+      pending_payment: t('account.status.pendingPayment', 'Awaiting Payment'),
+      paid: t('account.status.paid', 'Paid'),
+      confirmed: t('account.status.confirmed', 'Confirmed'),
+      shipped: t('account.status.shipped', 'Shipped'),
+      delivered: t('account.status.delivered', 'Delivered'),
+      cancelled: t('account.status.cancelled', 'Cancelled'),
+    };
+    return labels[status?.toLowerCase()] || (status ? status.charAt(0).toUpperCase() + status.slice(1) : t('account.status.pending', 'Pending'));
   };
 
   if (authLoading) {
@@ -435,7 +445,7 @@ export default function ProfilePage() {
             {initials}
           </div>
           <div>
-            <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 28, margin: '0 0 5px' }}>{user.name || 'User'}</h1>
+            <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 28, margin: '0 0 5px' }}>{user.name || t('account.fallbackUser', 'User')}</h1>
             <p style={{ color: '#777', margin: 0 }}>{user.email}</p>
           </div>
         </div>
@@ -448,7 +458,7 @@ export default function ProfilePage() {
               borderBottom: activeTab === tab ? '2px solid #c8a97e' : '2px solid transparent',
               cursor: 'pointer', textTransform: 'capitalize',
             }}>
-              {tab === 'account' ? 'Account Details' : tab === 'orders' ? 'Order History' : 'Addresses'}
+              {tab === 'account' ? t('account.tabs.account', 'Account Details') : tab === 'orders' ? t('account.tabs.orders', 'Order History') : t('account.tabs.addresses', 'Addresses')}
             </button>
           ))}
         </div>
@@ -456,28 +466,28 @@ export default function ProfilePage() {
         {activeTab === 'account' && (
           <div>
             <div style={{ marginBottom: 25 }}>
-              <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>Full Name</label>
+              <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>{t('account.fullName', 'Full Name')}</label>
               {editingName ? (
                 <div style={{ display: 'flex', gap: 10 }}>
                   <input type="text" value={newName} onChange={e => setNewName(e.target.value)} style={{ flex: 1, padding: 12, border: '1px solid #ddd', borderRadius: 4, fontSize: 14 }} />
                   <button onClick={handleSaveName} disabled={savingName} style={{ padding: '10px 20px', background: '#c8a97e', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
-                    {savingName ? 'Saving...' : 'Save'}
+                    {savingName ? t('account.savingName', 'Saving...') : t('account.save', 'Save')}
                   </button>
-                  <button onClick={() => { setEditingName(false); setNewName(user.name || ''); }} style={{ padding: '10px 16px', background: '#f8f9fa', border: '1px solid #ddd', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+                  <button onClick={() => { setEditingName(false); setNewName(user.name || ''); }} style={{ padding: '10px 16px', background: '#f8f9fa', border: '1px solid #ddd', borderRadius: 4, cursor: 'pointer' }}>{t('account.cancel', 'Cancel')}</button>
                 </div>
               ) : (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontSize: 16, color: '#333' }}>{user.name || 'Not set'}</span>
-                  <button onClick={() => setEditingName(true)} style={{ background: 'none', border: 'none', color: '#c8a97e', cursor: 'pointer', fontSize: 14 }}>Edit</button>
+                  <span style={{ fontSize: 16, color: '#333' }}>{user.name || t('account.notSet', 'Not set')}</span>
+                  <button onClick={() => setEditingName(true)} style={{ background: 'none', border: 'none', color: '#c8a97e', cursor: 'pointer', fontSize: 14 }}>{t('account.edit', 'Edit')}</button>
                 </div>
               )}
             </div>
             <div style={{ marginBottom: 25 }}>
-              <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>Email</label>
+              <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>{t('account.email', 'Email')}</label>
               <span style={{ fontSize: 16, color: '#333' }}>{user.email}</span>
             </div>
             <button onClick={() => setShowLogoutConfirm(true)} style={{ backgroundColor: '#c8a97e', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: 4, fontFamily: "'Lato', sans-serif", fontSize: 16, fontWeight: 'bold', cursor: 'pointer', marginTop: 20, transition: 'background-color 0.3s ease' }}>
-              Logout
+              {t('account.logout', 'Logout')}
             </button>
           </div>
         )}
@@ -487,13 +497,13 @@ export default function ProfilePage() {
             {ordersLoading ? (
               <div style={{ textAlign: 'center', padding: 40 }}>
                 <div style={{ width: 40, height: 40, border: '4px solid #f3f3f3', borderTop: '4px solid #c8a97e', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 16px' }} />
-                <p style={{ color: '#777' }}>Loading orders...</p>
+                <p style={{ color: '#777' }}>{t('account.loadingOrders', 'Loading orders...')}</p>
                 <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
               </div>
             ) : orders.length === 0 ? (
               <div style={{ textAlign: 'center', color: '#777', margin: '30px 0', fontStyle: 'italic' }}>
-                <p>No orders found yet.</p>
-                <Link to="/" style={{ display: 'inline-block', backgroundColor: '#c8a97e', color: '#fff', padding: '10px 20px', borderRadius: 4, textDecoration: 'none', marginTop: 15 }}>Start Shopping</Link>
+                <p>{t('account.noOrders', 'No orders found yet.')}</p>
+                <Link to="/" style={{ display: 'inline-block', backgroundColor: '#c8a97e', color: '#fff', padding: '10px 20px', borderRadius: 4, textDecoration: 'none', marginTop: 15 }}>{t('account.startShopping', 'Start Shopping')}</Link>
               </div>
             ) : (
               orders.map(order => {
@@ -503,7 +513,7 @@ export default function ProfilePage() {
                   <div key={order.id} style={{ border: '1px solid #eee', borderRadius: 5, padding: 15, marginBottom: 15 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 10, borderBottom: '1px solid #eee', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
                       <div>
-                        <span style={{ fontWeight: 'bold' }}>Order #{order.order_number || order.id || order.order_id}</span>
+                        <span style={{ fontWeight: 'bold' }}>{t('account.orderNumber', { num: order.order_number || order.id || order.order_id, defaultValue: 'Order #{{num}}' })}</span>
                       </div>
                       <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                         <span style={{ color: '#777', fontSize: 14 }}>{formatDateShortForCustomer(order.created_at)}</span>
@@ -512,7 +522,7 @@ export default function ProfilePage() {
                     </div>
                     {order.status === 'cancelled' && order.cancellation_reason && (
                       <div style={{ marginBottom: 12, padding: '8px 12px', background: '#fff5f5', borderInlineStart: '3px solid #e74c3c', borderRadius: 4, fontSize: 13, color: '#555' }}>
-                        <strong style={{ color: '#e74c3c' }}>Cancellation Reason:</strong> {order.cancellation_reason}
+                        <strong style={{ color: '#e74c3c' }}>{t('account.cancellationReason', 'Cancellation Reason:')}</strong> {order.cancellation_reason}
                       </div>
                     )}
                     {orderItems.map((item, idx) => {
@@ -526,18 +536,18 @@ export default function ProfilePage() {
                             <h4 style={{ margin: '0 0 5px', fontSize: 14 }}>{item.name}</h4>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                               <span style={{ color: '#c8a97e', fontWeight: 'bold' }}>{formatAmount(item.price)}</span>
-                              <span style={{ color: '#777', fontSize: 13, background: '#f5f5f5', padding: '2px 8px', borderRadius: 12 }}>Qty: {item.quantity}</span>
+                              <span style={{ color: '#777', fontSize: 13, background: '#f5f5f5', padding: '2px 8px', borderRadius: 12 }}>{t('account.qty', { qty: item.quantity, defaultValue: 'Qty: {{qty}}' })}</span>
                             </div>
                             {isDelivered && (
                               <div style={{ marginTop: 6 }}>
                                 {alreadyReviewed ? (
-                                  <span style={{ fontSize: 12, color: '#27ae60' }}>{'\u2605'} Reviewed</span>
+                                  <span style={{ fontSize: 12, color: '#27ae60' }}>{t('account.reviewed', '\u2605 Reviewed')}</span>
                                 ) : (
                                   <Link
                                     to={`/product/${item.slug || itemProductId}`}
                                     style={{ fontSize: 12, color: 'var(--color-primary, #0f172a)', textDecoration: 'none', fontWeight: 500 }}
                                   >
-                                    {'\u270E'} Write a Review
+                                    {t('account.writeReview', '\u270E Write a Review')}
                                   </Link>
                                 )}
                               </div>
@@ -550,30 +560,30 @@ export default function ProfilePage() {
                       {parseFloat(order.discount || 0) > 0 && (
                         <>
                           <div style={{ fontSize: 13, color: '#777', marginBottom: 2 }}>
-                            Subtotal: {formatAmount(order.subtotal || orderTotal)}
+                            {t('account.subtotal', { amount: formatAmount(order.subtotal || orderTotal), defaultValue: 'Subtotal: {{amount}}' })}
                           </div>
                           <div style={{ fontSize: 13, color: '#27ae60', marginBottom: 4 }}>
-                            Coupon{order.coupon_code ? ` (${order.coupon_code})` : ''}: −{formatAmount(order.discount)}
+                            {t('account.couponLine', { codeSuffix: order.coupon_code ? ` (${order.coupon_code})` : '', amount: formatAmount(order.discount), defaultValue: 'Coupon{{codeSuffix}}: \u2212{{amount}}' })}
                           </div>
                         </>
                       )}
-                      <div style={{ fontWeight: 'bold' }}>Total: {formatAmount(orderTotal)}</div>
+                      <div style={{ fontWeight: 'bold' }}>{t('account.total', { amount: formatAmount(orderTotal), defaultValue: 'Total: {{amount}}' })}</div>
                     </div>
                     {(cancelStatuses[order.id] || returnStatuses[order.id]) && (
                       <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #eee', display: 'flex', flexWrap: 'wrap', gap: 10 }}>
                         {cancelStatuses[order.id] && (
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <span style={{ fontSize: 12, color: '#64748b' }}>Cancellation:</span>
+                            <span style={{ fontSize: 12, color: '#64748b' }}>{t('account.cancellationLabel', 'Cancellation:')}</span>
                             <span style={{ display: 'inline-block', background: { requested: '#ff9800', approved: '#27ae60', rejected: '#e53935' }[cancelStatuses[order.id].status] || '#757575', color: '#fff', borderRadius: 12, padding: '2px 8px', fontSize: 12, fontWeight: 600 }}>
-                              {{ requested: 'Pending', approved: 'Approved', rejected: 'Rejected' }[cancelStatuses[order.id].status] || cancelStatuses[order.id].status}
+                              {{ requested: t('account.status.pending', 'Pending'), approved: t('account.status.approved', 'Approved'), rejected: t('account.status.rejected', 'Rejected') }[cancelStatuses[order.id].status] || cancelStatuses[order.id].status}
                             </span>
                           </div>
                         )}
                         {returnStatuses[order.id] && (
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <span style={{ fontSize: 12, color: '#64748b' }}>Return:</span>
+                            <span style={{ fontSize: 12, color: '#64748b' }}>{t('account.returnLabel', 'Return:')}</span>
                             <span style={{ display: 'inline-block', background: { requested: '#ff9800', approved: '#2196f3', rejected: '#e53935', refunded: '#27ae60' }[returnStatuses[order.id].status] || '#757575', color: '#fff', borderRadius: 12, padding: '2px 8px', fontSize: 12, fontWeight: 600 }}>
-                              {{ requested: 'Requested', approved: 'Approved', rejected: 'Rejected', refunded: 'Refunded' }[returnStatuses[order.id].status] || returnStatuses[order.id].status}
+                              {{ requested: t('account.status.requested', 'Requested'), approved: t('account.status.approved', 'Approved'), rejected: t('account.status.rejected', 'Rejected'), refunded: t('account.status.refunded', 'Refunded') }[returnStatuses[order.id].status] || returnStatuses[order.id].status}
                             </span>
                           </div>
                         )}
@@ -585,7 +595,7 @@ export default function ProfilePage() {
                         style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'none', border: '1px solid #e2e8f0', color: '#475569', padding: '6px 14px', borderRadius: 4, cursor: 'pointer', fontSize: 13, fontWeight: 500 }}
                       >
                         <i className="fas fa-headset" style={{ fontSize: 12 }} />
-                        Need Help?
+                        {t('account.needHelp', 'Need Help?')}
                         <i className={`fas fa-chevron-${openHelpOrderId === order.id ? 'up' : 'down'}`} style={{ fontSize: 10 }} />
                       </button>
                       {openHelpOrderId === order.id && (
@@ -594,14 +604,14 @@ export default function ProfilePage() {
                             to={`/order-track?orderId=${order.order_number}`}
                             style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 4, textDecoration: 'none', color: '#334155', fontSize: 13, fontWeight: 500 }}
                           >
-                            <i className="fas fa-truck" style={{ fontSize: 11 }} /> Track Order
+                            <i className="fas fa-truck" style={{ fontSize: 11 }} /> {t('account.trackOrder', 'Track Order')}
                           </Link>
                           {cancellationEnabled && ['pending', 'confirmed'].includes((order.status || '').toLowerCase()) && !cancelStatuses[order.id] && (
                             <button
                               onClick={() => { setCancelModal(order); setCancelReason(''); setCancelDetail(''); setOpenHelpOrderId(null); }}
                               style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#fff', border: '1px solid #fecaca', borderRadius: 4, color: '#e53935', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}
                             >
-                              <i className="fas fa-times-circle" style={{ fontSize: 11 }} /> Cancel Order
+                              <i className="fas fa-times-circle" style={{ fontSize: 11 }} /> {t('account.cancelOrder', 'Cancel Order')}
                             </button>
                           )}
                           {returnsEnabled && (order.status || '').toLowerCase() === 'delivered' && !returnStatuses[order.id] && isWithinReturnWindow(order) && (
@@ -609,11 +619,11 @@ export default function ProfilePage() {
                               onClick={() => { setReturnModal(order); setReturnReason(''); setReturnDetail(''); setReturnPhotos([]); setReturnResolution('refund'); setOpenHelpOrderId(null); }}
                               style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 4, color: '#64748b', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}
                             >
-                              <i className="fas fa-undo" style={{ fontSize: 11 }} /> Return / Refund
+                              <i className="fas fa-undo" style={{ fontSize: 11 }} /> {t('account.returnRefund', 'Return / Refund')}
                             </button>
                           )}
                           {returnsEnabled && (order.status || '').toLowerCase() === 'delivered' && !returnStatuses[order.id] && !isWithinReturnWindow(order) && (
-                            <span style={{ fontSize: 12, color: '#94a3b8', padding: '6px 0' }}>Return window expired</span>
+                            <span style={{ fontSize: 12, color: '#94a3b8', padding: '6px 0' }}>{t('account.returnExpired', 'Return window expired')}</span>
                           )}
                         </div>
                       )}
@@ -628,37 +638,37 @@ export default function ProfilePage() {
         {activeTab === 'addresses' && (
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <h3 style={{ fontFamily: "'Playfair Display', serif", margin: 0 }}>Saved Addresses</h3>
+              <h3 style={{ fontFamily: "'Playfair Display', serif", margin: 0 }}>{t('account.savedAddresses', 'Saved Addresses')}</h3>
               <button onClick={() => { setEditAddress(null); setAddressForm({ label: 'Home', firstName: '', lastName: '', phone: '', houseNumber: '', roadName: '', city: '', state: '', pinCode: '', isDefault: false }); setAddressError(''); setAddressFieldErrors({}); setShowAddressModal(true); }} style={{ background: '#c8a97e', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: 4, cursor: 'pointer', fontWeight: 600, fontSize: 14 }}>
-                + Add Address
+                {t('account.addAddress', '+ Add Address')}
               </button>
             </div>
             {addressesLoading ? (
               <div style={{ textAlign: 'center', padding: 40 }}>
                 <div style={{ width: 40, height: 40, border: '4px solid #f3f3f3', borderTop: '4px solid #c8a97e', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 16px' }} />
-                <p style={{ color: '#777' }}>Loading addresses...</p>
+                <p style={{ color: '#777' }}>{t('account.loadingAddresses', 'Loading addresses...')}</p>
                 <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
               </div>
             ) : addresses.length === 0 ? (
-              <p style={{ textAlign: 'center', color: '#777', fontStyle: 'italic', padding: 30 }}>No saved addresses. Add one for faster checkout.</p>
+              <p style={{ textAlign: 'center', color: '#777', fontStyle: 'italic', padding: 30 }}>{t('account.noAddresses', 'No saved addresses. Add one for faster checkout.')}</p>
             ) : (
               addresses.map((addr) => (
                 <div key={addr.id} style={{ border: `1px solid ${addr.is_default ? '#c8a97e' : '#eee'}`, borderRadius: 8, padding: 20, marginBottom: 15, backgroundColor: addr.is_default ? '#fefcf8' : '#fff', transition: 'box-shadow 0.3s ease' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, paddingBottom: 10, borderBottom: '1px solid #eee' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <span style={{ fontWeight: 'bold', color: '#333' }}>{addr.label || 'Address'}</span>
-                      {addr.is_default === 1 && <span style={{ backgroundColor: '#c8a97e', color: '#fff', padding: '2px 8px', borderRadius: 12, fontSize: 12 }}>Default</span>}
+                      <span style={{ fontWeight: 'bold', color: '#333' }}>{addr.label || t('account.addressDefaultLabel', 'Address')}</span>
+                      {addr.is_default === 1 && <span style={{ backgroundColor: '#c8a97e', color: '#fff', padding: '2px 8px', borderRadius: 12, fontSize: 12 }}>{t('account.default', 'Default')}</span>}
                     </div>
                     <div style={{ display: 'flex', gap: 15 }}>
-                      <button onClick={() => openEditAddress(addr)} style={{ background: 'none', border: 'none', color: '#c8a97e', cursor: 'pointer', fontSize: 14 }}>Edit</button>
-                      <button onClick={() => handleDeleteAddress(addr.id)} style={{ background: 'none', border: 'none', color: '#e74c3c', cursor: 'pointer', fontSize: 14 }}>Delete</button>
+                      <button onClick={() => openEditAddress(addr)} style={{ background: 'none', border: 'none', color: '#c8a97e', cursor: 'pointer', fontSize: 14 }}>{t('account.edit', 'Edit')}</button>
+                      <button onClick={() => handleDeleteAddress(addr.id)} style={{ background: 'none', border: 'none', color: '#e74c3c', cursor: 'pointer', fontSize: 14 }}>{t('account.delete', 'Delete')}</button>
                     </div>
                   </div>
                   <div style={{ color: '#555', lineHeight: 1.6, fontSize: 14 }}>
                     <div>{addr.first_name} {addr.last_name}</div>
                     <div>{addr.house_number}{addr.road_name ? `, ${addr.road_name}` : ''}</div>
                     <div>{addr.city}, {addr.state} - {addr.pin_code}</div>
-                    {addr.phone && <div>Phone: {addr.phone}</div>}
+                    {addr.phone && <div>{t('account.phoneLine', { phone: addr.phone, defaultValue: 'Phone: {{phone}}' })}</div>}
                   </div>
                 </div>
               ))
@@ -670,11 +680,11 @@ export default function ProfilePage() {
       {showLogoutConfirm && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999 }}>
           <div style={{ background: '#fff', padding: 30, borderRadius: 10, maxWidth: 400, width: '90%', textAlign: 'center', boxShadow: '0 10px 30px rgba(0,0,0,0.3)' }}>
-            <h3 style={{ marginBottom: 15, fontFamily: "'Playfair Display', serif" }}>Confirm Logout</h3>
-            <p style={{ color: '#666', marginBottom: 24 }}>Are you sure you want to log out?</p>
+            <h3 style={{ marginBottom: 15, fontFamily: "'Playfair Display', serif" }}>{t('account.confirmLogout', 'Confirm Logout')}</h3>
+            <p style={{ color: '#666', marginBottom: 24 }}>{t('account.confirmLogoutMsg', 'Are you sure you want to log out?')}</p>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
-              <button onClick={handleLogout} style={{ background: '#c8a97e', color: '#fff', border: 'none', padding: '10px 24px', borderRadius: 4, cursor: 'pointer', fontWeight: 'bold' }}>Yes, Logout</button>
-              <button onClick={() => setShowLogoutConfirm(false)} style={{ background: '#f8f9fa', color: '#333', border: '1px solid #ddd', padding: '10px 24px', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+              <button onClick={handleLogout} style={{ background: '#c8a97e', color: '#fff', border: 'none', padding: '10px 24px', borderRadius: 4, cursor: 'pointer', fontWeight: 'bold' }}>{t('account.yesLogout', 'Yes, Logout')}</button>
+              <button onClick={() => setShowLogoutConfirm(false)} style={{ background: '#f8f9fa', color: '#333', border: '1px solid #ddd', padding: '10px 24px', borderRadius: 4, cursor: 'pointer' }}>{t('account.cancel', 'Cancel')}</button>
             </div>
           </div>
         </div>
@@ -684,34 +694,34 @@ export default function ProfilePage() {
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999 }}>
           <div style={{ background: '#fff', borderRadius: 10, padding: 30, width: '90%', maxWidth: 480, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 10px 30px rgba(0,0,0,0.3)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, paddingBottom: 15, borderBottom: '1px solid #eee' }}>
-              <h3 style={{ margin: 0, fontFamily: "'Playfair Display', serif", fontSize: 20 }}>Request Return</h3>
+              <h3 style={{ margin: 0, fontFamily: "'Playfair Display', serif", fontSize: 20 }}>{t('account.requestReturn', 'Request Return')}</h3>
               <button onClick={() => setReturnModal(null)} style={{ background: 'none', border: 'none', fontSize: 24, cursor: 'pointer', color: '#999' }}>x</button>
             </div>
             <p style={{ color: '#64748b', fontSize: 14, marginBottom: 20 }}>
-              Order <strong>#{returnModal.order_number || returnModal.id}</strong>
+              {t('account.orderRefLine', 'Order')} <strong>#{returnModal.order_number || returnModal.id}</strong>
             </p>
             <div style={{ marginBottom: 20 }}>
-              <label style={{ display: 'block', fontWeight: 600, marginBottom: 10, color: '#333', fontSize: 14 }}>Reason for return *</label>
+              <label style={{ display: 'block', fontWeight: 600, marginBottom: 10, color: '#333', fontSize: 14 }}>{t('account.reasonForReturn', 'Reason for return *')}</label>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {RETURN_REASONS.map(reason => (
                   <label key={reason} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', padding: '10px 14px', borderRadius: 6, border: `1.5px solid ${returnReason === reason ? '#c8a97e' : '#e0e0e0'}`, background: returnReason === reason ? '#fefcf8' : '#fafafa', transition: 'all 0.15s' }}>
                     <input type="radio" name="returnReason" value={reason} checked={returnReason === reason} onChange={() => setReturnReason(reason)} style={{ accentColor: '#c8a97e' }} />
-                    <span style={{ fontSize: 14, color: '#333', fontWeight: returnReason === reason ? 600 : 400 }}>{reason}</span>
+                    <span style={{ fontSize: 14, color: '#333', fontWeight: returnReason === reason ? 600 : 400 }}>{t(`account.returnReasons.${reason}`, reason)}</span>
                   </label>
                 ))}
               </div>
             </div>
             <div style={{ marginBottom: 20 }}>
-              <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, color: '#333', fontSize: 14 }}>Additional notes *</label>
-              <textarea value={returnDetail} onChange={e => setReturnDetail(e.target.value)} rows={3} placeholder="Describe the issue in detail..." style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: 6, fontSize: 14, resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit' }} />
-              {returnReason && !returnDetail.trim() && <p style={{ fontSize: 12, color: '#e53935', marginTop: 4 }}>Please provide additional details.</p>}
+              <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, color: '#333', fontSize: 14 }}>{t('account.additionalNotes', 'Additional notes *')}</label>
+              <textarea value={returnDetail} onChange={e => setReturnDetail(e.target.value)} rows={3} placeholder={t('account.returnDetailPlaceholder', 'Describe the issue in detail...')} style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: 6, fontSize: 14, resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+              {returnReason && !returnDetail.trim() && <p style={{ fontSize: 12, color: '#e53935', marginTop: 4 }}>{t('account.detailRequired', 'Please provide additional details.')}</p>}
             </div>
             <div style={{ marginBottom: 20 }}>
               <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, color: '#333', fontSize: 14 }}>
-                Photos {imageRequiredReasons.includes(returnReason) ? '*' : '(optional)'} {returnPhotos.length > 0 ? `(${returnPhotos.length}/5)` : ''}
+                {t('account.photosLabel', 'Photos')} {imageRequiredReasons.includes(returnReason) ? t('account.required', '*') : t('account.optional', '(optional)')} {returnPhotos.length > 0 ? t('account.photoCount', { count: returnPhotos.length, defaultValue: '({{count}}/5)' }) : ''}
               </label>
               {imageRequiredReasons.includes(returnReason) && (
-                <p style={{ fontSize: 12, color: '#64748b', marginBottom: 8 }}>Upload photos showing the issue (required).</p>
+                <p style={{ fontSize: 12, color: '#64748b', marginBottom: 8 }}>{t('account.uploadPhotosNote', 'Upload photos showing the issue (required).')}</p>
               )}
               {returnPhotos.length > 0 && (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
@@ -727,19 +737,19 @@ export default function ProfilePage() {
                 <>
                   <input ref={returnFileRef} type="file" accept="image/*" multiple onChange={handleReturnPhotoChange} style={{ display: 'none' }} />
                   <button type="button" onClick={() => returnFileRef.current?.click()} disabled={uploadingReturnPhotos} style={{ padding: '8px 14px', border: '1.5px dashed #cbd5e1', borderRadius: 6, background: '#f8fafc', color: '#475569', cursor: uploadingReturnPhotos ? 'not-allowed' : 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <i className="fas fa-camera" /> {uploadingReturnPhotos ? 'Uploading...' : 'Upload Photos'}
+                    <i className="fas fa-camera" /> {uploadingReturnPhotos ? t('account.uploading', 'Uploading...') : t('account.uploadPhotos', 'Upload Photos')}
                   </button>
                 </>
               )}
               {imageRequiredReasons.includes(returnReason) && returnPhotos.length === 0 && returnReason && (
-                <p style={{ fontSize: 12, color: '#e53935', marginTop: 4 }}>At least 1 photo is required for this return reason.</p>
+                <p style={{ fontSize: 12, color: '#e53935', marginTop: 4 }}>{t('account.photoRequired', 'At least 1 photo is required for this return reason.')}</p>
               )}
             </div>
             {replacementEnabled && (
               <div style={{ marginBottom: 20 }}>
-                <label style={{ display: 'block', fontWeight: 600, marginBottom: 8, color: '#333', fontSize: 14 }}>Preferred resolution *</label>
+                <label style={{ display: 'block', fontWeight: 600, marginBottom: 8, color: '#333', fontSize: 14 }}>{t('account.preferredResolution', 'Preferred resolution *')}</label>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  {[{ value: 'refund', label: 'Refund' }, { value: 'replacement', label: 'Replacement' }].map(opt => (
+                  {[{ value: 'refund', label: t('account.refund', 'Refund') }, { value: 'replacement', label: t('account.replacement', 'Replacement') }].map(opt => (
                     <label key={opt.value} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: 'pointer', padding: '10px 12px', borderRadius: 6, border: `1.5px solid ${returnResolution === opt.value ? '#c8a97e' : '#e0e0e0'}`, background: returnResolution === opt.value ? '#fefcf8' : '#fafafa', textAlign: 'center', transition: 'all 0.15s' }}>
                       <input type="radio" name="returnResolution" value={opt.value} checked={returnResolution === opt.value} onChange={() => setReturnResolution(opt.value)} style={{ accentColor: '#c8a97e' }} />
                       <span style={{ fontSize: 14, color: '#333', fontWeight: returnResolution === opt.value ? 600 : 400 }}>{opt.label}</span>
@@ -749,9 +759,9 @@ export default function ProfilePage() {
               </div>
             )}
             <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-              <button onClick={() => setReturnModal(null)} style={{ padding: '10px 20px', background: '#f8f9fa', color: '#333', border: '1px solid #ddd', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+              <button onClick={() => setReturnModal(null)} style={{ padding: '10px 20px', background: '#f8f9fa', color: '#333', border: '1px solid #ddd', borderRadius: 4, cursor: 'pointer' }}>{t('account.cancel', 'Cancel')}</button>
               <button onClick={handleSubmitReturn} disabled={returningOrder || !isReturnFormValid()} style={{ padding: '10px 20px', background: '#c8a97e', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600, opacity: (returningOrder || !isReturnFormValid()) ? 0.7 : 1 }}>
-                {returningOrder ? 'Submitting...' : 'Submit Return Request'}
+                {returningOrder ? t('account.submitting', 'Submitting...') : t('account.submitReturn', 'Submit Return Request')}
               </button>
             </div>
           </div>
@@ -762,32 +772,32 @@ export default function ProfilePage() {
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999 }}>
           <div style={{ background: '#fff', borderRadius: 10, padding: 30, width: '90%', maxWidth: 480, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 10px 30px rgba(0,0,0,0.3)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, paddingBottom: 15, borderBottom: '1px solid #eee' }}>
-              <h3 style={{ margin: 0, fontFamily: "'Playfair Display', serif", fontSize: 20 }}>Request Cancellation</h3>
+              <h3 style={{ margin: 0, fontFamily: "'Playfair Display', serif", fontSize: 20 }}>{t('account.requestCancellation', 'Request Cancellation')}</h3>
               <button onClick={() => setCancelModal(null)} style={{ background: 'none', border: 'none', fontSize: 24, cursor: 'pointer', color: '#999' }}>x</button>
             </div>
             <p style={{ color: '#64748b', fontSize: 14, marginBottom: 20 }}>
-              Order <strong>#{cancelModal.order_number || cancelModal.id}</strong>
+              {t('account.orderRefLine', 'Order')} <strong>#{cancelModal.order_number || cancelModal.id}</strong>
             </p>
             <div style={{ marginBottom: 20 }}>
-              <label style={{ display: 'block', fontWeight: 600, marginBottom: 10, color: '#333', fontSize: 14 }}>Reason for cancellation *</label>
+              <label style={{ display: 'block', fontWeight: 600, marginBottom: 10, color: '#333', fontSize: 14 }}>{t('account.reasonForCancel', 'Reason for cancellation *')}</label>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {CANCEL_REASONS.map(reason => (
                   <label key={reason} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', padding: '10px 14px', borderRadius: 6, border: `1.5px solid ${cancelReason === reason ? '#e53935' : '#e0e0e0'}`, background: cancelReason === reason ? '#fff5f5' : '#fafafa', transition: 'all 0.15s' }}>
                     <input type="radio" name="cancelReason" value={reason} checked={cancelReason === reason} onChange={() => setCancelReason(reason)} style={{ accentColor: '#e53935' }} />
-                    <span style={{ fontSize: 14, color: '#333', fontWeight: cancelReason === reason ? 600 : 400 }}>{reason}</span>
+                    <span style={{ fontSize: 14, color: '#333', fontWeight: cancelReason === reason ? 600 : 400 }}>{t(`account.cancelReasons.${reason}`, reason)}</span>
                   </label>
                 ))}
               </div>
             </div>
             <div style={{ marginBottom: 20 }}>
-              <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, color: '#333', fontSize: 14 }}>Additional notes *</label>
-              <textarea value={cancelDetail} onChange={e => setCancelDetail(e.target.value)} rows={3} placeholder="Please provide more details about your cancellation..." style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: 6, fontSize: 14, resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit' }} />
-              {cancelReason && !cancelDetail.trim() && <p style={{ fontSize: 12, color: '#e53935', marginTop: 4 }}>Please provide additional details before submitting.</p>}
+              <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, color: '#333', fontSize: 14 }}>{t('account.additionalNotes', 'Additional notes *')}</label>
+              <textarea value={cancelDetail} onChange={e => setCancelDetail(e.target.value)} rows={3} placeholder={t('account.cancelDetailPlaceholder', 'Please provide more details about your cancellation...')} style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: 6, fontSize: 14, resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+              {cancelReason && !cancelDetail.trim() && <p style={{ fontSize: 12, color: '#e53935', marginTop: 4 }}>{t('account.cancelDetailRequired', 'Please provide additional details before submitting.')}</p>}
             </div>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-              <button onClick={() => setCancelModal(null)} style={{ padding: '10px 20px', background: '#f8f9fa', color: '#333', border: '1px solid #ddd', borderRadius: 4, cursor: 'pointer' }}>Close</button>
+              <button onClick={() => setCancelModal(null)} style={{ padding: '10px 20px', background: '#f8f9fa', color: '#333', border: '1px solid #ddd', borderRadius: 4, cursor: 'pointer' }}>{t('account.close', 'Close')}</button>
               <button onClick={handleSubmitCancel} disabled={cancellingOrder || !cancelReason || !cancelDetail.trim()} style={{ padding: '10px 20px', background: '#e53935', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600, opacity: (cancellingOrder || !cancelReason || !cancelDetail.trim()) ? 0.7 : 1 }}>
-                {cancellingOrder ? 'Submitting...' : 'Submit Cancellation'}
+                {cancellingOrder ? t('account.submitting', 'Submitting...') : t('account.submitCancel', 'Submit Cancellation')}
               </button>
             </div>
           </div>
@@ -798,31 +808,31 @@ export default function ProfilePage() {
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999 }}>
           <div style={{ background: '#fff', borderRadius: 8, padding: 30, width: '90%', maxWidth: 500, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 10px 30px rgba(0,0,0,0.3)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 25, paddingBottom: 15, borderBottom: '1px solid #eee' }}>
-              <h3 style={{ margin: 0, fontFamily: "'Playfair Display', serif" }}>{editAddress !== null ? 'Edit Address' : 'Add Address'}</h3>
+              <h3 style={{ margin: 0, fontFamily: "'Playfair Display', serif" }}>{editAddress !== null ? t('account.editAddress', 'Edit Address') : t('account.addAddressTitle', 'Add Address')}</h3>
               <button onClick={() => setShowAddressModal(false)} style={{ background: 'none', border: 'none', fontSize: 24, cursor: 'pointer', color: '#999' }}>x</button>
             </div>
             {addressError && <div style={{ background: '#ffebee', color: '#d32f2f', padding: 10, borderRadius: 4, marginBottom: 15, fontSize: 14 }}>{addressError}</div>}
             <div style={{ marginBottom: 20 }}>
-              <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>Address Label</label>
+              <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>{t('account.addressLabelField', 'Address Label')}</label>
               <select value={addressForm.label} onChange={e => handleAddressFieldChange('label', e.target.value)} style={{ width: '100%', padding: 12, border: '1px solid #ddd', borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }}>
-                <option>Home</option>
-                <option>Work</option>
-                <option>Other</option>
+                <option value="Home">{t('account.labelHome', 'Home')}</option>
+                <option value="Work">{t('account.labelWork', 'Work')}</option>
+                <option value="Other">{t('account.labelOther', 'Other')}</option>
               </select>
             </div>
             <div style={{ display: 'flex', gap: 15, marginBottom: 0 }}>
               <div style={{ flex: 1, marginBottom: 20 }}>
-                <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>First Name *</label>
+                <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>{t('account.firstNameField', 'First Name *')}</label>
                 <input type="text" value={addressForm.firstName} onChange={e => handleAddressFieldChange('firstName', e.target.value)} style={{ width: '100%', padding: 12, border: `1px solid ${addressFieldErrors.firstName ? '#e74c3c' : '#ddd'}`, borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }} />
                 {addressFieldErrors.firstName && <div style={{ color: '#e74c3c', fontSize: 12, marginTop: 4 }}>{addressFieldErrors.firstName}</div>}
               </div>
               <div style={{ flex: 1, marginBottom: 20 }}>
-                <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>Last Name</label>
+                <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>{t('account.lastNameField', 'Last Name')}</label>
                 <input type="text" value={addressForm.lastName} onChange={e => handleAddressFieldChange('lastName', e.target.value)} style={{ width: '100%', padding: 12, border: '1px solid #ddd', borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }} />
               </div>
             </div>
             <div style={{ marginBottom: 20 }}>
-              <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>Phone</label>
+              <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>{t('account.phoneField', 'Phone')}</label>
               <PhoneInput
                 value={addressForm.phone}
                 onChange={val => handleAddressFieldChange('phone', val)}
@@ -832,44 +842,44 @@ export default function ProfilePage() {
               {addressFieldErrors.phone && <div style={{ color: '#e74c3c', fontSize: 12, marginTop: 4 }}>{addressFieldErrors.phone}</div>}
             </div>
             <div style={{ marginBottom: 20 }}>
-              <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>House/Building Number *</label>
+              <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>{t('account.houseNumberField', 'House/Building Number *')}</label>
               <input type="text" value={addressForm.houseNumber} onChange={e => handleAddressFieldChange('houseNumber', e.target.value)} style={{ width: '100%', padding: 12, border: `1px solid ${addressFieldErrors.houseNumber ? '#e74c3c' : '#ddd'}`, borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }} />
               {addressFieldErrors.houseNumber && <div style={{ color: '#e74c3c', fontSize: 12, marginTop: 4 }}>{addressFieldErrors.houseNumber}</div>}
             </div>
             <div style={{ marginBottom: 20 }}>
-              <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>Road / Area / Colony</label>
+              <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>{t('account.roadField', 'Road / Area / Colony')}</label>
               <input type="text" value={addressForm.roadName} onChange={e => handleAddressFieldChange('roadName', e.target.value)} style={{ width: '100%', padding: 12, border: `1px solid ${addressFieldErrors.roadName ? '#e74c3c' : '#ddd'}`, borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }} />
               {addressFieldErrors.roadName && <div style={{ color: '#e74c3c', fontSize: 12, marginTop: 4 }}>{addressFieldErrors.roadName}</div>}
             </div>
             <div style={{ display: 'flex', gap: 15, marginBottom: 0 }}>
               <div style={{ flex: 1, marginBottom: 20 }}>
-                <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>PIN Code *</label>
+                <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>{t('account.pinCodeField', 'PIN Code *')}</label>
                 <input type="text" maxLength={6} value={addressForm.pinCode} onChange={e => handleAddressFieldChange('pinCode', e.target.value.replace(/\D/g, ''))} style={{ width: '100%', padding: 12, border: `1px solid ${addressFieldErrors.pinCode ? '#e74c3c' : '#ddd'}`, borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }} />
-                {pinValidating && <div style={{ color: '#c8a97e', fontSize: 12, marginTop: 4 }}>Validating PIN code...</div>}
+                {pinValidating && <div style={{ color: '#c8a97e', fontSize: 12, marginTop: 4 }}>{t('account.validatingPin', 'Validating PIN code...')}</div>}
                 {addressFieldErrors.pinCode && <div style={{ color: '#e74c3c', fontSize: 12, marginTop: 4 }}>{addressFieldErrors.pinCode}</div>}
               </div>
               <div style={{ flex: 1, marginBottom: 20 }}>
-                <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>City *</label>
+                <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>{t('account.cityField', 'City *')}</label>
                 <input type="text" value={addressForm.city} onChange={e => handleAddressFieldChange('city', e.target.value)} style={{ width: '100%', padding: 12, border: `1px solid ${addressFieldErrors.city ? '#e74c3c' : '#ddd'}`, borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }} />
                 {addressFieldErrors.city && <div style={{ color: '#e74c3c', fontSize: 12, marginTop: 4 }}>{addressFieldErrors.city}</div>}
               </div>
             </div>
             <div style={{ marginBottom: 20 }}>
-              <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>State *</label>
+              <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>{t('account.stateField', 'State *')}</label>
               <select value={addressForm.state} onChange={e => handleAddressFieldChange('state', e.target.value)} style={{ width: '100%', padding: 12, border: `1px solid ${addressFieldErrors.state ? '#e74c3c' : '#ddd'}`, borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }}>
-                <option value="">Select State</option>
+                <option value="">{t('account.selectState', 'Select State')}</option>
                 {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
               {addressFieldErrors.state && <div style={{ color: '#e74c3c', fontSize: 12, marginTop: 4 }}>{addressFieldErrors.state}</div>}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', marginTop: 20, marginBottom: 20 }}>
               <input type="checkbox" id="defaultAddr" checked={addressForm.isDefault} onChange={e => setAddressForm(p => ({ ...p, isDefault: e.target.checked }))} style={{ width: 'auto', marginInlineEnd: 10 }} />
-              <label htmlFor="defaultAddr" style={{ color: '#333', fontSize: 14 }}>Set as default address</label>
+              <label htmlFor="defaultAddr" style={{ color: '#333', fontSize: 14 }}>{t('account.setDefault', 'Set as default address')}</label>
             </div>
             <div style={{ display: 'flex', gap: 15, justifyContent: 'flex-end' }}>
-              <button onClick={() => setShowAddressModal(false)} style={{ backgroundColor: '#f8f9fa', color: '#333', border: '1px solid #ddd', padding: '10px 20px', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+              <button onClick={() => setShowAddressModal(false)} style={{ backgroundColor: '#f8f9fa', color: '#333', border: '1px solid #ddd', padding: '10px 20px', borderRadius: 4, cursor: 'pointer' }}>{t('account.cancel', 'Cancel')}</button>
               <button onClick={handleSaveAddress} disabled={savingAddress} style={{ backgroundColor: '#c8a97e', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: 4, cursor: 'pointer', fontWeight: 600, opacity: savingAddress ? 0.7 : 1 }}>
-                {savingAddress ? 'Saving...' : 'Save Address'}
+                {savingAddress ? t('account.savingAddress', 'Saving...') : t('account.saveAddress', 'Save Address')}
               </button>
             </div>
           </div>
