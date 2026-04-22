@@ -84,7 +84,7 @@ export default function ProductCardModern({ product, variant = 'grid', onWishlis
             )}
           </div>
           {product.category_name && (
-            <span className="mn-product-category">{product.category_name}</span>
+            <span className="mn-product-category"><TranslatedText text={product.category_name} /></span>
           )}
         </div>
       </Link>

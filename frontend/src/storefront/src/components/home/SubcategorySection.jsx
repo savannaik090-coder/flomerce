@@ -6,6 +6,7 @@ import * as productService from '../../services/productService.js';
 import ProductCard from '../product/ProductCard.jsx';
 import ProductCardModern from '../templates/modern/ProductCardModern.jsx';
 import { getDemoProductsForCategory } from '../../defaults/index.js';
+import TranslatedText from '../TranslatedText.jsx';
 
 export default function SubcategorySection({ section }) {
   const { siteConfig } = useSiteConfig();
@@ -57,9 +58,9 @@ export default function SubcategorySection({ section }) {
   return (
     <section className="home-category-section">
       <div className="home-category-header">
-        <h2 className="section-title">{section.name}</h2>
+        <h2 className="section-title"><TranslatedText text={section.name} /></h2>
         {section.subtitle && (
-          <p className="section-subtitle">{section.subtitle}</p>
+          <p className="section-subtitle"><TranslatedText text={section.subtitle} /></p>
         )}
       </div>
 

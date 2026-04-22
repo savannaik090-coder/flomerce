@@ -5,6 +5,7 @@ import { useCart } from '../../hooks/useCart.js';
 import { useCurrency } from '../../hooks/useCurrency.js';
 import { resolveImageUrl } from '../../utils/imageUrl.js';
 import * as productService from '../../services/productService.js';
+import TranslatedText from '../TranslatedText.jsx';
 
 export default function ProductShowcase() {
   const { siteConfig } = useSiteConfig();
@@ -73,7 +74,7 @@ export default function ProductShowcase() {
                     className="showcase-product-thumb"
                   />
                   <div className="showcase-product-info">
-                    <div className="showcase-product-name">{product.name}</div>
+                    <div className="showcase-product-name"><TranslatedText text={product.name} /></div>
                     <div className="showcase-product-price">{formatAmount(product.price)}</div>
                   </div>
                 </Link>
@@ -108,9 +109,9 @@ export default function ProductShowcase() {
               className="popup-product-image"
             />
             <div className="popup-product-details">
-              <h3 className="popup-product-name">{selectedProduct.name}</h3>
+              <h3 className="popup-product-name"><TranslatedText text={selectedProduct.name} /></h3>
               <div className="popup-product-price">{formatAmount(selectedProduct.price)}</div>
-              <p className="popup-product-description">{selectedProduct.description || ''}</p>
+              <p className="popup-product-description"><TranslatedText text={selectedProduct.description || ''} /></p>
               <div className="popup-action-buttons">
                 <button
                   className="popup-add-to-cart-btn"

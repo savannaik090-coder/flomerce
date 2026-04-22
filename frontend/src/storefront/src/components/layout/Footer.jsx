@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { PLATFORM_URL } from '../../config.js';
 import { isPlanAtLeast } from '../../utils/plan.js';
+import TranslatedText from '../TranslatedText.jsx';
 
 export default function Footer() {
   const { siteConfig } = useContext(SiteContext);
@@ -71,7 +72,7 @@ export default function Footer() {
               if (!hasSubs) {
                 return (
                   <ul key={cat.id || cat.slug}>
-                    <li><Link to={`/category/${cat.slug}`}>{cat.name}</Link></li>
+                    <li><Link to={`/category/${cat.slug}`}><TranslatedText text={cat.name} /></Link></li>
                   </ul>
                 );
               }
@@ -83,14 +84,14 @@ export default function Footer() {
                     onClick={() => toggleSection(catKey)}
                     style={{ padding: '4px 0', fontSize: 13 }}
                   >
-                    <span>{cat.name}</span>
+                    <span><TranslatedText text={cat.name} /></span>
                     <i className={`fas fa-chevron-down`} style={{ fontSize: 10, ...(openSections[catKey] ? { transform: 'rotate(180deg)' } : {}) }}></i>
                   </button>
                   <div className={`footer-content${openSections[catKey] ? ' show' : ''}`}>
                     <ul style={{ paddingInlineStart: 8 }}>
                       {directSubs.map(sub => (
                         <li key={sub.id || sub.slug}>
-                          <Link to={`/category/${cat.slug}?subcategory=${sub.id}`}>{sub.name}</Link>
+                          <Link to={`/category/${cat.slug}?subcategory=${sub.id}`}><TranslatedText text={sub.name} /></Link>
                         </li>
                       ))}
                       {groups.map(group => {
@@ -102,14 +103,14 @@ export default function Footer() {
                               onClick={() => toggleSection(groupKey)}
                               style={{ padding: '3px 0', fontSize: 12 }}
                             >
-                              <span>{group.name}</span>
+                              <span><TranslatedText text={group.name} /></span>
                               <i className={`fas fa-chevron-down`} style={{ fontSize: 9, ...(openSections[groupKey] ? { transform: 'rotate(180deg)' } : {}) }}></i>
                             </button>
                             <div className={`footer-content${openSections[groupKey] ? ' show' : ''}`}>
                               <ul style={{ paddingInlineStart: 8 }}>
                                 {(group.children || []).map(val => (
                                   <li key={val.id || val.slug}>
-                                    <Link to={`/category/${cat.slug}?subcategory=${val.id}`}>{val.name}</Link>
+                                    <Link to={`/category/${cat.slug}?subcategory=${val.id}`}><TranslatedText text={val.name} /></Link>
                                   </li>
                                 ))}
                               </ul>
@@ -134,7 +135,7 @@ export default function Footer() {
             <ul>
               {categories.map((cat) => (
                 <li key={cat.id || cat.slug}>
-                  <Link to={`/category/${cat.slug}`}>{cat.name}</Link>
+                  <Link to={`/category/${cat.slug}`}><TranslatedText text={cat.name} /></Link>
                 </li>
               ))}
             </ul>
