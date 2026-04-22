@@ -617,7 +617,7 @@
         height: 100vh;
         background-color: #fff;
         z-index: 9999;
-        transition: left 0.3s ease;
+        transition: inset-inline-start 0.3s ease;
         box-shadow: 0 0 15px rgba(0, 0, 0, 0.15);
         overflow-y: auto;
         padding: 55px 20px 0 10px;
