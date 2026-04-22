@@ -55,6 +55,21 @@
     "remove": "Remove",
     "viewAll": "View All"
   },
+  "about": {
+    "pageTitle": "About Us",
+    "unavailableTitle": "This page is currently unavailable",
+    "unavailableMessage": "Please check back later.",
+    "heroLabel": "Our Story",
+    "heroTitle": "About {{brandName}}"
+  },
+  "terms": {
+    "pageTitle": "Terms & Conditions",
+    "lastUpdated": "Last updated: {{date}}"
+  },
+  "privacy": {
+    "pageTitle": "Privacy Policy",
+    "lastUpdated": "Last updated: {{date}}"
+  },
   "defaults": {
     "policies": {
       "shippingRegions": "We ship across India and select international destinations",
