@@ -8,7 +8,6 @@ import { trackD1Write, trackD1Update, estimateRowBytes, normalizePlanName, getPl
 import { purgeStorefrontCache } from '../../utils/cache.js';
 import { SUPPORTED_LOCALES } from './i18n-worker.js';
 import { encryptSecret, decryptSecret, maskSecret } from '../../utils/crypto.js';
-import { translateBatchWithCreds } from '../../utils/translator.js';
 
 export async function handleSites(request, env, path, ctx) {
   const corsResponse = handleCORS(request);
