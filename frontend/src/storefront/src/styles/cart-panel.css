@@ -299,7 +299,7 @@
 [dir="rtl"] .wishlist-panel {
     transform: translateX(-100%) translateZ(0);
 }
-[dir="rtl"] .cart-panel.open,
-[dir="rtl"] .wishlist-panel.open {
+[dir="rtl"] .cart-panel.active,
+[dir="rtl"] .wishlist-panel.active {
     transform: translateX(0) translateZ(0);
 }
