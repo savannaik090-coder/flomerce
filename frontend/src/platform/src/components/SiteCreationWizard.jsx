@@ -107,6 +107,12 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
   const [faviconFile, setFaviconFile] = useState(null);
   const [faviconPreview, setFaviconPreview] = useState(null);
   const [seoTouched, setSeoTouched] = useState(draft?.seoTouched || false);
+  // Track whether the user actually customized the category seed. When they
+  // didn't (just clicked through the defaults), we omit categories from the
+  // backend payload so the server-side localized seed runs — this is what
+  // makes a Hindi merchant land on Hindi categories even if the wizard's UI
+  // language was English.
+  const [categoriesTouched, setCategoriesTouched] = useState(draft?.categoriesTouched || false);
   const [contentLanguage, setContentLanguage] = useState(
     draft?.contentLanguage && PRESHIPPED.includes(draft.contentLanguage)
       ? draft.contentLanguage
@@ -160,38 +166,69 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
     saveWizardDraft({
       step, businessCategory, selectedTemplate, selectedTheme,
       subdomain, brandName, categories, seoTitle, seoDescription, seoTouched,
-      contentLanguage,
+      categoriesTouched, contentLanguage,
     });
-  }, [step, businessCategory, selectedTemplate, selectedTheme, subdomain, brandName, categories, seoTitle, seoDescription, seoTouched, contentLanguage]);
+  }, [step, businessCategory, selectedTemplate, selectedTheme, subdomain, brandName, categories, seoTitle, seoDescription, seoTouched, categoriesTouched, contentLanguage]);
 
   const handleBusinessCategorySelect = (catId) => {
     setBusinessCategory(catId);
-    const defaults = getDefaultCategories(catId);
-    setCategories(defaults);
+    if (!categoriesTouched) {
+      const defaults = getDefaultCategories(catId);
+      setCategories(defaults);
+    }
   };
 
-  const addCategory = () => setCategories([...categories, { name: '', subtitle: '' }]);
+  // Refresh the un-touched category preview when the merchant flips the
+  // content-language picker so they see Hindi previews after picking Hindi.
+  // (Backend still owns persistence — see buildFormData.)
+  useEffect(() => {
+    if (categoriesTouched || !businessCategory) return;
+    const defaults = getDefaultCategories(businessCategory);
+    if (defaults.length > 0) setCategories(defaults);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contentLanguage, businessCategory]);
+
+  // Lazy-load the i18n bundle for the chosen content language so previews
+  // render in the merchant's selected language even if their admin UI is
+  // currently in English. Failure is silent (preview just stays in EN).
+  useEffect(() => {
+    if (!contentLanguage || contentLanguage === i18n.language) return;
+    try {
+      i18n.loadLanguages?.(contentLanguage);
+    } catch {}
+  }, [contentLanguage, i18n]);
+
+  const addCategory = () => {
+    setCategoriesTouched(true);
+    setCategories([...categories, { name: '', subtitle: '' }]);
+  };
 
   const removeCategory = (index) => {
     if (categories.length <= 1) return;
+    setCategoriesTouched(true);
     setCategories(categories.filter((_, i) => i !== index));
   };
 
   const updateCategoryName = (index, value) => {
+    setCategoriesTouched(true);
     const updated = [...categories];
     updated[index] = { ...updated[index], name: value };
     setCategories(updated);
   };
 
   const updateCategorySubtitle = (index, value) => {
+    setCategoriesTouched(true);
     const updated = [...categories];
     updated[index] = { ...updated[index], subtitle: value };
     setCategories(updated);
   };
 
   const buildFormData = async () => {
+    // We only enforce "at least one category" for users who actually
+    // customized the list; an untouched seed will be filled in by the
+    // backend in the merchant's selected content language.
     const validCategories = categories.filter(c => c.name.trim());
-    if (validCategories.length === 0) {
+    if (categoriesTouched && validCategories.length === 0) {
       setError(t('needAtLeastOne'));
       return null;
     }
@@ -211,9 +248,20 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
         reader.readAsDataURL(faviconFile);
       });
     }
-    const defaults = generateSEODefaults(t, businessCategory, brandName, t("yourStoreFallback"));
-    const finalSeoTitle = seoTitle.trim() || defaults.title;
-    const finalSeoDescription = seoDescription.trim() || defaults.description;
+    // Send empty strings for SEO/categories the user didn't customize so the
+    // backend can fill them in using the localized wizard seed for the
+    // selected content_language. If the user typed something, we send their
+    // literal value verbatim regardless of language.
+    const finalSeoTitle = seoTouched ? seoTitle.trim() : '';
+    const finalSeoDescription = seoTouched ? seoDescription.trim() : '';
+    const finalCategories = categoriesTouched
+      ? validCategories.map(c => ({
+          name: c.name.trim(),
+          subtitle: c.subtitle.trim() || null,
+          showOnHome: true,
+          slug: c.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
+        }))
+      : [];
     return {
       subdomain: subdomain.toLowerCase().replace(/[^a-z0-9-]/g, ''),
       brandName,
@@ -225,12 +273,7 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
       favicon: faviconBase64,
       seoTitle: finalSeoTitle,
       seoDescription: finalSeoDescription,
-      categories: validCategories.map(c => ({
-        name: c.name.trim(),
-        subtitle: c.subtitle.trim() || null,
-        showOnHome: true,
-        slug: c.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
-      })),
+      categories: finalCategories,
     };
   };
 
