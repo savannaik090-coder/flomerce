@@ -346,6 +346,29 @@ export async function handleI18nAdmin(request, env, pathParts) {
 }
 
 /**
+ * Best-effort proactive cache warm. If the locale is supported but its R2
+ * cache file does not yet exist, attempt a one-shot incremental generation
+ * so that callers (e.g. site creation) get localized data instead of the
+ * English fallback. Honours the per-locale daily rate limit; on rate-limit
+ * hit / translator failure / unsupported locale this resolves silently and
+ * the caller continues with the EN fallback path.
+ */
+export async function ensureLocaleCached(env, lang) {
+  if (!lang || lang === 'en' || !isValidLocale(lang)) return;
+  if (!SUPPORTED_LOCALES.has(lang)) return;
+  try {
+    const cached = await readCachedLocale(env, lang);
+    if (cached) return; // already warm — nothing to do
+    const rl = await checkRateLimit(env, lang);
+    if (!rl.ok) return;
+    await regenerateIncremental(env, lang);
+    await bumpRateLimit(env, lang, rl.day);
+  } catch (e) {
+    console.warn('[i18n] ensureLocaleCached failed:', lang, e.message || e);
+  }
+}
+
+/**
  * Returns localized wizard seed helpers for a given content language.
  * Falls back per-field to the bundled English catalog so partially-translated
  * (or never-generated) locales still produce sensible defaults. Slugs are

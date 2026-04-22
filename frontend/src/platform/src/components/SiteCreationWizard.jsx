@@ -286,12 +286,22 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
     const finalSeoTitle = seoTouched ? seoTitle.trim() : '';
     const finalSeoDescription = seoTouched ? seoDescription.trim() : '';
     const finalCategories = categoriesTouched
-      ? validCategories.map(c => ({
-          name: c.name.trim(),
-          subtitle: c.subtitle.trim() || null,
-          showOnHome: true,
-          slug: c.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
-        }))
+      ? validCategories.map((c, i) => {
+          // Derive an ASCII slug from the (possibly non-Latin) name. If the
+          // strip leaves nothing usable, fall back to an indexed placeholder
+          // so the backend never receives an empty slug.
+          const stripped = c.name.toLowerCase().trim()
+            .replace(/[^a-z0-9\s-]/g, '')
+            .replace(/\s+/g, '-')
+            .replace(/-+/g, '-')
+            .replace(/^-+|-+$/g, '');
+          return {
+            name: c.name.trim(),
+            subtitle: c.subtitle.trim() || null,
+            showOnHome: true,
+            slug: stripped || `category-${i + 1}`,
+          };
+        })
       : [];
     return {
       subdomain: subdomain.toLowerCase().replace(/[^a-z0-9-]/g, ''),

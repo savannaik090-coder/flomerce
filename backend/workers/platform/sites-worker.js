@@ -6,7 +6,7 @@ import { registerCustomHostname, deleteCustomHostname, findCustomHostname } from
 import { resolveSiteDBById, getSiteConfig, getSiteWithConfig } from '../../utils/site-db.js';
 import { trackD1Write, trackD1Update, estimateRowBytes, normalizePlanName, getPlanLimitsConfig, recordMediaFile } from '../../utils/usage-tracker.js';
 import { purgeStorefrontCache } from '../../utils/cache.js';
-import { SUPPORTED_LOCALES, getLocalizedWizardSeed } from './i18n-worker.js';
+import { SUPPORTED_LOCALES, getLocalizedWizardSeed, ensureLocaleCached } from './i18n-worker.js';
 import { encryptSecret, decryptSecret, maskSecret } from '../../utils/crypto.js';
 import { getSiteTranslatorUsage } from '../storefront/translate-worker.js';
 
@@ -524,6 +524,11 @@ async function createSite(request, env, user) {
     // Resolve localized SEO + category seed data from the cached wizard
     // catalog for the merchant's chosen content language. Falls back per
     // field to the bundled English source so unfilled locales still work.
+    // Pre-warm the locale R2 cache so the wizard seed is actually localized
+    // for first-time non-English site creation. ensureLocaleCached is bounded
+    // (rate-limited, supported-allowlist only) and silently no-ops on
+    // failure — getLocalizedWizardSeed will then fall back to English.
+    await ensureLocaleCached(env, contentLanguage);
     const wizardSeed = await getLocalizedWizardSeed(env, contentLanguage);
     const safeBrand = sanitizeInput(brandName);
     const finalSeoTitle = seoTitle || wizardSeed.seoTitle(category, safeBrand);
@@ -656,12 +661,20 @@ async function createUserCategories(env, db, siteId, categories) {
     let categoryName = typeof cat === 'string' ? cat : (cat.name || cat.label);
     if (!categoryName) continue;
     
-    const slug = categoryName
+    // Frontend may send an explicit ASCII slug (it derives one from the EN
+    // source for default seeds). Prefer that. Otherwise derive from the
+    // user-typed name; if the strip-to-ASCII step collapses the name to
+    // nothing (e.g. Hindi/Arabic categories), fall back to an indexed
+    // placeholder so we never insert an empty slug into the URL space.
+    const explicitSlug = (typeof cat === 'object' && typeof cat.slug === 'string') ? cat.slug.trim() : '';
+    let slug = explicitSlug || categoryName
       .toLowerCase()
       .trim()
       .replace(/[^a-z0-9\s-]/g, '')
       .replace(/\s+/g, '-')
-      .replace(/-+/g, '-');
+      .replace(/-+/g, '-')
+      .replace(/^-+|-+$/g, '');
+    if (!slug) slug = `category-${order + 1}`;
 
     const subtitle = (typeof cat === 'object' && cat.subtitle) ? cat.subtitle : null;
     const showOnHome = (typeof cat === 'object' && cat.showOnHome !== undefined) ? (cat.showOnHome ? 1 : 0) : 1;
