@@ -101,7 +101,13 @@ export default function ShopperLanguageSection({ open, onToggle }) {
   const [languages, setLanguages] = useState([]);
   const [usage, setUsage] = useState(null);
 
-  const currentPlan = siteConfig?.subscription_plan || siteConfig?.plan || 'free';
+  // SiteContext exposes the plan as `subscriptionPlan` (camelCase). The
+  // legacy snake_case fallbacks stay for safety in case the context shape
+  // ever changes back.
+  const currentPlan = siteConfig?.subscriptionPlan
+    || siteConfig?.subscription_plan
+    || siteConfig?.plan
+    || 'free';
 
   useEffect(() => {
     if (!siteId) return;
