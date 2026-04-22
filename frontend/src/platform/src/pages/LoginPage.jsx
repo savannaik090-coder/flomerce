@@ -14,7 +14,7 @@ export default function LoginPage() {
   const [forgotMsg, setForgotMsg] = useState('');
   const [forgotError, setForgotError] = useState('');
   const { isAuthenticated, login, loading } = useAuth();
-  const { t } = useTranslation();
+  const { t } = useTranslation(['auth', 'common']);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -75,12 +75,12 @@ export default function LoginPage() {
         login(result.token, result.user);
         navigate('/dashboard');
       } else if (result.error?.includes('verify') || result.message?.includes('verify')) {
-        setError(t('auth.verifyEmailNotice'));
+        setError(t('verifyEmailNotice'));
       } else {
-        throw new Error(result.error || t('auth.loginFailed'));
+        throw new Error(result.error || t('loginFailed'));
       }
     } catch (err) {
-      setError(err.message || t('auth.loginFailed'));
+      setError(err.message || t('loginFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -92,7 +92,7 @@ export default function LoginPage() {
     setForgotError('');
     try {
       await requestPasswordReset(forgotEmail);
-      setForgotMsg(t('auth.resetSent'));
+      setForgotMsg(t('resetSent'));
     } catch (err) {
       setForgotError(err.message || 'Failed to send reset email');
     }
@@ -103,11 +103,11 @@ export default function LoginPage() {
   return (
     <div className="auth-wrapper">
       <div className="auth-card">
-        <h2>{t('auth.loginTitle')}</h2>
-        <p>{t('auth.loginSubtitle')}</p>
+        <h2>{t('loginTitle')}</h2>
+        <p>{t('loginSubtitle')}</p>
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label>{t('common.email')}</label>
+            <label>{t('common:email')}</label>
             <input
               type="email"
               placeholder="name@company.com"
@@ -117,7 +117,7 @@ export default function LoginPage() {
             />
           </div>
           <div className="form-group">
-            <label>{t('common.password')}</label>
+            <label>{t('common:password')}</label>
             <input
               type="password"
               placeholder="••••••••"
@@ -127,27 +127,27 @@ export default function LoginPage() {
             />
           </div>
           <button type="submit" className="btn btn-primary" style={{ width: '100%' }} disabled={submitting}>
-            {submitting ? t('auth.signingIn') : t('auth.signIn')}
+            {submitting ? t('signingIn') : t('signIn')}
           </button>
           <div id="google-signin-btn" className="google-btn-wrapper"></div>
           {error && <div className="error-msg">{error}</div>}
         </form>
         <div className="auth-link">
-          <a href="#" onClick={(e) => { e.preventDefault(); setShowForgotModal(true); }}>{t('auth.forgotPassword')}</a>
+          <a href="#" onClick={(e) => { e.preventDefault(); setShowForgotModal(true); }}>{t('forgotPassword')}</a>
         </div>
         <p className="auth-footer">
-          {t('auth.newToFlomerce')} <Link to="/signup">{t('auth.createAccount')}</Link>
+          {t('newToFlomerce')} <Link to="/signup">{t('createAccount')}</Link>
         </p>
       </div>
 
       {showForgotModal && (
         <div className="forgot-modal-overlay" onClick={() => setShowForgotModal(false)}>
           <div className="forgot-modal" onClick={(e) => e.stopPropagation()}>
-            <h3>{t('auth.forgotTitle')}</h3>
-            <p>{t('auth.forgotDesc')}</p>
+            <h3>{t('forgotTitle')}</h3>
+            <p>{t('forgotDesc')}</p>
             <form onSubmit={handleForgotPassword}>
               <div className="form-group">
-                <label>{t('common.email')}</label>
+                <label>{t('common:email')}</label>
                 <input
                   type="email"
                   required
@@ -157,8 +157,8 @@ export default function LoginPage() {
                 />
               </div>
               <div className="modal-actions">
-                <button type="button" className="btn btn-outline" onClick={() => setShowForgotModal(false)}>{t('common.cancel')}</button>
-                <button type="submit" className="btn btn-primary">{t('auth.sendResetLink')}</button>
+                <button type="button" className="btn btn-outline" onClick={() => setShowForgotModal(false)}>{t('common:cancel')}</button>
+                <button type="submit" className="btn btn-primary">{t('sendResetLink')}</button>
               </div>
               {forgotMsg && <div className="success-msg">{forgotMsg}</div>}
               {forgotError && <div className="error-msg">{forgotError}</div>}

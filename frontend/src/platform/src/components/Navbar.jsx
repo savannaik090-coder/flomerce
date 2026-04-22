@@ -6,7 +6,7 @@ import { LanguageSwitcher } from '../../../shared/i18n/index.js';
 
 export default function Navbar({ showMenu = false }) {
   const { isAuthenticated, logout } = useAuth();
-  const { t } = useTranslation();
+  const { t } = useTranslation('nav');
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
 
@@ -38,7 +38,7 @@ export default function Navbar({ showMenu = false }) {
       <button
         className={`nav-hamburger${menuOpen ? ' open' : ''}`}
         onClick={() => setMenuOpen(!menuOpen)}
-        aria-label={t('nav.toggleMenu')}
+        aria-label={t('toggleMenu')}
       >
         <span></span>
         <span></span>
@@ -48,21 +48,21 @@ export default function Navbar({ showMenu = false }) {
       <div className={`nav-links${menuOpen ? ' nav-open' : ''}`}>
         {showMenu && !isAuthenticated && (
           <>
-            <a href="#features" className="nav-link" onClick={(e) => { e.preventDefault(); scrollTo('features'); }}>{t('nav.features')}</a>
-            <a href="#pricing" className="nav-link" onClick={(e) => { e.preventDefault(); scrollTo('pricing'); }}>{t('nav.pricing')}</a>
-            <a href="#contact" className="nav-link" onClick={(e) => { e.preventDefault(); scrollTo('contact'); }}>{t('nav.contact')}</a>
+            <a href="#features" className="nav-link" onClick={(e) => { e.preventDefault(); scrollTo('features'); }}>{t('features')}</a>
+            <a href="#pricing" className="nav-link" onClick={(e) => { e.preventDefault(); scrollTo('pricing'); }}>{t('pricing')}</a>
+            <a href="#contact" className="nav-link" onClick={(e) => { e.preventDefault(); scrollTo('contact'); }}>{t('contact')}</a>
           </>
         )}
         <LanguageSwitcher compact />
         {isAuthenticated ? (
           <>
-            <Link to="/dashboard" className="nav-link">{t('nav.dashboard')}</Link>
-            <button onClick={() => { setMenuOpen(false); logout(); }} className="btn btn-outline">{t('nav.logout')}</button>
+            <Link to="/dashboard" className="nav-link">{t('dashboard')}</Link>
+            <button onClick={() => { setMenuOpen(false); logout(); }} className="btn btn-outline">{t('logout')}</button>
           </>
         ) : (
           <>
-            <Link to="/login" className="nav-link">{t('nav.login')}</Link>
-            <Link to="/signup" className="btn btn-primary">{t('nav.getStarted')}</Link>
+            <Link to="/login" className="nav-link">{t('login')}</Link>
+            <Link to="/signup" className="btn btn-primary">{t('getStarted')}</Link>
           </>
         )}
       </div>

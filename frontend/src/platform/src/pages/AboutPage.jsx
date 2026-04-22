@@ -5,23 +5,23 @@ import '../styles/legal.css';
 import { SUPPORT_EMAIL, PLATFORM_URL, PLATFORM_DOMAIN } from '../config.js';
 
 export default function AboutPage() {
-  const { t } = useTranslation();
+  const { t } = useTranslation('landing');
   return (
     <div className="legal-page">
       <div className="container">
         <Navbar />
         <div className="legal-content">
-          <h1>{t('landing.aboutTitle')}</h1>
-          <p className="legal-updated">{t('landing.aboutTagline')}</p>
+          <h1>{t('aboutTitle')}</h1>
+          <p className="legal-updated">{t('aboutTagline')}</p>
 
           <section>
-            <h2>{t('landing.aboutWhoTitle')}</h2>
+            <h2>{t('aboutWhoTitle')}</h2>
             <p>Flomerce is a software-as-a-service (SaaS) platform built to help small businesses, entrepreneurs, and creators launch their own professional e-commerce websites — without writing a single line of code. We believe that every business, no matter how small, deserves a powerful online presence.</p>
             <p>Based in Karwar, Karnataka, India, Flomerce was founded with a simple mission: make online selling accessible, affordable, and effortless for everyone.</p>
           </section>
 
           <section>
-            <h2>{t('landing.aboutWhatTitle')}</h2>
+            <h2>{t('aboutWhatTitle')}</h2>
             <p>Flomerce provides a complete, all-in-one platform for creating and managing online stores. Each store gets its own branded subdomain (e.g., your-store.{PLATFORM_DOMAIN}) and comes packed with everything needed to run a successful e-commerce business:</p>
             <ul>
               <li><strong>Store Builder:</strong> Create a fully functional online store in minutes with beautiful, ready-to-use templates</li>
@@ -37,13 +37,13 @@ export default function AboutPage() {
           </section>
 
           <section>
-            <h2>{t('landing.aboutMissionTitle')}</h2>
+            <h2>{t('aboutMissionTitle')}</h2>
             <p>We are on a mission to democratize e-commerce for small businesses across India and beyond. Traditional e-commerce solutions are often expensive, complex, and require technical expertise. Flomerce eliminates these barriers by providing an intuitive, affordable platform that anyone can use.</p>
             <p>Whether you sell jewellery, clothing, beauty products, or any other retail goods — Flomerce gives you the tools to build your brand, reach customers, and grow your business online.</p>
           </section>
 
           <section>
-            <h2>{t('landing.aboutHowTitle')}</h2>
+            <h2>{t('aboutHowTitle')}</h2>
             <ol>
               <li><strong>Sign Up:</strong> Create your free account in seconds — no credit card required</li>
               <li><strong>Build Your Store:</strong> Choose a template, add your brand name, logo, and products</li>
@@ -53,7 +53,7 @@ export default function AboutPage() {
           </section>
 
           <section>
-            <h2>{t('landing.aboutValuesTitle')}</h2>
+            <h2>{t('aboutValuesTitle')}</h2>
             <ul>
               <li><strong>Simplicity:</strong> We build tools that are easy to use, so you can focus on your business, not technology</li>
               <li><strong>Transparency:</strong> Clear pricing, no hidden fees, and honest communication</li>
@@ -63,7 +63,7 @@ export default function AboutPage() {
           </section>
 
           <section>
-            <h2>{t('landing.aboutContactTitle')}</h2>
+            <h2>{t('aboutContactTitle')}</h2>
             <p>We would love to hear from you. Whether you have questions, feedback, or need help getting started:</p>
             <p><strong>Flomerce</strong></p>
             <p><strong>Email:</strong> <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a></p>
@@ -75,13 +75,13 @@ export default function AboutPage() {
 
         <footer className="legal-footer">
           <div className="legal-footer-links">
-            <Link to="/about">{t('landing.footerAbout')}</Link>
-            <Link to="/terms">{t('landing.footerTerms')}</Link>
-            <Link to="/privacy-policy">{t('landing.footerPrivacy')}</Link>
-            <Link to="/refund-policy">{t('landing.footerRefund')}</Link>
-            <Link to="/shipping-policy">{t('landing.footerShipping')}</Link>
+            <Link to="/about">{t('footerAbout')}</Link>
+            <Link to="/terms">{t('footerTerms')}</Link>
+            <Link to="/privacy-policy">{t('footerPrivacy')}</Link>
+            <Link to="/refund-policy">{t('footerRefund')}</Link>
+            <Link to="/shipping-policy">{t('footerShipping')}</Link>
           </div>
-          <p>&copy; {new Date().getFullYear()} Flomerce. {t('landing.rightsReserved')}</p>
+          <p>&copy; {new Date().getFullYear()} Flomerce. {t('rightsReserved')}</p>
           <p style={{ color: '#94a3b8', fontSize: '0.75rem', marginTop: '0.5rem' }}>Karwar, Karnataka, India — 581400 | +91 9901954610 | {SUPPORT_EMAIL}</p>
         </footer>
       </div>

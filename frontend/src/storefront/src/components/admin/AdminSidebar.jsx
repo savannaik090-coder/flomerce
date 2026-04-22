@@ -3,22 +3,22 @@ import { useTranslation } from 'react-i18next';
 import { isFeatureAvailable, getRequiredPlan, PlanBadge } from './FeatureGate.jsx';
 
 const navItems = [
-  { id: 'dashboard', icon: 'fa-chart-line', labelKey: 'admin.sections.dashboard' },
-  { id: 'products', icon: 'fa-box', labelKey: 'admin.sections.products' },
-  { id: 'inventory', icon: 'fa-warehouse', labelKey: 'admin.sections.inventory' },
-  { id: 'orders', icon: 'fa-shopping-bag', labelKey: 'admin.sections.orders', badgeKey: 'pendingOrders' },
-  { id: 'customers', icon: 'fa-users', labelKey: 'admin.sections.customers' },
-  { id: 'revenue', icon: 'fa-money-bill-wave', labelKey: 'admin.sections.revenue', gatedFeature: 'revenue' },
-  { id: 'analytics', icon: 'fa-chart-bar', labelKey: 'admin.sections.analytics' },
-  { id: 'website', icon: 'fa-globe', labelKey: 'admin.sections.website' },
-  { id: 'seo', icon: 'fa-search', labelKey: 'admin.sections.seo' },
-  { id: 'notifications', icon: 'fa-bell', labelKey: 'admin.sections.notifications', gatedFeature: 'notifications' },
-  { id: 'billing', icon: 'fa-file-invoice-dollar', labelKey: 'admin.sections.billing', enterpriseOnly: true },
-  { id: 'settings', icon: 'fa-cog', labelKey: 'admin.sections.settings' },
+  { id: 'dashboard', icon: 'fa-chart-line', labelKey: 'sections.dashboard' },
+  { id: 'products', icon: 'fa-box', labelKey: 'sections.products' },
+  { id: 'inventory', icon: 'fa-warehouse', labelKey: 'sections.inventory' },
+  { id: 'orders', icon: 'fa-shopping-bag', labelKey: 'sections.orders', badgeKey: 'pendingOrders' },
+  { id: 'customers', icon: 'fa-users', labelKey: 'sections.customers' },
+  { id: 'revenue', icon: 'fa-money-bill-wave', labelKey: 'sections.revenue', gatedFeature: 'revenue' },
+  { id: 'analytics', icon: 'fa-chart-bar', labelKey: 'sections.analytics' },
+  { id: 'website', icon: 'fa-globe', labelKey: 'sections.website' },
+  { id: 'seo', icon: 'fa-search', labelKey: 'sections.seo' },
+  { id: 'notifications', icon: 'fa-bell', labelKey: 'sections.notifications', gatedFeature: 'notifications' },
+  { id: 'billing', icon: 'fa-file-invoice-dollar', labelKey: 'sections.billing', enterpriseOnly: true },
+  { id: 'settings', icon: 'fa-cog', labelKey: 'sections.settings' },
 ];
 
 export default function AdminSidebar({ activeSection, onSectionChange, isOpen, onClose, brandName, badges, permissions, isOwner, currentPlan }) {
-  const { t } = useTranslation();
+  const { t } = useTranslation('admin');
   const visibleItems = navItems.filter(item => {
     if (item.enterpriseOnly && currentPlan !== 'enterprise') return false;
     if (isOwner) return true;
@@ -37,7 +37,7 @@ export default function AdminSidebar({ activeSection, onSectionChange, isOpen, o
         <div className="sidebar-header">
           <div className="sidebar-brand">
             <i className="fas fa-store" />
-            <span>{brandName || t('admin.panelTitle')}</span>
+            <span>{brandName || t('panelTitle')}</span>
           </div>
         </div>
         <nav className="sidebar-nav">

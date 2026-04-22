@@ -9,7 +9,7 @@ const LABELS = { hi: 'हिन्दी (Hindi)', es: 'Español (Spanish)', 'zh
 export default function I18nAdminPanel() {
   // Bind explicit namespaces this panel reads from. With these declared,
   // i18next short-circuits the per-key fallbackNS walk and resolves every
-  // `t('owner.…')` / `t('common.…')` lookup in the named bundle directly,
+  // `t('…')` / `t('common:…')` lookup in the named bundle directly,
   // which is the recommended namespaced-access pattern. (Legacy components
   // that haven't been migrated yet still work via the global fallbackNS
   // chain registered in shared/i18n/init.js.)
@@ -43,12 +43,12 @@ export default function I18nAdminPanel() {
       const data = res?.data || res;
       const s = data?.stats;
       const detail = s ? ` (${s.translated} translated, ${s.kept} reused)` : '';
-      toast.success(t('owner.i18n.regenerated', { lang, count: data.keyCount || '?' }) + detail);
+      toast.success(t('i18n.regenerated', { lang, count: data.keyCount || '?' }) + detail);
       await loadLocales();
     } catch (e) {
       const msg = e?.message || '';
-      if (/rate limit/i.test(msg)) toast.error(t('owner.i18n.rateLimited'));
-      else toast.error(msg || t('owner.i18n.regenerateFailed'));
+      if (/rate limit/i.test(msg)) toast.error(t('i18n.rateLimited'));
+      else toast.error(msg || t('i18n.regenerateFailed'));
     } finally {
       setBusyLang(null);
     }
@@ -89,12 +89,12 @@ export default function I18nAdminPanel() {
   return (
     <div className="oa-section">
       <div className="oa-card">
-        <h3>{t('owner.i18n.title')}</h3>
-        <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '1rem' }}>{t('owner.i18n.desc')}</p>
+        <h3>{t('i18n.title')}</h3>
+        <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '1rem' }}>{t('i18n.desc')}</p>
 
         <div className="oa-form-group" style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
           <div style={{ flex: 1 }}>
-            <label>{t('owner.i18n.selectLocale')}</label>
+            <label>{t('i18n.selectLocale')}</label>
             <select value={target} onChange={(e) => setTarget(e.target.value)} style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #e2e8f0' }}>
               {PRESHIPPED.map((l) => <option key={l} value={l}>{LABELS[l] || l}</option>)}
             </select>
@@ -104,7 +104,7 @@ export default function I18nAdminPanel() {
             disabled={busyLang === target}
             onClick={() => regenerate(target)}
           >
-            {busyLang === target ? t('owner.i18n.regenerating') : t('owner.i18n.regenerate')}
+            {busyLang === target ? t('i18n.regenerating') : t('i18n.regenerate')}
           </button>
         </div>
       </div>
@@ -137,20 +137,20 @@ export default function I18nAdminPanel() {
       )}
 
       <div className="oa-card" style={{ marginTop: '1rem' }}>
-        <h3>{t('owner.i18n.cachedLocales')}</h3>
+        <h3>{t('i18n.cachedLocales')}</h3>
         {loading ? (
-          <p className="oa-empty">{t('common.loading')}</p>
+          <p className="oa-empty">{t('common:loading')}</p>
         ) : locales.length === 0 ? (
-          <p className="oa-empty">{t('owner.i18n.noLocales')}</p>
+          <p className="oa-empty">{t('i18n.noLocales')}</p>
         ) : (
           <table className="oa-table" style={{ width: '100%', marginTop: '0.5rem' }}>
             <thead>
               <tr>
-                <th style={{ textAlign: 'left' }}>{t('common.language')}</th>
+                <th style={{ textAlign: 'left' }}>{t('common:language')}</th>
                 <th>Status</th>
                 <th>Size</th>
-                <th>{t('owner.i18n.lastUpdated')}</th>
-                <th style={{ textAlign: 'right' }}>{t('common.actions')}</th>
+                <th>{t('i18n.lastUpdated')}</th>
+                <th style={{ textAlign: 'right' }}>{t('common:actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -173,9 +173,9 @@ export default function I18nAdminPanel() {
                     <td>{l.uploaded ? new Date(l.uploaded).toLocaleString() : '—'}</td>
                     <td style={{ textAlign: 'right' }}>
                       <button className="oa-btn oa-btn-outline" disabled={busyLang === l.lang} onClick={() => regenerate(l.lang)} style={{ marginRight: 6 }}>
-                        {busyLang === l.lang ? t('owner.i18n.regenerating') : t('owner.i18n.regenerate')}
+                        {busyLang === l.lang ? t('i18n.regenerating') : t('i18n.regenerate')}
                       </button>
-                      <button className="oa-btn oa-btn-outline" onClick={() => purge(l.lang)}>{t('owner.i18n.purge')}</button>
+                      <button className="oa-btn oa-btn-outline" onClick={() => purge(l.lang)}>{t('i18n.purge')}</button>
                     </td>
                   </tr>
                 );

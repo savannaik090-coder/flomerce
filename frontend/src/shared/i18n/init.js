@@ -3,17 +3,12 @@ import { initReactI18next } from 'react-i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
 import { NAMESPACE_FILES, NAMESPACES } from './locales/en/index.js';
 
-// Only English is bundled into the JS payload — it is the source catalog and
-// must always be available for fallback. Every other language (including the
-// four hand-curated launch languages) is fetched from the platform's locale
-// API on demand. The API serves the seed translation instantly on first hit
-// and the smart-refreshed version after that, so editing English in one place
-// (the EN files imported above) is the only change needed when copy changes.
-//
-// The non-English fetch returns ONE merged nested catalog (the worker bundles
-// every namespace into one R2 object per language). We expand that response
-// back into per-namespace resources at load time using the same filenames the
-// English source uses, keeping the namespace API consistent across languages.
+// English is bundled into the JS payload — it is the source catalog and must
+// always be available as the fallback language. Every other language is
+// fetched from the platform's locale API on demand; the worker serves the
+// seed translation instantly on first hit and the smart-refreshed version
+// after that. The fetch response is one merged catalog whose top-level keys
+// ARE the namespace names, so per-namespace `read()` slices it locally.
 const BUNDLED_NS = { en: NAMESPACE_FILES };
 
 // PRESHIPPED is what the language switcher offers out of the box. These are
@@ -86,17 +81,11 @@ const backendPlugin = {
       callback(null, NAMESPACE_FILES[ns] || {});
       return;
     }
-    // Every non-English locale comes from the worker — single source of truth.
-    // The worker serves a hand-curated seed instantly on first hit and the
-    // smart-refreshed version after that, so editing English in one place
-    // automatically propagates everywhere on the next refresh. The response
-    // is a merged catalog whose shape mirrors the merged English source
-    // (each namespace's keys nested under its own top-level wrapper key),
-    // so each i18next namespace gets its slice — `landing` namespace gets
-    // `{landing: {...}}`, `common` gets `{common: {...}}`, etc.
+    // Worker response is one merged catalog whose top-level keys are the
+    // namespace names. Slice out the requested namespace.
     const merged = await loadMergedLocale(norm);
     if (merged && Object.prototype.hasOwnProperty.call(merged, ns)) {
-      callback(null, { [ns]: merged[ns] });
+      callback(null, merged[ns]);
     } else {
       // Always succeed with the English slice so init completes and t() resolves.
       callback(null, NAMESPACE_FILES[ns] || {});
@@ -118,18 +107,13 @@ export function initI18n(options = {}) {
       load: 'currentOnly',
       cleanCode: true,
       nonExplicitSupportedLngs: true,
-      // Each English source file owns one i18next namespace. `common` is the
-      // default so call sites without an explicit namespace (e.g. `t('save')`
-      // or `t('loading')`) hit the right bucket. Components that own keys in
-      // another namespace use `useTranslation('<ns>')` and short keys; legacy
-      // dotted call sites such as `t('landing.heroBadge')` are resolved via
-      // `fallbackNS` walking every registered namespace — i18next looks for
-      // the nested path `landing.heroBadge` in each, finds it in `landing`,
-      // and returns the value. This keeps any not-yet-migrated call site
-      // working without code changes while we sweep components.
+      // Each source file owns one i18next namespace; `common` is the default
+      // so `t('save')` resolves there without a prefix. Components that read
+      // from another bundle declare it with `useTranslation('<ns>')` and
+      // call short keys (`t('heroBadge')`). Cross-namespace access uses the
+      // explicit `ns:` prefix syntax — `t('common:save')`.
       ns: NAMESPACES,
       defaultNS: 'common',
-      fallbackNS: NAMESPACES,
       resources: Object.fromEntries(
         Object.entries(BUNDLED_NS).map(([lng, namespaces]) => [lng, { ...namespaces }])
       ),

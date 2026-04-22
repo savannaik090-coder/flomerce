@@ -10,7 +10,7 @@ const LANG_LABELS = {
 };
 
 export default function LanguageSwitcher({ className = '', compact = false }) {
-  const { i18n, t } = useTranslation();
+  const { i18n, t } = useTranslation('common');
   const current = (i18n.language || 'en').split('-')[0] === 'zh' ? 'zh-CN' : (i18n.language || 'en');
 
   function handleChange(e) {
@@ -24,7 +24,7 @@ export default function LanguageSwitcher({ className = '', compact = false }) {
       className={`flomerce-lang-switcher ${className}`}
       value={PRESHIPPED.includes(current) ? current : 'en'}
       onChange={handleChange}
-      aria-label={t('common.language', 'Language')}
+      aria-label={t('language', 'Language')}
       style={{
         padding: compact ? '4px 8px' : '6px 10px',
         fontSize: compact ? 12 : 13,

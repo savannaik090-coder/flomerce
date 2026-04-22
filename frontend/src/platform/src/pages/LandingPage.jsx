@@ -33,7 +33,7 @@ function useScrollReveal() {
 }
 
 export default function LandingPage() {
-  const { t } = useTranslation();
+  const { t } = useTranslation('landing');
   const [showPwa, setShowPwa] = useState(false);
   const [videoPlaying, setVideoPlaying] = useState(false);
   const videoRef = useRef(null);
@@ -97,24 +97,24 @@ export default function LandingPage() {
 
         <section className="hero">
           <div className="hero-content reveal">
-            <div className="hero-badge">{t('landing.heroBadge')}</div>
-            <h1>{t('landing.heroTitleLine1')}<br /><span className="hero-accent">{t('landing.heroTitleLine2')}</span><br />{t('landing.heroTitleLine3')}</h1>
-            <p className="hero-desc">{t('landing.heroDesc')}</p>
+            <div className="hero-badge">{t('heroBadge')}</div>
+            <h1>{t('heroTitleLine1')}<br /><span className="hero-accent">{t('heroTitleLine2')}</span><br />{t('heroTitleLine3')}</h1>
+            <p className="hero-desc">{t('heroDesc')}</p>
             <div className="hero-buttons">
               <Link to="/signup" className="btn btn-hero-primary">
-                {t('landing.heroCtaPrimary')}
+                {t('heroCtaPrimary')}
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
               </Link>
-              <a href="#features" className="btn btn-hero-ghost" onClick={(e) => { e.preventDefault(); document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' }); }}>{t('landing.heroCtaSecondary')}</a>
+              <a href="#features" className="btn btn-hero-ghost" onClick={(e) => { e.preventDefault(); document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' }); }}>{t('heroCtaSecondary')}</a>
             </div>
           </div>
         </section>
 
         <section className="landing-section teaser-section reveal">
           <div className="section-header">
-            <span className="section-pill">{t('landing.demoPill')}</span>
-            <h2>{t('landing.demoTitle')}</h2>
-            <p>{t('landing.demoSubtitle')}</p>
+            <span className="section-pill">{t('demoPill')}</span>
+            <h2>{t('demoTitle')}</h2>
+            <p>{t('demoSubtitle')}</p>
           </div>
           <div className="teaser-wrapper">
             <div className="teaser-browser-frame">
@@ -131,7 +131,7 @@ export default function LandingPage() {
                   <source src="/api/upload/video?key=VID_20260331_002038.mp4" type="video/mp4" />
                 </video>
                 {!videoPlaying && (
-                  <button className="teaser-play-btn" onClick={handlePlayVideo} aria-label={t('landing.playVideo')}>
+                  <button className="teaser-play-btn" onClick={handlePlayVideo} aria-label={t('playVideo')}>
                     <svg width="52" height="52" viewBox="0 0 52 52" fill="none"><circle cx="26" cy="26" r="26" fill="rgba(0,0,0,0.45)"/><path d="M21 16l14 10-14 10V16z" fill="#fff"/></svg>
                   </button>
                 )}
@@ -142,9 +142,9 @@ export default function LandingPage() {
 
         <section id="features" className="landing-section reveal">
           <div className="section-header">
-            <span className="section-pill">{t('landing.featuresPill')}</span>
-            <h2>{t('landing.featuresTitle')}</h2>
-            <p>{t('landing.featuresSubtitle')}</p>
+            <span className="section-pill">{t('featuresPill')}</span>
+            <h2>{t('featuresTitle')}</h2>
+            <p>{t('featuresSubtitle')}</p>
           </div>
           <div className="features-grid">
             {features.map((f) => (
@@ -159,9 +159,9 @@ export default function LandingPage() {
 
         <section id="pricing" className="landing-section reveal">
           <div className="section-header">
-            <span className="section-pill">{t('landing.pricingPill')}</span>
-            <h2>{t('landing.pricingTitle')}</h2>
-            <p>{t('landing.pricingSubtitle')}</p>
+            <span className="section-pill">{t('pricingPill')}</span>
+            <h2>{t('pricingTitle')}</h2>
+            <p>{t('pricingSubtitle')}</p>
           </div>
           <LandingPricing />
         </section>
@@ -174,25 +174,25 @@ export default function LandingPage() {
           <div className="footer-top">
             <div className="footer-brand">
               <img src="/assets/images/flomerce-logo.png" alt="Flomerce" className="footer-logo" />
-              <p>{t('landing.footerTagline')}</p>
+              <p>{t('footerTagline')}</p>
             </div>
             <div className="footer-links-group">
-              <h4>{t('landing.footerCompany')}</h4>
-              <Link to="/about">{t('landing.footerAbout')}</Link>
-              <Link to="/terms">{t('landing.footerTerms')}</Link>
-              <Link to="/privacy-policy">{t('landing.footerPrivacy')}</Link>
-              <Link to="/refund-policy">{t('landing.footerRefund')}</Link>
-              <Link to="/shipping-policy">{t('landing.footerShipping')}</Link>
+              <h4>{t('footerCompany')}</h4>
+              <Link to="/about">{t('footerAbout')}</Link>
+              <Link to="/terms">{t('footerTerms')}</Link>
+              <Link to="/privacy-policy">{t('footerPrivacy')}</Link>
+              <Link to="/refund-policy">{t('footerRefund')}</Link>
+              <Link to="/shipping-policy">{t('footerShipping')}</Link>
             </div>
             <div className="footer-links-group">
-              <h4>{t('landing.footerContact')}</h4>
+              <h4>{t('footerContact')}</h4>
               <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>
               <a href="tel:+919901954610">+91 9901954610</a>
               <span>Karwar, Karnataka, India — 581400</span>
             </div>
           </div>
           <div className="footer-bottom">
-            <p>&copy; {new Date().getFullYear()} Flomerce. {t('landing.rightsReserved')}</p>
+            <p>&copy; {new Date().getFullYear()} Flomerce. {t('rightsReserved')}</p>
           </div>
         </footer>
       </div>
@@ -201,12 +201,12 @@ export default function LandingPage() {
         <div className="pwa-info">
           <img src="/assets/images/flomerce-logo.png" alt="Logo" className="pwa-logo" />
           <div className="pwa-text">
-            <h4>{t('landing.pwaInstallTitle')}</h4>
-            <p>{t('landing.pwaInstallDesc')}</p>
+            <h4>{t('pwaInstallTitle')}</h4>
+            <p>{t('pwaInstallDesc')}</p>
           </div>
         </div>
         <div className="pwa-actions">
-          <button className="btn-install" onClick={handleInstall}>{t('landing.pwaInstall')}</button>
+          <button className="btn-install" onClick={handleInstall}>{t('pwaInstall')}</button>
           <button className="btn-close-pwa" onClick={() => setShowPwa(false)}>&times;</button>
         </div>
       </div>

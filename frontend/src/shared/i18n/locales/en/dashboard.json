@@ -1,19 +1,17 @@
 {
-  "dashboard": {
-    "tabs": {
-      "dashboard": "Dashboard",
-      "admin": "Admin",
-      "billing": "Billing",
-      "staff": "Staff",
-      "account": "Account"
-    },
-    "myWebsites": "My Websites",
-    "loadingWebsites": "Loading your websites...",
-    "noWebsitesYet": "You haven't created any websites yet.",
-    "createFirstWebsite": "Create Your First Website",
-    "createNewSite": "Create New Site",
+  "tabs": {
+    "dashboard": "Dashboard",
+    "admin": "Admin",
     "billing": "Billing",
-    "staffManagement": "Staff Management",
+    "staff": "Staff",
     "account": "Account"
-  }
+  },
+  "myWebsites": "My Websites",
+  "loadingWebsites": "Loading your websites...",
+  "noWebsitesYet": "You haven't created any websites yet.",
+  "createFirstWebsite": "Create Your First Website",
+  "createNewSite": "Create New Site",
+  "billing": "Billing",
+  "staffManagement": "Staff Management",
+  "account": "Account"
 }

@@ -20,7 +20,7 @@ export default function SignupPage() {
   const { isAuthenticated, login, loading } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
-  const { t } = useTranslation();
+  const { t } = useTranslation(['auth', 'common', 'landing']);
 
   useEffect(() => {
     if (!loading && isAuthenticated) {
@@ -64,7 +64,7 @@ export default function SignupPage() {
 
   async function handleGoogleResponse(response) {
     if (!agreedTermsRef.current) {
-      setError(t('auth.termsAgreementRequired'));
+      setError(t('termsAgreementRequired'));
       return;
     }
     try {
@@ -83,12 +83,12 @@ export default function SignupPage() {
     setError('');
 
     if (password.length < 8) {
-      setError(t('auth.passwordMin'));
+      setError(t('passwordMin'));
       return;
     }
 
     if (password !== confirmPassword) {
-      setError(t('auth.passwordsNoMatch'));
+      setError(t('passwordsNoMatch'));
       return;
     }
 
@@ -111,7 +111,7 @@ export default function SignupPage() {
   async function handleResend() {
     try {
       await resendVerification(registeredEmail);
-      toast.success(t('auth.verifyEmailResent'));
+      toast.success(t('verifyEmailResent'));
     } catch (err) {
       toast.error(err.message || 'Failed to resend');
     }
@@ -122,14 +122,14 @@ export default function SignupPage() {
   return (
     <div className="auth-wrapper">
       <div className="auth-card">
-        <h2>{t('auth.signupTitle')}</h2>
-        <p>{t('auth.signupSubtitle')}</p>
+        <h2>{t('signupTitle')}</h2>
+        <p>{t('signupSubtitle')}</p>
 
         {!showSuccess ? (
           <>
             <form onSubmit={handleSubmit}>
               <div className="form-group">
-                <label>{t('auth.fullName')}</label>
+                <label>{t('fullName')}</label>
                 <input
                   type="text"
                   placeholder="John Doe"
@@ -139,7 +139,7 @@ export default function SignupPage() {
                 />
               </div>
               <div className="form-group">
-                <label>{t('common.email')}</label>
+                <label>{t('common:email')}</label>
                 <input
                   type="email"
                   placeholder="name@company.com"
@@ -149,7 +149,7 @@ export default function SignupPage() {
                 />
               </div>
               <div className="form-group">
-                <label>{t('common.password')}</label>
+                <label>{t('common:password')}</label>
                 <input
                   type="password"
                   placeholder="••••••••"
@@ -160,7 +160,7 @@ export default function SignupPage() {
                 />
               </div>
               <div className="form-group">
-                <label>{t('auth.confirmPassword')}</label>
+                <label>{t('confirmPassword')}</label>
                 <input
                   type="password"
                   placeholder="••••••••"
@@ -172,26 +172,26 @@ export default function SignupPage() {
               <div className="terms-agree-group">
                 <input type="checkbox" id="agree-terms" required checked={agreedTerms} onChange={(e) => setAgreedTerms(e.target.checked)} />
                 <label htmlFor="agree-terms">
-                  {t('auth.agreeTerms')} <Link to="/terms" target="_blank">{t('landing.footerTerms')}</Link>, <Link to="/privacy-policy" target="_blank">{t('landing.footerPrivacy')}</Link>, {t('auth.agreeTermsAnd')} <Link to="/refund-policy" target="_blank">{t('landing.footerRefund')}</Link>.
+                  {t('agreeTerms')} <Link to="/terms" target="_blank">{t('landing:footerTerms')}</Link>, <Link to="/privacy-policy" target="_blank">{t('landing:footerPrivacy')}</Link>, {t('agreeTermsAnd')} <Link to="/refund-policy" target="_blank">{t('landing:footerRefund')}</Link>.
                 </label>
               </div>
               <button type="submit" className="btn btn-primary" style={{ width: '100%' }} disabled={submitting}>
-                {submitting ? t('auth.creatingAccount') : t('auth.createAccountBtn')}
+                {submitting ? t('creatingAccount') : t('createAccountBtn')}
               </button>
               <div id="google-signin-btn" className="google-btn-wrapper"></div>
               {error && <div className="error-msg">{error}</div>}
             </form>
             <p className="auth-footer">
-              {t('auth.alreadyHaveAccount')} <Link to="/login">{t('auth.signIn')}</Link>
+              {t('alreadyHaveAccount')} <Link to="/login">{t('signIn')}</Link>
             </p>
           </>
         ) : (
           <div className="success-box">
-            <h3>{t('auth.verificationRequired')}</h3>
-            <p>{t('auth.verificationDesc')}</p>
-            <button className="btn btn-outline" onClick={handleResend}>{t('auth.resendEmail')}</button>
+            <h3>{t('verificationRequired')}</h3>
+            <p>{t('verificationDesc')}</p>
+            <button className="btn btn-outline" onClick={handleResend}>{t('resendEmail')}</button>
             <p className="auth-footer" style={{ marginTop: '1rem' }}>
-              <Link to="/login">{t('auth.backToLogin')}</Link>
+              <Link to="/login">{t('backToLogin')}</Link>
             </p>
           </div>
         )}

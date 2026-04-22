@@ -6,7 +6,7 @@ import { formatPrice, getAdminCurrency } from '../../utils/priceFormatter.js';
 import { parseAsUTC, formatDateShortForAdmin } from '../../utils/dateFormatter.js';
 
 export default function CustomersSection() {
-  const { t } = useTranslation();
+  const { t } = useTranslation(['customers', 'common']);
   const { siteConfig } = useContext(SiteContext);
   const [customers, setCustomers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -29,7 +29,7 @@ export default function CustomersSection() {
         if (!customerMap[email]) {
           customerMap[email] = {
             email,
-            name: order.customer_name || order.name || t('customers.guest'),
+            name: order.customer_name || order.name || t('guest'),
             phone: order.phone || order.customer_phone || '',
             orderCount: 0,
             totalSpent: 0,
@@ -65,7 +65,7 @@ export default function CustomersSection() {
       <div className="search-bar">
         <input
           type="text"
-          placeholder={t('customers.searchPlaceholder')}
+          placeholder={t('searchPlaceholder')}
           value={searchTerm}
           onChange={e => setSearchTerm(e.target.value)}
         />
@@ -74,25 +74,25 @@ export default function CustomersSection() {
       {filtered.length === 0 ? (
         <div className="empty-state">
           <i className="fas fa-users" />
-          <h3>{t('customers.noneFound')}</h3>
-          <p>{t('customers.derivedFromOrders')}</p>
+          <h3>{t('noneFound')}</h3>
+          <p>{t('derivedFromOrders')}</p>
         </div>
       ) : (
         <div className="card">
           <div className="card-header">
-            <h3 className="card-title">{t('customers.title')} ({filtered.length})</h3>
+            <h3 className="card-title">{t('title')} ({filtered.length})</h3>
           </div>
           <div className="card-content" style={{ padding: 0 }}>
             <div className="table-container">
               <table>
                 <thead>
                   <tr>
-                    <th style={{ minWidth: 140 }}>{t('common.name')}</th>
-                    <th style={{ minWidth: 200 }}>{t('common.email')}</th>
-                    <th style={{ minWidth: 130 }}>{t('customers.phone')}</th>
-                    <th style={{ minWidth: 80 }}>{t('customers.orders')}</th>
-                    <th style={{ minWidth: 110 }}>{t('customers.totalSpent')}</th>
-                    <th style={{ minWidth: 110 }}>{t('customers.lastOrder')}</th>
+                    <th style={{ minWidth: 140 }}>{t('common:name')}</th>
+                    <th style={{ minWidth: 200 }}>{t('common:email')}</th>
+                    <th style={{ minWidth: 130 }}>{t('phone')}</th>
+                    <th style={{ minWidth: 80 }}>{t('orders')}</th>
+                    <th style={{ minWidth: 110 }}>{t('totalSpent')}</th>
+                    <th style={{ minWidth: 110 }}>{t('lastOrder')}</th>
                   </tr>
                 </thead>
                 <tbody>

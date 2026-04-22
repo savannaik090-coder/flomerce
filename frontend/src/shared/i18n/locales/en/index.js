@@ -1,13 +1,10 @@
 // Single import point for the English source catalog. Each JSON file owns
-// exactly one i18next namespace and contains that namespace's keys in their
-// natural ("unwrapped") form — e.g. `landing.json` holds `{heroBadge: "..."}`,
-// not `{landing: {heroBadge: "..."}}`. This is the shape react-i18next wants
-// when you call `useTranslation('landing')` + `t('heroBadge')`.
-//
-// To add a new namespace, drop a `<name>.json` file in this directory and
-// add it to NAMESPACE_FILES below. The backend (i18n-worker) re-wraps each
-// file under its namespace name when building EN_CATALOG so the per-key SHA
-// fingerprints stored in R2 stay byte-identical to the pre-split layout.
+// exactly one i18next namespace and contains that namespace's keys at the
+// top level (`landing.json` = `{heroBadge: "..."}`). This is the shape
+// react-i18next wants when you call `useTranslation('landing')` and then
+// `t('heroBadge')`. The backend (`i18n-worker.js`) wraps each file under
+// its namespace name when assembling EN_CATALOG so the per-key SHA
+// fingerprints in R2 stay byte-identical to the pre-split layout.
 import common from './common.json';
 import nav from './nav.json';
 import languages from './languages.json';

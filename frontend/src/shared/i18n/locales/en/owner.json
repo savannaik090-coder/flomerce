@@ -1,30 +1,28 @@
 {
-  "owner": {
-    "tabs": {
-      "overview": "Overview",
-      "users": "Users",
-      "sites": "Websites",
-      "databases": "Databases",
-      "plans": "Plans",
-      "enterprise": "Enterprise",
-      "settings": "Settings",
-      "i18n": "Translations"
-    },
-    "i18n": {
-      "title": "Admin UI Translations",
-      "desc": "Pre-shipped languages: English, Hindi, Spanish, Simplified Chinese, Arabic. Other locales are auto-generated via Microsoft Translator on first request and cached in R2 storage.",
-      "regenerate": "Regenerate",
-      "regenerating": "Regenerating...",
-      "regenerated": "Regenerated {{lang}} successfully ({{count}} keys).",
-      "regenerateFailed": "Regeneration failed",
-      "rateLimited": "Rate limit reached for this locale (5/day). Try again tomorrow.",
-      "cachedLocales": "Cached locales",
-      "noLocales": "No locales cached yet.",
-      "lastUpdated": "Last updated",
-      "keyCount": "Keys",
-      "selectLocale": "Select locale to regenerate",
-      "configureFirst": "Configure Microsoft Translator credentials in Settings first.",
-      "purge": "Purge cache"
-    }
+  "tabs": {
+    "overview": "Overview",
+    "users": "Users",
+    "sites": "Websites",
+    "databases": "Databases",
+    "plans": "Plans",
+    "enterprise": "Enterprise",
+    "settings": "Settings",
+    "i18n": "Translations"
+  },
+  "i18n": {
+    "title": "Admin UI Translations",
+    "desc": "Pre-shipped languages: English, Hindi, Spanish, Simplified Chinese, Arabic. Other locales are auto-generated via Microsoft Translator on first request and cached in R2 storage.",
+    "regenerate": "Regenerate",
+    "regenerating": "Regenerating...",
+    "regenerated": "Regenerated {{lang}} successfully ({{count}} keys).",
+    "regenerateFailed": "Regeneration failed",
+    "rateLimited": "Rate limit reached for this locale (5/day). Try again tomorrow.",
+    "cachedLocales": "Cached locales",
+    "noLocales": "No locales cached yet.",
+    "lastUpdated": "Last updated",
+    "keyCount": "Keys",
+    "selectLocale": "Select locale to regenerate",
+    "configureFirst": "Configure Microsoft Translator credentials in Settings first.",
+    "purge": "Purge cache"
   }
 }
