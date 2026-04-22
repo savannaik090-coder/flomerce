@@ -15,10 +15,22 @@ export async function translateBatch(env, texts, targetLang, sourceLang = 'en') 
   if (!creds) {
     throw new Error('Microsoft Translator credentials are not configured.');
   }
+  return translateBatchWithCreds(texts, targetLang, sourceLang, creds);
+}
+
+/**
+ * Per-call translator that takes EXPLICIT merchant credentials rather than
+ * reading from platform_settings. This is used by System B (per-site shopper
+ * translation proxy + the settings "Test" button) so a merchant's key is
+ * never confused with the platform-owned key used by System A.
+ */
+export async function translateBatchWithCreds(texts, targetLang, sourceLang, creds) {
+  if (!Array.isArray(texts) || texts.length === 0) return [];
+  if (!creds) throw new Error('Translator credentials missing.');
   const { apiKey, region } = creds;
   if (!apiKey) throw new Error('Translator API key missing.');
 
-  const url = `${TRANSLATE_ENDPOINT}&from=${encodeURIComponent(sourceLang)}&to=${encodeURIComponent(targetLang)}&textType=plain`;
+  const url = `${TRANSLATE_ENDPOINT}&from=${encodeURIComponent(sourceLang || 'en')}&to=${encodeURIComponent(targetLang)}&textType=plain`;
   const out = [];
 
   for (const group of chunk(texts, MAX_BATCH)) {

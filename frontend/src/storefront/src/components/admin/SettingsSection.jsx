@@ -9,6 +9,7 @@ import { COUNTRIES, getStatesForCountry } from '../../utils/countryStates.js';
 import PhoneInput from '../ui/PhoneInput.jsx';
 import { API_BASE, PLATFORM_DOMAIN } from '../../config.js';
 import { isPlanSufficient } from './FeatureGate.jsx';
+import ShopperLanguageSection from './ShopperLanguageSection.jsx';
 
 export default function SettingsSection() {
   const { siteConfig, refetchSite } = useContext(SiteContext);
@@ -1545,6 +1546,11 @@ export default function SettingsSection() {
             )}
           </div>}
         </div>
+
+        <ShopperLanguageSection
+          open={isSectionOpen('shopperLanguage')}
+          onToggle={() => toggleSection('shopperLanguage')}
+        />
 
         <div className="card" style={{ marginBottom: 20 }}>
           <CollapsibleHeader sectionKey="payment" title="Payment Methods" />

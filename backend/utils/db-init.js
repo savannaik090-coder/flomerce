@@ -351,6 +351,11 @@ export async function ensureTablesExist(env) {
       { col: 'emailed_at', table: 'enterprise_usage_monthly', sql: 'ALTER TABLE enterprise_usage_monthly ADD COLUMN emailed_at TEXT' },
       // 0017_add_site_content_language: merchant-authored content language per site.
       { col: 'content_language', table: 'sites', sql: "ALTER TABLE sites ADD COLUMN content_language TEXT NOT NULL DEFAULT 'en'" },
+      // 0018_add_site_translator_keys: per-site Microsoft Translator credentials.
+      { col: 'translator_api_key_encrypted', table: 'sites', sql: 'ALTER TABLE sites ADD COLUMN translator_api_key_encrypted TEXT' },
+      { col: 'translator_region', table: 'sites', sql: 'ALTER TABLE sites ADD COLUMN translator_region TEXT' },
+      { col: 'translator_enabled', table: 'sites', sql: 'ALTER TABLE sites ADD COLUMN translator_enabled INTEGER DEFAULT 0' },
+      { col: 'translator_languages', table: 'sites', sql: 'ALTER TABLE sites ADD COLUMN translator_languages TEXT' },
     ];
     for (const m of migrations) {
       try {

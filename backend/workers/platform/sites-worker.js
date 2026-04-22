@@ -7,6 +7,8 @@ import { resolveSiteDBById, getSiteConfig, getSiteWithConfig } from '../../utils
 import { trackD1Write, trackD1Update, estimateRowBytes, normalizePlanName, getPlanLimitsConfig, recordMediaFile } from '../../utils/usage-tracker.js';
 import { purgeStorefrontCache } from '../../utils/cache.js';
 import { SUPPORTED_LOCALES } from './i18n-worker.js';
+import { encryptSecret, decryptSecret, maskSecret } from '../../utils/crypto.js';
+import { translateBatchWithCreds } from '../../utils/translator.js';
 
 export async function handleSites(request, env, path, ctx) {
   const corsResponse = handleCORS(request);
@@ -34,6 +36,29 @@ export async function handleSites(request, env, path, ctx) {
       if (!siteAdmin) return errorResponse('Unauthorized', 401, 'UNAUTHORIZED');
     }
     return handleConvertCurrency(request, env, siteId);
+  }
+
+  if (siteId && subResource === 'translator-settings') {
+    let authorized = false;
+    const user = await validateAuth(request, env);
+    if (user) {
+      const ownedSite = await env.DB.prepare('SELECT id FROM sites WHERE id = ? AND user_id = ?').bind(siteId, user.id).first();
+      if (ownedSite) authorized = true;
+    }
+    if (!authorized) {
+      const siteAdmin = await validateSiteAdmin(request, env, siteId);
+      if (!siteAdmin) return errorResponse('Unauthorized', 401, 'UNAUTHORIZED');
+    }
+    const action = pathParts[4];
+    if (action === 'test' && method === 'POST') {
+      return testSiteTranslator(request, env, siteId);
+    }
+    if (!action) {
+      if (method === 'GET') return getSiteTranslatorSettings(env, siteId);
+      if (method === 'PUT') return saveSiteTranslatorSettings(request, env, siteId, ctx);
+      if (method === 'DELETE') return deleteSiteTranslatorSettings(env, siteId, ctx);
+    }
+    return errorResponse('Method not allowed', 405);
   }
 
   if (siteId && (subResource === 'custom-domain' || subResource === 'verify-domain' || subResource === 'rename-subdomain')) {
@@ -1360,5 +1385,208 @@ async function handleConvertCurrency(request, env, siteId) {
   } catch (error) {
     console.error('Currency conversion error:', error);
     return errorResponse('Failed to convert currency: ' + error.message, 500);
+  }
+}
+
+const ALLOWED_TRANSLATOR_LOCALES = SUPPORTED_LOCALES;
+
+function parseLanguagesField(raw) {
+  if (!raw) return [];
+  try {
+    const arr = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    if (!Array.isArray(arr)) return [];
+    return arr.filter((c) => typeof c === 'string' && ALLOWED_TRANSLATOR_LOCALES.has(c));
+  } catch {
+    return [];
+  }
+}
+
+async function getSiteTranslatorRow(env, siteId) {
+  return await env.DB.prepare(
+    'SELECT translator_api_key_encrypted, translator_region, translator_enabled, translator_languages FROM sites WHERE id = ?'
+  ).bind(siteId).first();
+}
+
+async function getSiteTranslatorSettings(env, siteId) {
+  try {
+    const row = await getSiteTranslatorRow(env, siteId);
+    if (!row) return errorResponse('Site not found', 404);
+    const enc = row.translator_api_key_encrypted || '';
+    let keyMasked = '';
+    if (enc) {
+      try {
+        const plain = await decryptSecret(env, enc);
+        keyMasked = maskSecret(plain);
+      } catch (e) {
+        console.error('Translator key decrypt failed:', e?.message || e);
+        keyMasked = '••••••••••????';
+      }
+    }
+    return successResponse({
+      enabled: row.translator_enabled === 1,
+      region: row.translator_region || '',
+      languages: parseLanguagesField(row.translator_languages),
+      hasKey: !!enc,
+      keyMasked,
+    });
+  } catch (e) {
+    console.error('Get site translator settings error:', e);
+    return errorResponse('Failed to load translator settings', 500);
+  }
+}
+
+/**
+ * Validate a candidate {apiKey, region} against Microsoft Translator with a
+ * 1-character sample. Returns { ok, error?, status? } and never throws.
+ */
+async function probeTranslatorCreds(apiKey, region) {
+  if (!apiKey) return { ok: false, error: 'Translator API key is required.' };
+  if (!region) return { ok: false, error: 'Translator region is required (e.g. centralindia, eastus, global).' };
+  try {
+    const url = 'https://api.cognitive.microsofttranslator.com/translate?api-version=3.0&from=en&to=es';
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Ocp-Apim-Subscription-Key': apiKey,
+        'Ocp-Apim-Subscription-Region': region,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify([{ Text: 'a' }]),
+    });
+    if (!res.ok) {
+      let errMsg = `HTTP ${res.status}`;
+      try {
+        const errJson = await res.json();
+        errMsg = errJson?.error?.message || errMsg;
+      } catch {
+        try { errMsg = (await res.text()) || errMsg; } catch {}
+      }
+      return { ok: false, error: errMsg, status: res.status };
+    }
+    const data = await res.json();
+    const translation = data?.[0]?.translations?.[0]?.text || '';
+    return { ok: true, translation };
+  } catch (e) {
+    return { ok: false, error: e.message || 'Network error reaching Microsoft Translator.' };
+  }
+}
+
+async function saveSiteTranslatorSettings(request, env, siteId, ctx) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return errorResponse('Invalid JSON body');
+  }
+  try {
+    const existing = await getSiteTranslatorRow(env, siteId);
+    if (!existing) return errorResponse('Site not found', 404);
+
+    const incomingKey = body && typeof body.apiKey === 'string' ? body.apiKey.trim() : '';
+    const isMaskedPlaceholder = incomingKey && incomingKey.startsWith('•');
+    const region = body && typeof body.region === 'string' ? body.region.trim() : (existing.translator_region || '');
+    const enabled = !!(body && body.enabled);
+
+    let languages = [];
+    if (Array.isArray(body?.languages)) {
+      const seen = new Set();
+      for (const l of body.languages) {
+        if (typeof l !== 'string') continue;
+        const code = l.trim();
+        if (!code || !ALLOWED_TRANSLATOR_LOCALES.has(code)) continue;
+        if (seen.has(code)) continue;
+        seen.add(code);
+        languages.push(code);
+      }
+    }
+
+    let newEncrypted = existing.translator_api_key_encrypted || '';
+
+    if (incomingKey && !isMaskedPlaceholder) {
+      // Validate the candidate key+region BEFORE encrypting & saving.
+      const probe = await probeTranslatorCreds(incomingKey, region);
+      if (!probe.ok) {
+        return errorResponse(`Microsoft rejected the key: ${probe.error}`, 400);
+      }
+      try {
+        newEncrypted = await encryptSecret(env, incomingKey);
+      } catch (e) {
+        if (e?.message?.includes('SETTINGS_ENCRYPTION_KEY')) {
+          return errorResponse('Server is missing SETTINGS_ENCRYPTION_KEY. Configure it before saving the translator key.', 500);
+        }
+        throw e;
+      }
+    }
+
+    if (enabled && !newEncrypted) {
+      return errorResponse('Cannot enable shopper translation without saving a translator API key first.', 400);
+    }
+
+    await env.DB.prepare(
+      `UPDATE sites SET
+        translator_api_key_encrypted = ?,
+        translator_region = ?,
+        translator_enabled = ?,
+        translator_languages = ?,
+        updated_at = datetime('now')
+       WHERE id = ?`
+    ).bind(
+      newEncrypted || null,
+      region || null,
+      enabled ? 1 : 0,
+      JSON.stringify(languages),
+      siteId
+    ).run();
+
+    if (ctx) ctx.waitUntil(purgeStorefrontCache(env, siteId, ['site']));
+
+    return successResponse(null, 'Translator settings saved');
+  } catch (e) {
+    console.error('Save site translator settings error:', e);
+    return errorResponse('Failed to save translator settings: ' + (e.message || 'Unknown error'), 500);
+  }
+}
+
+async function testSiteTranslator(request, env, siteId) {
+  let body = {};
+  try { body = await request.json(); } catch {}
+
+  let apiKey = body && typeof body.apiKey === 'string' ? body.apiKey.trim() : '';
+  let region = body && typeof body.region === 'string' ? body.region.trim() : '';
+
+  // Empty apiKey or masked placeholder → use stored credentials.
+  if (!apiKey || apiKey.startsWith('•')) {
+    const row = await getSiteTranslatorRow(env, siteId);
+    if (!row || !row.translator_api_key_encrypted) {
+      return successResponse({ ok: false, error: 'No translator key saved yet. Paste a key + region above and click Test.' });
+    }
+    try {
+      apiKey = await decryptSecret(env, row.translator_api_key_encrypted);
+    } catch (e) {
+      return successResponse({ ok: false, error: 'Stored key could not be decrypted. Re-enter the key.' });
+    }
+    if (!region) region = row.translator_region || '';
+  }
+
+  const probe = await probeTranslatorCreds(apiKey, region);
+  return successResponse(probe);
+}
+
+async function deleteSiteTranslatorSettings(env, siteId, ctx) {
+  try {
+    const row = await getSiteTranslatorRow(env, siteId);
+    if (!row) return errorResponse('Site not found', 404);
+    await env.DB.prepare(
+      `UPDATE sites SET
+        translator_api_key_encrypted = NULL,
+        translator_enabled = 0,
+        updated_at = datetime('now')
+       WHERE id = ?`
+    ).bind(siteId).run();
+    if (ctx) ctx.waitUntil(purgeStorefrontCache(env, siteId, ['site']));
+    return successResponse(null, 'Translator key removed');
+  } catch (e) {
+    console.error('Delete site translator settings error:', e);
+    return errorResponse('Failed to remove translator key', 500);
   }
 }
