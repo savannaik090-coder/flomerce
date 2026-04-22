@@ -661,19 +661,21 @@ async function createUserCategories(env, db, siteId, categories) {
     let categoryName = typeof cat === 'string' ? cat : (cat.name || cat.label);
     if (!categoryName) continue;
     
-    // Frontend may send an explicit ASCII slug (it derives one from the EN
-    // source for default seeds). Prefer that. Otherwise derive from the
-    // user-typed name; if the strip-to-ASCII step collapses the name to
-    // nothing (e.g. Hindi/Arabic categories), fall back to an indexed
-    // placeholder so we never insert an empty slug into the URL space.
-    const explicitSlug = (typeof cat === 'object' && typeof cat.slug === 'string') ? cat.slug.trim() : '';
-    let slug = explicitSlug || categoryName
+    // Derive an ASCII slug. Frontend may send an explicit slug (it derives
+    // one from the EN source for default seeds), but we re-sanitize it
+    // server-side so a malformed/non-ASCII client value cannot land in the
+    // URL space. If both the explicit slug and the name-derived slug are
+    // empty after sanitisation (e.g. Hindi/Arabic categories with no client
+    // hint), fall back to an indexed placeholder.
+    const sanitizeSlug = (s) => String(s || '')
       .toLowerCase()
       .trim()
       .replace(/[^a-z0-9\s-]/g, '')
       .replace(/\s+/g, '-')
       .replace(/-+/g, '-')
       .replace(/^-+|-+$/g, '');
+    const explicitSlug = (typeof cat === 'object' && typeof cat.slug === 'string') ? sanitizeSlug(cat.slug) : '';
+    let slug = explicitSlug || sanitizeSlug(categoryName);
     if (!slug) slug = `category-${order + 1}`;
 
     const subtitle = (typeof cat === 'object' && cat.subtitle) ? cat.subtitle : null;
