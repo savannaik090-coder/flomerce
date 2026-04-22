@@ -140,7 +140,7 @@
 .wb-play-overlay {
     position: absolute;
     top: 0;
-    left: 0;
+    inset-inline-start: 0;
     width: 100%;
     height: 100%;
     display: flex;
@@ -164,7 +164,7 @@
 }
 
 .wb-play-button svg {
-    margin-left: 4px;
+    margin-inline-start: 4px;
     width: 120px;
     height: 120px;
 }
@@ -183,7 +183,7 @@
     background: rgba(255, 255, 255, 0.95);
     color: #333;
     padding: 8px;
-    text-align: left;
+    text-align: start;
     font-weight: 500;
     font-size: 13px;
     border-radius: 8px;

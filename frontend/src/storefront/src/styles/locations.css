@@ -87,11 +87,11 @@
 }
 
 .stores-scroll-left {
-    left: -22px;
+    inset-inline-start: -22px;
 }
 
 .stores-scroll-right {
-    right: -22px;
+    inset-inline-end: -22px;
 }
 
 .store-card {

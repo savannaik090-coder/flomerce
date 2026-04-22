@@ -163,7 +163,7 @@ function Meter({ label, used, limit, pct, custom, rate }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
         <span style={{ color: '#0f172a', fontWeight: 600 }}>
           {label}
-          {custom && <span style={{ marginLeft: 8, fontSize: 11, color: '#2563eb', fontWeight: 500 }}>custom</span>}
+          {custom && <span style={{ marginInlineStart: 8, fontSize: 11, color: '#2563eb', fontWeight: 500 }}>custom</span>}
         </span>
         <span style={{ color: over ? '#b45309' : '#64748b' }}>
           {fmtBytes(used)} / {fmtBytes(limit)}
@@ -219,7 +219,7 @@ function InvoiceRow({ inv, muted }) {
           {isPaid && inv.paidAt && <> · Paid {fmtDate(inv.paidAt)}{inv.paymentMethod ? ` · ${inv.paymentMethod}` : ''}</>}
         </div>
       </div>
-      <div style={{ textAlign: 'right' }}>
+      <div style={{ textAlign: 'end' }}>
         <div style={{ fontWeight: 700, color: '#0f172a' }}>{fmtINR(inv.totalCostINR)}</div>
         <div style={{ fontSize: 12 }}>
           {isPaid ? <span style={pillPaid}>Paid</span> : hasAmount ? <span style={pillUnpaid}>Unpaid</span> : <span style={pillNone}>No charge</span>}

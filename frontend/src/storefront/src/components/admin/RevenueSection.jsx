@@ -232,10 +232,10 @@ export default function RevenueSection() {
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                   <thead>
                     <tr style={{ borderBottom: '2px solid #e2e8f0' }}>
-                      <th style={{ textAlign: 'left', padding: '8px 12px', color: '#64748b', fontWeight: 600 }}>#</th>
-                      <th style={{ textAlign: 'left', padding: '8px 12px', color: '#64748b', fontWeight: 600 }}>Product</th>
-                      <th style={{ textAlign: 'right', padding: '8px 12px', color: '#64748b', fontWeight: 600 }}>Qty Sold</th>
-                      <th style={{ textAlign: 'right', padding: '8px 12px', color: '#64748b', fontWeight: 600 }}>Revenue</th>
+                      <th style={{ textAlign: 'start', padding: '8px 12px', color: '#64748b', fontWeight: 600 }}>#</th>
+                      <th style={{ textAlign: 'start', padding: '8px 12px', color: '#64748b', fontWeight: 600 }}>Product</th>
+                      <th style={{ textAlign: 'end', padding: '8px 12px', color: '#64748b', fontWeight: 600 }}>Qty Sold</th>
+                      <th style={{ textAlign: 'end', padding: '8px 12px', color: '#64748b', fontWeight: 600 }}>Revenue</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -248,8 +248,8 @@ export default function RevenueSection() {
                             <span>{p.name}</span>
                           </div>
                         </td>
-                        <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 600 }}>{p.quantity}</td>
-                        <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 600, color: '#16a34a' }}>{formatPrice(p.revenue, currency)}</td>
+                        <td style={{ padding: '10px 12px', textAlign: 'end', fontWeight: 600 }}>{p.quantity}</td>
+                        <td style={{ padding: '10px 12px', textAlign: 'end', fontWeight: 600, color: '#16a34a' }}>{formatPrice(p.revenue, currency)}</td>
                       </tr>
                     ))}
                   </tbody>

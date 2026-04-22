@@ -291,7 +291,7 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate, sectionVis
 
       {error && (
         <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '10px 14px', marginBottom: 16, color: '#dc2626', fontSize: 13 }}>
-          <i className="fas fa-exclamation-circle" style={{ marginRight: 6 }} />{error}
+          <i className="fas fa-exclamation-circle" style={{ marginInlineEnd: 6 }} />{error}
         </div>
       )}
 

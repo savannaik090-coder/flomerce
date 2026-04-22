@@ -128,7 +128,7 @@ export default function LoginPage() {
             <label style={{ display: 'block', marginBottom: 8, fontFamily: "'Lato', sans-serif", fontSize: 14, color: '#333' }}>Password</label>
             <input type="password" value={password} onChange={e => setPassword(e.target.value)} required style={{ width: '100%', padding: 12, border: '1px solid #ddd', borderRadius: 4, fontFamily: "'Lato', sans-serif", fontSize: 16, boxSizing: 'border-box' }} />
           </div>
-          <div style={{ textAlign: 'right', marginBottom: 20 }}>
+          <div style={{ textAlign: 'end', marginBottom: 20 }}>
             <button type="button" onClick={() => { setShowForgotModal(true); setResetEmail(email); }} style={{ background: 'none', border: 'none', color: '#c8a97e', fontSize: 14, cursor: 'pointer', textDecoration: 'none' }}>Forgot Password?</button>
           </div>
           <button type="submit" disabled={loading} style={{ backgroundColor: loading ? '#e0d5c5' : '#c8a97e', color: '#fff', border: 'none', padding: 15, borderRadius: 4, fontFamily: "'Lato', sans-serif", fontSize: 16, fontWeight: 'bold', cursor: loading ? 'not-allowed' : 'pointer', transition: 'background-color 0.3s ease' }}>
@@ -146,7 +146,7 @@ export default function LoginPage() {
 
             <div style={{ marginBottom: 20 }}>
               <button onClick={handleGoogleLogin} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', padding: 12, backgroundColor: '#fff', border: '1px solid #ddd', borderRadius: 4, fontFamily: "'Lato', sans-serif", fontSize: 16, color: '#333', cursor: 'pointer', transition: 'background-color 0.3s ease' }}>
-                <img src="https://cdn-icons-png.flaticon.com/128/300/300221.png" alt="Google" style={{ width: 20, marginRight: 10 }} />
+                <img src="https://cdn-icons-png.flaticon.com/128/300/300221.png" alt="Google" style={{ width: 20, marginInlineEnd: 10 }} />
                 Sign in with Google
               </button>
             </div>

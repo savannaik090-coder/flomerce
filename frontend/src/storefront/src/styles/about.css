@@ -114,8 +114,8 @@
 .about-story-image-accent {
   position: absolute;
   top: 24px;
-  left: -16px;
-  right: 16px;
+  inset-inline-start: -16px;
+  inset-inline-end: 16px;
   bottom: -24px;
   border: 2px solid #d4af37;
   border-radius: 16px;

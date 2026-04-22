@@ -82,13 +82,13 @@ export default function PhoneInput({ value, onChange, countryCode, error, style 
           onClick={() => setDropdownOpen(!dropdownOpen)}
           style={{
             display: 'flex', alignItems: 'center', gap: 4,
-            padding: '8px 10px', background: '#f8f8f8', border: 'none', borderRight: '1px solid #ddd',
+            padding: '8px 10px', background: '#f8f8f8', border: 'none', borderInlineEnd: '1px solid #ddd',
             cursor: 'pointer', fontSize: 14, color: '#333', minWidth: 85, whiteSpace: 'nowrap',
           }}
         >
           <span style={{ fontSize: 18 }}>{flag}</span>
           <span>{dialCode}</span>
-          <span style={{ fontSize: 10, marginLeft: 2, color: '#999' }}>▼</span>
+          <span style={{ fontSize: 10, marginInlineStart: 2, color: '#999' }}>▼</span>
         </button>
         <input
           type="tel"

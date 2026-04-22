@@ -594,7 +594,7 @@ export default function SettingsSection() {
               placeholder="my-store"
               style={{ flex: 1, padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: '6px 0 0 6px', fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }}
             />
-            <span style={{ padding: '10px 12px', background: '#f1f5f9', border: '1px solid #e2e8f0', borderLeft: 'none', borderRadius: '0 6px 6px 0', fontSize: 14, color: '#64748b', whiteSpace: 'nowrap' }}>.{PLATFORM_DOMAIN}</span>
+            <span style={{ padding: '10px 12px', background: '#f1f5f9', border: '1px solid #e2e8f0', borderInlineStart: 'none', borderRadius: '0 6px 6px 0', fontSize: 14, color: '#64748b', whiteSpace: 'nowrap' }}>.{PLATFORM_DOMAIN}</span>
           </div>
           {subdomainInput && subdomainInput !== currentSubdomain && !showSubdomainConfirm && !subdomainSaving && (
             <button type="button" className="btn btn-primary" onClick={() => setShowSubdomainConfirm(true)} style={{ marginTop: 12, fontSize: 13 }}>
@@ -653,8 +653,8 @@ export default function SettingsSection() {
               {!whatsNextDismissed && (
               <div style={{ marginBottom: 16, padding: '12px 14px', borderRadius: 8, background: '#eff6ff', border: '1px solid #bfdbfe', position: 'relative' }}>
                 <button type="button" onClick={() => { setWhatsNextDismissed(true); dismissTip(customDomain, 'whatsNext'); }} style={{ position: 'absolute', top: 8, right: 10, background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: '#1e40af', opacity: 0.6, lineHeight: 1 }} title="Dismiss">&times;</button>
-                <p style={{ fontSize: 13, fontWeight: 600, color: '#1e40af', marginBottom: 6, paddingRight: 20 }}>What happens next?</p>
-                <ul style={{ fontSize: 12, color: '#1e40af', margin: 0, paddingLeft: 18 }}>
+                <p style={{ fontSize: 13, fontWeight: 600, color: '#1e40af', marginBottom: 6, paddingInlineEnd: 20 }}>What happens next?</p>
+                <ul style={{ fontSize: 12, color: '#1e40af', margin: 0, paddingInlineStart: 18 }}>
                   <li style={{ marginBottom: 4 }}>SSL certificate is issued automatically — this usually takes <strong>5–15 minutes</strong>.</li>
                   <li style={{ marginBottom: 4 }}>DNS changes can take up to <strong>48 hours</strong> to propagate worldwide, though most work within 1–2 hours.</li>
                   <li style={{ marginBottom: 4 }}>During this time, visitors may see a security warning or "site not found" — this is normal.</li>
@@ -666,7 +666,7 @@ export default function SettingsSection() {
               {!rootDomainTipDismissed && (
                 <div style={{ marginBottom: 16, padding: '14px 16px', borderRadius: 8, background: '#fffbeb', border: '1px solid #fde68a', position: 'relative' }}>
                   <button type="button" onClick={() => { setRootDomainTipDismissed(true); dismissTip(customDomain, 'rootRedirect'); }} style={{ position: 'absolute', top: 8, right: 10, background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: '#92400e', opacity: 0.6, lineHeight: 1 }} title="Dismiss">&times;</button>
-                  <p style={{ fontSize: 12, color: '#92400e', fontWeight: 600, marginBottom: 8, paddingRight: 20 }}>Root domain redirect (recommended)</p>
+                  <p style={{ fontSize: 12, color: '#92400e', fontWeight: 600, marginBottom: 8, paddingInlineEnd: 20 }}>Root domain redirect (recommended)</p>
                   <p style={{ fontSize: 12, color: '#92400e', marginBottom: 10 }}>
                     So visitors who type <strong>{customDomain.replace(/^www\./, '')}</strong> are automatically sent to <strong>{customDomain}</strong>
                   </p>
@@ -802,7 +802,7 @@ export default function SettingsSection() {
           {isSectionOpen('contact') && <div className="card-content">
             <div style={{ marginBottom: 16 }}>
               <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>
-                <i className="fas fa-phone" style={{ marginRight: 6, color: '#2563eb' }} />Phone Number
+                <i className="fas fa-phone" style={{ marginInlineEnd: 6, color: '#2563eb' }} />Phone Number
               </label>
               <PhoneInput
                 value={phone}
@@ -813,7 +813,7 @@ export default function SettingsSection() {
             </div>
             <div style={{ marginBottom: 16 }}>
               <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>
-                <i className="fab fa-whatsapp" style={{ marginRight: 6, color: '#25D366' }} />WhatsApp Number
+                <i className="fab fa-whatsapp" style={{ marginInlineEnd: 6, color: '#25D366' }} />WhatsApp Number
               </label>
               <PhoneInput
                 value={whatsapp}
@@ -848,7 +848,7 @@ export default function SettingsSection() {
                     <label style={{ fontWeight: 600, fontSize: 13 }}>
                       Additional notification emails
                       {!ccAllowed && (
-                        <span style={{ marginLeft: 8, fontSize: 11, padding: '2px 8px', background: '#fef3c7', color: '#92400e', borderRadius: 999, fontWeight: 600 }}>Growth+</span>
+                        <span style={{ marginInlineStart: 8, fontSize: 11, padding: '2px 8px', background: '#fef3c7', color: '#92400e', borderRadius: 999, fontWeight: 600 }}>Growth+</span>
                       )}
                     </label>
                     <span style={{ fontSize: 11, color: '#94a3b8' }}>{notificationCcEmails.length}/5</span>
@@ -1359,7 +1359,7 @@ export default function SettingsSection() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', border: '1px solid #e2e8f0', borderRadius: 8, marginBottom: 16, background: whatsappNotificationsEnabled ? '#f0fdf4' : '#f8fafc' }}>
               <div>
                 <div style={{ fontWeight: 600, fontSize: 14, color: '#1e293b' }}>
-                  <i className="fab fa-whatsapp" style={{ marginRight: 6, color: '#25D366' }} />Enable WhatsApp Notifications
+                  <i className="fab fa-whatsapp" style={{ marginInlineEnd: 6, color: '#25D366' }} />Enable WhatsApp Notifications
                 </div>
                 <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>Send order confirmation, shipping, delivery updates via WhatsApp</div>
               </div>
@@ -1468,7 +1468,7 @@ export default function SettingsSection() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', border: '1px solid #e2e8f0', borderRadius: 8, marginBottom: 16, background: abandonedCartEnabled ? '#f0fdf4' : '#f8fafc' }}>
               <div>
                 <div style={{ fontWeight: 600, fontSize: 14, color: '#1e293b' }}>
-                  <i className="fas fa-shopping-cart" style={{ marginRight: 6, color: '#f59e0b' }} />Enable Abandoned Cart Reminders
+                  <i className="fas fa-shopping-cart" style={{ marginInlineEnd: 6, color: '#f59e0b' }} />Enable Abandoned Cart Reminders
                 </div>
                 <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>Send reminders via WhatsApp and/or email when customers leave items in their cart</div>
               </div>

@@ -28,7 +28,7 @@
 .home-category-banner {
     position: relative;
     width: 100vw;
-    margin-left: calc(-50vw + 50%);
+    margin-inline-start: calc(-50vw + 50%);
     height: 70vh;
     min-height: 500px;
     max-height: 700px;
@@ -59,8 +59,8 @@
 .home-category-banner-overlay {
     position: absolute;
     top: 0;
-    left: 0;
-    right: 0;
+    inset-inline-start: 0;
+    inset-inline-end: 0;
     bottom: 0;
     background: rgba(0, 0, 0, 0.4);
     z-index: 1;
@@ -127,7 +127,7 @@
 }
 
 .home-category-products .product-scroll-container {
-    padding-left: 20px;
+    padding-inline-start: 20px;
 }
 
 .home-category-scroll-arrow {
@@ -156,8 +156,8 @@
     transform: translateY(-50%) scale(1.1);
 }
 
-.home-category-scroll-left { left: 10px; }
-.home-category-scroll-right { right: 10px; }
+.home-category-scroll-left { inset-inline-start: 10px; }
+.home-category-scroll-right { inset-inline-end: 10px; }
 
 .home-category-cta {
     text-align: center;

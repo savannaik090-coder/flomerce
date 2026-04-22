@@ -264,7 +264,7 @@ export default function TrendingNowEditor({ onSaved, onPreviewUpdate, sectionVis
                       width: '100%', padding: '10px 12px',
                       border: 'none', borderBottom: '1px solid #f1f5f9',
                       background: '#fff', cursor: selectedProductIds.length >= 12 ? 'default' : 'pointer',
-                      textAlign: 'left', fontFamily: 'inherit',
+                      textAlign: 'start', fontFamily: 'inherit',
                       opacity: selectedProductIds.length >= 12 ? 0.5 : 1,
                       transition: 'background 0.15s',
                     }}

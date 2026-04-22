@@ -24,7 +24,7 @@
   height: 600px;
   background: radial-gradient(circle, #818cf8 0%, #6366f1 40%, transparent 70%);
   top: -15%;
-  left: -10%;
+  inset-inline-start: -10%;
   animation: heroOrb1 14s ease-in-out infinite;
 }
 
@@ -33,7 +33,7 @@
   height: 500px;
   background: radial-gradient(circle, #38bdf8 0%, #0ea5e9 40%, transparent 70%);
   top: 10%;
-  right: -8%;
+  inset-inline-end: -8%;
   animation: heroOrb2 16s ease-in-out infinite;
 }
 
@@ -42,7 +42,7 @@
   height: 450px;
   background: radial-gradient(circle, #a78bfa 0%, #8b5cf6 40%, transparent 70%);
   bottom: -10%;
-  left: 25%;
+  inset-inline-start: 25%;
   animation: heroOrb3 18s ease-in-out infinite;
 }
 
@@ -51,7 +51,7 @@
   height: 350px;
   background: radial-gradient(circle, #67e8f9 0%, #22d3ee 40%, transparent 70%);
   bottom: 15%;
-  right: 20%;
+  inset-inline-end: 20%;
   animation: heroOrb4 12s ease-in-out infinite;
 }
 
@@ -282,7 +282,7 @@
   background: #1a1a1a;
   border-radius: 5px;
   padding: 4px 0;
-  margin-right: 36px;
+  margin-inline-end: 36px;
 }
 
 .landing-page .teaser-video-container {
@@ -621,8 +621,8 @@
   padding: 0.3rem;
   border-radius: 12px;
   width: fit-content;
-  margin-left: auto;
-  margin-right: auto;
+  margin-inline-start: auto;
+  margin-inline-end: auto;
 }
 
 .landing-page .lp-dur-btn {
@@ -776,14 +776,14 @@
   font-size: 0.875rem;
   color: #475569;
   margin-bottom: 0.5rem;
-  padding-left: 1.25rem;
+  padding-inline-start: 1.25rem;
   position: relative;
 }
 
 .landing-page .lp-plan-features li::before {
   content: '✓';
   position: absolute;
-  left: 0;
+  inset-inline-start: 0;
   color: #10b981;
   font-weight: 700;
 }

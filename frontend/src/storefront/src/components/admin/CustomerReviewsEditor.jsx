@@ -274,7 +274,7 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate, sectio
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <h2 style={{ fontSize: 20, fontWeight: 700 }}>Customer Reviews</h2>
         <button className="btn btn-primary" onClick={openAdd}>
-          <i className="fas fa-plus" style={{ marginRight: 8 }} />Add Review
+          <i className="fas fa-plus" style={{ marginInlineEnd: 8 }} />Add Review
         </button>
       </div>
 
@@ -284,7 +284,7 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate, sectio
           <h3>No Reviews Yet</h3>
           <p>Add customer reviews with images and ratings. These appear in the "What Our Customers Say" section on your homepage.</p>
           <button className="btn btn-primary" onClick={openAdd} style={{ marginTop: 16 }}>
-            <i className="fas fa-plus" style={{ marginRight: 8 }} />Add First Review
+            <i className="fas fa-plus" style={{ marginInlineEnd: 8 }} />Add First Review
           </button>
         </div>
       ) : (
@@ -308,7 +308,7 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate, sectio
                 )}
                 <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
                   <button className="btn btn-secondary" style={{ flex: 1, fontSize: 13 }} onClick={() => openEdit(index)}>
-                    <i className="fas fa-edit" style={{ marginRight: 4 }} />Edit
+                    <i className="fas fa-edit" style={{ marginInlineEnd: 4 }} />Edit
                   </button>
                   <button
                     style={{ padding: '8px 12px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 6, color: '#dc2626', cursor: 'pointer', fontSize: 13 }}
@@ -408,7 +408,7 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate, sectio
                   required
                   style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit', resize: 'vertical' }}
                 />
-                <div style={{ textAlign: 'right', fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
+                <div style={{ textAlign: 'end', fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
                   {form.text.length}/500
                 </div>
               </div>
@@ -449,7 +449,7 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate, sectio
               <div style={{ display: 'flex', gap: 12 }}>
                 <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setShowModal(false)}>Cancel</button>
                 <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={saving || uploading}>
-                  {saving ? <><i className="fas fa-spinner fa-spin" style={{ marginRight: 8 }} />Saving...</> : editingIndex !== null ? 'Save Changes' : 'Add Review'}
+                  {saving ? <><i className="fas fa-spinner fa-spin" style={{ marginInlineEnd: 8 }} />Saving...</> : editingIndex !== null ? 'Save Changes' : 'Add Review'}
                 </button>
               </div>
             </form>

@@ -1004,7 +1004,7 @@ function PagesSEOTab({ siteConfig }) {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: editingId === page.page_type ? 14 : 0 }}>
                 <div>
                   <div style={{ fontWeight: 600, fontSize: 14 }}>
-                    <i className={`fas ${meta.icon}`} style={{ marginRight: 6, color: '#64748b' }} />
+                    <i className={`fas ${meta.icon}`} style={{ marginInlineEnd: 6, color: '#64748b' }} />
                     {meta.label}
                   </div>
                   <div style={{ fontSize: 12, color: '#94a3b8', display: 'flex', gap: 10, marginTop: 2, flexWrap: 'wrap' }}>
@@ -1093,7 +1093,7 @@ function PagesSEOTab({ siteConfig }) {
 function SocialPreview({ type, title, description, image, url, siteName }) {
   if (type === 'twitter') {
     return (
-      <div className="seo-preview" style={{ borderLeft: '3px solid #1da1f2' }}>
+      <div className="seo-preview" style={{ borderInlineStart: '3px solid #1da1f2' }}>
         <div className="seo-preview-label" style={{ color: '#1da1f2' }}>Twitter Card Preview</div>
         {image && <div style={{ background: '#f1f5f9', borderRadius: 8, height: 120, marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
           <img src={image} alt="" style={{ maxHeight: 120, maxWidth: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
@@ -1105,7 +1105,7 @@ function SocialPreview({ type, title, description, image, url, siteName }) {
     );
   }
   return (
-    <div className="seo-preview" style={{ borderLeft: '3px solid #1877f2' }}>
+    <div className="seo-preview" style={{ borderInlineStart: '3px solid #1877f2' }}>
       <div className="seo-preview-label" style={{ color: '#1877f2' }}>Facebook / Open Graph Preview</div>
       {image && <div style={{ background: '#f1f5f9', borderRadius: 8, height: 120, marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
         <img src={image} alt="" style={{ maxHeight: 120, maxWidth: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
@@ -1209,7 +1209,7 @@ function SocialMediaTab({ siteConfig }) {
       </p>
 
       <div className="card" style={{ marginBottom: 16 }}>
-        <div className="card-header"><h3 className="card-title"><i className="fab fa-facebook" style={{ marginRight: 8, color: '#1877f2' }} />Open Graph Tags</h3></div>
+        <div className="card-header"><h3 className="card-title"><i className="fab fa-facebook" style={{ marginInlineEnd: 8, color: '#1877f2' }} />Open Graph Tags</h3></div>
         <div className="card-content">
           <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
             <div style={{ flex: '1 1 320px' }}>
@@ -1250,7 +1250,7 @@ function SocialMediaTab({ siteConfig }) {
       </div>
 
       <div className="card" style={{ marginBottom: 16 }}>
-        <div className="card-header"><h3 className="card-title"><i className="fab fa-twitter" style={{ marginRight: 8, color: '#1da1f2' }} />Twitter Card Tags</h3></div>
+        <div className="card-header"><h3 className="card-title"><i className="fab fa-twitter" style={{ marginInlineEnd: 8, color: '#1da1f2' }} />Twitter Card Tags</h3></div>
         <div className="card-content">
           <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
             <div style={{ flex: '1 1 320px' }}>
@@ -1400,7 +1400,7 @@ function SEOOverviewTab({ siteConfig }) {
     <div>
       <div className="seo-overview-section">
         <div className="seo-overview-header">
-          <i className="fas fa-check-circle" style={{ color: '#22c55e', marginRight: 8 }} />
+          <i className="fas fa-check-circle" style={{ color: '#22c55e', marginInlineEnd: 8 }} />
           Auto-Managed Tags
         </div>
         <p className="seo-overview-desc">
@@ -1421,7 +1421,7 @@ function SEOOverviewTab({ siteConfig }) {
 
       <div className="seo-overview-section" style={{ marginTop: 24 }}>
         <div className="seo-overview-header">
-          <i className="fas fa-code" style={{ color: '#8b5cf6', marginRight: 8 }} />
+          <i className="fas fa-code" style={{ color: '#8b5cf6', marginInlineEnd: 8 }} />
           Structured Data (JSON-LD Schemas)
         </div>
         <p className="seo-overview-desc">
@@ -1434,7 +1434,7 @@ function SEOOverviewTab({ siteConfig }) {
                 <i className={`fas ${item.icon}`} />
                 <span>{item.tag}</span>
               </div>
-              <div style={{ paddingLeft: 24, marginTop: 4 }}>
+              <div style={{ paddingInlineStart: 24, marginTop: 4 }}>
                 {item.values.map(v => (
                   <div key={v.label} style={{ fontSize: 12, color: '#374151', marginBottom: 3, display: 'flex', gap: 6 }}>
                     <span style={{ color: '#94a3b8', minWidth: 80, flexShrink: 0 }}>{v.label}:</span>
@@ -1452,7 +1452,7 @@ function SEOOverviewTab({ siteConfig }) {
 
       <div className="seo-overview-section" style={{ marginTop: 24 }}>
         <div className="seo-overview-header">
-          <i className="fas fa-pen" style={{ color: '#3b82f6', marginRight: 8 }} />
+          <i className="fas fa-pen" style={{ color: '#3b82f6', marginInlineEnd: 8 }} />
           Customizable by You
         </div>
         <p className="seo-overview-desc">
@@ -1504,7 +1504,7 @@ export default function SEOSection({ currentPlan }) {
             className={`seo-tab${activeTab === tab.id ? ' active' : ''}`}
             onClick={() => setActiveTab(tab.id)}
           >
-            <i className={`fas ${tab.icon}`} style={{ marginRight: 6 }} />
+            <i className={`fas ${tab.icon}`} style={{ marginInlineEnd: 6 }} />
             {tab.label}
           </button>
         ))}

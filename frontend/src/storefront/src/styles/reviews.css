@@ -88,8 +88,8 @@
     box-shadow: 0 8px 25px rgba(212,175,55,0.3);
 }
 
-.reviews-scroll-arrow-left { left: 10px; }
-.reviews-scroll-arrow-right { right: 10px; }
+.reviews-scroll-arrow-left { inset-inline-start: 10px; }
+.reviews-scroll-arrow-right { inset-inline-end: 10px; }
 
 .review-item {
     background: #fff;
@@ -138,13 +138,13 @@
     margin: 0;
     font-style: italic;
     position: relative;
-    padding-left: 20px;
+    padding-inline-start: 20px;
 }
 
 .review-text p::before {
     content: '\201C';
     position: absolute;
-    left: 0;
+    inset-inline-start: 0;
     top: -5px;
     font-size: 2rem;
     color: #d4af37;

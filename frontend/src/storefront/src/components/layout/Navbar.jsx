@@ -262,15 +262,15 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
             <div className="mobile-account-links mobile-special">
               {showAccountIcon && (
                 <Link to={isAuthenticated ? '/profile' : '/login'} className="mobile-account-link" onClick={closeMobileMenu}>
-                  <img src="/images/icons/user.png" alt="Account" style={{ width: 16, height: 16, marginRight: 8 }} /> Account
+                  <img src="/images/icons/user.png" alt="Account" style={{ width: 16, height: 16, marginInlineEnd: 8 }} /> Account
                 </Link>
               )}
               <a href="#" className="mobile-account-link wishlist-toggle" onClick={(e) => { e.preventDefault(); closeMobileMenu(); onWishlistOpen?.(); }}>
-                <img src="/images/icons/heart.png" alt="Wishlist" style={{ width: 16, height: 16, marginRight: 8 }} /> Wishlist ({wishlistCount})
+                <img src="/images/icons/heart.png" alt="Wishlist" style={{ width: 16, height: 16, marginInlineEnd: 8 }} /> Wishlist ({wishlistCount})
               </a>
               {showCartIcon && (
                 <a href="#" className="mobile-account-link mobile-cart-toggle" onClick={(e) => { e.preventDefault(); closeMobileMenu(); onCartOpen?.(); }}>
-                  <img src="/images/icons/cart-minus.png" alt="Cart" style={{ width: 16, height: 16, marginRight: 8 }} /> Shopping Bag ({cartCount})
+                  <img src="/images/icons/cart-minus.png" alt="Cart" style={{ width: 16, height: 16, marginInlineEnd: 8 }} /> Shopping Bag ({cartCount})
                 </a>
               )}
             </div>

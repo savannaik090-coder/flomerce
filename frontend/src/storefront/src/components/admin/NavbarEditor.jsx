@@ -385,9 +385,9 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
                     style={{ padding: '7px 14px', borderRadius: 6, border: '1px solid #e2e8f0', background: '#fff', color: '#334155', fontWeight: 500, fontSize: 12, cursor: uploadingLogo ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: uploadingLogo ? 0.7 : 1 }}
                   >
                     {uploadingLogo ? (
-                      <><i className="fas fa-spinner fa-spin" style={{ marginRight: 5, fontSize: 10 }} />Replacing...</>
+                      <><i className="fas fa-spinner fa-spin" style={{ marginInlineEnd: 5, fontSize: 10 }} />Replacing...</>
                     ) : (
-                      <><i className="fas fa-sync-alt" style={{ marginRight: 5, fontSize: 10 }} />Replace</>
+                      <><i className="fas fa-sync-alt" style={{ marginInlineEnd: 5, fontSize: 10 }} />Replace</>
                     )}
                   </button>
                   <button
@@ -395,7 +395,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
                     onClick={handleRemoveLogo}
                     style={{ padding: '7px 14px', borderRadius: 6, border: '1px solid #fecaca', background: '#fff', color: '#ef4444', fontWeight: 500, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}
                   >
-                    <i className="fas fa-trash" style={{ marginRight: 5, fontSize: 10 }} />
+                    <i className="fas fa-trash" style={{ marginInlineEnd: 5, fontSize: 10 }} />
                     Remove
                   </button>
                 </div>
@@ -470,7 +470,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
                   </div>
                 </div>
                 <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 6, marginBottom: 0 }}>
-                  <i className="fas fa-info-circle" style={{ marginRight: 4 }} />
+                  <i className="fas fa-info-circle" style={{ marginInlineEnd: 4 }} />
                   Controls the logo width. If your logo has transparent space around it, try cropping it before uploading for best results.
                 </p>
                 <div style={{
@@ -530,7 +530,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
                   ))}
                 </div>
                 <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 8, marginBottom: 0 }}>
-                  <i className="fas fa-info-circle" style={{ marginRight: 4 }} />
+                  <i className="fas fa-info-circle" style={{ marginInlineEnd: 4 }} />
                   {logoPosition === 'center'
                     ? 'Logo will be centered in the navbar. On mobile, it stays in its default position.'
                     : 'Logo will appear on the left side of the navbar (default).'}
@@ -934,14 +934,14 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
           <div className="card-content">
             <div style={{ fontSize: 13, color: '#64748b', lineHeight: 1.7 }}>
               <p style={{ marginBottom: 10 }}><strong>Menu Groups</strong> appear as top-level items in your navbar. Each group can have a dropdown of links.</p>
-              <ul style={{ paddingLeft: 20, margin: '0 0 10px 0' }}>
+              <ul style={{ paddingInlineStart: 20, margin: '0 0 10px 0' }}>
                 <li>A group with <strong>multiple links</strong> shows a dropdown when hovered/clicked</li>
                 <li>A group with <strong>one link</strong> navigates directly to that link</li>
                 <li>A group with <strong>no links</strong> will not appear in the navbar</li>
                 <li><strong>Categories not assigned</strong> to any group will still appear as individual links in the navbar (just like before)</li>
               </ul>
               <p style={{ margin: 0, color: '#94a3b8', fontSize: 12 }}>
-                <i className="fas fa-info-circle" style={{ marginRight: 4 }} />
+                <i className="fas fa-info-circle" style={{ marginInlineEnd: 4 }} />
                 Static links like Home, About, Contact etc. will always appear in the navbar. A category can only belong to one group — it will be marked if already used elsewhere.
               </p>
             </div>

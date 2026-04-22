@@ -1,7 +1,7 @@
 .cart-panel {
     position: fixed;
     top: 0;
-    right: 0;
+    inset-inline-end: 0;
     width: 400px;
     max-width: 90%;
     height: 100%;
@@ -25,7 +25,7 @@
 .wishlist-panel {
     position: fixed;
     top: 0;
-    right: 0;
+    inset-inline-end: 0;
     width: 400px;
     max-width: 90%;
     height: 100%;
@@ -68,7 +68,7 @@
 .wishlist-overlay {
     position: fixed;
     top: 0;
-    left: 0;
+    inset-inline-start: 0;
     width: 100%;
     height: 100%;
     background: rgba(0,0,0,0.5);
@@ -267,7 +267,7 @@
     width: 80px;
     height: 80px;
     object-fit: cover;
-    margin-right: 15px;
+    margin-inline-end: 15px;
     border-radius: 8px;
 }
 
@@ -291,3 +291,15 @@
 .move-to-cart:hover { background: #333; }
 
 .wishlist-panel-footer { padding: 15px; border-top: 1px solid #eee; }
+
+/* RTL: panels slide out to the inline-start (visually right in LTR, left in RTL).
+   `inset-inline-end: 0` already anchors to the correct edge, but `transform: translateX`
+   is direction-agnostic, so flip its sign in RTL so the panel starts off-canvas correctly. */
+[dir="rtl"] .cart-panel,
+[dir="rtl"] .wishlist-panel {
+    transform: translateX(-100%) translateZ(0);
+}
+[dir="rtl"] .cart-panel.open,
+[dir="rtl"] .wishlist-panel.open {
+    transform: translateX(0) translateZ(0);
+}

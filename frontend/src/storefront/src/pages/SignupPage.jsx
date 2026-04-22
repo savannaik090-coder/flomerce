@@ -101,7 +101,7 @@ export default function SignupPage() {
           <p style={{ fontFamily: "'Lato', sans-serif", fontSize: 16, color: '#777' }}>Join us to explore exclusive collections</p>
         </div>
 
-        {error && <div style={{ color: '#d32f2f', fontSize: 16, marginBottom: 20, backgroundColor: '#ffebee', padding: 15, borderRadius: 5, borderLeft: '4px solid #d32f2f', fontWeight: 500 }}>{error}</div>}
+        {error && <div style={{ color: '#d32f2f', fontSize: 16, marginBottom: 20, backgroundColor: '#ffebee', padding: 15, borderRadius: 5, borderInlineStart: '4px solid #d32f2f', fontWeight: 500 }}>{error}</div>}
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column' }}>
           <div style={{ marginBottom: 20 }}>
@@ -148,7 +148,7 @@ export default function SignupPage() {
 
             <div style={{ marginBottom: 20 }}>
               <button onClick={handleGoogleSignup} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', padding: 12, backgroundColor: '#fff', border: '1px solid #ddd', borderRadius: 4, fontFamily: "'Lato', sans-serif", fontSize: 16, color: '#333', cursor: 'pointer' }}>
-                <img src="https://cdn-icons-png.flaticon.com/128/300/300221.png" alt="Google" style={{ width: 20, marginRight: 10 }} />
+                <img src="https://cdn-icons-png.flaticon.com/128/300/300221.png" alt="Google" style={{ width: 20, marginInlineEnd: 10 }} />
                 Sign up with Google
               </button>
             </div>

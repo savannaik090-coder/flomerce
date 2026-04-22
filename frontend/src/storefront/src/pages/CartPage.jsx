@@ -43,7 +43,7 @@ function ClassicCartPage({ items, subtotal, updateQuantity, removeItem, formatAm
                     <span style={{ padding: '0 12px', fontSize: 14, fontWeight: 500, minWidth: 20, textAlign: 'center' }}>{qty}</span>
                     <button onClick={() => updateQuantity(pid, qty + 1)} style={{ width: 32, height: 32, border: 'none', background: '#f8f9fa', cursor: 'pointer', fontWeight: 'bold', fontSize: 16 }}>+</button>
                   </div>
-                  <div style={{ textAlign: 'right', minWidth: 80 }}>
+                  <div style={{ textAlign: 'end', minWidth: 80 }}>
                     <span style={{ fontWeight: 700, color: '#333' }}>{formatAmount(price * qty)}</span>
                   </div>
                   <button onClick={() => removeItem(pid)} style={{ background: 'none', border: 'none', color: '#999', cursor: 'pointer', fontSize: 20, padding: '4px 8px' }}>×</button>

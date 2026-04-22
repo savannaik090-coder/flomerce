@@ -242,7 +242,7 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate, sectionV
                   borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit',
                 }}
               />
-              <div style={{ textAlign: 'right', fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
+              <div style={{ textAlign: 'end', fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
                 {heading.length}/80 {!heading && <span style={{ color: '#64748b' }}>Default: "Welcome to {brandName}!"</span>}
               </div>
             </div>
@@ -261,7 +261,7 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate, sectionV
                   resize: 'vertical',
                 }}
               />
-              <div style={{ textAlign: 'right', fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
+              <div style={{ textAlign: 'end', fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
                 {message.length}/200
               </div>
             </div>
@@ -295,7 +295,7 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate, sectionV
               background: '#f0f9ff',
             }}>
               <p style={{ fontSize: 12, color: '#64748b', margin: 0 }}>
-                <i className="fas fa-info-circle" style={{ marginRight: 6 }} />
+                <i className="fas fa-info-circle" style={{ marginInlineEnd: 6 }} />
                 Leave fields empty to use the default text. The banner only shows once per visitor (resets when they clear browser data).
               </p>
             </div>

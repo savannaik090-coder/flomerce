@@ -190,7 +190,7 @@ export default function PushNotificationsSection() {
 
       {!isConfigured && (
         <div style={{ background: '#fefce8', border: '1px solid #fef08a', borderRadius: 10, padding: '14px 18px', marginBottom: 24, color: '#92400e', fontSize: 14 }}>
-          <i className="fas fa-exclamation-triangle" style={{ marginRight: 8 }} />
+          <i className="fas fa-exclamation-triangle" style={{ marginInlineEnd: 8 }} />
           Push notifications are not yet configured on this platform. Contact support to enable them.
         </div>
       )}
@@ -236,17 +236,17 @@ export default function PushNotificationsSection() {
           <div className="card-content">
             {success && (
               <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: '12px 16px', color: '#166534', marginBottom: 16, fontSize: 14 }}>
-                <i className="fas fa-check-circle" style={{ marginRight: 8 }} />{success}
+                <i className="fas fa-check-circle" style={{ marginInlineEnd: 8 }} />{success}
               </div>
             )}
             {error && (
               <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '12px 16px', color: '#dc2626', marginBottom: 16, fontSize: 14 }}>
-                <i className="fas fa-exclamation-circle" style={{ marginRight: 8 }} />{error}
+                <i className="fas fa-exclamation-circle" style={{ marginInlineEnd: 8 }} />{error}
               </div>
             )}
             {stats.total === 0 && !error && (
               <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '12px 16px', color: '#64748b', marginBottom: 16, fontSize: 13 }}>
-                <i className="fas fa-info-circle" style={{ marginRight: 8 }} />No subscribers yet. Customers will see a prompt to subscribe when they visit your store.
+                <i className="fas fa-info-circle" style={{ marginInlineEnd: 8 }} />No subscribers yet. Customers will see a prompt to subscribe when they visit your store.
               </div>
             )}
             <form onSubmit={handleSend}>
@@ -333,7 +333,7 @@ export default function PushNotificationsSection() {
               />
               <div style={{ marginBottom: 16, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: 16 }}>
                 <label style={{ display: 'block', fontWeight: 600, marginBottom: 10, fontSize: 13 }}>
-                  <i className="fas fa-mouse-pointer" style={{ marginRight: 6, color: '#64748b' }} />
+                  <i className="fas fa-mouse-pointer" style={{ marginInlineEnd: 6, color: '#64748b' }} />
                   Action Button (optional)
                 </label>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: form.buttonLabel ? 10 : 0 }}>
@@ -375,7 +375,7 @@ export default function PushNotificationsSection() {
                 disabled={sending || !isConfigured || uploading}
                 style={{ width: '100%' }}
               >
-                {sending ? <><i className="fas fa-spinner fa-spin" style={{ marginRight: 8 }} />Sending...</> : <><i className="fas fa-paper-plane" style={{ marginRight: 8 }} />Send Notification</>}
+                {sending ? <><i className="fas fa-spinner fa-spin" style={{ marginInlineEnd: 8 }} />Sending...</> : <><i className="fas fa-paper-plane" style={{ marginInlineEnd: 8 }} />Send Notification</>}
               </button>
             </form>
           </div>
@@ -386,7 +386,7 @@ export default function PushNotificationsSection() {
           <div className="card-header">
             <h3 className="card-title">
               Automatic Notifications
-              {savingSettings && <span style={{ fontSize: 12, color: '#94a3b8', fontWeight: 400, marginLeft: 8 }}><i className="fas fa-spinner fa-spin" style={{ marginRight: 4 }} />Saving...</span>}
+              {savingSettings && <span style={{ fontSize: 12, color: '#94a3b8', fontWeight: 400, marginInlineStart: 8 }}><i className="fas fa-spinner fa-spin" style={{ marginInlineEnd: 4 }} />Saving...</span>}
             </h3>
           </div>
           <div className="card-content">
@@ -421,7 +421,7 @@ export default function PushNotificationsSection() {
                     position: 'relative',
                     transition: 'background 0.2s',
                     flexShrink: 0,
-                    marginLeft: 12,
+                    marginInlineStart: 12,
                   }}
                 >
                   <div style={{

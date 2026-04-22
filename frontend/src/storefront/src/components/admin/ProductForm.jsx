@@ -415,13 +415,13 @@ export default function ProductForm({ product, onSave, onCancel }) {
   const sectionHeaderStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center' };
   const addBtnStyle = { background: 'none', border: '1px dashed #94a3b8', borderRadius: 6, padding: '6px 14px', cursor: 'pointer', fontSize: 13, color: '#64748b', fontWeight: 500 };
   const removeBtnStyle = { background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontSize: 14, padding: '2px 6px' };
-  const chipStyle = (active) => ({ display: 'inline-block', padding: '4px 10px', borderRadius: 20, border: `1px solid ${active ? '#2563eb' : '#e2e8f0'}`, background: active ? '#eff6ff' : '#f8fafc', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, color: active ? '#2563eb' : '#64748b', marginRight: 4, marginBottom: 4 });
+  const chipStyle = (active) => ({ display: 'inline-block', padding: '4px 10px', borderRadius: 20, border: `1px solid ${active ? '#2563eb' : '#e2e8f0'}`, background: active ? '#eff6ff' : '#f8fafc', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, color: active ? '#2563eb' : '#64748b', marginInlineEnd: 4, marginBottom: 4 });
 
   return (
     <div style={{ maxWidth: 700 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
         <button onClick={onCancel} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', padding: '6px 0', fontSize: 14 }}>
-          <i className="fas fa-arrow-left" style={{ marginRight: 8 }} />Back
+          <i className="fas fa-arrow-left" style={{ marginInlineEnd: 8 }} />Back
         </button>
         <h2 style={{ fontSize: 20, fontWeight: 700 }}>{isEdit ? 'Edit Product' : 'Add New Product'}</h2>
       </div>
@@ -481,7 +481,7 @@ export default function ProductForm({ product, onSave, onCancel }) {
             {locations.length > 0 && (
               <div style={{ marginBottom: 16, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '1rem 1.25rem' }}>
                 <label style={{ display: 'block', fontWeight: 600, marginBottom: 8, fontSize: 13 }}>
-                  <i className="fas fa-map-marker-alt" style={{ marginRight: 6, color: '#2563eb' }} />
+                  <i className="fas fa-map-marker-alt" style={{ marginInlineEnd: 6, color: '#2563eb' }} />
                   Stock by Location
                 </label>
                 <div style={{ display: 'grid', gap: 8 }}>
@@ -489,7 +489,7 @@ export default function ProductForm({ product, onSave, onCancel }) {
                     <div key={loc.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <span style={{ minWidth: 140, fontSize: 13, fontWeight: 500 }}>
                         {loc.name}
-                        {loc.is_default ? <span style={{ fontSize: 10, background: '#2563eb', color: 'white', padding: '1px 6px', borderRadius: 8, marginLeft: 6, fontWeight: 600 }}>DEFAULT</span> : null}
+                        {loc.is_default ? <span style={{ fontSize: 10, background: '#2563eb', color: 'white', padding: '1px 6px', borderRadius: 8, marginInlineStart: 6, fontWeight: 600 }}>DEFAULT</span> : null}
                       </span>
                       <input
                         type="number"
@@ -737,7 +737,7 @@ export default function ProductForm({ product, onSave, onCancel }) {
                 style={addBtnStyle}
                 onClick={() => setOptions(prev => ({ ...prev, colors: [...prev.colors, { name: '', hex: '#000000' }] }))}
               >
-                <i className="fas fa-plus" style={{ marginRight: 6 }} />Add Color
+                <i className="fas fa-plus" style={{ marginInlineEnd: 6 }} />Add Color
               </button>
             )}
           </div>
@@ -795,7 +795,7 @@ export default function ProductForm({ product, onSave, onCancel }) {
                   ))}
                   {form.images.length > 0 && options.colors.some(c => c.name) && (
                     <p style={{ fontSize: 12, color: '#64748b', margin: '4px 0 0' }}>
-                      <i className="fas fa-info-circle" style={{ marginRight: 4 }} />
+                      <i className="fas fa-info-circle" style={{ marginInlineEnd: 4 }} />
                       Use the "Assign Color" dropdown on each image above to tag it with a color.
                     </p>
                   )}
@@ -831,7 +831,7 @@ export default function ProductForm({ product, onSave, onCancel }) {
                 style={addBtnStyle}
                 onClick={() => setOptions(prev => ({ ...prev, customOptions: [...prev.customOptions, { label: '', values: [''] }] }))}
               >
-                <i className="fas fa-plus" style={{ marginRight: 6 }} />Add Option Group
+                <i className="fas fa-plus" style={{ marginInlineEnd: 6 }} />Add Option Group
               </button>
             )}
           </div>
@@ -928,7 +928,7 @@ export default function ProductForm({ product, onSave, onCancel }) {
                 style={addBtnStyle}
                 onClick={() => setOptions(prev => ({ ...prev, pricedOptions: [...prev.pricedOptions, { label: '', values: [{ name: '', price: '' }] }] }))}
               >
-                <i className="fas fa-plus" style={{ marginRight: 6 }} />Add Priced Option Group
+                <i className="fas fa-plus" style={{ marginInlineEnd: 6 }} />Add Priced Option Group
               </button>
             )}
           </div>
@@ -1026,7 +1026,7 @@ export default function ProductForm({ product, onSave, onCancel }) {
             Cancel
           </button>
           <button type="submit" className="btn btn-primary" disabled={saving || uploading} style={{ flex: 2 }}>
-            {saving ? <><i className="fas fa-spinner fa-spin" style={{ marginRight: 8 }} />Saving...</> : isEdit ? 'Save Changes' : 'Create Product'}
+            {saving ? <><i className="fas fa-spinner fa-spin" style={{ marginInlineEnd: 8 }} />Saving...</> : isEdit ? 'Save Changes' : 'Create Product'}
           </button>
         </div>
       </form>

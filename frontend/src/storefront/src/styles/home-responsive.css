@@ -76,8 +76,8 @@
     .review-item { width: 280px; flex: 0 0 280px; min-width: 280px; }
     .review-image { height: 220px; }
     .reviews-scroll-arrow { width: 45px; height: 45px; font-size: 14px; }
-    .reviews-scroll-arrow-left { left: 5px; }
-    .reviews-scroll-arrow-right { right: 5px; }
+    .reviews-scroll-arrow-left { inset-inline-start: 5px; }
+    .reviews-scroll-arrow-right { inset-inline-end: 5px; }
 
     .store-locations-section { padding: 40px 0; }
     .store-locations-header h2 { font-size: 1.8rem; }
@@ -102,8 +102,8 @@
         height: 36px;
         font-size: 14px;
     }
-    .stores-scroll-left { left: 8px; }
-    .stores-scroll-right { right: 8px; }
+    .stores-scroll-left { inset-inline-start: 8px; }
+    .stores-scroll-right { inset-inline-end: 8px; }
     .store-actions { flex-direction: column; }
     .call-btn { width: 100%; }
 
@@ -116,9 +116,9 @@
 
     .featured-collection-header2 .section-title { font-size: 1.8rem; }
 
-    .home-category-products .product-scroll-container { padding-left: 20px; }
+    .home-category-products .product-scroll-container { padding-inline-start: 20px; }
     .home-category-scroll-arrow { width: 45px; height: 45px; font-size: 14px; }
-    .home-category-scroll-left { left: 5px; }
-    .home-category-scroll-right { right: 5px; }
+    .home-category-scroll-left { inset-inline-start: 5px; }
+    .home-category-scroll-right { inset-inline-end: 5px; }
     .home-category-view-all { padding: 10px 30px; font-size: 0.85rem; min-width: 140px; }
 }

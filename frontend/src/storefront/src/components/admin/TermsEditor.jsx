@@ -163,7 +163,7 @@ export default function TermsEditor({ onSaved, onPreviewUpdate }) {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <h3 style={{ fontSize: 16, fontWeight: 700 }}>Sections ({sections.length})</h3>
           <button type="button" className="btn btn-secondary" onClick={addSection} style={{ fontSize: 13 }}>
-            <i className="fas fa-plus" style={{ marginRight: 6 }} />Add Section
+            <i className="fas fa-plus" style={{ marginInlineEnd: 6 }} />Add Section
           </button>
         </div>
 

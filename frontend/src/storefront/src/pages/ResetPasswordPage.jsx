@@ -58,7 +58,7 @@ export default function ResetPasswordPage() {
             <div style={{ marginBottom: 20 }}>
               <label style={{ display: 'block', marginBottom: 8, fontFamily: "'Lato', sans-serif", fontSize: 14, color: '#333', fontWeight: 600 }}>New Password</label>
               <div style={{ position: 'relative' }}>
-                <input type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} required style={{ width: '100%', padding: 12, paddingRight: 45, border: '1px solid #ddd', borderRadius: 4, fontSize: 16, boxSizing: 'border-box' }} />
+                <input type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} required style={{ width: '100%', padding: 12, paddingInlineEnd: 45, border: '1px solid #ddd', borderRadius: 4, fontSize: 16, boxSizing: 'border-box' }} />
                 <span onClick={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: 15, top: '50%', transform: 'translateY(-50%)', cursor: 'pointer', color: '#999', fontSize: 14 }}>{showPassword ? 'Hide' : 'Show'}</span>
               </div>
               <small style={{ color: '#666', fontSize: 12, fontStyle: 'italic' }}>Minimum 8 characters</small>

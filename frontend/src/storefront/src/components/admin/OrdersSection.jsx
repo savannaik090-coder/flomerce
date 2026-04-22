@@ -647,13 +647,13 @@ export default function OrdersSection() {
                           })()}
                           <div style={{ fontSize: 12, color: '#555' }}>
                             {fmtOrdAmt(parseFloat(item.price || 0))} x {item.quantity}
-                            <span style={{ fontWeight: 600, marginLeft: 6 }}>= {fmtOrdAmt(parseFloat((item.price || 0) * (item.quantity || 1)))}</span>
+                            <span style={{ fontWeight: 600, marginInlineStart: 6 }}>= {fmtOrdAmt(parseFloat((item.price || 0) * (item.quantity || 1)))}</span>
                           </div>
                         </div>
                       </div>
                     )) : <div style={{ color: '#999', fontSize: 13 }}>No item details available</div>}
                     {order.total && (
-                      <div style={{ paddingTop: 8, borderTop: '2px solid #eee', textAlign: 'right' }}>
+                      <div style={{ paddingTop: 8, borderTop: '2px solid #eee', textAlign: 'end' }}>
                         <div style={{ fontSize: 13, color: '#555', marginBottom: 2 }}>
                           Subtotal: {fmtOrdAmt(parseFloat(order.subtotal || order.total || 0))}
                         </div>
@@ -940,13 +940,13 @@ export default function OrdersSection() {
                           })()}
                           <div style={{ fontSize: 12, color: '#555' }}>
                             {fmtOrdAmt(parseFloat(item.price || 0))} x {item.quantity}
-                            <span style={{ fontWeight: 600, marginLeft: 6 }}>= {fmtOrdAmt(parseFloat((item.price || 0) * (item.quantity || 1)))}</span>
+                            <span style={{ fontWeight: 600, marginInlineStart: 6 }}>= {fmtOrdAmt(parseFloat((item.price || 0) * (item.quantity || 1)))}</span>
                           </div>
                         </div>
                       </div>
                     )) : <div style={{ color: '#999', fontSize: 13 }}>No item details available</div>}
                     {order.total && (
-                      <div style={{ paddingTop: 8, borderTop: '2px solid #eee', textAlign: 'right' }}>
+                      <div style={{ paddingTop: 8, borderTop: '2px solid #eee', textAlign: 'end' }}>
                         <div style={{ fontSize: 13, color: '#555', marginBottom: 2 }}>
                           Subtotal: {fmtOrdAmt(parseFloat(order.subtotal || order.total || 0))}
                         </div>
@@ -1136,7 +1136,7 @@ export default function OrdersSection() {
                 </div>
                 <div style={{ color: '#f5a623', fontSize: 18, marginBottom: 8 }}>
                   {'\u2605'.repeat(r.rating)}{'\u2606'.repeat(5 - r.rating)}
-                  {r.is_verified === 1 && <span style={{ marginLeft: 8, fontSize: 11, background: '#dcfce7', color: '#166534', padding: '2px 8px', borderRadius: 10 }}>Verified Purchase</span>}
+                  {r.is_verified === 1 && <span style={{ marginInlineStart: 8, fontSize: 11, background: '#dcfce7', color: '#166534', padding: '2px 8px', borderRadius: 10 }}>Verified Purchase</span>}
                 </div>
                 {r.title && <p style={{ fontWeight: 600, margin: '0 0 4px', fontSize: 15 }}>{r.title}</p>}
                 {r.content && <p style={{ margin: '0 0 12px', fontSize: 14, color: '#555', lineHeight: 1.6 }}>{r.content}</p>}
@@ -1379,12 +1379,12 @@ export default function OrdersSection() {
                       })()}
                       <div style={{ fontSize: 12, color: '#555' }}>
                         {fmtOrdAmt(parseFloat(item.price || 0))} x {item.quantity}
-                        <span style={{ fontWeight: 600, marginLeft: 6 }}>= {fmtOrdAmt(parseFloat((item.price || 0) * (item.quantity || 1)))}</span>
+                        <span style={{ fontWeight: 600, marginInlineStart: 6 }}>= {fmtOrdAmt(parseFloat((item.price || 0) * (item.quantity || 1)))}</span>
                       </div>
                     </div>
                   </div>
                 )) : <div style={{ color: '#999', fontSize: 13 }}>No item details available</div>}
-                <div style={{ paddingTop: 8, borderTop: '2px solid #eee', textAlign: 'right' }}>
+                <div style={{ paddingTop: 8, borderTop: '2px solid #eee', textAlign: 'end' }}>
                   <div style={{ fontSize: 13, color: '#555', marginBottom: 2 }}>
                     Subtotal: {fmtOrdAmt(parseFloat(order.subtotal || order.total || 0))}
                   </div>
@@ -1424,7 +1424,7 @@ export default function OrdersSection() {
                   {order.notes && <div><span style={{ color: '#888' }}>Notes:</span> {order.notes}</div>}
                 </div>
                 {isCancelled && order.cancellation_reason && (
-                  <div style={{ marginTop: 12, padding: '10px 12px', background: '#fff5f5', borderLeft: '3px solid #e53935', borderRadius: 4 }}>
+                  <div style={{ marginTop: 12, padding: '10px 12px', background: '#fff5f5', borderInlineStart: '3px solid #e53935', borderRadius: 4 }}>
                     <div style={{ fontSize: 11, color: '#e53935', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>Cancellation Reason</div>
                     <div style={{ fontSize: 13, color: '#333' }}>{order.cancellation_reason}</div>
                   </div>

@@ -92,7 +92,7 @@
 .seo-char-counter {
   font-size: 11px;
   color: #94a3b8;
-  text-align: right;
+  text-align: end;
   margin-top: 3px;
 }
 
@@ -172,7 +172,7 @@
 }
 
 .seo-table th {
-  text-align: left;
+  text-align: start;
   font-size: 12px;
   font-weight: 600;
   color: #64748b;
@@ -290,7 +290,7 @@
   font-size: 12px;
   color: #64748b;
   line-height: 1.5;
-  padding-left: 24px;
+  padding-inline-start: 24px;
   word-break: break-word;
 }
 
@@ -306,7 +306,7 @@
   }
 
   .seo-tab i {
-    margin-right: 4px !important;
+    margin-inline-end: 4px !important;
   }
 
   .seo-section {

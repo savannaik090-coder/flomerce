@@ -322,7 +322,7 @@ export default function AdminPanel() {
             <h1>{sectionTitles[activeSection] || t('panelTitle')}</h1>
             <span className="admin-brand">{siteConfig?.brand_name || siteConfig?.brandName || t('store')}</span>
           </div>
-          <div style={{ marginLeft: 'auto' }}>
+          <div style={{ marginInlineStart: 'auto' }}>
             <LanguageSwitcher compact />
           </div>
         </header>

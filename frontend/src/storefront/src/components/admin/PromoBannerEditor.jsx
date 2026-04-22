@@ -127,7 +127,7 @@ export default function PromoBannerEditor({ onSaved, onPreviewUpdate, sectionVis
                     borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit',
                   }}
                 />
-                <div style={{ textAlign: 'right', fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
+                <div style={{ textAlign: 'end', fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
                   {messages[index].length}/120
                 </div>
               </div>

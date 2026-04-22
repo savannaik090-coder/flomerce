@@ -690,10 +690,10 @@ export default function CheckoutPage() {
                 </span>
               </div>
               {showShippingNote && (
-                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 3, textAlign: 'right' }}>May vary based on your location</div>
+                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 3, textAlign: 'end' }}>May vary based on your location</div>
               )}
               {deliveryConfig.enabled && deliveryConfig.freeAboveEnabled && deliveryConfig.freeAbove > 0 && shippingCost > 0 && (
-                <div style={{ fontSize: 11, color: '#16a34a', marginTop: 3, textAlign: 'right' }}>Free shipping on orders above {formatAmount(deliveryConfig.freeAbove)}</div>
+                <div style={{ fontSize: 11, color: '#16a34a', marginTop: 3, textAlign: 'end' }}>Free shipping on orders above {formatAmount(deliveryConfig.freeAbove)}</div>
               )}
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 8, borderTop: '1px solid #f0f0f0' }}>
@@ -731,7 +731,7 @@ export default function CheckoutPage() {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div>
                     <span style={{ fontSize: 13, color: '#16a34a', fontWeight: 700 }}>✓ Coupon applied: {appliedCoupon.code}</span>
-                    <span style={{ fontSize: 13, color: '#64748b', marginLeft: 8 }}>
+                    <span style={{ fontSize: 13, color: '#64748b', marginInlineStart: 8 }}>
                       ({appliedCoupon.type === 'percent' ? `${appliedCoupon.value}% off` : `${formatAmount(appliedCoupon.value)} off`})
                     </span>
                   </div>
@@ -851,14 +851,14 @@ export default function CheckoutPage() {
 
           {isAuthenticated && !selectedAddressId && (
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: 20, padding: '12px 16px', background: '#f8f6f0', borderRadius: 6, border: `1px solid ${'#e8e0d0'}` }}>
-              <input type="checkbox" id="saveAddr" checked={saveAddress} onChange={e => setSaveAddress(e.target.checked)} style={{ width: 'auto', marginRight: 10, accentColor: '#7a4012' }} />
+              <input type="checkbox" id="saveAddr" checked={saveAddress} onChange={e => setSaveAddress(e.target.checked)} style={{ width: 'auto', marginInlineEnd: 10, accentColor: '#7a4012' }} />
               <label htmlFor="saveAddr" style={{ color: '#333', fontSize: 14, cursor: 'pointer' }}>Save this address to my account for faster checkout</label>
             </div>
           )}
 
           {whatsappNotificationsAvailable && (
             <div style={{ display: 'flex', alignItems: 'flex-start', marginBottom: 20, padding: '12px 16px', background: '#f0fdf4', borderRadius: 6, border: '1px solid #bbf7d0' }}>
-              <input type="checkbox" id="whatsappOptIn" checked={whatsappOptIn} onChange={e => setWhatsappOptIn(e.target.checked)} style={{ width: 'auto', marginRight: 10, marginTop: 2, accentColor: '#25D366' }} />
+              <input type="checkbox" id="whatsappOptIn" checked={whatsappOptIn} onChange={e => setWhatsappOptIn(e.target.checked)} style={{ width: 'auto', marginInlineEnd: 10, marginTop: 2, accentColor: '#25D366' }} />
               <label htmlFor="whatsappOptIn" style={{ color: '#333', fontSize: 14, cursor: 'pointer', lineHeight: 1.4 }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <i className="fab fa-whatsapp" style={{ color: '#25D366', fontSize: 16 }} />
@@ -880,7 +880,7 @@ export default function CheckoutPage() {
         <div style={{ background: '#fff', padding: 24, boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
           <h3 style={{ fontFamily: "'Playfair Display', serif", marginBottom: 20,  }}>Payment</h3>
 
-          <div style={{ background: '#f8f6f0', padding: 16, borderLeft: `3px solid #7a4012`, marginBottom: 24, fontSize: 14, lineHeight: 1.6 }}>
+          <div style={{ background: '#f8f6f0', padding: 16, borderInlineStart: `3px solid #7a4012`, marginBottom: 24, fontSize: 14, lineHeight: 1.6 }}>
             <strong>Shipping To:</strong><br />
             {address.firstName} {address.lastName}<br />
             {address.houseNumber}, {address.roadName}<br />
@@ -909,7 +909,7 @@ export default function CheckoutPage() {
                 </span>
               </div>
               {deliveryConfig.enabled && deliveryConfig.freeAboveEnabled && deliveryConfig.freeAbove > 0 && shippingCost > 0 && (
-                <div style={{ fontSize: 11, color: '#16a34a', marginTop: 2, textAlign: 'right' }}>Free shipping on orders above {formatAmount(deliveryConfig.freeAbove)}</div>
+                <div style={{ fontSize: 11, color: '#16a34a', marginTop: 2, textAlign: 'end' }}>Free shipping on orders above {formatAmount(deliveryConfig.freeAbove)}</div>
               )}
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', fontSize: 18, fontWeight: 700 }}>

@@ -202,12 +202,12 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate, section
               <div key={index} style={{ padding: 16, border: '1px solid #e2e8f0', borderRadius: 8, marginBottom: 16, background: '#fafbfc' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                   <span style={{ fontWeight: 600, fontSize: 14, color: '#1e293b' }}>
-                    <i className="fas fa-store" style={{ marginRight: 6, color: '#2563eb' }} />
+                    <i className="fas fa-store" style={{ marginInlineEnd: 6, color: '#2563eb' }} />
                     Store {stores.length > 1 ? `#${index + 1}` : ''}
                   </span>
                   {stores.length > 1 && (
                     <button type="button" onClick={() => removeStore(index)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>
-                      <i className="fas fa-trash" style={{ marginRight: 4 }} />Remove
+                      <i className="fas fa-trash" style={{ marginInlineEnd: 4 }} />Remove
                     </button>
                   )}
                 </div>
@@ -225,9 +225,9 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate, section
                           style={{ background: 'rgba(0,0,0,0.6)', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 10px', cursor: uploading[index] ? 'not-allowed' : 'pointer', fontSize: 12, fontFamily: 'inherit', opacity: uploading[index] ? 0.7 : 1 }}
                         >
                           {uploading[index] ? (
-                            <><i className="fas fa-spinner fa-spin" style={{ marginRight: 4 }} />Changing...</>
+                            <><i className="fas fa-spinner fa-spin" style={{ marginInlineEnd: 4 }} />Changing...</>
                           ) : (
-                            <><i className="fas fa-camera" style={{ marginRight: 4 }} />Change</>
+                            <><i className="fas fa-camera" style={{ marginInlineEnd: 4 }} />Change</>
                           )}
                         </button>
                         <button
@@ -248,7 +248,7 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate, section
                     >
                       {uploading[index] ? (
                         <span style={{ fontSize: 13, color: '#64748b' }}>
-                          <i className="fas fa-spinner fa-spin" style={{ marginRight: 6 }} />Uploading...
+                          <i className="fas fa-spinner fa-spin" style={{ marginInlineEnd: 6 }} />Uploading...
                         </span>
                       ) : (
                         <>
@@ -297,7 +297,7 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate, section
             ))}
 
             <button type="button" onClick={addStore} style={{ width: '100%', padding: '10px 16px', border: '2px dashed #cbd5e1', borderRadius: 8, background: 'none', color: '#64748b', cursor: 'pointer', fontSize: 13, fontWeight: 500, fontFamily: 'inherit' }}>
-              <i className="fas fa-plus" style={{ marginRight: 6 }} />Add Another Store
+              <i className="fas fa-plus" style={{ marginInlineEnd: 6 }} />Add Another Store
             </button>
           </div>
         </div>

@@ -112,7 +112,7 @@ export default function I18nAdminPanel() {
           style={{
             marginTop: '1rem',
             background: '#fff7ed',
-            borderLeft: '4px solid #f97316',
+            borderInlineStart: '4px solid #f97316',
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
@@ -143,11 +143,11 @@ export default function I18nAdminPanel() {
           <table className="oa-table" style={{ width: '100%', marginTop: '0.5rem' }}>
             <thead>
               <tr>
-                <th style={{ textAlign: 'left' }}>{t('common:language')}</th>
+                <th style={{ textAlign: 'start' }}>{t('common:language')}</th>
                 <th>{t('common:status')}</th>
                 <th>{t('i18n.size')}</th>
                 <th>{t('i18n.lastUpdated')}</th>
-                <th style={{ textAlign: 'right' }}>{t('common:actions')}</th>
+                <th style={{ textAlign: 'end' }}>{t('common:actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -168,8 +168,8 @@ export default function I18nAdminPanel() {
                     </td>
                     <td>{(l.size / 1024).toFixed(1)} KB</td>
                     <td>{l.uploaded ? new Date(l.uploaded).toLocaleString() : '—'}</td>
-                    <td style={{ textAlign: 'right' }}>
-                      <button className="oa-btn oa-btn-outline" disabled={busyLang === l.lang} onClick={() => regenerate(l.lang)} style={{ marginRight: 6 }}>
+                    <td style={{ textAlign: 'end' }}>
+                      <button className="oa-btn oa-btn-outline" disabled={busyLang === l.lang} onClick={() => regenerate(l.lang)} style={{ marginInlineEnd: 6 }}>
                         {busyLang === l.lang ? t('i18n.regenerating') : t('i18n.regenerate')}
                       </button>
                       <button className="oa-btn oa-btn-outline" onClick={() => purge(l.lang)}>{t('i18n.purge')}</button>

@@ -69,13 +69,13 @@
   box-shadow: 0 10px 30px rgba(0,0,0,0.12), 0 0 0 1px rgba(15,23,42,0.04);
   font-size: 0.875rem; min-width: 240px; max-width: 420px;
   animation: flo-ui-toast-in 0.2s ease;
-  border-left: 4px solid #2563eb;
+  border-inline-start: 4px solid #2563eb;
 }
 .flo-ui-toast--leaving { animation: flo-ui-toast-out 0.2s ease forwards; }
-.flo-ui-toast--success { border-left-color: #16a34a; }
-.flo-ui-toast--error   { border-left-color: #dc2626; }
-.flo-ui-toast--warning { border-left-color: #d97706; }
-.flo-ui-toast--info    { border-left-color: #2563eb; }
+.flo-ui-toast--success { border-inline-start-color: #16a34a; }
+.flo-ui-toast--error   { border-inline-start-color: #dc2626; }
+.flo-ui-toast--warning { border-inline-start-color: #d97706; }
+.flo-ui-toast--info    { border-inline-start-color: #2563eb; }
 .flo-ui-toast__icon { flex-shrink: 0; width: 20px; height: 20px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center; font-size: 12px; color: #fff; margin-top: 1px; }
 .flo-ui-toast--success .flo-ui-toast__icon { background: #16a34a; }

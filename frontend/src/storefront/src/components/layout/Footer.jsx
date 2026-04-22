@@ -85,7 +85,7 @@ export default function Footer() {
                     <i className={`fas fa-chevron-down`} style={{ fontSize: 10, ...(openSections[catKey] ? { transform: 'rotate(180deg)' } : {}) }}></i>
                   </button>
                   <div className={`footer-content${openSections[catKey] ? ' show' : ''}`}>
-                    <ul style={{ paddingLeft: 8 }}>
+                    <ul style={{ paddingInlineStart: 8 }}>
                       {directSubs.map(sub => (
                         <li key={sub.id || sub.slug}>
                           <Link to={`/category/${cat.slug}?subcategory=${sub.id}`}>{sub.name}</Link>
@@ -104,7 +104,7 @@ export default function Footer() {
                               <i className={`fas fa-chevron-down`} style={{ fontSize: 9, ...(openSections[groupKey] ? { transform: 'rotate(180deg)' } : {}) }}></i>
                             </button>
                             <div className={`footer-content${openSections[groupKey] ? ' show' : ''}`}>
-                              <ul style={{ paddingLeft: 8 }}>
+                              <ul style={{ paddingInlineStart: 8 }}>
                                 {(group.children || []).map(val => (
                                   <li key={val.id || val.slug}>
                                     <Link to={`/category/${cat.slug}?subcategory=${val.id}`}>{val.name}</Link>

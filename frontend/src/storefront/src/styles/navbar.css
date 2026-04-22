@@ -65,8 +65,8 @@
     font-family: 'Playfair Display', serif;
     color: #8B7355;
     text-decoration: none;
-    margin-right: 20px;
-    margin-left: 15px;
+    margin-inline-end: 20px;
+    margin-inline-start: 15px;
     padding: 0;
     min-width: 0;
     order: 0;
@@ -130,7 +130,7 @@
     width: 30px;
     height: 30px;
     position: relative;
-    margin-right: 15px;
+    margin-inline-end: 15px;
     background: transparent;
     border: none;
     padding: 8px 0 3px 0;
@@ -190,7 +190,7 @@
 .dropdown-menu {
     position: absolute;
     top: 100%;
-    left: 0;
+    inset-inline-start: 0;
     min-width: 220px;
     background: linear-gradient(145deg, #ffffff 0%, #fafafa 100%);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
@@ -236,7 +236,7 @@
 
 .dropdown-toggle i {
     font-size: 10px;
-    margin-left: 5px;
+    margin-inline-start: 5px;
     transition: transform 0.3s ease;
 }
 
@@ -253,7 +253,7 @@
 }
 
 .nav-link-row .nav-link {
-    padding-right: 2px;
+    padding-inline-end: 2px;
 }
 
 .subcategory-toggle {
@@ -317,7 +317,7 @@
 .cat-with-subs .dropdown-menu {
     position: absolute;
     top: 100%;
-    left: 0;
+    inset-inline-start: 0;
     min-width: 220px;
     background: linear-gradient(145deg, #ffffff 0%, #fafafa 100%);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
@@ -431,7 +431,7 @@
 .icon-link {
     color: #333;
     font-size: 22px;
-    margin-left: 12px;
+    margin-inline-start: 12px;
     text-decoration: none;
     transition: all 0.3s ease;
     position: relative;
@@ -448,7 +448,7 @@
 .wishlist-count, .cart-count {
     position: absolute;
     top: -1px;
-    right: -8px;
+    inset-inline-end: -8px;
     background-color: #c8a97e !important;
     color: #fff !important;
     font-size: 11px;
@@ -468,7 +468,7 @@
     display: none;
     position: fixed;
     top: 0;
-    left: 0;
+    inset-inline-start: 0;
     width: 100%;
     height: 100%;
     background-color: rgba(0, 0, 0, 0.5);
@@ -553,14 +553,14 @@
         margin: 0;
         z-index: 1;
     }
-    .nav-container--logo-center .nav-menu { margin-left: auto; }
+    .nav-container--logo-center .nav-menu { margin-inline-start: auto; }
     .nav-menu { order: 1; flex: 1; justify-content: center; }
     .nav-icons { order: 2; display: flex !important; }
     .icon-link {
         display: flex !important;
         color: #333 !important;
         font-size: 22px !important;
-        margin-left: 14px !important;
+        margin-inline-start: 14px !important;
     }
 }
 
@@ -594,7 +594,7 @@
     .hamburger {
         display: flex;
         order: 0;
-        margin-right: 10px;
+        margin-inline-end: 10px;
     }
     .brand {
         order: 1;
@@ -603,15 +603,15 @@
         max-width: 45%;
     }
     .nav-icons { order: 2; display: flex; min-width: 140px; }
-    .icon-link { margin-left: 12px; font-size: 22px; }
+    .icon-link { margin-inline-start: 12px; font-size: 22px; }
     .wishlist-count, .cart-count {
-        top: -2px; right: -5px; font-size: 10px;
+        top: -2px; inset-inline-end: -5px; font-size: 10px;
         width: 17px; height: 17px; min-width: 17px;
     }
     .nav-menu {
         position: fixed;
         top: 0;
-        left: -100%;
+        inset-inline-start: -100%;
         width: 70%;
         max-width: 380px;
         height: 100vh;
@@ -625,7 +625,7 @@
         display: flex;
         flex-direction: column;
     }
-    .nav-menu.active { left: 0; }
+    .nav-menu.active { inset-inline-start: 0; }
     .meenu-close {
         display: block;
         align-self: flex-end;
@@ -697,7 +697,7 @@
     .dropdown-menu a:hover {
         color: #c59d5f;
         background: rgba(196, 157, 95, 0.1);
-        padding-left: 8px;
+        padding-inline-start: 8px;
         transform: none;
         box-shadow: none;
     }
@@ -708,7 +708,7 @@
     }
     .nav-link-row .nav-link {
         flex: 1;
-        padding-right: 0;
+        padding-inline-end: 0;
     }
     .grouped-cat-header {
         display: flex;
@@ -788,9 +788,9 @@
 @media (max-width: 480px) {
     .brand {
         max-width: 50%;
-        margin-left: 6px;
+        margin-inline-start: 6px;
     }
     .brand-text { font-size: 18px; }
     .nav-icons { min-width: auto; }
-    .icon-link { margin-left: 8px; }
+    .icon-link { margin-inline-start: 8px; }
 }

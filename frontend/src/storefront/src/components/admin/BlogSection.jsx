@@ -134,7 +134,7 @@ export default function BlogSection() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <h3 style={{ fontSize: 16, fontWeight: 600, color: '#0f172a', margin: 0 }}>Posts ({posts.length})</h3>
         <button style={btnPrimary} onClick={() => setCreating(true)}>
-          <i className="fas fa-plus" style={{ marginRight: 6 }}></i> New Post
+          <i className="fas fa-plus" style={{ marginInlineEnd: 6 }}></i> New Post
         </button>
       </div>
 
@@ -343,7 +343,7 @@ function BlogPostEditor({ post, siteConfig, quillLoaded, onSave, onCancel, showM
           {post ? 'Edit Post' : 'New Post'}
         </h2>
         <button onClick={onCancel} style={{ padding: '8px 16px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
-          <i className="fas fa-arrow-left" style={{ marginRight: 6 }}></i> Back
+          <i className="fas fa-arrow-left" style={{ marginInlineEnd: 6 }}></i> Back
         </button>
       </div>
 
@@ -387,7 +387,7 @@ function BlogPostEditor({ post, siteConfig, quillLoaded, onSave, onCancel, showM
 
       <button onClick={() => setShowSeo(!showSeo)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14, fontWeight: 500, cursor: 'pointer', marginBottom: 16, width: '100%', fontFamily: 'inherit', color: '#334155' }}>
         <i className="fas fa-search"></i> SEO Settings
-        <i className={`fas fa-chevron-${showSeo ? 'up' : 'down'}`} style={{ marginLeft: 'auto' }}></i>
+        <i className={`fas fa-chevron-${showSeo ? 'up' : 'down'}`} style={{ marginInlineStart: 'auto' }}></i>
       </button>
       {showSeo && (
         <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: 24, marginBottom: 16 }}>

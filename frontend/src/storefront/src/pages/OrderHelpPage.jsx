@@ -158,7 +158,7 @@ export default function OrderHelpPage() {
                   <div style={{ fontWeight: 600, fontSize: 15, color: '#0f172a' }}>Track This Order</div>
                   <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>See the current status and shipping updates</div>
                 </div>
-                <i className="fas fa-chevron-right" style={{ marginLeft: 'auto', color: '#cbd5e1' }} />
+                <i className="fas fa-chevron-right" style={{ marginInlineStart: 'auto', color: '#cbd5e1' }} />
               </Link>
 
               {canCancel && (
@@ -170,7 +170,7 @@ export default function OrderHelpPage() {
                     <div style={{ fontWeight: 600, fontSize: 15, color: '#0f172a' }}>Cancel Order</div>
                     <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>Request a cancellation for this order</div>
                   </div>
-                  <i className="fas fa-chevron-right" style={{ marginLeft: 'auto', color: '#cbd5e1' }} />
+                  <i className="fas fa-chevron-right" style={{ marginInlineStart: 'auto', color: '#cbd5e1' }} />
                 </Link>
               )}
 
@@ -183,7 +183,7 @@ export default function OrderHelpPage() {
                     <div style={{ fontWeight: 600, fontSize: 15, color: '#0f172a' }}>Return / Refund</div>
                     <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>Request a return or refund for this order</div>
                   </div>
-                  <i className="fas fa-chevron-right" style={{ marginLeft: 'auto', color: '#cbd5e1' }} />
+                  <i className="fas fa-chevron-right" style={{ marginInlineStart: 'auto', color: '#cbd5e1' }} />
                 </Link>
               )}
 
@@ -208,7 +208,7 @@ export default function OrderHelpPage() {
                     <div style={{ fontWeight: 600, fontSize: 15, color: '#0f172a' }}>Contact the Store</div>
                     <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>Send an email to {ownerEmail}</div>
                   </div>
-                  <i className="fas fa-chevron-right" style={{ marginLeft: 'auto', color: '#cbd5e1' }} />
+                  <i className="fas fa-chevron-right" style={{ marginInlineStart: 'auto', color: '#cbd5e1' }} />
                 </a>
               )}
             </div>

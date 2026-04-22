@@ -176,7 +176,7 @@ export default function ProductPoliciesEditor({ onSaved, onPreviewUpdate }) {
               whiteSpace: 'nowrap',
             }}
           >
-            <i className="fas fa-magic" style={{ marginRight: 6 }} />
+            <i className="fas fa-magic" style={{ marginInlineEnd: 6 }} />
             Load Defaults
           </button>
         </div>
@@ -184,7 +184,7 @@ export default function ProductPoliciesEditor({ onSaved, onPreviewUpdate }) {
         <div className="card" style={{ marginBottom: 20 }}>
           <div className="card-header">
             <h3 className="card-title">
-              <i className="fas fa-truck" style={{ marginRight: 8, color: '#64748b' }} />
+              <i className="fas fa-truck" style={{ marginInlineEnd: 8, color: '#64748b' }} />
               Shipping & Delivery Details
             </h3>
           </div>
@@ -235,7 +235,7 @@ export default function ProductPoliciesEditor({ onSaved, onPreviewUpdate }) {
         <div className="card" style={{ marginBottom: 20 }}>
           <div className="card-header">
             <h3 className="card-title">
-              <i className="fas fa-exchange-alt" style={{ marginRight: 8, color: '#64748b' }} />
+              <i className="fas fa-exchange-alt" style={{ marginInlineEnd: 8, color: '#64748b' }} />
               Return & Exchange
             </h3>
           </div>
@@ -276,7 +276,7 @@ export default function ProductPoliciesEditor({ onSaved, onPreviewUpdate }) {
         <div className="card" style={{ marginBottom: 20 }}>
           <div className="card-header">
             <h3 className="card-title">
-              <i className="fas fa-hand-holding-heart" style={{ marginRight: 8, color: '#64748b' }} />
+              <i className="fas fa-hand-holding-heart" style={{ marginInlineEnd: 8, color: '#64748b' }} />
               Care Guide
             </h3>
           </div>

@@ -150,7 +150,7 @@ export default function CheckoutEditor({ onSaved, onPreviewUpdate }) {
                         {coupon.code || `Coupon ${idx + 1}`}
                       </span>
                       {coupon.value && (
-                        <span style={{ marginLeft: 10, fontSize: 12, color: '#64748b' }}>
+                        <span style={{ marginInlineStart: 10, fontSize: 12, color: '#64748b' }}>
                           {coupon.type === 'percent' ? `${coupon.value}% off` : `${getCurrencySymbol(getAdminCurrency(siteConfig))}${coupon.value} off`}
                           {coupon.minOrder ? ` (min ${getCurrencySymbol(getAdminCurrency(siteConfig))}${coupon.minOrder})` : ''}
                         </span>

@@ -328,7 +328,7 @@ export default function WatchBuySection({ onSaved }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <h2 style={{ fontSize: 20, fontWeight: 700 }}>Watch & Buy Videos</h2>
         <button className="btn btn-primary" onClick={openAdd}>
-          <i className="fas fa-plus" style={{ marginRight: 8 }} />Upload Video
+          <i className="fas fa-plus" style={{ marginInlineEnd: 8 }} />Upload Video
         </button>
       </div>
 
@@ -356,16 +356,16 @@ export default function WatchBuySection({ onSaved }) {
               <h4 style={{ fontWeight: 600, fontSize: 15, marginBottom: 4 }}>{video.title || getProductNameForVideo(video)}</h4>
               {video.productSku ? (
                 <div style={{ fontSize: 12, color: '#2563eb', marginBottom: 12 }}>
-                  <i className="fas fa-link" style={{ marginRight: 4 }} />SKU: {video.productSku}
+                  <i className="fas fa-link" style={{ marginInlineEnd: 4 }} />SKU: {video.productSku}
                 </div>
               ) : (
                 <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 12 }}>
-                  <i className="fas fa-link" style={{ marginRight: 4 }} />No product linked
+                  <i className="fas fa-link" style={{ marginInlineEnd: 4 }} />No product linked
                 </div>
               )}
               <div style={{ display: 'flex', gap: 8 }}>
                 <button className="btn btn-secondary" style={{ flex: 1, fontSize: 13 }} onClick={() => openEdit(video)}>
-                  <i className="fas fa-edit" style={{ marginRight: 4 }} />Edit
+                  <i className="fas fa-edit" style={{ marginInlineEnd: 4 }} />Edit
                 </button>
                 {!usingDefaults && (
                   <button
@@ -499,7 +499,7 @@ export default function WatchBuySection({ onSaved }) {
               <div style={{ display: 'flex', gap: 12 }}>
                 <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setShowModal(false)}>Cancel</button>
                 <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={saving || uploading}>
-                  {saving ? <><i className="fas fa-spinner fa-spin" style={{ marginRight: 8 }} />Saving...</> : editingVideo ? 'Save Changes' : 'Upload Video'}
+                  {saving ? <><i className="fas fa-spinner fa-spin" style={{ marginInlineEnd: 8 }} />Saving...</> : editingVideo ? 'Save Changes' : 'Upload Video'}
                 </button>
               </div>
             </form>

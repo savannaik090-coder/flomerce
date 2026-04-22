@@ -621,7 +621,7 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
                           display: 'flex', alignItems: 'center', gap: 10, width: '100%',
                           padding: '10px 10px', marginBottom: 2, border: 'none',
                           borderRadius: 8, background: '#fff', cursor: isLocked ? 'default' : 'pointer',
-                          fontFamily: 'inherit', textAlign: 'left',
+                          fontFamily: 'inherit', textAlign: 'start',
                           transition: 'background 0.12s ease',
                         }}
                         onMouseEnter={e => { e.currentTarget.style.background = '#f8fafc'; }}
@@ -665,7 +665,7 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
                         display: 'flex', alignItems: 'center', gap: 10, width: '100%',
                         padding: '10px 10px', marginBottom: 2, border: 'none',
                         borderRadius: 8, background: '#fff', cursor: 'pointer',
-                        fontFamily: 'inherit', textAlign: 'left',
+                        fontFamily: 'inherit', textAlign: 'start',
                         transition: 'background 0.12s ease',
                       }}
                       onMouseEnter={e => { e.currentTarget.style.background = '#f8fafc'; }}
@@ -816,7 +816,7 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
           fontSize: isMobile ? 14 : 15, fontWeight: 700, color: '#0f172a',
           letterSpacing: '-0.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
         }}>
-          <i className="fas fa-palette" style={{ marginRight: 8, color: '#2563eb', fontSize: 14 }} />
+          <i className="fas fa-palette" style={{ marginInlineEnd: 8, color: '#2563eb', fontSize: 14 }} />
           {isMobile ? 'Edit' : 'Visual Customizer'}
         </span>
       </div>
@@ -824,7 +824,7 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 6 : 8, flexShrink: 0 }}>
         {savingVisibility && !isMobile && (
           <span style={{ fontSize: 12, color: '#64748b' }}>
-            <i className="fas fa-circle-notch fa-spin" style={{ marginRight: 4, fontSize: 10 }} />
+            <i className="fas fa-circle-notch fa-spin" style={{ marginInlineEnd: 4, fontSize: 10 }} />
             Saving...
           </span>
         )}
@@ -921,7 +921,7 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
             width: activeSection ? 400 : 280,
             flexShrink: 0,
             background: '#fff',
-            borderRight: '1px solid #e2e8f0',
+            borderInlineEnd: '1px solid #e2e8f0',
             display: 'flex', flexDirection: 'column',
             transition: 'width 0.2s ease',
             overflow: 'hidden',

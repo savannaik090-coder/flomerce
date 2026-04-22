@@ -156,7 +156,7 @@ export default function PrivacyEditor({ onSaved, onPreviewUpdate }) {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <h3 style={{ fontSize: 16, fontWeight: 700 }}>Sections</h3>
           <button type="button" className="btn btn-secondary" onClick={addSection} style={{ fontSize: 13 }}>
-            <i className="fas fa-plus" style={{ marginRight: 6 }} />Add Section
+            <i className="fas fa-plus" style={{ marginInlineEnd: 6 }} />Add Section
           </button>
         </div>
 
@@ -169,7 +169,7 @@ export default function PrivacyEditor({ onSaved, onPreviewUpdate }) {
                 onClick={() => removeSection(index)}
                 style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 6, color: '#dc2626', cursor: 'pointer', fontSize: 12, padding: '4px 10px' }}
               >
-                <i className="fas fa-trash" style={{ marginRight: 4 }} />Remove
+                <i className="fas fa-trash" style={{ marginInlineEnd: 4 }} />Remove
               </button>
             </div>
             <div className="card-content">

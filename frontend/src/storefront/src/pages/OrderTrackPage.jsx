@@ -132,7 +132,7 @@ export default function OrderTrackPage() {
 
       {error && (
         <div style={{ padding: '16px 20px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, color: '#dc2626', fontSize: 14, textAlign: 'center', marginBottom: 24 }}>
-          <i className="fas fa-exclamation-circle" style={{ marginRight: 8 }} />
+          <i className="fas fa-exclamation-circle" style={{ marginInlineEnd: 8 }} />
           {error}
         </div>
       )}
@@ -144,7 +144,7 @@ export default function OrderTrackPage() {
               <div style={{ fontSize: 13, color: '#64748b', marginBottom: 4 }}>Order Number</div>
               <div style={{ fontSize: 18, fontWeight: 700, color: '#0f172a' }}>#{order.order_number}</div>
             </div>
-            <div style={{ textAlign: 'right' }}>
+            <div style={{ textAlign: 'end' }}>
               <div style={{ fontSize: 13, color: '#64748b', marginBottom: 4 }}>Order Date</div>
               <div style={{ fontSize: 14, fontWeight: 500, color: '#334155' }}>{formatDate(order.created_at)}</div>
             </div>
@@ -160,7 +160,7 @@ export default function OrderTrackPage() {
             </div>
           ) : (
             <div style={{ padding: '32px 24px' }}>
-              <div style={{ position: 'relative', paddingLeft: 36 }}>
+              <div style={{ position: 'relative', paddingInlineStart: 36 }}>
                 {STATUS_STEPS.map((step, idx) => {
                   const isCompleted = idx <= currentStep;
                   const isCurrent = idx === currentStep;
@@ -184,11 +184,11 @@ export default function OrderTrackPage() {
                       <div style={{ position: 'absolute', left: -36, top: 0, width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: isCompleted ? step.color : '#f1f5f9', transition: '0.3s' }}>
                         <i className={`fas ${isCompleted ? step.icon : 'fa-circle'}`} style={{ fontSize: isCompleted ? 12 : 8, color: isCompleted ? '#fff' : '#cbd5e1' }} />
                       </div>
-                      <div style={{ paddingLeft: 8 }}>
+                      <div style={{ paddingInlineStart: 8 }}>
                         <div style={{ fontSize: 15, fontWeight: isCurrent ? 700 : 500, color: isCompleted ? '#0f172a' : '#94a3b8' }}>
                           {step.label}
                           {isCurrent && (
-                            <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 12, background: step.color, color: '#fff' }}>Current</span>
+                            <span style={{ marginInlineStart: 8, fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 12, background: step.color, color: '#fff' }}>Current</span>
                           )}
                         </div>
                         {timestamp && (
@@ -215,7 +215,7 @@ export default function OrderTrackPage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                 <i className="fas fa-undo-alt" style={{ color: '#d97706' }} />
                 <span style={{ fontSize: 15, fontWeight: 700, color: '#92400e' }}>Return Request</span>
-                <span style={{ marginLeft: 'auto', display: 'inline-block', background: returnInfo.status === 'requested' ? '#ff9800' : returnInfo.status === 'approved' ? '#2196f3' : returnInfo.status === 'rejected' ? '#e53935' : returnInfo.status === 'refunded' ? '#27ae60' : returnInfo.status === 'replaced' ? '#7c3aed' : '#757575', color: '#fff', borderRadius: 12, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>
+                <span style={{ marginInlineStart: 'auto', display: 'inline-block', background: returnInfo.status === 'requested' ? '#ff9800' : returnInfo.status === 'approved' ? '#2196f3' : returnInfo.status === 'rejected' ? '#e53935' : returnInfo.status === 'refunded' ? '#27ae60' : returnInfo.status === 'replaced' ? '#7c3aed' : '#757575', color: '#fff', borderRadius: 12, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>
                   {returnInfo.status === 'requested' ? 'Requested' : returnInfo.status === 'approved' ? 'Approved' : returnInfo.status === 'rejected' ? 'Rejected' : returnInfo.status === 'refunded' ? 'Refunded' : returnInfo.status === 'replaced' ? 'Replaced' : returnInfo.status}
                 </span>
               </div>
@@ -246,7 +246,7 @@ export default function OrderTrackPage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                 <i className="fas fa-ban" style={{ color: '#dc2626' }} />
                 <span style={{ fontSize: 15, fontWeight: 700, color: '#991b1b' }}>Cancellation Request</span>
-                <span style={{ marginLeft: 'auto', display: 'inline-block', background: cancelInfo.status === 'requested' ? '#ff9800' : cancelInfo.status === 'approved' ? '#27ae60' : cancelInfo.status === 'rejected' ? '#e53935' : '#757575', color: '#fff', borderRadius: 12, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>
+                <span style={{ marginInlineStart: 'auto', display: 'inline-block', background: cancelInfo.status === 'requested' ? '#ff9800' : cancelInfo.status === 'approved' ? '#27ae60' : cancelInfo.status === 'rejected' ? '#e53935' : '#757575', color: '#fff', borderRadius: 12, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>
                   {cancelInfo.status === 'requested' ? 'Requested' : cancelInfo.status === 'approved' ? 'Approved' : cancelInfo.status === 'rejected' ? 'Rejected' : cancelInfo.status}
                 </span>
               </div>

@@ -452,7 +452,7 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
               ₹0
               <span style={{ fontSize: '0.875rem', color: '#64748b', fontWeight: 500 }}> {t('trial.priceLabel')}</span>
             </p>
-            <ul style={{ listStyle: 'none', padding: 0, marginBottom: '2rem', textAlign: 'left', fontSize: '0.875rem', color: '#64748b' }}>
+            <ul style={{ listStyle: 'none', padding: 0, marginBottom: '2rem', textAlign: 'start', fontSize: '0.875rem', color: '#64748b' }}>
               <li style={{ marginBottom: '0.5rem' }}>✓ {t('trial.feature1')}</li>
               <li style={{ marginBottom: '0.5rem' }}>✓ {t('trial.feature2')}</li>
               <li style={{ marginBottom: '0.5rem' }}>✓ {t('trial.feature3')}</li>
@@ -491,7 +491,7 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
                   ₹{price}
                   <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', fontWeight: 500 }}> / {DURATION_KEYS.includes(duration) ? t(`durationText.${duration}`) : duration}</span>
                   {savingsPercent > 0 && (
-                    <span style={{ fontSize: '0.7rem', background: '#dcfce7', color: '#16a34a', padding: '2px 8px', borderRadius: '12px', marginLeft: '0.5rem', fontWeight: 700 }}>
+                    <span style={{ fontSize: '0.7rem', background: '#dcfce7', color: '#16a34a', padding: '2px 8px', borderRadius: '12px', marginInlineStart: '0.5rem', fontWeight: 700 }}>
                       {t('savePercent', { percent: savingsPercent })}
                     </span>
                   )}
@@ -502,7 +502,7 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
                   </p>
                 )}
               </div>
-              <ul style={{ listStyle: 'none', padding: 0, marginBottom: '2rem', textAlign: 'left', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+              <ul style={{ listStyle: 'none', padding: 0, marginBottom: '2rem', textAlign: 'start', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                 {planGroup.features.map((f, i) => (
                   <li key={i} style={{ marginBottom: '0.5rem' }}>✓ {f}</li>
                 ))}

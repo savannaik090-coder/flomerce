@@ -236,8 +236,8 @@ body {
 .pwa-install-bar {
   position: fixed;
   bottom: -100px;
-  left: 0;
-  right: 0;
+  inset-inline-start: 0;
+  inset-inline-end: 0;
   background: #000000;
   padding: 1rem;
   box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.3);
@@ -400,7 +400,7 @@ body {
   .nav-links {
     position: fixed !important;
     top: 0;
-    right: 0;
+    inset-inline-end: 0;
     bottom: 0;
     width: 75vw;
     max-width: 300px;
@@ -415,7 +415,7 @@ body {
     gap: 0.25rem;
     z-index: 1001;
     box-shadow: -8px 0 30px rgba(0, 0, 0, 0.15);
-    border-left: 1px solid var(--border);
+    border-inline-start: 1px solid var(--border);
     transform: translateX(100%);
     transition: transform 0.3s ease !important;
     overflow-y: auto;
@@ -451,4 +451,12 @@ body {
   .container {
     padding: 0 1rem;
   }
+}
+
+/* RTL: mobile nav anchors to inline-end; flip translateX sign for off-canvas. */
+[dir="rtl"] .nav-links {
+  transform: translateX(-100%);
+}
+[dir="rtl"] .nav-links.nav-open {
+  transform: translateX(0);
 }

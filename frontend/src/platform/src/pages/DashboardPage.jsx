@@ -573,10 +573,10 @@ export default function DashboardPage() {
                   <table style={{ width: '100%', fontSize: '0.8rem', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
-                        <th style={{ textAlign: 'left', padding: '0.5rem', color: '#64748b', fontWeight: 600 }}>Month</th>
-                        <th style={{ textAlign: 'right', padding: '0.5rem', color: '#64748b', fontWeight: 600 }}>D1 Overage</th>
-                        <th style={{ textAlign: 'right', padding: '0.5rem', color: '#64748b', fontWeight: 600 }}>R2 Overage</th>
-                        <th style={{ textAlign: 'right', padding: '0.5rem', color: '#64748b', fontWeight: 600 }}>Total</th>
+                        <th style={{ textAlign: 'start', padding: '0.5rem', color: '#64748b', fontWeight: 600 }}>Month</th>
+                        <th style={{ textAlign: 'end', padding: '0.5rem', color: '#64748b', fontWeight: 600 }}>D1 Overage</th>
+                        <th style={{ textAlign: 'end', padding: '0.5rem', color: '#64748b', fontWeight: 600 }}>R2 Overage</th>
+                        <th style={{ textAlign: 'end', padding: '0.5rem', color: '#64748b', fontWeight: 600 }}>Total</th>
                         <th style={{ textAlign: 'center', padding: '0.5rem', color: '#64748b', fontWeight: 600 }}>Status</th>
                       </tr>
                     </thead>
@@ -584,9 +584,9 @@ export default function DashboardPage() {
                       {usage.enterpriseInvoices.map(inv => (
                         <tr key={inv.year_month} style={{ borderBottom: '1px solid #f1f5f9' }}>
                           <td style={{ padding: '0.5rem' }}>{inv.year_month}</td>
-                          <td style={{ padding: '0.5rem', textAlign: 'right' }}>{'\u20B9'}{inv.d1_cost_inr?.toFixed(2)}</td>
-                          <td style={{ padding: '0.5rem', textAlign: 'right' }}>{'\u20B9'}{inv.r2_cost_inr?.toFixed(2)}</td>
-                          <td style={{ padding: '0.5rem', textAlign: 'right', fontWeight: 600 }}>{'\u20B9'}{inv.total_cost_inr?.toFixed(2)}</td>
+                          <td style={{ padding: '0.5rem', textAlign: 'end' }}>{'\u20B9'}{inv.d1_cost_inr?.toFixed(2)}</td>
+                          <td style={{ padding: '0.5rem', textAlign: 'end' }}>{'\u20B9'}{inv.r2_cost_inr?.toFixed(2)}</td>
+                          <td style={{ padding: '0.5rem', textAlign: 'end', fontWeight: 600 }}>{'\u20B9'}{inv.total_cost_inr?.toFixed(2)}</td>
                           <td style={{ padding: '0.5rem', textAlign: 'center' }}>
                             <span style={{
                               display: 'inline-block', padding: '0.15rem 0.5rem', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 700,
@@ -673,18 +673,18 @@ export default function DashboardPage() {
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
               Back
             </button>
-            <span className="manage-site-name" style={{ marginLeft: 'auto' }}>{managedSite.brand_name || managedSite.brandName || managedSite.subdomain}</span>
+            <span className="manage-site-name" style={{ marginInlineStart: 'auto' }}>{managedSite.brand_name || managedSite.brandName || managedSite.subdomain}</span>
             {(() => {
               const b = getSubscriptionBadge(siteInfo);
               if (!siteInfo.plan && b.tone === 'inactive') return null;
               return (
-                <span className={`plan-status-pill status-${b.tone}`} style={{ marginLeft: '0.5rem', background: b.bg, color: b.color }}>
+                <span className={`plan-status-pill status-${b.tone}`} style={{ marginInlineStart: '0.5rem', background: b.bg, color: b.color }}>
                   {b.text}
                 </span>
               );
             })()}
             {siteInfo.periodEnd && siteInfo.plan !== 'enterprise' && (
-              <span style={{ marginLeft: '0.75rem', fontSize: '0.8rem', color: siteInfo.isCancelled ? '#92400e' : siteInfo.isExpired ? '#dc2626' : 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+              <span style={{ marginInlineStart: '0.75rem', fontSize: '0.8rem', color: siteInfo.isCancelled ? '#92400e' : siteInfo.isExpired ? '#dc2626' : 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                 {siteInfo.isCancelled
                   ? `Ends ${new Date(siteInfo.periodEnd).toLocaleDateString()}`
                   : siteInfo.isExpired
@@ -697,7 +697,7 @@ export default function DashboardPage() {
             {(() => {
               const note = formatScheduledChange(siteInfo);
               return note ? (
-                <span style={{ marginLeft: '0.75rem', fontSize: '0.8rem', color: '#b45309', whiteSpace: 'nowrap' }}>
+                <span style={{ marginInlineStart: '0.75rem', fontSize: '0.8rem', color: '#b45309', whiteSpace: 'nowrap' }}>
                   ⏰ {note}
                 </span>
               ) : null;
@@ -1044,7 +1044,7 @@ export default function DashboardPage() {
                                 <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>https://{site.subdomain}.{PLATFORM_DOMAIN}</p>
                               </div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                <div style={{ textAlign: 'right' }}>
+                                <div style={{ textAlign: 'end' }}>
                                   {(() => {
                                     const b = getSubscriptionBadge(subInfo);
                                     return (

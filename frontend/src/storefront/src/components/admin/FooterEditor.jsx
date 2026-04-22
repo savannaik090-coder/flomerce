@@ -178,25 +178,25 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <div>
               <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>
-                <i className="fab fa-instagram" style={{ marginRight: 6, color: '#E1306C' }} />Instagram
+                <i className="fab fa-instagram" style={{ marginInlineEnd: 6, color: '#E1306C' }} />Instagram
               </label>
               <input type="text" value={instagram} onChange={function (ev) { setInstagram(ev.target.value); }} placeholder="https://instagram.com/..." style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
             </div>
             <div>
               <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>
-                <i className="fab fa-facebook-f" style={{ marginRight: 6, color: '#1877F2' }} />Facebook
+                <i className="fab fa-facebook-f" style={{ marginInlineEnd: 6, color: '#1877F2' }} />Facebook
               </label>
               <input type="text" value={facebook} onChange={function (ev) { setFacebook(ev.target.value); }} placeholder="https://facebook.com/..." style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
             </div>
             <div>
               <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>
-                <i className="fab fa-twitter" style={{ marginRight: 6, color: '#1DA1F2' }} />Twitter
+                <i className="fab fa-twitter" style={{ marginInlineEnd: 6, color: '#1DA1F2' }} />Twitter
               </label>
               <input type="text" value={twitter} onChange={function (ev) { setTwitter(ev.target.value); }} placeholder="https://twitter.com/..." style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
             </div>
             <div>
               <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>
-                <i className="fab fa-youtube" style={{ marginRight: 6, color: '#FF0000' }} />YouTube
+                <i className="fab fa-youtube" style={{ marginInlineEnd: 6, color: '#FF0000' }} />YouTube
               </label>
               <input type="text" value={youtube} onChange={function (ev) { setYoutube(ev.target.value); }} placeholder="https://youtube.com/..." style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
             </div>
@@ -303,7 +303,7 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
 
           <div style={{ marginBottom: 20 }}>
             <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>
-              <i className="fi fi-rs-shop" style={{ marginRight: 6 }} />Shop Icon Redirects To
+              <i className="fi fi-rs-shop" style={{ marginInlineEnd: 6 }} />Shop Icon Redirects To
             </label>
             <select value={shopRedirect} onChange={function (ev) { setShopRedirect(ev.target.value); }} style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit', background: '#fff' }}>
               <option value="">Select a category</option>

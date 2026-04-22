@@ -1,7 +1,7 @@
 .whatsapp-btn {
     position: fixed;
     bottom: 90px;
-    right: 20px;
+    inset-inline-end: 20px;
     width: 55px;
     height: 55px;
     background-color: #25D366;
@@ -22,7 +22,7 @@
 .whatsapp-tooltip {
     position: fixed;
     bottom: 100px;
-    right: 85px;
+    inset-inline-end: 85px;
     background: white;
     color: #333;
     padding: 10px 16px;
@@ -37,11 +37,11 @@
 .whatsapp-tooltip::after {
     content: '';
     position: absolute;
-    right: -6px;
+    inset-inline-end: -6px;
     top: 50%;
     transform: translateY(-50%);
     border: 6px solid transparent;
-    border-left-color: white;
+    border-inline-start-color: white;
 }
 
 .whatsapp-btn.sms-btn {

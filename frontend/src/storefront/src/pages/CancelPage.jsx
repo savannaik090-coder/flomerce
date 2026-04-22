@@ -138,7 +138,7 @@ export default function CancelPage() {
                 {statusLabels[existingCancel.status] || existingCancel.status}
               </span>
               {existingCancel.admin_note && (
-                <div style={{ marginTop: 16, padding: '12px 16px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, textAlign: 'left' }}>
+                <div style={{ marginTop: 16, padding: '12px 16px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, textAlign: 'start' }}>
                   <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600, marginBottom: 4 }}>Note from store</div>
                   <div style={{ fontSize: 14, color: '#334155' }}>{existingCancel.admin_note}</div>
                 </div>

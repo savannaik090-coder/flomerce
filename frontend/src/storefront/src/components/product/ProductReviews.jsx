@@ -173,7 +173,7 @@ export default function ProductReviews({ productId }) {
           {eligibility?.eligible && !showForm && (
             <div className="review-cta">
               <button className="write-review-btn" onClick={() => setShowForm(true)}>
-                <i className="fas fa-pen" style={{ marginRight: 8 }} />
+                <i className="fas fa-pen" style={{ marginInlineEnd: 8 }} />
                 Write a Review
               </button>
             </div>

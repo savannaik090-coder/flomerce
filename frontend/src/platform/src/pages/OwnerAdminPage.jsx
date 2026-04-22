@@ -1206,9 +1206,9 @@ export default function OwnerAdminPage() {
                             <input type="checkbox" checked={planForm.cycles[key].enabled} onChange={e => updateCycle(key, 'enabled', e.target.checked)} />
                             {cycleLabel(key)}
                             {planForm.cycles[key].enabled && planForm.monthly_price && (
-                              <span style={{ marginLeft: 'auto', fontSize: '0.85rem', fontWeight: 600, color: '#6366f1' }}>
+                              <span style={{ marginInlineStart: 'auto', fontSize: '0.85rem', fontWeight: 600, color: '#6366f1' }}>
                                 ₹{prices.display}
-                                {prices.original ? <span style={{ textDecoration: 'line-through', color: '#94a3b8', marginLeft: '0.4rem', fontWeight: 400, fontSize: '0.75rem' }}>₹{prices.original}</span> : null}
+                                {prices.original ? <span style={{ textDecoration: 'line-through', color: '#94a3b8', marginInlineStart: '0.4rem', fontWeight: 400, fontSize: '0.75rem' }}>₹{prices.original}</span> : null}
                               </span>
                             )}
                           </label>
@@ -1283,7 +1283,7 @@ export default function OwnerAdminPage() {
                         <div key={c.id} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '0.6rem 0.75rem' }}>
                           <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 500, marginBottom: '0.25rem' }}>{cycleLabel(c.billing_cycle) || c.billing_cycle}</div>
                           <div style={{ fontWeight: 600, fontSize: '1rem' }}>
-                            {c.original_price ? <span style={{ textDecoration: 'line-through', color: '#94a3b8', marginRight: '0.4rem', fontWeight: 400, fontSize: '0.85rem' }}>₹{c.original_price}</span> : null}
+                            {c.original_price ? <span style={{ textDecoration: 'line-through', color: '#94a3b8', marginInlineEnd: '0.4rem', fontWeight: 400, fontSize: '0.85rem' }}>₹{c.original_price}</span> : null}
                             ₹{c.display_price}
                           </div>
                           <div style={{ fontSize: '0.65rem', color: '#94a3b8', fontFamily: 'monospace', marginTop: '0.2rem' }}>{c.razorpay_plan_id}</div>
@@ -1335,7 +1335,7 @@ export default function OwnerAdminPage() {
                         >
                           <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>
                             {site.brand_name || site.subdomain}
-                            {site.is_enterprise ? <span style={{ marginLeft: '0.5rem', fontSize: '0.7rem', color: '#7c3aed', background: '#ede9fe', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>{t('enterprise.alreadyEnterprise')}</span> : null}
+                            {site.is_enterprise ? <span style={{ marginInlineStart: '0.5rem', fontSize: '0.7rem', color: '#7c3aed', background: '#ede9fe', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>{t('enterprise.alreadyEnterprise')}</span> : null}
                           </div>
                           <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{site.subdomain}.{PLATFORM_DOMAIN} &middot; {site.user_email || t('common.noOwner')}</div>
                         </div>

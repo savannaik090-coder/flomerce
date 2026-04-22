@@ -39,7 +39,7 @@ function SectionCard({ title, subtitle, icon, children, defaultOpen = true }) {
         style={{
           width: '100%', display: 'flex', alignItems: 'center', gap: 10,
           padding: '16px 20px', border: 'none', background: 'none', cursor: 'pointer',
-          fontFamily: 'inherit', textAlign: 'left',
+          fontFamily: 'inherit', textAlign: 'start',
         }}
       >
         <i className={`fas ${icon}`} style={{ fontSize: 14, color: '#3b82f6', width: 20, textAlign: 'center' }} />
@@ -747,7 +747,7 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
             boxShadow: activeView === 'categories' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
           }}
         >
-          <i className="fas fa-folder" style={{ marginRight: 6, fontSize: 12 }} />
+          <i className="fas fa-folder" style={{ marginInlineEnd: 6, fontSize: 12 }} />
           Your Categories
         </button>
         <button
@@ -760,7 +760,7 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
             boxShadow: activeView === 'homepage' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
           }}
         >
-          <i className="fas fa-home" style={{ marginRight: 6, fontSize: 12 }} />
+          <i className="fas fa-home" style={{ marginInlineEnd: 6, fontSize: 12 }} />
           Homepage Layout
         </button>
       </div>
@@ -776,7 +776,7 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
 
           <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: 20, marginBottom: 20 }}>
             <h3 style={{ margin: '0 0 12px', fontSize: 15, fontWeight: 700, color: '#1e293b' }}>
-              <i className="fas fa-plus-circle" style={{ marginRight: 8, color: '#3b82f6', fontSize: 14 }} />
+              <i className="fas fa-plus-circle" style={{ marginInlineEnd: 8, color: '#3b82f6', fontSize: 14 }} />
               Create New Category
             </h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -793,7 +793,7 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
                 style={{ padding: '12px 14px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', color: '#64748b' }}
               />
               <button className="btn btn-primary" onClick={handleAddCategory} disabled={!newCategoryName.trim()} style={{ alignSelf: 'flex-start', opacity: !newCategoryName.trim() ? 0.6 : 1 }}>
-                <i className="fas fa-plus" style={{ marginRight: 6 }} />Add Category
+                <i className="fas fa-plus" style={{ marginInlineEnd: 6 }} />Add Category
               </button>
             </div>
           </div>
@@ -913,7 +913,7 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
                             width: '100%', display: 'flex', alignItems: 'center', gap: 8,
                             padding: '10px 16px', border: 'none', background: isExpanded ? '#f8fafc' : '#fafbfc',
                             cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, color: '#475569',
-                            fontWeight: 500, textAlign: 'left', transition: 'background 0.15s',
+                            fontWeight: 500, textAlign: 'start', transition: 'background 0.15s',
                           }}
                         >
                           <i className={`fas fa-chevron-${isExpanded ? 'up' : 'down'}`} style={{ fontSize: 10, color: '#94a3b8', width: 14, textAlign: 'center' }} />
@@ -941,7 +941,7 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
 
                               if (!hasValues) {
                                 return (
-                                  <div key={child.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: isPendingChild ? '#fef3c7' : '#e0f2fe', border: `1px ${isPendingChild ? 'dashed #f59e0b' : 'solid #bae6fd'}`, borderRadius: 20, padding: '5px 12px', fontSize: 13, marginRight: 6, marginBottom: 6 }}>
+                                  <div key={child.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: isPendingChild ? '#fef3c7' : '#e0f2fe', border: `1px ${isPendingChild ? 'dashed #f59e0b' : 'solid #bae6fd'}`, borderRadius: 20, padding: '5px 12px', fontSize: 13, marginInlineEnd: 6, marginBottom: 6 }}>
                                     {editingSubItem === child.id ? (
                                       <>
                                         <input type="text" value={editSubItemName} onChange={e => setEditSubItemName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') handleSaveEditSubItem(child.id); if (e.key === 'Escape') setEditingSubItem(null); }} style={{ padding: '2px 6px', border: '1px solid #bae6fd', borderRadius: 4, fontSize: 13, fontFamily: 'inherit', width: 120, boxSizing: 'border-box' }} autoFocus />
@@ -1018,7 +1018,7 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
 
                             <div style={{ marginTop: 10, background: '#fff', borderRadius: 8, border: '1px solid #e2e8f0', padding: 12 }}>
                               <div style={{ fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 8 }}>
-                                <i className="fas fa-plus" style={{ marginRight: 6, fontSize: 10, color: '#3b82f6' }} />
+                                <i className="fas fa-plus" style={{ marginInlineEnd: 6, fontSize: 10, color: '#3b82f6' }} />
                                 Add Subcategory
                               </div>
                               <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
@@ -1124,7 +1124,7 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
                         <div style={{ fontWeight: 600, fontSize: 13, color: '#1e293b' }}>{section.name}</div>
                         {section.subtitle && <div style={{ color: '#64748b', fontSize: 12, marginTop: 1 }}>{section.subtitle}</div>}
                         <div style={{ color: '#94a3b8', fontSize: 11, marginTop: 3 }}>
-                          <i className="fas fa-filter" style={{ marginRight: 4, fontSize: 9 }} />
+                          <i className="fas fa-filter" style={{ marginInlineEnd: 4, fontSize: 9 }} />
                           {section.subcategoryLabel || 'Selected subcategory'}
                         </div>
                       </div>
@@ -1136,7 +1136,7 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
 
               <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: 14 }}>
                 <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 10, color: '#475569' }}>
-                  <i className="fas fa-plus" style={{ marginRight: 6, fontSize: 10, color: '#3b82f6' }} />
+                  <i className="fas fa-plus" style={{ marginInlineEnd: 6, fontSize: 10, color: '#3b82f6' }} />
                   Add New Featured Section
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -1159,7 +1159,7 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
                     })}
                   </select>
                   <button className="btn btn-primary" onClick={handleAddSubcatSection} disabled={!newSectionName.trim() || !newSectionSubcatId} style={{ alignSelf: 'flex-start', opacity: (!newSectionName.trim() || !newSectionSubcatId) ? 0.5 : 1, fontSize: 13 }}>
-                    <i className="fas fa-plus" style={{ marginRight: 6 }} />Add Section
+                    <i className="fas fa-plus" style={{ marginInlineEnd: 6 }} />Add Section
                   </button>
                 </div>
               </div>

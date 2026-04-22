@@ -333,7 +333,7 @@ export default function ProductDetailPage() {
 
             {optionError && (
               <div className="product-option-error">
-                <i className="fas fa-exclamation-circle" style={{ marginRight: 6 }} />
+                <i className="fas fa-exclamation-circle" style={{ marginInlineEnd: 6 }} />
                 {optionError}
               </div>
             )}

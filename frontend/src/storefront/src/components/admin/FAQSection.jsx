@@ -204,7 +204,7 @@ export default function FAQSection() {
         </h3>
         {!showAddForm && (
           <button style={btnPrimary} onClick={() => setShowAddForm(true)}>
-            <i className="fas fa-plus" style={{ marginRight: 6 }}></i> Add Question
+            <i className="fas fa-plus" style={{ marginInlineEnd: 6 }}></i> Add Question
           </button>
         )}
       </div>
@@ -270,7 +270,7 @@ export default function FAQSection() {
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
                 <div style={{ flex: 1 }}>
                   <p style={{ fontWeight: 600, color: '#0f172a', margin: '0 0 4px', fontSize: 15 }}>
-                    <span style={{ color: '#94a3b8', marginRight: 8 }}>Q{index + 1}.</span>
+                    <span style={{ color: '#94a3b8', marginInlineEnd: 8 }}>Q{index + 1}.</span>
                     {item.question}
                   </p>
                   <p style={{ color: '#475569', fontSize: 14, margin: 0, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{item.answer}</p>
@@ -296,10 +296,10 @@ export default function FAQSection() {
               </div>
               <div style={{ display: 'flex', gap: 8, marginTop: 12, borderTop: '1px solid #f1f5f9', paddingTop: 12 }}>
                 <button style={{ ...btnOutline, fontSize: 13, padding: '6px 14px' }} onClick={() => handleStartEdit(item)}>
-                  <i className="fas fa-edit" style={{ marginRight: 4 }}></i> Edit
+                  <i className="fas fa-edit" style={{ marginInlineEnd: 4 }}></i> Edit
                 </button>
                 <button style={btnDanger} onClick={() => handleDeleteItem(item.id)}>
-                  <i className="fas fa-trash" style={{ marginRight: 4 }}></i> Delete
+                  <i className="fas fa-trash" style={{ marginInlineEnd: 4 }}></i> Delete
                 </button>
               </div>
             </>

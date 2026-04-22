@@ -281,7 +281,7 @@ export default function InventorySection() {
                         <tr key={loc.id}>
                           <td>
                             <span style={{ fontWeight: 500 }}>{loc.name}</span>
-                            {loc.is_default ? <span style={{ fontSize: '0.6rem', background: '#2563eb', color: 'white', padding: '1px 6px', borderRadius: 8, marginLeft: 6, fontWeight: 600 }}>DEFAULT</span> : null}
+                            {loc.is_default ? <span style={{ fontSize: '0.6rem', background: '#2563eb', color: 'white', padding: '1px 6px', borderRadius: 8, marginInlineStart: 6, fontWeight: 600 }}>DEFAULT</span> : null}
                           </td>
                           <td>{stock}</td>
                           <td>
@@ -342,7 +342,7 @@ export default function InventorySection() {
               borderBottom: subTab === tab ? '2px solid #2563eb' : '2px solid transparent',
               marginBottom: -2, transition: 'all 0.2s'
             }}>
-            <i className={`fas ${tab === 'stock' ? 'fa-warehouse' : 'fa-map-marker-alt'}`} style={{ marginRight: 6 }} />
+            <i className={`fas ${tab === 'stock' ? 'fa-warehouse' : 'fa-map-marker-alt'}`} style={{ marginInlineEnd: 6 }} />
             {tab === 'stock' ? 'Stock Overview' : `Locations (${locations.length})`}
           </button>
         ))}

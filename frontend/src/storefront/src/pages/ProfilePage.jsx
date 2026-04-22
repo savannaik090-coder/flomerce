@@ -431,7 +431,7 @@ export default function ProfilePage() {
     <div style={{ minHeight: '80vh' }}>
       <div style={{ maxWidth: 1000, margin: '40px auto 60px', backgroundColor: '#fff', padding: 30, borderRadius: 5, boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: 30, paddingBottom: 20, borderBottom: '1px solid #eee' }}>
-          <div style={{ width: 100, height: 100, borderRadius: '50%', backgroundColor: '#c8a97e', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: 20, color: '#fff', fontSize: 36, fontFamily: "'Playfair Display', serif", flexShrink: 0 }}>
+          <div style={{ width: 100, height: 100, borderRadius: '50%', backgroundColor: '#c8a97e', display: 'flex', alignItems: 'center', justifyContent: 'center', marginInlineEnd: 20, color: '#fff', fontSize: 36, fontFamily: "'Playfair Display', serif", flexShrink: 0 }}>
             {initials}
           </div>
           <div>
@@ -511,7 +511,7 @@ export default function ProfilePage() {
                       </div>
                     </div>
                     {order.status === 'cancelled' && order.cancellation_reason && (
-                      <div style={{ marginBottom: 12, padding: '8px 12px', background: '#fff5f5', borderLeft: '3px solid #e74c3c', borderRadius: 4, fontSize: 13, color: '#555' }}>
+                      <div style={{ marginBottom: 12, padding: '8px 12px', background: '#fff5f5', borderInlineStart: '3px solid #e74c3c', borderRadius: 4, fontSize: 13, color: '#555' }}>
                         <strong style={{ color: '#e74c3c' }}>Cancellation Reason:</strong> {order.cancellation_reason}
                       </div>
                     )}
@@ -546,7 +546,7 @@ export default function ProfilePage() {
                         </div>
                       );
                     })}
-                    <div style={{ textAlign: 'right', paddingTop: 10, borderTop: '1px solid #eee', marginTop: 10 }}>
+                    <div style={{ textAlign: 'end', paddingTop: 10, borderTop: '1px solid #eee', marginTop: 10 }}>
                       {parseFloat(order.discount || 0) > 0 && (
                         <>
                           <div style={{ fontSize: 13, color: '#777', marginBottom: 2 }}>
@@ -863,7 +863,7 @@ export default function ProfilePage() {
               {addressFieldErrors.state && <div style={{ color: '#e74c3c', fontSize: 12, marginTop: 4 }}>{addressFieldErrors.state}</div>}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', marginTop: 20, marginBottom: 20 }}>
-              <input type="checkbox" id="defaultAddr" checked={addressForm.isDefault} onChange={e => setAddressForm(p => ({ ...p, isDefault: e.target.checked }))} style={{ width: 'auto', marginRight: 10 }} />
+              <input type="checkbox" id="defaultAddr" checked={addressForm.isDefault} onChange={e => setAddressForm(p => ({ ...p, isDefault: e.target.checked }))} style={{ width: 'auto', marginInlineEnd: 10 }} />
               <label htmlFor="defaultAddr" style={{ color: '#333', fontSize: 14 }}>Set as default address</label>
             </div>
             <div style={{ display: 'flex', gap: 15, justifyContent: 'flex-end' }}>
