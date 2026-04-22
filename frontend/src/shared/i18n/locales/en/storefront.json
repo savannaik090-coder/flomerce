@@ -1132,5 +1132,29 @@
     "email": {
       "subject": "Help with Order #{{num}}"
     }
+  },
+  "search": {
+    "placeholder": "Search products...",
+    "clear": "Clear",
+    "resultsCount_one": "{{count}} result found",
+    "resultsCount_other": "{{count}} results found",
+    "noResultsTitle": "No products found",
+    "noResultsHint": "Try a different search term",
+    "recentSearches": "Recent Searches",
+    "noImage": "No Image"
+  },
+  "push": {
+    "title": "Stay Updated",
+    "body": "Get notified about new products and offers",
+    "allow": "Allow",
+    "dismiss": "No thanks"
+  },
+  "faq": {
+    "seoTitle": "FAQ",
+    "unavailableTitle": "This page is currently unavailable",
+    "unavailableMessage": "Please check back later.",
+    "title": "Frequently Asked Questions",
+    "subtitle": "Find answers to common questions about {{brandName}}.",
+    "empty": "No frequently asked questions yet."
   }
 }

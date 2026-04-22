@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useContext, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { useCurrency } from '../../hooks/useCurrency.js';
 import { useTheme } from '../../context/ThemeContext.jsx';
@@ -50,6 +51,7 @@ function fuzzyMatch(query, text) {
 }
 
 export default function SearchOverlay({ isOpen, onClose }) {
+  const { t } = useTranslation('storefront');
   const { siteConfig } = useContext(SiteContext);
   const { formatAmount } = useCurrency();
   const { isModern } = useTheme();
@@ -126,7 +128,7 @@ export default function SearchOverlay({ isOpen, onClose }) {
               ref={inputRef}
               type="text"
               className="search-input"
-              placeholder="Search products..."
+              placeholder={t('search.placeholder', 'Search products...')}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => {
@@ -143,9 +145,9 @@ export default function SearchOverlay({ isOpen, onClose }) {
         <div className="search-content">
           {query.length >= 2 && (
             <div className="search-results-header">
-              <span className="search-results-count">{results.length} result{results.length !== 1 ? 's' : ''} found</span>
+              <span className="search-results-count">{t('search.resultsCount', { count: results.length, defaultValue: '{{count}} results found' })}</span>
               {query && (
-                <button className="search-clear-btn" onClick={() => setQuery('')}>Clear</button>
+                <button className="search-clear-btn" onClick={() => setQuery('')}>{t('search.clear', 'Clear')}</button>
               )}
             </div>
           )}
@@ -158,7 +160,7 @@ export default function SearchOverlay({ isOpen, onClose }) {
                     <img
                       src={resolveImageUrl(product.images?.[0] || product.image_url || '')}
                       alt={product.name}
-                      onError={(e) => { e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><rect fill="%23f0f0f0" width="200" height="200"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="%23999" font-size="14">No Image</text></svg>'; }}
+                      onError={(e) => { e.target.src = `data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><rect fill="%23f0f0f0" width="200" height="200"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="%23999" font-size="14">${encodeURIComponent(t('search.noImage', 'No Image'))}</text></svg>`; }}
                     />
                   </div>
                   <div className="search-product-details">
@@ -173,14 +175,14 @@ export default function SearchOverlay({ isOpen, onClose }) {
             </div>
           ) : query.length >= 2 ? (
             <div className="search-no-results">
-              <h3>No products found</h3>
-              <p>Try a different search term</p>
+              <h3>{t('search.noResultsTitle', 'No products found')}</h3>
+              <p>{t('search.noResultsHint', 'Try a different search term')}</p>
             </div>
           ) : null}
 
           {!query && history.length > 0 && (
             <div className="search-recent-section">
-              <div className="search-recent-title">Recent Searches</div>
+              <div className="search-recent-title">{t('search.recentSearches', 'Recent Searches')}</div>
               <div className="search-recent-items">
                 {history.map((item, idx) => (
                   <div key={idx} className="search-recent-item" onClick={() => handleHistoryClick(item)}>
