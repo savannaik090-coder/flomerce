@@ -67,7 +67,7 @@ export default function ResetPasswordPage() {
               type="password"
               required
               minLength={8}
-              placeholder="••••••••"
+              placeholder={t("common:passwordPlaceholder")}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
@@ -77,7 +77,7 @@ export default function ResetPasswordPage() {
             <input
               type="password"
               required
-              placeholder="••••••••"
+              placeholder={t("common:passwordPlaceholder")}
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
             />

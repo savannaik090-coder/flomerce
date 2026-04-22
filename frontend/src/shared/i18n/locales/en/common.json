@@ -19,5 +19,8 @@
   "email": "Email address",
   "password": "Password",
   "language": "Language",
-  "error": "Something went wrong"
+  "error": "Something went wrong",
+  "emailPlaceholder": "name@company.com",
+  "namePlaceholder": "John Doe",
+  "passwordPlaceholder": "••••••••"
 }

@@ -110,7 +110,7 @@ export default function LoginPage() {
             <label>{t('common:email')}</label>
             <input
               type="email"
-              placeholder="name@company.com"
+              placeholder={t("common:emailPlaceholder")}
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -120,7 +120,7 @@ export default function LoginPage() {
             <label>{t('common:password')}</label>
             <input
               type="password"
-              placeholder="••••••••"
+              placeholder={t("common:passwordPlaceholder")}
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -151,7 +151,7 @@ export default function LoginPage() {
                 <input
                   type="email"
                   required
-                  placeholder="name@company.com"
+                  placeholder={t("common:emailPlaceholder")}
                   value={forgotEmail}
                   onChange={(e) => setForgotEmail(e.target.value)}
                 />

@@ -132,7 +132,7 @@ export default function SignupPage() {
                 <label>{t('fullName')}</label>
                 <input
                   type="text"
-                  placeholder="John Doe"
+                  placeholder={t("common:namePlaceholder")}
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
@@ -142,7 +142,7 @@ export default function SignupPage() {
                 <label>{t('common:email')}</label>
                 <input
                   type="email"
-                  placeholder="name@company.com"
+                  placeholder={t("common:emailPlaceholder")}
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -152,7 +152,7 @@ export default function SignupPage() {
                 <label>{t('common:password')}</label>
                 <input
                   type="password"
-                  placeholder="••••••••"
+                  placeholder={t("common:passwordPlaceholder")}
                   required
                   minLength={8}
                   value={password}
@@ -163,7 +163,7 @@ export default function SignupPage() {
                 <label>{t('confirmPassword')}</label>
                 <input
                   type="password"
-                  placeholder="••••••••"
+                  placeholder={t("common:passwordPlaceholder")}
                   required
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
