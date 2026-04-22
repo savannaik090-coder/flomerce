@@ -4,6 +4,8 @@ import Navbar from '../components/Navbar.jsx';
 import '../styles/legal.css';
 import { PLATFORM_URL, SUPPORT_EMAIL } from '../config.js';
 
+const PHONE = '+91 9901954610';
+
 export default function RefundPolicyPage() {
   const { t } = useTranslation('legal');
   return (
@@ -11,8 +13,8 @@ export default function RefundPolicyPage() {
       <div className="container">
         <Navbar />
         <div className="legal-content">
-          <h1>Refund & Cancellation Policy</h1>
-          <p className="legal-updated">Last updated: March 30, 2026</p>
+          <h1>{t('refund.title')}</h1>
+          <p className="legal-updated">{t('lastUpdated', { date: t('refund.updatedDate') })}</p>
 
           <div className="legal-binding-banner" style={{ background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 8, padding: '12px 16px', margin: '0 0 1rem' }}>
             <strong style={{ display: 'block', marginBottom: 4, color: '#78350f' }}>{t('bindingBanner.title')}</strong>
@@ -31,116 +33,124 @@ export default function RefundPolicyPage() {
           </section>
 
           <section>
-            <h2>1. Overview</h2>
-            <p>This Refund & Cancellation Policy outlines the terms under which you may cancel your subscription and request a refund for the Flomerce platform services. Flomerce is a digital SaaS product — no physical goods are shipped. Access to the platform is granted immediately upon successful payment. We aim to be fair and transparent in our refund process.</p>
+            <h2>{t('refund.s1.h')}</h2>
+            <p>{t('refund.s1.p')}</p>
           </section>
 
           <section>
-            <h2>2. Digital Delivery</h2>
-            <p>Flomerce is a software-as-a-service platform. All services are delivered digitally via the internet. Upon successful payment, access to your subscription plan and all included features is activated immediately. There is no physical shipment involved in any of our services.</p>
+            <h2>{t('refund.s2.h')}</h2>
+            <p>{t('refund.s2.p')}</p>
           </section>
 
           <section>
-            <h2>3. Free Trial</h2>
-            <p>Flomerce offers a 7-day free trial for new users. During the trial period, you have full access to the platform features at no cost. No payment information is required to start a free trial. At the end of the trial, your account will be suspended and your website will be disabled unless you choose to subscribe to a paid plan.</p>
+            <h2>{t('refund.s3.h')}</h2>
+            <p>{t('refund.s3.p')}</p>
           </section>
 
           <section>
-            <h2>4. Subscription Cancellation</h2>
-            <p>You may cancel your subscription at any time from your dashboard. Upon cancellation:</p>
+            <h2>{t('refund.s4.h')}</h2>
+            <p>{t('refund.s4.lead')}</p>
             <ul>
-              <li>Your subscription will remain active until the end of the current billing period</li>
-              <li>You will not be charged for the next billing cycle</li>
-              <li>Your websites will continue to function until the subscription period ends</li>
-              <li>After the subscription expires, your account will be suspended and your website will be disabled</li>
-              <li>Your data will be retained for 30 days after expiry, during which you can resubscribe to restore access</li>
+              <li>{t('refund.s4.items.i1')}</li>
+              <li>{t('refund.s4.items.i2')}</li>
+              <li>{t('refund.s4.items.i3')}</li>
+              <li>{t('refund.s4.items.i4')}</li>
+              <li>{t('refund.s4.items.i5')}</li>
             </ul>
           </section>
 
           <section>
-            <h2>5. Refund Eligibility</h2>
-            <p>Refunds may be issued under the following conditions:</p>
+            <h2>{t('refund.s5.h')}</h2>
+            <p>{t('refund.s5.lead')}</p>
             <ul>
-              <li><strong>Within 7 days of first payment:</strong> If you are not satisfied with the Service within the first 7 days of your initial paid subscription, you may request a full refund</li>
-              <li><strong>Service unavailability:</strong> If the Service experiences significant downtime (more than 24 consecutive hours) or is unavailable for an extended period due to issues on our end, you may be eligible for a prorated refund</li>
-              <li><strong>Duplicate charges:</strong> If you are charged more than once for the same billing period, the duplicate charge will be refunded immediately</li>
-              <li><strong>Failed service activation:</strong> If your subscription payment was processed but the service was not activated, you are eligible for a full refund</li>
+              <li><strong>{t('refund.s5.items.i1Label')}</strong> {t('refund.s5.items.i1Text')}</li>
+              <li><strong>{t('refund.s5.items.i2Label')}</strong> {t('refund.s5.items.i2Text')}</li>
+              <li><strong>{t('refund.s5.items.i3Label')}</strong> {t('refund.s5.items.i3Text')}</li>
+              <li><strong>{t('refund.s5.items.i4Label')}</strong> {t('refund.s5.items.i4Text')}</li>
             </ul>
           </section>
 
           <section>
-            <h2>6. Non-Refundable Situations</h2>
-            <p>Refunds will not be issued in the following cases:</p>
+            <h2>{t('refund.s6.h')}</h2>
+            <p>{t('refund.s6.lead')}</p>
             <ul>
-              <li>After 7 days from the initial payment for first-time subscribers</li>
-              <li>If your account was suspended or terminated due to violation of our Terms & Conditions</li>
-              <li>For partial months or unused portions of a subscription (beyond the 7-day window)</li>
-              <li>If you simply forgot to cancel before the renewal date</li>
-              <li>For any add-on services or one-time purchases already delivered</li>
-              <li>For renewal payments on existing subscriptions (cancellation stops future charges but does not refund the current period)</li>
+              <li>{t('refund.s6.items.i1')}</li>
+              <li>{t('refund.s6.items.i2')}</li>
+              <li>{t('refund.s6.items.i3')}</li>
+              <li>{t('refund.s6.items.i4')}</li>
+              <li>{t('refund.s6.items.i5')}</li>
+              <li>{t('refund.s6.items.i6')}</li>
             </ul>
           </section>
 
           <section>
-            <h2>7. How to Request a Refund</h2>
-            <p>To request a refund, please follow these steps:</p>
+            <h2>{t('refund.s7.h')}</h2>
+            <p>{t('refund.s7.lead')}</p>
             <ol>
-              <li>Send an email to <a href={`mailto:${SUPPORT_EMAIL}`}><strong>{SUPPORT_EMAIL}</strong></a> with the subject line "Refund Request"</li>
-              <li>Include your registered email address and the reason for the refund</li>
-              <li>Provide the transaction ID or payment reference number if available</li>
+              <li>
+                {t('refund.s7.steps.i1Pre')}
+                <a href={`mailto:${SUPPORT_EMAIL}`}><strong>{SUPPORT_EMAIL}</strong></a>{' '}
+                {t('refund.s7.steps.i1Subject')}
+              </li>
+              <li>{t('refund.s7.steps.i2')}</li>
+              <li>{t('refund.s7.steps.i3')}</li>
             </ol>
-            <p>Alternatively, you can call us at <a href="tel:+919901954610"><strong>+91 9901954610</strong></a> during business hours (Mon–Sat, 10 AM – 6 PM IST).</p>
-            <p>We will acknowledge your request within 24 hours and complete the review within 3–5 business days.</p>
+            <p>
+              {t('refund.s7.phoneLinePre')}{' '}
+              <a href="tel:+919901954610"><strong>{PHONE}</strong></a>{' '}
+              {t('refund.s7.phoneLinePost')}
+            </p>
+            <p>{t('refund.s7.ack')}</p>
           </section>
 
           <section>
-            <h2>8. Refund Processing</h2>
-            <p>Once a refund is approved:</p>
+            <h2>{t('refund.s8.h')}</h2>
+            <p>{t('refund.s8.lead')}</p>
             <ul>
-              <li>The refund will be processed through Razorpay to the original payment method (credit card, debit card, UPI, net banking, or wallet)</li>
-              <li>Refunds typically take <strong>5–7 business days</strong> to appear in your account, depending on your bank or payment provider</li>
-              <li>You will receive an email confirmation once the refund has been initiated, including a refund reference ID</li>
-              <li>For UPI payments, refunds are usually processed within 24–48 hours</li>
-              <li>For credit/debit card payments, refunds may take up to 7–10 business days due to bank processing times</li>
+              <li>{t('refund.s8.items.i1')}</li>
+              <li>{t('refund.s8.items.i2')}</li>
+              <li>{t('refund.s8.items.i3')}</li>
+              <li>{t('refund.s8.items.i4')}</li>
+              <li>{t('refund.s8.items.i5')}</li>
             </ul>
           </section>
 
           <section>
-            <h2>9. Plan Downgrades</h2>
-            <p>If you wish to downgrade to a lower-tier plan:</p>
+            <h2>{t('refund.s9.h')}</h2>
+            <p>{t('refund.s9.lead')}</p>
             <ul>
-              <li>The downgrade will take effect at the start of your next billing cycle</li>
-              <li>No refund will be issued for the difference between plans during the current billing period</li>
-              <li>You will retain access to higher-tier features until the current period ends</li>
+              <li>{t('refund.s9.items.i1')}</li>
+              <li>{t('refund.s9.items.i2')}</li>
+              <li>{t('refund.s9.items.i3')}</li>
             </ul>
           </section>
 
           <section>
-            <h2>10. Changes to This Policy</h2>
-            <p>We reserve the right to update this Refund & Cancellation Policy at any time. Any changes will be posted on this page with an updated "Last updated" date. We will notify registered users of significant changes via email. Continued use of the Service after changes constitutes acceptance of the revised policy.</p>
+            <h2>{t('refund.s10.h')}</h2>
+            <p>{t('refund.s10.p')}</p>
           </section>
 
           <section>
-            <h2>11. Contact Us</h2>
-            <p>If you have any questions about this Refund & Cancellation Policy, please contact us at:</p>
-            <p><strong>Flomerce</strong></p>
-            <p><strong>Email:</strong> <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a></p>
-            <p><strong>Phone:</strong> <a href="tel:+919901954610">+91 9901954610</a></p>
-            <p><strong>Address:</strong> Karwar, Karnataka, India — 581400</p>
-            <p><strong>Website:</strong> <a href={PLATFORM_URL}>{PLATFORM_URL}</a></p>
+            <h2>{t('refund.contactH')}</h2>
+            <p>{t('refund.contactIntro')}</p>
+            <p><strong>{t('contact.brand')}</strong></p>
+            <p><strong>{t('contact.labelEmail')}</strong> <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a></p>
+            <p><strong>{t('contact.labelPhone')}</strong> <a href="tel:+919901954610">{PHONE}</a></p>
+            <p><strong>{t('contact.labelAddress')}</strong> {t('contact.address')}</p>
+            <p><strong>{t('contact.labelWebsite')}</strong> <a href={PLATFORM_URL}>{PLATFORM_URL}</a></p>
           </section>
         </div>
 
         <footer className="legal-footer">
           <div className="legal-footer-links">
-            <Link to="/about">About Us</Link>
-            <Link to="/terms">Terms & Conditions</Link>
-            <Link to="/privacy-policy">Privacy Policy</Link>
-            <Link to="/refund-policy">Refund & Cancellation Policy</Link>
-            <Link to="/shipping-policy">Shipping & Delivery Policy</Link>
+            <Link to="/about">{t('footer.about')}</Link>
+            <Link to="/terms">{t('footer.terms')}</Link>
+            <Link to="/privacy-policy">{t('footer.privacy')}</Link>
+            <Link to="/refund-policy">{t('footer.refund')}</Link>
+            <Link to="/shipping-policy">{t('footer.shipping')}</Link>
           </div>
-          <p>&copy; {new Date().getFullYear()} Flomerce. All rights reserved.</p>
-          <p style={{ color: '#94a3b8', fontSize: '0.75rem', marginTop: '0.5rem' }}>Karwar, Karnataka, India — 581400 | +91 9901954610 | {SUPPORT_EMAIL}</p>
+          <p>&copy; {new Date().getFullYear()} Flomerce. {t('footer.rightsReserved')}</p>
+          <p style={{ color: '#94a3b8', fontSize: '0.75rem', marginTop: '0.5rem' }}>{t('contact.address')} | {PHONE} | {SUPPORT_EMAIL}</p>
         </footer>
       </div>
     </div>

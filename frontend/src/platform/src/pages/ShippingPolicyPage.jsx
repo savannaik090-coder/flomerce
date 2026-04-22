@@ -4,6 +4,8 @@ import Navbar from '../components/Navbar.jsx';
 import '../styles/legal.css';
 import { PLATFORM_DOMAIN, PLATFORM_URL, SUPPORT_EMAIL } from '../config.js';
 
+const PHONE = '+91 9901954610';
+
 export default function ShippingPolicyPage() {
   const { t } = useTranslation('legal');
   return (
@@ -11,8 +13,8 @@ export default function ShippingPolicyPage() {
       <div className="container">
         <Navbar />
         <div className="legal-content">
-          <h1>Shipping & Delivery Policy</h1>
-          <p className="legal-updated">Last updated: March 31, 2026</p>
+          <h1>{t('shipping.title')}</h1>
+          <p className="legal-updated">{t('lastUpdated', { date: t('shipping.updatedDate') })}</p>
 
           <div className="legal-binding-banner" style={{ background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 8, padding: '12px 16px', margin: '0 0 1rem' }}>
             <strong style={{ display: 'block', marginBottom: 4, color: '#78350f' }}>{t('bindingBanner.title')}</strong>
@@ -30,69 +32,78 @@ export default function ShippingPolicyPage() {
           </section>
 
           <section>
-            <h2>1. Digital Product — No Physical Shipping</h2>
-            <p>Flomerce is a software-as-a-service (SaaS) platform. All our services are delivered digitally via the internet. <strong>No physical goods are shipped by Flomerce.</strong> There is no physical shipment, courier, or logistics involved in any of our services.</p>
+            <h2>{t('shipping.s1.h')}</h2>
+            <p>
+              {t('shipping.s1.p1')} <strong>{t('shipping.s1.p2')}</strong> {t('shipping.s1.p3')}
+            </p>
           </section>
 
           <section>
-            <h2>2. Instant Digital Delivery</h2>
-            <p>Upon successful payment or free trial activation, access to the Flomerce platform and all included features is granted <strong>immediately</strong>. Specifically:</p>
+            <h2>{t('shipping.s2.h')}</h2>
+            <p>
+              {t('shipping.s2.lead1')} <strong>{t('shipping.s2.leadEmph')}</strong>{t('shipping.s2.leadTail')}
+            </p>
             <ul>
-              <li>Your account is activated instantly after payment confirmation</li>
-              <li>Your e-commerce website is created and live within seconds at your chosen subdomain (e.g., your-store.{PLATFORM_DOMAIN})</li>
-              <li>All subscription features are available immediately upon activation</li>
-              <li>No waiting period or manual activation is required</li>
+              <li>{t('shipping.s2.items.i1')}</li>
+              <li>{t('shipping.s2.items.i2', { domain: PLATFORM_DOMAIN })}</li>
+              <li>{t('shipping.s2.items.i3')}</li>
+              <li>{t('shipping.s2.items.i4')}</li>
             </ul>
           </section>
 
           <section>
-            <h2>3. Service Availability</h2>
-            <p>Flomerce is a cloud-based platform accessible 24/7 from any device with an internet connection and a modern web browser. We strive for 99.9% uptime. In case of scheduled maintenance, we will notify users in advance via email.</p>
+            <h2>{t('shipping.s3.h')}</h2>
+            <p>{t('shipping.s3.p')}</p>
           </section>
 
           <section>
-            <h2>4. Access Methods</h2>
-            <p>You can access the Flomerce platform through:</p>
+            <h2>{t('shipping.s4.h')}</h2>
+            <p>{t('shipping.s4.lead')}</p>
             <ul>
-              <li><strong>Web Browser:</strong> Visit <a href={PLATFORM_URL}>{PLATFORM_DOMAIN}</a> and log in to your account</li>
-              <li><strong>Mobile Browser:</strong> The platform is fully responsive and works on all mobile devices</li>
-              <li><strong>PWA (Progressive Web App):</strong> Install Flomerce on your device for a native app-like experience</li>
+              <li>
+                <strong>{t('shipping.s4.items.i1Label')}</strong>{' '}
+                {t('shipping.s4.items.i1Pre')}{' '}
+                <a href={PLATFORM_URL}>{PLATFORM_DOMAIN}</a>{' '}
+                {t('shipping.s4.items.i1Post')}
+              </li>
+              <li><strong>{t('shipping.s4.items.i2Label')}</strong> {t('shipping.s4.items.i2Text')}</li>
+              <li><strong>{t('shipping.s4.items.i3Label')}</strong> {t('shipping.s4.items.i3Text')}</li>
             </ul>
           </section>
 
           <section>
-            <h2>5. Regarding Stores Created on Flomerce</h2>
-            <p>Flomerce enables merchants to create their own e-commerce websites. Shipping and delivery of physical products sold through stores built on Flomerce is the <strong>sole responsibility of the respective store owner (merchant)</strong>. Flomerce does not handle, manage, or take any responsibility for:</p>
+            <h2>{t('shipping.s5.h')}</h2>
+            <p>{t('shipping.s5.p1')}</p>
             <ul>
-              <li>Shipping or delivery of products sold by merchants on their stores</li>
-              <li>Shipping costs, delivery timelines, or courier services used by merchants</li>
-              <li>Lost, damaged, or delayed shipments of merchant products</li>
-              <li>Returns or exchanges of physical goods sold by merchants</li>
+              <li>{t('shipping.s5.items.i1')}</li>
+              <li>{t('shipping.s5.items.i2')}</li>
+              <li>{t('shipping.s5.items.i3')}</li>
+              <li>{t('shipping.s5.items.i4')}</li>
             </ul>
-            <p>Each store owner is responsible for defining and displaying their own shipping and delivery policies on their respective websites.</p>
+            <p>{t('shipping.s5.p2')}</p>
           </section>
 
           <section>
-            <h2>6. Contact Us</h2>
-            <p>If you have any questions about this Shipping & Delivery Policy, please contact us at:</p>
-            <p><strong>Flomerce</strong></p>
-            <p><strong>Email:</strong> <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a></p>
-            <p><strong>Phone:</strong> <a href="tel:+919901954610">+91 9901954610</a></p>
-            <p><strong>Address:</strong> Karwar, Karnataka, India — 581400</p>
-            <p><strong>Website:</strong> <a href={PLATFORM_URL}>{PLATFORM_URL}</a></p>
+            <h2>{t('shipping.contactH')}</h2>
+            <p>{t('shipping.contactIntro')}</p>
+            <p><strong>{t('contact.brand')}</strong></p>
+            <p><strong>{t('contact.labelEmail')}</strong> <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a></p>
+            <p><strong>{t('contact.labelPhone')}</strong> <a href="tel:+919901954610">{PHONE}</a></p>
+            <p><strong>{t('contact.labelAddress')}</strong> {t('contact.address')}</p>
+            <p><strong>{t('contact.labelWebsite')}</strong> <a href={PLATFORM_URL}>{PLATFORM_URL}</a></p>
           </section>
         </div>
 
         <footer className="legal-footer">
           <div className="legal-footer-links">
-            <Link to="/about">About Us</Link>
-            <Link to="/terms">Terms & Conditions</Link>
-            <Link to="/privacy-policy">Privacy Policy</Link>
-            <Link to="/refund-policy">Refund & Cancellation Policy</Link>
-            <Link to="/shipping-policy">Shipping & Delivery Policy</Link>
+            <Link to="/about">{t('footer.about')}</Link>
+            <Link to="/terms">{t('footer.terms')}</Link>
+            <Link to="/privacy-policy">{t('footer.privacy')}</Link>
+            <Link to="/refund-policy">{t('footer.refund')}</Link>
+            <Link to="/shipping-policy">{t('footer.shipping')}</Link>
           </div>
-          <p>&copy; {new Date().getFullYear()} Flomerce. All rights reserved.</p>
-          <p style={{ color: '#94a3b8', fontSize: '0.75rem', marginTop: '0.5rem' }}>Karwar, Karnataka, India — 581400 | +91 9901954610 | {SUPPORT_EMAIL}</p>
+          <p>&copy; {new Date().getFullYear()} Flomerce. {t('footer.rightsReserved')}</p>
+          <p style={{ color: '#94a3b8', fontSize: '0.75rem', marginTop: '0.5rem' }}>{t('contact.address')} | {PHONE} | {SUPPORT_EMAIL}</p>
         </footer>
       </div>
     </div>
