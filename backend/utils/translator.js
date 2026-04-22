@@ -77,9 +77,123 @@ export function inflateCatalog(paths, values) {
   return root;
 }
 
+/**
+ * Short, fast, non-cryptographic content fingerprint used to detect when
+ * an English source string has changed between translations. We only need
+ * collision resistance against typo-level edits, not adversarial input —
+ * SHA-256 truncated to 16 hex chars is overkill but cheap on Workers.
+ */
+export async function hashString(text) {
+  const data = new TextEncoder().encode(String(text ?? ''));
+  const buf = await crypto.subtle.digest('SHA-256', data);
+  const arr = Array.from(new Uint8Array(buf));
+  return arr.slice(0, 8).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+/** Build a { path: hash } map for every leaf string in a catalog. */
+export async function hashCatalog(catalog) {
+  const { paths, values } = flattenCatalog(catalog);
+  const hashes = {};
+  // crypto.subtle.digest is async but cheap; do them in parallel.
+  const hashed = await Promise.all(values.map(hashString));
+  for (let i = 0; i < paths.length; i++) hashes[paths[i]] = hashed[i];
+  return hashes;
+}
+
+/**
+ * Translate a full catalog from English into targetLang. Used for the very
+ * first time a language is generated (no prior translation exists yet).
+ */
 export async function translateCatalog(env, sourceCatalog, targetLang) {
   const { paths, values } = flattenCatalog(sourceCatalog);
   if (paths.length === 0) return {};
   const translated = await translateBatch(env, values, targetLang, 'en');
   return inflateCatalog(paths, translated);
+}
+
+/**
+ * Incremental translator. Given the latest English catalog, the previously
+ * stored translation, and the previously stored source-hash map, returns:
+ *   - merged translation (only changed/new keys re-translated)
+ *   - fresh hashes (matching the latest English)
+ *   - stats describing what changed
+ *
+ * Behavior:
+ *   - New paths in EN  → translate them.
+ *   - Paths whose EN hash differs from the stored hash → re-translate.
+ *   - Paths unchanged  → keep the existing translation as-is.
+ *   - Paths removed in EN → drop them from the output.
+ *
+ * If `priorTranslation` is null (locale not generated yet), this falls back
+ * to a full translation, equivalent to translateCatalog.
+ */
+export async function translateCatalogIncremental(env, sourceCatalog, targetLang, priorTranslation, priorHashes) {
+  const { paths: enPaths, values: enValues } = flattenCatalog(sourceCatalog);
+  const enPathSet = new Set(enPaths);
+
+  // Compute fresh hashes for the latest EN.
+  const freshHashes = {};
+  const freshHashList = await Promise.all(enValues.map(hashString));
+  for (let i = 0; i < enPaths.length; i++) freshHashes[enPaths[i]] = freshHashList[i];
+
+  // No prior data → first-time translation.
+  if (!priorTranslation || !priorHashes) {
+    if (enPaths.length === 0) {
+      return { translation: {}, hashes: freshHashes, stats: { translated: 0, kept: 0, deleted: 0 } };
+    }
+    const translated = await translateBatch(env, enValues, targetLang, 'en');
+    return {
+      translation: inflateCatalog(enPaths, translated),
+      hashes: freshHashes,
+      stats: { translated: enPaths.length, kept: 0, deleted: 0 },
+    };
+  }
+
+  // Flatten the prior translation so we can look up existing translated values.
+  const { paths: priorPaths, values: priorValues } = flattenCatalog(priorTranslation);
+  const priorMap = {};
+  for (let i = 0; i < priorPaths.length; i++) priorMap[priorPaths[i]] = priorValues[i];
+
+  // Decide which keys to re-translate vs reuse.
+  const toTranslatePaths = [];
+  const toTranslateValues = [];
+  const reuseMap = {}; // path -> kept translation
+  let kept = 0;
+
+  for (let i = 0; i < enPaths.length; i++) {
+    const p = enPaths[i];
+    const v = enValues[i];
+    const oldHash = priorHashes[p];
+    const newHash = freshHashes[p];
+    const hadTranslation = Object.prototype.hasOwnProperty.call(priorMap, p);
+    if (hadTranslation && oldHash && oldHash === newHash) {
+      reuseMap[p] = priorMap[p];
+      kept += 1;
+    } else {
+      toTranslatePaths.push(p);
+      toTranslateValues.push(v);
+    }
+  }
+
+  // Count deletions for stats.
+  let deleted = 0;
+  for (const p of priorPaths) if (!enPathSet.has(p)) deleted += 1;
+
+  // Translate only the deltas.
+  const translatedDeltas = toTranslatePaths.length
+    ? await translateBatch(env, toTranslateValues, targetLang, 'en')
+    : [];
+
+  // Merge: every EN path gets either its kept or freshly-translated value.
+  const finalPaths = enPaths;
+  const finalValues = enPaths.map((p) => {
+    const idx = toTranslatePaths.indexOf(p);
+    return idx >= 0 ? translatedDeltas[idx] : reuseMap[p];
+  });
+
+  return {
+    translation: inflateCatalog(finalPaths, finalValues),
+    hashes: freshHashes,
+    stats: { translated: toTranslatePaths.length, kept, deleted },
+  };
 }

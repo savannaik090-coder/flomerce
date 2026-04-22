@@ -1,7 +1,7 @@
 import { handleCORS, successResponse, errorResponse, jsonResponse, corsHeaders } from '../../utils/helpers.js';
 import { validateAuth } from '../../utils/auth.js';
 import { isOwner } from './admin-worker.js';
-import { translateCatalog } from '../../utils/translator.js';
+import { translateCatalogIncremental, hashCatalog } from '../../utils/translator.js';
 import EN_CATALOG from '../../i18n-en.json';
 
 const SUPPORTED_LOCALES = new Set([
@@ -19,29 +19,46 @@ const R2_PREFIX = 'locales/';
 function r2Key(lang) {
   return `${R2_PREFIX}${lang}.json`;
 }
+function r2HashKey(lang) {
+  return `${R2_PREFIX}${lang}.hashes.json`;
+}
 
 function isValidLocale(lang) {
   return typeof lang === 'string' && /^[a-zA-Z]{2,3}(-[a-zA-Z]{2,4})?$/.test(lang) && lang.length <= 12;
 }
 
-async function readCachedLocale(env, lang) {
+async function readJsonFromR2(env, key) {
   if (!env.STORAGE) return null;
   try {
-    const obj = await env.STORAGE.get(r2Key(lang));
+    const obj = await env.STORAGE.get(key);
     if (!obj) return null;
     const text = await obj.text();
     return { data: JSON.parse(text), uploaded: obj.uploaded, size: obj.size };
   } catch (e) {
-    console.warn('[i18n] readCachedLocale error:', e.message || e);
+    console.warn('[i18n] readJsonFromR2 error:', key, e.message || e);
     return null;
   }
 }
 
-async function writeCachedLocale(env, lang, data) {
+async function readCachedLocale(env, lang) {
+  return readJsonFromR2(env, r2Key(lang));
+}
+
+async function readCachedHashes(env, lang) {
+  const r = await readJsonFromR2(env, r2HashKey(lang));
+  return r ? r.data : null;
+}
+
+async function writeCachedLocale(env, lang, data, hashes) {
   if (!env.STORAGE) throw new Error('R2 STORAGE binding missing');
   await env.STORAGE.put(r2Key(lang), JSON.stringify(data), {
     httpMetadata: { contentType: 'application/json; charset=utf-8' },
   });
+  if (hashes) {
+    await env.STORAGE.put(r2HashKey(lang), JSON.stringify(hashes), {
+      httpMetadata: { contentType: 'application/json; charset=utf-8' },
+    });
+  }
 }
 
 async function checkRateLimit(env, lang) {
@@ -79,10 +96,45 @@ async function bumpRateLimit(env, lang, day) {
   ).bind(lang, day, now).run();
 }
 
-async function generateAndCache(env, lang) {
-  const data = await translateCatalog(env, EN_CATALOG, lang);
-  await writeCachedLocale(env, lang, data);
-  return data;
+/**
+ * Smart regenerate: only re-translates strings whose English source changed
+ * since the previous translation. Falls back to a full translation when no
+ * prior version exists. Returns stats and the new catalog.
+ */
+async function regenerateIncremental(env, lang) {
+  const prior = await readCachedLocale(env, lang);
+  const priorHashes = await readCachedHashes(env, lang);
+  const { translation, hashes, stats } = await translateCatalogIncremental(
+    env,
+    EN_CATALOG,
+    lang,
+    prior ? prior.data : null,
+    priorHashes,
+  );
+  await writeCachedLocale(env, lang, translation, hashes);
+  return { data: translation, stats };
+}
+
+/**
+ * Compute which paths in the EN catalog are out-of-date for a given locale,
+ * without calling the translator. Used to power the "X strings need refresh"
+ * badge in the owner admin without burning any API quota.
+ */
+async function diffStaleness(env, lang) {
+  const priorHashes = await readCachedHashes(env, lang);
+  const fresh = await hashCatalog(EN_CATALOG);
+  const stale = [];
+  const added = [];
+  if (!priorHashes) {
+    return { stale: 0, added: Object.keys(fresh).length, removed: 0, neverGenerated: true };
+  }
+  for (const [p, h] of Object.entries(fresh)) {
+    if (!(p in priorHashes)) added.push(p);
+    else if (priorHashes[p] !== h) stale.push(p);
+  }
+  let removed = 0;
+  for (const p of Object.keys(priorHashes)) if (!(p in fresh)) removed += 1;
+  return { stale: stale.length, added: added.length, removed, neverGenerated: false };
 }
 
 /**
@@ -126,7 +178,7 @@ export async function handleI18nPublic(request, env, path, ctx) {
   }
 
   try {
-    const data = await generateAndCache(env, lang);
+    const { data } = await regenerateIncremental(env, lang);
     await bumpRateLimit(env, lang, rl.day);
     return cachedJson(request, { success: true, message: 'Success', data });
   } catch (e) {
@@ -150,8 +202,9 @@ function cachedJson(request, body) {
 
 /**
  * Owner-admin endpoints under /api/admin/i18n/...
- *  GET    /api/admin/i18n/locales            → list cached locales w/ metadata
- *  POST   /api/admin/i18n/regenerate/:lang   → force regen (rate-limited 5/day/lang)
+ *  GET    /api/admin/i18n/locales            → list cached locales w/ metadata + staleness
+ *  POST   /api/admin/i18n/regenerate/:lang   → smart regen (rate-limited 5/day/lang)
+ *  POST   /api/admin/i18n/refresh-all        → smart regen for every cached locale
  *  DELETE /api/admin/i18n/locale/:lang       → purge cached copy
  */
 export async function handleI18nAdmin(request, env, pathParts) {
@@ -166,10 +219,20 @@ export async function handleI18nAdmin(request, env, pathParts) {
   if (request.method === 'GET' && action === 'locales') {
     if (!env.STORAGE) return successResponse({ locales: [] });
     const list = await env.STORAGE.list({ prefix: R2_PREFIX });
-    const locales = (list.objects || []).map((o) => ({
-      lang: o.key.slice(R2_PREFIX.length).replace(/\.json$/, ''),
-      size: o.size,
-      uploaded: o.uploaded,
+    // Only translation files, not the .hashes.json sidecars.
+    const objects = (list.objects || []).filter((o) => !o.key.endsWith('.hashes.json'));
+    const locales = await Promise.all(objects.map(async (o) => {
+      const langCode = o.key.slice(R2_PREFIX.length).replace(/\.json$/, '');
+      const diff = await diffStaleness(env, langCode);
+      return {
+        lang: langCode,
+        size: o.size,
+        uploaded: o.uploaded,
+        stale: diff.stale,
+        added: diff.added,
+        removed: diff.removed,
+        upToDate: diff.stale === 0 && diff.added === 0 && diff.removed === 0,
+      };
     }));
     return successResponse({ locales });
   }
@@ -182,18 +245,55 @@ export async function handleI18nAdmin(request, env, pathParts) {
       return errorResponse(`Rate limit reached (${rl.used}/${rl.limit} per day for ${lang})`, 429);
     }
     try {
-      const data = await generateAndCache(env, lang);
+      const { data, stats } = await regenerateIncremental(env, lang);
       await bumpRateLimit(env, lang, rl.day);
-      const keyCount = countKeys(data);
-      return successResponse({ ok: true, lang, keyCount });
+      return successResponse({ ok: true, lang, keyCount: countKeys(data), stats });
     } catch (e) {
       return errorResponse(e.message || 'Regeneration failed', 500);
     }
   }
 
+  // POST /api/admin/i18n/refresh-all  — incremental refresh for every cached
+  // locale. Skips locales that are already up-to-date (no translator call,
+  // no rate-limit charge). For locales with deltas, runs the smart regen and
+  // charges one rate-limit unit per locale that actually called the translator.
+  if (request.method === 'POST' && action === 'refresh-all') {
+    if (!env.STORAGE) return successResponse({ ok: true, results: [] });
+    const list = await env.STORAGE.list({ prefix: R2_PREFIX });
+    const objects = (list.objects || []).filter((o) => !o.key.endsWith('.hashes.json'));
+    const results = [];
+    for (const o of objects) {
+      const langCode = o.key.slice(R2_PREFIX.length).replace(/\.json$/, '');
+      if (!isValidLocale(langCode) || langCode === 'en') continue;
+      const diff = await diffStaleness(env, langCode);
+      // Nothing changed → skip entirely. No translator call, no rate-limit charge.
+      if (!diff.neverGenerated && diff.stale === 0 && diff.added === 0 && diff.removed === 0) {
+        results.push({ lang: langCode, skipped: true, reason: 'up-to-date' });
+        continue;
+      }
+      const rl = await checkRateLimit(env, langCode);
+      if (!rl.ok) {
+        results.push({ lang: langCode, skipped: true, reason: `rate-limit ${rl.used}/${rl.limit}` });
+        continue;
+      }
+      try {
+        const { stats } = await regenerateIncremental(env, langCode);
+        // Only count against rate limit if we actually called the translator.
+        if (stats.translated > 0) await bumpRateLimit(env, langCode, rl.day);
+        results.push({ lang: langCode, ok: true, stats });
+      } catch (e) {
+        results.push({ lang: langCode, error: e.message || 'failed' });
+      }
+    }
+    return successResponse({ ok: true, results });
+  }
+
   if (request.method === 'DELETE' && action === 'locale' && lang) {
     if (!isValidLocale(lang)) return errorResponse('Invalid locale code', 400);
-    if (env.STORAGE) await env.STORAGE.delete(r2Key(lang));
+    if (env.STORAGE) {
+      await env.STORAGE.delete(r2Key(lang));
+      await env.STORAGE.delete(r2HashKey(lang));
+    }
     return successResponse({ ok: true, lang });
   }
 
