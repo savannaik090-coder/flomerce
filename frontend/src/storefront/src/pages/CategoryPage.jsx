@@ -6,6 +6,7 @@ import { useSEO } from '../hooks/useSEO.js';
 import { useTheme } from '../context/ThemeContext.jsx';
 import * as productService from '../services/productService.js';
 import * as categoryService from '../services/categoryService.js';
+import TranslatedText from '../components/TranslatedText.jsx';
 import ProductGrid from '../components/product/ProductGrid.jsx';
 import FilterSortBar from '../components/product/FilterSortBar.jsx';
 import { resolveImageUrl } from '../utils/imageUrl.js';
@@ -157,8 +158,8 @@ export default function CategoryPage() {
       >
         <div className="hero-overlay" />
         <div className="hero-content">
-          <h1 className="hero-title">{categoryName}</h1>
-          <p className="hero-subtitle">{categoryDescription}</p>
+          <h1 className="hero-title"><TranslatedText text={categoryName} /></h1>
+          <p className="hero-subtitle"><TranslatedText text={categoryDescription} /></p>
         </div>
       </section>
 

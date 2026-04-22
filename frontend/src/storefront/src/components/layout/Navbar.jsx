@@ -6,6 +6,7 @@ import { CartContext } from '../../context/CartContext.jsx';
 import { AuthContext } from '../../context/AuthContext.jsx';
 import { useWishlist } from '../../hooks/useWishlist.js';
 import { isPlanAtLeast } from '../../utils/plan.js';
+import LanguageSwitcher from '../LanguageSwitcher.jsx';
 
 export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
   const { siteConfig } = useContext(SiteContext);
@@ -279,6 +280,7 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
           </div>
 
           <div className="nav-icons">
+            <LanguageSwitcher compact />
             <a href="#" className="icon-link search-icon" onClick={(e) => { e.preventDefault(); onSearchOpen?.(); }}>
               <img src="/images/icons/search.png" alt={t('nav.search')} style={{ width: 20, height: 20 }} />
             </a>

@@ -4,6 +4,7 @@ import { PanelContext } from '../../context/PanelContext.jsx';
 import { useWishlist } from '../../hooks/useWishlist.js';
 import { useCurrency } from '../../hooks/useCurrency.js';
 import { resolveImageUrl } from '../../utils/imageUrl.js';
+import TranslatedText from '../TranslatedText.jsx';
 
 export default function ProductCard({ product, variant = 'grid', onWishlistToggle, isInWishlist: isInWishlistProp, isDemo = false }) {
   const wishlist = useWishlist();
@@ -143,7 +144,7 @@ export default function ProductCard({ product, variant = 'grid', onWishlistToggl
               whiteSpace: 'nowrap',
             }}
           >
-            {product.name}
+            <TranslatedText text={product.name} />
           </h3>
           <div className="product-pricing">
             <span

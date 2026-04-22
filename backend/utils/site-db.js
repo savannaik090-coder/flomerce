@@ -1,6 +1,40 @@
 const _migratedDBs = new Set();
 const _subcatMigratedDBs = new Set();
 const _addrCountryMigratedDBs = new Set();
+const _translationCacheMigratedDBs = new Set();
+
+/**
+ * One-shot ensure of the per-shard translation_cache table. New shards
+ * created after Phase 2 already get this from getSiteSchemaStatements,
+ * but live shards that pre-date System B (per-site shopper translation)
+ * need the table created lazily on the first proxy hit.
+ */
+export async function ensureTranslationCacheTable(db, cacheKey) {
+  const key = cacheKey || 'default';
+  if (_translationCacheMigratedDBs.has(key)) return;
+  try {
+    await db.prepare(`CREATE TABLE IF NOT EXISTS translation_cache (
+      id TEXT PRIMARY KEY,
+      site_id TEXT NOT NULL,
+      text_hash TEXT NOT NULL,
+      source_lang TEXT NOT NULL DEFAULT 'auto',
+      target_lang TEXT NOT NULL,
+      translated_text TEXT NOT NULL,
+      char_count INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(site_id, text_hash, source_lang, target_lang)
+    )`).run();
+    try {
+      await db.prepare('CREATE INDEX IF NOT EXISTS idx_translation_cache_lookup ON translation_cache(site_id, text_hash, source_lang, target_lang)').run();
+    } catch (e) {}
+    try {
+      await db.prepare('CREATE INDEX IF NOT EXISTS idx_translation_cache_site ON translation_cache(site_id)').run();
+    } catch (e) {}
+    _translationCacheMigratedDBs.add(key);
+  } catch (e) {
+    console.error('ensureTranslationCacheTable error:', e.message || e);
+  }
+}
 
 export async function ensureProductOptionsColumn(db, cacheKey) {
   const key = cacheKey || 'default';

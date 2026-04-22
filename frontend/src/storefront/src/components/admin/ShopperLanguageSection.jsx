@@ -99,6 +99,7 @@ export default function ShopperLanguageSection({ open, onToggle }) {
   const [region, setRegion] = useState('global');
   const [enabled, setEnabled] = useState(false);
   const [languages, setLanguages] = useState([]);
+  const [usage, setUsage] = useState(null);
 
   const currentPlan = siteConfig?.subscription_plan || siteConfig?.plan || 'free';
 
@@ -120,6 +121,7 @@ export default function ShopperLanguageSection({ open, onToggle }) {
           setRegion(d.region || 'global');
           setEnabled(!!d.enabled);
           setLanguages(Array.isArray(d.languages) ? d.languages : []);
+          setUsage(d.usage || null);
         }
       } catch (e) {
         if (!cancelled) setMessage({ type: 'error', text: 'Failed to load translator settings.' });
@@ -182,6 +184,7 @@ export default function ShopperLanguageSection({ open, onToggle }) {
           setHasKey(!!refreshed.hasKey);
           setKeyMasked(refreshed.keyMasked || '');
           setEnabled(!!refreshed.enabled);
+          setUsage(refreshed.usage || null);
         }
       } else {
         setMessage({ type: 'error', text: result?.error || 'Failed to save.' });
@@ -344,6 +347,17 @@ export default function ShopperLanguageSection({ open, onToggle }) {
                     </span>
                   </label>
                 </div>
+
+                {usage && (
+                  <div style={{ padding: '12px 14px', borderRadius: 8, marginBottom: 16, fontSize: 13, background: '#f8fafc', border: '1px solid #e2e8f0', color: '#334155' }}>
+                    <div style={{ fontWeight: 600, marginBottom: 4, color: '#1e293b' }}>Usage</div>
+                    <div>This month: <strong>{Number(usage.monthChars || 0).toLocaleString()}</strong> characters translated{usage.month ? ` (${usage.month})` : ''}.</div>
+                    <div style={{ marginTop: 2 }}>Today: <strong>{Number(usage.dayChars || 0).toLocaleString()}</strong> characters{usage.dailyCap ? ` of the ${Number(usage.dailyCap).toLocaleString()}-character daily safety cap` : ''}.</div>
+                    <div style={{ marginTop: 6, fontSize: 11, color: '#64748b' }}>
+                      Microsoft bills you directly. Their free tier covers the first 2,000,000 characters per month.
+                    </div>
+                  </div>
+                )}
 
                 {message && (
                   <div style={{ padding: '10px 14px', borderRadius: 6, marginBottom: 16, fontSize: 13, background: message.type === 'success' ? '#f0fdf4' : '#fef2f2', color: message.type === 'success' ? '#166534' : '#991b1b', border: `1px solid ${message.type === 'success' ? '#bbf7d0' : '#fecaca'}` }}>

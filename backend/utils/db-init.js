@@ -235,6 +235,18 @@ export async function ensureTablesExist(env) {
         FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
       )`,
 
+      // 0019_site_translator_usage: per-merchant monthly character meter +
+      // daily rate-limiter source. Composite PK keeps each (site, month) row
+      // unique; updates are upserts driven by the translation proxy.
+      `CREATE TABLE IF NOT EXISTS site_translator_usage (
+        site_id TEXT NOT NULL,
+        year_month TEXT NOT NULL,
+        char_count INTEGER NOT NULL DEFAULT 0,
+        request_count INTEGER NOT NULL DEFAULT 0,
+        last_updated TEXT DEFAULT (datetime('now')),
+        PRIMARY KEY (site_id, year_month)
+      )`,
+
       `CREATE TABLE IF NOT EXISTS system_flags (
         key TEXT PRIMARY KEY,
         value TEXT,
@@ -261,6 +273,8 @@ export async function ensureTablesExist(env) {
       'CREATE INDEX IF NOT EXISTS idx_site_media_site ON site_media(site_id)',
       'CREATE INDEX IF NOT EXISTS idx_site_media_key ON site_media(storage_key)',
       'CREATE INDEX IF NOT EXISTS idx_processed_webhooks_at ON processed_webhooks(processed_at)',
+      'CREATE INDEX IF NOT EXISTS idx_site_translator_usage_site ON site_translator_usage(site_id)',
+      'CREATE INDEX IF NOT EXISTS idx_site_translator_usage_month ON site_translator_usage(year_month)',
     ];
 
     for (const sql of tables) {

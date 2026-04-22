@@ -6,6 +6,7 @@ import { CartContext } from '../../../context/CartContext.jsx';
 import { AuthContext } from '../../../context/AuthContext.jsx';
 import { useWishlist } from '../../../hooks/useWishlist.js';
 import { isPlanAtLeast } from '../../../utils/plan.js';
+import LanguageSwitcher from '../../LanguageSwitcher.jsx';
 import './modern.css';
 
 export default function NavbarModern({ onSearchOpen, onCartOpen, onWishlistOpen }) {
@@ -301,6 +302,7 @@ export default function NavbarModern({ onSearchOpen, onCartOpen, onWishlistOpen 
           )}
 
           <div className="mn-nav-icons">
+            <LanguageSwitcher compact />
             <button className="mn-icon-btn" onClick={() => onSearchOpen?.()} aria-label={t('nav.search', 'Search')}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                 <circle cx="11" cy="11" r="8"/>

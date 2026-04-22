@@ -5,6 +5,7 @@ import * as productService from '../../../services/productService.js';
 import ProductCardModern from './ProductCardModern.jsx';
 import { API_BASE } from '../../../config.js';
 import { getDemoProductsForCategory } from '../../../defaults/index.js';
+import TranslatedText from '../../TranslatedText.jsx';
 import './modern.css';
 
 function resolveImg(src) {
@@ -47,7 +48,7 @@ export default function CategoryGrid({ category }) {
   return (
     <section className="mn-category-section">
       <div className="mn-category-header">
-        <h2 className="mn-section-title">{category.name}</h2>
+        <h2 className="mn-section-title"><TranslatedText text={category.name} /></h2>
         {category.subtitle && (
           <p className="mn-section-subtitle">{category.subtitle}</p>
         )}

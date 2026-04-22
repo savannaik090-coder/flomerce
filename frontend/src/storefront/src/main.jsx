@@ -9,6 +9,7 @@ import { WishlistProvider } from './context/WishlistContext.jsx';
 import { CurrencyProvider } from './context/CurrencyContext.jsx';
 import { PanelProvider } from './context/PanelContext.jsx';
 import { ThemeProvider } from './context/ThemeContext.jsx';
+import { ShopperTranslationProvider } from './context/ShopperTranslationContext.jsx';
 import { initStorefrontI18n } from '../../shared/i18n/init.js';
 import './styles/global.css';
 
@@ -23,7 +24,9 @@ initStorefrontI18n().finally(() => {
                 <CurrencyProvider>
                   <PanelProvider>
                     <ThemeProvider>
-                      <App />
+                      <ShopperTranslationProvider>
+                        <App />
+                      </ShopperTranslationProvider>
                     </ThemeProvider>
                   </PanelProvider>
                 </CurrencyProvider>

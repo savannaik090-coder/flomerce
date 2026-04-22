@@ -167,6 +167,16 @@ export function SiteProvider({ children }) {
         domainStatus: data.domain_status || null,
         subscriptionPlan: data.subscription_plan || null,
         contentLanguage: data.content_language || 'en',
+        translatorEnabled: data.translator_enabled === 1 || data.translator_enabled === true,
+        translatorLanguages: (() => {
+          const raw = data.translator_languages;
+          if (Array.isArray(raw)) return raw;
+          if (typeof raw === 'string' && raw) {
+            try { const p = JSON.parse(raw); return Array.isArray(p) ? p : []; }
+            catch (e) { return []; }
+          }
+          return [];
+        })(),
       };
 
       // First-time shoppers who have no saved language preference get the

@@ -1,0 +1,1 @@
+import{J as u,j as n}from"./index-C2D4NmPf.js";function j({text:s,as:o,className:r,style:t,...e}){const{translate:a}=u(),i=a(s);return o?n.jsx(o,{className:r,style:t,...e,children:i}):r||t||Object.keys(e).length>0?n.jsx("span",{className:r,style:t,...e,children:i}):n.jsx(n.Fragment,{children:i})}export{j as T};

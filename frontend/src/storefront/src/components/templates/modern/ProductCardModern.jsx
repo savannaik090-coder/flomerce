@@ -5,6 +5,7 @@ import { PanelContext } from '../../../context/PanelContext.jsx';
 import { useWishlist } from '../../../hooks/useWishlist.js';
 import { useCurrency } from '../../../hooks/useCurrency.js';
 import { resolveImageUrl } from '../../../utils/imageUrl.js';
+import TranslatedText from '../../TranslatedText.jsx';
 import './modern.css';
 
 export default function ProductCardModern({ product, variant = 'grid', onWishlistToggle, isInWishlist: isInWishlistProp, isDemo = false }) {
@@ -75,7 +76,7 @@ export default function ProductCardModern({ product, variant = 'grid', onWishlis
           </button>
         </div>
         <div className="mn-product-info">
-          <h3 className="mn-product-name">{product.name}</h3>
+          <h3 className="mn-product-name"><TranslatedText text={product.name} /></h3>
           <div className="mn-product-pricing">
             <span className="mn-product-price">{formatAmount(product.price)}</span>
             {hasComparePrice && (

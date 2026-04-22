@@ -8,6 +8,7 @@ import { trackD1Write, trackD1Update, estimateRowBytes, normalizePlanName, getPl
 import { purgeStorefrontCache } from '../../utils/cache.js';
 import { SUPPORTED_LOCALES } from './i18n-worker.js';
 import { encryptSecret, decryptSecret, maskSecret } from '../../utils/crypto.js';
+import { getSiteTranslatorUsage } from '../storefront/translate-worker.js';
 
 export async function handleSites(request, env, path, ctx) {
   const corsResponse = handleCORS(request);
@@ -1429,12 +1430,14 @@ async function getSiteTranslatorSettings(env, siteId) {
         keyMasked = '••••••••••????';
       }
     }
+    const usage = await getSiteTranslatorUsage(env, siteId);
     return successResponse({
       enabled: row.translator_enabled === 1,
       region: row.translator_region || '',
       languages: parseLanguagesField(row.translator_languages),
       hasKey: !!enc,
       keyMasked,
+      usage,
     });
   } catch (e) {
     console.error('Get site translator settings error:', e);

@@ -1,5 +1,6 @@
 import { handleAuth } from './platform/auth-worker.js';
 import { handleSites } from './platform/sites-worker.js';
+import { handleTranslateProxy } from './storefront/translate-worker.js';
 import { handleProducts, updateProductStock } from './storefront/products-worker.js';
 import { handleOrders } from './storefront/orders-worker.js';
 import { handleCart, mergeCarts, clearCart } from './storefront/cart-worker.js';
@@ -438,6 +439,15 @@ async function handleAPI(request, env, path, ctx) {
     case 'site':
       return handleSiteInfo(request, env);
 
+    case 'storefront':
+      // Public storefront-scoped subresources. Currently only the per-site
+      // shopper translation proxy lives here (System B). The proxy itself
+      // enforces all auth/rate/feature checks.
+      if (pathParts[3] === 'translate') {
+        return handleTranslateProxy(request, env, path, ctx);
+      }
+      return errorResponse('Not found', 404);
+
     case 'i18n':
       return handleI18nPublic(request, env, path, ctx);
 
@@ -477,7 +487,8 @@ async function handleSiteInfo(request, env) {
       siteRow = await env.DB.prepare(
         `SELECT s.id, s.subdomain, s.brand_name, s.template_id,
                 s.custom_domain, s.domain_status, s.domain_verification_token,
-                s.subscription_plan
+                s.subscription_plan, s.content_language,
+                s.translator_enabled, s.translator_languages
          FROM sites s 
          WHERE LOWER(s.subdomain) = LOWER(?) AND s.is_active = 1`
       ).bind(subdomain).first();
@@ -485,7 +496,8 @@ async function handleSiteInfo(request, env) {
       siteRow = await env.DB.prepare(
         `SELECT s.id, s.subdomain, s.brand_name, s.template_id,
                 s.custom_domain, s.domain_status, s.domain_verification_token,
-                s.subscription_plan
+                s.subscription_plan, s.content_language,
+                s.translator_enabled, s.translator_languages
          FROM sites s 
          WHERE s.custom_domain = ? AND s.domain_status = 'verified' AND s.is_active = 1`
       ).bind(hostname.toLowerCase()).first();

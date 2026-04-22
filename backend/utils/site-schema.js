@@ -434,6 +434,24 @@ export function getSiteSchemaStatements() {
       updated_at TEXT DEFAULT (datetime('now'))
     )`,
 
+    // System B (per-site shopper translation) cache. Each row is a single
+    // unique (site, source_text_hash, source_lang, target_lang) tuple — the
+    // SHA-256 hash lets us look up by content without storing the source
+    // string twice. char_count records the source-text character cost for
+    // observability/audit. Cache hits skip Microsoft entirely so the same
+    // text never bills the merchant twice.
+    `CREATE TABLE IF NOT EXISTS translation_cache (
+      id TEXT PRIMARY KEY,
+      site_id TEXT NOT NULL,
+      text_hash TEXT NOT NULL,
+      source_lang TEXT NOT NULL DEFAULT 'auto',
+      target_lang TEXT NOT NULL,
+      translated_text TEXT NOT NULL,
+      char_count INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(site_id, text_hash, source_lang, target_lang)
+    )`,
+
     `CREATE TABLE IF NOT EXISTS blog_posts (
       id TEXT PRIMARY KEY,
       site_id TEXT NOT NULL,
@@ -498,6 +516,8 @@ export function getSiteSchemaStatements() {
     'CREATE INDEX IF NOT EXISTS idx_addresses_user ON addresses(user_id)',
     'CREATE INDEX IF NOT EXISTS idx_site_staff_site ON site_staff(site_id)',
     'CREATE INDEX IF NOT EXISTS idx_site_staff_email ON site_staff(site_id, email)',
+    'CREATE INDEX IF NOT EXISTS idx_translation_cache_lookup ON translation_cache(site_id, text_hash, source_lang, target_lang)',
+    'CREATE INDEX IF NOT EXISTS idx_translation_cache_site ON translation_cache(site_id)',
     'CREATE INDEX IF NOT EXISTS idx_cancel_requests_site ON cancellation_requests(site_id)',
     'CREATE INDEX IF NOT EXISTS idx_cancel_requests_order ON cancellation_requests(order_id)',
     'CREATE INDEX IF NOT EXISTS idx_return_requests_site ON return_requests(site_id)',

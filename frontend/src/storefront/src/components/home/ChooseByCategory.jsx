@@ -5,6 +5,7 @@ import { useSiteConfig } from '../../hooks/useSiteConfig.js';
 import '../../styles/choose-by-category.css';
 import { API_BASE } from '../../config.js';
 import { getDemoCategoriesDefaults } from '../../defaults/index.js';
+import TranslatedText from '../TranslatedText.jsx';
 
 function resolveImg(src) {
   if (!src) return '';
@@ -69,7 +70,7 @@ export default function ChooseByCategory({ categories }) {
                   <div className="choose-by-category-overlay" />
                 </div>
                 <div className="choose-by-category-label">
-                  <span className="choose-by-category-label-text">{cat.name}</span>
+                  <span className="choose-by-category-label-text"><TranslatedText text={cat.name} /></span>
                 </div>
               </Link>
             );

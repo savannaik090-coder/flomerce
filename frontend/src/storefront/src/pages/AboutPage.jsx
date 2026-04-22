@@ -4,6 +4,7 @@ import { useSiteConfig } from '../hooks/useSiteConfig.js';
 import { useSEO } from '../hooks/useSEO.js';
 import { useTheme } from '../context/ThemeContext.jsx';
 import { resolveImageUrl } from '../utils/imageUrl.js';
+import TranslatedText from '../components/TranslatedText.jsx';
 import '../styles/about.css';
 
 import { getAboutPageWithBrand } from '../defaults/index.js';
@@ -62,7 +63,7 @@ export default function AboutPage() {
         <div className="about-hero-inner">
           <span className="about-hero-label">{t('about.heroLabel', 'Our Story')}</span>
           <h1>{t('about.heroTitle', { brandName, defaultValue: 'About {{brandName}}' })}</h1>
-          <p>{heroSubtitle}</p>
+          <p><TranslatedText text={heroSubtitle} /></p>
           <div className="about-hero-divider" />
         </div>
       </section>
@@ -83,7 +84,7 @@ export default function AboutPage() {
           </div>
           <div className="about-story-text">
             {storyParagraphs.map((paragraph, idx) => (
-              <p key={idx}>{paragraph}</p>
+              <p key={idx}><TranslatedText text={paragraph} /></p>
             ))}
           </div>
         </div>
@@ -94,12 +95,12 @@ export default function AboutPage() {
         return (
           <section className="about-content-section" key={idx}>
             <div className="about-content-section-inner">
-              <span className="about-content-section-eyebrow">{section.heading}</span>
-              <h2>{section.heading}</h2>
+              <span className="about-content-section-eyebrow"><TranslatedText text={section.heading} /></span>
+              <h2><TranslatedText text={section.heading} /></h2>
               <div className="about-content-section-divider" />
               <div className="about-content-section-text">
                 {paragraphs.map((paragraph, pIdx) => (
-                  <p key={pIdx}>{paragraph}</p>
+                  <p key={pIdx}><TranslatedText text={paragraph} /></p>
                 ))}
               </div>
             </div>

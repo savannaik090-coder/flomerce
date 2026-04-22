@@ -13,6 +13,7 @@ import ProductGallery from '../components/product/ProductGallery.jsx';
 import RelatedProducts from '../components/product/RelatedProducts.jsx';
 import ProductReviews from '../components/product/ProductReviews.jsx';
 import ProductReviewsModern from '../components/templates/modern/ProductReviewsModern.jsx';
+import TranslatedText from '../components/TranslatedText.jsx';
 import '../styles/product-detail.css';
 
 import { getPolicies } from '../defaults/index.js';
@@ -251,7 +252,7 @@ export default function ProductDetailPage() {
 
         <div className="product-detail-right">
           <div className="product-detail-info">
-            <h1 className="product-title">{product.name}</h1>
+            <h1 className="product-title"><TranslatedText text={product.name} /></h1>
             <div className="price">
               <span className="product-price">{formatAmount(effectivePrice)}</span>
             </div>
@@ -343,7 +344,7 @@ export default function ProductDetailPage() {
             {product.description && (
               <div className="product-description-section product-description-inline">
                 <h3>{t('product.descriptionHeading', 'Product Description')}</h3>
-                <p>{product.description}</p>
+                <p><TranslatedText text={product.description} /></p>
               </div>
             )}
 
