@@ -639,7 +639,7 @@ export default function CheckoutPage() {
                     <h6 style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>{item.product_name || item.name}</h6>
                     {item.selectedOptions && (() => {
                       const parts = [];
-                      if (item.selectedOptions.color) parts.push(`Color: ${item.selectedOptions.color}`);
+                      if (item.selectedOptions.color) parts.push(`${t('checkout.summary.color', 'Color')}: ${item.selectedOptions.color}`);
                       if (item.selectedOptions.customOptions) {
                         for (const [label, value] of Object.entries(item.selectedOptions.customOptions)) {
                           parts.push(`${label}: ${value}`);
@@ -673,33 +673,33 @@ export default function CheckoutPage() {
           </div>
           <div style={{ borderTop: '2px solid #f0f0f0', paddingTop: 16, marginTop: 16 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <span style={{ fontSize: 15, fontWeight: 600 }}>Subtotal</span>
+              <span style={{ fontSize: 15, fontWeight: 600 }}>{t('checkout.summary.subtotal', 'Subtotal')}</span>
               <span style={{ fontSize: 16, fontWeight: 700 }}>{formatAmount(subtotal)}</span>
             </div>
             {couponDiscount > 0 && (
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                 <span style={{ fontSize: 14, color: '#16a34a', fontWeight: 500 }}>
-                  Coupon ({appliedCoupon.code})
+                  {t('checkout.summary.couponLabel', { code: appliedCoupon.code, defaultValue: 'Coupon ({{code}})' })}
                 </span>
                 <span style={{ fontSize: 14, color: '#16a34a', fontWeight: 700 }}>- {formatAmount(couponDiscount)}</span>
               </div>
             )}
             <div style={{ marginBottom: 8 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 14, fontWeight: 500 }}>Shipping</span>
+                <span style={{ fontSize: 14, fontWeight: 500 }}>{t('checkout.summary.shipping', 'Shipping')}</span>
                 <span style={{ fontSize: 14, fontWeight: 600, color: shippingCost > 0 ? '#1a1a1a' : '#25ab00' }}>
-                  {shippingCost > 0 ? formatAmount(shippingCost) : 'Free'}
+                  {shippingCost > 0 ? formatAmount(shippingCost) : t('checkout.summary.free', 'Free')}
                 </span>
               </div>
               {showShippingNote && (
-                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 3, textAlign: 'end' }}>May vary based on your location</div>
+                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 3, textAlign: 'end' }}>{t('checkout.summary.shippingNote', 'May vary based on your location')}</div>
               )}
               {deliveryConfig.enabled && deliveryConfig.freeAboveEnabled && deliveryConfig.freeAbove > 0 && shippingCost > 0 && (
-                <div style={{ fontSize: 11, color: '#16a34a', marginTop: 3, textAlign: 'end' }}>Free shipping on orders above {formatAmount(deliveryConfig.freeAbove)}</div>
+                <div style={{ fontSize: 11, color: '#16a34a', marginTop: 3, textAlign: 'end' }}>{t('checkout.summary.freeShippingAbove', { amount: formatAmount(deliveryConfig.freeAbove), defaultValue: 'Free shipping on orders above {{amount}}' })}</div>
               )}
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 8, borderTop: '1px solid #f0f0f0' }}>
-              <span style={{ fontSize: 16, fontWeight: 700 }}>Total</span>
+              <span style={{ fontSize: 16, fontWeight: 700 }}>{t('checkout.summary.total', 'Total')}</span>
               <span style={{ fontSize: 18, fontWeight: 700, color: '#7a4012' }}>{formatAmount(finalTotal)}</span>
             </div>
           </div>
@@ -708,14 +708,14 @@ export default function CheckoutPage() {
             <div style={{ marginTop: 16, padding: '14px 16px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
               {!appliedCoupon ? (
                 <>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 8 }}>Have a coupon code?</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 8 }}>{t('checkout.coupon.heading', 'Have a coupon code?')}</div>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <input
                       type="text"
                       value={couponCode}
                       onChange={e => { setCouponCode(e.target.value.toUpperCase()); setCouponError(''); }}
                       onKeyDown={e => e.key === 'Enter' && applyCoupon()}
-                      placeholder="Enter code"
+                      placeholder={t('checkout.coupon.placeholder', 'Enter code')}
                       style={{ flex: 1, padding: '9px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, fontFamily: 'monospace', letterSpacing: 1, textTransform: 'uppercase' }}
                     />
                     <button
@@ -724,7 +724,7 @@ export default function CheckoutPage() {
                       disabled={couponApplying}
                       style={{ padding: '9px 16px', background: '#1e293b', color: '#fff', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}
                     >
-                      Apply
+                      {t('checkout.coupon.apply', 'Apply')}
                     </button>
                   </div>
                   {couponError && <div style={{ color: '#ef4444', fontSize: 12, marginTop: 6 }}>{couponError}</div>}
@@ -732,31 +732,31 @@ export default function CheckoutPage() {
               ) : (
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div>
-                    <span style={{ fontSize: 13, color: '#16a34a', fontWeight: 700 }}>✓ Coupon applied: {appliedCoupon.code}</span>
+                    <span style={{ fontSize: 13, color: '#16a34a', fontWeight: 700 }}>{t('checkout.coupon.applied', { code: appliedCoupon.code, defaultValue: '\u2713 Coupon applied: {{code}}' })}</span>
                     <span style={{ fontSize: 13, color: '#64748b', marginInlineStart: 8 }}>
-                      ({appliedCoupon.type === 'percent' ? `${appliedCoupon.value}% off` : `${formatAmount(appliedCoupon.value)} off`})
+                      ({appliedCoupon.type === 'percent' ? t('checkout.coupon.percentOff', { value: appliedCoupon.value, defaultValue: '{{value}}% off' }) : t('checkout.coupon.amountOff', { amount: formatAmount(appliedCoupon.value), defaultValue: '{{amount}} off' })})
                     </span>
                   </div>
-                  <button type="button" onClick={removeCoupon} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 13, textDecoration: 'underline' }}>Remove</button>
+                  <button type="button" onClick={removeCoupon} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 13, textDecoration: 'underline' }}>{t('checkout.coupon.remove', 'Remove')}</button>
                 </div>
               )}
             </div>
           )}
 
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 20, gap: 12 }}>
-            <Link to="/" style={{ padding: '10px 20px', border: `1px solid ${'#9c7c38'}`, color: '#9c7c38', borderRadius: 0, textDecoration: 'none', fontWeight: 500 }}>Continue Shopping</Link>
-            <button onClick={() => goToStep(2)} disabled={loading} style={{ padding: '10px 24px', background: '#7a4012', color: '#fff', border: 'none', cursor: loading ? 'not-allowed' : 'pointer', fontWeight: 600, opacity: loading ? 0.7 : 1, display: 'inline-flex', alignItems: 'center', gap: 8 }}>{loading ? (<><span style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', display: 'inline-block', animation: 'spin 0.8s linear infinite' }} />Checking Availability...</>) : 'Continue to Address'}</button>
+            <Link to="/" style={{ padding: '10px 20px', border: `1px solid ${'#9c7c38'}`, color: '#9c7c38', borderRadius: 0, textDecoration: 'none', fontWeight: 500 }}>{t('checkout.actions.continueShopping', 'Continue Shopping')}</Link>
+            <button onClick={() => goToStep(2)} disabled={loading} style={{ padding: '10px 24px', background: '#7a4012', color: '#fff', border: 'none', cursor: loading ? 'not-allowed' : 'pointer', fontWeight: 600, opacity: loading ? 0.7 : 1, display: 'inline-flex', alignItems: 'center', gap: 8 }}>{loading ? (<><span style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', display: 'inline-block', animation: 'spin 0.8s linear infinite' }} />{t('checkout.actions.checkingAvailability', 'Checking Availability...')}</>) : t('checkout.actions.continueToAddress', 'Continue to Address')}</button>
           </div>
         </div>
       )}
 
       {step === 2 && (
         <div style={{ background: '#fff', padding: 24, boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
-          <h3 style={{ fontFamily: "'Playfair Display', serif", marginBottom: 20,  }}>Shipping Address</h3>
+          <h3 style={{ fontFamily: "'Playfair Display', serif", marginBottom: 20,  }}>{t('checkout.address.heading', 'Shipping Address')}</h3>
 
           {isAuthenticated && savedAddresses.length > 0 && (
             <div style={{ marginBottom: 24 }}>
-              <h5 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>Saved Addresses</h5>
+              <h5 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>{t('checkout.address.savedAddresses', 'Saved Addresses')}</h5>
               {savedAddresses.map((sa) => (
                 <div key={sa.id} onClick={() => selectSavedAddress(sa)} style={{
                   border: `2px solid ${selectedAddressId === sa.id ? '#7a4012' : '#e0e0e0'}`,
@@ -767,7 +767,7 @@ export default function CheckoutPage() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                     <span style={{ fontWeight: 600, color: '#7a4012' }}>{sa.first_name} {sa.last_name}</span>
                     {sa.label && <span style={{ fontSize: 12, color: '#888', background: '#f0f0f0', padding: '1px 8px', borderRadius: 10 }}>{sa.label}</span>}
-                    {sa.is_default === 1 && <span style={{ fontSize: 11, color: '#fff', background: '#7a4012', padding: '1px 8px', borderRadius: 10 }}>Default</span>}
+                    {sa.is_default === 1 && <span style={{ fontSize: 11, color: '#fff', background: '#7a4012', padding: '1px 8px', borderRadius: 10 }}>{t('checkout.address.default', 'Default')}</span>}
                   </div>
                   <div style={{ color: '#555', fontSize: 14, lineHeight: 1.4 }}>
                     {sa.house_number}{sa.road_name ? `, ${sa.road_name}` : ''}, {sa.city}{sa.state ? `, ${sa.state}` : ''} - {sa.pin_code}{sa.country && sa.country !== 'IN' ? `, ${getCountryName(sa.country)}` : ''}
@@ -775,7 +775,7 @@ export default function CheckoutPage() {
                 </div>
               ))}
               <div style={{ borderTop: '1px solid #e0e0e0', paddingTop: 16, marginTop: 8 }}>
-                <button type="button" onClick={() => { setSelectedAddressId(null); setAddress(prev => ({ ...prev, houseNumber: '', roadName: '', city: '', country: 'IN', state: '', pinCode: '', phone: '' })); }} style={{ background: 'none', border: 'none', color: '#7a4012', cursor: 'pointer', fontWeight: 500, fontSize: 14 }}>+ Use a New Address</button>
+                <button type="button" onClick={() => { setSelectedAddressId(null); setAddress(prev => ({ ...prev, houseNumber: '', roadName: '', city: '', country: 'IN', state: '', pinCode: '', phone: '' })); }} style={{ background: 'none', border: 'none', color: '#7a4012', cursor: 'pointer', fontWeight: 500, fontSize: 14 }}>{t('checkout.address.useNew', '+ Use a New Address')}</button>
               </div>
             </div>
           )}
@@ -783,23 +783,23 @@ export default function CheckoutPage() {
           <div>
             <div style={{ display: 'flex', gap: 15, marginBottom: 0 }}>
               <div style={{ flex: 1, marginBottom: 20 }}>
-                <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333', fontSize: 14 }}>First Name *</label>
+                <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333', fontSize: 14 }}>{t('checkout.address.firstName', 'First Name *')}</label>
                 <input type="text" value={address.firstName} onChange={e => handleAddressChange('firstName', e.target.value)} style={{ width: '100%', padding: 12, border: `1px solid ${addressErrors.firstName ? '#e74c3c' : '#ddd'}`, borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }} />
                 {addressErrors.firstName && <div style={{ color: '#e74c3c', fontSize: 12, marginTop: 4 }}>{addressErrors.firstName}</div>}
               </div>
               <div style={{ flex: 1, marginBottom: 20 }}>
-                <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333', fontSize: 14 }}>Last Name *</label>
+                <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333', fontSize: 14 }}>{t('checkout.address.lastName', 'Last Name *')}</label>
                 <input type="text" value={address.lastName} onChange={e => handleAddressChange('lastName', e.target.value)} style={{ width: '100%', padding: 12, border: `1px solid ${addressErrors.lastName ? '#e74c3c' : '#ddd'}`, borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }} />
                 {addressErrors.lastName && <div style={{ color: '#e74c3c', fontSize: 12, marginTop: 4 }}>{addressErrors.lastName}</div>}
               </div>
             </div>
             <div style={{ marginBottom: 20 }}>
-              <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333', fontSize: 14 }}>Email *</label>
+              <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333', fontSize: 14 }}>{t('checkout.address.email', 'Email *')}</label>
               <input type="email" value={address.email} onChange={e => handleAddressChange('email', e.target.value)} style={{ width: '100%', padding: 12, border: `1px solid ${addressErrors.email ? '#e74c3c' : '#ddd'}`, borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }} />
               {addressErrors.email && <div style={{ color: '#e74c3c', fontSize: 12, marginTop: 4 }}>{addressErrors.email}</div>}
             </div>
             <div style={{ marginBottom: 20 }}>
-              <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333', fontSize: 14 }}>Phone *</label>
+              <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333', fontSize: 14 }}>{t('checkout.address.phone', 'Phone *')}</label>
               <PhoneInput
                 value={address.phone}
                 onChange={val => handleAddressChange('phone', val)}
@@ -809,41 +809,41 @@ export default function CheckoutPage() {
               {addressErrors.phone && <div style={{ color: '#e74c3c', fontSize: 12, marginTop: 4 }}>{addressErrors.phone}</div>}
             </div>
             <div style={{ marginBottom: 20 }}>
-              <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333', fontSize: 14 }}>House/Building Number *</label>
+              <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333', fontSize: 14 }}>{t('checkout.address.houseNumber', 'House/Building Number *')}</label>
               <input type="text" value={address.houseNumber} onChange={e => handleAddressChange('houseNumber', e.target.value)} style={{ width: '100%', padding: 12, border: `1px solid ${addressErrors.houseNumber ? '#e74c3c' : '#ddd'}`, borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }} />
               {addressErrors.houseNumber && <div style={{ color: '#e74c3c', fontSize: 12, marginTop: 4 }}>{addressErrors.houseNumber}</div>}
             </div>
             <div style={{ marginBottom: 20 }}>
-              <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333', fontSize: 14 }}>Road Name / Area / Colony *</label>
+              <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333', fontSize: 14 }}>{t('checkout.address.roadName', 'Road Name / Area / Colony *')}</label>
               <input type="text" value={address.roadName} onChange={e => handleAddressChange('roadName', e.target.value)} style={{ width: '100%', padding: 12, border: `1px solid ${addressErrors.roadName ? '#e74c3c' : '#ddd'}`, borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }} />
               {addressErrors.roadName && <div style={{ color: '#e74c3c', fontSize: 12, marginTop: 4 }}>{addressErrors.roadName}</div>}
             </div>
             <div style={{ marginBottom: 20 }}>
-              <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333', fontSize: 14 }}>Country *</label>
+              <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333', fontSize: 14 }}>{t('checkout.address.country', 'Country *')}</label>
               <select value={address.country} onChange={e => handleAddressChange('country', e.target.value)} style={{ width: '100%', padding: 12, border: `1px solid ${addressErrors.country ? '#e74c3c' : '#ddd'}`, borderRadius: 4, fontSize: 14, boxSizing: 'border-box', background: '#fff' }}>
-                <option value="">Select Country</option>
+                <option value="">{t('checkout.address.selectCountry', 'Select Country')}</option>
                 {COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
               </select>
               {addressErrors.country && <div style={{ color: '#e74c3c', fontSize: 12, marginTop: 4 }}>{addressErrors.country}</div>}
             </div>
             <div style={{ display: 'flex', gap: 15, marginBottom: 0 }}>
               <div style={{ flex: 1, marginBottom: 20 }}>
-                <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333', fontSize: 14 }}>{address.country === 'IN' ? 'PIN Code' : 'Postal / ZIP Code'} *</label>
+                <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333', fontSize: 14 }}>{address.country === 'IN' ? t('checkout.address.pinCodeLabel', 'PIN Code *') : t('checkout.address.postalCodeLabel', 'Postal / ZIP Code *')}</label>
                 <input type="text" maxLength={address.country === 'IN' ? 6 : 15} value={address.pinCode} onChange={e => handleAddressChange('pinCode', address.country === 'IN' ? e.target.value.replace(/\D/g, '') : e.target.value)} style={{ width: '100%', padding: 12, border: `1px solid ${addressErrors.pinCode ? '#e74c3c' : '#ddd'}`, borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }} />
-                {pinValidating && <div style={{ color: '#7a4012', fontSize: 12, marginTop: 4 }}>Validating PIN code...</div>}
+                {pinValidating && <div style={{ color: '#7a4012', fontSize: 12, marginTop: 4 }}>{t('checkout.address.validatingPin', 'Validating PIN code...')}</div>}
                 {addressErrors.pinCode && <div style={{ color: '#e74c3c', fontSize: 12, marginTop: 4 }}>{addressErrors.pinCode}</div>}
               </div>
               <div style={{ flex: 1, marginBottom: 20 }}>
-                <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333', fontSize: 14 }}>City *</label>
+                <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333', fontSize: 14 }}>{t('checkout.address.city', 'City *')}</label>
                 <input type="text" value={address.city} onChange={e => handleAddressChange('city', e.target.value)} style={{ width: '100%', padding: 12, border: `1px solid ${addressErrors.city ? '#e74c3c' : '#ddd'}`, borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }} />
                 {addressErrors.city && <div style={{ color: '#e74c3c', fontSize: 12, marginTop: 4 }}>{addressErrors.city}</div>}
               </div>
             </div>
             {statesForCountry.length > 0 && (
               <div style={{ marginBottom: 20 }}>
-                <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333', fontSize: 14 }}>State / Region *</label>
+                <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333', fontSize: 14 }}>{t('checkout.address.stateRegion', 'State / Region *')}</label>
                 <select value={address.state} onChange={e => handleAddressChange('state', e.target.value)} style={{ width: '100%', padding: 12, border: `1px solid ${addressErrors.state ? '#e74c3c' : '#ddd'}`, borderRadius: 4, fontSize: 14, boxSizing: 'border-box', background: '#fff' }}>
-                  <option value="">Select State / Region</option>
+                  <option value="">{t('checkout.address.selectState', 'Select State / Region')}</option>
                   {statesForCountry.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
                 {addressErrors.state && <div style={{ color: '#e74c3c', fontSize: 12, marginTop: 4 }}>{addressErrors.state}</div>}
@@ -854,7 +854,7 @@ export default function CheckoutPage() {
           {isAuthenticated && !selectedAddressId && (
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: 20, padding: '12px 16px', background: '#f8f6f0', borderRadius: 6, border: `1px solid ${'#e8e0d0'}` }}>
               <input type="checkbox" id="saveAddr" checked={saveAddress} onChange={e => setSaveAddress(e.target.checked)} style={{ width: 'auto', marginInlineEnd: 10, accentColor: '#7a4012' }} />
-              <label htmlFor="saveAddr" style={{ color: '#333', fontSize: 14, cursor: 'pointer' }}>Save this address to my account for faster checkout</label>
+              <label htmlFor="saveAddr" style={{ color: '#333', fontSize: 14, cursor: 'pointer' }}>{t('checkout.address.saveCheckbox', 'Save this address to my account for faster checkout')}</label>
             </div>
           )}
 
@@ -864,86 +864,86 @@ export default function CheckoutPage() {
               <label htmlFor="whatsappOptIn" style={{ color: '#333', fontSize: 14, cursor: 'pointer', lineHeight: 1.4 }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <i className="fab fa-whatsapp" style={{ color: '#25D366', fontSize: 16 }} />
-                  Get order updates on WhatsApp
+                  {t('checkout.address.whatsappOptIn', 'Get order updates on WhatsApp')}
                 </span>
-                <span style={{ fontSize: 12, color: '#64748b', display: 'block', marginTop: 2 }}>Receive confirmation, shipping and delivery updates on your phone number</span>
+                <span style={{ fontSize: 12, color: '#64748b', display: 'block', marginTop: 2 }}>{t('checkout.address.whatsappNote', 'Receive confirmation, shipping and delivery updates on your phone number')}</span>
               </label>
             </div>
           )}
 
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 24, gap: 12 }}>
-            <button onClick={() => goToStep(1)} style={{ padding: '10px 20px', border: `1px solid #7a4012`, background: 'transparent', color: '#7a4012', cursor: 'pointer', fontWeight: 500 }}>Back to Summary</button>
-            <button onClick={() => goToStep(3)} style={{ padding: '10px 24px', background: '#7a4012', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600 }}>Continue to Payment</button>
+            <button onClick={() => goToStep(1)} style={{ padding: '10px 20px', border: `1px solid #7a4012`, background: 'transparent', color: '#7a4012', cursor: 'pointer', fontWeight: 500 }}>{t('checkout.actions.backToSummary', 'Back to Summary')}</button>
+            <button onClick={() => goToStep(3)} style={{ padding: '10px 24px', background: '#7a4012', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600 }}>{t('checkout.actions.continueToPayment', 'Continue to Payment')}</button>
           </div>
         </div>
       )}
 
       {step === 3 && (
         <div style={{ background: '#fff', padding: 24, boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
-          <h3 style={{ fontFamily: "'Playfair Display', serif", marginBottom: 20,  }}>Payment</h3>
+          <h3 style={{ fontFamily: "'Playfair Display', serif", marginBottom: 20,  }}>{t('checkout.payment.heading', 'Payment')}</h3>
 
           <div style={{ background: '#f8f6f0', padding: 16, borderInlineStart: `3px solid #7a4012`, marginBottom: 24, fontSize: 14, lineHeight: 1.6 }}>
-            <strong>Shipping To:</strong><br />
+            <strong>{t('checkout.payment.shippingTo', 'Shipping To:')}</strong><br />
             {address.firstName} {address.lastName}<br />
             {address.houseNumber}, {address.roadName}<br />
             {address.city}{address.state ? `, ${address.state}` : ''} - {address.pinCode}<br />
             {getCountryName(address.country)}<br />
-            Phone: {address.phone} | Email: {address.email}
+            {t('checkout.payment.phoneEmail', { phone: address.phone, email: address.email, defaultValue: 'Phone: {{phone}} | Email: {{email}}' })}
           </div>
 
           <div style={{ marginBottom: 24 }}>
-            <h5 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>Order Total</h5>
+            <h5 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>{t('checkout.payment.orderTotal', 'Order Total')}</h5>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #f0f0f0' }}>
-              <span>Subtotal ({items.length} items)</span>
+              <span>{t('checkout.payment.subtotalItems', { count: items.length, defaultValue: 'Subtotal ({{count}} items)' })}</span>
               <span style={{ fontWeight: 600 }}>{formatAmount(subtotal)}</span>
             </div>
             {couponDiscount > 0 && (
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #f0f0f0' }}>
-                <span style={{ color: '#16a34a' }}>Coupon ({appliedCoupon.code})</span>
+                <span style={{ color: '#16a34a' }}>{t('checkout.summary.couponLabel', { code: appliedCoupon.code, defaultValue: 'Coupon ({{code}})' })}</span>
                 <span style={{ color: '#16a34a', fontWeight: 600 }}>- {formatAmount(couponDiscount)}</span>
               </div>
             )}
             <div style={{ padding: '8px 0', borderBottom: '1px solid #f0f0f0' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>Shipping</span>
+                <span>{t('checkout.summary.shipping', 'Shipping')}</span>
                 <span style={{ color: shippingCost > 0 ? '#1a1a1a' : '#25ab00', fontWeight: 500 }}>
-                  {shippingCost > 0 ? formatAmount(shippingCost) : 'Free'}
+                  {shippingCost > 0 ? formatAmount(shippingCost) : t('checkout.summary.free', 'Free')}
                 </span>
               </div>
               {deliveryConfig.enabled && deliveryConfig.freeAboveEnabled && deliveryConfig.freeAbove > 0 && shippingCost > 0 && (
-                <div style={{ fontSize: 11, color: '#16a34a', marginTop: 2, textAlign: 'end' }}>Free shipping on orders above {formatAmount(deliveryConfig.freeAbove)}</div>
+                <div style={{ fontSize: 11, color: '#16a34a', marginTop: 2, textAlign: 'end' }}>{t('checkout.summary.freeShippingAbove', { amount: formatAmount(deliveryConfig.freeAbove), defaultValue: 'Free shipping on orders above {{amount}}' })}</div>
               )}
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', fontSize: 18, fontWeight: 700 }}>
-              <span>Total</span>
+              <span>{t('checkout.summary.total', 'Total')}</span>
               <span style={{ color: '#7a4012' }}>{formatAmount(finalTotal)}</span>
             </div>
           </div>
 
           <div style={{ marginBottom: 24 }}>
-            <h5 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>Payment Method</h5>
+            <h5 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>{t('checkout.payment.method', 'Payment Method')}</h5>
             {codEnabled && (
               <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 16, border: `2px solid ${paymentMethod === 'cod' ? '#7a4012' : '#e0e0e0'}`, borderRadius: 8, marginBottom: 12, cursor: 'pointer', background: paymentMethod === 'cod' ? '#f8f6f0' : '#fff' }}>
                 <input type="radio" name="payment" value="cod" checked={paymentMethod === 'cod'} onChange={() => setPaymentMethod('cod')} style={{ accentColor: '#7a4012' }} />
                 <div>
-                  <div style={{ fontWeight: 600 }}>Cash on Delivery (COD)</div>
-                  <div style={{ fontSize: 13, color: '#666' }}>Pay when you receive your order</div>
+                  <div style={{ fontWeight: 600 }}>{t('checkout.payment.codTitle', 'Cash on Delivery (COD)')}</div>
+                  <div style={{ fontSize: 13, color: '#666' }}>{t('checkout.payment.codDesc', 'Pay when you receive your order')}</div>
                 </div>
               </label>
             )}
             <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 16, border: `2px solid ${paymentMethod === 'razorpay' ? '#7a4012' : '#e0e0e0'}`, borderRadius: 8, cursor: 'pointer', background: paymentMethod === 'razorpay' ? '#f8f6f0' : '#fff' }}>
               <input type="radio" name="payment" value="razorpay" checked={paymentMethod === 'razorpay'} onChange={() => setPaymentMethod('razorpay')} style={{ accentColor: '#7a4012' }} />
               <div>
-                <div style={{ fontWeight: 600 }}>Pay Online (Razorpay)</div>
-                <div style={{ fontSize: 13, color: '#666' }}>Credit/Debit Card, UPI, Net Banking</div>
+                <div style={{ fontWeight: 600 }}>{t('checkout.payment.onlineTitle', 'Pay Online (Razorpay)')}</div>
+                <div style={{ fontSize: 13, color: '#666' }}>{t('checkout.payment.onlineDesc', 'Credit/Debit Card, UPI, Net Banking')}</div>
               </div>
             </label>
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 24, gap: 12 }}>
-            <button onClick={() => goToStep(2)} style={{ padding: '10px 20px', border: `1px solid #7a4012`, background: 'transparent', color: '#7a4012', cursor: 'pointer', fontWeight: 500 }}>Back to Address</button>
+            <button onClick={() => goToStep(2)} style={{ padding: '10px 20px', border: `1px solid #7a4012`, background: 'transparent', color: '#7a4012', cursor: 'pointer', fontWeight: 500 }}>{t('checkout.actions.backToAddress', 'Back to Address')}</button>
             <button onClick={placeOrder} disabled={loading} style={{ padding: '10px 24px', background: '#7a4012', color: '#fff', border: 'none', cursor: loading ? 'not-allowed' : 'pointer', fontWeight: 600, opacity: loading ? 0.7 : 1 }}>
-              {loading ? 'Processing...' : 'Place Order'}
+              {loading ? t('checkout.actions.processing', 'Processing...') : t('checkout.actions.placeOrder', 'Place Order')}
             </button>
           </div>
         </div>
