@@ -2,20 +2,21 @@ import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
 import enCatalog from './locales/en.json';
-import hiCatalog from './locales/hi.json';
-import esCatalog from './locales/es.json';
-import zhCnCatalog from './locales/zh-CN.json';
-import arCatalog from './locales/ar.json';
 
+// Only English is bundled into the JS payload — it is the source catalog and
+// must always be available for fallback. Every other language (including the
+// four hand-curated launch languages) is fetched from the platform's locale
+// API on demand. The API serves the seed translation instantly on first hit
+// and the smart-refreshed version after that, so editing English in one place
+// (the EN file imported below) is the only change needed when copy changes.
 const BUNDLED = {
   en: enCatalog,
-  hi: hiCatalog,
-  es: esCatalog,
-  'zh-CN': zhCnCatalog,
-  ar: arCatalog,
 };
 
+// PRESHIPPED is what the language switcher offers out of the box. These are
+// fetched (not bundled) — the worker has the seeds.
 const PRESHIPPED = ['en', 'hi', 'es', 'zh-CN', 'ar'];
+const NORMALIZABLE = new Set(PRESHIPPED);
 const RTL_LOCALES = new Set(['ar', 'he', 'fa', 'ur']);
 
 // Map from base/regional codes to our pre-shipped locale codes so things like
@@ -23,7 +24,7 @@ const RTL_LOCALES = new Set(['ar', 'he', 'fa', 'ur']);
 // catalog instead of triggering a lazy fetch.
 function normalizeLocale(lng) {
   if (!lng) return 'en';
-  if (BUNDLED[lng]) return lng;
+  if (NORMALIZABLE.has(lng)) return lng;
   const lower = String(lng).toLowerCase();
   if (lower === 'zh' || lower.startsWith('zh-hans') || lower === 'zh-cn' || lower === 'zh-sg') return 'zh-CN';
   if (lower.startsWith('zh')) return 'zh-CN';
@@ -70,20 +71,14 @@ const backendPlugin = {
     // so we never try to fetch a non-existent /api/i18n/locale/en-US that would
     // return SPA HTML and crash init.
     const norm = normalizeLocale(lng);
-    if (BUNDLED[norm]) {
-      callback(null, BUNDLED[norm]);
-      // For pre-shipped locales, fetch the latest translated catalog from the
-      // worker in the background so users get real translations once the owner
-      // regenerates them — avoids refresh-needed-to-see-new-translations.
-      if (norm !== 'en') {
-        loadLocale(norm).then((fresh) => {
-          if (fresh && fresh !== BUNDLED[norm]) {
-            i18n.addResourceBundle(norm, 'translation', fresh, true, true);
-          }
-        }).catch(() => {});
-      }
+    if (norm === 'en') {
+      callback(null, BUNDLED.en);
       return;
     }
+    // Every non-English locale comes from the worker — single source of truth.
+    // The worker serves a hand-curated seed instantly on first hit and the
+    // smart-refreshed version after that, so editing English in one place
+    // automatically propagates everywhere on the next refresh.
     const data = await loadLocale(norm);
     if (data) {
       callback(null, data);

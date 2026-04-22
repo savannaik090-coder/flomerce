@@ -2,7 +2,22 @@ import { handleCORS, successResponse, errorResponse, jsonResponse, corsHeaders }
 import { validateAuth } from '../../utils/auth.js';
 import { isOwner } from './admin-worker.js';
 import { translateCatalogIncremental, hashCatalog } from '../../utils/translator.js';
-import EN_CATALOG from '../../i18n-en.json';
+// Single source of truth for all catalogs lives under shared/i18n/locales/.
+// English is the source for translation; the other four are hand-curated seeds
+// served on first request for a locale that is not yet in R2 — they avoid a
+// machine-translation roundtrip for the launch languages.
+import EN_CATALOG from '../../../frontend/src/shared/i18n/locales/en.json';
+import HI_SEED from '../../../frontend/src/shared/i18n/locales/hi.json';
+import ES_SEED from '../../../frontend/src/shared/i18n/locales/es.json';
+import ZH_CN_SEED from '../../../frontend/src/shared/i18n/locales/zh-CN.json';
+import AR_SEED from '../../../frontend/src/shared/i18n/locales/ar.json';
+
+const SEED_CATALOGS = {
+  hi: HI_SEED,
+  es: ES_SEED,
+  'zh-CN': ZH_CN_SEED,
+  ar: AR_SEED,
+};
 
 const SUPPORTED_LOCALES = new Set([
   'en', 'hi', 'es', 'zh-CN', 'ar',
@@ -163,6 +178,22 @@ export async function handleI18nPublic(request, env, path, ctx) {
   const cached = await readCachedLocale(env, lang);
   if (cached) {
     return cachedJson(request, { success: true, message: 'Success', data: cached.data });
+  }
+
+  // Hand-curated seed languages: serve the bundled translation immediately
+  // (no translator call, no rate-limit charge) and write it to R2 with
+  // current EN hashes so future smart-refresh diffs work correctly.
+  if (SEED_CATALOGS[lang]) {
+    const seed = SEED_CATALOGS[lang];
+    try {
+      const hashes = await hashCatalog(EN_CATALOG);
+      ctx?.waitUntil?.(writeCachedLocale(env, lang, seed, hashes).catch((e) => {
+        console.warn('[i18n] seed write failed for', lang, e.message || e);
+      }));
+    } catch (e) {
+      console.warn('[i18n] seed hash failed for', lang, e.message || e);
+    }
+    return cachedJson(request, { success: true, message: 'Success', data: seed });
   }
 
   // Bound spend: only locales on the supported allowlist may be lazy-generated.
