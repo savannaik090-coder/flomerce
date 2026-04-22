@@ -7,7 +7,13 @@ const PRESHIPPED = ['hi', 'es', 'zh-CN', 'ar'];
 const LABELS = { hi: 'हिन्दी (Hindi)', es: 'Español (Spanish)', 'zh-CN': '简体中文 (Chinese)', ar: 'العربية (Arabic)' };
 
 export default function I18nAdminPanel() {
-  const { t } = useTranslation();
+  // Bind explicit namespaces this panel reads from. With these declared,
+  // i18next short-circuits the per-key fallbackNS walk and resolves every
+  // `t('owner.…')` / `t('common.…')` lookup in the named bundle directly,
+  // which is the recommended namespaced-access pattern. (Legacy components
+  // that haven't been migrated yet still work via the global fallbackNS
+  // chain registered in shared/i18n/init.js.)
+  const { t } = useTranslation(['owner', 'common']);
   const toast = useToast();
   const [locales, setLocales] = useState([]);
   const [loading, setLoading] = useState(false);

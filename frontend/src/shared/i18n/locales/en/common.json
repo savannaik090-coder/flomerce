@@ -21,22 +21,5 @@
     "password": "Password",
     "language": "Language",
     "error": "Something went wrong"
-  },
-  "nav": {
-    "features": "Features",
-    "pricing": "Pricing",
-    "contact": "Contact",
-    "dashboard": "Dashboard",
-    "logout": "Logout",
-    "login": "Login",
-    "getStarted": "Get Started",
-    "toggleMenu": "Toggle menu"
-  },
-  "languages": {
-    "en": "English",
-    "hi": "हिन्दी",
-    "es": "Español",
-    "zh-CN": "简体中文",
-    "ar": "العربية"
   }
 }

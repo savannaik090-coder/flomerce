@@ -1,40 +1,41 @@
-// Single import point for the English source catalog. The strings are split
-// into per-namespace JSON files for editing convenience; this module merges
-// them back into one nested object whose shape is byte-identical to the old
-// flat `en.json`. That preserves:
-//   - the dotted key paths every `t('...')` call site already uses, and
-//   - the per-key hash sidecars stored in R2 for translation staleness, so
-//     splitting the file does NOT mark every cached locale as stale.
+// Single import point for the English source catalog. Each JSON file owns
+// exactly one i18next namespace and contains that namespace's keys in their
+// natural ("unwrapped") form — e.g. `landing.json` holds `{heroBadge: "..."}`,
+// not `{landing: {heroBadge: "..."}}`. This is the shape react-i18next wants
+// when you call `useTranslation('landing')` + `t('heroBadge')`.
 //
-// To add a new namespace, drop a `<name>.json` file in this directory whose
-// top-level key matches the namespace, then add it to NAMESPACES below.
+// To add a new namespace, drop a `<name>.json` file in this directory and
+// add it to NAMESPACE_FILES below. The backend (i18n-worker) re-wraps each
+// file under its namespace name when building EN_CATALOG so the per-key SHA
+// fingerprints stored in R2 stay byte-identical to the pre-split layout.
 import common from './common.json';
+import nav from './nav.json';
+import languages from './languages.json';
 import landing from './landing.json';
 import auth from './auth.json';
 import admin from './admin.json';
 import owner from './owner.json';
 import dashboard from './dashboard.json';
+import products from './products.json';
+import customers from './customers.json';
+import wizard from './wizard.json';
+import legal from './legal.json';
+import about from './about.json';
 
-export const NAMESPACE_FILES = { common, landing, auth, admin, owner, dashboard };
+export const NAMESPACE_FILES = {
+  common,
+  nav,
+  languages,
+  landing,
+  auth,
+  admin,
+  owner,
+  dashboard,
+  products,
+  customers,
+  wizard,
+  legal,
+  about,
+};
 
-// Each namespace file is wrapped under one or more top-level keys (e.g.
-// common.json holds `common`, `nav`, `languages`). i18next consumes them as
-// separate namespaces; the merged form below is what gets handed to the
-// backend hash routine and to i18next's default-namespace fallback chain.
 export const NAMESPACES = Object.keys(NAMESPACE_FILES);
-
-function deepMerge(target, source) {
-  for (const [k, v] of Object.entries(source || {})) {
-    if (v && typeof v === 'object' && !Array.isArray(v)) {
-      target[k] = deepMerge(target[k] && typeof target[k] === 'object' ? target[k] : {}, v);
-    } else {
-      target[k] = v;
-    }
-  }
-  return target;
-}
-
-const merged = {};
-for (const file of Object.values(NAMESPACE_FILES)) deepMerge(merged, file);
-
-export default merged;

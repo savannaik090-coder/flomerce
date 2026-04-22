@@ -5,17 +5,32 @@ import { translateCatalogIncremental, hashCatalog } from '../../utils/translator
 // Single source of truth for all catalogs lives under shared/i18n/locales/en/.
 // English is the source for translation; every non-English locale is lazy-
 // generated via Microsoft Translator on first request and then cached in R2.
-// The English catalog is now split into per-namespace JSON files that we
-// deep-merge here into the same nested shape we used to ship as one big
-// `en.json`. Keeping the merged shape byte-identical means the per-key SHA
-// fingerprints already stored in R2 stay valid — splitting the source files
-// does NOT mark every previously-up-to-date locale as stale.
+//
+// Each frontend namespace file owns one i18next namespace. The contents of
+// every file are nested under that namespace's name (e.g. `landing.json`
+// holds `{ "landing": { "heroBadge": "..." } }`) so:
+//   1. react-i18next can register each file directly as its namespace and
+//      legacy call sites such as `t('landing.heroBadge')` continue to work
+//      via `fallbackNS` walking — i18next finds the path inside the
+//      `landing` namespace without any code changes at the call site.
+//   2. Deep-merging every file produces the exact same nested shape we used
+//      to ship as one big `en.json`, which keeps every per-key SHA
+//      fingerprint stored in R2 byte-identical. That is what prevents the
+//      "Refresh all" panel from suddenly claiming every cached locale is
+//      stale on the deploy that ships the split.
 import EN_COMMON from '../../../frontend/src/shared/i18n/locales/en/common.json';
+import EN_NAV from '../../../frontend/src/shared/i18n/locales/en/nav.json';
+import EN_LANGUAGES from '../../../frontend/src/shared/i18n/locales/en/languages.json';
 import EN_LANDING from '../../../frontend/src/shared/i18n/locales/en/landing.json';
 import EN_AUTH from '../../../frontend/src/shared/i18n/locales/en/auth.json';
 import EN_ADMIN from '../../../frontend/src/shared/i18n/locales/en/admin.json';
 import EN_OWNER from '../../../frontend/src/shared/i18n/locales/en/owner.json';
 import EN_DASHBOARD from '../../../frontend/src/shared/i18n/locales/en/dashboard.json';
+import EN_PRODUCTS from '../../../frontend/src/shared/i18n/locales/en/products.json';
+import EN_CUSTOMERS from '../../../frontend/src/shared/i18n/locales/en/customers.json';
+import EN_WIZARD from '../../../frontend/src/shared/i18n/locales/en/wizard.json';
+import EN_LEGAL from '../../../frontend/src/shared/i18n/locales/en/legal.json';
+import EN_ABOUT from '../../../frontend/src/shared/i18n/locales/en/about.json';
 
 function deepMergeCatalog(target, source) {
   for (const [k, v] of Object.entries(source || {})) {
@@ -31,8 +46,10 @@ function deepMergeCatalog(target, source) {
   return target;
 }
 
-const EN_CATALOG = [EN_COMMON, EN_LANDING, EN_AUTH, EN_ADMIN, EN_OWNER, EN_DASHBOARD]
-  .reduce((acc, file) => deepMergeCatalog(acc, file), {});
+const EN_CATALOG = [
+  EN_COMMON, EN_NAV, EN_LANGUAGES, EN_LANDING, EN_AUTH, EN_ADMIN, EN_OWNER,
+  EN_DASHBOARD, EN_PRODUCTS, EN_CUSTOMERS, EN_WIZARD, EN_LEGAL, EN_ABOUT,
+].reduce((acc, file) => deepMergeCatalog(acc, file), {});
 
 const SUPPORTED_LOCALES = new Set([
   'en', 'hi', 'es', 'zh-CN', 'ar',
