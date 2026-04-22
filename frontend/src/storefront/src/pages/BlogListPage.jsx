@@ -1,24 +1,26 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { SiteContext } from '../context/SiteContext.jsx';
 import { useSEO } from '../hooks/useSEO.js';
 import { apiRequest } from '../services/api.js';
 import '../styles/blog.css';
 
 export default function BlogListPage() {
+  const { t } = useTranslation('storefront');
   const { siteConfig } = useContext(SiteContext);
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  useSEO({ title: 'Blog', pageType: 'blog' });
+  useSEO({ title: t('blog.seoTitle', 'Blog'), pageType: 'blog' });
 
   let settings = siteConfig?.settings || {};
   if (typeof settings === 'string') {
     try { settings = JSON.parse(settings); } catch (e) { settings = {}; }
   }
   const showBlog = settings.showBlog !== false;
-  const brandName = siteConfig?.brandName || siteConfig?.brand_name || 'Our Store';
+  const brandName = siteConfig?.brandName || siteConfig?.brand_name || t('blog.defaultBrand', 'Our Store');
 
   useEffect(() => {
     if (siteConfig?.id && showBlog) fetchPosts();
@@ -40,8 +42,8 @@ export default function BlogListPage() {
   if (!showBlog) {
     return (
       <div className="blog-list-page" style={{ textAlign: 'center', padding: '80px 20px' }}>
-        <h2>This page is currently unavailable</h2>
-        <p style={{ color: '#64748b', marginTop: 12 }}>Please check back later.</p>
+        <h2>{t('blog.unavailableTitle', 'This page is currently unavailable')}</h2>
+        <p style={{ color: '#64748b', marginTop: 12 }}>{t('blog.unavailableMessage', 'Please check back later.')}</p>
       </div>
     );
   }
@@ -49,16 +51,16 @@ export default function BlogListPage() {
   return (
     <div className="blog-list-page">
       <div className="blog-header">
-        <h1>Blog</h1>
-        <p>Latest stories and updates from {brandName}</p>
+        <h1>{t('blog.title', 'Blog')}</h1>
+        <p>{t('blog.subtitle', 'Latest stories and updates from {{brandName}}', { brandName })}</p>
       </div>
 
       {loading ? (
-        <div style={{ textAlign: 'center', padding: 60, color: '#64748b' }}>Loading...</div>
+        <div style={{ textAlign: 'center', padding: 60, color: '#64748b' }}>{t('blog.loading', 'Loading...')}</div>
       ) : posts.length === 0 ? (
         <div className="blog-empty">
           <i className="fas fa-pen-fancy"></i>
-          <p>No blog posts yet. Check back soon!</p>
+          <p>{t('blog.empty', 'No blog posts yet. Check back soon!')}</p>
         </div>
       ) : (
         <>
@@ -79,7 +81,7 @@ export default function BlogListPage() {
                   </p>
                   <h3 className="blog-card-title">{post.title}</h3>
                   {post.excerpt && <p className="blog-card-excerpt">{post.excerpt}</p>}
-                  <span className="blog-card-read-more">Read more →</span>
+                  <span className="blog-card-read-more">{t('blog.readMore', 'Read more →')}</span>
                 </div>
               </Link>
             ))}
@@ -88,11 +90,11 @@ export default function BlogListPage() {
           {totalPages > 1 && (
             <div className="blog-pagination">
               <button disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
-                <i className="fas fa-chevron-left"></i> Previous
+                <i className="fas fa-chevron-left"></i> {t('blog.previous', 'Previous')}
               </button>
-              <span>Page {page} of {totalPages}</span>
+              <span>{t('blog.pageOf', 'Page {{page}} of {{totalPages}}', { page, totalPages })}</span>
               <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
-                Next <i className="fas fa-chevron-right"></i>
+                {t('blog.next', 'Next')} <i className="fas fa-chevron-right"></i>
               </button>
             </div>
           )}

@@ -565,6 +565,23 @@
     "categorySection": {
       "viewAll": "VIEW ALL",
       "loading": "Loading {{name}}..."
+    },
+    "storeLocations": {
+      "title": "Come Visit Us at Our Store",
+      "subtitle": "Experience our exquisite collection in person",
+      "viewOnMap": "View on Map",
+      "bookAppointment": "BOOK APPOINTMENT",
+      "ourShowroom": "Our Showroom",
+      "brandShowroom": "{{brand}} Showroom",
+      "defaultHours": "Monday to Saturday 11:00 am - 08:00 pm",
+      "scrollLeft": "Scroll left",
+      "scrollRight": "Scroll right",
+      "callStore": "Call store"
+    },
+    "brandStory": {
+      "label": "Our Brand",
+      "defaultHeadline": "Our Story",
+      "defaultText": "We believe in crafting products that blend quality with purpose. Every piece is thoughtfully designed to bring beauty and function into your everyday life."
     }
   },
   "about": {
@@ -1247,5 +1264,151 @@
     "title": "Frequently Asked Questions",
     "subtitle": "Find answers to common questions about {{brandName}}.",
     "empty": "No frequently asked questions yet."
+  },
+  "product": {
+    "related": {
+      "youMayAlsoLike": "You May Also Like"
+    },
+    "gallery": {
+      "noImage": "No image available",
+      "close": "\u2715 Close",
+      "prevImage": "Previous image",
+      "nextImage": "Next image",
+      "productFallback": "Product"
+    },
+    "card": {
+      "outOfStock": "Out of Stock",
+      "quickView": "Quick View",
+      "addToWishlist": "Add to wishlist",
+      "removeFromWishlist": "Remove from wishlist"
+    },
+    "notFound": "Product not found",
+    "loadFailed": "Failed to load product",
+    "loadingDetails": "Loading product details...",
+    "notFoundTitle": "Product Not Found",
+    "notFoundMessage": "Sorry, we couldn't find the product you're looking for.",
+    "returnHome": "Return to Homepage",
+    "availability": "Availability:",
+    "outOfStockMark": "Out of Stock \u2717",
+    "inStockMark": "In Stock \u2713",
+    "sku": "SKU:",
+    "category": "Category:",
+    "color": "Color",
+    "descriptionHeading": "Product Description",
+    "addToCart": "ADD TO CART",
+    "outOfStockButton": "OUT OF STOCK",
+    "buyNow": "BUY NOW",
+    "addToWishlist": "ADD TO WISHLIST",
+    "removeFromWishlist": "REMOVE FROM WISHLIST",
+    "pleaseSelect": "Please select: {{options}}",
+    "policies": {
+      "shippingTitle": "Shipping & Delivery Details",
+      "regions": "Regions",
+      "shippingCharges": "Shipping Charges",
+      "deliveryTime": "Delivery Time",
+      "tracking": "Tracking",
+      "returnTitle": "Return & Exchange",
+      "policy": "Policy",
+      "replacements": "Replacements",
+      "mandatory": "Mandatory Requirement",
+      "careTitle": "Care Guide",
+      "cleaning": "Cleaning",
+      "washing": "Washing",
+      "maintenance": "Maintenance"
+    }
+  },
+  "productReviewsModern": {},
+  "blog": {
+    "seoTitle": "Blog",
+    "title": "Blog",
+    "subtitle": "Latest stories and updates from {{brandName}}",
+    "defaultBrand": "Our Store",
+    "loading": "Loading...",
+    "empty": "No blog posts yet. Check back soon!",
+    "readMore": "Read more \u2192",
+    "previous": "Previous",
+    "next": "Next",
+    "pageOf": "Page {{page}} of {{totalPages}}",
+    "unavailableTitle": "This page is currently unavailable",
+    "unavailableMessage": "Please check back later.",
+    "postSeoTitle": "Blog Post",
+    "notFound": "Blog post not found",
+    "postNotFoundTitle": "Post Not Found",
+    "postNotFoundMessage": "The blog post you're looking for doesn't exist.",
+    "backToBlog": "\u2190 Back to Blog"
+  },
+  "app": {
+    "loadingStore": "Loading store...",
+    "storeNotFound": "Store Not Found",
+    "storeNotFoundMessage": "The store you are looking for could not be found.",
+    "goToFlomerce": "Go to Flomerce",
+    "adminError": {
+      "title": "Something went wrong",
+      "message": "The admin panel encountered an error. This is usually temporary.",
+      "tryAgain": "Try Again",
+      "reloadPage": "Reload Page"
+    }
+  },
+  "cancel": {
+    "title": "Cancel Order",
+    "lookupIntro": "Enter your order number and email address to receive a cancellation link.",
+    "orderNumberLabel": "Order Number",
+    "orderNumberPlaceholder": "e.g. FX-123456",
+    "emailLabel": "Email Address",
+    "emailPlaceholder": "your@email.com",
+    "sending": "Sending...",
+    "sendLink": "Send Cancellation Link",
+    "lookupSuccess": "A cancellation link has been sent to your email. Please check your inbox.",
+    "lookupError": "Could not find this order. Please check your order number and email.",
+    "submitFail": "Failed to submit cancellation request",
+    "checkingStatus": "Checking cancellation status...",
+    "orderRef": "Order",
+    "statusHeading": "Cancellation Status",
+    "noteFromStore": "Note from store",
+    "formIntro": "Submit a cancellation request for order",
+    "submitButton": "Submit Cancellation Request",
+    "successTitle": "Cancellation Request Submitted",
+    "successMessage": "We've received your cancellation request. You'll receive an email update once it's reviewed by the store.",
+    "status": {
+      "requested": "Pending Review",
+      "approved": "Approved (Cancelled)",
+      "rejected": "Rejected"
+    }
+  },
+  "invoice": {
+    "loading": "Loading your invoice...",
+    "unavailable": "Invoice Unavailable",
+    "errors": {
+      "invalidLink": "Invalid invoice link. Please use the link sent in your order confirmation email.",
+      "notFound": "Invoice not found or link has expired.",
+      "loadFailed": "Failed to load invoice. Please try again."
+    },
+    "orderRef": "Order #{{num}}",
+    "printSave": "Print / Save PDF",
+    "taxInvoice": "TAX INVOICE",
+    "billOfSupply": "BILL OF SUPPLY",
+    "gstinLabel": "GSTIN:",
+    "details": "Invoice Details",
+    "invoiceNo": "Invoice No:",
+    "date": "Date:",
+    "orderNo": "Order No:",
+    "payment": "Payment:",
+    "cod": "Cash on Delivery",
+    "online": "Online Payment",
+    "billTo": "Bill To",
+    "subtotalBeforeTax": "Subtotal (before tax)",
+    "discount": "Discount",
+    "computerGenerated": "This is a computer-generated invoice. No signature required.",
+    "table": {
+      "item": "Item",
+      "hsn": "HSN",
+      "qty": "Qty",
+      "rate": "Rate",
+      "taxable": "Taxable",
+      "cgst": "CGST",
+      "sgst": "SGST",
+      "igst": "IGST",
+      "total": "Total"
+    }
   }
 }

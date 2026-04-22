@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import ReactDOM from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import { resolveImageUrl } from '../../utils/imageUrl.js';
 
 export default function ProductGallery({ images, productName, filteredImageIndices }) {
+  const { t } = useTranslation('storefront');
   const [activeIndex, setActiveIndex] = useState(0);
   const [zoomOpen, setZoomOpen] = useState(false);
   const [zoomIndex, setZoomIndex] = useState(0);
@@ -13,9 +15,9 @@ export default function ProductGallery({ images, productName, filteredImageIndic
     if (!images || images.length === 0) return [];
     return images.map((img, i) => {
       const rawUrl = typeof img === 'string' ? img : (img.url || img);
-      return { url: resolveImageUrl(rawUrl), alt: (typeof img === 'object' && img.alt) || `${productName || 'Product'} ${i + 1}`, originalIndex: i };
+      return { url: resolveImageUrl(rawUrl), alt: (typeof img === 'object' && img.alt) || `${productName || t('product.gallery.productFallback', 'Product')} ${i + 1}`, originalIndex: i };
     }).filter(img => img.url);
-  }, [images, productName]);
+  }, [images, productName, t]);
 
   const parsedImages = React.useMemo(() => {
     if (!filteredImageIndices || filteredImageIndices.length === 0) return allParsedImages;
@@ -75,11 +77,11 @@ export default function ProductGallery({ images, productName, filteredImageIndic
 
   const zoomOverlay = zoomOpen ? ReactDOM.createPortal(
     <div className="image-zoom-overlay" onClick={() => setZoomOpen(false)}>
-      <button className="zoom-close" onClick={(e) => { e.stopPropagation(); setZoomOpen(false); }}>✕ Close</button>
+      <button className="zoom-close" onClick={(e) => { e.stopPropagation(); setZoomOpen(false); }}>{t('product.gallery.close', '✕ Close')}</button>
       {hasMultipleImages && (
         <>
-          <button className="zoom-nav prev" onClick={(e) => { e.stopPropagation(); goToZoomImage(zoomIndex - 1); }} disabled={zoomIndex === 0}>‹</button>
-          <button className="zoom-nav next" onClick={(e) => { e.stopPropagation(); goToZoomImage(zoomIndex + 1); }} disabled={zoomIndex === parsedImages.length - 1}>›</button>
+          <button className="zoom-nav prev" onClick={(e) => { e.stopPropagation(); goToZoomImage(zoomIndex - 1); }} disabled={zoomIndex === 0} aria-label={t('product.gallery.prevImage', 'Previous image')}>‹</button>
+          <button className="zoom-nav next" onClick={(e) => { e.stopPropagation(); goToZoomImage(zoomIndex + 1); }} disabled={zoomIndex === parsedImages.length - 1} aria-label={t('product.gallery.nextImage', 'Next image')}>›</button>
         </>
       )}
       <img
@@ -96,7 +98,7 @@ export default function ProductGallery({ images, productName, filteredImageIndic
     return (
       <div className="product-detail-left">
         <div className="main-image-container">
-          <div style={{ color: '#999', fontSize: 16 }}>No image available</div>
+          <div style={{ color: '#999', fontSize: 16 }}>{t('product.gallery.noImage', 'No image available')}</div>
         </div>
       </div>
     );
@@ -116,6 +118,7 @@ export default function ProductGallery({ images, productName, filteredImageIndic
               className="gallery-nav gallery-nav-prev"
               onClick={() => goToImage(activeIndex - 1)}
               disabled={activeIndex === 0}
+              aria-label={t('product.gallery.prevImage', 'Previous image')}
             >
               ‹
             </button>
@@ -134,6 +137,7 @@ export default function ProductGallery({ images, productName, filteredImageIndic
               className="gallery-nav gallery-nav-next"
               onClick={() => goToImage(activeIndex + 1)}
               disabled={activeIndex === parsedImages.length - 1}
+              aria-label={t('product.gallery.nextImage', 'Next image')}
             >
               ›
             </button>

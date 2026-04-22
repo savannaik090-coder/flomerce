@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useContext, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import DOMPurify from 'dompurify';
 import { SiteContext } from '../context/SiteContext.jsx';
 import { useSEO } from '../hooks/useSEO.js';
@@ -7,6 +8,7 @@ import { apiRequest } from '../services/api.js';
 import '../styles/blog.css';
 
 export default function BlogPostPage() {
+  const { t } = useTranslation('storefront');
   const { slug } = useParams();
   const { siteConfig } = useContext(SiteContext);
   const [post, setPost] = useState(null);
@@ -14,7 +16,7 @@ export default function BlogPostPage() {
   const [error, setError] = useState(null);
 
   useSEO({
-    title: post?.meta_title || post?.title || 'Blog Post',
+    title: post?.meta_title || post?.title || t('blog.postSeoTitle', 'Blog Post'),
     description: post?.meta_description || post?.excerpt || '',
     pageType: 'article',
   });
@@ -30,7 +32,7 @@ export default function BlogPostPage() {
       const data = await apiRequest(`/api/blog/post/${slug}?siteId=${siteConfig.id}`);
       setPost(data);
     } catch (e) {
-      setError('Blog post not found');
+      setError(t('blog.notFound', 'Blog post not found'));
     } finally {
       setLoading(false);
     }
@@ -39,7 +41,7 @@ export default function BlogPostPage() {
   if (loading) {
     return (
       <div className="blog-post-page" style={{ textAlign: 'center', padding: '80px 20px' }}>
-        <div style={{ color: '#64748b' }}>Loading...</div>
+        <div style={{ color: '#64748b' }}>{t('blog.loading', 'Loading...')}</div>
       </div>
     );
   }
@@ -47,10 +49,10 @@ export default function BlogPostPage() {
   if (error || !post) {
     return (
       <div className="blog-post-page" style={{ textAlign: 'center', padding: '80px 20px' }}>
-        <h2>Post Not Found</h2>
-        <p style={{ color: '#64748b', marginTop: 12 }}>The blog post you're looking for doesn't exist.</p>
+        <h2>{t('blog.postNotFoundTitle', 'Post Not Found')}</h2>
+        <p style={{ color: '#64748b', marginTop: 12 }}>{t('blog.postNotFoundMessage', "The blog post you're looking for doesn't exist.")}</p>
         <Link to="/blog" style={{ display: 'inline-block', marginTop: 20, color: '#2563eb', fontWeight: 600, textDecoration: 'none' }}>
-          ← Back to Blog
+          {t('blog.backToBlog', '← Back to Blog')}
         </Link>
       </div>
     );
@@ -72,7 +74,7 @@ export default function BlogPostPage() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replace(/</g, '\\u003c') }} />
 
       <Link to="/blog" className="blog-post-back">
-        <i className="fas fa-arrow-left"></i> Back to Blog
+        <i className="fas fa-arrow-left"></i> {t('blog.backToBlog', '← Back to Blog')}
       </Link>
 
       {post.cover_image && (

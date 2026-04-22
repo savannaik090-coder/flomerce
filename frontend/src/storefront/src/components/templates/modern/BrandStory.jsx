@@ -1,18 +1,20 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useSiteConfig } from '../../../hooks/useSiteConfig.js';
 import { resolveImageUrl } from '../../../utils/imageUrl.js';
 import './modern.css';
 
 export default function BrandStory() {
+  const { t } = useTranslation('storefront');
   const { siteConfig } = useSiteConfig();
   const settings = siteConfig?.settings || {};
 
   const isHidden = settings.showBrandStory === false;
   if (isHidden) return null;
 
-  const headline = settings.brandStoryHeadline || 'Our Story';
-  const text = settings.brandStoryText || 'We believe in crafting products that blend quality with purpose. Every piece is thoughtfully designed to bring beauty and function into your everyday life.';
+  const headline = settings.brandStoryHeadline || t('home.brandStory.defaultHeadline', 'Our Story');
+  const text = settings.brandStoryText || t('home.brandStory.defaultText', 'We believe in crafting products that blend quality with purpose. Every piece is thoughtfully designed to bring beauty and function into your everyday life.');
   const image = settings.brandStoryImage || '';
   const ctaText = settings.brandStoryCtaText || '';
   const ctaLink = settings.brandStoryCtaLink || '/about';
@@ -26,7 +28,7 @@ export default function BrandStory() {
           </div>
         )}
         <div className={`mn-brand-text-side ${!image ? 'mn-brand-text-full' : ''}`}>
-          <span className="mn-brand-label">Our Brand</span>
+          <span className="mn-brand-label">{t('home.brandStory.label', 'Our Brand')}</span>
           <h2 className="mn-brand-headline">{headline}</h2>
           <p className="mn-brand-body">{text}</p>
           {ctaText && ctaLink.startsWith('http') ? (
