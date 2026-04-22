@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import SectionToggle from './SectionToggle.jsx';
 import SaveBar from './SaveBar.jsx';
@@ -7,6 +8,7 @@ import { getPolicies, getPolicyPlaceholders } from '../../defaults/index.js';
 import { API_BASE } from '../../config.js';
 
 export default function ProductPoliciesEditor({ onSaved, onPreviewUpdate }) {
+  const { t } = useTranslation('admin');
   const { siteConfig } = useContext(SiteContext);
   const [showSection, setShowSection] = useState(true);
   const [fields, setFields] = useState({
@@ -150,14 +152,14 @@ export default function ProductPoliciesEditor({ onSaved, onPreviewUpdate }) {
         <SectionToggle
           enabled={showSection}
           onChange={setShowSection}
-          label="Show Product Policies"
-          description="Toggle shipping, returns, and care guide sections on product pages"
+          label={t('policies.showLabel')}
+          description={t('policies.showDesc')}
         />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
           <div>
-            <h3 style={{ margin: 0, fontSize: 18, color: '#1e293b' }}>Product Policies</h3>
+            <h3 style={{ margin: 0, fontSize: 18, color: '#1e293b' }}>{t('policies.title')}</h3>
             <p style={{ margin: '4px 0 0', fontSize: 13, color: '#64748b' }}>
-              These details appear as expandable sections on every product page
+              {t('policies.subtitle')}
             </p>
           </div>
           <button
@@ -177,7 +179,7 @@ export default function ProductPoliciesEditor({ onSaved, onPreviewUpdate }) {
             }}
           >
             <i className="fas fa-magic" style={{ marginInlineEnd: 6 }} />
-            Load Defaults
+            {t('policies.loadDefaults')}
           </button>
         </div>
 
@@ -185,12 +187,12 @@ export default function ProductPoliciesEditor({ onSaved, onPreviewUpdate }) {
           <div className="card-header">
             <h3 className="card-title">
               <i className="fas fa-truck" style={{ marginInlineEnd: 8, color: '#64748b' }} />
-              Shipping & Delivery Details
+              {t('policies.shippingTitle')}
             </h3>
           </div>
           <div className="card-body">
             <div style={fieldGroupStyle}>
-              <label style={labelStyle}>Regions</label>
+              <label style={labelStyle}>{t('policies.shippingRegions')}</label>
               <textarea
                 value={fields.shippingRegions}
                 onChange={(e) => handleChange('shippingRegions', e.target.value)}
@@ -200,7 +202,7 @@ export default function ProductPoliciesEditor({ onSaved, onPreviewUpdate }) {
               />
             </div>
             <div style={fieldGroupStyle}>
-              <label style={labelStyle}>Shipping Charges</label>
+              <label style={labelStyle}>{t('policies.shippingCharges')}</label>
               <textarea
                 value={fields.shippingCharges}
                 onChange={(e) => handleChange('shippingCharges', e.target.value)}
@@ -210,7 +212,7 @@ export default function ProductPoliciesEditor({ onSaved, onPreviewUpdate }) {
               />
             </div>
             <div style={fieldGroupStyle}>
-              <label style={labelStyle}>Delivery Time</label>
+              <label style={labelStyle}>{t('policies.shippingDeliveryTime')}</label>
               <textarea
                 value={fields.shippingDeliveryTime}
                 onChange={(e) => handleChange('shippingDeliveryTime', e.target.value)}
@@ -220,7 +222,7 @@ export default function ProductPoliciesEditor({ onSaved, onPreviewUpdate }) {
               />
             </div>
             <div style={fieldGroupStyle}>
-              <label style={labelStyle}>Tracking</label>
+              <label style={labelStyle}>{t('policies.shippingTracking')}</label>
               <textarea
                 value={fields.shippingTracking}
                 onChange={(e) => handleChange('shippingTracking', e.target.value)}
@@ -236,12 +238,12 @@ export default function ProductPoliciesEditor({ onSaved, onPreviewUpdate }) {
           <div className="card-header">
             <h3 className="card-title">
               <i className="fas fa-exchange-alt" style={{ marginInlineEnd: 8, color: '#64748b' }} />
-              Return & Exchange
+              {t('policies.returnTitle')}
             </h3>
           </div>
           <div className="card-body">
             <div style={fieldGroupStyle}>
-              <label style={labelStyle}>Policy</label>
+              <label style={labelStyle}>{t('policies.returnPolicy')}</label>
               <textarea
                 value={fields.returnPolicy}
                 onChange={(e) => handleChange('returnPolicy', e.target.value)}
@@ -251,7 +253,7 @@ export default function ProductPoliciesEditor({ onSaved, onPreviewUpdate }) {
               />
             </div>
             <div style={fieldGroupStyle}>
-              <label style={labelStyle}>Replacements</label>
+              <label style={labelStyle}>{t('policies.returnReplacements')}</label>
               <textarea
                 value={fields.returnReplacements}
                 onChange={(e) => handleChange('returnReplacements', e.target.value)}
@@ -261,7 +263,7 @@ export default function ProductPoliciesEditor({ onSaved, onPreviewUpdate }) {
               />
             </div>
             <div style={fieldGroupStyle}>
-              <label style={labelStyle}>Mandatory Requirement</label>
+              <label style={labelStyle}>{t('policies.returnMandatory')}</label>
               <textarea
                 value={fields.returnMandatory}
                 onChange={(e) => handleChange('returnMandatory', e.target.value)}
@@ -277,12 +279,12 @@ export default function ProductPoliciesEditor({ onSaved, onPreviewUpdate }) {
           <div className="card-header">
             <h3 className="card-title">
               <i className="fas fa-hand-holding-heart" style={{ marginInlineEnd: 8, color: '#64748b' }} />
-              Care Guide
+              {t('policies.careTitle')}
             </h3>
           </div>
           <div className="card-body">
             <div style={fieldGroupStyle}>
-              <label style={labelStyle}>Cleaning</label>
+              <label style={labelStyle}>{t('policies.careCleaning')}</label>
               <textarea
                 value={fields.careGuideCleaning}
                 onChange={(e) => handleChange('careGuideCleaning', e.target.value)}
@@ -292,7 +294,7 @@ export default function ProductPoliciesEditor({ onSaved, onPreviewUpdate }) {
               />
             </div>
             <div style={fieldGroupStyle}>
-              <label style={labelStyle}>Washing</label>
+              <label style={labelStyle}>{t('policies.careWashing')}</label>
               <textarea
                 value={fields.careGuideWashing}
                 onChange={(e) => handleChange('careGuideWashing', e.target.value)}
@@ -302,7 +304,7 @@ export default function ProductPoliciesEditor({ onSaved, onPreviewUpdate }) {
               />
             </div>
             <div style={fieldGroupStyle}>
-              <label style={labelStyle}>Maintenance</label>
+              <label style={labelStyle}>{t('policies.careMaintenance')}</label>
               <textarea
                 value={fields.careGuideMaintenance}
                 onChange={(e) => handleChange('careGuideMaintenance', e.target.value)}

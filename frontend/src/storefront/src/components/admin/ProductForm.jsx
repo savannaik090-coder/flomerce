@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { createProduct, updateProduct, getOptionsTemplate, saveOptionsTemplate } from '../../services/productService.js';
 import { getCategories } from '../../services/categoryService.js';
@@ -97,6 +98,7 @@ function hasAnyOptions(opts) {
 }
 
 export default function ProductForm({ product, onSave, onCancel }) {
+  const { t } = useTranslation('admin');
   const { siteConfig } = useContext(SiteContext);
   const [form, setForm] = useState(DEFAULT_FORM);
   const [options, setOptions] = useState(DEFAULT_OPTIONS);
@@ -237,17 +239,17 @@ export default function ProductForm({ product, onSave, onCancel }) {
 
   function validate() {
     const errs = {};
-    if (!form.name.trim()) errs.name = 'Product name is required.';
-    if (!form.price || parseFloat(form.price) < 1) errs.price = 'Price must be at least 1.';
+    if (!form.name.trim()) errs.name = t('productForm.errors.nameRequired');
+    if (!form.price || parseFloat(form.price) < 1) errs.price = t('productForm.errors.priceMin');
     if (locations.length > 0) {
       const hasNegative = Object.values(locationStocks).some(v => v !== '' && parseInt(v) < 0);
-      if (hasNegative) errs.stock = 'Stock per location cannot be negative.';
+      if (hasNegative) errs.stock = t('productForm.errors.stockNegative');
     } else {
-      if (form.stock === '' || parseInt(form.stock) < 0) errs.stock = 'Stock quantity is required.';
+      if (form.stock === '' || parseInt(form.stock) < 0) errs.stock = t('productForm.errors.stockRequired');
     }
-    if (!form.category_id) errs.category_id = 'Please select a category.';
-    if (!form.description.trim()) errs.description = 'Description is required.';
-    if (!form.images || form.images.length === 0) errs.images = 'At least one product image is required.';
+    if (!form.category_id) errs.category_id = t('productForm.errors.categoryRequired');
+    if (!form.description.trim()) errs.description = t('productForm.errors.descriptionRequired');
+    if (!form.images || form.images.length === 0) errs.images = t('productForm.errors.imagesRequired');
     return errs;
   }
 
@@ -319,7 +321,7 @@ export default function ProductForm({ product, onSave, onCancel }) {
       commit(form.images);
       onSave && onSave();
     } catch (err) {
-      setErrors({ submit: 'Failed to save product: ' + err.message });
+      setErrors({ submit: t('productForm.errors.saveFailed', { message: err.message }) });
     } finally {
       setSaving(false);
     }
@@ -335,7 +337,7 @@ export default function ProductForm({ product, onSave, onCancel }) {
       urls.forEach(u => markUploaded(u));
       setForm(prev => ({ ...prev, images: [...prev.images, ...urls] }));
     } catch (err) {
-      setErrors(prev => ({ ...prev, upload: 'Upload failed: ' + err.message }));
+      setErrors(prev => ({ ...prev, upload: t('productForm.errors.uploadFailed', { message: err.message }) }));
     } finally {
       setUploading(false);
     }
@@ -353,7 +355,7 @@ export default function ProductForm({ product, onSave, onCancel }) {
       urls.forEach(u => markUploaded(u));
       setForm(prev => ({ ...prev, images: [...prev.images, ...urls] }));
     } catch (err) {
-      setErrors(prev => ({ ...prev, upload: 'Upload failed: ' + err.message }));
+      setErrors(prev => ({ ...prev, upload: t('productForm.errors.uploadFailed', { message: err.message }) }));
     } finally {
       setUploading(false);
     }
@@ -421,9 +423,9 @@ export default function ProductForm({ product, onSave, onCancel }) {
     <div style={{ maxWidth: 700 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
         <button onClick={onCancel} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', padding: '6px 0', fontSize: 14 }}>
-          <i className="fas fa-arrow-left" style={{ marginInlineEnd: 8 }} />Back
+          <i className="fas fa-arrow-left" style={{ marginInlineEnd: 8 }} />{t('productForm.back')}
         </button>
-        <h2 style={{ fontSize: 20, fontWeight: 700 }}>{isEdit ? 'Edit Product' : 'Add New Product'}</h2>
+        <h2 style={{ fontSize: 20, fontWeight: 700 }}>{isEdit ? t('productForm.editProduct') : t('productForm.addNewProduct')}</h2>
       </div>
 
       {errors.submit && (
@@ -434,15 +436,15 @@ export default function ProductForm({ product, onSave, onCancel }) {
 
       <form onSubmit={handleSubmit}>
         <div className="card" style={{ marginBottom: 20 }}>
-          <div className="card-header"><h3 className="card-title">Basic Information</h3></div>
+          <div className="card-header"><h3 className="card-title">{t('productForm.basicInfo')}</h3></div>
           <div className="card-content">
             <div style={{ marginBottom: 16 }}>
-              <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Product Name *</label>
+              <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>{t('productForm.productNameLabel')}</label>
               <input
                 type="text"
                 value={form.name}
                 onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
-                placeholder="e.g., Gold Diamond Necklace"
+                placeholder={t('productForm.productNamePlaceholder')}
                 style={{ width: '100%', padding: '10px 12px', border: `1px solid ${errors.name ? '#ef4444' : '#e2e8f0'}`, borderRadius: 6, fontSize: 14, boxSizing: 'border-box' }}
               />
               {errors.name && <p style={{ color: '#ef4444', fontSize: 12, marginTop: 4 }}>{errors.name}</p>}
@@ -450,7 +452,7 @@ export default function ProductForm({ product, onSave, onCancel }) {
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
               <div>
-                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Price *</label>
+                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>{t('productForm.priceLabel')}</label>
                 <input
                   type="number"
                   min="1"
@@ -464,7 +466,7 @@ export default function ProductForm({ product, onSave, onCancel }) {
               </div>
               {locations.length === 0 && (
                 <div>
-                  <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Stock Quantity *</label>
+                  <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>{t('productForm.stockQuantityLabel')}</label>
                   <input
                     type="number"
                     min="0"
@@ -482,14 +484,14 @@ export default function ProductForm({ product, onSave, onCancel }) {
               <div style={{ marginBottom: 16, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '1rem 1.25rem' }}>
                 <label style={{ display: 'block', fontWeight: 600, marginBottom: 8, fontSize: 13 }}>
                   <i className="fas fa-map-marker-alt" style={{ marginInlineEnd: 6, color: '#2563eb' }} />
-                  Stock by Location
+                  {t('productForm.stockByLocation')}
                 </label>
                 <div style={{ display: 'grid', gap: 8 }}>
                   {locations.map(loc => (
                     <div key={loc.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <span style={{ minWidth: 140, fontSize: 13, fontWeight: 500 }}>
                         {loc.name}
-                        {loc.is_default ? <span style={{ fontSize: 10, background: '#2563eb', color: 'white', padding: '1px 6px', borderRadius: 8, marginInlineStart: 6, fontWeight: 600 }}>DEFAULT</span> : null}
+                        {loc.is_default ? <span style={{ fontSize: 10, background: '#2563eb', color: 'white', padding: '1px 6px', borderRadius: 8, marginInlineStart: 6, fontWeight: 600 }}>{t('productForm.defaultBadge')}</span> : null}
                       </span>
                       <input
                         type="number"
@@ -503,20 +505,20 @@ export default function ProductForm({ product, onSave, onCancel }) {
                   ))}
                 </div>
                 <div style={{ marginTop: 8, fontSize: 12, color: '#64748b' }}>
-                  Total stock: <strong>{Object.values(locationStocks).reduce((sum, v) => sum + (parseInt(v) || 0), 0)}</strong>
+                  {t('productForm.totalStock')} <strong>{Object.values(locationStocks).reduce((sum, v) => sum + (parseInt(v) || 0), 0)}</strong>
                 </div>
                 {errors.stock && <p style={{ color: '#ef4444', fontSize: 12, marginTop: 4 }}>{errors.stock}</p>}
               </div>
             )}
 
             <div style={{ marginBottom: 16 }}>
-              <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Category *</label>
+              <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>{t('productForm.categoryLabel')}</label>
               <select
                 value={form.category_id}
                 onChange={e => setForm(p => ({ ...p, category_id: e.target.value }))}
                 style={{ width: '100%', padding: '10px 12px', border: `1px solid ${errors.category_id ? '#ef4444' : '#e2e8f0'}`, borderRadius: 6, fontSize: 14, background: 'white', boxSizing: 'border-box' }}
               >
-                <option value="">Select a category</option>
+                <option value="">{t('productForm.selectCategory')}</option>
                 {categories.map(c => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
@@ -526,13 +528,13 @@ export default function ProductForm({ product, onSave, onCancel }) {
 
             {form.category_id && subcategories.length > 0 && (
               <div style={{ marginBottom: 16 }}>
-                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Subcategory</label>
+                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>{t('productForm.subcategoryLabel')}</label>
                 <select
                   value={form.subcategory_id}
                   onChange={e => setForm(p => ({ ...p, subcategory_id: e.target.value }))}
                   style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, background: 'white', boxSizing: 'border-box' }}
                 >
-                  <option value="">None</option>
+                  <option value="">{t('productForm.none')}</option>
                   {subcategories.map(group => (
                     group.children && group.children.length > 0 ? (
                       <optgroup key={group.id} label={group.name}>
@@ -545,17 +547,17 @@ export default function ProductForm({ product, onSave, onCancel }) {
                     )
                   ))}
                 </select>
-                <p style={{ color: '#94a3b8', fontSize: 11, marginTop: 4 }}>Manage subcategory groups in the Categories section</p>
+                <p style={{ color: '#94a3b8', fontSize: 11, marginTop: 4 }}>{t('productForm.subcategoryHint')}</p>
                 {errors.subcategory && <p style={{ color: '#ef4444', fontSize: 12, marginTop: 4 }}>{errors.subcategory}</p>}
               </div>
             )}
 
             <div>
-              <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Description *</label>
+              <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>{t('productForm.descriptionLabel')}</label>
               <textarea
                 value={form.description}
                 onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
-                placeholder="Describe the product..."
+                placeholder={t('productForm.descriptionPlaceholder')}
                 rows={5}
                 style={{ width: '100%', padding: '10px 12px', border: `1px solid ${errors.description ? '#ef4444' : '#e2e8f0'}`, borderRadius: 6, fontSize: 14, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }}
               />
@@ -564,32 +566,32 @@ export default function ProductForm({ product, onSave, onCancel }) {
 
             {siteConfig?.settings?.gstEnabled && (
             <div style={{ marginTop: 16, padding: '14px 16px', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 8 }}>
-              <div style={{ fontWeight: 600, fontSize: 13, color: '#0369a1', marginBottom: 10 }}>GST Information (for Tax Invoicing)</div>
+              <div style={{ fontWeight: 600, fontSize: 13, color: '#0369a1', marginBottom: 10 }}>{t('productForm.gstInfoTitle')}</div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <div>
-                  <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>HSN / SAC Code</label>
+                  <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>{t('productForm.hsnLabel')}</label>
                   <input
                     type="text"
                     value={form.hsn_code}
                     onChange={e => setForm(p => ({ ...p, hsn_code: e.target.value }))}
-                    placeholder="e.g., 7113 for jewellery"
+                    placeholder={t('productForm.hsnPlaceholder')}
                     style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box' }}
                   />
-                  <p style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>Government product classification code</p>
+                  <p style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>{t('productForm.hsnHint')}</p>
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>GST Rate (%)</label>
+                  <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>{t('productForm.gstRateLabel')}</label>
                   <select
                     value={form.gst_rate}
                     onChange={e => setForm(p => ({ ...p, gst_rate: e.target.value }))}
                     style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, background: 'white', boxSizing: 'border-box' }}
                   >
-                    <option value="">Select GST rate</option>
+                    <option value="">{t('productForm.selectGstRate')}</option>
                     {GST_RATES.map(rate => (
                       <option key={rate} value={rate}>{rate}%</option>
                     ))}
                   </select>
-                  <p style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>Tax rate applied on this product</p>
+                  <p style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>{t('productForm.gstRateHint')}</p>
                 </div>
               </div>
             </div>
@@ -599,9 +601,9 @@ export default function ProductForm({ product, onSave, onCancel }) {
 
         <div className="card" style={{ marginBottom: 20 }}>
           <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3 className="card-title">Product Images *</h3>
+            <h3 className="card-title">{t('productForm.productImagesLabel')}</h3>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-              <label style={{ color: '#64748b' }}>Quality:</label>
+              <label style={{ color: '#64748b' }}>{t('productForm.qualityLabel')}</label>
               <input
                 type="range"
                 min="0.3"
@@ -632,12 +634,12 @@ export default function ProductForm({ product, onSave, onCancel }) {
               }}
             >
               {uploading ? (
-                <><i className="fas fa-spinner fa-spin" style={{ fontSize: 24, color: '#2563eb', marginBottom: 8 }} /><p style={{ color: '#2563eb', fontSize: 14 }}>Uploading images...</p></>
+                <><i className="fas fa-spinner fa-spin" style={{ fontSize: 24, color: '#2563eb', marginBottom: 8 }} /><p style={{ color: '#2563eb', fontSize: 14 }}>{t('productForm.uploadingImages')}</p></>
               ) : (
                 <>
                   <i className="fas fa-cloud-upload-alt" style={{ fontSize: 32, color: '#94a3b8', marginBottom: 12 }} />
-                  <p style={{ color: '#64748b', fontSize: 14 }}>Drop images here or click to upload</p>
-                  <p style={{ color: '#94a3b8', fontSize: 12, marginTop: 4 }}>Supports JPG, PNG, WebP — compressed & uploaded to cloud storage</p>
+                  <p style={{ color: '#64748b', fontSize: 14 }}>{t('productForm.dropImages')}</p>
+                  <p style={{ color: '#94a3b8', fontSize: 12, marginTop: 4 }}>{t('productForm.supportedFormats')}</p>
                 </>
               )}
             </div>
@@ -662,15 +664,15 @@ export default function ProductForm({ product, onSave, onCancel }) {
                   const imgColors = options.imageColorMap[String(idx)] || [];
                   return (
                     <div key={idx} style={{ position: 'relative', border: `2px solid ${form.mainImageIndex === idx ? '#2563eb' : '#e2e8f0'}`, borderRadius: 8, overflow: 'hidden' }}>
-                      <img src={getImageSrc(img)} alt={`Product ${idx + 1}`} style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', display: 'block' }} />
+                      <img src={getImageSrc(img)} alt={t('productForm.productImageAlt', { index: idx + 1 })} style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', display: 'block' }} />
                       {form.mainImageIndex === idx && (
-                        <div style={{ position: 'absolute', top: 4, left: 4, background: '#2563eb', color: 'white', fontSize: 10, padding: '2px 6px', borderRadius: 4 }}>Main</div>
+                        <div style={{ position: 'absolute', top: 4, left: 4, background: '#2563eb', color: 'white', fontSize: 10, padding: '2px 6px', borderRadius: 4 }}>{t('productForm.mainBadge')}</div>
                       )}
                       <div style={{ position: 'absolute', top: 4, right: 4, display: 'flex', gap: 2 }}>
-                        <button type="button" onClick={() => setForm(p => ({ ...p, mainImageIndex: idx }))} title="Set as main" style={{ width: 22, height: 22, borderRadius: 4, background: 'white', border: '1px solid #e2e8f0', cursor: 'pointer', fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <button type="button" onClick={() => setForm(p => ({ ...p, mainImageIndex: idx }))} title={t('productForm.setAsMain')} style={{ width: 22, height: 22, borderRadius: 4, background: 'white', border: '1px solid #e2e8f0', cursor: 'pointer', fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           <i className="fas fa-star" style={{ color: form.mainImageIndex === idx ? '#f59e0b' : '#94a3b8' }} />
                         </button>
-                        <button type="button" onClick={() => removeImage(idx)} title="Remove" style={{ width: 22, height: 22, borderRadius: 4, background: 'white', border: '1px solid #e2e8f0', cursor: 'pointer', fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <button type="button" onClick={() => removeImage(idx)} title={t('productForm.remove')} style={{ width: 22, height: 22, borderRadius: 4, background: 'white', border: '1px solid #e2e8f0', cursor: 'pointer', fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           <i className="fas fa-times" style={{ color: '#ef4444' }} />
                         </button>
                       </div>
@@ -701,7 +703,7 @@ export default function ProductForm({ product, onSave, onCancel }) {
                             }}
                             style={{ width: '100%', padding: '3px 4px', fontSize: 11, border: '1px solid #cbd5e1', borderRadius: 4, background: 'white', cursor: 'pointer' }}
                           >
-                            <option value="">Assign Color</option>
+                            <option value="">{t('productForm.assignColor')}</option>
                             {options.colors.filter(c => c.name).map(c => (
                               <option key={c.name} value={c.name}>{c.name}</option>
                             ))}
@@ -729,7 +731,7 @@ export default function ProductForm({ product, onSave, onCancel }) {
                   <span style={{ position: 'absolute', height: 16, width: 16, left: showColors ? 20 : 3, bottom: 3, background: 'white', borderRadius: '50%', transition: 'left 0.2s' }} />
                 </span>
               </label>
-              <h3 className="card-title" style={{ margin: 0 }}>Color Options</h3>
+              <h3 className="card-title" style={{ margin: 0 }}>{t('productForm.colorOptions')}</h3>
             </div>
             {showColors && (
               <button
@@ -737,14 +739,14 @@ export default function ProductForm({ product, onSave, onCancel }) {
                 style={addBtnStyle}
                 onClick={() => setOptions(prev => ({ ...prev, colors: [...prev.colors, { name: '', hex: '#000000' }] }))}
               >
-                <i className="fas fa-plus" style={{ marginInlineEnd: 6 }} />Add Color
+                <i className="fas fa-plus" style={{ marginInlineEnd: 6 }} />{t('productForm.addColor')}
               </button>
             )}
           </div>
           {showColors && (
             <div className="card-content">
               {options.colors.length === 0 ? (
-                <p style={{ color: '#94a3b8', fontSize: 13, margin: 0 }}>No colors defined. Add colors to let customers filter images by color.</p>
+                <p style={{ color: '#94a3b8', fontSize: 13, margin: 0 }}>{t('productForm.noColorsDefined')}</p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {options.colors.map((color, idx) => (
@@ -773,7 +775,7 @@ export default function ProductForm({ product, onSave, onCancel }) {
                           }
                           setOptions(prev => ({ ...prev, colors: newColors, imageColorMap: newMap }));
                         }}
-                        placeholder="Color name (e.g. Rose Gold)"
+                        placeholder={t('productForm.colorNamePlaceholder')}
                         style={{ flex: 1, padding: '8px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, boxSizing: 'border-box' }}
                       />
                       <button
@@ -796,7 +798,7 @@ export default function ProductForm({ product, onSave, onCancel }) {
                   {form.images.length > 0 && options.colors.some(c => c.name) && (
                     <p style={{ fontSize: 12, color: '#64748b', margin: '4px 0 0' }}>
                       <i className="fas fa-info-circle" style={{ marginInlineEnd: 4 }} />
-                      Use the "Assign Color" dropdown on each image above to tag it with a color.
+                      {t('productForm.assignColorHint')}
                     </p>
                   )}
                 </div>
@@ -805,7 +807,7 @@ export default function ProductForm({ product, onSave, onCancel }) {
           )}
           {!showColors && (
             <div className="card-content">
-              <p style={{ color: '#94a3b8', fontSize: 13, margin: 0 }}>Enable to add color options for this product.</p>
+              <p style={{ color: '#94a3b8', fontSize: 13, margin: 0 }}>{t('productForm.enableColorsHint')}</p>
             </div>
           )}
         </div>
@@ -823,7 +825,7 @@ export default function ProductForm({ product, onSave, onCancel }) {
                   <span style={{ position: 'absolute', height: 16, width: 16, left: showCustomOptions ? 20 : 3, bottom: 3, background: 'white', borderRadius: '50%', transition: 'left 0.2s' }} />
                 </span>
               </label>
-              <h3 className="card-title" style={{ margin: 0 }}>Custom Options</h3>
+              <h3 className="card-title" style={{ margin: 0 }}>{t('productForm.customOptions')}</h3>
             </div>
             {showCustomOptions && (
               <button
@@ -831,14 +833,14 @@ export default function ProductForm({ product, onSave, onCancel }) {
                 style={addBtnStyle}
                 onClick={() => setOptions(prev => ({ ...prev, customOptions: [...prev.customOptions, { label: '', values: [''] }] }))}
               >
-                <i className="fas fa-plus" style={{ marginInlineEnd: 6 }} />Add Option Group
+                <i className="fas fa-plus" style={{ marginInlineEnd: 6 }} />{t('productForm.addOptionGroup')}
               </button>
             )}
           </div>
           {showCustomOptions && (
             <div className="card-content">
               {options.customOptions.length === 0 ? (
-                <p style={{ color: '#94a3b8', fontSize: 13, margin: 0 }}>No custom options. Add options like Size, Weight, etc. that don't affect price.</p>
+                <p style={{ color: '#94a3b8', fontSize: 13, margin: 0 }}>{t('productForm.noCustomOptions')}</p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                   {options.customOptions.map((opt, gIdx) => (
@@ -852,7 +854,7 @@ export default function ProductForm({ product, onSave, onCancel }) {
                             newOpts[gIdx] = { ...newOpts[gIdx], label: e.target.value };
                             setOptions(prev => ({ ...prev, customOptions: newOpts }));
                           }}
-                          placeholder="Option name (e.g. Size, Weight)"
+                          placeholder={t('productForm.customOptionLabelPlaceholder')}
                           style={{ flex: 1, padding: '8px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, fontWeight: 600, boxSizing: 'border-box' }}
                         />
                         <button type="button" style={removeBtnStyle} onClick={() => {
@@ -874,7 +876,7 @@ export default function ProductForm({ product, onSave, onCancel }) {
                                 newOpts[gIdx] = { ...newOpts[gIdx], values: newVals };
                                 setOptions(prev => ({ ...prev, customOptions: newOpts }));
                               }}
-                              placeholder="Value"
+                              placeholder={t('productForm.valuePlaceholder')}
                               style={{ width: 80, padding: '6px 8px', border: '1px solid #e2e8f0', borderRadius: 4, fontSize: 12, boxSizing: 'border-box' }}
                             />
                             {opt.values.length > 1 && (
@@ -892,7 +894,7 @@ export default function ProductForm({ product, onSave, onCancel }) {
                           const newOpts = [...options.customOptions];
                           newOpts[gIdx] = { ...newOpts[gIdx], values: [...newOpts[gIdx].values, ''] };
                           setOptions(prev => ({ ...prev, customOptions: newOpts }));
-                        }} style={{ ...addBtnStyle, padding: '4px 10px', fontSize: 11 }}>+ Value</button>
+                        }} style={{ ...addBtnStyle, padding: '4px 10px', fontSize: 11 }}>{t('productForm.addValue')}</button>
                       </div>
                     </div>
                   ))}
@@ -902,7 +904,7 @@ export default function ProductForm({ product, onSave, onCancel }) {
           )}
           {!showCustomOptions && (
             <div className="card-content">
-              <p style={{ color: '#94a3b8', fontSize: 13, margin: 0 }}>Enable to add custom options like Size, Weight, etc.</p>
+              <p style={{ color: '#94a3b8', fontSize: 13, margin: 0 }}>{t('productForm.enableCustomOptionsHint')}</p>
             </div>
           )}
         </div>
@@ -920,7 +922,7 @@ export default function ProductForm({ product, onSave, onCancel }) {
                   <span style={{ position: 'absolute', height: 16, width: 16, left: showPricedOptions ? 20 : 3, bottom: 3, background: 'white', borderRadius: '50%', transition: 'left 0.2s' }} />
                 </span>
               </label>
-              <h3 className="card-title" style={{ margin: 0 }}>Priced Options</h3>
+              <h3 className="card-title" style={{ margin: 0 }}>{t('productForm.pricedOptions')}</h3>
             </div>
             {showPricedOptions && (
               <button
@@ -928,14 +930,14 @@ export default function ProductForm({ product, onSave, onCancel }) {
                 style={addBtnStyle}
                 onClick={() => setOptions(prev => ({ ...prev, pricedOptions: [...prev.pricedOptions, { label: '', values: [{ name: '', price: '' }] }] }))}
               >
-                <i className="fas fa-plus" style={{ marginInlineEnd: 6 }} />Add Priced Option Group
+                <i className="fas fa-plus" style={{ marginInlineEnd: 6 }} />{t('productForm.addPricedOptionGroup')}
               </button>
             )}
           </div>
           {showPricedOptions && (
             <div className="card-content">
               {options.pricedOptions.length === 0 ? (
-                <p style={{ color: '#94a3b8', fontSize: 13, margin: 0 }}>No priced options. Add options like Dupatta, Chain Type, etc. that add to the base price.</p>
+                <p style={{ color: '#94a3b8', fontSize: 13, margin: 0 }}>{t('productForm.noPricedOptions')}</p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                   {options.pricedOptions.map((opt, gIdx) => (
@@ -949,7 +951,7 @@ export default function ProductForm({ product, onSave, onCancel }) {
                             newOpts[gIdx] = { ...newOpts[gIdx], label: e.target.value };
                             setOptions(prev => ({ ...prev, pricedOptions: newOpts }));
                           }}
-                          placeholder="Option name (e.g. Dupatta, Chain Type)"
+                          placeholder={t('productForm.pricedOptionLabelPlaceholder')}
                           style={{ flex: 1, padding: '8px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, fontWeight: 600, boxSizing: 'border-box' }}
                         />
                         <button type="button" style={removeBtnStyle} onClick={() => {
@@ -971,7 +973,7 @@ export default function ProductForm({ product, onSave, onCancel }) {
                                 newOpts[gIdx] = { ...newOpts[gIdx], values: newVals };
                                 setOptions(prev => ({ ...prev, pricedOptions: newOpts }));
                               }}
-                              placeholder="Name (e.g. Silk Dupatta)"
+                              placeholder={t('productForm.pricedValueNamePlaceholder')}
                               style={{ flex: 1, padding: '6px 8px', border: '1px solid #e2e8f0', borderRadius: 4, fontSize: 12, boxSizing: 'border-box' }}
                             />
                             <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -987,7 +989,7 @@ export default function ProductForm({ product, onSave, onCancel }) {
                                   newOpts[gIdx] = { ...newOpts[gIdx], values: newVals };
                                   setOptions(prev => ({ ...prev, pricedOptions: newOpts }));
                                 }}
-                                placeholder="Price"
+                                placeholder={t('productForm.pricePlaceholder')}
                                 style={{ width: 80, padding: '6px 8px', border: '1px solid #e2e8f0', borderRadius: 4, fontSize: 12, boxSizing: 'border-box' }}
                               />
                             </div>
@@ -1006,7 +1008,7 @@ export default function ProductForm({ product, onSave, onCancel }) {
                           const newOpts = [...options.pricedOptions];
                           newOpts[gIdx] = { ...newOpts[gIdx], values: [...newOpts[gIdx].values, { name: '', price: '' }] };
                           setOptions(prev => ({ ...prev, pricedOptions: newOpts }));
-                        }} style={{ ...addBtnStyle, alignSelf: 'flex-start', padding: '4px 10px', fontSize: 11 }}>+ Value</button>
+                        }} style={{ ...addBtnStyle, alignSelf: 'flex-start', padding: '4px 10px', fontSize: 11 }}>{t('productForm.addValue')}</button>
                       </div>
                     </div>
                   ))}
@@ -1016,17 +1018,17 @@ export default function ProductForm({ product, onSave, onCancel }) {
           )}
           {!showPricedOptions && (
             <div className="card-content">
-              <p style={{ color: '#94a3b8', fontSize: 13, margin: 0 }}>Enable to add priced options that affect the product price.</p>
+              <p style={{ color: '#94a3b8', fontSize: 13, margin: 0 }}>{t('productForm.enablePricedOptionsHint')}</p>
             </div>
           )}
         </div>
 
         <div style={{ display: 'flex', gap: 12 }}>
           <button type="button" className="btn btn-secondary" onClick={onCancel} style={{ flex: 1 }}>
-            Cancel
+            {t('productForm.cancel')}
           </button>
           <button type="submit" className="btn btn-primary" disabled={saving || uploading} style={{ flex: 2 }}>
-            {saving ? <><i className="fas fa-spinner fa-spin" style={{ marginInlineEnd: 8 }} />Saving...</> : isEdit ? 'Save Changes' : 'Create Product'}
+            {saving ? <><i className="fas fa-spinner fa-spin" style={{ marginInlineEnd: 8 }} />{t('productForm.saving')}</> : isEdit ? t('productForm.saveChanges') : t('productForm.createProduct')}
           </button>
         </div>
       </form>

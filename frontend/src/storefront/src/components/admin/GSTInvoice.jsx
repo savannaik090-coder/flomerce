@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { getApiUrl } from '../../services/api.js';
 
 function formatCurrency(amount, currency = 'INR') {
@@ -36,6 +37,7 @@ function calcGST(price, qty, gstRate, storeState, customerState) {
 }
 
 export default function GSTInvoice({ orderId, siteId, onClose }) {
+  const { t } = useTranslation('admin');
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -56,10 +58,10 @@ export default function GSTInvoice({ orderId, siteId, onClose }) {
       if (result.success) {
         setData(result.data);
       } else {
-        setError(result.error || 'Failed to load invoice data');
+        setError(result.error || t('invoice.loadError'));
       }
     } catch (e) {
-      setError('Failed to load invoice data');
+      setError(t('invoice.loadError'));
     } finally {
       setLoading(false);
     }
@@ -68,7 +70,7 @@ export default function GSTInvoice({ orderId, siteId, onClose }) {
   function handlePrint() {
     const content = document.getElementById('gst-invoice-print-area');
     if (!content) return;
-    const html = `<!DOCTYPE html><html><head><title>Invoice INV-${order.order_number}</title><style>
+    const html = `<!DOCTYPE html><html><head><title>${t('invoice.printTitle', { order: order.order_number })}</title><style>
       body { margin: 0; padding: 20px; font-family: Arial, sans-serif; font-size: 13px; color: #333; }
       table { border-collapse: collapse; width: 100%; }
       @media print { body { padding: 10px; } }
@@ -93,7 +95,7 @@ export default function GSTInvoice({ orderId, siteId, onClose }) {
     return (
       <div style={{ textAlign: 'center', padding: 60, color: '#64748b' }}>
         <div style={{ fontSize: 24, marginBottom: 12 }}>⏳</div>
-        <div>Loading invoice...</div>
+        <div>{t('invoice.loading')}</div>
       </div>
     );
   }
@@ -102,7 +104,7 @@ export default function GSTInvoice({ orderId, siteId, onClose }) {
     return (
       <div style={{ textAlign: 'center', padding: 40, color: '#dc2626' }}>
         <div style={{ fontSize: 20, marginBottom: 8 }}>⚠️ {error}</div>
-        <button onClick={onClose} style={{ marginTop: 16, padding: '8px 20px', borderRadius: 6, border: '1px solid #ddd', background: '#f5f5f5', cursor: 'pointer' }}>Close</button>
+        <button onClick={onClose} style={{ marginTop: 16, padding: '8px 20px', borderRadius: 6, border: '1px solid #ddd', background: '#f5f5f5', cursor: 'pointer' }}>{t('invoice.close')}</button>
       </div>
     );
   }
@@ -128,7 +130,7 @@ export default function GSTInvoice({ orderId, siteId, onClose }) {
     return { ...item, ...g, idx };
   });
 
-  const invoiceType = isGSTRegistered ? 'TAX INVOICE' : 'BILL OF SUPPLY';
+  const invoiceType = isGSTRegistered ? t('invoice.taxInvoice') : t('invoice.billOfSupply');
 
   return (
     <>
@@ -146,12 +148,12 @@ export default function GSTInvoice({ orderId, siteId, onClose }) {
 
       <div id="gst-invoice-root">
         <div className="invoice-no-print inv-actions" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <h3 style={{ margin: 0, fontSize: 18 }}>Invoice — Order #{order.order_number}</h3>
+          <h3 style={{ margin: 0, fontSize: 18 }}>{t('invoice.header', { order: order.order_number })}</h3>
           <div className="inv-actions" style={{ display: 'flex', gap: 10 }}>
             <button onClick={handlePrint} style={{ padding: '8px 18px', borderRadius: 6, border: 'none', background: '#0f172a', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <i className="fas fa-print" /> Print / Save PDF
+              <i className="fas fa-print" /> {t('invoice.printSave')}
             </button>
-            <button onClick={onClose} style={{ padding: '8px 18px', borderRadius: 6, border: '1px solid #ddd', background: '#f5f5f5', cursor: 'pointer', fontSize: 14 }}>Close</button>
+            <button onClick={onClose} style={{ padding: '8px 18px', borderRadius: 6, border: '1px solid #ddd', background: '#f5f5f5', cursor: 'pointer', fontSize: 14 }}>{t('invoice.close')}</button>
           </div>
         </div>
 
@@ -163,26 +165,26 @@ export default function GSTInvoice({ orderId, siteId, onClose }) {
               <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>{gstConfig.legalName}</div>
             )}
             {gstConfig.address && <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>{gstConfig.address}</div>}
-            {isGSTRegistered && <div style={{ fontSize: 12, fontWeight: 700, color: '#0f172a', marginTop: 6 }}>GSTIN: {gstConfig.gstin}</div>}
+            {isGSTRegistered && <div style={{ fontSize: 12, fontWeight: 700, color: '#0f172a', marginTop: 6 }}>{t('invoice.gstinLabel')}: {gstConfig.gstin}</div>}
           </div>
 
           <div className="inv-details-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
             <div style={{ padding: '12px 14px', background: '#f8fafc', borderRadius: 6 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1, color: '#64748b', marginBottom: 8, textTransform: 'uppercase' }}>Invoice Details</div>
-              <div><span style={{ color: '#64748b' }}>Invoice No:</span> <strong>INV-{order.order_number}</strong></div>
-              <div style={{ marginTop: 4 }}><span style={{ color: '#64748b' }}>Date:</span> {formatDate(order.created_at)}</div>
-              <div style={{ marginTop: 4 }}><span style={{ color: '#64748b' }}>Order No:</span> #{order.order_number}</div>
-              <div style={{ marginTop: 4 }}><span style={{ color: '#64748b' }}>Payment:</span> {order.payment_method === 'cod' ? 'Cash on Delivery' : 'Online Payment'}</div>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1, color: '#64748b', marginBottom: 8, textTransform: 'uppercase' }}>{t('invoice.details')}</div>
+              <div><span style={{ color: '#64748b' }}>{t('invoice.invoiceNo')}:</span> <strong>INV-{order.order_number}</strong></div>
+              <div style={{ marginTop: 4 }}><span style={{ color: '#64748b' }}>{t('invoice.date')}:</span> {formatDate(order.created_at)}</div>
+              <div style={{ marginTop: 4 }}><span style={{ color: '#64748b' }}>{t('invoice.orderNo')}:</span> #{order.order_number}</div>
+              <div style={{ marginTop: 4 }}><span style={{ color: '#64748b' }}>{t('invoice.payment')}:</span> {order.payment_method === 'cod' ? t('invoice.cod') : t('invoice.online')}</div>
             </div>
             <div style={{ padding: '12px 14px', background: '#f8fafc', borderRadius: 6 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1, color: '#64748b', marginBottom: 8, textTransform: 'uppercase' }}>Bill To</div>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1, color: '#64748b', marginBottom: 8, textTransform: 'uppercase' }}>{t('invoice.billTo')}</div>
               <div style={{ fontWeight: 600 }}>{order.customer_name}</div>
               {order.customer_email && <div style={{ color: '#64748b', fontSize: 12, marginTop: 2 }}>{order.customer_email}</div>}
               {order.customer_phone && <div style={{ color: '#64748b', fontSize: 12 }}>{order.customer_phone}</div>}
               {addr.address && <div style={{ marginTop: 4 }}>{addr.address}</div>}
               {(addr.city || addr.state) && <div>{[addr.city, addr.state].filter(Boolean).join(', ')}{addr.pinCode || addr.pin_code ? ' – ' + (addr.pinCode || addr.pin_code) : ''}</div>}
               {addr.country && <div>{addr.country}</div>}
-              {order.customer_gstin && <div style={{ marginTop: 4, fontWeight: 600 }}>GSTIN: {order.customer_gstin}</div>}
+              {order.customer_gstin && <div style={{ marginTop: 4, fontWeight: 600 }}>{t('invoice.gstinLabel')}: {order.customer_gstin}</div>}
             </div>
           </div>
 
@@ -190,21 +192,21 @@ export default function GSTInvoice({ orderId, siteId, onClose }) {
           <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 16 }}>
             <thead>
               <tr style={{ background: '#0f172a', color: '#fff' }}>
-                <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>#</th>
-                <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>Item</th>
-                {isGSTRegistered && <th style={{ padding: '10px 12px', textAlign: 'center', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>HSN</th>}
-                <th style={{ padding: '10px 12px', textAlign: 'center', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>Qty</th>
-                <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>Rate</th>
-                {isGSTRegistered && <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>Taxable</th>}
+                <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>{t('invoice.colNum')}</th>
+                <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>{t('invoice.colItem')}</th>
+                {isGSTRegistered && <th style={{ padding: '10px 12px', textAlign: 'center', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>{t('invoice.colHsn')}</th>}
+                <th style={{ padding: '10px 12px', textAlign: 'center', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>{t('invoice.colQty')}</th>
+                <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>{t('invoice.colRate')}</th>
+                {isGSTRegistered && <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>{t('invoice.colTaxable')}</th>}
                 {isGSTRegistered && storeState && customerState && storeState.toLowerCase() === customerState.toLowerCase() ? (
                   <>
-                    <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>CGST</th>
-                    <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>SGST</th>
+                    <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>{t('invoice.colCgst')}</th>
+                    <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>{t('invoice.colSgst')}</th>
                   </>
                 ) : isGSTRegistered ? (
-                  <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>IGST</th>
+                  <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>{t('invoice.colIgst')}</th>
                 ) : null}
-                <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>Total</th>
+                <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>{t('invoice.colTotal')}</th>
               </tr>
             </thead>
             <tbody>
@@ -251,40 +253,40 @@ export default function GSTInvoice({ orderId, siteId, onClose }) {
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 20 }}>
             <div className="inv-summary" style={{ minWidth: 280, background: '#f8fafc', borderRadius: 6, padding: '14px 16px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 13 }}>
-                <span style={{ color: '#64748b' }}>Subtotal (before tax)</span>
+                <span style={{ color: '#64748b' }}>{t('invoice.subtotal')}</span>
                 <span>{formatCurrency(order.subtotal, currency)}</span>
               </div>
               {isGSTRegistered && storeState && customerState && storeState.toLowerCase() === customerState.toLowerCase() ? (
                 <>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 13 }}>
-                    <span style={{ color: '#64748b' }}>CGST</span>
+                    <span style={{ color: '#64748b' }}>{t('invoice.colCgst')}</span>
                     <span>{formatCurrency(totalCGST, currency)}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 13 }}>
-                    <span style={{ color: '#64748b' }}>SGST</span>
+                    <span style={{ color: '#64748b' }}>{t('invoice.colSgst')}</span>
                     <span>{formatCurrency(totalSGST, currency)}</span>
                   </div>
                 </>
               ) : isGSTRegistered ? (
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 13 }}>
-                  <span style={{ color: '#64748b' }}>IGST</span>
+                  <span style={{ color: '#64748b' }}>{t('invoice.colIgst')}</span>
                   <span>{formatCurrency(totalIGST, currency)}</span>
                 </div>
               ) : null}
               {parseFloat(order.discount || 0) > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 13, color: '#16a34a' }}>
-                  <span>Discount{order.coupon_code ? ` (${order.coupon_code})` : ''}</span>
+                  <span>{t('invoice.discount')}{order.coupon_code ? ` (${order.coupon_code})` : ''}</span>
                   <span>−{formatCurrency(order.discount, currency)}</span>
                 </div>
               )}
               {parseFloat(order.shipping_cost || 0) > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 13 }}>
-                  <span style={{ color: '#64748b' }}>Shipping</span>
+                  <span style={{ color: '#64748b' }}>{t('invoice.shipping')}</span>
                   <span>{formatCurrency(order.shipping_cost, currency)}</span>
                 </div>
               )}
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10, paddingTop: 10, borderTop: '2px solid #e2e8f0', fontWeight: 700, fontSize: 16 }}>
-                <span>Total</span>
+                <span>{t('invoice.total')}</span>
                 <span>{formatCurrency(order.total, currency)}</span>
               </div>
             </div>
@@ -292,7 +294,7 @@ export default function GSTInvoice({ orderId, siteId, onClose }) {
 
           {isGSTRegistered && (
             <div style={{ marginTop: 16, padding: '12px 14px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 6, fontSize: 12, color: '#78350f' }}>
-              This is a computer-generated invoice. No signature required.
+              {t('invoice.computerNote')}
             </div>
           )}
         </div>

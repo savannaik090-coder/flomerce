@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
+import { useTranslation } from 'react-i18next';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { getOrders } from '../../services/orderService.js';
 import { getProducts } from '../../services/productService.js';
@@ -6,6 +7,7 @@ import { formatPrice, getAdminCurrency } from '../../utils/priceFormatter.js';
 import { parseAsUTC, formatDateShortForAdmin, getStartOfDayInTimezone, getStartOfMonthInTimezone } from '../../utils/dateFormatter.js';
 
 export default function DashboardSection() {
+  const { t } = useTranslation('admin');
   const { siteConfig } = useContext(SiteContext);
   const [period, setPeriod] = useState('month');
   const [stats, setStats] = useState({ orders: 0, revenue: 0, customers: 0, inventory: 0 });
@@ -65,12 +67,15 @@ export default function DashboardSection() {
     return <div className="loading-spinner-admin"><div className="spinner" /></div>;
   }
 
+  const periodLabel = (p) => p === 'today' ? t('dashboard.periodToday') : p === 'week' ? t('dashboard.periodWeek') : p === 'month' ? t('dashboard.periodMonth') : t('dashboard.periodAll');
+  const rangeLabel = period === 'today' ? t('dashboard.rangeToday') : period === 'week' ? t('dashboard.rangeWeek') : period === 'month' ? t('dashboard.rangeMonth') : t('dashboard.rangeAll');
+
   return (
     <div>
       <div className="period-selector">
         {['today', 'week', 'month', 'all'].map(p => (
           <button key={p} className={`period-btn${period === p ? ' active' : ''}`} onClick={() => setPeriod(p)}>
-            {p === 'today' ? 'Today' : p === 'week' ? 'This Week' : p === 'month' ? 'This Month' : 'All Time'}
+            {periodLabel(p)}
           </button>
         ))}
       </div>
@@ -78,61 +83,61 @@ export default function DashboardSection() {
       <div className="stats-grid">
         <div className="stat-card stat-orders">
           <div className="stat-header">
-            <span className="stat-title">Orders</span>
+            <span className="stat-title">{t('dashboard.statOrders')}</span>
             <div className="stat-icon"><i className="fas fa-shopping-bag" /></div>
           </div>
           <div className="stat-value">{stats.orders}</div>
-          <div className="stat-change">{period === 'today' ? 'Today' : period === 'week' ? 'This week' : period === 'month' ? 'This month' : 'Total'}</div>
+          <div className="stat-change">{rangeLabel}</div>
         </div>
         <div className="stat-card stat-revenue">
           <div className="stat-header">
-            <span className="stat-title">Revenue</span>
+            <span className="stat-title">{t('dashboard.statRevenue')}</span>
             <div className="stat-icon"><i className="fas fa-rupee-sign" /></div>
           </div>
           <div className="stat-value">{formatPrice(stats.revenue, getAdminCurrency(siteConfig))}</div>
-          <div className="stat-change">{period === 'today' ? 'Today' : period === 'week' ? 'This week' : period === 'month' ? 'This month' : 'Total'}</div>
+          <div className="stat-change">{rangeLabel}</div>
         </div>
         <div className="stat-card stat-customers">
           <div className="stat-header">
-            <span className="stat-title">Customers</span>
+            <span className="stat-title">{t('dashboard.statCustomers')}</span>
             <div className="stat-icon"><i className="fas fa-users" /></div>
           </div>
           <div className="stat-value">{stats.customers}</div>
-          <div className="stat-change">Unique buyers</div>
+          <div className="stat-change">{t('dashboard.uniqueBuyers')}</div>
         </div>
         <div className="stat-card stat-inventory">
           <div className="stat-header">
-            <span className="stat-title">Inventory</span>
+            <span className="stat-title">{t('dashboard.statInventory')}</span>
             <div className="stat-icon"><i className="fas fa-boxes" /></div>
           </div>
           <div className="stat-value">{stats.inventory}</div>
-          <div className="stat-change">Total stock</div>
+          <div className="stat-change">{t('dashboard.totalStock')}</div>
         </div>
       </div>
 
       {pendingOrders.length > 0 && (
         <div className="card">
           <div className="card-header">
-            <h3 className="card-title">Pending Orders</h3>
-            <span className="status-badge status-pending">{pendingOrders.length} pending</span>
+            <h3 className="card-title">{t('dashboard.pendingOrders')}</h3>
+            <span className="status-badge status-pending">{t('dashboard.pendingBadge', { count: pendingOrders.length })}</span>
           </div>
           <div className="card-content">
             <div className="table-container">
               <table>
                 <thead>
                   <tr>
-                    <th>Order ID</th>
-                    <th>Customer</th>
-                    <th>Amount</th>
-                    <th>Date</th>
-                    <th>Status</th>
+                    <th>{t('dashboard.colOrderId')}</th>
+                    <th>{t('dashboard.colCustomer')}</th>
+                    <th>{t('dashboard.colAmount')}</th>
+                    <th>{t('dashboard.colDate')}</th>
+                    <th>{t('dashboard.colStatus')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {pendingOrders.map(order => (
                     <tr key={order.id}>
                       <td>#{(order.id || '').toString().slice(-6)}</td>
-                      <td>{order.customer_name || order.name || order.email || 'Guest'}</td>
+                      <td>{order.customer_name || order.name || order.email || t('dashboard.guest')}</td>
                       <td>{formatPrice(parseFloat(order.total || order.total_amount || 0), order.currency || getAdminCurrency(siteConfig))}</td>
                       <td>{formatDateShortForAdmin(order.created_at || order.createdAt, siteConfig?.settings?.timezone)}</td>
                       <td><span className="status-badge status-pending">{order.status}</span></td>
@@ -147,36 +152,36 @@ export default function DashboardSection() {
 
       <div className="card">
         <div className="card-header">
-          <h3 className="card-title">Recent Orders</h3>
+          <h3 className="card-title">{t('dashboard.recentOrders')}</h3>
         </div>
         <div className="card-content">
           {recentOrders.length === 0 ? (
             <div className="empty-state">
               <i className="fas fa-shopping-bag" />
-              <h3>No orders yet</h3>
-              <p>Orders will appear here once customers start purchasing.</p>
+              <h3>{t('dashboard.noOrdersTitle')}</h3>
+              <p>{t('dashboard.noOrdersDesc')}</p>
             </div>
           ) : (
             <div className="table-container">
               <table>
                 <thead>
                   <tr>
-                    <th>Order ID</th>
-                    <th>Customer</th>
-                    <th>Items</th>
-                    <th>Amount</th>
-                    <th>Status</th>
-                    <th>Date</th>
+                    <th>{t('dashboard.colOrderId')}</th>
+                    <th>{t('dashboard.colCustomer')}</th>
+                    <th>{t('dashboard.colItems')}</th>
+                    <th>{t('dashboard.colAmount')}</th>
+                    <th>{t('dashboard.colStatus')}</th>
+                    <th>{t('dashboard.colDate')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {recentOrders.map(order => (
                     <tr key={order.id}>
                       <td>#{(order.id || '').toString().slice(-6)}</td>
-                      <td>{order.customer_name || order.name || order.email || 'Guest'}</td>
+                      <td>{order.customer_name || order.name || order.email || t('dashboard.guest')}</td>
                       <td>{(order.items || []).length || '—'}</td>
                       <td>{formatPrice(parseFloat(order.total || order.total_amount || 0), order.currency || getAdminCurrency(siteConfig))}</td>
-                      <td><span className={`status-badge status-${(order.status || 'new').toLowerCase()}`}>{order.status || 'New'}</span></td>
+                      <td><span className={`status-badge status-${(order.status || 'new').toLowerCase()}`}>{order.status || t('dashboard.statusNew')}</span></td>
                       <td>{formatDateShortForAdmin(order.created_at || order.createdAt, siteConfig?.settings?.timezone)}</td>
                     </tr>
                   ))}

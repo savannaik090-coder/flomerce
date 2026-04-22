@@ -41,6 +41,6 @@ export const NAMESPACE_FILES = {
 
 // Subset used by the storefront SPA. Anything outside this list is loaded
 // only by the platform/admin SPA.
-export const STOREFRONT_NAMESPACES = ['common', 'nav', 'products', 'customers', 'storefront'];
+export const STOREFRONT_NAMESPACES = ['common', 'nav', 'products', 'customers', 'storefront', 'admin'];
 
 export const NAMESPACES = Object.keys(NAMESPACE_FILES);

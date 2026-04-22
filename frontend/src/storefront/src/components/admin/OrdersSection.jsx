@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
+import { useTranslation } from 'react-i18next';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { getOrders, updateOrderStatus, getReturns, updateReturn, getCancellations, updateCancellation } from '../../services/orderService.js';
 import { apiRequest } from '../../services/api.js';
@@ -8,12 +9,12 @@ import { getOrderActionNotes } from '../../defaults/index.js';
 import GSTInvoice from './GSTInvoice.jsx';
 import { useToast } from '../../../../shared/ui/Toast.jsx';
 
-const CANCEL_REASONS = [
-  'Item out of stock',
-  'Customer requested cancellation',
-  'Duplicate order',
-  'Suspected fraud',
-  'Other',
+const CANCEL_REASON_KEYS = [
+  { value: 'Item out of stock', key: 'outOfStock' },
+  { value: 'Customer requested cancellation', key: 'customerRequested' },
+  { value: 'Duplicate order', key: 'duplicate' },
+  { value: 'Suspected fraud', key: 'fraud' },
+  { value: 'Other', key: 'other' },
 ];
 
 function getStatusColor(status) {
@@ -25,19 +26,6 @@ function getStatusColor(status) {
   if (s === 'cancelled') return '#e53935';
   if (s === 'pending_payment') return '#ff9800';
   return '#757575';
-}
-
-function getStatusLabel(status) {
-  const s = (status || '').toLowerCase();
-  if (s === 'pending_payment') return 'Awaiting Payment';
-  if (s === 'paid') return 'Paid';
-  if (s === 'pending') return 'Pending';
-  if (s === 'confirmed') return 'Confirmed';
-  if (s === 'packed') return 'Packed';
-  if (s === 'shipped') return 'Shipped';
-  if (s === 'delivered') return 'Delivered';
-  if (s === 'cancelled') return 'Cancelled';
-  return status || 'Pending';
 }
 
 function parseJsonSafe(val) {
@@ -54,11 +42,27 @@ function safeImageUrl(url) {
 }
 
 export default function OrdersSection() {
+  const { t } = useTranslation('admin');
   const { siteConfig } = useContext(SiteContext);
   const toast = useToast();
   const adminCur = getAdminCurrency(siteConfig);
   const fmtOrd = (amount, order) => formatPrice(amount, order?.currency || adminCur);
   const fmtOrdAmt = (amount) => formatPrice(amount, adminCur);
+
+  function getStatusLabel(status) {
+    const s = (status || '').toLowerCase();
+    if (s === 'all') return t('orders.status.all');
+    if (s === 'pending_payment') return t('orders.status.awaitingPayment');
+    if (s === 'paid') return t('orders.status.paid');
+    if (s === 'pending') return t('orders.status.pending');
+    if (s === 'confirmed') return t('orders.status.confirmed');
+    if (s === 'packed') return t('orders.status.packed');
+    if (s === 'shipped') return t('orders.status.shipped');
+    if (s === 'delivered') return t('orders.status.delivered');
+    if (s === 'cancelled') return t('orders.status.cancelled');
+    return status || t('orders.status.pending');
+  }
+
   const [orders, setOrders] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -207,7 +211,7 @@ export default function OrdersSection() {
       }
       setReviewDetailModal(null);
     } catch (err) {
-      toast.error('Failed to update review: ' + err.message);
+      toast.error(t('orders.error.updateReview', { message: err.message }));
     } finally {
       setReviewUpdating(false);
     }
@@ -234,7 +238,7 @@ export default function OrdersSection() {
       setCancellationAction('');
       setCancellationNote('');
     } catch (err) {
-      toast.error('Failed to update cancellation: ' + err.message);
+      toast.error(t('orders.error.updateCancellation', { message: err.message }));
     } finally {
       setCancellationUpdating(false);
     }
@@ -256,7 +260,7 @@ export default function OrdersSection() {
       setReturnNote('');
       setReturnRefundAmount('');
     } catch (err) {
-      toast.error('Failed to update return: ' + err.message);
+      toast.error(t('orders.error.updateReturn', { message: err.message }));
     } finally {
       setReturnUpdating(false);
     }
@@ -267,7 +271,7 @@ export default function OrdersSection() {
       await updateOrderStatus(orderId, newStatus, siteConfig?.id);
       setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
     } catch (err) {
-      toast.error('Failed to update status: ' + err.message);
+      toast.error(t('orders.error.updateStatus', { message: err.message }));
     }
   }
 
@@ -285,12 +289,12 @@ export default function OrdersSection() {
 
   async function confirmCancellation() {
     if (!cancelReason) {
-      toast.warning('Please select a cancellation reason.');
+      toast.warning(t('orders.warn.selectCancelReason'));
       return;
     }
     const finalReason = cancelReason === 'Other' ? cancelCustomReason.trim() : cancelReason;
     if (cancelReason === 'Other' && !finalReason) {
-      toast.warning('Please enter a specific cancellation reason.');
+      toast.warning(t('orders.warn.enterCancelReason'));
       return;
     }
     setCancelling(true);
@@ -299,7 +303,7 @@ export default function OrdersSection() {
       setOrders(prev => prev.map(o => o.id === cancelModal.id ? { ...o, status: 'cancelled', cancellation_reason: finalReason } : o));
       closeCancelModal();
     } catch (err) {
-      toast.error('Failed to cancel order: ' + err.message);
+      toast.error(t('orders.error.cancelOrder', { message: err.message }));
     } finally {
       setCancelling(false);
     }
@@ -337,8 +341,15 @@ export default function OrdersSection() {
     return colors[s] || '#757575';
   };
   const getReturnStatusLabel = (s) => {
-    const labels = { requested: 'Requested', approved: 'Approved', rejected: 'Rejected', refunded: 'Refunded', replaced: 'Replaced' };
-    return labels[s] || s || 'Unknown';
+    const map = {
+      all: t('orders.status.all'),
+      requested: t('orders.returnStatus.requested'),
+      approved: t('orders.returnStatus.approved'),
+      rejected: t('orders.returnStatus.rejected'),
+      refunded: t('orders.returnStatus.refunded'),
+      replaced: t('orders.returnStatus.replaced'),
+    };
+    return map[s] || s || t('orders.statusUnknown');
   };
 
   const getCancelStatusColor = (s) => {
@@ -346,8 +357,13 @@ export default function OrdersSection() {
     return colors[s] || '#757575';
   };
   const getCancelStatusLabel = (s) => {
-    const labels = { requested: 'Requested', approved: 'Approved', rejected: 'Rejected' };
-    return labels[s] || s || 'Unknown';
+    const map = {
+      all: t('orders.status.all'),
+      requested: t('orders.cancelStatus.requested'),
+      approved: t('orders.cancelStatus.approved'),
+      rejected: t('orders.cancelStatus.rejected'),
+    };
+    return map[s] || s || t('orders.statusUnknown');
   };
 
   const returnStatuses = ['all', 'requested', 'approved', 'rejected', 'refunded', 'replaced'];
@@ -364,8 +380,13 @@ export default function OrdersSection() {
     return colors[s] || '#757575';
   };
   const getReviewStatusLabel = (s) => {
-    const labels = { pending: 'Pending', approved: 'Approved', rejected: 'Rejected' };
-    return labels[s] || s || 'Unknown';
+    const map = {
+      all: t('orders.status.all'),
+      pending: t('orders.reviewStatus.pending'),
+      approved: t('orders.reviewStatus.approved'),
+      rejected: t('orders.reviewStatus.rejected'),
+    };
+    return map[s] || s || t('orders.statusUnknown');
   };
 
   return (
@@ -373,21 +394,21 @@ export default function OrdersSection() {
       {(returnsEnabled || cancellationEnabled || reviewsEnabled) && (
         <div style={{ display: 'flex', gap: 0, marginBottom: 16, borderRadius: 8, overflow: 'hidden', border: '1px solid #e2e8f0', width: 'fit-content', flexWrap: 'wrap' }}>
           <button onClick={() => setActiveView('orders')} style={{ padding: '10px 24px', fontSize: 14, fontWeight: 600, border: 'none', cursor: 'pointer', background: activeView === 'orders' ? '#0f172a' : '#f8fafc', color: activeView === 'orders' ? '#fff' : '#64748b', transition: '0.2s' }}>
-            Orders
+            {t('orders.tab.orders')}
           </button>
           {cancellationEnabled && (
             <button onClick={() => setActiveView('cancellations')} style={{ padding: '10px 24px', fontSize: 14, fontWeight: 600, border: 'none', cursor: 'pointer', background: activeView === 'cancellations' ? '#0f172a' : '#f8fafc', color: activeView === 'cancellations' ? '#fff' : '#64748b', transition: '0.2s' }}>
-              Cancellations {cancellations.filter(c => c.status === 'requested').length > 0 ? `(${cancellations.filter(c => c.status === 'requested').length})` : ''}
+              {t('orders.tab.cancellations')} {cancellations.filter(c => c.status === 'requested').length > 0 ? `(${cancellations.filter(c => c.status === 'requested').length})` : ''}
             </button>
           )}
           {returnsEnabled && (
             <button onClick={() => setActiveView('returns')} style={{ padding: '10px 24px', fontSize: 14, fontWeight: 600, border: 'none', cursor: 'pointer', background: activeView === 'returns' ? '#0f172a' : '#f8fafc', color: activeView === 'returns' ? '#fff' : '#64748b', transition: '0.2s' }}>
-              Returns {returns.filter(r => r.status === 'requested').length > 0 ? `(${returns.filter(r => r.status === 'requested').length})` : ''}
+              {t('orders.tab.returns')} {returns.filter(r => r.status === 'requested').length > 0 ? `(${returns.filter(r => r.status === 'requested').length})` : ''}
             </button>
           )}
           {reviewsEnabled && (
             <button onClick={() => { setActiveView('reviews'); if (reviews.length === 0) loadReviews(); }} style={{ padding: '10px 24px', fontSize: 14, fontWeight: 600, border: 'none', cursor: 'pointer', background: activeView === 'reviews' ? '#0f172a' : '#f8fafc', color: activeView === 'reviews' ? '#fff' : '#64748b', transition: '0.2s' }}>
-              Reviews {reviewStats?.pending > 0 ? `(${reviewStats.pending})` : ''}
+              {t('orders.tab.reviews')} {reviewStats?.pending > 0 ? `(${reviewStats.pending})` : ''}
             </button>
           )}
         </div>
@@ -408,7 +429,7 @@ export default function OrdersSection() {
               })}
             </div>
             <button className="btn btn-outline" onClick={loadReturns} style={{ flexShrink: 0 }}>
-              <i className="fas fa-sync-alt" /> Refresh
+              <i className="fas fa-sync-alt" /> {t('orders.action.refresh')}
             </button>
           </div>
 
@@ -417,8 +438,8 @@ export default function OrdersSection() {
           ) : filteredReturns.length === 0 ? (
             <div className="empty-state">
               <i className="fas fa-undo-alt" />
-              <h3>No return requests</h3>
-              <p>Return requests from customers will appear here.</p>
+              <h3>{t('orders.empty.noReturns')}</h3>
+              <p>{t('orders.empty.noReturnsDesc')}</p>
             </div>
           ) : (
             <div className="card">
@@ -427,13 +448,13 @@ export default function OrdersSection() {
                   <table>
                     <thead>
                       <tr>
-                        <th style={{ minWidth: 110 }}>Order #</th>
-                        <th style={{ minWidth: 150 }}>Customer</th>
-                        <th style={{ minWidth: 150 }}>Reason</th>
-                        <th style={{ minWidth: 100 }}>Status</th>
-                        <th style={{ minWidth: 100 }}>Refund</th>
-                        <th style={{ minWidth: 100 }}>Date</th>
-                        <th style={{ minWidth: 120 }}>Actions</th>
+                        <th style={{ minWidth: 110 }}>{t('orders.col.orderNum')}</th>
+                        <th style={{ minWidth: 150 }}>{t('orders.col.customer')}</th>
+                        <th style={{ minWidth: 150 }}>{t('orders.col.reason')}</th>
+                        <th style={{ minWidth: 100 }}>{t('orders.col.status')}</th>
+                        <th style={{ minWidth: 100 }}>{t('orders.col.refund')}</th>
+                        <th style={{ minWidth: 100 }}>{t('orders.col.date')}</th>
+                        <th style={{ minWidth: 120 }}>{t('orders.col.actions')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -441,7 +462,7 @@ export default function OrdersSection() {
                         <tr key={ret.id} onClick={() => setReturnDetailModal(ret)} style={{ cursor: 'pointer' }}>
                           <td style={{ fontWeight: 600 }}>#{ret.order_number || ret.order_id?.slice(-6)}</td>
                           <td>
-                            <div style={{ fontWeight: 500 }}>{ret.customer_name || 'N/A'}</div>
+                            <div style={{ fontWeight: 500 }}>{ret.customer_name || t('orders.na')}</div>
                             <div style={{ fontSize: 12, color: '#888' }}>{ret.customer_email || ''}</div>
                           </td>
                           <td>
@@ -450,10 +471,10 @@ export default function OrdersSection() {
                             <div style={{ display: 'flex', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
                               {ret.resolution && (
                                 <span style={{ fontSize: 11, padding: '1px 6px', borderRadius: 8, background: ret.resolution === 'replacement' ? '#ede9fe' : '#dbeafe', color: ret.resolution === 'replacement' ? '#6d28d9' : '#1d4ed8', fontWeight: 600 }}>
-                                  {ret.resolution === 'replacement' ? 'Replacement' : 'Refund'}
+                                  {ret.resolution === 'replacement' ? t('orders.badge.replacement') : t('orders.badge.refund')}
                                 </span>
                               )}
-                              {(() => { try { const p = typeof ret.photos === 'string' ? JSON.parse(ret.photos) : ret.photos; return p && p.length > 0 ? <span style={{ fontSize: 11, color: '#64748b' }}><i className="fas fa-camera" style={{ fontSize: 10 }} /> {p.length} photo{p.length > 1 ? 's' : ''}</span> : null; } catch { return null; } })()}
+                              {(() => { try { const p = typeof ret.photos === 'string' ? JSON.parse(ret.photos) : ret.photos; return p && p.length > 0 ? <span style={{ fontSize: 11, color: '#64748b' }}><i className="fas fa-camera" style={{ fontSize: 10 }} /> {t('orders.photoCount', { count: p.length })}</span> : null; } catch { return null; } })()}
                             </div>
                           </td>
                           <td>
@@ -467,22 +488,22 @@ export default function OrdersSection() {
                             <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }} onClick={e => e.stopPropagation()}>
                               {ret.status === 'requested' && (
                                 <>
-                                  <button className="btn btn-sm btn-success" onClick={() => { setReturnModal(ret); setReturnAction('approved'); setReturnNote(ret.resolution === 'replacement' ? DEFAULT_RETURN_REPLACEMENT_NOTE : DEFAULT_RETURN_REFUND_NOTE); setReturnRefundAmount(''); }} title="Approve">
+                                  <button className="btn btn-sm btn-success" onClick={() => { setReturnModal(ret); setReturnAction('approved'); setReturnNote(ret.resolution === 'replacement' ? DEFAULT_RETURN_REPLACEMENT_NOTE : DEFAULT_RETURN_REFUND_NOTE); setReturnRefundAmount(''); }} title={t('orders.action.approve')}>
                                     <i className="fas fa-check" />
                                   </button>
-                                  <button className="btn btn-sm btn-danger" onClick={() => { setReturnModal(ret); setReturnAction('rejected'); setReturnNote(''); }} title="Reject">
+                                  <button className="btn btn-sm btn-danger" onClick={() => { setReturnModal(ret); setReturnAction('rejected'); setReturnNote(''); }} title={t('orders.action.reject')}>
                                     <i className="fas fa-times" />
                                   </button>
                                 </>
                               )}
                               {ret.status === 'approved' && ret.resolution === 'replacement' && (
-                                <button className="btn btn-sm" style={{ background: '#7c3aed', color: '#fff', border: 'none', borderRadius: 4, padding: '4px 8px', cursor: 'pointer', fontSize: 11, fontWeight: 600 }} onClick={() => { setReturnModal(ret); setReturnAction('replaced'); setReturnNote(''); setReturnRefundAmount(''); }} title="Mark Replaced">
-                                  Replace
+                                <button className="btn btn-sm" style={{ background: '#7c3aed', color: '#fff', border: 'none', borderRadius: 4, padding: '4px 8px', cursor: 'pointer', fontSize: 11, fontWeight: 600 }} onClick={() => { setReturnModal(ret); setReturnAction('replaced'); setReturnNote(''); setReturnRefundAmount(''); }} title={t('orders.action.markReplaced')}>
+                                  {t('orders.action.replace')}
                                 </button>
                               )}
                               {ret.status === 'approved' && ret.resolution !== 'replacement' && (
-                                <button className="btn btn-sm" style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: 4, padding: '4px 8px', cursor: 'pointer', fontSize: 11, fontWeight: 600 }} onClick={() => { setReturnModal(ret); setReturnAction('refunded'); setReturnNote(''); setReturnRefundAmount(ret.refund_amount || ''); }} title="Mark Refunded">
-                                  Refund
+                                <button className="btn btn-sm" style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: 4, padding: '4px 8px', cursor: 'pointer', fontSize: 11, fontWeight: 600 }} onClick={() => { setReturnModal(ret); setReturnAction('refunded'); setReturnNote(''); setReturnRefundAmount(ret.refund_amount || ''); }} title={t('orders.action.markRefunded')}>
+                                  {t('orders.action.refund')}
                                 </button>
                               )}
                               {ret.admin_note && (
@@ -505,22 +526,22 @@ export default function OrdersSection() {
             <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
               <div style={{ background: '#fff', borderRadius: 10, padding: 28, width: '90%', maxWidth: 440, boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}>
                 <h3 style={{ margin: '0 0 6px', fontSize: 18, color: '#1a1a1a' }}>
-                  {returnAction === 'approved' ? 'Approve' : returnAction === 'rejected' ? 'Reject' : 'Process Refund for'} Return
+                  {returnAction === 'approved' ? t('orders.modal.approveReturnTitle') : returnAction === 'rejected' ? t('orders.modal.rejectReturnTitle') : t('orders.modal.processRefundTitle')}
                 </h3>
                 <p style={{ margin: '0 0 20px', fontSize: 14, color: '#666' }}>
-                  Order <strong>#{returnModal.order_number}</strong> - {returnModal.customer_name}
+                  {t('orders.modal.orderCustomer', { order: returnModal.order_number, customer: returnModal.customer_name })}
                 </p>
                 <div style={{ marginBottom: 16 }}>
-                  <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Reason from customer</label>
+                  <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>{t('orders.modal.reasonFromCustomer')}</label>
                   <div style={{ padding: '10px 12px', background: '#f8fafc', borderRadius: 6, fontSize: 13, color: '#334155', border: '1px solid #e2e8f0' }}>
                     {returnModal.reason}{returnModal.reason_detail ? ` — ${returnModal.reason_detail}` : ''}
                   </div>
                 </div>
                 {returnModal.resolution && (
                   <div style={{ marginBottom: 16 }}>
-                    <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Preferred Resolution</label>
+                    <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>{t('orders.modal.preferredResolution')}</label>
                     <span style={{ display: 'inline-block', padding: '4px 12px', borderRadius: 12, fontSize: 13, fontWeight: 600, background: returnModal.resolution === 'replacement' ? '#ede9fe' : '#dbeafe', color: returnModal.resolution === 'replacement' ? '#6d28d9' : '#1d4ed8' }}>
-                      {returnModal.resolution === 'replacement' ? 'Replacement' : 'Refund'}
+                      {returnModal.resolution === 'replacement' ? t('orders.badge.replacement') : t('orders.badge.refund')}
                     </span>
                   </div>
                 )}
@@ -530,11 +551,11 @@ export default function OrdersSection() {
                   if (!photoList || photoList.length === 0) return null;
                   return (
                     <div style={{ marginBottom: 16 }}>
-                      <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Photos from customer ({photoList.length})</label>
+                      <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>{t('orders.modal.photosFromCustomer', { count: photoList.length })}</label>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                         {photoList.map(safeImageUrl).filter(Boolean).map((url, idx) => (
                           <a key={idx} href={url} target="_blank" rel="noopener noreferrer">
-                            <img src={url} alt={`Return photo ${idx + 1}`} style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 6, border: '1px solid #e2e8f0', cursor: 'pointer' }} />
+                            <img src={url} alt={t('orders.alt.returnPhoto', { num: idx + 1 })} style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 6, border: '1px solid #e2e8f0', cursor: 'pointer' }} />
                           </a>
                         ))}
                       </div>
@@ -543,18 +564,18 @@ export default function OrdersSection() {
                 })()}
                 {returnAction === 'refunded' && (
                   <div style={{ marginBottom: 16 }}>
-                    <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Refund Amount</label>
-                    <input type="number" step="0.01" value={returnRefundAmount} onChange={e => setReturnRefundAmount(e.target.value)} placeholder="Enter refund amount" style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
+                    <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>{t('orders.modal.refundAmount')}</label>
+                    <input type="number" step="0.01" value={returnRefundAmount} onChange={e => setReturnRefundAmount(e.target.value)} placeholder={t('orders.modal.refundAmountPlaceholder')} style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
                   </div>
                 )}
                 <div style={{ marginBottom: 16 }}>
-                  <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Admin Note (sent to customer)</label>
-                  <textarea value={returnNote} onChange={e => setReturnNote(e.target.value)} rows={3} placeholder="Optional note for the customer..." style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+                  <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>{t('orders.modal.adminNoteLabel')}</label>
+                  <textarea value={returnNote} onChange={e => setReturnNote(e.target.value)} rows={3} placeholder={t('orders.modal.adminNotePlaceholder')} style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit' }} />
                 </div>
                 <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-                  <button onClick={() => { setReturnModal(null); setReturnAction(''); }} disabled={returnUpdating} style={{ padding: '9px 20px', borderRadius: 6, border: '1px solid #ddd', background: '#f5f5f5', cursor: 'pointer', fontSize: 14 }}>Cancel</button>
+                  <button onClick={() => { setReturnModal(null); setReturnAction(''); }} disabled={returnUpdating} style={{ padding: '9px 20px', borderRadius: 6, border: '1px solid #ddd', background: '#f5f5f5', cursor: 'pointer', fontSize: 14 }}>{t('orders.action.cancel')}</button>
                   <button onClick={handleReturnAction} disabled={returnUpdating || (returnAction === 'refunded' && !returnRefundAmount)} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: returnAction === 'rejected' ? '#e53935' : returnAction === 'replaced' ? '#7c3aed' : returnAction === 'refunded' ? '#2563eb' : '#22c55e', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600, opacity: returnUpdating ? 0.7 : 1 }}>
-                    {returnUpdating ? 'Processing...' : returnAction === 'approved' ? 'Approve Return' : returnAction === 'rejected' ? 'Reject Return' : returnAction === 'replaced' ? 'Mark Replaced' : 'Mark Refunded'}
+                    {returnUpdating ? t('orders.modal.processing') : returnAction === 'approved' ? t('orders.action.approveReturn') : returnAction === 'rejected' ? t('orders.action.rejectReturn') : returnAction === 'replaced' ? t('orders.action.markReplaced') : t('orders.action.markRefunded')}
                   </button>
                 </div>
               </div>
@@ -569,49 +590,49 @@ export default function OrdersSection() {
             <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
               <div style={{ background: '#fff', borderRadius: 10, padding: 28, width: '90%', maxWidth: 640, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, paddingBottom: 15, borderBottom: '1px solid #eee' }}>
-                  <h3 style={{ margin: 0, fontSize: 18, color: '#1a1a1a' }}>Return Details</h3>
+                  <h3 style={{ margin: 0, fontSize: 18, color: '#1a1a1a' }}>{t('orders.modal.returnDetails')}</h3>
                   <button onClick={() => setReturnDetailModal(null)} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#999' }}>&times;</button>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
                   <div>
-                    <div style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>Order</div>
+                    <div style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>{t('orders.modal.order')}</div>
                     <div style={{ fontSize: 15, fontWeight: 700 }}>#{returnDetailModal.order_number}</div>
                   </div>
                   <div>
-                    <div style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>Return Status</div>
+                    <div style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>{t('orders.modal.returnStatus')}</div>
                     <span style={{ display: 'inline-block', background: getReturnStatusColor(returnDetailModal.status), color: '#fff', borderRadius: 12, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>
                       {getReturnStatusLabel(returnDetailModal.status)}
                     </span>
                   </div>
                   <div>
-                    <div style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>Customer</div>
-                    <div style={{ fontSize: 14, fontWeight: 500 }}>{returnDetailModal.customer_name || 'N/A'}</div>
+                    <div style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>{t('orders.modal.customer')}</div>
+                    <div style={{ fontSize: 14, fontWeight: 500 }}>{returnDetailModal.customer_name || t('orders.na')}</div>
                     {returnDetailModal.customer_email && <div style={{ fontSize: 12, color: '#64748b' }}>{returnDetailModal.customer_email}</div>}
                     {returnDetailModal.customer_phone && <div style={{ fontSize: 12, color: '#64748b' }}>{returnDetailModal.customer_phone}</div>}
                   </div>
                   <div>
-                    <div style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>Requested</div>
+                    <div style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>{t('orders.modal.requested')}</div>
                     <div style={{ fontSize: 14 }}>{formatDateForAdmin(returnDetailModal.created_at, siteConfig?.settings?.timezone)}</div>
                   </div>
                   {returnDetailModal.resolution && (
                     <div>
-                      <div style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>Resolution</div>
+                      <div style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>{t('orders.modal.resolution')}</div>
                       <span style={{ display: 'inline-block', background: returnDetailModal.resolution === 'replacement' ? '#8b5cf6' : '#2563eb', color: '#fff', borderRadius: 12, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>
-                        {returnDetailModal.resolution === 'replacement' ? 'Replacement' : 'Refund'}
+                        {returnDetailModal.resolution === 'replacement' ? t('orders.badge.replacement') : t('orders.badge.refund')}
                       </span>
                     </div>
                   )}
                   {returnDetailModal.refund_amount && (
                     <div>
-                      <div style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>Refund Amount</div>
+                      <div style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>{t('orders.modal.refundAmount')}</div>
                       <div style={{ fontSize: 15, fontWeight: 700, color: '#2563eb' }}>{fmtOrd(returnDetailModal.refund_amount, order)}</div>
                     </div>
                   )}
                 </div>
 
                 <div style={{ marginBottom: 16 }}>
-                  <div style={{ fontSize: 12, color: '#64748b', marginBottom: 4, fontWeight: 600 }}>Reason</div>
+                  <div style={{ fontSize: 12, color: '#64748b', marginBottom: 4, fontWeight: 600 }}>{t('orders.modal.reason')}</div>
                   <div style={{ padding: '10px 12px', background: '#f8fafc', borderRadius: 6, fontSize: 13, color: '#334155', border: '1px solid #e2e8f0' }}>
                     <div style={{ fontWeight: 600 }}>{returnDetailModal.reason}</div>
                     {returnDetailModal.reason_detail && <div style={{ marginTop: 6, color: '#475569' }}>{returnDetailModal.reason_detail}</div>}
@@ -620,7 +641,7 @@ export default function OrdersSection() {
 
                 <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', marginBottom: 16 }}>
                   <div style={{ flex: 1, minWidth: 220 }}>
-                    <div style={{ fontWeight: 700, marginBottom: 10, color: '#333', fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5 }}>Order Items</div>
+                    <div style={{ fontWeight: 700, marginBottom: 10, color: '#333', fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5 }}>{t('orders.modal.orderItems')}</div>
                     {orderItems.length > 0 ? orderItems.map((item, idx) => (
                       <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, paddingBottom: 10, borderBottom: '1px solid #eee' }}>
                         {(item.thumbnail || item.image) && (
@@ -631,7 +652,7 @@ export default function OrdersSection() {
                           {item.variant && <div style={{ fontSize: 11, color: '#888' }}>{item.variant}</div>}
                           {item.selectedOptions && (() => {
                             const parts = [];
-                            if (item.selectedOptions.color) parts.push(`Color: ${item.selectedOptions.color}`);
+                            if (item.selectedOptions.color) parts.push(`${t('orders.modal.color')}: ${item.selectedOptions.color}`);
                             if (item.selectedOptions.customOptions) {
                               for (const [label, value] of Object.entries(item.selectedOptions.customOptions)) {
                                 parts.push(`${label}: ${value}`);
@@ -651,29 +672,29 @@ export default function OrdersSection() {
                           </div>
                         </div>
                       </div>
-                    )) : <div style={{ color: '#999', fontSize: 13 }}>No item details available</div>}
+                    )) : <div style={{ color: '#999', fontSize: 13 }}>{t('orders.modal.noItemDetails')}</div>}
                     {order.total && (
                       <div style={{ paddingTop: 8, borderTop: '2px solid #eee', textAlign: 'end' }}>
                         <div style={{ fontSize: 13, color: '#555', marginBottom: 2 }}>
-                          Subtotal: {fmtOrdAmt(parseFloat(order.subtotal || order.total || 0))}
+                          {t('orders.modal.subtotal')}: {fmtOrdAmt(parseFloat(order.subtotal || order.total || 0))}
                         </div>
                         {parseFloat(order.discount || 0) > 0 && (
                           <div style={{ fontSize: 13, color: '#16a34a', marginBottom: 2 }}>
-                            Coupon{order.coupon_code ? ` (${order.coupon_code})` : ''}: −{fmtOrdAmt(parseFloat(order.discount || 0))}
+                            {t('orders.modal.coupon')}{order.coupon_code ? ` (${order.coupon_code})` : ''}: −{fmtOrdAmt(parseFloat(order.discount || 0))}
                           </div>
                         )}
                         <div style={{ fontSize: 13, color: '#555', marginBottom: 4 }}>
-                          Shipping: {parseFloat(order.shipping_cost || 0) > 0 ? fmtOrdAmt(parseFloat(order.shipping_cost)) : <span style={{ color: '#25ab00' }}>Free</span>}
+                          {t('orders.modal.shipping')}: {parseFloat(order.shipping_cost || 0) > 0 ? fmtOrdAmt(parseFloat(order.shipping_cost)) : <span style={{ color: '#25ab00' }}>{t('orders.modal.free')}</span>}
                         </div>
                         <div style={{ fontWeight: 700, fontSize: 14 }}>
-                          Total: {fmtOrdAmt(parseFloat(order.total || 0))}
+                          {t('orders.modal.total')}: {fmtOrdAmt(parseFloat(order.total || 0))}
                         </div>
                       </div>
                     )}
                   </div>
 
                   <div style={{ minWidth: 200 }}>
-                    <div style={{ fontWeight: 700, marginBottom: 10, color: '#333', fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5 }}>Shipping Address</div>
+                    <div style={{ fontWeight: 700, marginBottom: 10, color: '#333', fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5 }}>{t('orders.modal.shippingAddress')}</div>
                     {address && Object.keys(address).length > 0 ? (
                       <div style={{ fontSize: 13, lineHeight: 1.8, color: '#444' }}>
                         <div style={{ fontWeight: 600 }}>{address.name || returnDetailModal.customer_name}</div>
@@ -683,18 +704,18 @@ export default function OrdersSection() {
                         {address.country && <div>{address.country}</div>}
                       </div>
                     ) : (
-                      <div style={{ color: '#999', fontSize: 13 }}>No address on file</div>
+                      <div style={{ color: '#999', fontSize: 13 }}>{t('orders.modal.noAddress')}</div>
                     )}
 
-                    <div style={{ fontWeight: 700, marginBottom: 10, marginTop: 16, color: '#333', fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5 }}>Payment Info</div>
+                    <div style={{ fontWeight: 700, marginBottom: 10, marginTop: 16, color: '#333', fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5 }}>{t('orders.modal.paymentInfo')}</div>
                     {order.payment_method ? (
                       <div style={{ fontSize: 13, lineHeight: 1.8, color: '#444' }}>
-                        <div><span style={{ color: '#888' }}>Method:</span> {order.payment_method === 'cod' ? 'Cash on Delivery' : (order.payment_method || '—')}</div>
-                        {order.razorpay_payment_id && <div style={{ wordBreak: 'break-all' }}><span style={{ color: '#888' }}>Payment ID:</span> {order.razorpay_payment_id}</div>}
-                        {order.notes && <div><span style={{ color: '#888' }}>Notes:</span> {order.notes}</div>}
+                        <div><span style={{ color: '#888' }}>{t('orders.modal.method')}:</span> {order.payment_method === 'cod' ? t('orders.modal.cashOnDelivery') : (order.payment_method || '—')}</div>
+                        {order.razorpay_payment_id && <div style={{ wordBreak: 'break-all' }}><span style={{ color: '#888' }}>{t('orders.modal.paymentId')}:</span> {order.razorpay_payment_id}</div>}
+                        {order.notes && <div><span style={{ color: '#888' }}>{t('orders.modal.notes')}:</span> {order.notes}</div>}
                       </div>
                     ) : (
-                      <div style={{ color: '#999', fontSize: 13 }}>No payment info available</div>
+                      <div style={{ color: '#999', fontSize: 13 }}>{t('orders.modal.noPaymentInfo')}</div>
                     )}
                   </div>
                 </div>
@@ -705,11 +726,11 @@ export default function OrdersSection() {
                   if (validPhotos.length === 0) return null;
                   return (
                     <div style={{ marginBottom: 16 }}>
-                      <div style={{ fontSize: 12, color: '#64748b', marginBottom: 6, fontWeight: 600 }}>Customer Photos ({validPhotos.length})</div>
+                      <div style={{ fontSize: 12, color: '#64748b', marginBottom: 6, fontWeight: 600 }}>{t('orders.modal.customerPhotos', { count: validPhotos.length })}</div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                         {validPhotos.map((url, idx) => (
                           <a key={idx} href={url} target="_blank" rel="noopener noreferrer">
-                            <img src={url} alt={`Return photo ${idx + 1}`} style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 6, border: '1px solid #e2e8f0', cursor: 'pointer' }} />
+                            <img src={url} alt={t('orders.alt.returnPhoto', { num: idx + 1 })} style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 6, border: '1px solid #e2e8f0', cursor: 'pointer' }} />
                           </a>
                         ))}
                       </div>
@@ -719,7 +740,7 @@ export default function OrdersSection() {
 
                 {returnDetailModal.admin_note && (
                   <div style={{ marginBottom: 16 }}>
-                    <div style={{ fontSize: 12, color: '#64748b', marginBottom: 4, fontWeight: 600 }}>Admin Note</div>
+                    <div style={{ fontSize: 12, color: '#64748b', marginBottom: 4, fontWeight: 600 }}>{t('orders.modal.adminNote')}</div>
                     <div style={{ padding: '10px 12px', background: '#fffbeb', borderRadius: 6, fontSize: 13, color: '#92400e', border: '1px solid #fde68a' }}>
                       {returnDetailModal.admin_note}
                     </div>
@@ -727,18 +748,18 @@ export default function OrdersSection() {
                 )}
 
                 <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-                  <button onClick={() => setReturnDetailModal(null)} style={{ padding: '9px 20px', borderRadius: 6, border: '1px solid #ddd', background: '#f5f5f5', cursor: 'pointer', fontSize: 14 }}>Close</button>
+                  <button onClick={() => setReturnDetailModal(null)} style={{ padding: '9px 20px', borderRadius: 6, border: '1px solid #ddd', background: '#f5f5f5', cursor: 'pointer', fontSize: 14 }}>{t('orders.action.close')}</button>
                   {returnDetailModal.status === 'requested' && (
                     <>
-                      <button onClick={() => { setReturnDetailModal(null); setReturnModal(returnDetailModal); setReturnAction('approved'); setReturnNote(returnDetailModal.resolution === 'replacement' ? DEFAULT_RETURN_REPLACEMENT_NOTE : DEFAULT_RETURN_REFUND_NOTE); setReturnRefundAmount(''); }} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#22c55e', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Approve</button>
-                      <button onClick={() => { setReturnDetailModal(null); setReturnModal(returnDetailModal); setReturnAction('rejected'); setReturnNote(''); }} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#e53935', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Reject</button>
+                      <button onClick={() => { setReturnDetailModal(null); setReturnModal(returnDetailModal); setReturnAction('approved'); setReturnNote(returnDetailModal.resolution === 'replacement' ? DEFAULT_RETURN_REPLACEMENT_NOTE : DEFAULT_RETURN_REFUND_NOTE); setReturnRefundAmount(''); }} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#22c55e', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>{t('orders.action.approve')}</button>
+                      <button onClick={() => { setReturnDetailModal(null); setReturnModal(returnDetailModal); setReturnAction('rejected'); setReturnNote(''); }} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#e53935', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>{t('orders.action.reject')}</button>
                     </>
                   )}
                   {returnDetailModal.status === 'approved' && returnDetailModal.resolution === 'replacement' && (
-                    <button onClick={() => { setReturnDetailModal(null); setReturnModal(returnDetailModal); setReturnAction('replaced'); setReturnNote(''); setReturnRefundAmount(''); }} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#7c3aed', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Replace</button>
+                    <button onClick={() => { setReturnDetailModal(null); setReturnModal(returnDetailModal); setReturnAction('replaced'); setReturnNote(''); setReturnRefundAmount(''); }} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#7c3aed', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>{t('orders.action.replace')}</button>
                   )}
                   {returnDetailModal.status === 'approved' && returnDetailModal.resolution !== 'replacement' && (
-                    <button onClick={() => { setReturnDetailModal(null); setReturnModal(returnDetailModal); setReturnAction('refunded'); setReturnNote(''); setReturnRefundAmount(returnDetailModal.refund_amount || ''); }} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Refund</button>
+                    <button onClick={() => { setReturnDetailModal(null); setReturnModal(returnDetailModal); setReturnAction('refunded'); setReturnNote(''); setReturnRefundAmount(returnDetailModal.refund_amount || ''); }} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>{t('orders.action.refund')}</button>
                   )}
                 </div>
               </div>
@@ -761,7 +782,7 @@ export default function OrdersSection() {
               })}
             </div>
             <button className="btn btn-outline" onClick={loadCancellations} style={{ flexShrink: 0 }}>
-              <i className="fas fa-sync-alt" /> Refresh
+              <i className="fas fa-sync-alt" /> {t('orders.action.refresh')}
             </button>
           </div>
 
@@ -770,8 +791,8 @@ export default function OrdersSection() {
           ) : filteredCancellations.length === 0 ? (
             <div className="empty-state">
               <i className="fas fa-ban" />
-              <h3>No cancellation requests</h3>
-              <p>Cancellation requests from customers will appear here.</p>
+              <h3>{t('orders.empty.noCancellations')}</h3>
+              <p>{t('orders.empty.noCancellationsDesc')}</p>
             </div>
           ) : (
             <div className="card">
@@ -780,12 +801,12 @@ export default function OrdersSection() {
                   <table>
                     <thead>
                       <tr>
-                        <th style={{ minWidth: 110 }}>Order #</th>
-                        <th style={{ minWidth: 150 }}>Customer</th>
-                        <th style={{ minWidth: 150 }}>Reason</th>
-                        <th style={{ minWidth: 100 }}>Status</th>
-                        <th style={{ minWidth: 100 }}>Date</th>
-                        <th style={{ minWidth: 120 }}>Actions</th>
+                        <th style={{ minWidth: 110 }}>{t('orders.col.orderNum')}</th>
+                        <th style={{ minWidth: 150 }}>{t('orders.col.customer')}</th>
+                        <th style={{ minWidth: 150 }}>{t('orders.col.reason')}</th>
+                        <th style={{ minWidth: 100 }}>{t('orders.col.status')}</th>
+                        <th style={{ minWidth: 100 }}>{t('orders.col.date')}</th>
+                        <th style={{ minWidth: 120 }}>{t('orders.col.actions')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -793,7 +814,7 @@ export default function OrdersSection() {
                         <tr key={canc.id} onClick={() => setCancDetailModal(canc)} style={{ cursor: 'pointer' }}>
                           <td style={{ fontWeight: 600 }}>#{canc.order_number || canc.order_id?.slice(-6)}</td>
                           <td>
-                            <div style={{ fontWeight: 500 }}>{canc.customer_name || 'N/A'}</div>
+                            <div style={{ fontWeight: 500 }}>{canc.customer_name || t('orders.na')}</div>
                             <div style={{ fontSize: 12, color: '#888' }}>{canc.customer_email || ''}</div>
                           </td>
                           <td>
@@ -810,10 +831,10 @@ export default function OrdersSection() {
                             <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }} onClick={e => e.stopPropagation()}>
                               {canc.status === 'requested' && (
                                 <>
-                                  <button className="btn btn-sm btn-success" onClick={() => { setCancellationModal(canc); setCancellationAction('approved'); setCancellationNote(DEFAULT_CANCELLATION_NOTE); }} title="Approve">
+                                  <button className="btn btn-sm btn-success" onClick={() => { setCancellationModal(canc); setCancellationAction('approved'); setCancellationNote(DEFAULT_CANCELLATION_NOTE); }} title={t('orders.action.approve')}>
                                     <i className="fas fa-check" />
                                   </button>
-                                  <button className="btn btn-sm btn-danger" onClick={() => { setCancellationModal(canc); setCancellationAction('rejected'); setCancellationNote(''); }} title="Reject">
+                                  <button className="btn btn-sm btn-danger" onClick={() => { setCancellationModal(canc); setCancellationAction('rejected'); setCancellationNote(''); }} title={t('orders.action.reject')}>
                                     <i className="fas fa-times" />
                                   </button>
                                 </>
@@ -838,30 +859,30 @@ export default function OrdersSection() {
             <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
               <div style={{ background: '#fff', borderRadius: 10, padding: 28, width: '90%', maxWidth: 440, boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}>
                 <h3 style={{ margin: '0 0 6px', fontSize: 18, color: '#1a1a1a' }}>
-                  {cancellationAction === 'approved' ? 'Approve' : 'Reject'} Cancellation
+                  {cancellationAction === 'approved' ? t('orders.modal.approveCancellationTitle') : t('orders.modal.rejectCancellationTitle')}
                 </h3>
                 <p style={{ margin: '0 0 20px', fontSize: 14, color: '#666' }}>
-                  Order <strong>#{cancellationModal.order_number}</strong> - {cancellationModal.customer_name}
+                  {t('orders.modal.orderCustomer', { order: cancellationModal.order_number, customer: cancellationModal.customer_name })}
                 </p>
                 <div style={{ marginBottom: 16 }}>
-                  <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Reason from customer</label>
+                  <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>{t('orders.modal.reasonFromCustomer')}</label>
                   <div style={{ padding: '10px 12px', background: '#f8fafc', borderRadius: 6, fontSize: 13, color: '#334155', border: '1px solid #e2e8f0' }}>
                     {cancellationModal.reason}{cancellationModal.reason_detail ? ` - ${cancellationModal.reason_detail}` : ''}
                   </div>
                 </div>
                 {cancellationAction === 'approved' && (
                   <div style={{ padding: '10px 12px', background: '#fff7ed', borderRadius: 6, fontSize: 13, color: '#92400e', border: '1px solid #fed7aa', marginBottom: 16 }}>
-                    Approving will cancel the order and restore product stock.
+                    {t('orders.modal.approvingWillCancel')}
                   </div>
                 )}
                 <div style={{ marginBottom: 16 }}>
-                  <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Admin Note (sent to customer)</label>
-                  <textarea value={cancellationNote} onChange={e => setCancellationNote(e.target.value)} rows={3} placeholder="Optional note for the customer..." style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+                  <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>{t('orders.modal.adminNoteLabel')}</label>
+                  <textarea value={cancellationNote} onChange={e => setCancellationNote(e.target.value)} rows={3} placeholder={t('orders.modal.adminNotePlaceholder')} style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit' }} />
                 </div>
                 <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-                  <button onClick={() => { setCancellationModal(null); setCancellationAction(''); }} disabled={cancellationUpdating} style={{ padding: '9px 20px', borderRadius: 6, border: '1px solid #ddd', background: '#f5f5f5', cursor: 'pointer', fontSize: 14 }}>Cancel</button>
+                  <button onClick={() => { setCancellationModal(null); setCancellationAction(''); }} disabled={cancellationUpdating} style={{ padding: '9px 20px', borderRadius: 6, border: '1px solid #ddd', background: '#f5f5f5', cursor: 'pointer', fontSize: 14 }}>{t('orders.action.cancel')}</button>
                   <button onClick={handleCancellationAction} disabled={cancellationUpdating} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: cancellationAction === 'rejected' ? '#e53935' : '#22c55e', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600, opacity: cancellationUpdating ? 0.7 : 1 }}>
-                    {cancellationUpdating ? 'Processing...' : cancellationAction === 'approved' ? 'Approve Cancellation' : 'Reject Cancellation'}
+                    {cancellationUpdating ? t('orders.modal.processing') : cancellationAction === 'approved' ? t('orders.action.approveCancellation') : t('orders.action.rejectCancellation')}
                   </button>
                 </div>
               </div>
@@ -876,35 +897,35 @@ export default function OrdersSection() {
             <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
               <div style={{ background: '#fff', borderRadius: 10, padding: 28, width: '90%', maxWidth: 640, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, paddingBottom: 15, borderBottom: '1px solid #eee' }}>
-                  <h3 style={{ margin: 0, fontSize: 18, color: '#1a1a1a' }}>Cancellation Details</h3>
+                  <h3 style={{ margin: 0, fontSize: 18, color: '#1a1a1a' }}>{t('orders.modal.cancellationDetails')}</h3>
                   <button onClick={() => setCancDetailModal(null)} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#999' }}>&times;</button>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
                   <div>
-                    <div style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>Order</div>
+                    <div style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>{t('orders.modal.order')}</div>
                     <div style={{ fontSize: 15, fontWeight: 700 }}>#{cancDetailModal.order_number}</div>
                   </div>
                   <div>
-                    <div style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>Cancellation Status</div>
+                    <div style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>{t('orders.modal.cancellationStatus')}</div>
                     <span style={{ display: 'inline-block', background: getCancelStatusColor(cancDetailModal.status), color: '#fff', borderRadius: 12, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>
                       {getCancelStatusLabel(cancDetailModal.status)}
                     </span>
                   </div>
                   <div>
-                    <div style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>Customer</div>
-                    <div style={{ fontSize: 14, fontWeight: 500 }}>{cancDetailModal.customer_name || 'N/A'}</div>
+                    <div style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>{t('orders.modal.customer')}</div>
+                    <div style={{ fontSize: 14, fontWeight: 500 }}>{cancDetailModal.customer_name || t('orders.na')}</div>
                     {cancDetailModal.customer_email && <div style={{ fontSize: 12, color: '#64748b' }}>{cancDetailModal.customer_email}</div>}
                     {cancDetailModal.customer_phone && <div style={{ fontSize: 12, color: '#64748b' }}>{cancDetailModal.customer_phone}</div>}
                   </div>
                   <div>
-                    <div style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>Requested</div>
+                    <div style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>{t('orders.modal.requested')}</div>
                     <div style={{ fontSize: 14 }}>{formatDateForAdmin(cancDetailModal.created_at, siteConfig?.settings?.timezone)}</div>
                   </div>
                 </div>
 
                 <div style={{ marginBottom: 16 }}>
-                  <div style={{ fontSize: 12, color: '#64748b', marginBottom: 4, fontWeight: 600 }}>Reason</div>
+                  <div style={{ fontSize: 12, color: '#64748b', marginBottom: 4, fontWeight: 600 }}>{t('orders.modal.reason')}</div>
                   <div style={{ padding: '10px 12px', background: '#f8fafc', borderRadius: 6, fontSize: 13, color: '#334155', border: '1px solid #e2e8f0' }}>
                     <div style={{ fontWeight: 600 }}>{cancDetailModal.reason}</div>
                     {cancDetailModal.reason_detail && <div style={{ marginTop: 6, color: '#475569' }}>{cancDetailModal.reason_detail}</div>}
@@ -913,7 +934,7 @@ export default function OrdersSection() {
 
                 <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', marginBottom: 16 }}>
                   <div style={{ flex: 1, minWidth: 220 }}>
-                    <div style={{ fontWeight: 700, marginBottom: 10, color: '#333', fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5 }}>Order Items</div>
+                    <div style={{ fontWeight: 700, marginBottom: 10, color: '#333', fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5 }}>{t('orders.modal.orderItems')}</div>
                     {orderItems.length > 0 ? orderItems.map((item, idx) => (
                       <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, paddingBottom: 10, borderBottom: '1px solid #eee' }}>
                         {(item.thumbnail || item.image) && (
@@ -924,7 +945,7 @@ export default function OrdersSection() {
                           {item.variant && <div style={{ fontSize: 11, color: '#888' }}>{item.variant}</div>}
                           {item.selectedOptions && (() => {
                             const parts = [];
-                            if (item.selectedOptions.color) parts.push(`Color: ${item.selectedOptions.color}`);
+                            if (item.selectedOptions.color) parts.push(`${t('orders.modal.color')}: ${item.selectedOptions.color}`);
                             if (item.selectedOptions.customOptions) {
                               for (const [label, value] of Object.entries(item.selectedOptions.customOptions)) {
                                 parts.push(`${label}: ${value}`);
@@ -944,29 +965,29 @@ export default function OrdersSection() {
                           </div>
                         </div>
                       </div>
-                    )) : <div style={{ color: '#999', fontSize: 13 }}>No item details available</div>}
+                    )) : <div style={{ color: '#999', fontSize: 13 }}>{t('orders.modal.noItemDetails')}</div>}
                     {order.total && (
                       <div style={{ paddingTop: 8, borderTop: '2px solid #eee', textAlign: 'end' }}>
                         <div style={{ fontSize: 13, color: '#555', marginBottom: 2 }}>
-                          Subtotal: {fmtOrdAmt(parseFloat(order.subtotal || order.total || 0))}
+                          {t('orders.modal.subtotal')}: {fmtOrdAmt(parseFloat(order.subtotal || order.total || 0))}
                         </div>
                         {parseFloat(order.discount || 0) > 0 && (
                           <div style={{ fontSize: 13, color: '#16a34a', marginBottom: 2 }}>
-                            Coupon{order.coupon_code ? ` (${order.coupon_code})` : ''}: −{fmtOrdAmt(parseFloat(order.discount || 0))}
+                            {t('orders.modal.coupon')}{order.coupon_code ? ` (${order.coupon_code})` : ''}: −{fmtOrdAmt(parseFloat(order.discount || 0))}
                           </div>
                         )}
                         <div style={{ fontSize: 13, color: '#555', marginBottom: 4 }}>
-                          Shipping: {parseFloat(order.shipping_cost || 0) > 0 ? fmtOrdAmt(parseFloat(order.shipping_cost)) : <span style={{ color: '#25ab00' }}>Free</span>}
+                          {t('orders.modal.shipping')}: {parseFloat(order.shipping_cost || 0) > 0 ? fmtOrdAmt(parseFloat(order.shipping_cost)) : <span style={{ color: '#25ab00' }}>{t('orders.modal.free')}</span>}
                         </div>
                         <div style={{ fontWeight: 700, fontSize: 14 }}>
-                          Total: {fmtOrdAmt(parseFloat(order.total || 0))}
+                          {t('orders.modal.total')}: {fmtOrdAmt(parseFloat(order.total || 0))}
                         </div>
                       </div>
                     )}
                   </div>
 
                   <div style={{ minWidth: 200 }}>
-                    <div style={{ fontWeight: 700, marginBottom: 10, color: '#333', fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5 }}>Shipping Address</div>
+                    <div style={{ fontWeight: 700, marginBottom: 10, color: '#333', fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5 }}>{t('orders.modal.shippingAddress')}</div>
                     {address && Object.keys(address).length > 0 ? (
                       <div style={{ fontSize: 13, lineHeight: 1.8, color: '#444' }}>
                         <div style={{ fontWeight: 600 }}>{address.name || cancDetailModal.customer_name}</div>
@@ -976,25 +997,25 @@ export default function OrdersSection() {
                         {address.country && <div>{address.country}</div>}
                       </div>
                     ) : (
-                      <div style={{ color: '#999', fontSize: 13 }}>No address on file</div>
+                      <div style={{ color: '#999', fontSize: 13 }}>{t('orders.modal.noAddress')}</div>
                     )}
 
-                    <div style={{ fontWeight: 700, marginBottom: 10, marginTop: 16, color: '#333', fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5 }}>Payment Info</div>
+                    <div style={{ fontWeight: 700, marginBottom: 10, marginTop: 16, color: '#333', fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5 }}>{t('orders.modal.paymentInfo')}</div>
                     {order.payment_method ? (
                       <div style={{ fontSize: 13, lineHeight: 1.8, color: '#444' }}>
-                        <div><span style={{ color: '#888' }}>Method:</span> {order.payment_method === 'cod' ? 'Cash on Delivery' : (order.payment_method || '—')}</div>
-                        {order.razorpay_payment_id && <div style={{ wordBreak: 'break-all' }}><span style={{ color: '#888' }}>Payment ID:</span> {order.razorpay_payment_id}</div>}
-                        {order.notes && <div><span style={{ color: '#888' }}>Notes:</span> {order.notes}</div>}
+                        <div><span style={{ color: '#888' }}>{t('orders.modal.method')}:</span> {order.payment_method === 'cod' ? t('orders.modal.cashOnDelivery') : (order.payment_method || '—')}</div>
+                        {order.razorpay_payment_id && <div style={{ wordBreak: 'break-all' }}><span style={{ color: '#888' }}>{t('orders.modal.paymentId')}:</span> {order.razorpay_payment_id}</div>}
+                        {order.notes && <div><span style={{ color: '#888' }}>{t('orders.modal.notes')}:</span> {order.notes}</div>}
                       </div>
                     ) : (
-                      <div style={{ color: '#999', fontSize: 13 }}>No payment info available</div>
+                      <div style={{ color: '#999', fontSize: 13 }}>{t('orders.modal.noPaymentInfo')}</div>
                     )}
                   </div>
                 </div>
 
                 {cancDetailModal.admin_note && (
                   <div style={{ marginBottom: 16 }}>
-                    <div style={{ fontSize: 12, color: '#64748b', marginBottom: 4, fontWeight: 600 }}>Admin Note</div>
+                    <div style={{ fontSize: 12, color: '#64748b', marginBottom: 4, fontWeight: 600 }}>{t('orders.modal.adminNote')}</div>
                     <div style={{ padding: '10px 12px', background: '#fffbeb', borderRadius: 6, fontSize: 13, color: '#92400e', border: '1px solid #fde68a' }}>
                       {cancDetailModal.admin_note}
                     </div>
@@ -1002,11 +1023,11 @@ export default function OrdersSection() {
                 )}
 
                 <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-                  <button onClick={() => setCancDetailModal(null)} style={{ padding: '9px 20px', borderRadius: 6, border: '1px solid #ddd', background: '#f5f5f5', cursor: 'pointer', fontSize: 14 }}>Close</button>
+                  <button onClick={() => setCancDetailModal(null)} style={{ padding: '9px 20px', borderRadius: 6, border: '1px solid #ddd', background: '#f5f5f5', cursor: 'pointer', fontSize: 14 }}>{t('orders.action.close')}</button>
                   {cancDetailModal.status === 'requested' && (
                     <>
-                      <button onClick={() => { setCancDetailModal(null); setCancellationModal(cancDetailModal); setCancellationAction('approved'); setCancellationNote(DEFAULT_CANCELLATION_NOTE); }} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#22c55e', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Approve</button>
-                      <button onClick={() => { setCancDetailModal(null); setCancellationModal(cancDetailModal); setCancellationAction('rejected'); setCancellationNote(''); }} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#e53935', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Reject</button>
+                      <button onClick={() => { setCancDetailModal(null); setCancellationModal(cancDetailModal); setCancellationAction('approved'); setCancellationNote(DEFAULT_CANCELLATION_NOTE); }} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#22c55e', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>{t('orders.action.approve')}</button>
+                      <button onClick={() => { setCancDetailModal(null); setCancellationModal(cancDetailModal); setCancellationAction('rejected'); setCancellationNote(''); }} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#e53935', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>{t('orders.action.reject')}</button>
                     </>
                   )}
                 </div>
@@ -1030,7 +1051,7 @@ export default function OrdersSection() {
               })}
             </div>
             <button className="btn btn-outline" onClick={loadReviews} style={{ flexShrink: 0 }}>
-              <i className="fas fa-sync-alt" /> Refresh
+              <i className="fas fa-sync-alt" /> {t('orders.action.refresh')}
             </button>
           </div>
 
@@ -1038,15 +1059,15 @@ export default function OrdersSection() {
             <div style={{ display: 'flex', gap: 16, marginBottom: 16, flexWrap: 'wrap' }}>
               <div style={{ background: '#f0fdf4', borderRadius: 8, padding: '12px 20px', textAlign: 'center', minWidth: 80 }}>
                 <div style={{ fontSize: 22, fontWeight: 700, color: '#166534' }}>{reviewStats.avgRating || '—'}</div>
-                <div style={{ fontSize: 12, color: '#64748b' }}>Avg Rating</div>
+                <div style={{ fontSize: 12, color: '#64748b' }}>{t('orders.stats.avgRating')}</div>
               </div>
               <div style={{ background: '#f8fafc', borderRadius: 8, padding: '12px 20px', textAlign: 'center', minWidth: 80 }}>
                 <div style={{ fontSize: 22, fontWeight: 700, color: '#0f172a' }}>{reviewStats.total || 0}</div>
-                <div style={{ fontSize: 12, color: '#64748b' }}>Total</div>
+                <div style={{ fontSize: 12, color: '#64748b' }}>{t('orders.stats.total')}</div>
               </div>
               <div style={{ background: '#fffbeb', borderRadius: 8, padding: '12px 20px', textAlign: 'center', minWidth: 80 }}>
                 <div style={{ fontSize: 22, fontWeight: 700, color: '#92400e' }}>{reviewStats.pending || 0}</div>
-                <div style={{ fontSize: 12, color: '#64748b' }}>Pending</div>
+                <div style={{ fontSize: 12, color: '#64748b' }}>{t('orders.stats.pending')}</div>
               </div>
             </div>
           )}
@@ -1056,8 +1077,8 @@ export default function OrdersSection() {
           ) : filteredReviews.length === 0 ? (
             <div className="empty-state">
               <i className="fas fa-star" />
-              <h3>No reviews</h3>
-              <p>Customer reviews will appear here.</p>
+              <h3>{t('orders.empty.noReviews')}</h3>
+              <p>{t('orders.empty.noReviewsDesc')}</p>
             </div>
           ) : (
             <div className="card">
@@ -1066,13 +1087,13 @@ export default function OrdersSection() {
                   <table>
                     <thead>
                       <tr>
-                        <th>Product</th>
-                        <th>Customer</th>
-                        <th style={{ textAlign: 'center' }}>Rating</th>
-                        <th>Review</th>
-                        <th style={{ textAlign: 'center' }}>Status</th>
-                        <th>Date</th>
-                        <th style={{ textAlign: 'center' }}>Actions</th>
+                        <th>{t('orders.col.product')}</th>
+                        <th>{t('orders.col.customer')}</th>
+                        <th style={{ textAlign: 'center' }}>{t('orders.col.rating')}</th>
+                        <th>{t('orders.col.review')}</th>
+                        <th style={{ textAlign: 'center' }}>{t('orders.col.status')}</th>
+                        <th>{t('orders.col.date')}</th>
+                        <th style={{ textAlign: 'center' }}>{t('orders.col.actions')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1100,10 +1121,10 @@ export default function OrdersSection() {
                           <td style={{ textAlign: 'center' }} onClick={e => e.stopPropagation()}>
                             {review.status === 'pending' && (
                               <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
-                                <button className="btn btn-sm btn-success" onClick={() => handleReviewAction(review.id, 'approved')} title="Approve" disabled={reviewUpdating}>
+                                <button className="btn btn-sm btn-success" onClick={() => handleReviewAction(review.id, 'approved')} title={t('orders.action.approve')} disabled={reviewUpdating}>
                                   <i className="fas fa-check" />
                                 </button>
-                                <button className="btn btn-sm btn-danger" onClick={() => handleReviewAction(review.id, 'rejected')} title="Reject" disabled={reviewUpdating}>
+                                <button className="btn btn-sm btn-danger" onClick={() => handleReviewAction(review.id, 'rejected')} title={t('orders.action.reject')} disabled={reviewUpdating}>
                                   <i className="fas fa-times" />
                                 </button>
                               </div>
@@ -1124,19 +1145,19 @@ export default function OrdersSection() {
             <div className="modal-overlay" onClick={() => setReviewDetailModal(null)}>
               <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 500 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                  <h3 style={{ margin: 0, fontSize: 18, color: '#1a1a1a' }}>Review Details</h3>
+                  <h3 style={{ margin: 0, fontSize: 18, color: '#1a1a1a' }}>{t('orders.modal.reviewDetails')}</h3>
                   <button onClick={() => setReviewDetailModal(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#999' }}>&times;</button>
                 </div>
                 <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 16 }}>
                   {r.product_image && <img src={r.product_image} alt="" style={{ width: 48, height: 48, borderRadius: 6, objectFit: 'cover' }} />}
                   <div>
-                    <div style={{ fontWeight: 600, fontSize: 14 }}>{r.product_name || 'Unknown Product'}</div>
-                    <div style={{ fontSize: 12, color: '#64748b' }}>by {r.customer_name || 'Customer'}</div>
+                    <div style={{ fontWeight: 600, fontSize: 14 }}>{r.product_name || t('orders.modal.unknownProduct')}</div>
+                    <div style={{ fontSize: 12, color: '#64748b' }}>{t('orders.modal.byCustomer', { name: r.customer_name || t('orders.customer') })}</div>
                   </div>
                 </div>
                 <div style={{ color: '#f5a623', fontSize: 18, marginBottom: 8 }}>
                   {'\u2605'.repeat(r.rating)}{'\u2606'.repeat(5 - r.rating)}
-                  {r.is_verified === 1 && <span style={{ marginInlineStart: 8, fontSize: 11, background: '#dcfce7', color: '#166534', padding: '2px 8px', borderRadius: 10 }}>Verified Purchase</span>}
+                  {r.is_verified === 1 && <span style={{ marginInlineStart: 8, fontSize: 11, background: '#dcfce7', color: '#166534', padding: '2px 8px', borderRadius: 10 }}>{t('orders.modal.verifiedPurchase')}</span>}
                 </div>
                 {r.title && <p style={{ fontWeight: 600, margin: '0 0 4px', fontSize: 15 }}>{r.title}</p>}
                 {r.content && <p style={{ margin: '0 0 12px', fontSize: 14, color: '#555', lineHeight: 1.6 }}>{r.content}</p>}
@@ -1149,8 +1170,8 @@ export default function OrdersSection() {
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
                   {r.status === 'pending' ? (
                     <>
-                      <button onClick={() => handleReviewAction(r.id, 'approved')} disabled={reviewUpdating} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#22c55e', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600, opacity: reviewUpdating ? 0.7 : 1 }}>Approve</button>
-                      <button onClick={() => handleReviewAction(r.id, 'rejected')} disabled={reviewUpdating} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#e53935', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600, opacity: reviewUpdating ? 0.7 : 1 }}>Reject</button>
+                      <button onClick={() => handleReviewAction(r.id, 'approved')} disabled={reviewUpdating} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#22c55e', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600, opacity: reviewUpdating ? 0.7 : 1 }}>{t('orders.action.approve')}</button>
+                      <button onClick={() => handleReviewAction(r.id, 'rejected')} disabled={reviewUpdating} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#e53935', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600, opacity: reviewUpdating ? 0.7 : 1 }}>{t('orders.action.reject')}</button>
                     </>
                   ) : (
                     <span style={{ display: 'inline-block', background: getReviewStatusColor(r.status), color: '#fff', borderRadius: 12, padding: '4px 14px', fontSize: 13, fontWeight: 600 }}>
@@ -1168,12 +1189,12 @@ export default function OrdersSection() {
       <div className="search-bar">
         <input
           type="text"
-          placeholder="Search by order number, customer name, email or phone..."
+          placeholder={t('orders.search.placeholder')}
           value={searchTerm}
           onChange={e => setSearchTerm(e.target.value)}
         />
         <button className="btn btn-outline" onClick={loadOrders}>
-          <i className="fas fa-sync-alt" /> Refresh
+          <i className="fas fa-sync-alt" /> {t('orders.action.refresh')}
         </button>
       </div>
 
@@ -1192,8 +1213,8 @@ export default function OrdersSection() {
       {filtered.length === 0 ? (
         <div className="empty-state">
           <i className="fas fa-shopping-bag" />
-          <h3>No orders found</h3>
-          <p>{searchTerm ? 'Try a different search term.' : 'No orders match the selected filter.'}</p>
+          <h3>{t('orders.empty.noOrders')}</h3>
+          <p>{searchTerm ? t('orders.empty.noOrdersSearch') : t('orders.empty.noOrdersFilter')}</p>
         </div>
       ) : (
         <div className="card">
@@ -1202,15 +1223,15 @@ export default function OrdersSection() {
               <table>
                 <thead>
                   <tr>
-                    <th style={{ minWidth: 110 }}>Order #</th>
-                    <th style={{ minWidth: 180 }}>Customer</th>
-                    <th style={{ minWidth: 140 }}>Phone</th>
-                    <th style={{ minWidth: 80 }}>Items</th>
-                    <th style={{ minWidth: 100 }}>Total</th>
-                    <th style={{ minWidth: 150 }}>Payment Method</th>
-                    <th style={{ minWidth: 130 }}>Order Status</th>
-                    <th style={{ minWidth: 100 }}>Date</th>
-                    <th style={{ minWidth: 100 }}>Actions</th>
+                    <th style={{ minWidth: 110 }}>{t('orders.col.orderNum')}</th>
+                    <th style={{ minWidth: 180 }}>{t('orders.col.customer')}</th>
+                    <th style={{ minWidth: 140 }}>{t('orders.col.phone')}</th>
+                    <th style={{ minWidth: 80 }}>{t('orders.col.items')}</th>
+                    <th style={{ minWidth: 100 }}>{t('orders.col.total')}</th>
+                    <th style={{ minWidth: 150 }}>{t('orders.col.paymentMethod')}</th>
+                    <th style={{ minWidth: 130 }}>{t('orders.col.orderStatus')}</th>
+                    <th style={{ minWidth: 100 }}>{t('orders.col.date')}</th>
+                    <th style={{ minWidth: 100 }}>{t('orders.col.actions')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1225,14 +1246,14 @@ export default function OrdersSection() {
                         <tr key={order.id} onClick={() => openOrderDetail(order)} style={{ cursor: 'pointer' }}>
                           <td style={{ fontWeight: 600 }}>#{orderNum}</td>
                           <td>
-                            <div style={{ fontWeight: 500 }}>{order.customer_name || order.name || 'Guest'}</div>
+                            <div style={{ fontWeight: 500 }}>{order.customer_name || order.name || t('orders.guest')}</div>
                             <div style={{ fontSize: 12, color: '#888' }}>{order.customer_email || order.email || '—'}</div>
                           </td>
                           <td style={{ whiteSpace: 'nowrap' }}>{order.customer_phone || '—'}</td>
-                          <td>{items.length > 0 ? `${items.length} item${items.length !== 1 ? 's' : ''}` : '—'}</td>
+                          <td>{items.length > 0 ? t('orders.itemsCount', { count: items.length }) : '—'}</td>
                           <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{fmtOrdAmt(parseFloat(order.total || order.total_amount || 0))}</td>
                           <td style={{ textTransform: 'capitalize' }}>
-                            {order.payment_method === 'cod' ? 'Cash on Delivery' : (order.payment_method || '—')}
+                            {order.payment_method === 'cod' ? t('orders.modal.cashOnDelivery') : (order.payment_method || '—')}
                           </td>
                           <td>
                             <span style={{
@@ -1254,8 +1275,8 @@ export default function OrdersSection() {
                               {!isCancelled && !isDelivered && statusLower !== 'confirmed' && statusLower !== 'packed' && statusLower !== 'shipped' && (
                                 <button
                                   className="btn btn-sm btn-success"
-                                  onClick={() => setConfirmDialog({ orderId: order.id, orderNum, action: 'confirmed', label: 'Confirm this order?' })}
-                                  title="Confirm Order"
+                                  onClick={() => setConfirmDialog({ orderId: order.id, orderNum, action: 'confirmed', label: t('orders.confirm.confirmThisOrder') })}
+                                  title={t('orders.action.confirmOrder')}
                                 >
                                   <i className="fas fa-check" />
                                 </button>
@@ -1264,37 +1285,37 @@ export default function OrdersSection() {
                                 <button
                                   className="btn btn-sm"
                                   style={{ background: '#7c3aed', color: '#fff', border: 'none', borderRadius: 4, padding: '4px 8px', cursor: 'pointer', fontSize: 11, fontWeight: 600 }}
-                                  onClick={() => setConfirmDialog({ orderId: order.id, orderNum, action: 'packed', label: 'Mark this order as packed?' })}
-                                  title="Mark as Packed"
+                                  onClick={() => setConfirmDialog({ orderId: order.id, orderNum, action: 'packed', label: t('orders.confirm.markPacked') })}
+                                  title={t('orders.action.markAsPacked')}
                                 >
-                                  Packed
+                                  {t('orders.action.packed')}
                                 </button>
                               )}
                               {statusLower === 'packed' && (
                                 <button
                                   className="btn btn-sm"
                                   style={{ background: '#0284c7', color: '#fff', border: 'none', borderRadius: 4, padding: '4px 8px', cursor: 'pointer', fontSize: 11, fontWeight: 600 }}
-                                  onClick={() => setConfirmDialog({ orderId: order.id, orderNum, action: 'shipped', label: 'Mark this order as shipped?' })}
-                                  title="Mark as Shipped"
+                                  onClick={() => setConfirmDialog({ orderId: order.id, orderNum, action: 'shipped', label: t('orders.confirm.markShipped') })}
+                                  title={t('orders.action.markAsShipped')}
                                 >
-                                  Shipped
+                                  {t('orders.action.shipped')}
                                 </button>
                               )}
                               {statusLower === 'shipped' && (
                                 <button
                                   className="btn btn-sm"
                                   style={{ background: '#27ae60', color: '#fff', border: 'none', borderRadius: 4, padding: '4px 8px', cursor: 'pointer', fontSize: 11, fontWeight: 600 }}
-                                  onClick={() => setConfirmDialog({ orderId: order.id, orderNum, action: 'delivered', label: 'Mark this order as delivered?' })}
-                                  title="Mark as Delivered"
+                                  onClick={() => setConfirmDialog({ orderId: order.id, orderNum, action: 'delivered', label: t('orders.confirm.markDelivered') })}
+                                  title={t('orders.action.markAsDelivered')}
                                 >
-                                  Delivered
+                                  {t('orders.action.delivered')}
                                 </button>
                               )}
                               {!isCancelled && !isDelivered && (
                                 <button
                                   className="btn btn-sm btn-danger"
                                   onClick={() => openCancelModal(order)}
-                                  title="Cancel Order"
+                                  title={t('orders.action.cancelOrder')}
                                 >
                                   <i className="fas fa-times" />
                                 </button>
@@ -1323,36 +1344,36 @@ export default function OrdersSection() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
           <div style={{ background: '#fff', borderRadius: 10, padding: 28, width: '90%', maxWidth: 640, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, paddingBottom: 15, borderBottom: '1px solid #eee' }}>
-              <h3 style={{ margin: 0, fontSize: 18, color: '#1a1a1a' }}>Order Details</h3>
+              <h3 style={{ margin: 0, fontSize: 18, color: '#1a1a1a' }}>{t('orders.modal.orderDetails')}</h3>
               <button onClick={() => setOrderDetailModal(null)} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#999' }}>&times;</button>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
               <div>
-                <div style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>Order</div>
+                <div style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>{t('orders.modal.order')}</div>
                 <div style={{ fontSize: 15, fontWeight: 700 }}>#{orderNum}</div>
               </div>
               <div>
-                <div style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>Order Status</div>
+                <div style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>{t('orders.modal.orderStatus')}</div>
                 <span style={{ display: 'inline-block', background: getStatusColor(order.status), color: '#fff', borderRadius: 12, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>
                   {getStatusLabel(order.status)}
                 </span>
               </div>
               <div>
-                <div style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>Customer</div>
-                <div style={{ fontSize: 14, fontWeight: 500 }}>{order.customer_name || order.name || 'Guest'}</div>
+                <div style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>{t('orders.modal.customer')}</div>
+                <div style={{ fontSize: 14, fontWeight: 500 }}>{order.customer_name || order.name || t('orders.guest')}</div>
                 {(order.customer_email || order.email) && <div style={{ fontSize: 12, color: '#64748b' }}>{order.customer_email || order.email}</div>}
                 {order.customer_phone && <div style={{ fontSize: 12, color: '#64748b' }}>{order.customer_phone}</div>}
               </div>
               <div>
-                <div style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>Date</div>
+                <div style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>{t('orders.modal.date')}</div>
                 <div style={{ fontSize: 14 }}>{formatDateForAdmin(order.created_at || order.createdAt, siteConfig?.settings?.timezone)}</div>
               </div>
             </div>
 
             <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', marginBottom: 16 }}>
               <div style={{ flex: 1, minWidth: 220 }}>
-                <div style={{ fontWeight: 700, marginBottom: 10, color: '#333', fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5 }}>Order Items</div>
+                <div style={{ fontWeight: 700, marginBottom: 10, color: '#333', fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5 }}>{t('orders.modal.orderItems')}</div>
                 {items.length > 0 ? items.map((item, idx) => (
                   <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, paddingBottom: 10, borderBottom: '1px solid #eee' }}>
                     {(item.thumbnail || item.image) && (
@@ -1363,7 +1384,7 @@ export default function OrdersSection() {
                       {item.variant && <div style={{ fontSize: 11, color: '#888' }}>{item.variant}</div>}
                       {item.selectedOptions && (() => {
                         const parts = [];
-                        if (item.selectedOptions.color) parts.push(`Color: ${item.selectedOptions.color}`);
+                        if (item.selectedOptions.color) parts.push(`${t('orders.modal.color')}: ${item.selectedOptions.color}`);
                         if (item.selectedOptions.customOptions) {
                           for (const [label, value] of Object.entries(item.selectedOptions.customOptions)) {
                             parts.push(`${label}: ${value}`);
@@ -1383,27 +1404,27 @@ export default function OrdersSection() {
                       </div>
                     </div>
                   </div>
-                )) : <div style={{ color: '#999', fontSize: 13 }}>No item details available</div>}
+                )) : <div style={{ color: '#999', fontSize: 13 }}>{t('orders.modal.noItemDetails')}</div>}
                 <div style={{ paddingTop: 8, borderTop: '2px solid #eee', textAlign: 'end' }}>
                   <div style={{ fontSize: 13, color: '#555', marginBottom: 2 }}>
-                    Subtotal: {fmtOrdAmt(parseFloat(order.subtotal || order.total || 0))}
+                    {t('orders.modal.subtotal')}: {fmtOrdAmt(parseFloat(order.subtotal || order.total || 0))}
                   </div>
                   {parseFloat(order.discount || 0) > 0 && (
                     <div style={{ fontSize: 13, color: '#16a34a', marginBottom: 2 }}>
-                      Coupon{order.coupon_code ? ` (${order.coupon_code})` : ''}: −{fmtOrdAmt(parseFloat(order.discount || 0))}
+                      {t('orders.modal.coupon')}{order.coupon_code ? ` (${order.coupon_code})` : ''}: −{fmtOrdAmt(parseFloat(order.discount || 0))}
                     </div>
                   )}
                   <div style={{ fontSize: 13, color: '#555', marginBottom: 4 }}>
-                    Shipping: {parseFloat(order.shipping_cost || 0) > 0 ? fmtOrdAmt(parseFloat(order.shipping_cost)) : <span style={{ color: '#25ab00' }}>Free</span>}
+                    {t('orders.modal.shipping')}: {parseFloat(order.shipping_cost || 0) > 0 ? fmtOrdAmt(parseFloat(order.shipping_cost)) : <span style={{ color: '#25ab00' }}>{t('orders.modal.free')}</span>}
                   </div>
                   <div style={{ fontWeight: 700, fontSize: 14 }}>
-                    Total: {fmtOrdAmt(parseFloat(order.total || 0))}
+                    {t('orders.modal.total')}: {fmtOrdAmt(parseFloat(order.total || 0))}
                   </div>
                 </div>
               </div>
 
               <div style={{ minWidth: 200 }}>
-                <div style={{ fontWeight: 700, marginBottom: 10, color: '#333', fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5 }}>Shipping Address</div>
+                <div style={{ fontWeight: 700, marginBottom: 10, color: '#333', fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5 }}>{t('orders.modal.shippingAddress')}</div>
                 {address && Object.keys(address).length > 0 ? (
                   <div style={{ fontSize: 13, lineHeight: 1.8, color: '#444' }}>
                     <div style={{ fontWeight: 600 }}>{address.name || order.customer_name}</div>
@@ -1413,19 +1434,19 @@ export default function OrdersSection() {
                     {address.country && <div>{address.country}</div>}
                   </div>
                 ) : (
-                  <div style={{ color: '#999', fontSize: 13 }}>No address on file</div>
+                  <div style={{ color: '#999', fontSize: 13 }}>{t('orders.modal.noAddress')}</div>
                 )}
 
-                <div style={{ fontWeight: 700, marginBottom: 10, marginTop: 16, color: '#333', fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5 }}>Payment Info</div>
+                <div style={{ fontWeight: 700, marginBottom: 10, marginTop: 16, color: '#333', fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5 }}>{t('orders.modal.paymentInfo')}</div>
                 <div style={{ fontSize: 13, lineHeight: 1.8, color: '#444' }}>
-                  <div><span style={{ color: '#888' }}>Method:</span> {order.payment_method === 'cod' ? 'Cash on Delivery' : (order.payment_method || '—')}</div>
-                  {order.razorpay_payment_id && <div style={{ wordBreak: 'break-all' }}><span style={{ color: '#888' }}>Payment ID:</span> {order.razorpay_payment_id}</div>}
-                  {order.razorpay_order_id && <div style={{ wordBreak: 'break-all' }}><span style={{ color: '#888' }}>Razorpay Order:</span> {order.razorpay_order_id}</div>}
-                  {order.notes && <div><span style={{ color: '#888' }}>Notes:</span> {order.notes}</div>}
+                  <div><span style={{ color: '#888' }}>{t('orders.modal.method')}:</span> {order.payment_method === 'cod' ? t('orders.modal.cashOnDelivery') : (order.payment_method || '—')}</div>
+                  {order.razorpay_payment_id && <div style={{ wordBreak: 'break-all' }}><span style={{ color: '#888' }}>{t('orders.modal.paymentId')}:</span> {order.razorpay_payment_id}</div>}
+                  {order.razorpay_order_id && <div style={{ wordBreak: 'break-all' }}><span style={{ color: '#888' }}>{t('orders.modal.razorpayOrder')}:</span> {order.razorpay_order_id}</div>}
+                  {order.notes && <div><span style={{ color: '#888' }}>{t('orders.modal.notes')}:</span> {order.notes}</div>}
                 </div>
                 {isCancelled && order.cancellation_reason && (
                   <div style={{ marginTop: 12, padding: '10px 12px', background: '#fff5f5', borderInlineStart: '3px solid #e53935', borderRadius: 4 }}>
-                    <div style={{ fontSize: 11, color: '#e53935', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>Cancellation Reason</div>
+                    <div style={{ fontSize: 11, color: '#e53935', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>{t('orders.modal.cancellationReason')}</div>
                     <div style={{ fontSize: 13, color: '#333' }}>{order.cancellation_reason}</div>
                   </div>
                 )}
@@ -1433,27 +1454,27 @@ export default function OrdersSection() {
             </div>
 
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-              <button onClick={() => setOrderDetailModal(null)} style={{ padding: '9px 20px', borderRadius: 6, border: '1px solid #ddd', background: '#f5f5f5', cursor: 'pointer', fontSize: 14 }}>Close</button>
+              <button onClick={() => setOrderDetailModal(null)} style={{ padding: '9px 20px', borderRadius: 6, border: '1px solid #ddd', background: '#f5f5f5', cursor: 'pointer', fontSize: 14 }}>{t('orders.action.close')}</button>
               {!isCancelled && !isDelivered && statusLower !== 'confirmed' && statusLower !== 'packed' && statusLower !== 'shipped' && (
-                <button onClick={() => { setOrderDetailModal(null); setConfirmDialog({ orderId: order.id, orderNum, action: 'confirmed', label: 'Confirm this order?' }); }} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#22c55e', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Confirm</button>
+                <button onClick={() => { setOrderDetailModal(null); setConfirmDialog({ orderId: order.id, orderNum, action: 'confirmed', label: t('orders.confirm.confirmThisOrder') }); }} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#22c55e', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>{t('orders.action.confirm')}</button>
               )}
               {statusLower === 'confirmed' && (
-                <button onClick={() => { setOrderDetailModal(null); setConfirmDialog({ orderId: order.id, orderNum, action: 'packed', label: 'Mark this order as packed?' }); }} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#7c3aed', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Packed</button>
+                <button onClick={() => { setOrderDetailModal(null); setConfirmDialog({ orderId: order.id, orderNum, action: 'packed', label: t('orders.confirm.markPacked') }); }} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#7c3aed', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>{t('orders.action.packed')}</button>
               )}
               {statusLower === 'packed' && (
-                <button onClick={() => { setOrderDetailModal(null); setConfirmDialog({ orderId: order.id, orderNum, action: 'shipped', label: 'Mark this order as shipped?' }); }} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#0284c7', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Shipped</button>
+                <button onClick={() => { setOrderDetailModal(null); setConfirmDialog({ orderId: order.id, orderNum, action: 'shipped', label: t('orders.confirm.markShipped') }); }} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#0284c7', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>{t('orders.action.shipped')}</button>
               )}
               {statusLower === 'shipped' && (
-                <button onClick={() => { setOrderDetailModal(null); setConfirmDialog({ orderId: order.id, orderNum, action: 'delivered', label: 'Mark this order as delivered?' }); }} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#27ae60', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Delivered</button>
+                <button onClick={() => { setOrderDetailModal(null); setConfirmDialog({ orderId: order.id, orderNum, action: 'delivered', label: t('orders.confirm.markDelivered') }); }} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#27ae60', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>{t('orders.action.delivered')}</button>
               )}
               {!isCancelled && !isDelivered && (
-                <button onClick={() => { setOrderDetailModal(null); openCancelModal(order); }} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#e53935', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Cancel Order</button>
+                <button onClick={() => { setOrderDetailModal(null); openCancelModal(order); }} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#e53935', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>{t('orders.action.cancelOrder')}</button>
               )}
               <button
                 onClick={() => { setOrderDetailModal(null); setInvoiceOrderId(order.id); }}
                 style={{ padding: '9px 20px', borderRadius: 6, border: '1px solid #0f172a', background: '#fff', color: '#0f172a', cursor: 'pointer', fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}
               >
-                🧾 Download Invoice
+                🧾 {t('orders.action.downloadInvoice')}
               </button>
             </div>
           </div>
@@ -1467,7 +1488,7 @@ export default function OrdersSection() {
             <div style={{ fontSize: 36, marginBottom: 12 }}>
               {confirmDialog.action === 'delivered' ? '📦' : '✅'}
             </div>
-            <h3 style={{ margin: '0 0 8px', fontSize: 17, color: '#1a1a1a' }}>Are you sure?</h3>
+            <h3 style={{ margin: '0 0 8px', fontSize: 17, color: '#1a1a1a' }}>{t('orders.confirm.areYouSure')}</h3>
             <p style={{ margin: '0 0 24px', fontSize: 14, color: '#666' }}>
               {confirmDialog.label} <strong>#{confirmDialog.orderNum}</strong>
             </p>
@@ -1477,7 +1498,7 @@ export default function OrdersSection() {
                 disabled={confirming}
                 style={{ padding: '9px 22px', borderRadius: 6, border: '1px solid #ddd', background: '#f5f5f5', cursor: confirming ? 'not-allowed' : 'pointer', fontSize: 14, opacity: confirming ? 0.6 : 1 }}
               >
-                Go Back
+                {t('orders.action.goBack')}
               </button>
               <button
                 onClick={async () => {
@@ -1492,10 +1513,10 @@ export default function OrdersSection() {
                 {confirming ? (
                   <>
                     <span style={{ width: 14, height: 14, border: '2px solid rgba(255,255,255,0.4)', borderTopColor: '#fff', borderRadius: '50%', display: 'inline-block', animation: 'admin-spin 0.7s linear infinite' }} />
-                    Processing...
+                    {t('orders.modal.processing')}
                   </>
                 ) : (
-                  `Yes, ${confirmDialog.action === 'delivered' ? 'Mark Delivered' : 'Confirm Order'}`
+                  confirmDialog.action === 'delivered' ? t('orders.confirm.yesMarkDelivered') : t('orders.confirm.yesConfirmOrder')
                 )}
               </button>
             </div>
@@ -1509,11 +1530,11 @@ export default function OrdersSection() {
       {cancelModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
           <div style={{ background: '#fff', borderRadius: 10, padding: 28, width: '90%', maxWidth: 440, boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}>
-            <h3 style={{ margin: '0 0 6px', fontSize: 18, color: '#1a1a1a' }}>Cancel Order #{cancelModal.order_number || cancelModal.id?.slice(-6)}</h3>
-            <p style={{ margin: '0 0 20px', fontSize: 14, color: '#666' }}>Select a reason for cancellation. Both you and the customer will receive an email.</p>
+            <h3 style={{ margin: '0 0 6px', fontSize: 18, color: '#1a1a1a' }}>{t('orders.modal.cancelOrderTitle', { num: cancelModal.order_number || cancelModal.id?.slice(-6) })}</h3>
+            <p style={{ margin: '0 0 20px', fontSize: 14, color: '#666' }}>{t('orders.modal.cancelOrderDesc')}</p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
-              {CANCEL_REASONS.map(reason => (
+              {CANCEL_REASON_KEYS.map(({ value: reason, key }) => (
                 <label key={reason} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', padding: '10px 14px', borderRadius: 6, border: `1.5px solid ${cancelReason === reason ? '#e53935' : '#e0e0e0'}`, background: cancelReason === reason ? '#fff5f5' : '#fafafa', transition: 'all 0.15s' }}>
                   <input
                     type="radio"
@@ -1523,14 +1544,14 @@ export default function OrdersSection() {
                     onChange={() => setCancelReason(reason)}
                     style={{ accentColor: '#e53935' }}
                   />
-                  <span style={{ fontSize: 14, color: '#333', fontWeight: cancelReason === reason ? 600 : 400 }}>{reason}</span>
+                  <span style={{ fontSize: 14, color: '#333', fontWeight: cancelReason === reason ? 600 : 400 }}>{t(`orders.cancelReason.${key}`)}</span>
                 </label>
               ))}
             </div>
 
             {cancelReason === 'Other' && (
               <textarea
-                placeholder="Please describe the reason..."
+                placeholder={t('orders.modal.pleaseDescribeReason')}
                 value={cancelCustomReason}
                 onChange={e => setCancelCustomReason(e.target.value)}
                 rows={3}
@@ -1540,10 +1561,10 @@ export default function OrdersSection() {
 
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
               <button onClick={closeCancelModal} disabled={cancelling} style={{ padding: '9px 20px', borderRadius: 6, border: '1px solid #ddd', background: '#f5f5f5', cursor: 'pointer', fontSize: 14 }}>
-                Go Back
+                {t('orders.action.goBack')}
               </button>
               <button onClick={confirmCancellation} disabled={cancelling || !cancelReason} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: cancelling || !cancelReason ? '#f5b3b3' : '#e53935', color: '#fff', cursor: cancelling || !cancelReason ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 600 }}>
-                {cancelling ? 'Cancelling...' : 'Confirm Cancellation'}
+                {cancelling ? t('orders.modal.cancelling') : t('orders.action.confirmCancellation')}
               </button>
             </div>
           </div>

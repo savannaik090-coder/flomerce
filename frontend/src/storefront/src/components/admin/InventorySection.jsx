@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { getProducts, updateProduct } from '../../services/productService.js';
 import { getLocations, createLocation, updateLocation, deleteLocation, getInventoryLevels, setInventoryLevel, createTransfer, getTransfers } from '../../services/inventoryService.js';
@@ -31,6 +32,7 @@ function StockStepper({ value, onChange, min = 0 }) {
 }
 
 export default function InventorySection() {
+  const { t } = useTranslation('admin');
   const { siteConfig } = useContext(SiteContext);
   const toast = useToast();
   const [products, setProducts] = useState([]);
@@ -84,7 +86,7 @@ export default function InventorySection() {
       await updateProduct(productId, { stock: parseInt(newStock) || 0 }, siteConfig?.id);
       setProducts(prev => prev.map(p => p.id === productId ? { ...p, stock: parseInt(newStock) || 0 } : p));
     } catch (err) {
-      toast.error('Failed to update stock: ' + err.message);
+      toast.error(t('inventory.updateStockFail', { error: err.message }));
     }
   }
 
@@ -96,7 +98,7 @@ export default function InventorySection() {
       const prodRes = await getProducts(siteConfig.id);
       setProducts(prodRes.data || prodRes.products || []);
     } catch (err) {
-      toast.error('Failed to update stock level: ' + err.message);
+      toast.error(t('inventory.updateStockLevelFail', { error: err.message }));
     }
   }
 
@@ -121,7 +123,7 @@ export default function InventorySection() {
   async function handleTransfer(e) {
     e.preventDefault();
     if (!transferForm.product_id || !transferForm.from_location_id || !transferForm.to_location_id) return;
-    if (transferForm.from_location_id === transferForm.to_location_id) return toast.warning('Source and destination must be different');
+    if (transferForm.from_location_id === transferForm.to_location_id) return toast.warning(t('inventory.transferDifferent'));
     setTransferSaving(true);
     try {
       await createTransfer(siteConfig.id, transferForm);
@@ -132,7 +134,7 @@ export default function InventorySection() {
         await handleShowProductLevels(selectedProduct);
       }
     } catch (err) {
-      toast.error(err.message || 'Transfer failed');
+      toast.error(err.message || t('inventory.transferFailed'));
     } finally {
       setTransferSaving(false);
     }
@@ -146,7 +148,7 @@ export default function InventorySection() {
 
   async function handleLocSubmit(e) {
     e.preventDefault();
-    if (!locForm.name.trim()) return toast.warning('Location name is required');
+    if (!locForm.name.trim()) return toast.warning(t('inventory.locNameRequired'));
     setLocSaving(true);
     try {
       if (locEditingId) {
@@ -157,7 +159,7 @@ export default function InventorySection() {
       resetLocForm();
       await loadData();
     } catch (err) {
-      toast.error('Failed to save location: ' + err.message);
+      toast.error(t('inventory.saveLocationFail', { error: err.message }));
     } finally {
       setLocSaving(false);
     }
@@ -165,15 +167,15 @@ export default function InventorySection() {
 
   function handleLocDelete(loc) {
     setConfirmModal({
-      title: 'Delete Location',
-      message: `Delete location "${loc.name}"? Stock must be zero or transferred first.`,
+      title: t('inventory.deleteLocationTitle'),
+      message: t('inventory.deleteLocationMsg', { name: loc.name }),
       danger: true,
       onConfirm: async () => {
         try {
           await deleteLocation(siteConfig.id, loc.id);
           await loadData();
         } catch (err) {
-          toast.error(err.message || 'Failed to delete location');
+          toast.error(err.message || t('inventory.deleteLocationFail'));
         }
       }
     });
@@ -184,7 +186,7 @@ export default function InventorySection() {
       await updateLocation(siteConfig.id, loc.id, { ...loc, is_default: true });
       await loadData();
     } catch (err) {
-      toast.error('Failed to set default: ' + err.message);
+      toast.error(t('inventory.setDefaultFail', { error: err.message }));
     }
   }
 
@@ -203,32 +205,32 @@ export default function InventorySection() {
     return (
       <div>
         <button className="btn btn-outline btn-sm" onClick={() => { setViewMode('stock'); setSelectedProduct(null); }} style={{ marginBottom: '1rem' }}>
-          <i className="fas fa-arrow-left" /> Back to Inventory
+          <i className="fas fa-arrow-left" /> {t('inventory.backToInventory')}
         </button>
 
         <div className="card">
           <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
             <div>
               <h3 className="card-title" style={{ marginBottom: 4 }}>{selectedProduct.name}</h3>
-              <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Total Stock: {parseInt(selectedProduct.stock) || 0}</span>
+              <span style={{ fontSize: '0.8rem', color: '#64748b' }}>{t('inventory.totalStock', { count: parseInt(selectedProduct.stock) || 0 })}</span>
             </div>
             <button className="btn btn-primary btn-sm" onClick={() => {
               setTransferForm({ ...transferForm, product_id: selectedProduct.id });
               setShowTransfer(true);
             }}>
-              <i className="fas fa-exchange-alt" /> Transfer Stock
+              <i className="fas fa-exchange-alt" /> {t('inventory.transferStock')}
             </button>
           </div>
           <div className="card-content">
             {showTransfer && (
               <form onSubmit={handleTransfer} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '1.25rem', marginBottom: '1.5rem' }}>
-                <h4 style={{ margin: '0 0 1rem', fontSize: '0.95rem' }}>Transfer Stock</h4>
+                <h4 style={{ margin: '0 0 1rem', fontSize: '0.95rem' }}>{t('inventory.transferStock')}</h4>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 100px', gap: '0.75rem', alignItems: 'end' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: 4, color: '#374151' }}>From Location</label>
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: 4, color: '#374151' }}>{t('inventory.fromLocation')}</label>
                     <select value={transferForm.from_location_id} onChange={e => setTransferForm({ ...transferForm, from_location_id: e.target.value })} required
                       style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.85rem' }}>
-                      <option value="">Select...</option>
+                      <option value="">{t('inventory.selectPlaceholder')}</option>
                       {locations.map(l => {
                         const lvl = productLevels.find(pl => pl.location_id === l.id);
                         return <option key={l.id} value={l.id}>{l.name} ({lvl?.stock || 0})</option>;
@@ -236,41 +238,41 @@ export default function InventorySection() {
                     </select>
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: 4, color: '#374151' }}>To Location</label>
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: 4, color: '#374151' }}>{t('inventory.toLocation')}</label>
                     <select value={transferForm.to_location_id} onChange={e => setTransferForm({ ...transferForm, to_location_id: e.target.value })} required
                       style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.85rem' }}>
-                      <option value="">Select...</option>
+                      <option value="">{t('inventory.selectPlaceholder')}</option>
                       {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: 4, color: '#374151' }}>Qty</label>
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: 4, color: '#374151' }}>{t('inventory.qty')}</label>
                     <StockStepper value={transferForm.quantity} min={1} onChange={v => setTransferForm({ ...transferForm, quantity: v })} />
                   </div>
                 </div>
                 <div style={{ marginTop: '0.75rem' }}>
-                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: 4, color: '#374151' }}>Notes (optional)</label>
-                  <input type="text" value={transferForm.notes} onChange={e => setTransferForm({ ...transferForm, notes: e.target.value })} placeholder="Reason for transfer"
+                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: 4, color: '#374151' }}>{t('inventory.notesOptional')}</label>
+                  <input type="text" value={transferForm.notes} onChange={e => setTransferForm({ ...transferForm, notes: e.target.value })} placeholder={t('inventory.transferReasonPlaceholder')}
                     style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.85rem', boxSizing: 'border-box' }} />
                 </div>
                 <div style={{ display: 'flex', gap: 8, marginTop: '1rem' }}>
-                  <button type="submit" className="btn btn-primary btn-sm" disabled={transferSaving}>{transferSaving ? 'Transferring...' : 'Transfer'}</button>
-                  <button type="button" className="btn btn-outline btn-sm" onClick={() => setShowTransfer(false)}>Cancel</button>
+                  <button type="submit" className="btn btn-primary btn-sm" disabled={transferSaving}>{transferSaving ? t('inventory.transferring') : t('inventory.transfer')}</button>
+                  <button type="button" className="btn btn-outline btn-sm" onClick={() => setShowTransfer(false)}>{t('inventory.cancel')}</button>
                 </div>
               </form>
             )}
 
-            <h4 style={{ fontSize: '0.9rem', margin: '0 0 0.75rem', color: '#374151' }}>Stock by Location</h4>
+            <h4 style={{ fontSize: '0.9rem', margin: '0 0 0.75rem', color: '#374151' }}>{t('inventory.stockByLocation')}</h4>
             {locations.length === 0 ? (
-              <p style={{ color: '#94a3b8', fontSize: '0.85rem' }}>No locations configured. Go to the Locations tab above to add locations.</p>
+              <p style={{ color: '#94a3b8', fontSize: '0.85rem' }}>{t('inventory.noLocationsConfigured')}</p>
             ) : (
               <div className="table-container">
                 <table>
                   <thead>
                     <tr>
-                      <th>Location</th>
-                      <th>Stock</th>
-                      <th>Update</th>
+                      <th>{t('inventory.colLocation')}</th>
+                      <th>{t('inventory.colStock')}</th>
+                      <th>{t('inventory.colUpdate')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -281,7 +283,7 @@ export default function InventorySection() {
                         <tr key={loc.id}>
                           <td>
                             <span style={{ fontWeight: 500 }}>{loc.name}</span>
-                            {loc.is_default ? <span style={{ fontSize: '0.6rem', background: '#2563eb', color: 'white', padding: '1px 6px', borderRadius: 8, marginInlineStart: 6, fontWeight: 600 }}>DEFAULT</span> : null}
+                            {loc.is_default ? <span style={{ fontSize: '0.6rem', background: '#2563eb', color: 'white', padding: '1px 6px', borderRadius: 8, marginInlineStart: 6, fontWeight: 600 }}>{t('inventory.defaultBadge')}</span> : null}
                           </td>
                           <td>{stock}</td>
                           <td>
@@ -297,26 +299,26 @@ export default function InventorySection() {
 
             {transfers.length > 0 && (
               <div style={{ marginTop: '1.5rem' }}>
-                <h4 style={{ fontSize: '0.9rem', margin: '0 0 0.75rem', color: '#374151' }}>Transfer History</h4>
+                <h4 style={{ fontSize: '0.9rem', margin: '0 0 0.75rem', color: '#374151' }}>{t('inventory.transferHistory')}</h4>
                 <div className="table-container">
                   <table>
                     <thead>
                       <tr>
-                        <th>Date</th>
-                        <th>From</th>
-                        <th>To</th>
-                        <th>Qty</th>
-                        <th>Notes</th>
+                        <th>{t('inventory.colDate')}</th>
+                        <th>{t('inventory.colFrom')}</th>
+                        <th>{t('inventory.colTo')}</th>
+                        <th>{t('inventory.qty')}</th>
+                        <th>{t('inventory.colNotes')}</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {transfers.map(t => (
-                        <tr key={t.id}>
-                          <td style={{ fontSize: '0.8rem', color: '#64748b' }}>{new Date(t.created_at).toLocaleDateString()}</td>
-                          <td>{t.from_location_name || '—'}</td>
-                          <td>{t.to_location_name || '—'}</td>
-                          <td>{t.quantity}</td>
-                          <td style={{ fontSize: '0.8rem', color: '#64748b' }}>{t.notes || '—'}</td>
+                      {transfers.map(t2 => (
+                        <tr key={t2.id}>
+                          <td style={{ fontSize: '0.8rem', color: '#64748b' }}>{new Date(t2.created_at).toLocaleDateString()}</td>
+                          <td>{t2.from_location_name || '—'}</td>
+                          <td>{t2.to_location_name || '—'}</td>
+                          <td>{t2.quantity}</td>
+                          <td style={{ fontSize: '0.8rem', color: '#64748b' }}>{t2.notes || '—'}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -343,7 +345,7 @@ export default function InventorySection() {
               marginBottom: -2, transition: 'all 0.2s'
             }}>
             <i className={`fas ${tab === 'stock' ? 'fa-warehouse' : 'fa-map-marker-alt'}`} style={{ marginInlineEnd: 6 }} />
-            {tab === 'stock' ? 'Stock Overview' : `Locations (${locations.length})`}
+            {tab === 'stock' ? t('inventory.tabStockOverview') : t('inventory.tabLocationsCount', { count: locations.length })}
           </button>
         ))}
       </div>
@@ -352,44 +354,44 @@ export default function InventorySection() {
         <div>
           <div className="card">
             <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 className="card-title">Inventory Locations ({locations.length})</h3>
+              <h3 className="card-title">{t('inventory.locationsTitle', { count: locations.length })}</h3>
               <button className="btn btn-primary btn-sm" onClick={() => { resetLocForm(); setLocShowForm(true); }}>
-                <i className="fas fa-plus" /> Add Location
+                <i className="fas fa-plus" /> {t('inventory.addLocation')}
               </button>
             </div>
             <div className="card-content">
               {locShowForm && (
                 <form onSubmit={handleLocSubmit} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '1.25rem', marginBottom: '1.5rem' }}>
-                  <h4 style={{ margin: '0 0 1rem', fontSize: '1rem' }}>{locEditingId ? 'Edit Location' : 'New Location'}</h4>
+                  <h4 style={{ margin: '0 0 1rem', fontSize: '1rem' }}>{locEditingId ? t('inventory.editLocation') : t('inventory.newLocation')}</h4>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: 4, color: '#374151' }}>Name *</label>
-                      <input type="text" value={locForm.name} onChange={e => setLocForm({ ...locForm, name: e.target.value })} placeholder="e.g. Main Warehouse" required
+                      <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: 4, color: '#374151' }}>{t('inventory.nameLabel')}</label>
+                      <input type="text" value={locForm.name} onChange={e => setLocForm({ ...locForm, name: e.target.value })} placeholder={t('inventory.namePlaceholder')} required
                         style={{ width: '100%', padding: '0.6rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.875rem', boxSizing: 'border-box' }} />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: 4, color: '#374151' }}>Priority</label>
+                      <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: 4, color: '#374151' }}>{t('inventory.priorityLabel')}</label>
                       <input type="number" min="0" value={locForm.priority} onChange={e => setLocForm({ ...locForm, priority: parseInt(e.target.value) || 0 })}
                         style={{ width: '100%', padding: '0.6rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.875rem', boxSizing: 'border-box' }} />
-                      <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>Lower = higher priority for order fulfillment</span>
+                      <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{t('inventory.priorityHelp')}</span>
                     </div>
                   </div>
                   <div style={{ marginTop: '1rem' }}>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: 4, color: '#374151' }}>Address</label>
-                    <textarea value={locForm.address} onChange={e => setLocForm({ ...locForm, address: e.target.value })} placeholder="Full address (optional)" rows={2}
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: 4, color: '#374151' }}>{t('inventory.addressLabel')}</label>
+                    <textarea value={locForm.address} onChange={e => setLocForm({ ...locForm, address: e.target.value })} placeholder={t('inventory.addressPlaceholder')} rows={2}
                       style={{ width: '100%', padding: '0.6rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.875rem', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
                   </div>
                   <div style={{ marginTop: '0.75rem' }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', cursor: 'pointer' }}>
                       <input type="checkbox" checked={locForm.is_default} onChange={e => setLocForm({ ...locForm, is_default: e.target.checked })} />
-                      Set as default fulfillment location
+                      {t('inventory.setAsDefault')}
                     </label>
                   </div>
                   <div style={{ display: 'flex', gap: 8, marginTop: '1rem' }}>
                     <button type="submit" className="btn btn-primary btn-sm" disabled={locSaving}>
-                      {locSaving ? 'Saving...' : locEditingId ? 'Update' : 'Create'}
+                      {locSaving ? t('inventory.saving') : locEditingId ? t('inventory.update') : t('inventory.create')}
                     </button>
-                    <button type="button" className="btn btn-outline btn-sm" onClick={resetLocForm}>Cancel</button>
+                    <button type="button" className="btn btn-outline btn-sm" onClick={resetLocForm}>{t('inventory.cancel')}</button>
                   </div>
                 </form>
               )}
@@ -397,8 +399,8 @@ export default function InventorySection() {
               {locations.length === 0 ? (
                 <div className="empty-state">
                   <i className="fas fa-map-marker-alt" />
-                  <h3>No locations yet</h3>
-                  <p>Add your first inventory location to track stock across warehouses, stores, or fulfillment centers.</p>
+                  <h3>{t('inventory.noLocationsTitle')}</h3>
+                  <p>{t('inventory.noLocationsDesc')}</p>
                 </div>
               ) : (
                 <div style={{ display: 'grid', gap: '0.75rem' }}>
@@ -413,15 +415,15 @@ export default function InventorySection() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>{loc.name}</span>
                           {loc.is_default ? (
-                            <span style={{ fontSize: '0.65rem', background: '#2563eb', color: 'white', padding: '2px 8px', borderRadius: 10, fontWeight: 600 }}>DEFAULT</span>
+                            <span style={{ fontSize: '0.65rem', background: '#2563eb', color: 'white', padding: '2px 8px', borderRadius: 10, fontWeight: 600 }}>{t('inventory.defaultBadge')}</span>
                           ) : null}
-                          <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>Priority: {loc.priority}</span>
+                          <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{t('inventory.priorityValue', { value: loc.priority })}</span>
                         </div>
                         {loc.address ? <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 4 }}>{loc.address}</div> : null}
                       </div>
                       <div style={{ display: 'flex', gap: 6 }}>
                         {!loc.is_default && (
-                          <button className="btn btn-outline btn-sm" onClick={() => handleLocSetDefault(loc)} title="Set as default"
+                          <button className="btn btn-outline btn-sm" onClick={() => handleLocSetDefault(loc)} title={t('inventory.setAsDefaultTitle')}
                             style={{ fontSize: '0.75rem', padding: '4px 10px' }}>
                             <i className="fas fa-star" />
                           </button>
@@ -447,13 +449,13 @@ export default function InventorySection() {
 
           <div className="card" style={{ marginTop: '1.5rem' }}>
             <div className="card-header">
-              <h3 className="card-title">How Inventory Locations Work</h3>
+              <h3 className="card-title">{t('inventory.howItWorksTitle')}</h3>
             </div>
             <div className="card-content" style={{ fontSize: '0.85rem', color: '#64748b', lineHeight: 1.7 }}>
-              <p><strong>1. Create locations</strong> — Add your warehouses, stores, or fulfillment centers.</p>
-              <p><strong>2. Set stock per location</strong> — When adding or editing products, assign stock to each location. You can also manage stock from the Stock Overview tab.</p>
-              <p><strong>3. Transfer stock</strong> — Move inventory between locations from the Stock Overview tab.</p>
-              <p><strong>4. Automatic fulfillment</strong> — When an order is placed, stock is deducted from the default location first, then by priority order. The total stock shown to customers is the sum across all locations.</p>
+              <p><strong>{t('inventory.howStep1Label')}</strong> {t('inventory.howStep1Text')}</p>
+              <p><strong>{t('inventory.howStep2Label')}</strong> {t('inventory.howStep2Text')}</p>
+              <p><strong>{t('inventory.howStep3Label')}</strong> {t('inventory.howStep3Text')}</p>
+              <p><strong>{t('inventory.howStep4Label')}</strong> {t('inventory.howStep4Text')}</p>
             </div>
           </div>
         </div>
@@ -464,19 +466,19 @@ export default function InventorySection() {
           <div className="inventory-summary">
             <div className={`inventory-card out-of-stock${activeTab === 'out' ? ' active' : ''}`} onClick={() => setActiveTab('out')}>
               <div className="count" style={{ color: '#dc2626' }}>{outOfStock.length}</div>
-              <div className="label">Out of Stock</div>
+              <div className="label">{t('inventory.cardOutOfStock')}</div>
             </div>
             <div className={`inventory-card low-stock${activeTab === 'low' ? ' active' : ''}`} onClick={() => setActiveTab('low')}>
               <div className="count" style={{ color: '#f59e0b' }}>{lowStock.length}</div>
-              <div className="label">Low Stock</div>
+              <div className="label">{t('inventory.cardLowStock')}</div>
             </div>
             <div className={`inventory-card in-stock${activeTab === 'in' ? ' active' : ''}`} onClick={() => setActiveTab('in')}>
               <div className="count" style={{ color: '#059669' }}>{inStock.length}</div>
-              <div className="label">In Stock</div>
+              <div className="label">{t('inventory.cardInStock')}</div>
             </div>
             <div className={`inventory-card total${activeTab === 'all' ? ' active' : ''}`} onClick={() => setActiveTab('all')}>
               <div className="count" style={{ color: '#2563eb' }}>{products.length}</div>
-              <div className="label">Total Products</div>
+              <div className="label">{t('inventory.cardTotalProducts')}</div>
             </div>
           </div>
 
@@ -486,47 +488,47 @@ export default function InventorySection() {
                 setTransferForm({ product_id: '', from_location_id: '', to_location_id: '', quantity: 1, notes: '' });
                 setShowTransfer(!showTransfer);
               }}>
-                <i className="fas fa-exchange-alt" /> Quick Transfer
+                <i className="fas fa-exchange-alt" /> {t('inventory.quickTransfer')}
               </button>
             </div>
           )}
 
           {showTransfer && hasLocations && (
             <form onSubmit={handleTransfer} className="card" style={{ marginBottom: '1.5rem', padding: '1.25rem' }}>
-              <h4 style={{ margin: '0 0 1rem', fontSize: '0.95rem' }}>Quick Transfer</h4>
+              <h4 style={{ margin: '0 0 1rem', fontSize: '0.95rem' }}>{t('inventory.quickTransfer')}</h4>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 80px', gap: '0.75rem', alignItems: 'end' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: 4 }}>Product</label>
+                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: 4 }}>{t('inventory.product')}</label>
                   <select value={transferForm.product_id} onChange={e => setTransferForm({ ...transferForm, product_id: e.target.value })} required
                     style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.85rem' }}>
-                    <option value="">Select product...</option>
+                    <option value="">{t('inventory.selectProduct')}</option>
                     {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: 4 }}>From</label>
+                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: 4 }}>{t('inventory.colFrom')}</label>
                   <select value={transferForm.from_location_id} onChange={e => setTransferForm({ ...transferForm, from_location_id: e.target.value })} required
                     style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.85rem' }}>
-                    <option value="">Select...</option>
+                    <option value="">{t('inventory.selectPlaceholder')}</option>
                     {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: 4 }}>To</label>
+                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: 4 }}>{t('inventory.colTo')}</label>
                   <select value={transferForm.to_location_id} onChange={e => setTransferForm({ ...transferForm, to_location_id: e.target.value })} required
                     style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.85rem' }}>
-                    <option value="">Select...</option>
+                    <option value="">{t('inventory.selectPlaceholder')}</option>
                     {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: 4 }}>Qty</label>
+                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: 4 }}>{t('inventory.qty')}</label>
                   <StockStepper value={transferForm.quantity} min={1} onChange={v => setTransferForm({ ...transferForm, quantity: v })} />
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 8, marginTop: '1rem' }}>
-                <button type="submit" className="btn btn-primary btn-sm" disabled={transferSaving}>{transferSaving ? 'Transferring...' : 'Transfer'}</button>
-                <button type="button" className="btn btn-outline btn-sm" onClick={() => setShowTransfer(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary btn-sm" disabled={transferSaving}>{transferSaving ? t('inventory.transferring') : t('inventory.transfer')}</button>
+                <button type="button" className="btn btn-outline btn-sm" onClick={() => setShowTransfer(false)}>{t('inventory.cancel')}</button>
               </div>
             </form>
           )}
@@ -534,27 +536,27 @@ export default function InventorySection() {
           <div className="card">
             <div className="card-header">
               <h3 className="card-title">
-                {activeTab === 'out' ? 'Out of Stock' : activeTab === 'low' ? 'Low Stock' : activeTab === 'in' ? 'In Stock' : 'All Products'} ({displayed.length})
+                {activeTab === 'out' ? t('inventory.headingOutOfStock', { count: displayed.length }) : activeTab === 'low' ? t('inventory.headingLowStock', { count: displayed.length }) : activeTab === 'in' ? t('inventory.headingInStock', { count: displayed.length }) : t('inventory.headingAllProducts', { count: displayed.length })}
               </h3>
             </div>
             <div className="card-content">
               {displayed.length === 0 ? (
                 <div className="empty-state">
                   <i className="fas fa-check-circle" />
-                  <h3>No products in this category</h3>
+                  <h3>{t('inventory.noProductsInCategory')}</h3>
                 </div>
               ) : (
                 <div className="table-container">
                   <table>
                     <thead>
                       <tr>
-                        <th>Product</th>
-                        <th>Price</th>
-                        <th>Total Stock</th>
-                        {hasLocations && <th>Locations</th>}
-                        <th>Status</th>
-                        {!hasLocations && <th>Update Stock</th>}
-                        {hasLocations && <th>Details</th>}
+                        <th>{t('inventory.colProduct')}</th>
+                        <th>{t('inventory.colPrice')}</th>
+                        <th>{t('inventory.colTotalStock')}</th>
+                        {hasLocations && <th>{t('inventory.colLocations')}</th>}
+                        <th>{t('inventory.colStatus')}</th>
+                        {!hasLocations && <th>{t('inventory.colUpdateStock')}</th>}
+                        {hasLocations && <th>{t('inventory.colDetails')}</th>}
                       </tr>
                     </thead>
                     <tbody>
@@ -570,13 +572,13 @@ export default function InventorySection() {
                               <td style={{ fontSize: '0.75rem', color: '#64748b' }}>
                                 {productLevels.length > 0
                                   ? productLevels.map(l => `${l.location_name}: ${l.stock}`).join(', ')
-                                  : <span style={{ color: '#e09030', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => handleShowProductLevels(product)}>Not assigned — click to add</span>}
+                                  : <span style={{ color: '#e09030', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => handleShowProductLevels(product)}>{t('inventory.notAssigned')}</span>}
                               </td>
                             )}
                             <td>
-                              {stock === 0 && <span className="status-badge status-cancelled">Out of Stock</span>}
-                              {stock > 0 && stock <= 3 && <span className="status-badge status-new">Low Stock</span>}
-                              {stock > 3 && <span className="status-badge status-confirmed">In Stock</span>}
+                              {stock === 0 && <span className="status-badge status-cancelled">{t('inventory.cardOutOfStock')}</span>}
+                              {stock > 0 && stock <= 3 && <span className="status-badge status-new">{t('inventory.cardLowStock')}</span>}
+                              {stock > 3 && <span className="status-badge status-confirmed">{t('inventory.cardInStock')}</span>}
                             </td>
                             {!hasLocations && (
                               <td>
@@ -587,7 +589,7 @@ export default function InventorySection() {
                               <td>
                                 <button className="btn btn-outline btn-sm" style={{ fontSize: '0.75rem', padding: '4px 10px' }}
                                   onClick={() => handleShowProductLevels(product)}>
-                                  <i className="fas fa-layer-group" /> Manage
+                                  <i className="fas fa-layer-group" /> {t('inventory.manage')}
                                 </button>
                               </td>
                             )}
