@@ -232,8 +232,10 @@ function cachedJson(request, body) {
     headers: {
       ...cors,
       'Content-Type': 'application/json; charset=utf-8',
-      'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400',
-      'CDN-Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400',
+      'Cache-Control': 'no-store, no-cache, must-revalidate',
+      'CDN-Cache-Control': 'no-store',
+      'Pragma': 'no-cache',
+      'Expires': '0',
     },
   });
 }
