@@ -6,7 +6,7 @@ import { registerCustomHostname, deleteCustomHostname, findCustomHostname } from
 import { resolveSiteDBById, getSiteConfig, getSiteWithConfig } from '../../utils/site-db.js';
 import { trackD1Write, trackD1Update, estimateRowBytes, normalizePlanName, getPlanLimitsConfig, recordMediaFile } from '../../utils/usage-tracker.js';
 import { purgeStorefrontCache } from '../../utils/cache.js';
-import { SUPPORTED_LOCALES } from './i18n-worker.js';
+import { SUPPORTED_LOCALES, getLocalizedWizardSeed } from './i18n-worker.js';
 import { encryptSecret, decryptSecret, maskSecret } from '../../utils/crypto.js';
 import { getSiteTranslatorUsage } from '../storefront/translate-worker.js';
 
@@ -521,21 +521,13 @@ async function createSite(request, env, user) {
       }
     }
 
-    const SEO_TITLE_DEFAULTS = {
-      jewellery: (n) => `${n} - Jewellery Store Online`,
-      clothing: (n) => `${n} - Fashion & Clothing Store`,
-      beauty: (n) => `${n} - Beauty & Cosmetics Store`,
-      general: (n) => `${n} - Shop Online`,
-    };
-    const SEO_DESC_DEFAULTS = {
-      jewellery: (n) => `Shop exquisite jewellery at ${n}. Explore rings, necklaces, earrings, bracelets & more. Secure payments & nationwide delivery.`,
-      clothing: (n) => `Discover the latest fashion at ${n}. Shop clothing, accessories & more with easy returns & fast shipping.`,
-      beauty: (n) => `Shop premium beauty & cosmetics at ${n}. Skincare, makeup & more with secure checkout & fast delivery.`,
-      general: (n) => `Shop online at ${n}. Explore our curated collection with secure checkout, easy returns & fast delivery.`,
-    };
+    // Resolve localized SEO + category seed data from the cached wizard
+    // catalog for the merchant's chosen content language. Falls back per
+    // field to the bundled English source so unfilled locales still work.
+    const wizardSeed = await getLocalizedWizardSeed(env, contentLanguage);
     const safeBrand = sanitizeInput(brandName);
-    const finalSeoTitle = seoTitle || (SEO_TITLE_DEFAULTS[category] || SEO_TITLE_DEFAULTS.general)(safeBrand);
-    const finalSeoDescription = seoDescription || (SEO_DESC_DEFAULTS[category] || SEO_DESC_DEFAULTS.general)(safeBrand);
+    const finalSeoTitle = seoTitle || wizardSeed.seoTitle(category, safeBrand);
+    const finalSeoDescription = seoDescription || wizardSeed.seoDescription(category, safeBrand);
 
     const configData = {
       site_id: siteId,
@@ -595,7 +587,7 @@ async function createSite(request, env, user) {
       if (categories && categories.length > 0) {
         await createUserCategories(env, siteDB, siteId, categories);
       } else if (category) {
-        await createDefaultCategories(env, siteDB, siteId, category);
+        await createDefaultCategories(env, siteDB, siteId, category, wizardSeed);
       }
     } catch (catError) {
       console.error('Category creation failed (non-fatal):', catError.message || catError);
@@ -638,31 +630,12 @@ async function createSite(request, env, user) {
   }
 }
 
-async function createDefaultCategories(env, db, siteId, businessCategory) {
-  const categoryTemplates = {
-    jewellery: [
-      { name: 'New Arrivals', slug: 'new-arrivals', subtitle: 'Discover our latest exquisite collections', showOnHome: 1, children: [] },
-      { name: 'Jewellery Collection', slug: 'jewellery-collection', subtitle: 'Exquisite pieces for every occasion', showOnHome: 1, children: [] },
-      { name: 'Featured Collection', slug: 'featured-collection', subtitle: 'Handpicked favourites just for you', showOnHome: 1, children: [] },
-    ],
-    clothing: [
-      { name: 'New Arrivals', slug: 'new-arrivals', subtitle: 'Discover our latest fashion trends', showOnHome: 1, children: [] },
-      { name: 'Clothing Collection', slug: 'clothing-collection', subtitle: 'Stylish wear for every occasion', showOnHome: 1, children: [] },
-      { name: 'Featured Collection', slug: 'featured-collection', subtitle: 'Handpicked favourites just for you', showOnHome: 1, children: [] },
-    ],
-    beauty: [
-      { name: 'New Arrivals', slug: 'new-arrivals', subtitle: 'Discover our latest beauty essentials', showOnHome: 1, children: [] },
-      { name: 'Skincare', slug: 'skincare', subtitle: 'Nourish and glow with our skincare range', showOnHome: 1, children: [] },
-      { name: 'Makeup', slug: 'makeup', subtitle: 'Premium makeup for every look', showOnHome: 1, children: [] },
-    ],
-    general: [
-      { name: 'New Arrivals', slug: 'new-arrivals', subtitle: 'Check out what just landed', showOnHome: 1, children: [] },
-      { name: 'Our Collection', slug: 'our-collection', subtitle: 'Browse our complete product range', showOnHome: 1, children: [] },
-      { name: 'Featured Products', slug: 'featured-products', subtitle: 'Handpicked favourites just for you', showOnHome: 1, children: [] },
-    ],
-  };
-
-  const categories = categoryTemplates[businessCategory] || categoryTemplates.general;
+async function createDefaultCategories(env, db, siteId, businessCategory, wizardSeed) {
+  // wizardSeed.defaultCategories(cat) returns a pre-localized array of
+  // { name, subtitle, slug } items derived from the merchant's content
+  // language (English fallback). Slugs always come from the English source
+  // so URLs stay ASCII / stable across languages.
+  const categories = wizardSeed.defaultCategories(businessCategory);
   let order = 0;
 
   for (const cat of categories) {
@@ -672,20 +645,8 @@ async function createDefaultCategories(env, db, siteId, businessCategory) {
     await db.prepare(
       `INSERT INTO categories (id, site_id, name, slug, subtitle, show_on_home, display_order, row_size_bytes, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
-    ).bind(parentId, siteId, cat.name, cat.slug, cat.subtitle || null, cat.showOnHome !== undefined ? cat.showOnHome : 1, order++, parentBytes).run();
+    ).bind(parentId, siteId, cat.name, cat.slug, cat.subtitle || null, 1, order++, parentBytes).run();
     await trackD1Write(env, siteId, parentBytes);
-
-    for (const childName of (cat.children || [])) {
-      const childId = generateId();
-      const childSlug = `${cat.slug}-${childName.toLowerCase().replace(/\s+/g, '-')}`;
-      const childData = { id: childId, site_id: siteId, name: childName, slug: childSlug, parent_id: parentId };
-      const childBytes = estimateRowBytes(childData);
-      await db.prepare(
-        `INSERT INTO categories (id, site_id, name, slug, parent_id, show_on_home, display_order, row_size_bytes, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
-      ).bind(childId, siteId, childName, childSlug, parentId, 0, order++, childBytes).run();
-      await trackD1Write(env, siteId, childBytes);
-    }
   }
 }
 

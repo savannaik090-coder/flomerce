@@ -345,6 +345,55 @@ export async function handleI18nAdmin(request, env, pathParts) {
   return errorResponse('i18n admin endpoint not found', 404);
 }
 
+/**
+ * Returns localized wizard seed helpers for a given content language.
+ * Falls back per-field to the bundled English catalog so partially-translated
+ * (or never-generated) locales still produce sensible defaults. Slugs are
+ * always derived from the English source so URLs stay ASCII / stable across
+ * languages.
+ */
+export async function getLocalizedWizardSeed(env, lang) {
+  let translated = null;
+  if (lang && lang !== 'en') {
+    try {
+      const cached = await readCachedLocale(env, lang);
+      translated = (cached && cached.data && cached.data.wizard) || null;
+    } catch (e) {
+      console.warn('[i18n] getLocalizedWizardSeed read failed:', lang, e.message || e);
+    }
+  }
+  const enT = EN_WIZARD.seoTitleTemplates || {};
+  const enD = EN_WIZARD.seoDescriptionTemplates || {};
+  const enC = EN_WIZARD.defaultCategories || {};
+  const trT = (translated && translated.seoTitleTemplates) || {};
+  const trD = (translated && translated.seoDescriptionTemplates || {}) || {};
+  const trC = (translated && translated.defaultCategories) || {};
+
+  const sub = (tpl, brand) => String(tpl || '').replace(/\{\{\s*brand\s*\}\}/g, brand);
+  const slugify = (s) => String(s || '').toLowerCase().trim()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
+
+  return {
+    seoTitle: (cat, brand) => sub(trT[cat] || enT[cat] || enT.general || '{{brand}}', brand),
+    seoDescription: (cat, brand) => sub(trD[cat] || enD[cat] || enD.general || '', brand),
+    defaultCategories: (cat) => {
+      const enCats = enC[cat] || enC.general || {};
+      const trCats = trC[cat] || {};
+      return Object.keys(enCats).map((key) => {
+        const enEntry = enCats[key] || {};
+        const locEntry = trCats[key] || {};
+        return {
+          name: locEntry.name || enEntry.name || '',
+          subtitle: locEntry.subtitle || enEntry.subtitle || null,
+          slug: slugify(enEntry.name || key),
+        };
+      });
+    },
+  };
+}
+
 function countKeys(obj) {
   let n = 0;
   for (const v of Object.values(obj || {})) {

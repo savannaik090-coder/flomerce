@@ -15,27 +15,26 @@ const CONTENT_LANGUAGE_LABELS = {
   ar: 'العربية',
 };
 
-// TODO: localize via content_language (handled in wizard seed-data task)
-const SEO_TITLE_TEMPLATES = {
-  jewellery: (name) => `${name} - Jewellery Store Online`,
-  clothing: (name) => `${name} - Fashion & Clothing Store`,
-  beauty: (name) => `${name} - Beauty & Cosmetics Store`,
-  general: (name) => `${name} - Shop Online`,
-};
-
-const SEO_DESCRIPTION_TEMPLATES = {
-  jewellery: (name) => `Shop exquisite jewellery at ${name}. Explore rings, necklaces, earrings, bracelets & more. Secure payments & nationwide delivery.`,
-  clothing: (name) => `Discover the latest fashion at ${name}. Shop clothing, accessories & more with easy returns & fast shipping.`,
-  beauty: (name) => `Shop premium beauty & cosmetics at ${name}. Skincare, makeup & more with secure checkout & fast delivery.`,
-  general: (name) => `Shop online at ${name}. Explore our curated collection with secure checkout, easy returns & fast delivery.`,
-};
-
-function generateSEODefaults(category, brandName, fallbackName = 'Your Store') {
+// SEO + category seed data are now sourced from the wizard i18n catalog so
+// merchants in non-English locales land on localized defaults. We resolve
+// the templates through i18next at call time (see generateSEODefaults below
+// and the DEFAULT_CATEGORIES helper inside the component).
+function generateSEODefaults(t, category, brandName, fallbackName) {
   const cat = category || 'general';
-  const name = brandName || fallbackName;
-  const titleFn = SEO_TITLE_TEMPLATES[cat] || SEO_TITLE_TEMPLATES.general;
-  const descFn = SEO_DESCRIPTION_TEMPLATES[cat] || SEO_DESCRIPTION_TEMPLATES.general;
-  return { title: titleFn(name), description: descFn(name) };
+  const name = brandName || fallbackName || 'Your Store';
+  const titleKey = `seoTitleTemplates.${cat}`;
+  const descKey = `seoDescriptionTemplates.${cat}`;
+  // i18next falls back to defaultValue when the key (or its locale file)
+  // isn't loaded — this also guards against an unknown business category.
+  const title = t(titleKey, {
+    brand: name,
+    defaultValue: t(`seoTitleTemplates.general`, { brand: name, defaultValue: `${name} - Shop Online` }),
+  });
+  const description = t(descKey, {
+    brand: name,
+    defaultValue: t(`seoDescriptionTemplates.general`, { brand: name, defaultValue: '' }),
+  });
+  return { title, description };
 }
 
 const WIZARD_STORAGE_KEY = 'flomerce_wizard_draft';
@@ -73,28 +72,20 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
     { id: 'general', name: t('categories.general'), icon: '🛍️' },
   ];
 
-  // TODO: localize via content_language (handled in wizard seed-data task)
-  const DEFAULT_CATEGORIES = {
-    jewellery: [
-      { name: 'New Arrivals', subtitle: 'Discover our latest exquisite collections' },
-      { name: 'Jewellery Collection', subtitle: 'Exquisite pieces for every occasion' },
-      { name: 'Featured Collection', subtitle: 'Handpicked favourites just for you' },
-    ],
-    clothing: [
-      { name: 'New Arrivals', subtitle: 'Discover our latest fashion trends' },
-      { name: 'Clothing Collection', subtitle: 'Stylish wear for every occasion' },
-      { name: 'Featured Collection', subtitle: 'Handpicked favourites just for you' },
-    ],
-    beauty: [
-      { name: 'New Arrivals', subtitle: 'Discover our latest beauty essentials' },
-      { name: 'Skincare', subtitle: 'Nourish and glow with our skincare range' },
-      { name: 'Makeup', subtitle: 'Premium makeup for every look' },
-    ],
-    general: [
-      { name: 'New Arrivals', subtitle: 'Check out what just landed' },
-      { name: 'Our Collection', subtitle: 'Browse our complete product range' },
-      { name: 'Featured Products', subtitle: 'Handpicked favourites just for you' },
-    ],
+  // Read the localized starter categories for a business category from the
+  // wizard i18n catalog. Falls through to jewellery (then to an empty list)
+  // when the locale file hasn't loaded the section yet.
+  const getDefaultCategories = (catId) => {
+    const tryCat = (id) => {
+      const obj = t(`defaultCategories.${id}`, { returnObjects: true, defaultValue: null });
+      if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
+        return Object.values(obj)
+          .filter((c) => c && typeof c === 'object' && c.name)
+          .map((c) => ({ name: c.name, subtitle: c.subtitle || '' }));
+      }
+      return null;
+    };
+    return tryCat(catId) || tryCat('jewellery') || [];
   };
 
   const draft = useRef(loadWizardDraft()).current;
@@ -175,8 +166,8 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
 
   const handleBusinessCategorySelect = (catId) => {
     setBusinessCategory(catId);
-    const defaults = DEFAULT_CATEGORIES[catId] || DEFAULT_CATEGORIES.jewellery;
-    setCategories(defaults.map(c => ({ name: c.name, subtitle: c.subtitle })));
+    const defaults = getDefaultCategories(catId);
+    setCategories(defaults);
   };
 
   const addCategory = () => setCategories([...categories, { name: '', subtitle: '' }]);
@@ -220,7 +211,7 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
         reader.readAsDataURL(faviconFile);
       });
     }
-    const defaults = generateSEODefaults(businessCategory, brandName, t("yourStoreFallback"));
+    const defaults = generateSEODefaults(t, businessCategory, brandName, t("yourStoreFallback"));
     const finalSeoTitle = seoTitle.trim() || defaults.title;
     const finalSeoDescription = seoDescription.trim() || defaults.description;
     return {
@@ -418,7 +409,7 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
               <button className="btn btn-outline" onClick={() => setStep(1)} style={{ flex: 1 }}>{t('back')}</button>
               <button className="btn btn-primary" onClick={() => {
                 if (!seoTouched) {
-                  const defaults = generateSEODefaults(businessCategory, brandName, t("yourStoreFallback"));
+                  const defaults = generateSEODefaults(t, businessCategory, brandName, t("yourStoreFallback"));
                   setSeoTitle(defaults.title);
                   setSeoDescription(defaults.description);
                 }
@@ -472,7 +463,7 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
               </p>
               <input
                 type="text"
-                placeholder={generateSEODefaults(businessCategory, brandName, t("yourStoreFallback")).title}
+                placeholder={generateSEODefaults(t, businessCategory, brandName, t("yourStoreFallback")).title}
                 value={seoTitle}
                 onChange={(e) => { setSeoTitle(e.target.value); setSeoTouched(true); }}
                 maxLength={70}
@@ -488,7 +479,7 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
                 {t('metaDescriptionHelp')}
               </p>
               <textarea
-                placeholder={generateSEODefaults(businessCategory, brandName, t("yourStoreFallback")).description}
+                placeholder={generateSEODefaults(t, businessCategory, brandName, t("yourStoreFallback")).description}
                 value={seoDescription}
                 onChange={(e) => { setSeoDescription(e.target.value); setSeoTouched(true); }}
                 maxLength={160}
@@ -504,13 +495,13 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
               <div style={{ marginTop: '1rem', padding: '1rem', background: 'var(--bg-secondary, #f9fafb)', borderRadius: '8px', border: '1px solid var(--border)' }}>
                 <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('googlePreview')}</p>
                 <div style={{ fontSize: '1rem', color: '#1a0dab', fontWeight: 500, marginBottom: '0.25rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {seoTitle || generateSEODefaults(businessCategory, brandName, t("yourStoreFallback")).title}
+                  {seoTitle || generateSEODefaults(t, businessCategory, brandName, t("yourStoreFallback")).title}
                 </div>
                 <div style={{ fontSize: '0.75rem', color: '#006621', marginBottom: '0.25rem' }}>
                   {subdomain}.{PLATFORM_DOMAIN}
                 </div>
                 <div style={{ fontSize: '0.8rem', color: '#545454', lineHeight: 1.4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                  {seoDescription || generateSEODefaults(businessCategory, brandName, t("yourStoreFallback")).description}
+                  {seoDescription || generateSEODefaults(t, businessCategory, brandName, t("yourStoreFallback")).description}
                 </div>
               </div>
             )}

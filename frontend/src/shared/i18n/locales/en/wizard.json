@@ -65,5 +65,39 @@
   "agreeAnd": "and",
   "agreePeriod": ".",
   "contentLanguagePrompt": "Default Language for Your Website",
-  "contentLanguageWarning": "The language you selected will be the default language for your entire website. Your shoppers will see your store in {{language}} unless you enable shopper language switching later."
+  "contentLanguageWarning": "The language you selected will be the default language for your entire website. Your shoppers will see your store in {{language}} unless you enable shopper language switching later.",
+  "seoTitleTemplates": {
+    "jewellery": "{{brand}} - Jewellery Store Online",
+    "clothing": "{{brand}} - Fashion & Clothing Store",
+    "beauty": "{{brand}} - Beauty & Cosmetics Store",
+    "general": "{{brand}} - Shop Online"
+  },
+  "seoDescriptionTemplates": {
+    "jewellery": "Shop exquisite jewellery at {{brand}}. Explore rings, necklaces, earrings, bracelets & more. Secure payments & nationwide delivery.",
+    "clothing": "Discover the latest fashion at {{brand}}. Shop clothing, accessories & more with easy returns & fast shipping.",
+    "beauty": "Shop premium beauty & cosmetics at {{brand}}. Skincare, makeup & more with secure checkout & fast delivery.",
+    "general": "Shop online at {{brand}}. Explore our curated collection with secure checkout, easy returns & fast delivery."
+  },
+  "defaultCategories": {
+    "jewellery": {
+      "c1": { "name": "New Arrivals", "subtitle": "Discover our latest exquisite collections" },
+      "c2": { "name": "Jewellery Collection", "subtitle": "Exquisite pieces for every occasion" },
+      "c3": { "name": "Featured Collection", "subtitle": "Handpicked favourites just for you" }
+    },
+    "clothing": {
+      "c1": { "name": "New Arrivals", "subtitle": "Discover our latest fashion trends" },
+      "c2": { "name": "Clothing Collection", "subtitle": "Stylish wear for every occasion" },
+      "c3": { "name": "Featured Collection", "subtitle": "Handpicked favourites just for you" }
+    },
+    "beauty": {
+      "c1": { "name": "New Arrivals", "subtitle": "Discover our latest beauty essentials" },
+      "c2": { "name": "Skincare", "subtitle": "Nourish and glow with our skincare range" },
+      "c3": { "name": "Makeup", "subtitle": "Premium makeup for every look" }
+    },
+    "general": {
+      "c1": { "name": "New Arrivals", "subtitle": "Check out what just landed" },
+      "c2": { "name": "Our Collection", "subtitle": "Browse our complete product range" },
+      "c3": { "name": "Featured Products", "subtitle": "Handpicked favourites just for you" }
+    }
+  }
 }
