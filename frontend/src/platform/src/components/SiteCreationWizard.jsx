@@ -92,7 +92,9 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
       }
       return null;
     };
-    return tryCat(catId) || tryCat('jewellery') || [];
+    // Fallback order mirrors backend getLocalizedWizardSeed:
+    //   selected category -> general -> jewellery -> [].
+    return tryCat(catId) || tryCat('general') || tryCat('jewellery') || [];
   };
 
   const draft = useRef(loadWizardDraft()).current;
