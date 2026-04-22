@@ -1,4 +1,5 @@
 import React, { createContext, useState, useEffect, useContext, useMemo } from 'react';
+import i18n from '../../../shared/i18n/init.js';
 import { PLATFORM_DOMAIN, PLATFORM_URL, API_BASE } from '../config.js';
 
 export const SiteContext = createContext(null);
@@ -165,7 +166,19 @@ export function SiteProvider({ children }) {
         customDomain: data.custom_domain || null,
         domainStatus: data.domain_status || null,
         subscriptionPlan: data.subscription_plan || null,
+        contentLanguage: data.content_language || 'en',
       };
+
+      // First-time shoppers who have no saved language preference get the
+      // merchant's content_language by default. Returning shoppers keep the
+      // language they chose (persisted in localStorage by the language
+      // detector) — never overwrite an explicit choice.
+      try {
+        const saved = typeof localStorage !== 'undefined' ? localStorage.getItem('flomerce_lang') : null;
+        if (!saved && config.contentLanguage && config.contentLanguage !== 'en' && i18n.language !== config.contentLanguage) {
+          i18n.changeLanguage(config.contentLanguage);
+        }
+      } catch (e) { /* ignore */ }
 
       config.seo = {
         seo_title: data.seo_title || null,

@@ -1,5 +1,6 @@
 import React, { useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { WishlistContext } from '../../context/WishlistContext.jsx';
 import { useCurrency } from '../../hooks/useCurrency.js';
 import { resolveImageUrl } from '../../utils/imageUrl.js';
@@ -26,6 +27,7 @@ export default function WishlistPanel({ isOpen, onClose }) {
   const { formatAmount } = useCurrency();
   const navigate = useNavigate();
   const { isModern } = useTheme();
+  const { t } = useTranslation('storefront');
   const themeClass = isModern ? 'modern-theme' : '';
 
   function handleItemClick(item) {
@@ -38,14 +40,14 @@ export default function WishlistPanel({ isOpen, onClose }) {
       <div className={`wishlist-overlay${isOpen ? ' active' : ''}`} onClick={onClose}></div>
       <div className={`wishlist-panel${isOpen ? ' active' : ''}`}>
         <div className="wishlist-panel-header">
-          <h3>Your Wishlist ({items.length})</h3>
+          <h3>{t('wishlist.title', { count: items.length })}</h3>
           <button className="close-wishlist-btn" onClick={onClose}>&times;</button>
         </div>
 
         <div className="wishlist-items">
           {items.length === 0 ? (
             <div className="empty-cart-message" style={{ textAlign: 'center', padding: '30px 0', color: '#888' }}>
-              Your wishlist is empty
+              {t('wishlist.empty')}
             </div>
           ) : (
             items.map((item) => (
@@ -69,7 +71,7 @@ export default function WishlistPanel({ isOpen, onClose }) {
                       className="remove-from-wishlist"
                       onClick={(e) => { e.stopPropagation(); removeFromWishlist(getItemProductId(item)); }}
                     >
-                      Remove
+                      {t('wishlist.remove')}
                     </button>
                   </div>
                 </div>
@@ -81,7 +83,7 @@ export default function WishlistPanel({ isOpen, onClose }) {
         {items.length > 0 && (
           <div className="wishlist-panel-footer">
             <div className="wishlist-panel-actions">
-              <button className="view-cart-btn" onClick={() => { onClose(); navigate('/wishlist'); }}>View All</button>
+              <button className="view-cart-btn" onClick={() => { onClose(); navigate('/wishlist'); }}>{t('wishlist.viewAll')}</button>
             </div>
           </div>
         )}

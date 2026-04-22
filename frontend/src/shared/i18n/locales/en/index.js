@@ -19,6 +19,7 @@ import wizard from './wizard.json';
 import legal from './legal.json';
 import about from './about.json';
 import plans from './plans.json';
+import storefront from './storefront.json';
 
 export const NAMESPACE_FILES = {
   common,
@@ -35,6 +36,11 @@ export const NAMESPACE_FILES = {
   legal,
   about,
   plans,
+  storefront,
 };
+
+// Subset used by the storefront SPA. Anything outside this list is loaded
+// only by the platform/admin SPA.
+export const STOREFRONT_NAMESPACES = ['common', 'nav', 'products', 'customers', 'storefront'];
 
 export const NAMESPACES = Object.keys(NAMESPACE_FILES);

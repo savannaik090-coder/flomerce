@@ -1,79 +1,145 @@
-import * as jewellery from './jewellery.js';
-import * as clothing from './clothing.js';
-import * as beauty from './beauty.js';
+import i18n from '../../../shared/i18n/init.js';
 import * as generic from './generic.js';
 
-const categoryMap = {
-  jewellery,
-  clothing,
-  beauty,
-};
+const POLICY_KEYS = [
+  'shippingRegions', 'shippingCharges', 'shippingDeliveryTime', 'shippingTracking',
+  'returnPolicy', 'returnReplacements', 'returnMandatory',
+  'careGuideWashing', 'careGuideCleaning', 'careGuideMaintenance',
+];
 
-function getCategory(category) {
-  return categoryMap[category] || generic;
+function tDefaults(key, fallback, opts) {
+  return i18n.t(`storefront:defaults.${key}`, { defaultValue: fallback, ...(opts || {}) });
+}
+
+function tDefaultsWithCategory(category, sub, fallback, opts) {
+  if (category && ['jewellery', 'clothing', 'beauty'].includes(category)) {
+    const v = i18n.t(`storefront:defaults.${category}.${sub}`, {
+      defaultValue: '__missing__',
+      ...(opts || {}),
+    });
+    if (v !== '__missing__') return v;
+  }
+  return tDefaults(sub, fallback, opts);
+}
+
+function tCategoryArray(category, sub, fallbackArray) {
+  if (category && ['jewellery', 'clothing', 'beauty'].includes(category)) {
+    const v = i18n.t(`storefront:defaults.${category}.${sub}`, { returnObjects: true, defaultValue: null });
+    if (Array.isArray(v) && v.length) return v;
+  }
+  const v = i18n.t(`storefront:defaults.${sub}`, { returnObjects: true, defaultValue: null });
+  return Array.isArray(v) && v.length ? v : fallbackArray;
+}
+
+function tCategoryObject(category, sub, fallbackObj, opts) {
+  if (category && ['jewellery', 'clothing', 'beauty'].includes(category)) {
+    const v = i18n.t(`storefront:defaults.${category}.${sub}`, { returnObjects: true, defaultValue: null, ...(opts || {}) });
+    if (v && typeof v === 'object') return v;
+  }
+  const v = i18n.t(`storefront:defaults.${sub}`, { returnObjects: true, defaultValue: null, ...(opts || {}) });
+  return v && typeof v === 'object' ? v : fallbackObj;
+}
+
+function buildPolicyMap(category, kind) {
+  const out = {};
+  for (const key of POLICY_KEYS) {
+    out[key] = tDefaultsWithCategory(category, `${kind}.${key}`, generic[kind]?.[key] || '');
+  }
+  return out;
 }
 
 export function getPolicies(category) {
-  return getCategory(category).policies;
+  return buildPolicyMap(category, 'policies');
 }
 
 export function getPolicyPlaceholders(category) {
-  return getCategory(category).policyPlaceholders;
+  return buildPolicyMap(category, 'policyPlaceholders');
 }
 
 export function getAboutPageDefaults(category) {
-  return getCategory(category).aboutPage;
-}
-
-export function getFeaturedVideoDefaults(category) {
-  return getCategory(category).featuredVideo;
-}
-
-export function getFeaturedVideoPlaceholders(category) {
-  return getCategory(category).featuredVideoPlaceholders;
-}
-
-export function getWatchAndBuyDefaults(category) {
-  return getCategory(category).watchAndBuyDefaults;
-}
-
-export function getHeroSliderDefaults(category) {
-  return getCategory(category).heroSliderDefaults;
-}
-
-export function getAboutPageWithBrand(category, brandName) {
-  const base = getAboutPageDefaults(category);
-  const name = brandName || 'Our Store';
+  const fallback = generic.aboutPage;
+  const heroSubtitle = tDefaultsWithCategory(category, 'aboutPage.heroSubtitle', fallback.heroSubtitle);
   return {
-    heroSubtitle: base.heroSubtitle,
-    storyText: base.storyText.replace(/\{brandName\}/g, name),
-    storyImage: '',
-    sections: base.sections.map(s => ({
-      heading: s.heading,
-      text: s.text.replace(/\{brandName\}/g, name),
-      visible: s.visible,
-    })),
+    heroSubtitle,
+    storyText: fallback.storyText,
+    sections: fallback.sections,
   };
 }
 
-function replacePlaceholders(text, brand, email, phone) {
+export function getFeaturedVideoDefaults(category) {
+  return tCategoryObject(category, 'featuredVideo', generic.featuredVideo);
+}
+
+export function getFeaturedVideoPlaceholders(category) {
+  return tCategoryObject(category, 'featuredVideoPlaceholders', generic.featuredVideoPlaceholders);
+}
+
+export function getWatchAndBuyDefaults(category) {
+  const titles = tCategoryArray(category, 'watchAndBuy', null);
+  const baseTitles = titles || generic.watchAndBuyDefaults.map(d => d.title);
+  return baseTitles.slice(0, 6).map((title, i) => ({
+    id: `default-${i + 1}`,
+    title,
+    productSku: '',
+    videoUrl: '',
+  }));
+}
+
+export function getHeroSliderDefaults(category) {
+  const fallback = generic.heroSliderDefaults;
+  const slides = tCategoryArray(category, 'heroSlider', null);
+  if (!slides) return fallback;
+  return slides.map((s, i) => ({
+    title: s.title,
+    subtitle: s.subtitle,
+    description: s.description,
+    buttonText: s.buttonText,
+    buttonLink: fallback[i]?.buttonLink || '/category/all',
+    visible: true,
+  }));
+}
+
+export function getAboutPageWithBrand(category, brandName) {
+  const name = brandName || 'Our Store';
+  const heroSubtitle = tDefaultsWithCategory(category, 'aboutPage.heroSubtitle', generic.aboutPage.heroSubtitle);
+  const storyText = tDefaultsWithCategory(category, 'aboutPage.storyText', generic.aboutPage.storyText, { brandName: name });
+  const missionHeading = tDefaultsWithCategory(category, 'aboutPage.missionHeading', 'Our Mission');
+  const missionText = tDefaultsWithCategory(category, 'aboutPage.missionText', generic.aboutPage.sections[0].text, { brandName: name });
+  return {
+    heroSubtitle,
+    storyText,
+    storyImage: '',
+    sections: [
+      { heading: missionHeading, text: missionText, visible: true },
+    ],
+  };
+}
+
+function applyContactPlaceholders(text, brand, email, phone) {
   const phoneClause = phone ? ` or ${phone}` : '';
-  return text
+  return String(text)
     .replace(/\{brand\}/g, brand)
+    .replace(/\{\{brand\}\}/g, brand)
     .replace(/\{email\}/g, email)
+    .replace(/\{\{email\}\}/g, email)
     .replace(/\{phoneClause\}/g, phoneClause)
-    .replace(/\{phone\}/g, phone);
+    .replace(/\{\{phoneClause\}\}/g, phoneClause)
+    .replace(/\{phone\}/g, phone)
+    .replace(/\{\{phone\}\}/g, phone);
 }
 
 export function getTermsDefaults(brand, email, phone) {
   const b = brand || 'Our Store';
   const e = email || 'support@example.com';
   const p = phone || '';
+  const intro = i18n.t('storefront:defaults.termsIntro', { defaultValue: generic.termsIntro, brand: b });
+  const sections = i18n.t('storefront:defaults.termsSections', { returnObjects: true, defaultValue: generic.termsSections });
+  const arr = Array.isArray(sections) ? sections : generic.termsSections;
   return {
-    intro: replacePlaceholders(generic.termsIntro, b, e, p),
-    sections: generic.termsSections.map(s => ({
-      title: replacePlaceholders(s.title, b, e, p),
-      content: replacePlaceholders(s.content, b, e, p),
+    intro: applyContactPlaceholders(intro, b, e, p),
+    sections: arr.map(s => ({
+      title: applyContactPlaceholders(s.title, b, e, p),
+      content: applyContactPlaceholders(s.content, b, e, p),
     })),
   };
 }
@@ -82,33 +148,58 @@ export function getPrivacyDefaults(brand, email, phone) {
   const b = brand || 'Our Store';
   const e = email || 'support@example.com';
   const p = phone || '';
+  const intro = i18n.t('storefront:defaults.privacyIntro', { defaultValue: generic.privacyIntro });
+  const sections = i18n.t('storefront:defaults.privacySections', { returnObjects: true, defaultValue: generic.privacySections });
+  const arr = Array.isArray(sections) ? sections : generic.privacySections;
   return {
-    intro: replacePlaceholders(generic.privacyIntro, b, e, p),
-    sections: generic.privacySections.map(s => ({
-      title: replacePlaceholders(s.title, b, e, p),
-      content: replacePlaceholders(s.content, b, e, p),
+    intro: applyContactPlaceholders(intro, b, e, p),
+    sections: arr.map(s => ({
+      title: applyContactPlaceholders(s.title, b, e, p),
+      content: applyContactPlaceholders(s.content, b, e, p),
     })),
   };
 }
 
 export function getOrderActionNotes() {
-  return generic.orderActionNotes;
+  const obj = i18n.t('storefront:defaults.orderActionNotes', { returnObjects: true, defaultValue: generic.orderActionNotes });
+  return obj && typeof obj === 'object' ? obj : generic.orderActionNotes;
 }
 
 export function getShopTheLookDefaults(category) {
-  return getCategory(category).shopTheLookDefaults || generic.shopTheLookDefaults;
+  const fallback = generic.shopTheLookDefaults;
+  const title = i18n.t('storefront:defaults.shopTheLook.title', { defaultValue: fallback.title });
+  return { ...fallback, title };
 }
 
 export function getDefaultReviews(category) {
-  return getCategory(category).defaultReviews || generic.defaultReviews;
+  const fallbackReviews = generic.defaultReviews;
+  const texts = tCategoryArray(category, 'defaultReviews', null);
+  if (!texts) return fallbackReviews;
+  return texts.map((text, i) => ({
+    text,
+    rating: fallbackReviews[i]?.rating ?? 5,
+    image: fallbackReviews[i]?.image || '',
+  }));
 }
 
 export function getTrendingProductsDefaults(category) {
-  return getCategory(category).trendingProductsDefaults || generic.trendingProductsDefaults;
+  const fallback = generic.trendingProductsDefaults;
+  const names = tCategoryArray(category, 'trendingProducts', null);
+  if (!names) return fallback;
+  return names.map((name, i) => {
+    const base = fallback[i] || fallback[fallback.length - 1];
+    return { ...base, name };
+  });
 }
 
 export function getDemoCategoriesDefaults(category) {
-  return getCategory(category).demoCategoriesDefaults || generic.demoCategoriesDefaults;
+  const fallback = generic.demoCategoriesDefaults;
+  const items = tCategoryArray(category, 'demoCategories', null);
+  if (!items) return fallback;
+  return items.map((it, i) => {
+    const base = fallback[i] || fallback[fallback.length - 1];
+    return { ...base, name: it.name, subtitle: it.subtitle };
+  });
 }
 
 export function getDemoProductsForCategory(category, categoryName) {

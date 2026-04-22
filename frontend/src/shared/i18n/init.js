@@ -1,7 +1,7 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
-import { NAMESPACE_FILES, NAMESPACES } from './locales/en/index.js';
+import { NAMESPACE_FILES, NAMESPACES, STOREFRONT_NAMESPACES } from './locales/en/index.js';
 
 // English is bundled into the JS payload — it is the source catalog and must
 // always be available as the fallback language. Every other language is
@@ -95,7 +95,17 @@ const backendPlugin = {
 
 let initPromise = null;
 
-export function initI18n(options = {}) {
+function buildResources(namespaces) {
+  // Only bundle the English slices for namespaces actually in use, so the
+  // storefront SPA does not pay the bytes for admin/owner/wizard catalogs.
+  const slice = {};
+  for (const ns of namespaces) {
+    if (NAMESPACE_FILES[ns]) slice[ns] = NAMESPACE_FILES[ns];
+  }
+  return { en: slice };
+}
+
+function initWithNamespaces(namespaces, options = {}) {
   if (initPromise) return initPromise;
   initPromise = i18n
     .use(backendPlugin)
@@ -112,11 +122,9 @@ export function initI18n(options = {}) {
       // from another bundle declare it with `useTranslation('<ns>')` and
       // call short keys (`t('heroBadge')`). Cross-namespace access uses the
       // explicit `ns:` prefix syntax — `t('common:save')`.
-      ns: NAMESPACES,
+      ns: namespaces,
       defaultNS: 'common',
-      resources: Object.fromEntries(
-        Object.entries(BUNDLED_NS).map(([lng, namespaces]) => [lng, { ...namespaces }])
-      ),
+      resources: buildResources(namespaces),
       partialBundledLanguages: true,
       interpolation: { escapeValue: false },
       detection: {
@@ -140,5 +148,13 @@ export function initI18n(options = {}) {
   return initPromise;
 }
 
-export { PRESHIPPED, RTL_LOCALES, normalizeLocale };
+export function initI18n(options = {}) {
+  return initWithNamespaces(NAMESPACES, options);
+}
+
+export function initStorefrontI18n(options = {}) {
+  return initWithNamespaces(STOREFRONT_NAMESPACES, options);
+}
+
+export { PRESHIPPED, RTL_LOCALES, normalizeLocale, STOREFRONT_NAMESPACES };
 export default i18n;

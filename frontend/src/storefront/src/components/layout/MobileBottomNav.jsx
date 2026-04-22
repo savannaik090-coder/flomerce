@@ -1,5 +1,6 @@
 import React, { useContext } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { CartContext } from '../../context/CartContext.jsx';
 import { AuthContext } from '../../context/AuthContext.jsx';
 import { CurrencyContext } from '../../context/CurrencyContext.jsx';
@@ -19,6 +20,7 @@ export default function MobileBottomNav({ onCartOpen }) {
   const { currency, setCurrency } = useContext(CurrencyContext);
   const { siteConfig } = useContext(SiteContext);
   const { isModern } = useTheme();
+  const { t } = useTranslation('storefront');
 
   const footerSettings = siteConfig?.settings?.footer || {};
   const bottomNav = footerSettings.bottomNav || {};
@@ -29,15 +31,15 @@ export default function MobileBottomNav({ onCartOpen }) {
     <nav className={`bottom-nav${isModern ? ' modern-theme' : ''}`}>
       <Link to="/" className={`bottom-nav-item${location.pathname === '/' ? ' active' : ''}`}>
         <i className="fi fi-rs-home"></i>
-        <span>Home</span>
+        <span>{t('nav.home')}</span>
       </Link>
       <Link to={shopRedirect} className="bottom-nav-item">
         <i className="fi fi-rs-shop"></i>
-        <span>Shop</span>
+        <span>{t('nav.shop')}</span>
       </Link>
       <Link to={isAuthenticated ? '/profile' : '/login'} className="bottom-nav-item">
         <i className="fi fi-rs-user"></i>
-        <span>Account</span>
+        <span>{t('nav.account')}</span>
       </Link>
       {showCurrency && (
         <div className="bottom-nav-item currency-selector-wrapper">
@@ -56,7 +58,7 @@ export default function MobileBottomNav({ onCartOpen }) {
       )}
       <a href="#" className="bottom-nav-item" onClick={(e) => { e.preventDefault(); onCartOpen?.(); }}>
         <i className="fi fi-rs-shopping-bag"></i>
-        <span>Bag</span>
+        <span>{t('nav.bag')}</span>
         {cartCount > 0 && (
           <span style={{
             position: 'absolute', top: 2, right: '50%', transform: 'translateX(12px)',

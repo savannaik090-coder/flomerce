@@ -9,10 +9,10 @@ import { WishlistProvider } from './context/WishlistContext.jsx';
 import { CurrencyProvider } from './context/CurrencyContext.jsx';
 import { PanelProvider } from './context/PanelContext.jsx';
 import { ThemeProvider } from './context/ThemeContext.jsx';
-import { initI18n } from '../../shared/i18n/init.js';
+import { initStorefrontI18n } from '../../shared/i18n/init.js';
 import './styles/global.css';
 
-initI18n().finally(() => {
+initStorefrontI18n().finally(() => {
   ReactDOM.createRoot(document.getElementById('root')).render(
     <React.StrictMode>
       <BrowserRouter>
