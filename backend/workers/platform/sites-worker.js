@@ -39,6 +39,11 @@ export async function handleSites(request, env, path, ctx) {
   }
 
   if (siteId && subResource === 'translator-settings') {
+    // Owner-only: translator credentials are a billable secret. Staff sessions
+    // (validateSiteAdmin with staff_id) must NOT be able to read, save, test,
+    // or delete the merchant's Microsoft Translator key — only the site owner
+    // (platform user who owns the site, OR the auto-issued owner SiteAdmin
+    // session where isOwner === true).
     let authorized = false;
     const user = await validateAuth(request, env);
     if (user) {
@@ -47,7 +52,10 @@ export async function handleSites(request, env, path, ctx) {
     }
     if (!authorized) {
       const siteAdmin = await validateSiteAdmin(request, env, siteId);
-      if (!siteAdmin) return errorResponse('Unauthorized', 401, 'UNAUTHORIZED');
+      if (siteAdmin && siteAdmin.isOwner) authorized = true;
+    }
+    if (!authorized) {
+      return errorResponse('Forbidden: site owner only', 403, 'FORBIDDEN');
     }
     const action = pathParts[4];
     if (action === 'test' && method === 'POST') {
