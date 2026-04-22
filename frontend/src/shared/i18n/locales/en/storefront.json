@@ -36,7 +36,16 @@
     "followSocial": "Follow us on social media",
     "downloadApp": "Download Our App",
     "copyright": "\u00a9 {{year}} {{brandName}}. All rights reserved.",
-    "poweredBy": "Powered by"
+    "poweredBy": "Powered by",
+    "information": "Information",
+    "appStoreAlt": "App Store",
+    "googlePlayAlt": "Google Play",
+    "social": {
+      "instagram": "Instagram",
+      "facebook": "Facebook",
+      "twitter": "Twitter",
+      "youtube": "YouTube"
+    }
   },
   "cart": {
     "title": "Your Shopping Bag",
