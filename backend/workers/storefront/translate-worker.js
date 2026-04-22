@@ -84,14 +84,16 @@ export async function handleTranslateProxy(request, env, path, ctx) {
     return errorResponse('Shopper translation is not enabled for this site.', 400, 'TRANSLATOR_DISABLED');
   }
 
-  // Source language is whatever the merchant authored the content in.
-  // 'auto' lets Microsoft detect when the merchant didn't pick a content
-  // language (very rare), but content_language is always set in practice.
-  const sourceLang = site.content_language || 'en';
+  // We always send `from=auto` to Microsoft and key the cache with
+  // source_lang='auto'. This handles mixed-language merchant content
+  // (e.g. an English store with a few Hindi product names) without
+  // mistranslating, and it keeps the cache key stable across sites.
+  const sourceLang = 'auto';
+  const contentLang = site.content_language || 'en';
 
-  // No-op when shopper picked the merchant's own content language —
-  // returns originals at zero cost so callers can render them as-is.
-  if (target === sourceLang) {
+  // No-op when the shopper already picked the merchant's content
+  // language — return originals at zero cost.
+  if (target === contentLang) {
     return successResponse({ translations: texts, cacheHits: texts.length, cacheMisses: 0, charsBilled: 0, capped: false });
   }
 

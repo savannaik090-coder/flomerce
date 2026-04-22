@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { SiteContext } from '../context/SiteContext.jsx';
 import { useSEO } from '../hooks/useSEO.js';
 import { getPrivacyDefaults } from '../defaults/index.js';
+import TranslatedText from '../components/TranslatedText.jsx';
 
 export default function PrivacyPolicyPage() {
   const { t, i18n } = useTranslation('storefront');
@@ -33,12 +34,12 @@ export default function PrivacyPolicyPage() {
       <p style={{ color: '#64748b', marginBottom: 40 }}>{t('privacy.lastUpdated', { date: new Date().toLocaleDateString(i18n.language || 'en-IN', { year: 'numeric', month: 'long', day: 'numeric' }), defaultValue: 'Last updated: {{date}}' })}</p>
 
       <div style={{ lineHeight: 1.8, color: '#374151' }}>
-        <p style={{ marginBottom: 24 }}>{intro}</p>
+        <p style={{ marginBottom: 24 }}><TranslatedText text={intro} /></p>
 
         {sections.map((section, i) => (
           <div key={i} style={{ marginBottom: 32 }}>
-            <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 12, color: '#1e293b' }}>{section.title}</h2>
-            <p style={{ whiteSpace: 'pre-line', color: '#374151' }}>{section.content}</p>
+            <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 12, color: '#1e293b' }}><TranslatedText text={section.title} /></h2>
+            <p style={{ whiteSpace: 'pre-line', color: '#374151' }}><TranslatedText text={section.content} /></p>
           </div>
         ))}
       </div>

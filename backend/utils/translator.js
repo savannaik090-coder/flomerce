@@ -30,7 +30,10 @@ export async function translateBatchWithCreds(texts, targetLang, sourceLang, cre
   const { apiKey, region } = creds;
   if (!apiKey) throw new Error('Translator API key missing.');
 
-  const url = `${TRANSLATE_ENDPOINT}&from=${encodeURIComponent(sourceLang || 'en')}&to=${encodeURIComponent(targetLang)}&textType=plain`;
+  const fromParam = (!sourceLang || sourceLang === 'auto')
+    ? ''
+    : `&from=${encodeURIComponent(sourceLang)}`;
+  const url = `${TRANSLATE_ENDPOINT}${fromParam}&to=${encodeURIComponent(targetLang)}&textType=plain`;
   const out = [];
 
   for (const group of chunk(texts, MAX_BATCH)) {

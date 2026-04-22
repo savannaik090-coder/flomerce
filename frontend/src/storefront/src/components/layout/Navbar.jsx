@@ -7,6 +7,7 @@ import { AuthContext } from '../../context/AuthContext.jsx';
 import { useWishlist } from '../../hooks/useWishlist.js';
 import { isPlanAtLeast } from '../../utils/plan.js';
 import LanguageSwitcher from '../LanguageSwitcher.jsx';
+import TranslatedText from '../TranslatedText.jsx';
 
 export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
   const { siteConfig } = useContext(SiteContext);
@@ -167,13 +168,13 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
                               <ul className="sub-group-menu">
                                 {directSubs.map(sub => (
                                   <li key={sub.id || sub.slug}>
-                                    <Link to={`/category/${linkedCat.slug}?subcategory=${sub.id}`} onClick={closeMobileMenu}>{sub.name}</Link>
+                                    <Link to={`/category/${linkedCat.slug}?subcategory=${sub.id}`} onClick={closeMobileMenu}><TranslatedText text={sub.name} /></Link>
                                   </li>
                                 ))}
                                 {groups.map(group => (
                                   <li key={group.id || group.slug} className={`sub-group${openSubGroups.has(group.id) ? ' sub-group-open' : ''}`}>
                                     <button className="sub-group-toggle" onClick={(e) => toggleSubGroup(group.id, e)}>
-                                      <span>{group.name}</span>
+                                      <span><TranslatedText text={group.name} /></span>
                                       <i className="fas fa-chevron-right"></i>
                                     </button>
                                     <ul className="sub-group-menu">
@@ -212,7 +213,7 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
                   return (
                     <li className={`nav-item cat-with-subs${openDropdown === (cat.id || cat.slug) ? ' dropdown-open' : ''}`} key={cat.id || cat.slug}>
                       <div className="nav-link-row">
-                        <Link to={`/category/${cat.slug}`} className="nav-link" onClick={closeMobileMenu}>{cat.name}</Link>
+                        <Link to={`/category/${cat.slug}`} className="nav-link" onClick={closeMobileMenu}><TranslatedText text={cat.name} /></Link>
                         <button className="subcategory-toggle" onClick={(e) => toggleDropdown(cat.id || cat.slug, e)} aria-label={t('nav.showSubcategories')}>
                           <i className={`fas fa-plus`}></i>
                         </button>
@@ -220,13 +221,13 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
                       <ul className="dropdown-menu">
                         {directSubs.map((sub) => (
                           <li key={sub.id || sub.slug}>
-                            <Link to={`/category/${cat.slug}?subcategory=${sub.id}`} onClick={closeMobileMenu}>{sub.name}</Link>
+                            <Link to={`/category/${cat.slug}?subcategory=${sub.id}`} onClick={closeMobileMenu}><TranslatedText text={sub.name} /></Link>
                           </li>
                         ))}
                         {groups.map((group) => (
                           <li key={group.id || group.slug} className={`sub-group${openSubGroups.has(group.id) ? ' sub-group-open' : ''}`}>
                             <button className="sub-group-toggle" onClick={(e) => toggleSubGroup(group.id, e)}>
-                              <span>{group.name}</span>
+                              <span><TranslatedText text={group.name} /></span>
                               <i className="fas fa-chevron-right"></i>
                             </button>
                             <ul className="sub-group-menu">
@@ -244,7 +245,7 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
                 }
                 return (
                   <li className="nav-item" key={cat.id || cat.slug}>
-                    <Link to={`/category/${cat.slug}`} className="nav-link" onClick={closeMobileMenu}>{cat.name}</Link>
+                    <Link to={`/category/${cat.slug}`} className="nav-link" onClick={closeMobileMenu}><TranslatedText text={cat.name} /></Link>
                   </li>
                 );
               })}
