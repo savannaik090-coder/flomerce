@@ -1100,5 +1100,37 @@
       "consultation": "General Consultation",
       "other": "Other"
     }
+  },
+  "orderHelp": {
+    "headings": {
+      "title": "Order Help",
+      "helpQuestion": "How can we help with your order?",
+      "subtitleEnter": "Enter your order number to see your options"
+    },
+    "form": {
+      "placeholder": "e.g. ORD-XXXX"
+    },
+    "actions": {
+      "findOrder": "Find Order",
+      "tryTracking": "Try Order Tracking instead \u2192",
+      "trackTitle": "Track This Order",
+      "trackDesc": "See the current status and shipping updates",
+      "cancelDesc": "Request a cancellation for this order",
+      "returnDesc": "Request a return or refund for this order",
+      "contactTitle": "Contact the Store",
+      "contactDesc": "Send an email to {{email}}",
+      "trackDifferent": "Track a different order"
+    },
+    "loading": "Loading order details...",
+    "errors": {
+      "notFound": "Order not found. Please check your order number.",
+      "loadFailed": "Could not load order details."
+    },
+    "status": {
+      "alreadyCancelled": "This order has already been cancelled"
+    },
+    "email": {
+      "subject": "Help with Order #{{num}}"
+    }
   }
 }
