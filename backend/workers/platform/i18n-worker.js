@@ -51,8 +51,21 @@ export const SUPPORTED_LOCALES = new Set([
   'pa', 'ur', 'fa', 'he', 'el', 'cs', 'da', 'fi', 'no', 'ro', 'hu', 'uk',
   'zh-TW', 'en-GB',
 ]);
-const RATE_LIMIT_PER_DAY = 5;
+const RATE_LIMIT_PER_DAY = 50;
 const R2_PREFIX = 'locales/';
+
+// Bumped whenever the translator pipeline itself changes in a way that
+// invalidates previously-translated text (placeholder protection, HTML
+// handling, prompt tweaks, etc). When a locale's stored pipeline version
+// differs from this, the next regenerate will do a FULL re-translation
+// instead of incremental, so cached corruption clears itself without the
+// admin having to remember to purge.
+//   v1 — initial release (textType=plain, no placeholder protection)
+//   v2 — textType=html + {{token}} wrapped in <span class="notranslate">
+const TRANSLATOR_PIPELINE_VERSION = 2;
+// Reserved key inside the hashes JSON object that records which pipeline
+// version produced the cached translations. Hidden from staleness diffs.
+const PIPELINE_VERSION_KEY = '__pipelineVersion';
 
 function r2Key(lang) {
   return `${R2_PREFIX}${lang}.json`;
@@ -139,18 +152,40 @@ async function bumpRateLimit(env, lang, day) {
  * since the previous translation. Falls back to a full translation when no
  * prior version exists. Returns stats and the new catalog.
  */
-async function regenerateIncremental(env, lang) {
+async function regenerateIncremental(env, lang, { force = false } = {}) {
   const prior = await readCachedLocale(env, lang);
-  const priorHashes = await readCachedHashes(env, lang);
+  const priorHashesRaw = await readCachedHashes(env, lang);
+  // If the stored pipeline version differs from the current one, every
+  // existing translation may be subtly corrupt (e.g. placeholders were
+  // mangled before v2). Treat that as "no prior" so we re-translate
+  // everything cleanly. `force` does the same on demand.
+  const priorVersion = priorHashesRaw ? Number(priorHashesRaw[PIPELINE_VERSION_KEY] || 1) : null;
+  const pipelineMismatch = priorVersion !== null && priorVersion !== TRANSLATOR_PIPELINE_VERSION;
+  const usePrior = !force && !pipelineMismatch;
+
+  // Strip the reserved meta key before passing hashes downstream so the
+  // delta math operates on real content paths only.
+  let priorHashesForDiff = null;
+  if (usePrior && priorHashesRaw) {
+    priorHashesForDiff = { ...priorHashesRaw };
+    delete priorHashesForDiff[PIPELINE_VERSION_KEY];
+  }
+
   const { translation, hashes, stats } = await translateCatalogIncremental(
     env,
     EN_CATALOG,
     lang,
-    prior ? prior.data : null,
-    priorHashes,
+    usePrior && prior ? prior.data : null,
+    priorHashesForDiff,
   );
-  await writeCachedLocale(env, lang, translation, hashes);
-  return { data: translation, stats };
+  // Stamp the pipeline version into the hashes file so future regens know
+  // whether the stored translations were produced by current code.
+  const stampedHashes = { ...hashes, [PIPELINE_VERSION_KEY]: TRANSLATOR_PIPELINE_VERSION };
+  await writeCachedLocale(env, lang, translation, stampedHashes);
+  return {
+    data: translation,
+    stats: { ...stats, force, pipelineMismatch, priorVersion: priorVersion ?? null },
+  };
 }
 
 /**
@@ -159,20 +194,39 @@ async function regenerateIncremental(env, lang) {
  * badge in the owner admin without burning any API quota.
  */
 async function diffStaleness(env, lang) {
-  const priorHashes = await readCachedHashes(env, lang);
+  const priorHashesRaw = await readCachedHashes(env, lang);
   const fresh = await hashCatalog(EN_CATALOG);
   const stale = [];
   const added = [];
-  if (!priorHashes) {
-    return { stale: 0, added: Object.keys(fresh).length, removed: 0, neverGenerated: true };
+  if (!priorHashesRaw) {
+    return {
+      stale: 0,
+      added: Object.keys(fresh).length,
+      removed: 0,
+      neverGenerated: true,
+      pipelineVersion: null,
+      pipelineMismatch: false,
+    };
   }
+  // Hide the reserved meta key from the diff math so it isn't reported as
+  // a stray "removed" entry in every cached locale.
+  const priorVersion = Number(priorHashesRaw[PIPELINE_VERSION_KEY] || 1);
+  const priorHashes = { ...priorHashesRaw };
+  delete priorHashes[PIPELINE_VERSION_KEY];
   for (const [p, h] of Object.entries(fresh)) {
     if (!(p in priorHashes)) added.push(p);
     else if (priorHashes[p] !== h) stale.push(p);
   }
   let removed = 0;
   for (const p of Object.keys(priorHashes)) if (!(p in fresh)) removed += 1;
-  return { stale: stale.length, added: added.length, removed, neverGenerated: false };
+  return {
+    stale: stale.length,
+    added: added.length,
+    removed,
+    neverGenerated: false,
+    pipelineVersion: priorVersion,
+    pipelineMismatch: priorVersion !== TRANSLATOR_PIPELINE_VERSION,
+  };
 }
 
 /**
@@ -271,10 +325,15 @@ export async function handleI18nAdmin(request, env, pathParts) {
         stale: diff.stale,
         added: diff.added,
         removed: diff.removed,
-        upToDate: diff.stale === 0 && diff.added === 0 && diff.removed === 0,
+        pipelineVersion: diff.pipelineVersion,
+        pipelineMismatch: diff.pipelineMismatch,
+        // A locale is fully clean only when there are no content deltas AND
+        // its translations were produced by the current pipeline version.
+        upToDate:
+          diff.stale === 0 && diff.added === 0 && diff.removed === 0 && !diff.pipelineMismatch,
       };
     }));
-    return successResponse({ locales });
+    return successResponse({ locales, currentPipelineVersion: TRANSLATOR_PIPELINE_VERSION });
   }
 
   if (request.method === 'POST' && action === 'regenerate' && lang) {
@@ -293,6 +352,27 @@ export async function handleI18nAdmin(request, env, pathParts) {
     }
   }
 
+  // POST /api/admin/i18n/force-regenerate/:lang  — purge + full regenerate in
+  // one shot. Bypasses the per-day rate-limit *throttle* (still bounded by
+  // Microsoft's account-level quota) and ignores any stored prior so every
+  // string is re-translated through the current pipeline. Use after a
+  // pipeline change (e.g. placeholder protection fix) or when a locale is
+  // visibly corrupted. Still records a rate-limit hit so the day counter
+  // remains an accurate audit trail.
+  if (request.method === 'POST' && action === 'force-regenerate' && lang) {
+    if (!isValidLocale(lang)) return errorResponse('Invalid locale code', 400);
+    if (lang === 'en') return errorResponse('English is the source catalog and cannot be regenerated', 400);
+    const day = new Date().toISOString().slice(0, 10);
+    try {
+      const { data, stats } = await regenerateIncremental(env, lang, { force: true });
+      // Best-effort log; failures here must not break the response.
+      try { await bumpRateLimit(env, lang, day); } catch { /* ignore */ }
+      return successResponse({ ok: true, lang, keyCount: countKeys(data), stats, forced: true });
+    } catch (e) {
+      return errorResponse(e.message || 'Force regeneration failed', 500);
+    }
+  }
+
   // POST /api/admin/i18n/refresh-all  — incremental refresh for every cached
   // locale. Skips locales that are already up-to-date (no translator call,
   // no rate-limit charge). For locales with deltas, runs the smart regen and
@@ -306,15 +386,24 @@ export async function handleI18nAdmin(request, env, pathParts) {
       const langCode = o.key.slice(R2_PREFIX.length).replace(/\.json$/, '');
       if (!isValidLocale(langCode) || langCode === 'en') continue;
       const diff = await diffStaleness(env, langCode);
-      // Nothing changed → skip entirely. No translator call, no rate-limit charge.
-      if (!diff.neverGenerated && diff.stale === 0 && diff.added === 0 && diff.removed === 0) {
+      // Nothing changed AND pipeline version matches → truly up-to-date.
+      if (
+        !diff.neverGenerated &&
+        diff.stale === 0 &&
+        diff.added === 0 &&
+        diff.removed === 0 &&
+        !diff.pipelineMismatch
+      ) {
         results.push({ lang: langCode, skipped: true, reason: 'up-to-date' });
         continue;
       }
       // Pure-deletion case (only `removed > 0`, no new/changed strings) needs
       // zero translator calls — just rewriting the file. Bypass rate limit so
-      // owners aren't blocked from cleaning up stale keys when at quota.
-      const needsTranslator = diff.neverGenerated || diff.stale > 0 || diff.added > 0;
+      // owners aren't blocked from cleaning up stale keys when at quota. A
+      // pipeline mismatch DOES need the translator (full re-translation), so
+      // it does not qualify for this bypass.
+      const needsTranslator =
+        diff.neverGenerated || diff.stale > 0 || diff.added > 0 || diff.pipelineMismatch;
       let rl = { ok: true, day: new Date().toISOString().slice(0, 10) };
       if (needsTranslator) {
         rl = await checkRateLimit(env, langCode);

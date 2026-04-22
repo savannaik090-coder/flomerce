@@ -17,7 +17,7 @@
     "regenerated": "Regenerated {{lang}} successfully ({{count}} keys).",
     "regenDetail": " ({{translated}} translated, {{kept}} reused)",
     "regenerateFailed": "Regeneration failed",
-    "rateLimited": "Rate limit reached for this locale (5/day). Try again tomorrow.",
+    "rateLimited": "Rate limit reached for this locale (50/day). Try again tomorrow, or use Force regenerate to bypass.",
     "cachedLocales": "Cached locales",
     "noLocales": "No locales cached yet.",
     "lastUpdated": "Last updated",
@@ -39,6 +39,10 @@
     "upToDate": "✓ Up to date",
     "pending": "{{count}} pending",
     "removedSuffix": " · {{count}} removed",
+    "forceRegenerate": "Force regenerate",
+    "forceConfirm": "Force-regenerate \"{{lang}}\"? This re-translates EVERY key from scratch through the current pipeline. Use after a translator code fix or to clear corrupted text.",
+    "pipelineOutdated": "⚠ Pipeline outdated — force regenerate",
+    "pipelineMismatchHint": "These translations were produced by an older translator pipeline and may contain corrupted placeholders or formatting. Click Force regenerate to rebuild from scratch.",
     "size": "Size"
   },
   "common": {

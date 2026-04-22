@@ -51,6 +51,26 @@ export default function I18nAdminPanel() {
     }
   }
 
+  // Force = bypass throttle + ignore prior cache + re-translate every key.
+  // Used after a translator-pipeline change or when a locale is visibly
+  // corrupted. Confirm because it can be expensive on large catalogs.
+  async function forceRegenerate(lang) {
+    if (!confirm(t('i18n.forceConfirm', { lang }))) return;
+    setBusyLang(lang);
+    try {
+      const res = await apiRequest(`/api/admin/i18n/force-regenerate/${encodeURIComponent(lang)}`, { method: 'POST' });
+      const data = res?.data || res;
+      const s = data?.stats;
+      const detail = s ? t('i18n.regenDetail', { translated: s.translated, kept: s.kept }) : '';
+      toast.success(t('i18n.regenerated', { lang, count: data.keyCount || '?' }) + detail);
+      await loadLocales();
+    } catch (e) {
+      toast.error(e?.message || t('i18n.regenerateFailed'));
+    } finally {
+      setBusyLang(null);
+    }
+  }
+
   async function refreshAll() {
     setRefreshingAll(true);
     try {
@@ -157,7 +177,11 @@ export default function I18nAdminPanel() {
                   <tr key={l.lang}>
                     <td><code>{l.lang}</code> {LABELS[l.lang] ? <span style={{ color: '#64748b', fontSize: '0.8rem' }}>— {LABELS[l.lang]}</span> : null}</td>
                     <td>
-                      {l.upToDate ? (
+                      {l.pipelineMismatch ? (
+                        <span style={{ color: '#9a3412', fontSize: '0.85rem' }} title={t('i18n.pipelineMismatchHint')}>
+                          {t('i18n.pipelineOutdated')}
+                        </span>
+                      ) : l.upToDate ? (
                         <span style={{ color: '#15803d', fontSize: '0.85rem' }}>{t('i18n.upToDate')}</span>
                       ) : (
                         <span style={{ color: '#9a3412', fontSize: '0.85rem' }}>
@@ -171,6 +195,9 @@ export default function I18nAdminPanel() {
                     <td style={{ textAlign: 'end' }}>
                       <button className="oa-btn oa-btn-outline" disabled={busyLang === l.lang} onClick={() => regenerate(l.lang)} style={{ marginInlineEnd: 6 }}>
                         {busyLang === l.lang ? t('i18n.regenerating') : t('i18n.regenerate')}
+                      </button>
+                      <button className="oa-btn oa-btn-outline" disabled={busyLang === l.lang} onClick={() => forceRegenerate(l.lang)} style={{ marginInlineEnd: 6 }}>
+                        {t('i18n.forceRegenerate')}
                       </button>
                       <button className="oa-btn oa-btn-outline" onClick={() => purge(l.lang)}>{t('i18n.purge')}</button>
                     </td>
