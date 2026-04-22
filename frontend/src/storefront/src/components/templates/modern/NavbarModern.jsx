@@ -1,5 +1,6 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { SiteContext } from '../../../context/SiteContext.jsx';
 import { CartContext } from '../../../context/CartContext.jsx';
 import { AuthContext } from '../../../context/AuthContext.jsx';
@@ -8,6 +9,7 @@ import { isPlanAtLeast } from '../../../utils/plan.js';
 import './modern.css';
 
 export default function NavbarModern({ onSearchOpen, onCartOpen, onWishlistOpen }) {
+  const { t } = useTranslation('storefront');
   const { siteConfig } = useContext(SiteContext);
   const { cartCount } = useContext(CartContext);
   const { isAuthenticated } = useContext(AuthContext);
@@ -121,7 +123,7 @@ export default function NavbarModern({ onSearchOpen, onCartOpen, onWishlistOpen 
                   <li key={link.id} className={`mn-sub-group${isExpanded ? ' mn-sub-group-open' : ''}`}>
                     <div className="mn-grouped-cat-header">
                       <Link to={link.url} onClick={closeMobileMenu} className="mn-grouped-cat-link">{link.label}</Link>
-                      <button className="mn-subcategory-toggle" onClick={(e) => toggleSubGroup(`grouped-${link.id}`, e)} aria-label="Show subcategories">
+                      <button className="mn-subcategory-toggle" onClick={(e) => toggleSubGroup(`grouped-${link.id}`, e)} aria-label={t('nav.showSubcategories', 'Show subcategories')}>
                         <svg className="mn-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14"/></svg>
                       </button>
                     </div>
@@ -214,18 +216,18 @@ export default function NavbarModern({ onSearchOpen, onCartOpen, onWishlistOpen 
   function renderExtraLinks() {
     return (
       <>
-        {showAbout && <li className="mn-nav-item"><Link to="/about" className="mn-nav-link" onClick={closeMobileMenu}>About</Link></li>}
-        {showBookAppointment && <li className="mn-nav-item"><Link to="/book-appointment" className="mn-nav-link" onClick={closeMobileMenu}>Book Appointment</Link></li>}
+        {showAbout && <li className="mn-nav-item"><Link to="/about" className="mn-nav-link" onClick={closeMobileMenu}>{t('nav.about', 'About')}</Link></li>}
+        {showBookAppointment && <li className="mn-nav-item"><Link to="/book-appointment" className="mn-nav-link" onClick={closeMobileMenu}>{t('nav.bookAppointment', 'Book Appointment')}</Link></li>}
         {showOrderTrack && (
           orderTrackUrl ? (
-            <li className="mn-nav-item"><a href={orderTrackUrl} className="mn-nav-link" target="_blank" rel="noopener noreferrer" onClick={closeMobileMenu}>Order Track</a></li>
+            <li className="mn-nav-item"><a href={orderTrackUrl} className="mn-nav-link" target="_blank" rel="noopener noreferrer" onClick={closeMobileMenu}>{t('nav.orderTrack', 'Order Track')}</a></li>
           ) : (
-            <li className="mn-nav-item"><Link to="/order-track" className="mn-nav-link" onClick={closeMobileMenu}>Order Track</Link></li>
+            <li className="mn-nav-item"><Link to="/order-track" className="mn-nav-link" onClick={closeMobileMenu}>{t('nav.orderTrack', 'Order Track')}</Link></li>
           )
         )}
-        {settings.blogInNavbar && settings.showBlog !== false && <li className="mn-nav-item"><Link to="/blog" className="mn-nav-link" onClick={closeMobileMenu}>Blog</Link></li>}
-        {settings.faqInNavbar && settings.showFaq !== false && <li className="mn-nav-item"><Link to="/faq" className="mn-nav-link" onClick={closeMobileMenu}>FAQ</Link></li>}
-        {showContact && <li className="mn-nav-item"><Link to="/contact" className="mn-nav-link" onClick={closeMobileMenu}>Contact</Link></li>}
+        {settings.blogInNavbar && settings.showBlog !== false && <li className="mn-nav-item"><Link to="/blog" className="mn-nav-link" onClick={closeMobileMenu}>{t('nav.blog', 'Blog')}</Link></li>}
+        {settings.faqInNavbar && settings.showFaq !== false && <li className="mn-nav-item"><Link to="/faq" className="mn-nav-link" onClick={closeMobileMenu}>{t('nav.faq', 'FAQ')}</Link></li>}
+        {showContact && <li className="mn-nav-item"><Link to="/contact" className="mn-nav-link" onClick={closeMobileMenu}>{t('nav.contact', 'Contact')}</Link></li>}
       </>
     );
   }
@@ -234,7 +236,7 @@ export default function NavbarModern({ onSearchOpen, onCartOpen, onWishlistOpen 
     <header className="mn-header">
       <nav className="mn-navbar">
         <div className={`mn-nav-container${!isCentered ? ' mn-logo-left' : ''}`}>
-          <button className="mn-hamburger" onClick={() => setMenuOpen(true)} aria-label="Open menu">
+          <button className="mn-hamburger" onClick={() => setMenuOpen(true)} aria-label={t('nav.menu', 'Menu')}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <line x1="3" y1="6" x2="21" y2="6"/>
               <line x1="3" y1="12" x2="21" y2="12"/>
@@ -262,12 +264,12 @@ export default function NavbarModern({ onSearchOpen, onCartOpen, onWishlistOpen 
           <ul className={`${isCentered ? 'mn-nav-left' : 'mn-nav-all'} mn-desktop-only`}>
             {isCentered ? (
               <>
-                <li className="mn-nav-item"><Link to="/" className="mn-nav-link" onClick={closeMobileMenu}>Home</Link></li>
+                <li className="mn-nav-item"><Link to="/" className="mn-nav-link" onClick={closeMobileMenu}>{t('nav.home', 'Home')}</Link></li>
                 {leftItems.map((item, i) => renderNavItem(item, i))}
               </>
             ) : (
               <>
-                <li className="mn-nav-item"><Link to="/" className="mn-nav-link" onClick={closeMobileMenu}>Home</Link></li>
+                <li className="mn-nav-item"><Link to="/" className="mn-nav-link" onClick={closeMobileMenu}>{t('nav.home', 'Home')}</Link></li>
                 {navItems.map((item, i) => renderNavItem(item, i))}
                 {renderExtraLinks()}
               </>
@@ -299,28 +301,28 @@ export default function NavbarModern({ onSearchOpen, onCartOpen, onWishlistOpen 
           )}
 
           <div className="mn-nav-icons">
-            <button className="mn-icon-btn" onClick={() => onSearchOpen?.()} aria-label="Search">
+            <button className="mn-icon-btn" onClick={() => onSearchOpen?.()} aria-label={t('nav.search', 'Search')}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                 <circle cx="11" cy="11" r="8"/>
                 <line x1="21" y1="21" x2="16.65" y2="16.65"/>
               </svg>
             </button>
             {showAccountIcon && (
-              <Link to={isAuthenticated ? '/profile' : '/login'} className="mn-icon-btn" aria-label="Account">
+              <Link to={isAuthenticated ? '/profile' : '/login'} className="mn-icon-btn" aria-label={t('nav.account', 'Account')}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                   <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
                   <circle cx="12" cy="7" r="4"/>
                 </svg>
               </Link>
             )}
-            <button className="mn-icon-btn mn-icon-badge" onClick={() => onWishlistOpen?.()} aria-label="Wishlist">
+            <button className="mn-icon-btn mn-icon-badge" onClick={() => onWishlistOpen?.()} aria-label={t('nav.wishlist', 'Wishlist')}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                 <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
               </svg>
               {wishlistCount > 0 && <span className="mn-badge">{wishlistCount}</span>}
             </button>
             {showCartIcon && (
-              <button className="mn-icon-btn mn-icon-badge" onClick={() => onCartOpen?.()} aria-label="Cart">
+              <button className="mn-icon-btn mn-icon-badge" onClick={() => onCartOpen?.()} aria-label={t('nav.cart', 'Cart')}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                   <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
                   <line x1="3" y1="6" x2="21" y2="6"/>
@@ -335,8 +337,8 @@ export default function NavbarModern({ onSearchOpen, onCartOpen, onWishlistOpen 
 
       <div className={`mn-mobile-menu${menuOpen ? ' mn-mobile-open' : ''}`}>
         <div className="mn-mobile-header">
-          <span className="mn-mobile-title">{siteConfig?.brandName || 'Menu'}</span>
-          <button className="mn-mobile-close" onClick={closeMobileMenu} aria-label="Close menu">
+          <span className="mn-mobile-title">{siteConfig?.brandName || t('nav.menu', 'Menu')}</span>
+          <button className="mn-mobile-close" onClick={closeMobileMenu} aria-label={t('auth.common.close', 'Close')}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <line x1="18" y1="6" x2="6" y2="18"/>
               <line x1="6" y1="6" x2="18" y2="18"/>
@@ -344,7 +346,7 @@ export default function NavbarModern({ onSearchOpen, onCartOpen, onWishlistOpen 
           </button>
         </div>
         <ul className="mn-mobile-list">
-          <li className="mn-nav-item"><Link to="/" className="mn-nav-link" onClick={closeMobileMenu}>Home</Link></li>
+          <li className="mn-nav-item"><Link to="/" className="mn-nav-link" onClick={closeMobileMenu}>{t('nav.home', 'Home')}</Link></li>
           {navItems.map((item, i) => renderNavItem(item, i))}
           {renderExtraLinks()}
         </ul>
@@ -352,17 +354,17 @@ export default function NavbarModern({ onSearchOpen, onCartOpen, onWishlistOpen 
           {showAccountIcon && (
             <Link to={isAuthenticated ? '/profile' : '/login'} className="mn-mobile-action" onClick={closeMobileMenu}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-              Account
+              {t('nav.account', 'Account')}
             </Link>
           )}
           <button className="mn-mobile-action" onClick={() => { closeMobileMenu(); onWishlistOpen?.(); }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-            Wishlist ({wishlistCount})
+            {t('nav.wishlist', 'Wishlist')} ({wishlistCount})
           </button>
           {showCartIcon && (
             <button className="mn-mobile-action" onClick={() => { closeMobileMenu(); onCartOpen?.(); }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-              Cart ({cartCount})
+              {t('nav.cart', 'Cart')} ({cartCount})
             </button>
           )}
         </div>

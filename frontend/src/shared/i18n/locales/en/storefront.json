@@ -529,6 +529,30 @@
       "whatsappMessage": "Hi! I would like to share my review.",
       "imageAlt": "Customer Review {{index}}",
       "fullSizeAlt": "Full Size Review"
+    },
+    "reviewsModern": {
+      "defaultTitle": "What Our Customers Say",
+      "defaultSubtitle": "Real reviews from our happy customers",
+      "shareButton": "SHARE YOUR REVIEW",
+      "whatsappMessage": "Hi! I would like to share my review.",
+      "imageAlt": "Customer Review {{index}}",
+      "fullSizeAlt": "Full Size Review"
+    },
+    "chooseByCategory": {
+      "label": "Collections",
+      "title": "Shop by Category",
+      "explore": "Explore"
+    },
+    "trending": {
+      "title": "Trending Now",
+      "subtitle": "Our most popular picks",
+      "loading": "Loading trending products...",
+      "scrollLeft": "Scroll left",
+      "scrollRight": "Scroll right"
+    },
+    "categorySection": {
+      "viewAll": "VIEW ALL",
+      "loading": "Loading {{name}}..."
     }
   },
   "about": {

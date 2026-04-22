@@ -1,9 +1,11 @@
 import React, { useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useSiteConfig } from '../../../hooks/useSiteConfig.js';
 import { resolveImageUrl } from '../../../utils/imageUrl.js';
 import { getDefaultReviews } from '../../../defaults/index.js';
 
 export default function CustomerReviewsModern() {
+  const { t } = useTranslation('storefront');
   const { siteConfig } = useSiteConfig();
   const scrollRef = useRef(null);
   const [modalImage, setModalImage] = useState(null);
@@ -16,8 +18,8 @@ export default function CustomerReviewsModern() {
     ? settings.reviews
     : getDefaultReviews(siteConfig?.category);
 
-  const sectionTitle = settings.reviewsSectionTitle || 'What Our Customers Say';
-  const sectionSubtitle = settings.reviewsSectionSubtitle || 'Real reviews from our happy customers';
+  const sectionTitle = settings.reviewsSectionTitle || t('home.reviewsModern.defaultTitle', 'What Our Customers Say');
+  const sectionSubtitle = settings.reviewsSectionSubtitle || t('home.reviewsModern.defaultSubtitle', 'Real reviews from our happy customers');
   const phone = siteConfig?.phone || '';
 
   const scroll = (direction) => {
@@ -28,7 +30,7 @@ export default function CustomerReviewsModern() {
   };
 
   const openWhatsApp = () => {
-    const msg = encodeURIComponent('Hi! I would like to share my review.');
+    const msg = encodeURIComponent(t('home.reviewsModern.whatsappMessage', 'Hi! I would like to share my review.'));
     window.open(`https://wa.me/${phone.replace(/[^0-9]/g, '')}?text=${msg}`, '_blank');
   };
 
@@ -56,7 +58,7 @@ export default function CustomerReviewsModern() {
                     className="mn-customer-review-image"
                     onClick={() => setModalImage(resolveImageUrl(review.image))}
                   >
-                    <img src={resolveImageUrl(review.image)} alt={`Customer Review ${i + 1}`} />
+                    <img src={resolveImageUrl(review.image)} alt={t('home.reviewsModern.imageAlt', 'Customer Review {{index}}', { index: i + 1 })} />
                   </div>
                 )}
                 <div className="mn-customer-review-body">
@@ -89,7 +91,7 @@ export default function CustomerReviewsModern() {
         {phone && (
           <div className="mn-customer-reviews-cta">
             <button className="mn-customer-reviews-cta-btn" onClick={openWhatsApp}>
-              SHARE YOUR REVIEW
+              {t('home.reviewsModern.shareButton', 'SHARE YOUR REVIEW')}
             </button>
           </div>
         )}
@@ -108,7 +110,7 @@ export default function CustomerReviewsModern() {
             &times;
           </span>
           <div className="image-modal-content">
-            <img src={modalImage} alt="Full Size Review" />
+            <img src={modalImage} alt={t('home.reviewsModern.fullSizeAlt', 'Full Size Review')} />
           </div>
         </div>
       )}

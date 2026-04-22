@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useSiteConfig } from '../../hooks/useSiteConfig.js';
 import * as productService from '../../services/productService.js';
 import ProductCard from '../product/ProductCard.jsx';
@@ -14,6 +15,7 @@ function resolveImg(src) {
 }
 
 export default function CategorySection({ category }) {
+  const { t } = useTranslation('storefront');
   const { siteConfig } = useSiteConfig();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -72,7 +74,7 @@ export default function CategorySection({ category }) {
             <div className="home-category-banner-content">
               <h3 className="home-category-banner-title">{category.name}</h3>
               <div className="home-category-banner-divider" />
-              <Link to={`/category/${category.slug}`} className="home-category-banner-btn" style={{ textDecoration: 'none' }}>VIEW ALL</Link>
+              <Link to={`/category/${category.slug}`} className="home-category-banner-btn" style={{ textDecoration: 'none' }}>{t('home.categorySection.viewAll', 'VIEW ALL')}</Link>
             </div>
           </div>
         </div>
@@ -96,7 +98,7 @@ export default function CategorySection({ category }) {
           {loading ? (
             <div className="product-loader show">
               <div className="product-loader-spinner"></div>
-              <div className="product-loader-text">Loading {category.name.toLowerCase()}...</div>
+              <div className="product-loader-text">{t('home.categorySection.loading', 'Loading {{name}}...', { name: category.name.toLowerCase() })}</div>
             </div>
           ) : (
             products.map((product) => (
