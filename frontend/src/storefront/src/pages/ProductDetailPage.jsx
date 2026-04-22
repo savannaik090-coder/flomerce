@@ -49,7 +49,7 @@ function PolicyItem({ label, value }) {
   return (
     <div className="policy-item">
       <span className="policy-item-label">{label}</span>
-      <span className="policy-item-value">{value}</span>
+      <span className="policy-item-value"><TranslatedText text={value} /></span>
     </div>
   );
 }

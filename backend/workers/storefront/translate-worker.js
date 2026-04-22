@@ -127,8 +127,13 @@ export async function handleTranslateProxy(request, env, path, ctx) {
 
   if (dailyUsed >= dailyCap) {
     // Past the cap: degrade gracefully — never crash the storefront.
-    // `capped:true` in the body is the contract the storefront reads.
-    return successResponse({ translations: texts, cacheHits: 0, cacheMisses: 0, charsBilled: 0, capped: true });
+    // We signal the cap two ways so callers can pick: an explicit
+    // `X-Translator-Capped: 1` header and `capped:true` in the body.
+    const res = successResponse({ translations: texts, cacheHits: 0, cacheMisses: 0, charsBilled: 0, capped: true });
+    return new Response(res.body, {
+      status: res.status,
+      headers: { ...Object.fromEntries(res.headers), 'X-Translator-Capped': '1' },
+    });
   }
 
   // Cache lookup per text.
