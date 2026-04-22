@@ -150,8 +150,8 @@ export default function LandingPage() {
             {features.map((f) => (
               <div key={f.key} className="feature-card">
                 <div className="feature-icon-wrap">{f.icon}</div>
-                <h3>{t(`landing.features.${f.key}.title`)}</h3>
-                <p>{t(`landing.features.${f.key}.desc`)}</p>
+                <h3>{t(`features.${f.key}.title`)}</h3>
+                <p>{t(`features.${f.key}.desc`)}</p>
               </div>
             ))}
           </div>
