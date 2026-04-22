@@ -12,3 +12,9 @@ id = "h-WRnXnX4soP907rEZ9Ua"
 uri = "file://Flomerce_Competitive_Analysis_April_2026.pdf"
 type = "pdf"
 title = "Flomerce Competitive Analysis - Corrected with Verified Fees"
+
+[[outputs]]
+id = "6E7PHc4GC2WiNjuY37bEe"
+uri = "file://.local/I18N_HANDOFF.md"
+type = "text"
+title = "Flomerce i18n — Handoff Doc"
