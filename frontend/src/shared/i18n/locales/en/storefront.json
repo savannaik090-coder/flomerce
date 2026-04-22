@@ -401,6 +401,136 @@
       "Other": "Other"
     }
   },
+  "auth": {
+    "common": {
+      "email": "Email",
+      "emailAddress": "Email Address",
+      "password": "Password",
+      "confirmPassword": "Confirm Password",
+      "show": "Show",
+      "hide": "Hide",
+      "cancel": "Cancel",
+      "close": "Close",
+      "ok": "OK",
+      "orContinueWith": "Or continue with",
+      "googleAlt": "Google"
+    },
+    "login": {
+      "title": "Login to Your Account",
+      "subtitle": "Welcome back, please enter your details",
+      "successToast": "Login successful!",
+      "googleFailed": "Google sign-in failed. Please try again.",
+      "missingFields": "Please enter both email and password",
+      "failed": "Login failed. Please check your credentials.",
+      "forgotPassword": "Forgot Password?",
+      "loggingIn": "Logging in...",
+      "loginButton": "Login",
+      "signInWithGoogle": "Sign in with Google",
+      "noAccount": "Don't have an account?",
+      "signUp": "Sign up",
+      "resetTitle": "Reset Password",
+      "resetIntro": "Enter your email address and we'll send you a link to reset your password.",
+      "resetEmailPlaceholder": "Enter your email",
+      "resetMissingEmail": "Please enter your email address",
+      "resetSuccess": "Password reset email sent! Check your inbox.",
+      "resetFailed": "Failed to send reset email",
+      "sending": "Sending...",
+      "sendResetEmail": "Send Reset Email",
+      "verifyTitle": "Email Verification Required",
+      "verifyMessage": "Please verify your email address before logging in. Check your email inbox (and spam folder) for the verification link.",
+      "resending": "Sending...",
+      "resendVerification": "Resend Verification Email",
+      "resendSuccess": "Verification email sent! Check your inbox.",
+      "resendFailed": "Failed to resend. Please try again.",
+      "tipLabel": "Tip:",
+      "tipText": "If you don't receive the email, check your spam folder or contact support."
+    },
+    "signup": {
+      "title": "Create Your Account",
+      "subtitle": "Join us to explore exclusive collections",
+      "googleFailed": "Google sign-up failed. Please try again.",
+      "fullName": "Full Name",
+      "phoneNumber": "Phone Number",
+      "optional": "(optional)",
+      "phonePlaceholder": "Phone number",
+      "passwordLabel": "Password (8+ characters)",
+      "confirmPassword": "Confirm Password",
+      "creating": "Creating Account...",
+      "createButton": "Create Account",
+      "signUpWithGoogle": "Sign up with Google",
+      "haveAccount": "Already have an account?",
+      "logIn": "Log in",
+      "errors": {
+        "nameMin": "Name must be at least 2 characters",
+        "invalidEmail": "Please enter a valid email",
+        "passwordMin": "Password must be at least 8 characters",
+        "passwordMismatch": "Passwords do not match",
+        "failed": "Signup failed. Please try again."
+      },
+      "verifyTitle": "Account Created Successfully!",
+      "important": "Important:",
+      "verifyMessage1Pre": "Your account has been created but you ",
+      "cannotLogIn": "CANNOT log in",
+      "verifyMessage1Post": " until you verify your email.",
+      "verifyMessage2": "You'll receive a verification email that you must click before accessing your account.",
+      "noteLabel": "Note:",
+      "noteText": "Please also check your spam folder if you don't see the email in your inbox.",
+      "redirecting": "You will be redirected to the login page..."
+    },
+    "forgot": {
+      "title": "Forgot Password",
+      "subtitle": "Enter your email to receive a password reset link",
+      "emailPlaceholder": "Enter your email",
+      "missingEmail": "Please enter your email address",
+      "success": "Password reset link has been sent to your email. Please check your inbox and spam folder.",
+      "failed": "Failed to send reset email. Please try again.",
+      "sending": "Sending...",
+      "sendButton": "Send Reset Link",
+      "rememberPassword": "Remember your password?",
+      "logIn": "Log in"
+    },
+    "reset": {
+      "title": "Reset Password",
+      "subtitle": "Enter your new password below",
+      "newPassword": "New Password",
+      "confirmPassword": "Confirm Password",
+      "minChars": "Minimum 8 characters",
+      "invalidLink": "Invalid reset link. Please request a new password reset.",
+      "passwordMin": "Password must be at least 8 characters",
+      "passwordMismatch": "Passwords do not match",
+      "success": "Password reset successfully! Redirecting to login...",
+      "failed": "Failed to reset password. The link may have expired.",
+      "resetting": "Resetting...",
+      "resetButton": "Reset Password",
+      "backToLogin": "Back to Login"
+    },
+    "verify": {
+      "missingToken": "Invalid verification link. Missing verification token.",
+      "failed": "Verification failed. The link may have expired.",
+      "verifyingTitle": "Verifying Email...",
+      "verifyingMessage": "Please wait while we verify your email address.",
+      "successTitle": "Email Verified!",
+      "successMessage": "Your email has been verified successfully. You will be redirected to the login page.",
+      "goToLogin": "Go to Login",
+      "errorTitle": "Verification Failed"
+    }
+  },
+  "home": {
+    "watchAndBuy": {
+      "title": "Watch And Buy",
+      "videoFallback": "Video",
+      "viewProduct": "View Product",
+      "skuLabel": "SKU: {{sku}}"
+    },
+    "reviews": {
+      "defaultTitle": "What Our Customers Say",
+      "defaultSubtitle": "Real reviews from our happy customers",
+      "shareButton": "SHARE YOUR REVIEW",
+      "whatsappMessage": "Hi! I would like to share my review.",
+      "imageAlt": "Customer Review {{index}}",
+      "fullSizeAlt": "Full Size Review"
+    }
+  },
   "about": {
     "pageTitle": "About Us",
     "unavailableTitle": "This page is currently unavailable",
@@ -816,6 +946,159 @@
         "\"Best beauty products I have tried. Packaging is beautiful and delivery was quick\"",
         "\"Natural ingredients and great results. My go-to store for all beauty essentials now\""
       ]
+    }
+  },
+  "return": {
+    "title": "Return Order",
+    "lookup": {
+      "intro": "Enter your order number and email address to receive a return link.",
+      "orderNumber": "Order Number",
+      "orderNumberPlaceholder": "e.g. FX-123456",
+      "email": "Email Address",
+      "emailPlaceholder": "your@email.com",
+      "sending": "Sending...",
+      "sendLink": "Send Return Link",
+      "sentMessage": "A return link has been sent to your email. Please check your inbox.",
+      "notFound": "Could not find this order. Please check your order number and email."
+    },
+    "toasts": {
+      "maxPhotos": "You can upload a maximum of 5 photos.",
+      "uploadFail": "Failed to upload one or more images. Please try again."
+    },
+    "errors": {
+      "submitFail": "Failed to submit return request"
+    },
+    "status": {
+      "checking": "Checking return status...",
+      "orderRef": "Order",
+      "heading": "Return Status",
+      "requestedLabel": "Requested:",
+      "refund": "Refund",
+      "replacement": "Replacement",
+      "noteFromStore": "Note from store",
+      "refundAmount": "Refund amount:",
+      "requested": "Requested",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "refunded": "Refunded"
+    },
+    "form": {
+      "intro": "Submit a return request for order",
+      "reasonLabel": "Reason for return *",
+      "detailLabel": "Additional notes *",
+      "detailPlaceholderRequired": "Please describe the issue in detail (e.g. what is wrong, when was it noticed)...",
+      "detailPlaceholder": "Tell us more about your return request...",
+      "detailRequired": "Please provide details before submitting.",
+      "photosLabel": "Photos",
+      "required": "*",
+      "optional": "(optional)",
+      "photoCount": "({{count}}/5)",
+      "photoNote": "Please upload clear photos showing the issue. This helps us process your request faster.",
+      "photoAlt": "Return photo {{index}}",
+      "uploading": "Uploading...",
+      "uploadPhotos": "Upload Photos",
+      "photoRequired": "At least 1 photo is required for this return reason.",
+      "preferredResolution": "Preferred resolution *",
+      "refund": "Refund",
+      "refundDesc": "Get your money back",
+      "replacement": "Replacement",
+      "replacementDesc": "Send me a new item",
+      "submitting": "Submitting...",
+      "submit": "Submit Return Request"
+    },
+    "reasons": {
+      "wrongItem": "Received wrong item",
+      "damaged": "Item damaged or defective",
+      "doesNotMatch": "Item does not match description",
+      "sizeFit": "Size/fit issue",
+      "changedMind": "Changed my mind",
+      "other": "Other"
+    },
+    "success": {
+      "title": "Return Request Submitted",
+      "message": "We've received your return request. You'll receive an email update once it's reviewed."
+    }
+  },
+  "review": {
+    "loading": "Loading...",
+    "errors": {
+      "title": "Unable to Load Review",
+      "invalidLink": "Invalid review link",
+      "invalidExpired": "Invalid or expired review link",
+      "submitFail": "Failed to submit review"
+    },
+    "buttons": {
+      "goToStore": "Go to Store",
+      "review": "Review",
+      "close": "Close",
+      "submit": "Submit Review",
+      "submitting": "Submitting..."
+    },
+    "header": {
+      "thanks": "Thank You!",
+      "howWasOrder": "How was your order?",
+      "allReviewed": "You have reviewed all items from this order.",
+      "selectProduct": "Select a product below to leave a review."
+    },
+    "item": {
+      "reviewed": "\u2713 Reviewed"
+    },
+    "form": {
+      "rating": "Your Rating *",
+      "name": "Your Name",
+      "namePlaceholder": "Your name (optional)",
+      "title": "Review Title",
+      "titlePlaceholder": "Summarize your experience",
+      "content": "Your Review",
+      "contentPlaceholder": "Share your thoughts..."
+    },
+    "toasts": {
+      "success": "Review submitted!"
+    }
+  },
+  "appointment": {
+    "title": "Book Your Appointment",
+    "subtitle": "Schedule a personalized consultation with our experts",
+    "type": {
+      "heading": "Appointment Type",
+      "inStore": "In-Store Visit",
+      "inStoreDesc": "Visit our showroom",
+      "virtual": "Virtual Consultation",
+      "virtualDesc": "Video call consultation"
+    },
+    "personal": {
+      "heading": "Personal Information"
+    },
+    "dateTime": {
+      "heading": "Select Date & Time"
+    },
+    "details": {
+      "heading": "Additional Details"
+    },
+    "form": {
+      "fullName": "Full Name *",
+      "email": "Email Address *",
+      "phone": "Phone Number *",
+      "date": "Preferred Date *",
+      "time": "Preferred Time Slot *",
+      "purpose": "Purpose of Visit",
+      "notes": "Additional Notes",
+      "notesPlaceholder": "Any specific requirements or questions..."
+    },
+    "buttons": {
+      "booking": "Booking...",
+      "book": "Book Appointment"
+    },
+    "errors": {
+      "selectType": "Please select an appointment type.",
+      "selectTime": "Please select a time slot.",
+      "generic": "Something went wrong. Please try again."
+    },
+    "success": "Your appointment has been booked successfully! We'll send you a confirmation shortly.",
+    "purposes": {
+      "select": "Select purpose",
+      "consultation": "General Consultation",
+      "other": "Other"
     }
   }
 }

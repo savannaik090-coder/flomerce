@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { SiteContext } from '../context/SiteContext.jsx';
 import { AuthContext } from '../context/AuthContext.jsx';
 import * as authService from '../services/authService.js';
@@ -8,6 +9,7 @@ import { PLATFORM_URL } from '../config.js';
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const { t } = useTranslation('storefront');
   const { siteConfig } = useContext(SiteContext);
   const { isAuthenticated, login } = useContext(AuthContext);
   const [email, setEmail] = useState('');
@@ -34,12 +36,12 @@ export default function LoginPage() {
         const userData = JSON.parse(googleCustomer);
         setAuthToken(googleToken);
         login(userData, googleToken);
-        setSuccess('Login successful!');
+        setSuccess(t('auth.login.successToast', 'Login successful!'));
         const cleanUrl = window.location.pathname;
         window.history.replaceState({}, '', cleanUrl);
         setTimeout(() => navigate('/'), 500);
       } catch (e) {
-        setError('Google sign-in failed. Please try again.');
+        setError(t('auth.login.googleFailed', 'Google sign-in failed. Please try again.'));
       }
     }
   }, [searchParams, login, navigate]);
@@ -58,7 +60,7 @@ export default function LoginPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!email || !password) { setError('Please enter both email and password'); return; }
+    if (!email || !password) { setError(t('auth.login.missingFields', 'Please enter both email and password')); return; }
     setLoading(true);
     setError('');
     try {
@@ -66,14 +68,14 @@ export default function LoginPage() {
       const userData = result.customer || result.data;
       const token = result.token;
       login(userData, token);
-      setSuccess('Login successful!');
+      setSuccess(t('auth.login.successToast', 'Login successful!'));
       setTimeout(() => navigate('/'), 500);
     } catch (err) {
       if (err.code === 'EMAIL_NOT_VERIFIED') {
         setVerificationEmail(email);
         setShowVerificationNotice(true);
       } else {
-        setError(err.message || 'Login failed. Please check your credentials.');
+        setError(err.message || t('auth.login.failed', 'Login failed. Please check your credentials.'));
       }
     } finally {
       setLoading(false);
@@ -81,15 +83,15 @@ export default function LoginPage() {
   };
 
   const handleForgotPassword = async () => {
-    if (!resetEmail) { setResetError('Please enter your email address'); return; }
+    if (!resetEmail) { setResetError(t('auth.login.resetMissingEmail', 'Please enter your email address')); return; }
     setResetLoading(true);
     setResetError('');
     setResetSuccess('');
     try {
       await authService.requestPasswordReset(resetEmail, siteConfig?.id);
-      setResetSuccess('Password reset email sent! Check your inbox.');
+      setResetSuccess(t('auth.login.resetSuccess', 'Password reset email sent! Check your inbox.'));
     } catch (err) {
-      setResetError(err.message || 'Failed to send reset email');
+      setResetError(err.message || t('auth.login.resetFailed', 'Failed to send reset email'));
     } finally {
       setResetLoading(false);
     }
@@ -100,9 +102,9 @@ export default function LoginPage() {
     setResendSuccess('');
     try {
       await authService.resendVerification(verificationEmail, siteConfig?.id);
-      setResendSuccess('Verification email sent! Check your inbox.');
+      setResendSuccess(t('auth.login.resendSuccess', 'Verification email sent! Check your inbox.'));
     } catch {
-      setResendSuccess('Failed to resend. Please try again.');
+      setResendSuccess(t('auth.login.resendFailed', 'Failed to resend. Please try again.'));
     } finally {
       setResendLoading(false);
     }
@@ -112,8 +114,8 @@ export default function LoginPage() {
     <div style={{ minHeight: '80vh' }}>
       <section style={{ maxWidth: 600, margin: '40px auto 60px', backgroundColor: '#fff', padding: 30, borderRadius: 5, boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
         <div style={{ textAlign: 'center', marginBottom: 30 }}>
-          <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 28, marginBottom: 10, color: '#333' }}>Login to Your Account</h2>
-          <p style={{ fontFamily: "'Lato', sans-serif", fontSize: 16, color: '#777' }}>Welcome back, please enter your details</p>
+          <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 28, marginBottom: 10, color: '#333' }}>{t('auth.login.title', 'Login to Your Account')}</h2>
+          <p style={{ fontFamily: "'Lato', sans-serif", fontSize: 16, color: '#777' }}>{t('auth.login.subtitle', 'Welcome back, please enter your details')}</p>
         </div>
 
         {error && <div style={{ color: '#e74c3c', fontSize: 15, margin: '15px 0', padding: 12, textAlign: 'center', border: '1px solid #e74c3c', borderRadius: 6, backgroundColor: 'rgba(231,76,60,0.1)', fontWeight: 500 }}>{error}</div>}
@@ -121,18 +123,18 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column' }}>
           <div style={{ marginBottom: 20 }}>
-            <label style={{ display: 'block', marginBottom: 8, fontFamily: "'Lato', sans-serif", fontSize: 14, color: '#333' }}>Email</label>
+            <label style={{ display: 'block', marginBottom: 8, fontFamily: "'Lato', sans-serif", fontSize: 14, color: '#333' }}>{t('auth.common.email', 'Email')}</label>
             <input type="email" value={email} onChange={e => setEmail(e.target.value)} required style={{ width: '100%', padding: 12, border: '1px solid #ddd', borderRadius: 4, fontFamily: "'Lato', sans-serif", fontSize: 16, boxSizing: 'border-box' }} />
           </div>
           <div style={{ marginBottom: 20 }}>
-            <label style={{ display: 'block', marginBottom: 8, fontFamily: "'Lato', sans-serif", fontSize: 14, color: '#333' }}>Password</label>
+            <label style={{ display: 'block', marginBottom: 8, fontFamily: "'Lato', sans-serif", fontSize: 14, color: '#333' }}>{t('auth.common.password', 'Password')}</label>
             <input type="password" value={password} onChange={e => setPassword(e.target.value)} required style={{ width: '100%', padding: 12, border: '1px solid #ddd', borderRadius: 4, fontFamily: "'Lato', sans-serif", fontSize: 16, boxSizing: 'border-box' }} />
           </div>
           <div style={{ textAlign: 'end', marginBottom: 20 }}>
-            <button type="button" onClick={() => { setShowForgotModal(true); setResetEmail(email); }} style={{ background: 'none', border: 'none', color: '#c8a97e', fontSize: 14, cursor: 'pointer', textDecoration: 'none' }}>Forgot Password?</button>
+            <button type="button" onClick={() => { setShowForgotModal(true); setResetEmail(email); }} style={{ background: 'none', border: 'none', color: '#c8a97e', fontSize: 14, cursor: 'pointer', textDecoration: 'none' }}>{t('auth.login.forgotPassword', 'Forgot Password?')}</button>
           </div>
           <button type="submit" disabled={loading} style={{ backgroundColor: loading ? '#e0d5c5' : '#c8a97e', color: '#fff', border: 'none', padding: 15, borderRadius: 4, fontFamily: "'Lato', sans-serif", fontSize: 16, fontWeight: 'bold', cursor: loading ? 'not-allowed' : 'pointer', transition: 'background-color 0.3s ease' }}>
-            {loading ? 'Logging in...' : 'Login'}
+            {loading ? t('auth.login.loggingIn', 'Logging in...') : t('auth.login.loginButton', 'Login')}
           </button>
         </form>
 
@@ -140,21 +142,21 @@ export default function LoginPage() {
           <>
             <div style={{ display: 'flex', alignItems: 'center', margin: '20px 0', color: '#777', fontFamily: "'Lato', sans-serif" }}>
               <div style={{ flex: 1, borderBottom: '1px solid #ddd' }} />
-              <span style={{ padding: '0 10px' }}>Or continue with</span>
+              <span style={{ padding: '0 10px' }}>{t('auth.common.orContinueWith', 'Or continue with')}</span>
               <div style={{ flex: 1, borderBottom: '1px solid #ddd' }} />
             </div>
 
             <div style={{ marginBottom: 20 }}>
               <button onClick={handleGoogleLogin} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', padding: 12, backgroundColor: '#fff', border: '1px solid #ddd', borderRadius: 4, fontFamily: "'Lato', sans-serif", fontSize: 16, color: '#333', cursor: 'pointer', transition: 'background-color 0.3s ease' }}>
-                <img src="https://cdn-icons-png.flaticon.com/128/300/300221.png" alt="Google" style={{ width: 20, marginInlineEnd: 10 }} />
-                Sign in with Google
+                <img src="https://cdn-icons-png.flaticon.com/128/300/300221.png" alt={t('auth.common.googleAlt', 'Google')} style={{ width: 20, marginInlineEnd: 10 }} />
+                {t('auth.login.signInWithGoogle', 'Sign in with Google')}
               </button>
             </div>
           </>
         )}
 
         <div style={{ textAlign: 'center', marginTop: 20, fontFamily: "'Lato', sans-serif", fontSize: 14, color: '#777' }}>
-          Don't have an account? <Link to="/signup" style={{ color: '#c8a97e', textDecoration: 'none' }}>Sign up</Link>
+          {t('auth.login.noAccount', "Don't have an account?")} <Link to="/signup" style={{ color: '#c8a97e', textDecoration: 'none' }}>{t('auth.login.signUp', 'Sign up')}</Link>
         </div>
       </section>
 
@@ -162,21 +164,21 @@ export default function LoginPage() {
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
           <div style={{ background: '#fff', padding: 30, borderRadius: 12, maxWidth: 400, width: '90%', boxShadow: '0 10px 30px rgba(0,0,0,0.3)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <h3 style={{ margin: 0, fontFamily: "'Playfair Display', serif" }}>Reset Password</h3>
+              <h3 style={{ margin: 0, fontFamily: "'Playfair Display', serif" }}>{t('auth.login.resetTitle', 'Reset Password')}</h3>
               <button onClick={() => setShowForgotModal(false)} style={{ background: 'none', border: 'none', fontSize: 24, cursor: 'pointer', color: '#999' }}>×</button>
             </div>
-            <p style={{ color: '#666', marginBottom: 16 }}>Enter your email address and we'll send you a link to reset your password.</p>
+            <p style={{ color: '#666', marginBottom: 16 }}>{t('auth.login.resetIntro', "Enter your email address and we'll send you a link to reset your password.")}</p>
             <div style={{ marginBottom: 16 }}>
-              <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>Email Address</label>
-              <input type="email" value={resetEmail} onChange={e => setResetEmail(e.target.value)} placeholder="Enter your email" style={{ width: '100%', padding: 12, border: '1px solid #ddd', borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }} />
+              <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>{t('auth.common.emailAddress', 'Email Address')}</label>
+              <input type="email" value={resetEmail} onChange={e => setResetEmail(e.target.value)} placeholder={t('auth.login.resetEmailPlaceholder', 'Enter your email')} style={{ width: '100%', padding: 12, border: '1px solid #ddd', borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }} />
             </div>
             {resetError && <div style={{ color: '#e74c3c', fontSize: 14, marginBottom: 12, padding: 10, background: '#ffebee', borderRadius: 4 }}>{resetError}</div>}
             {resetSuccess && <div style={{ color: '#2ecc71', fontSize: 14, marginBottom: 12, padding: 10, background: '#e8f5e9', borderRadius: 4 }}>{resetSuccess}</div>}
             <div style={{ display: 'flex', gap: 12 }}>
               <button onClick={handleForgotPassword} disabled={resetLoading} style={{ flex: 1, backgroundColor: '#c8a97e', color: '#fff', border: 'none', padding: 12, borderRadius: 4, fontSize: 14, fontWeight: 'bold', cursor: resetLoading ? 'not-allowed' : 'pointer' }}>
-                {resetLoading ? 'Sending...' : 'Send Reset Email'}
+                {resetLoading ? t('auth.login.sending', 'Sending...') : t('auth.login.sendResetEmail', 'Send Reset Email')}
               </button>
-              <button onClick={() => setShowForgotModal(false)} style={{ padding: '12px 20px', background: '#f8f9fa', color: '#333', border: '1px solid #ddd', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+              <button onClick={() => setShowForgotModal(false)} style={{ padding: '12px 20px', background: '#f8f9fa', color: '#333', border: '1px solid #ddd', borderRadius: 4, cursor: 'pointer' }}>{t('auth.common.cancel', 'Cancel')}</button>
             </div>
           </div>
         </div>
@@ -186,16 +188,16 @@ export default function LoginPage() {
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
           <div style={{ background: '#fff', padding: 30, borderRadius: 12, maxWidth: 400, width: '90%', textAlign: 'center', boxShadow: '0 10px 30px rgba(0,0,0,0.3)' }}>
             <div style={{ fontSize: 48, color: '#2563eb', marginBottom: 20 }}>📧</div>
-            <h3 style={{ marginBottom: 15, color: '#333' }}>Email Verification Required</h3>
-            <p style={{ marginBottom: 20, color: '#666', lineHeight: 1.5 }}>Please verify your email address before logging in. Check your email inbox (and spam folder) for the verification link.</p>
+            <h3 style={{ marginBottom: 15, color: '#333' }}>{t('auth.login.verifyTitle', 'Email Verification Required')}</h3>
+            <p style={{ marginBottom: 20, color: '#666', lineHeight: 1.5 }}>{t('auth.login.verifyMessage', 'Please verify your email address before logging in. Check your email inbox (and spam folder) for the verification link.')}</p>
             {resendSuccess && <div style={{ color: '#2ecc71', fontSize: 14, marginBottom: 12, padding: 10, background: '#e8f5e9', borderRadius: 4 }}>{resendSuccess}</div>}
             <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
               <button onClick={handleResendVerification} disabled={resendLoading} style={{ backgroundColor: '#c8a97e', color: '#fff', border: 'none', padding: '12px 20px', borderRadius: 4, cursor: resendLoading ? 'not-allowed' : 'pointer', fontWeight: 'bold' }}>
-                {resendLoading ? 'Sending...' : 'Resend Verification Email'}
+                {resendLoading ? t('auth.login.resending', 'Sending...') : t('auth.login.resendVerification', 'Resend Verification Email')}
               </button>
-              <button onClick={() => setShowVerificationNotice(false)} style={{ background: '#6b7280', color: '#fff', border: 'none', padding: '12px 20px', borderRadius: 4, cursor: 'pointer' }}>Close</button>
+              <button onClick={() => setShowVerificationNotice(false)} style={{ background: '#6b7280', color: '#fff', border: 'none', padding: '12px 20px', borderRadius: 4, cursor: 'pointer' }}>{t('auth.common.close', 'Close')}</button>
             </div>
-            <p style={{ fontSize: 12, color: '#888', marginTop: 15 }}><strong>Tip:</strong> If you don't receive the email, check your spam folder or contact support.</p>
+            <p style={{ fontSize: 12, color: '#888', marginTop: 15 }}><strong>{t('auth.login.tipLabel', 'Tip:')}</strong> {t('auth.login.tipText', "If you don't receive the email, check your spam folder or contact support.")}</p>
           </div>
         </div>
       )}

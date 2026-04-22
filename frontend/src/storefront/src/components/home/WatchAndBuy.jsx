@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useSiteConfig } from '../../hooks/useSiteConfig.js';
 import { getProducts } from '../../services/productService.js';
 import { useCurrency } from '../../hooks/useCurrency.js';
@@ -7,6 +8,7 @@ import { resolveImageUrl } from '../../utils/imageUrl.js';
 import { getWatchAndBuyDefaults } from '../../defaults/index.js';
 
 export default function WatchAndBuy() {
+  const { t } = useTranslation('storefront');
   const { siteConfig } = useSiteConfig();
   const { formatAmount } = useCurrency();
   const [videos, setVideos] = useState([]);
@@ -126,7 +128,7 @@ export default function WatchAndBuy() {
   return (
     <section className="wb-section">
       <div className="wb-header">
-        <h2 className="wb-title">Watch And Buy</h2>
+        <h2 className="wb-title">{t('home.watchAndBuy.title', 'Watch And Buy')}</h2>
         <hr className="wb-divider" />
       </div>
       <div className="wb-container">
@@ -148,7 +150,7 @@ export default function WatchAndBuy() {
                   ) : (
                     <div className="wb-video wb-video-placeholder" style={{ background: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 8 }}>
                       <i className="fas fa-video" style={{ fontSize: 28, color: '#cbd5e1' }}></i>
-                      <span style={{ fontSize: 13, color: '#94a3b8', fontWeight: 500 }}>{item.title || 'Video'}</span>
+                      <span style={{ fontSize: 13, color: '#94a3b8', fontWeight: 500 }}>{item.title || t('home.watchAndBuy.videoFallback', 'Video')}</span>
                     </div>
                   )}
 
@@ -192,8 +194,8 @@ export default function WatchAndBuy() {
                         <i className="fas fa-shopping-bag" style={{ color: '#fff', fontSize: 18 }}></i>
                       </div>
                       <div className="wb-product-info">
-                        <div className="wb-product-name">{item.title || 'View Product'}</div>
-                        <div className="wb-product-sku">SKU: {item.productSku}</div>
+                        <div className="wb-product-name">{item.title || t('home.watchAndBuy.viewProduct', 'View Product')}</div>
+                        <div className="wb-product-sku">{t('home.watchAndBuy.skuLabel', 'SKU: {{sku}}', { sku: item.productSku })}</div>
                       </div>
                     </Link>
                   ) : null}

@@ -240,7 +240,7 @@ export default function OrderTrackPage() {
               </div>
               {returnInfo.resolution && (
                 <div style={{ fontSize: 13, color: '#78716c', marginBottom: 6 }}>
-                  <strong>{t('order.resolution', 'Resolution:')}</strong> {returnInfo.resolution === 'replacement' ? t('order.replacement', 'Replacement') : t('order.refund', 'Refund')}
+                  <strong>{t('order.resolution', 'Resolution:')}</strong> {returnInfo.resolution === 'replacement' ? t('order.resolutionReplacement', 'Replacement') : t('order.resolutionRefund', 'Refund')}
                 </div>
               )}
               {returnInfo.refund_amount && returnInfo.resolution !== 'replacement' && (
