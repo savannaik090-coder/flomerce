@@ -12,26 +12,26 @@ import { ThemeProvider } from './context/ThemeContext.jsx';
 import { initI18n } from '../../shared/i18n/init.js';
 import './styles/global.css';
 
-initI18n();
-
-ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
-    <BrowserRouter>
-      <SiteProvider>
-        <AuthProvider>
-          <CartProvider>
-            <WishlistProvider>
-              <CurrencyProvider>
-                <PanelProvider>
-                  <ThemeProvider>
-                    <App />
-                  </ThemeProvider>
-                </PanelProvider>
-              </CurrencyProvider>
-            </WishlistProvider>
-          </CartProvider>
-        </AuthProvider>
-      </SiteProvider>
-    </BrowserRouter>
-  </React.StrictMode>
-);
+initI18n().finally(() => {
+  ReactDOM.createRoot(document.getElementById('root')).render(
+    <React.StrictMode>
+      <BrowserRouter>
+        <SiteProvider>
+          <AuthProvider>
+            <CartProvider>
+              <WishlistProvider>
+                <CurrencyProvider>
+                  <PanelProvider>
+                    <ThemeProvider>
+                      <App />
+                    </ThemeProvider>
+                  </PanelProvider>
+                </CurrencyProvider>
+              </WishlistProvider>
+            </CartProvider>
+          </AuthProvider>
+        </SiteProvider>
+      </BrowserRouter>
+    </React.StrictMode>
+  );
+});

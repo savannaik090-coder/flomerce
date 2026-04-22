@@ -50,6 +50,10 @@ async function loadLocale(lng) {
       headers: { Accept: 'application/json' },
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const ct = res.headers.get('content-type') || '';
+    if (!ct.toLowerCase().includes('application/json')) {
+      throw new Error('non-json response from locale endpoint');
+    }
     const json = await res.json();
     return json.data || json;
   } catch (err) {
@@ -62,23 +66,31 @@ const backendPlugin = {
   type: 'backend',
   init: () => {},
   read: async (lng, _ns, callback) => {
-    if (BUNDLED[lng]) {
-      callback(null, BUNDLED[lng]);
+    // Normalize regional/variant codes (en-US, en-GB, pt-BR, fr-FR, ...) up-front
+    // so we never try to fetch a non-existent /api/i18n/locale/en-US that would
+    // return SPA HTML and crash init.
+    const norm = normalizeLocale(lng);
+    if (BUNDLED[norm]) {
+      callback(null, BUNDLED[norm]);
       // For pre-shipped locales, fetch the latest translated catalog from the
       // worker in the background so users get real translations once the owner
       // regenerates them — avoids refresh-needed-to-see-new-translations.
-      if (lng !== 'en') {
-        loadLocale(lng).then((fresh) => {
-          if (fresh && fresh !== BUNDLED[lng]) {
-            i18n.addResourceBundle(lng, 'translation', fresh, true, true);
+      if (norm !== 'en') {
+        loadLocale(norm).then((fresh) => {
+          if (fresh && fresh !== BUNDLED[norm]) {
+            i18n.addResourceBundle(norm, 'translation', fresh, true, true);
           }
         }).catch(() => {});
       }
       return;
     }
-    const data = await loadLocale(lng);
-    if (data) callback(null, data);
-    else callback(new Error('locale fetch failed'), null);
+    const data = await loadLocale(norm);
+    if (data) {
+      callback(null, data);
+    } else {
+      // Always succeed with English so init completes and t() resolves keys.
+      callback(null, BUNDLED.en);
+    }
   },
 };
 
@@ -96,10 +108,6 @@ export function initI18n(options = {}) {
       load: 'currentOnly',
       cleanCode: true,
       nonExplicitSupportedLngs: true,
-      // Normalize browser-detected and switcher-supplied codes so regional
-      // variants resolve to a bundled pre-shipped catalog (e.g. zh-Hans→zh-CN,
-      // es-ES→es, hi-IN→hi, pt-BR→pt) instead of going through lazy-gen.
-      convertDetectedLanguage: (lng) => normalizeLocale(lng),
       ns: ['translation'],
       defaultNS: 'translation',
       resources: Object.fromEntries(Object.entries(BUNDLED).map(([k, v]) => [k, { translation: v }])),
@@ -109,6 +117,11 @@ export function initI18n(options = {}) {
         order: ['localStorage', 'navigator', 'htmlTag'],
         lookupLocalStorage: 'flomerce_lang',
         caches: ['localStorage'],
+        // Normalize browser-detected codes so regional variants
+        // (en-US, en-GB, zh-Hans, es-ES, hi-IN, pt-BR, ar-SA, ...) resolve to
+        // a bundled pre-shipped catalog instead of triggering a lazy fetch
+        // against an endpoint that returns SPA HTML on Pages and crashes init.
+        convertDetectedLanguage: (lng) => normalizeLocale(lng),
       },
       react: { useSuspense: false },
       ...options,
