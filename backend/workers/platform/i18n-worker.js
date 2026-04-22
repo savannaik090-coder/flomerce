@@ -21,6 +21,7 @@ import EN_CUSTOMERS from '../../../frontend/src/shared/i18n/locales/en/customers
 import EN_WIZARD from '../../../frontend/src/shared/i18n/locales/en/wizard.json';
 import EN_LEGAL from '../../../frontend/src/shared/i18n/locales/en/legal.json';
 import EN_ABOUT from '../../../frontend/src/shared/i18n/locales/en/about.json';
+import EN_PLANS from '../../../frontend/src/shared/i18n/locales/en/plans.json';
 
 const EN_CATALOG = {
   common: EN_COMMON,
@@ -36,6 +37,7 @@ const EN_CATALOG = {
   wizard: EN_WIZARD,
   legal: EN_LEGAL,
   about: EN_ABOUT,
+  plans: EN_PLANS,
 };
 
 const SUPPORTED_LOCALES = new Set([

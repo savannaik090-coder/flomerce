@@ -930,20 +930,22 @@ export default function DashboardPage() {
                 <div className="site-card" style={{ display: 'block', marginBottom: '1.5rem', borderColor: '#10b981', background: '#f0fdf4' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                    <span style={{ fontWeight: 700, color: '#166534' }}>Free Trial Active</span>
+                    <span style={{ fontWeight: 700, color: '#166534' }}>{t('billingPanel.trialActive')}</span>
                   </div>
                   <p style={{ fontSize: '0.875rem', color: '#15803d', margin: 0 }}>
-                    Your trial covers all websites and ends on {accountStatus.trialEndDate ? new Date(accountStatus.trialEndDate).toLocaleDateString() : 'N/A'}. Upgrade to a paid plan to continue after the trial.
+                    {accountStatus.trialEndDate
+                      ? t('billingPanel.trialCovers', { date: new Date(accountStatus.trialEndDate).toLocaleDateString() })
+                      : t('billingPanel.trialCoversNoDate')}
                   </p>
                 </div>
               )}
 
               {sitesLoading ? (
-                <p style={{ color: 'var(--text-muted)' }}>Loading...</p>
+                <p style={{ color: 'var(--text-muted)' }}>{t('loading')}</p>
               ) : sites.length === 0 ? (
                 <div className="empty-state">
-                  <p>You don't have any websites yet. Create a website to get started.</p>
-                  <button className="btn btn-primary" onClick={() => { navigateDashboard('dashboard'); handleCreateSiteClick(); }}>Create a Website</button>
+                  <p>{t('createWebsiteToStart')}</p>
+                  <button className="btn btn-primary" onClick={() => { navigateDashboard('dashboard'); handleCreateSiteClick(); }}>{t('createWebsiteCta')}</button>
                 </div>
               ) : (
                 <div>
@@ -952,12 +954,12 @@ export default function DashboardPage() {
                       {sites.length > 1 && (
                       <button className="btn btn-outline" onClick={() => { setBillingSiteId(null); navigateDashboard('billing'); }} style={{ marginBottom: '1.5rem', gap: '0.375rem' }}>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-                        Back to All Sites
+                        {t('backToAllSites')}
                       </button>
                     )}
                       {(() => {
                         const site = sites.find(s => s.id === billingSiteId);
-                        if (!site) return <p>Site not found.</p>;
+                        if (!site) return <p>{t('siteNotFound')}</p>;
                         const subInfo = getSiteSubscriptionInfo(site);
                         return (
                           <div>
@@ -980,42 +982,42 @@ export default function DashboardPage() {
                                 const note = formatScheduledChange(subInfo);
                                 return note ? (
                                   <p style={{ fontSize: '0.85rem', color: '#b45309', margin: '0 0 1rem 0' }}>
-                                    ⏰ {note}. Your current plan keeps running until then.
+                                    ⏰ {t('billingPanel.scheduledNote', { note })}
                                   </p>
                                 ) : null;
                               })()}
                               {subInfo.isCancelled && subInfo.isActive && subInfo.periodEnd && (
                                 <p style={{ fontSize: '0.875rem', color: '#92400e', margin: '0 0 1rem 0' }}>
-                                  Your plan is cancelled and will expire on {new Date(subInfo.periodEnd).toLocaleDateString()}. You can continue using all features until then.
+                                  {t('billingPanel.cancelledActive', { date: new Date(subInfo.periodEnd).toLocaleDateString() })}
                                 </p>
                               )}
                               {subInfo.isCancelled && !subInfo.isActive && subInfo.periodEnd && (
                                 <p style={{ fontSize: '0.875rem', color: '#dc2626', margin: '0 0 1rem 0' }}>
-                                  Your plan expired on {new Date(subInfo.periodEnd).toLocaleDateString()}. Pick a plan below to restore access.
+                                  {t('billingPanel.cancelledExpired', { date: new Date(subInfo.periodEnd).toLocaleDateString() })}
                                 </p>
                               )}
                               {!subInfo.isCancelled && subInfo.periodEnd && subInfo.isActive && subInfo.plan !== 'enterprise' && (
                                 <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: '0 0 1rem 0' }}>
-                                  {subInfo.plan === 'trial' ? 'Trial ends' : 'Renews'}: {new Date(subInfo.periodEnd).toLocaleDateString()}
+                                  {subInfo.plan === 'trial' ? t('billingPanel.trialEndsLabel') : t('billingPanel.renewsLabel')}: {new Date(subInfo.periodEnd).toLocaleDateString()}
                                 </p>
                               )}
                               {subInfo.plan === 'enterprise' && subInfo.isActive && (
                                 <p style={{ fontSize: '0.875rem', color: '#5b21b6', margin: '0 0 1rem 0', fontWeight: 500 }}>
-                                  Managed enterprise plan
+                                  {t('billingPanel.managedEnterprise')}
                                 </p>
                               )}
                               {subInfo.plan !== 'enterprise' && (() => {
                                 const canCancel = subInfo.isActive && !subInfo.isCancelled && subInfo.plan !== 'trial' && subInfo.hasRazorpay;
                                 let primaryLabel;
-                                if (subInfo.isExpired || !subInfo.plan) primaryLabel = 'Subscribe';
-                                else if (subInfo.isCancelled && subInfo.isActive) primaryLabel = 'Resubscribe / Change Plan';
-                                else if (subInfo.isActive && subInfo.plan !== 'trial') primaryLabel = 'Change Plan';
-                                else primaryLabel = 'Upgrade';
+                                if (subInfo.isExpired || !subInfo.plan) primaryLabel = t('billingPanel.subscribe');
+                                else if (subInfo.isCancelled && subInfo.isActive) primaryLabel = t('billingPanel.resubscribe');
+                                else if (subInfo.isActive && subInfo.plan !== 'trial') primaryLabel = t('billingPanel.changePlan');
+                                else primaryLabel = t('billingPanel.upgrade');
                                 return (
                                   <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.75rem', gap: '0.75rem', flexWrap: 'wrap' }}>
                                     {canCancel && (
                                       <button className="btn btn-outline" style={{ fontSize: '0.875rem', padding: '0.5rem 1.25rem', color: '#ef4444', borderColor: '#fecaca' }} onClick={() => setShowCancelModal(billingSiteId)}>
-                                        Cancel Subscription
+                                        {t('billingPanel.cancelSubscription')}
                                       </button>
                                     )}
                                     <button className="btn btn-primary" style={{ fontSize: '0.875rem', padding: '0.5rem 1.25rem' }} onClick={() => { setPlanOverlaySiteId(billingSiteId); setShowPlanOverlayHideTrial(!!profileData?.hadSubscription); setShowPlanOverlay(true); }}>
@@ -1053,17 +1055,17 @@ export default function DashboardPage() {
                                   })()}
                                   {subInfo.isCancelled && subInfo.periodEnd && (
                                     <p style={{ fontSize: '0.75rem', color: '#92400e', margin: '0.25rem 0 0' }}>
-                                      Ends: {new Date(subInfo.periodEnd).toLocaleDateString()}
+                                      {t('billingPanel.endsLabel')}: {new Date(subInfo.periodEnd).toLocaleDateString()}
                                     </p>
                                   )}
                                   {!subInfo.isCancelled && subInfo.periodEnd && subInfo.isActive && subInfo.plan !== 'enterprise' && (
                                     <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0.25rem 0 0' }}>
-                                      {subInfo.plan === 'trial' ? 'Ends' : 'Renews'}: {new Date(subInfo.periodEnd).toLocaleDateString()}
+                                      {subInfo.plan === 'trial' ? t('billingPanel.endsLabel') : t('billingPanel.renewsLabel')}: {new Date(subInfo.periodEnd).toLocaleDateString()}
                                     </p>
                                   )}
                                 </div>
                                 <button className="btn btn-primary" style={{ fontSize: '0.8rem', whiteSpace: 'nowrap' }} onClick={() => { setBillingSiteId(site.id); loadSiteUsage(site.id); navigateDashboard('billing', site.id); }}>
-                                  {subInfo.plan === 'enterprise' ? 'View Usage' : subInfo.isExpired || !subInfo.plan ? 'Subscribe' : 'Manage Plan'}
+                                  {subInfo.plan === 'enterprise' ? t('billingPanel.viewUsage') : subInfo.isExpired || !subInfo.plan ? t('billingPanel.subscribe') : t('billingPanel.managePlan')}
                                 </button>
                               </div>
                             </div>
@@ -1085,15 +1087,15 @@ export default function DashboardPage() {
 
               {!staffSiteId ? (
                 sitesLoading ? (
-                  <p style={{ color: 'var(--text-muted)' }}>Loading sites...</p>
+                  <p style={{ color: 'var(--text-muted)' }}>{t('loadingSites')}</p>
                 ) : sites.length === 0 ? (
                   <div className="empty-state">
-                    <p>Create a website first to manage staff.</p>
-                    <button className="btn btn-primary" onClick={() => { navigateDashboard('dashboard'); handleCreateSiteClick(); }}>Create a Website</button>
+                    <p>{t('createWebsiteFirst')}</p>
+                    <button className="btn btn-primary" onClick={() => { navigateDashboard('dashboard'); handleCreateSiteClick(); }}>{t('createWebsiteCta')}</button>
                   </div>
                 ) : (
                   <div>
-                    <p style={{ color: 'var(--text-muted)', marginBottom: '1rem' }}>Select a site to manage its staff members.</p>
+                    <p style={{ color: 'var(--text-muted)', marginBottom: '1rem' }}>{t('staffPanel.selectSite')}</p>
                     <div className="billing-sites-list">
                       {sites.map(site => (
                         <div key={site.id} className="site-card" style={{ display: 'block', marginBottom: '1rem', cursor: 'pointer' }} onClick={() => handleStaffSite(site.id)}>
@@ -1102,7 +1104,7 @@ export default function DashboardPage() {
                               <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 700 }}>{site.brand_name || site.subdomain}</h3>
                               <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>https://{site.subdomain}.{PLATFORM_DOMAIN}</p>
                             </div>
-                            <button className="btn btn-primary" style={{ fontSize: '0.8rem' }}>Manage Staff</button>
+                            <button className="btn btn-primary" style={{ fontSize: '0.8rem' }}>{t('staffPanel.manageStaff')}</button>
                           </div>
                         </div>
                       ))}
@@ -1114,14 +1116,14 @@ export default function DashboardPage() {
                   {sites.length > 1 && (
                     <button className="btn btn-outline" onClick={() => { setStaffSiteId(null); setStaffForm(null); navigateDashboard('staff'); }} style={{ marginBottom: '1.5rem', gap: '0.375rem' }}>
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-                      Back to All Sites
+                      {t('backToAllSites')}
                     </button>
                   )}
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                     <div>
                       <h2 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 700 }}>
-                        {(() => { const s = sites.find(s => s.id === staffSiteId); return s ? (s.brand_name || s.subdomain) : ''; })()} - Staff
+                        {t('staffPanel.title', { site: (() => { const s = sites.find(s => s.id === staffSiteId); return s ? (s.brand_name || s.subdomain) : ''; })() })}
                       </h2>
                       {(() => {
                         const site = sites.find(s => s.id === staffSiteId);
@@ -1131,7 +1133,7 @@ export default function DashboardPage() {
                         if (maxStaff) {
                           return (
                             <span style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 2, display: 'inline-block' }}>
-                              {staffList.length} / {maxStaff} staff members used
+                              {t('staffPanel.usage', { used: staffList.length, max: maxStaff })}
                             </span>
                           );
                         }
@@ -1148,7 +1150,7 @@ export default function DashboardPage() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           {limitReached && (
                             <span style={{ fontSize: '0.75rem', color: '#f59e0b', fontWeight: 500 }}>
-                              Limit reached
+                              {t('staffPanel.limitReached')}
                             </span>
                           )}
                           <button
@@ -1157,7 +1159,7 @@ export default function DashboardPage() {
                             disabled={limitReached}
                             onClick={() => setStaffForm({ name: '', email: '', password: '', permissions: [...PERMISSION_OPTIONS.map(p => p.id)], is_active: true })}
                           >
-                            Add Staff Member
+                            {t('staffPanel.addStaff')}
                           </button>
                         </div>
                       );
@@ -1177,24 +1179,24 @@ export default function DashboardPage() {
 
                   {staffForm && (
                     <div className="site-card" style={{ display: 'block', marginBottom: '1.5rem' }}>
-                      <h3 style={{ margin: '0 0 1rem', fontSize: '1rem', fontWeight: 700 }}>{staffForm.id ? 'Edit Staff Member' : 'Add Staff Member'}</h3>
+                      <h3 style={{ margin: '0 0 1rem', fontSize: '1rem', fontWeight: 700 }}>{staffForm.id ? t('staffPanel.editStaff') : t('staffPanel.addStaff')}</h3>
                       <form onSubmit={handleSaveStaff}>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                           <div>
-                            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.375rem', textTransform: 'uppercase' }}>Name</label>
+                            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.375rem', textTransform: 'uppercase' }}>{t('staffPanel.name')}</label>
                             <input type="text" required value={staffForm.name || ''} onChange={e => handleStaffFormChange('name', e.target.value)} style={{ width: '100%', padding: '0.625rem 0.75rem', border: '1px solid #e2e8f0', borderRadius: '0.375rem', fontSize: '0.875rem', boxSizing: 'border-box' }} />
                           </div>
                           <div>
-                            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.375rem', textTransform: 'uppercase' }}>Email</label>
+                            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.375rem', textTransform: 'uppercase' }}>{t('staffPanel.email')}</label>
                             <input type="email" required value={staffForm.email || ''} onChange={e => handleStaffFormChange('email', e.target.value)} style={{ width: '100%', padding: '0.625rem 0.75rem', border: '1px solid #e2e8f0', borderRadius: '0.375rem', fontSize: '0.875rem', boxSizing: 'border-box' }} />
                           </div>
                         </div>
                         <div style={{ marginBottom: '1rem' }}>
-                          <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.375rem', textTransform: 'uppercase' }}>{staffForm.id ? 'New Password (leave empty to keep current)' : 'Password'}</label>
-                          <input type="password" value={staffForm.password || ''} onChange={e => handleStaffFormChange('password', e.target.value)} required={!staffForm.id} minLength={6} placeholder={staffForm.id ? 'Leave empty to keep current' : 'Min 6 characters'} style={{ width: '100%', maxWidth: '320px', padding: '0.625rem 0.75rem', border: '1px solid #e2e8f0', borderRadius: '0.375rem', fontSize: '0.875rem', boxSizing: 'border-box' }} />
+                          <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.375rem', textTransform: 'uppercase' }}>{staffForm.id ? t('staffPanel.newPasswordOptional') : t('staffPanel.password')}</label>
+                          <input type="password" value={staffForm.password || ''} onChange={e => handleStaffFormChange('password', e.target.value)} required={!staffForm.id} minLength={6} placeholder={staffForm.id ? t('staffPanel.passwordKeepHint') : t('staffPanel.passwordMinHint')} style={{ width: '100%', maxWidth: '320px', padding: '0.625rem 0.75rem', border: '1px solid #e2e8f0', borderRadius: '0.375rem', fontSize: '0.875rem', boxSizing: 'border-box' }} />
                         </div>
                         <div style={{ marginBottom: '1rem' }}>
-                          <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Permissions</label>
+                          <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.5rem', textTransform: 'uppercase' }}>{t('staffPanel.permissions')}</label>
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                             {PERMISSION_OPTIONS.map(perm => {
                               const checked = (staffForm.permissions || []).includes(perm.id);
@@ -1207,29 +1209,29 @@ export default function DashboardPage() {
                               );
                             })}
                           </div>
-                          <p style={{ fontSize: '0.7rem', color: '#9ca3af', marginTop: '0.375rem', marginBottom: 0 }}>At least one permission is required.</p>
+                          <p style={{ fontSize: '0.7rem', color: '#9ca3af', marginTop: '0.375rem', marginBottom: 0 }}>{t('staffPanel.permissionRequired')}</p>
                         </div>
                         {staffForm.id && (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem', padding: '0.75rem', background: '#f8fafc', borderRadius: '0.375rem' }}>
                             <label style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', fontSize: '0.875rem', fontWeight: 500, cursor: 'pointer' }}>
                               <input type="checkbox" checked={staffForm.is_active !== false} onChange={e => handleStaffFormChange('is_active', e.target.checked)} style={{ accentColor: '#10b981' }} />
-                              Active
+                              {t('staffPanel.active')}
                             </label>
                           </div>
                         )}
                         <div style={{ display: 'flex', gap: '0.75rem' }}>
-                          <button type="submit" className="btn btn-primary" disabled={staffSaving}>{staffSaving ? 'Saving...' : staffForm.id ? 'Update' : 'Add Staff'}</button>
-                          <button type="button" className="btn btn-outline" onClick={() => setStaffForm(null)}>Cancel</button>
+                          <button type="submit" className="btn btn-primary" disabled={staffSaving}>{staffSaving ? t('staffPanel.saving') : staffForm.id ? t('staffPanel.update') : t('staffPanel.addBtn')}</button>
+                          <button type="button" className="btn btn-outline" onClick={() => setStaffForm(null)}>{t('staffPanel.cancel')}</button>
                         </div>
                       </form>
                     </div>
                   )}
 
                   {staffLoading ? (
-                    <p style={{ color: 'var(--text-muted)' }}>Loading staff...</p>
+                    <p style={{ color: 'var(--text-muted)' }}>{t('loadingStaff')}</p>
                   ) : staffList.length === 0 && !staffForm ? (
                     <div className="empty-state">
-                      <p>No staff members yet. Add your first staff member to let others help manage your store.</p>
+                      <p>{t('staffPanel.noStaff')}</p>
                     </div>
                   ) : (
                     <div>

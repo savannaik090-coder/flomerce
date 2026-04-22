@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { createSite, checkSubdomain } from '../services/siteService.js';
 import { PLATFORM_DOMAIN } from '../config.js';
 
+// TODO: localize via content_language (handled in wizard seed-data task)
 const SEO_TITLE_TEMPLATES = {
   jewellery: (name) => `${name} - Jewellery Store Online`,
   clothing: (name) => `${name} - Fashion & Clothing Store`,
@@ -53,6 +54,7 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
     { id: 'general', name: t('categories.general'), icon: '🛍️' },
   ];
 
+  // TODO: localize via content_language (handled in wizard seed-data task)
   const DEFAULT_CATEGORIES = {
     jewellery: [
       { name: 'New Arrivals', subtitle: 'Discover our latest exquisite collections' },

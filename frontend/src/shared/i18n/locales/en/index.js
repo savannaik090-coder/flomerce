@@ -18,6 +18,7 @@ import customers from './customers.json';
 import wizard from './wizard.json';
 import legal from './legal.json';
 import about from './about.json';
+import plans from './plans.json';
 
 export const NAMESPACE_FILES = {
   common,
@@ -33,6 +34,7 @@ export const NAMESPACE_FILES = {
   wizard,
   legal,
   about,
+  plans,
 };
 
 export const NAMESPACES = Object.keys(NAMESPACE_FILES);

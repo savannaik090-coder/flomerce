@@ -1,1 +1,34 @@
-{}
+{
+  "bindingBanner": {
+    "title": "English version is binding",
+    "body": "This page is provided in your language as a courtesy. The English version of this document is the legally binding text. In case of any conflict or ambiguity, the English version prevails."
+  },
+  "summaryHeading": "Summary",
+  "privacy": {
+    "summary1": "We collect your name, email, and account info to provide the platform.",
+    "summary2": "Payments are processed by Razorpay; we never store full card numbers.",
+    "summary3": "We do not sell your personal information to third parties.",
+    "summary4": "You can request access, correction, or deletion of your data at any time.",
+    "summary5": "Data is encrypted in transit and protected with industry-standard security."
+  },
+  "terms": {
+    "summary1": "By using Flomerce you agree to these terms; you must be 18 or older.",
+    "summary2": "Subscription fees are billed in advance through Razorpay; prices are in INR.",
+    "summary3": "Flomerce is a SaaS platform — we do not handle payments made on your customers' websites; each merchant uses their own Razorpay account.",
+    "summary4": "You own your content; you may not sell illegal, prohibited, or restricted goods.",
+    "summary5": "Indian law governs this agreement; disputes go to courts in Karnataka, India."
+  },
+  "refund": {
+    "summary1": "Flomerce is a digital service activated immediately upon payment.",
+    "summary2": "New subscribers can request a full refund within 7 days of first payment.",
+    "summary3": "Cancellation stops future renewals; the current period stays active until it ends.",
+    "summary4": "Duplicate charges and failed activations are refunded automatically.",
+    "summary5": "To request a refund, email support with your transaction ID."
+  },
+  "shipping": {
+    "summary1": "Flomerce is a digital SaaS product — no physical goods are shipped by us.",
+    "summary2": "Access to the platform is granted instantly after payment or trial activation.",
+    "summary3": "Your e-commerce site goes live within seconds of creation.",
+    "summary4": "Merchants are solely responsible for shipping and delivering products sold on their own stores."
+  }
+}

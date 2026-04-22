@@ -1,9 +1,11 @@
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import Navbar from '../components/Navbar.jsx';
 import '../styles/legal.css';
 import { PLATFORM_DOMAIN, PLATFORM_URL, SUPPORT_EMAIL } from '../config.js';
 
 export default function PrivacyPolicyPage() {
+  const { t } = useTranslation('legal');
   return (
     <div className="legal-page">
       <div className="container">
@@ -11,6 +13,22 @@ export default function PrivacyPolicyPage() {
         <div className="legal-content">
           <h1>Privacy Policy</h1>
           <p className="legal-updated">Last updated: March 30, 2026</p>
+
+          <div className="legal-binding-banner" style={{ background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 8, padding: '12px 16px', margin: '0 0 1rem' }}>
+            <strong style={{ display: 'block', marginBottom: 4, color: '#78350f' }}>{t('bindingBanner.title')}</strong>
+            <span style={{ fontSize: '0.875rem', color: '#78350f' }}>{t('bindingBanner.body')}</span>
+          </div>
+
+          <section className="legal-summary" style={{ background: '#f1f5f9', borderRadius: 8, padding: '1rem 1.25rem', margin: '0 0 1.5rem' }}>
+            <h2 style={{ marginTop: 0 }}>{t('summaryHeading')}</h2>
+            <ul>
+              <li>{t('privacy.summary1')}</li>
+              <li>{t('privacy.summary2')}</li>
+              <li>{t('privacy.summary3')}</li>
+              <li>{t('privacy.summary4')}</li>
+              <li>{t('privacy.summary5')}</li>
+            </ul>
+          </section>
 
           <section>
             <h2>1. Introduction</h2>

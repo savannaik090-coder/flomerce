@@ -1,0 +1,95 @@
+{
+  "duration": {
+    "monthly": "Monthly",
+    "3months": "3 Months",
+    "6months": "6 Months",
+    "yearly": "Yearly"
+  },
+  "durationText": {
+    "monthly": "month",
+    "3months": "3 months",
+    "6months": "6 months",
+    "yearly": "1 year"
+  },
+  "perMonth": "₹{{price}}/month",
+  "savePercent": "{{percent}}% OFF",
+  "loading": "Loading plans...",
+  "loadFailed": "Failed to load plans",
+  "noPlans": "No plans available at the moment.",
+  "headings": {
+    "chooseForWebsite": "Choose a Plan for Your Website",
+    "chooseToStart": "Choose a Plan to Get Started",
+    "planExpired": "Your Plan Has Expired",
+    "startTrial": "Start Your Free Trial"
+  },
+  "subheadings": {
+    "subscribeToActivate": "Subscribe to a plan to create and activate your website.",
+    "trialOrSubscribe": "Start with a free trial or subscribe to a plan to create and manage your websites.",
+    "expiredHelp": "Your subscription has expired and all your websites are disabled. Subscribe to a plan for each site to restore access.",
+    "trialPitch": "Start a 7-day free trial to create up to 5 websites. No credit card required."
+  },
+  "scheduledChange": {
+    "label": "Scheduled plan change:",
+    "willSwitchOn": "Your subscription will switch to <1>{{plan}}</1> on <1>{{date}}</1>. Your current plan stays active until then. To cancel this change, please contact support.",
+    "willSwitchAtPeriodEnd": "Your subscription will switch to <1>{{plan}}</1> at the end of your current billing period. Your current plan stays active until then. To cancel this change, please contact support."
+  },
+  "trial": {
+    "badge": "FREE TRIAL",
+    "title": "7-Day Free Trial",
+    "priceLabel": "for 7 days",
+    "feature1": "Create up to 5 websites",
+    "feature2": "Full access for 7 days",
+    "feature3": "No credit card required",
+    "feature4": "Upgrade anytime during trial",
+    "startBtn": "Start Free Trial",
+    "starting": "Starting...",
+    "started": "Your 7-day free trial has started! Enjoy full access to all features.",
+    "startFailed": "Failed to start trial. Please try again."
+  },
+  "popular": "POPULAR",
+  "buttons": {
+    "currentPlan": "Current Plan",
+    "subscribe": "Subscribe",
+    "upgrade": "Upgrade",
+    "downgrade": "Downgrade",
+    "processing": "Processing..."
+  },
+  "scheduledHelpText": "Takes effect at the end of your current billing period. Your current plan keeps running until then.",
+  "scheduleConfirm": {
+    "title": "Schedule {{action}}?",
+    "message": "Schedule a {{action}} to {{plan}}? Your current plan keeps running until the end of your billing period, then {{plan}} starts automatically. You won't be charged twice.",
+    "confirmText": "Schedule {{action}}",
+    "actionDowngrade": "downgrade",
+    "actionSwitch": "switch"
+  },
+  "enterprise": {
+    "badge": "ENTERPRISE",
+    "title": "Enterprise",
+    "price": "Custom",
+    "defaultMessage": "Need a custom solution for your business? Get in touch with our team for a tailored enterprise plan.",
+    "contact": "Contact Us"
+  },
+  "errors": {
+    "notAvailableForCycle": "This plan is not available for the selected billing cycle.",
+    "paymentNotConfigured": "Payment is not configured. Please contact the administrator.",
+    "createSubscriptionFailed": "Failed to create subscription. Please try again.",
+    "verifyFailed": "Payment verification failed. If you were charged, please contact support.",
+    "processFailed": "Failed to process payment. Please try again."
+  },
+  "overlay": {
+    "verifyingTitle": "Verifying Payment",
+    "creatingSiteTitle": "Setting Up Your Store",
+    "verifyingBody": "Please wait while we confirm your payment...",
+    "creatingSiteBody": "Creating your website and activating your plan...",
+    "successTitle": "Payment Successful!",
+    "successDefault": "Your plan has been activated. You can now start building your store.",
+    "successActivated": "Your plan has been activated successfully. You can now start building your store!",
+    "successActivatedShort": "Your plan has been activated successfully!",
+    "successPaymentBackup": "Your payment was successful and your plan is active! Your website will be created when you return to the dashboard.",
+    "errorTitle": "Something Went Wrong",
+    "errorDefault": "Payment verification failed. Please contact support if you were charged.",
+    "goToDashboard": "Go to Dashboard",
+    "close": "Close"
+  },
+  "checkoutDescription": "{{plan}} - {{cycle}}"
+}
