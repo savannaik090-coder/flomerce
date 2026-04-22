@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation, Trans } from 'react-i18next';
 import { useAuth } from '../context/AuthContext.jsx';
 import { getUserSites, deleteSite, createSite } from '../services/siteService.js';
 import { getUserProfile, cancelSubscription } from '../services/paymentService.js';
@@ -13,7 +13,7 @@ import { PLATFORM_DOMAIN } from '../config.js';
 import AlertModal, { isPlanError } from '../../../shared/ui/AlertModal.jsx';
 import { useToast } from '../../../shared/ui/Toast.jsx';
 import { useConfirm } from '../../../shared/ui/ConfirmDialog.jsx';
-import { getSubscriptionBadge, formatScheduledChange } from '../utils/subscriptionStatus.js';
+import { getSubscriptionBadge, formatScheduledChange, renderBadgeText } from '../utils/subscriptionStatus.js';
 
 const VALID_PAGES = ['dashboard', 'admin', 'billing', 'staff', 'account'];
 
@@ -140,11 +140,11 @@ export default function DashboardPage() {
         closeDeleteModal();
         await loadSites();
       } else {
-        toast.error('Failed to delete site: ' + (result.error || 'Unknown error'));
+        toast.error(t('deleteSite.deleteFailed', { error: result.error || t('deleteSite.unknownError') }));
         setDeleteLoading(false);
       }
     } catch (e) {
-      toast.error('Failed to delete site: ' + e.message);
+      toast.error(t('deleteSite.deleteFailed', { error: e.message }));
       setDeleteLoading(false);
     }
   };
@@ -200,7 +200,7 @@ export default function DashboardPage() {
       await loadSiteUsage(siteId);
     } catch (e) {
       console.error('Failed to toggle overage for site', siteId, e);
-      toast.error('Failed to update overage setting. Please try again.');
+      toast.error(t('subscription.overageFailed'));
     }
   }, [loadSiteUsage]);
 
@@ -212,7 +212,7 @@ export default function DashboardPage() {
       await loadSites();
       await loadProfile();
     } catch (e) {
-      toast.error(e.message || 'Failed to cancel subscription. Please try again.');
+      toast.error(e.message || t('subscription.cancelFailed'));
     } finally {
       setCancellingSubscription(false);
     }
@@ -244,7 +244,7 @@ export default function DashboardPage() {
         const newSite = result.site || result.data || result;
         return newSite.id || newSite.siteId;
       } else {
-        throw new Error(result.message || result.error || 'Failed to create website');
+        throw new Error(result.message || result.error || t('createSiteFailed'));
       }
     } catch (err) {
       throw err;
@@ -267,23 +267,23 @@ export default function DashboardPage() {
   const handleCreateSiteClick = () => {
     const accountStatus = getAccountSubscriptionStatus();
     if (accountStatus.isTrialActive && sites.length >= 5) {
-      setPlanLimitMsg('Trial accounts can create up to 5 websites. Please upgrade to a paid plan to create more.');
+      setPlanLimitMsg(t('trialPlanLimit'));
       return;
     }
     setShowWizard(true);
   };
 
   const PERMISSION_OPTIONS = [
-    { id: 'dashboard', label: 'Dashboard' },
-    { id: 'products', label: 'Products' },
-    { id: 'inventory', label: 'Inventory' },
-    { id: 'orders', label: 'Orders' },
-    { id: 'customers', label: 'Customers' },
-    { id: 'analytics', label: 'Analytics' },
-    { id: 'website', label: 'Website' },
-    { id: 'seo', label: 'SEO' },
-    { id: 'notifications', label: 'Notifications' },
-    { id: 'settings', label: 'Settings' },
+    { id: 'dashboard', label: t('permissions.dashboard') },
+    { id: 'products', label: t('permissions.products') },
+    { id: 'inventory', label: t('permissions.inventory') },
+    { id: 'orders', label: t('permissions.orders') },
+    { id: 'customers', label: t('permissions.customers') },
+    { id: 'analytics', label: t('permissions.analytics') },
+    { id: 'website', label: t('permissions.website') },
+    { id: 'seo', label: t('permissions.seo') },
+    { id: 'notifications', label: t('permissions.notifications') },
+    { id: 'settings', label: t('permissions.settings') },
   ];
 
   const loadStaff = useCallback(async (siteId) => {
@@ -293,7 +293,7 @@ export default function DashboardPage() {
       const result = await apiRequest(`/api/sites/${siteId}/staff`);
       setStaffList(result.data || result.staff || []);
     } catch (e) {
-      setStaffError('Failed to load staff: ' + e.message);
+      setStaffError(t('staffPanel.loadFailed', { error: e.message }));
       setStaffList([]);
     } finally {
       setStaffLoading(false);
@@ -346,10 +346,10 @@ export default function DashboardPage() {
           method: 'PUT',
           body: JSON.stringify(body),
         });
-        setStaffMsg('Staff member updated successfully.');
+        setStaffMsg(t('staffPanel.updated'));
       } else {
         if (!staffForm.password || staffForm.password.length < 6) {
-          setStaffError('Password must be at least 6 characters.');
+          setStaffError(t('staffPanel.passwordLengthError'));
           setStaffSaving(false);
           return;
         }
@@ -357,7 +357,7 @@ export default function DashboardPage() {
           method: 'POST',
           body: JSON.stringify(body),
         });
-        setStaffMsg('Staff member added successfully.');
+        setStaffMsg(t('staffPanel.added'));
       }
       setStaffForm(null);
       await loadStaff(staffSiteId);
@@ -365,7 +365,7 @@ export default function DashboardPage() {
       if (isPlanError(e)) {
         setPlanLimitMsg(e.message);
       } else {
-        setStaffError(e.message || 'Failed to save staff member.');
+        setStaffError(e.message || t('staffPanel.saveFailed'));
       }
     } finally {
       setStaffSaving(false);
@@ -373,22 +373,22 @@ export default function DashboardPage() {
   };
 
   const handleDeleteStaff = async (staffId) => {
-    if (!(await confirm({ title: 'Remove staff member?', message: 'They will lose access to this site immediately.', variant: 'danger', confirmText: 'Remove' }))) return;
+    if (!(await confirm({ title: t('staffPanel.removeConfirmTitle'), message: t('staffPanel.removeConfirmBody'), variant: 'danger', confirmText: t('staffPanel.removeConfirmBtn') }))) return;
     try {
       await apiRequest(`/api/sites/${staffSiteId}/staff/${staffId}`, {
         method: 'DELETE',
       });
-      setStaffMsg('Staff member removed.');
+      setStaffMsg(t('staffPanel.removed'));
       await loadStaff(staffSiteId);
     } catch (e) {
-      setStaffError('Failed to remove staff: ' + e.message);
+      setStaffError(t('staffPanel.removeFailed', { error: e.message }));
     }
   };
 
   if (loading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', fontFamily: 'Inter, sans-serif' }}>
-        <p>Loading...</p>
+        <p>{t('loading')}</p>
       </div>
     );
   }
@@ -469,7 +469,7 @@ export default function DashboardPage() {
         <div className="site-card" style={{ display: 'block', marginTop: '1rem' }}>
           <h3 style={{ margin: '0 0 1rem', fontSize: '1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
-            Storage Usage
+            {t('storage.title')}
           </h3>
           {[0, 1].map(i => (
             <div key={i} style={{ marginBottom: '1rem' }}>
@@ -483,7 +483,7 @@ export default function DashboardPage() {
           ))}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '0.5rem' }}>
             <span className="usage-spinner" style={{ width: '14px', height: '14px', border: '2px solid #e5e7eb', borderTopColor: '#6366f1', borderRadius: '50%', display: 'inline-block' }} />
-            Loading storage usage...
+            {t('storage.loading')}
           </div>
         </div>
       );
@@ -498,35 +498,35 @@ export default function DashboardPage() {
       <div className="site-card" style={{ display: 'block', marginTop: '1rem' }}>
         <h3 style={{ margin: '0 0 1rem', fontSize: '1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
-          Storage Usage
+          {t('storage.title')}
         </h3>
 
         <div style={{ marginBottom: '1rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.375rem' }}>
-            <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>Database (D1)</span>
+            <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>{t('storage.database')}</span>
             <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{formatBytes(usage.d1?.used || 0)} / {formatBytes(usage.d1?.limit || 0)}</span>
           </div>
           <div style={{ height: '8px', background: '#e5e7eb', borderRadius: '4px', overflow: 'hidden' }}>
             <div style={{ height: '100%', width: `${d1Pct}%`, background: d1Color, borderRadius: '4px', transition: 'width 0.5s ease' }} />
           </div>
-          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0.25rem 0 0' }}>{d1Pct.toFixed(1)}% used</p>
+          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0.25rem 0 0' }}>{t('storage.percentUsed', { pct: d1Pct.toFixed(1) })}</p>
         </div>
 
         <div style={{ marginBottom: '1rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.375rem' }}>
-            <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>Media Storage (R2)</span>
+            <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>{t('storage.media')}</span>
             <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{formatBytes(usage.r2?.used || 0)} / {formatBytes(usage.r2?.limit || 0)}</span>
           </div>
           <div style={{ height: '8px', background: '#e5e7eb', borderRadius: '4px', overflow: 'hidden' }}>
             <div style={{ height: '100%', width: `${r2Pct}%`, background: r2Color, borderRadius: '4px', transition: 'width 0.5s ease' }} />
           </div>
-          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0.25rem 0 0' }}>{r2Pct.toFixed(1)}% used</p>
+          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0.25rem 0 0' }}>{t('storage.percentUsed', { pct: r2Pct.toFixed(1) })}</p>
         </div>
 
         {!usage.isEnterprise && (d1Pct >= 90 || r2Pct >= 90) && (
           <div style={{ padding: '0.75rem', background: '#fef2f2', borderRadius: '0.5rem', border: '1px solid #fca5a5' }}>
             <p style={{ fontSize: '0.8rem', color: '#991b1b', margin: 0, fontWeight: 600 }}>
-              You are approaching your storage limit. Upgrade your plan for more storage.
+              {t('storage.approachingLimit')}
             </p>
           </div>
         )}
@@ -534,33 +534,33 @@ export default function DashboardPage() {
         {usage.isEnterprise && (
           <div style={{ marginTop: '1rem' }}>
             <div style={{ padding: '0.75rem', background: '#f5f3ff', borderRadius: '0.5rem', border: '1px solid #c4b5fd', marginBottom: '0.75rem' }}>
-              <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#5b21b6' }}>Enterprise Plan</span>
+              <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#5b21b6' }}>{t('storage.enterpriseBadge')}</span>
               <p style={{ fontSize: '0.75rem', color: '#6d28d9', margin: '0.25rem 0 0' }}>
-                Overage is always allowed. Usage beyond included limits is billed monthly.
+                {t('storage.enterpriseNote')}
               </p>
             </div>
 
             {usage.overageCostINR > 0 && (
               <div style={{ padding: '0.75rem', background: '#fef3c7', borderRadius: '0.5rem', border: '1px solid #fbbf24', marginBottom: '0.75rem' }}>
-                <div style={{ fontSize: '0.875rem', fontWeight: 700, color: '#92400e', marginBottom: '0.5rem' }}>Current Month Overage</div>
+                <div style={{ fontSize: '0.875rem', fontWeight: 700, color: '#92400e', marginBottom: '0.5rem' }}>{t('storage.currentMonthOverage')}</div>
                 <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
                   {(usage.d1?.overageCostINR || 0) > 0 && (
                     <div style={{ fontSize: '0.8rem', color: '#92400e' }}>
-                      Database (D1): <strong>{formatBytes(usage.d1?.overageBytes || 0)}</strong> over — <strong>{'\u20B9'}{(usage.d1?.overageCostINR || 0).toFixed(2)}</strong>
+                      {t('overage.databaseLine', { amount: formatBytes(usage.d1?.overageBytes || 0), cost: (usage.d1?.overageCostINR || 0).toFixed(2) })}
                     </div>
                   )}
                   {(usage.r2?.overageCostINR || 0) > 0 && (
                     <div style={{ fontSize: '0.8rem', color: '#92400e' }}>
-                      Media (R2): <strong>{formatBytes(usage.r2?.overageBytes || 0)}</strong> over — <strong>{'\u20B9'}{(usage.r2?.overageCostINR || 0).toFixed(2)}</strong>
+                      {t('overage.mediaLine', { amount: formatBytes(usage.r2?.overageBytes || 0), cost: (usage.r2?.overageCostINR || 0).toFixed(2) })}
                     </div>
                   )}
                 </div>
                 <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#92400e' }}>
-                  Total: {'\u20B9'}{usage.overageCostINR.toFixed(2)}
+                  {t('storage.total', { cost: usage.overageCostINR.toFixed(2) })}
                 </div>
                 {usage.overageRates && (
                   <p style={{ fontSize: '0.7rem', color: '#a16207', margin: '0.5rem 0 0', borderTop: '1px solid #fde68a', paddingTop: '0.35rem' }}>
-                    Rates: {'\u20B9'}{usage.overageRates.d1PerGB}/GB (Database) &middot; {'\u20B9'}{usage.overageRates.r2PerGB}/GB (Media)
+                    {t('storage.rates', { d1: usage.overageRates.d1PerGB, r2: usage.overageRates.r2PerGB })}
                   </p>
                 )}
               </div>
@@ -568,16 +568,16 @@ export default function DashboardPage() {
 
             {usage.enterpriseInvoices && usage.enterpriseInvoices.length > 0 && (
               <div style={{ marginTop: '0.75rem' }}>
-                <h4 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.5rem' }}>Payment History</h4>
+                <h4 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.5rem' }}>{t('storage.paymentHistory')}</h4>
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', fontSize: '0.8rem', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
-                        <th style={{ textAlign: 'start', padding: '0.5rem', color: '#64748b', fontWeight: 600 }}>Month</th>
-                        <th style={{ textAlign: 'end', padding: '0.5rem', color: '#64748b', fontWeight: 600 }}>D1 Overage</th>
-                        <th style={{ textAlign: 'end', padding: '0.5rem', color: '#64748b', fontWeight: 600 }}>R2 Overage</th>
-                        <th style={{ textAlign: 'end', padding: '0.5rem', color: '#64748b', fontWeight: 600 }}>Total</th>
-                        <th style={{ textAlign: 'center', padding: '0.5rem', color: '#64748b', fontWeight: 600 }}>Status</th>
+                        <th style={{ textAlign: 'start', padding: '0.5rem', color: '#64748b', fontWeight: 600 }}>{t('storage.month')}</th>
+                        <th style={{ textAlign: 'end', padding: '0.5rem', color: '#64748b', fontWeight: 600 }}>{t('storage.d1Overage')}</th>
+                        <th style={{ textAlign: 'end', padding: '0.5rem', color: '#64748b', fontWeight: 600 }}>{t('storage.r2Overage')}</th>
+                        <th style={{ textAlign: 'end', padding: '0.5rem', color: '#64748b', fontWeight: 600 }}>{t('storage.totalCol')}</th>
+                        <th style={{ textAlign: 'center', padding: '0.5rem', color: '#64748b', fontWeight: 600 }}>{t('storage.status')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -593,7 +593,7 @@ export default function DashboardPage() {
                               background: inv.status === 'paid' ? '#dcfce7' : '#fef2f2',
                               color: inv.status === 'paid' ? '#166534' : '#991b1b',
                             }}>
-                              {inv.status === 'paid' ? 'Paid' : 'Unpaid'}
+                              {inv.status === 'paid' ? t('storage.paid') : t('storage.unpaid')}
                             </span>
                           </td>
                         </tr>
@@ -625,14 +625,14 @@ export default function DashboardPage() {
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
             <div style={{ flex: 1 }}>
               <p style={{ fontWeight: 700, color: '#166534', margin: 0 }}>
-                Free Trial — {daysLeft} day{daysLeft !== 1 ? 's' : ''} remaining
+                {t('trialBanner.title', { count: daysLeft })}
               </p>
               <p style={{ fontSize: '0.875rem', color: '#15803d', margin: '0.25rem 0 0 0' }}>
-                Create up to 5 websites during your trial. Ends {new Date(accountStatus.trialEndDate).toLocaleDateString()}.
+                {t('trialBanner.subtitle', { date: new Date(accountStatus.trialEndDate).toLocaleDateString() })}
               </p>
             </div>
             <button className="btn btn-primary" onClick={() => navigateDashboard('billing')} style={{ whiteSpace: 'nowrap', background: '#10b981', borderColor: '#10b981' }}>
-              Upgrade Now
+              {t('trialBanner.upgrade')}
             </button>
           </div>
         </div>
@@ -646,14 +646,14 @@ export default function DashboardPage() {
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
             <div style={{ flex: 1 }}>
               <p style={{ fontWeight: 700, color: '#dc2626', margin: 0 }}>
-                Your trial has expired
+                {t('trialExpiredBanner.title')}
               </p>
               <p style={{ fontSize: '0.875rem', color: '#991b1b', margin: '0.25rem 0 0 0' }}>
-                Your websites are currently disabled. Subscribe to a plan for each site to restore access.
+                {t('trialExpiredBanner.subtitle')}
               </p>
             </div>
             <button className="btn btn-primary" onClick={() => navigateDashboard('billing')} style={{ whiteSpace: 'nowrap' }}>
-              Subscribe Now
+              {t('trialExpiredBanner.subscribe')}
             </button>
           </div>
         </div>
@@ -671,7 +671,7 @@ export default function DashboardPage() {
           <div className="manage-header">
             <button className="btn btn-outline" onClick={() => { setManagedSite(null); setManagedAdminUrl(null); navigateDashboard('dashboard'); }} style={{ gap: '0.375rem' }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-              Back
+              {t('back')}
             </button>
             <span className="manage-site-name" style={{ marginInlineStart: 'auto' }}>{managedSite.brand_name || managedSite.brandName || managedSite.subdomain}</span>
             {(() => {
@@ -679,23 +679,23 @@ export default function DashboardPage() {
               if (!siteInfo.plan && b.tone === 'inactive') return null;
               return (
                 <span className={`plan-status-pill status-${b.tone}`} style={{ marginInlineStart: '0.5rem', background: b.bg, color: b.color }}>
-                  {b.text}
+                  {renderBadgeText(b, t)}
                 </span>
               );
             })()}
             {siteInfo.periodEnd && siteInfo.plan !== 'enterprise' && (
               <span style={{ marginInlineStart: '0.75rem', fontSize: '0.8rem', color: siteInfo.isCancelled ? '#92400e' : siteInfo.isExpired ? '#dc2626' : 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                 {siteInfo.isCancelled
-                  ? `Ends ${new Date(siteInfo.periodEnd).toLocaleDateString()}`
+                  ? t('siteCard.endsOn', { date: new Date(siteInfo.periodEnd).toLocaleDateString() })
                   : siteInfo.isExpired
-                    ? `Expired ${new Date(siteInfo.periodEnd).toLocaleDateString()}`
+                    ? t('siteCard.expiredOn', { date: new Date(siteInfo.periodEnd).toLocaleDateString() })
                     : siteInfo.plan === 'trial'
-                      ? `Trial ends ${new Date(siteInfo.periodEnd).toLocaleDateString()}`
-                      : `Renews ${new Date(siteInfo.periodEnd).toLocaleDateString()}`}
+                      ? t('siteCard.trialEndsOn', { date: new Date(siteInfo.periodEnd).toLocaleDateString() })
+                      : t('siteCard.renewsOn', { date: new Date(siteInfo.periodEnd).toLocaleDateString() })}
               </span>
             )}
             {(() => {
-              const note = formatScheduledChange(siteInfo);
+              const note = formatScheduledChange(siteInfo, t);
               return note ? (
                 <span style={{ marginInlineStart: '0.75rem', fontSize: '0.8rem', color: '#b45309', whiteSpace: 'nowrap' }}>
                   ⏰ {note}
@@ -706,15 +706,15 @@ export default function DashboardPage() {
           {siteInfo.isExpired ? (
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '1rem', padding: '2rem' }}>
               <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-              <h2 style={{ margin: 0, color: '#dc2626' }}>Subscription Expired</h2>
-              <p style={{ color: '#64748b', textAlign: 'center', maxWidth: '400px' }}>This site's subscription has expired and its admin panel is disabled. Please subscribe to a plan to restore access.</p>
-              <button className="btn btn-primary" onClick={() => handleBillingSite(managedSite.id)}>Subscribe Now</button>
+              <h2 style={{ margin: 0, color: '#dc2626' }}>{t('expiredPanel.title')}</h2>
+              <p style={{ color: '#64748b', textAlign: 'center', maxWidth: '400px' }}>{t('expiredPanel.body')}</p>
+              <button className="btn btn-primary" onClick={() => handleBillingSite(managedSite.id)}>{t('expiredPanel.subscribe')}</button>
             </div>
           ) : (
             <iframe
               src={managedAdminUrl}
               className="manage-iframe"
-              title={`Admin - ${managedSite.brand_name || managedSite.subdomain}`}
+              title={t('siteCard.iframeTitle', { site: managedSite.brand_name || managedSite.subdomain })}
               allow="clipboard-write"
             />
           )}
@@ -726,7 +726,7 @@ export default function DashboardPage() {
       return (
         <main className="main-content">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
-            <p style={{ color: 'var(--text-muted)' }}>Loading admin panel...</p>
+            <p style={{ color: 'var(--text-muted)' }}>{t('loadingAdmin')}</p>
           </div>
         </main>
       );
@@ -736,7 +736,7 @@ export default function DashboardPage() {
       return (
         <main className="main-content">
           <div className="header"><h1>{t('admin:panelTitle')}</h1></div>
-          <p style={{ color: 'var(--text-muted)' }}>Loading sites...</p>
+          <p style={{ color: 'var(--text-muted)' }}>{t('loadingSites')}</p>
         </main>
       );
     }
@@ -746,8 +746,8 @@ export default function DashboardPage() {
         <main className="main-content">
           <div className="header"><h1>{t('admin:panelTitle')}</h1></div>
           <div className="empty-state">
-            <p>You don't have any websites yet. Create one first.</p>
-            <button className="btn btn-primary" onClick={() => { navigateDashboard('dashboard'); setShowWizard(true); }}>Create a Website</button>
+            <p>{t('noWebsitesAdmin')}</p>
+            <button className="btn btn-primary" onClick={() => { navigateDashboard('dashboard'); setShowWizard(true); }}>{t('createWebsiteCta')}</button>
           </div>
         </main>
       );
@@ -761,7 +761,7 @@ export default function DashboardPage() {
       return (
         <main className="main-content">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
-            <p style={{ color: 'var(--text-muted)' }}>Loading admin panel...</p>
+            <p style={{ color: 'var(--text-muted)' }}>{t('loadingAdmin')}</p>
           </div>
         </main>
       );
@@ -769,7 +769,7 @@ export default function DashboardPage() {
 
     return (
       <main className="main-content">
-        <div className="header"><h1>Select a Site to Manage</h1></div>
+        <div className="header"><h1>{t('selectSiteToManage')}</h1></div>
         <div className="sites-grid">
           {sites.map(site => {
             const subInfo = getSiteSubscriptionInfo(site);
@@ -783,30 +783,30 @@ export default function DashboardPage() {
                       const b = getSubscriptionBadge(subInfo);
                       return (
                         <span className={`plan-status-pill status-${b.tone}`} style={{ background: b.bg, color: b.color, alignSelf: 'flex-start' }}>
-                          {b.text}
+                          {renderBadgeText(b, t)}
                         </span>
                       );
                     })()}
                     {subInfo.periodEnd && subInfo.plan !== 'enterprise' && (
                       <span style={{ fontSize: '0.7rem', color: subInfo.isCancelled ? '#92400e' : subInfo.isExpired ? '#dc2626' : 'var(--text-muted)' }}>
                         {subInfo.isCancelled
-                          ? `Ends ${new Date(subInfo.periodEnd).toLocaleDateString()}`
+                          ? t('siteCard.endsOn', { date: new Date(subInfo.periodEnd).toLocaleDateString() })
                           : subInfo.isExpired
-                            ? `Expired ${new Date(subInfo.periodEnd).toLocaleDateString()}`
+                            ? t('siteCard.expiredOn', { date: new Date(subInfo.periodEnd).toLocaleDateString() })
                             : subInfo.plan === 'trial'
-                              ? `Trial ends ${new Date(subInfo.periodEnd).toLocaleDateString()}`
-                              : `Renews ${new Date(subInfo.periodEnd).toLocaleDateString()}`}
+                              ? t('siteCard.trialEndsOn', { date: new Date(subInfo.periodEnd).toLocaleDateString() })
+                              : t('siteCard.renewsOn', { date: new Date(subInfo.periodEnd).toLocaleDateString() })}
                       </span>
                     )}
                     {(() => {
-                      const note = formatScheduledChange(subInfo);
+                      const note = formatScheduledChange(subInfo, t);
                       return note ? (
                         <span style={{ fontSize: '0.7rem', color: '#b45309' }}>⏰ {note}</span>
                       ) : null;
                     })()}
                   </div>
                   <button className="btn btn-primary" style={{ fontSize: '0.8rem', padding: '0.5rem 1rem' }}>
-                    Open Admin
+                    {t('openAdmin')}
                   </button>
                 </div>
               </div>
@@ -829,31 +829,31 @@ export default function DashboardPage() {
             <li>
               <button className={`nav-link${activePage === 'dashboard' ? ' active' : ''}`} onClick={() => { setManagedSite(null); setManagedAdminUrl(null); navigateDashboard('dashboard'); }}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-                Dashboard
+                {t('tabs.dashboard')}
               </button>
             </li>
             <li>
               <button className={`nav-link${activePage === 'admin' ? ' active' : ''}`} onClick={() => { setManagedSite(null); setManagedAdminUrl(null); navigateDashboard('admin'); }}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
-                Admin
+                {t('tabs.admin')}
               </button>
             </li>
             <li>
               <button className={`nav-link${activePage === 'billing' ? ' active' : ''}`} onClick={() => { setManagedSite(null); setManagedAdminUrl(null); if (sites.length === 1) { setBillingSiteId(sites[0].id); loadSiteUsage(sites[0].id); } else { setBillingSiteId(null); } navigateDashboard('billing'); }}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
-                Billing
+                {t('tabs.billing')}
               </button>
             </li>
             <li>
               <button className={`nav-link${activePage === 'staff' ? ' active' : ''}`} onClick={() => { setManagedSite(null); setManagedAdminUrl(null); if (sites.length === 1) { setStaffSiteId(null); setStaffForm(null); handleStaffSite(sites[0].id); } else { setStaffSiteId(null); setStaffForm(null); } navigateDashboard('staff'); }}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-                Staff
+                {t('tabs.staff')}
               </button>
             </li>
             <li>
               <button className={`nav-link${activePage === 'account' ? ' active' : ''}`} onClick={() => { setManagedSite(null); setManagedAdminUrl(null); navigateDashboard('account'); }}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                Account
+                {t('tabs.account')}
               </button>
             </li>
           </ul>
@@ -973,13 +973,13 @@ export default function DashboardPage() {
                                   const b = getSubscriptionBadge(subInfo);
                                   return (
                                     <span className={`plan-status-pill status-${b.tone}`} style={{ background: b.bg, color: b.color }}>
-                                      {b.text}
+                                      {renderBadgeText(b, t)}
                                     </span>
                                   );
                                 })()}
                               </div>
                               {(() => {
-                                const note = formatScheduledChange(subInfo);
+                                const note = formatScheduledChange(subInfo, t);
                                 return note ? (
                                   <p style={{ fontSize: '0.85rem', color: '#b45309', margin: '0 0 1rem 0' }}>
                                     ⏰ {t('billingPanel.scheduledNote', { note })}
@@ -1049,7 +1049,7 @@ export default function DashboardPage() {
                                     const b = getSubscriptionBadge(subInfo);
                                     return (
                                       <span className={`plan-status-pill status-${b.tone}`} style={{ background: b.bg, color: b.color }}>
-                                        {b.text}
+                                        {renderBadgeText(b, t)}
                                       </span>
                                     );
                                   })()}
@@ -1242,7 +1242,7 @@ export default function DashboardPage() {
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
                                 <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>{staff.name}</h3>
                                 <span style={{ fontSize: '0.7rem', padding: '0.125rem 0.5rem', borderRadius: '1rem', fontWeight: 600, background: (staff.is_active !== false && staff.is_active !== 0) ? '#dcfce7' : '#fee2e2', color: (staff.is_active !== false && staff.is_active !== 0) ? '#166534' : '#991b1b' }}>
-                                  {(staff.is_active !== false && staff.is_active !== 0) ? 'Active' : 'Inactive'}
+                                  {(staff.is_active !== false && staff.is_active !== 0) ? t('staffPanel.statusActive') : t('staffPanel.statusInactive')}
                                 </span>
                               </div>
                               <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>{staff.email}</p>
@@ -1260,8 +1260,8 @@ export default function DashboardPage() {
                                 setStaffForm({ id: staff.id, name: staff.name, email: staff.email, password: '', permissions: perms, is_active: staff.is_active !== false && staff.is_active !== 0 });
                                 setStaffMsg('');
                                 setStaffError('');
-                              }}>Edit</button>
-                              <button className="btn btn-outline" style={{ fontSize: '0.8rem', padding: '0.375rem 0.75rem', color: '#ef4444', borderColor: '#fecaca' }} onClick={() => handleDeleteStaff(staff.id)}>Remove</button>
+                              }}>{t('staffPanel.edit')}</button>
+                              <button className="btn btn-outline" style={{ fontSize: '0.8rem', padding: '0.375rem 0.75rem', color: '#ef4444', borderColor: '#fecaca' }} onClick={() => handleDeleteStaff(staff.id)}>{t('staffPanel.remove')}</button>
                             </div>
                           </div>
                         </div>
@@ -1283,15 +1283,15 @@ export default function DashboardPage() {
               <div className="site-card" style={{ display: 'block', maxWidth: '500px' }}>
                 <h2 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                  Profile Details
+                  {t('profile.title')}
                 </h2>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                   <div>
-                    <label style={{ fontSize: '0.75rem', color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 }}>Name</label>
+                    <label style={{ fontSize: '0.75rem', color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 }}>{t('profile.name')}</label>
                     <div style={{ fontWeight: 500, color: '#111827' }}>{profileData?.name || user?.name || '-'}</div>
                   </div>
                   <div>
-                    <label style={{ fontSize: '0.75rem', color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 }}>Email Address</label>
+                    <label style={{ fontSize: '0.75rem', color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 }}>{t('profile.email')}</label>
                     <div style={{ fontWeight: 500, color: '#111827' }}>{profileData?.email || user?.email || '-'}</div>
                   </div>
                 </div>
@@ -1301,7 +1301,7 @@ export default function DashboardPage() {
                 <div className="site-card" style={{ display: 'block', maxWidth: '500px', marginTop: '1.5rem' }}>
                   <h2 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
-                    Your Websites
+                    {t('profile.yourWebsites')}
                   </h2>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                     {sites.map(site => (
@@ -1315,7 +1315,7 @@ export default function DashboardPage() {
                           style={{ fontSize: '0.7rem', padding: '0.3rem 0.75rem', color: '#ef4444', borderColor: '#fecaca', whiteSpace: 'nowrap', flexShrink: 0 }}
                           onClick={() => openDeleteModal(site)}
                         >
-                          Delete
+                          {t('profile.deleteSite')}
                         </button>
                       </div>
                     ))}
@@ -1361,18 +1361,18 @@ export default function DashboardPage() {
             <div className="delete-modal-icon">
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
             </div>
-            <h2 className="delete-modal-title">Cancel Subscription</h2>
+            <h2 className="delete-modal-title">{t('subscription.cancelModal.title')}</h2>
             <p className="delete-modal-desc">
-              Are you sure you want to cancel your subscription? You will continue to have access to all features until the end of your current billing period. No further charges will be made.
+              {t('subscription.cancelModal.body')}
             </p>
             <div className="delete-modal-actions">
-              <button className="btn btn-outline" onClick={() => setShowCancelModal(null)} disabled={cancellingSubscription}>Keep Subscription</button>
+              <button className="btn btn-outline" onClick={() => setShowCancelModal(null)} disabled={cancellingSubscription}>{t('subscription.cancelModal.keep')}</button>
               <button
                 className="btn btn-danger"
                 onClick={() => handleCancelSubscription(showCancelModal)}
                 disabled={cancellingSubscription}
               >
-                {cancellingSubscription ? 'Cancelling...' : 'Yes, Cancel'}
+                {cancellingSubscription ? t('subscription.cancelModal.cancelling') : t('subscription.cancelModal.confirm')}
               </button>
             </div>
           </div>
@@ -1384,12 +1384,22 @@ export default function DashboardPage() {
             <div className="delete-modal-icon">
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
             </div>
-            <h2 className="delete-modal-title">Delete Website</h2>
+            <h2 className="delete-modal-title">{t('delete.title')}</h2>
             <p className="delete-modal-desc">
-              This will permanently delete <strong>{deleteModal.brand_name || deleteModal.brandName || deleteModal.subdomain}</strong> and all its data including products, orders, and customers. This action cannot be undone.
+              <Trans
+                i18nKey="dashboard:delete.body"
+                values={{ site: deleteModal.brand_name || deleteModal.brandName || deleteModal.subdomain }}
+                components={{ 1: <strong /> }}
+              />
             </p>
             <div className="delete-modal-field">
-              <label>Type <strong>{deleteModal.subdomain}.{PLATFORM_DOMAIN}</strong> to confirm</label>
+              <label>
+                <Trans
+                  i18nKey="dashboard:delete.typeToConfirm"
+                  values={{ domain: `${deleteModal.subdomain}.${PLATFORM_DOMAIN}` }}
+                  components={{ 1: <strong /> }}
+                />
+              </label>
               <input
                 type="text"
                 value={deleteConfirmText}
@@ -1399,13 +1409,13 @@ export default function DashboardPage() {
               />
             </div>
             <div className="delete-modal-actions">
-              <button className="btn btn-outline" onClick={closeDeleteModal} disabled={deleteLoading}>Cancel</button>
+              <button className="btn btn-outline" onClick={closeDeleteModal} disabled={deleteLoading}>{t('delete.cancel')}</button>
               <button
                 className="btn btn-danger"
                 disabled={deleteConfirmText.trim() !== `${deleteModal.subdomain}.${PLATFORM_DOMAIN}` || deleteLoading}
                 onClick={handleConfirmDelete}
               >
-                {deleteLoading ? 'Deleting...' : 'Delete Permanently'}
+                {deleteLoading ? t('delete.deleting') : t('delete.confirm')}
               </button>
             </div>
           </div>
@@ -1414,12 +1424,12 @@ export default function DashboardPage() {
       <AlertModal
         open={!!planLimitMsg}
         variant="upgrade"
-        title="Upgrade Required"
+        title={t('alerts.upgradeRequired')}
         message={planLimitMsg}
         onClose={() => setPlanLimitMsg(null)}
-        secondaryAction={{ label: 'Maybe Later' }}
+        secondaryAction={{ label: t('alerts.maybeLater') }}
         primaryAction={{
-          label: 'Upgrade Plan',
+          label: t('alerts.upgradePlan'),
           icon: 'fa-arrow-up',
           variant: 'upgrade',
           onClick: () => { document.querySelector('[data-page="billing"]')?.click(); },

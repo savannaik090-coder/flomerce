@@ -114,6 +114,9 @@ export default function LanguageSwitcher({ compact = false }) {
     const next = e.target.value;
     setLanguage(next);
     try { window.localStorage?.setItem('flomerce_lang', next); } catch (err) {}
+    // Persist explicit-choice marker so we don't auto-override with the
+    // merchant's content_language on next boot (see shared/i18n/init.js).
+    try { window.localStorage?.setItem('flomerce_lang_explicit', '1'); } catch (err) {}
     try { if (i18nRef.current) i18nRef.current.changeLanguage(next); } catch (err) {}
   };
 

@@ -101,10 +101,34 @@ let initPromise = null;
 // "shopper picked this" apart from "browser default got autosaved". The
 // SiteContext relies on this to decide whether to override with the merchant's
 // content_language on a true first visit.
+// We track "did the shopper EXPLICITLY pick a language?" with a dedicated
+// localStorage marker (`flomerce_lang_explicit`) instead of inferring from
+// the existence of `flomerce_lang`. The browser language detector below
+// caches its detected value into `flomerce_lang` on every visit, so
+// presence of that key cannot distinguish "user picked Hindi" from
+// "browser auto-detected English on first load and got cached". Language
+// switcher components call `markLanguageExplicit()` on user action, which
+// persists the marker. This keeps merchant-language seeding (below) working
+// across return visits where the user never made an explicit choice.
+const EXPLICIT_KEY = 'flomerce_lang_explicit';
 let hadExplicitLangAtBoot = false;
 try {
   if (typeof localStorage !== 'undefined') {
-    hadExplicitLangAtBoot = !!localStorage.getItem('flomerce_lang');
+    hadExplicitLangAtBoot = !!localStorage.getItem(EXPLICIT_KEY);
+  }
+} catch (e) { /* ignore */ }
+
+// On any storefront visit (first or returning), if the shopper has NOT
+// explicitly chosen a language, seed `flomerce_lang` with the merchant's
+// content_language we cached on the previous load for this host. This runs
+// BEFORE i18next initializes, so the detector picks it up and the UI boots
+// directly into the merchant's language with no flicker.
+try {
+  if (typeof window !== 'undefined' && typeof localStorage !== 'undefined' && !hadExplicitLangAtBoot) {
+    const cached = localStorage.getItem(`flomerce_site_lang:${window.location.hostname}`);
+    if (cached && cached !== 'en') {
+      localStorage.setItem('flomerce_lang', cached);
+    }
   }
 } catch (e) { /* ignore */ }
 
@@ -114,6 +138,11 @@ export function hasExplicitLanguagePreference() {
 
 export function markLanguageExplicit() {
   hadExplicitLangAtBoot = true;
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(EXPLICIT_KEY, '1');
+    }
+  } catch (e) { /* ignore */ }
 }
 
 function buildResources(namespaces) {

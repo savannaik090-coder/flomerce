@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { PLATFORM_DOMAIN } from '../config.js';
-import { getSubscriptionBadge, formatScheduledChange } from '../utils/subscriptionStatus.js';
+import { getSubscriptionBadge, formatScheduledChange, renderBadgeText } from '../utils/subscriptionStatus.js';
 
 function utcDate(s) { if (!s) return null; const v = String(s).trim(); const iso = v.includes('T') ? v : v.replace(' ', 'T'); return new Date(iso.endsWith('Z') || iso.includes('+') ? iso : iso + 'Z'); }
 
@@ -16,7 +16,8 @@ export default function SiteCard({ site, onManage, subscriptionInfo }) {
 
   const isEnterprise = sub.plan === 'enterprise';
   const badge = getSubscriptionBadge(sub);
-  const scheduledNote = formatScheduledChange(sub);
+  const badgeText = renderBadgeText(badge, t);
+  const scheduledNote = formatScheduledChange(sub, t);
 
   const renewLabel = sub.isCancelled
     ? t('siteCard.ends')
@@ -36,7 +37,7 @@ export default function SiteCard({ site, onManage, subscriptionInfo }) {
       )}
       <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '1rem', alignItems: 'center' }}>
         {createdAt && <span>{createdAt}</span>}
-        <span style={{ marginInlineStart: 'auto', background: badge.bg, color: badge.color, padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>{badge.text}</span>
+        <span style={{ marginInlineStart: 'auto', background: badge.bg, color: badge.color, padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>{badgeText}</span>
       </div>
       {sub.isActive && sub.periodEnd && !isEnterprise && (
         <p style={{ fontSize: '0.75rem', color: sub.isCancelled ? '#92400e' : 'var(--text-muted)', marginBottom: '0.75rem', margin: '0 0 0.75rem 0' }}>

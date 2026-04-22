@@ -1,6 +1,6 @@
 import { handleAuth } from './platform/auth-worker.js';
 import { handleSites } from './platform/sites-worker.js';
-import { handleTranslateProxy } from './storefront/translate-worker.js';
+import { handleTranslateProxy, handleTranslateCachePurge } from './storefront/translate-worker.js';
 import { handleProducts, updateProductStock } from './storefront/products-worker.js';
 import { handleOrders } from './storefront/orders-worker.js';
 import { handleCart, mergeCarts, clearCart } from './storefront/cart-worker.js';
@@ -444,6 +444,9 @@ async function handleAPI(request, env, path, ctx) {
       // shopper translation proxy lives here (System B). The proxy itself
       // enforces all auth/rate/feature checks.
       if (pathParts[3] === 'translate') {
+        if (pathParts[4] === 'purge') {
+          return handleTranslateCachePurge(request, env, path, ctx);
+        }
         return handleTranslateProxy(request, env, path, ctx);
       }
       return errorResponse('Not found', 404);

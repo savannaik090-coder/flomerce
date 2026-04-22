@@ -100,6 +100,7 @@ export default function ShopperLanguageSection({ open, onToggle }) {
   const [enabled, setEnabled] = useState(false);
   const [languages, setLanguages] = useState([]);
   const [usage, setUsage] = useState(null);
+  const [purging, setPurging] = useState(false);
 
   // SiteContext exposes the plan as `subscriptionPlan` (camelCase). The
   // legacy snake_case fallbacks stay for safety in case the context shape
@@ -202,6 +203,41 @@ export default function ShopperLanguageSection({ open, onToggle }) {
     }
   }
 
+  async function handlePurgeCache() {
+    if (!window.confirm(
+      'Clear all cached shopper translations for this site?\n\n'
+      + 'Every translated word will be re-fetched from Microsoft on the next shopper visit. '
+      + 'This uses your translator quota. Use only after fixing a bad translation or rotating your key.'
+    )) return;
+    setPurging(true);
+    setMessage(null);
+    try {
+      const res = await fetch(`${API_BASE}/api/storefront/${siteId}/translate/purge`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ scope: 'site' }),
+      });
+      const result = await res.json();
+      if (res.ok && result?.success) {
+        const count = Number(result?.data?.deleted || 0);
+        try {
+          // Wipe this tab's sessionStorage shopper-translation cache too.
+          for (let i = sessionStorage.length - 1; i >= 0; i--) {
+            const k = sessionStorage.key(i);
+            if (k && k.startsWith('flomerce_xlt_')) sessionStorage.removeItem(k);
+          }
+        } catch (e) { /* ignore storage errors */ }
+        setMessage({ type: 'success', text: `Translation cache cleared. ${count} cached entries removed.` });
+      } else {
+        setMessage({ type: 'error', text: result?.error || 'Failed to clear cache.' });
+      }
+    } catch (e) {
+      setMessage({ type: 'error', text: e.message || 'Network error.' });
+    } finally {
+      setPurging(false);
+    }
+  }
+
   async function handleRemove() {
     if (!window.confirm('Remove the saved Microsoft Translator key? Shopper translation will be turned off until you paste a new key.')) return;
     setRemoving(true);
@@ -289,6 +325,17 @@ export default function ShopperLanguageSection({ open, onToggle }) {
                   >
                     {testing ? 'Testing…' : 'Test connection'}
                   </button>
+                  {hasKey && (
+                    <button
+                      type="button"
+                      onClick={handlePurgeCache}
+                      disabled={purging}
+                      title="Wipe all cached translations for this site so they are re-fetched fresh from Microsoft on the next shopper visit."
+                      style={{ padding: '10px 18px', border: '1px solid #f59e0b', background: '#fff', color: '#b45309', borderRadius: 6, fontSize: 14, fontWeight: 600, cursor: purging ? 'not-allowed' : 'pointer', opacity: purging ? 0.6 : 1 }}
+                    >
+                      {purging ? 'Clearing…' : 'Clear translation cache'}
+                    </button>
+                  )}
                   {hasKey && (
                     <button
                       type="button"

@@ -28,12 +28,19 @@
   "noWebsitesAdmin": "You don't have any websites yet. Create one first.",
   "siteNotFound": "Site not found.",
   "trialPlanLimit": "Trial accounts can create up to 5 websites. Please upgrade to a paid plan to create more.",
+  "createSiteFailed": "Failed to create website",
   "siteCard": {
     "visit": "Visit Site",
     "manage": "Manage",
     "ends": "Ends",
     "renews": "Renews",
-    "trialEnds": "Trial ends"
+    "trialEnds": "Trial ends",
+    "expired": "Expired",
+    "endsOn": "Ends {{date}}",
+    "expiredOn": "Expired {{date}}",
+    "trialEndsOn": "Trial ends {{date}}",
+    "renewsOn": "Renews {{date}}",
+    "iframeTitle": "Admin - {{site}}"
   },
   "trialBanner": {
     "title_one": "Free Trial — {{count}} day remaining",
@@ -93,6 +100,10 @@
     "paid": "Paid",
     "unpaid": "Unpaid"
   },
+  "overage": {
+    "databaseLine": "Database (D1): {{amount}} over — ₹{{cost}}",
+    "mediaLine": "Media (R2): {{amount}} over — ₹{{cost}}"
+  },
   "staffPanel": {
     "selectSite": "Select a site to manage its staff members.",
     "manageStaff": "Manage Staff",
@@ -110,6 +121,10 @@
     "permissions": "Permissions",
     "permissionRequired": "At least one permission is required.",
     "active": "Active",
+    "statusActive": "Active",
+    "statusInactive": "Inactive",
+    "edit": "Edit",
+    "remove": "Remove",
     "saving": "Saving...",
     "update": "Update",
     "addBtn": "Add Staff",
@@ -142,8 +157,56 @@
     "deleteFailed": "Failed to delete site: {{error}}",
     "unknownError": "Unknown error"
   },
+  "delete": {
+    "title": "Delete Website",
+    "body": "This will permanently delete <1>{{site}}</1> and all its data including products, orders, and customers. This action cannot be undone.",
+    "typeToConfirm": "Type <1>{{domain}}</1> to confirm",
+    "cancel": "Cancel",
+    "deleting": "Deleting...",
+    "confirm": "Delete Permanently",
+    "deleteBtn": "Delete"
+  },
   "subscription": {
     "cancelFailed": "Failed to cancel subscription. Please try again.",
-    "overageFailed": "Failed to update overage setting. Please try again."
+    "overageFailed": "Failed to update overage setting. Please try again.",
+    "scheduledChange": "Switching to {{plan}} on {{date}}",
+    "scheduledFallbackDate": "the end of your current billing period",
+    "badge": {
+      "enterprise": "Enterprise",
+      "trial": "Trial",
+      "active": "Active",
+      "activeWithPlan": "{{plan}} - Active",
+      "cancelling": "Cancelling",
+      "cancellingWithPlan": "{{plan}} - Cancelling",
+      "expired": "Expired",
+      "expiredWithPlan": "{{plan}} - Expired",
+      "inactive": "Inactive"
+    },
+    "plan": {
+      "trial": "Trial",
+      "starter": "Starter",
+      "growth": "Growth",
+      "pro": "Pro",
+      "enterprise": "Enterprise"
+    },
+    "cancelModal": {
+      "title": "Cancel Subscription",
+      "body": "Are you sure you want to cancel your subscription? You will continue to have access to all features until the end of your current billing period. No further charges will be made.",
+      "keep": "Keep Subscription",
+      "confirm": "Yes, Cancel",
+      "cancelling": "Cancelling..."
+    }
+  },
+  "profile": {
+    "title": "Profile Details",
+    "name": "Name",
+    "email": "Email Address",
+    "yourWebsites": "Your Websites",
+    "deleteSite": "Delete"
+  },
+  "alerts": {
+    "upgradeRequired": "Upgrade Required",
+    "maybeLater": "Maybe Later",
+    "upgradePlan": "Upgrade Plan"
   }
 }

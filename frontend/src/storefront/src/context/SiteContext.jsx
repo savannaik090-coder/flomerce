@@ -193,6 +193,19 @@ export function SiteProvider({ children }) {
         }
       } catch (e) { /* ignore */ }
 
+      // Cache the merchant's content_language per-host so the next visit can
+      // boot directly into the right language and skip the load-then-switch
+      // flicker. Read on the next page load happens synchronously in
+      // shared/i18n/init.js BEFORE i18n initializes.
+      try {
+        if (typeof localStorage !== 'undefined' && config.contentLanguage) {
+          const host = typeof window !== 'undefined' ? window.location.hostname : '';
+          if (host) {
+            localStorage.setItem(`flomerce_site_lang:${host}`, config.contentLanguage);
+          }
+        }
+      } catch (e) { /* ignore */ }
+
       config.seo = {
         seo_title: data.seo_title || null,
         seo_description: data.seo_description || null,

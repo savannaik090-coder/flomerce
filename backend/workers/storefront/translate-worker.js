@@ -1,4 +1,5 @@
 import { errorResponse, successResponse, handleCORS, generateId } from '../../utils/helpers.js';
+import { validateSiteAdmin } from './site-admin-worker.js';
 
 // Re-emit a successResponse with `X-Translator-Capped: 1` so clients
 // can detect cap behavior from a header alone (in addition to the
@@ -306,6 +307,77 @@ export async function handleTranslateProxy(request, env, path, ctx) {
 
   // All cache hits.
   return successResponse({ translations: out, cacheHits, cacheMisses: 0, charsBilled: 0, capped: false });
+}
+
+/**
+ * POST /api/storefront/:siteId/translate/purge
+ * Body (optional): { scope?: 'site' | 'lang', target?: string }
+ * Auth: SiteAdmin token (owner only).
+ *
+ * Purges cached translations from the per-site `translation_cache` table.
+ * Use cases:
+ *   - merchant fixed a typo in a product description and the cache is
+ *     stale (rare — content-addressed cache usually invalidates itself
+ *     on edit, but bulk-imported content can confuse hashing)
+ *   - merchant rotated their MS key and wants old translations re-done
+ *   - QA / testing wants to force a fresh round-trip
+ *
+ * Response includes `X-Translator-Cache-Purged: 1` so the storefront
+ * client can also wipe its sessionStorage layer on the next request.
+ */
+export async function handleTranslateCachePurge(request, env, path, ctx) {
+  const corsResponse = handleCORS(request);
+  if (corsResponse) return corsResponse;
+  if (request.method !== 'POST') return errorResponse('Method not allowed', 405);
+
+  const parts = path.split('/').filter(Boolean);
+  // Expected: ['api', 'storefront', '<siteId>', 'translate', 'purge']
+  const siteId = parts[2];
+  if (!siteId) return errorResponse('Site ID required', 400);
+
+  const auth = await validateSiteAdmin(request, env, siteId);
+  if (!auth) return errorResponse('Unauthorized', 401);
+  if (!auth.isOwner) return errorResponse('Owner-only action', 403);
+
+  let body = {};
+  try { body = await request.json(); } catch (e) { /* allow empty body */ }
+  const scope = body?.scope === 'lang' ? 'lang' : 'site';
+  const target = typeof body?.target === 'string' ? body.target.trim() : '';
+  if (scope === 'lang' && !target) {
+    return errorResponse('target language required when scope=lang', 400);
+  }
+
+  let siteDB;
+  try {
+    siteDB = await resolveSiteDBById(env, siteId);
+  } catch (e) {
+    return errorResponse('Site DB unavailable', 500);
+  }
+  await ensureTranslationCacheTable(siteDB, siteId);
+
+  let deleted = 0;
+  try {
+    if (scope === 'lang') {
+      const res = await siteDB.prepare(
+        'DELETE FROM translation_cache WHERE site_id = ? AND target_lang = ?'
+      ).bind(siteId, target).run();
+      deleted = Number(res?.meta?.changes || res?.changes || 0);
+    } else {
+      const res = await siteDB.prepare(
+        'DELETE FROM translation_cache WHERE site_id = ?'
+      ).bind(siteId).run();
+      deleted = Number(res?.meta?.changes || res?.changes || 0);
+    }
+  } catch (e) {
+    console.error('translate-purge failed:', e.message || e);
+    return errorResponse('Failed to purge cache', 500);
+  }
+
+  const res = successResponse({ ok: true, scope, target: target || null, deleted });
+  return new Response(res.body, {
+    status: res.status,
+    headers: { ...Object.fromEntries(res.headers), 'X-Translator-Cache-Purged': '1' },
+  });
 }
 
 /**

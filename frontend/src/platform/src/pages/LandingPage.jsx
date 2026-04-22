@@ -173,7 +173,7 @@ export default function LandingPage() {
         <footer className="landing-footer">
           <div className="footer-top">
             <div className="footer-brand">
-              <img src="/assets/images/flomerce-logo.png" alt="Flomerce" className="footer-logo" />
+              <img src="/assets/images/flomerce-logo.png" alt={t('logoAlt')} className="footer-logo" />
               <p>{t('footerTagline')}</p>
             </div>
             <div className="footer-links-group">
@@ -188,7 +188,7 @@ export default function LandingPage() {
               <h4>{t('footerContact')}</h4>
               <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>
               <a href="tel:+919901954610">+91 9901954610</a>
-              <span>Karwar, Karnataka, India — 581400</span>
+              <span>{t('addressLine')}</span>
             </div>
           </div>
           <div className="footer-bottom">
@@ -199,7 +199,7 @@ export default function LandingPage() {
 
       <div className={`pwa-install-bar${showPwa ? ' show' : ''}`}>
         <div className="pwa-info">
-          <img src="/assets/images/flomerce-logo.png" alt="Logo" className="pwa-logo" />
+          <img src="/assets/images/flomerce-logo.png" alt={t('logoAlt')} className="pwa-logo" />
           <div className="pwa-text">
             <h4>{t('pwaInstallTitle')}</h4>
             <p>{t('pwaInstallDesc')}</p>
