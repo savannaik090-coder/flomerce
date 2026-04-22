@@ -1,4 +1,14 @@
 import { errorResponse, successResponse, handleCORS, generateId } from '../../utils/helpers.js';
+
+// Re-emit a successResponse with `X-Translator-Capped: 1` so clients
+// can detect cap behavior from a header alone (in addition to the
+// `capped:true` flag in the body).
+function withCappedHeader(res) {
+  return new Response(res.body, {
+    status: res.status,
+    headers: { ...Object.fromEntries(res.headers), 'X-Translator-Capped': '1' },
+  });
+}
 import { resolveSiteDBById, ensureTranslationCacheTable } from '../../utils/site-db.js';
 import { decryptSecret } from '../../utils/crypto.js';
 import { translateBatchWithCreds } from '../../utils/translator.js';
@@ -129,11 +139,7 @@ export async function handleTranslateProxy(request, env, path, ctx) {
     // Past the cap: degrade gracefully — never crash the storefront.
     // We signal the cap two ways so callers can pick: an explicit
     // `X-Translator-Capped: 1` header and `capped:true` in the body.
-    const res = successResponse({ translations: texts, cacheHits: 0, cacheMisses: 0, charsBilled: 0, capped: true });
-    return new Response(res.body, {
-      status: res.status,
-      headers: { ...Object.fromEntries(res.headers), 'X-Translator-Capped': '1' },
-    });
+    return withCappedHeader(successResponse({ translations: texts, cacheHits: 0, cacheMisses: 0, charsBilled: 0, capped: true }));
   }
 
   // Cache lookup per text.
@@ -203,7 +209,7 @@ export async function handleTranslateProxy(request, env, path, ctx) {
     if (sliceForApi.length === 0) {
       // No budget at all → return originals for misses, mark capped.
       for (const i of missIdxs) if (out[i] === null) out[i] = texts[i];
-      return successResponse({ translations: out, cacheHits, cacheMisses: missTexts.length, charsBilled: 0, capped: true });
+      return withCappedHeader(successResponse({ translations: out, cacheHits, cacheMisses: missTexts.length, charsBilled: 0, capped: true }));
     }
 
     let apiKey;
@@ -288,13 +294,14 @@ export async function handleTranslateProxy(request, env, path, ctx) {
       }
     }
 
-    return successResponse({
+    const finalRes = successResponse({
       translations: out,
       cacheHits,
       cacheMisses: missTexts.length,
       charsBilled,
       capped: cappedThisCall,
     });
+    return cappedThisCall ? withCappedHeader(finalRes) : finalRes;
   }
 
   // All cache hits.
