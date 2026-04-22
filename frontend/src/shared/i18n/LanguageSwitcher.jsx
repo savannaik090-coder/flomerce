@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { PRESHIPPED } from './init.js';
+import { PRESHIPPED, markLanguageExplicit } from './init.js';
 
 const LANG_LABELS = {
   en: 'English',
@@ -15,6 +15,7 @@ export default function LanguageSwitcher({ className = '', compact = false }) {
 
   function handleChange(e) {
     const lng = e.target.value;
+    markLanguageExplicit();
     i18n.changeLanguage(lng);
     try { localStorage.setItem('flomerce_lang', lng); } catch {}
   }

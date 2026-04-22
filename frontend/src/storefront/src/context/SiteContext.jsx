@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect, useContext, useMemo } from 'react';
-import i18n from '../../../shared/i18n/init.js';
+import i18n, { hasExplicitLanguagePreference } from '../../../shared/i18n/init.js';
 import { PLATFORM_DOMAIN, PLATFORM_URL, API_BASE } from '../config.js';
 
 export const SiteContext = createContext(null);
@@ -170,12 +170,15 @@ export function SiteProvider({ children }) {
       };
 
       // First-time shoppers who have no saved language preference get the
-      // merchant's content_language by default. Returning shoppers keep the
-      // language they chose (persisted in localStorage by the language
-      // detector) — never overwrite an explicit choice.
+      // merchant's content_language by default. We check the pre-init
+      // snapshot (captured in shared/i18n/init.js before the detector ran)
+      // because the i18next browser language detector writes its detected
+      // value into `flomerce_lang` on init — reading localStorage here
+      // cannot distinguish "shopper explicitly picked this" from
+      // "browser default got autosaved on first load". Returning shoppers
+      // who actually chose a language keep their choice.
       try {
-        const saved = typeof localStorage !== 'undefined' ? localStorage.getItem('flomerce_lang') : null;
-        if (!saved && config.contentLanguage && config.contentLanguage !== 'en' && i18n.language !== config.contentLanguage) {
+        if (!hasExplicitLanguagePreference() && config.contentLanguage && config.contentLanguage !== 'en' && i18n.language !== config.contentLanguage) {
           i18n.changeLanguage(config.contentLanguage);
         }
       } catch (e) { /* ignore */ }

@@ -95,6 +95,27 @@ const backendPlugin = {
 
 let initPromise = null;
 
+// Capture whether the user has an *explicit* saved language preference BEFORE
+// the language detector runs. The detector caches its detection result into
+// `flomerce_lang` on init, so checking localStorage after init can't tell
+// "shopper picked this" apart from "browser default got autosaved". The
+// SiteContext relies on this to decide whether to override with the merchant's
+// content_language on a true first visit.
+let hadExplicitLangAtBoot = false;
+try {
+  if (typeof localStorage !== 'undefined') {
+    hadExplicitLangAtBoot = !!localStorage.getItem('flomerce_lang');
+  }
+} catch (e) { /* ignore */ }
+
+export function hasExplicitLanguagePreference() {
+  return hadExplicitLangAtBoot;
+}
+
+export function markLanguageExplicit() {
+  hadExplicitLangAtBoot = true;
+}
+
 function buildResources(namespaces) {
   // Only bundle the English slices for namespaces actually in use, so the
   // storefront SPA does not pay the bytes for admin/owner/wizard catalogs.
