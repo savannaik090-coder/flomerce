@@ -61,7 +61,7 @@ export default function LoginPage() {
         navigate('/dashboard');
       }
     } catch (err) {
-      setError(err.message || 'Google sign-in failed');
+      setError(err.message || t('googleFailed'));
     }
   }
 
@@ -94,7 +94,7 @@ export default function LoginPage() {
       await requestPasswordReset(forgotEmail);
       setForgotMsg(t('resetSent'));
     } catch (err) {
-      setForgotError(err.message || 'Failed to send reset email');
+      setForgotError(err.message || t('resetFailed'));
     }
   }
 

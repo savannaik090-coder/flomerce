@@ -43,5 +43,58 @@
     "analytics": { "title": "Built-in Analytics", "desc": "Monitor your store performance with visitor tracking, page views, traffic sources, and sales insights from your admin panel." },
     "push": { "title": "Push Notifications", "desc": "Engage customers with web push notifications for new products, price drops, and back-in-stock alerts — all automated." },
     "seo": { "title": "Custom Domain & SEO", "desc": "Connect your own domain, optimize for search engines with built-in SEO tools, sitemaps, and structured data for Google rich results." }
+  },
+  "pricing": {
+    "loading": "Loading plans...",
+    "loadError": "Unable to load pricing. Please try again later.",
+    "noPlans": "No plans available at the moment.",
+    "trialBadge": "FREE TRIAL",
+    "popularBadge": "POPULAR",
+    "enterpriseBadge": "ENTERPRISE",
+    "trialTitle": "7-Day Free Trial",
+    "trialFor7Days": "for 7 days",
+    "trialFeatures": {
+      "createSites": "Create up to 5 websites",
+      "fullAccess": "Full access for 7 days",
+      "noCard": "No credit card required",
+      "upgradeAnytime": "Upgrade anytime"
+    },
+    "startTrial": "Start Free Trial",
+    "getStarted": "Get Started",
+    "perMonth": "/month",
+    "saveOff": "{{percent}}% OFF",
+    "enterpriseTitle": "Enterprise",
+    "customPrice": "Custom",
+    "enterpriseDefaultMessage": "Need a custom solution for your business? Get in touch for a tailored plan.",
+    "contactUs": "Contact Us",
+    "duration": {
+      "monthly": "Monthly",
+      "3months": "3 Months",
+      "6months": "6 Months",
+      "yearly": "Yearly",
+      "monthlyPer": "month",
+      "3monthsPer": "3 months",
+      "6monthsPer": "6 months",
+      "yearlyPer": "1 year"
+    }
+  },
+  "contact": {
+    "title": "Get in Touch",
+    "subtitle": "Have questions about Flomerce? Need help getting started? We'd love to hear from you.",
+    "labelEmail": "Email",
+    "labelPhone": "Phone",
+    "yourName": "Your Name",
+    "emailAddress": "Email Address",
+    "subject": "Subject",
+    "subjectPlaceholder": "How can we help?",
+    "message": "Message",
+    "messagePlaceholder": "Tell us more about your inquiry...",
+    "send": "Send Message",
+    "successMsg": "Your email client should open shortly. If not, email us directly at {{email}}",
+    "mailtoSubject": "Contact from Flomerce Website",
+    "mailBodyName": "Name",
+    "mailBodyEmail": "Email",
+    "namePlaceholder": "John Doe",
+    "emailPlaceholder": "john@example.com"
   }
 }

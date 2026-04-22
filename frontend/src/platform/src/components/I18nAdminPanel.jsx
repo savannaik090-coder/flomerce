@@ -25,7 +25,7 @@ export default function I18nAdminPanel() {
       const data = res?.data || res;
       setLocales(data?.locales || []);
     } catch (e) {
-      toast.error(e.message || 'Failed to load locales');
+      toast.error(e.message || t('i18n.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -39,7 +39,7 @@ export default function I18nAdminPanel() {
       const res = await apiRequest(`/api/admin/i18n/regenerate/${encodeURIComponent(lang)}`, { method: 'POST' });
       const data = res?.data || res;
       const s = data?.stats;
-      const detail = s ? ` (${s.translated} translated, ${s.kept} reused)` : '';
+      const detail = s ? t('i18n.regenDetail', { translated: s.translated, kept: s.kept }) : '';
       toast.success(t('i18n.regenerated', { lang, count: data.keyCount || '?' }) + detail);
       await loadLocales();
     } catch (e) {
@@ -61,22 +61,22 @@ export default function I18nAdminPanel() {
       const skipCount = results.filter((r) => r.skipped).length;
       const errCount = results.filter((r) => r.error).length;
       const totalTranslated = results.reduce((sum, r) => sum + (r.stats?.translated || 0), 0);
-      toast.success(`Refreshed ${okCount}, skipped ${skipCount}, failed ${errCount}. ${totalTranslated} strings re-translated.`);
+      toast.success(t('i18n.refreshAllSummary', { ok: okCount, skip: skipCount, err: errCount, count: totalTranslated }));
       await loadLocales();
     } catch (e) {
-      toast.error(e.message || 'Refresh-all failed');
+      toast.error(e.message || t('i18n.refreshAllFailed'));
     } finally {
       setRefreshingAll(false);
     }
   }
 
   async function purge(lang) {
-    if (!confirm(`Purge cached locale "${lang}"? It will be regenerated on next request.`)) return;
+    if (!confirm(t('i18n.purgeConfirm', { lang }))) return;
     try {
       await apiRequest(`/api/admin/i18n/locale/${encodeURIComponent(lang)}`, { method: 'DELETE' });
       await loadLocales();
     } catch (e) {
-      toast.error(e.message || 'Purge failed');
+      toast.error(e.message || t('i18n.purgeFailed'));
     }
   }
 
@@ -117,9 +117,9 @@ export default function I18nAdminPanel() {
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <div>
-              <strong style={{ color: '#9a3412' }}>{totalStale} translation{totalStale === 1 ? '' : 's'} out of date</strong>
+              <strong style={{ color: '#9a3412' }}>{t('i18n.staleHeader', { count: totalStale })}</strong>
               <div style={{ fontSize: '0.85rem', color: '#9a3412', marginTop: 4 }}>
-                {staleLocaleCount} language{staleLocaleCount === 1 ? '' : 's'} need refresh. Only changed strings will be re-translated.
+                {t('i18n.staleSubheader', { count: staleLocaleCount })}
               </div>
             </div>
             <button
@@ -127,7 +127,7 @@ export default function I18nAdminPanel() {
               disabled={refreshingAll}
               onClick={refreshAll}
             >
-              {refreshingAll ? 'Refreshing…' : 'Refresh all out-of-date'}
+              {refreshingAll ? t('i18n.refreshing') : t('i18n.refreshAll')}
             </button>
           </div>
         </div>
@@ -144,8 +144,8 @@ export default function I18nAdminPanel() {
             <thead>
               <tr>
                 <th style={{ textAlign: 'left' }}>{t('common:language')}</th>
-                <th>Status</th>
-                <th>Size</th>
+                <th>{t('common:status')}</th>
+                <th>{t('i18n.size')}</th>
                 <th>{t('i18n.lastUpdated')}</th>
                 <th style={{ textAlign: 'right' }}>{t('common:actions')}</th>
               </tr>
@@ -158,11 +158,11 @@ export default function I18nAdminPanel() {
                     <td><code>{l.lang}</code> {LABELS[l.lang] ? <span style={{ color: '#64748b', fontSize: '0.8rem' }}>— {LABELS[l.lang]}</span> : null}</td>
                     <td>
                       {l.upToDate ? (
-                        <span style={{ color: '#15803d', fontSize: '0.85rem' }}>✓ Up to date</span>
+                        <span style={{ color: '#15803d', fontSize: '0.85rem' }}>{t('i18n.upToDate')}</span>
                       ) : (
                         <span style={{ color: '#9a3412', fontSize: '0.85rem' }}>
-                          {pendingCount} pending
-                          {l.removed ? ` · ${l.removed} removed` : ''}
+                          {t('i18n.pending', { count: pendingCount })}
+                          {l.removed ? t('i18n.removedSuffix', { count: l.removed }) : ''}
                         </span>
                       )}
                     </td>

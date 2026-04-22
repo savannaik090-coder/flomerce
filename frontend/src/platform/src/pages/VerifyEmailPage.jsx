@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { verifyEmail } from '../services/authService.js';
 
 export default function VerifyEmailPage() {
+  const { t } = useTranslation('auth');
   const [searchParams] = useSearchParams();
   const [status, setStatus] = useState('verifying');
-  const [message, setMessage] = useState('Please wait while we verify your email.');
+  const [message, setMessage] = useState(t('verifyEmail.waitMessage'));
 
   useEffect(() => {
     const token = searchParams.get('token');
@@ -13,7 +15,7 @@ export default function VerifyEmailPage() {
 
     if (!token) {
       setStatus('error');
-      setMessage('Verification token is missing.');
+      setMessage(t('verifyEmail.tokenMissing'));
       return;
     }
 
@@ -21,22 +23,22 @@ export default function VerifyEmailPage() {
       .then((res) => {
         if (res.success) {
           setStatus('success');
-          setMessage('Your email has been successfully verified. You can now log in.');
+          setMessage(t('verifyEmail.successMessage'));
         } else {
           setStatus('error');
-          setMessage(res.error || 'The link may be expired or invalid.');
+          setMessage(res.error || t('verifyEmail.linkInvalid'));
         }
       })
       .catch((err) => {
         setStatus('error');
-        setMessage(err.message || 'Verification failed. The link may be expired or invalid.');
+        setMessage(err.message || t('verifyEmail.verificationFailed'));
       });
-  }, [searchParams]);
+  }, [searchParams, t]);
 
   const titles = {
-    verifying: 'Verifying...',
-    success: 'Email Verified!',
-    error: 'Verification Failed',
+    verifying: t('verifyEmail.verifyingTitle'),
+    success: t('verifyEmail.successTitle'),
+    error: t('verifyEmail.errorTitle'),
   };
 
   return (
@@ -45,10 +47,10 @@ export default function VerifyEmailPage() {
         <h2>{titles[status]}</h2>
         <p>{message}</p>
         {status === 'success' && (
-          <Link to="/login" className="btn btn-primary">Go to Login</Link>
+          <Link to="/login" className="btn btn-primary">{t('verifyEmail.goToLogin')}</Link>
         )}
         {status === 'error' && (
-          <Link to="/login" className="btn btn-outline" style={{ marginTop: '1rem' }}>Back to Login</Link>
+          <Link to="/login" className="btn btn-outline" style={{ marginTop: '1rem' }}>{t('verifyEmail.backToLoginBtn')}</Link>
         )}
       </div>
     </div>

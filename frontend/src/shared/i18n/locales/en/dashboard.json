@@ -13,5 +13,12 @@
   "createNewSite": "Create New Site",
   "billing": "Billing",
   "staffManagement": "Staff Management",
-  "account": "Account"
+  "account": "Account",
+  "siteCard": {
+    "visit": "Visit Site",
+    "manage": "Manage",
+    "ends": "Ends",
+    "renews": "Renews",
+    "trialEnds": "Trial ends"
+  }
 }

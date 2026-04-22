@@ -1,37 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { createSite, checkSubdomain } from '../services/siteService.js';
 import { PLATFORM_DOMAIN } from '../config.js';
-
-const BUSINESS_CATEGORIES = [
-  { id: 'jewellery', name: 'Jewellery', icon: '💎' },
-  { id: 'clothing', name: 'Clothing / Fashion', icon: '👗' },
-  { id: 'beauty', name: 'Beauty / Cosmetics', icon: '💄' },
-  { id: 'general', name: 'General / Other', icon: '🛍️' },
-];
-
-const DEFAULT_CATEGORIES = {
-  jewellery: [
-    { name: 'New Arrivals', subtitle: 'Discover our latest exquisite collections' },
-    { name: 'Jewellery Collection', subtitle: 'Exquisite pieces for every occasion' },
-    { name: 'Featured Collection', subtitle: 'Handpicked favourites just for you' },
-  ],
-  clothing: [
-    { name: 'New Arrivals', subtitle: 'Discover our latest fashion trends' },
-    { name: 'Clothing Collection', subtitle: 'Stylish wear for every occasion' },
-    { name: 'Featured Collection', subtitle: 'Handpicked favourites just for you' },
-  ],
-  beauty: [
-    { name: 'New Arrivals', subtitle: 'Discover our latest beauty essentials' },
-    { name: 'Skincare', subtitle: 'Nourish and glow with our skincare range' },
-    { name: 'Makeup', subtitle: 'Premium makeup for every look' },
-  ],
-  general: [
-    { name: 'New Arrivals', subtitle: 'Check out what just landed' },
-    { name: 'Our Collection', subtitle: 'Browse our complete product range' },
-    { name: 'Featured Products', subtitle: 'Handpicked favourites just for you' },
-  ],
-};
 
 const SEO_TITLE_TEMPLATES = {
   jewellery: (name) => `${name} - Jewellery Store Online`,
@@ -47,9 +18,9 @@ const SEO_DESCRIPTION_TEMPLATES = {
   general: (name) => `Shop online at ${name}. Explore our curated collection with secure checkout, easy returns & fast delivery.`,
 };
 
-function generateSEODefaults(category, brandName) {
+function generateSEODefaults(category, brandName, fallbackName = 'Your Store') {
   const cat = category || 'general';
-  const name = brandName || 'Your Store';
+  const name = brandName || fallbackName;
   const titleFn = SEO_TITLE_TEMPLATES[cat] || SEO_TITLE_TEMPLATES.general;
   const descFn = SEO_DESCRIPTION_TEMPLATES[cat] || SEO_DESCRIPTION_TEMPLATES.general;
   return { title: titleFn(name), description: descFn(name) };
@@ -73,6 +44,38 @@ export function clearWizardDraft() {
 }
 
 export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, isTrialActive }) {
+  const { t } = useTranslation(['wizard', 'auth', 'landing']);
+
+  const BUSINESS_CATEGORIES = [
+    { id: 'jewellery', name: t('categories.jewellery'), icon: '💎' },
+    { id: 'clothing', name: t('categories.clothing'), icon: '👗' },
+    { id: 'beauty', name: t('categories.beauty'), icon: '💄' },
+    { id: 'general', name: t('categories.general'), icon: '🛍️' },
+  ];
+
+  const DEFAULT_CATEGORIES = {
+    jewellery: [
+      { name: 'New Arrivals', subtitle: 'Discover our latest exquisite collections' },
+      { name: 'Jewellery Collection', subtitle: 'Exquisite pieces for every occasion' },
+      { name: 'Featured Collection', subtitle: 'Handpicked favourites just for you' },
+    ],
+    clothing: [
+      { name: 'New Arrivals', subtitle: 'Discover our latest fashion trends' },
+      { name: 'Clothing Collection', subtitle: 'Stylish wear for every occasion' },
+      { name: 'Featured Collection', subtitle: 'Handpicked favourites just for you' },
+    ],
+    beauty: [
+      { name: 'New Arrivals', subtitle: 'Discover our latest beauty essentials' },
+      { name: 'Skincare', subtitle: 'Nourish and glow with our skincare range' },
+      { name: 'Makeup', subtitle: 'Premium makeup for every look' },
+    ],
+    general: [
+      { name: 'New Arrivals', subtitle: 'Check out what just landed' },
+      { name: 'Our Collection', subtitle: 'Browse our complete product range' },
+      { name: 'Featured Products', subtitle: 'Handpicked favourites just for you' },
+    ],
+  };
+
   const draft = useRef(loadWizardDraft()).current;
   const [step, setStep] = useState(draft?.step || 1);
   const [businessCategory, setBusinessCategory] = useState(draft?.businessCategory || null);
@@ -99,12 +102,12 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
     if (debounceRef.current) clearTimeout(debounceRef.current);
     latestCheckRef.current = value;
     if (!value || value.length < 3) {
-      setSubdomainStatus(value ? { available: false, reason: 'Must be at least 3 characters' } : null);
+      setSubdomainStatus(value ? { available: false, reason: t('domainMinLength') } : null);
       setCheckingSubdomain(false);
       return;
     }
     if (!/^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(value)) {
-      setSubdomainStatus({ available: false, reason: 'Only lowercase letters, numbers, and hyphens (not at start/end)' });
+      setSubdomainStatus({ available: false, reason: t('domainCharRule') });
       setCheckingSubdomain(false);
       return;
     }
@@ -118,7 +121,7 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
         }
       } catch {
         if (latestCheckRef.current === value) {
-          setSubdomainStatus({ available: false, reason: 'Unable to verify. Try again.' });
+          setSubdomainStatus({ available: false, reason: t('domainCheckFailed') });
         }
       } finally {
         if (latestCheckRef.current === value) {
@@ -126,7 +129,7 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
         }
       }
     }, 500);
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
@@ -171,7 +174,7 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
   const buildFormData = async () => {
     const validCategories = categories.filter(c => c.name.trim());
     if (validCategories.length === 0) {
-      setError('Add at least one category');
+      setError(t('needAtLeastOne'));
       return null;
     }
     let logoBase64 = null;
@@ -190,7 +193,7 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
         reader.readAsDataURL(faviconFile);
       });
     }
-    const defaults = generateSEODefaults(businessCategory, brandName);
+    const defaults = generateSEODefaults(businessCategory, brandName, t("yourStoreFallback"));
     const finalSeoTitle = seoTitle.trim() || defaults.title;
     const finalSeoDescription = seoDescription.trim() || defaults.description;
     return {
@@ -231,10 +234,10 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
         onCreated(result.data || result.site || result);
         onClose();
       } else {
-        setError(result.message || result.error || 'Failed to create site');
+        setError(result.message || result.error || t('createSiteFailed'));
       }
     } catch (err) {
-      setError(err.message || 'Failed to create site');
+      setError(err.message || t('createSiteFailed'));
     } finally {
       setCreating(false);
     }
@@ -245,9 +248,9 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
       <div className="modal-content">
         {step === 1 && (
           <div>
-            <h2 style={{ marginBottom: '0.5rem', fontWeight: 800 }}>Select Business Category</h2>
+            <h2 style={{ marginBottom: '0.5rem', fontWeight: 800 }}>{t('step1Title')}</h2>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
-              What type of products will you sell?
+              {t('step1Subtitle')}
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1rem' }}>
               {BUSINESS_CATEGORIES.map(cat => (
@@ -264,24 +267,24 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
                     style={{ fontSize: '0.75rem', width: '100%' }}
                     onClick={(e) => { e.stopPropagation(); handleBusinessCategorySelect(cat.id); }}
                   >
-                    {businessCategory === cat.id ? 'Selected' : 'Select'}
+                    {businessCategory === cat.id ? t('selected') : t('select')}
                   </button>
                 </div>
               ))}
             </div>
             <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-              <button className="btn btn-outline" onClick={onClose} style={{ flex: 1 }}>Cancel</button>
-              <button className="btn btn-primary" onClick={() => setStep(2)} disabled={!businessCategory} style={{ flex: 1 }}>Next</button>
+              <button className="btn btn-outline" onClick={onClose} style={{ flex: 1 }}>{t('cancel')}</button>
+              <button className="btn btn-primary" onClick={() => setStep(2)} disabled={!businessCategory} style={{ flex: 1 }}>{t('next')}</button>
             </div>
           </div>
         )}
 
         {step === 2 && (
           <div>
-            <h2 style={{ marginBottom: '1.5rem', fontWeight: 800 }}>Website Details</h2>
+            <h2 style={{ marginBottom: '1.5rem', fontWeight: 800 }}>{t('step2Title')}</h2>
 
             <div style={{ marginBottom: '1.5rem' }}>
-              <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.5rem' }}>Choose a Design</label>
+              <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.5rem' }}>{t('chooseDesign')}</label>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div
                   className={`template-option site-card${selectedTheme === 'classic' ? ' selected' : ''}`}
@@ -291,10 +294,10 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
                   <div style={{ background: '#f8f5f0', borderRadius: '4px', padding: '24px 16px', textAlign: 'center', minHeight: '100px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
                     <span style={{ fontSize: '1.5rem', fontFamily: 'Georgia, serif', fontWeight: 400, color: '#5a3f2a' }}>Aa</span>
                     <div style={{ width: '40px', height: '2px', background: '#d4af37' }}></div>
-                    <span style={{ fontSize: '0.65rem', color: '#888', letterSpacing: '1px', textTransform: 'uppercase' }}>Serif + Gold</span>
+                    <span style={{ fontSize: '0.65rem', color: '#888', letterSpacing: '1px', textTransform: 'uppercase' }}>{t('themeClassicSwatch')}</span>
                   </div>
-                  <p style={{ fontWeight: 600, fontSize: '0.8rem', textAlign: 'center', margin: '0.5rem 0 0' }}>Classic</p>
-                  <p style={{ fontSize: '0.7rem', color: '#888', textAlign: 'center', margin: '0.25rem 0 0' }}>Elegant, traditional look</p>
+                  <p style={{ fontWeight: 600, fontSize: '0.8rem', textAlign: 'center', margin: '0.5rem 0 0' }}>{t('themeClassic')}</p>
+                  <p style={{ fontSize: '0.7rem', color: '#888', textAlign: 'center', margin: '0.25rem 0 0' }}>{t('themeClassicDesc')}</p>
                 </div>
                 <div
                   className={`template-option site-card${selectedTheme === 'modern' ? ' selected' : ''}`}
@@ -304,20 +307,20 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
                   <div style={{ background: '#fff', borderRadius: '4px', padding: '24px 16px', textAlign: 'center', minHeight: '100px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px', border: '1px solid #eee' }}>
                     <span style={{ fontSize: '1.5rem', fontFamily: 'Inter, Helvetica, sans-serif', fontWeight: 800, color: '#111' }}>Aa</span>
                     <div style={{ width: '40px', height: '2px', background: '#111' }}></div>
-                    <span style={{ fontSize: '0.65rem', color: '#888', letterSpacing: '1px', textTransform: 'uppercase' }}>Sans-serif + Bold</span>
+                    <span style={{ fontSize: '0.65rem', color: '#888', letterSpacing: '1px', textTransform: 'uppercase' }}>{t('themeModernSwatch')}</span>
                   </div>
-                  <p style={{ fontWeight: 600, fontSize: '0.8rem', textAlign: 'center', margin: '0.5rem 0 0' }}>Modern</p>
-                  <p style={{ fontSize: '0.7rem', color: '#888', textAlign: 'center', margin: '0.25rem 0 0' }}>Clean, minimal look</p>
+                  <p style={{ fontWeight: 600, fontSize: '0.8rem', textAlign: 'center', margin: '0.5rem 0 0' }}>{t('themeModern')}</p>
+                  <p style={{ fontSize: '0.7rem', color: '#888', textAlign: 'center', margin: '0.25rem 0 0' }}>{t('themeModernDesc')}</p>
                 </div>
               </div>
             </div>
 
             <div className="form-group">
-              <label>Domain Name</label>
+              <label>{t('domainName')}</label>
               <div style={{ position: 'relative' }}>
                 <input
                   type="text"
-                  placeholder="my-awesome-shop"
+                  placeholder={t('domainPlaceholder')}
                   value={subdomain}
                   onChange={(e) => {
                     const val = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '');
@@ -335,27 +338,27 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
                     {subdomain && `${subdomain}.${PLATFORM_DOMAIN}`}
                   </span>
                   {checkingSubdomain && (
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Checking...</span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{t('checking')}</span>
                   )}
                   {!checkingSubdomain && subdomainStatus && (
                     <span style={{ fontSize: '0.75rem', color: subdomainStatus.available ? '#16a34a' : '#dc2626', fontWeight: 600 }}>
-                      {subdomainStatus.available ? 'Available' : subdomainStatus.reason}
+                      {subdomainStatus.available ? t('available') : subdomainStatus.reason}
                     </span>
                   )}
                 </div>
               </div>
             </div>
             <div className="form-group" style={{ marginTop: '1rem' }}>
-              <label>Brand Name</label>
+              <label>{t('brandName')}</label>
               <input
                 type="text"
-                placeholder="My Awesome Shop"
+                placeholder={t('brandPlaceholder')}
                 value={brandName}
                 onChange={(e) => setBrandName(e.target.value)}
               />
             </div>
             <div className="form-group">
-              <label>Logo (Optional)</label>
+              <label>{t('logoOptional')}</label>
               <input
                 type="file"
                 accept="image/*"
@@ -364,35 +367,35 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
               />
             </div>
             <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
-              <button className="btn btn-outline" onClick={() => setStep(1)} style={{ flex: 1 }}>Back</button>
+              <button className="btn btn-outline" onClick={() => setStep(1)} style={{ flex: 1 }}>{t('back')}</button>
               <button className="btn btn-primary" onClick={() => {
                 if (!seoTouched) {
-                  const defaults = generateSEODefaults(businessCategory, brandName);
+                  const defaults = generateSEODefaults(businessCategory, brandName, t("yourStoreFallback"));
                   setSeoTitle(defaults.title);
                   setSeoDescription(defaults.description);
                 }
                 setStep(3);
-              }} disabled={!subdomain || !brandName || !selectedTemplate || checkingSubdomain || !subdomainStatus?.available} style={{ flex: 1 }}>Next: SEO</button>
+              }} disabled={!subdomain || !brandName || !selectedTemplate || checkingSubdomain || !subdomainStatus?.available} style={{ flex: 1 }}>{t('nextSeo')}</button>
             </div>
           </div>
         )}
 
         {step === 3 && (
           <div>
-            <h2 style={{ marginBottom: '0.5rem', fontWeight: 800 }}>SEO & Branding</h2>
+            <h2 style={{ marginBottom: '0.5rem', fontWeight: 800 }}>{t('step3Title')}</h2>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
-              Help your store get discovered on Google. You can always change these later from the admin panel.
+              {t('step3Subtitle')}
             </p>
             <div className="form-group">
-              <label style={{ fontWeight: 600 }}>Favicon (Optional)</label>
+              <label style={{ fontWeight: 600 }}>{t('faviconOptional')}</label>
               <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0 0 0.5rem' }}>
-                Small icon shown in browser tabs. Recommended: 32×32 or 64×64 px.
+                {t('faviconHelp')}
               </p>
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                 {faviconPreview && (
                   <img
                     src={faviconPreview}
-                    alt="Favicon preview"
+                    alt={t('faviconAlt')}
                     style={{ width: '32px', height: '32px', objectFit: 'contain', border: '1px solid var(--border)', borderRadius: '4px' }}
                   />
                 )}
@@ -402,7 +405,7 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
                   onChange={(e) => {
                     const file = e.target.files[0] || null;
                     if (file && file.size > 2 * 1024 * 1024) {
-                      setError('Favicon must be under 2 MB');
+                      setError(t('faviconTooLarge'));
                       return;
                     }
                     if (faviconPreview) URL.revokeObjectURL(faviconPreview);
@@ -415,29 +418,29 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
               </div>
             </div>
             <div className="form-group" style={{ marginTop: '1rem' }}>
-              <label style={{ fontWeight: 600 }}>Site Title</label>
+              <label style={{ fontWeight: 600 }}>{t('siteTitle')}</label>
               <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0 0 0.5rem' }}>
-                Appears in search results and browser tabs.
+                {t('siteTitleHelp')}
               </p>
               <input
                 type="text"
-                placeholder={generateSEODefaults(businessCategory, brandName).title}
+                placeholder={generateSEODefaults(businessCategory, brandName, t("yourStoreFallback")).title}
                 value={seoTitle}
                 onChange={(e) => { setSeoTitle(e.target.value); setSeoTouched(true); }}
                 maxLength={70}
               />
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.25rem' }}>
-                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Recommended: 50–60 characters</span>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{t('siteTitleHint')}</span>
                 <span style={{ fontSize: '0.7rem', color: (seoTitle || '').length > 60 ? '#dc2626' : 'var(--text-muted)' }}>{(seoTitle || '').length}/70</span>
               </div>
             </div>
             <div className="form-group" style={{ marginTop: '1rem' }}>
-              <label style={{ fontWeight: 600 }}>Meta Description</label>
+              <label style={{ fontWeight: 600 }}>{t('metaDescription')}</label>
               <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0 0 0.5rem' }}>
-                A short summary shown below your title in search results.
+                {t('metaDescriptionHelp')}
               </p>
               <textarea
-                placeholder={generateSEODefaults(businessCategory, brandName).description}
+                placeholder={generateSEODefaults(businessCategory, brandName, t("yourStoreFallback")).description}
                 value={seoDescription}
                 onChange={(e) => { setSeoDescription(e.target.value); setSeoTouched(true); }}
                 maxLength={160}
@@ -445,37 +448,37 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
                 style={{ width: '100%', resize: 'vertical', boxSizing: 'border-box' }}
               />
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.25rem' }}>
-                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Recommended: 120–160 characters</span>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{t('metaDescriptionHint')}</span>
                 <span style={{ fontSize: '0.7rem', color: (seoDescription || '').length > 155 ? '#dc2626' : 'var(--text-muted)' }}>{(seoDescription || '').length}/160</span>
               </div>
             </div>
             {(seoTitle || seoDescription) && (
               <div style={{ marginTop: '1rem', padding: '1rem', background: 'var(--bg-secondary, #f9fafb)', borderRadius: '8px', border: '1px solid var(--border)' }}>
-                <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Google Search Preview</p>
+                <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('googlePreview')}</p>
                 <div style={{ fontSize: '1rem', color: '#1a0dab', fontWeight: 500, marginBottom: '0.25rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {seoTitle || generateSEODefaults(businessCategory, brandName).title}
+                  {seoTitle || generateSEODefaults(businessCategory, brandName, t("yourStoreFallback")).title}
                 </div>
                 <div style={{ fontSize: '0.75rem', color: '#006621', marginBottom: '0.25rem' }}>
                   {subdomain}.{PLATFORM_DOMAIN}
                 </div>
                 <div style={{ fontSize: '0.8rem', color: '#545454', lineHeight: 1.4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                  {seoDescription || generateSEODefaults(businessCategory, brandName).description}
+                  {seoDescription || generateSEODefaults(businessCategory, brandName, t("yourStoreFallback")).description}
                 </div>
               </div>
             )}
             <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
-              <button className="btn btn-outline" onClick={() => setStep(2)} style={{ flex: 1 }}>Back</button>
-              <button className="btn btn-outline" onClick={() => setStep(4)} style={{ flex: 1 }}>Skip</button>
-              <button className="btn btn-primary" onClick={() => setStep(4)} style={{ flex: 1 }}>Next: Categories</button>
+              <button className="btn btn-outline" onClick={() => setStep(2)} style={{ flex: 1 }}>{t('back')}</button>
+              <button className="btn btn-outline" onClick={() => setStep(4)} style={{ flex: 1 }}>{t('skip')}</button>
+              <button className="btn btn-primary" onClick={() => setStep(4)} style={{ flex: 1 }}>{t('nextCategories')}</button>
             </div>
           </div>
         )}
 
         {step === 4 && (
           <div>
-            <h2 style={{ marginBottom: '0.5rem', fontWeight: 800 }}>Product Categories</h2>
+            <h2 style={{ marginBottom: '0.5rem', fontWeight: 800 }}>{t('step4Title')}</h2>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
-              These categories will appear on your homepage and navigation. You can rename them or add more.
+              {t('step4Subtitle')}
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem', maxHeight: '40vh', overflowY: 'auto', padding: '0.5rem' }}>
               {categories.map((cat, i) => (
@@ -483,14 +486,14 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                     <input
                       type="text"
-                      placeholder="Category Name"
+                      placeholder={t('categoryName')}
                       value={cat.name}
                       onChange={(e) => updateCategoryName(i, e.target.value)}
                       style={{ width: '100%', boxSizing: 'border-box' }}
                     />
                     <input
                       type="text"
-                      placeholder="Subtitle (optional)"
+                      placeholder={t('subtitleOptionalPlaceholder')}
                       value={cat.subtitle}
                       onChange={(e) => updateCategorySubtitle(i, e.target.value)}
                       style={{ width: '100%', boxSizing: 'border-box', fontSize: '0.85rem', color: '#666' }}
@@ -508,19 +511,19 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
               ))}
             </div>
             <button className="btn btn-outline" onClick={addCategory} style={{ width: '100%', marginBottom: '1.5rem', borderStyle: 'dashed' }}>
-              + Add Another Category
+              {t('addAnotherCategory')}
             </button>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', margin: '1rem 0' }}>
               <input type="checkbox" id="wizard-agree-terms" checked={agreedTerms} onChange={(e) => setAgreedTerms(e.target.checked)} style={{ marginTop: '0.2rem', width: '16px', height: '16px', cursor: 'pointer', flexShrink: 0 }} />
               <label htmlFor="wizard-agree-terms" style={{ fontSize: '0.8125rem', color: '#64748b', lineHeight: 1.5, cursor: 'pointer' }}>
-                I agree to the <Link to="/terms" target="_blank" style={{ color: '#2563eb', textDecoration: 'none', fontWeight: 500 }}>Terms & Conditions</Link>, <Link to="/privacy-policy" target="_blank" style={{ color: '#2563eb', textDecoration: 'none', fontWeight: 500 }}>Privacy Policy</Link>, and <Link to="/refund-policy" target="_blank" style={{ color: '#2563eb', textDecoration: 'none', fontWeight: 500 }}>Refund & Cancellation Policy</Link>.
+                {t('auth:agreeTerms')} <Link to="/terms" target="_blank" style={{ color: '#2563eb', textDecoration: 'none', fontWeight: 500 }}>{t('landing:footerTerms')}</Link>, <Link to="/privacy-policy" target="_blank" style={{ color: '#2563eb', textDecoration: 'none', fontWeight: 500 }}>{t('landing:footerPrivacy')}</Link>, {t('auth:agreeTermsAnd')} <Link to="/refund-policy" target="_blank" style={{ color: '#2563eb', textDecoration: 'none', fontWeight: 500 }}>{t('landing:footerRefund')}</Link>.
               </label>
             </div>
             {error && <p style={{ color: '#ef4444', fontSize: '0.875rem', marginBottom: '1rem' }}>{error}</p>}
             <div style={{ display: 'flex', gap: '1rem' }}>
-              <button className="btn btn-outline" onClick={() => setStep(3)} style={{ flex: 1 }}>Back</button>
+              <button className="btn btn-outline" onClick={() => setStep(3)} style={{ flex: 1 }}>{t('back')}</button>
               <button className="btn btn-primary" onClick={handleCreate} disabled={creating || !agreedTerms} style={{ flex: 1 }}>
-                {creating ? 'Creating...' : 'Create Website'}
+                {creating ? t('creating') : t('createWebsite')}
               </button>
             </div>
           </div>

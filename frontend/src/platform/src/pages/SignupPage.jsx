@@ -74,7 +74,7 @@ export default function SignupPage() {
         navigate('/dashboard');
       }
     } catch (err) {
-      setError(err.message || 'Google sign-in failed');
+      setError(err.message || t('googleFailed'));
     }
   }
 
@@ -99,10 +99,10 @@ export default function SignupPage() {
         setRegisteredEmail(email);
         setShowSuccess(true);
       } else {
-        throw new Error(result.error || 'Signup failed');
+        throw new Error(result.error || t('signupFailed'));
       }
     } catch (err) {
-      setError(err.message || 'Signup failed');
+      setError(err.message || t('signupFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -113,7 +113,7 @@ export default function SignupPage() {
       await resendVerification(registeredEmail);
       toast.success(t('verifyEmailResent'));
     } catch (err) {
-      toast.error(err.message || 'Failed to resend');
+      toast.error(err.message || t('resendFailed'));
     }
   }
 

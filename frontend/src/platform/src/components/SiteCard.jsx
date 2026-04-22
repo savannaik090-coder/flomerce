@@ -1,9 +1,11 @@
+import { useTranslation } from 'react-i18next';
 import { PLATFORM_DOMAIN } from '../config.js';
 import { getSubscriptionBadge, formatScheduledChange } from '../utils/subscriptionStatus.js';
 
 function utcDate(s) { if (!s) return null; const v = String(s).trim(); const iso = v.includes('T') ? v : v.replace(' ', 'T'); return new Date(iso.endsWith('Z') || iso.includes('+') ? iso : iso + 'Z'); }
 
 export default function SiteCard({ site, onManage, subscriptionInfo }) {
+  const { t } = useTranslation('dashboard');
   const siteName = site.brand_name || site.brandName || site.subdomain;
   const siteUrl = `https://${site.subdomain}.${PLATFORM_DOMAIN}`;
   const createdAt = site.created_at ? utcDate(site.created_at).toLocaleDateString() : '';
@@ -15,6 +17,12 @@ export default function SiteCard({ site, onManage, subscriptionInfo }) {
   const isEnterprise = sub.plan === 'enterprise';
   const badge = getSubscriptionBadge(sub);
   const scheduledNote = formatScheduledChange(sub);
+
+  const renewLabel = sub.isCancelled
+    ? t('siteCard.ends')
+    : sub.plan === 'trial'
+      ? t('siteCard.trialEnds')
+      : t('siteCard.renews');
 
   return (
     <div className="site-card">
@@ -32,7 +40,7 @@ export default function SiteCard({ site, onManage, subscriptionInfo }) {
       </div>
       {sub.isActive && sub.periodEnd && !isEnterprise && (
         <p style={{ fontSize: '0.75rem', color: sub.isCancelled ? '#92400e' : 'var(--text-muted)', marginBottom: '0.75rem', margin: '0 0 0.75rem 0' }}>
-          {sub.isCancelled ? 'Ends' : sub.plan === 'trial' ? 'Trial ends' : 'Renews'}: {new Date(sub.periodEnd).toLocaleDateString()}
+          {renewLabel}: {new Date(sub.periodEnd).toLocaleDateString()}
         </p>
       )}
       {scheduledNote && !isEnterprise && (
@@ -41,9 +49,9 @@ export default function SiteCard({ site, onManage, subscriptionInfo }) {
         </p>
       )}
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-        <a href={siteUrl} target="_blank" rel="noopener noreferrer" className="btn btn-primary" style={{ flex: 1, fontSize: '0.75rem' }}>Visit Site</a>
+        <a href={siteUrl} target="_blank" rel="noopener noreferrer" className="btn btn-primary" style={{ flex: 1, fontSize: '0.75rem' }}>{t('siteCard.visit')}</a>
         <button className="btn btn-outline" onClick={onManage} style={{ flex: 1, fontSize: '0.75rem' }}>
-          Manage
+          {t('siteCard.manage')}
         </button>
       </div>
     </div>

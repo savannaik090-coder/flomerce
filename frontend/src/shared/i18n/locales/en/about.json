@@ -1,1 +1,37 @@
-{}
+{
+  "whoP1": "Flomerce is a software-as-a-service (SaaS) platform built to help small businesses, entrepreneurs, and creators launch their own professional e-commerce websites — without writing a single line of code. We believe that every business, no matter how small, deserves a powerful online presence.",
+  "whoP2": "Based in Karwar, Karnataka, India, Flomerce was founded with a simple mission: make online selling accessible, affordable, and effortless for everyone.",
+  "whatLead": "Flomerce provides a complete, all-in-one platform for creating and managing online stores. Each store gets its own branded subdomain (e.g., your-store.{{domain}}) and comes packed with everything needed to run a successful e-commerce business:",
+  "whatItems": {
+    "builder": "<strong>Store Builder:</strong> Create a fully functional online store in minutes with beautiful, ready-to-use templates",
+    "products": "<strong>Product Management:</strong> Add products with images, categories, variants, pricing, and inventory tracking",
+    "orders": "<strong>Order Processing:</strong> Complete order lifecycle management — from placement to delivery, with real-time status updates and customer notifications",
+    "payments": "<strong>Secure Payments:</strong> Accept payments through Razorpay (UPI, cards, net banking, wallets) and cash on delivery",
+    "customers": "<strong>Customer Management:</strong> Built-in customer accounts, wishlists, order history, and reviews",
+    "analytics": "<strong>Analytics & Insights:</strong> Track visitors, page views, traffic sources, and sales from your admin dashboard",
+    "seo": "<strong>SEO Tools:</strong> Built-in search engine optimization with meta tags, sitemaps, and Google structured data",
+    "push": "<strong>Push Notifications:</strong> Engage customers with automated alerts for new products, price drops, and back-in-stock items",
+    "domains": "<strong>Custom Domains:</strong> Connect your own domain name for a fully branded experience"
+  },
+  "missionP1": "We are on a mission to democratize e-commerce for small businesses across India and beyond. Traditional e-commerce solutions are often expensive, complex, and require technical expertise. Flomerce eliminates these barriers by providing an intuitive, affordable platform that anyone can use.",
+  "missionP2": "Whether you sell jewellery, clothing, beauty products, or any other retail goods — Flomerce gives you the tools to build your brand, reach customers, and grow your business online.",
+  "howItems": {
+    "signup": "<strong>Sign Up:</strong> Create your free account in seconds — no credit card required",
+    "build": "<strong>Build Your Store:</strong> Choose a template, add your brand name, logo, and products",
+    "payments": "<strong>Set Up Payments:</strong> Connect your own Razorpay merchant account to accept payments directly",
+    "live": "<strong>Go Live:</strong> Your store is instantly live on your own subdomain, ready for customers"
+  },
+  "valuesItems": {
+    "simplicity": "<strong>Simplicity:</strong> We build tools that are easy to use, so you can focus on your business, not technology",
+    "transparency": "<strong>Transparency:</strong> Clear pricing, no hidden fees, and honest communication",
+    "security": "<strong>Security:</strong> Your data and your customers' data are protected with industry-standard security measures",
+    "support": "<strong>Support:</strong> We are here to help you succeed — reach out to us anytime"
+  },
+  "contactIntro": "We would love to hear from you. Whether you have questions, feedback, or need help getting started:",
+  "contactBrand": "Flomerce",
+  "labelEmail": "Email:",
+  "labelPhone": "Phone:",
+  "labelAddress": "Address:",
+  "labelWebsite": "Website:",
+  "address": "Karwar, Karnataka, India — 581400"
+}

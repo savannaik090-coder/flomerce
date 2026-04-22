@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { resetPassword } from '../services/authService.js';
 
 export default function ResetPasswordPage() {
+  const { t } = useTranslation(['auth', 'common']);
   const [searchParams] = useSearchParams();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -26,12 +28,12 @@ export default function ResetPasswordPage() {
     setSuccess('');
 
     if (password.length < 8) {
-      setError('Password must be at least 8 characters.');
+      setError(t('passwordMin'));
       return;
     }
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match.');
+      setError(t('passwordsNoMatch'));
       return;
     }
 
@@ -39,13 +41,13 @@ export default function ResetPasswordPage() {
     try {
       const res = await resetPassword(token, email, password);
       if (res.success) {
-        setSuccess('Password reset successful! Redirecting...');
+        setSuccess(t('resetPassword.successMsg'));
         setTimeout(() => navigate('/login'), 2000);
       } else {
-        throw new Error(res.error || 'Reset failed');
+        throw new Error(res.error || t('resetPassword.resetGenericFailed'));
       }
     } catch (err) {
-      setError(err.message || 'Failed to reset password');
+      setError(err.message || t('resetPassword.failed'));
     } finally {
       setSubmitting(false);
     }
@@ -56,11 +58,11 @@ export default function ResetPasswordPage() {
   return (
     <div className="auth-wrapper">
       <div className="auth-card">
-        <h2>Reset Password</h2>
-        <p>Enter your new password below.</p>
+        <h2>{t('resetPassword.title')}</h2>
+        <p>{t('resetPassword.intro')}</p>
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label>New Password</label>
+            <label>{t('resetPassword.newPassword')}</label>
             <input
               type="password"
               required
@@ -71,7 +73,7 @@ export default function ResetPasswordPage() {
             />
           </div>
           <div className="form-group">
-            <label>Confirm Password</label>
+            <label>{t('resetPassword.confirmPasswordLabel')}</label>
             <input
               type="password"
               required
@@ -81,13 +83,13 @@ export default function ResetPasswordPage() {
             />
           </div>
           <button type="submit" className="btn btn-primary" style={{ width: '100%' }} disabled={submitting}>
-            {submitting ? 'Resetting...' : 'Reset Password'}
+            {submitting ? t('resetPassword.submitting') : t('resetPassword.submit')}
           </button>
           {error && <div className="error-msg">{error}</div>}
           {success && <div className="success-msg">{success}</div>}
         </form>
         <p className="auth-footer">
-          <Link to="/login">Back to Login</Link>
+          <Link to="/login">{t('backToLogin')}</Link>
         </p>
       </div>
     </div>
