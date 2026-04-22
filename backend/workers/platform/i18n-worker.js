@@ -40,7 +40,7 @@ const EN_CATALOG = {
   plans: EN_PLANS,
 };
 
-const SUPPORTED_LOCALES = new Set([
+export const SUPPORTED_LOCALES = new Set([
   'en', 'hi', 'es', 'zh-CN', 'ar',
   // Long-tail allowlist of locales the platform will lazy-generate on demand.
   // Anything outside this set falls back to English to bound spend.

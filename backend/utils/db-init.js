@@ -25,6 +25,7 @@ async function migrateSitesTable(env) {
       'is_active', 'subscription_plan', 'subscription_expires_at',
       'custom_domain', 'domain_status', 'domain_verification_token', 'cf_hostname_id',
       'shard_id', 'migration_locked', 'd1_database_id', 'd1_binding_name',
+      'content_language',
       'created_at', 'updated_at'
     ];
     const existingKeep = keepCols.filter(c => columns.includes(c));
@@ -48,6 +49,7 @@ async function migrateSitesTable(env) {
       migration_locked INTEGER DEFAULT 0,
       d1_database_id TEXT,
       d1_binding_name TEXT,
+      content_language TEXT NOT NULL DEFAULT 'en',
       created_at TEXT DEFAULT (datetime('now')),
       updated_at TEXT DEFAULT (datetime('now')),
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -62,6 +64,7 @@ async function migrateSitesTable(env) {
     await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_sites_user ON sites(user_id)').run();
     await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_sites_custom_domain ON sites(custom_domain)').run();
     await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_sites_shard ON sites(shard_id)').run();
+    await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_sites_content_language ON sites(content_language)').run();
 
     await env.DB.prepare(
       "INSERT INTO platform_settings (setting_key, setting_value) VALUES ('sites_table_migrated_v2', '1') ON CONFLICT(setting_key) DO UPDATE SET setting_value = '1'"
@@ -136,6 +139,7 @@ export async function ensureTablesExist(env) {
         migration_locked INTEGER DEFAULT 0,
         d1_database_id TEXT,
         d1_binding_name TEXT,
+        content_language TEXT NOT NULL DEFAULT 'en',
         created_at TEXT DEFAULT (datetime('now')),
         updated_at TEXT DEFAULT (datetime('now')),
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -345,6 +349,8 @@ export async function ensureTablesExist(env) {
       { col: 'd1_limit_bytes', table: 'enterprise_usage_monthly', sql: 'ALTER TABLE enterprise_usage_monthly ADD COLUMN d1_limit_bytes INTEGER' },
       { col: 'r2_limit_bytes', table: 'enterprise_usage_monthly', sql: 'ALTER TABLE enterprise_usage_monthly ADD COLUMN r2_limit_bytes INTEGER' },
       { col: 'emailed_at', table: 'enterprise_usage_monthly', sql: 'ALTER TABLE enterprise_usage_monthly ADD COLUMN emailed_at TEXT' },
+      // 0017_add_site_content_language: merchant-authored content language per site.
+      { col: 'content_language', table: 'sites', sql: "ALTER TABLE sites ADD COLUMN content_language TEXT NOT NULL DEFAULT 'en'" },
     ];
     for (const m of migrations) {
       try {
@@ -362,6 +368,7 @@ export async function ensureTablesExist(env) {
       `CREATE INDEX IF NOT EXISTS idx_enterprise_usage_invoice_number ON enterprise_usage_monthly(invoice_number)`,
       `CREATE INDEX IF NOT EXISTS idx_enterprise_usage_invoice_token ON enterprise_usage_monthly(invoice_token)`,
       `CREATE INDEX IF NOT EXISTS idx_enterprise_usage_razorpay_order ON enterprise_usage_monthly(razorpay_order_id)`,
+      `CREATE INDEX IF NOT EXISTS idx_sites_content_language ON sites(content_language)`,
     ]) {
       try { await env.DB.prepare(ix).run(); } catch (e) { /* index is best-effort */ }
     }

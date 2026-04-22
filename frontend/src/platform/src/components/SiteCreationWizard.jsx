@@ -3,6 +3,17 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { createSite, checkSubdomain } from '../services/siteService.js';
 import { PLATFORM_DOMAIN } from '../config.js';
+import { PRESHIPPED } from '../../../shared/i18n/init.js';
+
+// Native labels for the content-language picker. Mirrors the platform
+// language switcher so the wizard offers the same locales out of the box.
+const CONTENT_LANGUAGE_LABELS = {
+  en: 'English',
+  hi: 'हिन्दी',
+  es: 'Español',
+  'zh-CN': '简体中文',
+  ar: 'العربية',
+};
 
 // TODO: localize via content_language (handled in wizard seed-data task)
 const SEO_TITLE_TEMPLATES = {
@@ -45,7 +56,15 @@ export function clearWizardDraft() {
 }
 
 export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, isTrialActive }) {
-  const { t } = useTranslation(['wizard', 'auth', 'landing']);
+  const { t, i18n } = useTranslation(['wizard', 'auth', 'landing']);
+
+  // Default the content language to the user's current admin UI language so a
+  // Hindi-speaking merchant defaults to Hindi without an extra click. Falls back
+  // to English when the active locale isn't one we ship a picker option for.
+  const defaultContentLanguage = (() => {
+    const current = (i18n.language || 'en').split('-')[0] === 'zh' ? 'zh-CN' : (i18n.language || 'en');
+    return PRESHIPPED.includes(current) ? current : 'en';
+  })();
 
   const BUSINESS_CATEGORIES = [
     { id: 'jewellery', name: t('categories.jewellery'), icon: '💎' },
@@ -97,6 +116,11 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
   const [faviconFile, setFaviconFile] = useState(null);
   const [faviconPreview, setFaviconPreview] = useState(null);
   const [seoTouched, setSeoTouched] = useState(draft?.seoTouched || false);
+  const [contentLanguage, setContentLanguage] = useState(
+    draft?.contentLanguage && PRESHIPPED.includes(draft.contentLanguage)
+      ? draft.contentLanguage
+      : defaultContentLanguage
+  );
   const debounceRef = useRef(null);
   const latestCheckRef = useRef('');
 
@@ -145,8 +169,9 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
     saveWizardDraft({
       step, businessCategory, selectedTemplate, selectedTheme,
       subdomain, brandName, categories, seoTitle, seoDescription, seoTouched,
+      contentLanguage,
     });
-  }, [step, businessCategory, selectedTemplate, selectedTheme, subdomain, brandName, categories, seoTitle, seoDescription, seoTouched]);
+  }, [step, businessCategory, selectedTemplate, selectedTheme, subdomain, brandName, categories, seoTitle, seoDescription, seoTouched, contentLanguage]);
 
   const handleBusinessCategorySelect = (catId) => {
     setBusinessCategory(catId);
@@ -204,6 +229,7 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
       templateId: selectedTemplate,
       theme: selectedTheme,
       category: businessCategory,
+      content_language: contentLanguage,
       logo: logoBase64,
       favicon: faviconBase64,
       seoTitle: finalSeoTitle,
@@ -367,6 +393,26 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
                 onChange={(e) => setLogoFile(e.target.files[0] || null)}
                 style={{ padding: '0.5rem', border: '1px dashed var(--border)' }}
               />
+            </div>
+            <div className="form-group">
+              <label>{t('contentLanguagePrompt')}</label>
+              <select
+                value={contentLanguage}
+                onChange={(e) => setContentLanguage(e.target.value)}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border)', borderRadius: 4, background: '#fff' }}
+              >
+                {PRESHIPPED.map((lng) => (
+                  <option key={lng} value={lng}>{CONTENT_LANGUAGE_LABELS[lng] || lng}</option>
+                ))}
+              </select>
+              {contentLanguage !== 'en' && (
+                <p
+                  role="alert"
+                  style={{ marginTop: '0.5rem', padding: '0.5rem 0.75rem', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 4, fontSize: '0.75rem', color: '#92400e' }}
+                >
+                  {t('contentLanguageWarning', { language: CONTENT_LANGUAGE_LABELS[contentLanguage] || contentLanguage })}
+                </p>
+              )}
             </div>
             <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
               <button className="btn btn-outline" onClick={() => setStep(1)} style={{ flex: 1 }}>{t('back')}</button>

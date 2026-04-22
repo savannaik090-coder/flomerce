@@ -63,5 +63,7 @@
   "agreeIntro": "I agree to the",
   "agreeComma": ",",
   "agreeAnd": "and",
-  "agreePeriod": "."
+  "agreePeriod": ".",
+  "contentLanguagePrompt": "Default Language for Your Website",
+  "contentLanguageWarning": "The language you selected will be the default language for your entire website. Your shoppers will see your store in {{language}} unless you enable shopper language switching later."
 }

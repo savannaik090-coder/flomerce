@@ -6,6 +6,7 @@ import { registerCustomHostname, deleteCustomHostname, findCustomHostname } from
 import { resolveSiteDBById, getSiteConfig, getSiteWithConfig } from '../../utils/site-db.js';
 import { trackD1Write, trackD1Update, estimateRowBytes, normalizePlanName, getPlanLimitsConfig, recordMediaFile } from '../../utils/usage-tracker.js';
 import { purgeStorefrontCache } from '../../utils/cache.js';
+import { SUPPORTED_LOCALES } from './i18n-worker.js';
 
 export async function handleSites(request, env, path, ctx) {
   const corsResponse = handleCORS(request);
@@ -228,7 +229,7 @@ async function getUserSites(env, user) {
     const sites = await env.DB.prepare(
       `SELECT id, subdomain, brand_name, template_id,
               is_active, subscription_plan, subscription_expires_at, created_at,
-              custom_domain, domain_status
+              custom_domain, domain_status, content_language
        FROM sites 
        WHERE user_id = ? 
        ORDER BY created_at DESC`
@@ -346,6 +347,14 @@ async function createSite(request, env, user) {
     const seoTitle = body.seoTitle || null;
     const seoDescription = body.seoDescription || null;
     const subdomain = (body.subdomain || generateSubdomain(brandName)).toLowerCase().trim();
+    // Merchant-authored content language. Validated against the platform's
+    // SUPPORTED_LOCALES allowlist (whitelist) — never trust the client. Defaults
+    // to English so existing wizard flows stay backwards compatible.
+    const contentLanguageRaw = (body.content_language || body.contentLanguage || 'en');
+    const contentLanguage = typeof contentLanguageRaw === 'string' ? contentLanguageRaw.trim() : 'en';
+    if (!SUPPORTED_LOCALES.has(contentLanguage)) {
+      return errorResponse('Unsupported content language', 400, 'INVALID_CONTENT_LANGUAGE');
+    }
 
     if (!brandName) {
       return errorResponse('Brand name is required');
@@ -399,8 +408,8 @@ async function createSite(request, env, user) {
     siteId = generateId();
 
     await env.DB.prepare(
-      `INSERT INTO sites (id, user_id, subdomain, brand_name, category, template_id, shard_id, is_active, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 1, datetime('now'), datetime('now'))`
+      `INSERT INTO sites (id, user_id, subdomain, brand_name, category, template_id, shard_id, content_language, is_active, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, datetime('now'), datetime('now'))`
     ).bind(
       siteId,
       user.id,
@@ -408,7 +417,8 @@ async function createSite(request, env, user) {
       sanitizeInput(brandName),
       category,
       templateId || 'storefront',
-      activeShard.id
+      activeShard.id,
+      contentLanguage
     ).run();
 
     const siteDB = await resolveSiteDBById(env, siteId);
