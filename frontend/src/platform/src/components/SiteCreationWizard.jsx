@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { createSite, checkSubdomain } from '../services/siteService.js';
@@ -57,6 +57,13 @@ export function clearWizardDraft() {
 export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, isTrialActive }) {
   const { t, i18n } = useTranslation(['wizard', 'auth', 'landing']);
 
+  // `t` resolves in the merchant's admin UI language. For wizard *content*
+  // previews (SEO defaults, default category names) we want them rendered in
+  // the merchant's selected `content_language` so the preview matches what
+  // the backend will persist. We derive a language-scoped translator below
+  // from `getFixedT` once the bundle for that language is loaded; falls back
+  // to the UI `t` if i18next hasn't loaded the bundle yet.
+
   // Default the content language to the user's current admin UI language so a
   // Hindi-speaking merchant defaults to Hindi without an extra click. Falls back
   // to English when the active locale isn't one we ship a picker option for.
@@ -75,9 +82,9 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
   // Read the localized starter categories for a business category from the
   // wizard i18n catalog. Falls through to jewellery (then to an empty list)
   // when the locale file hasn't loaded the section yet.
-  const getDefaultCategories = (catId) => {
+  const getDefaultCategories = (catId, translator = wizardT) => {
     const tryCat = (id) => {
-      const obj = t(`defaultCategories.${id}`, { returnObjects: true, defaultValue: null });
+      const obj = translator(`defaultCategories.${id}`, { returnObjects: true, defaultValue: null });
       if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
         return Object.values(obj)
           .filter((c) => c && typeof c === 'object' && c.name)
@@ -118,6 +125,21 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
       ? draft.contentLanguage
       : defaultContentLanguage
   );
+  // Bumped whenever i18next finishes lazy-loading a content-language bundle.
+  // Used as a memo dependency so wizardT re-resolves into the now-loaded
+  // catalog (otherwise getFixedT would keep returning EN fallbacks).
+  const [bundleTick, setBundleTick] = useState(0);
+
+  // Language-scoped translator for wizard *content* previews. Bound to the
+  // selected `contentLanguage` so that, e.g., a Hindi-targeting merchant on
+  // an English admin UI sees Hindi category names and Hindi SEO defaults
+  // (matching what the backend will actually persist).
+  const wizardT = useMemo(
+    () => i18n.getFixedT(contentLanguage, 'wizard'),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [contentLanguage, bundleTick]
+  );
+
   const debounceRef = useRef(null);
   const latestCheckRef = useRef('');
 
@@ -190,12 +212,19 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
 
   // Lazy-load the i18n bundle for the chosen content language so previews
   // render in the merchant's selected language even if their admin UI is
-  // currently in English. Failure is silent (preview just stays in EN).
+  // currently in English. When the load resolves we bump bundleTick so the
+  // memoised wizardT re-evaluates into the freshly-loaded catalog. Failure
+  // is silent — preview falls back to English in that case.
   useEffect(() => {
-    if (!contentLanguage || contentLanguage === i18n.language) return;
+    if (!contentLanguage) return;
+    let cancelled = false;
     try {
-      i18n.loadLanguages?.(contentLanguage);
+      const p = i18n.loadLanguages?.(contentLanguage);
+      Promise.resolve(p).then(() => {
+        if (!cancelled) setBundleTick((n) => n + 1);
+      }).catch(() => {});
     } catch {}
+    return () => { cancelled = true; };
   }, [contentLanguage, i18n]);
 
   const addCategory = () => {
@@ -452,7 +481,7 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
               <button className="btn btn-outline" onClick={() => setStep(1)} style={{ flex: 1 }}>{t('back')}</button>
               <button className="btn btn-primary" onClick={() => {
                 if (!seoTouched) {
-                  const defaults = generateSEODefaults(t, businessCategory, brandName, t("yourStoreFallback"));
+                  const defaults = generateSEODefaults(wizardT, businessCategory, brandName, t("yourStoreFallback"));
                   setSeoTitle(defaults.title);
                   setSeoDescription(defaults.description);
                 }
@@ -506,7 +535,7 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
               </p>
               <input
                 type="text"
-                placeholder={generateSEODefaults(t, businessCategory, brandName, t("yourStoreFallback")).title}
+                placeholder={generateSEODefaults(wizardT, businessCategory, brandName, t("yourStoreFallback")).title}
                 value={seoTitle}
                 onChange={(e) => { setSeoTitle(e.target.value); setSeoTouched(true); }}
                 maxLength={70}
@@ -522,7 +551,7 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
                 {t('metaDescriptionHelp')}
               </p>
               <textarea
-                placeholder={generateSEODefaults(t, businessCategory, brandName, t("yourStoreFallback")).description}
+                placeholder={generateSEODefaults(wizardT, businessCategory, brandName, t("yourStoreFallback")).description}
                 value={seoDescription}
                 onChange={(e) => { setSeoDescription(e.target.value); setSeoTouched(true); }}
                 maxLength={160}
@@ -538,13 +567,13 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
               <div style={{ marginTop: '1rem', padding: '1rem', background: 'var(--bg-secondary, #f9fafb)', borderRadius: '8px', border: '1px solid var(--border)' }}>
                 <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('googlePreview')}</p>
                 <div style={{ fontSize: '1rem', color: '#1a0dab', fontWeight: 500, marginBottom: '0.25rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {seoTitle || generateSEODefaults(t, businessCategory, brandName, t("yourStoreFallback")).title}
+                  {seoTitle || generateSEODefaults(wizardT, businessCategory, brandName, t("yourStoreFallback")).title}
                 </div>
                 <div style={{ fontSize: '0.75rem', color: '#006621', marginBottom: '0.25rem' }}>
                   {subdomain}.{PLATFORM_DOMAIN}
                 </div>
                 <div style={{ fontSize: '0.8rem', color: '#545454', lineHeight: 1.4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                  {seoDescription || generateSEODefaults(t, businessCategory, brandName, t("yourStoreFallback")).description}
+                  {seoDescription || generateSEODefaults(wizardT, businessCategory, brandName, t("yourStoreFallback")).description}
                 </div>
               </div>
             )}
