@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import HeroSlider from '../components/home/HeroSlider.jsx';
 import CategorySection from '../components/home/CategorySection.jsx';
 import SubcategorySection from '../components/home/SubcategorySection.jsx';
@@ -32,6 +33,7 @@ import '../styles/shop-the-look.css';
 import '../styles/home-responsive.css';
 
 export default function HomePage() {
+  const { t } = useTranslation('storefront');
   const { siteConfig, loading: siteLoading } = useSiteConfig();
   const theme = useTheme();
   const isModern = theme.id === 'modern';
@@ -98,7 +100,7 @@ export default function HomePage() {
       <div className="home-page">
         <div className="home-page-loader">
           <div className="product-loader-spinner"></div>
-          <p className="product-loader-text">Loading store...</p>
+          <p className="product-loader-text">{t('app.loadingStore', 'Loading store...')}</p>
         </div>
       </div>
     );

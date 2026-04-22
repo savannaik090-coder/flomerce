@@ -1337,6 +1337,11 @@
     "postNotFoundMessage": "The blog post you're looking for doesn't exist.",
     "backToBlog": "\u2190 Back to Blog"
   },
+  "phoneInput": {
+    "placeholder": "Phone number",
+    "searchCountry": "Search country...",
+    "noCountries": "No countries found"
+  },
   "app": {
     "loadingStore": "Loading store...",
     "storeNotFound": "Store Not Found",
