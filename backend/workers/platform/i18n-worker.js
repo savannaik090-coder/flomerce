@@ -2,10 +2,37 @@ import { handleCORS, successResponse, errorResponse, jsonResponse, corsHeaders }
 import { validateAuth } from '../../utils/auth.js';
 import { isOwner } from './admin-worker.js';
 import { translateCatalogIncremental, hashCatalog } from '../../utils/translator.js';
-// Single source of truth for all catalogs lives under shared/i18n/locales/.
+// Single source of truth for all catalogs lives under shared/i18n/locales/en/.
 // English is the source for translation; every non-English locale is lazy-
 // generated via Microsoft Translator on first request and then cached in R2.
-import EN_CATALOG from '../../../frontend/src/shared/i18n/locales/en.json';
+// The English catalog is now split into per-namespace JSON files that we
+// deep-merge here into the same nested shape we used to ship as one big
+// `en.json`. Keeping the merged shape byte-identical means the per-key SHA
+// fingerprints already stored in R2 stay valid — splitting the source files
+// does NOT mark every previously-up-to-date locale as stale.
+import EN_COMMON from '../../../frontend/src/shared/i18n/locales/en/common.json';
+import EN_LANDING from '../../../frontend/src/shared/i18n/locales/en/landing.json';
+import EN_AUTH from '../../../frontend/src/shared/i18n/locales/en/auth.json';
+import EN_ADMIN from '../../../frontend/src/shared/i18n/locales/en/admin.json';
+import EN_OWNER from '../../../frontend/src/shared/i18n/locales/en/owner.json';
+import EN_DASHBOARD from '../../../frontend/src/shared/i18n/locales/en/dashboard.json';
+
+function deepMergeCatalog(target, source) {
+  for (const [k, v] of Object.entries(source || {})) {
+    if (v && typeof v === 'object' && !Array.isArray(v)) {
+      target[k] = deepMergeCatalog(
+        target[k] && typeof target[k] === 'object' ? target[k] : {},
+        v,
+      );
+    } else {
+      target[k] = v;
+    }
+  }
+  return target;
+}
+
+const EN_CATALOG = [EN_COMMON, EN_LANDING, EN_AUTH, EN_ADMIN, EN_OWNER, EN_DASHBOARD]
+  .reduce((acc, file) => deepMergeCatalog(acc, file), {});
 
 const SUPPORTED_LOCALES = new Set([
   'en', 'hi', 'es', 'zh-CN', 'ar',

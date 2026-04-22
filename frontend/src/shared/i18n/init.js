@@ -1,14 +1,14 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
-import enCatalog from './locales/en.json';
+import enCatalog, { NAMESPACE_FILES, NAMESPACES } from './locales/en/index.js';
 
 // Only English is bundled into the JS payload — it is the source catalog and
 // must always be available for fallback. Every other language (including the
 // four hand-curated launch languages) is fetched from the platform's locale
 // API on demand. The API serves the seed translation instantly on first hit
 // and the smart-refreshed version after that, so editing English in one place
-// (the EN file imported below) is the only change needed when copy changes.
+// (the EN files imported below) is the only change needed when copy changes.
 const BUNDLED = {
   en: enCatalog,
 };
@@ -103,9 +103,23 @@ export function initI18n(options = {}) {
       load: 'currentOnly',
       cleanCode: true,
       nonExplicitSupportedLngs: true,
-      ns: ['translation'],
+      // Each English source file owns one i18next namespace. Non-English
+      // locales arrive from the worker as one merged catalog (the smart-
+      // refresh pipeline serves them under the `translation` namespace), so
+      // we register that name too and treat it as the default. fallbackNS
+      // walks every namespace, which lets pre-existing call sites such as
+      // `t('landing.heroBadge')` keep working without any code changes —
+      // when the lookup misses in `translation` it falls through to the
+      // namespace that actually owns the key.
+      ns: ['translation', ...NAMESPACES],
       defaultNS: 'translation',
-      resources: Object.fromEntries(Object.entries(BUNDLED).map(([k, v]) => [k, { translation: v }])),
+      fallbackNS: ['translation', ...NAMESPACES],
+      resources: Object.fromEntries(
+        Object.entries(BUNDLED).map(([lng, merged]) => [
+          lng,
+          { translation: merged, ...NAMESPACE_FILES },
+        ])
+      ),
       partialBundledLanguages: true,
       interpolation: { escapeValue: false },
       detection: {
