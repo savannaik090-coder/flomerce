@@ -549,8 +549,11 @@
     },
     "chooseByCategory": {
       "label": "Collections",
-      "title": "Shop by Category",
+      "title": "Choose by Category",
       "explore": "Explore"
+    },
+    "shopTheLook": {
+      "viewDetails": "View Details"
     },
     "trending": {
       "title": "Trending Now",
@@ -1175,6 +1178,61 @@
     "noResultsHint": "Try a different search term",
     "recentSearches": "Recent Searches",
     "noImage": "No Image"
+  },
+  "filter": {
+    "filter": "FILTER",
+    "sortBy": "SORT BY",
+    "filterProducts": "Filter Products",
+    "sortByHeading": "Sort By",
+    "featured": "Featured",
+    "newest": "Newest",
+    "all": "All",
+    "availability": "Availability",
+    "inStock": "In Stock",
+    "applyFilters": "Apply Filters",
+    "clearAll": "Clear All",
+    "sort": {
+      "priceLowHigh": "Price: Low to High",
+      "priceHighLow": "Price: High to Low",
+      "newest": "Newest"
+    }
+  },
+  "productGrid": {
+    "noProductsFound": "No Products Found",
+    "noProductsMessage": "No products are available in this category yet.",
+    "browseAll": "Browse All Products"
+  },
+  "productReviews": {
+    "title": "Customer Reviews",
+    "loading": "Loading reviews...",
+    "writeReview": "Write a Review",
+    "alreadyReviewed": "You have already reviewed this product.",
+    "cancel": "Cancel",
+    "sortBy": "Sort by:",
+    "noReviews": "No reviews yet.",
+    "beFirst": "Be the first to review this product!",
+    "customer": "Customer",
+    "verifiedPurchase": "Verified Purchase",
+    "reviewSingular": "review",
+    "reviewPlural": "reviews",
+    "reviewImageAlt": "Review {{index}}",
+    "reviewAlt": "Review",
+    "form": {
+      "title": "Write Your Review",
+      "selectRating": "Select a rating",
+      "contentPlaceholder": "Share your thoughts about this product..."
+    },
+    "sort": {
+      "recent": "Most Recent",
+      "highest": "Highest Rated",
+      "lowest": "Lowest Rated"
+    },
+    "toasts": {
+      "submitted": "Review submitted!"
+    },
+    "errors": {
+      "submitFail": "Failed to submit review"
+    }
   },
   "push": {
     "title": "Stay Updated",

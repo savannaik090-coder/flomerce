@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useSiteConfig } from '../../hooks/useSiteConfig.js';
 import { getProducts } from '../../services/productService.js';
 import { useCurrency } from '../../hooks/useCurrency.js';
@@ -7,6 +8,7 @@ import { resolveImageUrl } from '../../utils/imageUrl.js';
 import { getShopTheLookDefaults } from '../../defaults/index.js';
 
 export default function ShopTheLook() {
+  const { t } = useTranslation('storefront');
   const { siteConfig } = useSiteConfig();
   const { formatAmount } = useCurrency();
   const [allProducts, setAllProducts] = useState([]);
@@ -81,7 +83,7 @@ export default function ShopTheLook() {
         )}
         <div className="stl-content">
           <div className="stl-image-container">
-            <img ref={imgRef} src={resolveImageUrl(mainImage)} alt={title || 'Shop the Look'} className="stl-main-image" />
+            <img ref={imgRef} src={resolveImageUrl(mainImage)} alt={title || t('defaults.shopTheLook.title', 'Shop the Look')} className="stl-main-image" />
             {products.map((product, i) => (
               <div
                 key={product.id || i}
@@ -135,7 +137,7 @@ export default function ShopTheLook() {
                   className="stl-popup-view-btn"
                   onClick={() => setPopupProduct(null)}
                 >
-                  View Details
+                  {t('home.shopTheLook.viewDetails', 'View Details')}
                 </Link>
               </div>
             </div>
