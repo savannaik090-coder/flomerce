@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import SaveBar from './SaveBar.jsx';
 import SectionToggle from './SectionToggle.jsx';
@@ -29,6 +30,7 @@ function compressImage(file, maxWidth = 1200, quality = 0.85) {
 }
 
 export default function StoreLocationsEditor({ onSaved, onPreviewUpdate, sectionVisible = true, onToggleVisibility }) {
+  const { t } = useTranslation('admin');
   const { siteConfig } = useContext(SiteContext);
   const [stores, setStores] = useState([{ ...EMPTY_STORE }]);
   const [saving, setSaving] = useState(false);
@@ -68,9 +70,9 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate, section
           storesVal = saved;
         } else {
           storesVal = [{
-            name: result.data.brand_name ? `${result.data.brand_name} Store` : '',
+            name: result.data.brand_name ? t('storeLocationsEditor.defaultStoreName', { brand: result.data.brand_name }) : '',
             address: settings.address || result.data.address || '',
-            hours: 'Monday to Saturday 11:00 am - 08:00 pm',
+            hours: t('storeLocationsEditor.defaultHours'),
             phone: settings.phone || result.data.phone || '',
             mapLink: '',
             image: '',
@@ -98,7 +100,6 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate, section
   function removeStore(index) {
     if (stores.length <= 1) return;
     const removedStore = stores[index];
-    // Defer R2 deletion until save; if user cancels, image stays on the live site.
     if (removedStore?.image) pendingMedia.markForDeletion(removedStore.image);
     setStores(prev => prev.filter((_, i) => i !== index));
   }
@@ -107,11 +108,11 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate, section
     if (!file) return;
     const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
     if (!allowed.includes(file.type)) {
-      setStatus('error:Please upload a JPG, PNG, or WebP image.');
+      setStatus('error:' + t('storeLocationsEditor.invalidImage'));
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
-      setStatus('error:Image is too large. Maximum size is 10MB.');
+      setStatus('error:' + t('storeLocationsEditor.imageTooLarge'));
       return;
     }
     const oldImage = stores[index]?.image;
@@ -134,11 +135,11 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate, section
         pendingMedia.markUploaded(newUrl);
         if (oldImage) pendingMedia.markForDeletion(oldImage);
       } else {
-        setStatus('error:Image upload failed. Please try again.');
+        setStatus('error:' + t('storeLocationsEditor.uploadFailed'));
       }
     } catch (e) {
       console.error('Failed to upload store image:', e);
-      setStatus('error:Failed to upload image. Please check your connection.');
+      setStatus('error:' + t('storeLocationsEditor.uploadFailedConn'));
     } finally {
       setUploading(prev => ({ ...prev, [index]: false }));
     }
@@ -172,7 +173,7 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate, section
         if (!cleanup.ok) console.warn('Some images failed to delete from storage:', cleanup.failed);
         if (onSaved) onSaved();
       } else {
-        setStatus('error:' + (result.error || 'Unknown error'));
+        setStatus('error:' + (result.error || t('storeLocationsEditor.unknownError')));
       }
     } catch (e) {
       setStatus('error:' + e.message);
@@ -190,12 +191,12 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate, section
     <div style={{ maxWidth: 700 }}>
       <SaveBar topBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       {onToggleVisibility && (
-        <SectionToggle enabled={sectionVisible} onChange={() => onToggleVisibility?.()} label="Store Locations Section" />
+        <SectionToggle enabled={sectionVisible} onChange={() => onToggleVisibility?.()} label={t('storeLocationsEditor.toggleLabel')} />
       )}
       <form onSubmit={handleSave}>
         <div className="card" style={{ marginBottom: 20 }}>
           <div className="card-header">
-            <h3 className="card-title">Come Visit Us at Our Store</h3>
+            <h3 className="card-title">{t('storeLocationsEditor.cardTitle')}</h3>
           </div>
           <div className="card-content">
             {stores.map((store, index) => (
@@ -203,20 +204,20 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate, section
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                   <span style={{ fontWeight: 600, fontSize: 14, color: '#1e293b' }}>
                     <i className="fas fa-store" style={{ marginInlineEnd: 6, color: '#2563eb' }} />
-                    Store {stores.length > 1 ? `#${index + 1}` : ''}
+                    {stores.length > 1 ? t('storeLocationsEditor.storeNum', { num: index + 1 }) : t('storeLocationsEditor.storeLabel')}
                   </span>
                   {stores.length > 1 && (
                     <button type="button" onClick={() => removeStore(index)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>
-                      <i className="fas fa-trash" style={{ marginInlineEnd: 4 }} />Remove
+                      <i className="fas fa-trash" style={{ marginInlineEnd: 4 }} />{t('storeLocationsEditor.remove')}
                     </button>
                   )}
                 </div>
 
                 <div style={{ marginBottom: 12 }}>
-                  <label style={labelStyle}>Store Image</label>
+                  <label style={labelStyle}>{t('storeLocationsEditor.imageLabel')}</label>
                   {store.image ? (
                     <div style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', marginBottom: 8 }}>
-                      <img src={store.image} alt={store.name || 'Store'} style={{ width: '100%', height: 180, objectFit: 'cover', display: 'block', borderRadius: 8 }} />
+                      <img src={store.image} alt={store.name || t('storeLocationsEditor.storeAlt')} style={{ width: '100%', height: 180, objectFit: 'cover', display: 'block', borderRadius: 8 }} />
                       <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 6 }}>
                         <button
                           type="button"
@@ -225,9 +226,9 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate, section
                           style={{ background: 'rgba(0,0,0,0.6)', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 10px', cursor: uploading[index] ? 'not-allowed' : 'pointer', fontSize: 12, fontFamily: 'inherit', opacity: uploading[index] ? 0.7 : 1 }}
                         >
                           {uploading[index] ? (
-                            <><i className="fas fa-spinner fa-spin" style={{ marginInlineEnd: 4 }} />Changing...</>
+                            <><i className="fas fa-spinner fa-spin" style={{ marginInlineEnd: 4 }} />{t('storeLocationsEditor.changing')}</>
                           ) : (
-                            <><i className="fas fa-camera" style={{ marginInlineEnd: 4 }} />Change</>
+                            <><i className="fas fa-camera" style={{ marginInlineEnd: 4 }} />{t('storeLocationsEditor.change')}</>
                           )}
                         </button>
                         <button
@@ -248,13 +249,13 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate, section
                     >
                       {uploading[index] ? (
                         <span style={{ fontSize: 13, color: '#64748b' }}>
-                          <i className="fas fa-spinner fa-spin" style={{ marginInlineEnd: 6 }} />Uploading...
+                          <i className="fas fa-spinner fa-spin" style={{ marginInlineEnd: 6 }} />{t('storeLocationsEditor.uploading')}
                         </span>
                       ) : (
                         <>
                           <i className="fas fa-cloud-upload-alt" style={{ fontSize: 24, color: '#94a3b8', display: 'block', marginBottom: 6 }} />
-                          <span style={{ fontSize: 13, color: '#64748b' }}>Click to upload store image</span>
-                          <span style={{ fontSize: 11, color: '#94a3b8', display: 'block', marginTop: 4 }}>JPG, PNG, or WebP (max 10MB)</span>
+                          <span style={{ fontSize: 13, color: '#64748b' }}>{t('storeLocationsEditor.clickUpload')}</span>
+                          <span style={{ fontSize: 11, color: '#94a3b8', display: 'block', marginTop: 4 }}>{t('storeLocationsEditor.uploadHint')}</span>
                         </>
                       )}
                     </div>
@@ -269,42 +270,42 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate, section
                 </div>
 
                 <div style={{ marginBottom: 12 }}>
-                  <label style={labelStyle}>Store Name</label>
-                  <input type="text" value={store.name} onChange={(e) => updateStore(index, 'name', e.target.value)} placeholder="e.g., Main Showroom" style={inputStyle} />
+                  <label style={labelStyle}>{t('storeLocationsEditor.nameLabel')}</label>
+                  <input type="text" value={store.name} onChange={(e) => updateStore(index, 'name', e.target.value)} placeholder={t('storeLocationsEditor.namePh')} style={inputStyle} />
                 </div>
 
                 <div style={{ marginBottom: 12 }}>
-                  <label style={labelStyle}>Address</label>
-                  <textarea value={store.address} onChange={(e) => updateStore(index, 'address', e.target.value)} rows={2} placeholder="Full store address" style={{ ...inputStyle, resize: 'vertical' }} />
+                  <label style={labelStyle}>{t('storeLocationsEditor.addressLabel')}</label>
+                  <textarea value={store.address} onChange={(e) => updateStore(index, 'address', e.target.value)} rows={2} placeholder={t('storeLocationsEditor.addressPh')} style={{ ...inputStyle, resize: 'vertical' }} />
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
                   <div>
-                    <label style={labelStyle}>Business Hours</label>
-                    <input type="text" value={store.hours} onChange={(e) => updateStore(index, 'hours', e.target.value)} placeholder="e.g., Mon-Sat 11am - 8pm" style={inputStyle} />
+                    <label style={labelStyle}>{t('storeLocationsEditor.hoursLabel')}</label>
+                    <input type="text" value={store.hours} onChange={(e) => updateStore(index, 'hours', e.target.value)} placeholder={t('storeLocationsEditor.hoursPh')} style={inputStyle} />
                   </div>
                   <div>
-                    <label style={labelStyle}>Phone</label>
+                    <label style={labelStyle}>{t('storeLocationsEditor.phoneLabel')}</label>
                     <PhoneInput value={store.phone} onChange={val => updateStore(index, 'phone', val)} countryCode="IN" />
                   </div>
                 </div>
 
                 <div>
-                  <label style={labelStyle}>Google Maps Link</label>
-                  <input type="text" value={store.mapLink} onChange={(e) => updateStore(index, 'mapLink', e.target.value)} placeholder="https://maps.google.com/..." style={inputStyle} />
+                  <label style={labelStyle}>{t('storeLocationsEditor.mapLabel')}</label>
+                  <input type="text" value={store.mapLink} onChange={(e) => updateStore(index, 'mapLink', e.target.value)} placeholder={t('storeLocationsEditor.mapPh')} style={inputStyle} />
                 </div>
               </div>
             ))}
 
             <button type="button" onClick={addStore} style={{ width: '100%', padding: '10px 16px', border: '2px dashed #cbd5e1', borderRadius: 8, background: 'none', color: '#64748b', cursor: 'pointer', fontSize: 13, fontWeight: 500, fontFamily: 'inherit' }}>
-              <i className="fas fa-plus" style={{ marginInlineEnd: 6 }} />Add Another Store
+              <i className="fas fa-plus" style={{ marginInlineEnd: 6 }} />{t('storeLocationsEditor.addAnother')}
             </button>
           </div>
         </div>
 
         {status && (
           <div style={{ padding: '10px 14px', borderRadius: 6, marginBottom: 16, fontSize: 13, background: status === 'success' ? '#f0fdf4' : '#fef2f2', color: status === 'success' ? '#16a34a' : '#dc2626', border: `1px solid ${status === 'success' ? '#bbf7d0' : '#fecaca'}` }}>
-            {status === 'success' ? 'Store locations saved successfully!' : status.replace('error:', '')}
+            {status === 'success' ? t('storeLocationsEditor.savedSuccess') : status.replace('error:', '')}
           </div>
         )}
 

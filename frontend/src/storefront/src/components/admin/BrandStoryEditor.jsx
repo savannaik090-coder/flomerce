@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import SectionToggle from './SectionToggle.jsx';
 import SaveBar from './SaveBar.jsx';
@@ -13,8 +14,9 @@ function resolveImg(src) {
 }
 
 export default function BrandStoryEditor({ onSaved, onPreviewUpdate, sectionVisible = true, onToggleVisibility }) {
+  const { t } = useTranslation('admin');
   const { siteConfig } = useContext(SiteContext);
-  const [headline, setHeadline] = useState('Our Story');
+  const [headline, setHeadline] = useState(t('brandStoryEditor.defaultHeadline'));
   const [text, setText] = useState('');
   const [image, setImage] = useState('');
   const [ctaText, setCtaText] = useState('');
@@ -56,7 +58,7 @@ export default function BrandStoryEditor({ onSaved, onPreviewUpdate, sectionVisi
         if (typeof settings === 'string') {
           try { settings = JSON.parse(settings); } catch (e) { settings = {}; }
         }
-        const hVal = settings.brandStoryHeadline || 'Our Story';
+        const hVal = settings.brandStoryHeadline || t('brandStoryEditor.defaultHeadline');
         const tVal = settings.brandStoryText || '';
         const iVal = settings.brandStoryImage || '';
         const ctVal = settings.brandStoryCtaText || '';
@@ -80,11 +82,11 @@ export default function BrandStoryEditor({ onSaved, onPreviewUpdate, sectionVisi
     if (!file) return;
     const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
     if (!allowed.includes(file.type)) {
-      setStatus('error:Please upload a JPG, PNG, WebP, or GIF image.');
+      setStatus('error:' + t('brandStoryEditor.invalidImage'));
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
-      setStatus('error:Image is too large. Maximum size is 10MB.');
+      setStatus('error:' + t('brandStoryEditor.imageTooLarge'));
       return;
     }
 
@@ -106,10 +108,10 @@ export default function BrandStoryEditor({ onSaved, onPreviewUpdate, sectionVisi
           pendingMedia.markUploaded(result.data.url);
           setImage(result.data.url);
         } else {
-          setStatus('error:Upload failed: ' + (result.error || 'Unknown error'));
+          setStatus('error:' + t('brandStoryEditor.uploadFailed', { error: result.error || t('brandStoryEditor.unknownError') }));
         }
       })
-      .catch(e => setStatus('error:Upload failed: ' + e.message))
+      .catch(e => setStatus('error:' + t('brandStoryEditor.uploadFailed', { error: e.message })))
       .finally(() => setUploading(false));
   }
 
@@ -144,7 +146,7 @@ export default function BrandStoryEditor({ onSaved, onPreviewUpdate, sectionVisi
         if (!cleanup.ok) console.warn('Some images failed to delete from storage:', cleanup.failed);
         if (onSaved) onSaved();
       } else {
-        setStatus('error:' + (result.error || 'Unknown error'));
+        setStatus('error:' + (result.error || t('brandStoryEditor.unknownError')));
       }
     } catch (e) {
       setStatus('error:' + e.message);
@@ -162,25 +164,25 @@ export default function BrandStoryEditor({ onSaved, onPreviewUpdate, sectionVisi
         <SectionToggle
           enabled={sectionVisible}
           onChange={() => onToggleVisibility?.()}
-          label="Show Brand Story"
-          description="Display a brand narrative section with image and text on your homepage"
+          label={t('brandStoryEditor.toggleLabel')}
+          description={t('brandStoryEditor.toggleDesc')}
         />
         <div className="card" style={{ marginBottom: 20 }}>
           <div className="card-header">
-            <h3 className="card-title">Brand Story Section</h3>
+            <h3 className="card-title">{t('brandStoryEditor.cardTitle')}</h3>
           </div>
           <div className="card-content">
             <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
-              Tell your brand's story with a beautiful split layout — an image on one side and your narrative on the other. This section helps build emotional connection with customers.
+              {t('brandStoryEditor.intro')}
             </p>
 
             <div style={{ marginBottom: 16 }}>
-              <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Image</label>
+              <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>{t('brandStoryEditor.imageLabel')}</label>
               {image ? (
                 <div style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', background: '#f5f5f5', marginBottom: 8 }}>
                   <img
                     src={resolveImg(image)}
-                    alt="Brand story"
+                    alt={t('brandStoryEditor.imageAlt')}
                     style={{ width: '100%', maxHeight: 220, objectFit: 'cover', display: 'block' }}
                   />
                   <button
@@ -219,13 +221,13 @@ export default function BrandStoryEditor({ onSaved, onPreviewUpdate, sectionVisi
                   {uploading ? (
                     <div>
                       <i className="fas fa-spinner fa-spin" style={{ fontSize: 24, color: '#2563eb', marginBottom: 8, display: 'block' }} />
-                      <span style={{ fontSize: 13, color: '#2563eb' }}>Uploading...</span>
+                      <span style={{ fontSize: 13, color: '#2563eb' }}>{t('brandStoryEditor.uploading')}</span>
                     </div>
                   ) : (
                     <>
                       <i className="fas fa-cloud-upload-alt" style={{ fontSize: 28, marginBottom: 8, display: 'block' }} />
-                      <span style={{ fontSize: 13, display: 'block' }}>Click or drag to upload image</span>
-                      <span style={{ fontSize: 11, color: '#b0b8c4', marginTop: 4, display: 'block' }}>JPG, PNG, WebP — max 10MB</span>
+                      <span style={{ fontSize: 13, display: 'block' }}>{t('brandStoryEditor.clickUpload')}</span>
+                      <span style={{ fontSize: 11, color: '#b0b8c4', marginTop: 4, display: 'block' }}>{t('brandStoryEditor.uploadHint')}</span>
                     </>
                   )}
                 </div>
@@ -238,49 +240,49 @@ export default function BrandStoryEditor({ onSaved, onPreviewUpdate, sectionVisi
                 onChange={e => { if (e.target.files[0]) handleImageUpload(e.target.files[0]); e.target.value = ''; }}
               />
               <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>
-                If no image is uploaded, the section will show a centered text-only layout.
+                {t('brandStoryEditor.imageNote')}
               </p>
             </div>
 
             <div style={{ marginBottom: 16 }}>
-              <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Headline</label>
+              <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>{t('brandStoryEditor.headlineLabel')}</label>
               <input
                 type="text"
                 value={headline}
                 onChange={e => setHeadline(e.target.value)}
-                placeholder="Our Story"
+                placeholder={t('brandStoryEditor.headlinePh')}
                 maxLength={100}
                 style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }}
               />
             </div>
 
             <div style={{ marginBottom: 16 }}>
-              <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Story Text</label>
+              <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>{t('brandStoryEditor.storyLabel')}</label>
               <textarea
                 value={text}
                 onChange={e => setText(e.target.value)}
-                placeholder="Tell your brand's story here — what drives you, what makes your products special, and why customers should care..."
+                placeholder={t('brandStoryEditor.storyPh')}
                 maxLength={500}
                 rows={4}
                 style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit', resize: 'vertical' }}
               />
-              <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>{text.length}/500 characters</p>
+              <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>{t('brandStoryEditor.charCount', { count: text.length })}</p>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
               <div>
-                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Button Text</label>
+                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>{t('brandStoryEditor.btnTextLabel')}</label>
                 <input
                   type="text"
                   value={ctaText}
                   onChange={e => setCtaText(e.target.value)}
-                  placeholder="Leave empty to hide button"
+                  placeholder={t('brandStoryEditor.btnTextPh')}
                   maxLength={30}
                   style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }}
                 />
               </div>
               <div>
-                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Button Link</label>
+                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>{t('brandStoryEditor.btnLinkLabel')}</label>
                 <input
                   type="text"
                   value={ctaLink}
@@ -301,7 +303,7 @@ export default function BrandStoryEditor({ onSaved, onPreviewUpdate, sectionVisi
             color: status === 'success' ? '#166534' : '#dc2626',
             marginBottom: 16, fontSize: 14,
           }}>
-            {status === 'success' ? 'Brand story section saved successfully!' : status.replace('error:', '')}
+            {status === 'success' ? t('brandStoryEditor.savedSuccess') : status.replace('error:', '')}
           </div>
         )}
 

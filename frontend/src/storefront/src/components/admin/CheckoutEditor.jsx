@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { formatPrice, getCurrencySymbol, getAdminCurrency } from '../../utils/priceFormatter.js';
 import SaveBar from './SaveBar.jsx';
@@ -12,6 +13,7 @@ function newCoupon() {
 }
 
 export default function CheckoutEditor({ onSaved, onPreviewUpdate }) {
+  const { t } = useTranslation('admin');
   const { siteConfig } = useContext(SiteContext);
   const [coupons, setCoupons] = useState([]);
   const [saving, setSaving] = useState(false);
@@ -77,7 +79,7 @@ export default function CheckoutEditor({ onSaved, onPreviewUpdate }) {
         setCoupons(cleaned);
         if (onSaved) onSaved();
       } else {
-        setStatus('error:' + (result.error || 'Unknown error'));
+        setStatus('error:' + (result.error || t('checkoutEditor.unknownError')));
       }
     } catch (e) {
       setStatus('error:' + e.message);
@@ -103,6 +105,8 @@ export default function CheckoutEditor({ onSaved, onPreviewUpdate }) {
 
   if (loading) return <div className="loading-spinner-admin"><div className="spinner" /></div>;
 
+  const sym = getCurrencySymbol(getAdminCurrency(siteConfig));
+
   return (
     <div style={{ maxWidth: 700 }}>
       <SaveBar topBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
@@ -110,25 +114,25 @@ export default function CheckoutEditor({ onSaved, onPreviewUpdate }) {
 
         <div className="card" style={{ marginBottom: 20 }}>
           <div className="card-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <h3 className="card-title">Coupon Codes</h3>
+            <h3 className="card-title">{t('checkoutEditor.title')}</h3>
             <button
               type="button"
               onClick={addCoupon}
               style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6, padding: '7px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
             >
-              <i className="fas fa-plus" style={{ fontSize: 11 }} /> Add Coupon
+              <i className="fas fa-plus" style={{ fontSize: 11 }} /> {t('checkoutEditor.addCoupon')}
             </button>
           </div>
           <div className="card-content">
             <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
-              Create discount coupons customers can apply at checkout. Codes are case-insensitive.
+              {t('checkoutEditor.intro')}
             </p>
 
             {coupons.length === 0 && (
               <div style={{ textAlign: 'center', padding: '32px 16px', color: '#94a3b8', border: '2px dashed #e2e8f0', borderRadius: 8 }}>
                 <i className="fas fa-ticket-alt" style={{ fontSize: 28, marginBottom: 10, display: 'block' }} />
-                <div style={{ fontWeight: 600, marginBottom: 4 }}>No coupon codes yet</div>
-                <div style={{ fontSize: 13 }}>Click "Add Coupon" to create your first discount code</div>
+                <div style={{ fontWeight: 600, marginBottom: 4 }}>{t('checkoutEditor.emptyTitle')}</div>
+                <div style={{ fontSize: 13 }}>{t('checkoutEditor.emptyHint')}</div>
               </div>
             )}
 
@@ -147,12 +151,12 @@ export default function CheckoutEditor({ onSaved, onPreviewUpdate }) {
                     </label>
                     <div>
                       <span style={{ fontWeight: 700, fontFamily: 'monospace', fontSize: 14, color: coupon.code ? '#1e293b' : '#94a3b8' }}>
-                        {coupon.code || `Coupon ${idx + 1}`}
+                        {coupon.code || t('checkoutEditor.couponNum', { num: idx + 1 })}
                       </span>
                       {coupon.value && (
                         <span style={{ marginInlineStart: 10, fontSize: 12, color: '#64748b' }}>
-                          {coupon.type === 'percent' ? `${coupon.value}% off` : `${getCurrencySymbol(getAdminCurrency(siteConfig))}${coupon.value} off`}
-                          {coupon.minOrder ? ` (min ${getCurrencySymbol(getAdminCurrency(siteConfig))}${coupon.minOrder})` : ''}
+                          {coupon.type === 'percent' ? t('checkoutEditor.percentOff', { value: coupon.value }) : t('checkoutEditor.flatOff', { sym, value: coupon.value })}
+                          {coupon.minOrder ? ` ${t('checkoutEditor.minLabel', { sym, min: coupon.minOrder })}` : ''}
                         </span>
                       )}
                     </div>
@@ -162,7 +166,7 @@ export default function CheckoutEditor({ onSaved, onPreviewUpdate }) {
                       type="button"
                       onClick={e => { e.stopPropagation(); deleteCoupon(coupon.id); }}
                       style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '2px 6px', fontSize: 14 }}
-                      title="Delete coupon"
+                      title={t('checkoutEditor.deleteCoupon')}
                     >
                       <i className="fas fa-trash-alt" />
                     </button>
@@ -174,47 +178,47 @@ export default function CheckoutEditor({ onSaved, onPreviewUpdate }) {
                   <div style={{ padding: '16px', borderTop: '1px solid #e2e8f0', background: '#fafafa' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                       <div>
-                        <label style={labelStyle}>Coupon Code *</label>
+                        <label style={labelStyle}>{t('checkoutEditor.codeLabel')}</label>
                         <input
                           type="text"
                           value={coupon.code}
                           onChange={e => updateCoupon(coupon.id, 'code', e.target.value.toUpperCase())}
-                          placeholder="e.g. SAVE10"
+                          placeholder={t('checkoutEditor.codePh')}
                           style={{ ...inputStyle, fontFamily: 'monospace', fontWeight: 600, letterSpacing: 1 }}
                         />
                       </div>
                       <div>
-                        <label style={labelStyle}>Discount Type</label>
+                        <label style={labelStyle}>{t('checkoutEditor.discountTypeLabel')}</label>
                         <select value={coupon.type} onChange={e => updateCoupon(coupon.id, 'type', e.target.value)} style={inputStyle}>
-                          <option value="percent">Percentage (%)</option>
-                          <option value="flat">Flat Amount ({getCurrencySymbol(getAdminCurrency(siteConfig))})</option>
+                          <option value="percent">{t('checkoutEditor.typePercent')}</option>
+                          <option value="flat">{t('checkoutEditor.typeFlat', { sym })}</option>
                         </select>
                       </div>
                       <div>
-                        <label style={labelStyle}>Discount Value *</label>
+                        <label style={labelStyle}>{t('checkoutEditor.discountValueLabel')}</label>
                         <input
                           type="number"
                           min="0"
                           max={coupon.type === 'percent' ? 100 : undefined}
                           value={coupon.value}
                           onChange={e => updateCoupon(coupon.id, 'value', e.target.value)}
-                          placeholder={coupon.type === 'percent' ? 'e.g. 10' : 'e.g. 50'}
+                          placeholder={coupon.type === 'percent' ? t('checkoutEditor.valuePercentPh') : t('checkoutEditor.valueFlatPh')}
                           style={inputStyle}
                         />
                       </div>
                       <div>
-                        <label style={labelStyle}>Minimum Order Amount ({getCurrencySymbol(getAdminCurrency(siteConfig))})</label>
+                        <label style={labelStyle}>{t('checkoutEditor.minOrderLabel', { sym })}</label>
                         <input
                           type="number"
                           min="0"
                           value={coupon.minOrder}
                           onChange={e => updateCoupon(coupon.id, 'minOrder', e.target.value)}
-                          placeholder="e.g. 500 (optional)"
+                          placeholder={t('checkoutEditor.minOrderPh')}
                           style={inputStyle}
                         />
                       </div>
                       <div>
-                        <label style={labelStyle}>Expiry Date (optional)</label>
+                        <label style={labelStyle}>{t('checkoutEditor.expiryLabel')}</label>
                         <input
                           type="date"
                           value={coupon.expiryDate || ''}
@@ -224,7 +228,7 @@ export default function CheckoutEditor({ onSaved, onPreviewUpdate }) {
                       </div>
                       <div style={{ display: 'flex', alignItems: 'flex-end' }}>
                         <div style={{ padding: '10px 14px', background: coupon.active ? '#f0fdf4' : '#fef2f2', borderRadius: 6, border: `1px solid ${coupon.active ? '#bbf7d0' : '#fecaca'}`, fontSize: 13, fontWeight: 600, color: coupon.active ? '#15803d' : '#dc2626', width: '100%', textAlign: 'center' }}>
-                          {coupon.active ? '✓ Active — customers can use this code' : '✗ Disabled — code will not work'}
+                          {coupon.active ? t('checkoutEditor.statusActive') : t('checkoutEditor.statusDisabled')}
                         </div>
                       </div>
                     </div>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { resolveImageUrl } from '../../utils/imageUrl.js';
 import SectionToggle from './SectionToggle.jsx';
@@ -25,6 +26,7 @@ function compressImage(file, maxWidth = 1200, quality = 0.85) {
 }
 
 export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate, sectionVisible = true, onToggleVisibility }) {
+  const { t } = useTranslation('admin');
   const { siteConfig } = useContext(SiteContext);
   const [heading, setHeading] = useState('');
   const [message, setMessage] = useState('');
@@ -41,7 +43,7 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate, sectionV
   const serverValuesRef = useRef(null);
   const pendingMedia = usePendingMedia(siteConfig?.id);
 
-  const brandName = siteConfig?.brand_name || siteConfig?.brandName || 'Our Store';
+  const brandName = siteConfig?.brand_name || siteConfig?.brandName || t('welcomeBannerEditor.defaultBrand');
 
   useEffect(() => {
     if (siteConfig?.id) loadSettings();
@@ -51,8 +53,6 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate, sectionV
     if (!hasLoadedRef.current) return;
     const current = JSON.stringify({ heading, message, buttonText, buttonLink, bannerImage });
     setHasChanges(current !== serverValuesRef.current);
-    // Visibility is owned by the outer customizer's eye icon — don't republish
-    // showWelcomeBanner here or it would override the eye-icon toggle.
     if (onPreviewUpdate) onPreviewUpdate({ welcomeBannerImage: bannerImage, welcomeBannerHeading: heading, welcomeBannerMessage: message, welcomeBannerButtonText: buttonText, welcomeBannerButtonLink: buttonLink });
   }, [heading, message, buttonText, buttonLink, bannerImage]);
 
@@ -66,10 +66,10 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate, sectionV
         if (typeof settings === 'string') {
           try { settings = JSON.parse(settings); } catch (e) { settings = {}; }
         }
-        const bn = siteConfig?.brand_name || siteConfig?.brandName || 'Our Store';
-        const hVal = settings.welcomeBannerHeading || `Welcome to ${bn}!`;
-        const mVal = settings.welcomeBannerMessage || 'Discover our exquisite collection. Sign up today to receive exclusive offers and updates.';
-        const btVal = settings.welcomeBannerButtonText || 'Sign Up Now';
+        const bn = siteConfig?.brand_name || siteConfig?.brandName || t('welcomeBannerEditor.defaultBrand');
+        const hVal = settings.welcomeBannerHeading || t('welcomeBannerEditor.defaultHeading', { brand: bn });
+        const mVal = settings.welcomeBannerMessage || t('welcomeBannerEditor.defaultMessage');
+        const btVal = settings.welcomeBannerButtonText || t('welcomeBannerEditor.defaultBtnText');
         const blVal = settings.welcomeBannerButtonLink || '/signup';
         const biVal = settings.welcomeBannerImage || '';
         setHeading(hVal);
@@ -105,7 +105,6 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate, sectionV
       if (result.success && result.data?.images?.length > 0 && result.data.images[0].url) {
         const newUrl = result.data.images[0].url;
         setBannerImage(newUrl);
-        // Track for cleanup on cancel; defer old image deletion until save.
         pendingMedia.markUploaded(newUrl);
         if (oldImage) pendingMedia.markForDeletion(oldImage);
       }
@@ -143,13 +142,11 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate, sectionV
         setStatus('success');
         serverValuesRef.current = JSON.stringify({ heading, message, buttonText, buttonLink, bannerImage });
         setHasChanges(false);
-        // Save succeeded — clean up R2 (delete replaced originals + orphan
-        // intermediate uploads not in the final state).
         const cleanup = await pendingMedia.commit([bannerImage]);
         if (!cleanup.ok) console.warn('Some images failed to delete from storage:', cleanup.failed);
         if (onSaved) onSaved();
       } else {
-        setStatus('error:' + (result.error || 'Unknown error'));
+        setStatus('error:' + (result.error || t('welcomeBannerEditor.unknownError')));
       }
     } catch (e) {
       setStatus('error:' + e.message);
@@ -167,25 +164,25 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate, sectionV
         <SectionToggle
           enabled={sectionVisible}
           onChange={() => { if (onToggleVisibility) onToggleVisibility(); }}
-          label="Show Welcome Banner"
-          description="Toggle the first-visit popup banner for new customers"
+          label={t('welcomeBannerEditor.toggleLabel')}
+          description={t('welcomeBannerEditor.toggleDesc')}
         />
         <div className="card" style={{ marginBottom: 20 }}>
           <div className="card-header">
-            <h3 className="card-title">Welcome Banner</h3>
+            <h3 className="card-title">{t('welcomeBannerEditor.cardTitle')}</h3>
           </div>
           <div className="card-content">
             <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
-              This popup banner appears once for first-time visitors after 3 seconds. Customize the image, text, and button to welcome new customers.
+              {t('welcomeBannerEditor.intro')}
             </p>
 
             <div style={{ marginBottom: 16 }}>
-              <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Banner Image</label>
+              <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>{t('welcomeBannerEditor.imageLabel')}</label>
               {bannerImage ? (
                 <div style={{ position: 'relative', marginBottom: 8 }}>
                   <img
                     src={resolveImageUrl(bannerImage)}
-                    alt="Welcome Banner"
+                    alt={t('welcomeBannerEditor.cardTitle')}
                     style={{ width: '100%', height: 200, objectFit: 'cover', borderRadius: 6, border: '1px solid #e2e8f0' }}
                   />
                   <button
@@ -211,11 +208,11 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate, sectionV
                   }}
                 >
                   {uploading ? (
-                    <><i className="fas fa-spinner fa-spin" style={{ fontSize: 24, color: '#2563eb', marginBottom: 4, display: 'block' }} /><span style={{ fontSize: 13, color: '#2563eb' }}>Uploading...</span></>
+                    <><i className="fas fa-spinner fa-spin" style={{ fontSize: 24, color: '#2563eb', marginBottom: 4, display: 'block' }} /><span style={{ fontSize: 13, color: '#2563eb' }}>{t('welcomeBannerEditor.uploading')}</span></>
                   ) : (
                     <>
                       <i className="fas fa-cloud-upload-alt" style={{ fontSize: 24, marginBottom: 4, display: 'block' }} />
-                      <span style={{ fontSize: 12 }}>Click to upload banner image</span>
+                      <span style={{ fontSize: 12 }}>{t('welcomeBannerEditor.clickUpload')}</span>
                     </>
                   )}
                 </div>
@@ -230,12 +227,12 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate, sectionV
             </div>
 
             <div style={{ marginBottom: 16 }}>
-              <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Heading</label>
+              <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>{t('welcomeBannerEditor.headingLabel')}</label>
               <input
                 type="text"
                 value={heading}
                 onChange={e => setHeading(e.target.value)}
-                placeholder={`Welcome to ${brandName}!`}
+                placeholder={t('welcomeBannerEditor.defaultHeading', { brand: brandName })}
                 maxLength={80}
                 style={{
                   width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0',
@@ -243,16 +240,16 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate, sectionV
                 }}
               />
               <div style={{ textAlign: 'end', fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
-                {heading.length}/80 {!heading && <span style={{ color: '#64748b' }}>Default: "Welcome to {brandName}!"</span>}
+                {heading.length}/80 {!heading && <span style={{ color: '#64748b' }}>{t('welcomeBannerEditor.defaultHint', { brand: brandName })}</span>}
               </div>
             </div>
 
             <div style={{ marginBottom: 16 }}>
-              <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Message</label>
+              <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>{t('welcomeBannerEditor.messageLabel')}</label>
               <textarea
                 value={message}
                 onChange={e => setMessage(e.target.value)}
-                placeholder="Discover our exquisite collection. Sign up today to receive exclusive offers and updates."
+                placeholder={t('welcomeBannerEditor.defaultMessage')}
                 maxLength={200}
                 rows={3}
                 style={{
@@ -268,12 +265,12 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate, sectionV
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
               <div>
-                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Button Text</label>
+                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>{t('welcomeBannerEditor.btnTextLabel')}</label>
                 <input
                   type="text"
                   value={buttonText}
                   onChange={e => setButtonText(e.target.value)}
-                  placeholder="Sign Up Now"
+                  placeholder={t('welcomeBannerEditor.defaultBtnText')}
                   maxLength={30}
                   style={{
                     width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0',
@@ -283,7 +280,7 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate, sectionV
               </div>
               <div>
                 <LinkSelector
-                  label="Button Link"
+                  label={t('welcomeBannerEditor.btnLinkLabel')}
                   value={buttonLink}
                   onChange={val => setButtonLink(val)}
                 />
@@ -296,7 +293,7 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate, sectionV
             }}>
               <p style={{ fontSize: 12, color: '#64748b', margin: 0 }}>
                 <i className="fas fa-info-circle" style={{ marginInlineEnd: 6 }} />
-                Leave fields empty to use the default text. The banner only shows once per visitor (resets when they clear browser data).
+                {t('welcomeBannerEditor.info')}
               </p>
             </div>
           </div>
@@ -310,7 +307,7 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate, sectionV
             color: status === 'success' ? '#166534' : '#dc2626',
             marginBottom: 16, fontSize: 14,
           }}>
-            {status === 'success' ? 'Welcome banner saved successfully!' : status.replace('error:', 'Failed to save: ')}
+            {status === 'success' ? t('welcomeBannerEditor.savedSuccess') : t('welcomeBannerEditor.saveFailed', { error: status.replace('error:', '') })}
           </div>
         )}
 

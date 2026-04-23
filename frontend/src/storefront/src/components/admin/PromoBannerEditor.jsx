@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import SectionToggle from './SectionToggle.jsx';
 import SaveBar from './SaveBar.jsx';
 import { API_BASE } from '../../config.js';
 
 export default function PromoBannerEditor({ onSaved, onPreviewUpdate, sectionVisible = true, onToggleVisibility }) {
+  const { t } = useTranslation('admin');
   const { siteConfig } = useContext(SiteContext);
   const [messages, setMessages] = useState(['', '', '']);
   const [saving, setSaving] = useState(false);
@@ -22,10 +24,6 @@ export default function PromoBannerEditor({ onSaved, onPreviewUpdate, sectionVis
     if (!hasLoadedRef.current) return;
     const current = JSON.stringify({ messages });
     setHasChanges(current !== serverValuesRef.current);
-    // Visibility is owned by the outer customizer's eye icon, so we only
-    // publish the editable fields here. Otherwise this debounced effect
-    // would republish a stale showPromoBanner value and overwrite the
-    // user's eye-icon toggle.
     if (onPreviewUpdate) onPreviewUpdate({ promoBanner: messages.filter(m => m.trim() !== '') });
   }, [messages]);
 
@@ -74,7 +72,7 @@ export default function PromoBannerEditor({ onSaved, onPreviewUpdate, sectionVis
         setHasChanges(false);
         if (onSaved) onSaved();
       } else {
-        setStatus('error:' + (result.error || 'Unknown error'));
+        setStatus('error:' + (result.error || t('promoBannerEditor.unknownError')));
       }
     } catch (e) {
       setStatus('error:' + e.message);
@@ -93,6 +91,12 @@ export default function PromoBannerEditor({ onSaved, onPreviewUpdate, sectionVis
 
   if (loading) return <div className="loading-spinner-admin"><div className="spinner" /></div>;
 
+  const placeholders = [
+    t('promoBannerEditor.placeholder1'),
+    t('promoBannerEditor.placeholder2'),
+    t('promoBannerEditor.placeholder3'),
+  ];
+
   return (
     <div style={{ maxWidth: 700 }}>
       <SaveBar topBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
@@ -100,27 +104,27 @@ export default function PromoBannerEditor({ onSaved, onPreviewUpdate, sectionVis
         <SectionToggle
           enabled={sectionVisible}
           onChange={() => { if (onToggleVisibility) onToggleVisibility(); }}
-          label="Show Promo Banner"
-          description="Toggle the scrolling promo banner at the top of your store"
+          label={t('promoBannerEditor.toggleLabel')}
+          description={t('promoBannerEditor.toggleDesc')}
         />
         <div className="card" style={{ marginBottom: 20 }}>
           <div className="card-header">
-            <h3 className="card-title">Promo Banner Messages</h3>
+            <h3 className="card-title">{t('promoBannerEditor.messagesTitle')}</h3>
           </div>
           <div className="card-content">
             <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
-              Add up to 3 messages that scroll horizontally across the top of your store. Leave empty to show the default welcome message.
+              {t('promoBannerEditor.messagesIntro')}
             </p>
             {[0, 1, 2].map(index => (
               <div key={index} style={{ marginBottom: 16 }}>
                 <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>
-                  Message {index + 1} {index === 0 ? '' : '(optional)'}
+                  {index === 0 ? t('promoBannerEditor.messageLabel', { num: index + 1 }) : t('promoBannerEditor.messageLabelOptional', { num: index + 1 })}
                 </label>
                 <input
                   type="text"
                   value={messages[index]}
                   onChange={e => updateMessage(index, e.target.value)}
-                  placeholder={index === 0 ? 'e.g., Free shipping on orders above ₹999' : index === 1 ? 'e.g., New collection now available!' : 'e.g., Use code SAVE10 for 10% off'}
+                  placeholder={placeholders[index]}
                   maxLength={120}
                   style={{
                     width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0',
@@ -142,7 +146,7 @@ export default function PromoBannerEditor({ onSaved, onPreviewUpdate, sectionVis
             color: status === 'success' ? '#166534' : '#dc2626',
             marginBottom: 16, fontSize: 14,
           }}>
-            {status === 'success' ? 'Promo banner saved successfully!' : status.replace('error:', 'Failed to save: ')}
+            {status === 'success' ? t('promoBannerEditor.savedSuccess') : t('promoBannerEditor.failedToSave', { error: status.replace('error:', '') })}
           </div>
         )}
         <SaveBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />

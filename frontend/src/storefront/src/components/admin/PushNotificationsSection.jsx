@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { apiRequest, getApiUrl } from '../../services/api.js';
 import LinkSelector from './LinkSelector.jsx';
@@ -6,6 +7,7 @@ import FeatureGate from './FeatureGate.jsx';
 import { usePendingMedia } from '../../hooks/usePendingMedia.js';
 
 export default function PushNotificationsSection() {
+  const { t } = useTranslation('admin');
   const { siteConfig } = useContext(SiteContext);
   const [stats, setStats] = useState({ loggedIn: 0, guests: 0, total: 0 });
   const [loading, setLoading] = useState(true);
@@ -74,12 +76,12 @@ export default function PushNotificationsSection() {
 
     const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
     if (!allowed.includes(file.type)) {
-      setError('Please upload a JPG, PNG, WebP, or GIF image.');
+      setError(t('pushNotificationsSection.invalidImage'));
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      setError('Image must be under 5MB.');
+      setError(t('pushNotificationsSection.imageTooLarge'));
       return;
     }
 
@@ -104,10 +106,10 @@ export default function PushNotificationsSection() {
         markUploaded(resolved);
         if (oldImage) markForDeletion(oldImage);
       } else {
-        setError(result.error || result.message || 'Failed to upload image.');
+        setError(result.error || result.message || t('pushNotificationsSection.uploadFailed'));
       }
     } catch (err) {
-      setError('Failed to upload image: ' + err.message);
+      setError(t('pushNotificationsSection.uploadError', { error: err.message }));
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -117,7 +119,7 @@ export default function PushNotificationsSection() {
   async function handleSend(e) {
     e.preventDefault();
     if (!form.title || !form.message) {
-      setError('Title and message are required.');
+      setError(t('pushNotificationsSection.titleMsgRequired'));
       return;
     }
     setSending(true);
@@ -143,17 +145,16 @@ export default function PushNotificationsSection() {
 
       if (data?.success) {
         const { sent, failed, total } = data.data || {};
-        setSuccess(`Notification sent to ${sent} of ${total} subscriber${total !== 1 ? 's' : ''}${failed > 0 ? ` (${failed} failed)` : ''}.`);
-        // The sent notification's image must remain in R2 so delivered
-        // clients can fetch it. Clean up only replaced/removed uploads.
+        const failedSuffix = failed > 0 ? t('pushNotificationsSection.failedSuffix', { failed }) : '';
+        setSuccess(t('pushNotificationsSection.sentResult', { sent, total, count: total, failedSuffix }));
         commit(form.imageUrl ? [form.imageUrl] : []);
         setForm({ title: '', message: '', imageUrl: '', link: '', customLink: false, buttonLabel: '', buttonLink: '', buttonCustomLink: false, target: 'all' });
         loadStats();
       } else {
-        setError(data?.message || data?.error || 'Failed to send notification.');
+        setError(data?.message || data?.error || t('pushNotificationsSection.sendFailed'));
       }
     } catch (err) {
-      setError('Failed to send notification: ' + err.message);
+      setError(t('pushNotificationsSection.sendError', { error: err.message }));
     } finally {
       setSending(false);
     }
@@ -182,56 +183,61 @@ export default function PushNotificationsSection() {
 
   const isConfigured = !!siteConfig?.vapidPublicKey;
 
-  const categories = siteConfig?.categories || [];
+  const autoItems = [
+    { key: 'newProducts', icon: 'fa-box', label: t('pushNotificationsSection.autoNewProducts'), desc: t('pushNotificationsSection.autoNewProductsDesc') },
+    { key: 'priceDrops', icon: 'fa-tag', label: t('pushNotificationsSection.autoPriceDrops'), desc: t('pushNotificationsSection.autoPriceDropsDesc') },
+    { key: 'backInStock', icon: 'fa-redo', label: t('pushNotificationsSection.autoBackInStock'), desc: t('pushNotificationsSection.autoBackInStockDesc') },
+    { key: 'lowStock', icon: 'fa-exclamation-triangle', label: t('pushNotificationsSection.autoLowStock'), desc: t('pushNotificationsSection.autoLowStockDesc') },
+  ];
 
   return (
     <div>
-      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 24 }}>Push Notifications</h2>
+      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 24 }}>{t('pushNotificationsSection.title')}</h2>
 
       {!isConfigured && (
         <div style={{ background: '#fefce8', border: '1px solid #fef08a', borderRadius: 10, padding: '14px 18px', marginBottom: 24, color: '#92400e', fontSize: 14 }}>
           <i className="fas fa-exclamation-triangle" style={{ marginInlineEnd: 8 }} />
-          Push notifications are not yet configured on this platform. Contact support to enable them.
+          {t('pushNotificationsSection.notConfigured')}
         </div>
       )}
 
       <div className="stats-grid" style={{ marginBottom: 24 }}>
         <div className="stat-card">
           <div className="stat-header">
-            <span className="stat-title">Subscribed Users</span>
+            <span className="stat-title">{t('pushNotificationsSection.subUsers')}</span>
             <div className="stat-icon" style={{ background: '#eff6ff' }}>
               <i className="fas fa-user-check" style={{ color: '#2563eb' }} />
             </div>
           </div>
           <div className="stat-value">{stats.loggedIn}</div>
-          <div className="stat-change">Logged-in users</div>
+          <div className="stat-change">{t('pushNotificationsSection.loggedInUsers')}</div>
         </div>
         <div className="stat-card">
           <div className="stat-header">
-            <span className="stat-title">Guest Tokens</span>
+            <span className="stat-title">{t('pushNotificationsSection.guestTokens')}</span>
             <div className="stat-icon" style={{ background: '#fefce8' }}>
               <i className="fas fa-user-secret" style={{ color: '#f59e0b' }} />
             </div>
           </div>
           <div className="stat-value">{stats.guests}</div>
-          <div className="stat-change">Anonymous visitors</div>
+          <div className="stat-change">{t('pushNotificationsSection.anonVisitors')}</div>
         </div>
         <div className="stat-card">
           <div className="stat-header">
-            <span className="stat-title">Total Subscribers</span>
+            <span className="stat-title">{t('pushNotificationsSection.totalSubs')}</span>
             <div className="stat-icon" style={{ background: '#f0fdf4' }}>
               <i className="fas fa-bell" style={{ color: '#10b981' }} />
             </div>
           </div>
           <div className="stat-value">{stats.total}</div>
-          <div className="stat-change">All push subscribers</div>
+          <div className="stat-change">{t('pushNotificationsSection.allPushSubs')}</div>
         </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 24 }}>
         <div className="card">
           <div className="card-header">
-            <h3 className="card-title">Send Notification</h3>
+            <h3 className="card-title">{t('pushNotificationsSection.sendTitle')}</h3>
           </div>
           <div className="card-content">
             {success && (
@@ -246,15 +252,15 @@ export default function PushNotificationsSection() {
             )}
             {stats.total === 0 && !error && (
               <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '12px 16px', color: '#64748b', marginBottom: 16, fontSize: 13 }}>
-                <i className="fas fa-info-circle" style={{ marginInlineEnd: 8 }} />No subscribers yet. Customers will see a prompt to subscribe when they visit your store.
+                <i className="fas fa-info-circle" style={{ marginInlineEnd: 8 }} />{t('pushNotificationsSection.noSubs')}
               </div>
             )}
             <form onSubmit={handleSend}>
               <div style={{ marginBottom: 16 }}>
-                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Title *</label>
+                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>{t('pushNotificationsSection.titleLabel')}</label>
                 <input
                   type="text"
-                  placeholder="Notification title"
+                  placeholder={t('pushNotificationsSection.titlePh')}
                   value={form.title}
                   onChange={e => setForm(p => ({ ...p, title: e.target.value }))}
                   style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box' }}
@@ -262,9 +268,9 @@ export default function PushNotificationsSection() {
                 />
               </div>
               <div style={{ marginBottom: 16 }}>
-                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Message *</label>
+                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>{t('pushNotificationsSection.messageLabel')}</label>
                 <textarea
-                  placeholder="Notification message..."
+                  placeholder={t('pushNotificationsSection.messagePh')}
                   value={form.message}
                   onChange={e => setForm(p => ({ ...p, message: e.target.value }))}
                   rows={3}
@@ -273,7 +279,7 @@ export default function PushNotificationsSection() {
                 />
               </div>
               <div style={{ marginBottom: 16 }}>
-                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Image (optional)</label>
+                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>{t('pushNotificationsSection.imageLabel')}</label>
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -285,7 +291,7 @@ export default function PushNotificationsSection() {
                   <div style={{ position: 'relative', display: 'inline-block' }}>
                     <img
                       src={form.imageUrl}
-                      alt="Notification"
+                      alt={t('pushNotificationsSection.imageLabel')}
                       style={{ width: '100%', maxHeight: 160, objectFit: 'cover', borderRadius: 8, border: '1px solid #e2e8f0' }}
                     />
                     <button
@@ -318,15 +324,15 @@ export default function PushNotificationsSection() {
                     onMouseLeave={e => e.currentTarget.style.borderColor = '#e2e8f0'}
                   >
                     {uploading ? (
-                      <><i className="fas fa-spinner fa-spin" style={{ fontSize: 18 }} /><span>Uploading...</span></>
+                      <><i className="fas fa-spinner fa-spin" style={{ fontSize: 18 }} /><span>{t('pushNotificationsSection.uploading')}</span></>
                     ) : (
-                      <><i className="fas fa-cloud-upload-alt" style={{ fontSize: 18 }} /><span>Click to upload image</span><span style={{ fontSize: 11, color: '#94a3b8' }}>JPG, PNG, WebP, GIF up to 5MB</span></>
+                      <><i className="fas fa-cloud-upload-alt" style={{ fontSize: 18 }} /><span>{t('pushNotificationsSection.clickUpload')}</span><span style={{ fontSize: 11, color: '#94a3b8' }}>{t('pushNotificationsSection.uploadHint')}</span></>
                     )}
                   </button>
                 )}
               </div>
               <LinkSelector
-                label="Redirect To (optional)"
+                label={t('pushNotificationsSection.redirectLabel')}
                 value={form.link}
                 onChange={val => setForm(p => ({ ...p, link: val, customLink: false }))}
                 style={{ marginBottom: 16 }}
@@ -334,23 +340,23 @@ export default function PushNotificationsSection() {
               <div style={{ marginBottom: 16, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: 16 }}>
                 <label style={{ display: 'block', fontWeight: 600, marginBottom: 10, fontSize: 13 }}>
                   <i className="fas fa-mouse-pointer" style={{ marginInlineEnd: 6, color: '#64748b' }} />
-                  Action Button (optional)
+                  {t('pushNotificationsSection.actionBtnLabel')}
                 </label>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: form.buttonLabel ? 10 : 0 }}>
                   <input
                     type="text"
-                    placeholder="Button label (e.g. Shop Now)"
+                    placeholder={t('pushNotificationsSection.btnLabelPh')}
                     value={form.buttonLabel}
                     onChange={e => setForm(p => ({ ...p, buttonLabel: e.target.value }))}
                     style={{ padding: '9px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, boxSizing: 'border-box' }}
                   />
                   <div style={{ fontSize: 11, color: '#94a3b8', display: 'flex', alignItems: 'center' }}>
-                    Shows a clickable button on the notification
+                    {t('pushNotificationsSection.btnLabelHint')}
                   </div>
                 </div>
                 {form.buttonLabel && (
                   <LinkSelector
-                    label="Button redirects to"
+                    label={t('pushNotificationsSection.btnRedirectLabel')}
                     value={form.buttonLink}
                     onChange={val => setForm(p => ({ ...p, buttonLink: val, buttonCustomLink: false }))}
                     style={{ marginBottom: 0 }}
@@ -358,15 +364,15 @@ export default function PushNotificationsSection() {
                 )}
               </div>
               <div style={{ marginBottom: 20 }}>
-                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Target Audience</label>
+                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>{t('pushNotificationsSection.targetLabel')}</label>
                 <select
                   value={form.target}
                   onChange={e => setForm(p => ({ ...p, target: e.target.value }))}
                   style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, background: 'white', boxSizing: 'border-box' }}
                 >
-                  <option value="all">All Subscribers ({stats.total})</option>
-                  <option value="loggedin">Logged-in Users ({stats.loggedIn})</option>
-                  <option value="guests">Guest Visitors ({stats.guests})</option>
+                  <option value="all">{t('pushNotificationsSection.allSubs', { count: stats.total })}</option>
+                  <option value="loggedin">{t('pushNotificationsSection.loggedInOpt', { count: stats.loggedIn })}</option>
+                  <option value="guests">{t('pushNotificationsSection.guestsOpt', { count: stats.guests })}</option>
                 </select>
               </div>
               <button
@@ -375,30 +381,25 @@ export default function PushNotificationsSection() {
                 disabled={sending || !isConfigured || uploading}
                 style={{ width: '100%' }}
               >
-                {sending ? <><i className="fas fa-spinner fa-spin" style={{ marginInlineEnd: 8 }} />Sending...</> : <><i className="fas fa-paper-plane" style={{ marginInlineEnd: 8 }} />Send Notification</>}
+                {sending ? <><i className="fas fa-spinner fa-spin" style={{ marginInlineEnd: 8 }} />{t('pushNotificationsSection.sending')}</> : <><i className="fas fa-paper-plane" style={{ marginInlineEnd: 8 }} />{t('pushNotificationsSection.sendBtn')}</>}
               </button>
             </form>
           </div>
         </div>
 
-        <FeatureGate currentPlan={siteConfig?.subscriptionPlan} requiredPlan="pro" featureName="Automated Notifications">
+        <FeatureGate currentPlan={siteConfig?.subscriptionPlan} requiredPlan="pro" featureName={t('pushNotificationsSection.autoFeature')}>
         <div className="card">
           <div className="card-header">
             <h3 className="card-title">
-              Automatic Notifications
-              {savingSettings && <span style={{ fontSize: 12, color: '#94a3b8', fontWeight: 400, marginInlineStart: 8 }}><i className="fas fa-spinner fa-spin" style={{ marginInlineEnd: 4 }} />Saving...</span>}
+              {t('pushNotificationsSection.autoTitle')}
+              {savingSettings && <span style={{ fontSize: 12, color: '#94a3b8', fontWeight: 400, marginInlineStart: 8 }}><i className="fas fa-spinner fa-spin" style={{ marginInlineEnd: 4 }} />{t('pushNotificationsSection.saving')}</span>}
             </h3>
           </div>
           <div className="card-content">
             <p style={{ fontSize: 13, color: '#64748b', marginBottom: 20 }}>
-              Automatically send notifications when specific events occur in your store.
+              {t('pushNotificationsSection.autoIntro')}
             </p>
-            {[
-              { key: 'newProducts', icon: 'fa-box', label: 'New Products', desc: 'Notify subscribers when you add new products' },
-              { key: 'priceDrops', icon: 'fa-tag', label: 'Price Drops', desc: 'Alert customers when prices are reduced' },
-              { key: 'backInStock', icon: 'fa-redo', label: 'Back in Stock', desc: 'Notify when out-of-stock items return' },
-              { key: 'lowStock', icon: 'fa-exclamation-triangle', label: 'Low Stock Alert', desc: 'Alert customers when only 3 or fewer items remain' },
-            ].map(item => (
+            {autoItems.map(item => (
               <div key={item.key} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '16px 0', borderBottom: '1px solid #f1f5f9' }}>
                 <div style={{ display: 'flex', gap: 12 }}>
                   <div style={{ width: 36, height: 36, borderRadius: 8, background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

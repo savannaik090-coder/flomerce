@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { resolveImageUrl } from '../../utils/imageUrl.js';
 import SectionToggle from './SectionToggle.jsx';
@@ -14,6 +15,7 @@ const labelStyle = { display: 'block', fontWeight: 600, marginBottom: 6, fontSiz
 const textareaStyle = { ...inputStyle, resize: 'vertical' };
 
 export default function AboutUsEditor({ onSaved, onPreviewUpdate }) {
+  const { t } = useTranslation('admin');
   const { siteConfig } = useContext(SiteContext);
   const [confirmModal, setConfirmModal] = useState(null);
   const [heroSubtitle, setHeroSubtitle] = useState('');
@@ -96,11 +98,11 @@ export default function AboutUsEditor({ onSaved, onPreviewUpdate }) {
     if (!file) return;
     const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
     if (!allowed.includes(file.type)) {
-      setStatus('error:Please upload a JPG, PNG, WebP, or GIF image.');
+      setStatus('error:' + t('aboutUsEditor.invalidImage'));
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
-      setStatus('error:Image is too large. Maximum size is 10MB.');
+      setStatus('error:' + t('aboutUsEditor.imageTooLarge'));
       return;
     }
 
@@ -123,10 +125,10 @@ export default function AboutUsEditor({ onSaved, onPreviewUpdate }) {
         pendingMedia.markUploaded(newUrl);
         if (oldImage) pendingMedia.markForDeletion(oldImage);
       } else {
-        setStatus('error:Upload failed: ' + (result.error || result.message || 'Unknown error'));
+        setStatus('error:' + t('aboutUsEditor.uploadFailed', { error: result.error || result.message || t('aboutUsEditor.unknownError') }));
       }
     } catch (e) {
-      setStatus('error:Failed to upload image: ' + e.message);
+      setStatus('error:' + t('aboutUsEditor.uploadFailed', { error: e.message }));
     } finally {
       setUploading(false);
     }
@@ -137,15 +139,15 @@ export default function AboutUsEditor({ onSaved, onPreviewUpdate }) {
   }
 
   function addSection() {
-    setSections(prev => [...prev, { heading: 'New Section', text: '', visible: true }]);
+    setSections(prev => [...prev, { heading: t('aboutUsEditor.newSectionHeading'), text: '', visible: true }]);
   }
 
   function removeSection(index) {
     setConfirmModal({
-      title: 'Remove Section',
-      message: 'Remove this section?',
+      title: t('aboutUsEditor.removeTitle'),
+      message: t('aboutUsEditor.removeMsg'),
       danger: true,
-      confirmText: 'Yes, Remove',
+      confirmText: t('aboutUsEditor.removeConfirm'),
       onConfirm: () => {
         setSections(prev => prev.filter((_, i) => i !== index));
       }
@@ -195,7 +197,7 @@ export default function AboutUsEditor({ onSaved, onPreviewUpdate }) {
         if (!cleanup.ok) console.warn('Some images failed to delete from storage:', cleanup.failed);
         if (onSaved) onSaved();
       } else {
-        setStatus('error:' + (result.error || 'Unknown error'));
+        setStatus('error:' + (result.error || t('aboutUsEditor.unknownError')));
       }
     } catch (e) {
       setStatus('error:' + e.message);
@@ -214,19 +216,19 @@ export default function AboutUsEditor({ onSaved, onPreviewUpdate }) {
         <SectionToggle
           enabled={showSection}
           onChange={setShowSection}
-          label="Show About Us Page"
-          description="Toggle the About Us page visibility in your store"
+          label={t('aboutUsEditor.toggleLabel')}
+          description={t('aboutUsEditor.toggleDesc')}
         />
         <div className="card" style={{ marginBottom: 20 }}>
           <div className="card-header">
-            <h3 className="card-title">Hero Section</h3>
+            <h3 className="card-title">{t('aboutUsEditor.heroTitle')}</h3>
           </div>
           <div className="card-content">
             <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
-              The subtitle text that appears below your brand name on the About Us page hero banner.
+              {t('aboutUsEditor.heroIntro')}
             </p>
             <div style={{ marginBottom: 16 }}>
-              <label style={labelStyle}>Hero Subtitle</label>
+              <label style={labelStyle}>{t('aboutUsEditor.heroSubtitleLabel')}</label>
               <input
                 type="text"
                 value={heroSubtitle}
@@ -240,27 +242,27 @@ export default function AboutUsEditor({ onSaved, onPreviewUpdate }) {
 
         <div className="card" style={{ marginBottom: 20 }}>
           <div className="card-header">
-            <h3 className="card-title">Our Story Section</h3>
+            <h3 className="card-title">{t('aboutUsEditor.storyTitle')}</h3>
           </div>
           <div className="card-content">
             <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
-              Tell your brand story. Use blank lines to separate paragraphs.
+              {t('aboutUsEditor.storyIntro')}
             </p>
             <div style={{ marginBottom: 16 }}>
-              <label style={labelStyle}>Story Text</label>
+              <label style={labelStyle}>{t('aboutUsEditor.storyTextLabel')}</label>
               <textarea
                 value={storyText}
                 onChange={e => setStoryText(e.target.value)}
                 rows={6}
                 style={textareaStyle}
               />
-              <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>Separate paragraphs with blank lines</p>
+              <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>{t('aboutUsEditor.paragraphHint')}</p>
             </div>
             <div style={{ marginBottom: 16 }}>
-              <label style={labelStyle}>Story Image (Optional)</label>
+              <label style={labelStyle}>{t('aboutUsEditor.storyImageLabel')}</label>
               {storyImage ? (
                 <div style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', background: '#f8f8f8', marginBottom: 8 }}>
-                  <img src={resolveImageUrl(storyImage)} alt="Story" style={{ width: '100%', maxHeight: 220, objectFit: 'cover', display: 'block' }} />
+                  <img src={resolveImageUrl(storyImage)} alt={t('aboutUsEditor.storyTitle')} style={{ width: '100%', maxHeight: 220, objectFit: 'cover', display: 'block' }} />
                   <button
                     type="button"
                     onClick={() => { if (storyImage) pendingMedia.markForDeletion(storyImage); setStoryImage(''); if (fileInputRef.current) fileInputRef.current.value = ''; }}
@@ -293,13 +295,13 @@ export default function AboutUsEditor({ onSaved, onPreviewUpdate }) {
                   {uploading ? (
                     <div>
                       <i className="fas fa-spinner fa-spin" style={{ fontSize: 24, color: '#2563eb', marginBottom: 8, display: 'block' }} />
-                      <span style={{ fontSize: 13, color: '#2563eb' }}>Uploading...</span>
+                      <span style={{ fontSize: 13, color: '#2563eb' }}>{t('aboutUsEditor.uploading')}</span>
                     </div>
                   ) : (
                     <>
                       <i className="fas fa-cloud-upload-alt" style={{ fontSize: 28, marginBottom: 8, display: 'block' }} />
-                      <span style={{ fontSize: 13, display: 'block' }}>Click or drag to upload image</span>
-                      <span style={{ fontSize: 11, color: '#b0b8c4', marginTop: 4, display: 'block' }}>JPG, PNG, WebP — max 10MB</span>
+                      <span style={{ fontSize: 13, display: 'block' }}>{t('aboutUsEditor.clickUpload')}</span>
+                      <span style={{ fontSize: 11, color: '#b0b8c4', marginTop: 4, display: 'block' }}>{t('aboutUsEditor.uploadHint')}</span>
                     </>
                   )}
                 </div>
@@ -316,21 +318,21 @@ export default function AboutUsEditor({ onSaved, onPreviewUpdate }) {
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <h3 style={{ fontSize: 16, fontWeight: 700 }}>Content Sections ({sections.length})</h3>
+          <h3 style={{ fontSize: 16, fontWeight: 700 }}>{t('aboutUsEditor.sectionsTitle', { count: sections.length })}</h3>
           <button type="button" className="btn btn-secondary" onClick={addSection} style={{ fontSize: 13 }}>
-            <i className="fas fa-plus" style={{ marginInlineEnd: 6 }} />Add Section
+            <i className="fas fa-plus" style={{ marginInlineEnd: 6 }} />{t('aboutUsEditor.addSection')}
           </button>
         </div>
 
         {sections.map((section, index) => (
           <div key={index} className="card" style={{ marginBottom: 16, opacity: section.visible ? 1 : 0.6 }}>
             <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 className="card-title" style={{ fontSize: 14 }}>{section.heading || `Section ${index + 1}`}</h3>
+              <h3 className="card-title" style={{ fontSize: 14 }}>{section.heading || t('aboutUsEditor.sectionFallback', { num: index + 1 })}</h3>
               <div style={{ display: 'flex', gap: 4 }}>
                 <button
                   type="button"
                   onClick={() => updateSection(index, 'visible', !section.visible)}
-                  title={section.visible ? 'Hide section' : 'Show section'}
+                  title={section.visible ? t('aboutUsEditor.hideSection') : t('aboutUsEditor.showSection')}
                   style={{
                     background: section.visible ? '#f0fdf4' : '#f8fafc',
                     border: `1px solid ${section.visible ? '#bbf7d0' : '#e2e8f0'}`,
@@ -367,7 +369,7 @@ export default function AboutUsEditor({ onSaved, onPreviewUpdate }) {
             </div>
             <div className="card-content">
               <div style={{ marginBottom: 12 }}>
-                <label style={labelStyle}>Section Heading</label>
+                <label style={labelStyle}>{t('aboutUsEditor.sectionHeadingLabel')}</label>
                 <input
                   type="text"
                   value={section.heading}
@@ -377,14 +379,14 @@ export default function AboutUsEditor({ onSaved, onPreviewUpdate }) {
                 />
               </div>
               <div>
-                <label style={labelStyle}>Content</label>
+                <label style={labelStyle}>{t('aboutUsEditor.contentLabel')}</label>
                 <textarea
                   value={section.text}
                   onChange={e => updateSection(index, 'text', e.target.value)}
                   rows={5}
                   style={textareaStyle}
                 />
-                <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>Separate paragraphs with blank lines</p>
+                <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>{t('aboutUsEditor.paragraphHint')}</p>
               </div>
             </div>
           </div>
@@ -398,7 +400,7 @@ export default function AboutUsEditor({ onSaved, onPreviewUpdate }) {
             color: status === 'success' ? '#166534' : '#dc2626',
             marginBottom: 16, fontSize: 14,
           }}>
-            {status === 'success' ? 'About Us page saved successfully!' : status.replace('error:', '')}
+            {status === 'success' ? t('aboutUsEditor.savedSuccess') : status.replace('error:', '')}
           </div>
         )}
 

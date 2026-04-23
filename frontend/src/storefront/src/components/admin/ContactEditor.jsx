@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import SectionToggle from './SectionToggle.jsx';
 import SaveBar from './SaveBar.jsx';
 import { API_BASE } from '../../config.js';
 
 export default function ContactEditor({ onSaved, onPreviewUpdate }) {
+  const { t } = useTranslation('admin');
   const { siteConfig, refetchSite } = useContext(SiteContext);
   const [showContact, setShowContact] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -53,7 +55,7 @@ export default function ContactEditor({ onSaved, onPreviewUpdate }) {
         if (refetchSite) refetchSite();
         if (onSaved) onSaved();
       } else {
-        setStatus('error:' + (result.error || 'Failed to save'));
+        setStatus('error:' + (result.error || t('contactEditor.failedToSave')));
       }
     } catch (err) {
       setStatus('error:' + err.message);
@@ -69,8 +71,8 @@ export default function ContactEditor({ onSaved, onPreviewUpdate }) {
         <SectionToggle
           enabled={showContact}
           onChange={setShowContact}
-          label="Show Contact Us Page"
-          description="Show or hide the Contact Us link in the navigation bar"
+          label={t('contactEditor.toggleLabel')}
+          description={t('contactEditor.toggleDesc')}
         />
 
         {status.startsWith('error:') && (
@@ -80,7 +82,7 @@ export default function ContactEditor({ onSaved, onPreviewUpdate }) {
         )}
         {status === 'success' && (
           <div style={{ padding: '10px 14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, color: '#16a34a', fontSize: 13, marginBottom: 16 }}>
-            Settings saved successfully!
+            {t('contactEditor.savedSuccess')}
           </div>
         )}
 
