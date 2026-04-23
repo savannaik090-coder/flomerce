@@ -650,10 +650,16 @@ async function cachedJson(request, body, opts = {}) {
   };
 
   if (transient) {
-    headers['Cache-Control'] = `public, max-age=${FALLBACK_CACHE_MAX_AGE}, must-revalidate`;
+    // Transient (rate-limited / unsupported / error fallback): never cache in
+    // the browser, brief edge cache so we recover quickly after a fix.
+    headers['Cache-Control'] = `no-store`;
     headers['CDN-Cache-Control'] = `public, max-age=${FALLBACK_CACHE_MAX_AGE}`;
   } else {
-    headers['Cache-Control'] = `public, max-age=${LOCALE_CACHE_MAX_AGE}, stale-while-revalidate=${LOCALE_CACHE_SWR}`;
+    // Stable response: do NOT cache in the browser. Cloudflare's edge still
+    // caches for 7 days (busted on every regenerate via purgeLocaleCache),
+    // so cost stays low while merchant admins / shoppers always pick up the
+    // freshest translations on the next request after a refresh.
+    headers['Cache-Control'] = `no-store`;
     headers['CDN-Cache-Control'] = `public, max-age=${LOCALE_CACHE_MAX_AGE}`;
   }
 
