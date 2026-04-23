@@ -624,12 +624,18 @@ export async function handleI18nPublic(request, env, path, ctx) {
   }
 }
 
-// 7-day edge cache + 1-day stale-while-revalidate for stable locale responses
-// (Phase C). Fallback responses (rate-limited, unsupported, error) opt out by
-// passing `transient: true` so a temporary EN fallback can't get pinned at the
-// edge for a week.
-const LOCALE_CACHE_MAX_AGE = 7 * 24 * 60 * 60; // 604800
-const LOCALE_CACHE_SWR = 24 * 60 * 60; // 86400
+// Two-tier cache (matches the rest of the platform per replit.md):
+//   Browser: short max-age so a Refresh All / regenerate is reflected in
+//            other tabs / other origins (e.g. merchant admin) within ~60s
+//            instead of being pinned in the browser disk cache for 7 days.
+//            ETag + must-revalidate keeps the wire cost ~0 (304 Not Modified).
+//   CDN:     long max-age so the edge stays hot. The owner-admin regenerate
+//            path explicitly purges this cache via purgeLocaleCache(env, lang).
+// Fallback responses (rate-limited, unsupported, error) opt out by passing
+// `transient: true` so a temporary EN fallback can't get pinned anywhere.
+const LOCALE_BROWSER_MAX_AGE = 60; // 1 minute browser cache + revalidate
+const LOCALE_EDGE_MAX_AGE = 7 * 24 * 60 * 60; // 604800 CDN edge cache
+const LOCALE_CACHE_SWR = 24 * 60 * 60; // 86400 stale-while-revalidate
 const FALLBACK_CACHE_MAX_AGE = 60; // 1 minute — recover quickly after fix
 
 async function etagFor(bodyString) {
@@ -653,8 +659,9 @@ async function cachedJson(request, body, opts = {}) {
     headers['Cache-Control'] = `public, max-age=${FALLBACK_CACHE_MAX_AGE}, must-revalidate`;
     headers['CDN-Cache-Control'] = `public, max-age=${FALLBACK_CACHE_MAX_AGE}`;
   } else {
-    headers['Cache-Control'] = `public, max-age=${LOCALE_CACHE_MAX_AGE}, stale-while-revalidate=${LOCALE_CACHE_SWR}`;
-    headers['CDN-Cache-Control'] = `public, max-age=${LOCALE_CACHE_MAX_AGE}`;
+    // Browser revalidates every 60s (cheap 304 via ETag), CDN holds for 7 days.
+    headers['Cache-Control'] = `public, max-age=${LOCALE_BROWSER_MAX_AGE}, must-revalidate, stale-while-revalidate=${LOCALE_CACHE_SWR}`;
+    headers['CDN-Cache-Control'] = `public, max-age=${LOCALE_EDGE_MAX_AGE}, stale-while-revalidate=${LOCALE_CACHE_SWR}`;
   }
 
   // Compute a content-derived ETag for every response so browsers can do
