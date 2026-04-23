@@ -1,7 +1,7 @@
 import { handleCORS, successResponse, errorResponse, jsonResponse, corsHeaders } from '../../utils/helpers.js';
 import { validateAuth } from '../../utils/auth.js';
 import { isOwner } from './admin-worker.js';
-import { translateCatalogIncremental, hashCatalog } from '../../utils/translator.js';
+import { translateCatalogIncremental, hashCatalog, flattenCatalog, protectPlaceholders } from '../../utils/translator.js';
 // Each namespace file holds that namespace's keys at the top level
 // (`landing.json` is `{ heroBadge: "..." }`, NOT wrapped). Nesting each file
 // under its namespace name when assembling EN_CATALOG keeps the per-key SHA
@@ -152,7 +152,7 @@ async function bumpRateLimit(env, lang, day) {
  * since the previous translation. Falls back to a full translation when no
  * prior version exists. Returns stats and the new catalog.
  */
-async function regenerateIncremental(env, lang, { force = false } = {}) {
+async function regenerateIncremental(env, lang, { force = false, namespace = null } = {}) {
   const prior = await readCachedLocale(env, lang);
   const priorHashesRaw = await readCachedHashes(env, lang);
   // If the stored pipeline version differs from the current one, every
@@ -171,6 +171,53 @@ async function regenerateIncremental(env, lang, { force = false } = {}) {
     delete priorHashesForDiff[PIPELINE_VERSION_KEY];
   }
 
+  // Namespace-scoped regenerate: only translate keys inside one top-level
+  // namespace (e.g. "admin"), keeping all other namespaces untouched both in
+  // the translated output AND the stored hash map. Lets owners pay only for
+  // the slice they care about when fixing a localized section, instead of
+  // re-translating the full platform catalog. The pipeline-version stamp is
+  // intentionally NOT bumped on a partial regen — other namespaces still
+  // carry the old pipeline output, so a full regen is still required to
+  // clear pipelineMismatch.
+  if (namespace) {
+    if (!Object.prototype.hasOwnProperty.call(EN_CATALOG, namespace)) {
+      throw new Error(`Unknown namespace: ${namespace}`);
+    }
+    const subCatalog = { [namespace]: EN_CATALOG[namespace] };
+    const priorSub = (usePrior && prior?.data?.[namespace])
+      ? { [namespace]: prior.data[namespace] }
+      : null;
+    const priorHashesSub = priorHashesForDiff
+      ? Object.fromEntries(
+          Object.entries(priorHashesForDiff).filter(([p]) => p === namespace || p.startsWith(`${namespace}.`)),
+        )
+      : null;
+    const { translation: nsTranslation, hashes: nsHashes, stats } = await translateCatalogIncremental(
+      env, subCatalog, lang, priorSub, priorHashesSub,
+    );
+
+    // Merge translation: keep all other namespaces from prior, replace this one.
+    const mergedTranslation = { ...(prior?.data || {}), ...nsTranslation };
+
+    // Merge hashes: keep prior hashes for OTHER namespaces (so their staleness
+    // badges remain accurate), replace hashes inside this namespace.
+    const mergedHashes = { ...(priorHashesRaw || {}) };
+    delete mergedHashes[PIPELINE_VERSION_KEY];
+    for (const k of Object.keys(mergedHashes)) {
+      if (k === namespace || k.startsWith(`${namespace}.`)) delete mergedHashes[k];
+    }
+    Object.assign(mergedHashes, nsHashes);
+    // Preserve whatever pipeline version was already stored (do NOT advance it
+    // here — see comment above). If there was no prior, stamp current.
+    mergedHashes[PIPELINE_VERSION_KEY] = priorVersion ?? TRANSLATOR_PIPELINE_VERSION;
+
+    await writeCachedLocale(env, lang, mergedTranslation, mergedHashes);
+    return {
+      data: mergedTranslation,
+      stats: { ...stats, force, pipelineMismatch, priorVersion: priorVersion ?? null, namespace },
+    };
+  }
+
   const { translation, hashes, stats } = await translateCatalogIncremental(
     env,
     EN_CATALOG,
@@ -184,7 +231,89 @@ async function regenerateIncremental(env, lang, { force = false } = {}) {
   await writeCachedLocale(env, lang, translation, stampedHashes);
   return {
     data: translation,
-    stats: { ...stats, force, pipelineMismatch, priorVersion: priorVersion ?? null },
+    stats: { ...stats, force, pipelineMismatch, priorVersion: priorVersion ?? null, namespace: null },
+  };
+}
+
+/**
+ * Cost preview: compute the exact set of keys that WOULD be sent to Microsoft
+ * Translator if the caller invoked regenerate (or force-regenerate) right now,
+ * along with the total character count and an estimated USD cost. No API
+ * calls are made and no cache is mutated.
+ *
+ * Microsoft Translator Standard (S1) pricing is $10 per 1M characters. We use
+ * that as the baseline; the figure is shown as an estimate so callers
+ * understand it does not account for free-tier credits or volume discounts.
+ */
+const COST_PER_MILLION_CHARS_USD = 10;
+async function previewRegenerate(env, lang, { force = false, namespace = null } = {}) {
+  const prior = await readCachedLocale(env, lang);
+  const priorHashesRaw = await readCachedHashes(env, lang);
+  const priorVersion = priorHashesRaw ? Number(priorHashesRaw[PIPELINE_VERSION_KEY] || 1) : null;
+  const pipelineMismatch = priorVersion !== null && priorVersion !== TRANSLATOR_PIPELINE_VERSION;
+  const neverGenerated = !prior;
+  // If forced, pipeline mismatched, or never generated, every key in the
+  // target catalog is re-translated. Otherwise it's just the deltas.
+  const willFullRetranslate = force || pipelineMismatch || neverGenerated;
+
+  let targetCatalog = EN_CATALOG;
+  if (namespace) {
+    if (!Object.prototype.hasOwnProperty.call(EN_CATALOG, namespace)) {
+      throw new Error(`Unknown namespace: ${namespace}`);
+    }
+    targetCatalog = { [namespace]: EN_CATALOG[namespace] };
+  }
+
+  const { paths, values } = flattenCatalog(targetCatalog);
+  let pathsToTranslate = paths;
+  let valuesToTranslate = values;
+
+  if (!willFullRetranslate) {
+    const fresh = await hashCatalog(targetCatalog);
+    const priorHashes = { ...priorHashesRaw };
+    delete priorHashes[PIPELINE_VERSION_KEY];
+    const priorFlat = flattenCatalog(prior.data || {});
+    const priorPathSet = new Set(priorFlat.paths);
+    const filteredPaths = [];
+    const filteredValues = [];
+    for (let i = 0; i < paths.length; i++) {
+      const p = paths[i];
+      const v = values[i];
+      const hadTranslation = priorPathSet.has(p);
+      const oldHash = priorHashes[p];
+      const newHash = fresh[p];
+      if (!hadTranslation || !oldHash || oldHash !== newHash) {
+        filteredPaths.push(p);
+        filteredValues.push(v);
+      }
+    }
+    pathsToTranslate = filteredPaths;
+    valuesToTranslate = filteredValues;
+  }
+
+  // Microsoft bills based on the chars actually sent over the wire, which
+  // includes the <span class="notranslate"> wrapper that protectPlaceholders
+  // adds around every {{token}}. Count post-wrap so the cost estimate
+  // matches the real translator input — without this, strings with many
+  // placeholders are systematically under-billed in the preview.
+  const charCount = valuesToTranslate.reduce(
+    (sum, v) => sum + (typeof v === 'string' ? protectPlaceholders(v).length : 0),
+    0,
+  );
+  const estimatedCostUSD = (charCount / 1_000_000) * COST_PER_MILLION_CHARS_USD;
+  return {
+    lang,
+    namespace,
+    force,
+    willFullRetranslate,
+    pipelineMismatch,
+    neverGenerated,
+    keysToTranslate: pathsToTranslate.length,
+    keysReused: paths.length - pathsToTranslate.length,
+    totalKeysInScope: paths.length,
+    charCount,
+    estimatedCostUSD: Number(estimatedCostUSD.toFixed(4)),
+    pricePerMillionCharsUSD: COST_PER_MILLION_CHARS_USD,
   };
 }
 
@@ -310,6 +439,31 @@ export async function handleI18nAdmin(request, env, pathParts) {
   const action = pathParts[3];
   const lang = pathParts[4];
 
+  if (request.method === 'GET' && action === 'namespaces') {
+    // Top-level namespaces in the EN catalog. Used by the admin UI to populate
+    // the "regenerate just this namespace" dropdown.
+    const ns = Object.keys(EN_CATALOG).map((name) => {
+      const sub = { [name]: EN_CATALOG[name] };
+      const { paths } = flattenCatalog(sub);
+      return { name, keyCount: paths.length };
+    });
+    return successResponse({ namespaces: ns });
+  }
+
+  if (request.method === 'GET' && action === 'preview' && lang) {
+    if (!isValidLocale(lang)) return errorResponse('Invalid locale code', 400);
+    if (lang === 'en') return errorResponse('English is the source catalog', 400);
+    const url = new URL(request.url);
+    const force = url.searchParams.get('force') === '1' || url.searchParams.get('force') === 'true';
+    const namespace = url.searchParams.get('namespace') || null;
+    try {
+      const preview = await previewRegenerate(env, lang, { force, namespace });
+      return successResponse(preview);
+    } catch (e) {
+      return errorResponse(e.message || 'Preview failed', 400);
+    }
+  }
+
   if (request.method === 'GET' && action === 'locales') {
     if (!env.STORAGE) return successResponse({ locales: [] });
     const list = await env.STORAGE.list({ prefix: R2_PREFIX });
@@ -339,14 +493,19 @@ export async function handleI18nAdmin(request, env, pathParts) {
   if (request.method === 'POST' && action === 'regenerate' && lang) {
     if (!isValidLocale(lang)) return errorResponse('Invalid locale code', 400);
     if (lang === 'en') return errorResponse('English is the source catalog and cannot be regenerated', 400);
+    const url = new URL(request.url);
+    const namespace = url.searchParams.get('namespace') || null;
+    if (namespace && !Object.prototype.hasOwnProperty.call(EN_CATALOG, namespace)) {
+      return errorResponse(`Unknown namespace: ${namespace}`, 400);
+    }
     const rl = await checkRateLimit(env, lang);
     if (!rl.ok) {
       return errorResponse(`Rate limit reached (${rl.used}/${rl.limit} per day for ${lang})`, 429);
     }
     try {
-      const { data, stats } = await regenerateIncremental(env, lang);
+      const { data, stats } = await regenerateIncremental(env, lang, { namespace });
       await bumpRateLimit(env, lang, rl.day);
-      return successResponse({ ok: true, lang, keyCount: countKeys(data), stats });
+      return successResponse({ ok: true, lang, namespace, keyCount: countKeys(data), stats });
     } catch (e) {
       return errorResponse(e.message || 'Regeneration failed', 500);
     }
@@ -362,12 +521,17 @@ export async function handleI18nAdmin(request, env, pathParts) {
   if (request.method === 'POST' && action === 'force-regenerate' && lang) {
     if (!isValidLocale(lang)) return errorResponse('Invalid locale code', 400);
     if (lang === 'en') return errorResponse('English is the source catalog and cannot be regenerated', 400);
+    const url = new URL(request.url);
+    const namespace = url.searchParams.get('namespace') || null;
+    if (namespace && !Object.prototype.hasOwnProperty.call(EN_CATALOG, namespace)) {
+      return errorResponse(`Unknown namespace: ${namespace}`, 400);
+    }
     const day = new Date().toISOString().slice(0, 10);
     try {
-      const { data, stats } = await regenerateIncremental(env, lang, { force: true });
+      const { data, stats } = await regenerateIncremental(env, lang, { force: true, namespace });
       // Best-effort log; failures here must not break the response.
       try { await bumpRateLimit(env, lang, day); } catch { /* ignore */ }
-      return successResponse({ ok: true, lang, keyCount: countKeys(data), stats, forced: true });
+      return successResponse({ ok: true, lang, namespace, keyCount: countKeys(data), stats, forced: true });
     } catch (e) {
       return errorResponse(e.message || 'Force regeneration failed', 500);
     }

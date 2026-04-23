@@ -6,6 +6,19 @@ import { useToast } from '../../../shared/ui/Toast.jsx';
 const PRESHIPPED = ['hi', 'es', 'zh-CN', 'ar'];
 const LABELS = { hi: 'हिन्दी (Hindi)', es: 'Español (Spanish)', 'zh-CN': '简体中文 (Chinese)', ar: 'العربية (Arabic)' };
 
+// Format USD with up to 4 decimals so very small amounts ($0.0012) still
+// surface a real number instead of rounding to "$0.00".
+function fmtUSD(n) {
+  const v = Number(n) || 0;
+  if (v === 0) return '$0.00';
+  if (v < 0.01) return `$${v.toFixed(4)}`;
+  return `$${v.toFixed(2)}`;
+}
+
+function fmtNumber(n) {
+  return new Intl.NumberFormat().format(Number(n) || 0);
+}
+
 export default function I18nAdminPanel() {
   // Bind the namespaces this panel reads from. `owner` is primary so
   // `t('i18n.title')` resolves there directly; `common` is also bound so
@@ -17,6 +30,8 @@ export default function I18nAdminPanel() {
   const [busyLang, setBusyLang] = useState(null);
   const [refreshingAll, setRefreshingAll] = useState(false);
   const [target, setTarget] = useState('hi');
+  const [namespaces, setNamespaces] = useState([]);
+  const [selectedNs, setSelectedNs] = useState(''); // '' = all namespaces
 
   async function loadLocales() {
     setLoading(true);
@@ -31,12 +46,71 @@ export default function I18nAdminPanel() {
     }
   }
 
-  useEffect(() => { loadLocales(); }, []);
+  async function loadNamespaces() {
+    try {
+      const res = await apiRequest('/api/admin/i18n/namespaces');
+      const data = res?.data || res;
+      setNamespaces(data?.namespaces || []);
+    } catch {
+      // Non-fatal — namespace dropdown just stays empty so the user defaults
+      // to "all namespaces" behavior.
+    }
+  }
+
+  useEffect(() => {
+    loadLocales();
+    loadNamespaces();
+  }, []);
+
+  // Fetch the cost preview for a (lang, namespace, force) combination and
+  // ask the user to confirm before spending translator quota. Returns true
+  // when the user accepts. Falls back to a plain confirm if the preview
+  // request itself fails — better to proceed with an honest prompt than to
+  // hard-block on a transient API error.
+  async function confirmWithPreview({ lang, namespace, force, actionLabel }) {
+    let preview = null;
+    try {
+      const qs = new URLSearchParams();
+      if (force) qs.set('force', '1');
+      if (namespace) qs.set('namespace', namespace);
+      const res = await apiRequest(`/api/admin/i18n/preview/${encodeURIComponent(lang)}?${qs.toString()}`);
+      preview = res?.data || res;
+    } catch (e) {
+      return confirm(t('i18n.previewFallbackConfirm', { lang, action: actionLabel }));
+    }
+    if (preview.keysToTranslate === 0) {
+      return confirm(t('i18n.previewNothingToDo', { lang }));
+    }
+    const scope = namespace
+      ? t('i18n.previewScopeNamespace', { namespace })
+      : t('i18n.previewScopeAll');
+    const msg = [
+      t('i18n.previewHeader', { lang, action: actionLabel }),
+      '',
+      `${t('i18n.previewScopeLabel')}: ${scope}`,
+      `${t('i18n.previewKeysLabel')}: ${fmtNumber(preview.keysToTranslate)}` +
+        (preview.keysReused > 0 ? ` (${t('i18n.previewKeysReused', { count: preview.keysReused })})` : ''),
+      `${t('i18n.previewCharsLabel')}: ${fmtNumber(preview.charCount)}`,
+      `${t('i18n.previewCostLabel')}: ${fmtUSD(preview.estimatedCostUSD)} ` +
+        t('i18n.previewCostNote', { rate: preview.pricePerMillionCharsUSD }),
+      '',
+      t('i18n.previewProceed'),
+    ].join('\n');
+    return confirm(msg);
+  }
 
   async function regenerate(lang) {
+    const ok = await confirmWithPreview({
+      lang,
+      namespace: selectedNs || null,
+      force: false,
+      actionLabel: t('i18n.actionRegenerate'),
+    });
+    if (!ok) return;
     setBusyLang(lang);
     try {
-      const res = await apiRequest(`/api/admin/i18n/regenerate/${encodeURIComponent(lang)}`, { method: 'POST' });
+      const qs = selectedNs ? `?namespace=${encodeURIComponent(selectedNs)}` : '';
+      const res = await apiRequest(`/api/admin/i18n/regenerate/${encodeURIComponent(lang)}${qs}`, { method: 'POST' });
       const data = res?.data || res;
       const s = data?.stats;
       const detail = s ? t('i18n.regenDetail', { translated: s.translated, kept: s.kept }) : '';
@@ -51,14 +125,23 @@ export default function I18nAdminPanel() {
     }
   }
 
-  // Force = bypass throttle + ignore prior cache + re-translate every key.
-  // Used after a translator-pipeline change or when a locale is visibly
-  // corrupted. Confirm because it can be expensive on large catalogs.
+  // Force = bypass throttle + ignore prior cache + re-translate every key
+  // (in scope — full catalog OR the selected namespace). Used after a
+  // translator-pipeline change or when output is visibly corrupted.
   async function forceRegenerate(lang) {
-    if (!confirm(t('i18n.forceConfirm', { lang }))) return;
+    const ok = await confirmWithPreview({
+      lang,
+      namespace: selectedNs || null,
+      force: true,
+      actionLabel: t('i18n.actionForceRegenerate'),
+    });
+    if (!ok) return;
     setBusyLang(lang);
     try {
-      const res = await apiRequest(`/api/admin/i18n/force-regenerate/${encodeURIComponent(lang)}`, { method: 'POST' });
+      const qs = new URLSearchParams();
+      if (selectedNs) qs.set('namespace', selectedNs);
+      const url = `/api/admin/i18n/force-regenerate/${encodeURIComponent(lang)}${qs.toString() ? '?' + qs.toString() : ''}`;
+      const res = await apiRequest(url, { method: 'POST' });
       const data = res?.data || res;
       const s = data?.stats;
       const detail = s ? t('i18n.regenDetail', { translated: s.translated, kept: s.kept }) : '';
@@ -109,11 +192,26 @@ export default function I18nAdminPanel() {
         <h3>{t('i18n.title')}</h3>
         <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '1rem' }}>{t('i18n.desc')}</p>
 
-        <div className="oa-form-group" style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
-          <div style={{ flex: 1 }}>
+        <div className="oa-form-group" style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+          <div style={{ flex: '1 1 180px' }}>
             <label>{t('i18n.selectLocale')}</label>
             <select value={target} onChange={(e) => setTarget(e.target.value)} style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #e2e8f0' }}>
               {PRESHIPPED.map((l) => <option key={l} value={l}>{LABELS[l] || l}</option>)}
+            </select>
+          </div>
+          <div style={{ flex: '1 1 180px' }}>
+            <label>{t('i18n.namespaceLabel')}</label>
+            <select
+              value={selectedNs}
+              onChange={(e) => setSelectedNs(e.target.value)}
+              style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #e2e8f0' }}
+            >
+              <option value="">{t('i18n.namespaceAll')}</option>
+              {namespaces.map((n) => (
+                <option key={n.name} value={n.name}>
+                  {n.name} ({n.keyCount})
+                </option>
+              ))}
             </select>
           </div>
           <button
@@ -124,6 +222,9 @@ export default function I18nAdminPanel() {
             {busyLang === target ? t('i18n.regenerating') : t('i18n.regenerate')}
           </button>
         </div>
+        <p style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 8 }}>
+          {t('i18n.namespaceHint')}
+        </p>
       </div>
 
       {staleLocaleCount > 0 && (
