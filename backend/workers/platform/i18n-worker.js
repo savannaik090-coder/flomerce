@@ -566,44 +566,6 @@ export async function handleI18nPublic(request, env, path, ctx) {
 
   const parts = path.split('/').filter(Boolean);
 
-  // GET /api/i18n/_diag/preview/:lang  — public read-only diagnostic. Returns
-  // the same TM-aware preview numbers as the admin endpoint, minus auth, so
-  // operators can verify on a phone (no DevTools) which version of the worker
-  // is live and whether TM lookup is working. No catalog content is exposed —
-  // only counts. Safe to leave deployed; remove later if undesired.
-  if (parts[2] === '_diag' && parts[3] === 'preview' && parts[4]) {
-    const lang = parts[4];
-    if (!isValidLocale(lang) || lang === 'en') {
-      return errorResponse('Invalid locale code', 400);
-    }
-    try {
-      const preview = await previewRegenerate(env, lang, { force: true, namespace: null });
-      const body = JSON.stringify({
-        success: true,
-        diag: 'tm-aware-v1',
-        lang,
-        force: true,
-        keysToTranslate: preview.keysToTranslate,
-        totalKeysInScope: preview.totalKeysInScope,
-        tmHits: preview.tmHits ?? null,
-        charCount: preview.charCount,
-        estimatedCostUSD: preview.estimatedCostUSD,
-        envHasDB: !!env?.DB,
-        previewVersionInResponse: preview.previewVersion ?? null,
-      }, null, 2);
-      return new Response(body, {
-        status: 200,
-        headers: {
-          ...corsHeaders(request),
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-store, max-age=0',
-        },
-      });
-    } catch (e) {
-      return errorResponse(`diag failed: ${e?.message || e}`, 500);
-    }
-  }
-
   // /api/i18n/locale/:lang
   if (parts[2] !== 'locale' || !parts[3]) {
     return errorResponse('Not found', 404);
