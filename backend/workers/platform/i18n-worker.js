@@ -1,7 +1,15 @@
 import { handleCORS, successResponse, errorResponse, jsonResponse, corsHeaders } from '../../utils/helpers.js';
 import { validateAuth } from '../../utils/auth.js';
 import { isOwner } from './admin-worker.js';
-import { translateCatalogIncremental, hashCatalog, flattenCatalog, protectPlaceholders } from '../../utils/translator.js';
+import {
+  translateCatalogIncremental,
+  hashCatalog,
+  flattenCatalog,
+  protectPlaceholders,
+  translateBatch,
+  hashString,
+} from '../../utils/translator.js';
+import { purgeLocaleCache } from '../../utils/cdn-cache.js';
 // Each namespace file holds that namespace's keys at the top level
 // (`landing.json` is `{ heroBadge: "..." }`, NOT wrapped). Nesting each file
 // under its namespace name when assembling EN_CATALOG keeps the per-key SHA
@@ -147,10 +155,83 @@ async function bumpRateLimit(env, lang, day) {
   ).bind(lang, day, now).run();
 }
 
+/* ----------------------------------------------------------------------- */
+/* Phase A: per-key manual overrides ("sticky bit").                       */
+/* ----------------------------------------------------------------------- */
+
+async function readOverrides(env, lang) {
+  if (!env?.DB) return {};
+  try {
+    const { results } = await env.DB.prepare(
+      `SELECT path, value FROM i18n_overrides WHERE lang = ?`,
+    ).bind(lang).all();
+    const out = {};
+    for (const r of (results || [])) out[r.path] = r.value;
+    return out;
+  } catch (e) {
+    // If the table doesn't exist yet (migration not run), behave as if no
+    // overrides — never break the regenerate path on a missing optional table.
+    console.warn('[i18n] readOverrides failed:', lang, e?.message || e);
+    return {};
+  }
+}
+
+function setByPath(obj, dotted, value) {
+  const segs = dotted.split('.');
+  let cur = obj;
+  for (let i = 0; i < segs.length - 1; i++) {
+    if (!cur[segs[i]] || typeof cur[segs[i]] !== 'object') cur[segs[i]] = {};
+    cur = cur[segs[i]];
+  }
+  cur[segs[segs.length - 1]] = value;
+}
+
+function getByPath(obj, dotted) {
+  if (!obj) return undefined;
+  const segs = dotted.split('.');
+  let cur = obj;
+  for (const s of segs) {
+    if (cur == null || typeof cur !== 'object') return undefined;
+    cur = cur[s];
+  }
+  return cur;
+}
+
+// Returns a NEW catalog object with overrides layered on top of the supplied
+// translation. Caller is expected to use the returned object (the input is
+// not mutated) — keeps regenerate idempotent if it ever runs more than once.
+function applyOverridesToCatalog(catalog, overrides, namespaceFilter = null) {
+  const keys = Object.keys(overrides || {});
+  if (keys.length === 0) return catalog;
+  const root = JSON.parse(JSON.stringify(catalog || {}));
+  for (const path of keys) {
+    if (namespaceFilter && path !== namespaceFilter && !path.startsWith(`${namespaceFilter}.`)) {
+      continue;
+    }
+    setByPath(root, path, overrides[path]);
+  }
+  return root;
+}
+
+// Best-effort post-write hook: bust the Cloudflare edge cache for the locale
+// URL so shoppers see the new strings within seconds instead of waiting the
+// 7-day TTL. Wrapped in try/catch internally — never throws.
+async function afterLocaleWrite(env, lang) {
+  try {
+    await purgeLocaleCache(env, lang);
+  } catch (e) {
+    console.warn('[i18n] afterLocaleWrite purge failed:', lang, e?.message || e);
+  }
+}
+
 /**
  * Smart regenerate: only re-translates strings whose English source changed
  * since the previous translation. Falls back to a full translation when no
  * prior version exists. Returns stats and the new catalog.
+ *
+ * Manual overrides (Phase A) are applied as a final layer on every code
+ * path — so a force-regenerate or pipeline-version bump never quietly
+ * clobbers a string the operator has manually corrected.
  */
 async function regenerateIncremental(env, lang, { force = false, namespace = null } = {}) {
   const prior = await readCachedLocale(env, lang);
@@ -211,10 +292,19 @@ async function regenerateIncremental(env, lang, { force = false, namespace = nul
     // here — see comment above). If there was no prior, stamp current.
     mergedHashes[PIPELINE_VERSION_KEY] = priorVersion ?? TRANSLATOR_PIPELINE_VERSION;
 
-    await writeCachedLocale(env, lang, mergedTranslation, mergedHashes);
+    // Phase A: layer manual overrides on top so they survive force/regenerate.
+    // Scoped to the current namespace so overrides outside it (already preserved
+    // via the prior catalog merge above) aren't redundantly re-applied.
+    const overrides = await readOverrides(env, lang);
+    const finalTranslation = applyOverridesToCatalog(mergedTranslation, overrides, namespace);
+    const overridesApplied = Object.keys(overrides).filter(
+      (p) => p === namespace || p.startsWith(`${namespace}.`),
+    ).length;
+
+    await writeCachedLocale(env, lang, finalTranslation, mergedHashes);
     return {
-      data: mergedTranslation,
-      stats: { ...stats, force, pipelineMismatch, priorVersion: priorVersion ?? null, namespace },
+      data: finalTranslation,
+      stats: { ...stats, force, pipelineMismatch, priorVersion: priorVersion ?? null, namespace, overridesApplied },
     };
   }
 
@@ -228,10 +318,16 @@ async function regenerateIncremental(env, lang, { force = false, namespace = nul
   // Stamp the pipeline version into the hashes file so future regens know
   // whether the stored translations were produced by current code.
   const stampedHashes = { ...hashes, [PIPELINE_VERSION_KEY]: TRANSLATOR_PIPELINE_VERSION };
-  await writeCachedLocale(env, lang, translation, stampedHashes);
+
+  // Phase A: re-apply manual overrides over the freshly translated catalog.
+  const overrides = await readOverrides(env, lang);
+  const finalTranslation = applyOverridesToCatalog(translation, overrides);
+  const overridesApplied = Object.keys(overrides).length;
+
+  await writeCachedLocale(env, lang, finalTranslation, stampedHashes);
   return {
-    data: translation,
-    stats: { ...stats, force, pipelineMismatch, priorVersion: priorVersion ?? null, namespace: null },
+    data: finalTranslation,
+    stats: { ...stats, force, pipelineMismatch, priorVersion: priorVersion ?? null, namespace: null, overridesApplied },
   };
 }
 
@@ -377,50 +473,108 @@ export async function handleI18nPublic(request, env, path, ctx) {
   }
 
   if (lang === 'en') {
-    return cachedJson(request, { success: true, message: 'Success', data: EN_CATALOG });
+    return cachedJson(request, { success: true, message: 'Success', data: EN_CATALOG }, { lang: 'en' });
   }
 
   // Try cached first — instant path for any locale ever generated.
   const cached = await readCachedLocale(env, lang);
   if (cached) {
-    return cachedJson(request, { success: true, message: 'Success', data: cached.data });
+    return cachedJson(request, { success: true, message: 'Success', data: cached.data }, { lang });
   }
 
   // Bound spend: only locales on the supported allowlist may be lazy-generated.
   // Unknown locale-shaped codes fall back to English so an attacker cannot
-  // bypass the per-locale day cap by spamming many distinct codes.
+  // bypass the per-locale day cap by spamming many distinct codes. Mark the
+  // response transient — if the allowlist later expands, we don't want a
+  // 7-day-old EN response stuck at the edge.
   if (!SUPPORTED_LOCALES.has(lang)) {
-    return cachedJson(request, { success: true, message: 'i18n fallback to en (locale not supported)', data: EN_CATALOG });
+    return cachedJson(
+      request,
+      { success: true, message: 'i18n fallback to en (locale not supported)', data: EN_CATALOG },
+      { lang, transient: true },
+    );
   }
 
   const rl = await checkRateLimit(env, lang);
   if (!rl.ok) {
-    return cachedJson(request, { success: true, message: 'i18n fallback to en (rate limit reached)', data: EN_CATALOG });
+    return cachedJson(
+      request,
+      { success: true, message: 'i18n fallback to en (rate limit reached)', data: EN_CATALOG },
+      { lang, transient: true },
+    );
   }
 
   try {
     const { data } = await regenerateIncremental(env, lang);
     await bumpRateLimit(env, lang, rl.day);
-    return cachedJson(request, { success: true, message: 'Success', data });
+    // Lazy-gen succeeded — best-effort purge any stale EN fallback the edge
+    // may have cached during a prior miss/rate-limit window.
+    try { await purgeLocaleCache(env, lang); } catch { /* non-fatal */ }
+    return cachedJson(request, { success: true, message: 'Success', data }, { lang });
   } catch (e) {
     console.error('[i18n] lazy generation failed for', lang, e.message || e);
-    return cachedJson(request, { success: true, message: 'i18n fallback to en', data: EN_CATALOG });
+    return cachedJson(
+      request,
+      { success: true, message: 'i18n fallback to en', data: EN_CATALOG },
+      { lang, transient: true },
+    );
   }
 }
 
-function cachedJson(request, body) {
+// 7-day edge cache + 1-day stale-while-revalidate for stable locale responses
+// (Phase C). Fallback responses (rate-limited, unsupported, error) opt out by
+// passing `transient: true` so a temporary EN fallback can't get pinned at the
+// edge for a week.
+const LOCALE_CACHE_MAX_AGE = 7 * 24 * 60 * 60; // 604800
+const LOCALE_CACHE_SWR = 24 * 60 * 60; // 86400
+const FALLBACK_CACHE_MAX_AGE = 60; // 1 minute — recover quickly after fix
+
+async function etagFor(bodyString) {
+  // Use the existing 16-hex content fingerprint helper. ETags must be ASCII,
+  // wrapped in quotes per RFC 7232.
+  const h = await hashString(bodyString);
+  return `"${h}"`;
+}
+
+async function cachedJson(request, body, opts = {}) {
+  const { lang = null, transient = false } = opts;
   const cors = corsHeaders(request);
-  return new Response(JSON.stringify(body), {
-    status: 200,
-    headers: {
-      ...cors,
-      'Content-Type': 'application/json; charset=utf-8',
-      'Cache-Control': 'no-store, no-cache, must-revalidate',
-      'CDN-Cache-Control': 'no-store',
-      'Pragma': 'no-cache',
-      'Expires': '0',
-    },
-  });
+  const bodyString = JSON.stringify(body);
+  const headers = {
+    ...cors,
+    'Content-Type': 'application/json; charset=utf-8',
+    'Vary': 'Accept-Encoding',
+  };
+
+  if (transient) {
+    headers['Cache-Control'] = `public, max-age=${FALLBACK_CACHE_MAX_AGE}, must-revalidate`;
+    headers['CDN-Cache-Control'] = `public, max-age=${FALLBACK_CACHE_MAX_AGE}`;
+  } else {
+    headers['Cache-Control'] = `public, max-age=${LOCALE_CACHE_MAX_AGE}, stale-while-revalidate=${LOCALE_CACHE_SWR}`;
+    headers['CDN-Cache-Control'] = `public, max-age=${LOCALE_CACHE_MAX_AGE}`;
+  }
+
+  // Compute a content-derived ETag for every response so browsers can do
+  // cheap conditional GETs (304 Not Modified) on subsequent loads.
+  try {
+    const tag = await etagFor(bodyString);
+    headers.ETag = tag;
+    if (lang) {
+      // Cache-Tag is only honoured by Cloudflare Enterprise but is harmless
+      // to emit on lower plans. Useful if the account is upgraded later.
+      headers['Cache-Tag'] = `i18n,lang-${lang}`;
+    }
+    // RFC 7232 conditional GET — return 304 with empty body when ETag matches.
+    const inm = request.headers.get('If-None-Match');
+    if (inm && inm === tag) {
+      return new Response(null, { status: 304, headers });
+    }
+  } catch (e) {
+    // ETag generation must never break the response.
+    console.warn('[i18n] etag generation failed:', e?.message || e);
+  }
+
+  return new Response(bodyString, { status: 200, headers });
 }
 
 /**
@@ -505,6 +659,7 @@ export async function handleI18nAdmin(request, env, pathParts) {
     try {
       const { data, stats } = await regenerateIncremental(env, lang, { namespace });
       await bumpRateLimit(env, lang, rl.day);
+      await afterLocaleWrite(env, lang);
       return successResponse({ ok: true, lang, namespace, keyCount: countKeys(data), stats });
     } catch (e) {
       return errorResponse(e.message || 'Regeneration failed', 500);
@@ -531,6 +686,7 @@ export async function handleI18nAdmin(request, env, pathParts) {
       const { data, stats } = await regenerateIncremental(env, lang, { force: true, namespace });
       // Best-effort log; failures here must not break the response.
       try { await bumpRateLimit(env, lang, day); } catch { /* ignore */ }
+      await afterLocaleWrite(env, lang);
       return successResponse({ ok: true, lang, namespace, keyCount: countKeys(data), stats, forced: true });
     } catch (e) {
       return errorResponse(e.message || 'Force regeneration failed', 500);
@@ -580,6 +736,8 @@ export async function handleI18nAdmin(request, env, pathParts) {
         const { stats } = await regenerateIncremental(env, langCode);
         // Only count against rate limit if we actually called the translator.
         if (stats.translated > 0) await bumpRateLimit(env, langCode, rl.day);
+        // Phase C: every locale we just rewrote needs its edge entry busted.
+        await afterLocaleWrite(env, langCode);
         results.push({ lang: langCode, ok: true, stats });
       } catch (e) {
         results.push({ lang: langCode, error: e.message || 'failed' });
@@ -588,13 +746,242 @@ export async function handleI18nAdmin(request, env, pathParts) {
     return successResponse({ ok: true, results });
   }
 
+  // DELETE /api/admin/i18n/locale/:lang  — full reset for a locale: drop the
+  // cached JSON, drop its hash sidecar, drop every manual override, and bust
+  // the edge cache. After this the next public request lazy-regenerates from
+  // scratch (subject to rate limit). The admin UI surfaces this as
+  // "Delete & reset" to avoid confusion with the edge-only purge below.
   if (request.method === 'DELETE' && action === 'locale' && lang) {
     if (!isValidLocale(lang)) return errorResponse('Invalid locale code', 400);
     if (env.STORAGE) {
       await env.STORAGE.delete(r2Key(lang));
       await env.STORAGE.delete(r2HashKey(lang));
     }
+    if (env.DB) {
+      try {
+        await env.DB.prepare(`DELETE FROM i18n_overrides WHERE lang = ?`).bind(lang).run();
+      } catch { /* table may not exist yet — non-fatal */ }
+    }
+    await afterLocaleWrite(env, lang);
     return successResponse({ ok: true, lang });
+  }
+
+  // POST /api/admin/i18n/purge-edge/:lang  — bust the Cloudflare edge cache
+  // for one locale WITHOUT changing R2 / D1. Useful when the cached catalog
+  // is correct but a stale 304 chain is hanging on at the edge for some
+  // reason, or when the operator explicitly wants to verify a purge round-trip.
+  if (request.method === 'POST' && action === 'purge-edge' && lang) {
+    if (!isValidLocale(lang)) return errorResponse('Invalid locale code', 400);
+    const result = await purgeLocaleCache(env, lang);
+    return successResponse({ ok: !!result?.ok, lang, result });
+  }
+
+  // GET /api/admin/i18n/strings/:lang?namespace=owner  — listing for the
+  // "Edit translations" admin sub-view. Returns one row per leaf key with
+  // the EN source, the currently-cached translation (which may itself be an
+  // override), and whether an override row exists.
+  if (request.method === 'GET' && action === 'strings' && lang) {
+    if (!isValidLocale(lang)) return errorResponse('Invalid locale code', 400);
+    if (lang === 'en') return errorResponse('English is the source catalog', 400);
+    const url = new URL(request.url);
+    const ns = url.searchParams.get('namespace') || null;
+    if (ns && !Object.prototype.hasOwnProperty.call(EN_CATALOG, ns)) {
+      return errorResponse(`Unknown namespace: ${ns}`, 400);
+    }
+    const scope = ns ? { [ns]: EN_CATALOG[ns] } : EN_CATALOG;
+    const { paths, values } = flattenCatalog(scope);
+    const cached = await readCachedLocale(env, lang);
+    const overrides = await readOverrides(env, lang);
+    const rows = paths.map((p, i) => {
+      const cur = getByPath(cached?.data, p);
+      return {
+        path: p,
+        en: values[i],
+        current: typeof cur === 'string' ? cur : null,
+        hasOverride: Object.prototype.hasOwnProperty.call(overrides, p),
+      };
+    });
+    return successResponse({ lang, namespace: ns, rows });
+  }
+
+  // POST /api/admin/i18n/translate-key/:lang  body: { path, value? }
+  // - value provided  → set as manual override (sticky bit, survives regens)
+  // - value omitted   → clear any override AND re-translate just that key
+  // Both paths update R2 in-place (no full regen needed) and purge the edge.
+  if (request.method === 'POST' && action === 'translate-key' && lang) {
+    if (!isValidLocale(lang)) return errorResponse('Invalid locale code', 400);
+    if (lang === 'en') return errorResponse('English is the source catalog', 400);
+    let body;
+    try { body = await request.json(); } catch { return errorResponse('Invalid JSON body', 400); }
+    const path = typeof body?.path === 'string' ? body.path : '';
+    if (!path || !/^[a-zA-Z0-9_]+(?:\.[a-zA-Z0-9_]+)*$/.test(path)) {
+      return errorResponse('Missing or invalid path', 400);
+    }
+    const enValue = getByPath(EN_CATALOG, path);
+    if (typeof enValue !== 'string') {
+      return errorResponse(`Path not found in EN catalog: ${path}`, 404);
+    }
+    const cached = await readCachedLocale(env, lang);
+    if (!cached) {
+      return errorResponse(`Locale ${lang} has not been generated yet — run Regenerate first.`, 409);
+    }
+    const hashesRaw = (await readCachedHashes(env, lang)) || {};
+
+    let newValue;
+    let isOverride = false;
+    if (typeof body?.value === 'string' && body.value.length > 0) {
+      // Manual override path — no translator call, no rate limit charge.
+      if (body.value.length > 5000) {
+        return errorResponse('Override value too long (max 5000 chars)', 400);
+      }
+      newValue = body.value;
+      isOverride = true;
+    } else {
+      // Per-key re-translate path. Charge ONE rate-limit unit so spamming
+      // single-key calls still respects the per-locale daily cap.
+      const rl = await checkRateLimit(env, lang);
+      if (!rl.ok) {
+        return errorResponse(`Rate limit reached (${rl.used}/${rl.limit} per day for ${lang})`, 429);
+      }
+      try {
+        const [translated] = await translateBatch(env, [enValue], lang, 'en');
+        newValue = translated;
+        await bumpRateLimit(env, lang, rl.day);
+      } catch (e) {
+        return errorResponse(e.message || 'Translator failed for that key', 500);
+      }
+    }
+
+    // Persist the override-row state (set or clear) FIRST, before touching
+    // R2. If D1 is unavailable or the migration hasn't run, an "override"
+    // request must hard-fail — otherwise the UI would report success for
+    // a value that won't survive the next regenerate (sticky-bit broken).
+    if (isOverride) {
+      if (!env.DB) return errorResponse('Override storage (D1) is not configured', 500);
+      try {
+        await env.DB.prepare(
+          `INSERT INTO i18n_overrides (lang, path, value, updated_at, updated_by)
+           VALUES (?, ?, ?, ?, ?)
+           ON CONFLICT(lang, path) DO UPDATE SET
+             value = excluded.value,
+             updated_at = excluded.updated_at,
+             updated_by = excluded.updated_by`,
+        ).bind(lang, path, newValue, Date.now(), user.email || user.uid || null).run();
+      } catch (e) {
+        return errorResponse(`Failed to persist override: ${e?.message || e}`, 500);
+      }
+    } else if (env.DB) {
+      // Re-translate path: clear any existing override so the catalog reverts
+      // to the auto-translated value next regen. A failure here is non-fatal —
+      // worst case the row lingers and gets re-applied at next regenerate,
+      // which is the safe default for "I didn't really want to clear it".
+      try {
+        await env.DB.prepare(
+          `DELETE FROM i18n_overrides WHERE lang = ? AND path = ?`,
+        ).bind(lang, path).run();
+      } catch (e) {
+        console.warn('[i18n] override clear failed:', lang, path, e?.message || e);
+      }
+    }
+
+    // Now apply to the cached catalog + advance the per-key hash so the
+    // staleness diff doesn't mark this key stale on its next read.
+    const newCatalog = JSON.parse(JSON.stringify(cached.data || {}));
+    setByPath(newCatalog, path, newValue);
+    hashesRaw[path] = await hashString(enValue);
+    await writeCachedLocale(env, lang, newCatalog, hashesRaw);
+    await afterLocaleWrite(env, lang);
+    return successResponse({ ok: true, lang, path, value: newValue, isOverride });
+  }
+
+  // DELETE /api/admin/i18n/override/:lang?path=foo.bar  — convenience alias
+  // that clears the override AND re-translates the key in one call. Mirrors
+  // POST translate-key with no body.value, but lets the UI use a DELETE verb
+  // for an obviously-destructive action.
+  if (request.method === 'DELETE' && action === 'override' && lang) {
+    if (!isValidLocale(lang)) return errorResponse('Invalid locale code', 400);
+    if (lang === 'en') return errorResponse('English is the source catalog', 400);
+    const url = new URL(request.url);
+    const path = url.searchParams.get('path') || '';
+    if (!path || !/^[a-zA-Z0-9_]+(?:\.[a-zA-Z0-9_]+)*$/.test(path)) {
+      return errorResponse('Missing or invalid path', 400);
+    }
+    const enValue = getByPath(EN_CATALOG, path);
+    if (typeof enValue !== 'string') {
+      return errorResponse(`Path not found in EN catalog: ${path}`, 404);
+    }
+    const cached = await readCachedLocale(env, lang);
+    if (!cached) {
+      return errorResponse(`Locale ${lang} has not been generated yet`, 409);
+    }
+    const hashesRaw = (await readCachedHashes(env, lang)) || {};
+    const rl = await checkRateLimit(env, lang);
+    if (!rl.ok) {
+      return errorResponse(`Rate limit reached (${rl.used}/${rl.limit} per day for ${lang})`, 429);
+    }
+    let translated;
+    try {
+      [translated] = await translateBatch(env, [enValue], lang, 'en');
+    } catch (e) {
+      return errorResponse(e.message || 'Translator failed', 500);
+    }
+    await bumpRateLimit(env, lang, rl.day);
+    const newCatalog = JSON.parse(JSON.stringify(cached.data || {}));
+    setByPath(newCatalog, path, translated);
+    hashesRaw[path] = await hashString(enValue);
+    await writeCachedLocale(env, lang, newCatalog, hashesRaw);
+    if (env.DB) {
+      try {
+        await env.DB.prepare(`DELETE FROM i18n_overrides WHERE lang = ? AND path = ?`).bind(lang, path).run();
+      } catch { /* non-fatal */ }
+    }
+    await afterLocaleWrite(env, lang);
+    return successResponse({ ok: true, lang, path, value: translated, isOverride: false });
+  }
+
+  // GET /api/admin/i18n/tm-stats  — Phase D efficiency card. Totals and a
+  // small per-language breakdown. `hits` counts reuse-beyond-first-store
+  // (i.e. SUM(hit_count - 1)) since the initial INSERT is itself a "miss".
+  if (request.method === 'GET' && action === 'tm-stats') {
+    if (!env.DB) return successResponse({ rows: 0, hits: 0, charsSaved: 0, costSavedUSD: 0, byLang: [] });
+    try {
+      const totals = await env.DB.prepare(
+        `SELECT COUNT(*) AS rows,
+                COALESCE(SUM(hit_count - 1), 0) AS hits,
+                COALESCE(SUM(LENGTH(source_text) * (hit_count - 1)), 0) AS charsSaved
+         FROM translation_memory`,
+      ).first();
+      const byLangRes = await env.DB.prepare(
+        `SELECT target_lang AS lang,
+                COUNT(*) AS rows,
+                COALESCE(SUM(hit_count - 1), 0) AS hits,
+                COALESCE(SUM(LENGTH(source_text) * (hit_count - 1)), 0) AS charsSaved
+         FROM translation_memory
+         GROUP BY target_lang
+         ORDER BY hits DESC
+         LIMIT 50`,
+      ).all();
+      const charsSaved = Number(totals?.charsSaved || 0);
+      const costSavedUSD = Number(((charsSaved / 1_000_000) * COST_PER_MILLION_CHARS_USD).toFixed(4));
+      return successResponse({
+        rows: Number(totals?.rows || 0),
+        hits: Number(totals?.hits || 0),
+        charsSaved,
+        costSavedUSD,
+        pricePerMillionCharsUSD: COST_PER_MILLION_CHARS_USD,
+        byLang: (byLangRes.results || []).map((r) => ({
+          lang: r.lang,
+          rows: Number(r.rows || 0),
+          hits: Number(r.hits || 0),
+          charsSaved: Number(r.charsSaved || 0),
+        })),
+      });
+    } catch (e) {
+      // Migration may not have run yet — return empty stats instead of 500
+      // so the admin UI degrades gracefully.
+      console.warn('[i18n] tm-stats failed:', e?.message || e);
+      return successResponse({ rows: 0, hits: 0, charsSaved: 0, costSavedUSD: 0, byLang: [], error: e?.message });
+    }
   }
 
   return errorResponse('i18n admin endpoint not found', 404);
@@ -618,6 +1005,10 @@ export async function ensureLocaleCached(env, lang) {
     if (!rl.ok) return;
     await regenerateIncremental(env, lang);
     await bumpRateLimit(env, lang, rl.day);
+    // Phase C: every R2 write must invalidate the edge — otherwise the
+    // very first lazy fetch could pin a stale empty/EN response for the
+    // full 7-day TTL.
+    await afterLocaleWrite(env, lang);
   } catch (e) {
     console.warn('[i18n] ensureLocaleCached failed:', lang, e.message || e);
   }

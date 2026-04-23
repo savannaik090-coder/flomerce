@@ -11,11 +11,157 @@ function chunk(arr, size) {
 
 export async function translateBatch(env, texts, targetLang, sourceLang = 'en') {
   if (!Array.isArray(texts) || texts.length === 0) return [];
-  const creds = await getTranslatorCredentials(env);
-  if (!creds) {
-    throw new Error('Microsoft Translator credentials are not configured.');
+
+  // Phase D: Translation Memory short-circuit. Only applies when translating
+  // FROM English (the bundled platform catalog source) — System B's per-site
+  // shopper translations bypass this path entirely by calling
+  // translateBatchWithCreds directly. We also require D1 access; in tests or
+  // any worker that doesn't bind DB we silently fall through to the plain
+  // translator path so behavior is unchanged.
+  const useTM = sourceLang === 'en' && !!env?.DB;
+
+  let hashes = [];
+  let hits = new Map(); // hash -> translated_text
+  let missIndexes;
+  if (useTM) {
+    const r = await tmLookup(env, texts, targetLang);
+    hashes = r.hashes;
+    hits = r.hits;
+    missIndexes = r.missIndexes;
+  } else {
+    missIndexes = texts.map((_, i) => i);
   }
-  return translateBatchWithCreds(texts, targetLang, sourceLang, creds);
+
+  // Translate only the misses through Microsoft. If TM covered everything
+  // (every key already known for this target), we skip the API call AND the
+  // credential check entirely — that's the steady-state cost win.
+  let missTranslations = [];
+  if (missIndexes.length > 0) {
+    const creds = await getTranslatorCredentials(env);
+    if (!creds) throw new Error('Microsoft Translator credentials are not configured.');
+    const missTexts = missIndexes.map((i) => texts[i]);
+    missTranslations = await translateBatchWithCreds(missTexts, targetLang, sourceLang, creds);
+  }
+
+  // Reassemble in original index order so callers (e.g. inflateCatalog) see
+  // each translation aligned with its source path.
+  const out = new Array(texts.length);
+  if (useTM) {
+    for (let i = 0; i < texts.length; i++) {
+      if (hits.has(hashes[i])) out[i] = hits.get(hashes[i]);
+    }
+    for (let k = 0; k < missIndexes.length; k++) {
+      out[missIndexes[k]] = missTranslations[k];
+    }
+    // Persist newly translated misses + bump hit counters on the rows we
+    // reused, so admin TM stats (rows, hits, chars saved) stay accurate.
+    // Dedupe by hash within this batch so duplicate source strings don't
+    // produce redundant INSERTs / inflated hit increments — the SQL UPDATE
+    // path can only credit one bump per hash per call regardless.
+    const seenMissHashes = new Set();
+    const newEntries = [];
+    for (let k = 0; k < missIndexes.length; k++) {
+      const idx = missIndexes[k];
+      const h = hashes[idx];
+      if (seenMissHashes.has(h)) continue;
+      seenMissHashes.add(h);
+      newEntries.push({ hash: h, source: texts[idx], translated: missTranslations[k] });
+    }
+    await tmStore(env, newEntries, targetLang);
+    const reusedHashes = [];
+    const seenHitHashes = new Set();
+    for (let i = 0; i < texts.length; i++) {
+      const h = hashes[i];
+      if (!hits.has(h) || seenHitHashes.has(h)) continue;
+      seenHitHashes.add(h);
+      reusedHashes.push(h);
+    }
+    await tmBumpHits(env, reusedHashes, targetLang);
+  } else {
+    for (let k = 0; k < missIndexes.length; k++) {
+      out[missIndexes[k]] = missTranslations[k];
+    }
+  }
+  return out;
+}
+
+/* ------------------------------------------------------------------------ */
+/* Translation Memory (TM) — D1-backed cache of source→target translations.  */
+/* ------------------------------------------------------------------------ */
+
+// SQLite parameter binding gets unwieldy past ~100 args; chunk lookups so a
+// catalog of thousands of strings still uses tight `IN (?, ?, …)` queries.
+const TM_LOOKUP_BATCH = 100;
+
+async function tmLookup(env, texts, targetLang) {
+  // Compute every hash up-front in parallel (cheap on Workers) so we can
+  // build batched lookups without re-hashing per chunk.
+  const hashes = await Promise.all(texts.map(hashString));
+  const hits = new Map();
+  for (const group of chunk(hashes, TM_LOOKUP_BATCH)) {
+    if (group.length === 0) continue;
+    const placeholders = group.map(() => '?').join(',');
+    try {
+      const { results } = await env.DB.prepare(
+        `SELECT source_hash, translated_text FROM translation_memory
+         WHERE target_lang = ? AND source_hash IN (${placeholders})`,
+      ).bind(targetLang, ...group).all();
+      for (const r of (results || [])) hits.set(r.source_hash, r.translated_text);
+    } catch (e) {
+      // TM is a non-fatal optimization. A failed lookup degrades to "treat
+      // everything as a miss" — correctness is unchanged, the call just
+      // costs full Microsoft quota for this run.
+      console.warn('[tm] lookup failed:', e?.message || e);
+      return { hashes, hits: new Map(), missIndexes: texts.map((_, i) => i) };
+    }
+  }
+  const missIndexes = [];
+  for (let i = 0; i < texts.length; i++) {
+    if (!hits.has(hashes[i])) missIndexes.push(i);
+  }
+  return { hashes, hits, missIndexes };
+}
+
+async function tmStore(env, entries, targetLang) {
+  if (!entries || entries.length === 0) return;
+  const now = Date.now();
+  // Use D1 batch for atomic, low-latency multi-row insert. ON CONFLICT lets
+  // two concurrent calls translating the same string race safely — the
+  // second one just bumps hit_count + last_used_at instead of failing.
+  const stmts = entries.map((e) =>
+    env.DB.prepare(
+      `INSERT INTO translation_memory
+         (source_hash, target_lang, source_text, translated_text, hit_count, created_at, last_used_at)
+       VALUES (?, ?, ?, ?, 1, ?, ?)
+       ON CONFLICT(source_hash, target_lang) DO UPDATE SET
+         translated_text = excluded.translated_text,
+         hit_count       = hit_count + 1,
+         last_used_at    = excluded.last_used_at`,
+    ).bind(e.hash, targetLang, e.source, e.translated, now, now),
+  );
+  try {
+    await env.DB.batch(stmts);
+  } catch (err) {
+    console.warn('[tm] store failed:', err?.message || err);
+  }
+}
+
+async function tmBumpHits(env, hashes, targetLang) {
+  if (!hashes || hashes.length === 0) return;
+  const now = Date.now();
+  for (const group of chunk(hashes, TM_LOOKUP_BATCH)) {
+    if (group.length === 0) continue;
+    const placeholders = group.map(() => '?').join(',');
+    try {
+      await env.DB.prepare(
+        `UPDATE translation_memory
+         SET hit_count = hit_count + 1, last_used_at = ?
+         WHERE target_lang = ? AND source_hash IN (${placeholders})`,
+      ).bind(now, targetLang, ...group).run();
+    } catch (err) {
+      console.warn('[tm] hit-bump failed:', err?.message || err);
+    }
+  }
 }
 
 /**

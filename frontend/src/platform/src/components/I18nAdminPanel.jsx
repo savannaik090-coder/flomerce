@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { apiRequest } from '../services/api.js';
 import { useToast } from '../../../shared/ui/Toast.jsx';
+import { refreshLocale } from '../../../shared/i18n/init.js';
 
 const PRESHIPPED = ['hi', 'es', 'zh-CN', 'ar'];
 const LABELS = { hi: 'हिन्दी (Hindi)', es: 'Español (Spanish)', 'zh-CN': '简体中文 (Chinese)', ar: 'العربية (Arabic)' };
@@ -33,6 +34,15 @@ export default function I18nAdminPanel() {
   const [namespaces, setNamespaces] = useState([]);
   const [selectedNs, setSelectedNs] = useState(''); // '' = all namespaces
 
+  // Phase A: per-key editor sub-view. When `editor.lang` is set we render the
+  // string-editing panel instead of the locales table; otherwise the main
+  // panel is shown. Editor namespace defaults to "common" because all-keys
+  // would be huge to render at once.
+  const [editor, setEditor] = useState(null); // { lang, namespace }
+
+  // Phase D: TM efficiency stats card.
+  const [tmStats, setTmStats] = useState(null);
+
   async function loadLocales() {
     setLoading(true);
     try {
@@ -57,9 +67,20 @@ export default function I18nAdminPanel() {
     }
   }
 
+  async function loadTmStats() {
+    try {
+      const res = await apiRequest('/api/admin/i18n/tm-stats');
+      setTmStats(res?.data || res);
+    } catch {
+      // Non-fatal — TM card just hides itself.
+      setTmStats(null);
+    }
+  }
+
   useEffect(() => {
     loadLocales();
     loadNamespaces();
+    loadTmStats();
   }, []);
 
   // Fetch the cost preview for a (lang, namespace, force) combination and
@@ -116,6 +137,10 @@ export default function I18nAdminPanel() {
       const detail = s ? t('i18n.regenDetail', { translated: s.translated, kept: s.kept }) : '';
       toast.success(t('i18n.regenerated', { lang, count: data.keyCount || '?' }) + detail);
       await loadLocales();
+      await loadTmStats();
+      // Phase B: live update — re-fetch the catalog into i18next so React
+      // re-renders this tab AND broadcast to other open tabs.
+      await refreshLocale(lang);
     } catch (e) {
       const msg = e?.message || '';
       if (/rate limit/i.test(msg)) toast.error(t('i18n.rateLimited'));
@@ -147,6 +172,8 @@ export default function I18nAdminPanel() {
       const detail = s ? t('i18n.regenDetail', { translated: s.translated, kept: s.kept }) : '';
       toast.success(t('i18n.regenerated', { lang, count: data.keyCount || '?' }) + detail);
       await loadLocales();
+      await loadTmStats();
+      await refreshLocale(lang);
     } catch (e) {
       toast.error(e?.message || t('i18n.regenerateFailed'));
     } finally {
@@ -166,6 +193,14 @@ export default function I18nAdminPanel() {
       const totalTranslated = results.reduce((sum, r) => sum + (r.stats?.translated || 0), 0);
       toast.success(t('i18n.refreshAllSummary', { ok: okCount, skip: skipCount, err: errCount, count: totalTranslated }));
       await loadLocales();
+      await loadTmStats();
+      // Phase B: refresh every locale that the worker actually regenerated.
+      for (const r of results) {
+        if (r.ok && r.lang) {
+          // eslint-disable-next-line no-await-in-loop
+          await refreshLocale(r.lang);
+        }
+      }
     } catch (e) {
       toast.error(e.message || t('i18n.refreshAllFailed'));
     } finally {
@@ -173,18 +208,51 @@ export default function I18nAdminPanel() {
     }
   }
 
-  async function purge(lang) {
-    if (!confirm(t('i18n.purgeConfirm', { lang }))) return;
+  // "Delete & reset" — drops R2 + every override row, busts the edge.
+  async function purgeReset(lang) {
+    if (!confirm(t('i18n.purgeResetConfirm', { lang }))) return;
     try {
       await apiRequest(`/api/admin/i18n/locale/${encodeURIComponent(lang)}`, { method: 'DELETE' });
       await loadLocales();
+      await refreshLocale(lang);
     } catch (e) {
       toast.error(e.message || t('i18n.purgeFailed'));
     }
   }
 
+  // Phase C: edge-only purge, leaves R2 + overrides intact.
+  async function purgeEdge(lang) {
+    if (!confirm(t('i18n.purgeEdgeConfirm', { lang }))) return;
+    try {
+      const res = await apiRequest(`/api/admin/i18n/purge-edge/${encodeURIComponent(lang)}`, { method: 'POST' });
+      const data = res?.data || res;
+      if (data?.ok) toast.success(t('i18n.purgeEdgeOk', { lang }));
+      else toast.error(t('i18n.purgeEdgeFailed', { lang }));
+    } catch (e) {
+      toast.error(e.message || t('i18n.purgeEdgeFailed', { lang }));
+    }
+  }
+
   const totalStale = locales.reduce((s, l) => s + (l.stale || 0) + (l.added || 0), 0);
   const staleLocaleCount = locales.filter((l) => !l.upToDate).length;
+
+  // Editor sub-view short-circuits the main render so the user has a focused
+  // workspace for per-key edits without the locales table competing for room.
+  if (editor) {
+    return (
+      <StringEditor
+        lang={editor.lang}
+        initialNamespace={editor.namespace || 'common'}
+        namespaces={namespaces}
+        onClose={async () => {
+          setEditor(null);
+          await loadLocales();
+          await loadTmStats();
+          await refreshLocale(editor.lang);
+        }}
+      />
+    );
+  }
 
   return (
     <div className="oa-section">
@@ -254,6 +322,8 @@ export default function I18nAdminPanel() {
         </div>
       )}
 
+      <TmStatsCard stats={tmStats} t={t} />
+
       <div className="oa-card" style={{ marginTop: '1rem' }}>
         <h3>{t('i18n.cachedLocales')}</h3>
         {loading ? (
@@ -294,13 +364,328 @@ export default function I18nAdminPanel() {
                     <td>{(l.size / 1024).toFixed(1)} KB</td>
                     <td>{l.uploaded ? new Date(l.uploaded).toLocaleString() : '—'}</td>
                     <td style={{ textAlign: 'end' }}>
-                      <button className="oa-btn oa-btn-outline" disabled={busyLang === l.lang} onClick={() => regenerate(l.lang)} style={{ marginInlineEnd: 6 }}>
+                      <button className="oa-btn oa-btn-outline" disabled={busyLang === l.lang} onClick={() => regenerate(l.lang)} style={{ marginInlineEnd: 6, marginBlockEnd: 4 }}>
                         {busyLang === l.lang ? t('i18n.regenerating') : t('i18n.regenerate')}
                       </button>
-                      <button className="oa-btn oa-btn-outline" disabled={busyLang === l.lang} onClick={() => forceRegenerate(l.lang)} style={{ marginInlineEnd: 6 }}>
+                      <button className="oa-btn oa-btn-outline" disabled={busyLang === l.lang} onClick={() => forceRegenerate(l.lang)} style={{ marginInlineEnd: 6, marginBlockEnd: 4 }}>
                         {t('i18n.forceRegenerate')}
                       </button>
-                      <button className="oa-btn oa-btn-outline" onClick={() => purge(l.lang)}>{t('i18n.purge')}</button>
+                      <button
+                        className="oa-btn oa-btn-outline"
+                        onClick={() => setEditor({ lang: l.lang, namespace: selectedNs || 'common' })}
+                        style={{ marginInlineEnd: 6, marginBlockEnd: 4 }}
+                      >
+                        {t('i18n.editTranslations')}
+                      </button>
+                      <button className="oa-btn oa-btn-outline" onClick={() => purgeEdge(l.lang)} style={{ marginInlineEnd: 6, marginBlockEnd: 4 }}>
+                        {t('i18n.purgeEdge')}
+                      </button>
+                      <button className="oa-btn oa-btn-outline" onClick={() => purgeReset(l.lang)} style={{ marginBlockEnd: 4 }}>
+                        {t('i18n.purgeReset')}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* --------------------------------------------------------------------- */
+/* Phase D: TM efficiency stats card.                                    */
+/* --------------------------------------------------------------------- */
+function TmStatsCard({ stats, t }) {
+  if (!stats) return null;
+  const empty = !stats.rows;
+  return (
+    <div className="oa-card" style={{ marginTop: '1rem' }}>
+      <h3>{t('i18n.tmTitle')}</h3>
+      <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '1rem' }}>{t('i18n.tmDesc')}</p>
+      {empty ? (
+        <p className="oa-empty">{t('i18n.tmEmpty')}</p>
+      ) : (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
+            <Stat label={t('i18n.tmRows')} value={fmtNumber(stats.rows)} />
+            <Stat label={t('i18n.tmHits')} value={fmtNumber(stats.hits)} />
+            <Stat label={t('i18n.tmCharsSaved')} value={fmtNumber(stats.charsSaved)} />
+            <Stat label={t('i18n.tmCostSaved')} value={fmtUSD(stats.costSavedUSD)} accent />
+          </div>
+          {stats.byLang && stats.byLang.length > 0 && (
+            <div style={{ marginTop: 12 }}>
+              <div style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: 6 }}>{t('i18n.tmByLang')}</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {stats.byLang.slice(0, 8).map((row) => (
+                  <span
+                    key={row.lang}
+                    style={{
+                      display: 'inline-flex',
+                      gap: 6,
+                      fontSize: '0.8rem',
+                      padding: '4px 10px',
+                      background: '#f1f5f9',
+                      borderRadius: 999,
+                      color: '#0f172a',
+                    }}
+                  >
+                    <code>{row.lang}</code>
+                    <span style={{ color: '#64748b' }}>·</span>
+                    <span>{fmtNumber(row.rows)}</span>
+                    <span style={{ color: '#64748b' }}>·</span>
+                    <span>{fmtNumber(row.hits)}↻</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function Stat({ label, value, accent }) {
+  return (
+    <div
+      style={{
+        background: accent ? '#ecfdf5' : '#f8fafc',
+        border: `1px solid ${accent ? '#a7f3d0' : '#e2e8f0'}`,
+        borderRadius: 8,
+        padding: '10px 12px',
+      }}
+    >
+      <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{label}</div>
+      <div style={{ fontSize: '1.25rem', fontWeight: 600, color: accent ? '#047857' : '#0f172a' }}>{value}</div>
+    </div>
+  );
+}
+
+/* --------------------------------------------------------------------- */
+/* Phase A: per-key string editor.                                       */
+/* --------------------------------------------------------------------- */
+function StringEditor({ lang, initialNamespace, namespaces, onClose }) {
+  const { t } = useTranslation(['owner', 'common']);
+  const toast = useToast();
+  const [ns, setNs] = useState(initialNamespace);
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [drafts, setDrafts] = useState({}); // path -> in-progress edit value
+  const [busyPath, setBusyPath] = useState(null);
+  const [filter, setFilter] = useState('');
+
+  async function load() {
+    setLoading(true);
+    try {
+      const res = await apiRequest(`/api/admin/i18n/strings/${encodeURIComponent(lang)}?namespace=${encodeURIComponent(ns)}`);
+      const data = res?.data || res;
+      setRows(data?.rows || []);
+      setDrafts({});
+    } catch (e) {
+      toast.error(e.message || 'Load failed');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [lang, ns]);
+
+  // Save the current draft as a manual override. Refreshing this locale into
+  // i18next at the end means the parent admin tab updates immediately.
+  async function save(path) {
+    const value = drafts[path];
+    if (typeof value !== 'string' || value.length === 0) return;
+    setBusyPath(path);
+    try {
+      const res = await apiRequest(`/api/admin/i18n/translate-key/${encodeURIComponent(lang)}`, {
+        method: 'POST',
+        body: JSON.stringify({ path, value }),
+      });
+      const data = res?.data || res;
+      // Reflect change locally without a full reload — keeps cursor position
+      // and the user's edit context intact.
+      setRows((prev) => prev.map((r) => (r.path === path ? { ...r, current: data.value, hasOverride: true } : r)));
+      setDrafts((prev) => { const c = { ...prev }; delete c[path]; return c; });
+      toast.success(t('i18n.saveOk', { path }));
+      await refreshLocale(lang);
+    } catch (e) {
+      toast.error(e?.message || t('i18n.stringSaveFailed'));
+    } finally {
+      setBusyPath(null);
+    }
+  }
+
+  // Re-translate a single key from EN through Microsoft, no override stored.
+  async function retranslate(path) {
+    setBusyPath(path);
+    try {
+      const res = await apiRequest(`/api/admin/i18n/translate-key/${encodeURIComponent(lang)}`, {
+        method: 'POST',
+        body: JSON.stringify({ path }),
+      });
+      const data = res?.data || res;
+      setRows((prev) => prev.map((r) => (r.path === path ? { ...r, current: data.value, hasOverride: false } : r)));
+      setDrafts((prev) => { const c = { ...prev }; delete c[path]; return c; });
+      toast.success(t('i18n.retranslateOk', { path }));
+      await refreshLocale(lang);
+    } catch (e) {
+      const msg = e?.message || '';
+      if (/rate limit/i.test(msg)) toast.error(t('i18n.rateLimited'));
+      else toast.error(msg || t('i18n.stringRetranslateFailed'));
+    } finally {
+      setBusyPath(null);
+    }
+  }
+
+  // Clear an existing override AND re-translate, in one round-trip.
+  async function clearOverride(path) {
+    setBusyPath(path);
+    try {
+      const res = await apiRequest(
+        `/api/admin/i18n/override/${encodeURIComponent(lang)}?path=${encodeURIComponent(path)}`,
+        { method: 'DELETE' },
+      );
+      const data = res?.data || res;
+      setRows((prev) => prev.map((r) => (r.path === path ? { ...r, current: data.value, hasOverride: false } : r)));
+      setDrafts((prev) => { const c = { ...prev }; delete c[path]; return c; });
+      toast.success(t('i18n.clearOverrideOk', { path }));
+      await refreshLocale(lang);
+    } catch (e) {
+      const msg = e?.message || '';
+      if (/rate limit/i.test(msg)) toast.error(t('i18n.rateLimited'));
+      else toast.error(msg || t('i18n.stringRetranslateFailed'));
+    } finally {
+      setBusyPath(null);
+    }
+  }
+
+  const filtered = filter
+    ? rows.filter((r) => r.path.toLowerCase().includes(filter.toLowerCase()) ||
+                         (r.en || '').toLowerCase().includes(filter.toLowerCase()) ||
+                         (r.current || '').toLowerCase().includes(filter.toLowerCase()))
+    : rows;
+
+  return (
+    <div className="oa-section">
+      <div className="oa-card">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+          <div>
+            <h3 style={{ margin: 0 }}>{t('i18n.editTranslationsTitle', { lang })}</h3>
+            <p style={{ fontSize: '0.85rem', color: '#64748b', marginTop: 6, marginBottom: 0 }}>
+              {t('i18n.editTranslationsDesc')}
+            </p>
+          </div>
+          <button className="oa-btn oa-btn-outline" onClick={onClose}>{t('i18n.back')}</button>
+        </div>
+        <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          <div style={{ flex: '0 0 220px' }}>
+            <label>{t('i18n.namespaceLabel')}</label>
+            <select
+              value={ns}
+              onChange={(e) => setNs(e.target.value)}
+              style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #e2e8f0' }}
+            >
+              {namespaces.map((n) => (
+                <option key={n.name} value={n.name}>{n.name} ({n.keyCount})</option>
+              ))}
+            </select>
+          </div>
+          <div style={{ flex: '1 1 220px' }}>
+            <label>Filter</label>
+            <input
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              placeholder="key, English, or current value…"
+              style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #e2e8f0' }}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="oa-card" style={{ marginTop: '1rem' }}>
+        {loading ? (
+          <p className="oa-empty">{t('i18n.stringsLoading')}</p>
+        ) : filtered.length === 0 ? (
+          <p className="oa-empty">{t('i18n.stringsEmpty')}</p>
+        ) : (
+          <table className="oa-table" style={{ width: '100%' }}>
+            <thead>
+              <tr>
+                <th style={{ textAlign: 'start', width: '22%' }}>{t('i18n.stringsCol.key')}</th>
+                <th style={{ textAlign: 'start', width: '32%' }}>{t('i18n.stringsCol.english')}</th>
+                <th style={{ textAlign: 'start', width: '32%' }}>{t('i18n.stringsCol.current', { lang })}</th>
+                <th style={{ textAlign: 'end', width: '14%' }}>{t('i18n.stringsCol.actions')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((r) => {
+                const draft = drafts[r.path];
+                const value = typeof draft === 'string' ? draft : (r.current ?? '');
+                const dirty = typeof draft === 'string' && draft !== (r.current ?? '');
+                return (
+                  <tr key={r.path}>
+                    <td style={{ fontFamily: 'monospace', fontSize: '0.78rem', verticalAlign: 'top', wordBreak: 'break-all' }}>
+                      {r.path}
+                      {r.hasOverride && (
+                        <div style={{ marginTop: 4 }}>
+                          <span style={{
+                            fontSize: '0.7rem',
+                            padding: '2px 6px',
+                            background: '#fef3c7',
+                            border: '1px solid #fcd34d',
+                            borderRadius: 4,
+                            color: '#92400e',
+                          }}>{t('i18n.overrideBadge')}</span>
+                        </div>
+                      )}
+                    </td>
+                    <td style={{ verticalAlign: 'top', fontSize: '0.85rem', color: '#334155' }}>{r.en}</td>
+                    <td style={{ verticalAlign: 'top' }}>
+                      <textarea
+                        value={value}
+                        onChange={(e) => setDrafts((prev) => ({ ...prev, [r.path]: e.target.value }))}
+                        rows={Math.min(4, Math.max(1, Math.ceil((value || '').length / 60)))}
+                        style={{
+                          width: '100%',
+                          padding: '6px 8px',
+                          fontSize: '0.85rem',
+                          borderRadius: 6,
+                          border: dirty ? '1px solid #f59e0b' : '1px solid #e2e8f0',
+                          fontFamily: 'inherit',
+                          resize: 'vertical',
+                        }}
+                      />
+                    </td>
+                    <td style={{ textAlign: 'end', verticalAlign: 'top' }}>
+                      <button
+                        className="oa-btn oa-btn-primary"
+                        onClick={() => save(r.path)}
+                        disabled={!dirty || busyPath === r.path}
+                        style={{ marginBlockEnd: 4, marginInlineEnd: 4 }}
+                      >
+                        {t('i18n.save')}
+                      </button>
+                      <button
+                        className="oa-btn oa-btn-outline"
+                        onClick={() => retranslate(r.path)}
+                        disabled={busyPath === r.path}
+                        style={{ marginBlockEnd: 4, marginInlineEnd: 4 }}
+                      >
+                        {t('i18n.retranslate')}
+                      </button>
+                      {r.hasOverride && (
+                        <button
+                          className="oa-btn oa-btn-outline"
+                          onClick={() => clearOverride(r.path)}
+                          disabled={busyPath === r.path}
+                          style={{ marginBlockEnd: 4 }}
+                        >
+                          {t('i18n.clearOverride')}
+                        </button>
+                      )}
                     </td>
                   </tr>
                 );

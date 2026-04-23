@@ -187,15 +187,96 @@ function initWithNamespaces(namespaces, options = {}) {
         // against an endpoint that returns SPA HTML on Pages and crashes init.
         convertDetectedLanguage: (lng) => normalizeLocale(lng),
       },
-      react: { useSuspense: false },
+      // bindI18n: re-render React components on languageChanged AND `loaded`,
+      // so that `refreshLocale()` (which calls reloadResources) instantly
+      // re-paints the UI without a manual page refresh after the admin
+      // regenerates a locale.
+      react: { useSuspense: false, bindI18n: 'languageChanged loaded' },
       ...options,
     })
     .then(() => {
       applyDirection(i18n.language);
       i18n.on('languageChanged', applyDirection);
+      // Open the cross-tab channel exactly once, after init succeeds, so that
+      // a regenerate in the admin tab triggers refresh in shopper / dashboard
+      // tabs that already have i18next live.
+      ensureI18nChannel();
       return i18n;
     });
   return initPromise;
+}
+
+// --- Live update layer (Phase B) ---------------------------------------------
+//
+// `refreshLocale(lang)` clears the in-memory merged-catalog cache and asks
+// i18next to re-fetch the namespaces for that language. Combined with the
+// `bindI18n: 'languageChanged loaded'` option above, every component using
+// `useTranslation()` re-renders the moment the new strings land.
+//
+// A single same-origin BroadcastChannel keeps additional tabs in sync without
+// polling. The originating tab marks the message so we never refresh twice in
+// the same tab if the broadcast loops back.
+
+let i18nChannel = null;
+function ensureI18nChannel() {
+  if (i18nChannel) return i18nChannel;
+  if (typeof BroadcastChannel === 'undefined') return null;
+  try {
+    i18nChannel = new BroadcastChannel('flomerce-i18n');
+    i18nChannel.addEventListener('message', (ev) => {
+      const data = ev?.data || {};
+      if (data.type !== 'invalidate') return;
+      // Skip messages we sent ourselves to avoid an echo refresh.
+      if (data.origin && data.origin === channelOriginId) return;
+      if (data.lang) _refreshLocaleInternal(data.lang, /* broadcast */ false);
+    });
+  } catch (e) {
+    console.warn('[i18n] BroadcastChannel init failed:', e);
+    i18nChannel = null;
+  }
+  return i18nChannel;
+}
+
+// Random per-tab origin id used to filter out our own broadcast echoes.
+const channelOriginId = (typeof crypto !== 'undefined' && crypto.randomUUID)
+  ? crypto.randomUUID()
+  : `${Date.now()}-${Math.random()}`;
+
+async function _refreshLocaleInternal(lang, broadcast) {
+  const norm = normalizeLocale(lang);
+  // English is bundled and always fresh — nothing to refetch.
+  if (!norm || norm === 'en') return;
+  localeCache.delete(norm);
+  try {
+    // reloadResources triggers backendPlugin.read() for every loaded namespace
+    // of `norm`, which in turn re-fetches the merged catalog from the worker.
+    await i18n.reloadResources(norm);
+    // If the user is currently viewing this language, fire a `loaded` event
+    // so `bindI18n` repaints right now (some i18next versions debounce).
+    if (i18n.resolvedLanguage === norm || i18n.language === norm) {
+      i18n.emit('loaded');
+    }
+  } catch (e) {
+    console.warn('[i18n] reloadResources failed for', norm, e);
+  }
+  if (broadcast) {
+    const ch = ensureI18nChannel();
+    try {
+      ch?.postMessage({ type: 'invalidate', lang: norm, origin: channelOriginId });
+    } catch (e) {
+      console.warn('[i18n] BroadcastChannel postMessage failed:', e);
+    }
+  }
+}
+
+/**
+ * Public API: refresh a single language's catalog in-place. Call this from the
+ * owner admin after a regenerate / per-key edit so the UI updates instantly,
+ * with no manual reload. Other open tabs receive a BroadcastChannel ping and
+ * refresh themselves the same way.
+ */
+export async function refreshLocale(lang) {
+  return _refreshLocaleInternal(lang, /* broadcast */ true);
 }
 
 export function initI18n(options = {}) {
