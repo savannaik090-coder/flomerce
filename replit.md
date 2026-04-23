@@ -120,6 +120,31 @@ Flomerce utilizes a shared shard-based D1 database architecture where multiple s
 - **Storefront vite config** has a `resolve.alias` block pointing `react`, `react-dom`, and the JSX runtimes back to its own `node_modules/` so files in `frontend/src/shared/` resolve React correctly.
 - **Migration goal:** progressively replace remaining `window.alert(...)` / `window.confirm(...)` / one-off inline modals with `useToast()` / `useConfirm()` / `<AlertModal>`.
 
+### Internationalization (i18n) — How translations actually work
+- **Source of truth:** Only English JSON files exist in the repo, at `frontend/src/shared/i18n/locales/en/*.json` (admin.json, storefront.json, nav.json, etc.). There are NO checked-in `hi/`, `es/`, `fr/` etc. folders.
+- **Backend bundles `EN_CATALOG`:** `backend/workers/platform/i18n-worker.js` imports every `en/*.json` file at build time and assembles them into one `EN_CATALOG` object. This means **adding/changing any English key requires a backend redeploy** — the Worker won't know the key exists until it's rebuilt.
+- **Non-English locales are AI-generated on demand:** When a browser asks for `/api/i18n/locale/hi`, the backend either serves the cached Hindi JSON (D1) or lazy-generates it via the LLM translator (`backend/utils/translator.js`), then caches the result.
+- **Per-key SHA hashing:** Each translated string is fingerprinted by a SHA of its English source. When the source string changes, its hash changes, and only those affected keys get re-translated on the next regenerate. Unchanged keys are skipped (cheap and fast).
+- **Same endpoint serves admin + storefront:** Both the merchant admin panel and shopper-facing site fetch from `/api/i18n/locale/:lang`. The response contains every namespace (admin, storefront, nav, etc.) for that language. There is no separate "admin-only" or "storefront-only" translation file.
+
+**Three regenerate controls in the platform admin (`/api/admin/i18n/...`):**
+1. **Refresh All** (`POST /api/admin/i18n/refresh-all`) — runs a SMART regenerate for every cached language. Only translates strings whose English hash changed since last run. **This is what you want after adding new English keys.** Cheap, fast.
+2. **Regenerate per language** (`POST /api/admin/i18n/regenerate/:lang`) — same smart logic but scoped to one language. Optional `?namespace=admin` to scope further.
+3. **Force Regenerate** (`POST /api/admin/i18n/force-regenerate/:lang`) — throws away every cached translation for that language and re-translates from scratch. Slow and expensive. Only needed if translations got corrupted, the translation pipeline version bumped, or you explicitly want a clean re-do.
+
+**Workflow when adding new translatable strings:**
+1. Add the English keys to the relevant `en/*.json` file.
+2. Use them in the React component via `useTranslation('namespace')` + `t('key.path')`.
+3. Redeploy the **backend** (so `EN_CATALOG` rebuilds with the new keys).
+4. Redeploy the **frontend** (so the React code that calls `t()` ships).
+5. In the platform admin, click **Refresh All** ONCE. Smart regen translates only the new keys for every cached language.
+6. Merchants using English see new strings immediately after the frontend ships — no regenerate needed for them. Merchants on other languages see the new translated strings after step 5.
+
+### Production vs Local Development
+- **Always plan and reason for production first.** This codebase runs on Cloudflare Pages + Workers + D1 + R2. The local Wrangler dev mode is a Miniflare simulation and does NOT replicate production behavior for: edge cache (Cloudflare CDN cache for `/api/i18n/locale/:lang` and other public endpoints), custom domain SSL provisioning, scheduled (cron) triggers, D1 sharding routing in production, R2 region pinning, and rate limits.
+- **Code or DB changes don't reach the live site until both the backend Worker and frontend Pages are redeployed.** Local restarts only affect the Miniflare simulation.
+- **For production debugging,** use `fetch_deployment_logs` (Worker logs) and the platform admin's i18n staleness panel rather than relying on local console output.
+
 ## External Dependencies
 - **Cloudflare Pages:** Frontend hosting.
 - **Cloudflare Workers:** Backend serverless compute.
