@@ -46,12 +46,19 @@ function applyDirection(lng) {
 // per-namespace `read()` only triggers ONE HTTP request per locale.
 const localeCache = new Map();
 
-async function loadMergedLocale(lng) {
-  if (localeCache.has(lng)) return localeCache.get(lng);
+// `forceNetwork=true` is used by the admin refresh path. The locale endpoint
+// is served with a 7-day Cache-Control so first loads are instant offline-friendly,
+// but that same header would otherwise make the browser hand back a stale copy
+// from disk for a week after a regenerate — even though R2 and the Cloudflare
+// edge have already been purged. Passing `cache: 'reload'` forces a full
+// network round-trip (the server's ETag still keeps it cheap on the wire).
+async function loadMergedLocale(lng, { forceNetwork = false } = {}) {
+  if (!forceNetwork && localeCache.has(lng)) return localeCache.get(lng);
   const promise = (async () => {
     try {
       const res = await fetch(`/api/i18n/locale/${encodeURIComponent(lng)}`, {
         headers: { Accept: 'application/json' },
+        cache: forceNetwork ? 'reload' : 'default',
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const ct = res.headers.get('content-type') || '';
@@ -248,6 +255,12 @@ async function _refreshLocaleInternal(lang, broadcast) {
   if (!norm || norm === 'en') return;
   localeCache.delete(norm);
   try {
+    // Pre-populate localeCache with a forced-network fetch BEFORE
+    // reloadResources runs. The backend plugin's read() hits the cache and
+    // gets the fresh catalog without us having to plumb forceNetwork through
+    // i18next's internal call chain. Without this, the browser's HTTP disk
+    // cache (max-age=604800) would serve a stale copy for up to 7 days.
+    await loadMergedLocale(norm, { forceNetwork: true });
     // reloadResources triggers backendPlugin.read() for every loaded namespace
     // of `norm`, which in turn re-fetches the merged catalog from the worker.
     await i18n.reloadResources(norm);
