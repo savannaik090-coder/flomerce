@@ -563,6 +563,69 @@ export async function handleI18nPublic(request, env, path, ctx) {
 
   const parts = path.split('/').filter(Boolean);
 
+  // GET /api/i18n/_diag/tm/:lang  — public read-only TM probe. Returns the
+  // first 5 rows actually stored in translation_memory for `lang` plus the
+  // hashes the live EN catalog would compute for the same source strings.
+  // If the two columns don't match, we have a hash format mismatch (different
+  // function, normalization, or schema). Counts confirm whether the table is
+  // really populated for this lang as the TM stats card claims.
+  if (parts[2] === '_diag' && parts[3] === 'tm' && parts[4]) {
+    const lang = parts[4];
+    if (!isValidLocale(lang) || lang === 'en') {
+      return errorResponse('Invalid locale code', 400);
+    }
+    if (!env?.DB) {
+      return new Response(JSON.stringify({ error: 'no DB binding' }), { status: 500 });
+    }
+    try {
+      const cnt = await env.DB.prepare(
+        `SELECT COUNT(*) AS n FROM translation_memory WHERE target_lang = ?`,
+      ).bind(lang).first();
+      const sample = await env.DB.prepare(
+        `SELECT source_hash, source_text FROM translation_memory
+           WHERE target_lang = ? LIMIT 5`,
+      ).bind(lang).all();
+      const rows = sample.results || [];
+      const recomputed = await Promise.all(
+        rows.map(async (r) => ({
+          stored_hash: r.source_hash,
+          stored_text_preview: String(r.source_text || '').slice(0, 60),
+          recomputed_hash: await hashString(r.source_text),
+          match: r.source_hash === (await hashString(r.source_text)),
+        })),
+      );
+      // Also probe a known live EN string (the i18n title) to see if its hash
+      // is present in TM at all.
+      const liveSample = EN_CATALOG?.owner?.i18n?.title || 'Translations';
+      const liveHash = await hashString(liveSample);
+      const liveLookup = await env.DB.prepare(
+        `SELECT source_hash FROM translation_memory
+           WHERE target_lang = ? AND source_hash = ?`,
+      ).bind(lang, liveHash).first();
+      const body = JSON.stringify({
+        diag: 'tm-probe-v1',
+        lang,
+        rowsForLang: cnt?.n ?? 0,
+        sample: recomputed,
+        liveProbe: {
+          text: liveSample,
+          computed_hash: liveHash,
+          found_in_tm: !!liveLookup,
+        },
+      }, null, 2);
+      return new Response(body, {
+        status: 200,
+        headers: {
+          ...corsHeaders(request),
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-store, max-age=0',
+        },
+      });
+    } catch (e) {
+      return errorResponse(`tm diag failed: ${e?.message || e}`, 500);
+    }
+  }
+
   // GET /api/i18n/_diag/preview/:lang  — public read-only diagnostic. Returns
   // the same TM-aware preview numbers as the admin endpoint, minus auth, so
   // operators can verify on a phone (no DevTools) which version of the worker
