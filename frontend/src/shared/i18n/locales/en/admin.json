@@ -590,5 +590,101 @@
       "saveFailed": "Failed to save product: {{message}}",
       "uploadFailed": "Upload failed: {{message}}"
     }
+  },
+  "saveBar": {
+    "unsavedChanges": "You have unsaved changes",
+    "saving": "Saving...",
+    "save": "Save Changes",
+    "saveAll": "Save All Changes",
+    "allSaved": "All Changes Saved"
+  },
+  "confirmModal": {
+    "defaultTitle": "Are you sure?",
+    "cancel": "Cancel",
+    "confirmDelete": "Yes, Delete"
+  },
+  "sectionToggle": {
+    "defaultLabel": "Show this section",
+    "ariaEnable": "Enable section",
+    "ariaDisable": "Disable section"
+  },
+  "featureGate": {
+    "thisFeature": "This feature",
+    "requires": "{{feature}} requires {{plan}}",
+    "upgradeBody": "Upgrade your plan to {{plan}} to unlock {{feature}} and more.",
+    "upgradeButton": "Upgrade to {{plan}}"
+  },
+  "revenueSection": {
+    "rangeToday": "Today",
+    "rangeWeek": "This Week",
+    "rangeMonth": "This Month",
+    "rangeAll": "All Time",
+    "rangeCustom": "Custom",
+    "dateTo": "to",
+    "loading": "Loading analytics...",
+    "noData": "No data available",
+    "noDataShort": "No data",
+    "noPeriodData": "No data for this period",
+    "noProductData": "No product data",
+    "ordersCount": "{{count}} orders",
+    "totalRevenue": "Total Revenue",
+    "paidOrders": "{{count}} paid orders",
+    "totalOrders": "Total Orders",
+    "allStatuses": "all statuses",
+    "avgOrderValue": "Avg Order Value",
+    "perPaidOrder": "per paid order",
+    "gstCollected": "GST Collected",
+    "totalTax": "total tax",
+    "revenueTrend": "Revenue Trend",
+    "paymentMethods": "Payment Methods",
+    "orderStatus": "Order Status",
+    "topProducts": "Top Selling Products",
+    "product": "Product",
+    "qtySold": "Qty Sold",
+    "revenue": "Revenue",
+    "gstBreakdown": "GST Breakdown",
+    "cgst": "CGST",
+    "sgst": "SGST",
+    "igst": "IGST",
+    "totalGstCollected": "Total GST Collected:",
+    "shippingCollected": "Shipping Collected",
+    "discountsGiven": "Discounts Given",
+    "taxCollected": "Tax Collected",
+    "status": {
+      "pending": "pending",
+      "confirmed": "confirmed",
+      "packed": "packed",
+      "shipped": "shipped",
+      "delivered": "delivered",
+      "cancelled": "cancelled",
+      "returned": "returned",
+      "return_requested": "return requested",
+      "cancellation_requested": "cancellation requested",
+      "unknown": "unknown"
+    },
+    "payment": {
+      "razorpay": "Razorpay",
+      "cod": "Cash on Delivery",
+      "stripe": "Stripe",
+      "unknown": "Unknown"
+    }
+  },
+  "linkSelector": {
+    "none": "None (no redirect)",
+    "groupPages": "Pages",
+    "groupCategories": "Categories",
+    "groupSubcategories": "Subcategories",
+    "groupOther": "Other",
+    "pageHome": "Home",
+    "pageAbout": "About Us",
+    "pageContact": "Contact",
+    "pageCart": "Cart",
+    "pageWishlist": "Wishlist",
+    "pageSignup": "Sign Up",
+    "pageBookAppointment": "Book Appointment",
+    "pageOrderTrack": "Track Order",
+    "pageProfile": "My Profile",
+    "customUrl": "Custom URL...",
+    "customPlaceholder": "https://... or /page-path"
   }
 }
