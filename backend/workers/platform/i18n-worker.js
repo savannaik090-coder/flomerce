@@ -439,12 +439,57 @@ async function previewRegenerate(env, lang, { force = false, namespace = null } 
     valuesToTranslate = filteredValues;
   }
 
+  // Phase D: consult Translation Memory before computing cost. The actual
+  // regenerate path skips any string already present in TM for this target
+  // language, so the preview must do the same or it will scare operators
+  // with worst-case numbers (e.g. Force regen on a fully-cached language
+  // would otherwise quote the full catalog cost when the real run pays $0).
+  // Lookup is keyed by content hash, exactly as translator.js does it.
+  let tmHits = 0;
+  let tmHitChars = 0;
+  let billablePaths = pathsToTranslate;
+  let billableValues = valuesToTranslate;
+  if (env?.DB && lang && pathsToTranslate.length > 0) {
+    try {
+      const stringValues = valuesToTranslate.map((v) => (typeof v === 'string' ? v : ''));
+      const hashes = await Promise.all(stringValues.map(hashString));
+      const hitSet = new Set();
+      const TM_BATCH = 100;
+      for (let i = 0; i < hashes.length; i += TM_BATCH) {
+        const group = hashes.slice(i, i + TM_BATCH);
+        if (!group.length) continue;
+        const placeholders = group.map(() => '?').join(',');
+        const { results } = await env.DB.prepare(
+          `SELECT source_hash FROM translation_memory
+             WHERE target_lang = ? AND source_hash IN (${placeholders})`,
+        ).bind(lang, ...group).all();
+        for (const r of (results || [])) hitSet.add(r.source_hash);
+      }
+      const remainPaths = [];
+      const remainValues = [];
+      for (let i = 0; i < pathsToTranslate.length; i++) {
+        if (hitSet.has(hashes[i])) {
+          tmHits += 1;
+          tmHitChars += stringValues[i] ? protectPlaceholders(stringValues[i]).length : 0;
+        } else {
+          remainPaths.push(pathsToTranslate[i]);
+          remainValues.push(valuesToTranslate[i]);
+        }
+      }
+      billablePaths = remainPaths;
+      billableValues = remainValues;
+    } catch (e) {
+      // TM lookup is non-fatal here too — fall back to worst-case preview.
+      console.warn('[i18n preview] TM consult failed:', e?.message || e);
+    }
+  }
+
   // Microsoft bills based on the chars actually sent over the wire, which
   // includes the <span class="notranslate"> wrapper that protectPlaceholders
   // adds around every {{token}}. Count post-wrap so the cost estimate
   // matches the real translator input — without this, strings with many
   // placeholders are systematically under-billed in the preview.
-  const charCount = valuesToTranslate.reduce(
+  const charCount = billableValues.reduce(
     (sum, v) => sum + (typeof v === 'string' ? protectPlaceholders(v).length : 0),
     0,
   );
@@ -456,9 +501,11 @@ async function previewRegenerate(env, lang, { force = false, namespace = null } 
     willFullRetranslate,
     pipelineMismatch,
     neverGenerated,
-    keysToTranslate: pathsToTranslate.length,
-    keysReused: paths.length - pathsToTranslate.length,
+    keysToTranslate: billablePaths.length,
+    keysReused: paths.length - billablePaths.length,
     totalKeysInScope: paths.length,
+    tmHits,
+    tmCharsAvoided: tmHitChars,
     charCount,
     estimatedCostUSD: Number(estimatedCostUSD.toFixed(4)),
     pricePerMillionCharsUSD: COST_PER_MILLION_CHARS_USD,
