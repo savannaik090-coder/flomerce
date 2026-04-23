@@ -46,55 +46,6 @@ function applyDirection(lng) {
 // per-namespace `read()` only triggers ONE HTTP request per locale.
 const localeCache = new Map();
 
-// Per-locale version stamps from /api/i18n/manifest. We append `?v=<hash>`
-// to each locale URL so a regenerate on the backend produces a NEW URL —
-// guaranteeing a cache miss in the browser disk cache (the locale endpoint
-// itself is served with a 7-day Cache-Control for cold-start speed).
-//
-// versions is the latest manifest snapshot. manifestPromise is the in-flight
-// fetch (if any), so concurrent boots don't fan out duplicate manifest requests.
-const versions = new Map();
-let manifestPromise = null;
-let manifestLastFetchedAt = 0;
-const MANIFEST_REFETCH_MIN_MS = 5_000; // throttle focus refetches
-
-async function fetchManifest() {
-  try {
-    const res = await fetch('/api/i18n/manifest', {
-      headers: { Accept: 'application/json' },
-      cache: 'no-store',
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const json = await res.json();
-    const next = json?.versions || {};
-    const changed = [];
-    for (const [lang, v] of Object.entries(next)) {
-      const prev = versions.get(lang);
-      if (prev !== v) {
-        // A locale we already fetched into the in-memory catalog cache must
-        // be refreshed whenever its version stamp moves — including the case
-        // where the locale was previously absent from the manifest (newly
-        // generated since boot) but we already have a stale unversioned
-        // entry sitting in localeCache. Without this, `?v=` only kicks in
-        // after the next page reload, defeating live refresh.
-        if (localeCache.has(lang)) changed.push(lang);
-        versions.set(lang, v);
-      }
-    }
-    manifestLastFetchedAt = Date.now();
-    return { versions: next, changed };
-  } catch (err) {
-    console.warn('[i18n] manifest fetch failed:', err);
-    return { versions: {}, changed: [] };
-  }
-}
-
-function ensureManifest() {
-  if (manifestPromise) return manifestPromise;
-  manifestPromise = fetchManifest().finally(() => { manifestPromise = null; });
-  return manifestPromise;
-}
-
 // `forceNetwork=true` is used by the admin refresh path. The locale endpoint
 // is served with a 7-day Cache-Control so first loads are instant offline-friendly,
 // but that same header would otherwise make the browser hand back a stale copy
@@ -105,17 +56,7 @@ async function loadMergedLocale(lng, { forceNetwork = false } = {}) {
   if (!forceNetwork && localeCache.has(lng)) return localeCache.get(lng);
   const promise = (async () => {
     try {
-      // Wait for the in-flight manifest (if any) so the very first locale
-      // fetch on cold boot already carries a version stamp. Once cached,
-      // ensureManifest() is a no-op pointing at the resolved promise.
-      if (!versions.has(lng)) {
-        try { await ensureManifest(); } catch { /* ignore */ }
-      }
-      const v = versions.get(lng);
-      const url = v
-        ? `/api/i18n/locale/${encodeURIComponent(lng)}?v=${encodeURIComponent(v)}`
-        : `/api/i18n/locale/${encodeURIComponent(lng)}`;
-      const res = await fetch(url, {
+      const res = await fetch(`/api/i18n/locale/${encodeURIComponent(lng)}`, {
         headers: { Accept: 'application/json' },
         cache: forceNetwork ? 'reload' : 'default',
       });
@@ -267,12 +208,6 @@ function initWithNamespaces(namespaces, options = {}) {
       // a regenerate in the admin tab triggers refresh in shopper / dashboard
       // tabs that already have i18next live.
       ensureI18nChannel();
-      // Cross-origin admin tabs (different host than the storefront) cannot
-      // see BroadcastChannel pings, so we ALSO refetch the manifest whenever
-      // the tab regains focus and refresh any locale whose version changed.
-      // This is what makes "Refresh All" actually visible to merchants whose
-      // admin sits at a different origin without forcing them to incognito.
-      installManifestRefreshOnFocus();
       return i18n;
     });
   return initPromise;
@@ -307,39 +242,6 @@ function ensureI18nChannel() {
     i18nChannel = null;
   }
   return i18nChannel;
-}
-
-let manifestFocusInstalled = false;
-let focusRefreshInFlight = false;
-function installManifestRefreshOnFocus() {
-  if (manifestFocusInstalled) return;
-  if (typeof window === 'undefined' || typeof document === 'undefined') return;
-  manifestFocusInstalled = true;
-
-  const onFocus = async () => {
-    // `focus` and `visibilitychange` both fire on tab return. Without this
-    // guard we'd run two manifest checks back-to-back and double-trigger
-    // _refreshLocaleInternal() for any locale whose version moved.
-    if (focusRefreshInFlight) return;
-    if (Date.now() - manifestLastFetchedAt < MANIFEST_REFETCH_MIN_MS) return;
-    focusRefreshInFlight = true;
-    try {
-      const { changed } = await ensureManifest();
-      for (const lang of changed) {
-        // Same internal path as the in-tab refresh — drops the cache,
-        // refetches with the new version stamp, and re-emits `loaded` so
-        // React repaints.
-        _refreshLocaleInternal(lang, /* broadcast */ false);
-      }
-    } finally {
-      focusRefreshInFlight = false;
-    }
-  };
-
-  window.addEventListener('focus', onFocus);
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') onFocus();
-  });
 }
 
 // Random per-tab origin id used to filter out our own broadcast echoes.
