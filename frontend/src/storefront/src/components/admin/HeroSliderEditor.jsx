@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext, useRef, createRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { resolveImageUrl } from '../../utils/imageUrl.js';
 import SaveBar from './SaveBar.jsx';
@@ -10,8 +11,8 @@ const currentYear = new Date().getFullYear();
 
 const MAX_SLIDES = 10;
 
-function newSlide() {
-  return { title: '', subtitle: '', description: '', buttonText: 'SHOP NOW', buttonLink: '', image: '', visible: true };
+function newSlide(buttonText = 'SHOP NOW') {
+  return { title: '', subtitle: '', description: '', buttonText, buttonLink: '', image: '', visible: true };
 }
 
 function compressImage(file, maxWidth = 1400, quality = 0.85) {
@@ -32,8 +33,10 @@ function compressImage(file, maxWidth = 1400, quality = 0.85) {
 }
 
 export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
+  const { t } = useTranslation('admin');
   const { siteConfig } = useContext(SiteContext);
-  const [slides, setSlides] = useState([newSlide(), newSlide(), newSlide()]);
+  const defaultButtonText = t('heroSliderEditor.defaultButtonText');
+  const [slides, setSlides] = useState(() => [newSlide(defaultButtonText), newSlide(defaultButtonText), newSlide(defaultButtonText)]);
   const [showScrollButtons, setShowScrollButtons] = useState(true);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState('');
@@ -82,7 +85,7 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
             title: s.title || '',
             subtitle: s.subtitle || '',
             description: s.description || '',
-            buttonText: s.buttonText || 'SHOP NOW',
+            buttonText: s.buttonText || defaultButtonText,
             buttonLink: s.buttonLink || '',
             image: s.image || '',
             visible: s.visible !== false,
@@ -95,7 +98,7 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
             title: defaults[i]?.title || '',
             subtitle: defaults[i]?.subtitle || '',
             description: defaults[i]?.description || '',
-            buttonText: defaults[i]?.buttonText || 'SHOP NOW',
+            buttonText: defaults[i]?.buttonText || defaultButtonText,
             buttonLink: defaults[i]?.buttonLink || '',
             image: '',
             visible: defaults[i]?.visible !== false,
@@ -107,11 +110,11 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
         setShowScrollButtons(scrollVal);
         serverValuesRef.current = JSON.stringify({ slides: merged, showScrollButtons: scrollVal });
       } else {
-        setStatus('error:Failed to load hero slider settings. Please refresh the page before making changes.');
+        setStatus('error:' + t('heroSliderEditor.loadFailed'));
       }
     } catch (e) {
       console.error('Failed to load hero settings:', e);
-      setStatus('error:Failed to load hero slider settings. Please refresh the page before making changes.');
+      setStatus('error:' + t('heroSliderEditor.loadFailed'));
     } finally {
       setLoading(false);
       // Note: if load failed (serverValuesRef.current is still null), the
@@ -140,7 +143,7 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
 
   function addSlide() {
     if (slides.length >= MAX_SLIDES) return;
-    setSlides(prev => [...prev, newSlide()]);
+    setSlides(prev => [...prev, newSlide(defaultButtonText)]);
   }
 
   function removeSlide(index) {
@@ -242,7 +245,7 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
         }
         if (onSaved) onSaved();
       } else {
-        setStatus('error:' + (result.error || 'Unknown error'));
+        setStatus('error:' + (result.error || t('heroSliderEditor.unknownError')));
       }
     } catch (e) {
       setStatus('error:' + e.message);
@@ -261,17 +264,17 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
       <form onSubmit={handleSave}>
         <div className="card" style={{ marginBottom: 20 }}>
           <div className="card-header">
-            <h3 className="card-title">Hero Slider</h3>
+            <h3 className="card-title">{t('heroSliderEditor.title')}</h3>
           </div>
           <div className="card-content">
             {usingDefaults && (
               <div style={{ background: '#fffbeb', border: '1px solid #fed7aa', borderRadius: 8, padding: '12px 16px', marginBottom: 16, fontSize: 13, color: '#92400e', display: 'flex', alignItems: 'center', gap: 8 }}>
                 <i className="fas fa-info-circle" />
-                <span>Showing default content. Edit and save to customize your hero slides.</span>
+                <span>{t('heroSliderEditor.usingDefaults')}</span>
               </div>
             )}
             <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
-              Configure slides for the hero section (up to {MAX_SLIDES}). Use the eye icon to show or hide individual slides.
+              {t('heroSliderEditor.description', { max: MAX_SLIDES })}
             </p>
 
             {slides.map((slide, index) => {
@@ -289,23 +292,23 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                     <h4 style={{ fontSize: 14, fontWeight: 600, color: '#334155', margin: 0 }}>
-                      Slide {index + 1} {index === 0 ? '' : '(optional)'}
+                      {t('heroSliderEditor.slideHeading', { n: index + 1 })} {index === 0 ? '' : t('heroSliderEditor.optional')}
                     </h4>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                       {index > 0 && (
-                        <button type="button" onClick={() => moveSlide(index, 'up')} title="Move up" style={{ background: 'none', border: '1px solid #e2e8f0', borderRadius: 6, padding: '5px 8px', cursor: 'pointer', color: '#64748b', fontSize: 12 }}>
+                        <button type="button" onClick={() => moveSlide(index, 'up')} title={t('heroSliderEditor.moveUp')} style={{ background: 'none', border: '1px solid #e2e8f0', borderRadius: 6, padding: '5px 8px', cursor: 'pointer', color: '#64748b', fontSize: 12 }}>
                           <i className="fas fa-chevron-up" />
                         </button>
                       )}
                       {index < slides.length - 1 && (
-                        <button type="button" onClick={() => moveSlide(index, 'down')} title="Move down" style={{ background: 'none', border: '1px solid #e2e8f0', borderRadius: 6, padding: '5px 8px', cursor: 'pointer', color: '#64748b', fontSize: 12 }}>
+                        <button type="button" onClick={() => moveSlide(index, 'down')} title={t('heroSliderEditor.moveDown')} style={{ background: 'none', border: '1px solid #e2e8f0', borderRadius: 6, padding: '5px 8px', cursor: 'pointer', color: '#64748b', fontSize: 12 }}>
                           <i className="fas fa-chevron-down" />
                         </button>
                       )}
                       <button
                         type="button"
                         onClick={() => toggleSlideVisibility(index)}
-                        title={isVisible ? 'Hide this slide' : 'Show this slide'}
+                        title={isVisible ? t('heroSliderEditor.hideSlide') : t('heroSliderEditor.showSlide')}
                         style={{
                           background: isVisible ? '#eff6ff' : '#fef2f2',
                           border: `1px solid ${isVisible ? '#bfdbfe' : '#fecaca'}`,
@@ -322,10 +325,10 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
                         }}
                       >
                         <i className={`fas ${isVisible ? 'fa-eye' : 'fa-eye-slash'}`} />
-                        {isVisible ? 'Visible' : 'Hidden'}
+                        {isVisible ? t('heroSliderEditor.visible') : t('heroSliderEditor.hidden')}
                       </button>
                       {slides.length > 1 && (
-                        <button type="button" onClick={() => removeSlide(index)} title="Remove slide" style={{ background: 'none', border: '1px solid #fecaca', borderRadius: 6, padding: '5px 8px', cursor: 'pointer', color: '#ef4444', fontSize: 12 }}>
+                        <button type="button" onClick={() => removeSlide(index)} title={t('heroSliderEditor.removeSlide')} style={{ background: 'none', border: '1px solid #fecaca', borderRadius: 6, padding: '5px 8px', cursor: 'pointer', color: '#ef4444', fontSize: 12 }}>
                           <i className="fas fa-trash" />
                         </button>
                       )}
@@ -334,13 +337,13 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
 
                   <div style={{ marginBottom: 12 }}>
                     <label style={{ display: 'block', fontWeight: 600, marginBottom: 4, fontSize: 12, color: '#64748b' }}>
-                      Image
+                      {t('heroSliderEditor.imageLabel')}
                     </label>
                     {slide.image ? (
                       <div style={{ position: 'relative', marginBottom: 8 }}>
                         <img
                           src={resolveImageUrl(slide.image)}
-                          alt={`Slide ${index + 1}`}
+                          alt={t('heroSliderEditor.slideHeading', { n: index + 1 })}
                           style={{ width: '100%', height: 160, objectFit: 'cover', borderRadius: 6, border: '1px solid #e2e8f0' }}
                         />
                         <button
@@ -366,11 +369,11 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
                         }}
                       >
                         {uploading[index] ? (
-                          <><i className="fas fa-spinner fa-spin" style={{ fontSize: 24, color: '#2563eb', marginBottom: 4, display: 'block' }} /><span style={{ fontSize: 13, color: '#2563eb' }}>Uploading...</span></>
+                          <><i className="fas fa-spinner fa-spin" style={{ fontSize: 24, color: '#2563eb', marginBottom: 4, display: 'block' }} /><span style={{ fontSize: 13, color: '#2563eb' }}>{t('heroSliderEditor.uploading')}</span></>
                         ) : (
                           <>
                             <i className="fas fa-cloud-upload-alt" style={{ fontSize: 24, marginBottom: 4, display: 'block' }} />
-                            <span style={{ fontSize: 12 }}>Click to upload image</span>
+                            <span style={{ fontSize: 12 }}>{t('heroSliderEditor.clickToUpload')}</span>
                           </>
                         )}
                       </div>
@@ -386,23 +389,23 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
                     <div>
-                      <label style={{ display: 'block', fontWeight: 600, marginBottom: 4, fontSize: 12, color: '#64748b' }}>Title</label>
+                      <label style={{ display: 'block', fontWeight: 600, marginBottom: 4, fontSize: 12, color: '#64748b' }}>{t('heroSliderEditor.titleLabel')}</label>
                       <input
                         type="text"
                         value={slide.title}
                         onChange={e => updateSlide(index, 'title', e.target.value)}
-                        placeholder="e.g., ELEGANT"
+                        placeholder={t('heroSliderEditor.titlePlaceholder')}
                         maxLength={50}
                         style={{ width: '100%', padding: '8px 10px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, boxSizing: 'border-box', fontFamily: 'inherit' }}
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontWeight: 600, marginBottom: 4, fontSize: 12, color: '#64748b' }}>Subtitle</label>
+                      <label style={{ display: 'block', fontWeight: 600, marginBottom: 4, fontSize: 12, color: '#64748b' }}>{t('heroSliderEditor.subtitleLabel')}</label>
                       <input
                         type="text"
                         value={slide.subtitle}
                         onChange={e => updateSlide(index, 'subtitle', e.target.value)}
-                        placeholder="e.g., Collection"
+                        placeholder={t('heroSliderEditor.subtitlePlaceholder')}
                         maxLength={50}
                         style={{ width: '100%', padding: '8px 10px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, boxSizing: 'border-box', fontFamily: 'inherit' }}
                       />
@@ -410,35 +413,35 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
                   </div>
 
                   <div style={{ marginBottom: 10 }}>
-                    <label style={{ display: 'block', fontWeight: 600, marginBottom: 4, fontSize: 12, color: '#64748b' }}>Description</label>
+                    <label style={{ display: 'block', fontWeight: 600, marginBottom: 4, fontSize: 12, color: '#64748b' }}>{t('heroSliderEditor.descriptionLabel')}</label>
                     <input
                       type="text"
                       value={slide.description}
                       onChange={e => updateSlide(index, 'description', e.target.value)}
-                      placeholder={`e.g., SUMMER CELEBRATIONS`}
+                      placeholder={t('heroSliderEditor.descriptionPlaceholder')}
                       maxLength={100}
                       style={{ width: '100%', padding: '8px 10px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, boxSizing: 'border-box', fontFamily: 'inherit' }}
                     />
                     <span style={{ fontSize: 11, color: '#94a3b8', marginTop: 2, display: 'block' }}>
-                      Year ({currentYear}) is added automatically on the storefront
+                      {t('heroSliderEditor.yearNote', { year: currentYear })}
                     </span>
                   </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                     <div>
-                      <label style={{ display: 'block', fontWeight: 600, marginBottom: 4, fontSize: 12, color: '#64748b' }}>Button Text</label>
+                      <label style={{ display: 'block', fontWeight: 600, marginBottom: 4, fontSize: 12, color: '#64748b' }}>{t('heroSliderEditor.buttonTextLabel')}</label>
                       <input
                         type="text"
                         value={slide.buttonText}
                         onChange={e => updateSlide(index, 'buttonText', e.target.value)}
-                        placeholder="SHOP NOW"
+                        placeholder={t('heroSliderEditor.buttonTextPlaceholder')}
                         maxLength={30}
                         style={{ width: '100%', padding: '8px 10px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, boxSizing: 'border-box', fontFamily: 'inherit' }}
                       />
                     </div>
                     <div>
                       <LinkSelector
-                        label="Button Link"
+                        label={t('heroSliderEditor.buttonLinkLabel')}
                         value={slide.buttonLink}
                         onChange={val => updateSlide(index, 'buttonLink', val)}
                       />
@@ -471,14 +474,14 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
                 }}
               >
                 <i className="fas fa-plus" />
-                Add Slide ({slides.length}/{MAX_SLIDES})
+                {t('heroSliderEditor.addSlide', { count: slides.length, max: MAX_SLIDES })}
               </button>
             )}
 
             {visibleCount === 0 && (
               <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '12px 16px', marginBottom: 16, fontSize: 13, color: '#dc2626', display: 'flex', alignItems: 'center', gap: 8 }}>
                 <i className="fas fa-exclamation-triangle" />
-                <span>All slides are hidden. At least one slide should be visible for the hero section to appear.</span>
+                <span>{t('heroSliderEditor.allHidden')}</span>
               </div>
             )}
 
@@ -487,8 +490,8 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
               background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             }}>
               <div>
-                <label style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Show Scroll Buttons</label>
-                <p style={{ fontSize: 12, color: '#94a3b8', margin: '2px 0 0' }}>Display left/right arrows on the hero slider</p>
+                <label style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>{t('heroSliderEditor.showScrollButtons')}</label>
+                <p style={{ fontSize: 12, color: '#94a3b8', margin: '2px 0 0' }}>{t('heroSliderEditor.showScrollButtonsHelp')}</p>
               </div>
               <label style={{ position: 'relative', display: 'inline-block', width: 44, height: 24, cursor: 'pointer' }}>
                 <input
@@ -520,7 +523,7 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
             color: status === 'success' ? '#166534' : '#dc2626',
             marginBottom: 16, fontSize: 14,
           }}>
-            {status === 'success' ? 'Hero slider saved successfully!' : status.replace('error:', 'Failed to save: ')}
+            {status === 'success' ? t('heroSliderEditor.savedSuccess') : status.replace('error:', t('heroSliderEditor.failedPrefix'))}
           </div>
         )}
 

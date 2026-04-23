@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { getProducts } from '../../services/productService.js';
 import SectionToggle from './SectionToggle.jsx';
@@ -11,6 +12,7 @@ import { usePendingMedia } from '../../hooks/usePendingMedia.js';
 import { useToast } from '../../../../shared/ui/Toast.jsx';
 
 export default function WatchBuySection({ onSaved }) {
+  const { t } = useTranslation('admin');
   const { siteConfig } = useContext(SiteContext);
   const [videos, setVideos] = useState([]);
   const [products, setProducts] = useState([]);
@@ -131,11 +133,11 @@ export default function WatchBuySection({ onSaved }) {
     if (!file) return;
     const allowed = ['video/mp4', 'video/webm', 'video/quicktime'];
     if (!allowed.includes(file.type)) {
-      setError('Please upload an MP4, WebM, or MOV video file.');
+      setError(t('watchBuySection.invalidVideoType'));
       return;
     }
     if (file.size > 100 * 1024 * 1024) {
-      setError('Video is too large. Maximum size is 100MB.');
+      setError(t('watchBuySection.videoTooLarge'));
       return;
     }
 
@@ -168,17 +170,17 @@ export default function WatchBuySection({ onSaved }) {
           markUploaded(result.data.url);
           if (oldVideo) markForDeletion(oldVideo);
         } else {
-          setError('Upload failed: ' + (result.error || result.message || 'Unknown error'));
+          setError(t('watchBuySection.uploadFailed', { error: result.error || result.message || t('watchBuySection.unknownError') }));
         }
       } catch (e) {
-        setError('Upload failed: invalid server response');
+        setError(t('watchBuySection.uploadFailedInvalidResponse'));
       }
       setUploading(false);
       setTimeout(() => setUploadProgress(0), 800);
     };
 
     xhr.onerror = () => {
-      setError('Failed to upload video. Please check your connection.');
+      setError(t('watchBuySection.uploadConnectionError'));
       setUploading(false);
       setUploadProgress(0);
     };
@@ -232,8 +234,8 @@ export default function WatchBuySection({ onSaved }) {
 
   async function handleSave(e) {
     e.preventDefault();
-    if (!form.productSku.trim()) { setError('Product SKU is required.'); return; }
-    if (!form.videoUrl) { setError('Please upload a video.'); return; }
+    if (!form.productSku.trim()) { setError(t('watchBuySection.skuRequired')); return; }
+    if (!form.videoUrl) { setError(t('watchBuySection.videoRequired')); return; }
 
     setSaving(true);
     setError('');
@@ -276,7 +278,7 @@ export default function WatchBuySection({ onSaved }) {
       commit(keepUrls);
       if (onSaved) onSaved();
     } catch (err) {
-      setError('Failed to save: ' + err.message);
+      setError(t('watchBuySection.saveFailed', { error: err.message }));
     } finally {
       setSaving(false);
     }
@@ -284,8 +286,8 @@ export default function WatchBuySection({ onSaved }) {
 
   function handleDelete(videoId) {
     setConfirmModal({
-      title: 'Delete Video',
-      message: 'Delete this video?',
+      title: t('watchBuySection.deleteTitle'),
+      message: t('watchBuySection.deleteMessage'),
       danger: true,
       onConfirm: async () => {
         const deletedVideo = videos.find(v => v.id === videoId);
@@ -300,7 +302,7 @@ export default function WatchBuySection({ onSaved }) {
           commit(keepUrls);
           if (onSaved) onSaved();
         } catch (err) {
-          toast.error('Failed to delete: ' + err.message);
+          toast.error(t('watchBuySection.deleteFailed', { error: err.message }));
         }
       }
     });
@@ -308,7 +310,7 @@ export default function WatchBuySection({ onSaved }) {
 
   function getProductNameForVideo(video) {
     const product = findProductBySku(video.productSku);
-    return product?.name || video.title || video.productSku || 'Unknown Product';
+    return product?.name || video.title || video.productSku || t('watchBuySection.unknownProduct');
   }
 
   if (loading) {
@@ -322,20 +324,20 @@ export default function WatchBuySection({ onSaved }) {
       <SectionToggle
         enabled={showSection}
         onChange={handleToggleChange}
-        label="Show Watch & Buy"
-        description="Toggle the shoppable video section on your homepage"
+        label={t('watchBuySection.toggleLabel')}
+        description={t('watchBuySection.toggleDesc')}
       />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <h2 style={{ fontSize: 20, fontWeight: 700 }}>Watch & Buy Videos</h2>
+        <h2 style={{ fontSize: 20, fontWeight: 700 }}>{t('watchBuySection.heading')}</h2>
         <button className="btn btn-primary" onClick={openAdd}>
-          <i className="fas fa-plus" style={{ marginInlineEnd: 8 }} />Upload Video
+          <i className="fas fa-plus" style={{ marginInlineEnd: 8 }} />{t('watchBuySection.uploadVideo')}
         </button>
       </div>
 
       {usingDefaults && (
         <div style={{ background: '#fffbeb', border: '1px solid #fed7aa', borderRadius: 8, padding: '12px 16px', marginBottom: 20, fontSize: 13, color: '#92400e', display: 'flex', alignItems: 'center', gap: 8 }}>
           <i className="fas fa-info-circle" />
-          <span>Showing default placeholder content. Upload videos and link products to customize this section.</span>
+          <span>{t('watchBuySection.defaultsNotice')}</span>
         </div>
       )}
 
@@ -348,7 +350,7 @@ export default function WatchBuySection({ onSaved }) {
               ) : (
                 <div style={{ width: '100%', height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 8 }}>
                   <i className="fas fa-video" style={{ color: '#cbd5e1', fontSize: 32 }} />
-                  <span style={{ fontSize: 12, color: '#94a3b8' }}>No video uploaded</span>
+                  <span style={{ fontSize: 12, color: '#94a3b8' }}>{t('watchBuySection.noVideoUploaded')}</span>
                 </div>
               )}
             </div>
@@ -356,16 +358,16 @@ export default function WatchBuySection({ onSaved }) {
               <h4 style={{ fontWeight: 600, fontSize: 15, marginBottom: 4 }}>{video.title || getProductNameForVideo(video)}</h4>
               {video.productSku ? (
                 <div style={{ fontSize: 12, color: '#2563eb', marginBottom: 12 }}>
-                  <i className="fas fa-link" style={{ marginInlineEnd: 4 }} />SKU: {video.productSku}
+                  <i className="fas fa-link" style={{ marginInlineEnd: 4 }} />{t('watchBuySection.skuPrefix')}: {video.productSku}
                 </div>
               ) : (
                 <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 12 }}>
-                  <i className="fas fa-link" style={{ marginInlineEnd: 4 }} />No product linked
+                  <i className="fas fa-link" style={{ marginInlineEnd: 4 }} />{t('watchBuySection.noProductLinked')}
                 </div>
               )}
               <div style={{ display: 'flex', gap: 8 }}>
                 <button className="btn btn-secondary" style={{ flex: 1, fontSize: 13 }} onClick={() => openEdit(video)}>
-                  <i className="fas fa-edit" style={{ marginInlineEnd: 4 }} />Edit
+                  <i className="fas fa-edit" style={{ marginInlineEnd: 4 }} />{t('watchBuySection.edit')}
                 </button>
                 {!usingDefaults && (
                   <button
@@ -387,7 +389,7 @@ export default function WatchBuySection({ onSaved }) {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
           <div style={{ background: 'white', borderRadius: 12, padding: 32, width: '100%', maxWidth: 480, maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-              <h3 style={{ fontWeight: 700, fontSize: 18 }}>{editingVideo ? 'Edit Video' : 'Upload Video'}</h3>
+              <h3 style={{ fontWeight: 700, fontSize: 18 }}>{editingVideo ? t('watchBuySection.editVideo') : t('watchBuySection.uploadVideo')}</h3>
               <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#64748b' }}>
                 <i className="fas fa-times" />
               </button>
@@ -399,10 +401,10 @@ export default function WatchBuySection({ onSaved }) {
             )}
             <form onSubmit={handleSave}>
               <div style={{ marginBottom: 16 }}>
-                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Product SKU *</label>
+                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>{t('watchBuySection.productSkuLabel')}</label>
                 <input
                   type="text"
-                  placeholder="e.g., NKL-001"
+                  placeholder={t('watchBuySection.skuPlaceholder')}
                   value={form.productSku}
                   onChange={e => handleSkuChange(e.target.value)}
                   style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box' }}
@@ -411,7 +413,7 @@ export default function WatchBuySection({ onSaved }) {
                 {form.productSku.trim() && (
                   <div style={{ marginTop: 6, padding: '8px 12px', borderRadius: 6, fontSize: 13, background: skuLookup ? '#f0fdf4' : '#fffbeb', border: `1px solid ${skuLookup ? '#bbf7d0' : '#fed7aa'}` }}>
                     {skuSearching ? (
-                      <span style={{ color: '#64748b' }}>Searching...</span>
+                      <span style={{ color: '#64748b' }}>{t('watchBuySection.searching')}</span>
                     ) : skuLookup ? (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         {skuLookup.images?.[0]?.url && (
@@ -423,14 +425,14 @@ export default function WatchBuySection({ onSaved }) {
                         </div>
                       </div>
                     ) : (
-                      <span style={{ color: '#92400e' }}>No product found with this SKU. The video will still be saved.</span>
+                      <span style={{ color: '#92400e' }}>{t('watchBuySection.noProductFound')}</span>
                     )}
                   </div>
                 )}
               </div>
 
               <div style={{ marginBottom: 24 }}>
-                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Video *</label>
+                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>{t('watchBuySection.videoLabel')}</label>
                 {form.videoUrl ? (
                   <div style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', background: '#000' }}>
                     <video
@@ -473,7 +475,7 @@ export default function WatchBuySection({ onSaved }) {
                     {uploading ? (
                       <div>
                         <i className="fas fa-spinner fa-spin" style={{ fontSize: 24, color: '#2563eb', marginBottom: 8, display: 'block' }} />
-                        <span style={{ fontSize: 13, color: '#2563eb' }}>Uploading... {uploadProgress}%</span>
+                        <span style={{ fontSize: 13, color: '#2563eb' }}>{t('watchBuySection.uploadingProgress', { progress: uploadProgress })}</span>
                         <div style={{ width: '80%', margin: '8px auto 0', height: 4, background: '#e2e8f0', borderRadius: 4, overflow: 'hidden' }}>
                           <div style={{ width: `${uploadProgress}%`, height: '100%', background: '#2563eb', borderRadius: 4, transition: 'width 0.3s' }} />
                         </div>
@@ -481,8 +483,8 @@ export default function WatchBuySection({ onSaved }) {
                     ) : (
                       <>
                         <i className="fas fa-cloud-upload-alt" style={{ fontSize: 32, marginBottom: 8, display: 'block' }} />
-                        <span style={{ fontSize: 13, display: 'block' }}>Click or drag to upload video</span>
-                        <span style={{ fontSize: 11, color: '#b0b8c4', marginTop: 4, display: 'block' }}>MP4, WebM, MOV — max 100MB</span>
+                        <span style={{ fontSize: 13, display: 'block' }}>{t('watchBuySection.clickOrDrag')}</span>
+                        <span style={{ fontSize: 11, color: '#b0b8c4', marginTop: 4, display: 'block' }}>{t('watchBuySection.uploadHint')}</span>
                       </>
                     )}
                   </div>
@@ -497,9 +499,9 @@ export default function WatchBuySection({ onSaved }) {
               </div>
 
               <div style={{ display: 'flex', gap: 12 }}>
-                <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setShowModal(false)}>Cancel</button>
+                <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setShowModal(false)}>{t('watchBuySection.cancel')}</button>
                 <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={saving || uploading}>
-                  {saving ? <><i className="fas fa-spinner fa-spin" style={{ marginInlineEnd: 8 }} />Saving...</> : editingVideo ? 'Save Changes' : 'Upload Video'}
+                  {saving ? <><i className="fas fa-spinner fa-spin" style={{ marginInlineEnd: 8 }} />{t('watchBuySection.saving')}</> : editingVideo ? t('watchBuySection.saveChanges') : t('watchBuySection.uploadVideo')}
                 </button>
               </div>
             </form>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext, useRef, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { getProducts } from '../../services/productService.js';
 import { resolveImageUrl } from '../../utils/imageUrl.js';
@@ -27,6 +28,7 @@ function compressImage(file, maxWidth = 1400, quality = 0.85) {
 }
 
 export default function ShopTheLookEditor({ onSaved, onPreviewUpdate, sectionVisible = true, onToggleVisibility }) {
+  const { t } = useTranslation('admin');
   const { siteConfig } = useContext(SiteContext);
   const [title, setTitle] = useState('');
   const [mainImage, setMainImage] = useState('');
@@ -99,7 +101,7 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate, sectionVis
         } else {
           const category = siteConfig?.category || 'generic';
           const defaults = getShopTheLookDefaults(category);
-          setTitle(defaults.title || 'Shop the Look');
+          setTitle(defaults.title || t('shopTheLookEditor.defaultTitle'));
           setMainImage(defaults.image || '');
           setMainImageKey('');
           setDots(defaults.dots || []);
@@ -124,7 +126,7 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate, sectionVis
     if (!file) return;
     const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
     if (!allowed.includes(file.type)) {
-      setError('Please upload a JPG, PNG, WebP, or GIF image.');
+      setError(t('shopTheLookEditor.errorInvalidImageType'));
       return;
     }
     const oldImage = mainImage;
@@ -148,10 +150,10 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate, sectionVis
         pendingMedia.markUploaded(newUrl);
         if (oldImage) pendingMedia.markForDeletion(oldImage);
       } else {
-        setError(result.error || 'Failed to upload image');
+        setError(result.error || t('shopTheLookEditor.errorUploadFailed'));
       }
     } catch (e) {
-      setError('Failed to upload image: ' + e.message);
+      setError(t('shopTheLookEditor.errorUploadFailedWithMsg', { message: e.message }));
     } finally {
       setUploading(false);
     }
@@ -247,10 +249,10 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate, sectionVis
         if (!cleanup.ok) console.warn('Some images failed to delete from storage:', cleanup.failed);
         if (onSaved) onSaved();
       } else {
-        setError(result.error || 'Failed to save');
+        setError(result.error || t('shopTheLookEditor.errorSaveFailed'));
       }
     } catch (e) {
-      setError('Failed to save: ' + e.message);
+      setError(t('shopTheLookEditor.errorSaveFailedWithMsg', { message: e.message }));
     } finally {
       setSaving(false);
     }
@@ -274,8 +276,8 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate, sectionVis
       <SectionToggle
         enabled={sectionVisible}
         onChange={() => onToggleVisibility?.()}
-        label="Show Shop the Look"
-        description="Display interactive product showcase on homepage"
+        label={t('shopTheLookEditor.toggleLabel')}
+        description={t('shopTheLookEditor.toggleDescription')}
       />
 
       {usingDefaults && (
@@ -285,7 +287,7 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate, sectionVis
           display: 'flex', alignItems: 'center', gap: 8,
         }}>
           <i className="fas fa-info-circle" />
-          Showing default placeholder content. Upload your own image and assign products, then save to make it live.
+          {t('shopTheLookEditor.usingDefaultsNotice')}
         </div>
       )}
 
@@ -298,13 +300,13 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate, sectionVis
       <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: 20, marginBottom: 20 }}>
         <h3 style={{ fontSize: 15, fontWeight: 600, color: '#1e293b', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
           <i className="fas fa-heading" style={{ color: '#2563eb', fontSize: 14 }} />
-          Section Title
+          {t('shopTheLookEditor.sectionTitle')}
         </h3>
         <input
           type="text"
           value={title}
           onChange={e => setTitle(e.target.value)}
-          placeholder="e.g., Shop the Look"
+          placeholder={t('shopTheLookEditor.titlePlaceholder')}
           style={{
             width: '100%', padding: '10px 14px', border: '1px solid #e2e8f0', borderRadius: 8,
             fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box',
@@ -315,10 +317,10 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate, sectionVis
       <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: 20, marginBottom: 20 }}>
         <h3 style={{ fontSize: 15, fontWeight: 600, color: '#1e293b', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
           <i className="fas fa-image" style={{ color: '#2563eb', fontSize: 14 }} />
-          Main Image
+          {t('shopTheLookEditor.mainImage')}
         </h3>
         <p style={{ fontSize: 12, color: '#64748b', marginBottom: 12 }}>
-          Upload the look/collection image. Click "Place a Dot" to add markers, then drag any dot to reposition it.
+          {t('shopTheLookEditor.mainImageHelp')}
         </p>
 
         <input
@@ -344,7 +346,7 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate, sectionVis
             >
               <img
                 src={resolveImageUrl(mainImage)}
-                alt="Shop the Look"
+                alt={t('shopTheLookEditor.imageAlt')}
                 draggable="false"
                 onDragStart={e => e.preventDefault()}
                 style={{ width: '100%', height: 'auto', display: 'block', userSelect: 'none' }}
@@ -390,7 +392,7 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate, sectionVis
                   fontSize: 12, fontWeight: 600, zIndex: 20,
                   boxShadow: '0 2px 8px rgba(37,99,235,0.3)',
                 }}>
-                  Click on the image to place a dot
+                  {t('shopTheLookEditor.placeDotHint')}
                 </div>
               )}
             </div>
@@ -405,7 +407,7 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate, sectionVis
                   display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'inherit',
                 }}
               >
-                <i className="fas fa-sync-alt" /> {uploading ? 'Uploading...' : 'Change Image'}
+                <i className="fas fa-sync-alt" /> {uploading ? t('shopTheLookEditor.uploading') : t('shopTheLookEditor.changeImage')}
               </button>
               <button
                 type="button"
@@ -419,7 +421,7 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate, sectionVis
                   display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'inherit',
                 }}
               >
-                <i className="fas fa-map-marker-alt" /> {placingDot ? 'Cancel Placing' : 'Place a Dot'}
+                <i className="fas fa-map-marker-alt" /> {placingDot ? t('shopTheLookEditor.cancelPlacing') : t('shopTheLookEditor.placeADot')}
               </button>
             </div>
           </div>
@@ -434,14 +436,14 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate, sectionVis
             {uploading ? (
               <div style={{ color: '#64748b' }}>
                 <div className="spinner" style={{ margin: '0 auto 10px' }} />
-                <span style={{ fontSize: 13 }}>Uploading...</span>
+                <span style={{ fontSize: 13 }}>{t('shopTheLookEditor.uploading')}</span>
               </div>
             ) : (
               <div style={{ color: '#94a3b8' }}>
                 <i className="fas fa-cloud-upload-alt" style={{ fontSize: 28, marginBottom: 8, display: 'block' }} />
-                <span style={{ fontSize: 13, display: 'block' }}>Click to upload the look image</span>
+                <span style={{ fontSize: 13, display: 'block' }}>{t('shopTheLookEditor.clickToUpload')}</span>
                 <span style={{ fontSize: 11, color: '#cbd5e1', marginTop: 4, display: 'block' }}>
-                  JPG, PNG, WebP, GIF up to 10MB
+                  {t('shopTheLookEditor.uploadFormats')}
                 </span>
               </div>
             )}
@@ -453,10 +455,10 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate, sectionVis
         <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: 20 }}>
           <h3 style={{ fontSize: 15, fontWeight: 600, color: '#1e293b', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
             <i className="fas fa-map-pin" style={{ color: '#2563eb', fontSize: 14 }} />
-            Product Dots ({dots.length})
+            {t('shopTheLookEditor.productDots', { count: dots.length })}
           </h3>
           <p style={{ fontSize: 12, color: '#64748b', marginBottom: 16 }}>
-            Drag dots on the image to reposition them. Click a dot to select it and assign a product below.
+            {t('shopTheLookEditor.productDotsHelp')}
           </p>
 
           {dots.map((dot, i) => {
@@ -482,7 +484,7 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate, sectionVis
                       {i + 1}
                     </div>
                     <span style={{ fontSize: 13, fontWeight: 500, color: '#334155' }}>
-                      Dot at ({dot.x}%, {dot.y}%)
+                      {t('shopTheLookEditor.dotAt', { x: dot.x, y: dot.y })}
                     </span>
                   </div>
                   <div style={{ display: 'flex', gap: 6 }}>
@@ -490,7 +492,7 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate, sectionVis
                       type="button"
                       onClick={() => removeDot(i)}
                       style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontSize: 13 }}
-                      title="Remove dot"
+                      title={t('shopTheLookEditor.removeDot')}
                     >
                       <i className="fas fa-trash-alt" />
                     </button>
@@ -512,7 +514,7 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate, sectionVis
                         {matched.name}
                       </div>
                       <div style={{ fontSize: 12, color: '#64748b' }}>
-                        SKU: {matched.sku || dot.sku} · {formatPrice(matched.price, currency)}
+                        {t('shopTheLookEditor.skuLabel')}: {matched.sku || dot.sku} · {formatPrice(matched.price, currency)}
                       </div>
                     </div>
                     <button
@@ -523,7 +525,7 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate, sectionVis
                         borderRadius: 4, fontSize: 11, color: '#dc2626', cursor: 'pointer', fontFamily: 'inherit',
                       }}
                     >
-                      Change
+                      {t('shopTheLookEditor.changeButton')}
                     </button>
                   </div>
                 ) : (
@@ -532,7 +534,7 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate, sectionVis
                       type="text"
                       value={dot.sku}
                       onChange={e => { updateDot(i, 'sku', e.target.value); setSkuSearch(e.target.value); }}
-                      placeholder="Enter product SKU or search by name..."
+                      placeholder={t('shopTheLookEditor.skuPlaceholder')}
                       style={{
                         width: '100%', padding: '8px 12px', border: '1px solid #e2e8f0', borderRadius: 6,
                         fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box',
@@ -575,7 +577,7 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate, sectionVis
 
                 <div style={{ marginTop: 10, display: 'flex', gap: 12 }}>
                   <div style={{ flex: 1 }}>
-                    <label style={{ fontSize: 11, fontWeight: 600, color: '#64748b', display: 'block', marginBottom: 4 }}>X Position (%)</label>
+                    <label style={{ fontSize: 11, fontWeight: 600, color: '#64748b', display: 'block', marginBottom: 4 }}>{t('shopTheLookEditor.xPosition')}</label>
                     <input
                       type="number"
                       min="0" max="100" step="0.5"
@@ -588,7 +590,7 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate, sectionVis
                     />
                   </div>
                   <div style={{ flex: 1 }}>
-                    <label style={{ fontSize: 11, fontWeight: 600, color: '#64748b', display: 'block', marginBottom: 4 }}>Y Position (%)</label>
+                    <label style={{ fontSize: 11, fontWeight: 600, color: '#64748b', display: 'block', marginBottom: 4 }}>{t('shopTheLookEditor.yPosition')}</label>
                     <input
                       type="number"
                       min="0" max="100" step="0.5"
