@@ -226,8 +226,16 @@ export default function I18nAdminPanel() {
     try {
       const res = await apiRequest(`/api/admin/i18n/purge-edge/${encodeURIComponent(lang)}`, { method: 'POST' });
       const data = res?.data || res;
-      if (data?.ok) toast.success(t('i18n.purgeEdgeOk', { lang }));
-      else toast.error(t('i18n.purgeEdgeFailed', { lang }));
+      if (data?.ok) {
+        toast.success(t('i18n.purgeEdgeOk', { lang }));
+      } else if (data?.result?.reason === 'missing-credentials') {
+        // Local dev / unconfigured Cloudflare zone: not really a failure, the
+        // operator just hasn't wired up CF_API_TOKEN + CF_ZONE_ID yet. Use a
+        // distinct toast so they know storage is intact and how to enable it.
+        toast(t('i18n.purgeEdgeNotConfigured'), { icon: 'ℹ️' });
+      } else {
+        toast.error(t('i18n.purgeEdgeFailed', { lang }));
+      }
     } catch (e) {
       toast.error(e.message || t('i18n.purgeEdgeFailed', { lang }));
     }

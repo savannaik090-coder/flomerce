@@ -68,6 +68,7 @@
     "purgeEdgeConfirm": "Bust the Cloudflare edge cache for \"{{lang}}\"? Storage and overrides are kept.",
     "purgeEdgeOk": "Edge cache purged for {{lang}}.",
     "purgeEdgeFailed": "Edge cache purge failed for {{lang}}.",
+    "purgeEdgeNotConfigured": "Edge cache purge skipped: Cloudflare API credentials (CF_API_TOKEN, CF_ZONE_ID) are not configured. Storage was not changed.",
     "editTranslations": "Edit translations",
     "editTranslationsTitle": "Edit translations — {{lang}}",
     "editTranslationsDesc": "Edit any string by hand. Manual overrides survive future regenerates. Clear an override to fall back to the auto-translated value.",
