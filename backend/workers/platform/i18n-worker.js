@@ -103,6 +103,53 @@ async function readCachedLocale(env, lang) {
   return readJsonFromR2(env, r2Key(lang));
 }
 
+// ---------------------------------------------------------------------------
+// Manifest / version stamps
+//
+// The locale endpoint is cached aggressively (7 days browser + 7 days CDN).
+// To make a "Refresh All" actually visible to merchants whose admin tab is
+// open on a different origin (where same-tab refresh + BroadcastChannel can't
+// reach), the frontend appends `?v=<hash>` to each locale URL. A new hash =
+// new URL = forced cache miss on the browser disk cache.
+//
+// Cross-isolate correctness: we MUST NOT cache version stamps in per-isolate
+// memory, or a regenerate handled by isolate A could be invisible to manifest
+// reads served by isolate B. R2 is the cross-isolate source of truth, so we
+// read each non-EN locale's R2 etag on every manifest call (content-derived
+// MD5 — cheap HEAD, no body transfer). EN is bundled at build time so all
+// isolates agree on its hash; we memoize that one to skip rehashing.
+// ---------------------------------------------------------------------------
+function invalidateManifestVersion(/* lang */) {
+  // Kept as a no-op so existing call sites (writeCachedLocale) don't need to
+  // know we switched to R2-etag-derived versioning. Cross-isolate freshness
+  // is now provided by reading R2 metadata on every manifest call.
+}
+
+let enVersionPromise = null;
+async function computeEnVersion() {
+  if (!enVersionPromise) {
+    enVersionPromise = hashString(JSON.stringify(EN_CATALOG));
+  }
+  return enVersionPromise;
+}
+
+async function computeLangVersion(env, lang) {
+  if (lang === 'en') return computeEnVersion();
+  if (!env?.STORAGE) return null;
+  try {
+    const head = await env.STORAGE.head(r2Key(lang));
+    if (!head) return null; // not generated yet — frontend will fetch without v=
+    // R2 etag for single-part puts is content MD5, deterministic across isolates.
+    // Strip surrounding quotes some R2 SDKs include and slice for compactness.
+    const raw = (head.etag || head.httpEtag || '').replace(/^"|"$/g, '');
+    if (!raw) return null;
+    return raw.slice(0, 16);
+  } catch (e) {
+    console.warn('[i18n] manifest head() failed for', lang, e.message || e);
+    return null;
+  }
+}
+
 async function readCachedHashes(env, lang) {
   const r = await readJsonFromR2(env, r2HashKey(lang));
   return r ? r.data : null;
@@ -113,6 +160,9 @@ async function writeCachedLocale(env, lang, data, hashes) {
   await env.STORAGE.put(r2Key(lang), JSON.stringify(data), {
     httpMetadata: { contentType: 'application/json; charset=utf-8' },
   });
+  // Drop the stale per-isolate manifest entry — next /api/i18n/manifest call
+  // re-hashes from R2 and returns the fresh version stamp.
+  invalidateManifestVersion(lang);
   if (hashes) {
     await env.STORAGE.put(r2HashKey(lang), JSON.stringify(hashes), {
       httpMetadata: { contentType: 'application/json; charset=utf-8' },
@@ -565,6 +615,31 @@ export async function handleI18nPublic(request, env, path, ctx) {
   if (corsResponse) return corsResponse;
 
   const parts = path.split('/').filter(Boolean);
+
+  // /api/i18n/manifest  → tiny no-cache JSON of { lang: versionHash }
+  // The frontend appends the version as `?v=<hash>` to the locale URL so a
+  // regenerate becomes a new URL (cache miss) instead of being pinned in the
+  // browser disk cache for 7 days. Manifest itself is no-store so each tab
+  // sees the freshest versions on focus / boot.
+  if (parts[2] === 'manifest') {
+    const versions = {};
+    const langs = ['en', ...Array.from(SUPPORTED_LOCALES)];
+    await Promise.all(
+      langs.map(async (lang) => {
+        const v = await computeLangVersion(env, lang);
+        if (v) versions[lang] = v;
+      }),
+    );
+    return new Response(JSON.stringify({ success: true, versions }), {
+      status: 200,
+      headers: {
+        ...corsHeaders(request),
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': 'no-store, no-cache, must-revalidate',
+        'CDN-Cache-Control': 'no-store',
+      },
+    });
+  }
 
   // /api/i18n/locale/:lang
   if (parts[2] !== 'locale' || !parts[3]) {
