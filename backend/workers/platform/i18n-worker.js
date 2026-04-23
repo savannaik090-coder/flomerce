@@ -454,7 +454,10 @@ async function previewRegenerate(env, lang, { force = false, namespace = null } 
       const stringValues = valuesToTranslate.map((v) => (typeof v === 'string' ? v : ''));
       const hashes = await Promise.all(stringValues.map(hashString));
       const hitSet = new Set();
-      const TM_BATCH = 100;
+      // D1 caps bound parameters at 100 per query. 90 hashes + 1 for `lang`
+      // stays safely under the limit; a batch of 100 fails with
+      // `D1_ERROR: too many SQL variables` and silently returns 0 hits.
+      const TM_BATCH = 90;
       for (let i = 0; i < hashes.length; i += TM_BATCH) {
         const group = hashes.slice(i, i + TM_BATCH);
         if (!group.length) continue;
@@ -562,130 +565,6 @@ export async function handleI18nPublic(request, env, path, ctx) {
   if (corsResponse) return corsResponse;
 
   const parts = path.split('/').filter(Boolean);
-
-  // GET /api/i18n/_diag/in/:lang  — exercises the exact IN(?,...) query shape
-  // the preview uses, against 5 known-stored hashes from TM. If `hits` < 5
-  // here but the single-key probe in /_diag/tm works, we have a binding /
-  // batching issue specific to the IN-list shape.
-  if (parts[2] === '_diag' && parts[3] === 'in' && parts[4]) {
-    const lang = parts[4];
-    if (!isValidLocale(lang) || lang === 'en') return errorResponse('Invalid locale code', 400);
-    if (!env?.DB) return new Response(JSON.stringify({ error: 'no DB binding' }), { status: 500 });
-    try {
-      const sample = await env.DB.prepare(
-        `SELECT source_hash FROM translation_memory WHERE target_lang = ? LIMIT 5`,
-      ).bind(lang).all();
-      const hashes = (sample.results || []).map((r) => r.source_hash);
-      const placeholders = hashes.map(() => '?').join(',');
-      const inQuery = await env.DB.prepare(
-        `SELECT source_hash FROM translation_memory
-           WHERE target_lang = ? AND source_hash IN (${placeholders})`,
-      ).bind(lang, ...hashes).all();
-      const hits = (inQuery.results || []).map((r) => r.source_hash);
-
-      // Now run the FULL preview pipeline and report intermediate values.
-      const { paths, values } = flattenCatalog(EN_CATALOG);
-      const stringValues = values.map((v) => (typeof v === 'string' ? v : ''));
-      const computedHashes = await Promise.all(stringValues.map(hashString));
-      const firstFiveComputed = computedHashes.slice(0, 5);
-      // Check how many of those 2681 computed hashes exist as ANY row in TM
-      // (regardless of lang) — if this is also 0, the table read is broken.
-      const hitSet = new Set();
-      const TM_BATCH = 100;
-      for (let i = 0; i < computedHashes.length; i += TM_BATCH) {
-        const group = computedHashes.slice(i, i + TM_BATCH);
-        const ph = group.map(() => '?').join(',');
-        const { results } = await env.DB.prepare(
-          `SELECT source_hash FROM translation_memory
-             WHERE target_lang = ? AND source_hash IN (${ph})`,
-        ).bind(lang, ...group).all();
-        for (const r of (results || [])) hitSet.add(r.source_hash);
-      }
-
-      return new Response(JSON.stringify({
-        diag: 'tm-in-v1',
-        lang,
-        sampleHashesFromTm: hashes,
-        inQueryHits: hits,
-        catalogPathsCount: paths.length,
-        firstFiveComputedHashes: firstFiveComputed,
-        firstFiveCatalogStrings: stringValues.slice(0, 5),
-        totalTmMatchesAcrossCatalog: hitSet.size,
-      }, null, 2), {
-        status: 200,
-        headers: {
-          ...corsHeaders(request),
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-store, max-age=0',
-        },
-      });
-    } catch (e) {
-      return errorResponse(`in diag failed: ${e?.message || e}`, 500);
-    }
-  }
-
-  // GET /api/i18n/_diag/tm/:lang  — public read-only TM probe. Returns the
-  // first 5 rows actually stored in translation_memory for `lang` plus the
-  // hashes the live EN catalog would compute for the same source strings.
-  // If the two columns don't match, we have a hash format mismatch (different
-  // function, normalization, or schema). Counts confirm whether the table is
-  // really populated for this lang as the TM stats card claims.
-  if (parts[2] === '_diag' && parts[3] === 'tm' && parts[4]) {
-    const lang = parts[4];
-    if (!isValidLocale(lang) || lang === 'en') {
-      return errorResponse('Invalid locale code', 400);
-    }
-    if (!env?.DB) {
-      return new Response(JSON.stringify({ error: 'no DB binding' }), { status: 500 });
-    }
-    try {
-      const cnt = await env.DB.prepare(
-        `SELECT COUNT(*) AS n FROM translation_memory WHERE target_lang = ?`,
-      ).bind(lang).first();
-      const sample = await env.DB.prepare(
-        `SELECT source_hash, source_text FROM translation_memory
-           WHERE target_lang = ? LIMIT 5`,
-      ).bind(lang).all();
-      const rows = sample.results || [];
-      const recomputed = await Promise.all(
-        rows.map(async (r) => ({
-          stored_hash: r.source_hash,
-          stored_text_preview: String(r.source_text || '').slice(0, 60),
-          recomputed_hash: await hashString(r.source_text),
-          match: r.source_hash === (await hashString(r.source_text)),
-        })),
-      );
-      // Also probe a known live EN string (the i18n title) to see if its hash
-      // is present in TM at all.
-      const liveSample = EN_CATALOG?.owner?.i18n?.title || 'Translations';
-      const liveHash = await hashString(liveSample);
-      const liveLookup = await env.DB.prepare(
-        `SELECT source_hash FROM translation_memory
-           WHERE target_lang = ? AND source_hash = ?`,
-      ).bind(lang, liveHash).first();
-      const body = JSON.stringify({
-        diag: 'tm-probe-v1',
-        lang,
-        rowsForLang: cnt?.n ?? 0,
-        sample: recomputed,
-        liveProbe: {
-          text: liveSample,
-          computed_hash: liveHash,
-          found_in_tm: !!liveLookup,
-        },
-      }, null, 2);
-      return new Response(body, {
-        status: 200,
-        headers: {
-          ...corsHeaders(request),
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-store, max-age=0',
-        },
-      });
-    } catch (e) {
-      return errorResponse(`tm diag failed: ${e?.message || e}`, 500);
-    }
-  }
 
   // GET /api/i18n/_diag/preview/:lang  — public read-only diagnostic. Returns
   // the same TM-aware preview numbers as the admin endpoint, minus auth, so

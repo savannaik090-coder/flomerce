@@ -91,7 +91,11 @@ export async function translateBatch(env, texts, targetLang, sourceLang = 'en') 
 
 // SQLite parameter binding gets unwieldy past ~100 args; chunk lookups so a
 // catalog of thousands of strings still uses tight `IN (?, ?, …)` queries.
-const TM_LOOKUP_BATCH = 100;
+// D1 caps bound parameters at 100 per query. We use 90 placeholders + 1 for
+// `target_lang` (and for tmBumpHits an extra 1 for `now`), leaving headroom
+// well under the limit. A batch of 100 silently broke TM lookups in
+// production with `D1_ERROR: too many SQL variables`.
+const TM_LOOKUP_BATCH = 90;
 
 // Self-heal the TM schema on first lookup so production environments that
 // deployed the worker without running the standalone migration file still
