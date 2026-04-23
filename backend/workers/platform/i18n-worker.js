@@ -711,7 +711,25 @@ export async function handleI18nAdmin(request, env, pathParts) {
     const namespace = url.searchParams.get('namespace') || null;
     try {
       const preview = await previewRegenerate(env, lang, { force, namespace });
-      return successResponse(preview);
+      // Explicit no-store so browser + Cloudflare edge never serve a stale
+      // preview. TM contents and EN source can change between consecutive
+      // clicks, and a cached "$1.02" estimate is worse than a fresh "$0.04".
+      // `previewVersion` lets ops verify which code path served the response
+      // when debugging "preview number didn't change" reports — bump on any
+      // future change to previewRegenerate's contract.
+      const body = JSON.stringify({
+        success: true,
+        message: 'Success',
+        data: { ...preview, previewVersion: 'tm-aware-v1' },
+      });
+      return new Response(body, {
+        status: 200,
+        headers: {
+          ...corsHeaders(request),
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-store, max-age=0',
+        },
+      });
     } catch (e) {
       return errorResponse(e.message || 'Preview failed', 400);
     }
