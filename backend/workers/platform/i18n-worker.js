@@ -159,8 +159,59 @@ async function bumpRateLimit(env, lang, day) {
 /* Phase A: per-key manual overrides ("sticky bit").                       */
 /* ----------------------------------------------------------------------- */
 
+// Self-heal schema for the two D1-backed i18n features (overrides + TM).
+// Mirrors the existing pattern used by `i18n_regen_log` higher up — wrapped
+// in try/catch so a CREATE failure (permissions, race) never breaks the
+// translation hot path. Idempotent + cheap; safe to call on every entry to
+// the override / TM paths so prod environments that never ran the standalone
+// migration files still work the moment the code deploys.
+//
+// Exported because translateBatch() in utils/translator.js needs the same
+// guarantee for `translation_memory` before it tries to read or write it.
+export async function ensureI18nTables(env) {
+  if (!env?.DB) return;
+  try {
+    await env.DB.batch([
+      env.DB.prepare(
+        `CREATE TABLE IF NOT EXISTS i18n_overrides (
+           lang        TEXT    NOT NULL,
+           path        TEXT    NOT NULL,
+           value       TEXT    NOT NULL,
+           updated_at  INTEGER NOT NULL,
+           updated_by  TEXT,
+           PRIMARY KEY (lang, path)
+         )`,
+      ),
+      env.DB.prepare(
+        `CREATE INDEX IF NOT EXISTS idx_i18n_overrides_lang ON i18n_overrides (lang)`,
+      ),
+      env.DB.prepare(
+        `CREATE TABLE IF NOT EXISTS translation_memory (
+           source_hash      TEXT    NOT NULL,
+           target_lang      TEXT    NOT NULL,
+           source_text      TEXT    NOT NULL,
+           translated_text  TEXT    NOT NULL,
+           hit_count        INTEGER NOT NULL DEFAULT 1,
+           created_at       INTEGER NOT NULL,
+           last_used_at     INTEGER NOT NULL,
+           PRIMARY KEY (source_hash, target_lang)
+         )`,
+      ),
+      env.DB.prepare(
+        `CREATE INDEX IF NOT EXISTS idx_tm_lang ON translation_memory (target_lang)`,
+      ),
+      env.DB.prepare(
+        `CREATE INDEX IF NOT EXISTS idx_tm_last_used ON translation_memory (last_used_at)`,
+      ),
+    ]);
+  } catch (e) {
+    console.warn('[i18n] ensureI18nTables failed:', e?.message || e);
+  }
+}
+
 async function readOverrides(env, lang) {
   if (!env?.DB) return {};
+  await ensureI18nTables(env);
   try {
     const { results } = await env.DB.prepare(
       `SELECT path, value FROM i18n_overrides WHERE lang = ?`,
@@ -169,8 +220,9 @@ async function readOverrides(env, lang) {
     for (const r of (results || [])) out[r.path] = r.value;
     return out;
   } catch (e) {
-    // If the table doesn't exist yet (migration not run), behave as if no
-    // overrides — never break the regenerate path on a missing optional table.
+    // Belt-and-braces: even after ensureI18nTables, a brand-new D1 binding
+    // could in theory still error here. Behave as if no overrides exist —
+    // never break the regenerate path on a missing optional table.
     console.warn('[i18n] readOverrides failed:', lang, e?.message || e);
     return {};
   }
@@ -758,9 +810,10 @@ export async function handleI18nAdmin(request, env, pathParts) {
       await env.STORAGE.delete(r2HashKey(lang));
     }
     if (env.DB) {
+      await ensureI18nTables(env);
       try {
         await env.DB.prepare(`DELETE FROM i18n_overrides WHERE lang = ?`).bind(lang).run();
-      } catch { /* table may not exist yet — non-fatal */ }
+      } catch { /* truly non-fatal — purge already nuked R2 */ }
     }
     await afterLocaleWrite(env, lang);
     return successResponse({ ok: true, lang });
@@ -858,6 +911,7 @@ export async function handleI18nAdmin(request, env, pathParts) {
     // a value that won't survive the next regenerate (sticky-bit broken).
     if (isOverride) {
       if (!env.DB) return errorResponse('Override storage (D1) is not configured', 500);
+      await ensureI18nTables(env);
       try {
         await env.DB.prepare(
           `INSERT INTO i18n_overrides (lang, path, value, updated_at, updated_by)
@@ -875,6 +929,7 @@ export async function handleI18nAdmin(request, env, pathParts) {
       // to the auto-translated value next regen. A failure here is non-fatal —
       // worst case the row lingers and gets re-applied at next regenerate,
       // which is the safe default for "I didn't really want to clear it".
+      await ensureI18nTables(env);
       try {
         await env.DB.prepare(
           `DELETE FROM i18n_overrides WHERE lang = ? AND path = ?`,
@@ -931,6 +986,7 @@ export async function handleI18nAdmin(request, env, pathParts) {
     hashesRaw[path] = await hashString(enValue);
     await writeCachedLocale(env, lang, newCatalog, hashesRaw);
     if (env.DB) {
+      await ensureI18nTables(env);
       try {
         await env.DB.prepare(`DELETE FROM i18n_overrides WHERE lang = ? AND path = ?`).bind(lang, path).run();
       } catch { /* non-fatal */ }
@@ -944,6 +1000,7 @@ export async function handleI18nAdmin(request, env, pathParts) {
   // (i.e. SUM(hit_count - 1)) since the initial INSERT is itself a "miss".
   if (request.method === 'GET' && action === 'tm-stats') {
     if (!env.DB) return successResponse({ rows: 0, hits: 0, charsSaved: 0, costSavedUSD: 0, byLang: [] });
+    await ensureI18nTables(env);
     try {
       const totals = await env.DB.prepare(
         `SELECT COUNT(*) AS rows,

@@ -93,7 +93,42 @@ export async function translateBatch(env, texts, targetLang, sourceLang = 'en') 
 // catalog of thousands of strings still uses tight `IN (?, ?, …)` queries.
 const TM_LOOKUP_BATCH = 100;
 
+// Self-heal the TM schema on first lookup so production environments that
+// deployed the worker without running the standalone migration file still
+// get TM benefits as soon as the code goes live. Mirrors the pattern used
+// for `i18n_regen_log` and `i18n_overrides` in i18n-worker.js. We can't
+// simply import that helper here because translator.js ⇄ i18n-worker.js
+// are circular, so the schema lives inline. Idempotent + cheap.
+async function ensureTmTable(env) {
+  if (!env?.DB) return;
+  try {
+    await env.DB.batch([
+      env.DB.prepare(
+        `CREATE TABLE IF NOT EXISTS translation_memory (
+           source_hash      TEXT    NOT NULL,
+           target_lang      TEXT    NOT NULL,
+           source_text      TEXT    NOT NULL,
+           translated_text  TEXT    NOT NULL,
+           hit_count        INTEGER NOT NULL DEFAULT 1,
+           created_at       INTEGER NOT NULL,
+           last_used_at     INTEGER NOT NULL,
+           PRIMARY KEY (source_hash, target_lang)
+         )`,
+      ),
+      env.DB.prepare(
+        `CREATE INDEX IF NOT EXISTS idx_tm_lang ON translation_memory (target_lang)`,
+      ),
+      env.DB.prepare(
+        `CREATE INDEX IF NOT EXISTS idx_tm_last_used ON translation_memory (last_used_at)`,
+      ),
+    ]);
+  } catch (e) {
+    console.warn('[tm] ensureTmTable failed:', e?.message || e);
+  }
+}
+
 async function tmLookup(env, texts, targetLang) {
+  await ensureTmTable(env);
   // Compute every hash up-front in parallel (cheap on Workers) so we can
   // build batched lookups without re-hashing per chunk.
   const hashes = await Promise.all(texts.map(hashString));
