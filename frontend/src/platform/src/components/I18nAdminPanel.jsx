@@ -256,6 +256,8 @@ export default function I18nAdminPanel() {
 
   return (
     <div className="oa-section">
+      <GuideCard t={t} />
+
       <div className="oa-card">
         <h3>{t('i18n.title')}</h3>
         <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '1rem' }}>{t('i18n.desc')}</p>
@@ -331,66 +333,183 @@ export default function I18nAdminPanel() {
         ) : locales.length === 0 ? (
           <p className="oa-empty">{t('i18n.noLocales')}</p>
         ) : (
-          <table className="oa-table" style={{ width: '100%', marginTop: '0.5rem' }}>
-            <thead>
-              <tr>
-                <th style={{ textAlign: 'start' }}>{t('common:language')}</th>
-                <th>{t('common:status')}</th>
-                <th>{t('i18n.size')}</th>
-                <th>{t('i18n.lastUpdated')}</th>
-                <th style={{ textAlign: 'end' }}>{t('common:actions')}</th>
-              </tr>
-            </thead>
-            <tbody>
+          <>
+            <div className="oa-table-wrap">
+              <table className="oa-table" style={{ width: '100%', marginTop: '0.5rem' }}>
+                <thead>
+                  <tr>
+                    <th style={{ textAlign: 'start' }}>{t('common:language')}</th>
+                    <th>{t('common:status')}</th>
+                    <th>{t('i18n.size')}</th>
+                    <th>{t('i18n.lastUpdated')}</th>
+                    <th style={{ textAlign: 'end' }}>{t('common:actions')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {locales.map((l) => {
+                    const pendingCount = (l.stale || 0) + (l.added || 0);
+                    return (
+                      <tr key={l.lang}>
+                        <td><code>{l.lang}</code> {LABELS[l.lang] ? <span style={{ color: '#64748b', fontSize: '0.8rem' }}>— {LABELS[l.lang]}</span> : null}</td>
+                        <td>
+                          {l.pipelineMismatch ? (
+                            <span style={{ color: '#9a3412', fontSize: '0.85rem' }} title={t('i18n.pipelineMismatchHint')}>
+                              {t('i18n.pipelineOutdated')}
+                            </span>
+                          ) : l.upToDate ? (
+                            <span style={{ color: '#15803d', fontSize: '0.85rem' }}>{t('i18n.upToDate')}</span>
+                          ) : (
+                            <span style={{ color: '#9a3412', fontSize: '0.85rem' }}>
+                              {t('i18n.pending', { count: pendingCount })}
+                              {l.removed ? t('i18n.removedSuffix', { count: l.removed }) : ''}
+                            </span>
+                          )}
+                        </td>
+                        <td>{(l.size / 1024).toFixed(1)} KB</td>
+                        <td>{l.uploaded ? new Date(l.uploaded).toLocaleString() : '—'}</td>
+                        <td style={{ textAlign: 'end' }}>
+                          <button className="oa-btn oa-btn-outline" disabled={busyLang === l.lang} onClick={() => regenerate(l.lang)} style={{ marginInlineEnd: 6, marginBlockEnd: 4 }}>
+                            {busyLang === l.lang ? t('i18n.regenerating') : t('i18n.regenerate')}
+                          </button>
+                          <button className="oa-btn oa-btn-outline" disabled={busyLang === l.lang} onClick={() => forceRegenerate(l.lang)} style={{ marginInlineEnd: 6, marginBlockEnd: 4 }}>
+                            {t('i18n.forceRegenerate')}
+                          </button>
+                          <button
+                            className="oa-btn oa-btn-outline"
+                            onClick={() => setEditor({ lang: l.lang, namespace: selectedNs || 'common' })}
+                            style={{ marginInlineEnd: 6, marginBlockEnd: 4 }}
+                          >
+                            {t('i18n.editTranslations')}
+                          </button>
+                          <button className="oa-btn oa-btn-outline" onClick={() => purgeEdge(l.lang)} style={{ marginInlineEnd: 6, marginBlockEnd: 4 }}>
+                            {t('i18n.purgeEdge')}
+                          </button>
+                          <button className="oa-btn oa-btn-outline" onClick={() => purgeReset(l.lang)} style={{ marginBlockEnd: 4 }}>
+                            {t('i18n.purgeReset')}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile-only card variant — `.oa-card-list-mobile` is hidden on
+                desktop and replaces the table at <=640px via owner-admin.css. */}
+            <div className="oa-card-list-mobile">
               {locales.map((l) => {
                 const pendingCount = (l.stale || 0) + (l.added || 0);
                 return (
-                  <tr key={l.lang}>
-                    <td><code>{l.lang}</code> {LABELS[l.lang] ? <span style={{ color: '#64748b', fontSize: '0.8rem' }}>— {LABELS[l.lang]}</span> : null}</td>
-                    <td>
-                      {l.pipelineMismatch ? (
-                        <span style={{ color: '#9a3412', fontSize: '0.85rem' }} title={t('i18n.pipelineMismatchHint')}>
-                          {t('i18n.pipelineOutdated')}
-                        </span>
-                      ) : l.upToDate ? (
-                        <span style={{ color: '#15803d', fontSize: '0.85rem' }}>{t('i18n.upToDate')}</span>
-                      ) : (
-                        <span style={{ color: '#9a3412', fontSize: '0.85rem' }}>
-                          {t('i18n.pending', { count: pendingCount })}
-                          {l.removed ? t('i18n.removedSuffix', { count: l.removed }) : ''}
-                        </span>
-                      )}
-                    </td>
-                    <td>{(l.size / 1024).toFixed(1)} KB</td>
-                    <td>{l.uploaded ? new Date(l.uploaded).toLocaleString() : '—'}</td>
-                    <td style={{ textAlign: 'end' }}>
-                      <button className="oa-btn oa-btn-outline" disabled={busyLang === l.lang} onClick={() => regenerate(l.lang)} style={{ marginInlineEnd: 6, marginBlockEnd: 4 }}>
+                  <div key={l.lang} className="oa-i18n-locale-card">
+                    <div className="oa-i18n-locale-card-header">
+                      <div>
+                        <div className="oa-i18n-locale-card-name">
+                          <code>{l.lang}</code>
+                          {LABELS[l.lang] && <span> — {LABELS[l.lang]}</span>}
+                        </div>
+                        <div className="oa-i18n-locale-card-meta">
+                          {(l.size / 1024).toFixed(1)} KB · {l.uploaded ? new Date(l.uploaded).toLocaleString() : '—'}
+                        </div>
+                      </div>
+                      <div>
+                        {l.pipelineMismatch ? (
+                          <span className="oa-i18n-status oa-i18n-status-warn" title={t('i18n.pipelineMismatchHint')}>
+                            {t('i18n.pipelineOutdated')}
+                          </span>
+                        ) : l.upToDate ? (
+                          <span className="oa-i18n-status oa-i18n-status-ok">{t('i18n.upToDate')}</span>
+                        ) : (
+                          <span className="oa-i18n-status oa-i18n-status-warn">
+                            {t('i18n.pending', { count: pendingCount })}
+                            {l.removed ? t('i18n.removedSuffix', { count: l.removed }) : ''}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="oa-i18n-locale-card-actions">
+                      <button className="oa-btn oa-btn-outline" disabled={busyLang === l.lang} onClick={() => regenerate(l.lang)}>
                         {busyLang === l.lang ? t('i18n.regenerating') : t('i18n.regenerate')}
                       </button>
-                      <button className="oa-btn oa-btn-outline" disabled={busyLang === l.lang} onClick={() => forceRegenerate(l.lang)} style={{ marginInlineEnd: 6, marginBlockEnd: 4 }}>
+                      <button className="oa-btn oa-btn-outline" disabled={busyLang === l.lang} onClick={() => forceRegenerate(l.lang)}>
                         {t('i18n.forceRegenerate')}
                       </button>
                       <button
                         className="oa-btn oa-btn-outline"
                         onClick={() => setEditor({ lang: l.lang, namespace: selectedNs || 'common' })}
-                        style={{ marginInlineEnd: 6, marginBlockEnd: 4 }}
                       >
                         {t('i18n.editTranslations')}
                       </button>
-                      <button className="oa-btn oa-btn-outline" onClick={() => purgeEdge(l.lang)} style={{ marginInlineEnd: 6, marginBlockEnd: 4 }}>
+                      <button className="oa-btn oa-btn-outline" onClick={() => purgeEdge(l.lang)}>
                         {t('i18n.purgeEdge')}
                       </button>
-                      <button className="oa-btn oa-btn-outline" onClick={() => purgeReset(l.lang)} style={{ marginBlockEnd: 4 }}>
+                      <button className="oa-btn oa-btn-outline" onClick={() => purgeReset(l.lang)}>
                         {t('i18n.purgeReset')}
                       </button>
-                    </td>
-                  </tr>
+                    </div>
+                  </div>
                 );
               })}
-            </tbody>
-          </table>
+            </div>
+          </>
         )}
       </div>
+    </div>
+  );
+}
+
+/* --------------------------------------------------------------------- */
+/* Collapsible "how this works" guide. Defaults to collapsed so it       */
+/* doesn't push the actual controls below the fold on first visit, but   */
+/* the toggle state persists in localStorage so power users keep their   */
+/* preference across sessions.                                           */
+/* --------------------------------------------------------------------- */
+function GuideCard({ t }) {
+  const [open, setOpen] = useState(() => {
+    try { return localStorage.getItem('flomerce.i18n.guideOpen') === '1'; } catch { return false; }
+  });
+  const toggle = () => {
+    setOpen((v) => {
+      const next = !v;
+      try { localStorage.setItem('flomerce.i18n.guideOpen', next ? '1' : '0'); } catch (_) { /* ignore */ }
+      return next;
+    });
+  };
+  return (
+    <div className="oa-card oa-i18n-guide">
+      <div className="oa-i18n-guide-header">
+        <h3 style={{ margin: 0 }}>{t('i18n.guideTitle')}</h3>
+        <button className="oa-btn oa-btn-outline" onClick={toggle}>
+          {open ? t('i18n.guideHide') : t('i18n.guideShow')}
+        </button>
+      </div>
+      {open && (
+        <div className="oa-i18n-guide-body">
+          <p>{t('i18n.guideIntro')}</p>
+
+          <h4>{t('i18n.guideActionsTitle')}</h4>
+          <ul>
+            <li>{t('i18n.guideRegenerate')}</li>
+            <li>{t('i18n.guideForce')}</li>
+            <li>{t('i18n.guideRefreshAll')}</li>
+            <li>{t('i18n.guideEdit')}</li>
+            <li>{t('i18n.guidePurgeEdge')}</li>
+            <li>{t('i18n.guideDelete')}</li>
+          </ul>
+
+          <h4>{t('i18n.guideTmTitle')}</h4>
+          <p>{t('i18n.guideTm')}</p>
+
+          <h4>{t('i18n.guideWhenTitle')}</h4>
+          <ul>
+            <li>{t('i18n.guideWhen1')}</li>
+            <li>{t('i18n.guideWhen2')}</li>
+            <li>{t('i18n.guideWhen3')}</li>
+            <li>{t('i18n.guideWhen4')}</li>
+            <li>{t('i18n.guideWhen5')}</li>
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
@@ -611,6 +730,8 @@ function StringEditor({ lang, initialNamespace, namespaces, onClose }) {
         ) : filtered.length === 0 ? (
           <p className="oa-empty">{t('i18n.stringsEmpty')}</p>
         ) : (
+          <>
+          <div className="oa-table-wrap">
           <table className="oa-table" style={{ width: '100%' }}>
             <thead>
               <tr>
@@ -692,6 +813,75 @@ function StringEditor({ lang, initialNamespace, namespaces, onClose }) {
               })}
             </tbody>
           </table>
+          </div>
+
+          {/* Mobile card variant for the per-key editor. The desktop table
+              hides at <=640px (see `.oa-table-wrap` rule); this stacked
+              layout takes over so each row is fully reachable on a phone. */}
+          <div className="oa-card-list-mobile">
+            {filtered.map((r) => {
+              const draft = drafts[r.path];
+              const value = typeof draft === 'string' ? draft : (r.current ?? '');
+              const dirty = typeof draft === 'string' && draft !== (r.current ?? '');
+              return (
+                <div key={r.path} className="oa-i18n-string-card">
+                  <div className="oa-i18n-string-card-key">
+                    <code>{r.path}</code>
+                    {r.hasOverride && (
+                      <span className="oa-i18n-override-badge">{t('i18n.overrideBadge')}</span>
+                    )}
+                  </div>
+                  <div className="oa-i18n-string-card-row">
+                    <div className="oa-i18n-string-card-label">{t('i18n.mobileEnglishLabel')}</div>
+                    <div className="oa-i18n-string-card-en">{r.en}</div>
+                  </div>
+                  <div className="oa-i18n-string-card-row">
+                    <div className="oa-i18n-string-card-label">{t('i18n.mobileCurrentLabel', { lang })}</div>
+                    <textarea
+                      value={value}
+                      onChange={(e) => setDrafts((prev) => ({ ...prev, [r.path]: e.target.value }))}
+                      rows={Math.min(5, Math.max(2, Math.ceil((value || '').length / 40)))}
+                      style={{
+                        width: '100%',
+                        padding: '8px 10px',
+                        fontSize: '0.9rem',
+                        borderRadius: 6,
+                        border: dirty ? '1px solid #f59e0b' : '1px solid #e2e8f0',
+                        fontFamily: 'inherit',
+                        resize: 'vertical',
+                      }}
+                    />
+                  </div>
+                  <div className="oa-i18n-string-card-actions">
+                    <button
+                      className="oa-btn oa-btn-primary"
+                      onClick={() => save(r.path)}
+                      disabled={!dirty || busyPath === r.path}
+                    >
+                      {t('i18n.save')}
+                    </button>
+                    <button
+                      className="oa-btn oa-btn-outline"
+                      onClick={() => retranslate(r.path)}
+                      disabled={busyPath === r.path}
+                    >
+                      {t('i18n.retranslate')}
+                    </button>
+                    {r.hasOverride && (
+                      <button
+                        className="oa-btn oa-btn-outline"
+                        onClick={() => clearOverride(r.path)}
+                        disabled={busyPath === r.path}
+                      >
+                        {t('i18n.clearOverride')}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          </>
         )}
       </div>
     </div>
