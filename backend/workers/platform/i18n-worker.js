@@ -563,6 +563,67 @@ export async function handleI18nPublic(request, env, path, ctx) {
 
   const parts = path.split('/').filter(Boolean);
 
+  // GET /api/i18n/_diag/in/:lang  — exercises the exact IN(?,...) query shape
+  // the preview uses, against 5 known-stored hashes from TM. If `hits` < 5
+  // here but the single-key probe in /_diag/tm works, we have a binding /
+  // batching issue specific to the IN-list shape.
+  if (parts[2] === '_diag' && parts[3] === 'in' && parts[4]) {
+    const lang = parts[4];
+    if (!isValidLocale(lang) || lang === 'en') return errorResponse('Invalid locale code', 400);
+    if (!env?.DB) return new Response(JSON.stringify({ error: 'no DB binding' }), { status: 500 });
+    try {
+      const sample = await env.DB.prepare(
+        `SELECT source_hash FROM translation_memory WHERE target_lang = ? LIMIT 5`,
+      ).bind(lang).all();
+      const hashes = (sample.results || []).map((r) => r.source_hash);
+      const placeholders = hashes.map(() => '?').join(',');
+      const inQuery = await env.DB.prepare(
+        `SELECT source_hash FROM translation_memory
+           WHERE target_lang = ? AND source_hash IN (${placeholders})`,
+      ).bind(lang, ...hashes).all();
+      const hits = (inQuery.results || []).map((r) => r.source_hash);
+
+      // Now run the FULL preview pipeline and report intermediate values.
+      const { paths, values } = flattenCatalog(EN_CATALOG);
+      const stringValues = values.map((v) => (typeof v === 'string' ? v : ''));
+      const computedHashes = await Promise.all(stringValues.map(hashString));
+      const firstFiveComputed = computedHashes.slice(0, 5);
+      // Check how many of those 2681 computed hashes exist as ANY row in TM
+      // (regardless of lang) — if this is also 0, the table read is broken.
+      const hitSet = new Set();
+      const TM_BATCH = 100;
+      for (let i = 0; i < computedHashes.length; i += TM_BATCH) {
+        const group = computedHashes.slice(i, i + TM_BATCH);
+        const ph = group.map(() => '?').join(',');
+        const { results } = await env.DB.prepare(
+          `SELECT source_hash FROM translation_memory
+             WHERE target_lang = ? AND source_hash IN (${ph})`,
+        ).bind(lang, ...group).all();
+        for (const r of (results || [])) hitSet.add(r.source_hash);
+      }
+
+      return new Response(JSON.stringify({
+        diag: 'tm-in-v1',
+        lang,
+        sampleHashesFromTm: hashes,
+        inQueryHits: hits,
+        catalogPathsCount: paths.length,
+        firstFiveComputedHashes: firstFiveComputed,
+        firstFiveCatalogStrings: stringValues.slice(0, 5),
+        totalTmMatchesAcrossCatalog: hitSet.size,
+      }, null, 2), {
+        status: 200,
+        headers: {
+          ...corsHeaders(request),
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-store, max-age=0',
+        },
+      });
+    } catch (e) {
+      return errorResponse(`in diag failed: ${e?.message || e}`, 500);
+    }
+  }
+
   // GET /api/i18n/_diag/tm/:lang  — public read-only TM probe. Returns the
   // first 5 rows actually stored in translation_memory for `lang` plus the
   // hashes the live EN catalog would compute for the same source strings.
