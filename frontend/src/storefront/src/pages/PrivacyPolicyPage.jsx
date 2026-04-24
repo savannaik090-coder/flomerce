@@ -29,7 +29,7 @@ export default function PrivacyPolicyPage() {
   return (
     <div style={{ maxWidth: 800, margin: '40px auto 80px', padding: '0 20px', fontFamily: 'inherit' }}>
       <h1 style={{ fontSize: 32, fontWeight: 700, marginBottom: 8 }}>Privacy Policy</h1>
-      <p style={{ color: '#64748b', marginBottom: 40 }}>{`Last updated: ${new Date().toLocaleDateString(i18n.language || 'en-IN', { year: 'numeric', month: 'long', day: 'numeric' })}`}</p>
+      <p style={{ color: '#64748b', marginBottom: 40 }}>{`Last updated: ${new Date().toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' })}`}</p>
 
       <div style={{ lineHeight: 1.8, color: '#374151' }}>
         <p style={{ marginBottom: 24 }}><TranslatedText text={intro} /></p>

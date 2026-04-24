@@ -7,7 +7,7 @@
 
 ## STATUS AS OF HANDOFF (April 24, 2026)
 
-**Overall progress: ~95% complete.** Both SPAs build cleanly. Login/landing/signup screens render correctly. The remaining work is smoke-testing a few more surfaces and updating two doc files. **READ THE "HANDOFF NOTES FOR NEXT AGENT" SECTION BELOW BEFORE TOUCHING ANYTHING.**
+**✅ COMPLETE (Apr 24, 2026).** Both SPAs build cleanly. All System A files removed. All admin surfaces are English-only. Storefront chrome translates on-demand via System B. `replit.md` updated to reflect the new architecture. Final smoke-test for `/dashboard`, `/wizard`, and storefront admin was done at the source level (auth-gated UIs cannot be rendered without credentials in this environment) — see Status Log below.
 
 | Phase | Description | Status |
 |-------|-------------|--------|
@@ -18,7 +18,7 @@
 | T005 | Migrate ShopperTranslationContext + storefront LanguageSwitcher off i18next | ✅ Complete |
 | T006 | Delete System A files | ✅ Complete |
 | T007 | Package cleanup (remove i18next/react-i18next/i18next-browser-languagedetector) | ✅ Complete |
-| T008 | Build + smoke test both SPAs + restart workflows | 🟡 IN PROGRESS — see below |
+| T008 | Build + smoke test both SPAs + restart workflows | ✅ Complete |
 
 ---
 
@@ -81,9 +81,9 @@ All three return empty as of handoff. **Re-run these greps as your first sanity 
 
 ---
 
-## REMAINING WORK FOR T008
+## ARCHIVED HANDOFF PLAN FOR T008 (now complete — kept for historical reference)
 
-These are the only steps left. Do them in order. **Total estimated time: 15-20 minutes.**
+> The four steps below were the original handoff plan. All four have been completed: source-level smoke checks pass, `replit.md` is updated, this doc is marked complete, and the architect code review has signed off (see Status Log). The text is preserved unchanged for future reverse-migration reference.
 
 ### Step 1: Smoke-test the four surfaces that haven't been verified yet
 The previous agent verified `/`, `/login`, `/signup`. You still need to verify:
@@ -184,3 +184,5 @@ Fix any severe issues the architect surfaces. Then you're done.
 | Apr 24, 2026 | 1 | Doc + session plan created. Migration starting. |
 | Apr 24, 2026 | 2-7 | All migration phases complete. Both SPAs build clean. i18next packages removed. |
 | Apr 24, 2026 | 8 | Builds verified, workflows restarted, landing/login/signup smoke-tested. Handoff to next agent for remaining smoke tests + doc updates + architect review. |
+| Apr 24, 2026 | 8 | Migration complete. All builds clean. Source-level smoke checks pass (zero `useTranslation`, zero stray `t()`, zero corruption-pattern matches, no `i18n` route in backend, no i18next packages, all System A files gone). Auth-gated UIs (`/dashboard`, `/wizard`, storefront admin) verified via static analysis only — no live login available in this env. `replit.md` updated to describe System B-only architecture. |
+| Apr 24, 2026 | 8 | Architect review found and we fixed: `i18n.t()` calls in App.jsx error boundary → literal English; `i18n.language` in TermsPage/PrivacyPolicyPage → `'en-IN'` literal; wrong cache table names in `replit.md` → corrected to `translation_cache` + `site_translator_usage`; corrupted `<img alt="<TranslatedText" text="Google" />` in LoginPage/SignupPage → plain `alt="Google"`; dead `.oa-i18n-*` CSS block in `owner-admin.css` (lines 335-488) removed and orphan `@media` opener restored. Both SPAs rebuild clean with no parse warnings. Architect signed off. |
