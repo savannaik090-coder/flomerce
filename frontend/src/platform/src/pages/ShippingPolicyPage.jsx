@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import Navbar from '../components/LegalNavbar.jsx';
 import LegalBindingBanner from '../components/LegalBindingBanner.jsx';
+import LegalFooter from '../components/LegalFooter.jsx';
 import '../styles/legal.css';
 import { PLATFORM_DOMAIN, PLATFORM_URL, SUPPORT_EMAIL } from '../config.js';
 
@@ -90,17 +91,7 @@ export default function ShippingPolicyPage() {
           </section>
         </div>
 
-        <footer className="legal-footer">
-          <div className="legal-footer-links">
-            <Link to="/about">About Us</Link>
-            <Link to="/terms">Terms & Conditions</Link>
-            <Link to="/privacy-policy">Privacy Policy</Link>
-            <Link to="/refund-policy">Refund & Cancellation Policy</Link>
-            <Link to="/shipping-policy">Shipping & Delivery Policy</Link>
-          </div>
-          <p>&copy; {new Date().getFullYear()} Flomerce. All rights reserved.</p>
-          <p style={{ color: '#94a3b8', fontSize: '0.75rem', marginTop: '0.5rem' }}>Karwar, Karnataka, India — 581400 | {PHONE} | {SUPPORT_EMAIL}</p>
-        </footer>
+        <LegalFooter phone={PHONE} email={SUPPORT_EMAIL} />
       </div>
     </div>
   );
