@@ -720,8 +720,10 @@ async function handlePWAManifest(request, env) {
 }
 
 // Translates the merchant-facing strings on the /api/site payload in place.
-// Covers: brand name, tagline (if present in settings), recursive categories
-// (name/description/subtitle), and pageSEO entries (seo_title/seo_description).
+// Covers: brand name, every translatable string leaf in settings (hero slides,
+// reviews, watch-and-buy titles, brand story, section headers, etc.),
+// recursive categories (name/description/subtitle), and pageSEO entries
+// (seo_title/seo_description).
 // Errors are swallowed — translation failure must never break /api/site.
 async function translateSiteInfoInPlace(env, siteId, lang, data) {
   const slots = [];
@@ -729,13 +731,13 @@ async function translateSiteInfoInPlace(env, siteId, lang, data) {
   if (typeof data.brand_name === 'string' && data.brand_name) {
     slots.push({ ref: data, key: 'brand_name', value: data.brand_name });
   }
+
+  // Deep-walk settings JSON, collecting every text-bearing leaf.
+  // Keys whose name (case-insensitive) matches a known translatable
+  // suffix get translated; keys that are clearly identifiers,
+  // URLs, codes, contact details, or technical config are skipped.
   if (data.settings && typeof data.settings === 'object') {
-    if (typeof data.settings.tagline === 'string' && data.settings.tagline) {
-      slots.push({ ref: data.settings, key: 'tagline', value: data.settings.tagline });
-    }
-    if (typeof data.settings.about === 'string' && data.settings.about) {
-      slots.push({ ref: data.settings, key: 'about', value: data.settings.about });
-    }
+    walkTranslatableLeaves(data.settings, slots);
   }
 
   function walkCats(cats) {
@@ -768,6 +770,72 @@ async function translateSiteInfoInPlace(env, siteId, lang, data) {
     if (t === undefined || t === null) continue;
     try { slots[i].ref[slots[i].key] = t; } catch (e) {
       console.error('[site] splice failed:', slots[i].key, e.message || e);
+    }
+  }
+}
+
+// Keys whose value is human-readable copy that should be translated.
+// We accept either an exact match (lowercased) or a suffix match so that
+// composite keys like `reviewsSectionTitle` or `brandStoryHeadline` are
+// caught alongside short keys like `title`, `text`, `name`.
+const TRANSLATABLE_SUFFIXES = [
+  'title', 'subtitle', 'description', 'headline', 'tagline', 'about',
+  'caption', 'label', 'buttontext', 'ctatext', 'ctalabel', 'message',
+  'heading', 'body', 'copyright', 'text', 'name', 'role', 'content',
+  'placeholder', 'tooltip',
+];
+// Substrings that, when present in the key (case-insensitive), force the
+// field to be skipped — these keys carry URLs, identifiers, contact
+// details, codes, or visual config that must never be sent to translation.
+const NON_TRANSLATABLE_KEY_PARTS = [
+  'url', 'link', 'href', 'src', 'image', 'img', 'logo', 'icon', 'video',
+  'email', 'phone', 'sku', 'hash', 'token', 'secret', 'password',
+  'color', 'hex', 'currency', 'timezone', 'gst', 'razorpay',
+  'provider', 'slug', 'class', 'style',
+];
+
+function isTranslatableKey(key) {
+  if (typeof key !== 'string' || !key) return false;
+  const k = key.toLowerCase();
+  if (k === 'id' || k.endsWith('id') || k.endsWith('ids')) return false;
+  for (const bad of NON_TRANSLATABLE_KEY_PARTS) {
+    if (k.includes(bad)) return false;
+  }
+  for (const ok of TRANSLATABLE_SUFFIXES) {
+    if (k === ok || k.endsWith(ok)) return true;
+  }
+  return false;
+}
+
+function isTranslatableValue(v) {
+  if (typeof v !== 'string') return false;
+  if (v.length === 0 || v.length > 2000) return false;
+  if (/^https?:\/\//i.test(v)) return false;
+  if (/^\/[a-z0-9_\-/.]/i.test(v)) return false;
+  if (/^data:/i.test(v)) return false;
+  if (/^#[0-9a-f]{3,8}$/i.test(v)) return false;
+  if (/^[\d\s.,+\-]+$/.test(v)) return false;
+  if (/^[a-z0-9._%+\-]+@[a-z0-9.\-]+$/i.test(v)) return false;
+  // Require at least one alphabetic character (covers Latin, Devanagari,
+  // CJK, Cyrillic, Arabic, etc).
+  if (!/[\p{L}]/u.test(v)) return false;
+  return true;
+}
+
+function walkTranslatableLeaves(node, slots, depth = 0) {
+  if (depth > 8) return;
+  if (Array.isArray(node)) {
+    for (const item of node) walkTranslatableLeaves(item, slots, depth + 1);
+    return;
+  }
+  if (!node || typeof node !== 'object') return;
+  for (const [k, v] of Object.entries(node)) {
+    if (typeof v === 'string') {
+      if (isTranslatableKey(k) && isTranslatableValue(v)) {
+        slots.push({ ref: node, key: k, value: v });
+      }
+    } else if (v && typeof v === 'object') {
+      walkTranslatableLeaves(v, slots, depth + 1);
     }
   }
 }

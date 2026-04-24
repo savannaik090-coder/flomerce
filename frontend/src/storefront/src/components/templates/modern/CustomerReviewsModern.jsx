@@ -37,8 +37,8 @@ export default function CustomerReviewsModern() {
     <section className="mn-customer-reviews" id="customer-reviews">
       <div className="mn-customer-reviews-container">
         <div className="mn-customer-reviews-header">
-          <h2 className="mn-customer-reviews-title">{sectionTitle}</h2>
-          <p className="mn-customer-reviews-subtitle">{sectionSubtitle}</p>
+          <h2 className="mn-customer-reviews-title"><TranslatedText text={sectionTitle} /></h2>
+          <p className="mn-customer-reviews-subtitle"><TranslatedText text={sectionSubtitle} /></p>
         </div>
 
         <div className="mn-customer-reviews-wrapper">
@@ -62,7 +62,7 @@ export default function CustomerReviewsModern() {
                 )}
                 <div className="mn-customer-review-body">
                   <div className="mn-customer-review-text">
-                    <p>{review.text}</p>
+                    <p><TranslatedText text={review.text} /></p>
                   </div>
                   <div className="mn-customer-review-footer">
                     <div className="mn-customer-review-stars">
@@ -70,7 +70,7 @@ export default function CustomerReviewsModern() {
                     </div>
                     {review.name && (
                       <span className="mn-customer-review-author">
-                        {review.name}
+                        <TranslatedText text={review.name} />
                       </span>
                     )}
                   </div>

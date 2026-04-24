@@ -28,12 +28,12 @@ export default function BrandStory() {
         )}
         <div className={`mn-brand-text-side ${!image ? 'mn-brand-text-full' : ''}`}>
           <span className="mn-brand-label"><TranslatedText text="Our Brand" /></span>
-          <h2 className="mn-brand-headline">{headline}</h2>
-          <p className="mn-brand-body">{text}</p>
+          <h2 className="mn-brand-headline"><TranslatedText text={headline} /></h2>
+          <p className="mn-brand-body"><TranslatedText text={text} /></p>
           {ctaText && ctaLink.startsWith('http') ? (
-            <a href={ctaLink} className="mn-brand-cta" target="_blank" rel="noopener noreferrer">{ctaText}</a>
+            <a href={ctaLink} className="mn-brand-cta" target="_blank" rel="noopener noreferrer"><TranslatedText text={ctaText} /></a>
           ) : ctaText ? (
-            <Link to={ctaLink} className="mn-brand-cta">{ctaText}</Link>
+            <Link to={ctaLink} className="mn-brand-cta"><TranslatedText text={ctaText} /></Link>
           ) : null}
         </div>
       </div>

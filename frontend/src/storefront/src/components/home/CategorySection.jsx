@@ -118,7 +118,7 @@ export default function CategorySection({ category }) {
 
       <div className="home-category-cta">
         <Link to={`/category/${category.slug}`} className="home-category-view-all" style={{ textDecoration: 'none' }}>
-          VIEW ALL
+          <TranslatedText text="VIEW ALL" />
         </Link>
       </div>
     </section>

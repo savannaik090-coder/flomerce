@@ -104,7 +104,7 @@ export default function TrendingNow() {
                   )}
                 </div>
                 <div className="mn-trending-info">
-                  <span className="mn-trending-name">{product.name}</span>
+                  <span className="mn-trending-name">{(isDemo || product._isDemo) ? <TranslatedText text={product.name} /> : product.name}</span>
                   <div className="mn-trending-price-row">
                     <span className="mn-trending-price">{formatAmount(product.price)}</span>
                     {hasCompare && (

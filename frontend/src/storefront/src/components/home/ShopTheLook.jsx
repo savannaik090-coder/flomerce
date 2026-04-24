@@ -77,7 +77,7 @@ export default function ShopTheLook() {
       <div className="stl-container">
         {title && (
           <div className="stl-header">
-            <h2 className="section-title">{title}</h2>
+            <h2 className="section-title"><TranslatedText text={title} /></h2>
           </div>
         )}
         <div className="stl-content">

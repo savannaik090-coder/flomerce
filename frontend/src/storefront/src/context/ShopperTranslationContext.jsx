@@ -151,6 +151,7 @@ export function ShopperTranslationProvider({ children }) {
 
   const translate = useCallback((text) => {
     if (text == null || text === '') return text;
+    if (typeof text !== 'string') return text;
     if (!target) return text;
     const hash = clientHash(text);
     const mem = cacheRef.current.get(hash);
