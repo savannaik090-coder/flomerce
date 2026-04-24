@@ -12,7 +12,7 @@ export default function RefundPolicyPage() {
         <Navbar />
         <div className="legal-content">
           <h1>Refund & Cancellation Policy</h1>
-          <p className="legal-updated">{`Last updated: $March 30, 2026`}</p>
+          <p className="legal-updated">Last updated: March 30, 2026</p>
 
           <div className="legal-binding-banner" style={{ background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 8, padding: '12px 16px', margin: '0 0 1rem' }}>
             <strong style={{ display: 'block', marginBottom: 4, color: '#78350f' }}>English version is binding</strong>
