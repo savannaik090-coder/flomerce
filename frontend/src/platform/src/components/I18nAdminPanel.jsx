@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { apiRequest } from '../services/api.js';
 import { useToast } from '../../../shared/ui/Toast.jsx';
 import { refreshLocale, PRESHIPPED as ALL_ACTIVE } from '../../../shared/i18n/init.js';
@@ -45,9 +44,8 @@ function fmtNumber(n) {
 
 export default function I18nAdminPanel() {
   // Bind the namespaces this panel reads from. `owner` is primary so
-  // `t('i18n.title')` resolves there directly; `common` is also bound so
+  // `"Admin UI Translations"` resolves there directly; `common` is also bound so
   // cross-namespace lookups can use the explicit `common:…` prefix syntax.
-  const { t } = useTranslation(['owner', 'common']);
   const toast = useToast();
   const [locales, setLocales] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -73,7 +71,7 @@ export default function I18nAdminPanel() {
       const data = res?.data || res;
       setLocales(data?.locales || []);
     } catch (e) {
-      toast.error(e.message || t('i18n.loadFailed'));
+      toast.error(e.message || "Failed to load locales");
     } finally {
       setLoading(false);
     }
@@ -120,25 +118,25 @@ export default function I18nAdminPanel() {
       const res = await apiRequest(`/api/admin/i18n/preview/${encodeURIComponent(lang)}?${qs.toString()}`);
       preview = res?.data || res;
     } catch (e) {
-      return confirm(t('i18n.previewFallbackConfirm', { lang, action: actionLabel }));
+      return confirm(`Could not load cost preview. ${actionLabel} ${lang} anyway?`);
     }
     if (preview.keysToTranslate === 0) {
-      return confirm(t('i18n.previewNothingToDo', { lang }));
+      return confirm(`${lang} is already up to date for this scope. Nothing to translate. Run anyway?`);
     }
     const scope = namespace
-      ? t('i18n.previewScopeNamespace', { namespace })
-      : t('i18n.previewScopeAll');
+      ? `Namespace: ${namespace}`
+      : "All namespaces";
     const msg = [
-      t('i18n.previewHeader', { lang, action: actionLabel }),
+      `Cost preview for ${lang} (${actionLabel})`,
       '',
-      `${t('i18n.previewScopeLabel')}: ${scope}`,
-      `${t('i18n.previewKeysLabel')}: ${fmtNumber(preview.keysToTranslate)}` +
-        (preview.keysReused > 0 ? ` (${t('i18n.previewKeysReused', { count: preview.keysReused })})` : ''),
-      `${t('i18n.previewCharsLabel')}: ${fmtNumber(preview.charCount)}`,
-      `${t('i18n.previewCostLabel')}: ${fmtUSD(preview.estimatedCostUSD)} ` +
-        t('i18n.previewCostNote', { rate: preview.pricePerMillionCharsUSD }),
+      `${"Scope"}: ${scope}`,
+      `${"Keys to translate"}: ${fmtNumber(preview.keysToTranslate)}` +
+        (preview.keysReused > 0 ? ` (${preview.keysReused} reused from cache)` : ''),
+      `${"Characters"}: ${fmtNumber(preview.charCount)}`,
+      `${"Estimated cost"}: ${fmtUSD(preview.estimatedCostUSD)} ` +
+        `(at $${preview.pricePerMillionCharsUSD} per 1M chars)`,
       '',
-      t('i18n.previewProceed'),
+      "Proceed?",
     ].join('\n');
     return confirm(msg);
   }
@@ -148,7 +146,7 @@ export default function I18nAdminPanel() {
       lang,
       namespace: selectedNs || null,
       force: false,
-      actionLabel: t('i18n.actionRegenerate'),
+      actionLabel: "Regenerate",
     });
     if (!ok) return;
     setBusyLang(lang);
@@ -157,8 +155,8 @@ export default function I18nAdminPanel() {
       const res = await apiRequest(`/api/admin/i18n/regenerate/${encodeURIComponent(lang)}${qs}`, { method: 'POST' });
       const data = res?.data || res;
       const s = data?.stats;
-      const detail = s ? t('i18n.regenDetail', { translated: s.translated, kept: s.kept }) : '';
-      toast.success(t('i18n.regenerated', { lang, count: data.keyCount || '?' }) + detail);
+      const detail = s ? ` (${s.translated} translated, ${s.kept} reused)` : '';
+      toast.success(`Regenerated ${lang} successfully (${data.keyCount || '?'} keys).` + detail);
       await loadLocales();
       await loadTmStats();
       // Phase B: live update — re-fetch the catalog into i18next so React
@@ -166,8 +164,8 @@ export default function I18nAdminPanel() {
       await refreshLocale(lang);
     } catch (e) {
       const msg = e?.message || '';
-      if (/rate limit/i.test(msg)) toast.error(t('i18n.rateLimited'));
-      else toast.error(msg || t('i18n.regenerateFailed'));
+      if (/rate limit/i.test(msg)) toast.error("Rate limit reached for this locale (50/day). Try again tomorrow, or use Force regenerate to bypass.");
+      else toast.error(msg || "Regeneration failed");
     } finally {
       setBusyLang(null);
     }
@@ -181,7 +179,7 @@ export default function I18nAdminPanel() {
       lang,
       namespace: selectedNs || null,
       force: true,
-      actionLabel: t('i18n.actionForceRegenerate'),
+      actionLabel: "Force regenerate",
     });
     if (!ok) return;
     setBusyLang(lang);
@@ -192,13 +190,13 @@ export default function I18nAdminPanel() {
       const res = await apiRequest(url, { method: 'POST' });
       const data = res?.data || res;
       const s = data?.stats;
-      const detail = s ? t('i18n.regenDetail', { translated: s.translated, kept: s.kept }) : '';
-      toast.success(t('i18n.regenerated', { lang, count: data.keyCount || '?' }) + detail);
+      const detail = s ? ` (${s.translated} translated, ${s.kept} reused)` : '';
+      toast.success(`Regenerated ${lang} successfully (${data.keyCount || '?'} keys).` + detail);
       await loadLocales();
       await loadTmStats();
       await refreshLocale(lang);
     } catch (e) {
-      toast.error(e?.message || t('i18n.regenerateFailed'));
+      toast.error(e?.message || "Regeneration failed");
     } finally {
       setBusyLang(null);
     }
@@ -214,7 +212,7 @@ export default function I18nAdminPanel() {
       const skipCount = results.filter((r) => r.skipped).length;
       const errCount = results.filter((r) => r.error).length;
       const totalTranslated = results.reduce((sum, r) => sum + (r.stats?.translated || 0), 0);
-      toast.success(t('i18n.refreshAllSummary', { ok: okCount, skip: skipCount, err: errCount, count: totalTranslated }));
+      toast.success(`Refreshed ${okCount}, skipped ${skipCount}, failed ${errCount}. ${totalTranslated} strings re-translated.`);
       await loadLocales();
       await loadTmStats();
       // Phase B: refresh every locale that the worker actually regenerated.
@@ -225,7 +223,7 @@ export default function I18nAdminPanel() {
         }
       }
     } catch (e) {
-      toast.error(e.message || t('i18n.refreshAllFailed'));
+      toast.error(e.message || "Refresh-all failed");
     } finally {
       setRefreshingAll(false);
     }
@@ -233,34 +231,34 @@ export default function I18nAdminPanel() {
 
   // "Delete & reset" — drops R2 + every override row, busts the edge.
   async function purgeReset(lang) {
-    if (!confirm(t('i18n.purgeResetConfirm', { lang }))) return;
+    if (!confirm(`Delete the cached "${lang}" catalog AND clear all manual overrides for it? The next request will lazy-regenerate from scratch.`)) return;
     try {
       await apiRequest(`/api/admin/i18n/locale/${encodeURIComponent(lang)}`, { method: 'DELETE' });
       await loadLocales();
       await refreshLocale(lang);
     } catch (e) {
-      toast.error(e.message || t('i18n.purgeFailed'));
+      toast.error(e.message || "Purge failed");
     }
   }
 
   // Phase C: edge-only purge, leaves R2 + overrides intact.
   async function purgeEdge(lang) {
-    if (!confirm(t('i18n.purgeEdgeConfirm', { lang }))) return;
+    if (!confirm(`Bust the Cloudflare edge cache for "${lang}"? Storage and overrides are kept.`)) return;
     try {
       const res = await apiRequest(`/api/admin/i18n/purge-edge/${encodeURIComponent(lang)}`, { method: 'POST' });
       const data = res?.data || res;
       if (data?.ok) {
-        toast.success(t('i18n.purgeEdgeOk', { lang }));
+        toast.success(`Edge cache purged for ${lang}.`);
       } else if (data?.result?.reason === 'missing-credentials') {
         // Local dev / unconfigured Cloudflare zone: not really a failure, the
         // operator just hasn't wired up CF_API_TOKEN + CF_ZONE_ID yet. Use a
         // distinct toast so they know storage is intact and how to enable it.
-        toast(t('i18n.purgeEdgeNotConfigured'), { icon: 'ℹ️' });
+        toast("Edge cache purge skipped: Cloudflare API credentials (CF_API_TOKEN, CF_ZONE_ID) are not configured. Storage was not changed.", { icon: 'ℹ️' });
       } else {
-        toast.error(t('i18n.purgeEdgeFailed', { lang }));
+        toast.error(`Edge cache purge failed for ${lang}.`);
       }
     } catch (e) {
-      toast.error(e.message || t('i18n.purgeEdgeFailed', { lang }));
+      toast.error(e.message || `Edge cache purge failed for ${lang}.`);
     }
   }
 
@@ -290,24 +288,24 @@ export default function I18nAdminPanel() {
       <GuideCard t={t} />
 
       <div className="oa-card">
-        <h3>{t('i18n.title')}</h3>
-        <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '1rem' }}>{t('i18n.desc')}</p>
+        <h3>{"Admin UI Translations"}</h3>
+        <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '1rem' }}>{"Pre-shipped languages: English, Hindi, Spanish, Simplified Chinese, Arabic. Other locales are auto-generated via Microsoft Translator on first request and cached in R2 storage."}</p>
 
         <div className="oa-form-group" style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
           <div style={{ flex: '1 1 180px' }}>
-            <label>{t('i18n.selectLocale')}</label>
+            <label>{"Select locale to regenerate"}</label>
             <select value={target} onChange={(e) => setTarget(e.target.value)} style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #e2e8f0' }}>
               {PRESHIPPED.map((l) => <option key={l} value={l}>{LABELS[l] || l}</option>)}
             </select>
           </div>
           <div style={{ flex: '1 1 180px' }}>
-            <label>{t('i18n.namespaceLabel')}</label>
+            <label>{"Namespace (optional)"}</label>
             <select
               value={selectedNs}
               onChange={(e) => setSelectedNs(e.target.value)}
               style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #e2e8f0' }}
             >
-              <option value="">{t('i18n.namespaceAll')}</option>
+              <option value="">{"All namespaces (full catalog)"}</option>
               {namespaces.map((n) => (
                 <option key={n.name} value={n.name}>
                   {n.name} ({n.keyCount})
@@ -320,11 +318,11 @@ export default function I18nAdminPanel() {
             disabled={busyLang === target}
             onClick={() => regenerate(target)}
           >
-            {busyLang === target ? t('i18n.regenerating') : t('i18n.regenerate')}
+            {busyLang === target ? "Regenerating..." : "Regenerate"}
           </button>
         </div>
         <p style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 8 }}>
-          {t('i18n.namespaceHint')}
+          {'Pick a single namespace to translate just that section and reduce cost. Leave as "all" to refresh the full catalog.'}
         </p>
       </div>
 
@@ -339,9 +337,9 @@ export default function I18nAdminPanel() {
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <div>
-              <strong style={{ color: '#9a3412' }}>{t('i18n.staleHeader', { count: totalStale })}</strong>
+              <strong style={{ color: '#9a3412' }}>{`${totalStale} translation${totalStale === 1 ? '' : 's'} out of date`}</strong>
               <div style={{ fontSize: '0.85rem', color: '#9a3412', marginTop: 4 }}>
-                {t('i18n.staleSubheader', { count: staleLocaleCount })}
+                {`${staleLocaleCount} language${staleLocaleCount === 1 ? '' : 's'} need${staleLocaleCount === 1 ? 's' : ''} refresh. Only changed strings will be re-translated.`}
               </div>
             </div>
             <button
@@ -349,7 +347,7 @@ export default function I18nAdminPanel() {
               disabled={refreshingAll}
               onClick={refreshAll}
             >
-              {refreshingAll ? t('i18n.refreshing') : t('i18n.refreshAll')}
+              {refreshingAll ? "Refreshing…" : "Refresh all out-of-date"}
             </button>
           </div>
         </div>
@@ -358,22 +356,22 @@ export default function I18nAdminPanel() {
       <TmStatsCard stats={tmStats} t={t} />
 
       <div className="oa-card" style={{ marginTop: '1rem' }}>
-        <h3>{t('i18n.cachedLocales')}</h3>
+        <h3>{"Cached locales"}</h3>
         {loading ? (
-          <p className="oa-empty">{t('common:loading')}</p>
+          <p className="oa-empty">{"Loading..."}</p>
         ) : locales.length === 0 ? (
-          <p className="oa-empty">{t('i18n.noLocales')}</p>
+          <p className="oa-empty">{"No locales cached yet."}</p>
         ) : (
           <>
             <div className="oa-table-wrap">
               <table className="oa-table" style={{ width: '100%', marginTop: '0.5rem' }}>
                 <thead>
                   <tr>
-                    <th style={{ textAlign: 'start' }}>{t('common:language')}</th>
-                    <th>{t('common:status')}</th>
-                    <th>{t('i18n.size')}</th>
-                    <th>{t('i18n.lastUpdated')}</th>
-                    <th style={{ textAlign: 'end' }}>{t('common:actions')}</th>
+                    <th style={{ textAlign: 'start' }}>{"Language"}</th>
+                    <th>{"Status"}</th>
+                    <th>{"Size"}</th>
+                    <th>{"Last updated"}</th>
+                    <th style={{ textAlign: 'end' }}>{"Actions"}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -384,15 +382,15 @@ export default function I18nAdminPanel() {
                         <td><code>{l.lang}</code> {LABELS[l.lang] ? <span style={{ color: '#64748b', fontSize: '0.8rem' }}>— {LABELS[l.lang]}</span> : null}</td>
                         <td>
                           {l.pipelineMismatch ? (
-                            <span style={{ color: '#9a3412', fontSize: '0.85rem' }} title={t('i18n.pipelineMismatchHint')}>
-                              {t('i18n.pipelineOutdated')}
+                            <span style={{ color: '#9a3412', fontSize: '0.85rem' }} title={"These translations were produced by an older translator pipeline and may contain corrupted placeholders or formatting. Click Force regenerate to rebuild from scratch."}>
+                              {"⚠ Pipeline outdated — force regenerate"}
                             </span>
                           ) : l.upToDate ? (
-                            <span style={{ color: '#15803d', fontSize: '0.85rem' }}>{t('i18n.upToDate')}</span>
+                            <span style={{ color: '#15803d', fontSize: '0.85rem' }}>{"✓ Up to date"}</span>
                           ) : (
                             <span style={{ color: '#9a3412', fontSize: '0.85rem' }}>
-                              {t('i18n.pending', { count: pendingCount })}
-                              {l.removed ? t('i18n.removedSuffix', { count: l.removed }) : ''}
+                              {`${pendingCount} pending`}
+                              {l.removed ? ` · ${l.removed} removed` : ''}
                             </span>
                           )}
                         </td>
@@ -400,23 +398,23 @@ export default function I18nAdminPanel() {
                         <td>{l.uploaded ? new Date(l.uploaded).toLocaleString() : '—'}</td>
                         <td style={{ textAlign: 'end' }}>
                           <button className="oa-btn oa-btn-outline" disabled={busyLang === l.lang} onClick={() => regenerate(l.lang)} style={{ marginInlineEnd: 6, marginBlockEnd: 4 }}>
-                            {busyLang === l.lang ? t('i18n.regenerating') : t('i18n.regenerate')}
+                            {busyLang === l.lang ? "Regenerating..." : "Regenerate"}
                           </button>
                           <button className="oa-btn oa-btn-outline" disabled={busyLang === l.lang} onClick={() => forceRegenerate(l.lang)} style={{ marginInlineEnd: 6, marginBlockEnd: 4 }}>
-                            {t('i18n.forceRegenerate')}
+                            {"Force regenerate"}
                           </button>
                           <button
                             className="oa-btn oa-btn-outline"
                             onClick={() => setEditor({ lang: l.lang, namespace: selectedNs || 'common' })}
                             style={{ marginInlineEnd: 6, marginBlockEnd: 4 }}
                           >
-                            {t('i18n.editTranslations')}
+                            {"Edit translations"}
                           </button>
                           <button className="oa-btn oa-btn-outline" onClick={() => purgeEdge(l.lang)} style={{ marginInlineEnd: 6, marginBlockEnd: 4 }}>
-                            {t('i18n.purgeEdge')}
+                            {"Purge edge cache"}
                           </button>
                           <button className="oa-btn oa-btn-outline" onClick={() => purgeReset(l.lang)} style={{ marginBlockEnd: 4 }}>
-                            {t('i18n.purgeReset')}
+                            {"Delete & reset"}
                           </button>
                         </td>
                       </tr>
@@ -445,37 +443,37 @@ export default function I18nAdminPanel() {
                       </div>
                       <div>
                         {l.pipelineMismatch ? (
-                          <span className="oa-i18n-status oa-i18n-status-warn" title={t('i18n.pipelineMismatchHint')}>
-                            {t('i18n.pipelineOutdated')}
+                          <span className="oa-i18n-status oa-i18n-status-warn" title={"These translations were produced by an older translator pipeline and may contain corrupted placeholders or formatting. Click Force regenerate to rebuild from scratch."}>
+                            {"⚠ Pipeline outdated — force regenerate"}
                           </span>
                         ) : l.upToDate ? (
-                          <span className="oa-i18n-status oa-i18n-status-ok">{t('i18n.upToDate')}</span>
+                          <span className="oa-i18n-status oa-i18n-status-ok">{"✓ Up to date"}</span>
                         ) : (
                           <span className="oa-i18n-status oa-i18n-status-warn">
-                            {t('i18n.pending', { count: pendingCount })}
-                            {l.removed ? t('i18n.removedSuffix', { count: l.removed }) : ''}
+                            {`${pendingCount} pending`}
+                            {l.removed ? ` · ${l.removed} removed` : ''}
                           </span>
                         )}
                       </div>
                     </div>
                     <div className="oa-i18n-locale-card-actions">
                       <button className="oa-btn oa-btn-outline" disabled={busyLang === l.lang} onClick={() => regenerate(l.lang)}>
-                        {busyLang === l.lang ? t('i18n.regenerating') : t('i18n.regenerate')}
+                        {busyLang === l.lang ? "Regenerating..." : "Regenerate"}
                       </button>
                       <button className="oa-btn oa-btn-outline" disabled={busyLang === l.lang} onClick={() => forceRegenerate(l.lang)}>
-                        {t('i18n.forceRegenerate')}
+                        {"Force regenerate"}
                       </button>
                       <button
                         className="oa-btn oa-btn-outline"
                         onClick={() => setEditor({ lang: l.lang, namespace: selectedNs || 'common' })}
                       >
-                        {t('i18n.editTranslations')}
+                        {"Edit translations"}
                       </button>
                       <button className="oa-btn oa-btn-outline" onClick={() => purgeEdge(l.lang)}>
-                        {t('i18n.purgeEdge')}
+                        {"Purge edge cache"}
                       </button>
                       <button className="oa-btn oa-btn-outline" onClick={() => purgeReset(l.lang)}>
-                        {t('i18n.purgeReset')}
+                        {"Delete & reset"}
                       </button>
                     </div>
                   </div>
@@ -509,35 +507,35 @@ function GuideCard({ t }) {
   return (
     <div className="oa-card oa-i18n-guide">
       <div className="oa-i18n-guide-header">
-        <h3 style={{ margin: 0 }}>{t('i18n.guideTitle')}</h3>
+        <h3 style={{ margin: 0 }}>{"How this works — quick guide"}</h3>
         <button className="oa-btn oa-btn-outline" onClick={toggle}>
-          {open ? t('i18n.guideHide') : t('i18n.guideShow')}
+          {open ? "Hide guide" : "Show guide"}
         </button>
       </div>
       {open && (
         <div className="oa-i18n-guide-body">
-          <p>{t('i18n.guideIntro')}</p>
+          <p>{"Your admin UI ships with 5 built-in languages. Other languages are auto-translated by Microsoft Translator on first use, cached in storage, and served from Cloudflare's edge for 7 days."}</p>
 
-          <h4>{t('i18n.guideActionsTitle')}</h4>
+          <h4>{"What each button does"}</h4>
           <ul>
-            <li>{t('i18n.guideRegenerate')}</li>
-            <li>{t('i18n.guideForce')}</li>
-            <li>{t('i18n.guideRefreshAll')}</li>
-            <li>{t('i18n.guideEdit')}</li>
-            <li>{t('i18n.guidePurgeEdge')}</li>
-            <li>{t('i18n.guideDelete')}</li>
+            <li>{"Regenerate — Re-translates only the strings that changed since last time. Cheapest option. Use this most of the time."}</li>
+            <li>{"Force regenerate — Re-translates every string from scratch (manual overrides are still preserved). Use only if a language looks broken."}</li>
+            <li>{"Refresh all out-of-date — Same as Regenerate but loops through every stale language in one click."}</li>
+            <li>{'Edit translations — Hand-edit any string. "Save" pins your version forever (sticky override). "Re-translate" redoes one key. "Clear override" returns to auto.'}</li>
+            <li>{"Purge edge cache — Tells Cloudflare to drop the cached copy. You almost never need this — every other action already does it automatically."}</li>
+            <li>{"Delete & reset — Wipes the language file AND all manual overrides for it. Destructive. Use only for a full factory reset."}</li>
           </ul>
 
-          <h4>{t('i18n.guideTmTitle')}</h4>
-          <p>{t('i18n.guideTm')}</p>
+          <h4>{"About Translation Memory"}</h4>
+          <p>{"Every translated phrase is saved in a shared phrasebook keyed by (English source + target language). Future regenerates of the same language — and re-creating a deleted language — reuse those entries for free, skipping the Microsoft API entirely."}</p>
 
-          <h4>{t('i18n.guideWhenTitle')}</h4>
+          <h4>{"Quick decision guide"}</h4>
           <ul>
-            <li>{t('i18n.guideWhen1')}</li>
-            <li>{t('i18n.guideWhen2')}</li>
-            <li>{t('i18n.guideWhen3')}</li>
-            <li>{t('i18n.guideWhen4')}</li>
-            <li>{t('i18n.guideWhen5')}</li>
+            <li>{"Shipped new English strings? → Refresh all out-of-date"}</li>
+            <li>{"One language looks broken? → Force regenerate on that row"}</li>
+            <li>{"Microsoft mistranslated a phrase? → Edit translations → Save"}</li>
+            <li>{"Backend changed but old copy still served? → Purge edge cache"}</li>
+            <li>{"Want to start a language from zero? → Delete & reset"}</li>
           </ul>
         </div>
       )}
@@ -553,21 +551,21 @@ function TmStatsCard({ stats, t }) {
   const empty = !stats.rows;
   return (
     <div className="oa-card" style={{ marginTop: '1rem' }}>
-      <h3>{t('i18n.tmTitle')}</h3>
-      <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '1rem' }}>{t('i18n.tmDesc')}</p>
+      <h3>{"Translation Memory"}</h3>
+      <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '1rem' }}>{"Every translated string is cached platform-wide. Subsequent locales reuse known translations and skip the Microsoft API call entirely."}</p>
       {empty ? (
-        <p className="oa-empty">{t('i18n.tmEmpty')}</p>
+        <p className="oa-empty">{"No translation memory yet — generate a locale to start filling it."}</p>
       ) : (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
-            <Stat label={t('i18n.tmRows')} value={fmtNumber(stats.rows)} />
-            <Stat label={t('i18n.tmHits')} value={fmtNumber(stats.hits)} />
-            <Stat label={t('i18n.tmCharsSaved')} value={fmtNumber(stats.charsSaved)} />
-            <Stat label={t('i18n.tmCostSaved')} value={fmtUSD(stats.costSavedUSD)} accent />
+            <Stat label={"Stored phrases"} value={fmtNumber(stats.rows)} />
+            <Stat label={"Reuse hits"} value={fmtNumber(stats.hits)} />
+            <Stat label={"Characters saved"} value={fmtNumber(stats.charsSaved)} />
+            <Stat label={"Estimated savings"} value={fmtUSD(stats.costSavedUSD)} accent />
           </div>
           {stats.byLang && stats.byLang.length > 0 && (
             <div style={{ marginTop: 12 }}>
-              <div style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: 6 }}>{t('i18n.tmByLang')}</div>
+              <div style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: 6 }}>{"Top languages"}</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {stats.byLang.slice(0, 8).map((row) => (
                   <span
@@ -618,7 +616,6 @@ function Stat({ label, value, accent }) {
 /* Phase A: per-key string editor.                                       */
 /* --------------------------------------------------------------------- */
 function StringEditor({ lang, initialNamespace, namespaces, onClose }) {
-  const { t } = useTranslation(['owner', 'common']);
   const toast = useToast();
   const [ns, setNs] = useState(initialNamespace);
   const [rows, setRows] = useState([]);
@@ -659,10 +656,10 @@ function StringEditor({ lang, initialNamespace, namespaces, onClose }) {
       // and the user's edit context intact.
       setRows((prev) => prev.map((r) => (r.path === path ? { ...r, current: data.value, hasOverride: true } : r)));
       setDrafts((prev) => { const c = { ...prev }; delete c[path]; return c; });
-      toast.success(t('i18n.saveOk', { path }));
+      toast.success(`Saved override for ${path}.`);
       await refreshLocale(lang);
     } catch (e) {
-      toast.error(e?.message || t('i18n.stringSaveFailed'));
+      toast.error(e?.message || "Save failed");
     } finally {
       setBusyPath(null);
     }
@@ -679,12 +676,12 @@ function StringEditor({ lang, initialNamespace, namespaces, onClose }) {
       const data = res?.data || res;
       setRows((prev) => prev.map((r) => (r.path === path ? { ...r, current: data.value, hasOverride: false } : r)));
       setDrafts((prev) => { const c = { ...prev }; delete c[path]; return c; });
-      toast.success(t('i18n.retranslateOk', { path }));
+      toast.success(`Re-translated ${path}.`);
       await refreshLocale(lang);
     } catch (e) {
       const msg = e?.message || '';
-      if (/rate limit/i.test(msg)) toast.error(t('i18n.rateLimited'));
-      else toast.error(msg || t('i18n.stringRetranslateFailed'));
+      if (/rate limit/i.test(msg)) toast.error("Rate limit reached for this locale (50/day). Try again tomorrow, or use Force regenerate to bypass.");
+      else toast.error(msg || "Re-translate failed");
     } finally {
       setBusyPath(null);
     }
@@ -701,12 +698,12 @@ function StringEditor({ lang, initialNamespace, namespaces, onClose }) {
       const data = res?.data || res;
       setRows((prev) => prev.map((r) => (r.path === path ? { ...r, current: data.value, hasOverride: false } : r)));
       setDrafts((prev) => { const c = { ...prev }; delete c[path]; return c; });
-      toast.success(t('i18n.clearOverrideOk', { path }));
+      toast.success(`Cleared override and re-translated ${path}.`);
       await refreshLocale(lang);
     } catch (e) {
       const msg = e?.message || '';
-      if (/rate limit/i.test(msg)) toast.error(t('i18n.rateLimited'));
-      else toast.error(msg || t('i18n.stringRetranslateFailed'));
+      if (/rate limit/i.test(msg)) toast.error("Rate limit reached for this locale (50/day). Try again tomorrow, or use Force regenerate to bypass.");
+      else toast.error(msg || "Re-translate failed");
     } finally {
       setBusyPath(null);
     }
@@ -723,16 +720,16 @@ function StringEditor({ lang, initialNamespace, namespaces, onClose }) {
       <div className="oa-card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
           <div>
-            <h3 style={{ margin: 0 }}>{t('i18n.editTranslationsTitle', { lang })}</h3>
+            <h3 style={{ margin: 0 }}>{`Edit translations — ${lang}`}</h3>
             <p style={{ fontSize: '0.85rem', color: '#64748b', marginTop: 6, marginBottom: 0 }}>
-              {t('i18n.editTranslationsDesc')}
+              {"Edit any string by hand. Manual overrides survive future regenerates. Clear an override to fall back to the auto-translated value."}
             </p>
           </div>
-          <button className="oa-btn oa-btn-outline" onClick={onClose}>{t('i18n.back')}</button>
+          <button className="oa-btn oa-btn-outline" onClick={onClose}>{"Back"}</button>
         </div>
         <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
           <div style={{ flex: '0 0 220px' }}>
-            <label>{t('i18n.namespaceLabel')}</label>
+            <label>{"Namespace (optional)"}</label>
             <select
               value={ns}
               onChange={(e) => setNs(e.target.value)}
@@ -757,19 +754,19 @@ function StringEditor({ lang, initialNamespace, namespaces, onClose }) {
 
       <div className="oa-card" style={{ marginTop: '1rem' }}>
         {loading ? (
-          <p className="oa-empty">{t('i18n.stringsLoading')}</p>
+          <p className="oa-empty">{"Loading strings…"}</p>
         ) : filtered.length === 0 ? (
-          <p className="oa-empty">{t('i18n.stringsEmpty')}</p>
+          <p className="oa-empty">{"No strings in this namespace."}</p>
         ) : (
           <>
           <div className="oa-table-wrap">
           <table className="oa-table" style={{ width: '100%' }}>
             <thead>
               <tr>
-                <th style={{ textAlign: 'start', width: '22%' }}>{t('i18n.stringsCol.key')}</th>
-                <th style={{ textAlign: 'start', width: '32%' }}>{t('i18n.stringsCol.english')}</th>
-                <th style={{ textAlign: 'start', width: '32%' }}>{t('i18n.stringsCol.current', { lang })}</th>
-                <th style={{ textAlign: 'end', width: '14%' }}>{t('i18n.stringsCol.actions')}</th>
+                <th style={{ textAlign: 'start', width: '22%' }}>{"Key"}</th>
+                <th style={{ textAlign: 'start', width: '32%' }}>{"English"}</th>
+                <th style={{ textAlign: 'start', width: '32%' }}>{`Current (${lang})`}</th>
+                <th style={{ textAlign: 'end', width: '14%' }}>{"Actions"}</th>
               </tr>
             </thead>
             <tbody>
@@ -790,7 +787,7 @@ function StringEditor({ lang, initialNamespace, namespaces, onClose }) {
                             border: '1px solid #fcd34d',
                             borderRadius: 4,
                             color: '#92400e',
-                          }}>{t('i18n.overrideBadge')}</span>
+                          }}>{"Override"}</span>
                         </div>
                       )}
                     </td>
@@ -818,7 +815,7 @@ function StringEditor({ lang, initialNamespace, namespaces, onClose }) {
                         disabled={!dirty || busyPath === r.path}
                         style={{ marginBlockEnd: 4, marginInlineEnd: 4 }}
                       >
-                        {t('i18n.save')}
+                        {"Save override"}
                       </button>
                       <button
                         className="oa-btn oa-btn-outline"
@@ -826,7 +823,7 @@ function StringEditor({ lang, initialNamespace, namespaces, onClose }) {
                         disabled={busyPath === r.path}
                         style={{ marginBlockEnd: 4, marginInlineEnd: 4 }}
                       >
-                        {t('i18n.retranslate')}
+                        {"Re-translate"}
                       </button>
                       {r.hasOverride && (
                         <button
@@ -835,7 +832,7 @@ function StringEditor({ lang, initialNamespace, namespaces, onClose }) {
                           disabled={busyPath === r.path}
                           style={{ marginBlockEnd: 4 }}
                         >
-                          {t('i18n.clearOverride')}
+                          {"Clear override"}
                         </button>
                       )}
                     </td>
@@ -859,15 +856,15 @@ function StringEditor({ lang, initialNamespace, namespaces, onClose }) {
                   <div className="oa-i18n-string-card-key">
                     <code>{r.path}</code>
                     {r.hasOverride && (
-                      <span className="oa-i18n-override-badge">{t('i18n.overrideBadge')}</span>
+                      <span className="oa-i18n-override-badge">{"Override"}</span>
                     )}
                   </div>
                   <div className="oa-i18n-string-card-row">
-                    <div className="oa-i18n-string-card-label">{t('i18n.mobileEnglishLabel')}</div>
+                    <div className="oa-i18n-string-card-label">{"English"}</div>
                     <div className="oa-i18n-string-card-en">{r.en}</div>
                   </div>
                   <div className="oa-i18n-string-card-row">
-                    <div className="oa-i18n-string-card-label">{t('i18n.mobileCurrentLabel', { lang })}</div>
+                    <div className="oa-i18n-string-card-label">{`Current (${lang})`}</div>
                     <textarea
                       value={value}
                       onChange={(e) => setDrafts((prev) => ({ ...prev, [r.path]: e.target.value }))}
@@ -889,14 +886,14 @@ function StringEditor({ lang, initialNamespace, namespaces, onClose }) {
                       onClick={() => save(r.path)}
                       disabled={!dirty || busyPath === r.path}
                     >
-                      {t('i18n.save')}
+                      {"Save override"}
                     </button>
                     <button
                       className="oa-btn oa-btn-outline"
                       onClick={() => retranslate(r.path)}
                       disabled={busyPath === r.path}
                     >
-                      {t('i18n.retranslate')}
+                      {"Re-translate"}
                     </button>
                     {r.hasOverride && (
                       <button
@@ -904,7 +901,7 @@ function StringEditor({ lang, initialNamespace, namespaces, onClose }) {
                         onClick={() => clearOverride(r.path)}
                         disabled={busyPath === r.path}
                       >
-                        {t('i18n.clearOverride')}
+                        {"Clear override"}
                       </button>
                     )}
                   </div>

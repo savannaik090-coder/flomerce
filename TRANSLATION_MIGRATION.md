@@ -229,3 +229,11 @@ Fix (no regex rewriters, just file copies + import swaps):
 - A second architect pass confirmed the translated `PlanSelector.jsx` was actually never imported anywhere (the project goal listed it as a landing-page component, but pre-migration `b2645a20` shows it was only ever mounted on the dashboard, and the landing page renders pricing inline in `LandingPricing.jsx`). The translated `PlanSelector.jsx` was therefore deleted as dead code; only `DashboardPlanSelector.jsx` remains.
 
 Do not collapse `Navbar` + `LegalNavbar` back into a single shared component — the duplication is what keeps i18next out of the legal/about chrome. Final useTranslation surface: 5 files (`LandingPage.jsx`, `Navbar.jsx`, `LandingPricing.jsx`, `ContactForm.jsx`, `I18nAdminPanel.jsx`).
+
+### I18nAdminPanel converted to English-only (Apr 24, 2026, follow-up)
+The user reviewed the running app and pointed out that the owner admin's Translations tab (`I18nAdminPanel.jsx`) was still calling `useTranslation()` for its own UI labels. They wanted the panel chrome itself to be English-only — only the *target* translation catalogs that the panel manages should still go through System A.
+
+Conversion (no regex structural rewrite — every replacement was a deterministic catalog lookup):
+- A small Node script (`/tmp/convert_i18n_admin.mjs`, run once) loaded `owner.json` + `common.json`, walked every `t('key')` / `t('key', { interp })` call in the file, looked up the English value by key path, and substituted it inline (double-quoted for plain strings, template literals with `${...}` for interpolations). 126 calls converted automatically (101 simple + 25 with interpolation). 3 calls used i18next plural variants (`*_one` / `*_other`) and were patched manually with a ternary on `count === 1`. The `useTranslation` import and `const { t } = useTranslation(...)` lines were stripped.
+- The backend behavior of the panel is unchanged: it still calls the same `/api/admin/i18n/*` routes to regenerate, refresh, purge, and per-key-edit non-English locales served by `i18n-worker.js`.
+- Final System A `useTranslation` surface in the platform SPA is now **4** files: `LandingPage.jsx`, `Navbar.jsx`, `LandingPricing.jsx`, `ContactForm.jsx`.
