@@ -22,5 +22,7 @@
   "error": "Something went wrong",
   "emailPlaceholder": "name@company.com",
   "namePlaceholder": "John Doe",
-  "passwordPlaceholder": "••••••••"
+  "passwordPlaceholder": "••••••••",
+  "legalBindingTitle": "English version is binding",
+  "legalBindingBody": "This page is provided in your language as a courtesy. The English version of this document is the legally binding text. In case of any conflict or ambiguity, the English version prevails."
 }
