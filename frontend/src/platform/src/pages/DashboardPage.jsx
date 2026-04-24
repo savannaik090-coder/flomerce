@@ -4,7 +4,7 @@ import { getUserSites, deleteSite, createSite } from '../services/siteService.js
 import { getUserProfile, cancelSubscription } from '../services/paymentService.js';
 import SiteCard from '../components/SiteCard.jsx';
 import SiteCreationWizard, { clearWizardDraft } from '../components/SiteCreationWizard.jsx';
-import PlanSelector from '../components/PlanSelector.jsx';
+import PlanSelector from '../components/DashboardPlanSelector.jsx';
 import { useNavigate, useParams } from 'react-router-dom';
 import { apiRequest } from '../services/api.js';
 import '../styles/dashboard.css';

@@ -119,7 +119,7 @@ function PaymentProcessingOverlay({ state, message, onDone }) {
   );
 }
 
-export default function PlanSelector({ siteId: initialSiteId, currentPlan, currentStatus, scheduledPlan, scheduledStartAt, onUpgraded, isOverlay, hideTrial, onClose, isFirstTime, onCreateSite }) {
+export default function DashboardPlanSelector({ siteId: initialSiteId, currentPlan, currentStatus, scheduledPlan, scheduledStartAt, onUpgraded, isOverlay, hideTrial, onClose, isFirstTime, onCreateSite }) {
   const confirm = useConfirm();
   const [duration, setDuration] = useState(null);
   const [upgrading, setUpgrading] = useState(null);

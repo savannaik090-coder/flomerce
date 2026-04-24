@@ -186,3 +186,46 @@ Fix any severe issues the architect surfaces. Then you're done.
 | Apr 24, 2026 | 8 | Builds verified, workflows restarted, landing/login/signup smoke-tested. Handoff to next agent for remaining smoke tests + doc updates + architect review. |
 | Apr 24, 2026 | 8 | Migration complete. All builds clean. Source-level smoke checks pass (zero `useTranslation`, zero stray `t()`, zero corruption-pattern matches, no `i18n` route in backend, no i18next packages, all System A files gone). Auth-gated UIs (`/dashboard`, `/wizard`, storefront admin) verified via static analysis only — no live login available in this env. `replit.md` updated to describe System B-only architecture. |
 | Apr 24, 2026 | 8 | Architect review found and we fixed: `i18n.t()` calls in App.jsx error boundary → literal English; `i18n.language` in TermsPage/PrivacyPolicyPage → `'en-IN'` literal; wrong cache table names in `replit.md` → corrected to `translation_cache` + `site_translator_usage`; corrupted `<img alt="<TranslatedText" text="Google" />` in LoginPage/SignupPage → plain `alt="Google"`; dead `.oa-i18n-*` CSS block in `owner-admin.css` (lines 335-488) removed and orphan `@media` opener restored. Both SPAs rebuild clean with no parse warnings. Architect signed off. |
+
+---
+
+## Apr 24, 2026 — Partial restore of System A (landing-only)
+
+After the full removal documented above, the user requested a partial walk-back: restore System A **only** for the public landing page surfaces (Navbar with `LanguageSwitcher`, `LandingPage`, `LandingPricing`, `PlanSelector`, `ContactForm`) and for the owner Translations admin tab (`I18nAdminPanel`). All other pages stay English-only as removed above.
+
+### Restored from commit `b2645a20` via `git show`
+- `frontend/src/shared/i18n/` — all 16 EN namespace JSONs + `init.js` + `index.js` + `LanguageSwitcher.jsx`
+- `frontend/src/platform/src/components/I18nAdminPanel.jsx`
+- `backend/workers/platform/i18n-worker.js`
+- The 6 component files listed above (re-translated versions)
+- `frontend/src/platform/src/main.jsx` (calls `initI18n()`)
+
+### Re-wired
+- `backend/workers/index.js`: added `import { handleI18nPublic } from './platform/i18n-worker.js'` and `case 'i18n': return handleI18nPublic(...)`
+- `backend/workers/platform/admin-worker.js`: re-added the `case 'i18n':` sub-route for `handleI18nAdmin`
+- `frontend/src/platform/src/pages/OwnerAdminPage.jsx`: imported `I18nAdminPanel` and added a Translations tab button + `{activeTab === 'i18n' && <I18nAdminPanel />}` mount
+- `frontend/src/platform/package.json`: re-added `i18next ^23.16.8`, `react-i18next ^14.1.3`, `i18next-browser-languagedetector ^8.2.1`
+
+### Critical bundling fix
+The naive restore put `i18next` back in the **root** `package.json` AND in `frontend/src/platform/package.json`, producing two physical copies in `node_modules`. Vite resolved `init.js`'s `import 'i18next'` to one copy and `react-i18next`'s internal `import 'i18next'` to the other, so `initReactI18next` was registered on instance A while `useTranslation()` read instance B and returned raw keys (`heroBadge` instead of "Launch Your E-Commerce Store…"). Fix:
+1. Removed `i18next`, `react-i18next`, `i18next-browser-languagedetector` from the **root** `package.json` (the root Express server doesn't use them).
+2. Deleted `node_modules/i18next`, `node_modules/react-i18next`, `node_modules/i18next-browser-languagedetector` at the root.
+3. Added these three to `dedupe` and to `alias` in `frontend/src/platform/vite.config.js` so any future stray duplicate is forced to resolve to the platform-local copy.
+
+### Untouched (do not "fix")
+- Storefront SPA (System B with `<TranslatedText>` + `translate-worker.js`) — fully intact, zero `i18next` packages.
+- `ShopperLanguageSection`, `SettingsSection.jsx`, `SiteCreationWizard.jsx` — all language UI on these stays removed/inlined.
+- Auth pages, legal pages, dashboard, owner-other-tabs, about page, email templates — all hard-coded English.
+- Migrations 0020 & 0021 — no schema changes in this restore.
+
+### Scope-leak fix (also Apr 24, 2026)
+The first cut of the partial restore translated `Navbar.jsx` and `PlanSelector.jsx` directly. Architect review caught that those two components are reused outside the landing surface:
+- `Navbar.jsx` is rendered by `AboutPage`, `TermsPage`, `PrivacyPolicyPage`, `RefundPolicyPage`, `ShippingPolicyPage` — all of which must stay English-only.
+- `PlanSelector.jsx` is rendered by `DashboardPage` — also must stay English-only.
+
+Fix (no regex rewriters, just file copies + import swaps):
+- Created `frontend/src/platform/src/components/LegalNavbar.jsx` from the post-migration English-only version (commit `3278998c`) and pointed all 5 legal/about pages at it. The translated `Navbar.jsx` is now reachable only through `LandingPage.jsx`.
+- Created `frontend/src/platform/src/components/DashboardPlanSelector.jsx` the same way and pointed `DashboardPage.jsx` at it.
+- A second architect pass confirmed the translated `PlanSelector.jsx` was actually never imported anywhere (the project goal listed it as a landing-page component, but pre-migration `b2645a20` shows it was only ever mounted on the dashboard, and the landing page renders pricing inline in `LandingPricing.jsx`). The translated `PlanSelector.jsx` was therefore deleted as dead code; only `DashboardPlanSelector.jsx` remains.
+
+Do not collapse `Navbar` + `LegalNavbar` back into a single shared component — the duplication is what keeps i18next out of the legal/about chrome. Final useTranslation surface: 5 files (`LandingPage.jsx`, `Navbar.jsx`, `LandingPricing.jsx`, `ContactForm.jsx`, `I18nAdminPanel.jsx`).

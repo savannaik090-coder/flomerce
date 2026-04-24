@@ -6,6 +6,7 @@ import '../styles/owner-admin.css';
 import { PLATFORM_DOMAIN } from '../config.js';
 import { useToast } from '../../../shared/ui/Toast.jsx';
 import { useConfirm } from '../../../shared/ui/ConfirmDialog.jsx';
+import I18nAdminPanel from '../components/I18nAdminPanel.jsx';
 
 function utcDate(s) { if (!s) return null; const v = String(s).trim(); const iso = v.includes('T') ? v : v.replace(' ', 'T'); return new Date(iso.endsWith('Z') || iso.includes('+') ? iso : iso + 'Z'); }
 
@@ -694,7 +695,10 @@ export default function OwnerAdminPage() {
         <button className={`oa-tab ${activeTab === 'plans' ? 'active' : ''}`} onClick={() => setActiveTab('plans')}>Plans</button>
         <button className={`oa-tab ${activeTab === 'enterprise' ? 'active' : ''}`} onClick={() => setActiveTab('enterprise')}>Enterprise</button>
         <button className={`oa-tab ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => setActiveTab('settings')}>Settings</button>
+        <button className={`oa-tab ${activeTab === 'i18n' ? 'active' : ''}`} onClick={() => setActiveTab('i18n')}>Translations</button>
       </div>
+
+      {activeTab === 'i18n' && <I18nAdminPanel />}
 
       {activeTab === 'overview' && (
         <div className="oa-overview">

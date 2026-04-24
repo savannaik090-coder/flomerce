@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import Navbar from '../components/Navbar.jsx';
+import Navbar from '../components/LegalNavbar.jsx';
 import '../styles/legal.css';
 import { SUPPORT_EMAIL, PLATFORM_URL, PLATFORM_DOMAIN } from '../config.js';
 

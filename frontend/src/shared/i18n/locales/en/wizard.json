@@ -1,0 +1,103 @@
+{
+  "step1Title": "Select Business Category",
+  "step1Subtitle": "What type of products will you sell?",
+  "categories": {
+    "jewellery": "Jewellery",
+    "clothing": "Clothing / Fashion",
+    "beauty": "Beauty / Cosmetics",
+    "general": "General / Other"
+  },
+  "selected": "Selected",
+  "select": "Select",
+  "next": "Next",
+  "back": "Back",
+  "skip": "Skip",
+  "step2Title": "Website Details",
+  "chooseDesign": "Choose a Design",
+  "themeClassic": "Classic",
+  "themeClassicDesc": "Elegant, traditional look",
+  "themeClassicSwatch": "Serif + Gold",
+  "themeModern": "Modern",
+  "themeModernDesc": "Clean, minimal look",
+  "themeModernSwatch": "Sans-serif + Bold",
+  "domainName": "Domain Name",
+  "domainPlaceholder": "my-awesome-shop",
+  "checking": "Checking...",
+  "available": "Available",
+  "domainMinLength": "Must be at least 3 characters",
+  "domainCharRule": "Only lowercase letters, numbers, and hyphens (not at start/end)",
+  "domainCheckFailed": "Unable to verify. Try again.",
+  "brandName": "Brand Name",
+  "brandPlaceholder": "My Awesome Shop",
+  "logoOptional": "Logo (Optional)",
+  "nextSeo": "Next: SEO",
+  "step3Title": "SEO & Branding",
+  "step3Subtitle": "Help your store get discovered on Google. You can always change these later from the admin panel.",
+  "faviconOptional": "Favicon (Optional)",
+  "faviconHelp": "Small icon shown in browser tabs. Recommended: 32×32 or 64×64 px.",
+  "faviconTooLarge": "Favicon must be under 2 MB",
+  "faviconAlt": "Favicon preview",
+  "siteTitle": "Site Title",
+  "siteTitleHelp": "Appears in search results and browser tabs.",
+  "siteTitleHint": "Recommended: 50–60 characters",
+  "metaDescription": "Meta Description",
+  "metaDescriptionHelp": "A short summary shown below your title in search results.",
+  "metaDescriptionHint": "Recommended: 120–160 characters",
+  "googlePreview": "Google Search Preview",
+  "nextCategories": "Next: Categories",
+  "step4Title": "Product Categories",
+  "step4Subtitle": "These categories will appear on your homepage and navigation. You can rename them or add more.",
+  "categoryName": "Category Name",
+  "categorySubtitle": "Subtitle (Optional)",
+  "addCategory": "+ Add Category",
+  "needAtLeastOne": "Add at least one category",
+  "createSiteFailed": "Failed to create site",
+  "review": "Review & Create",
+  "creating": "Creating...",
+  "createSite": "Create Site",
+  "createWebsite": "Create Website",
+  "yourStoreFallback": "Your Store",
+  "cancel": "Cancel",
+  "addAnotherCategory": "+ Add Another Category",
+  "subtitleOptionalPlaceholder": "Subtitle (optional)",
+  "agreeIntro": "I agree to the",
+  "agreeComma": ",",
+  "agreeAnd": "and",
+  "agreePeriod": ".",
+  "contentLanguagePrompt": "Default Language for Your Website",
+  "contentLanguageWarning": "The language you selected will be the default language for your entire website. Your shoppers will see your store in {{language}} unless you enable shopper language switching later.",
+  "seoTitleTemplates": {
+    "jewellery": "{{brand}} - Jewellery Store Online",
+    "clothing": "{{brand}} - Fashion & Clothing Store",
+    "beauty": "{{brand}} - Beauty & Cosmetics Store",
+    "general": "{{brand}} - Shop Online"
+  },
+  "seoDescriptionTemplates": {
+    "jewellery": "Shop exquisite jewellery at {{brand}}. Explore rings, necklaces, earrings, bracelets & more. Secure payments & nationwide delivery.",
+    "clothing": "Discover the latest fashion at {{brand}}. Shop clothing, accessories & more with easy returns & fast shipping.",
+    "beauty": "Shop premium beauty & cosmetics at {{brand}}. Skincare, makeup & more with secure checkout & fast delivery.",
+    "general": "Shop online at {{brand}}. Explore our curated collection with secure checkout, easy returns & fast delivery."
+  },
+  "defaultCategories": {
+    "jewellery": {
+      "c1": { "name": "New Arrivals", "subtitle": "Discover our latest exquisite collections" },
+      "c2": { "name": "Jewellery Collection", "subtitle": "Exquisite pieces for every occasion" },
+      "c3": { "name": "Featured Collection", "subtitle": "Handpicked favourites just for you" }
+    },
+    "clothing": {
+      "c1": { "name": "New Arrivals", "subtitle": "Discover our latest fashion trends" },
+      "c2": { "name": "Clothing Collection", "subtitle": "Stylish wear for every occasion" },
+      "c3": { "name": "Featured Collection", "subtitle": "Handpicked favourites just for you" }
+    },
+    "beauty": {
+      "c1": { "name": "New Arrivals", "subtitle": "Discover our latest beauty essentials" },
+      "c2": { "name": "Skincare", "subtitle": "Nourish and glow with our skincare range" },
+      "c3": { "name": "Makeup", "subtitle": "Premium makeup for every look" }
+    },
+    "general": {
+      "c1": { "name": "New Arrivals", "subtitle": "Check out what just landed" },
+      "c2": { "name": "Our Collection", "subtitle": "Browse our complete product range" },
+      "c3": { "name": "Featured Products", "subtitle": "Handpicked favourites just for you" }
+    }
+  }
+}

@@ -52,6 +52,8 @@ export async function handleAdmin(request, env, path) {
       return handleShardManagement(request, env, pathParts);
     case 'enterprise':
       return handleEnterpriseManagement(request, env, pathParts, user);
+    case 'i18n':
+      return (await import('./i18n-worker.js')).handleI18nAdmin(request, env, pathParts);
     default:
       return errorResponse('Admin endpoint not found', 404);
   }

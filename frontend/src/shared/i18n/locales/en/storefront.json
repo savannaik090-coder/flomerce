@@ -1,0 +1,1419 @@
+{
+  "nav": {
+    "home": "Home",
+    "shop": "Shop",
+    "about": "About",
+    "contact": "Contact",
+    "blog": "Blog",
+    "faq": "FAQ",
+    "bookAppointment": "Book Appointment",
+    "orderTrack": "Order Track",
+    "account": "Account",
+    "wishlist": "Wishlist",
+    "cart": "Cart",
+    "shoppingBag": "Shopping Bag",
+    "bag": "Bag",
+    "menu": "Menu",
+    "search": "Search",
+    "showSubcategories": "Show subcategories",
+    "welcomeFallback": "Welcome to {{brandName}}"
+  },
+  "footer": {
+    "info": "Info",
+    "categories": "Categories",
+    "collection": "Collection",
+    "needHelp": "Need Help?",
+    "exclusiveBenefits": "Exclusive benefits",
+    "aboutUs": "About Us",
+    "contactUs": "Contact Us",
+    "shippingPolicy": "Shipping Policy",
+    "returnsExchanges": "Returns & Exchanges",
+    "termsConditions": "Terms and Conditions",
+    "privacyPolicy": "Privacy Policy",
+    "trackManageOrder": "Track / Manage Order",
+    "cancellation": "Cancellation",
+    "returnRefund": "Return / Refund",
+    "followSocial": "Follow us on social media",
+    "downloadApp": "Download Our App",
+    "copyright": "\u00a9 {{year}} {{brandName}}. All rights reserved.",
+    "poweredBy": "Powered by",
+    "information": "Information",
+    "appStoreAlt": "App Store",
+    "googlePlayAlt": "Google Play",
+    "social": {
+      "instagram": "Instagram",
+      "facebook": "Facebook",
+      "twitter": "Twitter",
+      "youtube": "YouTube"
+    }
+  },
+  "cart": {
+    "title": "Your Shopping Bag",
+    "empty": "Your cart is empty",
+    "subtotal": "Subtotal:",
+    "continueShopping": "Continue Shopping",
+    "checkout": "Checkout",
+    "remove": "Remove",
+    "color": "Color",
+    "decrement": "Decrease quantity",
+    "increment": "Increase quantity",
+    "heading": "Shopping Cart",
+    "emptyMessage": "Looks like you haven't added anything to your cart yet.",
+    "subtotalLabel": "Subtotal",
+    "proceedToCheckout": "Proceed to Checkout",
+    "noImage": "No img"
+  },
+  "wishlist": {
+    "title": "Your Wishlist ({{count}})",
+    "empty": "Your wishlist is empty",
+    "remove": "Remove",
+    "viewAll": "View All",
+    "heading": "My Wishlist",
+    "emptyMessage": "Browse our products and add your favorites here.",
+    "browseProducts": "Browse Products",
+    "noImage": "No Image"
+  },
+  "contact": {
+    "pageTitle": "Contact Us",
+    "title": "Contact Us",
+    "heroSubtitle": "Reach out to us for any inquiries. We'd love to hear from you.",
+    "getInTouch": "Get in Touch",
+    "getInTouchSubtitle": "Have questions about our collections? We're here to help you discover what you're looking for.",
+    "followUs": "Follow Us",
+    "sendMessage": "Send Us a Message",
+    "success": "Your message has been sent successfully!",
+    "error": "Something went wrong. Please try again.",
+    "fullName": "Full Name *",
+    "emailAddress": "Email Address *",
+    "phoneNumber": "Phone Number",
+    "subject": "Subject *",
+    "message": "Message *",
+    "messagePlaceholder": "How can we help you?",
+    "sending": "Sending...",
+    "send": "Send Message",
+    "workingHours": "Working Hours",
+    "weekdays": "Monday - Saturday",
+    "weekdaysHours": "10:00 AM - 7:00 PM",
+    "sunday": "Sunday",
+    "sundayHours": "11:00 AM - 6:00 PM"
+  },
+  "order": {
+    "title": "Track Your Order",
+    "subtitle": "Enter your order number to see the current status",
+    "placeholder": "Enter order number (e.g. ORD-XXXX)",
+    "track": "Track",
+    "searching": "Searching...",
+    "orderNumber": "Order Number",
+    "orderDate": "Order Date",
+    "cancelledTitle": "Order Cancelled",
+    "cancelledMessage": "This order has been cancelled.",
+    "current": "Current",
+    "shippingDetails": "Shipping Details",
+    "carrier": "Carrier:",
+    "trackingNumber": "Tracking Number:",
+    "returnRequest": "Return Request",
+    "cancellationRequest": "Cancellation Request",
+    "reason": "Reason:",
+    "resolution": "Resolution:",
+    "resolutionRefund": "Refund",
+    "resolutionReplacement": "Replacement",
+    "refundAmount": "Refund Amount:",
+    "adminResponse": "Admin Response:",
+    "submittedOn": "Submitted on {{date}}",
+    "needHelp": "Need help with this order?",
+    "noOrderFound": "No order found with that number.",
+    "errors": {
+      "enterOrderId": "Please enter an order number or order ID",
+      "notFound": "Order not found. Please check your order number and try again."
+    },
+    "steps": {
+      "pending": "Order Placed",
+      "confirmed": "Confirmed",
+      "packed": "Packed",
+      "shipped": "Shipped",
+      "delivered": "Delivered"
+    },
+    "status": {
+      "requested": "Requested",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "refunded": "Refunded",
+      "replaced": "Replaced"
+    }
+  },
+  "checkout": {
+    "title": "Checkout",
+    "steps": {
+      "summary": "Order Summary",
+      "address": "Address",
+      "payment": "Payment"
+    },
+    "empty": {
+      "title": "Your cart is empty",
+      "message": "Add some items to your cart before checkout.",
+      "browse": "Browse Products"
+    },
+    "summary": {
+      "heading": "Order Summary",
+      "color": "Color",
+      "subtotal": "Subtotal",
+      "couponLabel": "Coupon ({{code}})",
+      "shipping": "Shipping",
+      "free": "Free",
+      "shippingNote": "May vary based on your location",
+      "freeShippingAbove": "Free shipping on orders above {{amount}}",
+      "total": "Total"
+    },
+    "coupon": {
+      "heading": "Have a coupon code?",
+      "placeholder": "Enter code",
+      "apply": "Apply",
+      "applied": "\u2713 Coupon applied: {{code}}",
+      "percentOff": "{{value}}% off",
+      "amountOff": "{{amount}} off",
+      "remove": "Remove",
+      "errors": {
+        "empty": "Please enter a coupon code",
+        "invalid": "Invalid coupon code",
+        "expired": "This coupon has expired",
+        "minOrder": "Minimum order amount for this coupon is {{amount}}"
+      }
+    },
+    "actions": {
+      "continueShopping": "Continue Shopping",
+      "checkingAvailability": "Checking Availability...",
+      "continueToAddress": "Continue to Address",
+      "backToSummary": "Back to Summary",
+      "continueToPayment": "Continue to Payment",
+      "backToAddress": "Back to Address",
+      "processing": "Processing...",
+      "placeOrder": "Place Order"
+    },
+    "address": {
+      "heading": "Shipping Address",
+      "savedAddresses": "Saved Addresses",
+      "useNew": "+ Use a New Address",
+      "default": "Default",
+      "firstName": "First Name *",
+      "lastName": "Last Name *",
+      "email": "Email *",
+      "phone": "Phone *",
+      "houseNumber": "House/Building Number *",
+      "roadName": "Road Name / Area / Colony *",
+      "country": "Country *",
+      "selectCountry": "Select Country",
+      "pinCodeLabel": "PIN Code *",
+      "postalCodeLabel": "Postal / ZIP Code *",
+      "validatingPin": "Validating PIN code...",
+      "city": "City *",
+      "stateRegion": "State / Region *",
+      "selectState": "Select State / Region",
+      "saveCheckbox": "Save this address to my account for faster checkout",
+      "whatsappOptIn": "Get order updates on WhatsApp",
+      "whatsappNote": "Receive confirmation, shipping and delivery updates on your phone number"
+    },
+    "errors": {
+      "firstNameMin": "First name must be at least 2 characters",
+      "lastNameMin": "Last name must be at least 2 characters",
+      "invalidEmail": "Please enter a valid email",
+      "invalidPhone": "Please enter a valid phone number",
+      "houseRequired": "House/Building number is required",
+      "roadMin": "Road/Area must be at least 5 characters",
+      "cityMin": "City name must be at least 2 characters",
+      "selectCountry": "Please select a country",
+      "selectState": "Please select a state/region",
+      "invalidPinIN": "Please enter a valid 6-digit PIN code",
+      "invalidPinOther": "Please enter a valid postal/ZIP code",
+      "invalidPin": "Invalid PIN code",
+      "cartEmpty": "Your cart is empty",
+      "stockUnavailable": "Some items in your cart are no longer available. Please update your cart and try again.",
+      "storeNotLoaded": "Store configuration not loaded. Please refresh the page and try again.",
+      "onlineNotConfigured": "Online payment is not configured for this store. Please use Cash on Delivery.",
+      "gatewayNotLoaded": "Payment gateway not loaded. Please refresh and try again.",
+      "initPayment": "Failed to initialize payment. Please try again.",
+      "paymentVerify": "Payment verification failed. If money was deducted, please contact support with your order reference.",
+      "paymentFailed": "Payment failed: {{reason}}. Please try again.",
+      "paymentUnknown": "Unknown error",
+      "placeOrder": "Failed to place order. Please try again."
+    },
+    "payment": {
+      "heading": "Payment",
+      "shippingTo": "Shipping To:",
+      "phoneEmail": "Phone: {{phone}} | Email: {{email}}",
+      "orderTotal": "Order Total",
+      "subtotalItems": "Subtotal ({{count}} items)",
+      "method": "Payment Method",
+      "codTitle": "Cash on Delivery (COD)",
+      "codDesc": "Pay when you receive your order",
+      "onlineTitle": "Pay Online (Razorpay)",
+      "onlineDesc": "Credit/Debit Card, UPI, Net Banking",
+      "razorpayDescription": "Store Order"
+    },
+    "success": {
+      "title": "Order Placed Successfully!",
+      "message": "Thank you for your purchase. We'll get it ready for you.",
+      "orderRef": "Order Reference",
+      "itemsOrdered": "Items Ordered",
+      "qtyByPrice": "Qty: {{qty}} \u00d7 {{price}}",
+      "couponLabel": "Coupon ({{code}})",
+      "shipping": "Shipping",
+      "free": "Free",
+      "totalPaid": "Total Paid",
+      "shippingTo": "Shipping To",
+      "payment": "Payment",
+      "cod": "Cash on Delivery",
+      "online": "Online Payment (Razorpay)",
+      "codNote": "You will pay when the order is delivered to you.",
+      "onlineNote": "Payment completed successfully online.",
+      "statusPending": "Pending",
+      "statusPaid": "Paid",
+      "continueShopping": "Continue Shopping",
+      "pin": "PIN",
+      "postalCode": "Postal Code"
+    }
+  },
+  "account": {
+    "tabs": {
+      "account": "Account Details",
+      "orders": "Order History",
+      "addresses": "Addresses"
+    },
+    "fallbackUser": "User",
+    "fullName": "Full Name",
+    "savingName": "Saving...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "notSet": "Not set",
+    "edit": "Edit",
+    "email": "Email",
+    "logout": "Logout",
+    "confirmLogout": "Confirm Logout",
+    "confirmLogoutMsg": "Are you sure you want to log out?",
+    "yesLogout": "Yes, Logout",
+    "loadingOrders": "Loading orders...",
+    "noOrders": "No orders found yet.",
+    "startShopping": "Start Shopping",
+    "orderNumber": "Order #{{num}}",
+    "cancellationReason": "Cancellation Reason:",
+    "qty": "Qty: {{qty}}",
+    "reviewed": "\u2605 Reviewed",
+    "writeReview": "\u270e Write a Review",
+    "subtotal": "Subtotal: {{amount}}",
+    "couponLine": "Coupon{{codeSuffix}}: \u2212{{amount}}",
+    "total": "Total: {{amount}}",
+    "cancellationLabel": "Cancellation:",
+    "returnLabel": "Return:",
+    "needHelp": "Need Help?",
+    "trackOrder": "Track Order",
+    "cancelOrder": "Cancel Order",
+    "returnRefund": "Return / Refund",
+    "returnExpired": "Return window expired",
+    "savedAddresses": "Saved Addresses",
+    "addAddress": "+ Add Address",
+    "loadingAddresses": "Loading addresses...",
+    "noAddresses": "No saved addresses. Add one for faster checkout.",
+    "addressDefaultLabel": "Address",
+    "default": "Default",
+    "delete": "Delete",
+    "phoneLine": "Phone: {{phone}}",
+    "requestReturn": "Request Return",
+    "orderRefLine": "Order",
+    "reasonForReturn": "Reason for return *",
+    "additionalNotes": "Additional notes *",
+    "returnDetailPlaceholder": "Describe the issue in detail...",
+    "detailRequired": "Please provide additional details.",
+    "photosLabel": "Photos",
+    "required": "*",
+    "optional": "(optional)",
+    "photoCount": "({{count}}/5)",
+    "uploadPhotosNote": "Upload photos showing the issue (required).",
+    "uploading": "Uploading...",
+    "uploadPhotos": "Upload Photos",
+    "photoRequired": "At least 1 photo is required for this return reason.",
+    "preferredResolution": "Preferred resolution *",
+    "refund": "Refund",
+    "replacement": "Replacement",
+    "submitting": "Submitting...",
+    "submitReturn": "Submit Return Request",
+    "requestCancellation": "Request Cancellation",
+    "reasonForCancel": "Reason for cancellation *",
+    "cancelDetailPlaceholder": "Please provide more details about your cancellation...",
+    "cancelDetailRequired": "Please provide additional details before submitting.",
+    "close": "Close",
+    "submitCancel": "Submit Cancellation",
+    "editAddress": "Edit Address",
+    "addAddressTitle": "Add Address",
+    "addressLabelField": "Address Label",
+    "labelHome": "Home",
+    "labelWork": "Work",
+    "labelOther": "Other",
+    "firstNameField": "First Name *",
+    "lastNameField": "Last Name",
+    "phoneField": "Phone",
+    "houseNumberField": "House/Building Number *",
+    "roadField": "Road / Area / Colony",
+    "pinCodeField": "PIN Code *",
+    "validatingPin": "Validating PIN code...",
+    "cityField": "City *",
+    "stateField": "State *",
+    "selectState": "Select State",
+    "setDefault": "Set as default address",
+    "savingAddress": "Saving...",
+    "saveAddress": "Save Address",
+    "status": {
+      "pending": "Pending",
+      "pendingPayment": "Awaiting Payment",
+      "paid": "Paid",
+      "confirmed": "Confirmed",
+      "shipped": "Shipped",
+      "delivered": "Delivered",
+      "cancelled": "Cancelled",
+      "requested": "Requested",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "refunded": "Refunded"
+    },
+    "toasts": {
+      "maxPhotos": "You can upload a maximum of 5 photos.",
+      "uploadFail": "Failed to upload one or more images.",
+      "returnSuccess": "Return request submitted successfully!",
+      "returnFail": "Failed to submit return: {{error}}",
+      "cancelSuccess": "Cancellation request submitted successfully!",
+      "cancelFail": "Failed to submit cancellation: {{error}}"
+    },
+    "errors": {
+      "saveAddress": "Failed to save address",
+      "firstNameMin": "First name must be at least 2 characters",
+      "invalidPhone": "Please enter a valid phone number",
+      "houseRequired": "House/Building number is required",
+      "roadMin": "Road/Area must be at least 5 characters",
+      "cityMin": "City name must be at least 2 characters",
+      "selectState": "Please select a state",
+      "invalidPin": "Please enter a valid 6-digit PIN code",
+      "invalidPinCheck": "Invalid PIN code",
+      "unknown": "Unknown error"
+    },
+    "returnReasons": {
+      "Received wrong item": "Received wrong item",
+      "Item damaged or defective": "Item damaged or defective",
+      "Item does not match description": "Item does not match description",
+      "Size/fit issue": "Size/fit issue",
+      "Changed my mind": "Changed my mind",
+      "Other": "Other"
+    },
+    "cancelReasons": {
+      "Changed my mind": "Changed my mind",
+      "Found a better price elsewhere": "Found a better price elsewhere",
+      "Ordered by mistake": "Ordered by mistake",
+      "Shipping is taking too long": "Shipping is taking too long",
+      "Item no longer needed": "Item no longer needed",
+      "Other": "Other"
+    }
+  },
+  "auth": {
+    "common": {
+      "email": "Email",
+      "emailAddress": "Email Address",
+      "password": "Password",
+      "confirmPassword": "Confirm Password",
+      "show": "Show",
+      "hide": "Hide",
+      "cancel": "Cancel",
+      "close": "Close",
+      "ok": "OK",
+      "orContinueWith": "Or continue with",
+      "googleAlt": "Google"
+    },
+    "login": {
+      "title": "Login to Your Account",
+      "subtitle": "Welcome back, please enter your details",
+      "successToast": "Login successful!",
+      "googleFailed": "Google sign-in failed. Please try again.",
+      "missingFields": "Please enter both email and password",
+      "failed": "Login failed. Please check your credentials.",
+      "forgotPassword": "Forgot Password?",
+      "loggingIn": "Logging in...",
+      "loginButton": "Login",
+      "signInWithGoogle": "Sign in with Google",
+      "noAccount": "Don't have an account?",
+      "signUp": "Sign up",
+      "resetTitle": "Reset Password",
+      "resetIntro": "Enter your email address and we'll send you a link to reset your password.",
+      "resetEmailPlaceholder": "Enter your email",
+      "resetMissingEmail": "Please enter your email address",
+      "resetSuccess": "Password reset email sent! Check your inbox.",
+      "resetFailed": "Failed to send reset email",
+      "sending": "Sending...",
+      "sendResetEmail": "Send Reset Email",
+      "verifyTitle": "Email Verification Required",
+      "verifyMessage": "Please verify your email address before logging in. Check your email inbox (and spam folder) for the verification link.",
+      "resending": "Sending...",
+      "resendVerification": "Resend Verification Email",
+      "resendSuccess": "Verification email sent! Check your inbox.",
+      "resendFailed": "Failed to resend. Please try again.",
+      "tipLabel": "Tip:",
+      "tipText": "If you don't receive the email, check your spam folder or contact support."
+    },
+    "signup": {
+      "title": "Create Your Account",
+      "subtitle": "Join us to explore exclusive collections",
+      "googleFailed": "Google sign-up failed. Please try again.",
+      "fullName": "Full Name",
+      "phoneNumber": "Phone Number",
+      "optional": "(optional)",
+      "phonePlaceholder": "Phone number",
+      "passwordLabel": "Password (8+ characters)",
+      "confirmPassword": "Confirm Password",
+      "creating": "Creating Account...",
+      "createButton": "Create Account",
+      "signUpWithGoogle": "Sign up with Google",
+      "haveAccount": "Already have an account?",
+      "logIn": "Log in",
+      "errors": {
+        "nameMin": "Name must be at least 2 characters",
+        "invalidEmail": "Please enter a valid email",
+        "passwordMin": "Password must be at least 8 characters",
+        "passwordMismatch": "Passwords do not match",
+        "failed": "Signup failed. Please try again."
+      },
+      "verifyTitle": "Account Created Successfully!",
+      "important": "Important:",
+      "verifyMessage1Pre": "Your account has been created but you ",
+      "cannotLogIn": "CANNOT log in",
+      "verifyMessage1Post": " until you verify your email.",
+      "verifyMessage2": "You'll receive a verification email that you must click before accessing your account.",
+      "noteLabel": "Note:",
+      "noteText": "Please also check your spam folder if you don't see the email in your inbox.",
+      "redirecting": "You will be redirected to the login page..."
+    },
+    "forgot": {
+      "title": "Forgot Password",
+      "subtitle": "Enter your email to receive a password reset link",
+      "emailPlaceholder": "Enter your email",
+      "missingEmail": "Please enter your email address",
+      "success": "Password reset link has been sent to your email. Please check your inbox and spam folder.",
+      "failed": "Failed to send reset email. Please try again.",
+      "sending": "Sending...",
+      "sendButton": "Send Reset Link",
+      "rememberPassword": "Remember your password?",
+      "logIn": "Log in"
+    },
+    "reset": {
+      "title": "Reset Password",
+      "subtitle": "Enter your new password below",
+      "newPassword": "New Password",
+      "confirmPassword": "Confirm Password",
+      "minChars": "Minimum 8 characters",
+      "invalidLink": "Invalid reset link. Please request a new password reset.",
+      "passwordMin": "Password must be at least 8 characters",
+      "passwordMismatch": "Passwords do not match",
+      "success": "Password reset successfully! Redirecting to login...",
+      "failed": "Failed to reset password. The link may have expired.",
+      "resetting": "Resetting...",
+      "resetButton": "Reset Password",
+      "backToLogin": "Back to Login"
+    },
+    "verify": {
+      "missingToken": "Invalid verification link. Missing verification token.",
+      "failed": "Verification failed. The link may have expired.",
+      "verifyingTitle": "Verifying Email...",
+      "verifyingMessage": "Please wait while we verify your email address.",
+      "successTitle": "Email Verified!",
+      "successMessage": "Your email has been verified successfully. You will be redirected to the login page.",
+      "goToLogin": "Go to Login",
+      "errorTitle": "Verification Failed"
+    }
+  },
+  "home": {
+    "watchAndBuy": {
+      "title": "Watch And Buy",
+      "videoFallback": "Video",
+      "viewProduct": "View Product",
+      "skuLabel": "SKU: {{sku}}"
+    },
+    "reviews": {
+      "defaultTitle": "What Our Customers Say",
+      "defaultSubtitle": "Real reviews from our happy customers",
+      "shareButton": "SHARE YOUR REVIEW",
+      "whatsappMessage": "Hi! I would like to share my review.",
+      "imageAlt": "Customer Review {{index}}",
+      "fullSizeAlt": "Full Size Review"
+    },
+    "reviewsModern": {
+      "defaultTitle": "What Our Customers Say",
+      "defaultSubtitle": "Real reviews from our happy customers",
+      "shareButton": "SHARE YOUR REVIEW",
+      "whatsappMessage": "Hi! I would like to share my review.",
+      "imageAlt": "Customer Review {{index}}",
+      "fullSizeAlt": "Full Size Review"
+    },
+    "chooseByCategory": {
+      "label": "Collections",
+      "title": "Choose by Category",
+      "explore": "Explore"
+    },
+    "shopTheLook": {
+      "viewDetails": "View Details"
+    },
+    "trending": {
+      "title": "Trending Now",
+      "subtitle": "Our most popular picks",
+      "loading": "Loading trending products...",
+      "scrollLeft": "Scroll left",
+      "scrollRight": "Scroll right"
+    },
+    "categorySection": {
+      "viewAll": "VIEW ALL",
+      "loading": "Loading {{name}}..."
+    },
+    "storeLocations": {
+      "title": "Come Visit Us at Our Store",
+      "subtitle": "Experience our exquisite collection in person",
+      "viewOnMap": "View on Map",
+      "bookAppointment": "BOOK APPOINTMENT",
+      "ourShowroom": "Our Showroom",
+      "brandShowroom": "{{brand}} Showroom",
+      "defaultHours": "Monday to Saturday 11:00 am - 08:00 pm",
+      "scrollLeft": "Scroll left",
+      "scrollRight": "Scroll right",
+      "callStore": "Call store"
+    },
+    "brandStory": {
+      "label": "Our Brand",
+      "defaultHeadline": "Our Story",
+      "defaultText": "We believe in crafting products that blend quality with purpose. Every piece is thoughtfully designed to bring beauty and function into your everyday life."
+    }
+  },
+  "about": {
+    "pageTitle": "About Us",
+    "unavailableTitle": "This page is currently unavailable",
+    "unavailableMessage": "Please check back later.",
+    "heroLabel": "Our Story",
+    "heroTitle": "About {{brandName}}"
+  },
+  "terms": {
+    "pageTitle": "Terms & Conditions",
+    "lastUpdated": "Last updated: {{date}}"
+  },
+  "privacy": {
+    "pageTitle": "Privacy Policy",
+    "lastUpdated": "Last updated: {{date}}"
+  },
+  "defaults": {
+    "policies": {
+      "shippingRegions": "We ship across India and select international destinations",
+      "shippingCharges": "Free shipping on orders above \u20b91,500. Standard shipping charges apply for smaller orders",
+      "shippingDeliveryTime": "5-7 business days for standard delivery. Express delivery available in select cities",
+      "shippingTracking": "Real-time tracking updates via SMS and email after dispatch",
+      "returnPolicy": "7-day return policy for unused items in original packaging with tags intact",
+      "returnReplacements": "Replacements available for damaged or defective products within 48 hours of delivery",
+      "returnMandatory": "Original packaging, invoice, and product tags must be intact for all returns",
+      "careGuideWashing": "Follow the specific care instructions provided with your product",
+      "careGuideCleaning": "Clean gently with appropriate materials as recommended for the product type",
+      "careGuideMaintenance": "Store in a cool, dry place away from direct sunlight and moisture"
+    },
+    "policyPlaceholders": {
+      "shippingRegions": "e.g., Pan-India and international delivery",
+      "shippingCharges": "e.g., Free above \u20b91,500, standard charges below",
+      "shippingDeliveryTime": "e.g., 5-7 business days standard delivery",
+      "shippingTracking": "e.g., SMS and email tracking after dispatch",
+      "returnPolicy": "e.g., 7-day return for unused items",
+      "returnReplacements": "e.g., Replacements for defective items",
+      "returnMandatory": "e.g., Original packaging and invoice required",
+      "careGuideCleaning": "e.g., Clean gently with soft cloth",
+      "careGuideWashing": "e.g., Follow product care instructions",
+      "careGuideMaintenance": "e.g., Store in cool, dry place"
+    },
+    "aboutPage": {
+      "heroSubtitle": "Discover our story, heritage, and the passion behind every product we offer",
+      "storyText": "Welcome to {{brandName}}. We are dedicated to bringing you the finest products with unmatched quality and service that speaks for itself.\n\nOur commitment to excellence and attention to detail has made us one of the most trusted names in our industry. Every product in our collection reflects expertise, quality, and care.\n\nWe believe in creating experiences, not just selling products. Each item is carefully curated and selected to perfection for discerning customers worldwide.",
+      "missionHeading": "Our Mission",
+      "missionText": "{{brandName}} is more than just a brand \u2013 it is a commitment to excellence, quality, and customer satisfaction that drives everything we do.\n\nWe aim to deliver the finest products, creating an experience that blends quality with exceptional service.\n\nOur commitment extends beyond selling products \u2013 we are dedicated to building lasting relationships with our customers and ensuring satisfaction for generations to come."
+    },
+    "heroSlider": [
+      { "title": "IN THE", "subtitle": "folds", "description": "SUMMER CELEBRATIONS", "buttonText": "SHOP NOW" },
+      { "title": "ELEGANT", "subtitle": "Collection", "description": "TIMELESS BEAUTY", "buttonText": "SHOP NOW" },
+      { "title": "LUXURY", "subtitle": "Series", "description": "PREMIUM COLLECTION", "buttonText": "SHOP NOW" }
+    ],
+    "featuredVideo": {
+      "title": "Discover Our Collection",
+      "description": "Explore our curated selection of premium products. Connect with us and find exactly what you're looking for"
+    },
+    "featuredVideoPlaceholders": {
+      "title": "e.g., Discover Our Collection",
+      "description": "e.g., Explore our curated selection of premium products. Connect with us and find exactly what you're looking for"
+    },
+    "watchAndBuy": [
+      "Best Seller",
+      "New Arrival",
+      "Trending Now",
+      "Customer Favourite",
+      "Limited Edition",
+      "Staff Pick"
+    ],
+    "termsIntro": "Please read these Terms and Conditions carefully before using {{brand}}'s website and services. By accessing or using our service, you agree to be bound by these terms.",
+    "termsSections": [
+      {
+        "title": "1. Acceptance of Terms",
+        "content": "By accessing and placing an order with {{brand}}, you confirm that you are in agreement with and bound by these Terms and Conditions. These terms apply to the entire website and any email or other type of communication between you and {{brand}}."
+      },
+      {
+        "title": "2. Products and Pricing",
+        "content": "All products are subject to availability. We reserve the right to discontinue any product at any time.\nPrices are listed in Indian Rupees (INR) and are subject to change without notice.\nWe make every effort to display accurate product descriptions and images, but we do not warrant that product descriptions are accurate, complete, or current."
+      },
+      {
+        "title": "3. Orders and Payment",
+        "content": "By placing an order, you offer to purchase a product subject to these terms. We reserve the right to refuse or cancel any order at our discretion.\nPayment must be received before orders are processed. We accept payments via Razorpay (credit/debit cards, UPI, net banking) and Cash on Delivery (where available)."
+      },
+      {
+        "title": "4. Shipping and Delivery",
+        "content": "Delivery times are estimates only and may vary. We are not responsible for delays caused by courier services or unforeseen circumstances.\nRisk of loss and title pass to you upon delivery to the carrier. We are not liable for any loss, theft, or damage during transit."
+      },
+      {
+        "title": "5. Returns and Refunds",
+        "content": "We want you to be completely satisfied with your purchase. If you are not satisfied, you may return eligible items within 7 days of delivery.\nItems must be unused, in original packaging, and accompanied by the original receipt.\nRefunds will be processed within 5-7 business days after we receive and inspect the returned item.\nCustom or personalized items may not be eligible for return."
+      },
+      {
+        "title": "6. Intellectual Property",
+        "content": "All content on this website, including text, graphics, logos, images, and software, is the property of {{brand}} and is protected by applicable intellectual property laws.\nYou may not reproduce, distribute, or create derivative works without our express written permission."
+      },
+      {
+        "title": "7. User Accounts",
+        "content": "You are responsible for maintaining the confidentiality of your account credentials and for all activities that occur under your account. Please notify us immediately of any unauthorized use of your account."
+      },
+      {
+        "title": "8. Limitation of Liability",
+        "content": "To the fullest extent permitted by law, {{brand}} shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising from your use of our services or products.\nOur total liability shall not exceed the amount paid by you for the specific product giving rise to the claim."
+      },
+      {
+        "title": "9. Governing Law",
+        "content": "These Terms shall be governed by and construed in accordance with the laws of India. Any disputes shall be subject to the exclusive jurisdiction of the courts in the location of our registered office."
+      },
+      {
+        "title": "10. Contact Information",
+        "content": "For any questions regarding these Terms and Conditions, please contact us at {{email}}{{phoneClause}}."
+      }
+    ],
+    "privacyIntro": "We are committed to protecting your personal information and your right to privacy. This Privacy Policy explains how we collect, use, and share information about you when you use our services.",
+    "privacySections": [
+      {
+        "title": "1. Information We Collect",
+        "content": "We collect information you provide directly to us, such as when you create an account, make a purchase, or contact us for support. This includes:\n\u2022 Name, email address, and phone number\n\u2022 Billing and shipping address\n\u2022 Payment information (processed securely via Razorpay \u2014 we do not store card details)\n\u2022 Order history and preferences\n\u2022 Device and usage information when you visit our website"
+      },
+      {
+        "title": "2. How We Use Your Information",
+        "content": "We use the information we collect to:\n\u2022 Process and fulfill your orders\n\u2022 Send order confirmations and updates\n\u2022 Respond to your comments, questions, and requests\n\u2022 Send promotional communications (you can opt out at any time)\n\u2022 Improve our products and services\n\u2022 Comply with legal obligations"
+      },
+      {
+        "title": "3. Sharing of Information",
+        "content": "We do not sell, trade, or rent your personal information to third parties. We may share your information with:\n\u2022 Payment processors (Razorpay) to complete transactions\n\u2022 Shipping partners to deliver your orders\n\u2022 Service providers who assist in our operations\n\u2022 Law enforcement when required by law"
+      },
+      {
+        "title": "4. Data Security",
+        "content": "We implement appropriate technical and organizational measures to protect your personal information against unauthorized access, alteration, disclosure, or destruction. All payment transactions are encrypted using SSL technology."
+      },
+      {
+        "title": "5. Cookies",
+        "content": "We use cookies and similar tracking technologies to enhance your experience on our website. You can control cookies through your browser settings. Disabling cookies may affect some features of our website."
+      },
+      {
+        "title": "6. Your Rights",
+        "content": "You have the right to:\n\u2022 Access the personal information we hold about you\n\u2022 Correct inaccurate or incomplete information\n\u2022 Request deletion of your personal information\n\u2022 Opt out of marketing communications\n\u2022 Lodge a complaint with a supervisory authority"
+      },
+      {
+        "title": "7. Children's Privacy",
+        "content": "Our services are not directed to children under 13 years of age. We do not knowingly collect personal information from children under 13."
+      },
+      {
+        "title": "8. Changes to This Policy",
+        "content": "We may update this Privacy Policy from time to time. We will notify you of any changes by posting the new policy on this page and updating the \"Last updated\" date."
+      },
+      {
+        "title": "9. Contact Us",
+        "content": "If you have any questions about this Privacy Policy, please contact us at {{email}}{{phoneClause}}."
+      }
+    ],
+    "shopTheLook": {
+      "title": "Shop the Look"
+    },
+    "defaultReviews": [
+      "\"Excellent product quality and exactly as described. Very happy with my purchase!\"",
+      "\"Fast delivery and great packaging. The product exceeded my expectations\"",
+      "\"Amazing customer service and wonderful products. Will definitely order again!\"",
+      "\"Great value for money. The quality is outstanding and delivery was on time\"",
+      "\"Loved everything about this order. From ordering to delivery, experience was smooth\""
+    ],
+    "trendingProducts": [
+      "Premium Product",
+      "Best Seller",
+      "New Arrival",
+      "Customer Favourite",
+      "Trending Pick",
+      "Limited Edition",
+      "Staff Pick",
+      "Featured Item"
+    ],
+    "demoCategories": [
+      { "name": "New Arrivals", "subtitle": "Just landed" },
+      { "name": "Best Sellers", "subtitle": "Most loved" },
+      { "name": "Featured", "subtitle": "Curated for you" },
+      { "name": "Trending", "subtitle": "Popular now" },
+      { "name": "Premium", "subtitle": "Top quality" },
+      { "name": "Special Offers", "subtitle": "Limited time" }
+    ],
+    "orderActionNotes": {
+      "returnRefund": "Your return request has been approved. If any payment was made, the refund will be processed within 5\u20137 business days. Please pack the product securely \u2014 our delivery partner will contact you for pickup within 8\u201312 days.",
+      "returnReplacement": "Your return request has been approved for a replacement. Please pack the product securely \u2014 our delivery partner will contact you within 8\u201312 days to pick up the old product and deliver the replacement at the same time.",
+      "cancellationApproval": "Your cancellation request has been approved. If any payment was made, the refund will be processed within 5\u20137 business days."
+    },
+    "jewellery": {
+      "policies": {
+        "shippingRegions": "We ship across India and select international destinations",
+        "shippingCharges": "Free shipping on orders above \u20b92,000. Standard shipping \u20b999 for orders below \u20b92,000",
+        "shippingDeliveryTime": "5-7 business days for domestic orders. 10-15 business days for international orders",
+        "shippingTracking": "Real-time tracking via SMS and email once your order is dispatched",
+        "returnPolicy": "7-day return policy for unused and undamaged items in original packaging. Custom or personalized jewellery is non-returnable",
+        "returnReplacements": "Replacements available for damaged or defective items within 48 hours of delivery",
+        "returnMandatory": "Original invoice, undamaged packaging, and all product tags must be intact for returns",
+        "careGuideWashing": "Avoid contact with water, perfumes, and chemicals. Remove jewellery before bathing or swimming",
+        "careGuideCleaning": "Gently wipe with a soft dry cloth after each use. Use a jewellery polishing cloth for shine",
+        "careGuideMaintenance": "Store in the provided jewellery box or a soft pouch. Keep pieces separated to avoid scratches"
+      },
+      "policyPlaceholders": {
+        "shippingRegions": "e.g., Pan-India and select international destinations",
+        "shippingCharges": "e.g., Free above \u20b92,000, \u20b999 for smaller orders",
+        "shippingDeliveryTime": "e.g., 5-7 business days domestic, 10-15 international",
+        "shippingTracking": "e.g., Real-time SMS and email tracking",
+        "returnPolicy": "e.g., 7-day return for unused items. Custom pieces non-returnable",
+        "returnReplacements": "e.g., Replacements for damaged items within 48 hours",
+        "returnMandatory": "e.g., Original invoice and undamaged packaging required",
+        "careGuideCleaning": "e.g., Wipe with soft dry cloth after each use",
+        "careGuideWashing": "e.g., Avoid water, perfumes, and chemicals",
+        "careGuideMaintenance": "e.g., Store in jewellery box, keep pieces separated"
+      },
+      "aboutPage": {
+        "heroSubtitle": "Discover our story, heritage, and the passion behind every exquisite piece we create",
+        "storyText": "Welcome to {{brandName}}. We are dedicated to bringing you the finest jewellery with unmatched quality and craftsmanship that speaks for itself.\n\nOur commitment to authentic craftsmanship and traditional artistry has made us one of the most trusted names in the jewellery industry. Every piece in our collection reflects expertise, artistic brilliance, and timeless beauty.\n\nWe believe in creating experiences, not just jewellery. Each item is carefully curated and crafted to perfection for discerning customers worldwide.",
+        "missionHeading": "Our Mission",
+        "missionText": "{{brandName}} is more than just a brand \u2013 it is a commitment to excellence, quality, and customer satisfaction that drives everything we do.\n\nWe aim to preserve and promote the finest traditions of craftsmanship, creating masterpieces that blend timeless elegance with contemporary appeal.\n\nOur commitment extends beyond creating beautiful products \u2013 we are dedicated to supporting artisans, preserving techniques, and ensuring that this heritage continues to shine for generations to come."
+      },
+      "heroSlider": [
+        { "title": "BRIDAL", "subtitle": "Jewellery", "description": "WEDDING COLLECTION", "buttonText": "SHOP NOW" },
+        { "title": "TIMELESS", "subtitle": "Elegance", "description": "GOLD & DIAMOND", "buttonText": "EXPLORE" },
+        { "title": "HERITAGE", "subtitle": "Collection", "description": "TEMPLE JEWELLERY", "buttonText": "SHOP NOW" }
+      ],
+      "featuredVideo": {
+        "title": "Let's Create Your Perfect Bridal Jewelry",
+        "description": "Dreaming of something truly elegant? Discover our exquisite jewelry collection. Connect with our designers and create your perfect bridal ensemble"
+      },
+      "featuredVideoPlaceholders": {
+        "title": "e.g., Let's Create Your Perfect Bridal Jewelry",
+        "description": "e.g., Dreaming of something truly elegant? Discover our exquisite jewelry collection. Connect with our designers and create your perfect bridal ensemble"
+      },
+      "watchAndBuy": [
+        "Bridal Collection",
+        "Gold Necklace Set",
+        "Diamond Earrings",
+        "Temple Jewellery",
+        "Kundan Collection",
+        "Bangles & Kadas"
+      ],
+      "trendingProducts": [
+        "Gold Necklace Set",
+        "Diamond Earrings",
+        "Bridal Choker",
+        "Temple Bangles",
+        "Solitaire Ring",
+        "Pearl Pendant",
+        "Kundan Set",
+        "Gold Bracelet"
+      ],
+      "demoCategories": [
+        { "name": "Necklaces", "subtitle": "Statement neckpieces" },
+        { "name": "Earrings", "subtitle": "Studs to chandeliers" },
+        { "name": "Rings", "subtitle": "Timeless rings" },
+        { "name": "Bridal", "subtitle": "For your big day" },
+        { "name": "Bangles", "subtitle": "Tradition reimagined" },
+        { "name": "Temple Jewellery", "subtitle": "Heritage craft" }
+      ],
+      "defaultReviews": [
+        "\"Received parcel. Jewelry quality is excellent. Thank you so much!\"",
+        "\"Loved my purchase. You have a great collection... will definitely add more!\"",
+        "\"Thanks dear I received my parcel. It's amazing, very beautiful set\"",
+        "\"The craftsmanship is amazing. Jewelry is exactly same as shown in image\"",
+        "\"Got this. Good quality and good response fast delivery\""
+      ]
+    },
+    "clothing": {
+      "policies": {
+        "shippingRegions": "We deliver across India with express and standard shipping options",
+        "shippingCharges": "Free shipping on orders above \u20b9999. Standard shipping \u20b979 for orders below \u20b9999",
+        "shippingDeliveryTime": "3-5 business days for metro cities. 5-7 business days for other locations",
+        "shippingTracking": "Track your order in real-time via SMS, email, and WhatsApp updates",
+        "returnPolicy": "15-day easy return and exchange policy for unused items with original tags attached",
+        "returnReplacements": "Size exchanges available subject to stock. Replacements for manufacturing defects",
+        "returnMandatory": "Items must be unworn, unwashed, with all original tags and packaging intact",
+        "careGuideWashing": "Follow the care label instructions on each garment. Use mild detergent and cold water for delicate fabrics",
+        "careGuideCleaning": "Dry clean recommended for embroidered and embellished pieces. Spot clean minor stains gently",
+        "careGuideMaintenance": "Store in a cool, dry place away from direct sunlight. Use padded hangers for structured garments"
+      },
+      "policyPlaceholders": {
+        "shippingRegions": "e.g., All India delivery with express options",
+        "shippingCharges": "e.g., Free above \u20b9999, \u20b979 for smaller orders",
+        "shippingDeliveryTime": "e.g., 3-5 days metro, 5-7 days other areas",
+        "shippingTracking": "e.g., SMS, email, and WhatsApp tracking",
+        "returnPolicy": "e.g., 15-day easy return with original tags",
+        "returnReplacements": "e.g., Size exchanges subject to stock",
+        "returnMandatory": "e.g., Unworn, unwashed, with original tags",
+        "careGuideCleaning": "e.g., Dry clean for embroidered pieces",
+        "careGuideWashing": "e.g., Follow care label, mild detergent, cold water",
+        "careGuideMaintenance": "e.g., Store away from sunlight, use padded hangers"
+      },
+      "aboutPage": {
+        "heroSubtitle": "Discover our story and the passion behind every collection we design",
+        "storyText": "Welcome to {{brandName}}. We are passionate about fashion and dedicated to bringing you stylish, high-quality clothing for every occasion.\n\nOur team of designers draws inspiration from global trends while staying true to timeless style. Every garment in our collection is thoughtfully designed and crafted with attention to detail.\n\nWe believe fashion should be accessible, comfortable, and expressive. That's why we create versatile pieces that help you look and feel your best.",
+        "missionHeading": "Our Mission",
+        "missionText": "{{brandName}} is more than just a clothing brand \u2013 it is about empowering you to express yourself through style.\n\nWe aim to make fashion accessible and sustainable, creating collections that are as kind to the planet as they are to your wardrobe.\n\nOur commitment goes beyond great clothing \u2013 we are building a community of fashion lovers who believe in quality, creativity, and individuality."
+      },
+      "heroSlider": [
+        { "title": "NEW", "subtitle": "Season", "description": "SUMMER COLLECTION", "buttonText": "SHOP NOW" },
+        { "title": "ETHNIC", "subtitle": "Elegance", "description": "FESTIVE WEAR", "buttonText": "EXPLORE" },
+        { "title": "TRENDING", "subtitle": "Styles", "description": "LATEST FASHION", "buttonText": "SHOP NOW" }
+      ],
+      "featuredVideo": {
+        "title": "Discover Your Perfect Style",
+        "description": "Explore our latest fashion collection crafted for every occasion. Connect with our stylists and find the perfect outfit that defines you"
+      },
+      "featuredVideoPlaceholders": {
+        "title": "e.g., Discover Your Perfect Style",
+        "description": "e.g., Explore our latest fashion collection crafted for every occasion. Connect with our stylists and find the perfect outfit that defines you"
+      },
+      "watchAndBuy": [
+        "Summer Collection",
+        "Ethnic Wear",
+        "Party Outfits",
+        "Casual Essentials",
+        "New Arrivals",
+        "Trending Styles"
+      ],
+      "trendingProducts": [
+        "Floral Maxi Dress",
+        "Embroidered Kurti",
+        "Silk Saree",
+        "Designer Lehenga",
+        "Casual Top",
+        "Anarkali Suit",
+        "Denim Jacket",
+        "Co-ord Set"
+      ],
+      "demoCategories": [
+        { "name": "New Arrivals", "subtitle": "Fresh styles this season" },
+        { "name": "Ethnic Wear", "subtitle": "Traditional elegance" },
+        { "name": "Western Wear", "subtitle": "Everyday chic" },
+        { "name": "Bridal Collection", "subtitle": "Wedding statements" },
+        { "name": "Casual Tops", "subtitle": "Light & comfy" },
+        { "name": "Accessories", "subtitle": "Complete the look" }
+      ],
+      "defaultReviews": [
+        "\"The fabric quality is amazing and the fit is perfect. Exactly as shown in the pictures!\"",
+        "\"Loved the outfit! Great stitching, comfortable material, and fast delivery\"",
+        "\"Beautiful collection and excellent quality. Will definitely order again!\"",
+        "\"The dress fits perfectly and the color is exactly as shown. Very happy with my purchase\"",
+        "\"Super soft fabric and trendy designs. Got so many compliments wearing this!\""
+      ]
+    },
+    "beauty": {
+      "policies": {
+        "shippingRegions": "We deliver across India with careful packaging to ensure product safety",
+        "shippingCharges": "Free shipping on orders above \u20b9799. Standard shipping \u20b969 for orders below \u20b9799",
+        "shippingDeliveryTime": "3-5 business days for metro cities. 5-7 business days for other locations",
+        "shippingTracking": "Track your order in real-time via SMS, email, and WhatsApp updates",
+        "returnPolicy": "7-day return policy for unopened and unused products in original sealed packaging. Opened or used products are non-returnable for hygiene reasons",
+        "returnReplacements": "Replacements available for damaged, defective, or incorrect items within 48 hours of delivery",
+        "returnMandatory": "Product must be unused, unopened, in original sealed packaging with all tags and invoice intact",
+        "careGuideWashing": "Keep products away from direct sunlight and extreme temperatures. Store in a cool, dry place",
+        "careGuideCleaning": "Wipe product containers with a clean, dry cloth. Keep caps and lids tightly closed after use",
+        "careGuideMaintenance": "Check expiry dates regularly. Store products upright to prevent leakage. Keep away from children"
+      },
+      "policyPlaceholders": {
+        "shippingRegions": "e.g., All India delivery with safe packaging",
+        "shippingCharges": "e.g., Free above \u20b9799, \u20b969 for smaller orders",
+        "shippingDeliveryTime": "e.g., 3-5 days metro, 5-7 days other areas",
+        "shippingTracking": "e.g., SMS, email, and WhatsApp tracking",
+        "returnPolicy": "e.g., 7-day return for unopened products only",
+        "returnReplacements": "e.g., Replacements for damaged or incorrect items",
+        "returnMandatory": "e.g., Unopened, sealed packaging with invoice",
+        "careGuideCleaning": "e.g., Wipe containers with dry cloth",
+        "careGuideWashing": "e.g., Keep away from sunlight and heat",
+        "careGuideMaintenance": "e.g., Check expiry, store upright, keep cool"
+      },
+      "aboutPage": {
+        "heroSubtitle": "Discover our story and the passion behind every product we craft for your beauty",
+        "storyText": "Welcome to {{brandName}}. We are passionate about beauty and dedicated to bringing you high-quality skincare, makeup, and wellness products that help you look and feel your best.\n\nOur team carefully curates every product in our collection, ensuring it meets the highest standards of safety, quality, and effectiveness.\n\nWe believe beauty should be accessible, inclusive, and clean. That's why we offer products that are as kind to your skin as they are effective.",
+        "missionHeading": "Our Mission",
+        "missionText": "{{brandName}} is more than just a beauty brand \u2013 it is about empowering you to feel confident in your own skin.\n\nWe aim to make premium beauty and skincare accessible to everyone, offering products that are safe, effective, and ethically made.\n\nOur commitment goes beyond great products \u2013 we are building a community of beauty enthusiasts who believe in self-care, quality, and authenticity."
+      },
+      "heroSlider": [
+        { "title": "GLOW", "subtitle": "Naturally", "description": "SKINCARE ESSENTIALS", "buttonText": "SHOP NOW" },
+        { "title": "BEAUTY", "subtitle": "Redefined", "description": "MAKEUP COLLECTION", "buttonText": "EXPLORE" },
+        { "title": "SELF", "subtitle": "Care", "description": "WELLNESS RANGE", "buttonText": "SHOP NOW" }
+      ],
+      "featuredVideo": {
+        "title": "Discover Your Beauty Essentials",
+        "description": "Explore our curated collection of skincare, makeup, and wellness products. Connect with our beauty experts and find the perfect routine for you"
+      },
+      "featuredVideoPlaceholders": {
+        "title": "e.g., Discover Your Beauty Essentials",
+        "description": "e.g., Explore our curated collection of skincare and makeup products. Connect with our beauty experts and find the perfect routine for you"
+      },
+      "watchAndBuy": [
+        "Skincare Routine",
+        "Makeup Tutorial",
+        "Hair Care Tips",
+        "Best Sellers",
+        "New Launches",
+        "Self Care Essentials"
+      ],
+      "trendingProducts": [
+        "Vitamin C Serum",
+        "Matte Lipstick",
+        "Hydrating Cream",
+        "Eau de Parfum",
+        "Foundation Stick",
+        "Eye Palette",
+        "Face Cleanser",
+        "Liquid Mascara"
+      ],
+      "demoCategories": [
+        { "name": "Skincare", "subtitle": "Glow essentials" },
+        { "name": "Makeup", "subtitle": "Color your day" },
+        { "name": "Lips", "subtitle": "Bold lip looks" },
+        { "name": "Fragrance", "subtitle": "Signature scents" },
+        { "name": "Haircare", "subtitle": "Salon at home" },
+        { "name": "Wellness", "subtitle": "Self-care rituals" }
+      ],
+      "defaultReviews": [
+        "\"My skin feels so much better after using these products. Absolutely love them!\"",
+        "\"Amazing quality skincare! The results are visible within a week. Highly recommend\"",
+        "\"The products are gentle on my skin and smell wonderful. Will buy again for sure!\"",
+        "\"Best beauty products I have tried. Packaging is beautiful and delivery was quick\"",
+        "\"Natural ingredients and great results. My go-to store for all beauty essentials now\""
+      ]
+    }
+  },
+  "return": {
+    "title": "Return Order",
+    "lookup": {
+      "intro": "Enter your order number and email address to receive a return link.",
+      "orderNumber": "Order Number",
+      "orderNumberPlaceholder": "e.g. FX-123456",
+      "email": "Email Address",
+      "emailPlaceholder": "your@email.com",
+      "sending": "Sending...",
+      "sendLink": "Send Return Link",
+      "sentMessage": "A return link has been sent to your email. Please check your inbox.",
+      "notFound": "Could not find this order. Please check your order number and email."
+    },
+    "toasts": {
+      "maxPhotos": "You can upload a maximum of 5 photos.",
+      "uploadFail": "Failed to upload one or more images. Please try again."
+    },
+    "errors": {
+      "submitFail": "Failed to submit return request"
+    },
+    "status": {
+      "checking": "Checking return status...",
+      "orderRef": "Order",
+      "heading": "Return Status",
+      "requestedLabel": "Requested:",
+      "refund": "Refund",
+      "replacement": "Replacement",
+      "noteFromStore": "Note from store",
+      "refundAmount": "Refund amount:",
+      "requested": "Requested",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "refunded": "Refunded"
+    },
+    "form": {
+      "intro": "Submit a return request for order",
+      "reasonLabel": "Reason for return *",
+      "detailLabel": "Additional notes *",
+      "detailPlaceholderRequired": "Please describe the issue in detail (e.g. what is wrong, when was it noticed)...",
+      "detailPlaceholder": "Tell us more about your return request...",
+      "detailRequired": "Please provide details before submitting.",
+      "photosLabel": "Photos",
+      "required": "*",
+      "optional": "(optional)",
+      "photoCount": "({{count}}/5)",
+      "photoNote": "Please upload clear photos showing the issue. This helps us process your request faster.",
+      "photoAlt": "Return photo {{index}}",
+      "uploading": "Uploading...",
+      "uploadPhotos": "Upload Photos",
+      "photoRequired": "At least 1 photo is required for this return reason.",
+      "preferredResolution": "Preferred resolution *",
+      "refund": "Refund",
+      "refundDesc": "Get your money back",
+      "replacement": "Replacement",
+      "replacementDesc": "Send me a new item",
+      "submitting": "Submitting...",
+      "submit": "Submit Return Request"
+    },
+    "reasons": {
+      "wrongItem": "Received wrong item",
+      "damaged": "Item damaged or defective",
+      "doesNotMatch": "Item does not match description",
+      "sizeFit": "Size/fit issue",
+      "changedMind": "Changed my mind",
+      "other": "Other"
+    },
+    "success": {
+      "title": "Return Request Submitted",
+      "message": "We've received your return request. You'll receive an email update once it's reviewed."
+    }
+  },
+  "review": {
+    "loading": "Loading...",
+    "errors": {
+      "title": "Unable to Load Review",
+      "invalidLink": "Invalid review link",
+      "invalidExpired": "Invalid or expired review link",
+      "submitFail": "Failed to submit review"
+    },
+    "buttons": {
+      "goToStore": "Go to Store",
+      "review": "Review",
+      "close": "Close",
+      "submit": "Submit Review",
+      "submitting": "Submitting..."
+    },
+    "header": {
+      "thanks": "Thank You!",
+      "howWasOrder": "How was your order?",
+      "allReviewed": "You have reviewed all items from this order.",
+      "selectProduct": "Select a product below to leave a review."
+    },
+    "item": {
+      "reviewed": "\u2713 Reviewed"
+    },
+    "form": {
+      "rating": "Your Rating *",
+      "name": "Your Name",
+      "namePlaceholder": "Your name (optional)",
+      "title": "Review Title",
+      "titlePlaceholder": "Summarize your experience",
+      "content": "Your Review",
+      "contentPlaceholder": "Share your thoughts..."
+    },
+    "toasts": {
+      "success": "Review submitted!"
+    }
+  },
+  "appointment": {
+    "title": "Book Your Appointment",
+    "subtitle": "Schedule a personalized consultation with our experts",
+    "type": {
+      "heading": "Appointment Type",
+      "inStore": "In-Store Visit",
+      "inStoreDesc": "Visit our showroom",
+      "virtual": "Virtual Consultation",
+      "virtualDesc": "Video call consultation"
+    },
+    "personal": {
+      "heading": "Personal Information"
+    },
+    "dateTime": {
+      "heading": "Select Date & Time"
+    },
+    "details": {
+      "heading": "Additional Details"
+    },
+    "form": {
+      "fullName": "Full Name *",
+      "email": "Email Address *",
+      "phone": "Phone Number *",
+      "date": "Preferred Date *",
+      "time": "Preferred Time Slot *",
+      "purpose": "Purpose of Visit",
+      "notes": "Additional Notes",
+      "notesPlaceholder": "Any specific requirements or questions..."
+    },
+    "buttons": {
+      "booking": "Booking...",
+      "book": "Book Appointment"
+    },
+    "errors": {
+      "selectType": "Please select an appointment type.",
+      "selectTime": "Please select a time slot.",
+      "generic": "Something went wrong. Please try again."
+    },
+    "success": "Your appointment has been booked successfully! We'll send you a confirmation shortly.",
+    "purposes": {
+      "select": "Select purpose",
+      "consultation": "General Consultation",
+      "other": "Other"
+    }
+  },
+  "orderHelp": {
+    "headings": {
+      "title": "Order Help",
+      "helpQuestion": "How can we help with your order?",
+      "subtitleEnter": "Enter your order number to see your options"
+    },
+    "form": {
+      "placeholder": "e.g. ORD-XXXX"
+    },
+    "actions": {
+      "findOrder": "Find Order",
+      "tryTracking": "Try Order Tracking instead \u2192",
+      "trackTitle": "Track This Order",
+      "trackDesc": "See the current status and shipping updates",
+      "cancelDesc": "Request a cancellation for this order",
+      "returnDesc": "Request a return or refund for this order",
+      "contactTitle": "Contact the Store",
+      "contactDesc": "Send an email to {{email}}",
+      "trackDifferent": "Track a different order"
+    },
+    "loading": "Loading order details...",
+    "errors": {
+      "notFound": "Order not found. Please check your order number.",
+      "loadFailed": "Could not load order details."
+    },
+    "status": {
+      "alreadyCancelled": "This order has already been cancelled"
+    },
+    "email": {
+      "subject": "Help with Order #{{num}}"
+    }
+  },
+  "search": {
+    "placeholder": "Search products...",
+    "clear": "Clear",
+    "resultsCount_one": "{{count}} result found",
+    "resultsCount_other": "{{count}} results found",
+    "noResultsTitle": "No products found",
+    "noResultsHint": "Try a different search term",
+    "recentSearches": "Recent Searches",
+    "noImage": "No Image"
+  },
+  "filter": {
+    "filter": "FILTER",
+    "sortBy": "SORT BY",
+    "filterProducts": "Filter Products",
+    "sortByHeading": "Sort By",
+    "featured": "Featured",
+    "newest": "Newest",
+    "all": "All",
+    "availability": "Availability",
+    "inStock": "In Stock",
+    "applyFilters": "Apply Filters",
+    "clearAll": "Clear All",
+    "sort": {
+      "priceLowHigh": "Price: Low to High",
+      "priceHighLow": "Price: High to Low",
+      "newest": "Newest"
+    }
+  },
+  "productGrid": {
+    "noProductsFound": "No Products Found",
+    "noProductsMessage": "No products are available in this category yet.",
+    "browseAll": "Browse All Products"
+  },
+  "productReviews": {
+    "title": "Customer Reviews",
+    "loading": "Loading reviews...",
+    "writeReview": "Write a Review",
+    "alreadyReviewed": "You have already reviewed this product.",
+    "cancel": "Cancel",
+    "sortBy": "Sort by:",
+    "noReviews": "No reviews yet.",
+    "beFirst": "Be the first to review this product!",
+    "customer": "Customer",
+    "verifiedPurchase": "Verified Purchase",
+    "reviewSingular": "review",
+    "reviewPlural": "reviews",
+    "reviewImageAlt": "Review {{index}}",
+    "reviewAlt": "Review",
+    "form": {
+      "title": "Write Your Review",
+      "selectRating": "Select a rating",
+      "contentPlaceholder": "Share your thoughts about this product..."
+    },
+    "sort": {
+      "recent": "Most Recent",
+      "highest": "Highest Rated",
+      "lowest": "Lowest Rated"
+    },
+    "toasts": {
+      "submitted": "Review submitted!"
+    },
+    "errors": {
+      "submitFail": "Failed to submit review"
+    }
+  },
+  "push": {
+    "title": "Stay Updated",
+    "body": "Get notified about new products and offers",
+    "allow": "Allow",
+    "dismiss": "No thanks"
+  },
+  "faq": {
+    "seoTitle": "FAQ",
+    "unavailableTitle": "This page is currently unavailable",
+    "unavailableMessage": "Please check back later.",
+    "title": "Frequently Asked Questions",
+    "subtitle": "Find answers to common questions about {{brandName}}.",
+    "empty": "No frequently asked questions yet."
+  },
+  "product": {
+    "related": {
+      "youMayAlsoLike": "You May Also Like"
+    },
+    "gallery": {
+      "noImage": "No image available",
+      "close": "\u2715 Close",
+      "prevImage": "Previous image",
+      "nextImage": "Next image",
+      "productFallback": "Product"
+    },
+    "card": {
+      "outOfStock": "Out of Stock",
+      "quickView": "Quick View",
+      "addToWishlist": "Add to wishlist",
+      "removeFromWishlist": "Remove from wishlist"
+    },
+    "notFound": "Product not found",
+    "loadFailed": "Failed to load product",
+    "loadingDetails": "Loading product details...",
+    "notFoundTitle": "Product Not Found",
+    "notFoundMessage": "Sorry, we couldn't find the product you're looking for.",
+    "returnHome": "Return to Homepage",
+    "availability": "Availability:",
+    "outOfStockMark": "Out of Stock \u2717",
+    "inStockMark": "In Stock \u2713",
+    "sku": "SKU:",
+    "category": "Category:",
+    "color": "Color",
+    "descriptionHeading": "Product Description",
+    "addToCart": "ADD TO CART",
+    "outOfStockButton": "OUT OF STOCK",
+    "buyNow": "BUY NOW",
+    "addToWishlist": "ADD TO WISHLIST",
+    "removeFromWishlist": "REMOVE FROM WISHLIST",
+    "pleaseSelect": "Please select: {{options}}",
+    "policies": {
+      "shippingTitle": "Shipping & Delivery Details",
+      "regions": "Regions",
+      "shippingCharges": "Shipping Charges",
+      "deliveryTime": "Delivery Time",
+      "tracking": "Tracking",
+      "returnTitle": "Return & Exchange",
+      "policy": "Policy",
+      "replacements": "Replacements",
+      "mandatory": "Mandatory Requirement",
+      "careTitle": "Care Guide",
+      "cleaning": "Cleaning",
+      "washing": "Washing",
+      "maintenance": "Maintenance"
+    }
+  },
+  "productReviewsModern": {},
+  "blog": {
+    "seoTitle": "Blog",
+    "title": "Blog",
+    "subtitle": "Latest stories and updates from {{brandName}}",
+    "defaultBrand": "Our Store",
+    "loading": "Loading...",
+    "empty": "No blog posts yet. Check back soon!",
+    "readMore": "Read more \u2192",
+    "previous": "Previous",
+    "next": "Next",
+    "pageOf": "Page {{page}} of {{totalPages}}",
+    "unavailableTitle": "This page is currently unavailable",
+    "unavailableMessage": "Please check back later.",
+    "postSeoTitle": "Blog Post",
+    "notFound": "Blog post not found",
+    "postNotFoundTitle": "Post Not Found",
+    "postNotFoundMessage": "The blog post you're looking for doesn't exist.",
+    "backToBlog": "\u2190 Back to Blog"
+  },
+  "phoneInput": {
+    "placeholder": "Phone number",
+    "searchCountry": "Search country...",
+    "noCountries": "No countries found"
+  },
+  "app": {
+    "loadingStore": "Loading store...",
+    "storeNotFound": "Store Not Found",
+    "storeNotFoundMessage": "The store you are looking for could not be found.",
+    "goToFlomerce": "Go to Flomerce",
+    "adminError": {
+      "title": "Something went wrong",
+      "message": "The admin panel encountered an error. This is usually temporary.",
+      "tryAgain": "Try Again",
+      "reloadPage": "Reload Page"
+    }
+  },
+  "cancel": {
+    "title": "Cancel Order",
+    "lookupIntro": "Enter your order number and email address to receive a cancellation link.",
+    "orderNumberLabel": "Order Number",
+    "orderNumberPlaceholder": "e.g. FX-123456",
+    "emailLabel": "Email Address",
+    "emailPlaceholder": "your@email.com",
+    "sending": "Sending...",
+    "sendLink": "Send Cancellation Link",
+    "lookupSuccess": "A cancellation link has been sent to your email. Please check your inbox.",
+    "lookupError": "Could not find this order. Please check your order number and email.",
+    "submitFail": "Failed to submit cancellation request",
+    "checkingStatus": "Checking cancellation status...",
+    "orderRef": "Order",
+    "statusHeading": "Cancellation Status",
+    "noteFromStore": "Note from store",
+    "formIntro": "Submit a cancellation request for order",
+    "submitButton": "Submit Cancellation Request",
+    "successTitle": "Cancellation Request Submitted",
+    "successMessage": "We've received your cancellation request. You'll receive an email update once it's reviewed by the store.",
+    "status": {
+      "requested": "Pending Review",
+      "approved": "Approved (Cancelled)",
+      "rejected": "Rejected"
+    }
+  },
+  "invoice": {
+    "loading": "Loading your invoice...",
+    "unavailable": "Invoice Unavailable",
+    "errors": {
+      "invalidLink": "Invalid invoice link. Please use the link sent in your order confirmation email.",
+      "notFound": "Invoice not found or link has expired.",
+      "loadFailed": "Failed to load invoice. Please try again."
+    },
+    "orderRef": "Order #{{num}}",
+    "printSave": "Print / Save PDF",
+    "taxInvoice": "TAX INVOICE",
+    "billOfSupply": "BILL OF SUPPLY",
+    "gstinLabel": "GSTIN:",
+    "details": "Invoice Details",
+    "invoiceNo": "Invoice No:",
+    "date": "Date:",
+    "orderNo": "Order No:",
+    "payment": "Payment:",
+    "cod": "Cash on Delivery",
+    "online": "Online Payment",
+    "billTo": "Bill To",
+    "subtotalBeforeTax": "Subtotal (before tax)",
+    "discount": "Discount",
+    "computerGenerated": "This is a computer-generated invoice. No signature required.",
+    "table": {
+      "item": "Item",
+      "hsn": "HSN",
+      "qty": "Qty",
+      "rate": "Rate",
+      "taxable": "Taxable",
+      "cgst": "CGST",
+      "sgst": "SGST",
+      "igst": "IGST",
+      "total": "Total"
+    }
+  }
+}
