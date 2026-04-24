@@ -121,7 +121,7 @@ export default function ReviewPage() {
           <div style={{ textAlign: 'center', padding: '60px 20px' }}>
             <div style={{ fontSize: 48, marginBottom: 16 }}>&#128533;</div>
             <h2 style={{ color: '#0f172a', marginBottom: 8 }}><TranslatedText text="Unable to Load Review" /></h2>
-            <p style={{ color: '#64748b' }}>{error}</p>
+            <p style={{ color: '#64748b' }}><TranslatedText text={error} /></p>
             <button
               onClick={() => navigate('/')}
               style={{ marginTop: 20, padding: '10px 24px', background: '#0f172a', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}

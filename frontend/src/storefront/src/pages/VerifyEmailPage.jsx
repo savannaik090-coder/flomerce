@@ -58,7 +58,7 @@ export default function VerifyEmailPage() {
           <>
             <div style={{ fontSize: 48, color: '#dc3545', marginBottom: 20 }}>✗</div>
             <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 24, color: '#333', marginBottom: 10 }}><TranslatedText text="Verification Failed" /></h2>
-            <p style={{ color: '#666', marginBottom: 20 }}>{error}</p>
+            <p style={{ color: '#666', marginBottom: 20 }}><TranslatedText text={error} /></p>
             <Link to="/login" style={{ display: 'inline-block', backgroundColor: '#c8a97e', color: '#fff', padding: '12px 24px', borderRadius: 4, textDecoration: 'none', fontWeight: 'bold' }}><TranslatedText text="Go to Login" /></Link>
           </>
         )}

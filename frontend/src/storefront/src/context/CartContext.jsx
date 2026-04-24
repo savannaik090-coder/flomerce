@@ -74,6 +74,13 @@ export function CartProvider({ children }) {
     }
   }, [isAuthenticated, siteConfig?.id]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const onLangChange = () => { fetchCart(); };
+    window.addEventListener('flomerce_lang_change', onLangChange);
+    return () => window.removeEventListener('flomerce_lang_change', onLangChange);
+  }, [fetchCart]);
+
   const addToCart = useCallback(async (product, quantity = 1, selectedOptions = null) => {
     if (!siteConfig?.id) return;
     const opKey = `add-${product.id}-${JSON.stringify(selectedOptions || '')}`;

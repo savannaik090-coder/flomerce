@@ -64,12 +64,15 @@ async function handleSubscribe(request, env) {
   try {
     const body = await request.json();
     const { siteId, endpoint, p256dh, auth, userId } = body;
+    const url = new URL(request.url);
+    const subLang = (url.searchParams.get('lang') || body.lang || '').trim() || null;
 
     if (!siteId || !endpoint || !p256dh || !auth) {
       return errorResponse('siteId, endpoint, p256dh, and auth are required', 400);
     }
 
     const db = await resolveSiteDBById(env, siteId);
+    try { await db.prepare('ALTER TABLE notifications ADD COLUMN language TEXT').run(); } catch (e) {}
 
     const existing = await db.prepare(
       'SELECT id FROM notifications WHERE site_id = ? AND endpoint = ?'
@@ -77,9 +80,9 @@ async function handleSubscribe(request, env) {
 
     if (existing) {
       await db.prepare(
-        `UPDATE notifications SET p256dh = ?, auth = ?, user_id = ?, is_active = 1
+        `UPDATE notifications SET p256dh = ?, auth = ?, user_id = ?, language = ?, is_active = 1
          WHERE site_id = ? AND endpoint = ?`
-      ).bind(p256dh, auth, userId || null, siteId, endpoint).run();
+      ).bind(p256dh, auth, userId || null, subLang, siteId, endpoint).run();
       return jsonResponse({ success: true, message: 'Subscription updated' });
     }
 
@@ -87,9 +90,9 @@ async function handleSubscribe(request, env) {
     const rowBytes = 200 + endpoint.length + p256dh.length + auth.length;
 
     await db.prepare(
-      `INSERT INTO notifications (id, site_id, user_id, push_token, endpoint, p256dh, auth, is_active, row_size_bytes, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, datetime('now'))`
-    ).bind(id, siteId, userId || null, '', endpoint, p256dh, auth, rowBytes).run();
+      `INSERT INTO notifications (id, site_id, user_id, push_token, endpoint, p256dh, auth, language, is_active, row_size_bytes, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, datetime('now'))`
+    ).bind(id, siteId, userId || null, '', endpoint, p256dh, auth, subLang, rowBytes).run();
 
     await trackD1Write(env, siteId, rowBytes);
 
@@ -393,23 +396,46 @@ export async function triggerAutoNotification(env, siteId, type, payload) {
     const vapidSubject = env.VAPID_SUBJECT || VAPID_SUBJECT;
     if (!vapidPrivateKey) return;
 
+    try { await db.prepare('ALTER TABLE notifications ADD COLUMN language TEXT').run(); } catch (e) {}
     const subscriptionsResult = await db.prepare(
-      'SELECT endpoint, p256dh, auth FROM notifications WHERE site_id = ? AND is_active = 1'
+      'SELECT endpoint, p256dh, auth, language FROM notifications WHERE site_id = ? AND is_active = 1'
     ).bind(siteId).all();
     const subscriptions = subscriptionsResult.results || [];
 
     if (subscriptions.length === 0) return;
 
+    const { translateString } = await import('../../utils/email-i18n.js');
+    const langGroups = new Map();
+    for (const sub of subscriptions) {
+      const lang = sub.language || '';
+      if (!langGroups.has(lang)) langGroups.set(lang, []);
+      langGroups.get(lang).push(sub);
+    }
+
     const expiredEndpoints = [];
 
-    await Promise.allSettled(
-      subscriptions.map(async (sub) => {
+    for (const [lang, subs] of langGroups.entries()) {
+      let payloadForLang = payload;
+      if (lang) {
         try {
-          const res = await sendWebPush(sub, payload, vapidPublicKey, vapidPrivateKey, vapidSubject);
-          if (res.status === 410 || res.status === 404) expiredEndpoints.push(sub.endpoint);
-        } catch (e) {}
-      })
-    );
+          const [tTitle, tBody] = await Promise.all([
+            payload.title ? translateString(env, siteId, lang, payload.title) : Promise.resolve(payload.title),
+            payload.body ? translateString(env, siteId, lang, payload.body) : Promise.resolve(payload.body),
+          ]);
+          payloadForLang = { ...payload, title: tTitle, body: tBody };
+        } catch (e) {
+          payloadForLang = payload;
+        }
+      }
+      await Promise.allSettled(
+        subs.map(async (sub) => {
+          try {
+            const res = await sendWebPush(sub, payloadForLang, vapidPublicKey, vapidPrivateKey, vapidSubject);
+            if (res.status === 410 || res.status === 404) expiredEndpoints.push(sub.endpoint);
+          } catch (e) {}
+        })
+      );
+    }
 
     for (const ep of expiredEndpoints) {
       try {

@@ -159,7 +159,7 @@ export default function CancelPage() {
             </p>
             {error && (
               <div style={{ padding: '12px 16px', borderRadius: 8, marginBottom: 16, background: '#fef2f2', color: '#991b1b', fontSize: 14 }}>
-                {error}
+                <TranslatedText text={error} />
               </div>
             )}
             <div style={{ marginBottom: 20 }}>

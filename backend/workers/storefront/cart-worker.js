@@ -2,6 +2,77 @@ import { generateId, jsonResponse, errorResponse, successResponse, handleCORS } 
 import { validateAuth, validateAnyAuth } from '../../utils/auth.js';
 import { resolveSiteDBById, checkMigrationLock, ensureProductOptionsColumn } from '../../utils/site-db.js';
 import { estimateRowBytes, trackD1Write, trackD1Update, trackD1Delete } from '../../utils/usage-tracker.js';
+import { translateContentBatch } from '../../utils/server-translator.js';
+
+async function translateCartItemsInPlace(env, siteId, items, lang) {
+  if (!Array.isArray(items) || items.length === 0 || !lang) return;
+  const slots = [];
+  for (let i = 0; i < items.length; i++) {
+    const it = items[i];
+    if (it?.name) slots.push({ i, kind: 'name', value: String(it.name) });
+    if (it?.selectedOptions && typeof it.selectedOptions === 'object') {
+      for (const [label, val] of Object.entries(it.selectedOptions)) {
+        if (label === 'pricedOptions') continue;
+        slots.push({ i, kind: 'optKey', label, value: String(label) });
+        if (typeof val === 'string') {
+          slots.push({ i, kind: 'optVal', label, value: String(val) });
+        } else if (val && typeof val === 'object' && typeof val.name === 'string') {
+          slots.push({ i, kind: 'optValName', label, value: String(val.name) });
+        }
+      }
+      if (it.selectedOptions.pricedOptions && typeof it.selectedOptions.pricedOptions === 'object') {
+        for (const [label, val] of Object.entries(it.selectedOptions.pricedOptions)) {
+          slots.push({ i, kind: 'pricedKey', label, value: String(label) });
+          if (val && typeof val === 'object' && typeof val.name === 'string') {
+            slots.push({ i, kind: 'pricedValName', label, value: String(val.name) });
+          }
+        }
+      }
+    }
+  }
+  if (slots.length === 0) return;
+  let translations = [];
+  try {
+    const result = await translateContentBatch(env, siteId, slots.map((s) => s.value), lang);
+    translations = result.translations || [];
+  } catch (e) {
+    return;
+  }
+  for (let k = 0; k < slots.length; k++) {
+    const s = slots[k];
+    const t = translations[k];
+    if (t === undefined || t === null) continue;
+    const it = items[s.i];
+    if (!it) continue;
+    try {
+      if (s.kind === 'name') it.name = t;
+      else if (s.kind === 'optKey') {
+        if (it.selectedOptions && it.selectedOptions[s.label] !== undefined) {
+          const v = it.selectedOptions[s.label];
+          delete it.selectedOptions[s.label];
+          it.selectedOptions[t] = v;
+        }
+      } else if (s.kind === 'optVal') {
+        const key = it.selectedOptions && it.selectedOptions[s.label] !== undefined ? s.label : Object.keys(it.selectedOptions || {}).find((k) => true);
+        if (it.selectedOptions && key !== undefined) it.selectedOptions[key] = t;
+      } else if (s.kind === 'optValName') {
+        if (it.selectedOptions && it.selectedOptions[s.label] && typeof it.selectedOptions[s.label] === 'object') {
+          it.selectedOptions[s.label].name = t;
+        }
+      } else if (s.kind === 'pricedKey') {
+        if (it.selectedOptions?.pricedOptions && it.selectedOptions.pricedOptions[s.label] !== undefined) {
+          const v = it.selectedOptions.pricedOptions[s.label];
+          delete it.selectedOptions.pricedOptions[s.label];
+          it.selectedOptions.pricedOptions[t] = v;
+        }
+      } else if (s.kind === 'pricedValName') {
+        if (it.selectedOptions?.pricedOptions && it.selectedOptions.pricedOptions[s.label] && typeof it.selectedOptions.pricedOptions[s.label] === 'object') {
+          it.selectedOptions.pricedOptions[s.label].name = t;
+        }
+      }
+    } catch (e) {}
+  }
+}
 
 
 export async function handleCart(request, env, path) {
@@ -35,9 +106,11 @@ export async function handleCart(request, env, path) {
     return errorResponse('User authentication or session ID required');
   }
 
+  const lang = (url.searchParams.get('lang') || '').trim() || null;
+
   switch (method) {
     case 'GET':
-      return getCart(env, siteId, user, sessionId);
+      return getCart(env, siteId, user, sessionId, lang);
     case 'POST':
       return addToCart(request, env, siteId, user, sessionId);
     case 'PUT':
@@ -150,7 +223,7 @@ async function getOrCreateCart(db, env, siteId, user, sessionId) {
   return cart;
 }
 
-async function getCart(env, siteId, user, sessionId) {
+async function getCart(env, siteId, user, sessionId, lang = null) {
   try {
     const db = await resolveSiteDBById(env, siteId);
     await ensureProductOptionsColumn(db, siteId);
@@ -200,6 +273,10 @@ async function getCart(env, siteId, user, sessionId) {
     }
 
     const subtotal = enrichedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+    if (lang) {
+      try { await translateCartItemsInPlace(env, siteId, enrichedItems, lang); } catch (e) {}
+    }
 
     return successResponse({
       id: cart.id,

@@ -35,7 +35,7 @@ export default function ForgotPasswordPage() {
           <p style={{ fontFamily: "'Lato', sans-serif", fontSize: 16, color: '#777' }}><TranslatedText text="Enter your email to receive a password reset link" /></p>
         </div>
 
-        {error && <div style={{ color: '#e74c3c', fontSize: 15, margin: '15px 0', padding: 12, textAlign: 'center', border: '1px solid #e74c3c', borderRadius: 6, backgroundColor: 'rgba(231,76,60,0.1)', fontWeight: 500 }}>{error}</div>}
+        {error && <div style={{ color: '#e74c3c', fontSize: 15, margin: '15px 0', padding: 12, textAlign: 'center', border: '1px solid #e74c3c', borderRadius: 6, backgroundColor: 'rgba(231,76,60,0.1)', fontWeight: 500 }}><TranslatedText text={error} /></div>}
         {success && <div style={{ color: '#2ecc71', fontSize: 15, margin: '15px 0', padding: 12, textAlign: 'center', border: '1px solid #2ecc71', backgroundColor: 'rgba(46,204,113,0.1)', borderRadius: 6, fontWeight: 500 }}>{success}</div>}
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column' }}>

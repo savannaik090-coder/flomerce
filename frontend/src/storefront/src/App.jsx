@@ -90,7 +90,7 @@ function SiteErrorScreen({ error }) {
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: 'Inter, sans-serif' }}>
       <div style={{ textAlign: 'center', maxWidth: 400, padding: 32 }}>
         <h1 style={{ fontSize: 24, marginBottom: 12, color: '#ef4444' }}><TranslatedText text="Store Not Found" /></h1>
-        <p style={{ color: '#64748b', lineHeight: 1.6, marginBottom: 24 }}>{error || "The store you are looking for could not be found."}</p>
+        <p style={{ color: '#64748b', lineHeight: 1.6, marginBottom: 24 }}>{error ? <TranslatedText text={error} /> : <TranslatedText text="The store you are looking for could not be found." />}</p>
         <a href={PLATFORM_URL} style={{ background: '#000', color: '#fff', padding: '12px 24px', borderRadius: 6, textDecoration: 'none', fontWeight: 600 }}><TranslatedText text="Go to Flomerce" /></a>
       </div>
     </div>
@@ -162,12 +162,37 @@ export default function App() {
 }
 
 function AppRoutes() {
-  const { siteConfig, loading, error } = useSiteConfig();
+  const { siteConfig, loading, error, subdomain } = useSiteConfig();
   const location = useLocation();
 
   useEffect(() => {
     if (!loading) removePreloader();
   }, [loading]);
+
+  // Inject (or refresh) a translated PWA manifest link tag whenever the
+  // resolved subdomain or active language changes. The backend serves a
+  // per-site, per-lang manifest at /api/manifest. Browsers re-read the
+  // manifest when href changes, so PWA install prompts pick up the
+  // translated name/short_name/description.
+  useEffect(() => {
+    if (typeof document === 'undefined' || !subdomain) return;
+    const lang = (() => {
+      try { return localStorage.getItem('flomerce_lang') || ''; } catch { return ''; }
+    })();
+    const params = new URLSearchParams({ subdomain });
+    if (lang) params.set('lang', lang);
+    const href = `/api/manifest?${params.toString()}`;
+    // Use a dedicated managed tag so we never overwrite (or fight with) any
+    // pre-existing static `<link rel="manifest">` shipped in the HTML shell.
+    let link = document.querySelector('link[rel="manifest"][data-flomerce-manifest="1"]');
+    if (!link) {
+      link = document.createElement('link');
+      link.rel = 'manifest';
+      link.setAttribute('data-flomerce-manifest', '1');
+      document.head.appendChild(link);
+    }
+    if (link.getAttribute('href') !== href) link.setAttribute('href', href);
+  }, [subdomain, siteConfig]);
 
   if (loading) return <SiteLoadingScreen />;
   if (error) return <SiteErrorScreen error={error} />;

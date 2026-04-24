@@ -501,7 +501,7 @@ export default function CheckoutPageModern() {
         <div style={{ height: '100%', background: '#111', borderRadius: 0, width: `${((step - 1) / 2) * 100}%`, transition: 'width 0.5s ease' }} />
       </div>
 
-      {error && <div style={{ background: '#ffebee', color: '#d32f2f', padding: 12, borderRadius: 0, marginBottom: 20, textAlign: 'center', border: '1px solid #f5c6cb' }}>{error}</div>}
+      {error && <div style={{ background: '#ffebee', color: '#d32f2f', padding: 12, borderRadius: 0, marginBottom: 20, textAlign: 'center', border: '1px solid #f5c6cb' }}><TranslatedText text={error} /></div>}
 
       {step === 1 && (
         <div style={{ background: '#fff', padding: 24, border: '1px solid #e5e5e5' }}>
@@ -576,7 +576,7 @@ export default function CheckoutPageModern() {
                     <input type="text" value={couponCode} onChange={e => { setCouponCode(e.target.value.toUpperCase()); setCouponError(''); }} onKeyDown={e => e.key === 'Enter' && applyCoupon()} placeholder=<TranslatedText text="Enter code" /> style={{ flex: 1, padding: '9px 12px', border: '1px solid #e2e8f0', borderRadius: 0, fontSize: 14, fontFamily: 'monospace', letterSpacing: 1, textTransform: 'uppercase' }} />
                     <button type="button" onClick={applyCoupon} disabled={couponApplying} style={{ padding: '9px 16px', background: '#111', color: '#fff', border: 'none', borderRadius: 0, fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}><TranslatedText text="Apply" /></button>
                   </div>
-                  {couponError && <div style={{ color: '#ef4444', fontSize: 12, marginTop: 6 }}>{couponError}</div>}
+                  {couponError && <div style={{ color: '#ef4444', fontSize: 12, marginTop: 6 }}><TranslatedText text={couponError} /></div>}
                 </>
               ) : (
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

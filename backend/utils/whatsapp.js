@@ -1,3 +1,5 @@
+import { translateLabels } from './email-i18n.js';
+
 const CURRENCY_SYMBOLS = {
   INR: '₹', USD: '$', EUR: '€', GBP: '£', AED: 'د.إ', CAD: 'CA$', AUD: 'A$', SAR: '﷼',
 };
@@ -196,16 +198,34 @@ export async function sendWhatsAppText(settings, to, text) {
   }
 }
 
-export function buildOrderConfirmationWA(order, brandName, currency = 'INR') {
+export async function buildOrderConfirmationWA(order, brandName, currency = 'INR', env = null, siteId = null, targetLang = null) {
+  const t = await translateLabels(env, siteId, targetLang, {
+    TITLE: 'Order Confirmed!',
+    HI: 'Hi',
+    THERE: 'there',
+    YOUR_ORDER_FROM: 'Your order',
+    FROM: 'from',
+    HAS_BEEN_CONFIRMED: 'has been confirmed!',
+    ITEMS: 'Items:',
+    AND_MORE: '...and',
+    MORE_ITEMS: 'more item(s)',
+    TOTAL: 'Total:',
+    PAYMENT: 'Payment:',
+    COD: 'Cash on Delivery',
+    ONLINE: 'Online Payment',
+    CLOSING: 'We\'ll update you once your order is packed and on its way. Thank you for shopping with us!',
+    CUSTOMER: 'Customer',
+  });
   const items = parseItems(order.items);
   const itemsList = items.slice(0, 5).map(item =>
     `${item.name} x${item.quantity} - ${formatCurrency(Number(item.price) * Number(item.quantity), currency)}`
   ).join('\n');
 
   const total = formatCurrency(order.total, currency);
-  const paymentMethod = (order.payment_method === 'cod' || order.paymentMethod === 'cod') ? 'Cash on Delivery' : 'Online Payment';
+  const isCod = order.payment_method === 'cod' || order.paymentMethod === 'cod';
+  const paymentMethod = isCod ? t.COD : t.ONLINE;
 
-  const text = `🛍️ *Order Confirmed!*\n\nHi ${order.customer_name || 'there'},\n\nYour order *#${order.order_number || order.orderNumber}* from *${brandName}* has been confirmed!\n\n📦 *Items:*\n${itemsList}\n${items.length > 5 ? `...and ${items.length - 5} more item(s)\n` : ''}\n💰 *Total:* ${total}\n💳 *Payment:* ${paymentMethod}\n\nWe'll update you once your order is packed and on its way. Thank you for shopping with us!`;
+  const text = `🛍️ *${t.TITLE}*\n\n${t.HI} ${order.customer_name || t.THERE},\n\n${t.YOUR_ORDER_FROM} *#${order.order_number || order.orderNumber}* ${t.FROM} *${brandName}* ${t.HAS_BEEN_CONFIRMED}\n\n📦 *${t.ITEMS}*\n${itemsList}\n${items.length > 5 ? `${t.AND_MORE} ${items.length - 5} ${t.MORE_ITEMS}\n` : ''}\n💰 *${t.TOTAL}* ${total}\n💳 *${t.PAYMENT}* ${paymentMethod}\n\n${t.CLOSING}`;
 
   return {
     text,
@@ -214,7 +234,7 @@ export function buildOrderConfirmationWA(order, brandName, currency = 'INR') {
       {
         type: 'body',
         parameters: [
-          { type: 'text', text: order.customer_name || 'Customer' },
+          { type: 'text', text: order.customer_name || t.CUSTOMER },
           { type: 'text', text: order.order_number || order.orderNumber || '' },
           { type: 'text', text: brandName },
           { type: 'text', text: total },
@@ -225,11 +245,25 @@ export function buildOrderConfirmationWA(order, brandName, currency = 'INR') {
   };
 }
 
-export function buildOrderShippedWA(order, brandName, trackingUrl, currency = 'INR') {
+export async function buildOrderShippedWA(order, brandName, trackingUrl, currency = 'INR', env = null, siteId = null, targetLang = null) {
+  const t = await translateLabels(env, siteId, targetLang, {
+    TITLE: 'Order Shipped!',
+    HI: 'Hi',
+    THERE: 'there',
+    GREAT_NEWS: 'Great news! Your order',
+    FROM: 'from',
+    HAS_BEEN_SHIPPED: 'has been shipped!',
+    COURIER: 'Courier:',
+    TRACKING: 'Tracking:',
+    TRACK_YOUR_ORDER: 'Track your order:',
+    THANK_YOU: 'Thank you for shopping with us!',
+    CUSTOMER: 'Customer',
+    COURIER_FALLBACK: 'Courier',
+  });
   const trackingNumber = order.tracking_number || order.trackingNumber || '';
   const carrier = order.carrier || '';
 
-  const text = `📦 *Order Shipped!*\n\nHi ${order.customer_name || 'there'},\n\nGreat news! Your order *#${order.order_number || order.orderNumber}* from *${brandName}* has been shipped!\n\n${carrier ? `🚚 *Courier:* ${carrier}\n` : ''}${trackingNumber ? `📋 *Tracking:* ${trackingNumber}\n` : ''}\n${trackingUrl ? `🔗 *Track your order:* ${trackingUrl}\n` : ''}\nThank you for shopping with us!`;
+  const text = `📦 *${t.TITLE}*\n\n${t.HI} ${order.customer_name || t.THERE},\n\n${t.GREAT_NEWS} *#${order.order_number || order.orderNumber}* ${t.FROM} *${brandName}* ${t.HAS_BEEN_SHIPPED}\n\n${carrier ? `🚚 *${t.COURIER}* ${carrier}\n` : ''}${trackingNumber ? `📋 *${t.TRACKING}* ${trackingNumber}\n` : ''}\n${trackingUrl ? `🔗 *${t.TRACK_YOUR_ORDER}* ${trackingUrl}\n` : ''}\n${t.THANK_YOU}`;
 
   return {
     text,
@@ -238,10 +272,10 @@ export function buildOrderShippedWA(order, brandName, trackingUrl, currency = 'I
       {
         type: 'body',
         parameters: [
-          { type: 'text', text: order.customer_name || 'Customer' },
+          { type: 'text', text: order.customer_name || t.CUSTOMER },
           { type: 'text', text: order.order_number || order.orderNumber || '' },
           { type: 'text', text: brandName },
-          { type: 'text', text: carrier || 'Courier' },
+          { type: 'text', text: carrier || t.COURIER_FALLBACK },
           { type: 'text', text: trackingNumber || 'N/A' },
         ],
       },
@@ -249,10 +283,23 @@ export function buildOrderShippedWA(order, brandName, trackingUrl, currency = 'I
   };
 }
 
-export function buildOrderDeliveredWA(order, brandName, reviewUrl, currency = 'INR') {
+export async function buildOrderDeliveredWA(order, brandName, reviewUrl, currency = 'INR', env = null, siteId = null, targetLang = null) {
+  const t = await translateLabels(env, siteId, targetLang, {
+    TITLE: 'Order Delivered!',
+    HI: 'Hi',
+    THERE: 'there',
+    YOUR_ORDER: 'Your order',
+    FROM: 'from',
+    HAS_BEEN_DELIVERED: 'has been delivered!',
+    TOTAL_PAID: 'Total Paid:',
+    HOPE_LOVE: 'We hope you love your purchase! 🎉',
+    SHARE_FEEDBACK: 'Share your feedback:',
+    THANK_YOU: 'Thank you for shopping with us!',
+    CUSTOMER: 'Customer',
+  });
   const total = formatCurrency(order.total, currency);
 
-  const text = `✅ *Order Delivered!*\n\nHi ${order.customer_name || 'there'},\n\nYour order *#${order.order_number || order.orderNumber}* from *${brandName}* has been delivered!\n\n💰 *Total Paid:* ${total}\n\nWe hope you love your purchase! 🎉\n${reviewUrl ? `\n⭐ *Share your feedback:* ${reviewUrl}\n` : ''}\nThank you for shopping with us!`;
+  const text = `✅ *${t.TITLE}*\n\n${t.HI} ${order.customer_name || t.THERE},\n\n${t.YOUR_ORDER} *#${order.order_number || order.orderNumber}* ${t.FROM} *${brandName}* ${t.HAS_BEEN_DELIVERED}\n\n💰 *${t.TOTAL_PAID}* ${total}\n\n${t.HOPE_LOVE}\n${reviewUrl ? `\n⭐ *${t.SHARE_FEEDBACK}* ${reviewUrl}\n` : ''}\n${t.THANK_YOU}`;
 
   return {
     text,
@@ -261,7 +308,7 @@ export function buildOrderDeliveredWA(order, brandName, reviewUrl, currency = 'I
       {
         type: 'body',
         parameters: [
-          { type: 'text', text: order.customer_name || 'Customer' },
+          { type: 'text', text: order.customer_name || t.CUSTOMER },
           { type: 'text', text: order.order_number || order.orderNumber || '' },
           { type: 'text', text: brandName },
           { type: 'text', text: total },
@@ -271,10 +318,24 @@ export function buildOrderDeliveredWA(order, brandName, reviewUrl, currency = 'I
   };
 }
 
-export function buildOrderCancelledWA(order, brandName, reason, currency = 'INR') {
+export async function buildOrderCancelledWA(order, brandName, reason, currency = 'INR', env = null, siteId = null, targetLang = null) {
+  const t = await translateLabels(env, siteId, targetLang, {
+    TITLE: 'Order Cancelled',
+    HI: 'Hi',
+    THERE: 'there',
+    YOUR_ORDER: 'Your order',
+    FROM: 'from',
+    HAS_BEEN_CANCELLED: 'has been cancelled.',
+    REASON: 'Reason:',
+    ORDER_TOTAL: 'Order Total:',
+    REFUND_NOTE: 'If you paid online, your refund will be processed within 5-7 business days.',
+    CONTACT_US: 'For any queries, please contact us. Thank you!',
+    NO_REASON: 'No reason provided',
+    CUSTOMER: 'Customer',
+  });
   const total = formatCurrency(order.total, currency);
 
-  const text = `❌ *Order Cancelled*\n\nHi ${order.customer_name || 'there'},\n\nYour order *#${order.order_number || order.orderNumber}* from *${brandName}* has been cancelled.\n\n📝 *Reason:* ${reason || 'No reason provided'}\n💰 *Order Total:* ${total}\n\nIf you paid online, your refund will be processed within 5-7 business days.\n\nFor any queries, please contact us. Thank you!`;
+  const text = `❌ *${t.TITLE}*\n\n${t.HI} ${order.customer_name || t.THERE},\n\n${t.YOUR_ORDER} *#${order.order_number || order.orderNumber}* ${t.FROM} *${brandName}* ${t.HAS_BEEN_CANCELLED}\n\n📝 *${t.REASON}* ${reason || t.NO_REASON}\n💰 *${t.ORDER_TOTAL}* ${total}\n\n${t.REFUND_NOTE}\n\n${t.CONTACT_US}`;
 
   return {
     text,
@@ -283,10 +344,10 @@ export function buildOrderCancelledWA(order, brandName, reason, currency = 'INR'
       {
         type: 'body',
         parameters: [
-          { type: 'text', text: order.customer_name || 'Customer' },
+          { type: 'text', text: order.customer_name || t.CUSTOMER },
           { type: 'text', text: order.order_number || order.orderNumber || '' },
           { type: 'text', text: brandName },
-          { type: 'text', text: reason || 'No reason provided' },
+          { type: 'text', text: reason || t.NO_REASON },
           { type: 'text', text: total },
         ],
       },
@@ -294,8 +355,18 @@ export function buildOrderCancelledWA(order, brandName, reason, currency = 'INR'
   };
 }
 
-export function buildOrderPackedWA(order, brandName) {
-  const text = `📦 *Order Packed!*\n\nHi ${order.customer_name || 'there'},\n\nYour order *#${order.order_number || order.orderNumber}* from *${brandName}* has been packed and is ready for dispatch!\n\nWe'll update you once it's shipped. Thank you for your patience!`;
+export async function buildOrderPackedWA(order, brandName, env = null, siteId = null, targetLang = null) {
+  const t = await translateLabels(env, siteId, targetLang, {
+    TITLE: 'Order Packed!',
+    HI: 'Hi',
+    THERE: 'there',
+    YOUR_ORDER: 'Your order',
+    FROM: 'from',
+    PACKED_READY: 'has been packed and is ready for dispatch!',
+    CLOSING: 'We\'ll update you once it\'s shipped. Thank you for your patience!',
+    CUSTOMER: 'Customer',
+  });
+  const text = `📦 *${t.TITLE}*\n\n${t.HI} ${order.customer_name || t.THERE},\n\n${t.YOUR_ORDER} *#${order.order_number || order.orderNumber}* ${t.FROM} *${brandName}* ${t.PACKED_READY}\n\n${t.CLOSING}`;
 
   return {
     text,
@@ -304,7 +375,7 @@ export function buildOrderPackedWA(order, brandName) {
       {
         type: 'body',
         parameters: [
-          { type: 'text', text: order.customer_name || 'Customer' },
+          { type: 'text', text: order.customer_name || t.CUSTOMER },
           { type: 'text', text: order.order_number || order.orderNumber || '' },
           { type: 'text', text: brandName },
         ],
@@ -332,10 +403,21 @@ export async function sendOrderWhatsApp(settings, phone, messageData) {
   return sendWhatsAppText(settings, phone, text);
 }
 
-export function buildAbandonedCartWA(customerName, brandName, itemsSummary, cartTotal, storeUrl, currency = 'INR') {
+export async function buildAbandonedCartWA(customerName, brandName, itemsSummary, cartTotal, storeUrl, currency = 'INR', env = null, siteId = null, targetLang = null) {
+  const t = await translateLabels(env, siteId, targetLang, {
+    TITLE: 'Don\'t forget your cart!',
+    HI: 'Hi',
+    THERE: 'there',
+    LEFT_ITEMS: 'You left some items in your cart at',
+    YOUR_ITEMS: 'Your items:',
+    CART_TOTAL: 'Cart Total:',
+    COMPLETE_NOW: '👉 Complete your purchase now:',
+    DONT_MISS: 'Don\'t miss out — your items are waiting for you!',
+    CUSTOMER: 'Customer',
+  });
   const total = formatCurrency(cartTotal, currency);
 
-  const text = `🛒 *Don't forget your cart!*\n\nHi ${customerName || 'there'},\n\nYou left some items in your cart at *${brandName}*!\n\n📦 *Your items:*\n${itemsSummary}\n\n💰 *Cart Total:* ${total}\n\n👉 Complete your purchase now: ${storeUrl}\n\nDon't miss out — your items are waiting for you!`;
+  const text = `🛒 *${t.TITLE}*\n\n${t.HI} ${customerName || t.THERE},\n\n${t.LEFT_ITEMS} *${brandName}*!\n\n📦 *${t.YOUR_ITEMS}*\n${itemsSummary}\n\n💰 *${t.CART_TOTAL}* ${total}\n\n${t.COMPLETE_NOW} ${storeUrl}\n\n${t.DONT_MISS}`;
 
   return {
     text,
@@ -344,7 +426,7 @@ export function buildAbandonedCartWA(customerName, brandName, itemsSummary, cart
       {
         type: 'body',
         parameters: [
-          { type: 'text', text: customerName || 'Customer' },
+          { type: 'text', text: customerName || t.CUSTOMER },
           { type: 'text', text: brandName },
           { type: 'text', text: itemsSummary },
           { type: 'text', text: total },

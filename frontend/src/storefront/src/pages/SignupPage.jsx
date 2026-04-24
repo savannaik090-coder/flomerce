@@ -102,7 +102,7 @@ export default function SignupPage() {
           <p style={{ fontFamily: "'Lato', sans-serif", fontSize: 16, color: '#777' }}><TranslatedText text="Join us to explore exclusive collections" /></p>
         </div>
 
-        {error && <div style={{ color: '#d32f2f', fontSize: 16, marginBottom: 20, backgroundColor: '#ffebee', padding: 15, borderRadius: 5, borderInlineStart: '4px solid #d32f2f', fontWeight: 500 }}>{error}</div>}
+        {error && <div style={{ color: '#d32f2f', fontSize: 16, marginBottom: 20, backgroundColor: '#ffebee', padding: 15, borderRadius: 5, borderInlineStart: '4px solid #d32f2f', fontWeight: 500 }}><TranslatedText text={error} /></div>}
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column' }}>
           <div style={{ marginBottom: 20 }}>

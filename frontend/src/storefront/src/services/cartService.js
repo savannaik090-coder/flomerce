@@ -1,7 +1,16 @@
 import { apiRequest, getSessionId } from './api.js';
 
+function getCurrentLang() {
+  try {
+    if (typeof window === 'undefined') return '';
+    return window.localStorage?.getItem('flomerce_lang') || '';
+  } catch { return ''; }
+}
+
 export async function getCart(siteId) {
-  return apiRequest(`/api/cart?siteId=${siteId}&sessionId=${getSessionId()}`);
+  const lang = getCurrentLang();
+  const langParam = lang ? `&lang=${encodeURIComponent(lang)}` : '';
+  return apiRequest(`/api/cart?siteId=${siteId}&sessionId=${getSessionId()}${langParam}`);
 }
 
 export async function addToCart(siteId, productId, quantity = 1, variant = null, selectedOptions = null) {

@@ -127,7 +127,7 @@ export default function OrderHelpPage() {
         {orderId && !loading && error && (
           <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 12, padding: 24, textAlign: 'center' }}>
             <i className="fas fa-exclamation-circle" style={{ fontSize: 24, color: '#ef4444', marginBottom: 12 }} />
-            <p style={{ color: '#dc2626', margin: '8px 0 16px', fontSize: 14 }}>{error}</p>
+            <p style={{ color: '#dc2626', margin: '8px 0 16px', fontSize: 14 }}><TranslatedText text={error} /></p>
             <Link to="/order-track" style={{ color: '#0f172a', fontWeight: 600, fontSize: 14 }}><TranslatedText text="Try Order Tracking instead →" /></Link>
           </div>
         )}

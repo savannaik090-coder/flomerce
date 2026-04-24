@@ -617,7 +617,7 @@ export default function CheckoutPage() {
         <div style={{ height: '100%', background: '#7a4012', borderRadius: 3, width: `${((step - 1) / 2) * 100}%`, transition: 'width 0.5s ease' }} />
       </div>
 
-      {error && <div style={{ background: '#ffebee', color: '#d32f2f', padding: 12, borderRadius: 6, marginBottom: 20, textAlign: 'center', border: '1px solid #f5c6cb' }}>{error}</div>}
+      {error && <div style={{ background: '#ffebee', color: '#d32f2f', padding: 12, borderRadius: 6, marginBottom: 20, textAlign: 'center', border: '1px solid #f5c6cb' }}><TranslatedText text={error} /></div>}
 
       {step === 1 && (
         <div style={{ background: '#fff', padding: 24, boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
@@ -726,7 +726,7 @@ export default function CheckoutPage() {
                       <TranslatedText text="Apply" />
                     </button>
                   </div>
-                  {couponError && <div style={{ color: '#ef4444', fontSize: 12, marginTop: 6 }}>{couponError}</div>}
+                  {couponError && <div style={{ color: '#ef4444', fontSize: 12, marginTop: 6 }}><TranslatedText text={couponError} /></div>}
                 </>
               ) : (
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

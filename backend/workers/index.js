@@ -28,6 +28,7 @@ import { PLATFORM_DOMAIN } from '../config.js';
 import { ensureTablesExist } from '../utils/db-init.js';
 import { resolveSiteDBById, getSiteConfig } from '../utils/site-db.js';
 import { translateContentBatch, isTargetSupported } from '../utils/server-translator.js';
+import { translateLabels } from '../utils/email-i18n.js';
 
 export default {
   async fetch(request, env, ctx) {
@@ -455,6 +456,9 @@ async function handleAPI(request, env, path, ctx) {
     case 'i18n':
       return handleI18nPublic(request, env, path, ctx);
 
+    case 'manifest':
+      return handlePWAManifest(request, env);
+
     default:
       return errorResponse('API endpoint not found', 404);
   }
@@ -615,6 +619,104 @@ async function handleSiteInfo(request, env) {
     console.error('Get site info error:', error);
     return errorResponse('Failed to fetch site info: ' + error.message, 500);
   }
+}
+
+// Returns a translated PWA Web App Manifest JSON for the resolved site.
+// Reads ?subdomain= (preferred) or resolves by hostname; ?lang= chooses target.
+// Translation failures are swallowed — manifest must always serve.
+async function handlePWAManifest(request, env) {
+  const url = new URL(request.url);
+  const hostname = url.hostname;
+  const subdomain = url.searchParams.get('subdomain');
+  const lang = url.searchParams.get('lang');
+
+  let siteRow = null;
+  try {
+    if (subdomain) {
+      siteRow = await env.DB.prepare(
+        `SELECT s.id, s.subdomain, s.brand_name, s.template_id, s.content_language
+         FROM sites s WHERE LOWER(s.subdomain) = LOWER(?) AND s.is_active = 1`
+      ).bind(subdomain).first();
+    } else if (!hostname.endsWith(env.DOMAIN || PLATFORM_DOMAIN) && !hostname.endsWith('pages.dev') && !hostname.includes('localhost') && !hostname.includes('workers.dev')) {
+      siteRow = await env.DB.prepare(
+        `SELECT s.id, s.subdomain, s.brand_name, s.template_id, s.content_language
+         FROM sites s WHERE s.custom_domain = ? AND s.domain_status = 'verified' AND s.is_active = 1`
+      ).bind(hostname.toLowerCase()).first();
+    }
+  } catch (e) {
+    console.error('[manifest] site lookup failed:', e?.message || e);
+  }
+
+  const brandName = siteRow?.brand_name || 'Store';
+  let description = `${brandName} — online store`;
+  let themeColor = '#000000';
+  let backgroundColor = '#ffffff';
+  let iconUrl = null;
+  try {
+    if (siteRow?.id) {
+      const siteDB = await resolveSiteDBById(env, siteRow.id);
+      const cfg = await siteDB.prepare('SELECT settings, logo_url FROM site_config WHERE site_id = ?').bind(siteRow.id).first();
+      if (cfg) {
+        if (cfg.logo_url) iconUrl = cfg.logo_url;
+        let settings = {};
+        try { settings = typeof cfg.settings === 'string' ? JSON.parse(cfg.settings) : (cfg.settings || {}); } catch {}
+        if (typeof settings.tagline === 'string' && settings.tagline) description = settings.tagline;
+        if (typeof settings.themeColor === 'string') themeColor = settings.themeColor;
+        if (typeof settings.backgroundColor === 'string') backgroundColor = settings.backgroundColor;
+      }
+    }
+  } catch (e) {
+    console.error('[manifest] config lookup failed:', e?.message || e);
+  }
+
+  let nameOut = brandName;
+  let shortOut = brandName.length > 12 ? brandName.slice(0, 12) : brandName;
+  let descOut = description;
+  if (lang && siteRow?.id) {
+    try {
+      const supported = await isTargetSupported(env, siteRow.id, lang);
+      if (supported.ok) {
+        const t = await translateLabels(env, siteRow.id, lang, {
+          name: brandName,
+          short_name: shortOut,
+          description,
+        });
+        nameOut = t.name || nameOut;
+        shortOut = t.short_name || shortOut;
+        descOut = t.description || descOut;
+      }
+    } catch (e) {
+      console.error('[manifest] translate skipped:', e?.message || e);
+    }
+  }
+
+  const manifest = {
+    name: nameOut,
+    short_name: shortOut,
+    description: descOut,
+    start_url: '/',
+    scope: '/',
+    display: 'standalone',
+    theme_color: themeColor,
+    background_color: backgroundColor,
+    lang: lang || siteRow?.content_language || 'en',
+    icons: iconUrl
+      ? [
+          { src: iconUrl, sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: iconUrl, sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+        ]
+      : [],
+    categories: ['shopping'],
+  };
+
+  return new Response(JSON.stringify(manifest), {
+    status: 200,
+    headers: {
+      'Content-Type': 'application/manifest+json; charset=utf-8',
+      'Cache-Control': 'public, max-age=300',
+      ...corsHeaders(request),
+    },
+  });
 }
 
 // Translates the merchant-facing strings on the /api/site payload in place.
@@ -1089,10 +1191,19 @@ async function processAbandonedCartReminders(env) {
             let emailSent = false;
             let whatsappSent = false;
 
+            let customerLang = null;
+            try {
+              const lastOrder = await db.prepare(
+                `SELECT placed_in_language FROM orders WHERE user_id = ? AND site_id = ? AND placed_in_language IS NOT NULL ORDER BY created_at DESC LIMIT 1`
+              ).bind(cart.user_id, cart.site_id).first();
+              customerLang = lastOrder?.placed_in_language || null;
+            } catch (e) {}
+
             if (sendEmailChannel && customer.email) {
               try {
-                const emailContent = buildAbandonedCartEmail(
-                  customer.name, brandName, enrichedItems, cartTotal, storeUrl, currency
+                const emailContent = await buildAbandonedCartEmail(
+                  customer.name, brandName, enrichedItems, cartTotal, storeUrl, currency,
+                  env, cart.site_id, customerLang
                 );
                 const result = await sendEmail(
                   env, customer.email,
@@ -1107,8 +1218,9 @@ async function processAbandonedCartReminders(env) {
 
             if (sendWhatsApp && customer.phone && isWhatsAppConfigured(settings)) {
               try {
-                const waMessage = buildAbandonedCartWA(
-                  customer.name, brandName, itemsSummary, cartTotal, storeUrl, currency
+                const waMessage = await buildAbandonedCartWA(
+                  customer.name, brandName, itemsSummary, cartTotal, storeUrl, currency,
+                  env, cart.site_id, customerLang
                 );
                 const result = await sendOrderWhatsApp(settings, customer.phone, waMessage);
                 whatsappSent = result?.success === true;

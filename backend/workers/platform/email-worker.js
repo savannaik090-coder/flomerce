@@ -51,13 +51,14 @@ async function sendEmail(env, to, subject, html, text) {
 
 async function sendOrderConfirmation(request, env) {
   try {
-    const { order, customerEmail, brandName } = await request.json();
+    const { order, customerEmail, brandName, siteId } = await request.json();
 
     if (!order || !customerEmail) {
       return errorResponse('Order and customer email are required');
     }
 
-    const { html, text } = buildOrderConfirmationEmail(order, brandName);
+    const placedLang = order?.placed_in_language || order?.placedInLanguage || null;
+    const { html, text } = await buildOrderConfirmationEmail(order, brandName, null, 'INR', {}, '', env, siteId || null, placedLang);
     const orderNum = order.order_number || order.orderNumber || '';
     const sent = await sendEmail(env, customerEmail, `Order Confirmation - ${orderNum}`, html, text);
 

@@ -548,6 +548,7 @@ export function getSiteSchemaStatements() {
     'ALTER TABLE customer_email_verifications ADD COLUMN row_size_bytes INTEGER DEFAULT 0',
     'ALTER TABLE coupons ADD COLUMN row_size_bytes INTEGER DEFAULT 0',
     'ALTER TABLE notifications ADD COLUMN row_size_bytes INTEGER DEFAULT 0',
+    'ALTER TABLE notifications ADD COLUMN language TEXT',
     'ALTER TABLE reviews ADD COLUMN row_size_bytes INTEGER DEFAULT 0',
     'ALTER TABLE page_seo ADD COLUMN row_size_bytes INTEGER DEFAULT 0',
     'ALTER TABLE site_media ADD COLUMN row_size_bytes INTEGER DEFAULT 0',
@@ -587,6 +588,8 @@ export function getSiteSchemaStatements() {
     'ALTER TABLE guest_orders ADD COLUMN whatsapp_opted_in INTEGER DEFAULT 0',
     'ALTER TABLE carts ADD COLUMN reminder_sent_at TEXT',
     'ALTER TABLE carts ADD COLUMN reminder_count INTEGER DEFAULT 0',
+    'ALTER TABLE orders ADD COLUMN placed_in_language TEXT',
+    'ALTER TABLE guest_orders ADD COLUMN placed_in_language TEXT',
   ];
 
   return [...tables, ...indexes, ...addColumnMigrations];

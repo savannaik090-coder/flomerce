@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getApiUrl } from '../services/api.js';
+import TranslatedText from '../components/TranslatedText';
 
 function formatCurrency(amount, currency = 'INR') {
   const num = parseFloat(amount) || 0;
@@ -90,7 +91,7 @@ export default function InvoicePage() {
         <div style={{ textAlign: 'center', padding: 40, maxWidth: 480 }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
           <div style={{ fontSize: 18, fontWeight: 600, color: '#dc2626', marginBottom: 8 }}>{tr('invoice.unavailable', 'Invoice Unavailable')}</div>
-          <div style={{ color: '#64748b', fontSize: 14 }}>{error}</div>
+          <div style={{ color: '#64748b', fontSize: 14 }}><TranslatedText text={error} /></div>
         </div>
       </div>
     );

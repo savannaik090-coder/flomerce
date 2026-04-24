@@ -120,7 +120,7 @@ export default function ReviewPageModern() {
           <div style={{ textAlign: 'center', padding: '60px 20px' }}>
             <div style={{ fontSize: 48, marginBottom: 16 }}>&#128533;</div>
             <h2 style={{ color: '#111', marginBottom: 8, fontFamily: "'Inter', sans-serif", fontWeight: 700 }}><TranslatedText text="Unable to Load Review" /></h2>
-            <p style={{ color: '#64748b', fontFamily: "'Inter', sans-serif" }}>{error}</p>
+            <p style={{ color: '#64748b', fontFamily: "'Inter', sans-serif" }}><TranslatedText text={error} /></p>
             <button
               onClick={() => navigate('/')}
               style={{ marginTop: 20, padding: '10px 24px', background: '#111', color: '#fff', border: 'none', borderRadius: 0, cursor: 'pointer', fontWeight: 600, fontFamily: "'Inter', sans-serif" }}

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { getApiUrl } from '../services/api.js';
+import TranslatedText from '../components/TranslatedText';
 
 // Public, token-gated overage invoice page.
 // URL: /billing/invoice?invoice=FLM-2026-04-XXXXXX&t=<token>&site=<siteId>
@@ -158,7 +159,7 @@ export default function OverageInvoicePage() {
         <div style={{ background: '#fff', padding: 32, borderRadius: 12, maxWidth: 480, textAlign: 'center', boxShadow: '0 4px 16px rgba(0,0,0,0.06)' }}>
           <div style={{ fontSize: 36, marginBottom: 12 }}>⚠️</div>
           <h2 style={{ margin: '0 0 8px', color: '#0f172a' }}>Invoice unavailable</h2>
-          <p style={{ margin: 0, color: '#64748b' }}>{error}</p>
+          <p style={{ margin: 0, color: '#64748b' }}><TranslatedText text={error} /></p>
         </div>
       </div>
     );

@@ -148,7 +148,7 @@ export default function OrderTrackPage() {
       {error && (
         <div style={{ padding: '16px 20px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, color: '#dc2626', fontSize: 14, textAlign: 'center', marginBottom: 24 }}>
           <i className="fas fa-exclamation-circle" style={{ marginInlineEnd: 8 }} />
-          {error}
+          <TranslatedText text={error} />
         </div>
       )}
 
