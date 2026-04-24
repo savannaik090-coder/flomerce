@@ -11,6 +11,7 @@ import {
 import storefrontConfig from './templates/storefront/seo-config.js';
 import { resolveSiteDBById } from '../../utils/site-db.js';
 import { normalizePlanName, getPlanLimitsConfig } from '../../utils/usage-tracker.js';
+import { translateContentBatch } from '../../utils/server-translator.js';
 
 const TEMPLATE_CONFIGS = {
   storefront: storefrontConfig,
@@ -326,7 +327,6 @@ export async function applySEO(request, env, site, rawHTML) {
     const url = new URL(request.url);
     const baseUrl = buildBaseUrl(request, site);
     const pathname = url.pathname.length > 1 ? url.pathname.replace(/\/+$/, '') : url.pathname;
-    const canonicalUrl = `${baseUrl}${pathname}`;
     const pageInfo = detectPageType(pathname);
     const templateConfig = loadTemplateConfig(site.template_id);
     const siteSEO = await fetchSiteSEO(env, site);
@@ -352,14 +352,143 @@ export async function applySEO(request, env, site, rawHTML) {
       pageData = await fetchPageSEO(db, site, pageInfo.type);
     }
 
+    const contentLang = (site.content_language || 'en').trim();
+    let enabledLangs = [];
+    if (site.translator_enabled) {
+      try {
+        const parsed = site.translator_languages ? JSON.parse(site.translator_languages) : [];
+        if (Array.isArray(parsed)) {
+          enabledLangs = parsed
+            .map((l) => (typeof l === 'string' ? l.trim() : ''))
+            .filter((l) => l && l !== contentLang);
+        }
+      } catch { /* ignore */ }
+    }
+
+    const requestedLangRaw = url.searchParams.get('lang');
+    const requestedLang = requestedLangRaw ? requestedLangRaw.trim() : '';
+    const activeLang = (requestedLang && requestedLang !== contentLang && enabledLangs.includes(requestedLang))
+      ? requestedLang
+      : contentLang;
+
+    const baseSearchParams = new URLSearchParams(url.search);
+    baseSearchParams.delete('lang');
+    const baseQuery = baseSearchParams.toString();
+    const buildLangUrl = (lang) => {
+      const sp = new URLSearchParams(baseQuery);
+      if (lang && lang !== contentLang) sp.set('lang', lang);
+      const qs = sp.toString();
+      return `${baseUrl}${pathname}${qs ? `?${qs}` : ''}`;
+    };
+
+    const canonicalUrl = buildLangUrl(activeLang);
+
     const siteWithCurrency = { ...site, currency: siteSEO.currency || site.currency || 'INR' };
     const tags = buildTags({ pageInfo, site: siteWithCurrency, siteSEO, pageData, templateConfig, baseUrl, canonicalUrl, reviewData, hasAdvancedSeo });
+
+    if (enabledLangs.length > 0) {
+      const alts = [];
+      alts.push({ lang: contentLang, href: buildLangUrl(contentLang) });
+      for (const lang of enabledLangs) {
+        alts.push({ lang, href: buildLangUrl(lang) });
+      }
+      alts.push({ lang: 'x-default', href: buildLangUrl(contentLang) });
+      tags.hreflangAlternates = alts;
+    }
+
+    tags.htmlLang = activeLang;
+    tags.ogLocale = ogLocaleFor(activeLang);
+
+    if (activeLang !== contentLang) {
+      await translateTagsInPlace(env, site.id, tags, activeLang);
+    }
 
     return injectSEOTags(rawHTML, tags);
   } catch (err) {
     console.error('[SEO] applySEO error:', err);
     return rawHTML;
   }
+}
+
+function ogLocaleFor(lang) {
+  if (!lang) return 'en_US';
+  const m = String(lang).split(/[-_]/);
+  const base = (m[0] || '').toLowerCase();
+  const region = (m[1] || '').toUpperCase();
+  if (region) return `${base}_${region}`;
+  const defaults = { en: 'en_US', hi: 'hi_IN', es: 'es_ES', fr: 'fr_FR', de: 'de_DE', it: 'it_IT', pt: 'pt_BR', ja: 'ja_JP', zh: 'zh_CN', ar: 'ar_AR', ru: 'ru_RU', ko: 'ko_KR' };
+  return defaults[base] || `${base}_${base.toUpperCase()}`;
+}
+
+async function translateTagsInPlace(env, siteId, tags, targetLang) {
+  const stringFields = ['title', 'description', 'ogTitle', 'ogDescription', 'twitterTitle', 'twitterDescription', 'siteName', 'author'];
+  const inputs = [];
+  const inputKeys = [];
+  for (const f of stringFields) {
+    if (typeof tags[f] === 'string' && tags[f].trim().length > 0) {
+      inputKeys.push(f);
+      inputs.push(tags[f]);
+    }
+  }
+
+  const schemaItems = [];
+  if (Array.isArray(tags.structuredData)) {
+    for (let i = 0; i < tags.structuredData.length; i++) {
+      try {
+        const obj = JSON.parse(tags.structuredData[i]);
+        const fields = collectSchemaTranslatableFields(obj);
+        if (fields.length > 0) {
+          schemaItems.push({ index: i, obj, fields });
+          for (const f of fields) inputs.push(f.value);
+        }
+      } catch { /* skip non-JSON */ }
+    }
+  }
+
+  if (inputs.length === 0) return;
+
+  const result = await translateContentBatch(env, siteId, inputs, targetLang);
+  if (!result || !Array.isArray(result.translations) || result.translations.length !== inputs.length) {
+    return;
+  }
+
+  let cursor = 0;
+  for (let i = 0; i < inputKeys.length; i++) {
+    tags[inputKeys[i]] = result.translations[cursor++];
+  }
+  for (const item of schemaItems) {
+    for (const f of item.fields) {
+      f.set(result.translations[cursor++]);
+    }
+    try {
+      tags.structuredData[item.index] = JSON.stringify(item.obj);
+    } catch { /* leave original */ }
+  }
+}
+
+function collectSchemaTranslatableFields(obj) {
+  const out = [];
+  const TRANSLATE_KEYS = new Set(['name', 'headline', 'description', 'alternateName']);
+  function walk(node) {
+    if (!node || typeof node !== 'object') return;
+    if (Array.isArray(node)) {
+      for (const item of node) walk(item);
+      return;
+    }
+    for (const k of Object.keys(node)) {
+      const v = node[k];
+      if (TRANSLATE_KEYS.has(k) && typeof v === 'string' && v.trim().length > 0) {
+        out.push({
+          value: v,
+          set: (newVal) => { node[k] = newVal; },
+        });
+      } else if (v && typeof v === 'object') {
+        walk(v);
+      }
+    }
+  }
+  walk(obj);
+  return out;
 }
 
 export { generateSitemap, generateRobots };

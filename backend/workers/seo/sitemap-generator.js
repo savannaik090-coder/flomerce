@@ -3,6 +3,19 @@ import { resolveSiteDBById } from '../../utils/site-db.js';
 export async function generateSitemap(env, site, baseUrl) {
   const urls = [];
 
+  const contentLang = (site.content_language || 'en').trim();
+  let enabledLangs = [];
+  if (site.translator_enabled) {
+    try {
+      const parsed = site.translator_languages ? JSON.parse(site.translator_languages) : [];
+      if (Array.isArray(parsed)) {
+        enabledLangs = parsed
+          .map((l) => (typeof l === 'string' ? l.trim() : ''))
+          .filter((l) => l && l !== contentLang);
+      }
+    } catch { /* ignore */ }
+  }
+
   urls.push({
     loc: `${baseUrl}/`,
     changefreq: 'daily',
@@ -74,17 +87,41 @@ export async function generateSitemap(env, site, baseUrl) {
     }
   } catch {}
 
+  const xmlEscape = (s) => String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+
+  const includeAlternates = enabledLangs.length > 0;
+
+  const buildAlternates = (loc) => {
+    if (!includeAlternates) return '';
+    const lines = [];
+    lines.push(`    <xhtml:link rel="alternate" hreflang="${xmlEscape(contentLang)}" href="${xmlEscape(loc)}" />`);
+    for (const lang of enabledLangs) {
+      const sep = loc.includes('?') ? '&' : '?';
+      const altHref = `${loc}${sep}lang=${encodeURIComponent(lang)}`;
+      lines.push(`    <xhtml:link rel="alternate" hreflang="${xmlEscape(lang)}" href="${xmlEscape(altHref)}" />`);
+    }
+    lines.push(`    <xhtml:link rel="alternate" hreflang="x-default" href="${xmlEscape(loc)}" />`);
+    return '\n' + lines.join('\n');
+  };
+
   const urlEntries = urls.map(u => {
-    let entry = `  <url>\n    <loc>${u.loc}</loc>`;
+    let entry = `  <url>\n    <loc>${xmlEscape(u.loc)}</loc>`;
     if (u.lastmod) entry += `\n    <lastmod>${u.lastmod}</lastmod>`;
     if (u.changefreq) entry += `\n    <changefreq>${u.changefreq}</changefreq>`;
     if (u.priority) entry += `\n    <priority>${u.priority}</priority>`;
+    entry += buildAlternates(u.loc);
     entry += `\n  </url>`;
     return entry;
   });
 
+  const xhtmlNs = includeAlternates ? ' xmlns:xhtml="http://www.w3.org/1999/xhtml"' : '';
   return `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"${xhtmlNs}>
 ${urlEntries.join('\n')}
 </urlset>`;
 }

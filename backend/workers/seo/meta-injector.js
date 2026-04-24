@@ -3,8 +3,17 @@ export function injectSEOTags(html, tags) {
 
   result = result.replace(/<title>[^<]*<\/title>/i, `<title>${escapeHtml(tags.title)}</title>`);
 
+  if (tags.htmlLang) {
+    if (/<html\b[^>]*\blang=["'][^"']*["'][^>]*>/i.test(result)) {
+      result = result.replace(/(<html\b[^>]*\blang=["'])[^"']*(["'])/i, `$1${escapeAttr(tags.htmlLang)}$2`);
+    } else {
+      result = result.replace(/<html\b/i, `<html lang="${escapeAttr(tags.htmlLang)}"`);
+    }
+  }
+
   result = result.replace(/<link\s+rel=["']icon["'][^>]*>/gi, '');
   result = result.replace(/<link\s+rel=["']canonical["'][^>]*>/gi, '');
+  result = result.replace(/<link\s+rel=["']alternate["'][^>]*hreflang=["'][^"']*["'][^>]*>/gi, '');
 
   result = result.replace(/<meta\s+name=["']description["'][^>]*>/gi, '');
   result = result.replace(/<meta\s+name=["']viewport["'][^>]*>/gi, '');
@@ -47,6 +56,13 @@ function buildMetaTagsString(tags) {
 
   if (tags.canonicalUrl) {
     lines.push(`  <link rel="canonical" href="${escapeAttr(tags.canonicalUrl)}">`);
+  }
+
+  if (Array.isArray(tags.hreflangAlternates) && tags.hreflangAlternates.length > 0) {
+    for (const alt of tags.hreflangAlternates) {
+      if (!alt || !alt.href || !alt.lang) continue;
+      lines.push(`  <link rel="alternate" hreflang="${escapeAttr(alt.lang)}" href="${escapeAttr(alt.href)}">`);
+    }
   }
 
   if (tags.favicon) {

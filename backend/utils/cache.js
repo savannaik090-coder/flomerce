@@ -116,7 +116,7 @@ function normalizeResourceIds(r) {
 async function runPurgeNow(env, siteId, types, resources) {
   try {
     const site = await env.DB.prepare(
-      'SELECT subdomain, custom_domain, domain_status FROM sites WHERE id = ?'
+      'SELECT subdomain, custom_domain, domain_status, content_language, translator_enabled, translator_languages FROM sites WHERE id = ?'
     ).bind(siteId).first();
 
     if (!site) return;
@@ -127,6 +127,21 @@ async function runPurgeNow(env, siteId, types, resources) {
     if (site.custom_domain && site.domain_status === 'verified') storeDomains.push(site.custom_domain);
 
     const allDomains = [...storeDomains, rootDomain];
+
+    const contentLang = site.content_language || 'en';
+    let enabledLangs = [];
+    if (site.translator_enabled) {
+      try {
+        const parsed = site.translator_languages ? JSON.parse(site.translator_languages) : [];
+        if (Array.isArray(parsed)) {
+          enabledLangs = parsed
+            .map((l) => (typeof l === 'string' ? l.trim() : ''))
+            .filter((l) => l && l !== contentLang);
+        }
+      } catch (e) {
+        console.warn(`[Cache] Failed to parse translator_languages for site ${siteId}: ${e.message}`);
+      }
+    }
 
     const urls = [];
 
@@ -201,7 +216,28 @@ async function runPurgeNow(env, siteId, types, resources) {
       }
     }
 
-    const uniqueUrls = [...new Set(urls)];
+    const baseUnique = [...new Set(urls)];
+
+    const expanded = [];
+    for (const url of baseUnique) {
+      expanded.push(url);
+      for (const lang of enabledLangs) {
+        const sep = url.includes('?') ? '&' : '?';
+        expanded.push(`${url}${sep}lang=${encodeURIComponent(lang)}`);
+      }
+    }
+    let uniqueUrls = [...new Set(expanded)];
+
+    // Defensive ceiling: a single debounced purge should never burn through
+    // a meaningful fraction of Cloudflare's 30k-URL/day per-zone purge_files
+    // limit. Hitting this cap means the purge is overscoped (admin probably
+    // touched a settings field that triggered a 'site' purge with many enabled
+    // languages); we log loudly so the operator can investigate.
+    const PURGE_URL_HARD_CAP = 1000;
+    if (uniqueUrls.length > PURGE_URL_HARD_CAP) {
+      console.warn(`[Cache] Purge URL count ${uniqueUrls.length} exceeds soft cap ${PURGE_URL_HARD_CAP} for site ${siteId}; truncating.`);
+      uniqueUrls = uniqueUrls.slice(0, PURGE_URL_HARD_CAP);
+    }
 
     const cache = caches.default;
     const cachePromises = uniqueUrls.map(url =>

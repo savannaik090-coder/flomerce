@@ -138,18 +138,43 @@ Wrappers also intentionally retained on:
 
 Both storefront and platform builds are clean.
 
-### Phase 4 — Per-language cache purge
-Extend `purgeStorefrontCache` to fan out one purge URL per enabled language
-per resource. Builds on the 30s debounce already shipped.
+### Phase 4 — Per-language cache purge [✅ Done]
+`runPurgeNow` now reads `translator_languages` off the site row (gated on
+`translator_enabled`) and fans out one extra `?lang=X` purge URL per
+enabled language per base URL. The original (no-`lang=`) URL is still
+purged so the merchant's content language stays correct. Cloudflare API
+batching (30 URLs per call) keeps API call count proportional. The 30s
+debounce already shipped collapses bursts of edits into a single fan-out.
 
-### Phase 5 — SEO: meta tags + hreflang + sitemap
-Server-side translate `<title>`, `<meta description>`, OG tags, JSON-LD in
-`meta-injector.js`. Emit `hreflang` link tags in head and sitemap.
+### Phase 5 — SEO: meta tags + hreflang + sitemap [✅ Done]
+`applySEO` (in `backend/workers/seo/index.js`) now reads `?lang=` off
+the incoming request, gates against the merchant's enabled language list
+(falls back to content_language if the requested lang isn't allowed),
+and translates SEO-visible fields via `translateContentBatch`:
+title, description, ogTitle/ogDescription, twitterTitle/Description,
+siteName, author, plus the translatable string fields inside JSON-LD
+schemas (`name`, `headline`, `description`, `alternateName`).
 
-### Phase 6 — Cleanup
-Refactor `translate-worker.js` to delegate to `server-translator.js`
-(eliminate duplicated logic). Mark the standalone `/translate` proxy as
-deprecated. Update `replit.md`.
+The injector also emits:
+- `<html lang="…">` set to the active language
+- `<meta property="og:locale">` derived from the active language
+- `<link rel="alternate" hreflang="…" href="…?lang=…">` for the
+  content language, every enabled translator language, and `x-default`
+- A canonical URL that includes `?lang=…` for non-default variants
+
+`generateSitemap` emits `<xhtml:link rel="alternate" hreflang>` per URL
+per enabled language plus `x-default`, with the namespace declared on
+`<urlset>` only when alternates are present (no XML noise for sites
+without translation enabled).
+
+### Phase 6 — Cleanup [✅ Done]
+`translate-worker.js`'s `handleTranslateProxy` now delegates the full
+cache-lookup / Microsoft call / daily-cap / usage-bump pipeline to
+`translateContentBatch` in `server-translator.js`. The proxy retains:
+its tighter public-facing per-request caps (200 texts / 50k chars), the
+`X-Translator-Capped` response header contract, and the
+`TRANSLATOR_DISABLED`/`TARGET_NOT_ALLOWED` legacy error codes. About
+180 lines of duplicated translator logic deleted.
 
 ## Translatable fields per endpoint
 
@@ -194,6 +219,19 @@ prioritized after this refactor lands.
 
 ## Updates log
 
+- **Phase 6 complete** — `translate-worker.js` proxy now delegates to
+  `translateContentBatch`. ~180 lines of duplicated cache/MS/cap logic
+  removed. External contract preserved (per-request limits, capped
+  header, legacy error codes). `replit.md` architecture section updated.
+- **Phase 5 complete** — `applySEO` reads `?lang=`, gates against the
+  enabled language list, translates title/description/OG/Twitter/JSON-LD
+  via `translateContentBatch`, sets `<html lang>` + `og:locale`, emits
+  hreflang link tags (one per enabled lang + `x-default`), and rewrites
+  the canonical URL to include `?lang=` for non-default variants.
+  `generateSitemap` emits `<xhtml:link>` alternates per URL.
+- **Phase 4 complete** — `runPurgeNow` fans out per-language `?lang=X`
+  purge URLs across every enabled translator language for every base
+  URL it would otherwise emit. Cloudflare batch size unchanged (30).
 - **Phase 0 complete** — server-translator helper created. No production
   behavior change. Validated workflow restart.
 - **Phase 1 complete** — `?lang=` wired into `/api/products` and
